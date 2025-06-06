@@ -42,5 +42,8 @@ export class Order {
 
     @Column({ type: 'boolean' })
     printed: boolean;
+
+    @Column({ default: false })
+    canceled: boolean;
 }
 

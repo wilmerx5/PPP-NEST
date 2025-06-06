@@ -10,4 +10,5 @@ export declare class Order {
     dailyOrderNumber: number;
     orderType: OrderType;
     printed: boolean;
+    canceled: boolean;
 }

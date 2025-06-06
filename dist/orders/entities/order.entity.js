@@ -22,6 +22,7 @@ let Order = class Order {
     dailyOrderNumber;
     orderType;
     printed;
+    canceled;
 };
 exports.Order = Order;
 __decorate([
@@ -65,6 +66,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'boolean' }),
     __metadata("design:type", Boolean)
 ], Order.prototype, "printed", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Order.prototype, "canceled", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)('ppp_orders')
 ], Order);

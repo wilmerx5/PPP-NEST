@@ -319,5 +319,4 @@ private mapOrderToGroupedFormat(order: Order): any {
   };
 }
 
-
 }

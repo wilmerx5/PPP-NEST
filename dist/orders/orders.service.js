@@ -94,6 +94,7 @@ let OrdersService = class OrdersService {
         const orders = await this.orderRepo.find({
             where: {
                 createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
+                canceled: false,
             },
             relations: ['items', 'items.product', 'items.attributes'],
             order: {
@@ -134,6 +135,7 @@ let OrdersService = class OrdersService {
                 createdAt: order.createdAt,
                 orderType: order.orderType,
                 printed: order.printed,
+                canceled: order.canceled,
                 items: Object.values(groupedItems)
             };
         });
@@ -145,11 +147,12 @@ let OrdersService = class OrdersService {
         if (!order) {
             throw new Error(`Order with ID ${orderId} not found`);
         }
-        await this.orderRepo.remove(order);
+        order.canceled = true;
+        await this.orderRepo.save(order);
         this.gateway.emitOrdersUpdates("deleted_order", order);
         return {
             success: true,
-            message: `Order #${orderId} deleted successfully`,
+            message: `Order #${orderId} marked as canceled`,
         };
     }
     async updateOrderItems(orderId, dto) {
@@ -264,6 +267,7 @@ let OrdersService = class OrdersService {
             createdAt: localCreatedAt,
             orderType: order.orderType,
             printed: order.printed,
+            canceled: order.canceled,
             items: Object.values(groupedItems),
         };
     }
