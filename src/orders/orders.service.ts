@@ -24,18 +24,40 @@ export class OrdersService {
     private readonly gateway: OrdersGateway,
   ) { }
   
-  
+   private readonly timeZone = 'America/Bogota';
+
+  /**
+   * Calcula el inicio y fin del día "hoy" en la zona horaria de Bogotá,
+   * y los devuelve como objetos Date UTC para la consulta a la base de datos.
+   */
+  private getTodayUtcRange(): { todayStartUtc: Date, todayEndUtc: Date } {
+    // 1. Obtener la fecha y hora actual en la zona horaria de Bogotá (como Date object)
+    const nowInBogota = toZonedTime(new Date(), this.timeZone);
+
+    // 2. Calcular el inicio y fin del día para 'nowInBogota'
+    const startOfBogotaDay = startOfDay(nowInBogota); // Esto ya es un Date object
+    const endOfBogotaDay = endOfDay(nowInBogota);     // Esto ya es un Date object
+
+    // 3. Estos Date objects ya tienen el offset correcto para ser considerados UTC por la BD
+    //    Si TypeORM almacena fechas en UTC (que es lo estándar y recomendado),
+    //    simplemente estos Date objects serán interpretados correctamente.
+    //    No necesitamos una conversión explícita "zonedTimeToUtc" porque el Date object
+    //    ya contiene el valor de tiempo universal.
+
+    // Si tu base de datos *no* almacena en UTC y guarda la hora local del servidor,
+    // o si necesitas una representación string específica en UTC antes de guardar,
+    // podrías usar formatInTimeZone con 'Etc/UTC' o simplemente Date.prototype.toISOString().
+    // Pero para consultas con TypeORM que usan Date objects, esto es suficiente.
+
+    return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
+  }
   async create(createOrderDto: CreateOrderDto) {
     const { customerName, phone, address, items } = createOrderDto;
-    const timeZone = 'America/Bogota';
-
- const now = new Date();
-const todayStart = toZonedTime(startOfDay(now), timeZone);
-const todayEnd = toZonedTime(endOfDay(now), timeZone);
+      const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
     const ordersTodayCount = await this.orderRepo.count({
       where: {
-        createdAt: Between(todayStart, todayEnd),
+        createdAt: Between(todayStartUtc, todayEndUtc),
       },
     });
 
@@ -90,15 +112,11 @@ const todayEnd = toZonedTime(endOfDay(now), timeZone);
   }
 
   async findOrdersToday() {
-    const timeZone = 'America/Bogota';
-
-const now = new Date();
-const todayStart = toZonedTime(startOfDay(now), timeZone);
-const todayEnd = toZonedTime(endOfDay(now), timeZone);
+ const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
     const orders = await this.orderRepo.find({
       where: {
-        createdAt: Between(todayStart, todayEnd),
+        createdAt: Between(todayStartUtc, todayEndUtc),
       },
       relations: ['items', 'items.product', 'items.attributes'],
       order: {
@@ -268,7 +286,7 @@ const todayEnd = toZonedTime(endOfDay(now), timeZone);
 
 private mapOrderToGroupedFormat(order: Order): any {
   const groupedItems: Record<number, any> = {};
-  const timeZone = 'America/Bogota';
+
 
   for (const item of order.items) {
     const productId = item.product.id;
@@ -297,16 +315,14 @@ private mapOrderToGroupedFormat(order: Order): any {
     });
   }
 
-  // Convertir la fecha a hora local (string legible) o mantenerla en Date pero ajustada
-  const localCreatedAt = toZonedTime(order.createdAt, timeZone);
-
+  const localCreatedAt = toZonedTime(order.createdAt, this.timeZone);
   return {
     orderId: order.id,
     dailyOrderNumber: order.dailyOrderNumber,
     customerName: order.customerName,
     phone: order.phone,
     address: order.address,
-    createdAt: localCreatedAt, // 👈 Fecha ya ajustada a hora colombiana
+    createdAt: localCreatedAt, 
     orderType: order.orderType,
     printed: order.printed,
     items: Object.values(groupedItems),

@@ -35,15 +35,19 @@ let OrdersService = class OrdersService {
         this.productRepo = productRepo;
         this.gateway = gateway;
     }
+    timeZone = 'America/Bogota';
+    getTodayUtcRange() {
+        const nowInBogota = (0, date_fns_tz_1.toZonedTime)(new Date(), this.timeZone);
+        const startOfBogotaDay = (0, date_fns_1.startOfDay)(nowInBogota);
+        const endOfBogotaDay = (0, date_fns_1.endOfDay)(nowInBogota);
+        return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
+    }
     async create(createOrderDto) {
         const { customerName, phone, address, items } = createOrderDto;
-        const timeZone = 'America/Bogota';
-        const now = new Date();
-        const todayStart = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.startOfDay)(now), timeZone);
-        const todayEnd = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.endOfDay)(now), timeZone);
+        const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
         const ordersTodayCount = await this.orderRepo.count({
             where: {
-                createdAt: (0, typeorm_2.Between)(todayStart, todayEnd),
+                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
             },
         });
         const newOrderNumber = ordersTodayCount + 1;
@@ -86,13 +90,10 @@ let OrdersService = class OrdersService {
         };
     }
     async findOrdersToday() {
-        const timeZone = 'America/Bogota';
-        const now = new Date();
-        const todayStart = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.startOfDay)(now), timeZone);
-        const todayEnd = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.endOfDay)(now), timeZone);
+        const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
         const orders = await this.orderRepo.find({
             where: {
-                createdAt: (0, typeorm_2.Between)(todayStart, todayEnd),
+                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
             },
             relations: ['items', 'items.product', 'items.attributes'],
             order: {
@@ -253,13 +254,14 @@ let OrdersService = class OrdersService {
                 attributes: attributeMap,
             });
         }
+        const localCreatedAt = (0, date_fns_tz_1.toZonedTime)(order.createdAt, this.timeZone);
         return {
             orderId: order.id,
             dailyOrderNumber: order.dailyOrderNumber,
             customerName: order.customerName,
             phone: order.phone,
             address: order.address,
-            createdAt: order.createdAt,
+            createdAt: localCreatedAt,
             orderType: order.orderType,
             printed: order.printed,
             items: Object.values(groupedItems),

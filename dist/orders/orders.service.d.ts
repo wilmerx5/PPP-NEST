@@ -12,6 +12,8 @@ export declare class OrdersService {
     private readonly productRepo;
     private readonly gateway;
     constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, productRepo: Repository<Product>, gateway: OrdersGateway);
+    private readonly timeZone;
+    private getTodayUtcRange;
     create(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;
         orderId: number;
