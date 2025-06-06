@@ -136,7 +136,8 @@ export class OrdersService {
         address: order.address,
         createdAt: order.createdAt,
         orderType: order.orderType,
-        items: Object.values(groupedItems),
+        printed:order.printed,
+        items: Object.values(groupedItems)
       };
     });
   }
@@ -231,6 +232,8 @@ export class OrdersService {
     if (dto.phone !== undefined) order.phone = dto.phone;
     if (dto.address !== undefined) order.address = dto.address;
     if (dto.orderType !== undefined) order.orderType = dto.orderType;
+    if (dto.printed !== undefined) order.printed = dto.printed;
+
 
 
     await this.orderRepo.save(order);
@@ -289,6 +292,7 @@ export class OrdersService {
       address: order.address,
       createdAt: order.createdAt,
       orderType: order.orderType,
+      printed:order.printed,
       items: Object.values(groupedItems),
     };
   }

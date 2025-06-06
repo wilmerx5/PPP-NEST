@@ -6,7 +6,7 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
-export type OrderType = 'delivery' | 'pickup' | 'table'| 'counter';
+export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
 
 @Entity('ppp_orders')
 export class Order {
@@ -34,9 +34,13 @@ export class Order {
 
     @Column({
         type: 'enum',
-        enum: ['delivery', 'pickup', 'table','counter'],
+        enum: ['delivery', 'pickup', 'table', 'counter'],
         default: 'pickup',
-        name:"order_type"
+        name: "order_type"
     })
     orderType: OrderType;
+
+    @Column({ type: 'boolean' })
+    printed: boolean;
 }
+

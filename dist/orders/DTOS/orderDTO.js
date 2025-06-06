@@ -41,6 +41,7 @@ class UpdateOrderGeneralDto {
     phone;
     address;
     orderType;
+    printed;
 }
 exports.UpdateOrderGeneralDto = UpdateOrderGeneralDto;
 //# sourceMappingURL=orderDTO.js.map

@@ -9,4 +9,5 @@ export declare class Order {
     items: OrderItem[];
     dailyOrderNumber: number;
     orderType: OrderType;
+    printed: boolean;
 }

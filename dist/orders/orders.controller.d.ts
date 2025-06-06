@@ -16,6 +16,7 @@ export declare class OrdersController {
         address: string;
         createdAt: Date;
         orderType: import("./entities/order.entity").OrderType;
+        printed: boolean;
         items: any[];
     }[]>;
     deleteOrder(id: string): Promise<{

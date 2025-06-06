@@ -44,5 +44,7 @@ export class UpdateOrderGeneralDto {
     phone?: string;
     address?: string;
     orderType?: 'delivery' | 'pickup' | 'table' | 'counter';
+    printed?: boolean;
+
 }
 
