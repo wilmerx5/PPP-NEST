@@ -23,13 +23,15 @@ export class OrdersService {
     private readonly productRepo: Repository<Product>,
     private readonly gateway: OrdersGateway,
   ) { }
-
-
+  
+  
   async create(createOrderDto: CreateOrderDto) {
     const { customerName, phone, address, items } = createOrderDto;
+    const timeZone = 'America/Bogota';
 
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+ const now = new Date();
+const todayStart = toZonedTime(startOfDay(now), timeZone);
+const todayEnd = toZonedTime(endOfDay(now), timeZone);
 
     const ordersTodayCount = await this.orderRepo.count({
       where: {

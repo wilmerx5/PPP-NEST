@@ -86,8 +86,8 @@ let OrdersService = class OrdersService {
     async findOrdersToday() {
         const timeZone = 'America/Bogota';
         const now = new Date();
-        const todayStart = (0, date_fns_tz_1.zonedTimeToUtc)((0, date_fns_1.startOfDay)(now), timeZone);
-        const todayEnd = (0, date_fns_tz_1.zonedTimeToUtc)((0, date_fns_1.endOfDay)(now), timeZone);
+        const todayStart = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.startOfDay)(now), timeZone);
+        const todayEnd = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.endOfDay)(now), timeZone);
         const orders = await this.orderRepo.find({
             where: {
                 createdAt: (0, typeorm_2.Between)(todayStart, todayEnd),
