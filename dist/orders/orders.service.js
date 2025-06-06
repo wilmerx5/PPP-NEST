@@ -16,6 +16,7 @@ exports.OrdersService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const date_fns_1 = require("date-fns");
+const date_fns_tz_1 = require("date-fns-tz");
 const typeorm_2 = require("typeorm");
 const order_item_attribute_entity_1 = require("./entities/order-item-attribute.entity");
 const order_item_entity_1 = require("./entities/order-item.entity");
@@ -83,8 +84,10 @@ let OrdersService = class OrdersService {
         };
     }
     async findOrdersToday() {
-        const todayStart = (0, date_fns_1.startOfDay)(new Date());
-        const todayEnd = (0, date_fns_1.endOfDay)(new Date());
+        const timeZone = 'America/Bogota';
+        const now = new Date();
+        const todayStart = (0, date_fns_tz_1.zonedTimeToUtc)((0, date_fns_1.startOfDay)(now), timeZone);
+        const todayEnd = (0, date_fns_tz_1.zonedTimeToUtc)((0, date_fns_1.endOfDay)(now), timeZone);
         const orders = await this.orderRepo.find({
             where: {
                 createdAt: (0, typeorm_2.Between)(todayStart, todayEnd),

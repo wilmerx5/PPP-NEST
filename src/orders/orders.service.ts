@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { endOfDay, startOfDay } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { Product } from 'src/products/entities/product.entity';
 import { Between, Repository } from 'typeorm';
 import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
@@ -87,8 +88,11 @@ export class OrdersService {
   }
 
   async findOrdersToday() {
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+    const timeZone = 'America/Bogota';
+
+const now = new Date();
+const todayStart = toZonedTime(startOfDay(now), timeZone);
+const todayEnd = toZonedTime(endOfDay(now), timeZone);
 
     const orders = await this.orderRepo.find({
       where: {
