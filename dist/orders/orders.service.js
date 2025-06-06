@@ -37,8 +37,10 @@ let OrdersService = class OrdersService {
     }
     async create(createOrderDto) {
         const { customerName, phone, address, items } = createOrderDto;
-        const todayStart = (0, date_fns_1.startOfDay)(new Date());
-        const todayEnd = (0, date_fns_1.endOfDay)(new Date());
+        const timeZone = 'America/Bogota';
+        const now = new Date();
+        const todayStart = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.startOfDay)(now), timeZone);
+        const todayEnd = (0, date_fns_tz_1.toZonedTime)((0, date_fns_1.endOfDay)(now), timeZone);
         const ordersTodayCount = await this.orderRepo.count({
             where: {
                 createdAt: (0, typeorm_2.Between)(todayStart, todayEnd),
@@ -102,6 +104,7 @@ let OrdersService = class OrdersService {
             for (const item of order.items) {
                 const productId = item.product.id;
                 const productName = item.product.name;
+                const code = item.product.code;
                 const attributeMap = item.attributes?.reduce((acc, attr) => {
                     acc[attr.attributeName] = attr.attributeValue;
                     return acc;
@@ -111,6 +114,7 @@ let OrdersService = class OrdersService {
                         productId,
                         productName,
                         quantity: 0,
+                        code: code,
                         variants: [],
                     };
                 }
@@ -229,6 +233,7 @@ let OrdersService = class OrdersService {
         for (const item of order.items) {
             const productId = item.product.id;
             const productName = item.product.name;
+            const code = item.product.code;
             const attributeMap = item.attributes?.reduce((acc, attr) => {
                 acc[attr.attributeName] = attr.attributeValue;
                 return acc;
@@ -236,6 +241,7 @@ let OrdersService = class OrdersService {
             if (!groupedItems[productId]) {
                 groupedItems[productId] = {
                     productId,
+                    code,
                     productName,
                     quantity: 0,
                     variants: [],

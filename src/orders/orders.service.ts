@@ -112,6 +112,7 @@ const todayEnd = toZonedTime(endOfDay(now), timeZone);
       for (const item of order.items) {
         const productId = item.product.id;
         const productName = item.product.name;
+        const code = item.product.code
 
         const attributeMap = item.attributes?.reduce((acc, attr) => {
           acc[attr.attributeName] = attr.attributeValue;
@@ -123,6 +124,7 @@ const todayEnd = toZonedTime(endOfDay(now), timeZone);
             productId,
             productName,
             quantity: 0,
+            code:code,
             variants: [],
           };
         }
@@ -262,48 +264,54 @@ const todayEnd = toZonedTime(endOfDay(now), timeZone);
   }
 
 
-  private mapOrderToGroupedFormat(order: Order): any {
-    const groupedItems: Record<number, any> = {};
 
-    for (const item of order.items) {
-      const productId = item.product.id;
-      const productName = item.product.name;
 
-      const attributeMap = item.attributes?.reduce((acc, attr) => {
-        acc[attr.attributeName] = attr.attributeValue;
-        return acc;
-      }, {} as Record<string, string>);
+private mapOrderToGroupedFormat(order: Order): any {
+  const groupedItems: Record<number, any> = {};
+  const timeZone = 'America/Bogota';
 
-      if (!groupedItems[productId]) {
-        groupedItems[productId] = {
-          productId,
-          productName,
-          quantity: 0,
-          variants: [],
-        };
-      }
+  for (const item of order.items) {
+    const productId = item.product.id;
+    const productName = item.product.name;
+    const code = item.product.code;
 
-      groupedItems[productId].quantity += 1;
-      groupedItems[productId].variants.push({
-        note: item.note || null,
-        attributes: attributeMap,
-      });
+    const attributeMap = item.attributes?.reduce((acc, attr) => {
+      acc[attr.attributeName] = attr.attributeValue;
+      return acc;
+    }, {} as Record<string, string>);
+
+    if (!groupedItems[productId]) {
+      groupedItems[productId] = {
+        productId,
+        code,
+        productName,
+        quantity: 0,
+        variants: [],
+      };
     }
 
-    return {
-      orderId: order.id,
-      dailyOrderNumber: order.dailyOrderNumber,
-      customerName: order.customerName,
-      phone: order.phone,
-      address: order.address,
-      createdAt: order.createdAt,
-      orderType: order.orderType,
-      printed:order.printed,
-      items: Object.values(groupedItems),
-    };
+    groupedItems[productId].quantity += 1;
+    groupedItems[productId].variants.push({
+      note: item.note || null,
+      attributes: attributeMap,
+    });
   }
 
+  // Convertir la fecha a hora local (string legible) o mantenerla en Date pero ajustada
+  const localCreatedAt = toZonedTime(order.createdAt, timeZone);
 
+  return {
+    orderId: order.id,
+    dailyOrderNumber: order.dailyOrderNumber,
+    customerName: order.customerName,
+    phone: order.phone,
+    address: order.address,
+    createdAt: localCreatedAt, // 👈 Fecha ya ajustada a hora colombiana
+    orderType: order.orderType,
+    printed: order.printed,
+    items: Object.values(groupedItems),
+  };
 }
 
 
+}
