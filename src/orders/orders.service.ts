@@ -26,28 +26,14 @@ export class OrdersService {
   
    private readonly timeZone = 'America/Bogota';
 
-  /**
-   * Calcula el inicio y fin del día "hoy" en la zona horaria de Bogotá,
-   * y los devuelve como objetos Date UTC para la consulta a la base de datos.
-   */
+ 
   private getTodayUtcRange(): { todayStartUtc: Date, todayEndUtc: Date } {
     // 1. Obtener la fecha y hora actual en la zona horaria de Bogotá (como Date object)
     const nowInBogota = toZonedTime(new Date(), this.timeZone);
-
-    // 2. Calcular el inicio y fin del día para 'nowInBogota'
     const startOfBogotaDay = startOfDay(nowInBogota); // Esto ya es un Date object
     const endOfBogotaDay = endOfDay(nowInBogota);     // Esto ya es un Date object
 
-    // 3. Estos Date objects ya tienen el offset correcto para ser considerados UTC por la BD
-    //    Si TypeORM almacena fechas en UTC (que es lo estándar y recomendado),
-    //    simplemente estos Date objects serán interpretados correctamente.
-    //    No necesitamos una conversión explícita "zonedTimeToUtc" porque el Date object
-    //    ya contiene el valor de tiempo universal.
-
-    // Si tu base de datos *no* almacena en UTC y guarda la hora local del servidor,
-    // o si necesitas una representación string específica en UTC antes de guardar,
-    // podrías usar formatInTimeZone con 'Etc/UTC' o simplemente Date.prototype.toISOString().
-    // Pero para consultas con TypeORM que usan Date objects, esto es suficiente.
+ 
 
     return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
   }
@@ -117,6 +103,7 @@ export class OrdersService {
     const orders = await this.orderRepo.find({
       where: {
         createdAt: Between(todayStartUtc, todayEndUtc),
+          canceled: false,
       },
       relations: ['items', 'items.product', 'items.attributes'],
       order: {
@@ -163,29 +150,31 @@ export class OrdersService {
         createdAt: order.createdAt,
         orderType: order.orderType,
         printed:order.printed,
+        canceled: order.canceled,
         items: Object.values(groupedItems)
       };
     });
   }
 
-  async removeOrder(orderId: number) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
-    });
+async removeOrder(orderId: number) {
+  const order = await this.orderRepo.findOne({
+    where: { id: orderId },
+  });
 
-    if (!order) {
-      throw new Error(`Order with ID ${orderId} not found`);
-    }
-
-    await this.orderRepo.remove(order);
-
-    this.gateway.emitOrdersUpdates("deleted_order", order);
-
-    return {
-      success: true,
-      message: `Order #${orderId} deleted successfully`,
-    };
+  if (!order) {
+    throw new Error(`Order with ID ${orderId} not found`);
   }
+
+  order.canceled = true;
+  await this.orderRepo.save(order);
+
+  this.gateway.emitOrdersUpdates("deleted_order", order);
+
+  return {
+    success: true,
+    message: `Order #${orderId} marked as canceled`,
+  };
+}
 
 
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
@@ -325,6 +314,7 @@ private mapOrderToGroupedFormat(order: Order): any {
     createdAt: localCreatedAt, 
     orderType: order.orderType,
     printed: order.printed,
+    canceled:order.canceled,
     items: Object.values(groupedItems),
   };
 }
