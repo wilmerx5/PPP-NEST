@@ -27,8 +27,8 @@ export declare class OrdersService {
         address: string;
         createdAt: Date;
         orderType: import("./entities/order.entity").OrderType;
+        orderStatus: import("./entities/order.entity").OrderStatus;
         printed: boolean;
-        canceled: boolean;
         items: any[];
     }[]>;
     removeOrder(orderId: number): Promise<{

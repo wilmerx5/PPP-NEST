@@ -7,6 +7,8 @@ import {
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
+export type OrderStatus = 'cooking' | 'packing'|'canceled' ;
+
 
 @Entity('ppp_orders')
 export class Order {
@@ -40,10 +42,15 @@ export class Order {
     })
     orderType: OrderType;
 
+    @Column({
+        type: 'enum',
+        enum: ['cooking', 'packing','canceled'],
+        default: 'cooking',
+        name: "order_status"
+    })
+    orderStatus: OrderStatus;
+
     @Column({ type: 'boolean' })
     printed: boolean;
-
-    @Column({ default: false })
-    canceled: boolean;
 }
 

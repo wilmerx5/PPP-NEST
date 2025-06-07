@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { endOfDay, startOfDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { Product } from 'src/products/entities/product.entity';
-import { Between, Repository } from 'typeorm';
+import { Between, Not, Repository } from 'typeorm';
 import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
@@ -23,23 +23,23 @@ export class OrdersService {
     private readonly productRepo: Repository<Product>,
     private readonly gateway: OrdersGateway,
   ) { }
-  
-   private readonly timeZone = 'America/Bogota';
 
- 
+  private readonly timeZone = 'America/Bogota';
+
+
   private getTodayUtcRange(): { todayStartUtc: Date, todayEndUtc: Date } {
     // 1. Obtener la fecha y hora actual en la zona horaria de Bogotá (como Date object)
     const nowInBogota = toZonedTime(new Date(), this.timeZone);
     const startOfBogotaDay = startOfDay(nowInBogota); // Esto ya es un Date object
     const endOfBogotaDay = endOfDay(nowInBogota);     // Esto ya es un Date object
 
- 
+
 
     return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
   }
   async create(createOrderDto: CreateOrderDto) {
     const { customerName, phone, address, items } = createOrderDto;
-      const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
+    const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
     const ordersTodayCount = await this.orderRepo.count({
       where: {
@@ -48,8 +48,6 @@ export class OrdersService {
     });
 
     const newOrderNumber = ordersTodayCount + 1;
-
-
     const order = this.orderRepo.create({
       customerName,
       phone,
@@ -98,12 +96,12 @@ export class OrdersService {
   }
 
   async findOrdersToday() {
- const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
+    const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
     const orders = await this.orderRepo.find({
       where: {
         createdAt: Between(todayStartUtc, todayEndUtc),
-          canceled: false,
+         orderStatus: Not('canceled'),
       },
       relations: ['items', 'items.product', 'items.attributes'],
       order: {
@@ -129,7 +127,7 @@ export class OrdersService {
             productId,
             productName,
             quantity: 0,
-            code:code,
+            code: code,
             variants: [],
           };
         }
@@ -149,32 +147,33 @@ export class OrdersService {
         address: order.address,
         createdAt: order.createdAt,
         orderType: order.orderType,
-        printed:order.printed,
-        canceled: order.canceled,
+        orderStatus: order.orderStatus,
+        printed: order.printed,
+   
         items: Object.values(groupedItems)
       };
     });
   }
 
-async removeOrder(orderId: number) {
-  const order = await this.orderRepo.findOne({
-    where: { id: orderId },
-  });
+  async removeOrder(orderId: number) {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+    });
 
-  if (!order) {
-    throw new Error(`Order with ID ${orderId} not found`);
+    if (!order) {
+      throw new Error(`Order with ID ${orderId} not found`);
+    }
+
+    order.orderStatus = 'canceled';
+    await this.orderRepo.save(order);
+
+    this.gateway.emitOrdersUpdates("deleted_order", order);
+
+    return {
+      success: true,
+      message: `Order #${orderId} marked as canceled`,
+    };
   }
-
-  order.canceled = true;
-  await this.orderRepo.save(order);
-
-  this.gateway.emitOrdersUpdates("deleted_order", order);
-
-  return {
-    success: true,
-    message: `Order #${orderId} marked as canceled`,
-  };
-}
 
 
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
@@ -273,50 +272,50 @@ async removeOrder(orderId: number) {
 
 
 
-private mapOrderToGroupedFormat(order: Order): any {
-  const groupedItems: Record<number, any> = {};
+  private mapOrderToGroupedFormat(order: Order): any {
+    const groupedItems: Record<number, any> = {};
 
 
-  for (const item of order.items) {
-    const productId = item.product.id;
-    const productName = item.product.name;
-    const code = item.product.code;
+    for (const item of order.items) {
+      const productId = item.product.id;
+      const productName = item.product.name;
+      const code = item.product.code;
 
-    const attributeMap = item.attributes?.reduce((acc, attr) => {
-      acc[attr.attributeName] = attr.attributeValue;
-      return acc;
-    }, {} as Record<string, string>);
+      const attributeMap = item.attributes?.reduce((acc, attr) => {
+        acc[attr.attributeName] = attr.attributeValue;
+        return acc;
+      }, {} as Record<string, string>);
 
-    if (!groupedItems[productId]) {
-      groupedItems[productId] = {
-        productId,
-        code,
-        productName,
-        quantity: 0,
-        variants: [],
-      };
+      if (!groupedItems[productId]) {
+        groupedItems[productId] = {
+          productId,
+          code,
+          productName,
+          quantity: 0,
+          variants: [],
+        };
+      }
+
+      groupedItems[productId].quantity += 1;
+      groupedItems[productId].variants.push({
+        note: item.note || null,
+        attributes: attributeMap,
+      });
     }
 
-    groupedItems[productId].quantity += 1;
-    groupedItems[productId].variants.push({
-      note: item.note || null,
-      attributes: attributeMap,
-    });
+    const localCreatedAt = toZonedTime(order.createdAt, this.timeZone);
+    return {
+      orderId: order.id,
+      dailyOrderNumber: order.dailyOrderNumber,
+      customerName: order.customerName,
+      phone: order.phone,
+      address: order.address,
+      createdAt: localCreatedAt,
+      orderType: order.orderType,
+      orderStatus: order.orderStatus,
+      printed: order.printed,
+      items: Object.values(groupedItems),
+    };
   }
-
-  const localCreatedAt = toZonedTime(order.createdAt, this.timeZone);
-  return {
-    orderId: order.id,
-    dailyOrderNumber: order.dailyOrderNumber,
-    customerName: order.customerName,
-    phone: order.phone,
-    address: order.address,
-    createdAt: localCreatedAt, 
-    orderType: order.orderType,
-    printed: order.printed,
-    canceled:order.canceled,
-    items: Object.values(groupedItems),
-  };
-}
 
 }

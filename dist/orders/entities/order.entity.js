@@ -21,8 +21,8 @@ let Order = class Order {
     items;
     dailyOrderNumber;
     orderType;
+    orderStatus;
     printed;
-    canceled;
 };
 exports.Order = Order;
 __decorate([
@@ -63,13 +63,18 @@ __decorate([
     __metadata("design:type", String)
 ], Order.prototype, "orderType", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: ['cooking', 'packing', 'canceled'],
+        default: 'cooking',
+        name: "order_status"
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "orderStatus", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'boolean' }),
     __metadata("design:type", Boolean)
 ], Order.prototype, "printed", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Order.prototype, "canceled", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)('ppp_orders')
 ], Order);
