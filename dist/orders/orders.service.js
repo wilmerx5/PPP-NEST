@@ -194,9 +194,11 @@ let OrdersService = class OrdersService {
             where: { id: order.id },
             relations: ['items', 'items.product', 'items.attributes'],
         });
+        console.log('aca');
         if (fullOrder) {
             const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
             this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+            console.log('enviando');
         }
         return {
             success: true,
@@ -215,6 +217,8 @@ let OrdersService = class OrdersService {
             order.address = dto.address;
         if (dto.orderType !== undefined)
             order.orderType = dto.orderType;
+        if (dto.orderStatus !== undefined)
+            order.orderStatus = dto.orderStatus;
         if (dto.printed !== undefined)
             order.printed = dto.printed;
         await this.orderRepo.save(order);

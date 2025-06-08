@@ -101,7 +101,7 @@ export class OrdersService {
     const orders = await this.orderRepo.find({
       where: {
         createdAt: Between(todayStartUtc, todayEndUtc),
-         orderStatus: Not('canceled'),
+        orderStatus: Not('canceled'),
       },
       relations: ['items', 'items.product', 'items.attributes'],
       order: {
@@ -149,7 +149,7 @@ export class OrdersService {
         orderType: order.orderType,
         orderStatus: order.orderStatus,
         printed: order.printed,
-   
+
         items: Object.values(groupedItems)
       };
     });
@@ -192,11 +192,14 @@ export class OrdersService {
 
     // 2. If the new list is empty, delete the order itself
     if (!dto.items || dto.items.length === 0) {
-      await this.orderRepo.delete(orderId);
+      order.orderStatus = 'canceled';
+      await this.orderRepo.save(order);
+
       this.gateway.emitOrdersUpdates("deleted_order", order);
+
       return {
         success: true,
-        message: `Order #${orderId} deleted because item list was empty`,
+        message: `Order #${orderId} was marked as canceled because item list was empty`,
       };
     }
 
@@ -229,6 +232,7 @@ export class OrdersService {
     if (fullOrder) {
       const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
       this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+
     }
 
     return {
@@ -246,6 +250,7 @@ export class OrdersService {
     if (dto.phone !== undefined) order.phone = dto.phone;
     if (dto.address !== undefined) order.address = dto.address;
     if (dto.orderType !== undefined) order.orderType = dto.orderType;
+    if (dto.orderStatus !== undefined) order.orderStatus = dto.orderStatus;
     if (dto.printed !== undefined) order.printed = dto.printed;
 
 

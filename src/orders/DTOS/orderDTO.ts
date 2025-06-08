@@ -1,3 +1,5 @@
+import { OrderStatus, OrderType } from "../entities/order.entity";
+
 export class CreateOrderItemAttributeDto {
     attributeName: string;
     attributeValue: string;
@@ -16,7 +18,7 @@ export class CreateOrderDto {
     customerName: string;
     phone: string;
     address: string;
-    orderType?: 'delivery' | 'pickup' | 'table' | 'counter';
+    orderType?:OrderType;
     items: CreateOrderItemDto[];
 }
 
@@ -43,7 +45,8 @@ export class UpdateOrderGeneralDto {
     customerName?: string;
     phone?: string;
     address?: string;
-    orderType?: 'delivery' | 'pickup' | 'table' | 'counter';
+    orderType?: OrderType;
+    orderStatus?:OrderStatus;
     printed?: boolean;
 
 }

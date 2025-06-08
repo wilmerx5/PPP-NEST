@@ -41,6 +41,7 @@ class UpdateOrderGeneralDto {
     phone;
     address;
     orderType;
+    orderStatus;
     printed;
 }
 exports.UpdateOrderGeneralDto = UpdateOrderGeneralDto;

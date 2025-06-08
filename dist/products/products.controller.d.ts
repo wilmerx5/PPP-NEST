@@ -30,6 +30,7 @@ export declare class ProductsController {
             description: string | undefined;
             code: number;
             price: number;
+            hasAttributes: boolean;
             attributes: {
                 attributeName: string;
                 options: any;

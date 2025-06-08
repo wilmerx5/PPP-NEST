@@ -39,7 +39,6 @@ export class ProductsService {
       relations: ['products', 'products.attributes'],
       order: { id: 'ASC' }
     });
-console.log(categories)
     return categories.map((category) => ({
       categoryId: category.id,
       categoryName: category.name,
@@ -49,6 +48,7 @@ console.log(categories)
         description: product.description,
         code: product.code,
         price: product.price,
+        hasAttributes: product.hasAttributes,
         attributes: product.attributes.map((attr) => ({
           attributeName: attr.attributeName,
           options: JSON.parse(attr.options)
