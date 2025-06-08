@@ -65,7 +65,7 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['cooking', 'packing', 'canceled'],
+        enum: ['cooking', 'packing', 'canceled', 'completed'],
         default: 'cooking',
         name: "order_status"
     }),

@@ -167,11 +167,12 @@ let OrdersService = class OrdersService {
             await this.itemRepo.delete(item.id);
         }
         if (!dto.items || dto.items.length === 0) {
-            await this.orderRepo.delete(orderId);
+            order.orderStatus = 'canceled';
+            await this.orderRepo.save(order);
             this.gateway.emitOrdersUpdates("deleted_order", order);
             return {
                 success: true,
-                message: `Order #${orderId} deleted because item list was empty`,
+                message: `Order #${orderId} was marked as canceled because item list was empty`,
             };
         }
         for (const itemDto of dto.items) {
@@ -194,11 +195,9 @@ let OrdersService = class OrdersService {
             where: { id: order.id },
             relations: ['items', 'items.product', 'items.attributes'],
         });
-        console.log('aca');
         if (fullOrder) {
             const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
             this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
-            console.log('enviando');
         }
         return {
             success: true,
