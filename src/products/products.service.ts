@@ -50,6 +50,7 @@ export class ProductsService {
         description: product.description,
         code: product.code,
         price: product.price,
+        imageUrl:product.imageUrl,
         hasAttributes: product.hasAttributes,
         attributes: product.attributes.map((attr) => ({
           attributeName: attr.attributeName,
