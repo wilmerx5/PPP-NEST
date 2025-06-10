@@ -48,7 +48,7 @@ export class Product {
   @OneToMany(() => OrderItem, (item) => item.product)
   orderItems: OrderItem[];
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true,name:'image_url' })
   imageUrl: string;
 }
 

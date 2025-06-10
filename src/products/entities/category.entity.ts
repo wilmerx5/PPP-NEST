@@ -18,6 +18,6 @@ export class Category {
   @ManyToMany(() => Product, (product) => product.categories)
   products: Product[];
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, name:'image_url' })
   imageUrl: string;
 }
