@@ -116,6 +116,8 @@ export class OrdersService {
         const productId = item.product.id;
         const productName = item.product.name;
         const code = item.product.code
+        const imageUrl = item.product.imageUrl
+
 
         const attributeMap = item.attributes?.reduce((acc, attr) => {
           acc[attr.attributeName] = attr.attributeValue;
@@ -127,6 +129,7 @@ export class OrdersService {
             productId,
             productName,
             quantity: 0,
+            imageUrl,
             code: code,
             variants: [],
           };
@@ -285,6 +288,7 @@ export class OrdersService {
       const productId = item.product.id;
       const productName = item.product.name;
       const code = item.product.code;
+      const imageUrl = item.product.imageUrl
 
       const attributeMap = item.attributes?.reduce((acc, attr) => {
         acc[attr.attributeName] = attr.attributeValue;
@@ -296,6 +300,7 @@ export class OrdersService {
           productId,
           code,
           productName,
+          imageUrl,
           quantity: 0,
           variants: [],
         };
