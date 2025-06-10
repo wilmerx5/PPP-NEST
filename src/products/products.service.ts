@@ -27,6 +27,7 @@ export class ProductsService {
   
     return products.map(product => ({
       ...product,
+
       attributes: product.attributes.map(attr => ({
         ...attr,
         options: JSON.parse(attr.options), // <- transforma el JSON string a array
@@ -42,6 +43,7 @@ export class ProductsService {
     return categories.map((category) => ({
       categoryId: category.id,
       categoryName: category.name,
+      imageUrl:category.imageUrl,
       products: category.products.map((product) => ({
         id: product.id,
         name: product.name,
