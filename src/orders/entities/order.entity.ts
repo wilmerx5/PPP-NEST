@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
-export type OrderStatus = 'cooking' | 'packing'|'canceled'|'completed' ;
+export type OrderStatus = 'cooking' | 'packing' | 'canceled' | 'completed';
 
 
 @Entity('ppp_orders')
@@ -44,7 +44,7 @@ export class Order {
 
     @Column({
         type: 'enum',
-        enum: ['cooking', 'packing','canceled','completed'],
+        enum: ['cooking', 'packing', 'canceled', 'completed'],
         default: 'cooking',
         name: "order_status"
     })
@@ -52,5 +52,7 @@ export class Order {
 
     @Column({ type: 'boolean' })
     printed: boolean;
+
+ 
 }
 

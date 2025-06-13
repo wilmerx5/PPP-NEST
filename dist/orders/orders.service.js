@@ -108,6 +108,7 @@ let OrdersService = class OrdersService {
                 const productName = item.product.name;
                 const code = item.product.code;
                 const imageUrl = item.product.imageUrl;
+                const price = item.product.price;
                 const attributeMap = item.attributes?.reduce((acc, attr) => {
                     acc[attr.attributeName] = attr.attributeValue;
                     return acc;
@@ -118,7 +119,8 @@ let OrdersService = class OrdersService {
                         productName,
                         quantity: 0,
                         imageUrl,
-                        code: code,
+                        code,
+                        price,
                         variants: [],
                     };
                 }
@@ -244,6 +246,7 @@ let OrdersService = class OrdersService {
             const productName = item.product.name;
             const code = item.product.code;
             const imageUrl = item.product.imageUrl;
+            const price = item.product.price;
             const attributeMap = item.attributes?.reduce((acc, attr) => {
                 acc[attr.attributeName] = attr.attributeValue;
                 return acc;
@@ -255,6 +258,7 @@ let OrdersService = class OrdersService {
                     productName,
                     imageUrl,
                     quantity: 0,
+                    price,
                     variants: [],
                 };
             }
