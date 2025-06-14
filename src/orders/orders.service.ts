@@ -270,7 +270,13 @@ export class OrdersService {
 
     if (fullOrder) {
       const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-      this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+      if(dto.printed){
+      this.gateway.emitOrdersUpdates("updated_order_printed", formattedOrder);
+        
+      }else{
+
+        this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+      }
     }
 
     return {
