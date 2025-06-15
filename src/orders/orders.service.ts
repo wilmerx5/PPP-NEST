@@ -273,7 +273,11 @@ export class OrdersService {
       if(dto.printed){
       this.gateway.emitOrdersUpdates("updated_order_printed", formattedOrder);
         
-      }else{
+      }else if(dto.orderStatus &&  fullOrder.orderType=='table'){
+      this.gateway.emitOrdersUpdates("orderCompleted", formattedOrder);
+
+      }
+      else{
 
         this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
       }
