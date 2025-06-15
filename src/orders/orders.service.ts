@@ -324,14 +324,13 @@ export class OrdersService {
       });
     }
 
-    const localCreatedAt = toZonedTime(order.createdAt, this.timeZone);
     return {
       orderId: order.id,
       dailyOrderNumber: order.dailyOrderNumber,
       customerName: order.customerName,
       phone: order.phone,
       address: order.address,
-      createdAt: localCreatedAt,
+      createdAt: order.createdAt,
       orderType: order.orderType,
       orderStatus: order.orderStatus,
       printed: order.printed,
