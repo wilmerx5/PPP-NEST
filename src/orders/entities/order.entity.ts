@@ -50,7 +50,7 @@ export class Order {
     })
     orderStatus: OrderStatus;
 
-    @Column({ type: 'boolean' })
+    @Column({ type: 'boolean' ,default:false})
     printed: boolean;
 
  

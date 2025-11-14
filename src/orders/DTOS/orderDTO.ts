@@ -7,7 +7,7 @@ export class CreateOrderItemAttributeDto {
 
 export class CreateOrderItemDto {
     productId: number;
-    note?: string; // ✅ add this
+    note?: string; 
     attributes?: {
         attributeName: string;
         attributeValue: string;
@@ -29,7 +29,7 @@ export class UpdateOrderItemAttributeDto {
 }
 
 export class UpdateOrderItemDto {
-    id?: number; // Si es un item nuevo, no tendrá ID
+    id?: number; 
     productId: number;
     attributes?: UpdateOrderItemAttributeDto[];
     note?: string;

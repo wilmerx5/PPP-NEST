@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 
@@ -23,6 +24,7 @@ import { ProductsModule } from './products/products.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize:true
       }),
       inject: [ConfigService],
     }),
@@ -30,6 +32,8 @@ import { ProductsModule } from './products/products.module';
     OrdersModule,
 
     ProductsModule,
+
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

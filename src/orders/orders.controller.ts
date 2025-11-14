@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/commo
 import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 
-@Controller('api/orders')
+@Controller('orders')
 export class OrdersController {
 
     constructor(private readonly orderService: OrdersService) {

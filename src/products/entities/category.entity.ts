@@ -14,7 +14,7 @@ export class Category {
   @Column({ length: 100, unique: true })
   name: string;
 
-  // Relación inversa con productos
+  
   @ManyToMany(() => Product, (product) => product.categories)
   products: Product[];
 
