@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrderItemAttribute = void 0;
+const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
 const order_item_entity_1 = require("./order-item.entity");
 let OrderItemAttribute = class OrderItemAttribute {
@@ -20,18 +21,36 @@ let OrderItemAttribute = class OrderItemAttribute {
 };
 exports.OrderItemAttribute = OrderItemAttribute;
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'ID autogenerado del atributo asociado a un ítem de la orden.',
+        example: 77,
+    }),
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
 ], OrderItemAttribute.prototype, "id", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Nombre del atributo configurado para el producto.',
+        example: 'Salsa',
+        maxLength: 100,
+    }),
     (0, typeorm_1.Column)({ name: 'attribute_name', length: 100 }),
     __metadata("design:type", String)
 ], OrderItemAttribute.prototype, "attributeName", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Valor del atributo seleccionado.',
+        example: 'BBQ',
+        maxLength: 100,
+    }),
     (0, typeorm_1.Column)({ name: 'attribute_value', length: 100 }),
     __metadata("design:type", String)
 ], OrderItemAttribute.prototype, "attributeValue", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Ítem de la orden al que pertenece este atributo.',
+        type: () => order_item_entity_1.OrderItem,
+    }),
     (0, typeorm_1.ManyToOne)(() => order_item_entity_1.OrderItem, (item) => item.attributes, {
         onDelete: 'CASCADE',
     }),

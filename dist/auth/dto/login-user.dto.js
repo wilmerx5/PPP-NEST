@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LogInUserDTO = void 0;
+const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 class LogInUserDTO {
     email;
@@ -17,10 +18,19 @@ class LogInUserDTO {
 }
 exports.LogInUserDTO = LogInUserDTO;
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Correo electrónico del usuario registrado.',
+        example: 'user@example.com',
+    }),
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], LogInUserDTO.prototype, "email", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Contraseña del usuario. Debe tener mínimo 6 caracteres.',
+        example: 'mySecurePassword123',
+        minLength: 6,
+    }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(6),
     __metadata("design:type", String)

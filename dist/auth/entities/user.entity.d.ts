@@ -1,3 +1,4 @@
+import { VerificationToken } from "./verification-token.entity";
 export declare class User {
     id: string;
     email: string;
@@ -6,4 +7,5 @@ export declare class User {
     isActive: boolean;
     phone: string;
     roles: string[];
+    verificationTokens: VerificationToken[];
 }

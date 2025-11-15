@@ -1,12 +1,18 @@
 import { JwtService } from '@nestjs/jwt';
+import { MailService } from 'src/common/mail/mail.service';
 import { Repository } from 'typeorm';
 import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
+import { RequestNewCodeDTO } from './dto/request-new-code.dto';
+import { ValidateTokenDTO } from './dto/validate-token.dto';
 import { User } from './entities/user.entity';
+import { VerificationToken } from './entities/verification-token.entity';
 export declare class AuthService {
     private readonly userRepository;
+    private readonly verificationTokenRepository;
     private readonly jwtService;
-    constructor(userRepository: Repository<User>, jwtService: JwtService);
+    private readonly mailService;
+    constructor(userRepository: Repository<User>, verificationTokenRepository: Repository<VerificationToken>, jwtService: JwtService, mailService: MailService);
     refreshTokens(userId: string): Promise<{
         accessToken: string;
         refreshToken: string;
@@ -16,11 +22,22 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
     }>;
-    private getTokens;
+    private getJwtTokens;
     create(createUserDto: CreateUserDTO): Promise<{
         accessToken: string;
         refreshToken: string;
         user: User;
     } | undefined>;
+    createUserActivationFlow(user: User): Promise<void>;
+    generateAndStoreToken(user: User): Promise<string>;
+    generateTokenForUser(user: User): Promise<string>;
+    requestNewCode(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
+        message: string;
+        email: string;
+    }>;
+    activateUser(validateTokenDTO: ValidateTokenDTO): Promise<{
+        message: string;
+    }>;
+    validateToken(validateTokenDTO: ValidateTokenDTO): Promise<boolean>;
     private handleDBErrors;
 }

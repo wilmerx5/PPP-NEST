@@ -15,39 +15,63 @@ export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
+
     @InjectRepository(OrderItem)
     private readonly itemRepo: Repository<OrderItem>,
+
     @InjectRepository(OrderItemAttribute)
     private readonly attrRepo: Repository<OrderItemAttribute>,
+
     @InjectRepository(OrderItemAttribute)
     private readonly productRepo: Repository<Product>,
-    private readonly gateway: OrdersGateway,
-  ) { }
 
+    private readonly gateway: OrdersGateway,
+  ) {}
+
+  /**
+   * Zona horaria configurada para Bogotá.
+   */
   private readonly timeZone = 'America/Bogota';
 
-
-  private getTodayUtcRange(): { todayStartUtc: Date, todayEndUtc: Date } {
-    // 1. Obtener la fecha y hora actual en la zona horaria de Bogotá (como Date object)
+  /**
+   * Calcula el rango del día actual en la zona horaria de Bogotá.
+   * Se utiliza para calcular pedidos diarios (#1, #2, #3…).
+   *
+   * @returns Object con el inicio y fin del día en formato UTC.
+   */
+  private getTodayUtcRange(): { todayStartUtc: Date; todayEndUtc: Date } {
     const nowInBogota = toZonedTime(new Date(), this.timeZone);
-    const startOfBogotaDay = startOfDay(nowInBogota); // Esto ya es un Date object
-    const endOfBogotaDay = endOfDay(nowInBogota);     // Esto ya es un Date object
-
-
+    const startOfBogotaDay = startOfDay(nowInBogota);
+    const endOfBogotaDay = endOfDay(nowInBogota);
 
     return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
   }
+
+  /**
+   * Crea una nueva orden con sus items y atributos.
+   *
+   * Flujo:
+   * 1. Se calcula el número de pedido del día.
+   * 2. Se crea la orden.
+   * 3. Se crean los items.
+   * 4. Se crean los atributos de cada item.
+   * 5. Se notifica por WebSocket a cocina.
+   *
+   * @param createOrderDto - Datos de la orden y sus productos.
+   * @returns Detalle de creación con ID y número diario.
+   */
   async create(createOrderDto: CreateOrderDto) {
     const { customerName, phone, address, items } = createOrderDto;
     const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
+    // Contar cuántos pedidos van hoy
     const ordersTodayCount = await this.orderRepo.count({
-      where: {
-        createdAt: Between(todayStartUtc, todayEndUtc),
-      },
+      where: { createdAt: Between(todayStartUtc, todayEndUtc) },
     });
 
     const newOrderNumber = ordersTodayCount + 1;
+
+    // Crear orden
     const order = this.orderRepo.create({
       customerName,
       phone,
@@ -58,16 +82,17 @@ export class OrdersService {
 
     await this.orderRepo.save(order);
 
+    // Crear items y atributos
     for (const item of items) {
       const orderItem = this.itemRepo.create({
         order,
         product: { id: item.productId },
-        note: item.note, // ✅ Save the note
+        note: item.note,
       });
       await this.itemRepo.save(orderItem);
 
-      if (item.attributes && item.attributes.length > 0) {
-        const attrs = item.attributes.map((attr) =>
+      if (item.attributes?.length) {
+        const attrs = item.attributes.map(attr =>
           this.attrRepo.create({
             orderItem,
             attributeName: attr.attributeName,
@@ -84,10 +109,10 @@ export class OrdersService {
     });
 
     if (fullOrder) {
-
-      const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-      this.gateway.emitOrdersUpdates("created_order", formattedOrder);
+      const formatted = this.mapOrderToGroupedFormat(fullOrder);
+      this.gateway.emitOrdersUpdates("created_order", formatted);
     }
+
     return {
       success: true,
       orderId: order.id,
@@ -95,6 +120,13 @@ export class OrdersService {
     };
   }
 
+  /**
+   * Obtiene todas las órdenes del día en Bogotá,
+   * excluyendo las canceladas.
+   * Agrupa items repetidos por producto.
+   *
+   * @returns Lista de órdenes formateadas.
+   */
   async findOrdersToday() {
     const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
@@ -104,9 +136,7 @@ export class OrdersService {
         orderStatus: Not('canceled'),
       },
       relations: ['items', 'items.product', 'items.attributes'],
-      order: {
-        createdAt: 'DESC',
-      },
+      order: { createdAt: 'DESC' },
     });
 
     return orders.map((order) => {
@@ -115,11 +145,9 @@ export class OrdersService {
       for (const item of order.items) {
         const productId = item.product.id;
         const productName = item.product.name;
-        const code = item.product.code
-        const imageUrl = item.product.imageUrl
-        const price = item.product.price
-
-
+        const code = item.product.code;
+        const imageUrl = item.product.imageUrl;
+        const price = item.product.price;
 
         const attributeMap = item.attributes?.reduce((acc, attr) => {
           acc[attr.attributeName] = attr.attributeValue;
@@ -140,7 +168,7 @@ export class OrdersService {
 
         groupedItems[productId].quantity += 1;
         groupedItems[productId].variants.push({
-          note: item.note || null, // Include the note per unit
+          note: item.note || null,
           attributes: attributeMap,
         });
       }
@@ -155,20 +183,21 @@ export class OrdersService {
         orderType: order.orderType,
         orderStatus: order.orderStatus,
         printed: order.printed,
-
-        items: Object.values(groupedItems)
+        items: Object.values(groupedItems),
       };
     });
   }
 
+  /**
+   * Marca una orden como cancelada.
+   * Notifica por WebSocket.
+   *
+   * @param orderId - ID de la orden a cancelar.
+   */
   async removeOrder(orderId: number) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
-    });
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
 
-    if (!order) {
-      throw new Error(`Order with ID ${orderId} not found`);
-    }
+    if (!order) throw new Error(`Order with ID ${orderId} not found`);
 
     order.orderStatus = 'canceled';
     await this.orderRepo.save(order);
@@ -181,7 +210,14 @@ export class OrdersService {
     };
   }
 
-
+  /**
+   * Actualiza solamente los productos (items) de una orden.
+   * Elimina los items existentes y los vuelve a crear.
+   * Si queda sin items → la orden se cancela.
+   *
+   * @param orderId - ID de la orden.
+   * @param dto - Lista de nuevos items.
+   */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -190,14 +226,14 @@ export class OrdersService {
 
     if (!order) throw new Error(`Order not found`);
 
-    // 1. Remove all existing items and their attributes
+    // Eliminar items y atributos actuales
     for (const item of order.items) {
       await this.attrRepo.delete({ orderItem: { id: item.id } });
       await this.itemRepo.delete(item.id);
     }
 
-    // 2. If the new list is empty, delete the order itself
-    if (!dto.items || dto.items.length === 0) {
+    // Si no hay items → cancelar orden
+    if (!dto.items?.length) {
       order.orderStatus = 'canceled';
       await this.orderRepo.save(order);
 
@@ -205,16 +241,16 @@ export class OrdersService {
 
       return {
         success: true,
-        message: `Order #${orderId} was marked as canceled because item list was empty`,
+        message: `Order #${orderId} was canceled because no items remained`,
       };
     }
 
-    // 3. Recreate items and attributes
+    // Crear nuevos items
     for (const itemDto of dto.items) {
       const orderItem = this.itemRepo.create({
         order,
         product: { id: itemDto.productId },
-        note: itemDto.note, // ✅ Include note here
+        note: itemDto.note,
       });
 
       await this.itemRepo.save(orderItem);
@@ -230,15 +266,15 @@ export class OrdersService {
         await this.attrRepo.save(attributes);
       }
     }
+
     const fullOrder = await this.orderRepo.findOne({
       where: { id: order.id },
       relations: ['items', 'items.product', 'items.attributes'],
     });
 
     if (fullOrder) {
-      const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-      this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
-
+      const formatted = this.mapOrderToGroupedFormat(fullOrder);
+      this.gateway.emitOrdersUpdates("updated_order_items", formatted);
     }
 
     return {
@@ -247,19 +283,31 @@ export class OrdersService {
     };
   }
 
+  /**
+   * Actualiza información general de la orden:
+   * - Nombre Cliente
+   * - Teléfono
+   * - Dirección
+   * - Tipo de orden
+   * - Estado
+   * - Impresión
+   *
+   * Notifica por WebSocket dependiendo del tipo de actualización.
+   *
+   * @param orderId - ID de la orden.
+   * @param dto - Campos opcionales a actualizar.
+   */
   async updateOrderGeneral(orderId: number, dto: UpdateOrderGeneralDto) {
     const order = await this.orderRepo.findOneBy({ id: orderId });
     if (!order) throw new Error('Order not found');
 
-    // Solo actualizamos los campos enviados en el DTO
+    // Actualiza solo campos enviados
     if (dto.customerName !== undefined) order.customerName = dto.customerName;
     if (dto.phone !== undefined) order.phone = dto.phone;
     if (dto.address !== undefined) order.address = dto.address;
     if (dto.orderType !== undefined) order.orderType = dto.orderType;
     if (dto.orderStatus !== undefined) order.orderStatus = dto.orderStatus;
     if (dto.printed !== undefined) order.printed = dto.printed;
-
-
 
     await this.orderRepo.save(order);
 
@@ -269,17 +317,17 @@ export class OrdersService {
     });
 
     if (fullOrder) {
-      const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-      if(dto.printed){
-      this.gateway.emitOrdersUpdates("updated_order_printed", formattedOrder);
-        
-      }else if(dto.orderStatus && dto.orderStatus=='completed' &&  fullOrder.orderType=='table'){
-      this.gateway.emitOrdersUpdates("orderCompleted", formattedOrder);
+      const formatted = this.mapOrderToGroupedFormat(fullOrder);
 
-      }
-      else{
-
-        this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+      if (dto.printed) {
+        this.gateway.emitOrdersUpdates("updated_order_printed", formatted);
+      } else if (
+        dto.orderStatus === 'completed' &&
+        fullOrder.orderType === 'table'
+      ) {
+        this.gateway.emitOrdersUpdates("orderCompleted", formatted);
+      } else {
+        this.gateway.emitOrdersUpdates("updated_order_items", formatted);
       }
     }
 
@@ -290,19 +338,22 @@ export class OrdersService {
     };
   }
 
-
-
-
+  /**
+   * Convierte una orden en un formato agrupado por producto,
+   * útil para cocina y frontend.
+   *
+   * @param order - Orden completa cargada con relaciones.
+   * @returns Objeto con items ordenados y agrupados.
+   */
   private mapOrderToGroupedFormat(order: Order): any {
     const groupedItems: Record<number, any> = {};
-
 
     for (const item of order.items) {
       const productId = item.product.id;
       const productName = item.product.name;
       const code = item.product.code;
-      const imageUrl = item.product.imageUrl
-      const price = item.product.price
+      const imageUrl = item.product.imageUrl;
+      const price = item.product.price;
 
       const attributeMap = item.attributes?.reduce((acc, attr) => {
         acc[attr.attributeName] = attr.attributeValue;
@@ -341,5 +392,4 @@ export class OrdersService {
       items: Object.values(groupedItems),
     };
   }
-
 }

@@ -1,5 +1,5 @@
-import { Category } from './category.entity';
 import { OrderItem } from 'src/orders/entities/order-item.entity';
+import { Category } from './category.entity';
 import { ProductAttribute } from './product-attribute.entity';
 export declare class Product {
     id: number;

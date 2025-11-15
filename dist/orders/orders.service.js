@@ -46,9 +46,7 @@ let OrdersService = class OrdersService {
         const { customerName, phone, address, items } = createOrderDto;
         const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
         const ordersTodayCount = await this.orderRepo.count({
-            where: {
-                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
-            },
+            where: { createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc) },
         });
         const newOrderNumber = ordersTodayCount + 1;
         const order = this.orderRepo.create({
@@ -66,8 +64,8 @@ let OrdersService = class OrdersService {
                 note: item.note,
             });
             await this.itemRepo.save(orderItem);
-            if (item.attributes && item.attributes.length > 0) {
-                const attrs = item.attributes.map((attr) => this.attrRepo.create({
+            if (item.attributes?.length) {
+                const attrs = item.attributes.map(attr => this.attrRepo.create({
                     orderItem,
                     attributeName: attr.attributeName,
                     attributeValue: attr.attributeValue,
@@ -80,8 +78,8 @@ let OrdersService = class OrdersService {
             relations: ['items', 'items.product', 'items.attributes'],
         });
         if (fullOrder) {
-            const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-            this.gateway.emitOrdersUpdates("created_order", formattedOrder);
+            const formatted = this.mapOrderToGroupedFormat(fullOrder);
+            this.gateway.emitOrdersUpdates("created_order", formatted);
         }
         return {
             success: true,
@@ -97,9 +95,7 @@ let OrdersService = class OrdersService {
                 orderStatus: (0, typeorm_2.Not)('canceled'),
             },
             relations: ['items', 'items.product', 'items.attributes'],
-            order: {
-                createdAt: 'DESC',
-            },
+            order: { createdAt: 'DESC' },
         });
         return orders.map((order) => {
             const groupedItems = {};
@@ -140,17 +136,14 @@ let OrdersService = class OrdersService {
                 orderType: order.orderType,
                 orderStatus: order.orderStatus,
                 printed: order.printed,
-                items: Object.values(groupedItems)
+                items: Object.values(groupedItems),
             };
         });
     }
     async removeOrder(orderId) {
-        const order = await this.orderRepo.findOne({
-            where: { id: orderId },
-        });
-        if (!order) {
+        const order = await this.orderRepo.findOne({ where: { id: orderId } });
+        if (!order)
             throw new Error(`Order with ID ${orderId} not found`);
-        }
         order.orderStatus = 'canceled';
         await this.orderRepo.save(order);
         this.gateway.emitOrdersUpdates("deleted_order", order);
@@ -170,13 +163,13 @@ let OrdersService = class OrdersService {
             await this.attrRepo.delete({ orderItem: { id: item.id } });
             await this.itemRepo.delete(item.id);
         }
-        if (!dto.items || dto.items.length === 0) {
+        if (!dto.items?.length) {
             order.orderStatus = 'canceled';
             await this.orderRepo.save(order);
             this.gateway.emitOrdersUpdates("deleted_order", order);
             return {
                 success: true,
-                message: `Order #${orderId} was marked as canceled because item list was empty`,
+                message: `Order #${orderId} was canceled because no items remained`,
             };
         }
         for (const itemDto of dto.items) {
@@ -200,8 +193,8 @@ let OrdersService = class OrdersService {
             relations: ['items', 'items.product', 'items.attributes'],
         });
         if (fullOrder) {
-            const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
-            this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+            const formatted = this.mapOrderToGroupedFormat(fullOrder);
+            this.gateway.emitOrdersUpdates("updated_order_items", formatted);
         }
         return {
             success: true,
@@ -230,15 +223,16 @@ let OrdersService = class OrdersService {
             relations: ['items', 'items.product', 'items.attributes'],
         });
         if (fullOrder) {
-            const formattedOrder = this.mapOrderToGroupedFormat(fullOrder);
+            const formatted = this.mapOrderToGroupedFormat(fullOrder);
             if (dto.printed) {
-                this.gateway.emitOrdersUpdates("updated_order_printed", formattedOrder);
+                this.gateway.emitOrdersUpdates("updated_order_printed", formatted);
             }
-            else if (dto.orderStatus && dto.orderStatus == 'completed' && fullOrder.orderType == 'table') {
-                this.gateway.emitOrdersUpdates("orderCompleted", formattedOrder);
+            else if (dto.orderStatus === 'completed' &&
+                fullOrder.orderType === 'table') {
+                this.gateway.emitOrdersUpdates("orderCompleted", formatted);
             }
             else {
-                this.gateway.emitOrdersUpdates("updated_order_items", formattedOrder);
+                this.gateway.emitOrdersUpdates("updated_order_items", formatted);
             }
         }
         return {

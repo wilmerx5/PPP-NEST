@@ -14,8 +14,10 @@ const auth_service_1 = require("./auth.service");
 const config_1 = require("@nestjs/config");
 const jwt_1 = require("@nestjs/jwt");
 const passport_1 = require("@nestjs/passport");
+const common_module_1 = require("../common/common.module");
 const cookie_service_1 = require("./cookie.service");
 const user_entity_1 = require("./entities/user.entity");
+const verification_token_entity_1 = require("./entities/verification-token.entity");
 const jwt_strategy_1 = require("./stretegies/jwt.strategy");
 const refresh_token_strategy_1 = require("./stretegies/refresh-token.strategy");
 let AuthModule = class AuthModule {
@@ -26,8 +28,9 @@ exports.AuthModule = AuthModule = __decorate([
         controllers: [auth_controller_1.AuthController],
         providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, refresh_token_strategy_1.RefreshTokenStrategy, cookie_service_1.CookieService],
         imports: [
+            common_module_1.CommonModule,
             config_1.ConfigModule,
-            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, verification_token_entity_1.VerificationToken]),
             passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],

@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
     Column,
     CreateDateColumn,
@@ -6,53 +7,94 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
+
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
 export type OrderStatus = 'cooking' | 'packing' | 'canceled' | 'completed';
 
-
 @Entity('ppp_orders')
 export class Order {
-    @PrimaryGeneratedColumn()
-    id: number;
 
-    @Column({ name: 'customer_name', length: 100 })
-    customerName: string;
+  @ApiProperty({
+    description: 'ID autogenerado de la orden.',
+    example: 125,
+  })
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Column({ length: 20 })
-    phone: string;
+  @ApiProperty({
+    description: 'Nombre del cliente que realiza la orden.',
+    example: 'Carlos López',
+  })
+  @Column({ name: 'customer_name', length: 100 })
+  customerName: string;
 
-    @Column({ type: 'text' })
-    address: string;
+  @ApiProperty({
+    description: 'Número telefónico del cliente.',
+    example: '+57 300 456 7890',
+  })
+  @Column({ length: 20 })
+  phone: string;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
+  @ApiProperty({
+    description: 'Dirección de entrega del cliente.',
+    example: 'Calle 123 #45-67, Bogotá',
+  })
+  @Column({ type: 'text' })
+  address: string;
 
-    @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
-    items: OrderItem[];
+  @ApiProperty({
+    description: 'Fecha de creación de la orden.',
+    example: '2025-11-14T20:12:00.000Z',
+  })
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 
-    @Column({ name: 'daily_order_number', type: 'int', nullable: true })
-    dailyOrderNumber: number;
+  @ApiProperty({
+    description: 'Lista de items incluidos en la orden.',
+    type: () => [OrderItem],
+  })
+  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
+  items: OrderItem[];
 
+  @ApiProperty({
+    description: 'Número consecutivo de la orden dentro del día.',
+    example: 7,
+    nullable: true,
+  })
+  @Column({ name: 'daily_order_number', type: 'int', nullable: true })
+  dailyOrderNumber: number;
 
-    @Column({
-        type: 'enum',
-        enum: ['delivery', 'pickup', 'table', 'counter'],
-        default: 'pickup',
-        name: "order_type"
-    })
-    orderType: OrderType;
+  @ApiProperty({
+    description: 'Tipo de la orden.',
+    example: 'pickup',
+    enum: ['delivery', 'pickup', 'table', 'counter'],
+  })
+  @Column({
+    type: 'enum',
+    enum: ['delivery', 'pickup', 'table', 'counter'],
+    default: 'pickup',
+    name: 'order_type',
+  })
+  orderType: OrderType;
 
-    @Column({
-        type: 'enum',
-        enum: ['cooking', 'packing', 'canceled', 'completed'],
-        default: 'cooking',
-        name: "order_status"
-    })
-    orderStatus: OrderStatus;
+  @ApiProperty({
+    description: 'Estado actual de la orden.',
+    example: 'cooking',
+    enum: ['cooking', 'packing', 'canceled', 'completed'],
+  })
+  @Column({
+    type: 'enum',
+    enum: ['cooking', 'packing', 'canceled', 'completed'],
+    default: 'cooking',
+    name: 'order_status',
+  })
+  orderStatus: OrderStatus;
 
-    @Column({ type: 'boolean' ,default:false})
-    printed: boolean;
+  @ApiProperty({
+    description: 'Indica si la orden ya fue impresa.',
+    example: false,
+  })
+  @Column({ type: 'boolean', default: false })
+  printed: boolean;
 
- 
 }
-

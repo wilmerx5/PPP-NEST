@@ -46,11 +46,11 @@ let ProductsService = class ProductsService {
             relations: ['products', 'products.attributes'],
             order: { id: 'ASC' }
         });
-        return categories.map((category) => ({
+        return categories.map(category => ({
             categoryId: category.id,
             categoryName: category.name,
             imageUrl: category.imageUrl,
-            products: category.products.map((product) => ({
+            products: category.products.map(product => ({
                 id: product.id,
                 name: product.name,
                 description: product.description,
@@ -58,11 +58,11 @@ let ProductsService = class ProductsService {
                 price: product.price,
                 imageUrl: product.imageUrl,
                 hasAttributes: product.hasAttributes,
-                attributes: product.attributes.map((attr) => ({
+                attributes: product.attributes.map(attr => ({
                     attributeName: attr.attributeName,
-                    options: JSON.parse(attr.options)
-                }))
-            }))
+                    options: JSON.parse(attr.options),
+                })),
+            })),
         }));
     }
     findOne(id) {

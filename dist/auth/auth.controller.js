@@ -15,10 +15,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
+const swagger_1 = require("@nestjs/swagger");
 const auth_service_1 = require("./auth.service");
 const cookie_service_1 = require("./cookie.service");
+const auth_decorator_1 = require("./decorators/auth.decorator");
 const create_user_dto_1 = require("./dto/create-user-dto");
 const login_user_dto_1 = require("./dto/login-user.dto");
+const request_new_code_dto_1 = require("./dto/request-new-code.dto");
+const validate_token_dto_1 = require("./dto/validate-token.dto");
 let AuthController = class AuthController {
     authService;
     cookieService;
@@ -53,15 +57,31 @@ let AuthController = class AuthController {
             message: 'Logged out successfully',
         });
     }
+    async activateUser(validateTokenDTO) {
+        return this.authService.activateUser(validateTokenDTO);
+    }
+    async newCode(requestNewCodeDTO) {
+        return this.authService.requestNewCode(requestNewCodeDTO);
+    }
+    async validateToken(validateTokenDTO) {
+        return this.authService.validateToken(validateTokenDTO);
+    }
     testingPrivate() {
         return {
-            "private": "private"
+            private: 'private',
         };
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('signup'),
+    (0, swagger_1.ApiOperation)({ summary: 'Register a new user' }),
+    (0, swagger_1.ApiBody)({ type: create_user_dto_1.CreateUserDTO }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: 'User created and activation email sent',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Validation error' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_user_dto_1.CreateUserDTO]),
@@ -69,6 +89,10 @@ __decorate([
 ], AuthController.prototype, "signUp", null);
 __decorate([
     (0, common_1.Post)('login'),
+    (0, swagger_1.ApiOperation)({ summary: 'Login user and set authentication cookies' }),
+    (0, swagger_1.ApiBody)({ type: login_user_dto_1.LogInUserDTO }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Logged in successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid credentials or inactive user' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),
@@ -78,6 +102,10 @@ __decorate([
 __decorate([
     (0, common_1.Post)('refresh'),
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt-refresh')),
+    (0, swagger_1.ApiOperation)({ summary: 'Refresh access and refresh tokens' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Tokens refreshed correctly' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid refresh token' }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),
@@ -86,18 +114,59 @@ __decorate([
 ], AuthController.prototype, "refresh", null);
 __decorate([
     (0, common_1.Post)('logout'),
+    (0, swagger_1.ApiOperation)({ summary: 'Logout user by clearing cookies' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Logged out successfully' }),
     __param(0, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
+    (0, common_1.Post)('activate-user'),
+    (0, swagger_1.ApiOperation)({ summary: 'Activate user account using token and userId' }),
+    (0, swagger_1.ApiBody)({ type: validate_token_dto_1.ValidateTokenDTO }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'User activated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid or expired token' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [validate_token_dto_1.ValidateTokenDTO]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "activateUser", null);
+__decorate([
+    (0, common_1.Post)('new-code'),
+    (0, swagger_1.ApiOperation)({ summary: 'Send a new verification code to a registered email' }),
+    (0, swagger_1.ApiBody)({ type: request_new_code_dto_1.RequestNewCodeDTO }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Verification code sent' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Email not registered' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [request_new_code_dto_1.RequestNewCodeDTO]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "newCode", null);
+__decorate([
+    (0, common_1.Post)('validate-token'),
+    (0, swagger_1.ApiOperation)({ summary: 'Validate a verification token' }),
+    (0, swagger_1.ApiBody)({ type: validate_token_dto_1.ValidateTokenDTO }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Token valid' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Token invalid or expired' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [validate_token_dto_1.ValidateTokenDTO]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "validateToken", null);
+__decorate([
     (0, common_1.Get)('private'),
+    (0, auth_decorator_1.Auth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Private route (requires JWT access token)' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Access granted' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "testingPrivate", null);
 exports.AuthController = AuthController = __decorate([
+    (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,
         cookie_service_1.CookieService])

@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductAttribute = void 0;
+const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
 const product_entity_1 = require("./product.entity");
 let ProductAttribute = class ProductAttribute {
@@ -20,18 +21,36 @@ let ProductAttribute = class ProductAttribute {
 };
 exports.ProductAttribute = ProductAttribute;
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'ID autogenerado del atributo.',
+        example: 12,
+    }),
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
 ], ProductAttribute.prototype, "id", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Nombre del atributo asociado al producto.',
+        example: 'Salsa',
+        maxLength: 100,
+    }),
     (0, typeorm_1.Column)({ name: 'attribute_name', length: 100 }),
     __metadata("design:type", String)
 ], ProductAttribute.prototype, "attributeName", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Opciones disponibles para este atributo. Se almacena como JSON string y se convierte a array al retornar.',
+        example: '["Dulce", "Picante", "BBQ"]',
+        type: String,
+    }),
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], ProductAttribute.prototype, "options", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Producto al que pertenece este atributo.',
+        type: () => product_entity_1.Product,
+    }),
     (0, typeorm_1.ManyToOne)(() => product_entity_1.Product, (product) => product.attributes, {
         onDelete: 'CASCADE',
     }),
