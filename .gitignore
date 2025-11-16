@@ -2,3 +2,4 @@
 node_modules
 DB.txt
 .env
+node_modules/
