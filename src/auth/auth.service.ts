@@ -11,6 +11,7 @@ import { ValidateTokenDTO } from './dto/validate-token.dto';
 import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { ValidRoles } from './interfaces/valid.roles.interface';
 
 @Injectable()
 export class AuthService {
@@ -65,32 +66,28 @@ export class AuthService {
   }
 
   async create(createUserDto: CreateUserDTO) {
-    try {
-      const { password, ...rest } = createUserDto;
+  try {
+    const { password, ...rest } = createUserDto;
 
-      const user = this.userRepository.create({
-        ...rest,
-        password: bcrypt.hashSync(password, 10),
-        isActive: false, // opcional si tienes este campo
-      });
+    const user = this.userRepository.create({
+      ...rest,
+      password: bcrypt.hashSync(password, 10),
+      isActive: false,
+    });
 
-      await this.userRepository.save(user);
+    await this.userRepository.save(user);
 
-      // Generar token y enviar correo de activación
-      await this.createUserActivationFlow(user);
+    await this.createUserActivationFlow(user);
 
-      // JWT para login
-      const tokens = this.getJwtTokens({ id: user.id });
+    return {
+        msg: 'Usuario creado con exito, revisa tu email y activa tu cuent'
+    };
 
-      return {
-        user,
-        ...tokens
-      };
-
-    } catch (e) {
-      this.handleDBErrors(e);
-    }
+  } catch (e) {
+    this.handleDBErrors(e);
   }
+}
+
 
   async createUserActivationFlow(user: User) {
     
@@ -210,5 +207,12 @@ export class AuthService {
     }
 
     throw new InternalServerErrorException(e)
+  }
+
+
+  getRoles(){
+
+return Object.values(ValidRoles);
+
   }
 }

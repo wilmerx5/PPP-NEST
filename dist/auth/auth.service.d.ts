@@ -7,6 +7,7 @@ import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
 import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
+import { ValidRoles } from './interfaces/valid.roles.interface';
 export declare class AuthService {
     private readonly userRepository;
     private readonly verificationTokenRepository;
@@ -24,9 +25,7 @@ export declare class AuthService {
     }>;
     private getJwtTokens;
     create(createUserDto: CreateUserDTO): Promise<{
-        accessToken: string;
-        refreshToken: string;
-        user: User;
+        msg: string;
     } | undefined>;
     createUserActivationFlow(user: User): Promise<void>;
     generateAndStoreToken(user: User): Promise<string>;
@@ -40,4 +39,5 @@ export declare class AuthService {
     }>;
     validateToken(validateTokenDTO: ValidateTokenDTO): Promise<boolean>;
     private handleDBErrors;
+    getRoles(): ValidRoles[];
 }

@@ -10,8 +10,22 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.setGlobalPrefix('api');
     app.enableCors({
-        origin: '*',
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        origin: (origin, callback) => {
+            const allowedOrigins = [
+                "http://localhost:5173",
+                /\.prontopolloportal\.com$/,
+                "https://prontopolloportal.com",
+            ];
+            if (!origin)
+                return callback(null, true);
+            const isAllowed = allowedOrigins.some((o) => typeof o === "string" ? o === origin : o.test(origin));
+            if (isAllowed) {
+                callback(null, true);
+            }
+            else {
+                callback(new Error("Origin not allowed by CORS"), false);
+            }
+        },
         credentials: true,
     });
     const config = new swagger_1.DocumentBuilder()

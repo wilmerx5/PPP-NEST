@@ -157,4 +157,16 @@ export class AuthController {
       private: 'private',
     };
   }
+
+
+  @Get('roles')
+  @ApiOperation({ summary: 'Return all allowed roles' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'all roles' })
+  @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  async roles() {
+   
+     return   this.authService.getRoles();
+    }
+
 }

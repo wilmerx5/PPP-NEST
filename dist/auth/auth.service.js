@@ -21,6 +21,7 @@ const mail_service_1 = require("../common/mail/mail.service");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("./entities/user.entity");
 const verification_token_entity_1 = require("./entities/verification-token.entity");
+const valid_roles_interface_1 = require("./interfaces/valid.roles.interface");
 let AuthService = class AuthService {
     userRepository;
     verificationTokenRepository;
@@ -67,10 +68,8 @@ let AuthService = class AuthService {
             });
             await this.userRepository.save(user);
             await this.createUserActivationFlow(user);
-            const tokens = this.getJwtTokens({ id: user.id });
             return {
-                user,
-                ...tokens
+                msg: 'Usuario creado con exito, revisa tu email y activa tu cuent'
             };
         }
         catch (e) {
@@ -108,7 +107,7 @@ let AuthService = class AuthService {
         }
         await this.verificationTokenRepository.update({ user: { id: user.id }, isUsed: false }, { isUsed: true });
         const token = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
         const newToken = this.verificationTokenRepository.create({
             token,
             expiresAt,
@@ -152,6 +151,9 @@ let AuthService = class AuthService {
             throw new common_1.BadRequestException(e.sqlMessage);
         }
         throw new common_1.InternalServerErrorException(e);
+    }
+    getRoles() {
+        return Object.values(valid_roles_interface_1.ValidRoles);
     }
 };
 exports.AuthService = AuthService;

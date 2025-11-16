@@ -10,11 +10,29 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.setGlobalPrefix('api')
-  app.enableCors({
-    origin: '*', 
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+ app.enableCors({
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      /\.prontopolloportal\.com$/,       // todos los subdominios
+      "https://prontopolloportal.com",   // dominio raíz
+    ];
+
+    if (!origin) return callback(null, true); // permitir Postman / servidor interno
+
+    const isAllowed = allowedOrigins.some((o) =>
+      typeof o === "string" ? o === origin : o.test(origin)
+    );
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error("Origin not allowed by CORS"), false);
+    }
+  },
+
+  credentials: true, // ⬅ necesario para cookies
+});
 
   const config = new DocumentBuilder()
   .setTitle("ppp")

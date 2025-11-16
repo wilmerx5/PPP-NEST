@@ -71,6 +71,9 @@ let AuthController = class AuthController {
             private: 'private',
         };
     }
+    async roles() {
+        return this.authService.getRoles();
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -165,6 +168,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "testingPrivate", null);
+__decorate([
+    (0, common_1.Get)('roles'),
+    (0, swagger_1.ApiOperation)({ summary: 'Return all allowed roles' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'all roles' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid refresh token' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "roles", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),
