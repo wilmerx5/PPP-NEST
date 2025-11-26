@@ -6,7 +6,6 @@ const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 async function bootstrap() {
-    console.log(process.env.DB_HOST);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.setGlobalPrefix('api');
     app.enableCors({
@@ -45,7 +44,10 @@ async function bootstrap() {
         forbidNonWhitelisted: true
     }));
     app.use(cookieParser());
-    await app.listen(process.env.PORT ?? 4000, "api.ppp.local");
+    const port = Number(process.env.PORT) || 4000;
+    const host = process.env.HOST || "0.0.0.0";
+    console.log(port, host);
+    await app.listen(port, host);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

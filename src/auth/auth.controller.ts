@@ -164,16 +164,49 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'all roles' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @ApiResponse({
+  status: 200,
+  description: 'roles',
+  content: {
+    'application/json': {
+      example: {
+        roles: ['user'],
+
+      }
+    }
+  }
+})
   async roles() {
 
     return this.authService.getRoles();
   }
 
 
-  @Get("user")
-  @Auth()
-  getUser(@Req() req) {
-    return req.user;
+
+@Get('user')
+@Auth()
+@ApiOperation({ summary: 'Return authenticated user information' })
+@ApiBearerAuth()
+@ApiResponse({ status: 401, description: 'Unauthorized: invalid or expired token' })
+@ApiResponse({
+  status: 200,
+  description: 'Authenticated user data',
+  content: {
+    'application/json': {
+      example: {
+        id: 'f4cfbf37-5ac9-4834-8e67-ffac6b6f1eab',
+        email: 'wilmercampos2004@gmail.com',
+        fullName: 'Wilmer CAMPOS',
+        isActive: true,
+        phone: '3124547085',
+        roles: ['user'],
+        createdAt: '2025-11-26T07:57:58.612Z'
+      }
+    }
   }
+})
+getUser(@Req() req) {
+  return req.user;
+}
 
 }

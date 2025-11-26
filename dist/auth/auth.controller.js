@@ -177,13 +177,44 @@ __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'all roles' }),
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid refresh token' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'roles',
+        content: {
+            'application/json': {
+                example: {
+                    roles: ['user'],
+                }
+            }
+        }
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "roles", null);
 __decorate([
-    (0, common_1.Get)("user"),
+    (0, common_1.Get)('user'),
     (0, auth_decorator_1.Auth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Return authenticated user information' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Unauthorized: invalid or expired token' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Authenticated user data',
+        content: {
+            'application/json': {
+                example: {
+                    id: 'f4cfbf37-5ac9-4834-8e67-ffac6b6f1eab',
+                    email: 'wilmercampos2004@gmail.com',
+                    fullName: 'Wilmer CAMPOS',
+                    isActive: true,
+                    phone: '3124547085',
+                    roles: ['user'],
+                    createdAt: '2025-11-26T07:57:58.612Z'
+                }
+            }
+        }
+    }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

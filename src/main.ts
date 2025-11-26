@@ -62,7 +62,7 @@ app.enableCors({
    //PROCEES.ENV.HOST SOLO EN LOCAL
 const port = Number(process.env.PORT) || 4000;
 const host = process.env.HOST || "0.0.0.0";
-
+console.log(port, host)
 await app.listen(port, host);
 
 }
