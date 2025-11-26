@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 
 
 async function bootstrap() {
-  console.log(process.env.DB_HOST)
+  
   const app = await NestFactory.create(AppModule);
   
   app.setGlobalPrefix('api')
@@ -59,7 +59,8 @@ app.enableCors({
   }))
 
    app.use(cookieParser());
-  await app.listen(process.env.PORT ?? 4000, "api.ppp.local");
+   //PROCEES.ENV.HOST SOLO EN LOCAL
+  await app.listen(process.env.PORT ?? 4000, process.env.HOST||"0.0.0.0");
 
 }
 bootstrap();
