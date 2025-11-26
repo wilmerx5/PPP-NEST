@@ -74,6 +74,9 @@ let AuthController = class AuthController {
     async roles() {
         return this.authService.getRoles();
     }
+    getUser(req) {
+        return req.user;
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -178,6 +181,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "roles", null);
+__decorate([
+    (0, common_1.Get)("user"),
+    (0, auth_decorator_1.Auth)(),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "getUser", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),

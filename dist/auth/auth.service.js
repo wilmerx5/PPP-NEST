@@ -51,7 +51,7 @@ let AuthService = class AuthService {
     }
     getJwtTokens(payload) {
         const accessToken = this.jwtService.sign(payload, {
-            expiresIn: '2m',
+            expiresIn: '1m',
         });
         const refreshToken = this.jwtService.sign(payload, {
             expiresIn: '7d',
@@ -121,9 +121,9 @@ let AuthService = class AuthService {
         };
     }
     async activateUser(validateTokenDTO) {
-        const { userId } = validateTokenDTO;
+        const { idUser } = validateTokenDTO;
         await this.validateToken(validateTokenDTO);
-        const user = await this.userRepository.findOneBy({ id: userId });
+        const user = await this.userRepository.findOneBy({ id: idUser });
         if (!user)
             throw new common_1.BadRequestException('Usuario no encontrado');
         user.isActive = true;
@@ -133,9 +133,9 @@ let AuthService = class AuthService {
         };
     }
     async validateToken(validateTokenDTO) {
-        const { userId, code } = validateTokenDTO;
+        const { idUser, otp } = validateTokenDTO;
         const token = await this.verificationTokenRepository.findOne({
-            where: { user: { id: userId }, token: code, isUsed: false },
+            where: { user: { id: idUser }, token: otp, isUsed: false },
         });
         console.log(token);
         if (!token)

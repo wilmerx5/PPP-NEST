@@ -7,5 +7,6 @@ export declare class User {
     isActive: boolean;
     phone: string;
     roles: string[];
+    createdAt: Date;
     verificationTokens: VerificationToken[];
 }

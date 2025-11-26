@@ -27,4 +27,5 @@ export declare class AuthController {
         private: string;
     };
     roles(): Promise<import("./interfaces/valid.roles.interface").ValidRoles[]>;
+    getUser(req: any): any;
 }

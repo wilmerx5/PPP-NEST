@@ -49,7 +49,7 @@ export class MailService {
   try {
     const frontUrl = this.configService.get<string>('FRONT_URL');
 
-    const activationLink = `${frontUrl}/activate-user?id=${userId}&code=${code}`;
+    const activationLink = `${frontUrl}/verify-user?idUser=${userId}&otp=${code}`;
 
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">

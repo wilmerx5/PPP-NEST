@@ -1,4 +1,4 @@
 export declare class ValidateTokenDTO {
-    userId: string;
-    code: string;
+    idUser: string;
+    otp: string;
 }

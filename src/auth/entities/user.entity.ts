@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { VerificationToken } from "./verification-token.entity";
 
 @Entity('ppp_users')
@@ -58,6 +58,12 @@ export class User {
     })
     @Column('simple-json', { nullable: true })
     roles: string[];
+
+    @CreateDateColumn({
+  name: 'created_at',
+  type: 'timestamp',
+})
+createdAt: Date;
 
     @ApiProperty({
         description: 'Tokens asociados al usuario para verificación, activación, etc.',

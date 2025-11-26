@@ -18,6 +18,7 @@ let CookieService = class CookieService {
     sameSite;
     accessMaxAge;
     refreshMaxAge;
+    cookieDomain;
     constructor(config) {
         this.config = config;
         this.secure = this.config.get('COOKIE_SECURE') === 'true';
@@ -30,12 +31,15 @@ let CookieService = class CookieService {
                 : 'lax';
         this.accessMaxAge = this.config.get('ACCESS_TOKEN_MAXAGE') || 900000;
         this.refreshMaxAge = this.config.get('REFRESH_TOKEN_MAXAGE') || 604800000;
+        this.cookieDomain = this.config.get('COOKIE_DOMAIN') || '.prontopolloportal.com';
     }
     setAccessToken(res, token) {
         res.cookie('access_token', token, {
             httpOnly: true,
             secure: this.secure,
             sameSite: this.sameSite,
+            domain: this.cookieDomain,
+            path: '/',
             maxAge: this.accessMaxAge,
         });
     }
@@ -45,12 +49,13 @@ let CookieService = class CookieService {
             secure: this.secure,
             sameSite: this.sameSite,
             maxAge: this.refreshMaxAge,
-            path: '/auth/refresh',
+            domain: this.cookieDomain,
+            path: '/',
         });
     }
     clearAuthCookies(res) {
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token');
+        res.clearCookie('access_token', { domain: this.cookieDomain, path: '/' });
+        res.clearCookie('refresh_token', { domain: this.cookieDomain, path: '/' });
     }
 };
 exports.CookieService = CookieService;

@@ -32,7 +32,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
-  ) {}
+  ) { }
 
   // -------------------------------------------------------------
   // SIGNUP
@@ -165,8 +165,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'all roles' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
   async roles() {
-   
-     return   this.authService.getRoles();
-    }
+
+    return this.authService.getRoles();
+  }
+
+
+  @Get("user")
+  @Auth()
+  getUser(@Req() req) {
+    return req.user;
+  }
 
 }

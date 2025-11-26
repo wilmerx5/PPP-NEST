@@ -13,8 +13,8 @@ exports.ValidateTokenDTO = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 class ValidateTokenDTO {
-    userId;
-    code;
+    idUser;
+    otp;
 }
 exports.ValidateTokenDTO = ValidateTokenDTO;
 __decorate([
@@ -24,7 +24,7 @@ __decorate([
     }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], ValidateTokenDTO.prototype, "userId", void 0);
+], ValidateTokenDTO.prototype, "idUser", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Código de verificación enviado al correo. Debe tener exactamente 6 dígitos.',
@@ -35,5 +35,5 @@ __decorate([
     (0, class_validator_1.Length)(6, 6),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], ValidateTokenDTO.prototype, "code", void 0);
+], ValidateTokenDTO.prototype, "otp", void 0);
 //# sourceMappingURL=validate-token.dto.js.map

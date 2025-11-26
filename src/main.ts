@@ -10,28 +10,36 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.setGlobalPrefix('api')
- app.enableCors({
+app.enableCors({
   origin: (origin, callback) => {
+
+    if (!origin) return callback(null, true);
+
     const allowedOrigins = [
       "http://localhost:5173",
-      /\.prontopolloportal\.com$/,       // todos los subdominios
-      "https://prontopolloportal.com",   // dominio raíz
+      "http://localhost",
+      "https://prontopolloportal.com",
     ];
 
-    if (!origin) return callback(null, true); // permitir Postman / servidor interno
+    const hostname = origin.replace(/^https?:\/\//, "");
 
-    const isAllowed = allowedOrigins.some((o) =>
-      typeof o === "string" ? o === origin : o.test(origin)
-    );
+    const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
+    const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
+    const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname); // ← AÑADIDO
 
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error("Origin not allowed by CORS"), false);
+    if (
+      allowedOrigins.includes(origin) ||
+      isProdSubdomain ||
+      isLocalhostSubdomain ||
+      isPppLocalSubdomain
+    ) {
+      return callback(null, true);
     }
+
+    return callback(new Error("Origin not allowed by CORS"), false);
   },
 
-  credentials: true, // ⬅ necesario para cookies
+  credentials: true,
 });
 
   const config = new DocumentBuilder()
@@ -51,7 +59,7 @@ async function bootstrap() {
   }))
 
    app.use(cookieParser());
-  await app.listen(process.env.PORT ?? 4000);
+  await app.listen(process.env.PORT ?? 4000, "api.ppp.local");
 
 }
 bootstrap();

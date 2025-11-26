@@ -21,6 +21,7 @@ let User = class User {
     isActive;
     phone;
     roles;
+    createdAt;
     verificationTokens;
 };
 exports.User = User;
@@ -85,6 +86,13 @@ __decorate([
     (0, typeorm_1.Column)('simple-json', { nullable: true }),
     __metadata("design:type", Array)
 ], User.prototype, "roles", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({
+        name: 'created_at',
+        type: 'timestamp',
+    }),
+    __metadata("design:type", Date)
+], User.prototype, "createdAt", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Tokens asociados al usuario para verificación, activación, etc.',

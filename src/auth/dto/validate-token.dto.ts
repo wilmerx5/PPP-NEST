@@ -8,7 +8,7 @@ export class ValidateTokenDTO {
     example: 'f2a1bd87-acc8-45b6-9d13-65e7bd982a2a',
   })
   @IsString()
-  userId: string;
+  idUser: string;
 
   @ApiProperty({
     description: 'Código de verificación enviado al correo. Debe tener exactamente 6 dígitos.',
@@ -18,5 +18,5 @@ export class ValidateTokenDTO {
   })
   @Length(6, 6)
   @IsString()
-  code: string;
+  otp: string;
 }

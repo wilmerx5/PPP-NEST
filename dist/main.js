@@ -11,20 +11,24 @@ async function bootstrap() {
     app.setGlobalPrefix('api');
     app.enableCors({
         origin: (origin, callback) => {
-            const allowedOrigins = [
-                "http://localhost:5173",
-                /\.prontopolloportal\.com$/,
-                "https://prontopolloportal.com",
-            ];
             if (!origin)
                 return callback(null, true);
-            const isAllowed = allowedOrigins.some((o) => typeof o === "string" ? o === origin : o.test(origin));
-            if (isAllowed) {
-                callback(null, true);
+            const allowedOrigins = [
+                "http://localhost:5173",
+                "http://localhost",
+                "https://prontopolloportal.com",
+            ];
+            const hostname = origin.replace(/^https?:\/\//, "");
+            const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
+            const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
+            const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname);
+            if (allowedOrigins.includes(origin) ||
+                isProdSubdomain ||
+                isLocalhostSubdomain ||
+                isPppLocalSubdomain) {
+                return callback(null, true);
             }
-            else {
-                callback(new Error("Origin not allowed by CORS"), false);
-            }
+            return callback(new Error("Origin not allowed by CORS"), false);
         },
         credentials: true,
     });
@@ -41,7 +45,7 @@ async function bootstrap() {
         forbidNonWhitelisted: true
     }));
     app.use(cookieParser());
-    await app.listen(process.env.PORT ?? 4000);
+    await app.listen(process.env.PORT ?? 4000, "api.ppp.local");
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
