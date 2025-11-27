@@ -52,12 +52,12 @@ app.enableCors({
 
   const document= SwaggerModule.createDocument(app,config)
   SwaggerModule.setup("api",app,document)
-
+/*
    app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
+  whitelist: true,
     forbidNonWhitelisted: true
   }))
-
+*/
    app.use(cookieParser());
    //PROCEES.ENV.HOST SOLO EN LOCAL
 const port = Number(process.env.PORT) || 4000;

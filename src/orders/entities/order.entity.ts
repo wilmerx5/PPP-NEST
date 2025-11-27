@@ -11,7 +11,7 @@ import { OrderItem } from './order-item.entity';
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
 export type OrderStatus = 'cooking' | 'packing' | 'canceled' | 'completed';
 
-@Entity('ppp_orders')
+@Entity({name:'ppp_orders',synchronize: false})
 export class Order {
 
   @ApiProperty({

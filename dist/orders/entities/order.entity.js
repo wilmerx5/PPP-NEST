@@ -120,6 +120,6 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Order.prototype, "printed", void 0);
 exports.Order = Order = __decorate([
-    (0, typeorm_1.Entity)('ppp_orders')
+    (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: false })
 ], Order);
 //# sourceMappingURL=order.entity.js.map

@@ -111,6 +111,7 @@ export class OrdersService {
     if (fullOrder) {
       const formatted = this.mapOrderToGroupedFormat(fullOrder);
       this.gateway.emitOrdersUpdates("created_order", formatted);
+
     }
 
     return {
