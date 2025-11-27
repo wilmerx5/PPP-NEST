@@ -53,7 +53,7 @@ let MailService = class MailService {
     }
     async sendActivateUser(email, userId, code) {
         try {
-            const frontUrl = this.configService.get('FRONT_URL');
+            const frontUrl = this.configService.get('AUTH_FRONT_URL');
             const activationLink = `${frontUrl}/verify-user?idUser=${userId}&otp=${code}`;
             const htmlBody = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">

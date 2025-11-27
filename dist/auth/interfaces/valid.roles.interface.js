@@ -7,5 +7,6 @@ var ValidRoles;
     ValidRoles["admin"] = "admin";
     ValidRoles["kitchenUser"] = "kitchenUser";
     ValidRoles["tableUser"] = "tableUser";
+    ValidRoles["ordersUser"] = "ordersUser";
 })(ValidRoles || (exports.ValidRoles = ValidRoles = {}));
 //# sourceMappingURL=valid.roles.interface.js.map

@@ -47,7 +47,7 @@ export class MailService {
 
   async sendActivateUser(email: string, userId: string, code: string) {
   try {
-    const frontUrl = this.configService.get<string>('FRONT_URL');
+    const frontUrl = this.configService.get<string>('AUTH_FRONT_URL');
 
     const activationLink = `${frontUrl}/verify-user?idUser=${userId}&otp=${code}`;
 
