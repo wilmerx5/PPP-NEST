@@ -9,7 +9,7 @@ import {
 import { OrderItem } from './order-item.entity';
 
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
-export type OrderStatus = 'cooking' | 'packing' | 'canceled' | 'completed';
+export type OrderStatus = 'cooking' | 'cooked'| 'packing' | 'canceled'|'inDelivery' |'completed';
 
 @Entity({name:'ppp_orders',synchronize: false})
 export class Order {
@@ -84,7 +84,7 @@ export class Order {
   })
   @Column({
     type: 'enum',
-    enum: ['cooking', 'packing', 'canceled', 'completed'],
+    enum: ['cooking' , 'cooked', 'packing' , 'canceled','inDelivery' ,'completed'],
     default: 'cooking',
     name: 'order_status',
   })
