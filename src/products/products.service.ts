@@ -11,63 +11,112 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>
-  ) { }
+  ) {}
 
+  /**
+   * Create a new product.
+   * Currently returns a placeholder message.
+   *
+   * @param createProductDto - DTO containing product creation data.
+   * @returns {string} Confirmation message.
+   */
   create(createProductDto: CreateProductDto) {
     return 'This action adds a new product';
   }
 
+  /**
+   * Get all products with their categories and attributes.
+   * - Loads relations: categories, attributes
+   * - Transforms attribute.options from string → JSON array
+   *
+   * @returns {Promise<any[]>} List of transformed products.
+   */
   async findAll() {
     const products = await this.productRepo.find({
       relations: ['categories', 'attributes'],
       order: { id: 'ASC' },
     });
-  
+
     return products.map(product => ({
       ...product,
 
+      // Convert the "options" string into a JSON array
       attributes: product.attributes.map(attr => ({
         ...attr,
-        options: JSON.parse(attr.options), // <- transforma el JSON string a array
+        options: JSON.parse(attr.options),
       })),
     }));
   }
-  
+
+  /**
+   * Returns a list of categories,
+   * each category containing its list of products grouped by category.
+   *
+   * Each product contains:
+   * - Basic info (id, name, price...)
+   * - Attributes (converted from JSON string to JS array)
+   *
+   * @returns {Promise<any[]>} Categories with grouped products.
+   */
   async findProductsGroupedByCategory() {
     const categories = await this.categoryRepo.find({
       relations: ['products', 'products.attributes'],
       order: { id: 'ASC' }
     });
-    return categories.map((category) => ({
+
+    return categories.map(category => ({
       categoryId: category.id,
       categoryName: category.name,
-      imageUrl:category.imageUrl,
-      products: category.products.map((product) => ({
+      imageUrl: category.imageUrl,
+      products: category.products.map(product => ({
         id: product.id,
         name: product.name,
         description: product.description,
         code: product.code,
         price: product.price,
-        imageUrl:product.imageUrl,
+        imageUrl: product.imageUrl,
         hasAttributes: product.hasAttributes,
-        attributes: product.attributes.map((attr) => ({
+        attributes: product.attributes.map(attr => ({
           attributeName: attr.attributeName,
-          options: JSON.parse(attr.options)
-        }))
-      }))
+          options: JSON.parse(attr.options),
+        })),
+      })),
     }));
-
   }
+
+  /**
+   * Find a single product by ID.
+   * Currently returns placeholder text.
+   *
+   * @param id - Product ID.
+   * @returns {string} Placeholder result.
+   */
   findOne(id: number) {
     return `This action returns a #${id} product`;
   }
 
+  /**
+   * Update product by ID.
+   * Currently returns placeholder text.
+   *
+   * @param id - Product ID.
+   * @param updateProductDto - DTO with update data.
+   * @returns {string} Placeholder result.
+   */
   update(id: number, updateProductDto: UpdateProductDto) {
     return `This action updates a #${id} product`;
   }
 
+  /**
+   * Remove a product by ID.
+   * Currently returns placeholder text.
+   *
+   * @param id - Product ID.
+   * @returns {string} Placeholder result.
+   */
   remove(id: number) {
     return `This action removes a #${id} product`;
   }

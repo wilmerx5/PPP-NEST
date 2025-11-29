@@ -3,8 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -12,7 +14,7 @@ import { ProductsModule } from './products/products.module';
       isGlobal: true,
     }),
 
-   
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -23,6 +25,10 @@ import { ProductsModule } from './products/products.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: false,
+        extra: {
+          options: `-c timezone=America/Bogota`
+        }
       }),
       inject: [ConfigService],
     }),
@@ -30,8 +36,12 @@ import { ProductsModule } from './products/products.module';
     OrdersModule,
 
     ProductsModule,
+
+    AuthModule,
+
+    CommonModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
