@@ -8,7 +8,7 @@ import {
     PrimaryGeneratedColumn
 } from "typeorm";
 
-@Entity()
+@Entity('ppp_verification_token')
 export class VerificationToken {
 
   @ApiProperty({

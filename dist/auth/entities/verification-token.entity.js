@@ -76,6 +76,6 @@ __decorate([
     __metadata("design:type", user_entity_1.User)
 ], VerificationToken.prototype, "user", void 0);
 exports.VerificationToken = VerificationToken = __decorate([
-    (0, typeorm_1.Entity)()
+    (0, typeorm_1.Entity)('ppp_verification_token')
 ], VerificationToken);
 //# sourceMappingURL=verification-token.entity.js.map

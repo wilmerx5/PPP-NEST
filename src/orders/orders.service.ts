@@ -322,6 +322,7 @@ export class OrdersService {
 
       if (dto.printed) {
         this.gateway.emitOrdersUpdates("updated_order_printed", formatted);
+
       } else if (
         dto.orderStatus === 'completed' &&
         fullOrder.orderType === 'table'

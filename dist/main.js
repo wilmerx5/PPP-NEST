@@ -41,8 +41,13 @@ async function bootstrap() {
     app.use(cookieParser());
     const port = Number(process.env.PORT) || 4000;
     const host = process.env.HOST || "0.0.0.0";
-    console.log(port, host);
-    await app.listen(port, host);
+    const bindHost = process.env.BIND_HOST === "true";
+    if (bindHost) {
+        await app.listen(port, host);
+    }
+    else {
+        await app.listen(port);
+    }
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
