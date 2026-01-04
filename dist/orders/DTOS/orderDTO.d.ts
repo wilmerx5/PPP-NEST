@@ -16,6 +16,7 @@ export declare class CreateOrderDto {
     phone: string;
     address: string;
     orderType?: OrderType;
+    deliveryFee?: number;
     items: CreateOrderItemDto[];
 }
 export declare class UpdateOrderItemAttributeDto {
@@ -38,4 +39,5 @@ export declare class UpdateOrderGeneralDto {
     orderType?: OrderType;
     orderStatus?: OrderStatus;
     printed?: boolean;
+    deliveryFee?: number;
 }

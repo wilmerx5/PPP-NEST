@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus, OrderType } from "../entities/order.entity";
+import { IsEnum, IsNumber, IsOptional, Min, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateOrderItemAttributeDto {
 
@@ -42,6 +44,7 @@ export class CreateOrderItemDto {
   }[];
 }
 
+
 export class CreateOrderDto {
 
   @ApiProperty({
@@ -63,11 +66,25 @@ export class CreateOrderDto {
   address: string;
 
   @ApiProperty({
-    description: 'Tipo de orden: domicilio, mesa o recoger.',
-    example:   "'delivery' | 'pickup' | 'table' | 'counter'",
+    description: 'Tipo de orden.',
+    example: 'delivery',
+    enum: ['delivery', 'pickup', 'table', 'counter'],
     required: false,
   })
+  @IsOptional()
+  @IsEnum(['delivery', 'pickup', 'table', 'counter'])
   orderType?: OrderType;
+
+  @ApiProperty({
+    description: 'Costo del servicio de delivery (solo requerido si orderType = delivery).',
+    example: 5000,
+    required: false,
+  })
+  @ValidateIf((o) => o.orderType === 'delivery')
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  deliveryFee?: number;
 
   @ApiProperty({
     description: 'Lista de productos incluidos en la orden.',
@@ -174,4 +191,10 @@ export class UpdateOrderGeneralDto {
     required: false,
   })
   printed?: boolean;
+
+    @ValidateIf((o) => o.orderType === 'delivery')
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  deliveryFee?: number;
 }

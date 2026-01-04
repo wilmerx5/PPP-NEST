@@ -44,17 +44,27 @@ let OrdersService = class OrdersService {
     }
     async create(createOrderDto) {
         const { customerName, phone, address, items } = createOrderDto;
+        const orderType = createOrderDto.orderType ?? 'pickup';
+        const deliveryFee = createOrderDto.deliveryFee;
         const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
         const ordersTodayCount = await this.orderRepo.count({
             where: { createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc) },
         });
         const newOrderNumber = ordersTodayCount + 1;
+        let finalDeliveryFee = 0;
+        if (orderType === 'delivery') {
+            if (deliveryFee == null) {
+                throw new common_1.BadRequestException('Delivery fee is required for delivery orders');
+            }
+            finalDeliveryFee = deliveryFee;
+        }
         const order = this.orderRepo.create({
             customerName,
             phone,
             address,
             dailyOrderNumber: newOrderNumber,
-            orderType: createOrderDto.orderType ?? 'pickup',
+            orderType: orderType,
+            deliveryFee: finalDeliveryFee,
         });
         await this.orderRepo.save(order);
         for (const item of items) {
@@ -136,6 +146,7 @@ let OrdersService = class OrdersService {
                 orderType: order.orderType,
                 orderStatus: order.orderStatus,
                 printed: order.printed,
+                deliveryFee: order.deliveryFee ?? 0,
                 items: Object.values(groupedItems),
             };
         });
@@ -205,6 +216,7 @@ let OrdersService = class OrdersService {
         const order = await this.orderRepo.findOneBy({ id: orderId });
         if (!order)
             throw new Error('Order not found');
+        console.log(order, dto);
         if (dto.customerName !== undefined)
             order.customerName = dto.customerName;
         if (dto.phone !== undefined)
@@ -217,6 +229,14 @@ let OrdersService = class OrdersService {
             order.orderStatus = dto.orderStatus;
         if (dto.printed !== undefined)
             order.printed = dto.printed;
+        if (dto.orderType === 'delivery') {
+            if (dto.deliveryFee !== undefined) {
+                order.deliveryFee = dto.deliveryFee;
+            }
+        }
+        else if (dto.orderType !== undefined) {
+            order.deliveryFee = 0;
+        }
         await this.orderRepo.save(order);
         const fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
@@ -280,6 +300,7 @@ let OrdersService = class OrdersService {
             orderType: order.orderType,
             orderStatus: order.orderStatus,
             printed: order.printed,
+            deliveryFee: order.deliveryFee ?? 0,
             items: Object.values(groupedItems),
         };
     }

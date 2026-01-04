@@ -23,6 +23,7 @@ let Order = class Order {
     dailyOrderNumber;
     orderType;
     orderStatus;
+    deliveryFee;
     printed;
 };
 exports.Order = Order;
@@ -101,7 +102,7 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Estado actual de la orden.',
         example: 'cooking',
-        enum: ['cooking', 'packing', 'canceled', 'completed'],
+        enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
     }),
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -111,6 +112,22 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], Order.prototype, "orderStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Costo del servicio de delivery. Se guarda solo si el tipo de orden es delivery.',
+        example: 5000,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({
+        name: 'delivery_fee',
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+        nullable: true,
+        default: 0,
+    }),
+    __metadata("design:type", Number)
+], Order.prototype, "deliveryFee", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Indica si la orden ya fue impresa.',

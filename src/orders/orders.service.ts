@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { endOfDay, startOfDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -61,7 +61,11 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
+    // ✅ (AÑADIDO) leer orderType y deliveryFee sin romper lo demás
     const { customerName, phone, address, items } = createOrderDto;
+    const orderType = createOrderDto.orderType ?? 'pickup';
+    const deliveryFee = createOrderDto.deliveryFee;
+
     const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
     // Contar cuántos pedidos van hoy
@@ -71,13 +75,24 @@ export class OrdersService {
 
     const newOrderNumber = ordersTodayCount + 1;
 
+    // ✅ (AÑADIDO) Validación de delivery fee
+    let finalDeliveryFee = 0;
+    if (orderType === 'delivery') {
+      if (deliveryFee == null) {
+        throw new BadRequestException('Delivery fee is required for delivery orders');
+      }
+      finalDeliveryFee = deliveryFee;
+    }
+
     // Crear orden
     const order = this.orderRepo.create({
       customerName,
       phone,
       address,
       dailyOrderNumber: newOrderNumber,
-      orderType: createOrderDto.orderType ?? 'pickup',
+      orderType: orderType,
+      // ✅ (AÑADIDO)
+      deliveryFee: finalDeliveryFee,
     });
 
     await this.orderRepo.save(order);
@@ -184,6 +199,8 @@ export class OrdersService {
         orderType: order.orderType,
         orderStatus: order.orderStatus,
         printed: order.printed,
+        // ✅ (AÑADIDO)
+        deliveryFee: (order as any).deliveryFee ?? 0,
         items: Object.values(groupedItems),
       };
     });
@@ -302,6 +319,8 @@ export class OrdersService {
     const order = await this.orderRepo.findOneBy({ id: orderId });
     if (!order) throw new Error('Order not found');
 
+
+    console.log(order, dto)
     // Actualiza solo campos enviados
     if (dto.customerName !== undefined) order.customerName = dto.customerName;
     if (dto.phone !== undefined) order.phone = dto.phone;
@@ -309,6 +328,17 @@ export class OrdersService {
     if (dto.orderType !== undefined) order.orderType = dto.orderType;
     if (dto.orderStatus !== undefined) order.orderStatus = dto.orderStatus;
     if (dto.printed !== undefined) order.printed = dto.printed;
+
+    // ✅ (AÑADIDO) Actualizar deliveryFee sin romper lo demás
+    // - si cambia a delivery: permite actualizar deliveryFee
+    // - si cambia a NO delivery: lo resetea a 0
+    if (dto.orderType === 'delivery') {
+      if (dto.deliveryFee !== undefined) {
+        order.deliveryFee = dto.deliveryFee;
+      }
+    } else if (dto.orderType !== undefined) {
+      order.deliveryFee = 0;
+    }
 
     await this.orderRepo.save(order);
 
@@ -391,6 +421,7 @@ export class OrdersService {
       orderType: order.orderType,
       orderStatus: order.orderStatus,
       printed: order.printed,
+      deliveryFee: order.deliveryFee ?? 0,
       items: Object.values(groupedItems),
     };
   }

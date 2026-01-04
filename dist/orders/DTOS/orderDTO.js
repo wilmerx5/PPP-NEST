@@ -11,6 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateOrderGeneralDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateOrderItemAttributeDto {
     attributeName;
     attributeValue;
@@ -64,6 +66,7 @@ class CreateOrderDto {
     phone;
     address;
     orderType;
+    deliveryFee;
     items;
 }
 exports.CreateOrderDto = CreateOrderDto;
@@ -90,12 +93,27 @@ __decorate([
 ], CreateOrderDto.prototype, "address", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: 'Tipo de orden: domicilio, mesa o recoger.',
-        example: "'delivery' | 'pickup' | 'table' | 'counter'",
+        description: 'Tipo de orden.',
+        example: 'delivery',
+        enum: ['delivery', 'pickup', 'table', 'counter'],
         required: false,
     }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['delivery', 'pickup', 'table', 'counter']),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "orderType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Costo del servicio de delivery (solo requerido si orderType = delivery).',
+        example: 5000,
+        required: false,
+    }),
+    (0, class_validator_1.ValidateIf)((o) => o.orderType === 'delivery'),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "deliveryFee", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Lista de productos incluidos en la orden.',
@@ -178,6 +196,7 @@ class UpdateOrderGeneralDto {
     orderType;
     orderStatus;
     printed;
+    deliveryFee;
 }
 exports.UpdateOrderGeneralDto = UpdateOrderGeneralDto;
 __decorate([
@@ -228,4 +247,11 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], UpdateOrderGeneralDto.prototype, "printed", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.orderType === 'delivery'),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateOrderGeneralDto.prototype, "deliveryFee", void 0);
 //# sourceMappingURL=orderDTO.js.map
