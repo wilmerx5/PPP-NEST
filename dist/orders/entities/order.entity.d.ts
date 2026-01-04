@@ -11,5 +11,6 @@ export declare class Order {
     dailyOrderNumber: number;
     orderType: OrderType;
     orderStatus: OrderStatus;
+    deliveryFee: number;
     printed: boolean;
 }

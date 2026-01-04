@@ -18,6 +18,7 @@ export declare class OrdersController {
         orderType: import("./entities/order.entity").OrderType;
         orderStatus: import("./entities/order.entity").OrderStatus;
         printed: boolean;
+        deliveryFee: any;
         items: any[];
     }[]>;
     deleteOrder(id: string): Promise<{

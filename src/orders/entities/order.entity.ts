@@ -1,17 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    OneToMany,
-    PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
-export type OrderStatus = 'cooking' | 'cooked'| 'packing' | 'canceled'|'inDelivery' |'completed';
+export type OrderStatus =
+  | 'cooking'
+  | 'cooked'
+  | 'packing'
+  | 'canceled'
+  | 'inDelivery'
+  | 'completed';
 
-@Entity({name:'ppp_orders',synchronize: true})
+@Entity({ name: 'ppp_orders', synchronize: true })
 export class Order {
 
   @ApiProperty({
@@ -80,15 +86,30 @@ export class Order {
   @ApiProperty({
     description: 'Estado actual de la orden.',
     example: 'cooking',
-    enum: ['cooking', 'packing', 'canceled', 'completed'],
+    enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
   })
   @Column({
     type: 'enum',
-    enum: ['cooking' , 'cooked', 'packing' , 'canceled','inDelivery' ,'completed'],
+    enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
     default: 'cooking',
     name: 'order_status',
   })
   orderStatus: OrderStatus;
+
+  @ApiProperty({
+    description: 'Costo del servicio de delivery. Se guarda solo si el tipo de orden es delivery.',
+    example: 5000,
+    nullable: true,
+  })
+  @Column({
+    name: 'delivery_fee',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: 0,
+  })
+  deliveryFee: number;
 
   @ApiProperty({
     description: 'Indica si la orden ya fue impresa.',
@@ -96,5 +117,4 @@ export class Order {
   })
   @Column({ type: 'boolean', default: false })
   printed: boolean;
-
 }
