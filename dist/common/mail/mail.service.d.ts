@@ -5,4 +5,5 @@ export declare class MailService {
     constructor(configService: ConfigService);
     sendVerificationCode(email: string, code: string): Promise<boolean>;
     sendActivateUser(email: string, userId: string, code: string): Promise<boolean>;
+    sendPasswordResetCode(email: string, code: string): Promise<boolean>;
 }

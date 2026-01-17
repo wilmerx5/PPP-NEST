@@ -24,6 +24,8 @@ import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
+import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
 
 @ApiTags('Auth')
@@ -131,6 +133,15 @@ export class AuthController {
     return this.authService.requestNewCode(requestNewCodeDTO);
   }
 
+  @Post('resend-activation-link')
+  @ApiOperation({ summary: 'Resend activation link to a registered email' })
+  @ApiBody({ type: RequestNewCodeDTO })
+  @ApiResponse({ status: 200, description: 'Activation link sent (if email exists and account is inactive)' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async resendActivationLink(@Body() requestNewCodeDTO: RequestNewCodeDTO) {
+    return this.authService.resendActivationLink(requestNewCodeDTO);
+  }
+
   // -------------------------------------------------------------
   // VALIDATE TOKEN
   // -------------------------------------------------------------
@@ -183,7 +194,7 @@ export class AuthController {
 
 
 
-@Get('user')
+  @Get('user')
 @Auth()
 @ApiOperation({ summary: 'Return authenticated user information' })
 @ApiBearerAuth()
@@ -208,5 +219,27 @@ export class AuthController {
 getUser(@Req() req) {
   return req.user;
 }
+
+  // -------------------------------------------------------------
+  // PASSWORD RESET
+  // -------------------------------------------------------------
+
+  @Post('request-password-reset')
+  @ApiOperation({ summary: 'Request a password reset code via email' })
+  @ApiBody({ type: RequestPasswordResetDTO })
+  @ApiResponse({ status: 200, description: 'Password reset code sent (if email exists)' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async requestPasswordReset(@Body() requestPasswordResetDTO: RequestPasswordResetDTO) {
+    return this.authService.requestPasswordReset(requestPasswordResetDTO);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using verification code' })
+  @ApiBody({ type: ResetPasswordDTO })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid code, expired code, or validation error' })
+  async resetPassword(@Body() resetPasswordDTO: ResetPasswordDTO) {
+    return this.authService.resetPassword(resetPasswordDTO);
+  }
 
 }

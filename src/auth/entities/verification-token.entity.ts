@@ -43,6 +43,14 @@ export class VerificationToken {
   isUsed: boolean;
 
   @ApiProperty({
+    description: 'Tipo de token: activation, password-reset',
+    example: 'activation',
+    default: 'activation',
+  })
+  @Column({ default: 'activation' })
+  type: string;
+
+  @ApiProperty({
     description: 'Fecha de creación del token. Se asigna de forma automática.',
     example: '2025-11-14T20:25:50.000Z',
   })

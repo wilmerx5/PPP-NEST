@@ -4,6 +4,7 @@ export declare class VerificationToken {
     token: string;
     expiresAt: Date;
     isUsed: boolean;
+    type: string;
     createdAt: Date;
     user: User;
 }

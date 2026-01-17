@@ -5,6 +5,8 @@ import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
+import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
 export declare class AuthController {
     private readonly authService;
     private readonly cookieService;
@@ -22,10 +24,27 @@ export declare class AuthController {
         message: string;
         email: string;
     }>;
+    resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
+        message: string;
+        email?: undefined;
+    } | {
+        message: string;
+        email: string;
+    }>;
     validateToken(validateTokenDTO: ValidateTokenDTO): Promise<boolean>;
     testingPrivate(): {
         private: string;
     };
     roles(): Promise<import("./interfaces/valid.roles.interface").ValidRoles[]>;
     getUser(req: any): any;
+    requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO): Promise<{
+        message: string;
+        email?: undefined;
+    } | {
+        message: string;
+        email: string;
+    }>;
+    resetPassword(resetPasswordDTO: ResetPasswordDTO): Promise<{
+        message: string;
+    }>;
 }
