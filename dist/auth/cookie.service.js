@@ -31,31 +31,45 @@ let CookieService = class CookieService {
                 : 'lax';
         this.accessMaxAge = this.config.get('ACCESS_TOKEN_MAXAGE') || 900000;
         this.refreshMaxAge = this.config.get('REFRESH_TOKEN_MAXAGE') || 604800000;
-        this.cookieDomain = this.config.get('COOKIE_DOMAIN') || '.prontopolloportal.com';
+        const cookieDomainEnv = this.config.get('COOKIE_DOMAIN');
+        this.cookieDomain = cookieDomainEnv || undefined;
+        console.log('[CookieService] Cookie domain configurado:', this.cookieDomain || 'undefined (funciona en cualquier dominio)');
+        console.log('[CookieService] SameSite:', this.sameSite);
+        console.log('[CookieService] Secure:', this.secure);
     }
     setAccessToken(res, token) {
-        res.cookie('access_token', token, {
+        const cookieOptions = {
             httpOnly: true,
             secure: this.secure,
             sameSite: this.sameSite,
-            domain: this.cookieDomain,
             path: '/',
             maxAge: this.accessMaxAge,
-        });
+        };
+        if (this.cookieDomain) {
+            cookieOptions.domain = this.cookieDomain;
+        }
+        res.cookie('access_token', token, cookieOptions);
     }
     setRefreshToken(res, token) {
-        res.cookie('refresh_token', token, {
+        const cookieOptions = {
             httpOnly: true,
             secure: this.secure,
             sameSite: this.sameSite,
             maxAge: this.refreshMaxAge,
-            domain: this.cookieDomain,
             path: '/',
-        });
+        };
+        if (this.cookieDomain) {
+            cookieOptions.domain = this.cookieDomain;
+        }
+        res.cookie('refresh_token', token, cookieOptions);
     }
     clearAuthCookies(res) {
-        res.clearCookie('access_token', { domain: this.cookieDomain, path: '/' });
-        res.clearCookie('refresh_token', { domain: this.cookieDomain, path: '/' });
+        const clearOptions = { path: '/' };
+        if (this.cookieDomain) {
+            clearOptions.domain = this.cookieDomain;
+        }
+        res.clearCookie('access_token', clearOptions);
+        res.clearCookie('refresh_token', clearOptions);
     }
 };
 exports.CookieService = CookieService;

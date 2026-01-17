@@ -10,6 +10,7 @@ import { OrdersGateway } from './Websocket/order.gateway';
 @Module({
   controllers: [OrdersController],
   providers: [OrdersService, OrdersGateway],
-   imports: [TypeOrmModule.forFeature([Order, OrderItem, OrderItemAttribute])],
+  imports: [TypeOrmModule.forFeature([Order, OrderItem, OrderItemAttribute])],
+  exports: [OrdersService], // Exportar OrdersService para usarlo en PaymentsModule
 })
 export class OrdersModule {}

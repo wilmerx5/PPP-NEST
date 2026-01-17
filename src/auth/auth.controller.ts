@@ -63,8 +63,13 @@ export class AuthController {
     const { accessToken, refreshToken, user } =
       await this.authService.login(loginDto);
 
+    console.log('[AuthController] Login exitoso para:', loginDto.email);
+    console.log('[AuthController] Setting cookies...');
+    
     this.cookieService.setAccessToken(res, accessToken);
     this.cookieService.setRefreshToken(res, refreshToken);
+    
+    console.log('[AuthController] Cookies seteadas correctamente');
 
     return res.json({
       message: 'Logged in successfully',

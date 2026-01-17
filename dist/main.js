@@ -5,6 +5,13 @@ const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 async function bootstrap() {
+    process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
+    process.stdout.write('📋 [Environment] Checking .env variables...\n');
+    process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_PORT: ${process.env.DB_PORT || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_USERNAME: ${process.env.DB_USERNAME || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.setGlobalPrefix('api');
     app.enableCors({

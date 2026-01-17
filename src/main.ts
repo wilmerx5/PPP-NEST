@@ -6,6 +6,14 @@ import { AppModule } from './app.module';
 
 
 async function bootstrap() {
+  // Logs directos a stdout para evitar intercepción de loggers
+  process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
+  process.stdout.write('📋 [Environment] Checking .env variables...\n');
+  process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_PORT: ${process.env.DB_PORT || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_USERNAME: ${process.env.DB_USERNAME || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
   
   const app = await NestFactory.create(AppModule);
   
