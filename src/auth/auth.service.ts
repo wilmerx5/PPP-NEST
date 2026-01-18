@@ -101,11 +101,7 @@ export class AuthService {
 
   async generateAndStoreToken(user: User, type: string = 'activation') {
     const token = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 20 minutos desde ahora
-
-    console.log(`[GENERATE TOKEN] Generando token para usuario: ${user.id}, tipo: ${type}`);
-    console.log(`[GENERATE TOKEN] Token generado: ${token}`);
-    console.log(`[GENERATE TOKEN] Fecha expiración: ${expiresAt.toISOString()}`);
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 20 minutes from now
 
     const emailToken = this.verificationTokenRepository.create({
       token,
@@ -114,8 +110,7 @@ export class AuthService {
       type,
     });
 
-    const savedToken = await this.verificationTokenRepository.save(emailToken);
-    console.log(`[GENERATE TOKEN] ✅ Token guardado correctamente. ID: ${savedToken.id}, tipo: ${savedToken.type}`);
+    await this.verificationTokenRepository.save(emailToken);
 
     return token;
   }
@@ -168,8 +163,6 @@ export class AuthService {
 
   async resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO) {
     const { email } = requestNewCodeDTO;
-    
-    console.log('[RESEND ACTIVATION LINK] Solicitando reenvío de link para:', email);
 
     const user = await this.userRepository.findOne({
       where: { email },
@@ -177,41 +170,33 @@ export class AuthService {
     });
 
     if (!user) {
-      console.log('[RESEND ACTIVATION LINK] ❌ Usuario no encontrado');
-      // Por seguridad, no revelamos si el email existe
+      // For security, do not reveal if the email exists
       return {
-        message: 'Si el email existe y la cuenta no está activa, se enviará un nuevo link de activación',
+        message: 'If the email exists and the account is not active, a new activation link will be sent',
       };
     }
 
-    console.log('[RESEND ACTIVATION LINK] ✅ Usuario encontrado. ID:', user.id, 'Activo:', user.isActive);
-
-    // Si el usuario ya está activo, no hacemos nada
+    // If user is already active, do nothing
     if (user.isActive) {
-      console.log('[RESEND ACTIVATION LINK] ⚠️ Usuario ya está activo');
       return {
-        message: 'Esta cuenta ya está activa',
+        message: 'This account is already active',
       };
     }
 
-    // Invalidar tokens de activación previos no usados
+    // Invalidate previous unused activation tokens
     await this.verificationTokenRepository.update(
       { user: { id: user.id }, type: 'activation', isUsed: false },
       { isUsed: true }
     );
-    console.log('[RESEND ACTIVATION LINK] Tokens previos invalidados');
 
-    // Generar nuevo token de activación
+    // Generate new activation token
     const token = await this.generateAndStoreToken(user, 'activation');
-    console.log('[RESEND ACTIVATION LINK] ✅ Nuevo token generado:', token);
 
-    // Enviar link de activación por email
+    // Send activation link by email
     await this.mailService.sendActivateUser(user.email, user.id, token);
-    console.log('[RESEND ACTIVATION LINK] ✅ Link de activación enviado');
 
     return {
-      message: 'Si el email existe y la cuenta no está activa, se enviará un nuevo link de activación',
-      email, // Solo para desarrollo, considerar remover en producción
+      message: 'If the email exists and the account is not active, a new activation link will be sent',
     };
   }
 
@@ -241,11 +226,10 @@ export class AuthService {
       where: { user: { id: idUser }, token: otp, type: 'activation', isUsed: false },
     });
 
-    console.log(token)
-    if (!token) throw new BadRequestException('Token inválido');
+    if (!token) throw new BadRequestException('Invalid token');
 
     if (token.expiresAt < new Date())
-      throw new BadRequestException('Token expirado');
+      throw new BadRequestException('Token expired');
 
     token.isUsed = true;
     await this.verificationTokenRepository.save(token);
@@ -276,50 +260,36 @@ return Object.values(ValidRoles);
   async requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO) {
     const { email } = requestPasswordResetDTO;
 
-    console.log('[PASSWORD RESET REQUEST] Solicitando reset para email:', email);
-
     const user = await this.userRepository.findOne({
       where: { email },
     });
 
     if (!user) {
-      console.log('[PASSWORD RESET REQUEST] ❌ Usuario no encontrado');
-      // Por seguridad, no revelamos si el email existe o no
+      // For security, do not reveal if the email exists
       return {
-        message: 'Si el email existe, se enviará un código de recuperación',
+        message: 'If the email exists, a recovery code will be sent',
       };
     }
 
-    console.log('[PASSWORD RESET REQUEST] ✅ Usuario encontrado. ID:', user.id);
-
-    // Invalidar todos los tokens de password reset previos
-    const invalidatedTokens = await this.verificationTokenRepository.update(
+    // Invalidate all previous password reset tokens
+    await this.verificationTokenRepository.update(
       { user: { id: user.id }, type: 'password-reset', isUsed: false },
       { isUsed: true }
     );
-    console.log('[PASSWORD RESET REQUEST] Tokens previos invalidados:', invalidatedTokens.affected);
 
-    // Generar nuevo token de password reset
+    // Generate new password reset token
     const token = await this.generateAndStoreToken(user, 'password-reset');
-    console.log('[PASSWORD RESET REQUEST] ✅ Token generado:', token);
 
-    // Enviar código por email
+    // Send code by email
     await this.mailService.sendPasswordResetCode(email, token);
-    console.log('[PASSWORD RESET REQUEST] ✅ Email enviado correctamente');
 
     return {
-      message: 'Si el email existe, se enviará un código de recuperación',
-      email, // Solo para desarrollo, considerar remover en producción
+      message: 'If the email exists, a recovery code will be sent',
     };
   }
 
   async resetPassword(resetPasswordDTO: ResetPasswordDTO) {
     const { email, code, newPassword } = resetPasswordDTO;
-
-    console.log('[PASSWORD RESET] Iniciando reset de contraseña');
-    console.log('[PASSWORD RESET] Email:', email);
-    console.log('[PASSWORD RESET] Código recibido:', code);
-    console.log('[PASSWORD RESET] Longitud del código:', code?.length);
 
     const user = await this.userRepository.findOne({
       where: { email },
@@ -327,19 +297,10 @@ return Object.values(ValidRoles);
     });
 
     if (!user) {
-      console.log('[PASSWORD RESET] ❌ Usuario no encontrado para email:', email);
-      throw new BadRequestException('Email no encontrado');
+      throw new BadRequestException('Email not found');
     }
 
-    console.log('[PASSWORD RESET] ✅ Usuario encontrado. ID:', user.id);
-
-    // Buscar el token de password reset
-    console.log('[PASSWORD RESET] Buscando token con:');
-    console.log('  - userId:', user.id);
-    console.log('  - token:', code);
-    console.log('  - type: password-reset');
-    console.log('  - isUsed: false');
-
+    // Find password reset token
     const token = await this.verificationTokenRepository.findOne({
       where: { 
         user: { id: user.id }, 
@@ -350,72 +311,37 @@ return Object.values(ValidRoles);
     });
 
     if (!token) {
-      console.log('[PASSWORD RESET] ❌ Token no encontrado');
-      
-      // Buscar todos los tokens del usuario para debugging
-      const allTokens = await this.verificationTokenRepository.find({
-        where: { user: { id: user.id }, type: 'password-reset' },
-        order: { createdAt: 'DESC' },
-        take: 5,
-      });
-      
-      console.log('[PASSWORD RESET] Tokens encontrados para este usuario (últimos 5):');
-      allTokens.forEach((t, idx) => {
-        console.log(`  Token ${idx + 1}:`, {
-          token: t.token,
-          type: t.type,
-          isUsed: t.isUsed,
-          expiresAt: t.expiresAt,
-          createdAt: t.createdAt,
-          expired: t.expiresAt < new Date(),
-        });
-      });
-
-      // Verificar si el código está en algún token (incluso usado o expirado)
+      // Check if code exists in any token (even used or expired) for better error messages
       const tokenByCode = await this.verificationTokenRepository.findOne({
         where: { user: { id: user.id }, token: code, type: 'password-reset' },
       });
 
       if (tokenByCode) {
         if (tokenByCode.isUsed) {
-          console.log('[PASSWORD RESET] ⚠️ Token encontrado pero ya fue usado');
-          throw new BadRequestException('Este código ya fue utilizado. Solicita un nuevo código.');
+          throw new BadRequestException('This code has already been used. Please request a new code.');
         }
         if (tokenByCode.expiresAt < new Date()) {
-          console.log('[PASSWORD RESET] ⚠️ Token encontrado pero expiró');
-          throw new BadRequestException('Código expirado. Solicita un nuevo código.');
+          throw new BadRequestException('Code expired. Please request a new code.');
         }
       }
 
-      throw new BadRequestException('Código inválido');
+      throw new BadRequestException('Invalid code');
     }
-
-    console.log('[PASSWORD RESET] ✅ Token encontrado:', {
-      id: token.id,
-      token: token.token,
-      expiresAt: token.expiresAt,
-      isUsed: token.isUsed,
-    });
 
     if (token.expiresAt < new Date()) {
-      console.log('[PASSWORD RESET] ❌ Token expirado. Fecha expiración:', token.expiresAt);
-      throw new BadRequestException('Código expirado');
+      throw new BadRequestException('Code expired');
     }
 
-    console.log('[PASSWORD RESET] Token válido, procediendo a actualizar contraseña');
-
-    // Marcar token como usado
+    // Mark token as used
     token.isUsed = true;
     await this.verificationTokenRepository.save(token);
-    console.log('[PASSWORD RESET] ✅ Token marcado como usado');
 
-    // Actualizar contraseña
+    // Update password
     user.password = bcrypt.hashSync(newPassword, 10);
     await this.userRepository.save(user);
-    console.log('[PASSWORD RESET] ✅ Contraseña actualizada correctamente');
 
     return {
-      message: 'Contraseña actualizada correctamente',
+      message: 'Password updated successfully',
     };
   }
 }

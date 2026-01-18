@@ -26,10 +26,6 @@ export declare class AuthController {
     }>;
     resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
         message: string;
-        email?: undefined;
-    } | {
-        message: string;
-        email: string;
     }>;
     validateToken(validateTokenDTO: ValidateTokenDTO): Promise<boolean>;
     testingPrivate(): {
@@ -39,10 +35,6 @@ export declare class AuthController {
     getUser(req: any): any;
     requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO): Promise<{
         message: string;
-        email?: undefined;
-    } | {
-        message: string;
-        email: string;
     }>;
     resetPassword(resetPasswordDTO: ResetPasswordDTO): Promise<{
         message: string;

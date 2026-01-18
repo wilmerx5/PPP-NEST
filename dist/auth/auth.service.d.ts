@@ -42,10 +42,6 @@ export declare class AuthService {
     }>;
     resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
         message: string;
-        email?: undefined;
-    } | {
-        message: string;
-        email: string;
     }>;
     activateUser(validateTokenDTO: ValidateTokenDTO): Promise<{
         message: string;
@@ -55,10 +51,6 @@ export declare class AuthService {
     getRoles(): ValidRoles[];
     requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO): Promise<{
         message: string;
-        email?: undefined;
-    } | {
-        message: string;
-        email: string;
     }>;
     resetPassword(resetPasswordDTO: ResetPasswordDTO): Promise<{
         message: string;

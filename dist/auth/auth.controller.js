@@ -37,11 +37,8 @@ let AuthController = class AuthController {
     }
     async login(loginDto, res) {
         const { accessToken, refreshToken, user } = await this.authService.login(loginDto);
-        console.log('[AuthController] Login exitoso para:', loginDto.email);
-        console.log('[AuthController] Setting cookies...');
         this.cookieService.setAccessToken(res, accessToken);
         this.cookieService.setRefreshToken(res, refreshToken);
-        console.log('[AuthController] Cookies seteadas correctamente');
         return res.json({
             message: 'Logged in successfully',
             user,
@@ -92,31 +89,21 @@ let AuthController = class AuthController {
         return this.authService.resetPassword(resetPasswordDTO);
     }
     async googleAuth(req) {
-        console.log('[Google Auth] 🚨 Este método NO debería ejecutarse. Si se ejecuta, hay un problema con el Guard.');
-        console.log('[Google Auth] Request URL:', req.url);
-        console.log('[Google Auth] Request headers:', req.headers);
-        throw new Error('Google OAuth no está configurado correctamente - El Guard no interceptó la petición');
+        throw new Error('Google OAuth is not configured correctly - Guard did not intercept the request');
     }
     async googleAuthRedirect(req, res) {
         const user = req.user;
-        console.log('[Google Callback] ====== INICIO CALLBACK ======');
-        console.log('[Google Callback] Usuario:', user.email);
         const { accessToken, refreshToken } = await this.authService.getJwtTokens({ id: user.id });
-        console.log('[Google Callback] Tokens generados');
         const authFrontendUrl = process.env.AUTH_FRONTEND_URL || 'http://auth.ppp.local:5174/logged-in';
         const redirectUrl = `${authFrontendUrl}?at=${encodeURIComponent(accessToken)}&rt=${encodeURIComponent(refreshToken)}`;
-        console.log('[Google Callback] Redirigiendo a frontend con tokens en URL');
-        console.log('[Google Callback] ====== FIN CALLBACK ======');
         return res.redirect(redirectUrl);
     }
     async googleFinalize(body, res) {
         const { accessToken, refreshToken } = body;
-        console.log('[Google Finalize] Estableciendo cookies desde frontend...');
         this.cookieService.setAccessToken(res, accessToken);
         this.cookieService.setRefreshToken(res, refreshToken);
-        console.log('[Google Finalize] ✅ Cookies establecidas correctamente');
         return res.json({
-            message: 'Cookies establecidas correctamente',
+            message: 'Cookies set successfully',
         });
     }
 };
