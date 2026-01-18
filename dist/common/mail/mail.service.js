@@ -18,14 +18,20 @@ let MailService = class MailService {
     transporter;
     constructor(configService) {
         this.configService = configService;
+        const portRaw = this.configService.get('MAIL_PORT') ?? this.configService.get('MAIL_PORT');
+        const port = Number(portRaw) || 465;
+        const secureEnv = this.configService.get('MAIL_SECURE');
+        const secure = secureEnv === 'false' ? false : (secureEnv === 'true' ? true : port === 465);
         this.transporter = nodemailer.createTransport({
             host: this.configService.get('MAIL_HOST'),
-            port: this.configService.get('MAIL_PORT'),
-            secure: true,
+            port,
+            secure,
             auth: {
                 user: this.configService.get('MAIL_USER'),
                 pass: this.configService.get('MAIL_PASSWORD'),
             },
+            connectionTimeout: 15000,
+            greetingTimeout: 10000,
         });
     }
     async sendVerificationCode(email, code) {
@@ -121,6 +127,151 @@ let MailService = class MailService {
         catch (error) {
             console.error(error);
             throw new common_1.InternalServerErrorException('Error sending password reset email');
+        }
+    }
+    async sendOrderConfirmation(email, orderNumber, customerName, items, total, orderType, address, phone, deliveryFee) {
+        const mailHost = this.configService.get('MAIL_HOST');
+        const mailUser = this.configService.get('MAIL_USER');
+        if (!mailHost || !mailUser) {
+            console.warn('⚠️ [Mail] MAIL_HOST y/o MAIL_USER no están en .env. No se envía correo de confirmación. Agrega MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASSWORD.');
+            return false;
+        }
+        try {
+            const itemsHtml = items
+                .map((item) => `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px 0; color: #333;">${item.productName}</td>
+          <td style="padding: 12px 0; text-align: center; color: #666;">${item.quantity}</td>
+          <td style="padding: 12px 0; text-align: right; color: #333; font-weight: 600;">$${Number(item.price).toLocaleString('es-CO')}</td>
+        </tr>
+      `)
+                .join('');
+            const envioRow = deliveryFee != null && Number(deliveryFee) > 0
+                ? `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px 0; color: #333;">Envío a domicilio</td>
+          <td style="padding: 12px 0; text-align: center; color: #666;">1</td>
+          <td style="padding: 12px 0; text-align: right; color: #333; font-weight: 600;">$${Number(deliveryFee).toLocaleString('es-CO')}</td>
+        </tr>`
+                : '';
+            const orderTypeText = orderType === 'delivery'
+                ? 'Domicilio'
+                : orderType === 'pickup'
+                    ? 'Para Recoger'
+                    : orderType === 'table'
+                        ? 'Mesa'
+                        : 'Mostrador';
+            const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: white;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); padding: 30px 20px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">¡Pedido Confirmado!</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Pronto Pollo Portal</p>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 30px 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 80px; height: 80px; background-color: #10b981; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                  <svg style="width: 40px; height: 40px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <h2 style="color: #1f2937; margin: 0; font-size: 24px;">¡Gracias por tu pedido!</h2>
+                <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px;">Hemos recibido tu pedido correctamente</p>
+              </div>
+
+              <!-- Order Info -->
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb;">
+                  <span style="color: #6b7280; font-size: 14px;">Número de Pedido:</span>
+                  <span style="color: #1f2937; font-weight: 700; font-size: 18px;">#${orderNumber}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Cliente:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${customerName}</span>
+                </div>
+                ${phone ? `<div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Teléfono:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${phone}</span>
+                </div>` : ''}
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Tipo de Pedido:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${orderTypeText}</span>
+                </div>
+                ${address && orderType === 'delivery' ? `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <span style="color: #6b7280; font-size: 14px; display: block; margin-bottom: 5px;">Dirección de Entrega:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${address}</span>
+                </div>` : ''}
+              </div>
+
+              <!-- Items -->
+              <div style="margin-bottom: 30px;">
+                <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Resumen del Pedido</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                      <th style="text-align: left; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Producto</th>
+                      <th style="text-align: center; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Cant.</th>
+                      <th style="text-align: right; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Precio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                    ${envioRow}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Total -->
+              <div style="background-color: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #92400e; font-size: 18px; font-weight: 700;">Total:</span>
+                  <span style="color: #92400e; font-size: 24px; font-weight: 800;">$${Number(total).toLocaleString('es-CO')}</span>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                  Te notificaremos cuando tu pedido esté listo.
+                </p>
+                <p style="color: #9ca3af; font-size: 12px; margin: 15px 0 0 0;">
+                  Si tienes alguna pregunta, contáctanos directamente.
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer Brand -->
+            <div style="background-color: #1f2937; padding: 20px; text-align: center;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} Pronto Pollo Portal. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+            await this.transporter.sendMail({
+                from: `"Pronto Pollo Portal" <${this.configService.get('MAIL_USER')}>`,
+                to: email,
+                subject: `Confirmación de Pedido #${orderNumber} - Pronto Pollo Portal`,
+                html: htmlBody,
+            });
+            console.log(`✅ [Mail] Order confirmation email sent to ${email} for order #${orderNumber}`);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ [Mail] Error sending order confirmation email:', error?.message || error);
+            if (error?.code === 'ETIMEDOUT' || /Greeting never received/i.test(String(error?.message))) {
+                console.error('   💡 Revisa: MAIL_HOST (ej: smtp.gmail.com), MAIL_PORT (465=SSL, 587=STARTTLS), firewall. En Gmail usa contraseña de aplicación.');
+            }
+            throw new common_1.InternalServerErrorException('Error sending order confirmation email');
         }
     }
 };

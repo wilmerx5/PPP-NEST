@@ -13,6 +13,8 @@ exports.User = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
 const verification_token_entity_1 = require("./verification-token.entity");
+const address_entity_1 = require("./address.entity");
+const phone_entity_1 = require("./phone.entity");
 let User = class User {
     id;
     email;
@@ -20,9 +22,13 @@ let User = class User {
     fullName;
     isActive;
     phone;
+    googleId;
+    provider;
     roles;
     createdAt;
     verificationTokens;
+    addresses;
+    phones;
 };
 exports.User = User;
 __decorate([
@@ -47,7 +53,7 @@ __decorate([
         example: 'hashedPassword123',
         required: false,
     }),
-    (0, typeorm_1.Column)({ select: false }),
+    (0, typeorm_1.Column)({ select: false, nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
 __decorate([
@@ -71,10 +77,29 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Número de teléfono del usuario.',
         example: '+57 300 123 4567',
+        required: false,
     }),
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'ID de Google OAuth.',
+        example: '1234567890',
+        required: false,
+    }),
+    (0, typeorm_1.Column)({ name: 'google_id', nullable: true, unique: true }),
+    __metadata("design:type", String)
+], User.prototype, "googleId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Proveedor de autenticación.',
+        example: 'google',
+        required: false,
+    }),
+    (0, typeorm_1.Column)({ nullable: true, default: 'local' }),
+    __metadata("design:type", String)
+], User.prototype, "provider", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Roles asignados al usuario.',
@@ -102,6 +127,24 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => verification_token_entity_1.VerificationToken, (token) => token.user),
     __metadata("design:type", Array)
 ], User.prototype, "verificationTokens", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Direcciones asociadas al usuario.',
+        type: () => [address_entity_1.Address],
+        required: false,
+    }),
+    (0, typeorm_1.OneToMany)(() => address_entity_1.Address, (address) => address.user),
+    __metadata("design:type", Array)
+], User.prototype, "addresses", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Teléfonos asociados al usuario.',
+        type: () => [phone_entity_1.Phone],
+        required: false,
+    }),
+    (0, typeorm_1.OneToMany)(() => phone_entity_1.Phone, (phone) => phone.user),
+    __metadata("design:type", Array)
+], User.prototype, "phones", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('ppp_users')
 ], User);

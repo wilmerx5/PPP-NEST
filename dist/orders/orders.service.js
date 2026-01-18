@@ -43,9 +43,10 @@ let OrdersService = class OrdersService {
         return { todayStartUtc: startOfBogotaDay, todayEndUtc: endOfBogotaDay };
     }
     async create(createOrderDto) {
-        const { customerName, phone, address, items } = createOrderDto;
+        const { customerName, phone, address, items, customerEmail, orderSource } = createOrderDto;
         const orderType = createOrderDto.orderType ?? 'pickup';
         const deliveryFee = createOrderDto.deliveryFee;
+        const source = orderSource ?? 'internal';
         const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
         const ordersTodayCount = await this.orderRepo.count({
             where: { createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc) },
@@ -64,7 +65,10 @@ let OrdersService = class OrdersService {
             address,
             dailyOrderNumber: newOrderNumber,
             orderType: orderType,
+            orderStatus: 'cooking',
             deliveryFee: finalDeliveryFee,
+            customerEmail: customerEmail || null,
+            orderSource: source,
         });
         await this.orderRepo.save(order);
         for (const item of items) {
@@ -147,6 +151,61 @@ let OrdersService = class OrdersService {
                 orderStatus: order.orderStatus,
                 printed: order.printed,
                 deliveryFee: order.deliveryFee ?? 0,
+                orderSource: order.orderSource ?? 'internal',
+                items: Object.values(groupedItems),
+            };
+        });
+    }
+    async findMine(email) {
+        const orders = await this.orderRepo.find({
+            where: {
+                customerEmail: email,
+                orderStatus: (0, typeorm_2.Not)('canceled'),
+            },
+            relations: ['items', 'items.product', 'items.attributes'],
+            order: { createdAt: 'DESC' },
+        });
+        return orders.map((order) => {
+            const groupedItems = {};
+            for (const item of order.items) {
+                const productId = item.product.id;
+                const productName = item.product.name;
+                const code = item.product.code;
+                const imageUrl = item.product.imageUrl;
+                const price = item.product.price;
+                const attributeMap = item.attributes?.reduce((acc, attr) => {
+                    acc[attr.attributeName] = attr.attributeValue;
+                    return acc;
+                }, {});
+                if (!groupedItems[productId]) {
+                    groupedItems[productId] = {
+                        productId,
+                        productName,
+                        quantity: 0,
+                        imageUrl,
+                        code,
+                        price,
+                        variants: [],
+                    };
+                }
+                groupedItems[productId].quantity += 1;
+                groupedItems[productId].variants.push({
+                    note: item.note || null,
+                    attributes: attributeMap,
+                });
+            }
+            return {
+                orderId: order.id,
+                dailyOrderNumber: order.dailyOrderNumber,
+                customerName: order.customerName,
+                phone: order.phone,
+                address: order.address,
+                createdAt: order.createdAt,
+                orderType: order.orderType,
+                orderStatus: order.orderStatus,
+                printed: order.printed,
+                deliveryFee: order.deliveryFee ?? 0,
+                orderSource: order.orderSource ?? 'internal',
                 items: Object.values(groupedItems),
             };
         });
@@ -301,6 +360,7 @@ let OrdersService = class OrdersService {
             orderStatus: order.orderStatus,
             printed: order.printed,
             deliveryFee: order.deliveryFee ?? 0,
+            orderSource: order.orderSource ?? 'internal',
             items: Object.values(groupedItems),
         };
     }

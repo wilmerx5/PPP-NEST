@@ -9,12 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const config_1 = require("@nestjs/config");
 const payments_controller_1 = require("./payments.controller");
 const payments_service_1 = require("./payments.service");
 const payment_entity_1 = require("./entities/payment.entity");
 const order_entity_1 = require("../orders/entities/order.entity");
 const orders_module_1 = require("../orders/orders.module");
 const auth_module_1 = require("../auth/auth.module");
+const common_module_1 = require("../common/common.module");
 let PaymentsModule = class PaymentsModule {
 };
 exports.PaymentsModule = PaymentsModule;
@@ -22,6 +24,8 @@ exports.PaymentsModule = PaymentsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([payment_entity_1.Payment, order_entity_1.Order]),
+            config_1.ConfigModule,
+            common_module_1.CommonModule,
             orders_module_1.OrdersModule,
             auth_module_1.AuthModule,
         ],

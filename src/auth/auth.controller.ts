@@ -247,4 +247,83 @@ getUser(@Req() req) {
     return this.authService.resetPassword(resetPasswordDTO);
   }
 
+  // -------------------------------------------------------------
+  // GOOGLE OAUTH
+  // -------------------------------------------------------------
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Iniciar autenticación con Google' })
+  @ApiResponse({ status: 302, description: 'Redirige a Google OAuth' })
+  async googleAuth(@Req() req: Request) {
+    // Passport maneja la redirección automáticamente
+    // Este método nunca se ejecuta porque Passport intercepta antes
+    // y redirige directamente a Google OAuth
+    console.log('[Google Auth] 🚨 Este método NO debería ejecutarse. Si se ejecuta, hay un problema con el Guard.');
+    console.log('[Google Auth] Request URL:', req.url);
+    console.log('[Google Auth] Request headers:', req.headers);
+    // Si llegas aquí, significa que hubo un error en la configuración
+    throw new Error('Google OAuth no está configurado correctamente - El Guard no interceptó la petición');
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Callback de Google OAuth' })
+  @ApiResponse({ status: 302, description: 'Redirige al frontend con tokens en URL' })
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const user = req.user as User;
+    
+    console.log('[Google Callback] ====== INICIO CALLBACK ======');
+    console.log('[Google Callback] Usuario:', user.email);
+    
+    // Generar tokens JWT
+    const { accessToken, refreshToken } = await this.authService.getJwtTokens({ id: user.id });
+    
+    console.log('[Google Callback] Tokens generados');
+    
+    // NO ESTABLECER COOKIES AQUÍ - el navegador las bloquea en redirects cross-site
+    // En su lugar, pasar tokens como query params para que el frontend los establezca
+    
+    const authFrontendUrl = process.env.AUTH_FRONTEND_URL || 'http://auth.ppp.local:5174/logged-in';
+    
+    // Pasar tokens como query params (será temporal, el frontend llamará a /auth/google/finalize)
+    const redirectUrl = `${authFrontendUrl}?at=${encodeURIComponent(accessToken)}&rt=${encodeURIComponent(refreshToken)}`;
+    
+    console.log('[Google Callback] Redirigiendo a frontend con tokens en URL');
+    console.log('[Google Callback] ====== FIN CALLBACK ======');
+    
+    return res.redirect(redirectUrl);
+  }
+
+  @Post('google/finalize')
+  @ApiOperation({ summary: 'Establece cookies después de Google OAuth' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Cookies establecidas correctamente' })
+  async googleFinalize(
+    @Body() body: { accessToken: string; refreshToken: string },
+    @Res() res: Response,
+  ) {
+    const { accessToken, refreshToken } = body;
+    
+    console.log('[Google Finalize] Estableciendo cookies desde frontend...');
+    
+    // Ahora SÍ establecer las cookies (la petición viene del frontend, no de Google)
+    this.cookieService.setAccessToken(res, accessToken);
+    this.cookieService.setRefreshToken(res, refreshToken);
+    
+    console.log('[Google Finalize] ✅ Cookies establecidas correctamente');
+    
+    return res.json({
+      message: 'Cookies establecidas correctamente',
+    });
+  }
+
 }

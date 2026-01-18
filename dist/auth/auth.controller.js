@@ -91,6 +91,34 @@ let AuthController = class AuthController {
     async resetPassword(resetPasswordDTO) {
         return this.authService.resetPassword(resetPasswordDTO);
     }
+    async googleAuth(req) {
+        console.log('[Google Auth] 🚨 Este método NO debería ejecutarse. Si se ejecuta, hay un problema con el Guard.');
+        console.log('[Google Auth] Request URL:', req.url);
+        console.log('[Google Auth] Request headers:', req.headers);
+        throw new Error('Google OAuth no está configurado correctamente - El Guard no interceptó la petición');
+    }
+    async googleAuthRedirect(req, res) {
+        const user = req.user;
+        console.log('[Google Callback] ====== INICIO CALLBACK ======');
+        console.log('[Google Callback] Usuario:', user.email);
+        const { accessToken, refreshToken } = await this.authService.getJwtTokens({ id: user.id });
+        console.log('[Google Callback] Tokens generados');
+        const authFrontendUrl = process.env.AUTH_FRONTEND_URL || 'http://auth.ppp.local:5174/logged-in';
+        const redirectUrl = `${authFrontendUrl}?at=${encodeURIComponent(accessToken)}&rt=${encodeURIComponent(refreshToken)}`;
+        console.log('[Google Callback] Redirigiendo a frontend con tokens en URL');
+        console.log('[Google Callback] ====== FIN CALLBACK ======');
+        return res.redirect(redirectUrl);
+    }
+    async googleFinalize(body, res) {
+        const { accessToken, refreshToken } = body;
+        console.log('[Google Finalize] Estableciendo cookies desde frontend...');
+        this.cookieService.setAccessToken(res, accessToken);
+        this.cookieService.setRefreshToken(res, refreshToken);
+        console.log('[Google Finalize] ✅ Cookies establecidas correctamente');
+        return res.json({
+            message: 'Cookies establecidas correctamente',
+        });
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -267,6 +295,46 @@ __decorate([
     __metadata("design:paramtypes", [reset_password_dto_1.ResetPasswordDTO]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Get)('google'),
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('google')),
+    (0, swagger_1.ApiOperation)({ summary: 'Iniciar autenticación con Google' }),
+    (0, swagger_1.ApiResponse)({ status: 302, description: 'Redirige a Google OAuth' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleAuth", null);
+__decorate([
+    (0, common_1.Get)('google/callback'),
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('google')),
+    (0, swagger_1.ApiOperation)({ summary: 'Callback de Google OAuth' }),
+    (0, swagger_1.ApiResponse)({ status: 302, description: 'Redirige al frontend con tokens en URL' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleAuthRedirect", null);
+__decorate([
+    (0, common_1.Post)('google/finalize'),
+    (0, swagger_1.ApiOperation)({ summary: 'Establece cookies después de Google OAuth' }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                accessToken: { type: 'string' },
+                refreshToken: { type: 'string' },
+            },
+        },
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Cookies establecidas correctamente' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleFinalize", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),

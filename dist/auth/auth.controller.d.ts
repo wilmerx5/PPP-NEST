@@ -47,4 +47,10 @@ export declare class AuthController {
     resetPassword(resetPasswordDTO: ResetPasswordDTO): Promise<{
         message: string;
     }>;
+    googleAuth(req: Request): Promise<void>;
+    googleAuthRedirect(req: Request, res: Response): Promise<void>;
+    googleFinalize(body: {
+        accessToken: string;
+        refreshToken: string;
+    }, res: Response): Promise<Response<any, Record<string, any>>>;
 }

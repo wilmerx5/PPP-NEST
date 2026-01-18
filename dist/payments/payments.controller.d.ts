@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from './payments.service';
 interface CreatePreferenceDto {
     orderData: {
@@ -29,7 +30,9 @@ interface CreatePreferenceDto {
 }
 export declare class PaymentsController {
     private readonly paymentsService;
-    constructor(paymentsService: PaymentsService);
+    private readonly configService;
+    constructor(paymentsService: PaymentsService, configService: ConfigService);
+    private validateWebhookSignature;
     createPreference(createPreferenceDto: CreatePreferenceDto): Promise<{
         preferenceId: string;
         initPoint: string;

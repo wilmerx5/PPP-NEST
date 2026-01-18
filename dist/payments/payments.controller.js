@@ -16,11 +16,64 @@ exports.PaymentsController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const passport_1 = require("@nestjs/passport");
+const config_1 = require("@nestjs/config");
 const payments_service_1 = require("./payments.service");
+const crypto = require("crypto");
 let PaymentsController = class PaymentsController {
     paymentsService;
-    constructor(paymentsService) {
+    configService;
+    constructor(paymentsService, configService) {
         this.paymentsService = paymentsService;
+        this.configService = configService;
+    }
+    validateWebhookSignature(req, body) {
+        const webhookSecret = this.configService.get('MERCADO_PAGO_WEBHOOK_SECRET');
+        if (!webhookSecret) {
+            console.warn('⚠️ [Webhook] MERCADO_PAGO_WEBHOOK_SECRET no configurado. Saltando validación (NO RECOMENDADO en producción).');
+            return true;
+        }
+        const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
+        const xRequestId = req.headers['x-request-id'] || req.headers['X-Request-Id'];
+        if (!xSignature || !xRequestId) {
+            console.error('❌ [Webhook] Faltan headers requeridos: x-signature o x-request-id');
+            return false;
+        }
+        const dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
+        if (!dataId) {
+            console.error('❌ [Webhook] No se encontró data.id en el webhook');
+            return false;
+        }
+        try {
+            const parts = xSignature.split(',');
+            const tsPart = parts.find(p => p.startsWith('ts='));
+            const v1Part = parts.find(p => p.startsWith('v1='));
+            if (!tsPart || !v1Part) {
+                console.error('❌ [Webhook] Formato de x-signature inválido');
+                return false;
+            }
+            const ts = tsPart.split('=')[1];
+            const v1 = v1Part.split('=')[1];
+            const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+            const hmac = crypto
+                .createHmac('sha256', webhookSecret)
+                .update(manifest)
+                .digest('hex');
+            const isValid = hmac.toLowerCase() === v1.toLowerCase();
+            if (!isValid) {
+                console.error('❌ [Webhook] Firma inválida. Webhook rechazado.');
+                console.error('   Manifest:', manifest);
+                console.error('   Calculado:', hmac);
+                console.error('   Recibido: ', v1);
+            }
+            else {
+                console.log('✅ [Webhook] Firma validada correctamente');
+            }
+            return isValid;
+        }
+        catch (error) {
+            console.error('❌ [Webhook] Error validando firma:', error.message);
+            return false;
+        }
     }
     async createPreference(createPreferenceDto) {
         return this.paymentsService.createPreference(createPreferenceDto.orderData, createPreferenceDto.items, createPreferenceDto.totalAmount, createPreferenceDto.customerInfo);
@@ -29,8 +82,14 @@ let PaymentsController = class PaymentsController {
         console.log('🔔 [Webhook Controller] Received webhook request');
         console.log('📥 [Webhook Controller] Body:', JSON.stringify(body, null, 2));
         console.log('📥 [Webhook Controller] Query:', JSON.stringify(req.query, null, 2));
-        console.log('📥 [Webhook Controller] Headers:', JSON.stringify(req.headers, null, 2));
+        console.log('📥 [Webhook Controller] Headers:', JSON.stringify({
+            'x-signature': req.headers['x-signature'] || req.headers['X-Signature'],
+            'x-request-id': req.headers['x-request-id'] || req.headers['X-Request-Id'],
+        }, null, 2));
         try {
+            if (!this.validateWebhookSignature(req, body)) {
+                throw new common_1.UnauthorizedException('Invalid webhook signature. Request rejected for security reasons.');
+            }
             let data = body || req.body;
             if (req.query?.id) {
                 data = {
@@ -133,7 +192,7 @@ __decorate([
     (0, common_1.Post)('webhook'),
     (0, swagger_1.ApiOperation)({
         summary: 'Mercado Pago webhook endpoint',
-        description: 'Receives webhook notifications from Mercado Pago.',
+        description: 'Receives webhook notifications from Mercado Pago. Validates webhook signature for security.',
     }),
     (0, swagger_1.ApiBody)({
         schema: {
@@ -150,6 +209,7 @@ __decorate([
         },
     }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Webhook processed successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid webhook signature' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
@@ -203,6 +263,7 @@ __decorate([
 exports.PaymentsController = PaymentsController = __decorate([
     (0, swagger_1.ApiTags)('Payments'),
     (0, common_1.Controller)('payments'),
-    __metadata("design:paramtypes", [payments_service_1.PaymentsService])
+    __metadata("design:paramtypes", [payments_service_1.PaymentsService,
+        config_1.ConfigService])
 ], PaymentsController);
 //# sourceMappingURL=payments.controller.js.map

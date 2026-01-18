@@ -61,10 +61,10 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
-    // ✅ (AÑADIDO) leer orderType y deliveryFee sin romper lo demás
-    const { customerName, phone, address, items } = createOrderDto;
+    const { customerName, phone, address, items, customerEmail, orderSource } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
+    const source = orderSource ?? 'internal';
 
     const { todayStartUtc, todayEndUtc } = this.getTodayUtcRange();
 
@@ -84,15 +84,17 @@ export class OrdersService {
       finalDeliveryFee = deliveryFee;
     }
 
-    // Crear orden
+    // Crear orden (orderStatus: 'cooking' = al entrar ya está en preparación; orderSource = online|internal)
     const order = this.orderRepo.create({
       customerName,
       phone,
       address,
       dailyOrderNumber: newOrderNumber,
       orderType: orderType,
-      // ✅ (AÑADIDO)
+      orderStatus: 'cooking',
       deliveryFee: finalDeliveryFee,
+      customerEmail: customerEmail || null,
+      orderSource: source,
     });
 
     await this.orderRepo.save(order);
@@ -199,8 +201,76 @@ export class OrdersService {
         orderType: order.orderType,
         orderStatus: order.orderStatus,
         printed: order.printed,
-        // ✅ (AÑADIDO)
-        deliveryFee: (order as any).deliveryFee ?? 0,
+        deliveryFee: order.deliveryFee ?? 0,
+        orderSource: order.orderSource ?? 'internal',
+        items: Object.values(groupedItems),
+      };
+    });
+  }
+
+  /**
+   * Obtiene las órdenes del usuario autenticado (por email).
+   * Excluye canceladas. Mismo formato que findOrdersToday.
+   *
+   * @param email - Email del usuario (req.user.email).
+   * @returns Lista de órdenes formateadas.
+   */
+  async findMine(email: string) {
+    const orders = await this.orderRepo.find({
+      where: {
+        customerEmail: email,
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product', 'items.attributes'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return orders.map((order) => {
+      const groupedItems: Record<number, any> = {};
+
+      for (const item of order.items) {
+        const productId = item.product.id;
+        const productName = item.product.name;
+        const code = item.product.code;
+        const imageUrl = item.product.imageUrl;
+        const price = item.product.price;
+
+        const attributeMap = item.attributes?.reduce((acc, attr) => {
+          acc[attr.attributeName] = attr.attributeValue;
+          return acc;
+        }, {} as Record<string, string>);
+
+        if (!groupedItems[productId]) {
+          groupedItems[productId] = {
+            productId,
+            productName,
+            quantity: 0,
+            imageUrl,
+            code,
+            price,
+            variants: [],
+          };
+        }
+
+        groupedItems[productId].quantity += 1;
+        groupedItems[productId].variants.push({
+          note: item.note || null,
+          attributes: attributeMap,
+        });
+      }
+
+      return {
+        orderId: order.id,
+        dailyOrderNumber: order.dailyOrderNumber,
+        customerName: order.customerName,
+        phone: order.phone,
+        address: order.address,
+        createdAt: order.createdAt,
+        orderType: order.orderType,
+        orderStatus: order.orderStatus,
+        printed: order.printed,
+        deliveryFee: order.deliveryFee ?? 0,
+        orderSource: order.orderSource ?? 'internal',
         items: Object.values(groupedItems),
       };
     });
@@ -422,6 +492,7 @@ export class OrdersService {
       orderStatus: order.orderStatus,
       printed: order.printed,
       deliveryFee: order.deliveryFee ?? 0,
+      orderSource: order.orderSource ?? 'internal',
       items: Object.values(groupedItems),
     };
   }

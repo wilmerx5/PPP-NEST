@@ -6,4 +6,9 @@ export declare class MailService {
     sendVerificationCode(email: string, code: string): Promise<boolean>;
     sendActivateUser(email: string, userId: string, code: string): Promise<boolean>;
     sendPasswordResetCode(email: string, code: string): Promise<boolean>;
+    sendOrderConfirmation(email: string, orderNumber: number, customerName: string, items: Array<{
+        productName: string;
+        quantity: number;
+        price: number;
+    }>, total: number, orderType: string, address?: string, phone?: string, deliveryFee?: number): Promise<boolean>;
 }

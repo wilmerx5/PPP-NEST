@@ -9,6 +9,7 @@ import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { ValidRoles } from './interfaces/valid.roles.interface';
 export declare class AuthService {
     private readonly userRepository;
@@ -25,7 +26,10 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
     }>;
-    private getJwtTokens;
+    getJwtTokens(payload: JwtPayload): {
+        accessToken: string;
+        refreshToken: string;
+    };
     create(createUserDto: CreateUserDTO): Promise<{
         msg: string;
     } | undefined>;

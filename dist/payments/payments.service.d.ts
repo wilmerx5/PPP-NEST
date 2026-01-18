@@ -4,16 +4,18 @@ import { Repository } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
+import { MailService } from '../common/mail/mail.service';
 export declare class PaymentsService {
     private readonly paymentRepo;
     private readonly orderRepo;
     private readonly configService;
     private readonly moduleRef;
+    private readonly mailService;
     private client;
     private preference;
     private payment;
     private ordersService;
-    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, configService: ConfigService, moduleRef: ModuleRef);
+    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, configService: ConfigService, moduleRef: ModuleRef, mailService: MailService);
     createPreference(orderData: CreateOrderDto, items: Array<{
         title: string;
         quantity: number;

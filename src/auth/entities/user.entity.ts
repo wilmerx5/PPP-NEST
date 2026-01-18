@@ -1,6 +1,8 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { VerificationToken } from "./verification-token.entity";
+import { Address } from "./address.entity";
+import { Phone } from "./phone.entity";
 
 @Entity('ppp_users')
 export class User {
@@ -24,7 +26,7 @@ export class User {
         example: 'hashedPassword123',
         required: false,
     })
-    @Column({ select: false })
+    @Column({ select: false, nullable: true })
     password: string;
 
     @ApiProperty({
@@ -45,9 +47,26 @@ export class User {
     @ApiProperty({
         description: 'Número de teléfono del usuario.',
         example: '+57 300 123 4567',
+        required: false,
     })
-    @Column()
+    @Column({ nullable: true })
     phone: string;
+
+    @ApiProperty({
+        description: 'ID de Google OAuth.',
+        example: '1234567890',
+        required: false,
+    })
+    @Column({ name: 'google_id', nullable: true, unique: true })
+    googleId: string;
+
+    @ApiProperty({
+        description: 'Proveedor de autenticación.',
+        example: 'google',
+        required: false,
+    })
+    @Column({ nullable: true, default: 'local' })
+    provider: string;
 
     @ApiProperty({
         description: 'Roles asignados al usuario.',
@@ -72,4 +91,20 @@ createdAt: Date;
     })
     @OneToMany(() => VerificationToken, (token) => token.user)
     verificationTokens: VerificationToken[];
+
+    @ApiProperty({
+        description: 'Direcciones asociadas al usuario.',
+        type: () => [Address],
+        required: false,
+    })
+    @OneToMany(() => Address, (address) => address.user)
+    addresses: Address[];
+
+    @ApiProperty({
+        description: 'Teléfonos asociados al usuario.',
+        type: () => [Phone],
+        required: false,
+    })
+    @OneToMany(() => Phone, (phone) => phone.user)
+    phones: Phone[];
 }

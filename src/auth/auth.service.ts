@@ -50,14 +50,14 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException("Inactive User, pleas active your user")
 
 
-    const tokens = this.getJwtTokens({ id: user.id })
-    return { ...tokens, user }
+    const tokens = this.getJwtTokens({ id: user.id });
+    return { ...tokens, user };
 
   }
 
-  private getJwtTokens(payload: JwtPayload) {
+  getJwtTokens(payload: JwtPayload) {
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '1m',
+      expiresIn: '15m', // 15 minutos
     });
 
     const refreshToken = this.jwtService.sign(payload, {

@@ -8,14 +8,19 @@ import {
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 
-export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
+export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter' | 'rappi';
+
+/** Origen de la orden: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas */
+export type OrderSource = 'online' | 'internal';
+
 export type OrderStatus =
-  | 'cooking'
-  | 'cooked'
-  | 'packing'
-  | 'canceled'
-  | 'inDelivery'
-  | 'completed';
+  | 'pending'    // Recién creada / confirmada
+  | 'cooking'   // En preparación (cocina)
+  | 'cooked'    // Lista (cocina terminó)
+  | 'packing'   // Empacando (para delivery)
+  | 'inDelivery'// En camino (delivery)
+  | 'completed' // Entregada / Recogida / Completada
+  | 'canceled'; // Cancelada
 
 @Entity({ name: 'ppp_orders', synchronize: true })
 export class Order {
@@ -49,6 +54,14 @@ export class Order {
   address: string;
 
   @ApiProperty({
+    description: 'Email del cliente (para vincular con usuario y "Mis pedidos").',
+    example: 'cliente@example.com',
+    nullable: true,
+  })
+  @Column({ name: 'customer_email', type: 'varchar', length: 255, nullable: true })
+  customerEmail?: string | null;
+
+  @ApiProperty({
     description: 'Fecha de creación de la orden.',
     example: '2025-11-14T20:12:00.000Z',
   })
@@ -73,11 +86,11 @@ export class Order {
   @ApiProperty({
     description: 'Tipo de la orden.',
     example: 'pickup',
-    enum: ['delivery', 'pickup', 'table', 'counter'],
+    enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
   })
   @Column({
     type: 'enum',
-    enum: ['delivery', 'pickup', 'table', 'counter'],
+    enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
     default: 'pickup',
     name: 'order_type',
   })
@@ -86,11 +99,11 @@ export class Order {
   @ApiProperty({
     description: 'Estado actual de la orden.',
     example: 'cooking',
-    enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
+    enum: ['pending', 'cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
   })
   @Column({
     type: 'enum',
-    enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
+    enum: ['pending', 'cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
     default: 'cooking',
     name: 'order_status',
   })
@@ -117,4 +130,17 @@ export class Order {
   })
   @Column({ type: 'boolean', default: false })
   printed: boolean;
+
+  @ApiProperty({
+    description: 'Origen: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas.',
+    example: 'online',
+    enum: ['online', 'internal'],
+  })
+  @Column({
+    name: 'order_source',
+    type: 'varchar',
+    length: 20,
+    default: 'internal',
+  })
+  orderSource: OrderSource;
 }

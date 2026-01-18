@@ -1,11 +1,13 @@
 import { OrderItem } from './order-item.entity';
-export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter';
-export type OrderStatus = 'cooking' | 'cooked' | 'packing' | 'canceled' | 'inDelivery' | 'completed';
+export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter' | 'rappi';
+export type OrderSource = 'online' | 'internal';
+export type OrderStatus = 'pending' | 'cooking' | 'cooked' | 'packing' | 'inDelivery' | 'completed' | 'canceled';
 export declare class Order {
     id: number;
     customerName: string;
     phone: string;
     address: string;
+    customerEmail?: string | null;
     createdAt: Date;
     items: OrderItem[];
     dailyOrderNumber: number;
@@ -13,4 +15,5 @@ export declare class Order {
     orderStatus: OrderStatus;
     deliveryFee: number;
     printed: boolean;
+    orderSource: OrderSource;
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { OrderStatus, OrderType } from "../entities/order.entity";
+import { OrderSource, OrderStatus, OrderType } from "../entities/order.entity";
 import { IsEnum, IsNumber, IsOptional, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -66,13 +66,20 @@ export class CreateOrderDto {
   address: string;
 
   @ApiProperty({
-    description: 'Tipo de orden.',
-    example: 'delivery',
-    enum: ['delivery', 'pickup', 'table', 'counter'],
+    description: 'Email del cliente (solo lo asigna el backend desde el pago).',
     required: false,
   })
   @IsOptional()
-  @IsEnum(['delivery', 'pickup', 'table', 'counter'])
+  customerEmail?: string;
+
+  @ApiProperty({
+    description: 'Tipo de orden.',
+    example: 'delivery',
+    enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(['delivery', 'pickup', 'table', 'counter', 'rappi'])
   orderType?: OrderType;
 
   @ApiProperty({
@@ -85,6 +92,15 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   deliveryFee?: number;
+
+  @ApiProperty({
+    description: 'Origen: online = cliente/ppp-front; internal = panel. No enviar = internal.',
+    enum: ['online', 'internal'],
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(['online', 'internal'])
+  orderSource?: OrderSource;
 
   @ApiProperty({
     description: 'Lista de productos incluidos en la orden.',
@@ -172,8 +188,8 @@ export class UpdateOrderGeneralDto {
 
   @ApiProperty({
     description: 'Nuevo tipo de la orden.',
-
-    example:   "'delivery' | 'pickup' | 'table' | 'counter'",
+    example: "'delivery' | 'pickup' | 'table' | 'counter' | 'rappi'",
+    enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
     required: false,
   })
   orderType?: OrderType;

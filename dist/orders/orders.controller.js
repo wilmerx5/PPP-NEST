@@ -15,12 +15,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const passport_1 = require("@nestjs/passport");
 const orderDTO_1 = require("./DTOS/orderDTO");
 const orders_service_1 = require("./orders.service");
 let OrdersController = class OrdersController {
     orderService;
     constructor(orderService) {
         this.orderService = orderService;
+    }
+    async getMine(req) {
+        const email = req.user?.email;
+        if (!email) {
+            return [];
+        }
+        return this.orderService.findMine(email);
     }
     async createOrder(createOrderDto) {
         return this.orderService.create(createOrderDto);
@@ -41,6 +49,21 @@ let OrdersController = class OrdersController {
     }
 };
 exports.OrdersController = OrdersController;
+__decorate([
+    (0, common_1.Get)('mine'),
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Mis pedidos',
+        description: 'Devuelve las órdenes del usuario autenticado (por email). Requiere JWT.',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Lista de órdenes del usuario' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'No autenticado' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getMine", null);
 __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({

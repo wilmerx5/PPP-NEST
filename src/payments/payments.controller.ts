@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,7 +17,9 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from './payments.service';
+import * as crypto from 'crypto';
 
 interface CreatePreferenceDto {
   orderData: {
@@ -50,7 +53,83 @@ interface CreatePreferenceDto {
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Valida la firma del webhook de Mercado Pago
+   * @param req - Request object con headers y body
+   * @param body - Body del webhook
+   * @returns true si la firma es válida, false en caso contrario
+   */
+  private validateWebhookSignature(req: any, body: any): boolean {
+    const webhookSecret = this.configService.get<string>('MERCADO_PAGO_WEBHOOK_SECRET');
+    
+    // Si no hay secret configurado, permitir (para desarrollo, pero no recomendado)
+    if (!webhookSecret) {
+      console.warn('⚠️ [Webhook] MERCADO_PAGO_WEBHOOK_SECRET no configurado. Saltando validación (NO RECOMENDADO en producción).');
+      return true; // Permitir en desarrollo, pero advertir
+    }
+
+    const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
+    const xRequestId = req.headers['x-request-id'] || req.headers['X-Request-Id'];
+
+    if (!xSignature || !xRequestId) {
+      console.error('❌ [Webhook] Faltan headers requeridos: x-signature o x-request-id');
+      return false;
+    }
+
+    // Extraer data.id del body o query params
+    const dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
+    
+    if (!dataId) {
+      console.error('❌ [Webhook] No se encontró data.id en el webhook');
+      return false;
+    }
+
+    try {
+      // Parsear x-signature: "ts=<timestamp>,v1=<hash>"
+      const parts = xSignature.split(',');
+      const tsPart = parts.find(p => p.startsWith('ts='));
+      const v1Part = parts.find(p => p.startsWith('v1='));
+
+      if (!tsPart || !v1Part) {
+        console.error('❌ [Webhook] Formato de x-signature inválido');
+        return false;
+      }
+
+      const ts = tsPart.split('=')[1];
+      const v1 = v1Part.split('=')[1];
+
+      // Construir el manifest según la documentación de Mercado Pago
+      const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+
+      // Calcular HMAC-SHA256
+      const hmac = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(manifest)
+        .digest('hex');
+
+      // Comparar con v1
+      const isValid = hmac.toLowerCase() === v1.toLowerCase();
+
+      if (!isValid) {
+        console.error('❌ [Webhook] Firma inválida. Webhook rechazado.');
+        console.error('   Manifest:', manifest);
+        console.error('   Calculado:', hmac);
+        console.error('   Recibido: ', v1);
+      } else {
+        console.log('✅ [Webhook] Firma validada correctamente');
+      }
+
+      return isValid;
+    } catch (error: any) {
+      console.error('❌ [Webhook] Error validando firma:', error.message);
+      return false;
+    }
+  }
 
   @Post('create-preference')
   @UseGuards(AuthGuard('jwt'))
@@ -106,7 +185,7 @@ export class PaymentsController {
   @Post('webhook')
   @ApiOperation({
     summary: 'Mercado Pago webhook endpoint',
-    description: 'Receives webhook notifications from Mercado Pago.',
+    description: 'Receives webhook notifications from Mercado Pago. Validates webhook signature for security.',
   })
   @ApiBody({
     schema: {
@@ -123,13 +202,21 @@ export class PaymentsController {
     },
   })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   async handleWebhook(@Body() body: any, @Req() req: any) {
     console.log('🔔 [Webhook Controller] Received webhook request');
     console.log('📥 [Webhook Controller] Body:', JSON.stringify(body, null, 2));
     console.log('📥 [Webhook Controller] Query:', JSON.stringify(req.query, null, 2));
-    console.log('📥 [Webhook Controller] Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('📥 [Webhook Controller] Headers:', JSON.stringify({
+      'x-signature': req.headers['x-signature'] || req.headers['X-Signature'],
+      'x-request-id': req.headers['x-request-id'] || req.headers['X-Request-Id'],
+    }, null, 2));
     
     try {
+      // Validar firma del webhook
+      if (!this.validateWebhookSignature(req, body)) {
+        throw new UnauthorizedException('Invalid webhook signature. Request rejected for security reasons.');
+      }
       // Mercado Pago puede enviar datos de diferentes formas:
       // 1. POST con body: { type: 'payment', data: { id: '123' } }
       // 2. GET con query param: ?id=123

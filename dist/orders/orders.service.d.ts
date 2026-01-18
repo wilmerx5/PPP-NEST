@@ -29,7 +29,22 @@ export declare class OrdersService {
         orderType: import("./entities/order.entity").OrderType;
         orderStatus: import("./entities/order.entity").OrderStatus;
         printed: boolean;
-        deliveryFee: any;
+        deliveryFee: number;
+        orderSource: import("./entities/order.entity").OrderSource;
+        items: any[];
+    }[]>;
+    findMine(email: string): Promise<{
+        orderId: number;
+        dailyOrderNumber: number;
+        customerName: string;
+        phone: string;
+        address: string;
+        createdAt: Date;
+        orderType: import("./entities/order.entity").OrderType;
+        orderStatus: import("./entities/order.entity").OrderStatus;
+        printed: boolean;
+        deliveryFee: number;
+        orderSource: import("./entities/order.entity").OrderSource;
         items: any[];
     }[]>;
     removeOrder(orderId: number): Promise<{

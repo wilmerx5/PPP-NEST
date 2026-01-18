@@ -22,20 +22,23 @@ const mercadopago_1 = require("mercadopago");
 const order_entity_1 = require("../orders/entities/order.entity");
 const payment_entity_1 = require("./entities/payment.entity");
 const orders_service_1 = require("../orders/orders.service");
+const mail_service_1 = require("../common/mail/mail.service");
 let PaymentsService = class PaymentsService {
     paymentRepo;
     orderRepo;
     configService;
     moduleRef;
+    mailService;
     client;
     preference;
     payment;
     ordersService;
-    constructor(paymentRepo, orderRepo, configService, moduleRef) {
+    constructor(paymentRepo, orderRepo, configService, moduleRef, mailService) {
         this.paymentRepo = paymentRepo;
         this.orderRepo = orderRepo;
         this.configService = configService;
         this.moduleRef = moduleRef;
+        this.mailService = mailService;
         try {
             const accessToken = this.configService.get('MERCADO_PAGO_ACCESS_TOKEN');
             if (!accessToken) {
@@ -60,21 +63,66 @@ let PaymentsService = class PaymentsService {
         if (!this.client || !this.preference) {
             throw new common_1.BadRequestException('Mercado Pago is not configured. Please set MERCADO_PAGO_ACCESS_TOKEN in environment variables.');
         }
-        let baseUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
-        let backendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:4000';
-        baseUrl = (baseUrl || 'http://localhost:3000').trim();
-        backendUrl = (backendUrl || 'http://localhost:4000').trim();
-        baseUrl = baseUrl.replace(/\/+$/, '');
-        backendUrl = backendUrl.replace(/\/+$/, '');
-        if (baseUrl.startsWith('http://localhost') || baseUrl.startsWith('http://127.0.0.1')) {
-            console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Usando HTTP en localhost');
+        let mercadopagoFrontendUrl = this.configService.get('FRONTEND_URL_NGROK') ||
+            this.configService.get('FRONTEND_URL') ||
+            'http://localhost:3000';
+        let mercadopagoBackendUrl = this.configService.get('BACKEND_URL_NGROK') ||
+            this.configService.get('BACKEND_URL') ||
+            'http://localhost:4000';
+        const authFrontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+        const authBackendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:4000';
+        const normalizeUrl = (url, defaultProtocol = 'http') => {
+            if (!url)
+                return url;
+            url = url.trim();
+            url = url.replace(/^https?:\/\/(https?):/i, '$1:');
+            url = url.replace(/^https?:\/\/(https?:\/\/)/i, '$1');
+            if (!url.match(/^https?:\/\//i)) {
+                if (url.match(/^https?:[^/]/i)) {
+                    url = url.replace(/^(https?):/i, '$1://');
+                }
+                else {
+                    url = `${defaultProtocol}://${url}`;
+                }
+            }
+            url = url.replace(/^(https?:\/\/)\/+/i, '$1');
+            url = url.replace(/\/+$/, '');
+            return url;
+        };
+        mercadopagoFrontendUrl = normalizeUrl(mercadopagoFrontendUrl || 'http://localhost:3000', mercadopagoFrontendUrl?.match(/^https/i) ? 'https' : 'http');
+        mercadopagoBackendUrl = normalizeUrl(mercadopagoBackendUrl || 'http://localhost:4000', mercadopagoBackendUrl?.match(/^https/i) ? 'https' : 'http');
+        console.log('🌐 [Mercado Pago] URLs configuradas:');
+        console.log(`   Frontend (Mercado Pago): ${mercadopagoFrontendUrl}`);
+        console.log(`   Backend (Webhook): ${mercadopagoBackendUrl}`);
+        console.log(`   Frontend (Auth): ${authFrontendUrl}`);
+        console.log(`   Backend (Auth): ${authBackendUrl}`);
+        if (!mercadopagoFrontendUrl.startsWith('https://')) {
+            console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Usando HTTP para URLs de Mercado Pago');
             console.warn('⚠️ [Mercado Pago] El auto_return puede no funcionar correctamente con HTTP');
-            console.warn('⚠️ [Mercado Pago] Para redirección automática, considera usar ngrok con HTTPS');
-            console.warn(`⚠️ [Mercado Pago] Actual: ${baseUrl}`);
-            console.warn('⚠️ [Mercado Pago] Recomendado: https://tu-id.ngrok.io (usa ngrok)');
+            console.warn('⚠️ [Mercado Pago] Para redirección automática, configura FRONTEND_URL_NGROK y BACKEND_URL_NGROK');
+            console.warn(`⚠️ [Mercado Pago] Actual: ${mercadopagoFrontendUrl}`);
+            console.warn('⚠️ [Mercado Pago] Recomendado: https://tu-id.ngrok-free.app (usa ngrok)');
         }
+        else {
+            console.log('✅ [Mercado Pago] Usando HTTPS para Mercado Pago (auto_return funcionará)');
+        }
+        const baseUrl = mercadopagoFrontendUrl;
+        const backendUrl = mercadopagoBackendUrl;
         if (!baseUrl || baseUrl.length === 0) {
             throw new common_1.BadRequestException('FRONTEND_URL no está configurada correctamente');
+        }
+        try {
+            new URL(baseUrl);
+        }
+        catch {
+            throw new common_1.BadRequestException(`FRONTEND_URL (o FRONTEND_URL_NGROK) no es una URL válida: "${baseUrl}". ` +
+                'Revisa que no tengas protocolo duplicado (ej: http://http://...) y que sea una URL accesible (usa ngrok en desarrollo).');
+        }
+        try {
+            new URL(`${backendUrl}/api/payments/webhook`);
+        }
+        catch {
+            throw new common_1.BadRequestException(`BACKEND_URL (o BACKEND_URL_NGROK) no permite una URL de webhook válida: "${backendUrl}".`);
         }
         const payerData = {
             name: customerInfo.name,
@@ -116,7 +164,7 @@ let PaymentsService = class PaymentsService {
             })),
             payer: payerData,
             back_urls: backUrlsObj,
-            auto_return: 'approved',
+            auto_return: 'all',
             external_reference: `payment_${Date.now()}`,
             notification_url: `${backendUrl}/api/payments/webhook`,
             metadata: {
@@ -207,6 +255,12 @@ let PaymentsService = class PaymentsService {
                 console.log('✅ [Mercado Pago] Preferencia creada exitosamente CON auto_return');
                 console.log(`   Preference ID: ${response.id}`);
                 console.log(`   Init Point: ${response.init_point || response.sandbox_init_point || 'N/A'}`);
+                if (!mercadopagoFrontendUrl.startsWith('https://')) {
+                    console.warn('⚠️ [Mercado Pago] La redirección automática suele FALLAR con HTTP. Configura FRONTEND_URL_NGROK con HTTPS (ngrok).');
+                }
+                else {
+                    console.log('   ℹ️ Redirección: Mercado Pago redirigirá a', bodyToSend.back_urls.success);
+                }
                 if (!response.id) {
                     throw new common_1.BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
                 }
@@ -222,6 +276,7 @@ let PaymentsService = class PaymentsService {
                         init_point: initPoint,
                         order_data: orderData,
                         external_reference: preferenceData.external_reference,
+                        customer_email: customerInfo.email,
                     }),
                 });
                 await this.paymentRepo.save(payment);
@@ -232,10 +287,17 @@ let PaymentsService = class PaymentsService {
                 };
             }
             catch (createError) {
-                if (createError.error === 'invalid_auto_return' || createError.message?.includes('auto_return')) {
-                    console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Error al crear preferencia con auto_return');
-                    console.warn('⚠️ [Mercado Pago] Razón posible: URLs HTTP en localhost o URLs no accesibles');
-                    console.warn('⚠️ [Mercado Pago] Solución: Usa ngrok o URLs HTTPS para auto_return en desarrollo');
+                console.error('📛 [Mercado Pago] Error al crear preferencia:', createError?.message);
+                if (createError?.cause)
+                    console.error('   cause:', createError.cause);
+                if (createError?.error)
+                    console.error('   error:', createError.error);
+                if (createError?.response?.data)
+                    console.error('   response.data:', JSON.stringify(createError.response.data));
+                if (createError?.error === 'invalid_auto_return' || createError?.message?.includes('auto_return')) {
+                    console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Error al crear preferencia con auto_return ("approved")');
+                    console.warn('⚠️ [Mercado Pago] Razón posible: URLs HTTP (Mercado Pago exige HTTPS para auto_return) o URLs no accesibles desde internet');
+                    console.warn('⚠️ [Mercado Pago] Solución: Configura FRONTEND_URL_NGROK con tu URL HTTPS de ngrok (ej: https://xxx.ngrok-free.app)');
                     console.warn('⚠️ [Mercado Pago] Continuando sin auto_return - El usuario deberá hacer clic en "Volver al sitio"');
                     const bodyWithoutAutoReturn = JSON.parse(JSON.stringify({
                         items: bodyToSend.items,
@@ -266,6 +328,7 @@ let PaymentsService = class PaymentsService {
                             init_point: initPoint,
                             order_data: orderData,
                             external_reference: preferenceData.external_reference,
+                            customer_email: customerInfo.email,
                         }),
                     });
                     await this.paymentRepo.save(payment);
@@ -275,6 +338,7 @@ let PaymentsService = class PaymentsService {
                         paymentId: payment.id,
                     };
                 }
+                console.error('📛 [Mercado Pago] No se usó fallback. Revisa FRONTEND_URL_NGROK (HTTPS) y que back_urls.success sea una URL pública válida.');
                 throw createError;
             }
         }
@@ -376,12 +440,61 @@ let PaymentsService = class PaymentsService {
                         if (!this.ordersService) {
                             this.ordersService = this.moduleRef.get(orders_service_1.OrdersService, { strict: false });
                         }
-                        const orderResponse = await this.ordersService.create(metadataObj.order_data);
+                        const orderDataWithEmail = {
+                            ...metadataObj.order_data,
+                            customerEmail: metadataObj.customer_email || null,
+                            orderSource: 'online',
+                        };
+                        const orderResponse = await this.ordersService.create(orderDataWithEmail);
                         foundPayment.orderId = orderResponse.orderId;
                         console.log(`✅ [Webhook] Order created successfully!`);
                         console.log(`   Order ID: ${orderResponse.orderId}`);
                         console.log(`   Daily Order Number: ${orderResponse.dailyOrderNumber}`);
                         console.log(`   Payment ID: ${paymentId}`);
+                        try {
+                            const fullOrder = await this.orderRepo.findOne({
+                                where: { id: orderResponse.orderId },
+                                relations: ['items', 'items.product'],
+                            });
+                            const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
+                            if (fullOrder && emailTo) {
+                                const groupedItems = {};
+                                for (const item of fullOrder.items) {
+                                    const productId = item.product?.id || 0;
+                                    const productName = item.product?.name || 'Producto';
+                                    const price = item.product?.price || 0;
+                                    if (!groupedItems[productId]) {
+                                        groupedItems[productId] = {
+                                            productName,
+                                            quantity: 0,
+                                            price,
+                                        };
+                                    }
+                                    groupedItems[productId].quantity += 1;
+                                }
+                                const emailItems = Object.values(groupedItems);
+                                const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                                const deliveryNum = Number(fullOrder.deliveryFee) || 0;
+                                const totalForEmail = (mpPayment.transaction_amount != null && mpPayment.transaction_amount !== '')
+                                    ? Number(mpPayment.transaction_amount)
+                                    : subtotal + deliveryNum;
+                                const orderNum = fullOrder.dailyOrderNumber ?? fullOrder.id;
+                                const sent = await this.mailService.sendOrderConfirmation(emailTo, orderNum, fullOrder.customerName || mpPayment.payer?.name || 'Cliente', emailItems, totalForEmail, String(fullOrder.orderType || 'delivery'), fullOrder.address, fullOrder.phone, deliveryNum > 0 ? deliveryNum : undefined);
+                                if (sent) {
+                                    console.log(`✅ [Webhook] Correo de confirmación enviado a ${emailTo} (orden #${orderNum})`);
+                                }
+                                else {
+                                    console.warn('⚠️ [Webhook] Correo no enviado (revisa MAIL_* en .env)');
+                                }
+                            }
+                            else {
+                                console.warn('⚠️ [Webhook] No se envía correo: falta orden, items o email (customer_email en metadata o payer.email)');
+                            }
+                        }
+                        catch (emailError) {
+                            console.error('❌ [Webhook] Error al enviar correo de confirmación:', emailError?.message);
+                            console.error('   Detalle:', emailError?.stack || emailError);
+                        }
                     }
                     catch (error) {
                         console.error('❌ [Webhook] Error creating order from payment:', error);
@@ -524,6 +637,7 @@ exports.PaymentsService = PaymentsService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         config_1.ConfigService,
-        core_1.ModuleRef])
+        core_1.ModuleRef,
+        mail_service_1.MailService])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

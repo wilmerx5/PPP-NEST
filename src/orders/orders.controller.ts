@@ -5,15 +5,19 @@ import {
     Get,
     Param,
     Patch,
-    Post
+    Post,
+    Req,
+    UseGuards,
 } from '@nestjs/common';
 import {
+    ApiBearerAuth,
     ApiBody,
     ApiOperation,
     ApiParam,
     ApiResponse,
     ApiTags
 } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 import {
     CreateOrderDto,
@@ -27,6 +31,26 @@ import { OrdersService } from './orders.service';
 export class OrdersController {
 
   constructor(private readonly orderService: OrdersService) {}
+
+  // -------------------------------------------------------------
+  // MIS PEDIDOS (usuario autenticado)
+  // -------------------------------------------------------------
+  @Get('mine')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Mis pedidos',
+    description: 'Devuelve las órdenes del usuario autenticado (por email). Requiere JWT.',
+  })
+  @ApiResponse({ status: 200, description: 'Lista de órdenes del usuario' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getMine(@Req() req: any) {
+    const email = req.user?.email;
+    if (!email) {
+      return [];
+    }
+    return this.orderService.findMine(email);
+  }
 
   // -------------------------------------------------------------
   // CREATE ORDER
