@@ -16,6 +16,7 @@ const auth_module_1 = require("./auth/auth.module");
 const orders_module_1 = require("./orders/orders.module");
 const products_module_1 = require("./products/products.module");
 const common_module_1 = require("./common/common.module");
+const payments_module_1 = require("./payments/payments.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,25 +28,52 @@ exports.AppModule = AppModule = __decorate([
             }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
-                useFactory: (configService) => ({
-                    type: 'mariadb',
-                    host: configService.get('DB_HOST'),
-                    port: configService.get('DB_PORT'),
-                    username: configService.get('DB_USERNAME'),
-                    password: configService.get('DB_PASSWORD'),
-                    database: configService.get('DB_DATABASE'),
-                    entities: [__dirname + '/**/*.entity{.ts,.js}'],
-                    synchronize: false,
-                    extra: {
-                        options: `-c timezone=America/Bogota`
+                useFactory: (configService) => {
+                    const dbConfig = {
+                        type: 'mariadb',
+                        host: configService.get('DB_HOST'),
+                        port: configService.get('DB_PORT'),
+                        username: configService.get('DB_USERNAME'),
+                        password: configService.get('DB_PASSWORD'),
+                        database: configService.get('DB_DATABASE'),
+                        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+                        synchronize: true,
+                        timezone: 'Z',
+                    };
+                    process.stdout.write('\n🔍 [DB Connection Config]\n');
+                    process.stdout.write(`  Host: ${dbConfig.host || 'NOT SET'}\n`);
+                    process.stdout.write(`  Port: ${dbConfig.port || 'NOT SET'}\n`);
+                    process.stdout.write(`  Username: ${dbConfig.username || 'NOT SET'}\n`);
+                    process.stdout.write(`  Database: ${dbConfig.database || 'NOT SET'}\n`);
+                    process.stdout.write(`  Password: ${dbConfig.password ? dbConfig.password.substring(0, 3) + '***' : 'NOT SET'}\n`);
+                    process.stdout.write(`  Entities path: ${Array.isArray(dbConfig.entities) ? dbConfig.entities[0] : dbConfig.entities}\n`);
+                    process.stdout.write(`  Synchronize: ${dbConfig.synchronize}\n`);
+                    const missingVars = [];
+                    if (!dbConfig.host)
+                        missingVars.push('DB_HOST');
+                    if (!dbConfig.port)
+                        missingVars.push('DB_PORT');
+                    if (!dbConfig.username)
+                        missingVars.push('DB_USERNAME');
+                    if (!dbConfig.password)
+                        missingVars.push('DB_PASSWORD');
+                    if (!dbConfig.database)
+                        missingVars.push('DB_DATABASE');
+                    if (missingVars.length > 0) {
+                        process.stderr.write(`❌ [DB Config Error] Missing environment variables: ${missingVars.join(', ')}\n`);
                     }
-                }),
+                    else {
+                        process.stdout.write('✅ [DB Config] All required variables are set\n\n');
+                    }
+                    return dbConfig;
+                },
                 inject: [config_1.ConfigService],
             }),
             orders_module_1.OrdersModule,
             products_module_1.ProductsModule,
             auth_module_1.AuthModule,
             common_module_1.CommonModule,
+            payments_module_1.PaymentsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

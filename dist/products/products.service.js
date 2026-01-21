@@ -65,8 +65,21 @@ let ProductsService = class ProductsService {
             })),
         }));
     }
-    findOne(id) {
-        return `This action returns a #${id} product`;
+    async findOne(id) {
+        const product = await this.productRepo.findOne({
+            where: { id },
+            relations: ['categories', 'attributes'],
+        });
+        if (!product) {
+            return null;
+        }
+        return {
+            ...product,
+            attributes: product.attributes.map(attr => ({
+                ...attr,
+                options: JSON.parse(attr.options),
+            })),
+        };
     }
     update(id, updateProductDto) {
         return `This action updates a #${id} product`;

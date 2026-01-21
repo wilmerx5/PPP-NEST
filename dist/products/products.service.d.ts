@@ -43,7 +43,23 @@ export declare class ProductsService {
             }[];
         }[];
     }[]>;
-    findOne(id: number): string;
+    findOne(id: number): Promise<{
+        attributes: {
+            options: any;
+            id: number;
+            attributeName: string;
+            product: Product;
+        }[];
+        id: number;
+        name: string;
+        description?: string;
+        price: number;
+        hasAttributes: boolean;
+        code: number;
+        categories: Category[];
+        orderItems: import("../orders/entities/order-item.entity").OrderItem[];
+        imageUrl: string;
+    } | null>;
     update(id: number, updateProductDto: UpdateProductDto): string;
     remove(id: number): string;
 }

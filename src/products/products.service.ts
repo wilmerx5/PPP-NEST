@@ -88,14 +88,31 @@ export class ProductsService {
   }
 
   /**
-   * Find a single product by ID.
-   * Currently returns placeholder text.
+   * Find a single product by ID with its categories and attributes.
+   * - Loads relations: categories, attributes
+   * - Transforms attribute.options from string → JSON array
    *
    * @param id - Product ID.
-   * @returns {string} Placeholder result.
+   * @returns {Promise<any>} Product with transformed attributes.
    */
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findOne(id: number) {
+    const product = await this.productRepo.findOne({
+      where: { id },
+      relations: ['categories', 'attributes'],
+    });
+
+    if (!product) {
+      return null;
+    }
+
+    return {
+      ...product,
+      // Convert the "options" string into a JSON array
+      attributes: product.attributes.map(attr => ({
+        ...attr,
+        options: JSON.parse(attr.options),
+      })),
+    };
   }
 
   /**

@@ -8,6 +8,8 @@ import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
+import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -48,14 +50,14 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException("Inactive User, pleas active your user")
 
 
-    const tokens = this.getJwtTokens({ id: user.id })
-    return { ...tokens, user }
+    const tokens = this.getJwtTokens({ id: user.id });
+    return { ...tokens, user };
 
   }
 
-  private getJwtTokens(payload: JwtPayload) {
+  getJwtTokens(payload: JwtPayload) {
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '1m',
+      expiresIn: '15m', // 15 minutos
     });
 
     const refreshToken = this.jwtService.sign(payload, {
@@ -97,19 +99,15 @@ export class AuthService {
     await this.mailService.sendActivateUser(user.email, user.id, token);
   }
 
-  async generateAndStoreToken(user: User) {
+  async generateAndStoreToken(user: User, type: string = 'activation') {
     const token = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
-
-    const expiresAtBogota = new Date(
-      expiresAt.toLocaleString('en-US', { timeZone: 'America/Bogota' })
-    );
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 20 minutes from now
 
     const emailToken = this.verificationTokenRepository.create({
       token,
-      expiresAt: expiresAtBogota,
+      expiresAt,
       user,
+      type,
     });
 
     await this.verificationTokenRepository.save(emailToken);
@@ -137,7 +135,7 @@ export class AuthService {
     }
 
     await this.verificationTokenRepository.update(
-      { user: { id: user.id }, isUsed: false },
+      { user: { id: user.id }, type: 'activation', isUsed: false },
       { isUsed: true }
     );
 
@@ -150,6 +148,7 @@ export class AuthService {
       token,
       expiresAt,
       user,
+      type: 'activation',
     });
 
     await this.verificationTokenRepository.save(newToken);
@@ -159,6 +158,45 @@ export class AuthService {
     return {
       message: 'A new verification code has been sent',
       email,
+    };
+  }
+
+  async resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO) {
+    const { email } = requestNewCodeDTO;
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: { id: true, email: true, isActive: true },
+    });
+
+    if (!user) {
+      // For security, do not reveal if the email exists
+      return {
+        message: 'If the email exists and the account is not active, a new activation link will be sent',
+      };
+    }
+
+    // If user is already active, do nothing
+    if (user.isActive) {
+      return {
+        message: 'This account is already active',
+      };
+    }
+
+    // Invalidate previous unused activation tokens
+    await this.verificationTokenRepository.update(
+      { user: { id: user.id }, type: 'activation', isUsed: false },
+      { isUsed: true }
+    );
+
+    // Generate new activation token
+    const token = await this.generateAndStoreToken(user, 'activation');
+
+    // Send activation link by email
+    await this.mailService.sendActivateUser(user.email, user.id, token);
+
+    return {
+      message: 'If the email exists and the account is not active, a new activation link will be sent',
     };
   }
 
@@ -185,14 +223,13 @@ export class AuthService {
     const { idUser, otp } = validateTokenDTO
 
     const token = await this.verificationTokenRepository.findOne({
-      where: { user: { id: idUser }, token: otp, isUsed: false },
+      where: { user: { id: idUser }, token: otp, type: 'activation', isUsed: false },
     });
 
-    console.log(token)
-    if (!token) throw new BadRequestException('Token inválido');
+    if (!token) throw new BadRequestException('Invalid token');
 
     if (token.expiresAt < new Date())
-      throw new BadRequestException('Token expirado');
+      throw new BadRequestException('Token expired');
 
     token.isUsed = true;
     await this.verificationTokenRepository.save(token);
@@ -214,5 +251,97 @@ export class AuthService {
 
 return Object.values(ValidRoles);
 
+  }
+
+  // -------------------------------------------------------------
+  // PASSWORD RESET
+  // -------------------------------------------------------------
+
+  async requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO) {
+    const { email } = requestPasswordResetDTO;
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      // For security, do not reveal if the email exists
+      return {
+        message: 'If the email exists, a recovery code will be sent',
+      };
+    }
+
+    // Invalidate all previous password reset tokens
+    await this.verificationTokenRepository.update(
+      { user: { id: user.id }, type: 'password-reset', isUsed: false },
+      { isUsed: true }
+    );
+
+    // Generate new password reset token
+    const token = await this.generateAndStoreToken(user, 'password-reset');
+
+    // Send code by email
+    await this.mailService.sendPasswordResetCode(email, token);
+
+    return {
+      message: 'If the email exists, a recovery code will be sent',
+    };
+  }
+
+  async resetPassword(resetPasswordDTO: ResetPasswordDTO) {
+    const { email, code, newPassword } = resetPasswordDTO;
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: { id: true, email: true, password: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Email not found');
+    }
+
+    // Find password reset token
+    const token = await this.verificationTokenRepository.findOne({
+      where: { 
+        user: { id: user.id }, 
+        token: code, 
+        type: 'password-reset',
+        isUsed: false 
+      },
+    });
+
+    if (!token) {
+      // Check if code exists in any token (even used or expired) for better error messages
+      const tokenByCode = await this.verificationTokenRepository.findOne({
+        where: { user: { id: user.id }, token: code, type: 'password-reset' },
+      });
+
+      if (tokenByCode) {
+        if (tokenByCode.isUsed) {
+          throw new BadRequestException('This code has already been used. Please request a new code.');
+        }
+        if (tokenByCode.expiresAt < new Date()) {
+          throw new BadRequestException('Code expired. Please request a new code.');
+        }
+      }
+
+      throw new BadRequestException('Invalid code');
+    }
+
+    if (token.expiresAt < new Date()) {
+      throw new BadRequestException('Code expired');
+    }
+
+    // Mark token as used
+    token.isUsed = true;
+    await this.verificationTokenRepository.save(token);
+
+    // Update password
+    user.password = bcrypt.hashSync(newPassword, 10);
+    await this.userRepository.save(user);
+
+    return {
+      message: 'Password updated successfully',
+    };
   }
 }

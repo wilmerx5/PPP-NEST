@@ -51,7 +51,7 @@ let AuthService = class AuthService {
     }
     getJwtTokens(payload) {
         const accessToken = this.jwtService.sign(payload, {
-            expiresIn: '1m',
+            expiresIn: '15m',
         });
         const refreshToken = this.jwtService.sign(payload, {
             expiresIn: '7d',
@@ -80,14 +80,14 @@ let AuthService = class AuthService {
         const token = await this.generateAndStoreToken(user);
         await this.mailService.sendActivateUser(user.email, user.id, token);
     }
-    async generateAndStoreToken(user) {
+    async generateAndStoreToken(user, type = 'activation') {
         const token = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
-        const expiresAtBogota = new Date(expiresAt.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
         const emailToken = this.verificationTokenRepository.create({
             token,
-            expiresAt: expiresAtBogota,
+            expiresAt,
             user,
+            type,
         });
         await this.verificationTokenRepository.save(emailToken);
         return token;
@@ -105,19 +105,43 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.BadRequestException('Email not registered');
         }
-        await this.verificationTokenRepository.update({ user: { id: user.id }, isUsed: false }, { isUsed: true });
+        await this.verificationTokenRepository.update({ user: { id: user.id }, type: 'activation', isUsed: false }, { isUsed: true });
         const token = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
         const newToken = this.verificationTokenRepository.create({
             token,
             expiresAt,
             user,
+            type: 'activation',
         });
         await this.verificationTokenRepository.save(newToken);
         await this.mailService.sendVerificationCode(email, token);
         return {
             message: 'A new verification code has been sent',
             email,
+        };
+    }
+    async resendActivationLink(requestNewCodeDTO) {
+        const { email } = requestNewCodeDTO;
+        const user = await this.userRepository.findOne({
+            where: { email },
+            select: { id: true, email: true, isActive: true },
+        });
+        if (!user) {
+            return {
+                message: 'If the email exists and the account is not active, a new activation link will be sent',
+            };
+        }
+        if (user.isActive) {
+            return {
+                message: 'This account is already active',
+            };
+        }
+        await this.verificationTokenRepository.update({ user: { id: user.id }, type: 'activation', isUsed: false }, { isUsed: true });
+        const token = await this.generateAndStoreToken(user, 'activation');
+        await this.mailService.sendActivateUser(user.email, user.id, token);
+        return {
+            message: 'If the email exists and the account is not active, a new activation link will be sent',
         };
     }
     async activateUser(validateTokenDTO) {
@@ -135,13 +159,12 @@ let AuthService = class AuthService {
     async validateToken(validateTokenDTO) {
         const { idUser, otp } = validateTokenDTO;
         const token = await this.verificationTokenRepository.findOne({
-            where: { user: { id: idUser }, token: otp, isUsed: false },
+            where: { user: { id: idUser }, token: otp, type: 'activation', isUsed: false },
         });
-        console.log(token);
         if (!token)
-            throw new common_1.BadRequestException('Token inválido');
+            throw new common_1.BadRequestException('Invalid token');
         if (token.expiresAt < new Date())
-            throw new common_1.BadRequestException('Token expirado');
+            throw new common_1.BadRequestException('Token expired');
         token.isUsed = true;
         await this.verificationTokenRepository.save(token);
         return true;
@@ -154,6 +177,65 @@ let AuthService = class AuthService {
     }
     getRoles() {
         return Object.values(valid_roles_interface_1.ValidRoles);
+    }
+    async requestPasswordReset(requestPasswordResetDTO) {
+        const { email } = requestPasswordResetDTO;
+        const user = await this.userRepository.findOne({
+            where: { email },
+        });
+        if (!user) {
+            return {
+                message: 'If the email exists, a recovery code will be sent',
+            };
+        }
+        await this.verificationTokenRepository.update({ user: { id: user.id }, type: 'password-reset', isUsed: false }, { isUsed: true });
+        const token = await this.generateAndStoreToken(user, 'password-reset');
+        await this.mailService.sendPasswordResetCode(email, token);
+        return {
+            message: 'If the email exists, a recovery code will be sent',
+        };
+    }
+    async resetPassword(resetPasswordDTO) {
+        const { email, code, newPassword } = resetPasswordDTO;
+        const user = await this.userRepository.findOne({
+            where: { email },
+            select: { id: true, email: true, password: true },
+        });
+        if (!user) {
+            throw new common_1.BadRequestException('Email not found');
+        }
+        const token = await this.verificationTokenRepository.findOne({
+            where: {
+                user: { id: user.id },
+                token: code,
+                type: 'password-reset',
+                isUsed: false
+            },
+        });
+        if (!token) {
+            const tokenByCode = await this.verificationTokenRepository.findOne({
+                where: { user: { id: user.id }, token: code, type: 'password-reset' },
+            });
+            if (tokenByCode) {
+                if (tokenByCode.isUsed) {
+                    throw new common_1.BadRequestException('This code has already been used. Please request a new code.');
+                }
+                if (tokenByCode.expiresAt < new Date()) {
+                    throw new common_1.BadRequestException('Code expired. Please request a new code.');
+                }
+            }
+            throw new common_1.BadRequestException('Invalid code');
+        }
+        if (token.expiresAt < new Date()) {
+            throw new common_1.BadRequestException('Code expired');
+        }
+        token.isUsed = true;
+        await this.verificationTokenRepository.save(token);
+        user.password = bcrypt.hashSync(newPassword, 10);
+        await this.userRepository.save(user);
+        return {
+            message: 'Password updated successfully',
+        };
     }
 };
 exports.AuthService = AuthService;

@@ -15,6 +15,12 @@ const order_entity_1 = require("./entities/order.entity");
 const orders_controller_1 = require("./orders.controller");
 const orders_service_1 = require("./orders.service");
 const order_gateway_1 = require("./Websocket/order.gateway");
+const auth_module_1 = require("../auth/auth.module");
+const products_module_1 = require("../products/products.module");
+const user_entity_1 = require("../auth/entities/user.entity");
+const product_entity_1 = require("../products/entities/product.entity");
+const user_points_entity_1 = require("../auth/entities/user-points.entity");
+const point_redemption_entity_1 = require("../auth/entities/point-redemption.entity");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -22,7 +28,12 @@ exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
         controllers: [orders_controller_1.OrdersController],
         providers: [orders_service_1.OrdersService, order_gateway_1.OrdersGateway],
-        imports: [typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, order_item_attribute_entity_1.OrderItemAttribute])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, order_item_attribute_entity_1.OrderItemAttribute, user_entity_1.User, product_entity_1.Product, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption]),
+            (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
+            products_module_1.ProductsModule,
+        ],
+        exports: [orders_service_1.OrdersService],
     })
 ], OrdersModule);
 //# sourceMappingURL=orders.module.js.map

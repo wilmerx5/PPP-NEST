@@ -40,7 +40,23 @@ export declare class ProductsController {
             }[];
         }[];
     }[]>;
-    findOne(id: string): string;
+    findOne(id: string): Promise<{
+        attributes: {
+            options: any;
+            id: number;
+            attributeName: string;
+            product: import("./entities/product.entity").Product;
+        }[];
+        id: number;
+        name: string;
+        description?: string;
+        price: number;
+        hasAttributes: boolean;
+        code: number;
+        categories: import("./entities/category.entity").Category[];
+        orderItems: import("../orders/entities/order-item.entity").OrderItem[];
+        imageUrl: string;
+    }>;
     update(id: string, updateProductDto: UpdateProductDto): string;
     remove(id: string): string;
 }

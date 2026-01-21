@@ -18,6 +18,7 @@ let VerificationToken = class VerificationToken {
     token;
     expiresAt;
     isUsed;
+    type;
     createdAt;
     user;
 };
@@ -57,6 +58,15 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], VerificationToken.prototype, "isUsed", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Tipo de token: activation, password-reset',
+        example: 'activation',
+        default: 'activation',
+    }),
+    (0, typeorm_1.Column)({ default: 'activation' }),
+    __metadata("design:type", String)
+], VerificationToken.prototype, "type", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Fecha de creación del token. Se asigna de forma automática.',

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post
@@ -80,14 +81,18 @@ export class ProductsController {
   @ApiParam({ name: 'id', description: 'Product ID', example: 1 })
   @ApiResponse({
     status: 200,
-    description: 'Product retrieved successfully (placeholder response)',
+    description: 'Product retrieved successfully',
   })
   @ApiResponse({
     status: 404,
     description: 'Product not found',
   })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const product = await this.productsService.findOne(+id);
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
   }
 
   // -------------------------------------------------------------

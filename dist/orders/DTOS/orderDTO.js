@@ -65,9 +65,12 @@ class CreateOrderDto {
     customerName;
     phone;
     address;
+    customerEmail;
     orderType;
     deliveryFee;
+    orderSource;
     items;
+    redemptionCode;
 }
 exports.CreateOrderDto = CreateOrderDto;
 __decorate([
@@ -93,13 +96,21 @@ __decorate([
 ], CreateOrderDto.prototype, "address", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: 'Tipo de orden.',
-        example: 'delivery',
-        enum: ['delivery', 'pickup', 'table', 'counter'],
+        description: 'Email del cliente (solo lo asigna el backend desde el pago).',
         required: false,
     }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(['delivery', 'pickup', 'table', 'counter']),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "customerEmail", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Tipo de orden.',
+        example: 'delivery',
+        enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['delivery', 'pickup', 'table', 'counter', 'rappi']),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "orderType", void 0);
 __decorate([
@@ -116,11 +127,30 @@ __decorate([
 ], CreateOrderDto.prototype, "deliveryFee", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
+        description: 'Origen: online = cliente/ppp-front; internal = panel. No enviar = internal.',
+        enum: ['online', 'internal'],
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['online', 'internal']),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "orderSource", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
         description: 'Lista de productos incluidos en la orden.',
         type: [CreateOrderItemDto],
     }),
     __metadata("design:type", Array)
 ], CreateOrderDto.prototype, "items", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Código de premio de redención a aplicar (opcional).',
+        example: 'REDEEM9PTSX7',
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "redemptionCode", void 0);
 class UpdateOrderItemAttributeDto {
     attributeName;
     attributeValue;
@@ -226,7 +256,8 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Nuevo tipo de la orden.',
-        example: "'delivery' | 'pickup' | 'table' | 'counter'",
+        example: "'delivery' | 'pickup' | 'table' | 'counter' | 'rappi'",
+        enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
         required: false,
     }),
     __metadata("design:type", String)

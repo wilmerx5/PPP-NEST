@@ -4,8 +4,17 @@ const core_1 = require("@nestjs/core");
 const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
+const path_1 = require("path");
 async function bootstrap() {
+    process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
+    process.stdout.write('📋 [Environment] Checking .env variables...\n');
+    process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_PORT: ${process.env.DB_PORT || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_USERNAME: ${process.env.DB_USERNAME || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
+    process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public'));
     app.setGlobalPrefix('api');
     app.enableCors({
         origin: (origin, callback) => {
@@ -13,17 +22,24 @@ async function bootstrap() {
                 return callback(null, true);
             const allowedOrigins = [
                 "http://localhost:5173",
-                "http://localhost",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:5176",
+                "http://localhost:3001",
+                "http://localhost:3000",
+                "https://unperemptory-premorally-january.ngrok-free.dev",
                 "https://prontopolloportal.com",
             ];
             const hostname = origin.replace(/^https?:\/\//, "");
             const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
             const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
             const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname);
+            const isNgrok = /\.ngrok-free\.app$/.test(hostname) || /\.ngrok\.io$/.test(hostname) || /\.ngrok\.app$/.test(hostname);
             if (allowedOrigins.includes(origin) ||
                 isProdSubdomain ||
                 isLocalhostSubdomain ||
-                isPppLocalSubdomain) {
+                isPppLocalSubdomain ||
+                isNgrok) {
                 return callback(null, true);
             }
             return callback(new Error("Origin not allowed by CORS"), false);

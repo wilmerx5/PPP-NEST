@@ -32,8 +32,12 @@ let ProductsController = class ProductsController {
     async getProductsByCategory() {
         return this.productsService.findProductsGroupedByCategory();
     }
-    findOne(id) {
-        return this.productsService.findOne(+id);
+    async findOne(id) {
+        const product = await this.productsService.findOne(+id);
+        if (!product) {
+            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+        }
+        return product;
     }
     update(id, updateProductDto) {
         return this.productsService.update(+id, updateProductDto);
@@ -90,7 +94,7 @@ __decorate([
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product ID', example: 1 }),
     (0, swagger_1.ApiResponse)({
         status: 200,
-        description: 'Product retrieved successfully (placeholder response)',
+        description: 'Product retrieved successfully',
     }),
     (0, swagger_1.ApiResponse)({
         status: 404,
@@ -99,7 +103,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),

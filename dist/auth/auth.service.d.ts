@@ -5,8 +5,11 @@ import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
+import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { ValidRoles } from './interfaces/valid.roles.interface';
 export declare class AuthService {
     private readonly userRepository;
@@ -23,16 +26,22 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
     }>;
-    private getJwtTokens;
+    getJwtTokens(payload: JwtPayload): {
+        accessToken: string;
+        refreshToken: string;
+    };
     create(createUserDto: CreateUserDTO): Promise<{
         msg: string;
     } | undefined>;
     createUserActivationFlow(user: User): Promise<void>;
-    generateAndStoreToken(user: User): Promise<string>;
+    generateAndStoreToken(user: User, type?: string): Promise<string>;
     generateTokenForUser(user: User): Promise<string>;
     requestNewCode(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
         message: string;
         email: string;
+    }>;
+    resendActivationLink(requestNewCodeDTO: RequestNewCodeDTO): Promise<{
+        message: string;
     }>;
     activateUser(validateTokenDTO: ValidateTokenDTO): Promise<{
         message: string;
@@ -40,4 +49,10 @@ export declare class AuthService {
     validateToken(validateTokenDTO: ValidateTokenDTO): Promise<boolean>;
     private handleDBErrors;
     getRoles(): ValidRoles[];
+    requestPasswordReset(requestPasswordResetDTO: RequestPasswordResetDTO): Promise<{
+        message: string;
+    }>;
+    resetPassword(resetPasswordDTO: ResetPasswordDTO): Promise<{
+        message: string;
+    }>;
 }

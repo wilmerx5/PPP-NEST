@@ -18,6 +18,7 @@ let Order = class Order {
     customerName;
     phone;
     address;
+    customerEmail;
     createdAt;
     items;
     dailyOrderNumber;
@@ -25,6 +26,9 @@ let Order = class Order {
     orderStatus;
     deliveryFee;
     printed;
+    orderSource;
+    points;
+    redemptionCode;
 };
 exports.Order = Order;
 __decorate([
@@ -61,6 +65,15 @@ __decorate([
 ], Order.prototype, "address", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
+        description: 'Email del cliente (para vincular con usuario y "Mis pedidos").',
+        example: 'cliente@example.com',
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'customer_email', type: 'varchar', length: 255, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "customerEmail", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
         description: 'Fecha de creación de la orden.',
         example: '2025-11-14T20:12:00.000Z',
     }),
@@ -88,11 +101,11 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Tipo de la orden.',
         example: 'pickup',
-        enum: ['delivery', 'pickup', 'table', 'counter'],
+        enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
     }),
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['delivery', 'pickup', 'table', 'counter'],
+        enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
         default: 'pickup',
         name: 'order_type',
     }),
@@ -102,11 +115,11 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Estado actual de la orden.',
         example: 'cooking',
-        enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
+        enum: ['pending', 'cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
     }),
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
+        enum: ['pending', 'cooking', 'cooked', 'packing', 'canceled', 'inDelivery', 'completed'],
         default: 'cooking',
         name: 'order_status',
     }),
@@ -136,6 +149,38 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'boolean', default: false }),
     __metadata("design:type", Boolean)
 ], Order.prototype, "printed", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Origen: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas.',
+        example: 'online',
+        enum: ['online', 'internal'],
+    }),
+    (0, typeorm_1.Column)({
+        name: 'order_source',
+        type: 'varchar',
+        length: 20,
+        default: 'internal',
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "orderSource", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Puntos generados por esta orden (basados en productos con códigos específicos).',
+        example: 3,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'points', type: 'int', nullable: true, default: 0 }),
+    __metadata("design:type", Number)
+], Order.prototype, "points", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Código de premio de redención aplicado a esta orden (null si no se aplicó ningún premio).',
+        example: 'REDEEM9PTSX7',
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "redemptionCode", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: true })
 ], Order);

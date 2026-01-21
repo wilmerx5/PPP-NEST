@@ -24,7 +24,10 @@ import { CreateUserDTO } from './dto/create-user-dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
+import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
+import { formatToBogotaISO } from '../common/utils/date.util';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -131,6 +134,15 @@ export class AuthController {
     return this.authService.requestNewCode(requestNewCodeDTO);
   }
 
+  @Post('resend-activation-link')
+  @ApiOperation({ summary: 'Resend activation link to a registered email' })
+  @ApiBody({ type: RequestNewCodeDTO })
+  @ApiResponse({ status: 200, description: 'Activation link sent (if email exists and account is inactive)' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async resendActivationLink(@Body() requestNewCodeDTO: RequestNewCodeDTO) {
+    return this.authService.resendActivationLink(requestNewCodeDTO);
+  }
+
   // -------------------------------------------------------------
   // VALIDATE TOKEN
   // -------------------------------------------------------------
@@ -183,7 +195,7 @@ export class AuthController {
 
 
 
-@Get('user')
+  @Get('user')
 @Auth()
 @ApiOperation({ summary: 'Return authenticated user information' })
 @ApiBearerAuth()
@@ -206,7 +218,100 @@ export class AuthController {
   }
 })
 getUser(@Req() req) {
-  return req.user;
+  const user = req.user as any;
+  // Convert createdAt to Bogotá timezone before sending to frontend
+  if (user?.createdAt) {
+    return {
+      ...user,
+      createdAt: formatToBogotaISO(user.createdAt),
+    };
+  }
+  return user;
 }
+
+  // -------------------------------------------------------------
+  // PASSWORD RESET
+  // -------------------------------------------------------------
+
+  @Post('request-password-reset')
+  @ApiOperation({ summary: 'Request a password reset code via email' })
+  @ApiBody({ type: RequestPasswordResetDTO })
+  @ApiResponse({ status: 200, description: 'Password reset code sent (if email exists)' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async requestPasswordReset(@Body() requestPasswordResetDTO: RequestPasswordResetDTO) {
+    return this.authService.requestPasswordReset(requestPasswordResetDTO);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using verification code' })
+  @ApiBody({ type: ResetPasswordDTO })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid code, expired code, or validation error' })
+  async resetPassword(@Body() resetPasswordDTO: ResetPasswordDTO) {
+    return this.authService.resetPassword(resetPasswordDTO);
+  }
+
+  // -------------------------------------------------------------
+  // GOOGLE OAUTH
+  // -------------------------------------------------------------
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Iniciar autenticación con Google' })
+  @ApiResponse({ status: 302, description: 'Redirige a Google OAuth' })
+  async googleAuth(@Req() req: Request) {
+    // Passport handles the redirect automatically
+    // This method should never execute because Passport intercepts before
+    // and redirects directly to Google OAuth
+    throw new Error('Google OAuth is not configured correctly - Guard did not intercept the request');
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Callback de Google OAuth' })
+  @ApiResponse({ status: 302, description: 'Redirige al frontend con tokens en URL' })
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const user = req.user as User;
+    
+    // Generate JWT tokens
+    const { accessToken, refreshToken } = await this.authService.getJwtTokens({ id: user.id });
+    
+    // Do NOT set cookies here - browser blocks them in cross-site redirects
+    // Instead, pass tokens as query params for the frontend to set them
+    
+    const authFrontendUrl = process.env.AUTH_FRONTEND_URL || 'http://auth.ppp.local:5174/logged-in';
+    
+    // Pass tokens as query params (temporary, frontend will call /auth/google/finalize)
+    const redirectUrl = `${authFrontendUrl}?at=${encodeURIComponent(accessToken)}&rt=${encodeURIComponent(refreshToken)}`;
+    
+    return res.redirect(redirectUrl);
+  }
+
+  @Post('google/finalize')
+  @ApiOperation({ summary: 'Establece cookies después de Google OAuth' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Cookies establecidas correctamente' })
+  async googleFinalize(
+    @Body() body: { accessToken: string; refreshToken: string },
+    @Res() res: Response,
+  ) {
+    const { accessToken, refreshToken } = body;
+    
+    // Now set cookies (request comes from frontend, not from Google)
+    this.cookieService.setAccessToken(res, accessToken);
+    this.cookieService.setRefreshToken(res, refreshToken);
+    
+    return res.json({
+      message: 'Cookies set successfully',
+    });
+  }
 
 }

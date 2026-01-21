@@ -3,11 +3,24 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 
 async function bootstrap() {
+  // Logs directos a stdout para evitar intercepción de loggers
+  process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
+  process.stdout.write('📋 [Environment] Checking .env variables...\n');
+  process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_PORT: ${process.env.DB_PORT || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_USERNAME: ${process.env.DB_USERNAME || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
+  process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
   
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  
+  // Servir archivos estáticos desde la carpeta public
+  app.useStaticAssets(join(__dirname, '..', 'public'));
   
   app.setGlobalPrefix('api')
 app.enableCors({
@@ -17,7 +30,13 @@ app.enableCors({
 
     const allowedOrigins = [
       "http://localhost:5173",
-      "http://localhost",
+
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:3001",
+      "http://localhost:3000",
+      "https://unperemptory-premorally-january.ngrok-free.dev",
       "https://prontopolloportal.com",
     ];
 
@@ -25,13 +44,15 @@ app.enableCors({
 
     const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
     const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
-    const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname); // ← AÑADIDO
+    const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname);
+    const isNgrok = /\.ngrok-free\.app$/.test(hostname) || /\.ngrok\.io$/.test(hostname) || /\.ngrok\.app$/.test(hostname); // ← Permite ngrok
 
     if (
       allowedOrigins.includes(origin) ||
       isProdSubdomain ||
       isLocalhostSubdomain ||
-      isPppLocalSubdomain
+      isPppLocalSubdomain ||
+      isNgrok
     ) {
       return callback(null, true);
     }
