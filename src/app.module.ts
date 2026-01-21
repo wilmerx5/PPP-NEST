@@ -27,8 +27,8 @@ import { PaymentsModule } from './payments/payments.module';
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: true, // Keep true to sync schema with dev - will disable later and use migrations
-          // Store all dates in UTC - conversion to Bogotá timezone happens in application layer
+          synchronize: false, // Keep true to sync schema with dev - will disable later and use migrations
+          // Store all es in UTC - conversion to Bogotá timezone happens in application layer
           timezone: 'Z', // UTC timezone
         };
 

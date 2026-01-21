@@ -65,7 +65,7 @@ export class MailService {
 
     const activationLink = `${frontUrl}/verify-user?idUser=${userId}&otp=${code}`;
 
-    const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
+    const logoUrl = 'https://cms.prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
     
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">

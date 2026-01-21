@@ -37,15 +37,18 @@ export function fromBogotaTime(date: Date): Date {
 /**
  * Formats a date to ISO string in Bogotá timezone.
  * This ensures the frontend receives dates already in the correct timezone.
+ * Uses formatInTimeZone to preserve the Bogotá timezone offset in the ISO string.
  * 
  * @param date - Date object (UTC from database)
- * @returns ISO string in Bogotá timezone
+ * @returns ISO string with Bogotá timezone offset (e.g., "2026-01-21T01:20:21.919-05:00")
  */
 export function formatToBogotaISO(date: Date | string | null | undefined): string | null {
   if (!date) return null;
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const bogotaDate = toBogotaTime(dateObj);
-  return bogotaDate.toISOString();
+  // Use formatInTimeZone to format in Bogotá timezone with offset
+  // Format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX (includes timezone offset)
+  // This preserves the Bogotá timezone offset so frontend can parse it correctly
+  return formatInTimeZone(dateObj, APP_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 }
 
 /**
