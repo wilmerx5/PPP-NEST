@@ -25,6 +25,7 @@ const request_new_code_dto_1 = require("./dto/request-new-code.dto");
 const validate_token_dto_1 = require("./dto/validate-token.dto");
 const request_password_reset_dto_1 = require("./dto/request-password-reset.dto");
 const reset_password_dto_1 = require("./dto/reset-password.dto");
+const date_util_1 = require("../common/utils/date.util");
 let AuthController = class AuthController {
     authService;
     cookieService;
@@ -80,7 +81,14 @@ let AuthController = class AuthController {
         return this.authService.getRoles();
     }
     getUser(req) {
-        return req.user;
+        const user = req.user;
+        if (user?.createdAt) {
+            return {
+                ...user,
+                createdAt: (0, date_util_1.formatToBogotaISO)(user.createdAt),
+            };
+        }
+        return user;
     }
     async requestPasswordReset(requestPasswordResetDTO) {
         return this.authService.requestPasswordReset(requestPasswordResetDTO);

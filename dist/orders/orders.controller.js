@@ -34,7 +34,16 @@ let OrdersController = class OrdersController {
         return this.orderService.create(createOrderDto);
     }
     async getTodayOrders() {
-        return this.orderService.findOrdersToday();
+        const orders = await this.orderService.findOrdersToday();
+        if (orders && orders.length > 0) {
+            console.log(`[getTodayOrders] Returning ${orders.length} orders`);
+            orders.forEach((order, idx) => {
+                if (order.points > 0 || (order.pointCodes && order.pointCodes.length > 0)) {
+                    console.log(`[getTodayOrders] Order #${order.dailyOrderNumber} - points: ${order.points}, pointCodes.length: ${order.pointCodes?.length || 0}`);
+                }
+            });
+        }
+        return orders;
     }
     async deleteOrder(id) {
         const orderId = parseInt(id, 10);
@@ -46,6 +55,30 @@ let OrdersController = class OrdersController {
     }
     async updateOrderGeneral(id, dto) {
         return this.orderService.updateOrderGeneral(+id, dto);
+    }
+    async validateRedemptionPrize(body) {
+        const { code } = body;
+        if (!code) {
+            throw new common_1.BadRequestException('Redemption code is required');
+        }
+        const redemption = await this.orderService.validateRedemptionCodePublic(code.toUpperCase().trim());
+        return {
+            valid: true,
+            code: redemption.code,
+            expiresAt: redemption.expiresAt,
+            message: 'Redemption code is valid and can be used',
+        };
+    }
+    async applyRedemptionVoucher(id, body) {
+        const { redemptionCode } = body;
+        if (!redemptionCode) {
+            throw new common_1.BadRequestException('Redemption code is required');
+        }
+        await this.orderService.applyRedemptionVoucher(+id, redemptionCode);
+        return {
+            success: true,
+            message: 'Redemption prize applied successfully',
+        };
     }
 };
 exports.OrdersController = OrdersController;
@@ -135,6 +168,63 @@ __decorate([
     __metadata("design:paramtypes", [Number, orderDTO_1.UpdateOrderGeneralDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "updateOrderGeneral", null);
+__decorate([
+    (0, common_1.Post)('validate-redemption-prize'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Validate a redemption prize code (public endpoint for internal orders)',
+        description: 'Validates a redemption prize code without requiring authentication. Used by internal order management apps.',
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                code: {
+                    type: 'string',
+                    example: 'REDEEM9PTSX7',
+                    description: '12-character redemption code',
+                },
+            },
+            required: ['code'],
+        },
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Prize code is valid' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid or expired code' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Prize code not found' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Prize code already used' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "validateRedemptionPrize", null);
+__decorate([
+    (0, common_1.Post)(':id/apply-voucher'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Apply a redemption prize to an order',
+        description: 'Applies a redemption prize (from 9 points redemption) to an order. Validates that the order contains a half chicken (product code 2 or 5).',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                redemptionCode: {
+                    type: 'string',
+                    example: 'REDEEM9PTSX7',
+                    description: '12-character redemption code',
+                },
+            },
+            required: ['redemptionCode'],
+        },
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Prize applied successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid prize or order does not contain half chicken' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Order or prize not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "applyRedemptionVoucher", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, swagger_1.ApiTags)('Orders'),
     (0, common_1.Controller)('orders'),

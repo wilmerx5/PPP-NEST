@@ -28,9 +28,8 @@ import { PaymentsModule } from './payments/payments.module';
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: true,
-          extra: {
-            options: `-c timezone=America/Bogota`
-          }
+          // Store all dates in UTC - conversion to Bogotá timezone happens in application layer
+          timezone: 'Z', // UTC timezone
         };
 
         // Logs detallados de conexión (sin mostrar password completo)

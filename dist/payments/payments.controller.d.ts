@@ -58,8 +58,8 @@ export declare class PaymentsController {
         amount: number;
         preferenceId: string;
         paymentId: string;
-        createdAt: Date;
-        updatedAt: Date;
+        createdAt: string | null;
+        updatedAt: string | null;
     } | null>;
     getPaymentByPreference(preferenceId: string): Promise<{
         id: number;
@@ -70,8 +70,8 @@ export declare class PaymentsController {
         paymentId: string;
         hasOrder: boolean;
         orderData: any;
-        createdAt: Date;
-        updatedAt: Date;
+        createdAt: string | null;
+        updatedAt: string | null;
         order: {
             id: number;
             dailyOrderNumber: number;

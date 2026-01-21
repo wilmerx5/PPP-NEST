@@ -107,6 +107,14 @@ export class CreateOrderDto {
     type: [CreateOrderItemDto],
   })
   items: CreateOrderItemDto[];
+
+  @ApiProperty({
+    description: 'Código de premio de redención a aplicar (opcional).',
+    example: 'REDEEM9PTSX7',
+    required: false,
+  })
+  @IsOptional()
+  redemptionCode?: string;
 }
 
 export class UpdateOrderItemAttributeDto {

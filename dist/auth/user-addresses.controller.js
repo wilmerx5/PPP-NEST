@@ -19,34 +19,40 @@ const user_addresses_service_1 = require("./user-addresses.service");
 const create_address_dto_1 = require("./dto/create-address.dto");
 const update_address_dto_1 = require("./dto/update-address.dto");
 const auth_decorator_1 = require("./decorators/auth.decorator");
+const date_util_1 = require("../common/utils/date.util");
 let UserAddressesController = class UserAddressesController {
     addressesService;
     constructor(addressesService) {
         this.addressesService = addressesService;
     }
-    create(req, createAddressDto) {
+    async create(req, createAddressDto) {
         const user = req.user;
-        return this.addressesService.create(user.id, createAddressDto);
+        const address = await this.addressesService.create(user.id, createAddressDto);
+        return (0, date_util_1.transformDatesToBogota)(address, ['createdAt', 'updatedAt']);
     }
-    findAll(req) {
+    async findAll(req) {
         const user = req.user;
-        return this.addressesService.findAll(user.id);
+        const addresses = await this.addressesService.findAll(user.id);
+        return addresses.map(addr => (0, date_util_1.transformDatesToBogota)(addr, ['createdAt', 'updatedAt']));
     }
-    findOne(req, id) {
+    async findOne(req, id) {
         const user = req.user;
-        return this.addressesService.findOne(user.id, id);
+        const address = await this.addressesService.findOne(user.id, id);
+        return (0, date_util_1.transformDatesToBogota)(address, ['createdAt', 'updatedAt']);
     }
-    update(req, id, updateAddressDto) {
+    async update(req, id, updateAddressDto) {
         const user = req.user;
-        return this.addressesService.update(user.id, id, updateAddressDto);
+        const address = await this.addressesService.update(user.id, id, updateAddressDto);
+        return (0, date_util_1.transformDatesToBogota)(address, ['createdAt', 'updatedAt']);
     }
     remove(req, id) {
         const user = req.user;
         return this.addressesService.remove(user.id, id);
     }
-    setDefault(req, id) {
+    async setDefault(req, id) {
         const user = req.user;
-        return this.addressesService.setDefault(user.id, id);
+        const address = await this.addressesService.setDefault(user.id, id);
+        return (0, date_util_1.transformDatesToBogota)(address, ['createdAt', 'updatedAt']);
     }
 };
 exports.UserAddressesController = UserAddressesController;
@@ -58,7 +64,7 @@ __decorate([
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, create_address_dto_1.CreateAddressDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
@@ -67,7 +73,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
@@ -78,7 +84,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
@@ -90,7 +96,7 @@ __decorate([
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number, update_address_dto_1.UpdateAddressDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
@@ -111,7 +117,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "setDefault", null);
 exports.UserAddressesController = UserAddressesController = __decorate([
     (0, swagger_1.ApiTags)('User Addresses'),

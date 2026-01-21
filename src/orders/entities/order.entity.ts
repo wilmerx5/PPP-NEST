@@ -143,4 +143,20 @@ export class Order {
     default: 'internal',
   })
   orderSource: OrderSource;
+
+  @ApiProperty({
+    description: 'Puntos generados por esta orden (basados en productos con códigos específicos).',
+    example: 3,
+    nullable: true,
+  })
+  @Column({ name: 'points', type: 'int', nullable: true, default: 0 })
+  points: number;
+
+  @ApiProperty({
+    description: 'Código de premio de redención aplicado a esta orden (null si no se aplicó ningún premio).',
+    example: 'REDEEM9PTSX7',
+    nullable: true,
+  })
+  @Column({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true })
+  redemptionCode: string | null;
 }

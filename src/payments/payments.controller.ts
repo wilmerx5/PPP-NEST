@@ -73,6 +73,8 @@ export class PaymentsController {
       return true; // Permitir en desarrollo, pero advertir
     }
 
+    console.log('🔐 [Webhook] Webhook Secret configurado:', webhookSecret.substring(0, 10) + '...');
+
     const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
     const xRequestId = req.headers['x-request-id'] || req.headers['X-Request-Id'];
 
@@ -82,12 +84,17 @@ export class PaymentsController {
     }
 
     // Extraer data.id del body o query params
-    const dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
+    let dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
     
     if (!dataId) {
       console.error('❌ [Webhook] No se encontró data.id en el webhook');
+      console.error('   Body:', JSON.stringify(body, null, 2));
+      console.error('   Query:', JSON.stringify(req.query, null, 2));
       return false;
     }
+
+    // Convertir dataId a string y luego a minúsculas (según documentación de Mercado Pago)
+    dataId = String(dataId).toLowerCase();
 
     try {
       // Parsear x-signature: "ts=<timestamp>,v1=<hash>"
@@ -97,6 +104,7 @@ export class PaymentsController {
 
       if (!tsPart || !v1Part) {
         console.error('❌ [Webhook] Formato de x-signature inválido');
+        console.error('   x-signature:', xSignature);
         return false;
       }
 
@@ -104,6 +112,7 @@ export class PaymentsController {
       const v1 = v1Part.split('=')[1];
 
       // Construir el manifest según la documentación de Mercado Pago
+      // Formato: id:[data.id_lowercase];request-id:[x-request-id];ts:[ts];
       const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
 
       // Calcular HMAC-SHA256
@@ -112,12 +121,15 @@ export class PaymentsController {
         .update(manifest)
         .digest('hex');
 
-      // Comparar con v1
+      // Comparar con v1 (ambos en minúsculas para comparación case-insensitive)
       const isValid = hmac.toLowerCase() === v1.toLowerCase();
 
       if (!isValid) {
         console.error('❌ [Webhook] Firma inválida. Webhook rechazado.');
         console.error('   Manifest:', manifest);
+        console.error('   Data ID (original):', body?.data?.id || req.query?.['data.id'] || req.query?.id);
+        console.error('   Data ID (lowercase):', dataId);
+        console.error('   Webhook Secret configurado:', webhookSecret ? `${webhookSecret.substring(0, 10)}...` : 'NO CONFIGURADO');
         console.error('   Calculado:', hmac);
         console.error('   Recibido: ', v1);
       } else {

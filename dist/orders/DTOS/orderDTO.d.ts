@@ -20,6 +20,7 @@ export declare class CreateOrderDto {
     deliveryFee?: number;
     orderSource?: OrderSource;
     items: CreateOrderItemDto[];
+    redemptionCode?: string;
 }
 export declare class UpdateOrderItemAttributeDto {
     attributeName: string;

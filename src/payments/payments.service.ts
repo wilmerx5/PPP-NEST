@@ -9,6 +9,7 @@ import { Payment, PaymentStatus } from './entities/payment.entity';
 import { OrdersService } from '../orders/orders.service';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
 import { MailService } from '../common/mail/mail.service';
+import { formatToBogotaISO } from '../common/utils/date.util';
 
 @Injectable()
 export class PaymentsService {
@@ -603,6 +604,22 @@ export class PaymentsService {
             console.log(`   Daily Order Number: ${orderResponse.dailyOrderNumber}`);
             console.log(`   Payment ID: ${paymentId}`);
             
+            // Aplicar premio de redención si existe
+            if (orderDataWithEmail.redemptionCode) {
+              try {
+                console.log(`🎁 [Webhook] Applying redemption prize: ${orderDataWithEmail.redemptionCode}`);
+                await this.ordersService.applyRedemptionVoucher(
+                  orderResponse.orderId,
+                  orderDataWithEmail.redemptionCode
+                );
+                console.log(`✅ [Webhook] Redemption prize applied successfully!`);
+              } catch (prizeError: any) {
+                // No fallar la creación de la orden si el premio falla
+                console.error(`❌ [Webhook] Failed to apply redemption prize:`, prizeError?.message || prizeError);
+                // La orden se crea igual, pero sin el premio aplicado
+              }
+            }
+            
             // Enviar correo de confirmación de orden
             try {
               // Obtener la orden completa para el correo
@@ -741,8 +758,8 @@ export class PaymentsService {
       amount: payment.amount,
       preferenceId: payment.preferenceId,
       paymentId: payment.paymentId,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
+      createdAt: formatToBogotaISO(payment.createdAt),
+      updatedAt: formatToBogotaISO(payment.updatedAt),
     };
   }
 
@@ -778,8 +795,8 @@ export class PaymentsService {
       paymentId: payment.paymentId,
       hasOrder: !!payment.orderId,
       orderData: metadataObj.order_data || null,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
+      createdAt: formatToBogotaISO(payment.createdAt),
+      updatedAt: formatToBogotaISO(payment.updatedAt),
       order: payment.orderId ? {
         id: payment.order?.id,
         dailyOrderNumber: payment.order?.dailyOrderNumber,

@@ -9,33 +9,23 @@ export declare class OrdersController {
         customerName: string;
         phone: string;
         address: string;
-        createdAt: Date;
+        createdAt: string | null;
         orderType: import("./entities/order.entity").OrderType;
         orderStatus: import("./entities/order.entity").OrderStatus;
         printed: boolean;
         deliveryFee: number;
         orderSource: import("./entities/order.entity").OrderSource;
+        points: number;
+        pointCodes: string[];
         items: any[];
+        redemptionCode: string | null;
     }[]>;
     createOrder(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;
         orderId: number;
         dailyOrderNumber: number;
     }>;
-    getTodayOrders(): Promise<{
-        orderId: number;
-        dailyOrderNumber: number;
-        customerName: string;
-        phone: string;
-        address: string;
-        createdAt: Date;
-        orderType: import("./entities/order.entity").OrderType;
-        orderStatus: import("./entities/order.entity").OrderStatus;
-        printed: boolean;
-        deliveryFee: number;
-        orderSource: import("./entities/order.entity").OrderSource;
-        items: any[];
-    }[]>;
+    getTodayOrders(): Promise<any[]>;
     deleteOrder(id: string): Promise<{
         success: boolean;
         message: string;
@@ -48,5 +38,19 @@ export declare class OrdersController {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;
+    }>;
+    validateRedemptionPrize(body: {
+        code: string;
+    }): Promise<{
+        valid: boolean;
+        code: any;
+        expiresAt: any;
+        message: string;
+    }>;
+    applyRedemptionVoucher(id: number, body: {
+        redemptionCode: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
     }>;
 }

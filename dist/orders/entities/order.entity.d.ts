@@ -16,4 +16,6 @@ export declare class Order {
     deliveryFee: number;
     printed: boolean;
     orderSource: OrderSource;
+    points: number;
+    redemptionCode: string | null;
 }

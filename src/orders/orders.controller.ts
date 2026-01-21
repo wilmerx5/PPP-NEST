@@ -8,6 +8,7 @@ import {
     Post,
     Req,
     UseGuards,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -79,7 +80,17 @@ export class OrdersController {
   })
   @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
   async getTodayOrders() {
-    return this.orderService.findOrdersToday();
+    const orders = await this.orderService.findOrdersToday();
+    // Log for debugging - check if points are being returned
+    if (orders && orders.length > 0) {
+      console.log(`[getTodayOrders] Returning ${orders.length} orders`);
+      orders.forEach((order, idx) => {
+        if (order.points > 0 || (order.pointCodes && order.pointCodes.length > 0)) {
+          console.log(`[getTodayOrders] Order #${order.dailyOrderNumber} - points: ${order.points}, pointCodes.length: ${order.pointCodes?.length || 0}`);
+        }
+      });
+    }
+    return orders;
   }
 
   // -------------------------------------------------------------
@@ -137,6 +148,90 @@ export class OrdersController {
     @Body() dto: UpdateOrderGeneralDto,
   ) {
     return this.orderService.updateOrderGeneral(+id, dto);
+  }
+
+  // -------------------------------------------------------------
+  // VALIDATE REDEMPTION PRIZE (PUBLIC - for internal orders app)
+  // -------------------------------------------------------------
+  @Post('validate-redemption-prize')
+  @ApiOperation({
+    summary: 'Validate a redemption prize code (public endpoint for internal orders)',
+    description:
+      'Validates a redemption prize code without requiring authentication. Used by internal order management apps.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          example: 'REDEEM9PTSX7',
+          description: '12-character redemption code',
+        },
+      },
+      required: ['code'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Prize code is valid' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired code' })
+  @ApiResponse({ status: 404, description: 'Prize code not found' })
+  @ApiResponse({ status: 409, description: 'Prize code already used' })
+  async validateRedemptionPrize(
+    @Body() body: { code: string },
+  ) {
+    const { code } = body;
+    if (!code) {
+      throw new BadRequestException('Redemption code is required');
+    }
+    
+    const redemption = await this.orderService.validateRedemptionCodePublic(code.toUpperCase().trim());
+    
+    return {
+      valid: true,
+      code: redemption.code,
+      expiresAt: redemption.expiresAt,
+      message: 'Redemption code is valid and can be used',
+    };
+  }
+
+  // APPLY REDEMPTION PRIZE
+  // -------------------------------------------------------------
+  @Post(':id/apply-voucher')
+  @ApiOperation({
+    summary: 'Apply a redemption prize to an order',
+    description:
+      'Applies a redemption prize (from 9 points redemption) to an order. Validates that the order contains a half chicken (product code 2 or 5).',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        redemptionCode: {
+          type: 'string',
+          example: 'REDEEM9PTSX7',
+          description: '12-character redemption code',
+        },
+      },
+      required: ['redemptionCode'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Prize applied successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid prize or order does not contain half chicken' })
+  @ApiResponse({ status: 404, description: 'Order or prize not found' })
+  async applyRedemptionVoucher(
+    @Param('id') id: number,
+    @Body() body: { redemptionCode: string },
+  ) {
+    const { redemptionCode } = body;
+    if (!redemptionCode) {
+      throw new BadRequestException('Redemption code is required');
+    }
+    await this.orderService.applyRedemptionVoucher(+id, redemptionCode);
+    return {
+      success: true,
+      message: 'Redemption prize applied successfully',
+    };
   }
 
 }

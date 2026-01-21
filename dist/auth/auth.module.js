@@ -27,12 +27,18 @@ const user_addresses_controller_1 = require("./user-addresses.controller");
 const user_addresses_service_1 = require("./user-addresses.service");
 const user_phones_controller_1 = require("./user-phones.controller");
 const user_phones_service_1 = require("./user-phones.service");
+const points_service_1 = require("./services/points.service");
+const points_controller_1 = require("./points.controller");
+const user_points_entity_1 = require("./entities/user-points.entity");
+const point_redemption_entity_1 = require("./entities/point-redemption.entity");
+const products_module_1 = require("../products/products.module");
+const product_entity_1 = require("../products/entities/product.entity");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
-        controllers: [auth_controller_1.AuthController, user_addresses_controller_1.UserAddressesController, user_phones_controller_1.UserPhonesController],
+        controllers: [auth_controller_1.AuthController, user_addresses_controller_1.UserAddressesController, user_phones_controller_1.UserPhonesController, points_controller_1.PointsController],
         providers: [
             auth_service_1.AuthService,
             jwt_strategy_1.JwtStrategy,
@@ -41,11 +47,13 @@ exports.AuthModule = AuthModule = __decorate([
             cookie_service_1.CookieService,
             user_addresses_service_1.UserAddressesService,
             user_phones_service_1.UserPhonesService,
+            points_service_1.PointsService,
         ],
         imports: [
             common_module_1.CommonModule,
             config_1.ConfigModule,
-            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, verification_token_entity_1.VerificationToken, address_entity_1.Address, phone_entity_1.Phone]),
+            products_module_1.ProductsModule,
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, verification_token_entity_1.VerificationToken, address_entity_1.Address, phone_entity_1.Phone, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption, product_entity_1.Product]),
             passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
@@ -60,7 +68,7 @@ exports.AuthModule = AuthModule = __decorate([
                 }
             })
         ],
-        exports: [typeorm_1.TypeOrmModule, jwt_strategy_1.JwtStrategy, passport_1.PassportModule, jwt_1.JwtModule]
+        exports: [typeorm_1.TypeOrmModule, jwt_strategy_1.JwtStrategy, passport_1.PassportModule, jwt_1.JwtModule, points_service_1.PointsService]
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

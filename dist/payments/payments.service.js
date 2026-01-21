@@ -23,6 +23,7 @@ const order_entity_1 = require("../orders/entities/order.entity");
 const payment_entity_1 = require("./entities/payment.entity");
 const orders_service_1 = require("../orders/orders.service");
 const mail_service_1 = require("../common/mail/mail.service");
+const date_util_1 = require("../common/utils/date.util");
 let PaymentsService = class PaymentsService {
     paymentRepo;
     orderRepo;
@@ -451,6 +452,16 @@ let PaymentsService = class PaymentsService {
                         console.log(`   Order ID: ${orderResponse.orderId}`);
                         console.log(`   Daily Order Number: ${orderResponse.dailyOrderNumber}`);
                         console.log(`   Payment ID: ${paymentId}`);
+                        if (orderDataWithEmail.redemptionCode) {
+                            try {
+                                console.log(`🎁 [Webhook] Applying redemption prize: ${orderDataWithEmail.redemptionCode}`);
+                                await this.ordersService.applyRedemptionVoucher(orderResponse.orderId, orderDataWithEmail.redemptionCode);
+                                console.log(`✅ [Webhook] Redemption prize applied successfully!`);
+                            }
+                            catch (prizeError) {
+                                console.error(`❌ [Webhook] Failed to apply redemption prize:`, prizeError?.message || prizeError);
+                            }
+                        }
                         try {
                             const fullOrder = await this.orderRepo.findOne({
                                 where: { id: orderResponse.orderId },
@@ -554,8 +565,8 @@ let PaymentsService = class PaymentsService {
             amount: payment.amount,
             preferenceId: payment.preferenceId,
             paymentId: payment.paymentId,
-            createdAt: payment.createdAt,
-            updatedAt: payment.updatedAt,
+            createdAt: (0, date_util_1.formatToBogotaISO)(payment.createdAt),
+            updatedAt: (0, date_util_1.formatToBogotaISO)(payment.updatedAt),
         };
     }
     async getPaymentByPreference(preferenceId) {
@@ -584,8 +595,8 @@ let PaymentsService = class PaymentsService {
             paymentId: payment.paymentId,
             hasOrder: !!payment.orderId,
             orderData: metadataObj.order_data || null,
-            createdAt: payment.createdAt,
-            updatedAt: payment.updatedAt,
+            createdAt: (0, date_util_1.formatToBogotaISO)(payment.createdAt),
+            updatedAt: (0, date_util_1.formatToBogotaISO)(payment.updatedAt),
             order: payment.orderId ? {
                 id: payment.order?.id,
                 dailyOrderNumber: payment.order?.dailyOrderNumber,

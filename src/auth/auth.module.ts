@@ -19,9 +19,15 @@ import { UserAddressesController } from './user-addresses.controller';
 import { UserAddressesService } from './user-addresses.service';
 import { UserPhonesController } from './user-phones.controller';
 import { UserPhonesService } from './user-phones.service';
+import { PointsService } from './services/points.service';
+import { PointsController } from './points.controller';
+import { UserPoints } from './entities/user-points.entity';
+import { PointRedemption } from './entities/point-redemption.entity';
+import { ProductsModule } from '../products/products.module';
+import { Product } from '../products/entities/product.entity';
 
 @Module({
-  controllers: [AuthController, UserAddressesController, UserPhonesController],
+  controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController],
   providers: [
     AuthService,
     JwtStrategy,
@@ -30,11 +36,13 @@ import { UserPhonesService } from './user-phones.service';
     CookieService,
     UserAddressesService,
     UserPhonesService,
+    PointsService,
   ],
   imports: [
     CommonModule,
     ConfigModule,
-    TypeOrmModule.forFeature([User, VerificationToken, Address, Phone]),
+    ProductsModule,
+    TypeOrmModule.forFeature([User, VerificationToken, Address, Phone, UserPoints, PointRedemption, Product]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -51,6 +59,6 @@ import { UserPhonesService } from './user-phones.service';
   ],
 
 
-  exports: [TypeOrmModule, JwtStrategy, PassportModule, JwtModule]
+  exports: [TypeOrmModule, JwtStrategy, PassportModule, JwtModule, PointsService]
 })
 export class AuthModule { }

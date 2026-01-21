@@ -70,6 +70,7 @@ class CreateOrderDto {
     deliveryFee;
     orderSource;
     items;
+    redemptionCode;
 }
 exports.CreateOrderDto = CreateOrderDto;
 __decorate([
@@ -141,6 +142,15 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], CreateOrderDto.prototype, "items", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Código de premio de redención a aplicar (opcional).',
+        example: 'REDEEM9PTSX7',
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "redemptionCode", void 0);
 class UpdateOrderItemAttributeDto {
     attributeName;
     attributeValue;

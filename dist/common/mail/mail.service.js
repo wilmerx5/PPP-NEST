@@ -36,8 +36,12 @@ let MailService = class MailService {
     }
     async sendVerificationCode(email, code) {
         try {
+            const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
             const htmlBody = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 200px; height: auto; margin-bottom: 20px;" />
+          </div>
           <h2 style="color: #333;">Verification Code</h2>
           <p>Your verification code is:</p>
           <h1 style="color: #007bff; letter-spacing: 4px;">${code}</h1>
@@ -45,7 +49,7 @@ let MailService = class MailService {
         </div>
       `;
             await this.transporter.sendMail({
-                from: `"Pronto Pollo POrtal" <${this.configService.get('MAIL_USER')}>`,
+                from: `"Pronto Pollo Portal" <${this.configService.get('MAIL_USER')}>`,
                 to: email,
                 subject: 'Your Verification Code',
                 html: htmlBody,
@@ -61,8 +65,12 @@ let MailService = class MailService {
         try {
             const frontUrl = this.configService.get('AUTH_FRONT_URL');
             const activationLink = `${frontUrl}/verify-user?idUser=${userId}&otp=${code}`;
+            const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
             const htmlBody = `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 200px; height: auto; margin-bottom: 20px;" />
+        </div>
         <h2 style="color: #333;">Activate Your Account</h2>
         <p>Thank you for registering. To activate your account, please click the link below:</p>
         
@@ -98,9 +106,11 @@ let MailService = class MailService {
     }
     async sendPasswordResetCode(email, code) {
         try {
+            const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
             const htmlBody = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+          <div style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;">
+            <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 180px; height: auto; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px;" />
             <h2 style="color: white; margin: 0;">Recuperación de Contraseña</h2>
           </div>
           <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
@@ -161,6 +171,7 @@ let MailService = class MailService {
                     : orderType === 'table'
                         ? 'Mesa'
                         : 'Mostrador';
+            const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
             const htmlBody = `
         <!DOCTYPE html>
         <html>
@@ -172,8 +183,8 @@ let MailService = class MailService {
           <div style="max-width: 600px; margin: 0 auto; background-color: white;">
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); padding: 30px 20px; text-align: center;">
+              <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 200px; height: auto; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; display: inline-block;" />
               <h1 style="color: white; margin: 0; font-size: 28px;">¡Pedido Confirmado!</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Pronto Pollo Portal</p>
             </div>
             
             <!-- Content -->

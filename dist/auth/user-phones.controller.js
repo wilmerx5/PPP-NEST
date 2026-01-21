@@ -19,34 +19,40 @@ const user_phones_service_1 = require("./user-phones.service");
 const create_phone_dto_1 = require("./dto/create-phone.dto");
 const update_phone_dto_1 = require("./dto/update-phone.dto");
 const auth_decorator_1 = require("./decorators/auth.decorator");
+const date_util_1 = require("../common/utils/date.util");
 let UserPhonesController = class UserPhonesController {
     phonesService;
     constructor(phonesService) {
         this.phonesService = phonesService;
     }
-    create(req, createPhoneDto) {
+    async create(req, createPhoneDto) {
         const user = req.user;
-        return this.phonesService.create(user.id, createPhoneDto);
+        const phone = await this.phonesService.create(user.id, createPhoneDto);
+        return (0, date_util_1.transformDatesToBogota)(phone, ['createdAt', 'updatedAt']);
     }
-    findAll(req) {
+    async findAll(req) {
         const user = req.user;
-        return this.phonesService.findAll(user.id);
+        const phones = await this.phonesService.findAll(user.id);
+        return phones.map(phone => (0, date_util_1.transformDatesToBogota)(phone, ['createdAt', 'updatedAt']));
     }
-    findOne(req, id) {
+    async findOne(req, id) {
         const user = req.user;
-        return this.phonesService.findOne(user.id, id);
+        const phone = await this.phonesService.findOne(user.id, id);
+        return (0, date_util_1.transformDatesToBogota)(phone, ['createdAt', 'updatedAt']);
     }
-    update(req, id, updatePhoneDto) {
+    async update(req, id, updatePhoneDto) {
         const user = req.user;
-        return this.phonesService.update(user.id, id, updatePhoneDto);
+        const phone = await this.phonesService.update(user.id, id, updatePhoneDto);
+        return (0, date_util_1.transformDatesToBogota)(phone, ['createdAt', 'updatedAt']);
     }
-    remove(req, id) {
+    async remove(req, id) {
         const user = req.user;
         return this.phonesService.remove(user.id, id);
     }
-    setDefault(req, id) {
+    async setDefault(req, id) {
         const user = req.user;
-        return this.phonesService.setDefault(user.id, id);
+        const phone = await this.phonesService.setDefault(user.id, id);
+        return (0, date_util_1.transformDatesToBogota)(phone, ['createdAt', 'updatedAt']);
     }
 };
 exports.UserPhonesController = UserPhonesController;
@@ -58,7 +64,7 @@ __decorate([
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, create_phone_dto_1.CreatePhoneDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
@@ -67,7 +73,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
@@ -78,7 +84,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
@@ -90,7 +96,7 @@ __decorate([
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number, update_phone_dto_1.UpdatePhoneDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
@@ -101,7 +107,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "remove", null);
 __decorate([
     (0, common_1.Post)(':id/set-default'),
@@ -111,7 +117,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UserPhonesController.prototype, "setDefault", null);
 exports.UserPhonesController = UserPhonesController = __decorate([
     (0, swagger_1.ApiTags)('User Phones'),

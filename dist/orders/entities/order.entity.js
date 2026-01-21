@@ -27,6 +27,8 @@ let Order = class Order {
     deliveryFee;
     printed;
     orderSource;
+    points;
+    redemptionCode;
 };
 exports.Order = Order;
 __decorate([
@@ -161,6 +163,24 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], Order.prototype, "orderSource", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Puntos generados por esta orden (basados en productos con códigos específicos).',
+        example: 3,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'points', type: 'int', nullable: true, default: 0 }),
+    __metadata("design:type", Number)
+], Order.prototype, "points", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Código de premio de redención aplicado a esta orden (null si no se aplicó ningún premio).',
+        example: 'REDEEM9PTSX7',
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "redemptionCode", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: true })
 ], Order);

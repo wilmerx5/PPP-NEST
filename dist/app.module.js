@@ -38,9 +38,7 @@ exports.AppModule = AppModule = __decorate([
                         database: configService.get('DB_DATABASE'),
                         entities: [__dirname + '/**/*.entity{.ts,.js}'],
                         synchronize: true,
-                        extra: {
-                            options: `-c timezone=America/Bogota`
-                        }
+                        timezone: 'Z',
                     };
                     process.stdout.write('\n🔍 [DB Connection Config]\n');
                     process.stdout.write(`  Host: ${dbConfig.host || 'NOT SET'}\n`);

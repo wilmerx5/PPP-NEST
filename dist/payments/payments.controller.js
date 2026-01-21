@@ -32,23 +32,28 @@ let PaymentsController = class PaymentsController {
             console.warn('⚠️ [Webhook] MERCADO_PAGO_WEBHOOK_SECRET no configurado. Saltando validación (NO RECOMENDADO en producción).');
             return true;
         }
+        console.log('🔐 [Webhook] Webhook Secret configurado:', webhookSecret.substring(0, 10) + '...');
         const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
         const xRequestId = req.headers['x-request-id'] || req.headers['X-Request-Id'];
         if (!xSignature || !xRequestId) {
             console.error('❌ [Webhook] Faltan headers requeridos: x-signature o x-request-id');
             return false;
         }
-        const dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
+        let dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
         if (!dataId) {
             console.error('❌ [Webhook] No se encontró data.id en el webhook');
+            console.error('   Body:', JSON.stringify(body, null, 2));
+            console.error('   Query:', JSON.stringify(req.query, null, 2));
             return false;
         }
+        dataId = String(dataId).toLowerCase();
         try {
             const parts = xSignature.split(',');
             const tsPart = parts.find(p => p.startsWith('ts='));
             const v1Part = parts.find(p => p.startsWith('v1='));
             if (!tsPart || !v1Part) {
                 console.error('❌ [Webhook] Formato de x-signature inválido');
+                console.error('   x-signature:', xSignature);
                 return false;
             }
             const ts = tsPart.split('=')[1];
@@ -62,6 +67,9 @@ let PaymentsController = class PaymentsController {
             if (!isValid) {
                 console.error('❌ [Webhook] Firma inválida. Webhook rechazado.');
                 console.error('   Manifest:', manifest);
+                console.error('   Data ID (original):', body?.data?.id || req.query?.['data.id'] || req.query?.id);
+                console.error('   Data ID (lowercase):', dataId);
+                console.error('   Webhook Secret configurado:', webhookSecret ? `${webhookSecret.substring(0, 10)}...` : 'NO CONFIGURADO');
                 console.error('   Calculado:', hmac);
                 console.error('   Recibido: ', v1);
             }

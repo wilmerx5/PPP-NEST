@@ -27,6 +27,7 @@ import { ValidateTokenDTO } from './dto/validate-token.dto';
 import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { User } from './entities/user.entity';
+import { formatToBogotaISO } from '../common/utils/date.util';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -217,7 +218,15 @@ export class AuthController {
   }
 })
 getUser(@Req() req) {
-  return req.user;
+  const user = req.user as any;
+  // Convert createdAt to Bogotá timezone before sending to frontend
+  if (user?.createdAt) {
+    return {
+      ...user,
+      createdAt: formatToBogotaISO(user.createdAt),
+    };
+  }
+  return user;
 }
 
   // -------------------------------------------------------------
