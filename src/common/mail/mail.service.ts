@@ -31,7 +31,7 @@ export class MailService {
 
   async sendVerificationCode(email: string, code: string) {
     try {
-      const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
+      const logoUrl = 'https://cms.prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
       
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
@@ -110,7 +110,7 @@ export class MailService {
 
   async sendPasswordResetCode(email: string, code: string) {
     try {
-      const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
+      const logoUrl = 'https://cms.prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
       
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
@@ -196,7 +196,7 @@ export class MailService {
           ? 'Mesa'
           : 'Mostrador';
 
-      const logoUrl = 'https://prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
+      const logoUrl = 'https://cms.prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
       
       const htmlBody = `
         <!DOCTYPE html>
