@@ -11,6 +11,7 @@ import { getBogotaDayRange, formatToBogotaISO, transformDatesToBogota } from '..
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
+import { MailService } from '../common/mail/mail.service';
 
 @Injectable()
 export class OrdersService {
@@ -36,6 +37,8 @@ export class OrdersService {
 
     @Inject(forwardRef(() => PointsService))
     private readonly pointsService: PointsService,
+
+    private readonly mailService: MailService,
   ) {}
 
 
@@ -297,6 +300,52 @@ export class OrdersService {
       if (finalOrder) {
         const formatted = await this.mapOrderToGroupedFormat(finalOrder);
         this.gateway.emitOrdersUpdates("created_order", formatted);
+
+        // Enviar notificación por correo si la orden es online
+        if (source === 'online') {
+          try {
+            // Agrupar items por producto para el correo
+            const itemsMap = new Map<string, { productName: string; quantity: number; price: number }>();
+            
+            finalOrder.items.forEach(item => {
+              const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
+              const price = Number(item.product?.price || 0);
+              const key = `${item.product?.id || 'unknown'}-${productName}`;
+              
+              if (itemsMap.has(key)) {
+                const existing = itemsMap.get(key)!;
+                existing.quantity += 1;
+              } else {
+                itemsMap.set(key, {
+                  productName,
+                  quantity: 1,
+                  price,
+                });
+              }
+            });
+
+            const emailItems = Array.from(itemsMap.values());
+
+            // Calcular total
+            const subtotal = emailItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
+
+            await this.mailService.sendNewOrderNotification(
+              newOrderNumber,
+              customerName,
+              phone,
+              address,
+              orderType,
+              emailItems,
+              total,
+              finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined,
+            );
+            console.log(`✅ [Order Create] Notification email sent for online order #${newOrderNumber}`);
+          } catch (emailError: any) {
+            // No fallar la creación de la orden si el correo falla
+            console.error(`❌ [Order Create] Failed to send notification email for order #${newOrderNumber}:`, emailError?.message || emailError);
+          }
+        }
       }
 
       return {

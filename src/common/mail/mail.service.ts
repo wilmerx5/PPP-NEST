@@ -313,4 +313,173 @@ export class MailService {
     }
   }
 
+  async sendNewOrderNotification(
+    orderNumber: number,
+    customerName: string,
+    phone: string,
+    address: string,
+    orderType: string,
+    items: Array<{ productName: string; quantity: number; price: number }>,
+    total: number,
+    deliveryFee?: number,
+  ) {
+    const mailHost = this.configService.get<string>('MAIL_HOST');
+    const mailUser = this.configService.get<string>('MAIL_USER');
+    if (!mailHost || !mailUser) {
+      console.warn('⚠️ [Mail] MAIL_HOST y/o MAIL_USER no están en .env. No se envía notificación de nueva orden.');
+      return false;
+    }
+
+    try {
+      const itemsHtml = items
+        .map(
+          (item) => `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px 0; color: #333;">${item.productName}</td>
+          <td style="padding: 12px 0; text-align: center; color: #666;">${item.quantity}</td>
+          <td style="padding: 12px 0; text-align: right; color: #333; font-weight: 600;">$${Number(item.price).toLocaleString('es-CO')}</td>
+        </tr>
+      `,
+        )
+        .join('');
+
+      const envioRow =
+        deliveryFee != null && Number(deliveryFee) > 0
+          ? `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px 0; color: #333;">Envío a domicilio</td>
+          <td style="padding: 12px 0; text-align: center; color: #666;">1</td>
+          <td style="padding: 12px 0; text-align: right; color: #333; font-weight: 600;">$${Number(deliveryFee).toLocaleString('es-CO')}</td>
+        </tr>`
+          : '';
+
+      const orderTypeText =
+        orderType === 'delivery'
+          ? 'Domicilio'
+          : orderType === 'pickup'
+          ? 'Para Recoger'
+          : orderType === 'table'
+          ? 'Mesa'
+          : 'Mostrador';
+
+      const logoUrl = 'https://cms.prontopolloportal.com/wp-content/uploads/2022/01/cropped-logo.png';
+      
+      const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: white;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); padding: 30px 20px; text-align: center;">
+              <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 200px; height: auto; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; display: inline-block;" />
+              <h1 style="color: white; margin: 0; font-size: 28px;">🆕 Nueva Orden Online</h1>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 30px 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 80px; height: 80px; background-color: #3b82f6; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                  <span style="font-size: 40px;">📦</span>
+                </div>
+                <h2 style="color: #1f2937; margin: 0; font-size: 24px;">Se ha recibido una nueva orden</h2>
+                <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px;">Revisa los detalles a continuación</p>
+              </div>
+
+              <!-- Order Info -->
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb;">
+                  <span style="color: #6b7280; font-size: 14px;">Número de Pedido:</span>
+                  <span style="color: #1f2937; font-weight: 700; font-size: 18px;">#${orderNumber}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Cliente:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${customerName}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Teléfono:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${phone}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="color: #6b7280; font-size: 14px;">Tipo de Pedido:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${orderTypeText}</span>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <span style="color: #6b7280; font-size: 14px; display: block; margin-bottom: 5px;">Dirección:</span>
+                  <span style="color: #1f2937; font-weight: 600;">${address}</span>
+                </div>
+              </div>
+
+              <!-- Items -->
+              <div style="margin-bottom: 30px;">
+                <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Resumen del Pedido</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                      <th style="text-align: left; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Producto</th>
+                      <th style="text-align: center; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Cant.</th>
+                      <th style="text-align: right; padding: 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Precio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                    ${envioRow}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Total -->
+              <div style="background-color: #dbeafe; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #1e40af; font-size: 18px; font-weight: 700;">Total:</span>
+                  <span style="color: #1e40af; font-size: 24px; font-weight: 800;">$${Number(total).toLocaleString('es-CO')}</span>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                  Esta orden fue creada desde la aplicación online.
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer Brand -->
+            <div style="background-color: #1f2937; padding: 20px; text-align: center;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} Pronto Pollo Portal. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Enviar a ambos correos
+      const recipients = ['prontopolloportal@gmail.com', 'wilmercampos2004@gmail.com'];
+      
+      await Promise.all(
+        recipients.map(recipient =>
+          this.transporter.sendMail({
+            from: `"Pronto Pollo Portal" <${mailUser}>`,
+            to: recipient,
+            subject: `🆕 Nueva Orden Online #${orderNumber} - ${customerName}`,
+            html: htmlBody,
+          })
+        )
+      );
+
+      console.log(`✅ [Mail] New order notification sent to ${recipients.join(', ')} for order #${orderNumber}`);
+      return true;
+    } catch (error: any) {
+      console.error('❌ [Mail] Error sending new order notification:', error?.message || error);
+      if (error?.code === 'ETIMEDOUT' || /Greeting never received/i.test(String(error?.message))) {
+        console.error('   💡 Revisa: MAIL_HOST (ej: smtp.gmail.com), MAIL_PORT (465=SSL, 587=STARTTLS), firewall. En Gmail usa contraseña de aplicación.');
+      }
+      // No lanzar error para no afectar la creación de la orden
+      return false;
+    }
+  }
+
 }

@@ -8,6 +8,7 @@ import { OrdersService } from './orders.service';
 import { OrdersGateway } from './Websocket/order.gateway';
 import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
+import { CommonModule } from '../common/common.module';
 import { User } from '../auth/entities/user.entity';
 import { Product } from '../products/entities/product.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
@@ -20,6 +21,7 @@ import { PointRedemption } from '../auth/entities/point-redemption.entity';
     TypeOrmModule.forFeature([Order, OrderItem, OrderItemAttribute, User, Product, UserPoints, PointRedemption]),
     forwardRef(() => AuthModule),
     ProductsModule,
+    CommonModule,
   ],
   exports: [OrdersService],
 })
