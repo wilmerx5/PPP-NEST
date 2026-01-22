@@ -1067,6 +1067,9 @@ export class OrdersService {
       rappi: 0,
     };
 
+    // Count products sold
+    const productsSold: Record<number, { code: number; name: string; quantity: number; totalRevenue: number }> = {};
+
     for (const order of orders) {
       // Calculate subtotal
       let orderSubtotal = 0;
@@ -1074,6 +1077,18 @@ export class OrdersService {
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
           orderSubtotal += Number(product.price);
+          
+          // Count product sales
+          if (!productsSold[product.code]) {
+            productsSold[product.code] = {
+              code: product.code,
+              name: product.name,
+              quantity: 0,
+              totalRevenue: 0,
+            };
+          }
+          productsSold[product.code].quantity += 1;
+          productsSold[product.code].totalRevenue += Number(product.price);
         }
       }
 
@@ -1091,6 +1106,10 @@ export class OrdersService {
           const product = allProducts.find(p => p.id === halfChickenItem.product.id);
           if (product) {
             totalPremioDiscounts += Number(product.price);
+            // Adjust product revenue (one less sale due to discount)
+            if (productsSold[product.code]) {
+              productsSold[product.code].totalRevenue -= Number(product.price);
+            }
           }
         }
       }
@@ -1100,6 +1119,9 @@ export class OrdersService {
     }
 
     const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
+
+    // Convert productsSold to array and sort by code
+    const productsSoldArray = Object.values(productsSold).sort((a, b) => a.code - b.code);
 
     return {
       date: date || formatInTimeZone(new Date(), 'America/Bogota', 'yyyy-MM-dd'),
@@ -1111,6 +1133,7 @@ export class OrdersService {
         premioDiscounts: totalPremioDiscounts,
         total: totalRevenue,
       },
+      productsSold: productsSoldArray,
       orders: orders.map(o => ({
         id: o.id,
         dailyOrderNumber: o.dailyOrderNumber,
