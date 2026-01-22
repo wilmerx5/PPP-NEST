@@ -29,6 +29,7 @@ const user_phones_controller_1 = require("./user-phones.controller");
 const user_phones_service_1 = require("./user-phones.service");
 const points_service_1 = require("./services/points.service");
 const points_controller_1 = require("./points.controller");
+const admin_controller_1 = require("./admin.controller");
 const user_points_entity_1 = require("./entities/user-points.entity");
 const point_redemption_entity_1 = require("./entities/point-redemption.entity");
 const products_module_1 = require("../products/products.module");
@@ -38,7 +39,7 @@ let AuthModule = class AuthModule {
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
-        controllers: [auth_controller_1.AuthController, user_addresses_controller_1.UserAddressesController, user_phones_controller_1.UserPhonesController, points_controller_1.PointsController],
+        controllers: [auth_controller_1.AuthController, user_addresses_controller_1.UserAddressesController, user_phones_controller_1.UserPhonesController, points_controller_1.PointsController, admin_controller_1.AdminController],
         providers: [
             auth_service_1.AuthService,
             jwt_strategy_1.JwtStrategy,

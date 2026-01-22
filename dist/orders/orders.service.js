@@ -25,6 +25,7 @@ const date_util_1 = require("../common/utils/date.util");
 const points_service_1 = require("../auth/services/points.service");
 const user_entity_1 = require("../auth/entities/user.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
+const mail_service_1 = require("../common/mail/mail.service");
 let OrdersService = class OrdersService {
     orderRepo;
     itemRepo;
@@ -34,7 +35,8 @@ let OrdersService = class OrdersService {
     gateway;
     dataSource;
     pointsService;
-    constructor(orderRepo, itemRepo, attrRepo, productRepo, userRepo, gateway, dataSource, pointsService) {
+    mailService;
+    constructor(orderRepo, itemRepo, attrRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
@@ -43,6 +45,7 @@ let OrdersService = class OrdersService {
         this.gateway = gateway;
         this.dataSource = dataSource;
         this.pointsService = pointsService;
+        this.mailService = mailService;
     }
     async generateNextOrderNumber(todayStartUtc, todayEndUtc, manager) {
         const repo = manager ? manager.getRepository(order_entity_1.Order) : this.orderRepo;
@@ -207,6 +210,35 @@ let OrdersService = class OrdersService {
             if (finalOrder) {
                 const formatted = await this.mapOrderToGroupedFormat(finalOrder);
                 this.gateway.emitOrdersUpdates("created_order", formatted);
+                if (source === 'online') {
+                    try {
+                        const itemsMap = new Map();
+                        finalOrder.items.forEach(item => {
+                            const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
+                            const price = Number(item.product?.price || 0);
+                            const key = `${item.product?.id || 'unknown'}-${productName}`;
+                            if (itemsMap.has(key)) {
+                                const existing = itemsMap.get(key);
+                                existing.quantity += 1;
+                            }
+                            else {
+                                itemsMap.set(key, {
+                                    productName,
+                                    quantity: 1,
+                                    price,
+                                });
+                            }
+                        });
+                        const emailItems = Array.from(itemsMap.values());
+                        const subtotal = emailItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                        const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
+                        await this.mailService.sendNewOrderNotification(newOrderNumber, customerName, phone, address, orderType, emailItems, total, finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined);
+                        console.log(`✅ [Order Create] Notification email sent for online order #${newOrderNumber}`);
+                    }
+                    catch (emailError) {
+                        console.error(`❌ [Order Create] Failed to send notification email for order #${newOrderNumber}:`, emailError?.message || emailError);
+                    }
+                }
             }
             return {
                 success: true,
@@ -629,6 +661,7 @@ exports.OrdersService = OrdersService = __decorate([
         typeorm_2.Repository,
         order_gateway_1.OrdersGateway,
         typeorm_2.DataSource,
-        points_service_1.PointsService])
+        points_service_1.PointsService,
+        mail_service_1.MailService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

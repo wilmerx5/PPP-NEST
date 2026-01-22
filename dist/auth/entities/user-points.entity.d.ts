@@ -8,7 +8,7 @@ export declare class UserPoints {
     isUsed: boolean;
     isCanceled: boolean;
     isRedeemed: boolean;
-    type: 'automatic' | 'manual';
+    type: 'automatic' | 'manual' | 'admin';
     orderDailyNumber: number | null;
     description: string | null;
     createdAt: Date;

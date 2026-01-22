@@ -69,16 +69,16 @@ export class UserPoints {
   isRedeemed: boolean;
 
   @ApiProperty({
-    description: 'Tipo de registro: automatic (de orden online) o manual (registrado por cliente).',
+    description: 'Tipo de registro: automatic (de orden online), manual (registrado por cliente) o admin (generado por administrador).',
     example: 'automatic',
-    enum: ['automatic', 'manual'],
+    enum: ['automatic', 'manual', 'admin'],
   })
   @Column({
     type: 'enum',
-    enum: ['automatic', 'manual'],
+    enum: ['automatic', 'manual', 'admin'],
     default: 'automatic',
   })
-  type: 'automatic' | 'manual';
+  type: 'automatic' | 'manual' | 'admin';
 
   @ApiProperty({
     description: 'Número diario de la orden (para referencias).',

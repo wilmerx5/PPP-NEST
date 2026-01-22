@@ -21,13 +21,14 @@ import { UserPhonesController } from './user-phones.controller';
 import { UserPhonesService } from './user-phones.service';
 import { PointsService } from './services/points.service';
 import { PointsController } from './points.controller';
+import { AdminController } from './admin.controller';
 import { UserPoints } from './entities/user-points.entity';
 import { PointRedemption } from './entities/point-redemption.entity';
 import { ProductsModule } from '../products/products.module';
 import { Product } from '../products/entities/product.entity';
 
 @Module({
-  controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController],
+  controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController, AdminController],
   providers: [
     AuthService,
     JwtStrategy,

@@ -7,6 +7,7 @@ import { Order } from './entities/order.entity';
 import { OrdersGateway } from './Websocket/order.gateway';
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
+import { MailService } from '../common/mail/mail.service';
 export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
@@ -16,7 +17,8 @@ export declare class OrdersService {
     private readonly gateway;
     private readonly dataSource;
     private readonly pointsService;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService);
+    private readonly mailService;
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService);
     private generateNextOrderNumber;
     create(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;

@@ -23,8 +23,7 @@ function formatToBogotaISO(date) {
     if (!date)
         return null;
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const bogotaDate = toBogotaTime(dateObj);
-    return bogotaDate.toISOString();
+    return (0, date_fns_tz_1.formatInTimeZone)(dateObj, exports.APP_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 }
 function formatBogotaDate(date, formatStr = 'PPp') {
     if (!date)

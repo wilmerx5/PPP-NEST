@@ -37,7 +37,7 @@ exports.AppModule = AppModule = __decorate([
                         password: configService.get('DB_PASSWORD'),
                         database: configService.get('DB_DATABASE'),
                         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-                        synchronize: true,
+                        synchronize: false,
                         timezone: 'Z',
                     };
                     process.stdout.write('\n🔍 [DB Connection Config]\n');

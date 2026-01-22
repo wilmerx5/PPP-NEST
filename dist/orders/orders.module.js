@@ -17,6 +17,7 @@ const orders_service_1 = require("./orders.service");
 const order_gateway_1 = require("./Websocket/order.gateway");
 const auth_module_1 = require("../auth/auth.module");
 const products_module_1 = require("../products/products.module");
+const common_module_1 = require("../common/common.module");
 const user_entity_1 = require("../auth/entities/user.entity");
 const product_entity_1 = require("../products/entities/product.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
@@ -32,6 +33,7 @@ exports.OrdersModule = OrdersModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, order_item_attribute_entity_1.OrderItemAttribute, user_entity_1.User, product_entity_1.Product, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption]),
             (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
             products_module_1.ProductsModule,
+            common_module_1.CommonModule,
         ],
         exports: [orders_service_1.OrdersService],
     })

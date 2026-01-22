@@ -94,13 +94,13 @@ __decorate([
 ], UserPoints.prototype, "isRedeemed", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: 'Tipo de registro: automatic (de orden online) o manual (registrado por cliente).',
+        description: 'Tipo de registro: automatic (de orden online), manual (registrado por cliente) o admin (generado por administrador).',
         example: 'automatic',
-        enum: ['automatic', 'manual'],
+        enum: ['automatic', 'manual', 'admin'],
     }),
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['automatic', 'manual'],
+        enum: ['automatic', 'manual', 'admin'],
         default: 'automatic',
     }),
     __metadata("design:type", String)

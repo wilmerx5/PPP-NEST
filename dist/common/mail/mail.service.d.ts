@@ -11,4 +11,9 @@ export declare class MailService {
         quantity: number;
         price: number;
     }>, total: number, orderType: string, address?: string, phone?: string, deliveryFee?: number): Promise<boolean>;
+    sendNewOrderNotification(orderNumber: number, customerName: string, phone: string, address: string, orderType: string, items: Array<{
+        productName: string;
+        quantity: number;
+        price: number;
+    }>, total: number, deliveryFee?: number): Promise<boolean>;
 }
