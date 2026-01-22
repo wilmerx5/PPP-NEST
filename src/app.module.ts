@@ -31,19 +31,20 @@ import { PaymentsModule } from './payments/payments.module';
           // Store all es in UTC - conversion to Bogotá timezone happens in application layer
           timezone: 'Z', // UTC timezone
           // Pool configuration to prevent exceeding connection limits
-          extra: {
-            connectionLimit: 10, // Maximum number of connections in the pool
-            acquireTimeout: 60000, // Timeout to acquire connection (60 seconds)
-            timeout: 60000, // Query timeout (60 seconds)
-            reconnect: true,
-            // Idle timeout - close idle connections after 10 minutes
-            idleTimeout: 600000,
-            // Maximum idle connections
-            maxIdle: 5,
-          },
-          // Connection pool settings
-          poolSize: 10, // Maximum pool size
+          // Reduce pool size to avoid hitting 500 connections/hour limit
+          poolSize: 5, // Maximum pool size (reduced to prevent exceeding limits)
           keepConnectionAlive: true, // Keep connections alive between requests
+          connectTimeout: 30000, // 30 seconds for initial connection
+          extra: {
+            // Valid mysql2 pool options
+            connectionLimit: 5, // Maximum number of connections in the pool (reduced)
+            waitForConnections: true, // Wait for available connection instead of erroring
+            queueLimit: 0, // Unlimited queue (0 = unlimited)
+            maxIdle: 3, // Maximum idle connections (reduced)
+            idleTimeout: 300000, // Close idle connections after 5 minutes (300000ms)
+            enableKeepAlive: true, // Enable TCP keep-alive
+            keepAliveInitialDelay: 0, // Start keep-alive immediately
+          },
         };
 
         // Logs detallados de conexión (sin mostrar password completo)
