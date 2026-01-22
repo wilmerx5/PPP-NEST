@@ -4,11 +4,12 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Auth } from './decorators/auth.decorator';
 import { ValidRoles } from './interfaces/valid.roles.interface';
 import { User } from './entities/user.entity';
@@ -17,6 +18,7 @@ import { PointsService } from './services/points.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
+import { OrdersService } from '../../orders/orders.service';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -25,6 +27,7 @@ import { UserPoints } from './entities/user-points.entity';
 export class AdminController {
   constructor(
     private readonly pointsService: PointsService,
+    private readonly ordersService: OrdersService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
@@ -111,5 +114,41 @@ export class AdminController {
       availablePoints,
       history,
     };
+  }
+
+  @Get('orders/by-date')
+  @ApiOperation({ summary: 'Get orders by date (admin only)' })
+  @ApiQuery({ name: 'date', required: true, description: 'Date in YYYY-MM-DD format', example: '2025-01-21' })
+  @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
+  async getOrdersByDate(@Query('date') date: string) {
+    if (!date) {
+      throw new BadRequestException('Date parameter is required (YYYY-MM-DD)');
+    }
+    
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+    }
+
+    const orders = await this.ordersService.findOrdersByDate(date);
+    return orders;
+  }
+
+  @Get('orders/daily-summary')
+  @ApiOperation({ summary: 'Get daily summary/cash register report (admin only)' })
+  @ApiQuery({ name: 'date', required: false, description: 'Date in YYYY-MM-DD format. If not provided, uses today.', example: '2025-01-21' })
+  @ApiResponse({ status: 200, description: 'Daily summary retrieved successfully' })
+  async getDailySummary(@Query('date') date?: string) {
+    if (date) {
+      // Validate date format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      }
+    }
+
+    const summary = await this.ordersService.getDailySummary(date);
+    return summary;
   }
 }

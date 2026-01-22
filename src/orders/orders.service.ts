@@ -8,6 +8,7 @@ import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
 import { OrdersGateway } from './Websocket/order.gateway';
 import { getBogotaDayRange, formatToBogotaISO, transformDatesToBogota } from '../common/utils/date.util';
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
@@ -952,5 +953,170 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  /**
+   * Obtiene órdenes de una fecha específica (Bogotá timezone).
+   * Excluye canceladas.
+   * 
+   * @param date - Fecha en formato YYYY-MM-DD (Bogotá timezone)
+   * @returns Lista de órdenes formateadas
+   */
+  async findOrdersByDate(date: string): Promise<any[]> {
+    // Parse date string (YYYY-MM-DD) in Bogotá timezone
+    const dateObj = new Date(date + 'T00:00:00');
+    const dateInBogota = toZonedTime(dateObj, 'America/Bogota');
+    
+    // Get start and end of day in Bogotá
+    const startOfDay = new Date(dateInBogota);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(dateInBogota);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Convert to UTC for database query
+    const startUtc = fromZonedTime(startOfDay, 'America/Bogota');
+    const endUtc = fromZonedTime(endOfDay, 'America/Bogota');
+
+    const orders = await this.orderRepo.find({
+      where: {
+        createdAt: Between(startUtc, endUtc),
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product', 'items.attributes'],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Get point codes for all orders
+    const ordersWithPointCodes = await Promise.all(
+      orders.map(async (order) => {
+        const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+        const pointsValue = order.points ?? pointCodes.length ?? 0;
+        return { order, pointCodes, pointsValue };
+      })
+    );
+
+    // Format orders
+    const mappedOrders = await Promise.all(
+      ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
+        const formatted = await this.mapOrderToGroupedFormat(order);
+        return {
+          ...formatted,
+          points: pointsValue,
+          pointCodes,
+        };
+      })
+    );
+
+    return mappedOrders;
+  }
+
+  /**
+   * Obtiene el resumen/corte de caja del día.
+   * Calcula totales, cantidad de órdenes, etc.
+   * 
+   * @param date - Fecha en formato YYYY-MM-DD (Bogotá timezone). Si no se proporciona, usa hoy.
+   * @returns Resumen del día
+   */
+  async getDailySummary(date?: string): Promise<any> {
+    let startUtc: Date;
+    let endUtc: Date;
+
+    if (date) {
+      // Parse date string (YYYY-MM-DD) in Bogotá timezone
+      const dateObj = new Date(date + 'T00:00:00');
+      const dateInBogota = toZonedTime(dateObj, 'America/Bogota');
+      
+      const startOfDay = new Date(dateInBogota);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(dateInBogota);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      startUtc = fromZonedTime(startOfDay, 'America/Bogota');
+      endUtc = fromZonedTime(endOfDay, 'America/Bogota');
+    } else {
+      // Use today
+      const { start, end } = getBogotaDayRange();
+      startUtc = start;
+      endUtc = end;
+    }
+
+    const orders = await this.orderRepo.find({
+      where: {
+        createdAt: Between(startUtc, endUtc),
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product'],
+    });
+
+    // Get all products to calculate prices
+    const allProducts = await this.productRepo.find();
+
+    // Calculate totals
+    let totalSubtotal = 0;
+    let totalDeliveryFees = 0;
+    let totalPremioDiscounts = 0;
+    let totalOrders = orders.length;
+    
+    const ordersByType: Record<string, number> = {
+      delivery: 0,
+      pickup: 0,
+      table: 0,
+      counter: 0,
+      rappi: 0,
+    };
+
+    for (const order of orders) {
+      // Calculate subtotal
+      let orderSubtotal = 0;
+      for (const item of order.items) {
+        const product = allProducts.find(p => p.id === item.product.id);
+        if (product) {
+          orderSubtotal += Number(product.price);
+        }
+      }
+
+      // Delivery fee
+      if (order.orderType === 'delivery' && order.deliveryFee) {
+        totalDeliveryFees += Number(order.deliveryFee);
+      }
+
+      // Premio discount (if redemption code exists, discount one half chicken)
+      if (order.redemptionCode) {
+        const halfChickenItem = order.items.find(
+          item => item.product.code === 2 || item.product.code === 5
+        );
+        if (halfChickenItem) {
+          const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+          if (product) {
+            totalPremioDiscounts += Number(product.price);
+          }
+        }
+      }
+
+      totalSubtotal += orderSubtotal;
+      ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+    }
+
+    const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
+
+    return {
+      date: date || formatInTimeZone(new Date(), 'America/Bogota', 'yyyy-MM-dd'),
+      totalOrders,
+      ordersByType,
+      totals: {
+        subtotal: totalSubtotal,
+        deliveryFees: totalDeliveryFees,
+        premioDiscounts: totalPremioDiscounts,
+        total: totalRevenue,
+      },
+      orders: orders.map(o => ({
+        id: o.id,
+        dailyOrderNumber: o.dailyOrderNumber,
+        orderType: o.orderType,
+        createdAt: formatToBogotaISO(o.createdAt),
+      })),
+    };
   }
 }

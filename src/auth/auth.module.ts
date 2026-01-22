@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -26,6 +26,7 @@ import { UserPoints } from './entities/user-points.entity';
 import { PointRedemption } from './entities/point-redemption.entity';
 import { ProductsModule } from '../products/products.module';
 import { Product } from '../products/entities/product.entity';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
   controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController, AdminController],
@@ -43,6 +44,7 @@ import { Product } from '../products/entities/product.entity';
     CommonModule,
     ConfigModule,
     ProductsModule,
+    forwardRef(() => OrdersModule),
     TypeOrmModule.forFeature([User, VerificationToken, Address, Phone, UserPoints, PointRedemption, Product]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
