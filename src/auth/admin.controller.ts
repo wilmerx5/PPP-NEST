@@ -18,7 +18,7 @@ import { PointsService } from './services/points.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
-import { OrdersService } from '../../orders/orders.service';
+import { OrdersService } from '../orders/orders.service';
 
 @ApiTags('Admin')
 @Controller('admin')
