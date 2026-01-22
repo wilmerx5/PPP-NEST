@@ -30,6 +30,20 @@ import { PaymentsModule } from './payments/payments.module';
           synchronize: false, // Keep true to sync schema with dev - will disable later and use migrations
           // Store all es in UTC - conversion to Bogotá timezone happens in application layer
           timezone: 'Z', // UTC timezone
+          // Pool configuration to prevent exceeding connection limits
+          extra: {
+            connectionLimit: 10, // Maximum number of connections in the pool
+            acquireTimeout: 60000, // Timeout to acquire connection (60 seconds)
+            timeout: 60000, // Query timeout (60 seconds)
+            reconnect: true,
+            // Idle timeout - close idle connections after 10 minutes
+            idleTimeout: 600000,
+            // Maximum idle connections
+            maxIdle: 5,
+          },
+          // Connection pool settings
+          poolSize: 10, // Maximum pool size
+          keepConnectionAlive: true, // Keep connections alive between requests
         };
 
         // Logs detallados de conexión (sin mostrar password completo)
