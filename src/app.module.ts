@@ -21,9 +21,9 @@ import { PaymentsModule } from './payments/payments.module';
       useFactory: (configService: ConfigService) => {
         // Log pool configuration
         process.stdout.write('\n🔧 [DB Pool Config]\n');
-        process.stdout.write('  Pool Size: 2 (minimal to avoid connection limit)\n');
-        process.stdout.write('  Connection Limit: 2\n');
-        process.stdout.write('  Retry Attempts: 0 (disabled)\n');
+        process.stdout.write('  Pool Size: 20 (optimized for unlimited database)\n');
+        process.stdout.write('  Connection Limit: 30\n');
+        process.stdout.write('  Retry Attempts: 5\n');
         process.stdout.write('  Keep Connection Alive: true\n\n');
         const dbConfig = {
           type: 'mariadb' as const,
@@ -35,20 +35,20 @@ import { PaymentsModule } from './payments/payments.module';
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: false,
           timezone: 'Z', // UTC timezone
-          // Critical: Reduce pool to absolute minimum to avoid hitting 500/hour limit
-          poolSize: 2, // Very small pool - only 2 connections max
+          // Optimized pool configuration for unlimited database
+          poolSize: 20, // Increased pool size for better performance
           keepConnectionAlive: true, // Reuse connections
           connectTimeout: 10000, // 10 seconds for initial connection
-          // Disable retries to prevent creating more connections when limit is reached
-          retryAttempts: 0, // No retries - fail fast instead of creating more connections
-          retryDelay: 0,
+          // Enable retries with reasonable limits
+          retryAttempts: 5, // Retry up to 5 times on connection failure
+          retryDelay: 3000, // Wait 3 seconds between retries
           extra: {
-            // Minimal pool configuration
-            connectionLimit: 2, // Absolute minimum - only 2 connections
-            waitForConnections: true, // Wait instead of creating new connections
-            queueLimit: 10, // Limit queue to prevent buildup
-            maxIdle: 1, // Only 1 idle connection max
-            idleTimeout: 180000, // Close idle connections after 3 minutes (180000ms)
+            // Optimized pool configuration for unlimited database
+            connectionLimit: 30, // Increased connection limit
+            waitForConnections: true, // Wait instead of failing immediately
+            queueLimit: 50, // Increased queue limit
+            maxIdle: 10, // Allow more idle connections
+            idleTimeout: 600000, // Close idle connections after 10 minutes (600000ms)
             enableKeepAlive: true,
             keepAliveInitialDelay: 0,
           },
