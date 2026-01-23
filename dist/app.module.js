@@ -29,6 +29,11 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => {
+                    process.stdout.write('\n🔧 [DB Pool Config]\n');
+                    process.stdout.write('  Pool Size: 2 (minimal to avoid connection limit)\n');
+                    process.stdout.write('  Connection Limit: 2\n');
+                    process.stdout.write('  Retry Attempts: 0 (disabled)\n');
+                    process.stdout.write('  Keep Connection Alive: true\n\n');
                     const dbConfig = {
                         type: 'mariadb',
                         host: configService.get('DB_HOST'),
@@ -39,6 +44,20 @@ exports.AppModule = AppModule = __decorate([
                         entities: [__dirname + '/**/*.entity{.ts,.js}'],
                         synchronize: false,
                         timezone: 'Z',
+                        poolSize: 2,
+                        keepConnectionAlive: true,
+                        connectTimeout: 10000,
+                        retryAttempts: 0,
+                        retryDelay: 0,
+                        extra: {
+                            connectionLimit: 2,
+                            waitForConnections: true,
+                            queueLimit: 10,
+                            maxIdle: 1,
+                            idleTimeout: 180000,
+                            enableKeepAlive: true,
+                            keepAliveInitialDelay: 0,
+                        },
                     };
                     process.stdout.write('\n🔍 [DB Connection Config]\n');
                     process.stdout.write(`  Host: ${dbConfig.host || 'NOT SET'}\n`);

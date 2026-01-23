@@ -22,12 +22,15 @@ const points_service_1 = require("./services/points.service");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_points_entity_1 = require("./entities/user-points.entity");
+const orders_service_1 = require("../orders/orders.service");
 let AdminController = class AdminController {
     pointsService;
+    ordersService;
     userRepo;
     pointsRepo;
-    constructor(pointsService, userRepo, pointsRepo) {
+    constructor(pointsService, ordersService, userRepo, pointsRepo) {
         this.pointsService = pointsService;
+        this.ordersService = ordersService;
         this.userRepo = userRepo;
         this.pointsRepo = pointsRepo;
     }
@@ -86,6 +89,27 @@ let AdminController = class AdminController {
             history,
         };
     }
+    async getOrdersByDate(date) {
+        if (!date) {
+            throw new common_1.BadRequestException('Date parameter is required (YYYY-MM-DD)');
+        }
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            throw new common_1.BadRequestException('Invalid date format. Use YYYY-MM-DD');
+        }
+        const orders = await this.ordersService.findOrdersByDate(date);
+        return orders;
+    }
+    async getDailySummary(date) {
+        if (date) {
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(date)) {
+                throw new common_1.BadRequestException('Invalid date format. Use YYYY-MM-DD');
+            }
+        }
+        const summary = await this.ordersService.getDailySummary(date);
+        return summary;
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -118,14 +142,35 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getUserPoints", null);
+__decorate([
+    (0, common_1.Get)('orders/by-date'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get orders by date (admin only)' }),
+    (0, swagger_1.ApiQuery)({ name: 'date', required: true, description: 'Date in YYYY-MM-DD format', example: '2025-01-21' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Orders retrieved successfully' }),
+    __param(0, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getOrdersByDate", null);
+__decorate([
+    (0, common_1.Get)('orders/daily-summary'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get daily summary/cash register report (admin only)' }),
+    (0, swagger_1.ApiQuery)({ name: 'date', required: false, description: 'Date in YYYY-MM-DD format. If not provided, uses today.', example: '2025-01-21' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Daily summary retrieved successfully' }),
+    __param(0, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getDailySummary", null);
 exports.AdminController = AdminController = __decorate([
     (0, swagger_1.ApiTags)('Admin'),
     (0, common_1.Controller)('admin'),
     (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
     (0, swagger_1.ApiBearerAuth)(),
-    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(2, (0, typeorm_1.InjectRepository)(user_points_entity_1.UserPoints)),
+    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(3, (0, typeorm_1.InjectRepository)(user_points_entity_1.UserPoints)),
     __metadata("design:paramtypes", [points_service_1.PointsService,
+        orders_service_1.OrdersService,
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], AdminController);

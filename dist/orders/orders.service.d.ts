@@ -59,4 +59,6 @@ export declare class OrdersService {
     private mapOrderToGroupedFormat;
     validateRedemptionCodePublic(code: string): Promise<any>;
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;
+    findOrdersByDate(date: string): Promise<any[]>;
+    getDailySummary(date?: string): Promise<any>;
 }

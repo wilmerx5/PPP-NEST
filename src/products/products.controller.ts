@@ -57,6 +57,22 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
+  // GET ALL CATEGORIES
+  // -------------------------------------------------------------
+  @Get('categories/list')
+  @ApiOperation({
+    summary: 'Get all categories',
+    description: 'Returns a list of all available categories.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of categories retrieved successfully',
+  })
+  async getAllCategories() {
+    return this.productsService.findAllCategories();
+  }
+
+  // -------------------------------------------------------------
   // GET PRODUCTS GROUPED BY CATEGORY
   // -------------------------------------------------------------
   @Get('categories')
@@ -104,13 +120,13 @@ export class ProductsController {
   @ApiBody({ type: UpdateProductDto })
   @ApiResponse({
     status: 200,
-    description: 'Product updated successfully (placeholder response)',
+    description: 'Product updated successfully',
   })
   @ApiResponse({
     status: 404,
     description: 'Product not found',
   })
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+  async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productsService.update(+id, updateProductDto);
   }
 

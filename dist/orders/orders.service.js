@@ -22,6 +22,7 @@ const order_item_entity_1 = require("./entities/order-item.entity");
 const order_entity_1 = require("./entities/order.entity");
 const order_gateway_1 = require("./Websocket/order.gateway");
 const date_util_1 = require("../common/utils/date.util");
+const date_fns_tz_1 = require("date-fns-tz");
 const points_service_1 = require("../auth/services/points.service");
 const user_entity_1 = require("../auth/entities/user.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
@@ -643,6 +644,133 @@ let OrdersService = class OrdersService {
             console.log(`✅ [Apply Premio] Prize ${redemption.code} applied to order #${order.dailyOrderNumber}`);
         }
         return order;
+    }
+    async findOrdersByDate(date) {
+        const dateObj = new Date(date + 'T00:00:00');
+        const dateInBogota = (0, date_fns_tz_1.toZonedTime)(dateObj, 'America/Bogota');
+        const startOfDay = new Date(dateInBogota);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(dateInBogota);
+        endOfDay.setHours(23, 59, 59, 999);
+        const startUtc = (0, date_fns_tz_1.fromZonedTime)(startOfDay, 'America/Bogota');
+        const endUtc = (0, date_fns_tz_1.fromZonedTime)(endOfDay, 'America/Bogota');
+        const orders = await this.orderRepo.find({
+            where: {
+                createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
+                orderStatus: (0, typeorm_2.Not)('canceled'),
+            },
+            relations: ['items', 'items.product', 'items.attributes'],
+            order: { createdAt: 'DESC' },
+        });
+        const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
+            const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+            const pointsValue = order.points ?? pointCodes.length ?? 0;
+            return { order, pointCodes, pointsValue };
+        }));
+        const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
+            const formatted = await this.mapOrderToGroupedFormat(order);
+            return {
+                ...formatted,
+                points: pointsValue,
+                pointCodes,
+            };
+        }));
+        return mappedOrders;
+    }
+    async getDailySummary(date) {
+        let startUtc;
+        let endUtc;
+        if (date) {
+            const dateObj = new Date(date + 'T00:00:00');
+            const dateInBogota = (0, date_fns_tz_1.toZonedTime)(dateObj, 'America/Bogota');
+            const startOfDay = new Date(dateInBogota);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(dateInBogota);
+            endOfDay.setHours(23, 59, 59, 999);
+            startUtc = (0, date_fns_tz_1.fromZonedTime)(startOfDay, 'America/Bogota');
+            endUtc = (0, date_fns_tz_1.fromZonedTime)(endOfDay, 'America/Bogota');
+        }
+        else {
+            const { start, end } = (0, date_util_1.getBogotaDayRange)();
+            startUtc = start;
+            endUtc = end;
+        }
+        const orders = await this.orderRepo.find({
+            where: {
+                createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
+                orderStatus: (0, typeorm_2.Not)('canceled'),
+            },
+            relations: ['items', 'items.product'],
+        });
+        const allProducts = await this.productRepo.find();
+        let totalSubtotal = 0;
+        let totalDeliveryFees = 0;
+        let totalPremioDiscounts = 0;
+        let totalOrders = orders.length;
+        const ordersByType = {
+            delivery: 0,
+            pickup: 0,
+            table: 0,
+            counter: 0,
+            rappi: 0,
+        };
+        const productsSold = {};
+        for (const order of orders) {
+            let orderSubtotal = 0;
+            for (const item of order.items) {
+                const product = allProducts.find(p => p.id === item.product.id);
+                if (product) {
+                    orderSubtotal += Number(product.price);
+                    if (!productsSold[product.code]) {
+                        productsSold[product.code] = {
+                            code: product.code,
+                            name: product.name,
+                            quantity: 0,
+                            totalRevenue: 0,
+                        };
+                    }
+                    productsSold[product.code].quantity += 1;
+                    productsSold[product.code].totalRevenue += Number(product.price);
+                }
+            }
+            if (order.orderType === 'delivery' && order.deliveryFee) {
+                totalDeliveryFees += Number(order.deliveryFee);
+            }
+            if (order.redemptionCode) {
+                const halfChickenItem = order.items.find(item => item.product.code === 2 || item.product.code === 5);
+                if (halfChickenItem) {
+                    const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+                    if (product) {
+                        totalPremioDiscounts += Number(product.price);
+                        if (productsSold[product.code]) {
+                            productsSold[product.code].totalRevenue -= Number(product.price);
+                        }
+                    }
+                }
+            }
+            totalSubtotal += orderSubtotal;
+            ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+        }
+        const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
+        const productsSoldArray = Object.values(productsSold).sort((a, b) => a.code - b.code);
+        return {
+            date: date || (0, date_fns_tz_1.formatInTimeZone)(new Date(), 'America/Bogota', 'yyyy-MM-dd'),
+            totalOrders,
+            ordersByType,
+            totals: {
+                subtotal: totalSubtotal,
+                deliveryFees: totalDeliveryFees,
+                premioDiscounts: totalPremioDiscounts,
+                total: totalRevenue,
+            },
+            productsSold: productsSoldArray,
+            orders: orders.map(o => ({
+                id: o.id,
+                dailyOrderNumber: o.dailyOrderNumber,
+                orderType: o.orderType,
+                createdAt: (0, date_util_1.formatToBogotaISO)(o.createdAt),
+            })),
+        };
     }
 };
 exports.OrdersService = OrdersService;

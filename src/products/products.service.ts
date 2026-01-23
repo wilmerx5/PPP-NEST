@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
+import { ProductAttribute } from './entities/product-attribute.entity';
 
 @Injectable()
 export class ProductsService {
@@ -13,7 +14,10 @@ export class ProductsService {
     private readonly productRepo: Repository<Product>,
 
     @InjectRepository(Category)
-    private readonly categoryRepo: Repository<Category>
+    private readonly categoryRepo: Repository<Category>,
+
+    @InjectRepository(ProductAttribute)
+    private readonly attributeRepo: Repository<ProductAttribute>
   ) {}
 
   /**
@@ -49,6 +53,17 @@ export class ProductsService {
         options: JSON.parse(attr.options),
       })),
     }));
+  }
+
+  /**
+   * Get all categories.
+   *
+   * @returns {Promise<Category[]>} List of all categories.
+   */
+  async findAllCategories() {
+    return this.categoryRepo.find({
+      order: { id: 'ASC' },
+    });
   }
 
   /**
@@ -117,14 +132,81 @@ export class ProductsService {
 
   /**
    * Update product by ID.
-   * Currently returns placeholder text.
-   *
+   * Updates product fields (name, description, price, hasAttributes) and attributes.
+   * 
    * @param id - Product ID.
    * @param updateProductDto - DTO with update data.
-   * @returns {string} Placeholder result.
+   * @returns {Promise<Product>} Updated product with transformed attributes.
    */
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    const product = await this.productRepo.findOne({
+      where: { id },
+      relations: ['attributes', 'categories'],
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    // Update basic fields
+    if (updateProductDto.name !== undefined) {
+      product.name = updateProductDto.name;
+    }
+    if (updateProductDto.description !== undefined) {
+      product.description = updateProductDto.description;
+    }
+    if (updateProductDto.price !== undefined) {
+      product.price = updateProductDto.price;
+    }
+    if (updateProductDto.hasAttributes !== undefined) {
+      product.hasAttributes = updateProductDto.hasAttributes;
+    }
+
+    // Update attributes if provided
+    if (updateProductDto.attributes !== undefined) {
+      // Remove all existing attributes
+      await this.attributeRepo.delete({ product: { id } });
+
+      // Create new attributes
+      const newAttributes = updateProductDto.attributes.map(attrDto => {
+        const attr = new ProductAttribute();
+        attr.attributeName = attrDto.attributeName;
+        attr.options = JSON.stringify(attrDto.options);
+        attr.product = product;
+        return attr;
+      });
+
+      await this.attributeRepo.save(newAttributes);
+    }
+
+    // Update categories if provided
+    if (updateProductDto.categoryIds !== undefined) {
+      if (updateProductDto.categoryIds.length > 0) {
+        const categories = await this.categoryRepo.find({
+          where: { id: In(updateProductDto.categoryIds) },
+        });
+        product.categories = categories;
+      } else {
+        product.categories = [];
+      }
+    }
+
+    // Save product changes
+    await this.productRepo.save(product);
+
+    // Return updated product with transformed attributes
+    const updated = await this.productRepo.findOne({
+      where: { id },
+      relations: ['categories', 'attributes'],
+    });
+
+    return {
+      ...updated,
+      attributes: updated.attributes.map(attr => ({
+        ...attr,
+        options: JSON.parse(attr.options),
+      })),
+    };
   }
 
   /**

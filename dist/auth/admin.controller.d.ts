@@ -3,11 +3,13 @@ import { Request } from 'express';
 import { PointsService } from './services/points.service';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
+import { OrdersService } from '../orders/orders.service';
 export declare class AdminController {
     private readonly pointsService;
+    private readonly ordersService;
     private readonly userRepo;
     private readonly pointsRepo;
-    constructor(pointsService: PointsService, userRepo: Repository<User>, pointsRepo: Repository<UserPoints>);
+    constructor(pointsService: PointsService, ordersService: OrdersService, userRepo: Repository<User>, pointsRepo: Repository<UserPoints>);
     getAllUsers(req: Request): Promise<User[]>;
     createPoints(req: Request, body: {
         pointsCount: number;
@@ -23,4 +25,6 @@ export declare class AdminController {
         availablePoints: number;
         history: UserPoints[];
     }>;
+    getOrdersByDate(date: string): Promise<any[]>;
+    getDailySummary(date?: string): Promise<any>;
 }

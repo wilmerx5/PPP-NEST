@@ -19,6 +19,12 @@ import { PaymentsModule } from './payments/payments.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
+        // Log pool configuration
+        process.stdout.write('\n🔧 [DB Pool Config]\n');
+        process.stdout.write('  Pool Size: 2 (minimal to avoid connection limit)\n');
+        process.stdout.write('  Connection Limit: 2\n');
+        process.stdout.write('  Retry Attempts: 0 (disabled)\n');
+        process.stdout.write('  Keep Connection Alive: true\n\n');
         const dbConfig = {
           type: 'mariadb' as const,
           host: configService.get<string>('DB_HOST'),
@@ -27,23 +33,24 @@ import { PaymentsModule } from './payments/payments.module';
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: false, // Keep true to sync schema with dev - will disable later and use migrations
-          // Store all es in UTC - conversion to Bogotá timezone happens in application layer
+          synchronize: false,
           timezone: 'Z', // UTC timezone
-          // Pool configuration to prevent exceeding connection limits
-          // Reduce pool size to avoid hitting 500 connections/hour limit
-          poolSize: 5, // Maximum pool size (reduced to prevent exceeding limits)
-          keepConnectionAlive: true, // Keep connections alive between requests
-          connectTimeout: 30000, // 30 seconds for initial connection
+          // Critical: Reduce pool to absolute minimum to avoid hitting 500/hour limit
+          poolSize: 2, // Very small pool - only 2 connections max
+          keepConnectionAlive: true, // Reuse connections
+          connectTimeout: 10000, // 10 seconds for initial connection
+          // Disable retries to prevent creating more connections when limit is reached
+          retryAttempts: 0, // No retries - fail fast instead of creating more connections
+          retryDelay: 0,
           extra: {
-            // Valid mysql2 pool options
-            connectionLimit: 5, // Maximum number of connections in the pool (reduced)
-            waitForConnections: true, // Wait for available connection instead of erroring
-            queueLimit: 0, // Unlimited queue (0 = unlimited)
-            maxIdle: 3, // Maximum idle connections (reduced)
-            idleTimeout: 300000, // Close idle connections after 5 minutes (300000ms)
-            enableKeepAlive: true, // Enable TCP keep-alive
-            keepAliveInitialDelay: 0, // Start keep-alive immediately
+            // Minimal pool configuration
+            connectionLimit: 2, // Absolute minimum - only 2 connections
+            waitForConnections: true, // Wait instead of creating new connections
+            queueLimit: 10, // Limit queue to prevent buildup
+            maxIdle: 1, // Only 1 idle connection max
+            idleTimeout: 180000, // Close idle connections after 3 minutes (180000ms)
+            enableKeepAlive: true,
+            keepAliveInitialDelay: 0,
           },
         };
 
