@@ -29,6 +29,9 @@ let ProductsController = class ProductsController {
     async getAllProducts() {
         return this.productsService.findAll();
     }
+    async getAllCategories() {
+        return this.productsService.findAllCategories();
+    }
     async getProductsByCategory() {
         return this.productsService.findProductsGroupedByCategory();
     }
@@ -39,7 +42,7 @@ let ProductsController = class ProductsController {
         }
         return product;
     }
-    update(id, updateProductDto) {
+    async update(id, updateProductDto) {
         return this.productsService.update(+id, updateProductDto);
     }
     remove(id) {
@@ -74,6 +77,20 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "getAllProducts", null);
+__decorate([
+    (0, common_1.Get)('categories/list'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all categories',
+        description: 'Returns a list of all available categories.',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'List of categories retrieved successfully',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "getAllCategories", null);
 __decorate([
     (0, common_1.Get)('categories'),
     (0, swagger_1.ApiOperation)({
@@ -112,7 +129,7 @@ __decorate([
     (0, swagger_1.ApiBody)({ type: update_product_dto_1.UpdateProductDto }),
     (0, swagger_1.ApiResponse)({
         status: 200,
-        description: 'Product updated successfully (placeholder response)',
+        description: 'Product updated successfully',
     }),
     (0, swagger_1.ApiResponse)({
         status: 404,
@@ -122,7 +139,7 @@ __decorate([
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, update_product_dto_1.UpdateProductDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),

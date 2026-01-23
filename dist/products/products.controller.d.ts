@@ -22,6 +22,7 @@ export declare class ProductsController {
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
     }[]>;
+    getAllCategories(): Promise<import("./entities/category.entity").Category[]>;
     getProductsByCategory(): Promise<{
         categoryId: number;
         categoryName: string;
@@ -57,6 +58,22 @@ export declare class ProductsController {
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
     }>;
-    update(id: string, updateProductDto: UpdateProductDto): string;
+    update(id: string, updateProductDto: UpdateProductDto): Promise<{
+        attributes: {
+            options: any;
+            id: number;
+            attributeName: string;
+            product: import("./entities/product.entity").Product;
+        }[];
+        id: number;
+        name: string;
+        description?: string;
+        price: number;
+        hasAttributes: boolean;
+        code: number;
+        categories: import("./entities/category.entity").Category[];
+        orderItems: import("../orders/entities/order-item.entity").OrderItem[];
+        imageUrl: string;
+    }>;
     remove(id: string): string;
 }

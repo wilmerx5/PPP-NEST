@@ -200,6 +200,10 @@ export class ProductsService {
       relations: ['categories', 'attributes'],
     });
 
+    if (!updated) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
     return {
       ...updated,
       attributes: updated.attributes.map(attr => ({
