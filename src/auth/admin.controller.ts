@@ -2,12 +2,13 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
-  UseGuards,
   Req,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Auth } from './decorators/auth.decorator';
@@ -37,13 +38,41 @@ export class AdminController {
   @Get('users')
   @ApiOperation({ summary: 'Get all users (admin only)' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  async getAllUsers(@Req() req: Request) {
+  async getAllUsers() {
     const users = await this.userRepo.find({
-      select: ['id', 'email', 'fullName', 'phone'],
+      select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
       order: { fullName: 'ASC' },
     });
 
     return users;
+  }
+
+  @Patch('users/:id/active')
+  @ApiOperation({ summary: 'Activate or deactivate user (admin only)' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUserActive(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.isActive = body.isActive;
+    await this.userRepo.save(user);
+
+    return {
+      success: true,
+      message: body.isActive ? 'Usuario activado' : 'Usuario desactivado',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        isActive: user.isActive,
+      },
+    };
   }
 
   @Post('points/create')
