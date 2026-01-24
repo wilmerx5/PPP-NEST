@@ -83,45 +83,51 @@ export class AdminController {
     @Req() req: Request,
     @Body() body: { pointsCount: number; description?: string },
   ) {
-    const { pointsCount, description } = body;
+    try {
+      const { pointsCount, description } = body;
 
-    if (!pointsCount) {
-      throw new BadRequestException('pointsCount is required');
+      if (!pointsCount) {
+        throw new BadRequestException('pointsCount is required');
+      }
+
+      if (pointsCount < 1 || pointsCount > 100) {
+        throw new BadRequestException('pointsCount must be between 1 and 100');
+      }
+
+      const pointsRecords: UserPoints[] = [];
+      const pointCodes: string[] = [];
+
+      for (let i = 0; i < pointsCount; i++) {
+        const code = await this.pointsService.generateUniquePointCode();
+
+        const pointRecord = this.pointsRepo.create({
+          code,
+          userId: null, // Sin asignar; el cliente los registra después
+          orderId: null,
+          orderDailyNumber: null,
+          isUsed: false, // Disponibles para registro manual
+          isCanceled: false,
+          isRedeemed: false,
+          type: 'admin',
+          description: description || `Puntos generados por admin (${pointsCount} puntos)`,
+        });
+
+        const saved = await this.pointsRepo.save(pointRecord);
+        pointsRecords.push(saved);
+        pointCodes.push(saved.code);
+      }
+
+      return {
+        success: true,
+        message: `${pointsCount} punto(s) generado(s) exitosamente`,
+        points: pointsRecords,
+        pointCodes,
+      };
+    } catch (error) {
+      // Log the error for debugging
+      console.error('Error creating points:', error);
+      throw error;
     }
-
-    if (pointsCount < 1 || pointsCount > 100) {
-      throw new BadRequestException('pointsCount must be between 1 and 100');
-    }
-
-    const pointsRecords: UserPoints[] = [];
-    const pointCodes: string[] = [];
-
-    for (let i = 0; i < pointsCount; i++) {
-      const code = await this.pointsService.generateUniquePointCode();
-
-      const pointRecord = this.pointsRepo.create({
-        code,
-        userId: null, // Sin asignar; el cliente los registra después
-        orderId: null,
-        orderDailyNumber: null,
-        isUsed: false, // Disponibles para registro manual
-        isCanceled: false,
-        isRedeemed: false,
-        type: 'admin',
-        description: description || `Puntos generados por admin (${pointsCount} puntos)`,
-      });
-
-      const saved = await this.pointsRepo.save(pointRecord);
-      pointsRecords.push(saved);
-      pointCodes.push(saved.code);
-    }
-
-    return {
-      success: true,
-      message: `${pointsCount} punto(s) generado(s) exitosamente`,
-      points: pointsRecords,
-      pointCodes,
-    };
   }
 
   @Get('points/user/:userId')

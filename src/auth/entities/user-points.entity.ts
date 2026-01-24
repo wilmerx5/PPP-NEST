@@ -29,9 +29,9 @@ export class UserPoints {
   @ApiProperty({
     description: 'Usuario al que pertenecen los puntos.',
   })
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: User | null;
 
   @Column({ name: 'user_id', nullable: true })
   userId: string | null;

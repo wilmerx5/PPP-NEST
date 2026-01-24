@@ -146,7 +146,7 @@ export class PointsService {
     }
 
     if (exists) {
-      throw new Error('Failed to generate unique point code after multiple attempts');
+      throw new BadRequestException('Failed to generate unique point code after multiple attempts');
     }
 
     return code!;
