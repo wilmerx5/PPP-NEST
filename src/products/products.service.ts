@@ -164,10 +164,14 @@ export class ProductsService {
 
     // Update attributes if provided
     if (updateProductDto.attributes !== undefined) {
-      // Remove all existing attributes
-      await this.attributeRepo.delete({ product: { id } });
+      // Remove all existing attributes (so we don't duplicate when saving product)
+      await this.attributeRepo
+        .createQueryBuilder()
+        .delete()
+        .where('product_id = :id', { id })
+        .execute();
 
-      // Create new attributes
+      // Create and save new attributes
       const newAttributes = updateProductDto.attributes.map(attrDto => {
         const attr = new ProductAttribute();
         attr.attributeName = attrDto.attributeName;
@@ -176,7 +180,9 @@ export class ProductsService {
         return attr;
       });
 
-      await this.attributeRepo.save(newAttributes);
+      const savedAttributes = await this.attributeRepo.save(newAttributes);
+      // Replace in-memory relation so cascade on product.save doesn't re-persist old (deleted) attributes
+      product.attributes = savedAttributes;
     }
 
     // Update categories if provided

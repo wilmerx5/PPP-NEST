@@ -7,7 +7,24 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
 
+// Evitar que errores no capturados tiren el proceso sin loguear; salir limpio para que Render reinicie
+function setupProcessHandlers() {
+  process.on('unhandledRejection', (reason, promise) => {
+    process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    if (err.stack) process.stderr.write(err.stack + '\n');
+    process.exit(1);
+  });
+  process.on('uncaughtException', (err) => {
+    process.stderr.write(`\n❌ [uncaughtException] ${err.message}\n`);
+    process.stderr.write((err.stack || '') + '\n');
+    process.exit(1);
+  });
+}
+
 async function bootstrap() {
+  setupProcessHandlers();
+
   // Logs directos a stdout para evitar intercepción de loggers
   process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
   process.stdout.write('📋 [Environment] Checking .env variables...\n');
