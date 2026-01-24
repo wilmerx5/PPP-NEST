@@ -34,12 +34,30 @@ let AdminController = class AdminController {
         this.userRepo = userRepo;
         this.pointsRepo = pointsRepo;
     }
-    async getAllUsers(req) {
+    async getAllUsers() {
         const users = await this.userRepo.find({
-            select: ['id', 'email', 'fullName', 'phone'],
+            select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
             order: { fullName: 'ASC' },
         });
         return users;
+    }
+    async updateUserActive(id, body) {
+        const user = await this.userRepo.findOne({ where: { id } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        user.isActive = body.isActive;
+        await this.userRepo.save(user);
+        return {
+            success: true,
+            message: body.isActive ? 'Usuario activado' : 'Usuario desactivado',
+            user: {
+                id: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                isActive: user.isActive,
+            },
+        };
     }
     async createPoints(req, body) {
         const { pointsCount, description } = body;
@@ -116,11 +134,21 @@ __decorate([
     (0, common_1.Get)('users'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all users (admin only)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Users retrieved successfully' }),
-    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.Patch)('users/:id/active'),
+    (0, swagger_1.ApiOperation)({ summary: 'Activate or deactivate user (admin only)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'User updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateUserActive", null);
 __decorate([
     (0, common_1.Post)('points/create'),
     (0, swagger_1.ApiOperation)({ summary: 'Create points without user (admin only). For printing and manual redemption.' }),

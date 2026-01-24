@@ -10,7 +10,19 @@ export declare class AdminController {
     private readonly userRepo;
     private readonly pointsRepo;
     constructor(pointsService: PointsService, ordersService: OrdersService, userRepo: Repository<User>, pointsRepo: Repository<UserPoints>);
-    getAllUsers(req: Request): Promise<User[]>;
+    getAllUsers(): Promise<User[]>;
+    updateUserActive(id: string, body: {
+        isActive: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        user: {
+            id: string;
+            email: string;
+            fullName: string;
+            isActive: boolean;
+        };
+    }>;
     createPoints(req: Request, body: {
         pointsCount: number;
         description?: string;

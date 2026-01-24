@@ -21,10 +21,10 @@ import { PaymentsModule } from './payments/payments.module';
       useFactory: (configService: ConfigService) => {
         // Log pool configuration
         process.stdout.write('\n🔧 [DB Pool Config]\n');
-        process.stdout.write('  Pool Size: 20 (optimized for unlimited database)\n');
-        process.stdout.write('  Connection Limit: 30\n');
-        process.stdout.write('  Retry Attempts: 5\n');
-        process.stdout.write('  Keep Connection Alive: true\n\n');
+        process.stdout.write('  Pool Size: 100 (maxed for unlimited database)\n');
+        process.stdout.write('  Connection Limit: 100\n');
+        process.stdout.write('  Queue Limit: 0 (unlimited - no "Queue limit reached")\n');
+        process.stdout.write('  Retry Attempts: 5 | Keep Connection Alive: true\n\n');
         const dbConfig = {
           type: 'mariadb' as const,
           host: configService.get<string>('DB_HOST'),
@@ -35,20 +35,18 @@ import { PaymentsModule } from './payments/payments.module';
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: false,
           timezone: 'Z', // UTC timezone
-          // Optimized pool configuration for unlimited database
-          poolSize: 20, // Increased pool size for better performance
-          keepConnectionAlive: true, // Reuse connections
-          connectTimeout: 10000, // 10 seconds for initial connection
-          // Enable retries with reasonable limits
-          retryAttempts: 5, // Retry up to 5 times on connection failure
-          retryDelay: 3000, // Wait 3 seconds between retries
+          // Maxed pool for unlimited database - avoid "Queue limit reached"
+          poolSize: 100, // Max connections in TypeORM pool
+          keepConnectionAlive: true,
+          connectTimeout: 15000, // 15s for initial connection
+          retryAttempts: 5,
+          retryDelay: 3000,
           extra: {
-            // Optimized pool configuration for unlimited database
-            connectionLimit: 30, // Increased connection limit
-            waitForConnections: true, // Wait instead of failing immediately
-            queueLimit: 50, // Increased queue limit
-            maxIdle: 10, // Allow more idle connections
-            idleTimeout: 600000, // Close idle connections after 10 minutes (600000ms)
+            connectionLimit: 100, // Match poolSize - max connections in mysql2 pool
+            waitForConnections: true, // Requests wait for a free connection
+            queueLimit: 0, // Unlimited queue - never "Queue limit reached"; requests wait
+            maxIdle: 50, // Keep many idle connections ready
+            idleTimeout: 600000, // 10 minutes
             enableKeepAlive: true,
             keepAliveInitialDelay: 0,
           },

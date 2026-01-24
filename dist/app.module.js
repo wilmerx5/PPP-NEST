@@ -30,9 +30,9 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => {
                     process.stdout.write('\n🔧 [DB Pool Config]\n');
-                    process.stdout.write('  Pool Size: 2 (minimal to avoid connection limit)\n');
-                    process.stdout.write('  Connection Limit: 2\n');
-                    process.stdout.write('  Retry Attempts: 0 (disabled)\n');
+                    process.stdout.write('  Pool Size: 20 (optimized for unlimited database)\n');
+                    process.stdout.write('  Connection Limit: 30\n');
+                    process.stdout.write('  Retry Attempts: 5\n');
                     process.stdout.write('  Keep Connection Alive: true\n\n');
                     const dbConfig = {
                         type: 'mariadb',
@@ -44,17 +44,17 @@ exports.AppModule = AppModule = __decorate([
                         entities: [__dirname + '/**/*.entity{.ts,.js}'],
                         synchronize: false,
                         timezone: 'Z',
-                        poolSize: 2,
+                        poolSize: 20,
                         keepConnectionAlive: true,
                         connectTimeout: 10000,
-                        retryAttempts: 0,
-                        retryDelay: 0,
+                        retryAttempts: 5,
+                        retryDelay: 3000,
                         extra: {
-                            connectionLimit: 2,
+                            connectionLimit: 30,
                             waitForConnections: true,
-                            queueLimit: 10,
-                            maxIdle: 1,
-                            idleTimeout: 180000,
+                            queueLimit: 50,
+                            maxIdle: 10,
+                            idleTimeout: 600000,
                             enableKeepAlive: true,
                             keepAliveInitialDelay: 0,
                         },
