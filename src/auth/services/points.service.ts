@@ -627,4 +627,80 @@ export class PointsService {
       .orderBy('redemption.createdAt', 'DESC')
       .getMany();
   }
+
+  /**
+   * Gets leaderboard of users with most points.
+   * Returns users ordered by total points (descending).
+   * 
+   * @param limit - Maximum number of users to return (default: 100)
+   * @param offset - Number of users to skip (for pagination, default: 0)
+   * @param search - Optional search term for user name or email
+   * @returns Array of users with their point totals
+   */
+  async getLeaderboard(limit: number = 100, offset: number = 0, search?: string): Promise<{
+    users: Array<{
+      userId: string;
+      fullName: string;
+      email: string;
+      phone: string | null;
+      totalPoints: number;
+      availablePoints: number;
+      redeemedPoints: number;
+      rank: number;
+    }>;
+    total: number;
+  }> {
+    // First, get all users with their point counts (for total count and ranking)
+    let baseQuery = this.pointsRepo
+      .createQueryBuilder('point')
+      .select('point.userId', 'userId')
+      .addSelect('SUM(CASE WHEN point.isCanceled = false THEN 1 ELSE 0 END)', 'totalPoints')
+      .addSelect('SUM(CASE WHEN point.isCanceled = false AND point.isRedeemed = false THEN 1 ELSE 0 END)', 'availablePoints')
+      .addSelect('SUM(CASE WHEN point.isRedeemed = true THEN 1 ELSE 0 END)', 'redeemedPoints')
+      .where('point.userId IS NOT NULL')
+      .groupBy('point.userId');
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      baseQuery = baseQuery
+        .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+        .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+    } else {
+      baseQuery = baseQuery.innerJoin('ppp_users', 'user', 'user.id = point.userId');
+    }
+
+    // Get total count (before pagination) - clone the query
+    const countQuery = baseQuery.clone();
+    const totalResult = await countQuery.getRawMany();
+    const total = totalResult.length;
+
+    // Order by total points descending
+    baseQuery = baseQuery.orderBy('totalPoints', 'DESC').addOrderBy('point.userId', 'ASC');
+
+    // Apply pagination
+    baseQuery = baseQuery.limit(limit).offset(offset);
+
+    // Add user details to select
+    baseQuery = baseQuery
+      .addSelect('user.fullName', 'fullName')
+      .addSelect('user.email', 'email')
+      .addSelect('user.phone', 'phone');
+
+    const results = await baseQuery.getRawMany();
+
+    // Map results and calculate ranks
+    const users = results.map((row, index) => ({
+      userId: row.userId,
+      fullName: row.fullName || 'Usuario sin nombre',
+      email: row.email || '',
+      phone: row.phone || null,
+      totalPoints: parseInt(row.totalPoints) || 0,
+      availablePoints: parseInt(row.availablePoints) || 0,
+      redeemedPoints: parseInt(row.redeemedPoints) || 0,
+      rank: offset + index + 1,
+    }));
+
+    return { users, total };
+  }
 }

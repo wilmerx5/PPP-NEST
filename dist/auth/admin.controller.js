@@ -134,6 +134,17 @@ let AdminController = class AdminController {
         const summary = await this.ordersService.getDailySummary(date);
         return summary;
     }
+    async getLeaderboard(limit, offset, search) {
+        const limitNum = limit ? parseInt(limit, 10) : 100;
+        const offsetNum = offset ? parseInt(offset, 10) : 0;
+        if (limitNum < 1 || limitNum > 500) {
+            throw new common_1.BadRequestException('Limit must be between 1 and 500');
+        }
+        if (offsetNum < 0) {
+            throw new common_1.BadRequestException('Offset must be >= 0');
+        }
+        return await this.pointsService.getLeaderboard(limitNum, offsetNum, search);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -196,6 +207,20 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getDailySummary", null);
+__decorate([
+    (0, common_1.Get)('points/leaderboard'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get points leaderboard (admin only)' }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, description: 'Number of users to return', example: 50 }),
+    (0, swagger_1.ApiQuery)({ name: 'offset', required: false, description: 'Number of users to skip (for pagination)', example: 0 }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false, description: 'Search term for user name or email' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Leaderboard retrieved successfully' }),
+    __param(0, (0, common_1.Query)('limit')),
+    __param(1, (0, common_1.Query)('offset')),
+    __param(2, (0, common_1.Query)('search')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getLeaderboard", null);
 exports.AdminController = AdminController = __decorate([
     (0, swagger_1.ApiTags)('Admin'),
     (0, common_1.Controller)('admin'),

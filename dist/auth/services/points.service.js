@@ -360,6 +360,46 @@ let PointsService = class PointsService {
             .orderBy('redemption.createdAt', 'DESC')
             .getMany();
     }
+    async getLeaderboard(limit = 100, offset = 0, search) {
+        let baseQuery = this.pointsRepo
+            .createQueryBuilder('point')
+            .select('point.userId', 'userId')
+            .addSelect('SUM(CASE WHEN point.isCanceled = false THEN 1 ELSE 0 END)', 'totalPoints')
+            .addSelect('SUM(CASE WHEN point.isCanceled = false AND point.isRedeemed = false THEN 1 ELSE 0 END)', 'availablePoints')
+            .addSelect('SUM(CASE WHEN point.isRedeemed = true THEN 1 ELSE 0 END)', 'redeemedPoints')
+            .where('point.userId IS NOT NULL')
+            .groupBy('point.userId');
+        if (search && search.trim()) {
+            const searchTerm = `%${search.trim()}%`;
+            baseQuery = baseQuery
+                .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+                .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+        }
+        else {
+            baseQuery = baseQuery.innerJoin('ppp_users', 'user', 'user.id = point.userId');
+        }
+        const countQuery = baseQuery.clone();
+        const totalResult = await countQuery.getRawMany();
+        const total = totalResult.length;
+        baseQuery = baseQuery.orderBy('totalPoints', 'DESC').addOrderBy('point.userId', 'ASC');
+        baseQuery = baseQuery.limit(limit).offset(offset);
+        baseQuery = baseQuery
+            .addSelect('user.fullName', 'fullName')
+            .addSelect('user.email', 'email')
+            .addSelect('user.phone', 'phone');
+        const results = await baseQuery.getRawMany();
+        const users = results.map((row, index) => ({
+            userId: row.userId,
+            fullName: row.fullName || 'Usuario sin nombre',
+            email: row.email || '',
+            phone: row.phone || null,
+            totalPoints: parseInt(row.totalPoints) || 0,
+            availablePoints: parseInt(row.availablePoints) || 0,
+            redeemedPoints: parseInt(row.redeemedPoints) || 0,
+            rank: offset + index + 1,
+        }));
+        return { users, total };
+    }
 };
 exports.PointsService = PointsService;
 exports.PointsService = PointsService = __decorate([

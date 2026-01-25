@@ -31,4 +31,17 @@ export declare class PointsService {
     applyRedemptionToOrder(code: string, orderId: number): Promise<PointRedemption>;
     getUserRedemptions(userId: string): Promise<any[]>;
     getActiveRedemptions(userId: string): Promise<PointRedemption[]>;
+    getLeaderboard(limit?: number, offset?: number, search?: string): Promise<{
+        users: Array<{
+            userId: string;
+            fullName: string;
+            email: string;
+            phone: string | null;
+            totalPoints: number;
+            availablePoints: number;
+            redeemedPoints: number;
+            rank: number;
+        }>;
+        total: number;
+    }>;
 }

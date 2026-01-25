@@ -186,4 +186,29 @@ export class AdminController {
     const summary = await this.ordersService.getDailySummary(date);
     return summary;
   }
+
+  @Get('points/leaderboard')
+  @ApiOperation({ summary: 'Get points leaderboard (admin only)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of users to return', example: 50 })
+  @ApiQuery({ name: 'offset', required: false, description: 'Number of users to skip (for pagination)', example: 0 })
+  @ApiQuery({ name: 'search', required: false, description: 'Search term for user name or email' })
+  @ApiResponse({ status: 200, description: 'Leaderboard retrieved successfully' })
+  async getLeaderboard(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('search') search?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 100;
+    const offsetNum = offset ? parseInt(offset, 10) : 0;
+
+    if (limitNum < 1 || limitNum > 500) {
+      throw new BadRequestException('Limit must be between 1 and 500');
+    }
+
+    if (offsetNum < 0) {
+      throw new BadRequestException('Offset must be >= 0');
+    }
+
+    return await this.pointsService.getLeaderboard(limitNum, offsetNum, search);
+  }
 }

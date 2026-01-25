@@ -39,4 +39,17 @@ export declare class AdminController {
     }>;
     getOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
+    getLeaderboard(limit?: string, offset?: string, search?: string): Promise<{
+        users: Array<{
+            userId: string;
+            fullName: string;
+            email: string;
+            phone: string | null;
+            totalPoints: number;
+            availablePoints: number;
+            redeemedPoints: number;
+            rank: number;
+        }>;
+        total: number;
+    }>;
 }
