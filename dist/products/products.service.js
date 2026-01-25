@@ -89,11 +89,15 @@ let ProductsService = class ProductsService {
                 relations: ['products', 'products.attributes'],
                 order: { id: 'ASC' },
             });
-            const transformed = categories.map((category) => ({
+            const transformed = categories
+                .filter((category) => category != null)
+                .map((category) => ({
                 categoryId: category.id,
                 categoryName: category.name,
                 imageUrl: category.imageUrl,
-                products: category.products.map((product) => ({
+                products: (category.products || [])
+                    .filter((product) => product != null)
+                    .map((product) => ({
                     id: product.id,
                     name: product.name,
                     description: product.description,
@@ -101,9 +105,11 @@ let ProductsService = class ProductsService {
                     price: product.price,
                     imageUrl: product.imageUrl,
                     hasAttributes: product.hasAttributes,
-                    attributes: product.attributes.map((attr) => ({
+                    attributes: (product.attributes || [])
+                        .filter((attr) => attr != null)
+                        .map((attr) => ({
                         attributeName: attr.attributeName,
-                        options: JSON.parse(attr.options),
+                        options: JSON.parse(attr.options || '[]'),
                     })),
                 })),
             }));

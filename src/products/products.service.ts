@@ -100,24 +100,30 @@ export class ProductsService {
           relations: ['products', 'products.attributes'],
           order: { id: 'ASC' },
         });
-        const transformed = categories.map((category) => ({
-          categoryId: category.id,
-          categoryName: category.name,
-          imageUrl: category.imageUrl,
-          products: category.products.map((product) => ({
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            code: product.code,
-            price: product.price,
-            imageUrl: product.imageUrl,
-            hasAttributes: product.hasAttributes,
-            attributes: product.attributes.map((attr) => ({
-              attributeName: attr.attributeName,
-              options: JSON.parse(attr.options),
-            })),
-          })),
-        }));
+        const transformed = categories
+          .filter((category) => category != null) // Filter out null categories
+          .map((category) => ({
+            categoryId: category.id,
+            categoryName: category.name,
+            imageUrl: category.imageUrl,
+            products: (category.products || [])
+              .filter((product) => product != null) // Filter out null products
+              .map((product) => ({
+                id: product.id,
+                name: product.name,
+                description: product.description,
+                code: product.code,
+                price: product.price,
+                imageUrl: product.imageUrl,
+                hasAttributes: product.hasAttributes,
+                attributes: (product.attributes || [])
+                  .filter((attr) => attr != null) // Filter out null attributes
+                  .map((attr) => ({
+                    attributeName: attr.attributeName,
+                    options: JSON.parse(attr.options || '[]'),
+                  })),
+              })),
+          }));
         this.cache.set(this.CACHE_KEY_GROUPED, transformed, this.CACHE_TTL);
         return transformed;
       },

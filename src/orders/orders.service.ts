@@ -463,6 +463,11 @@ export class OrdersService {
         const groupedItems: Record<number, any> = {};
 
         for (const item of order.items) {
+        // Validate product exists before accessing properties
+        if (!item.product) {
+          console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+          continue; // Skip items without product
+        }
         const productId = item.product.id;
         const productName = item.product.name;
         const code = item.product.code;
@@ -838,6 +843,11 @@ export class OrdersService {
     const groupedItems: Record<number, any> = {};
 
     for (const item of order.items) {
+      // Validate product exists before accessing properties
+      if (!item.product) {
+        console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+        continue; // Skip items without product
+      }
       const productId = item.product.id;
       const productName = item.product.name;
       const code = item.product.code;
@@ -1148,6 +1158,10 @@ export class OrdersService {
     for (const order of orders) {
       let orderSubtotal = 0;
       for (const item of order.items) {
+        if (!item.product) {
+          console.warn(`[getDailySummary] Order has item without product relation`);
+          continue; // Skip items without product
+        }
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
           orderSubtotal += Number(product.price);
@@ -1173,9 +1187,9 @@ export class OrdersService {
 
       if (order.redemptionCode) {
         const halfChickenItem = order.items.find(
-          item => item.product.code === 2 || item.product.code === 5
+          item => item.product && (item.product.code === 2 || item.product.code === 5)
         );
-        if (halfChickenItem) {
+        if (halfChickenItem && halfChickenItem.product) {
           const product = allProducts.find(p => p.id === halfChickenItem.product.id);
           if (product) {
             totalPremioDiscounts += Number(product.price);

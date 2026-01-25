@@ -44,8 +44,19 @@ export class CircuitBreakerService {
       return result;
     } catch (err) {
       this.onFailure();
+      const errorMessage = (err as Error).message;
+      const errorStack = (err as Error).stack;
+      
+      // Log more details for null reference errors
+      if (errorMessage.includes('Cannot read properties of null') || errorMessage.includes('reading')) {
+        this.logger.error(
+          `[Circuit Breaker] Null reference error detected: ${errorMessage}\nStack: ${errorStack?.split('\n').slice(0, 5).join('\n')}`
+        );
+      } else {
+        this.logger.warn(`[Circuit Breaker] Operation failed, using fallback: ${errorMessage}`);
+      }
+      
       if (fallback) {
-        this.logger.warn(`[Circuit Breaker] Operation failed, using fallback: ${(err as Error).message}`);
         return fallback();
       }
       throw err;

@@ -322,6 +322,10 @@ let OrdersService = class OrdersService {
             const createdAtBogota = (0, date_util_1.formatToBogotaISO)(order.createdAt);
             const groupedItems = {};
             for (const item of order.items) {
+                if (!item.product) {
+                    console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+                    continue;
+                }
                 const productId = item.product.id;
                 const productName = item.product.name;
                 const code = item.product.code;
@@ -605,6 +609,10 @@ let OrdersService = class OrdersService {
     async mapOrderToGroupedFormat(order) {
         const groupedItems = {};
         for (const item of order.items) {
+            if (!item.product) {
+                console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+                continue;
+            }
             const productId = item.product.id;
             const productName = item.product.name;
             const code = item.product.code;
@@ -804,6 +812,10 @@ let OrdersService = class OrdersService {
         for (const order of orders) {
             let orderSubtotal = 0;
             for (const item of order.items) {
+                if (!item.product) {
+                    console.warn(`[getDailySummary] Order has item without product relation`);
+                    continue;
+                }
                 const product = allProducts.find(p => p.id === item.product.id);
                 if (product) {
                     orderSubtotal += Number(product.price);
@@ -826,8 +838,8 @@ let OrdersService = class OrdersService {
                 totalDeliveryFees += Number(order.deliveryFee);
             }
             if (order.redemptionCode) {
-                const halfChickenItem = order.items.find(item => item.product.code === 2 || item.product.code === 5);
-                if (halfChickenItem) {
+                const halfChickenItem = order.items.find(item => item.product && (item.product.code === 2 || item.product.code === 5));
+                if (halfChickenItem && halfChickenItem.product) {
                     const product = allProducts.find(p => p.id === halfChickenItem.product.id);
                     if (product) {
                         totalPremioDiscounts += Number(product.price);
