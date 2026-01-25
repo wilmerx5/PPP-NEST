@@ -44,6 +44,15 @@ let OrdersController = class OrdersController {
         const orderId = parseInt(id, 10);
         return this.orderService.updateOrderItems(orderId, dto);
     }
+    async addExtra(id, dto) {
+        return this.orderService.addExtra(parseInt(id, 10), dto);
+    }
+    async deleteExtra(id, extraId) {
+        return this.orderService.deleteExtra(parseInt(id, 10), parseInt(extraId, 10));
+    }
+    async updateExtra(id, extraId, dto) {
+        return this.orderService.updateExtra(parseInt(id, 10), parseInt(extraId, 10), dto);
+    }
     async updateOrderGeneral(id, dto) {
         return this.orderService.updateOrderGeneral(+id, dto);
     }
@@ -143,6 +152,47 @@ __decorate([
     __metadata("design:paramtypes", [String, orderDTO_1.UpdateOrderItemsDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "updateItems", null);
+__decorate([
+    (0, common_1.Post)(':id/extras'),
+    (0, swagger_1.ApiOperation)({ summary: 'Add an extra to an order', description: 'Adds an additional charge (código 90) to an existing order.' }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.AddOrderExtraDto }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Extra added' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Order not found or canceled' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, orderDTO_1.AddOrderExtraDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "addExtra", null);
+__decorate([
+    (0, common_1.Delete)(':id/extras/:extraId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete an extra from an order' }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiParam)({ name: 'extraId', example: 1 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Extra deleted' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Extra not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('extraId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "deleteExtra", null);
+__decorate([
+    (0, common_1.Patch)(':id/extras/:extraId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update an extra on an order' }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiParam)({ name: 'extraId', example: 1 }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.UpdateOrderExtraDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Extra updated' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Extra not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('extraId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, orderDTO_1.UpdateOrderExtraDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "updateExtra", null);
 __decorate([
     (0, common_1.Patch)(':id/info'),
     (0, swagger_1.ApiOperation)({

@@ -477,6 +477,74 @@ let OrdersService = class OrdersService {
             message: `Order #${fullOrder?.dailyOrderNumber} updated successfully`,
         };
     }
+    async addExtra(orderId, dto) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId, orderStatus: (0, typeorm_2.Not)('canceled') },
+        });
+        if (!order)
+            throw new common_1.NotFoundException('Order not found or canceled');
+        const extra = this.extraRepo.create({
+            order: { id: orderId },
+            title: dto.title,
+            description: dto.description ?? null,
+            amount: dto.amount,
+            quantity: dto.quantity ?? 1,
+        });
+        await this.extraRepo.save(extra);
+        const full = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (full) {
+            const formatted = await this.mapOrderToGroupedFormat(full);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+        }
+        return { success: true, message: 'Adicional añadido', extra: { id: extra.id, title: extra.title, description: extra.description, amount: Number(extra.amount), quantity: extra.quantity } };
+    }
+    async deleteExtra(orderId, extraId) {
+        const extra = await this.extraRepo.findOne({
+            where: { id: extraId },
+            relations: ['order'],
+        });
+        if (!extra || extra.order?.id !== orderId)
+            throw new common_1.NotFoundException('Extra not found or does not belong to order');
+        await this.extraRepo.remove(extra);
+        const full = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (full) {
+            const formatted = await this.mapOrderToGroupedFormat(full);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+        }
+        return { success: true, message: 'Adicional eliminado' };
+    }
+    async updateExtra(orderId, extraId, dto) {
+        const extra = await this.extraRepo.findOne({
+            where: { id: extraId },
+            relations: ['order'],
+        });
+        if (!extra || extra.order?.id !== orderId)
+            throw new common_1.NotFoundException('Extra not found or does not belong to order');
+        if (dto.title !== undefined)
+            extra.title = dto.title;
+        if (dto.description !== undefined)
+            extra.description = dto.description;
+        if (dto.amount !== undefined)
+            extra.amount = dto.amount;
+        if (dto.quantity !== undefined)
+            extra.quantity = dto.quantity;
+        await this.extraRepo.save(extra);
+        const full = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (full) {
+            const formatted = await this.mapOrderToGroupedFormat(full);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+        }
+        return { success: true, message: 'Adicional actualizado', extra: { id: extra.id, title: extra.title, description: extra.description, amount: Number(extra.amount), quantity: extra.quantity } };
+    }
     async updateOrderGeneral(orderId, dto) {
         const order = await this.orderRepo.findOneBy({ id: orderId });
         if (!order)

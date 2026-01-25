@@ -47,6 +47,18 @@ export declare class UpdateOrderItemsDto {
         quantity?: number;
     }[];
 }
+export declare class AddOrderExtraDto {
+    title: string;
+    description?: string;
+    amount: number;
+    quantity?: number;
+}
+export declare class UpdateOrderExtraDto {
+    title?: string;
+    description?: string;
+    amount?: number;
+    quantity?: number;
+}
 export declare class UpdateOrderGeneralDto {
     customerName?: string;
     phone?: string;

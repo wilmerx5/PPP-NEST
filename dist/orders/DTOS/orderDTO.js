@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateOrderGeneralDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
+exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -259,6 +259,58 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Array)
 ], UpdateOrderItemsDto.prototype, "extrasToAdd", void 0);
+class AddOrderExtraDto {
+    title;
+    description;
+    amount;
+    quantity;
+}
+exports.AddOrderExtraDto = AddOrderExtraDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Plato extra', description: 'Título del adicional' }),
+    __metadata("design:type", String)
+], AddOrderExtraDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Para llevar', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], AddOrderExtraDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 5000 }),
+    __metadata("design:type", Number)
+], AddOrderExtraDto.prototype, "amount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 1, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], AddOrderExtraDto.prototype, "quantity", void 0);
+class UpdateOrderExtraDto {
+    title;
+    description;
+    amount;
+    quantity;
+}
+exports.UpdateOrderExtraDto = UpdateOrderExtraDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Plato extra', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateOrderExtraDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Para llevar', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateOrderExtraDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 5000, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], UpdateOrderExtraDto.prototype, "amount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 1, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], UpdateOrderExtraDto.prototype, "quantity", void 0);
 class UpdateOrderGeneralDto {
     customerName;
     phone;

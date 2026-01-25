@@ -1,6 +1,6 @@
 import { Product } from 'src/products/entities/product.entity';
 import { Repository, DataSource } from 'typeorm';
-import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -53,6 +53,32 @@ export declare class OrdersService {
     updateOrderItems(orderId: number, dto: UpdateOrderItemsDto): Promise<{
         success: boolean;
         message: string;
+    }>;
+    addExtra(orderId: number, dto: AddOrderExtraDto): Promise<{
+        success: boolean;
+        message: string;
+        extra: {
+            id: number;
+            title: string;
+            description: string | null;
+            amount: number;
+            quantity: number;
+        };
+    }>;
+    deleteExtra(orderId: number, extraId: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    updateExtra(orderId: number, extraId: number, dto: UpdateOrderExtraDto): Promise<{
+        success: boolean;
+        message: string;
+        extra: {
+            id: number;
+            title: string;
+            description: string | null;
+            amount: number;
+            quantity: number;
+        };
     }>;
     updateOrderGeneral(orderId: number, dto: UpdateOrderGeneralDto): Promise<{
         success: boolean;

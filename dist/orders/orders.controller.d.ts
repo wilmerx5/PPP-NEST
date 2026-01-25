@@ -1,4 +1,4 @@
-import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 export declare class OrdersController {
     private readonly orderService;
@@ -34,6 +34,32 @@ export declare class OrdersController {
     updateItems(id: string, dto: UpdateOrderItemsDto): Promise<{
         success: boolean;
         message: string;
+    }>;
+    addExtra(id: string, dto: AddOrderExtraDto): Promise<{
+        success: boolean;
+        message: string;
+        extra: {
+            id: number;
+            title: string;
+            description: string | null;
+            amount: number;
+            quantity: number;
+        };
+    }>;
+    deleteExtra(id: string, extraId: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    updateExtra(id: string, extraId: string, dto: UpdateOrderExtraDto): Promise<{
+        success: boolean;
+        message: string;
+        extra: {
+            id: number;
+            title: string;
+            description: string | null;
+            amount: number;
+            quantity: number;
+        };
     }>;
     updateOrderGeneral(id: number, dto: UpdateOrderGeneralDto): Promise<{
         success: boolean;

@@ -1,8 +1,8 @@
-import { Injectable, BadRequestException, InternalServerErrorException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { Between, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
-import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -679,6 +679,79 @@ export class OrdersService {
       success: true,
       message: `Order #${fullOrder?.dailyOrderNumber} updated successfully`,
     };
+  }
+
+  /**
+   * Añade un adicional (extra) a una orden existente.
+   */
+  async addExtra(orderId: number, dto: AddOrderExtraDto) {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId, orderStatus: Not('canceled') },
+    });
+    if (!order) throw new NotFoundException('Order not found or canceled');
+    const extra = this.extraRepo.create({
+      order: { id: orderId },
+      title: dto.title,
+      description: dto.description ?? null,
+      amount: dto.amount,
+      quantity: dto.quantity ?? 1,
+    });
+    await this.extraRepo.save(extra);
+    const full = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (full) {
+      const formatted = await this.mapOrderToGroupedFormat(full);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+    return { success: true, message: 'Adicional añadido', extra: { id: extra.id, title: extra.title, description: extra.description, amount: Number(extra.amount), quantity: extra.quantity } };
+  }
+
+  /**
+   * Elimina un adicional de una orden.
+   */
+  async deleteExtra(orderId: number, extraId: number) {
+    const extra = await this.extraRepo.findOne({
+      where: { id: extraId },
+      relations: ['order'],
+    });
+    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Extra not found or does not belong to order');
+    await this.extraRepo.remove(extra);
+    const full = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (full) {
+      const formatted = await this.mapOrderToGroupedFormat(full);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+    return { success: true, message: 'Adicional eliminado' };
+  }
+
+  /**
+   * Actualiza un adicional de una orden.
+   */
+  async updateExtra(orderId: number, extraId: number, dto: UpdateOrderExtraDto) {
+    const extra = await this.extraRepo.findOne({
+      where: { id: extraId },
+      relations: ['order'],
+    });
+    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Extra not found or does not belong to order');
+    if (dto.title !== undefined) extra.title = dto.title;
+    if (dto.description !== undefined) extra.description = dto.description;
+    if (dto.amount !== undefined) extra.amount = dto.amount;
+    if (dto.quantity !== undefined) extra.quantity = dto.quantity;
+    await this.extraRepo.save(extra);
+    const full = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (full) {
+      const formatted = await this.mapOrderToGroupedFormat(full);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+    return { success: true, message: 'Adicional actualizado', extra: { id: extra.id, title: extra.title, description: extra.description, amount: Number(extra.amount), quantity: extra.quantity } };
   }
 
   /**

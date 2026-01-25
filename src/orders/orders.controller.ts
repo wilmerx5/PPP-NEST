@@ -21,9 +21,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 
 import {
+    AddOrderExtraDto,
     CreateOrderDto,
+    UpdateOrderExtraDto,
     UpdateOrderGeneralDto,
-    UpdateOrderItemsDto
+    UpdateOrderItemsDto,
 } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 
@@ -118,6 +120,44 @@ export class OrdersController {
   ) {
     const orderId = parseInt(id, 10);
     return this.orderService.updateOrderItems(orderId, dto);
+  }
+
+  // -------------------------------------------------------------
+  // EXTRAS (ADD / DELETE / UPDATE)
+  // -------------------------------------------------------------
+  @Post(':id/extras')
+  @ApiOperation({ summary: 'Add an extra to an order', description: 'Adds an additional charge (código 90) to an existing order.' })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: AddOrderExtraDto })
+  @ApiResponse({ status: 201, description: 'Extra added' })
+  @ApiResponse({ status: 404, description: 'Order not found or canceled' })
+  async addExtra(@Param('id') id: string, @Body() dto: AddOrderExtraDto) {
+    return this.orderService.addExtra(parseInt(id, 10), dto);
+  }
+
+  @Delete(':id/extras/:extraId')
+  @ApiOperation({ summary: 'Delete an extra from an order' })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiParam({ name: 'extraId', example: 1 })
+  @ApiResponse({ status: 200, description: 'Extra deleted' })
+  @ApiResponse({ status: 404, description: 'Extra not found' })
+  async deleteExtra(@Param('id') id: string, @Param('extraId') extraId: string) {
+    return this.orderService.deleteExtra(parseInt(id, 10), parseInt(extraId, 10));
+  }
+
+  @Patch(':id/extras/:extraId')
+  @ApiOperation({ summary: 'Update an extra on an order' })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiParam({ name: 'extraId', example: 1 })
+  @ApiBody({ type: UpdateOrderExtraDto })
+  @ApiResponse({ status: 200, description: 'Extra updated' })
+  @ApiResponse({ status: 404, description: 'Extra not found' })
+  async updateExtra(
+    @Param('id') id: string,
+    @Param('extraId') extraId: string,
+    @Body() dto: UpdateOrderExtraDto,
+  ) {
+    return this.orderService.updateExtra(parseInt(id, 10), parseInt(extraId, 10), dto);
   }
 
   // -------------------------------------------------------------

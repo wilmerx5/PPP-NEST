@@ -207,6 +207,34 @@ export class UpdateOrderItemsDto {
   extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
 }
 
+export class AddOrderExtraDto {
+  @ApiProperty({ example: 'Plato extra', description: 'Título del adicional' })
+  title: string;
+  @ApiProperty({ example: 'Para llevar', required: false })
+  @IsOptional()
+  description?: string;
+  @ApiProperty({ example: 5000 })
+  amount: number;
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  quantity?: number;
+}
+
+export class UpdateOrderExtraDto {
+  @ApiProperty({ example: 'Plato extra', required: false })
+  @IsOptional()
+  title?: string;
+  @ApiProperty({ example: 'Para llevar', required: false })
+  @IsOptional()
+  description?: string;
+  @ApiProperty({ example: 5000, required: false })
+  @IsOptional()
+  amount?: number;
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  quantity?: number;
+}
+
 export class UpdateOrderGeneralDto {
 
   @ApiProperty({
