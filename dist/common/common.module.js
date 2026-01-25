@@ -5,6 +5,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommonModule = void 0;
 const common_1 = require("@nestjs/common");
@@ -12,15 +15,24 @@ const config_1 = require("@nestjs/config");
 const common_controller_1 = require("./common.controller");
 const common_service_1 = require("./common.service");
 const mail_service_1 = require("./mail/mail.service");
+const cache_service_1 = require("./cache/cache.service");
+const circuit_breaker_service_1 = require("./circuit-breaker/circuit-breaker.service");
 let CommonModule = class CommonModule {
+    cache;
+    constructor(cache) {
+        this.cache = cache;
+        setInterval(() => this.cache.cleanup(), 60000);
+    }
 };
 exports.CommonModule = CommonModule;
 exports.CommonModule = CommonModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
         controllers: [common_controller_1.CommonController],
-        providers: [common_service_1.CommonService, mail_service_1.MailService],
+        providers: [common_service_1.CommonService, mail_service_1.MailService, cache_service_1.CacheService, circuit_breaker_service_1.CircuitBreakerService],
         imports: [config_1.ConfigModule],
-        exports: [mail_service_1.MailService]
-    })
+        exports: [mail_service_1.MailService, cache_service_1.CacheService, circuit_breaker_service_1.CircuitBreakerService],
+    }),
+    __metadata("design:paramtypes", [cache_service_1.CacheService])
 ], CommonModule);
 //# sourceMappingURL=common.module.js.map

@@ -29,10 +29,10 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => {
-                    process.stdout.write('\n🔧 [DB Pool Config]\n');
-                    process.stdout.write('  Pool Size: 100 | Connection Limit: 100 | Queue Limit: 0\n');
-                    process.stdout.write('  Idle Timeout: 60s | Max Idle: 10 (evitar ECONNRESET por conexiones muertas)\n');
-                    process.stdout.write('  Keep-Alive: true | Retry: 5\n\n');
+                    process.stdout.write('\n🔧 [DB Pool Config - Anti-bloqueo]\n');
+                    process.stdout.write('  Pool: 100 | Idle: 10 (60s timeout) | Queue: ilimitada\n');
+                    process.stdout.write('  Query Timeout: 5s | Keep-Alive: true | Retry: 5\n');
+                    process.stdout.write('  Cache: 45s TTL | Circuit Breaker: 5 fallos → OPEN\n\n');
                     const dbConfig = {
                         type: 'mariadb',
                         host: configService.get('DB_HOST'),
@@ -56,6 +56,8 @@ exports.AppModule = AppModule = __decorate([
                             idleTimeout: 60000,
                             enableKeepAlive: true,
                             keepAliveInitialDelay: 0,
+                            queryTimeout: 5000,
+                            reconnect: true,
                         },
                     };
                     process.stdout.write('\n🔍 [DB Connection Config]\n');

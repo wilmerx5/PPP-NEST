@@ -14,6 +14,7 @@ import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
 import { MailService } from '../common/mail/mail.service';
+import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 
 @Injectable()
 export class OrdersService {
@@ -44,6 +45,8 @@ export class OrdersService {
     private readonly pointsService: PointsService,
 
     private readonly mailService: MailService,
+
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
 
 
@@ -395,44 +398,35 @@ export class OrdersService {
    * @returns Lista de órdenes formateadas.
    */
   async findOrdersToday() {
-    // Get today's range in Bogotá timezone, converted to UTC for database query
-    const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
-
-    const orders = await this.orderRepo.find({
-      where: {
-        createdAt: Between(todayStartUtc, todayEndUtc),
-        orderStatus: Not('canceled'),
+    return this.circuitBreaker.execute(
+      async () => {
+        const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+        const orders = await this.orderRepo.find({
+          where: {
+            createdAt: Between(todayStartUtc, todayEndUtc),
+            orderStatus: Not('canceled'),
+          },
+          relations: ['items', 'items.product', 'items.attributes', 'extras'],
+          order: { createdAt: 'DESC' },
+        });
+        const ordersWithPointCodes = await Promise.all(
+          orders.map(async (order) => {
+            const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+            const dbPoints = order.points;
+            const pointsValue = dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
+            return { order, pointCodes, pointsValue };
+          }),
+        );
+        const mappedOrders = await Promise.all(
+          ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
+            const formatted = await this.mapOrderToGroupedFormat(order);
+            return { ...formatted, points: pointsValue, pointCodes };
+          }),
+        );
+        return mappedOrders;
       },
-      relations: ['items', 'items.product', 'items.attributes', 'extras'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Get point codes for all orders in parallel
-    const ordersWithPointCodes = await Promise.all(
-      orders.map(async (order) => {
-        const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-        // Ensure points is set - if null/undefined, use pointCodes length as fallback
-        // This handles orders created before points field was added
-        const dbPoints = order.points;
-        const pointsValue = (dbPoints !== null && dbPoints !== undefined) ? dbPoints : (pointCodes.length || 0);
-        return { order, pointCodes, pointsValue };
-      })
+      async () => [],
     );
-
-    // Use mapOrderToGroupedFormat to ensure consistency and include redemptionCode
-    const mappedOrders = await Promise.all(
-      ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-        const formatted = await this.mapOrderToGroupedFormat(order);
-        // Override points with the calculated pointsValue (which handles null/undefined)
-        return {
-          ...formatted,
-          points: pointsValue,
-          pointCodes,
-        };
-      })
-    );
-
-    return mappedOrders;
   }
 
   /**

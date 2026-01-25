@@ -28,6 +28,7 @@ const points_service_1 = require("../auth/services/points.service");
 const user_entity_1 = require("../auth/entities/user.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
 const mail_service_1 = require("../common/mail/mail.service");
+const circuit_breaker_service_1 = require("../common/circuit-breaker/circuit-breaker.service");
 let OrdersService = class OrdersService {
     orderRepo;
     itemRepo;
@@ -39,7 +40,8 @@ let OrdersService = class OrdersService {
     dataSource;
     pointsService;
     mailService;
-    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService) {
+    circuitBreaker;
+    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService, circuitBreaker) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
@@ -50,6 +52,7 @@ let OrdersService = class OrdersService {
         this.dataSource = dataSource;
         this.pointsService = pointsService;
         this.mailService = mailService;
+        this.circuitBreaker = circuitBreaker;
     }
     async generateNextOrderNumber(todayStartUtc, todayEndUtc, manager) {
         const repo = manager ? manager.getRepository(order_entity_1.Order) : this.orderRepo;
@@ -278,30 +281,28 @@ let OrdersService = class OrdersService {
         }
     }
     async findOrdersToday() {
-        const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
-        const orders = await this.orderRepo.find({
-            where: {
-                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
-                orderStatus: (0, typeorm_2.Not)('canceled'),
-            },
-            relations: ['items', 'items.product', 'items.attributes', 'extras'],
-            order: { createdAt: 'DESC' },
-        });
-        const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
-            const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-            const dbPoints = order.points;
-            const pointsValue = (dbPoints !== null && dbPoints !== undefined) ? dbPoints : (pointCodes.length || 0);
-            return { order, pointCodes, pointsValue };
-        }));
-        const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-            const formatted = await this.mapOrderToGroupedFormat(order);
-            return {
-                ...formatted,
-                points: pointsValue,
-                pointCodes,
-            };
-        }));
-        return mappedOrders;
+        return this.circuitBreaker.execute(async () => {
+            const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
+            const orders = await this.orderRepo.find({
+                where: {
+                    createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
+                    orderStatus: (0, typeorm_2.Not)('canceled'),
+                },
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
+                order: { createdAt: 'DESC' },
+            });
+            const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
+                const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+                const dbPoints = order.points;
+                const pointsValue = dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
+                return { order, pointCodes, pointsValue };
+            }));
+            const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
+                const formatted = await this.mapOrderToGroupedFormat(order);
+                return { ...formatted, points: pointsValue, pointCodes };
+            }));
+            return mappedOrders;
+        }, async () => []);
     }
     async findMine(email) {
         const orders = await this.orderRepo.find({
@@ -886,6 +887,7 @@ exports.OrdersService = OrdersService = __decorate([
         order_gateway_1.OrdersGateway,
         typeorm_2.DataSource,
         points_service_1.PointsService,
-        mail_service_1.MailService])
+        mail_service_1.MailService,
+        circuit_breaker_service_1.CircuitBreakerService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

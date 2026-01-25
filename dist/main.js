@@ -7,6 +7,7 @@ const app_module_1 = require("./app.module");
 const path_1 = require("path");
 const db_exception_filter_1 = require("./common/filters/db-exception.filter");
 const db_retry_interceptor_1 = require("./common/interceptors/db-retry.interceptor");
+const request_timeout_interceptor_1 = require("./common/interceptors/request-timeout.interceptor");
 function setupProcessHandlers() {
     process.on('unhandledRejection', (reason, promise) => {
         process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
@@ -32,7 +33,7 @@ async function bootstrap() {
     process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.useGlobalFilters(new db_exception_filter_1.DbExceptionFilter());
-    app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor());
+    app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor(), new request_timeout_interceptor_1.RequestTimeoutInterceptor(30000));
     app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public'));
     app.setGlobalPrefix('api');
     app.enableCors({

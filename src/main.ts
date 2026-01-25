@@ -7,6 +7,7 @@ import { join } from 'path';
 
 import { DbExceptionFilter } from './common/filters/db-exception.filter';
 import { DbRetryInterceptor } from './common/interceptors/db-retry.interceptor';
+import { RequestTimeoutInterceptor } from './common/interceptors/request-timeout.interceptor';
 
 // Errores no capturados: log + exit para que Render reinicie
 function setupProcessHandlers() {
@@ -38,7 +39,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.useGlobalFilters(new DbExceptionFilter());
-  app.useGlobalInterceptors(new DbRetryInterceptor());
+  app.useGlobalInterceptors(new DbRetryInterceptor(), new RequestTimeoutInterceptor(30000));
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setGlobalPrefix('api');

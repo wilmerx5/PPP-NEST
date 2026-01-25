@@ -19,59 +19,101 @@ const typeorm_2 = require("typeorm");
 const category_entity_1 = require("./entities/category.entity");
 const product_entity_1 = require("./entities/product.entity");
 const product_attribute_entity_1 = require("./entities/product-attribute.entity");
+const cache_service_1 = require("../common/cache/cache.service");
+const circuit_breaker_service_1 = require("../common/circuit-breaker/circuit-breaker.service");
 let ProductsService = class ProductsService {
     productRepo;
     categoryRepo;
     attributeRepo;
-    constructor(productRepo, categoryRepo, attributeRepo) {
+    cache;
+    circuitBreaker;
+    CACHE_KEY_ALL = 'products:all';
+    CACHE_KEY_CATEGORIES = 'products:categories';
+    CACHE_KEY_GROUPED = 'products:grouped';
+    CACHE_TTL = 45000;
+    constructor(productRepo, categoryRepo, attributeRepo, cache, circuitBreaker) {
         this.productRepo = productRepo;
         this.categoryRepo = categoryRepo;
         this.attributeRepo = attributeRepo;
+        this.cache = cache;
+        this.circuitBreaker = circuitBreaker;
     }
     create(createProductDto) {
+        this.cache.invalidate('products:');
         return 'This action adds a new product';
     }
     async findAll() {
-        const products = await this.productRepo.find({
-            relations: ['categories', 'attributes'],
-            order: { id: 'ASC' },
-        });
-        return products.map(product => ({
-            ...product,
-            attributes: product.attributes.map(attr => ({
-                ...attr,
-                options: JSON.parse(attr.options),
-            })),
-        }));
-    }
-    async findAllCategories() {
-        return this.categoryRepo.find({
-            order: { id: 'ASC' },
-        });
-    }
-    async findProductsGroupedByCategory() {
-        const categories = await this.categoryRepo.find({
-            relations: ['products', 'products.attributes'],
-            order: { id: 'ASC' }
-        });
-        return categories.map(category => ({
-            categoryId: category.id,
-            categoryName: category.name,
-            imageUrl: category.imageUrl,
-            products: category.products.map(product => ({
-                id: product.id,
-                name: product.name,
-                description: product.description,
-                code: product.code,
-                price: product.price,
-                imageUrl: product.imageUrl,
-                hasAttributes: product.hasAttributes,
-                attributes: product.attributes.map(attr => ({
-                    attributeName: attr.attributeName,
+        const cached = this.cache.get(this.CACHE_KEY_ALL);
+        if (cached)
+            return cached;
+        const result = await this.circuitBreaker.execute(async () => {
+            const products = await this.productRepo.find({
+                relations: ['categories', 'attributes'],
+                order: { id: 'ASC' },
+            });
+            const transformed = products.map((product) => ({
+                ...product,
+                attributes: product.attributes.map((attr) => ({
+                    ...attr,
                     options: JSON.parse(attr.options),
                 })),
-            })),
-        }));
+            }));
+            this.cache.set(this.CACHE_KEY_ALL, transformed, this.CACHE_TTL);
+            return transformed;
+        }, async () => {
+            const stale = this.cache.get(this.CACHE_KEY_ALL);
+            return stale || [];
+        });
+        return result || [];
+    }
+    async findAllCategories() {
+        const cached = this.cache.get(this.CACHE_KEY_CATEGORIES);
+        if (cached)
+            return cached;
+        const result = await this.circuitBreaker.execute(async () => {
+            const categories = await this.categoryRepo.find({ order: { id: 'ASC' } });
+            this.cache.set(this.CACHE_KEY_CATEGORIES, categories, this.CACHE_TTL);
+            return categories;
+        }, async () => {
+            const stale = this.cache.get(this.CACHE_KEY_CATEGORIES);
+            return stale || [];
+        });
+        return result || [];
+    }
+    async findProductsGroupedByCategory() {
+        const cached = this.cache.get(this.CACHE_KEY_GROUPED);
+        if (cached)
+            return cached;
+        const result = await this.circuitBreaker.execute(async () => {
+            const categories = await this.categoryRepo.find({
+                relations: ['products', 'products.attributes'],
+                order: { id: 'ASC' },
+            });
+            const transformed = categories.map((category) => ({
+                categoryId: category.id,
+                categoryName: category.name,
+                imageUrl: category.imageUrl,
+                products: category.products.map((product) => ({
+                    id: product.id,
+                    name: product.name,
+                    description: product.description,
+                    code: product.code,
+                    price: product.price,
+                    imageUrl: product.imageUrl,
+                    hasAttributes: product.hasAttributes,
+                    attributes: product.attributes.map((attr) => ({
+                        attributeName: attr.attributeName,
+                        options: JSON.parse(attr.options),
+                    })),
+                })),
+            }));
+            this.cache.set(this.CACHE_KEY_GROUPED, transformed, this.CACHE_TTL);
+            return transformed;
+        }, async () => {
+            const stale = this.cache.get(this.CACHE_KEY_GROUPED);
+            return stale || [];
+        });
+        return result || [];
     }
     async findOne(id) {
         const product = await this.productRepo.findOne({
@@ -137,6 +179,7 @@ let ProductsService = class ProductsService {
             }
         }
         await this.productRepo.save(product);
+        this.cache.invalidate('products:');
         const updated = await this.productRepo.findOne({
             where: { id },
             relations: ['categories', 'attributes'],
@@ -146,13 +189,14 @@ let ProductsService = class ProductsService {
         }
         return {
             ...updated,
-            attributes: updated.attributes.map(attr => ({
+            attributes: updated.attributes.map((attr) => ({
                 ...attr,
                 options: JSON.parse(attr.options),
             })),
         };
     }
     remove(id) {
+        this.cache.invalidate('products:');
         return `This action removes a #${id} product`;
     }
 };
@@ -164,6 +208,8 @@ exports.ProductsService = ProductsService = __decorate([
     __param(2, (0, typeorm_1.InjectRepository)(product_attribute_entity_1.ProductAttribute)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        cache_service_1.CacheService,
+        circuit_breaker_service_1.CircuitBreakerService])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

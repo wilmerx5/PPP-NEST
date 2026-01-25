@@ -14,13 +14,14 @@ const product_attribute_entity_1 = require("./entities/product-attribute.entity"
 const product_entity_1 = require("./entities/product.entity");
 const products_controller_1 = require("./products.controller");
 const products_service_1 = require("./products.service");
+const common_module_1 = require("../common/common.module");
 let ProductsModule = class ProductsModule {
 };
 exports.ProductsModule = ProductsModule;
 exports.ProductsModule = ProductsModule = __decorate([
     (0, common_1.Module)({
         controllers: [products_controller_1.ProductsController],
-        imports: [typeorm_1.TypeOrmModule.forFeature([product_entity_1.Product, category_entity_1.Category, product_attribute_entity_1.ProductAttribute])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([product_entity_1.Product, category_entity_1.Category, product_attribute_entity_1.ProductAttribute]), common_module_1.CommonModule],
         providers: [products_service_1.ProductsService],
     })
 ], ProductsModule);

@@ -9,6 +9,7 @@ import { OrdersGateway } from './Websocket/order.gateway';
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
 import { MailService } from '../common/mail/mail.service';
+import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
@@ -20,7 +21,8 @@ export declare class OrdersService {
     private readonly dataSource;
     private readonly pointsService;
     private readonly mailService;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService);
+    private readonly circuitBreaker;
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService, circuitBreaker: CircuitBreakerService);
     private generateNextOrderNumber;
     create(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;

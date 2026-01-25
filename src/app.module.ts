@@ -20,10 +20,10 @@ import { PaymentsModule } from './payments/payments.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         // Log pool configuration
-        process.stdout.write('\n🔧 [DB Pool Config]\n');
-        process.stdout.write('  Pool Size: 100 | Connection Limit: 100 | Queue Limit: 0\n');
-        process.stdout.write('  Idle Timeout: 60s | Max Idle: 10 (evitar ECONNRESET por conexiones muertas)\n');
-        process.stdout.write('  Keep-Alive: true | Retry: 5\n\n');
+        process.stdout.write('\n🔧 [DB Pool Config - Anti-bloqueo]\n');
+        process.stdout.write('  Pool: 100 | Idle: 10 (60s timeout) | Queue: ilimitada\n');
+        process.stdout.write('  Query Timeout: 5s | Keep-Alive: true | Retry: 5\n');
+        process.stdout.write('  Cache: 45s TTL | Circuit Breaker: 5 fallos → OPEN\n\n');
         const dbConfig = {
           type: 'mariadb' as const,
           host: configService.get<string>('DB_HOST'),
@@ -43,12 +43,14 @@ import { PaymentsModule } from './payments/payments.module';
             connectionLimit: 100,
             waitForConnections: true,
             queueLimit: 0,
-            // ECONNRESET: el servidor DB/proxy cierra conexiones inactivas; el pool las reutiliza y falla.
-            // Reducir idleTimeout y maxIdle para liberar conexiones antes y crear nuevas al usarlas.
             maxIdle: 10,
-            idleTimeout: 60000, // 1 min — liberar antes de que el DB cierre (p. ej. wait_timeout 5 min)
+            idleTimeout: 60000,
             enableKeepAlive: true,
             keepAliveInitialDelay: 0,
+            // Query timeout: matar queries que tardan > 5s para evitar bloqueos
+            queryTimeout: 5000,
+            // Reconnect: reconectar automáticamente si se pierde la conexión
+            reconnect: true,
           },
         };
 
