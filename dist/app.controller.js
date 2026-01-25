@@ -11,14 +11,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("typeorm");
 const app_service_1 = require("./app.service");
 let AppController = class AppController {
     appService;
-    constructor(appService) {
+    dataSource;
+    constructor(appService, dataSource) {
         this.appService = appService;
+        this.dataSource = dataSource;
     }
-    health() {
-        return { status: 'ok', timestamp: new Date().toISOString() };
+    async health() {
+        try {
+            await this.dataSource.query('SELECT 1');
+            return { status: 'ok', db: 'connected', timestamp: new Date().toISOString() };
+        }
+        catch {
+            throw new common_1.ServiceUnavailableException({
+                status: 'degraded',
+                db: 'disconnected',
+                timestamp: new Date().toISOString(),
+            });
+        }
     }
 };
 exports.AppController = AppController;
@@ -26,10 +39,11 @@ __decorate([
     (0, common_1.Get)('health'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AppController.prototype, "health", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __metadata("design:paramtypes", [app_service_1.AppService,
+        typeorm_1.DataSource])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map

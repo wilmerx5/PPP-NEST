@@ -21,10 +21,9 @@ import { PaymentsModule } from './payments/payments.module';
       useFactory: (configService: ConfigService) => {
         // Log pool configuration
         process.stdout.write('\n🔧 [DB Pool Config]\n');
-        process.stdout.write('  Pool Size: 100 (maxed for unlimited database)\n');
-        process.stdout.write('  Connection Limit: 100\n');
-        process.stdout.write('  Queue Limit: 0 (unlimited - no "Queue limit reached")\n');
-        process.stdout.write('  Retry Attempts: 5 | Keep Connection Alive: true\n\n');
+        process.stdout.write('  Pool Size: 100 | Connection Limit: 100 | Queue Limit: 0\n');
+        process.stdout.write('  Idle Timeout: 60s | Max Idle: 10 (evitar ECONNRESET por conexiones muertas)\n');
+        process.stdout.write('  Keep-Alive: true | Retry: 5\n\n');
         const dbConfig = {
           type: 'mariadb' as const,
           host: configService.get<string>('DB_HOST'),
@@ -35,18 +34,19 @@ import { PaymentsModule } from './payments/payments.module';
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: false,
           timezone: 'Z', // UTC timezone
-          // Maxed pool for unlimited database - avoid "Queue limit reached"
-          poolSize: 100, // Max connections in TypeORM pool
+          poolSize: 100,
           keepConnectionAlive: true,
-          connectTimeout: 15000, // 15s for initial connection
+          connectTimeout: 15000,
           retryAttempts: 5,
           retryDelay: 3000,
           extra: {
-            connectionLimit: 100, // Match poolSize - max connections in mysql2 pool
-            waitForConnections: true, // Requests wait for a free connection
-            queueLimit: 0, // Unlimited queue - never "Queue limit reached"; requests wait
-            maxIdle: 50, // Keep many idle connections ready
-            idleTimeout: 600000, // 10 minutes
+            connectionLimit: 100,
+            waitForConnections: true,
+            queueLimit: 0,
+            // ECONNRESET: el servidor DB/proxy cierra conexiones inactivas; el pool las reutiliza y falla.
+            // Reducir idleTimeout y maxIdle para liberar conexiones antes y crear nuevas al usarlas.
+            maxIdle: 10,
+            idleTimeout: 60000, // 1 min — liberar antes de que el DB cierre (p. ej. wait_timeout 5 min)
             enableKeepAlive: true,
             keepAliveInitialDelay: 0,
           },

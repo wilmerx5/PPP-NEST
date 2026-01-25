@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
@@ -6,8 +5,10 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
+import { DbExceptionFilter } from './common/filters/db-exception.filter';
+import { DbRetryInterceptor } from './common/interceptors/db-retry.interceptor';
 
-// Evitar que errores no capturados tiren el proceso sin loguear; salir limpio para que Render reinicie
+// Errores no capturados: log + exit para que Render reinicie
 function setupProcessHandlers() {
   process.on('unhandledRejection', (reason, promise) => {
     process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
@@ -35,11 +36,12 @@ async function bootstrap() {
   process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
   
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
-  // Servir archivos estáticos desde la carpeta public
+
+  app.useGlobalFilters(new DbExceptionFilter());
+  app.useGlobalInterceptors(new DbRetryInterceptor());
+
   app.useStaticAssets(join(__dirname, '..', 'public'));
-  
-  app.setGlobalPrefix('api')
+  app.setGlobalPrefix('api');
 app.enableCors({
   origin: (origin, callback) => {
 
@@ -100,16 +102,30 @@ app.enableCors({
 
 
 
-const port = Number(process.env.PORT) || 4000;
-const host = process.env.HOST || "0.0.0.0";
+  const port = Number(process.env.PORT) || 4000;
+  const host = process.env.HOST || '0.0.0.0';
+  const bindHost = process.env.BIND_HOST === 'true';
 
-const bindHost = process.env.BIND_HOST === "true";
+  if (bindHost) {
+    await app.listen(port, host);
+  } else {
+    await app.listen(port);
+  }
 
-if (bindHost) {
-  await app.listen(port, host);
-} else {
-  await app.listen(port);
+  process.stdout.write(`\n✅ [Bootstrap] Listening on port ${port}\n`);
+
+  const shutdown = async (signal: string) => {
+    process.stdout.write(`\n🛑 [${signal}] Graceful shutdown...\n`);
+    await app.close();
+    process.stdout.write('👋 [Shutdown] Closed.\n');
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM').catch(() => process.exit(1)));
+  process.on('SIGINT', () => shutdown('SIGINT').catch(() => process.exit(1)));
 }
 
-}
-bootstrap();
+bootstrap().catch((err) => {
+  process.stderr.write(`\n❌ [Bootstrap] ${err.message}\n`);
+  if (err.stack) process.stderr.write(err.stack + '\n');
+  process.exit(1);
+});

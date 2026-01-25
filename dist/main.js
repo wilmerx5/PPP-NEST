@@ -5,6 +5,8 @@ const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 const path_1 = require("path");
+const db_exception_filter_1 = require("./common/filters/db-exception.filter");
+const db_retry_interceptor_1 = require("./common/interceptors/db-retry.interceptor");
 function setupProcessHandlers() {
     process.on('unhandledRejection', (reason, promise) => {
         process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
@@ -29,6 +31,8 @@ async function bootstrap() {
     process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
     process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.useGlobalFilters(new db_exception_filter_1.DbExceptionFilter());
+    app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor());
     app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public'));
     app.setGlobalPrefix('api');
     app.enableCors({
@@ -71,14 +75,28 @@ async function bootstrap() {
     swagger_1.SwaggerModule.setup("api", app, document);
     app.use(cookieParser());
     const port = Number(process.env.PORT) || 4000;
-    const host = process.env.HOST || "0.0.0.0";
-    const bindHost = process.env.BIND_HOST === "true";
+    const host = process.env.HOST || '0.0.0.0';
+    const bindHost = process.env.BIND_HOST === 'true';
     if (bindHost) {
         await app.listen(port, host);
     }
     else {
         await app.listen(port);
     }
+    process.stdout.write(`\n✅ [Bootstrap] Listening on port ${port}\n`);
+    const shutdown = async (signal) => {
+        process.stdout.write(`\n🛑 [${signal}] Graceful shutdown...\n`);
+        await app.close();
+        process.stdout.write('👋 [Shutdown] Closed.\n');
+        process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM').catch(() => process.exit(1)));
+    process.on('SIGINT', () => shutdown('SIGINT').catch(() => process.exit(1)));
 }
-bootstrap();
+bootstrap().catch((err) => {
+    process.stderr.write(`\n❌ [Bootstrap] ${err.message}\n`);
+    if (err.stack)
+        process.stderr.write(err.stack + '\n');
+    process.exit(1);
+});
 //# sourceMappingURL=main.js.map
