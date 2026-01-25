@@ -742,14 +742,13 @@ let OrdersService = class OrdersService {
         return order;
     }
     async findOrdersByDate(date) {
-        const dateObj = new Date(date + 'T00:00:00');
-        const dateInBogota = (0, date_fns_tz_1.toZonedTime)(dateObj, 'America/Bogota');
-        const startOfDay = new Date(dateInBogota);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(dateInBogota);
-        endOfDay.setHours(23, 59, 59, 999);
-        const startUtc = (0, date_fns_tz_1.fromZonedTime)(startOfDay, 'America/Bogota');
-        const endUtc = (0, date_fns_tz_1.fromZonedTime)(endOfDay, 'America/Bogota');
+        const [year, month, day] = date.split('-').map(Number);
+        const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+        const startOfDayBogota = new Date(bogotaDateString);
+        const endOfDayBogota = new Date(startOfDayBogota);
+        endOfDayBogota.setHours(23, 59, 59, 999);
+        const startUtc = startOfDayBogota;
+        const endUtc = endOfDayBogota;
         const orders = await this.orderRepo.find({
             where: {
                 createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
@@ -773,14 +772,13 @@ let OrdersService = class OrdersService {
         let startUtc;
         let endUtc;
         if (date) {
-            const dateObj = new Date(date + 'T00:00:00');
-            const dateInBogota = (0, date_fns_tz_1.toZonedTime)(dateObj, 'America/Bogota');
-            const startOfDay = new Date(dateInBogota);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(dateInBogota);
-            endOfDay.setHours(23, 59, 59, 999);
-            startUtc = (0, date_fns_tz_1.fromZonedTime)(startOfDay, 'America/Bogota');
-            endUtc = (0, date_fns_tz_1.fromZonedTime)(endOfDay, 'America/Bogota');
+            const [year, month, day] = date.split('-').map(Number);
+            const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+            const startOfDayBogota = new Date(bogotaDateString);
+            const endOfDayBogota = new Date(startOfDayBogota);
+            endOfDayBogota.setHours(23, 59, 59, 999);
+            startUtc = startOfDayBogota;
+            endUtc = endOfDayBogota;
         }
         else {
             const { start, end } = (0, date_util_1.getBogotaDayRange)();

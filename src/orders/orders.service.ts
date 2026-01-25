@@ -1044,20 +1044,24 @@ export class OrdersService {
    * @returns Lista de órdenes formateadas
    */
   async findOrdersByDate(date: string): Promise<any[]> {
-    // Parse date string (YYYY-MM-DD) in Bogotá timezone
-    const dateObj = new Date(date + 'T00:00:00');
-    const dateInBogota = toZonedTime(dateObj, 'America/Bogota');
+    // Parse date string (YYYY-MM-DD) - interpret as Bogotá timezone
+    // The issue: new Date('YYYY-MM-DD') interprets as UTC midnight, causing off-by-one day errors
+    // Solution: Create date string with explicit Bogotá timezone offset
+    const [year, month, day] = date.split('-').map(Number);
     
-    // Get start and end of day in Bogotá
-    const startOfDay = new Date(dateInBogota);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Create a date string with explicit Bogotá timezone: 'YYYY-MM-DDTHH:mm:ss-05:00'
+    // Bogotá is UTC-5 (no DST), so we use -05:00 offset
+    // This ensures the date is interpreted as midnight in Bogotá, not UTC
+    const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+    const startOfDayBogota = new Date(bogotaDateString);
     
-    const endOfDay = new Date(dateInBogota);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Set to end of day (23:59:59.999) in Bogotá
+    const endOfDayBogota = new Date(startOfDayBogota);
+    endOfDayBogota.setHours(23, 59, 59, 999);
     
-    // Convert to UTC for database query
-    const startUtc = fromZonedTime(startOfDay, 'America/Bogota');
-    const endUtc = fromZonedTime(endOfDay, 'America/Bogota');
+    // The Date object already represents the correct UTC time
+    const startUtc = startOfDayBogota;
+    const endUtc = endOfDayBogota;
 
     const orders = await this.orderRepo.find({
       where: {
@@ -1098,18 +1102,23 @@ export class OrdersService {
     let endUtc: Date;
 
     if (date) {
-      // Parse date string (YYYY-MM-DD) in Bogotá timezone
-      const dateObj = new Date(date + 'T00:00:00');
-      const dateInBogota = toZonedTime(dateObj, 'America/Bogota');
+      // Parse date string (YYYY-MM-DD) - interpret as Bogotá timezone
+      // The issue: new Date('YYYY-MM-DD') interprets as UTC midnight, causing off-by-one day errors
+      // Solution: Create date string with explicit Bogotá timezone offset
+      const [year, month, day] = date.split('-').map(Number);
       
-      const startOfDay = new Date(dateInBogota);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Create a date string with explicit Bogotá timezone: 'YYYY-MM-DDTHH:mm:ss-05:00'
+      // Bogotá is UTC-5 (no DST), so we use -05:00 offset
+      const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+      const startOfDayBogota = new Date(bogotaDateString);
       
-      const endOfDay = new Date(dateInBogota);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Set to end of day (23:59:59.999) in Bogotá
+      const endOfDayBogota = new Date(startOfDayBogota);
+      endOfDayBogota.setHours(23, 59, 59, 999);
       
-      startUtc = fromZonedTime(startOfDay, 'America/Bogota');
-      endUtc = fromZonedTime(endOfDay, 'America/Bogota');
+      // The Date object already represents the correct UTC time
+      startUtc = startOfDayBogota;
+      endUtc = endOfDayBogota;
     } else {
       // Use today
       const { start, end } = getBogotaDayRange();
