@@ -13,6 +13,11 @@ export declare class AppController {
         db: string;
         circuitBreaker: import("./common/circuit-breaker/circuit-breaker.service").CircuitState;
         cacheSize: number;
+        memory: {
+            heapUsed: number;
+            heapTotal: number;
+            rss: number;
+        };
         timestamp: string;
     }>;
 }

@@ -378,9 +378,18 @@ let PointsService = class PointsService {
         else {
             baseQuery = baseQuery.innerJoin('ppp_users', 'user', 'user.id = point.userId');
         }
-        const countQuery = baseQuery.clone();
-        const totalResult = await countQuery.getRawMany();
-        const total = totalResult.length;
+        const countQuery = this.pointsRepo
+            .createQueryBuilder('point')
+            .select('COUNT(DISTINCT point.userId)', 'total')
+            .where('point.userId IS NOT NULL');
+        if (search && search.trim()) {
+            const searchTerm = `%${search.trim()}%`;
+            countQuery
+                .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+                .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+        }
+        const countResult = await countQuery.getRawOne();
+        const total = parseInt(countResult?.total || '0', 10);
         baseQuery = baseQuery.orderBy('totalPoints', 'DESC').addOrderBy('point.userId', 'ASC');
         baseQuery = baseQuery.limit(limit).offset(offset);
         baseQuery = baseQuery

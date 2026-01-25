@@ -13,6 +13,7 @@ let CacheService = CacheService_1 = class CacheService {
     logger = new common_1.Logger(CacheService_1.name);
     cache = new Map();
     defaultTtl = 60000;
+    maxSize = 1000;
     get(key) {
         const entry = this.cache.get(key);
         if (!entry)
@@ -24,6 +25,16 @@ let CacheService = CacheService_1 = class CacheService {
         return entry.data;
     }
     set(key, data, ttlMs = this.defaultTtl) {
+        if (this.cache.size >= this.maxSize) {
+            this.cleanup();
+            if (this.cache.size >= this.maxSize) {
+                const firstKey = this.cache.keys().next().value;
+                if (firstKey) {
+                    this.cache.delete(firstKey);
+                    this.logger.warn(`Cache limit reached, evicted key: ${firstKey}`);
+                }
+            }
+        }
         this.cache.set(key, {
             data,
             expiresAt: Date.now() + ttlMs,

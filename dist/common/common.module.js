@@ -21,7 +21,7 @@ let CommonModule = class CommonModule {
     cache;
     constructor(cache) {
         this.cache = cache;
-        setInterval(() => this.cache.cleanup(), 60000);
+        setInterval(() => this.cache.cleanup(), 30000);
     }
 };
 exports.CommonModule = CommonModule;

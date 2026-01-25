@@ -15,6 +15,7 @@ import { CircuitBreakerService } from './circuit-breaker/circuit-breaker.service
 })
 export class CommonModule {
   constructor(private readonly cache: CacheService) {
-    setInterval(() => this.cache.cleanup(), 60000);
+    // Cleanup cada 30 segundos para evitar crecimiento excesivo
+    setInterval(() => this.cache.cleanup(), 30000);
   }
 }

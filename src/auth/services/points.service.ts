@@ -670,10 +670,22 @@ export class PointsService {
       baseQuery = baseQuery.innerJoin('ppp_users', 'user', 'user.id = point.userId');
     }
 
-    // Get total count (before pagination) - clone the query
-    const countQuery = baseQuery.clone();
-    const totalResult = await countQuery.getRawMany();
-    const total = totalResult.length;
+    // Get total count efficiently using COUNT instead of loading all records
+    // Reset select to only count
+    const countQuery = this.pointsRepo
+      .createQueryBuilder('point')
+      .select('COUNT(DISTINCT point.userId)', 'total')
+      .where('point.userId IS NOT NULL');
+    
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      countQuery
+        .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+        .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+    }
+    
+    const countResult = await countQuery.getRawOne();
+    const total = parseInt(countResult?.total || '0', 10);
 
     // Order by total points descending
     baseQuery = baseQuery.orderBy('totalPoints', 'DESC').addOrderBy('point.userId', 'ASC');

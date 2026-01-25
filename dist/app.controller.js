@@ -29,11 +29,18 @@ let AppController = class AppController {
     async health() {
         try {
             await this.dataSource.query('SELECT 1');
+            const memUsage = process.memoryUsage();
+            const mb = (bytes) => Math.round(bytes / 1024 / 1024 * 100) / 100;
             return {
                 status: 'ok',
                 db: 'connected',
                 circuitBreaker: this.circuitBreaker.getState(),
                 cacheSize: this.cache.size(),
+                memory: {
+                    heapUsed: mb(memUsage.heapUsed),
+                    heapTotal: mb(memUsage.heapTotal),
+                    rss: mb(memUsage.rss),
+                },
                 timestamp: new Date().toISOString(),
             };
         }
