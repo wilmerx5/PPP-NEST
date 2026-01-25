@@ -743,12 +743,10 @@ let OrdersService = class OrdersService {
     }
     async findOrdersByDate(date) {
         const [year, month, day] = date.split('-').map(Number);
-        const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
-        const startOfDayBogota = new Date(bogotaDateString);
-        const endOfDayBogota = new Date(startOfDayBogota);
-        endOfDayBogota.setHours(23, 59, 59, 999);
-        const startUtc = startOfDayBogota;
-        const endUtc = endOfDayBogota;
+        const startBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+        const endBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59.999-05:00`;
+        const startUtc = new Date(startBogotaString);
+        const endUtc = new Date(endBogotaString);
         const orders = await this.orderRepo.find({
             where: {
                 createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
@@ -773,12 +771,10 @@ let OrdersService = class OrdersService {
         let endUtc;
         if (date) {
             const [year, month, day] = date.split('-').map(Number);
-            const bogotaDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
-            const startOfDayBogota = new Date(bogotaDateString);
-            const endOfDayBogota = new Date(startOfDayBogota);
-            endOfDayBogota.setHours(23, 59, 59, 999);
-            startUtc = startOfDayBogota;
-            endUtc = endOfDayBogota;
+            const startBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+            const endBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59.999-05:00`;
+            startUtc = new Date(startBogotaString);
+            endUtc = new Date(endBogotaString);
         }
         else {
             const { start, end } = (0, date_util_1.getBogotaDayRange)();
