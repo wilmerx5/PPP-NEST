@@ -43,7 +43,6 @@ let PaymentsService = class PaymentsService {
         try {
             const accessToken = this.configService.get('MERCADO_PAGO_ACCESS_TOKEN');
             if (!accessToken) {
-                console.warn('⚠️ MERCADO_PAGO_ACCESS_TOKEN is not configured. Payment features will not work.');
                 return;
             }
             this.client = new mercadopago_1.MercadoPagoConfig({
@@ -56,8 +55,7 @@ let PaymentsService = class PaymentsService {
             this.preference = new mercadopago_1.Preference(this.client);
             this.payment = new mercadopago_1.Payment(this.client);
         }
-        catch (error) {
-            console.error('Error initializing Mercado Pago client:', error);
+        catch {
         }
     }
     async createPreference(orderData, items, totalAmount, customerInfo) {
@@ -92,21 +90,6 @@ let PaymentsService = class PaymentsService {
         };
         mercadopagoFrontendUrl = normalizeUrl(mercadopagoFrontendUrl || 'http://localhost:3000', mercadopagoFrontendUrl?.match(/^https/i) ? 'https' : 'http');
         mercadopagoBackendUrl = normalizeUrl(mercadopagoBackendUrl || 'http://localhost:4000', mercadopagoBackendUrl?.match(/^https/i) ? 'https' : 'http');
-        console.log('🌐 [Mercado Pago] URLs configuradas:');
-        console.log(`   Frontend (Mercado Pago): ${mercadopagoFrontendUrl}`);
-        console.log(`   Backend (Webhook): ${mercadopagoBackendUrl}`);
-        console.log(`   Frontend (Auth): ${authFrontendUrl}`);
-        console.log(`   Backend (Auth): ${authBackendUrl}`);
-        if (!mercadopagoFrontendUrl.startsWith('https://')) {
-            console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Usando HTTP para URLs de Mercado Pago');
-            console.warn('⚠️ [Mercado Pago] El auto_return puede no funcionar correctamente con HTTP');
-            console.warn('⚠️ [Mercado Pago] Para redirección automática, configura FRONTEND_URL_NGROK y BACKEND_URL_NGROK');
-            console.warn(`⚠️ [Mercado Pago] Actual: ${mercadopagoFrontendUrl}`);
-            console.warn('⚠️ [Mercado Pago] Recomendado: https://tu-id.ngrok-free.app (usa ngrok)');
-        }
-        else {
-            console.log('✅ [Mercado Pago] Usando HTTPS para Mercado Pago (auto_return funcionará)');
-        }
         const baseUrl = mercadopagoFrontendUrl;
         const backendUrl = mercadopagoBackendUrl;
         if (!baseUrl || baseUrl.length === 0) {
@@ -178,34 +161,13 @@ let PaymentsService = class PaymentsService {
         if (!preferenceData.back_urls.success || typeof preferenceData.back_urls.success !== 'string') {
             throw new common_1.BadRequestException(`back_urls.success debe ser un string válido. Valor recibido: ${JSON.stringify(preferenceData.back_urls.success)}`);
         }
-        console.log('🔧 [Mercado Pago] Creating preference with:', JSON.stringify({
-            back_urls: preferenceData.back_urls,
-            auto_return: preferenceData.auto_return,
-            baseUrl,
-            backendUrl,
-            hasBackUrls: !!preferenceData.back_urls,
-            successUrl: preferenceData.back_urls?.success,
-            failureUrl: preferenceData.back_urls?.failure,
-            pendingUrl: preferenceData.back_urls?.pending,
-        }, null, 2));
         try {
             if (!preferenceData.back_urls ||
                 !preferenceData.back_urls.success ||
                 !preferenceData.back_urls.failure ||
                 !preferenceData.back_urls.pending) {
-                console.error('❌ [Mercado Pago] back_urls inválido:', JSON.stringify(preferenceData.back_urls, null, 2));
                 throw new common_1.BadRequestException('back_urls no está correctamente configurado. Todas las URLs (success, failure, pending) deben estar definidas.');
             }
-            console.log('📤 [Mercado Pago] Sending preference data to API:', JSON.stringify({
-                items: preferenceData.items.length,
-                has_back_urls: !!preferenceData.back_urls,
-                back_urls: preferenceData.back_urls,
-                back_urls_type: typeof preferenceData.back_urls,
-                back_urls_keys: preferenceData.back_urls ? Object.keys(preferenceData.back_urls) : [],
-                success_exists: !!preferenceData.back_urls?.success,
-                success_value: preferenceData.back_urls?.success,
-                auto_return: preferenceData.auto_return,
-            }, null, 2));
             const bodyToSend = {
                 items: preferenceData.items.map((item) => ({
                     title: String(item.title),
@@ -234,34 +196,10 @@ let PaymentsService = class PaymentsService {
                 bodyToSend.metadata = preferenceData.metadata;
             }
             if (!bodyToSend.back_urls || !bodyToSend.back_urls.success) {
-                console.error('❌ [Mercado Pago] CRITICAL: back_urls.success is missing after JSON serialization!');
-                console.error('❌ [Mercado Pago] bodyToSend:', JSON.stringify(bodyToSend, null, 2));
                 throw new common_1.BadRequestException('back_urls.success se perdió durante la serialización del objeto');
             }
-            console.log('📤 [Mercado Pago] Final body structure:', JSON.stringify({
-                back_urls: bodyToSend.back_urls,
-                back_urls_success_type: typeof bodyToSend.back_urls.success,
-                back_urls_success_value: bodyToSend.back_urls.success,
-                back_urls_keys: Object.keys(bodyToSend.back_urls || {}),
-                auto_return: bodyToSend.auto_return,
-                has_auto_return: !!bodyToSend.auto_return,
-            }, null, 2));
             try {
-                console.log('🚀 [Mercado Pago] Creando preferencia CON auto_return para redirección automática...');
-                console.log('🔗 [Mercado Pago] URLs de redirección:');
-                console.log(`   Success: ${bodyToSend.back_urls.success}`);
-                console.log(`   Failure: ${bodyToSend.back_urls.failure}`);
-                console.log(`   Pending: ${bodyToSend.back_urls.pending}`);
                 const response = await this.preference.create({ body: bodyToSend });
-                console.log('✅ [Mercado Pago] Preferencia creada exitosamente CON auto_return');
-                console.log(`   Preference ID: ${response.id}`);
-                console.log(`   Init Point: ${response.init_point || response.sandbox_init_point || 'N/A'}`);
-                if (!mercadopagoFrontendUrl.startsWith('https://')) {
-                    console.warn('⚠️ [Mercado Pago] La redirección automática suele FALLAR con HTTP. Configura FRONTEND_URL_NGROK con HTTPS (ngrok).');
-                }
-                else {
-                    console.log('   ℹ️ Redirección: Mercado Pago redirigirá a', bodyToSend.back_urls.success);
-                }
                 if (!response.id) {
                     throw new common_1.BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
                 }
@@ -288,18 +226,7 @@ let PaymentsService = class PaymentsService {
                 };
             }
             catch (createError) {
-                console.error('📛 [Mercado Pago] Error al crear preferencia:', createError?.message);
-                if (createError?.cause)
-                    console.error('   cause:', createError.cause);
-                if (createError?.error)
-                    console.error('   error:', createError.error);
-                if (createError?.response?.data)
-                    console.error('   response.data:', JSON.stringify(createError.response.data));
                 if (createError?.error === 'invalid_auto_return' || createError?.message?.includes('auto_return')) {
-                    console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Error al crear preferencia con auto_return ("approved")');
-                    console.warn('⚠️ [Mercado Pago] Razón posible: URLs HTTP (Mercado Pago exige HTTPS para auto_return) o URLs no accesibles desde internet');
-                    console.warn('⚠️ [Mercado Pago] Solución: Configura FRONTEND_URL_NGROK con tu URL HTTPS de ngrok (ej: https://xxx.ngrok-free.app)');
-                    console.warn('⚠️ [Mercado Pago] Continuando sin auto_return - El usuario deberá hacer clic en "Volver al sitio"');
                     const bodyWithoutAutoReturn = JSON.parse(JSON.stringify({
                         items: bodyToSend.items,
                         payer: bodyToSend.payer,
@@ -308,12 +235,7 @@ let PaymentsService = class PaymentsService {
                         notification_url: bodyToSend.notification_url,
                         metadata: bodyToSend.metadata,
                     }));
-                    console.log('📤 [Mercado Pago] Creando preferencia sin auto_return (fallback):', JSON.stringify({
-                        back_urls: bodyWithoutAutoReturn.back_urls,
-                        has_auto_return: false,
-                    }, null, 2));
                     const response = await this.preference.create({ body: bodyWithoutAutoReturn });
-                    console.warn('⚠️ [Mercado Pago] Preferencia creada SIN auto_return - Redirección manual requerida');
                     if (!response.id) {
                         throw new common_1.BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
                     }
@@ -339,18 +261,10 @@ let PaymentsService = class PaymentsService {
                         paymentId: payment.id,
                     };
                 }
-                console.error('📛 [Mercado Pago] No se usó fallback. Revisa FRONTEND_URL_NGROK (HTTPS) y que back_urls.success sea una URL pública válida.');
                 throw createError;
             }
         }
         catch (error) {
-            console.error('❌ Error creating Mercado Pago preference:', error);
-            if (error.response?.data) {
-                console.error('📋 Mercado Pago API Error Details:', JSON.stringify(error.response.data, null, 2));
-            }
-            if (error.cause) {
-                console.error('🔍 Error cause:', error.cause);
-            }
             const errorMessage = error.response?.data?.message
                 || error.message
                 || 'Failed to create payment preference';
@@ -358,29 +272,17 @@ let PaymentsService = class PaymentsService {
         }
     }
     async handleWebhook(data) {
-        console.log('🔔 [Webhook] Received webhook data:', JSON.stringify(data, null, 2));
         try {
             if (!this.client || !this.payment) {
-                console.error('❌ [Webhook] Mercado Pago client not initialized. Cannot process webhook.');
                 return { success: false, message: 'Mercado Pago is not configured' };
             }
             const { type, data: webhookData } = data || {};
             if (type === 'payment') {
                 const paymentId = webhookData?.id;
                 if (!paymentId) {
-                    console.warn('⚠️ [Webhook] Received without payment ID:', JSON.stringify(data, null, 2));
                     return { success: false, message: 'Payment ID not found' };
                 }
-                console.log(`📥 [Webhook] Processing payment ID: ${paymentId}`);
                 const mpPayment = await this.payment.get({ id: paymentId.toString() });
-                console.log('📋 [Webhook] Mercado Pago payment data:', JSON.stringify({
-                    id: mpPayment.id,
-                    status: mpPayment.status,
-                    external_reference: mpPayment.external_reference,
-                    preference_id: mpPayment.preference_id,
-                    status_detail: mpPayment.status_detail,
-                    transaction_amount: mpPayment.transaction_amount,
-                }, null, 2));
                 if (!mpPayment) {
                     return { success: false, message: 'Payment not found in Mercado Pago' };
                 }
@@ -409,7 +311,6 @@ let PaymentsService = class PaymentsService {
                     });
                 }
                 if (!payment) {
-                    console.error('Payment record not found for payment_id:', paymentId);
                     return { success: false, message: 'Payment record not found' };
                 }
                 const foundPayment = payment;
@@ -431,13 +332,10 @@ let PaymentsService = class PaymentsService {
                         metadataObj = JSON.parse(foundPayment.metadata);
                     }
                 }
-                catch (e) {
-                    console.warn('Error parsing payment metadata, using empty object:', e);
+                catch {
                 }
                 if (status === 'approved' && !foundPayment.orderId && metadataObj.order_data) {
                     try {
-                        console.log('💰 [Webhook] Payment approved! Creating order from payment metadata...');
-                        console.log('📦 [Webhook] Order data from metadata:', JSON.stringify(metadataObj.order_data, null, 2));
                         if (!this.ordersService) {
                             this.ordersService = this.moduleRef.get(orders_service_1.OrdersService, { strict: false });
                         }
@@ -448,18 +346,11 @@ let PaymentsService = class PaymentsService {
                         };
                         const orderResponse = await this.ordersService.create(orderDataWithEmail);
                         foundPayment.orderId = orderResponse.orderId;
-                        console.log(`✅ [Webhook] Order created successfully!`);
-                        console.log(`   Order ID: ${orderResponse.orderId}`);
-                        console.log(`   Daily Order Number: ${orderResponse.dailyOrderNumber}`);
-                        console.log(`   Payment ID: ${paymentId}`);
                         if (orderDataWithEmail.redemptionCode) {
                             try {
-                                console.log(`🎁 [Webhook] Applying redemption prize: ${orderDataWithEmail.redemptionCode}`);
                                 await this.ordersService.applyRedemptionVoucher(orderResponse.orderId, orderDataWithEmail.redemptionCode);
-                                console.log(`✅ [Webhook] Redemption prize applied successfully!`);
                             }
-                            catch (prizeError) {
-                                console.error(`❌ [Webhook] Failed to apply redemption prize:`, prizeError?.message || prizeError);
+                            catch {
                             }
                         }
                         try {
@@ -491,47 +382,19 @@ let PaymentsService = class PaymentsService {
                                     : subtotal + deliveryNum;
                                 const orderNum = fullOrder.dailyOrderNumber ?? fullOrder.id;
                                 const sent = await this.mailService.sendOrderConfirmation(emailTo, orderNum, fullOrder.customerName || mpPayment.payer?.name || 'Cliente', emailItems, totalForEmail, String(fullOrder.orderType || 'delivery'), fullOrder.address, fullOrder.phone, deliveryNum > 0 ? deliveryNum : undefined);
-                                if (sent) {
-                                    console.log(`✅ [Webhook] Correo de confirmación enviado a ${emailTo} (orden #${orderNum})`);
-                                }
-                                else {
-                                    console.warn('⚠️ [Webhook] Correo no enviado (revisa MAIL_* en .env)');
-                                }
-                            }
-                            else {
-                                console.warn('⚠️ [Webhook] No se envía correo: falta orden, items o email (customer_email en metadata o payer.email)');
                             }
                         }
-                        catch (emailError) {
-                            console.error('❌ [Webhook] Error al enviar correo de confirmación:', emailError?.message);
-                            console.error('   Detalle:', emailError?.stack || emailError);
+                        catch {
                         }
                     }
-                    catch (error) {
-                        console.error('❌ [Webhook] Error creating order from payment:', error);
-                        console.error('❌ [Webhook] Error details:', JSON.stringify({
-                            message: error.message,
-                            stack: error.stack,
-                            order_data: metadataObj.order_data,
-                        }, null, 2));
+                    catch {
                     }
-                }
-                else if (status === 'approved' && foundPayment.orderId) {
-                    console.log(`✅ [Webhook] Payment already has order associated: Order ID ${foundPayment.orderId}`);
-                }
-                else if (status === 'approved' && !metadataObj.order_data) {
-                    console.warn('⚠️ [Webhook] Payment approved but no order_data in metadata to create order');
                 }
                 foundPayment.metadata = JSON.stringify({
                     ...metadataObj,
                     mp_payment: mpPayment,
                 });
                 await this.paymentRepo.save(foundPayment);
-                console.log('✅ [Webhook] Payment saved successfully');
-                console.log(`   Payment ID (internal): ${foundPayment.id}`);
-                console.log(`   Payment ID (Mercado Pago): ${foundPayment.paymentId}`);
-                console.log(`   Order ID: ${foundPayment.orderId || 'NOT CREATED YET'}`);
-                console.log(`   Status: ${foundPayment.status}`);
                 return {
                     success: true,
                     paymentId: foundPayment.id,
@@ -545,8 +408,6 @@ let PaymentsService = class PaymentsService {
             return { success: true, message: 'Webhook processed (not a payment event)' };
         }
         catch (error) {
-            console.error('❌ [Webhook] Error processing webhook:', error);
-            console.error('❌ [Webhook] Error stack:', error.stack);
             return { success: false, message: error.message };
         }
     }
@@ -583,8 +444,7 @@ let PaymentsService = class PaymentsService {
                 metadataObj = JSON.parse(payment.metadata);
             }
         }
-        catch (e) {
-            console.warn('Error parsing payment metadata:', e);
+        catch {
         }
         return {
             id: payment.id,
@@ -618,8 +478,7 @@ let PaymentsService = class PaymentsService {
                 metadataObj = JSON.parse(payment.metadata);
             }
         }
-        catch (e) {
-            console.warn('Error parsing payment metadata:', e);
+        catch {
         }
         return {
             id: payment.id,

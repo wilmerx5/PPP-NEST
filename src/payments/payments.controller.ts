@@ -67,29 +67,19 @@ export class PaymentsController {
   private validateWebhookSignature(req: any, body: any): boolean {
     const webhookSecret = this.configService.get<string>('MERCADO_PAGO_WEBHOOK_SECRET');
     
-    // Si no hay secret configurado, permitir (para desarrollo, pero no recomendado)
     if (!webhookSecret) {
-      console.warn('⚠️ [Webhook] MERCADO_PAGO_WEBHOOK_SECRET no configurado. Saltando validación (NO RECOMENDADO en producción).');
-      return true; // Permitir en desarrollo, pero advertir
+      return true; // Permitir en desarrollo sin validación
     }
-
-    console.log('🔐 [Webhook] Webhook Secret configurado:', webhookSecret.substring(0, 10) + '...');
 
     const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
     const xRequestId = req.headers['x-request-id'] || req.headers['X-Request-Id'];
 
     if (!xSignature || !xRequestId) {
-      console.error('❌ [Webhook] Faltan headers requeridos: x-signature o x-request-id');
       return false;
     }
 
-    // Extraer data.id del body o query params
     let dataId = body?.data?.id || req.query?.['data.id'] || req.query?.id;
-    
     if (!dataId) {
-      console.error('❌ [Webhook] No se encontró data.id en el webhook');
-      console.error('   Body:', JSON.stringify(body, null, 2));
-      console.error('   Query:', JSON.stringify(req.query, null, 2));
       return false;
     }
 
@@ -103,8 +93,6 @@ export class PaymentsController {
       const v1Part = parts.find(p => p.startsWith('v1='));
 
       if (!tsPart || !v1Part) {
-        console.error('❌ [Webhook] Formato de x-signature inválido');
-        console.error('   x-signature:', xSignature);
         return false;
       }
 
@@ -122,23 +110,8 @@ export class PaymentsController {
         .digest('hex');
 
       // Comparar con v1 (ambos en minúsculas para comparación case-insensitive)
-      const isValid = hmac.toLowerCase() === v1.toLowerCase();
-
-      if (!isValid) {
-        console.error('❌ [Webhook] Firma inválida. Webhook rechazado.');
-        console.error('   Manifest:', manifest);
-        console.error('   Data ID (original):', body?.data?.id || req.query?.['data.id'] || req.query?.id);
-        console.error('   Data ID (lowercase):', dataId);
-        console.error('   Webhook Secret configurado:', webhookSecret ? `${webhookSecret.substring(0, 10)}...` : 'NO CONFIGURADO');
-        console.error('   Calculado:', hmac);
-        console.error('   Recibido: ', v1);
-      } else {
-        console.log('✅ [Webhook] Firma validada correctamente');
-      }
-
-      return isValid;
-    } catch (error: any) {
-      console.error('❌ [Webhook] Error validando firma:', error.message);
+      return hmac.toLowerCase() === v1.toLowerCase();
+    } catch {
       return false;
     }
   }
@@ -216,14 +189,6 @@ export class PaymentsController {
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   async handleWebhook(@Body() body: any, @Req() req: any) {
-    console.log('🔔 [Webhook Controller] Received webhook request');
-    console.log('📥 [Webhook Controller] Body:', JSON.stringify(body, null, 2));
-    console.log('📥 [Webhook Controller] Query:', JSON.stringify(req.query, null, 2));
-    console.log('📥 [Webhook Controller] Headers:', JSON.stringify({
-      'x-signature': req.headers['x-signature'] || req.headers['X-Signature'],
-      'x-request-id': req.headers['x-request-id'] || req.headers['X-Request-Id'],
-    }, null, 2));
-    
     try {
       // Validar firma del webhook
       if (!this.validateWebhookSignature(req, body)) {
@@ -254,12 +219,8 @@ export class PaymentsController {
         }
       }
       
-      // Si viene con el formato { type, data: { id } }
       if (data && data.type && data.data) {
-        console.log('✅ [Webhook Controller] Processing with format: { type, data: { id } }');
-        const result = await this.paymentsService.handleWebhook(data);
-        console.log('📤 [Webhook Controller] Webhook processing result:', JSON.stringify(result, null, 2));
-        return result;
+        return await this.paymentsService.handleWebhook(data);
       }
       
       // Si viene directamente como { id: '123' } sin wrapper
@@ -270,16 +231,12 @@ export class PaymentsController {
         });
       }
       
-      // Último intento: usar los datos tal como vienen
       if (data) {
         return await this.paymentsService.handleWebhook(data);
       }
-      
-      // Si no hay datos, retornar error
-      console.warn('Webhook received with no valid data:', { body, query: req.query });
+
       return { success: false, message: 'No valid webhook data received' };
     } catch (error: any) {
-      console.error('Error in webhook handler:', error);
       return { success: false, message: error.message || 'Error processing webhook' };
     }
   }

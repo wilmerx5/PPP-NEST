@@ -13,6 +13,7 @@ exports.Order = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
 const order_item_entity_1 = require("./order-item.entity");
+const order_extra_entity_1 = require("./order-extra.entity");
 let Order = class Order {
     id;
     customerName;
@@ -29,6 +30,7 @@ let Order = class Order {
     orderSource;
     points;
     redemptionCode;
+    extras;
 };
 exports.Order = Order;
 __decorate([
@@ -181,6 +183,15 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true }),
     __metadata("design:type", Object)
 ], Order.prototype, "redemptionCode", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',
+        type: () => order_extra_entity_1.OrderExtra,
+        required: false,
+    }),
+    (0, typeorm_1.OneToMany)(() => order_extra_entity_1.OrderExtra, (e) => e.order, { cascade: true }),
+    __metadata("design:type", Array)
+], Order.prototype, "extras", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: true })
 ], Order);

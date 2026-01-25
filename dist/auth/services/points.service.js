@@ -99,7 +99,7 @@ let PointsService = class PointsService {
             attempts++;
         }
         if (exists) {
-            throw new Error('Failed to generate unique point code after multiple attempts');
+            throw new common_1.BadRequestException('Failed to generate unique point code after multiple attempts');
         }
         return code;
     }

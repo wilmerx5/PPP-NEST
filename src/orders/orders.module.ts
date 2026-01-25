@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
+import { OrderExtra } from './entities/order-extra.entity';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { OrdersGateway } from './Websocket/order.gateway';
@@ -18,7 +19,7 @@ import { PointRedemption } from '../auth/entities/point-redemption.entity';
   controllers: [OrdersController],
   providers: [OrdersService, OrdersGateway],
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, OrderItemAttribute, User, Product, UserPoints, PointRedemption]),
+    TypeOrmModule.forFeature([Order, OrderItem, OrderItemAttribute, OrderExtra, User, Product, UserPoints, PointRedemption]),
     forwardRef(() => AuthModule),
     ProductsModule,
     CommonModule,

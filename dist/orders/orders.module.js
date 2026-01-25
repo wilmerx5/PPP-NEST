@@ -12,6 +12,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const order_item_attribute_entity_1 = require("./entities/order-item-attribute.entity");
 const order_item_entity_1 = require("./entities/order-item.entity");
 const order_entity_1 = require("./entities/order.entity");
+const order_extra_entity_1 = require("./entities/order-extra.entity");
 const orders_controller_1 = require("./orders.controller");
 const orders_service_1 = require("./orders.service");
 const order_gateway_1 = require("./Websocket/order.gateway");
@@ -30,7 +31,7 @@ exports.OrdersModule = OrdersModule = __decorate([
         controllers: [orders_controller_1.OrdersController],
         providers: [orders_service_1.OrdersService, order_gateway_1.OrdersGateway],
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, order_item_attribute_entity_1.OrderItemAttribute, user_entity_1.User, product_entity_1.Product, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption]),
+            typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, order_item_attribute_entity_1.OrderItemAttribute, order_extra_entity_1.OrderExtra, user_entity_1.User, product_entity_1.Product, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption]),
             (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
             products_module_1.ProductsModule,
             common_module_1.CommonModule,

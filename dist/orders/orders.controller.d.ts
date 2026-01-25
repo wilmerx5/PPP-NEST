@@ -18,6 +18,7 @@ export declare class OrdersController {
         points: number;
         pointCodes: string[];
         items: any[];
+        extras: any;
         redemptionCode: string | null;
     }[]>;
     createOrder(createOrderDto: CreateOrderDto): Promise<{

@@ -30,10 +30,10 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => {
                     process.stdout.write('\n🔧 [DB Pool Config]\n');
-                    process.stdout.write('  Pool Size: 20 (optimized for unlimited database)\n');
-                    process.stdout.write('  Connection Limit: 30\n');
-                    process.stdout.write('  Retry Attempts: 5\n');
-                    process.stdout.write('  Keep Connection Alive: true\n\n');
+                    process.stdout.write('  Pool Size: 100 (maxed for unlimited database)\n');
+                    process.stdout.write('  Connection Limit: 100\n');
+                    process.stdout.write('  Queue Limit: 0 (unlimited - no "Queue limit reached")\n');
+                    process.stdout.write('  Retry Attempts: 5 | Keep Connection Alive: true\n\n');
                     const dbConfig = {
                         type: 'mariadb',
                         host: configService.get('DB_HOST'),
@@ -44,16 +44,16 @@ exports.AppModule = AppModule = __decorate([
                         entities: [__dirname + '/**/*.entity{.ts,.js}'],
                         synchronize: false,
                         timezone: 'Z',
-                        poolSize: 20,
+                        poolSize: 100,
                         keepConnectionAlive: true,
-                        connectTimeout: 10000,
+                        connectTimeout: 15000,
                         retryAttempts: 5,
                         retryDelay: 3000,
                         extra: {
-                            connectionLimit: 30,
+                            connectionLimit: 100,
                             waitForConnections: true,
-                            queueLimit: 50,
-                            maxIdle: 10,
+                            queueLimit: 0,
+                            maxIdle: 50,
                             idleTimeout: 600000,
                             enableKeepAlive: true,
                             keepAliveInitialDelay: 0,

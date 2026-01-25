@@ -5,7 +5,22 @@ const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 const path_1 = require("path");
+function setupProcessHandlers() {
+    process.on('unhandledRejection', (reason, promise) => {
+        process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
+        const err = reason instanceof Error ? reason : new Error(String(reason));
+        if (err.stack)
+            process.stderr.write(err.stack + '\n');
+        process.exit(1);
+    });
+    process.on('uncaughtException', (err) => {
+        process.stderr.write(`\n❌ [uncaughtException] ${err.message}\n`);
+        process.stderr.write((err.stack || '') + '\n');
+        process.exit(1);
+    });
+}
 async function bootstrap() {
+    setupProcessHandlers();
     process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
     process.stdout.write('📋 [Environment] Checking .env variables...\n');
     process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);

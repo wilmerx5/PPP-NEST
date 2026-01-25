@@ -110,7 +110,11 @@ let ProductsService = class ProductsService {
             product.hasAttributes = updateProductDto.hasAttributes;
         }
         if (updateProductDto.attributes !== undefined) {
-            await this.attributeRepo.delete({ product: { id } });
+            await this.attributeRepo
+                .createQueryBuilder()
+                .delete()
+                .where('product_id = :id', { id })
+                .execute();
             const newAttributes = updateProductDto.attributes.map(attrDto => {
                 const attr = new product_attribute_entity_1.ProductAttribute();
                 attr.attributeName = attrDto.attributeName;
@@ -118,7 +122,8 @@ let ProductsService = class ProductsService {
                 attr.product = product;
                 return attr;
             });
-            await this.attributeRepo.save(newAttributes);
+            const savedAttributes = await this.attributeRepo.save(newAttributes);
+            product.attributes = savedAttributes;
         }
         if (updateProductDto.categoryIds !== undefined) {
             if (updateProductDto.categoryIds.length > 0) {

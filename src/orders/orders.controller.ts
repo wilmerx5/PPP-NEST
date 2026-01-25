@@ -80,17 +80,7 @@ export class OrdersController {
   })
   @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
   async getTodayOrders() {
-    const orders = await this.orderService.findOrdersToday();
-    // Log for debugging - check if points are being returned
-    if (orders && orders.length > 0) {
-      console.log(`[getTodayOrders] Returning ${orders.length} orders`);
-      orders.forEach((order, idx) => {
-        if (order.points > 0 || (order.pointCodes && order.pointCodes.length > 0)) {
-          console.log(`[getTodayOrders] Order #${order.dailyOrderNumber} - points: ${order.points}, pointCodes.length: ${order.pointCodes?.length || 0}`);
-        }
-      });
-    }
-    return orders;
+    return this.orderService.findOrdersToday();
   }
 
   // -------------------------------------------------------------

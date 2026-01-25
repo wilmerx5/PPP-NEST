@@ -20,6 +20,12 @@ export declare class CreateOrderDto {
     deliveryFee?: number;
     orderSource?: OrderSource;
     items: CreateOrderItemDto[];
+    extras?: {
+        title: string;
+        description?: string;
+        amount: number;
+        quantity?: number;
+    }[];
     redemptionCode?: string;
 }
 export declare class UpdateOrderItemAttributeDto {
@@ -34,6 +40,12 @@ export declare class UpdateOrderItemDto {
 }
 export declare class UpdateOrderItemsDto {
     items: UpdateOrderItemDto[];
+    extrasToAdd?: {
+        title: string;
+        description?: string;
+        amount: number;
+        quantity?: number;
+    }[];
 }
 export declare class UpdateOrderGeneralDto {
     customerName?: string;

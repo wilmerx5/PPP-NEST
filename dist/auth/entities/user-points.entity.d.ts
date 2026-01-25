@@ -2,7 +2,7 @@ import { User } from './user.entity';
 export declare class UserPoints {
     id: number;
     code: string;
-    user: User;
+    user: User | null;
     userId: string | null;
     orderId: number | null;
     isUsed: boolean;

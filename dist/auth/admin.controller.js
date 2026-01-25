@@ -60,38 +60,44 @@ let AdminController = class AdminController {
         };
     }
     async createPoints(req, body) {
-        const { pointsCount, description } = body;
-        if (!pointsCount) {
-            throw new common_1.BadRequestException('pointsCount is required');
+        try {
+            const { pointsCount, description } = body;
+            if (!pointsCount) {
+                throw new common_1.BadRequestException('pointsCount is required');
+            }
+            if (pointsCount < 1 || pointsCount > 100) {
+                throw new common_1.BadRequestException('pointsCount must be between 1 and 100');
+            }
+            const pointsRecords = [];
+            const pointCodes = [];
+            for (let i = 0; i < pointsCount; i++) {
+                const code = await this.pointsService.generateUniquePointCode();
+                const pointRecord = this.pointsRepo.create({
+                    code,
+                    userId: null,
+                    orderId: null,
+                    orderDailyNumber: null,
+                    isUsed: false,
+                    isCanceled: false,
+                    isRedeemed: false,
+                    type: 'admin',
+                    description: description || `Puntos generados por admin (${pointsCount} puntos)`,
+                });
+                const saved = await this.pointsRepo.save(pointRecord);
+                pointsRecords.push(saved);
+                pointCodes.push(saved.code);
+            }
+            return {
+                success: true,
+                message: `${pointsCount} punto(s) generado(s) exitosamente`,
+                points: pointsRecords,
+                pointCodes,
+            };
         }
-        if (pointsCount < 1 || pointsCount > 100) {
-            throw new common_1.BadRequestException('pointsCount must be between 1 and 100');
+        catch (error) {
+            console.error('Error creating points:', error);
+            throw error;
         }
-        const pointsRecords = [];
-        const pointCodes = [];
-        for (let i = 0; i < pointsCount; i++) {
-            const code = await this.pointsService.generateUniquePointCode();
-            const pointRecord = this.pointsRepo.create({
-                code,
-                userId: null,
-                orderId: null,
-                orderDailyNumber: null,
-                isUsed: false,
-                isCanceled: false,
-                isRedeemed: false,
-                type: 'admin',
-                description: description || `Puntos generados por admin (${pointsCount} puntos)`,
-            });
-            const saved = await this.pointsRepo.save(pointRecord);
-            pointsRecords.push(saved);
-            pointCodes.push(saved.code);
-        }
-        return {
-            success: true,
-            message: `${pointsCount} punto(s) generado(s) exitosamente`,
-            points: pointsRecords,
-            pointCodes,
-        };
     }
     async getUserPoints(userId) {
         const user = await this.userRepo.findOne({ where: { id: userId } });

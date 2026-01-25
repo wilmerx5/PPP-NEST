@@ -109,6 +109,24 @@ export class CreateOrderDto {
   items: CreateOrderItemDto[];
 
   @ApiProperty({
+    description: 'Adicionales o extras (código 90). Título, descripción opcional, monto, cantidad.',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', example: 'Plato extra' },
+        description: { type: 'string', example: 'Para llevar', nullable: true },
+        amount: { type: 'number', example: 5000 },
+        quantity: { type: 'number', example: 1, default: 1 },
+      },
+      required: ['title', 'amount'],
+    },
+    required: false,
+  })
+  @IsOptional()
+  extras?: { title: string; description?: string; amount: number; quantity?: number }[];
+
+  @ApiProperty({
     description: 'Código de premio de redención a aplicar (opcional).',
     example: 'REDEEM9PTSX7',
     required: false,
@@ -169,6 +187,24 @@ export class UpdateOrderItemsDto {
     type: [UpdateOrderItemDto],
   })
   items: UpdateOrderItemDto[];
+
+  @ApiProperty({
+    description: 'Adicionales a agregar a la orden (código 90).',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string', nullable: true },
+        amount: { type: 'number' },
+        quantity: { type: 'number', default: 1 },
+      },
+      required: ['title', 'amount'],
+    },
+    required: false,
+  })
+  @IsOptional()
+  extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
 }
 
 export class UpdateOrderGeneralDto {

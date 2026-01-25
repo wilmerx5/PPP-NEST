@@ -20,6 +20,7 @@ const typeorm_2 = require("typeorm");
 const order_item_attribute_entity_1 = require("./entities/order-item-attribute.entity");
 const order_item_entity_1 = require("./entities/order-item.entity");
 const order_entity_1 = require("./entities/order.entity");
+const order_extra_entity_1 = require("./entities/order-extra.entity");
 const order_gateway_1 = require("./Websocket/order.gateway");
 const date_util_1 = require("../common/utils/date.util");
 const date_fns_tz_1 = require("date-fns-tz");
@@ -31,16 +32,18 @@ let OrdersService = class OrdersService {
     orderRepo;
     itemRepo;
     attrRepo;
+    extraRepo;
     productRepo;
     userRepo;
     gateway;
     dataSource;
     pointsService;
     mailService;
-    constructor(orderRepo, itemRepo, attrRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService) {
+    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
+        this.extraRepo = extraRepo;
         this.productRepo = productRepo;
         this.userRepo = userRepo;
         this.gateway = gateway;
@@ -63,12 +66,14 @@ let OrdersService = class OrdersService {
         return maxNumber + 1;
     }
     async create(createOrderDto) {
-        const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode } = createOrderDto;
+        const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
         const orderType = createOrderDto.orderType ?? 'pickup';
         const deliveryFee = createOrderDto.deliveryFee;
         const source = orderSource ?? 'internal';
-        if (!items || items.length === 0) {
-            throw new common_1.BadRequestException('Order must have at least one item');
+        const hasItems = items && items.length > 0;
+        const hasExtras = extras && extras.length > 0;
+        if (!hasItems && !hasExtras) {
+            throw new common_1.BadRequestException('Order must have at least one item or one extra');
         }
         const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
         let finalDeliveryFee = 0;
@@ -104,13 +109,15 @@ let OrdersService = class OrdersService {
                 orderSource: source,
             });
             const allCodes = [];
-            for (const item of items) {
-                const product = await this.productRepo.findOne({
-                    where: { id: item.productId },
-                    select: ['code'],
-                });
-                if (product) {
-                    allCodes.push(product.code);
+            if (items?.length) {
+                for (const item of items) {
+                    const product = await this.productRepo.findOne({
+                        where: { id: item.productId },
+                        select: ['code'],
+                    });
+                    if (product) {
+                        allCodes.push(product.code);
+                    }
                 }
             }
             let adjustedCodes = [...allCodes];
@@ -145,20 +152,34 @@ let OrdersService = class OrdersService {
             const calculatedPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
             order.points = calculatedPoints;
             const savedOrder = await queryRunner.manager.save(order);
-            for (const item of items) {
-                const orderItem = queryRunner.manager.create(order_item_entity_1.OrderItem, {
-                    order: savedOrder,
-                    product: { id: item.productId },
-                    note: item.note,
-                });
-                const savedItem = await queryRunner.manager.save(orderItem);
-                if (item.attributes?.length) {
-                    const attrs = item.attributes.map(attr => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
-                        orderItem: savedItem,
-                        attributeName: attr.attributeName,
-                        attributeValue: attr.attributeValue,
-                    }));
-                    await queryRunner.manager.save(attrs);
+            if (items?.length) {
+                for (const item of items) {
+                    const orderItem = queryRunner.manager.create(order_item_entity_1.OrderItem, {
+                        order: savedOrder,
+                        product: { id: item.productId },
+                        note: item.note,
+                    });
+                    const savedItem = await queryRunner.manager.save(orderItem);
+                    if (item.attributes?.length) {
+                        const attrs = item.attributes.map(attr => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
+                            orderItem: savedItem,
+                            attributeName: attr.attributeName,
+                            attributeValue: attr.attributeValue,
+                        }));
+                        await queryRunner.manager.save(attrs);
+                    }
+                }
+            }
+            if (extras?.length) {
+                for (const ex of extras) {
+                    const extra = queryRunner.manager.create(order_extra_entity_1.OrderExtra, {
+                        order: savedOrder,
+                        title: ex.title,
+                        description: ex.description ?? null,
+                        amount: ex.amount,
+                        quantity: ex.quantity ?? 1,
+                    });
+                    await queryRunner.manager.save(extra);
                 }
             }
             await queryRunner.commitTransaction();
@@ -187,26 +208,23 @@ let OrdersService = class OrdersService {
                         }
                     }
                 }
-                catch (error) {
-                    console.error('Error creating point codes:', error);
+                catch {
                 }
             }
             const fullOrder = await this.orderRepo.findOne({
                 where: { id: savedOrder.id },
-                relations: ['items', 'items.product', 'items.attributes'],
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
             });
             if (redemptionCode && redemptionCode.trim()) {
                 try {
                     await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
-                    console.log(`✅ [Order Create] Redemption prize ${redemptionCode} applied successfully to order #${newOrderNumber}`);
                 }
-                catch (prizeError) {
-                    console.error(`❌ [Order Create] Failed to apply redemption prize:`, prizeError?.message || prizeError);
+                catch {
                 }
             }
             const finalOrder = await this.orderRepo.findOne({
                 where: { id: savedOrder.id },
-                relations: ['items', 'items.product', 'items.attributes'],
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
             });
             if (finalOrder) {
                 const formatted = await this.mapOrderToGroupedFormat(finalOrder);
@@ -234,10 +252,8 @@ let OrdersService = class OrdersService {
                         const subtotal = emailItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                         const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
                         await this.mailService.sendNewOrderNotification(newOrderNumber, customerName, phone, address, orderType, emailItems, total, finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined);
-                        console.log(`✅ [Order Create] Notification email sent for online order #${newOrderNumber}`);
                     }
-                    catch (emailError) {
-                        console.error(`❌ [Order Create] Failed to send notification email for order #${newOrderNumber}:`, emailError?.message || emailError);
+                    catch {
                     }
                 }
             }
@@ -268,27 +284,13 @@ let OrdersService = class OrdersService {
                 createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
                 orderStatus: (0, typeorm_2.Not)('canceled'),
             },
-            relations: ['items', 'items.product', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
             order: { createdAt: 'DESC' },
         });
-        if (orders && orders.length > 0) {
-            console.log(`[findOrdersToday] Loaded ${orders.length} orders from DB`);
-            orders.forEach(order => {
-                if (order.points !== null && order.points !== undefined) {
-                    console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has points from DB: ${order.points}`);
-                }
-                if (order.redemptionCode) {
-                    console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has redemptionCode from DB: ${order.redemptionCode}`);
-                }
-            });
-        }
         const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
             const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
             const dbPoints = order.points;
             const pointsValue = (dbPoints !== null && dbPoints !== undefined) ? dbPoints : (pointCodes.length || 0);
-            if (dbPoints === null || dbPoints === undefined) {
-                console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has null/undefined points, using pointCodes.length: ${pointCodes.length}`);
-            }
             return { order, pointCodes, pointsValue };
         }));
         const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
@@ -307,7 +309,7 @@ let OrdersService = class OrdersService {
                 customerEmail: email,
                 orderStatus: (0, typeorm_2.Not)('canceled'),
             },
-            relations: ['items', 'items.product', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
             order: { createdAt: 'DESC' },
         });
         const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
@@ -345,6 +347,13 @@ let OrdersService = class OrdersService {
                     attributes: attributeMap,
                 });
             }
+            const extrasList = order.extras?.map((e) => ({
+                id: e.id,
+                title: e.title,
+                description: e.description,
+                amount: Number(e.amount),
+                quantity: e.quantity,
+            })) ?? [];
             return {
                 orderId: order.id,
                 dailyOrderNumber: order.dailyOrderNumber,
@@ -360,6 +369,7 @@ let OrdersService = class OrdersService {
                 points: pointsValue,
                 pointCodes: pointCodes,
                 items: Object.values(groupedItems),
+                extras: extrasList,
                 redemptionCode: order.redemptionCode ?? null,
             };
         });
@@ -373,8 +383,7 @@ let OrdersService = class OrdersService {
         try {
             await this.pointsService.invalidatePointsForCanceledOrder(orderId);
         }
-        catch (error) {
-            console.error('Error invalidating points for canceled order:', error);
+        catch {
         }
         this.gateway.emitOrdersUpdates("deleted_order", order);
         return {
@@ -393,14 +402,15 @@ let OrdersService = class OrdersService {
             await this.attrRepo.delete({ orderItem: { id: item.id } });
             await this.itemRepo.delete(item.id);
         }
-        if (!dto.items?.length) {
+        const hasItems = dto.items?.length;
+        const hasExtrasToAdd = dto.extrasToAdd?.length;
+        if (!hasItems && !hasExtrasToAdd) {
             order.orderStatus = 'canceled';
             await this.orderRepo.save(order);
             try {
                 await this.pointsService.invalidatePointsForCanceledOrder(orderId);
             }
-            catch (error) {
-                console.error('Error invalidating points for canceled order:', error);
+            catch {
             }
             this.gateway.emitOrdersUpdates("deleted_order", order);
             return {
@@ -408,7 +418,7 @@ let OrdersService = class OrdersService {
                 message: `Order #${orderId} was canceled because no items remained`,
             };
         }
-        for (const itemDto of dto.items) {
+        for (const itemDto of dto.items ?? []) {
             const orderItem = this.itemRepo.create({
                 order,
                 product: { id: itemDto.productId },
@@ -424,9 +434,21 @@ let OrdersService = class OrdersService {
                 await this.attrRepo.save(attributes);
             }
         }
+        if (dto.extrasToAdd?.length) {
+            for (const ex of dto.extrasToAdd) {
+                const extra = this.extraRepo.create({
+                    order,
+                    title: ex.title,
+                    description: ex.description ?? null,
+                    amount: ex.amount,
+                    quantity: ex.quantity ?? 1,
+                });
+                await this.extraRepo.save(extra);
+            }
+        }
         const fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
-            relations: ['items', 'items.product', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
         });
         if (fullOrder) {
             const allCodes = [];
@@ -439,12 +461,11 @@ let OrdersService = class OrdersService {
             try {
                 await this.pointsService.updatePointCodesForOrder(fullOrder.id, fullOrder.dailyOrderNumber, recalculatedPoints);
             }
-            catch (error) {
-                console.error('Error updating point codes:', error);
+            catch {
             }
             const refreshedOrder = await this.orderRepo.findOne({
                 where: { id: fullOrder.id },
-                relations: ['items', 'items.product', 'items.attributes'],
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
             });
             if (refreshedOrder) {
                 const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
@@ -486,8 +507,7 @@ let OrdersService = class OrdersService {
             try {
                 await this.pointsService.invalidatePointsForCanceledOrder(orderId);
             }
-            catch (error) {
-                console.error('Error invalidating points for canceled order:', error);
+            catch {
             }
         }
         const fullOrder = await this.orderRepo.findOne({
@@ -544,6 +564,13 @@ let OrdersService = class OrdersService {
         }
         const createdAtBogota = (0, date_util_1.formatToBogotaISO)(order.createdAt);
         const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+        const extrasList = order.extras?.map((e) => ({
+            id: e.id,
+            title: e.title,
+            description: e.description,
+            amount: Number(e.amount),
+            quantity: e.quantity,
+        })) ?? [];
         return {
             orderId: order.id,
             dailyOrderNumber: order.dailyOrderNumber,
@@ -557,8 +584,9 @@ let OrdersService = class OrdersService {
             deliveryFee: order.deliveryFee ?? 0,
             orderSource: order.orderSource ?? 'internal',
             points: order.points ?? 0,
-            pointCodes: pointCodes,
+            pointCodes,
             items: Object.values(groupedItems),
+            extras: extrasList,
             redemptionCode: order.redemptionCode ?? null,
         };
     }
@@ -641,7 +669,6 @@ let OrdersService = class OrdersService {
         if (fullOrder) {
             const formatted = await this.mapOrderToGroupedFormat(fullOrder);
             this.gateway.emitOrdersUpdates("updated_order_items", formatted);
-            console.log(`✅ [Apply Premio] Prize ${redemption.code} applied to order #${order.dailyOrderNumber}`);
         }
         return order;
     }
@@ -659,7 +686,7 @@ let OrdersService = class OrdersService {
                 createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
                 orderStatus: (0, typeorm_2.Not)('canceled'),
             },
-            relations: ['items', 'items.product', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
             order: { createdAt: 'DESC' },
         });
         const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
@@ -669,11 +696,7 @@ let OrdersService = class OrdersService {
         }));
         const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
             const formatted = await this.mapOrderToGroupedFormat(order);
-            return {
-                ...formatted,
-                points: pointsValue,
-                pointCodes,
-            };
+            return { ...formatted, points: pointsValue, pointCodes };
         }));
         return mappedOrders;
     }
@@ -700,7 +723,7 @@ let OrdersService = class OrdersService {
                 createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
                 orderStatus: (0, typeorm_2.Not)('canceled'),
             },
-            relations: ['items', 'items.product'],
+            relations: ['items', 'items.product', 'extras'],
         });
         const allProducts = await this.productRepo.find();
         let totalSubtotal = 0;
@@ -732,6 +755,9 @@ let OrdersService = class OrdersService {
                     productsSold[product.code].quantity += 1;
                     productsSold[product.code].totalRevenue += Number(product.price);
                 }
+            }
+            for (const ex of order.extras ?? []) {
+                orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
             }
             if (order.orderType === 'delivery' && order.deliveryFee) {
                 totalDeliveryFees += Number(order.deliveryFee);
@@ -779,10 +805,12 @@ exports.OrdersService = OrdersService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(order_entity_1.Order)),
     __param(1, (0, typeorm_1.InjectRepository)(order_item_entity_1.OrderItem)),
     __param(2, (0, typeorm_1.InjectRepository)(order_item_attribute_entity_1.OrderItemAttribute)),
-    __param(3, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
-    __param(4, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(7, (0, common_1.Inject)((0, common_1.forwardRef)(() => points_service_1.PointsService))),
+    __param(3, (0, typeorm_1.InjectRepository)(order_extra_entity_1.OrderExtra)),
+    __param(4, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
+    __param(5, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(8, (0, common_1.Inject)((0, common_1.forwardRef)(() => points_service_1.PointsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

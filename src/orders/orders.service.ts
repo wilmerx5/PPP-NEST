@@ -6,6 +6,7 @@ import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DT
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
+import { OrderExtra } from './entities/order-extra.entity';
 import { OrdersGateway } from './Websocket/order.gateway';
 import { getBogotaDayRange, formatToBogotaISO, transformDatesToBogota } from '../common/utils/date.util';
 import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
@@ -25,6 +26,9 @@ export class OrdersService {
 
     @InjectRepository(OrderItemAttribute)
     private readonly attrRepo: Repository<OrderItemAttribute>,
+
+    @InjectRepository(OrderExtra)
+    private readonly extraRepo: Repository<OrderExtra>,
 
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
@@ -89,14 +93,15 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
-    const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode } = createOrderDto;
+    const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
     const source = orderSource ?? 'internal';
 
-    // Validate items
-    if (!items || items.length === 0) {
-      throw new BadRequestException('Order must have at least one item');
+    const hasItems = items && items.length > 0;
+    const hasExtras = extras && extras.length > 0;
+    if (!hasItems && !hasExtras) {
+      throw new BadRequestException('Order must have at least one item or one extra');
     }
 
     // Get today's range in Bogotá timezone, converted to UTC for database query
@@ -152,18 +157,17 @@ export class OrdersService {
         orderSource: source,
       });
 
-      // Calculate points before saving order
-      // Get all product codes (each item represents one unit)
+      // Calculate points from product codes only (extras do not generate points)
       const allCodes: number[] = [];
-      
-      for (const item of items) {
-        const product = await this.productRepo.findOne({
-          where: { id: item.productId },
-          select: ['code'],
-        });
-        if (product) {
-          // Each item in the array represents one unit, so add the code once per item
-          allCodes.push(product.code);
+      if (items?.length) {
+        for (const item of items) {
+          const product = await this.productRepo.findOne({
+            where: { id: item.productId },
+            select: ['code'],
+          });
+          if (product) {
+            allCodes.push(product.code);
+          }
         }
       }
 
@@ -209,24 +213,40 @@ export class OrdersService {
       const savedOrder = await queryRunner.manager.save(order);
 
       // Create items and attributes
-      for (const item of items) {
-        const orderItem = queryRunner.manager.create(OrderItem, {
-          order: savedOrder,
-          product: { id: item.productId },
-          note: item.note,
-        });
+      if (items?.length) {
+        for (const item of items) {
+          const orderItem = queryRunner.manager.create(OrderItem, {
+            order: savedOrder,
+            product: { id: item.productId },
+            note: item.note,
+          });
 
-        const savedItem = await queryRunner.manager.save(orderItem);
+          const savedItem = await queryRunner.manager.save(orderItem);
 
-        if (item.attributes?.length) {
-          const attrs = item.attributes.map(attr =>
-            queryRunner.manager.create(OrderItemAttribute, {
-              orderItem: savedItem,
-              attributeName: attr.attributeName,
-              attributeValue: attr.attributeValue,
-            })
-          );
-          await queryRunner.manager.save(attrs);
+          if (item.attributes?.length) {
+            const attrs = item.attributes.map(attr =>
+              queryRunner.manager.create(OrderItemAttribute, {
+                orderItem: savedItem,
+                attributeName: attr.attributeName,
+                attributeValue: attr.attributeValue,
+              })
+            );
+            await queryRunner.manager.save(attrs);
+          }
+        }
+      }
+
+      // Create extras (adicionales, código 90)
+      if (extras?.length) {
+        for (const ex of extras) {
+          const extra = queryRunner.manager.create(OrderExtra, {
+            order: savedOrder,
+            title: ex.title,
+            description: ex.description ?? null,
+            amount: ex.amount,
+            quantity: ex.quantity ?? 1,
+          });
+          await queryRunner.manager.save(extra);
         }
       }
 
@@ -268,34 +288,28 @@ export class OrdersService {
               await pointsRepo.save(pointRecord);
             }
           }
-        } catch (error) {
-          // Log error but don't fail order creation if point code generation fails
-          console.error('Error creating point codes:', error);
+        } catch {
+          // Don't fail order creation if point code generation fails
         }
       }
 
-      // Fetch full order with relations
       const fullOrder = await this.orderRepo.findOne({
         where: { id: savedOrder.id },
-        relations: ['items', 'items.product', 'items.attributes'],
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
       });
 
       // Apply redemption prize if provided
       if (redemptionCode && redemptionCode.trim()) {
         try {
           await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
-          console.log(`✅ [Order Create] Redemption prize ${redemptionCode} applied successfully to order #${newOrderNumber}`);
-        } catch (prizeError: any) {
-          // Log error but don't fail order creation if prize fails
-          console.error(`❌ [Order Create] Failed to apply redemption prize:`, prizeError?.message || prizeError);
-          // Order is created but without prize applied
+        } catch {
+          // Order is created but without prize applied; don't fail order creation
         }
       }
 
-      // Reload order to get updated redemption code
       const finalOrder = await this.orderRepo.findOne({
         where: { id: savedOrder.id },
-        relations: ['items', 'items.product', 'items.attributes'],
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
       });
 
       if (finalOrder) {
@@ -341,10 +355,8 @@ export class OrdersService {
               total,
               finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined,
             );
-            console.log(`✅ [Order Create] Notification email sent for online order #${newOrderNumber}`);
-          } catch (emailError: any) {
+          } catch {
             // No fallar la creación de la orden si el correo falla
-            console.error(`❌ [Order Create] Failed to send notification email for order #${newOrderNumber}:`, emailError?.message || emailError);
           }
         }
       }
@@ -391,22 +403,9 @@ export class OrdersService {
         createdAt: Between(todayStartUtc, todayEndUtc),
         orderStatus: Not('canceled'),
       },
-      relations: ['items', 'items.product', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
       order: { createdAt: 'DESC' },
     });
-    
-    // Debug: Log to verify points and redemptionCode fields are loaded from DB
-    if (orders && orders.length > 0) {
-      console.log(`[findOrdersToday] Loaded ${orders.length} orders from DB`);
-      orders.forEach(order => {
-        if (order.points !== null && order.points !== undefined) {
-          console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has points from DB: ${order.points}`);
-        }
-        if (order.redemptionCode) {
-          console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has redemptionCode from DB: ${order.redemptionCode}`);
-        }
-      });
-    }
 
     // Get point codes for all orders in parallel
     const ordersWithPointCodes = await Promise.all(
@@ -416,12 +415,6 @@ export class OrdersService {
         // This handles orders created before points field was added
         const dbPoints = order.points;
         const pointsValue = (dbPoints !== null && dbPoints !== undefined) ? dbPoints : (pointCodes.length || 0);
-        
-        // Log for debugging (can be removed later)
-        if (dbPoints === null || dbPoints === undefined) {
-          console.log(`[findOrdersToday] Order #${order.dailyOrderNumber} has null/undefined points, using pointCodes.length: ${pointCodes.length}`);
-        }
-        
         return { order, pointCodes, pointsValue };
       })
     );
@@ -455,11 +448,11 @@ export class OrdersService {
         customerEmail: email,
         orderStatus: Not('canceled'),
       },
-      relations: ['items', 'items.product', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
       order: { createdAt: 'DESC' },
     });
 
-      // Get point codes for all orders in parallel
+    // Get point codes for all orders in parallel
       const ordersWithPointCodes = await Promise.all(
         orders.map(async (order) => {
           const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
@@ -506,22 +499,31 @@ export class OrdersService {
         });
       }
 
+        const extrasList = (order as any).extras?.map((e: OrderExtra) => ({
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          amount: Number(e.amount),
+          quantity: e.quantity,
+        })) ?? [];
+
       return {
         orderId: order.id,
         dailyOrderNumber: order.dailyOrderNumber,
         customerName: order.customerName,
         phone: order.phone,
         address: order.address,
-        createdAt: createdAtBogota, // Already in Bogotá timezone ISO string
+        createdAt: createdAtBogota,
         orderType: order.orderType,
         orderStatus: order.orderStatus,
         printed: order.printed,
         deliveryFee: order.deliveryFee ?? 0,
         orderSource: order.orderSource ?? 'internal',
-        points: pointsValue, // Use calculated value (from DB or pointCodes.length)
-        pointCodes: pointCodes, // Array of point codes
+        points: pointsValue,
+        pointCodes: pointCodes,
         items: Object.values(groupedItems),
-        redemptionCode: order.redemptionCode ?? null, // Include redemption code if applied
+        extras: extrasList,
+        redemptionCode: order.redemptionCode ?? null,
       };
     });
   }
@@ -544,8 +546,7 @@ export class OrdersService {
     // Invalidate points for canceled order
     try {
       await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-    } catch (error) {
-      console.error('Error invalidating points for canceled order:', error);
+    } catch {
       // Don't fail order cancellation if point invalidation fails
     }
 
@@ -573,35 +574,30 @@ export class OrdersService {
 
     if (!order) throw new Error(`Order not found`);
 
-    // Eliminar items y atributos actuales
     for (const item of order.items) {
       await this.attrRepo.delete({ orderItem: { id: item.id } });
       await this.itemRepo.delete(item.id);
     }
 
-    // Si no hay items → cancelar orden
-    if (!dto.items?.length) {
+    const hasItems = dto.items?.length;
+    const hasExtrasToAdd = dto.extrasToAdd?.length;
+
+    if (!hasItems && !hasExtrasToAdd) {
       order.orderStatus = 'canceled';
       await this.orderRepo.save(order);
-
-      // Invalidate points for canceled order
       try {
         await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-      } catch (error) {
-        console.error('Error invalidating points for canceled order:', error);
+      } catch {
         // Don't fail order cancellation if point invalidation fails
       }
-
       this.gateway.emitOrdersUpdates("deleted_order", order);
-
       return {
         success: true,
         message: `Order #${orderId} was canceled because no items remained`,
       };
     }
 
-    // Crear nuevos items
-    for (const itemDto of dto.items) {
+    for (const itemDto of dto.items ?? []) {
       const orderItem = this.itemRepo.create({
         order,
         product: { id: itemDto.productId },
@@ -622,9 +618,23 @@ export class OrdersService {
       }
     }
 
+    // Agregar extras (adicionales, código 90)
+    if (dto.extrasToAdd?.length) {
+      for (const ex of dto.extrasToAdd) {
+        const extra = this.extraRepo.create({
+          order,
+          title: ex.title,
+          description: ex.description ?? null,
+          amount: ex.amount,
+          quantity: ex.quantity ?? 1,
+        });
+        await this.extraRepo.save(extra);
+      }
+    }
+
     const fullOrder = await this.orderRepo.findOne({
       where: { id: order.id },
-      relations: ['items', 'items.product', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
 
     if (fullOrder) {
@@ -650,15 +660,13 @@ export class OrdersService {
           fullOrder.dailyOrderNumber,
           recalculatedPoints
         );
-      } catch (error) {
-        // Log error but don't fail order update if point code update fails
-        console.error('Error updating point codes:', error);
+      } catch {
+        // Don't fail order update if point code update fails
       }
 
-      // Reload order to ensure we have latest data including updated point codes
       const refreshedOrder = await this.orderRepo.findOne({
         where: { id: fullOrder.id },
-        relations: ['items', 'items.product', 'items.attributes'],
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
       });
 
       if (refreshedOrder) {
@@ -719,8 +727,7 @@ export class OrdersService {
     if (wasCanceled) {
       try {
         await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-      } catch (error) {
-        console.error('Error invalidating points for canceled order:', error);
+      } catch {
         // Don't fail order update if point invalidation fails
       }
     }
@@ -797,25 +804,33 @@ export class OrdersService {
     // Convert createdAt from UTC to Bogotá timezone ISO string
     const createdAtBogota = formatToBogotaISO(order.createdAt);
     
-    // Get point codes for this order
     const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-    
+
+    const extrasList = (order as any).extras?.map((e: OrderExtra) => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      amount: Number(e.amount),
+      quantity: e.quantity,
+    })) ?? [];
+
     return {
       orderId: order.id,
       dailyOrderNumber: order.dailyOrderNumber,
       customerName: order.customerName,
       phone: order.phone,
       address: order.address,
-      createdAt: createdAtBogota, // Already in Bogotá timezone ISO string
+      createdAt: createdAtBogota,
       orderType: order.orderType,
       orderStatus: order.orderStatus,
       printed: order.printed,
       deliveryFee: order.deliveryFee ?? 0,
       orderSource: order.orderSource ?? 'internal',
       points: order.points ?? 0,
-      pointCodes: pointCodes, // Array of point codes (12-char alphanumeric)
+      pointCodes,
       items: Object.values(groupedItems),
-      redemptionCode: order.redemptionCode ?? null, // Explicitly include, even if null
+      extras: extrasList,
+      redemptionCode: order.redemptionCode ?? null,
     };
   }
 
@@ -949,7 +964,6 @@ export class OrdersService {
       // Format order and emit socket event to update frontend in real-time
       const formatted = await this.mapOrderToGroupedFormat(fullOrder);
       this.gateway.emitOrdersUpdates("updated_order_items", formatted);
-      console.log(`✅ [Apply Premio] Prize ${redemption.code} applied to order #${order.dailyOrderNumber}`);
     }
 
     return order;
@@ -983,11 +997,10 @@ export class OrdersService {
         createdAt: Between(startUtc, endUtc),
         orderStatus: Not('canceled'),
       },
-      relations: ['items', 'items.product', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
       order: { createdAt: 'DESC' },
     });
 
-    // Get point codes for all orders
     const ordersWithPointCodes = await Promise.all(
       orders.map(async (order) => {
         const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
@@ -996,15 +1009,10 @@ export class OrdersService {
       })
     );
 
-    // Format orders
     const mappedOrders = await Promise.all(
       ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
         const formatted = await this.mapOrderToGroupedFormat(order);
-        return {
-          ...formatted,
-          points: pointsValue,
-          pointCodes,
-        };
+        return { ...formatted, points: pointsValue, pointCodes };
       })
     );
 
@@ -1047,18 +1055,16 @@ export class OrdersService {
         createdAt: Between(startUtc, endUtc),
         orderStatus: Not('canceled'),
       },
-      relations: ['items', 'items.product'],
+      relations: ['items', 'items.product', 'extras'],
     });
 
-    // Get all products to calculate prices
     const allProducts = await this.productRepo.find();
 
-    // Calculate totals
     let totalSubtotal = 0;
     let totalDeliveryFees = 0;
     let totalPremioDiscounts = 0;
     let totalOrders = orders.length;
-    
+
     const ordersByType: Record<string, number> = {
       delivery: 0,
       pickup: 0,
@@ -1067,18 +1073,14 @@ export class OrdersService {
       rappi: 0,
     };
 
-    // Count products sold
     const productsSold: Record<number, { code: number; name: string; quantity: number; totalRevenue: number }> = {};
 
     for (const order of orders) {
-      // Calculate subtotal
       let orderSubtotal = 0;
       for (const item of order.items) {
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
           orderSubtotal += Number(product.price);
-          
-          // Count product sales
           if (!productsSold[product.code]) {
             productsSold[product.code] = {
               code: product.code,
@@ -1091,13 +1093,14 @@ export class OrdersService {
           productsSold[product.code].totalRevenue += Number(product.price);
         }
       }
+      for (const ex of (order as any).extras ?? []) {
+        orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+      }
 
-      // Delivery fee
       if (order.orderType === 'delivery' && order.deliveryFee) {
         totalDeliveryFees += Number(order.deliveryFee);
       }
 
-      // Premio discount (if redemption code exists, discount one half chicken)
       if (order.redemptionCode) {
         const halfChickenItem = order.items.find(
           item => item.product.code === 2 || item.product.code === 5

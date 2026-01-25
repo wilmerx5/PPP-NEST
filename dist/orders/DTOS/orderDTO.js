@@ -70,6 +70,7 @@ class CreateOrderDto {
     deliveryFee;
     orderSource;
     items;
+    extras;
     redemptionCode;
 }
 exports.CreateOrderDto = CreateOrderDto;
@@ -144,6 +145,25 @@ __decorate([
 ], CreateOrderDto.prototype, "items", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
+        description: 'Adicionales o extras (código 90). Título, descripción opcional, monto, cantidad.',
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: {
+                title: { type: 'string', example: 'Plato extra' },
+                description: { type: 'string', example: 'Para llevar', nullable: true },
+                amount: { type: 'number', example: 5000 },
+                quantity: { type: 'number', example: 1, default: 1 },
+            },
+            required: ['title', 'amount'],
+        },
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], CreateOrderDto.prototype, "extras", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
         description: 'Código de premio de redención a aplicar (opcional).',
         example: 'REDEEM9PTSX7',
         required: false,
@@ -210,6 +230,7 @@ __decorate([
 ], UpdateOrderItemDto.prototype, "note", void 0);
 class UpdateOrderItemsDto {
     items;
+    extrasToAdd;
 }
 exports.UpdateOrderItemsDto = UpdateOrderItemsDto;
 __decorate([
@@ -219,6 +240,25 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], UpdateOrderItemsDto.prototype, "items", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Adicionales a agregar a la orden (código 90).',
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: {
+                title: { type: 'string' },
+                description: { type: 'string', nullable: true },
+                amount: { type: 'number' },
+                quantity: { type: 'number', default: 1 },
+            },
+            required: ['title', 'amount'],
+        },
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], UpdateOrderItemsDto.prototype, "extrasToAdd", void 0);
 class UpdateOrderGeneralDto {
     customerName;
     phone;

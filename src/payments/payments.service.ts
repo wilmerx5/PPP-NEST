@@ -31,8 +31,6 @@ export class PaymentsService {
     try {
       const accessToken = this.configService.get<string>('MERCADO_PAGO_ACCESS_TOKEN');
       if (!accessToken) {
-        console.warn('⚠️ MERCADO_PAGO_ACCESS_TOKEN is not configured. Payment features will not work.');
-        // No lanzamos error aquí para que la app pueda iniciar, pero los métodos fallarán con un error claro
         return;
       }
 
@@ -46,9 +44,8 @@ export class PaymentsService {
 
       this.preference = new Preference(this.client);
       this.payment = new MPPayment(this.client);
-    } catch (error) {
-      console.error('Error initializing Mercado Pago client:', error);
-      // Permitimos que la app inicie sin Mercado Pago si hay un error de configuración
+    } catch {
+      // Permitir que la app inicie sin Mercado Pago si hay un error de configuración
     }
   }
 
@@ -130,24 +127,6 @@ export class PaymentsService {
       mercadopagoBackendUrl || 'http://localhost:4000',
       mercadopagoBackendUrl?.match(/^https/i) ? 'https' : 'http'
     );
-
-    // Log para debugging
-    console.log('🌐 [Mercado Pago] URLs configuradas:');
-    console.log(`   Frontend (Mercado Pago): ${mercadopagoFrontendUrl}`);
-    console.log(`   Backend (Webhook): ${mercadopagoBackendUrl}`);
-    console.log(`   Frontend (Auth): ${authFrontendUrl}`);
-    console.log(`   Backend (Auth): ${authBackendUrl}`);
-
-    // Advertencia si no usa HTTPS para Mercado Pago
-    if (!mercadopagoFrontendUrl.startsWith('https://')) {
-      console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Usando HTTP para URLs de Mercado Pago');
-      console.warn('⚠️ [Mercado Pago] El auto_return puede no funcionar correctamente con HTTP');
-      console.warn('⚠️ [Mercado Pago] Para redirección automática, configura FRONTEND_URL_NGROK y BACKEND_URL_NGROK');
-      console.warn(`⚠️ [Mercado Pago] Actual: ${mercadopagoFrontendUrl}`);
-      console.warn('⚠️ [Mercado Pago] Recomendado: https://tu-id.ngrok-free.app (usa ngrok)');
-    } else {
-      console.log('✅ [Mercado Pago] Usando HTTPS para Mercado Pago (auto_return funcionará)');
-    }
 
     // Usar las URLs de Mercado Pago para back_urls y webhook
     const baseUrl = mercadopagoFrontendUrl;
@@ -247,38 +226,13 @@ export class PaymentsService {
       throw new BadRequestException(`back_urls.success debe ser un string válido. Valor recibido: ${JSON.stringify(preferenceData.back_urls.success)}`);
     }
 
-    // Log para debugging - SIEMPRE mostrar para debugging
-    console.log('🔧 [Mercado Pago] Creating preference with:', JSON.stringify({
-      back_urls: preferenceData.back_urls,
-      auto_return: preferenceData.auto_return,
-      baseUrl,
-      backendUrl,
-      hasBackUrls: !!preferenceData.back_urls,
-      successUrl: preferenceData.back_urls?.success,
-      failureUrl: preferenceData.back_urls?.failure,
-      pendingUrl: preferenceData.back_urls?.pending,
-    }, null, 2));
-
     try {
-      // Validar que back_urls esté correctamente formateado antes de enviar
-      if (!preferenceData.back_urls || 
-          !preferenceData.back_urls.success || 
-          !preferenceData.back_urls.failure || 
+      if (!preferenceData.back_urls ||
+          !preferenceData.back_urls.success ||
+          !preferenceData.back_urls.failure ||
           !preferenceData.back_urls.pending) {
-        console.error('❌ [Mercado Pago] back_urls inválido:', JSON.stringify(preferenceData.back_urls, null, 2));
         throw new BadRequestException('back_urls no está correctamente configurado. Todas las URLs (success, failure, pending) deben estar definidas.');
       }
-
-      console.log('📤 [Mercado Pago] Sending preference data to API:', JSON.stringify({
-        items: preferenceData.items.length,
-        has_back_urls: !!preferenceData.back_urls,
-        back_urls: preferenceData.back_urls,
-        back_urls_type: typeof preferenceData.back_urls,
-        back_urls_keys: preferenceData.back_urls ? Object.keys(preferenceData.back_urls) : [],
-        success_exists: !!preferenceData.back_urls?.success,
-        success_value: preferenceData.back_urls?.success,
-        auto_return: preferenceData.auto_return,
-      }, null, 2));
 
       // Construir el body de forma completamente explícita para evitar problemas de serialización
       // El SDK de Mercado Pago v2 puede tener problemas con objetos que tienen prototipos
@@ -313,47 +267,15 @@ export class PaymentsService {
         bodyToSend.metadata = preferenceData.metadata;
       }
 
-      // Verificación final explícita
       if (!bodyToSend.back_urls || !bodyToSend.back_urls.success) {
-        console.error('❌ [Mercado Pago] CRITICAL: back_urls.success is missing after JSON serialization!');
-        console.error('❌ [Mercado Pago] bodyToSend:', JSON.stringify(bodyToSend, null, 2));
         throw new BadRequestException('back_urls.success se perdió durante la serialización del objeto');
       }
 
-      console.log('📤 [Mercado Pago] Final body structure:', JSON.stringify({
-        back_urls: bodyToSend.back_urls,
-        back_urls_success_type: typeof bodyToSend.back_urls.success,
-        back_urls_success_value: bodyToSend.back_urls.success,
-        back_urls_keys: Object.keys(bodyToSend.back_urls || {}),
-        auto_return: bodyToSend.auto_return,
-        has_auto_return: !!bodyToSend.auto_return,
-      }, null, 2));
-
-      // IMPORTANTE: Intentar SIEMPRE con auto_return para redirección automática
-      // Esto es lo normal y esperado. Si falla, solo entonces usar fallback sin auto_return
       try {
-        console.log('🚀 [Mercado Pago] Creando preferencia CON auto_return para redirección automática...');
-        console.log('🔗 [Mercado Pago] URLs de redirección:');
-        console.log(`   Success: ${bodyToSend.back_urls.success}`);
-        console.log(`   Failure: ${bodyToSend.back_urls.failure}`);
-        console.log(`   Pending: ${bodyToSend.back_urls.pending}`);
-        
         const response = await this.preference.create({ body: bodyToSend });
-        
-        console.log('✅ [Mercado Pago] Preferencia creada exitosamente CON auto_return');
-        console.log(`   Preference ID: ${response.id}`);
-        console.log(`   Init Point: ${response.init_point || response.sandbox_init_point || 'N/A'}`);
-        if (!mercadopagoFrontendUrl.startsWith('https://')) {
-          console.warn('⚠️ [Mercado Pago] La redirección automática suele FALLAR con HTTP. Configura FRONTEND_URL_NGROK con HTTPS (ngrok).');
-        } else {
-          console.log('   ℹ️ Redirección: Mercado Pago redirigirá a', bodyToSend.back_urls.success);
-        }
-        
-        // Verificar que response.id existe
         if (!response.id) {
           throw new BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
         }
-
         const preferenceId = response.id as string;
         const initPoint = response.init_point || response.sandbox_init_point || '';
 
@@ -380,46 +302,16 @@ export class PaymentsService {
           paymentId: payment.id,
         };
       } catch (createError: any) {
-        // Log completo del error para diagnosticar
-        console.error('📛 [Mercado Pago] Error al crear preferencia:', createError?.message);
-        if (createError?.cause) console.error('   cause:', createError.cause);
-        if (createError?.error) console.error('   error:', createError.error);
-        if (createError?.response?.data) console.error('   response.data:', JSON.stringify(createError.response.data));
-
-        // Si falla con auto_return, intentar sin auto_return (FALLBACK - no es lo ideal)
-        // Normalmente auto_return debería funcionar. Si falla, puede ser por:
-        // 1. URLs HTTP en localhost (Mercado Pago exige HTTPS para auto_return)
-        // 2. URLs no accesibles desde internet (necesita ngrok)
-        // 3. Error en la configuración de back_urls
         if (createError?.error === 'invalid_auto_return' || createError?.message?.includes('auto_return')) {
-          console.warn('⚠️ [Mercado Pago] ADVERTENCIA: Error al crear preferencia con auto_return ("approved")');
-          console.warn('⚠️ [Mercado Pago] Razón posible: URLs HTTP (Mercado Pago exige HTTPS para auto_return) o URLs no accesibles desde internet');
-          console.warn('⚠️ [Mercado Pago] Solución: Configura FRONTEND_URL_NGROK con tu URL HTTPS de ngrok (ej: https://xxx.ngrok-free.app)');
-          console.warn('⚠️ [Mercado Pago] Continuando sin auto_return - El usuario deberá hacer clic en "Volver al sitio"');
-          
-          // IMPORTANTE: Aunque no hay auto_return, SÍ incluimos back_urls
-          // Esto es necesario para que Mercado Pago muestre el botón "Volver al sitio"
           const bodyWithoutAutoReturn = JSON.parse(JSON.stringify({
             items: bodyToSend.items,
             payer: bodyToSend.payer,
-            // ⚠️ IMPORTANTE: Incluir back_urls para que aparezca el botón de volver
             back_urls: bodyToSend.back_urls,
             external_reference: bodyToSend.external_reference,
             notification_url: bodyToSend.notification_url,
             metadata: bodyToSend.metadata,
-            // NOTA: Sin auto_return, el usuario debe hacer clic en "Volver al sitio"
-            // PERO back_urls sigue siendo necesario para que el botón aparezca
           }));
-          
-          console.log('📤 [Mercado Pago] Creando preferencia sin auto_return (fallback):', JSON.stringify({
-            back_urls: bodyWithoutAutoReturn.back_urls,
-            has_auto_return: false,
-          }, null, 2));
-          
           const response = await this.preference.create({ body: bodyWithoutAutoReturn });
-          
-          console.warn('⚠️ [Mercado Pago] Preferencia creada SIN auto_return - Redirección manual requerida');
-          
           if (!response.id) {
             throw new BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
           }
@@ -449,22 +341,9 @@ export class PaymentsService {
             paymentId: payment.id,
           };
         }
-        // Si no es error de auto_return, relanzar el error original
-        console.error('📛 [Mercado Pago] No se usó fallback. Revisa FRONTEND_URL_NGROK (HTTPS) y que back_urls.success sea una URL pública válida.');
         throw createError;
       }
     } catch (error: any) {
-      console.error('❌ Error creating Mercado Pago preference:', error);
-      
-      // Log detallado del error para debugging
-      if (error.response?.data) {
-        console.error('📋 Mercado Pago API Error Details:', JSON.stringify(error.response.data, null, 2));
-      }
-      if (error.cause) {
-        console.error('🔍 Error cause:', error.cause);
-      }
-      
-      // Proporcionar un mensaje más descriptivo
       const errorMessage = error.response?.data?.message 
         || error.message 
         || 'Failed to create payment preference';
@@ -480,11 +359,8 @@ export class PaymentsService {
    * @param data - Datos del webhook
    */
   async handleWebhook(data: any) {
-    console.log('🔔 [Webhook] Received webhook data:', JSON.stringify(data, null, 2));
-    
     try {
       if (!this.client || !this.payment) {
-        console.error('❌ [Webhook] Mercado Pago client not initialized. Cannot process webhook.');
         return { success: false, message: 'Mercado Pago is not configured' };
       }
 
@@ -493,23 +369,10 @@ export class PaymentsService {
       if (type === 'payment') {
         const paymentId = webhookData?.id;
         if (!paymentId) {
-          console.warn('⚠️ [Webhook] Received without payment ID:', JSON.stringify(data, null, 2));
           return { success: false, message: 'Payment ID not found' };
         }
 
-        console.log(`📥 [Webhook] Processing payment ID: ${paymentId}`);
-
-        // Obtener información del pago desde Mercado Pago
         const mpPayment: any = await this.payment.get({ id: paymentId.toString() });
-        
-        console.log('📋 [Webhook] Mercado Pago payment data:', JSON.stringify({
-          id: mpPayment.id,
-          status: mpPayment.status,
-          external_reference: mpPayment.external_reference,
-          preference_id: mpPayment.preference_id,
-          status_detail: mpPayment.status_detail,
-          transaction_amount: mpPayment.transaction_amount,
-        }, null, 2));
 
         if (!mpPayment) {
           return { success: false, message: 'Payment not found in Mercado Pago' };
@@ -547,7 +410,6 @@ export class PaymentsService {
         }
 
         if (!payment) {
-          console.error('Payment record not found for payment_id:', paymentId);
           return { success: false, message: 'Payment record not found' };
         }
 
@@ -573,50 +435,31 @@ export class PaymentsService {
           if (foundPayment.metadata) {
             metadataObj = JSON.parse(foundPayment.metadata);
           }
-        } catch (e) {
-          console.warn('Error parsing payment metadata, using empty object:', e);
+        } catch {
+          // use empty metadata
         }
-        
-        // Si el pago fue aprobado y aún no existe la orden, crearla
+
         if (status === 'approved' && !foundPayment.orderId && metadataObj.order_data) {
           try {
-            console.log('💰 [Webhook] Payment approved! Creating order from payment metadata...');
-            console.log('📦 [Webhook] Order data from metadata:', JSON.stringify(metadataObj.order_data, null, 2));
-            
-            // Obtener OrdersService de forma lazy para evitar problemas de inicialización
             if (!this.ordersService) {
               this.ordersService = this.moduleRef.get(OrdersService, { strict: false });
             }
-            
-            // Crear la orden (orderSource: 'online' = cliente/ppp-front vía pago)
             const orderDataWithEmail = {
               ...metadataObj.order_data,
               customerEmail: metadataObj.customer_email || null,
               orderSource: 'online' as const,
             };
             const orderResponse = await this.ordersService.create(orderDataWithEmail);
-            
-            // Asignar el orderId al pago
             foundPayment.orderId = orderResponse.orderId;
-            
-            console.log(`✅ [Webhook] Order created successfully!`);
-            console.log(`   Order ID: ${orderResponse.orderId}`);
-            console.log(`   Daily Order Number: ${orderResponse.dailyOrderNumber}`);
-            console.log(`   Payment ID: ${paymentId}`);
-            
-            // Aplicar premio de redención si existe
+
             if (orderDataWithEmail.redemptionCode) {
               try {
-                console.log(`🎁 [Webhook] Applying redemption prize: ${orderDataWithEmail.redemptionCode}`);
                 await this.ordersService.applyRedemptionVoucher(
                   orderResponse.orderId,
                   orderDataWithEmail.redemptionCode
                 );
-                console.log(`✅ [Webhook] Redemption prize applied successfully!`);
-              } catch (prizeError: any) {
-                // No fallar la creación de la orden si el premio falla
-                console.error(`❌ [Webhook] Failed to apply redemption prize:`, prizeError?.message || prizeError);
-                // La orden se crea igual, pero sin el premio aplicado
+              } catch {
+                // Orden se crea igual, sin premio aplicado
               }
             }
             
@@ -677,46 +520,21 @@ export class PaymentsService {
                   deliveryNum > 0 ? deliveryNum : undefined,
                 );
 
-                if (sent) {
-                  console.log(`✅ [Webhook] Correo de confirmación enviado a ${emailTo} (orden #${orderNum})`);
-                } else {
-                  console.warn('⚠️ [Webhook] Correo no enviado (revisa MAIL_* en .env)');
-                }
-              } else {
-                console.warn('⚠️ [Webhook] No se envía correo: falta orden, items o email (customer_email en metadata o payer.email)');
               }
-            } catch (emailError: any) {
-              // No fallar el webhook si el correo falla, solo loguear
-              console.error('❌ [Webhook] Error al enviar correo de confirmación:', emailError?.message);
-              console.error('   Detalle:', emailError?.stack || emailError);
+            } catch {
+              // No fallar el webhook si el correo falla
             }
-          } catch (error: any) {
-            console.error('❌ [Webhook] Error creating order from payment:', error);
-            console.error('❌ [Webhook] Error details:', JSON.stringify({
-              message: error.message,
-              stack: error.stack,
-              order_data: metadataObj.order_data,
-            }, null, 2));
-            // Continuamos para actualizar el pago aunque falle la creación de la orden
+          } catch {
+            // Continuar para actualizar el pago aunque falle la creación de la orden
           }
-        } else if (status === 'approved' && foundPayment.orderId) {
-          console.log(`✅ [Webhook] Payment already has order associated: Order ID ${foundPayment.orderId}`);
-        } else if (status === 'approved' && !metadataObj.order_data) {
-          console.warn('⚠️ [Webhook] Payment approved but no order_data in metadata to create order');
         }
-        
+
         foundPayment.metadata = JSON.stringify({
           ...metadataObj,
           mp_payment: mpPayment,
         });
 
         await this.paymentRepo.save(foundPayment);
-
-        console.log('✅ [Webhook] Payment saved successfully');
-        console.log(`   Payment ID (internal): ${foundPayment.id}`);
-        console.log(`   Payment ID (Mercado Pago): ${foundPayment.paymentId}`);
-        console.log(`   Order ID: ${foundPayment.orderId || 'NOT CREATED YET'}`);
-        console.log(`   Status: ${foundPayment.status}`);
 
         return {
           success: true,
@@ -731,8 +549,6 @@ export class PaymentsService {
 
       return { success: true, message: 'Webhook processed (not a payment event)' };
     } catch (error: any) {
-      console.error('❌ [Webhook] Error processing webhook:', error);
-      console.error('❌ [Webhook] Error stack:', error.stack);
       return { success: false, message: error.message };
     }
   }
@@ -782,8 +598,8 @@ export class PaymentsService {
       if (payment.metadata) {
         metadataObj = JSON.parse(payment.metadata);
       }
-    } catch (e) {
-      console.warn('Error parsing payment metadata:', e);
+    } catch {
+      // use empty metadata
     }
 
     return {
@@ -824,8 +640,8 @@ export class PaymentsService {
       if (payment.metadata) {
         metadataObj = JSON.parse(payment.metadata);
       }
-    } catch (e) {
-      console.warn('Error parsing payment metadata:', e);
+    } catch {
+      // use empty metadata
     }
 
     return {

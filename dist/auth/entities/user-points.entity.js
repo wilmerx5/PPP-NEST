@@ -48,9 +48,9 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Usuario al que pertenecen los puntos.',
     }),
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE', nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
-    __metadata("design:type", user_entity_1.User)
+    __metadata("design:type", Object)
 ], UserPoints.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'user_id', nullable: true }),

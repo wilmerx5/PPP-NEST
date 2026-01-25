@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
+import { OrderExtra } from './order-extra.entity';
 
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter' | 'rappi';
 
@@ -159,4 +160,12 @@ export class Order {
   })
   @Column({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true })
   redemptionCode: string | null;
+
+  @ApiProperty({
+    description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',
+    type: () => OrderExtra,
+    required: false,
+  })
+  @OneToMany(() => OrderExtra, (e) => e.order, { cascade: true })
+  extras?: OrderExtra[];
 }

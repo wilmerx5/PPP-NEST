@@ -4,6 +4,7 @@ import { CreateOrderDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DT
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
+import { OrderExtra } from './entities/order-extra.entity';
 import { OrdersGateway } from './Websocket/order.gateway';
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
@@ -12,13 +13,14 @@ export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
     private readonly attrRepo;
+    private readonly extraRepo;
     private readonly productRepo;
     private readonly userRepo;
     private readonly gateway;
     private readonly dataSource;
     private readonly pointsService;
     private readonly mailService;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService);
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService);
     private generateNextOrderNumber;
     create(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;
@@ -41,6 +43,7 @@ export declare class OrdersService {
         points: number;
         pointCodes: string[];
         items: any[];
+        extras: any;
         redemptionCode: string | null;
     }[]>;
     removeOrder(orderId: number): Promise<{
