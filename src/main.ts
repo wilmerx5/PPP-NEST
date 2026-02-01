@@ -1,3 +1,6 @@
+import * as crypto from 'crypto';
+(global as any).crypto = crypto;
+
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
