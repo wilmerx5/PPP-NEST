@@ -106,7 +106,7 @@ app.enableCors({
 
 
 
-  const port = Number(process.env.PORT) || 4000;
+  const port = Number(process.env.PORT) || 3000;
   const host = process.env.HOST || '0.0.0.0';
   const bindHost = process.env.BIND_HOST === 'true';
 
