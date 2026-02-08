@@ -1,5 +1,14 @@
 import * as crypto from 'crypto';
-(global as any).crypto = crypto;
+// Parche para librerías que esperan global.crypto (Node crypto).
+// En Node 19+ global.crypto es de solo lectura (Web Crypto API), no podemos sobrescribir.
+try {
+  const g = global as any;
+  if (typeof g.crypto?.randomBytes !== 'function') {
+    g.crypto = crypto;
+  }
+} catch {
+  // Node 24+: global.crypto es read-only, omitir parche
+}
 
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';

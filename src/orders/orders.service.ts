@@ -221,20 +221,22 @@ export class OrdersService {
           const orderItem = queryRunner.manager.create(OrderItem, {
             order: savedOrder,
             product: { id: item.productId },
-            note: item.note,
+            note: item.note != null && item.note !== undefined ? String(item.note) : '',
           });
 
           const savedItem = await queryRunner.manager.save(orderItem);
 
           if (item.attributes?.length) {
-            const attrs = item.attributes.map(attr =>
-              queryRunner.manager.create(OrderItemAttribute, {
-                orderItem: savedItem,
-                attributeName: attr.attributeName,
-                attributeValue: attr.attributeValue,
-              })
-            );
-            await queryRunner.manager.save(attrs);
+            const attrs = item.attributes
+              .filter((attr) => attr?.attributeName != null && attr?.attributeValue != null && String(attr.attributeValue).trim() !== '')
+              .map((attr) =>
+                queryRunner.manager.create(OrderItemAttribute, {
+                  orderItem: savedItem,
+                  attributeName: String(attr.attributeName).trim(),
+                  attributeValue: String(attr.attributeValue).trim(),
+                }),
+              );
+            if (attrs.length > 0) await queryRunner.manager.save(attrs);
           }
         }
       }
