@@ -7,4 +7,5 @@ export declare class OrderItem {
     product: Product;
     attributes: OrderItemAttribute[];
     note?: string;
+    kitchenPreparedAt?: Date | null;
 }

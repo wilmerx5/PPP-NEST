@@ -21,6 +21,7 @@ let OrderItem = class OrderItem {
     product;
     attributes;
     note;
+    kitchenPreparedAt;
 };
 exports.OrderItem = OrderItem;
 __decorate([
@@ -70,6 +71,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: false }),
     __metadata("design:type", String)
 ], OrderItem.prototype, "note", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'kitchen_prepared_at', type: 'timestamp', nullable: true }),
+    __metadata("design:type", Object)
+], OrderItem.prototype, "kitchenPreparedAt", void 0);
 exports.OrderItem = OrderItem = __decorate([
     (0, typeorm_1.Entity)('ppp_order_items')
 ], OrderItem);

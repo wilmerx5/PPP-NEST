@@ -178,6 +178,11 @@ export class UpdateOrderItemDto {
     required: false,
   })
   note?: string;
+
+  /** Si true, el ítem ya fue preparado por cocina (solo tiene sentido al añadir items a una orden ya en packing/cooked). */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  kitchenPrepared?: boolean;
 }
 
 export class UpdateOrderItemsDto {

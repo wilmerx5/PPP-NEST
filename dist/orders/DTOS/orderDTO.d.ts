@@ -37,6 +37,7 @@ export declare class UpdateOrderItemDto {
     productId: number;
     attributes?: UpdateOrderItemAttributeDto[];
     note?: string;
+    kitchenPrepared?: boolean;
 }
 export declare class UpdateOrderItemsDto {
     items: UpdateOrderItemDto[];

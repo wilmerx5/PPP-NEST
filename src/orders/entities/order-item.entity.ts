@@ -56,4 +56,7 @@ export class OrderItem {
   @Column({ type: 'text', nullable: false })
   note?: string;
 
+  /** Cuando la cocina marca este ítem como preparado (orden en cooked/packing). Null = pendiente de cocina. */
+  @Column({ name: 'kitchen_prepared_at', type: 'timestamp', nullable: true })
+  kitchenPreparedAt?: Date | null;
 }

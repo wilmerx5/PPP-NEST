@@ -195,6 +195,7 @@ class UpdateOrderItemDto {
     productId;
     attributes;
     note;
+    kitchenPrepared;
 }
 exports.UpdateOrderItemDto = UpdateOrderItemDto;
 __decorate([
@@ -228,6 +229,11 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], UpdateOrderItemDto.prototype, "note", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], UpdateOrderItemDto.prototype, "kitchenPrepared", void 0);
 class UpdateOrderItemsDto {
     items;
     extrasToAdd;

@@ -160,16 +160,19 @@ let OrdersService = class OrdersService {
                     const orderItem = queryRunner.manager.create(order_item_entity_1.OrderItem, {
                         order: savedOrder,
                         product: { id: item.productId },
-                        note: item.note,
+                        note: item.note != null && item.note !== undefined ? String(item.note) : '',
                     });
                     const savedItem = await queryRunner.manager.save(orderItem);
                     if (item.attributes?.length) {
-                        const attrs = item.attributes.map(attr => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
+                        const attrs = item.attributes
+                            .filter((attr) => attr?.attributeName != null && attr?.attributeValue != null && String(attr.attributeValue).trim() !== '')
+                            .map((attr) => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
                             orderItem: savedItem,
-                            attributeName: attr.attributeName,
-                            attributeValue: attr.attributeValue,
+                            attributeName: String(attr.attributeName).trim(),
+                            attributeValue: String(attr.attributeValue).trim(),
                         }));
-                        await queryRunner.manager.save(attrs);
+                        if (attrs.length > 0)
+                            await queryRunner.manager.save(attrs);
                     }
                 }
             }
@@ -350,6 +353,7 @@ let OrdersService = class OrdersService {
                 groupedItems[productId].variants.push({
                     note: item.note || null,
                     attributes: attributeMap,
+                    kitchenPrepared: !!item.kitchenPreparedAt,
                 });
             }
             const extrasList = order.extras?.map((e) => ({
@@ -423,11 +427,17 @@ let OrdersService = class OrdersService {
                 message: `Order #${orderId} was canceled because no items remained`,
             };
         }
+        const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
+        if (wasPastCooking) {
+            order.orderStatus = 'cooking';
+            await this.orderRepo.save(order);
+        }
         for (const itemDto of dto.items ?? []) {
             const orderItem = this.itemRepo.create({
                 order,
                 product: { id: itemDto.productId },
                 note: itemDto.note,
+                kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
             });
             await this.itemRepo.save(orderItem);
             if (itemDto.attributes?.length) {
@@ -451,13 +461,23 @@ let OrdersService = class OrdersService {
                 await this.extraRepo.save(extra);
             }
         }
-        const fullOrder = await this.orderRepo.findOne({
+        let fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
             relations: ['items', 'items.product', 'items.attributes', 'extras'],
         });
+        if (fullOrder?.items?.some((i) => !i.product)) {
+            fullOrder = await this.orderRepo.findOne({
+                where: { id: order.id },
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
+            }) ?? fullOrder;
+        }
         if (fullOrder) {
             const allCodes = [];
             for (const item of fullOrder.items) {
+                if (!item.product) {
+                    console.warn(`[updateOrderItems] Order ${fullOrder.id} item ${item.id} has no product relation, skipping for points`);
+                    continue;
+                }
                 allCodes.push(item.product.code);
             }
             const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
@@ -576,6 +596,9 @@ let OrdersService = class OrdersService {
             order.deliveryFee = 0;
         }
         await this.orderRepo.save(order);
+        if (dto.orderStatus === 'cooked' || dto.orderStatus === 'packing') {
+            await this.itemRepo.update({ order: { id: orderId }, kitchenPreparedAt: (0, typeorm_2.IsNull)() }, { kitchenPreparedAt: new Date() });
+        }
         if (wasCanceled) {
             try {
                 await this.pointsService.invalidatePointsForCanceledOrder(orderId);
@@ -637,6 +660,7 @@ let OrdersService = class OrdersService {
             groupedItems[productId].variants.push({
                 note: item.note || null,
                 attributes: attributeMap,
+                kitchenPrepared: !!item.kitchenPreparedAt,
             });
         }
         const createdAtBogota = (0, date_util_1.formatToBogotaISO)(order.createdAt);

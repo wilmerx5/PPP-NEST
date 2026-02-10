@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
-import { Between, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
+import { Between, IsNull, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
 import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
@@ -497,6 +497,7 @@ export class OrdersService {
         groupedItems[productId].variants.push({
           note: item.note || null,
           attributes: attributeMap,
+          kitchenPrepared: !!item.kitchenPreparedAt,
         });
       }
 
@@ -598,11 +599,18 @@ export class OrdersService {
       };
     }
 
+    const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
+    if (wasPastCooking) {
+      order.orderStatus = 'cooking';
+      await this.orderRepo.save(order);
+    }
+
     for (const itemDto of dto.items ?? []) {
       const orderItem = this.itemRepo.create({
         order,
         product: { id: itemDto.productId },
         note: itemDto.note,
+        kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
       });
 
       await this.itemRepo.save(orderItem);
@@ -633,16 +641,27 @@ export class OrdersService {
       }
     }
 
-    const fullOrder = await this.orderRepo.findOne({
+    let fullOrder = await this.orderRepo.findOne({
       where: { id: order.id },
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
 
+    // Si algún item vino sin product (relación null), recargar una vez para evitar race
+    if (fullOrder?.items?.some((i) => !i.product)) {
+      fullOrder = await this.orderRepo.findOne({
+        where: { id: order.id },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      }) ?? fullOrder;
+    }
+
     if (fullOrder) {
-      // Recalculate points after updating items
+      // Recalculate points after updating items (guard: product puede ser null si la relación no cargó)
       const allCodes: number[] = [];
       for (const item of fullOrder.items) {
-        // Each item is a single unit, so just add the code once per item
+        if (!item.product) {
+          console.warn(`[updateOrderItems] Order ${fullOrder.id} item ${item.id} has no product relation, skipping for points`);
+          continue;
+        }
         allCodes.push(item.product.code);
       }
 
@@ -797,6 +816,14 @@ export class OrdersService {
 
     await this.orderRepo.save(order);
 
+    // Cuando cocina marca la orden como lista/empacando, marcar todos los ítems pendientes como preparados
+    if (dto.orderStatus === 'cooked' || dto.orderStatus === 'packing') {
+      await this.itemRepo.update(
+        { order: { id: orderId }, kitchenPreparedAt: IsNull() },
+        { kitchenPreparedAt: new Date() },
+      );
+    }
+
     // Invalidate points if order was just canceled
     if (wasCanceled) {
       try {
@@ -877,6 +904,7 @@ export class OrdersService {
       groupedItems[productId].variants.push({
         note: item.note || null,
         attributes: attributeMap,
+        kitchenPrepared: !!item.kitchenPreparedAt,
       });
     }
 
