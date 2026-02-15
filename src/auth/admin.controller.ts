@@ -73,7 +73,7 @@ export class AdminController {
 
     if (searchTrim) {
       qb.andWhere(
-        '(user.fullName ILike :q OR user.email ILike :q OR user.phone ILike :q)',
+        '(user.fullName LIKE :q OR user.email LIKE :q OR user.phone LIKE :q)',
         { q: `%${searchTrim}%` },
       );
     }
@@ -387,7 +387,7 @@ export class AdminController {
     const points = await this.pointsRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.user', 'user')
-      .where('p.code ILike :code', { code: `%${trimmed}%` })
+      .where('p.code LIKE :code', { code: `%${trimmed}%` })
       .orderBy('p.createdAt', 'DESC')
       .getMany();
 
