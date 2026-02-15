@@ -1302,11 +1302,13 @@ export class OrdersService {
       relations: ['items', 'items.product', 'extras'],
     });
 
-    const allProducts = await this.productRepo.find();
+    const allProducts = await this.productRepo.find({ relations: ['categories'] });
 
     let totalSubtotal = 0;
     let totalDeliveryFees = 0;
     let totalPremioDiscounts = 0;
+    let totalItemsSold = 0;
+    let ordersWithPremio = 0;
 
     const ordersByType: Record<string, number> = {
       delivery: 0,
@@ -1315,14 +1317,32 @@ export class OrdersService {
       counter: 0,
       rappi: 0,
     };
+    const revenueByOrderType: Record<string, number> = {
+      delivery: 0,
+      pickup: 0,
+      table: 0,
+      counter: 0,
+      rappi: 0,
+    };
 
-    const productsSold: Record<number, { code: number; name: string; quantity: number; totalRevenue: number }> = {};
-    const dailyBreakdown: Record<string, { total: number; orders: number }> = {};
+    type ProductSold = {
+      code: number;
+      name: string;
+      quantity: number;
+      totalRevenue: number;
+      categoryId?: number;
+      categoryName?: string;
+    };
+    const productsSold: Record<number, ProductSold> = {};
+    const dailyBreakdown: Record<string, { total: number; orders: number; dayOfWeek: string }> = {};
+
+    const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
     for (const order of orders) {
       const orderDate = formatInTimeZone(order.createdAt, 'America/Bogota', 'yyyy-MM-dd');
+      const dayOfWeek = DAY_NAMES[new Date(orderDate + 'T12:00:00').getDay()];
       if (!dailyBreakdown[orderDate]) {
-        dailyBreakdown[orderDate] = { total: 0, orders: 0 };
+        dailyBreakdown[orderDate] = { total: 0, orders: 0, dayOfWeek };
       }
       dailyBreakdown[orderDate].orders += 1;
 
@@ -1335,12 +1355,16 @@ export class OrdersService {
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
           orderSubtotal += Number(product.price);
+          totalItemsSold += 1;
+          const cat = (product as any).categories?.[0];
           if (!productsSold[product.code]) {
             productsSold[product.code] = {
               code: product.code,
               name: product.name,
               quantity: 0,
               totalRevenue: 0,
+              categoryId: cat?.id,
+              categoryName: cat?.name,
             };
           }
           productsSold[product.code].quantity += 1;
@@ -1357,6 +1381,7 @@ export class OrdersService {
       }
 
       if (order.redemptionCode) {
+        ordersWithPremio += 1;
         const halfChickenItem = order.items.find(
           item => item.product && (item.product.code === 2 || item.product.code === 5)
         );
@@ -1376,6 +1401,8 @@ export class OrdersService {
       const orderTotal = orderSubtotal + orderDelivery - orderPremio;
       dailyBreakdown[orderDate].total += orderTotal;
       ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+      const ot = order.orderType as string;
+      revenueByOrderType[ot] = (revenueByOrderType[ot] || 0) + orderTotal;
     }
 
     const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
@@ -1385,9 +1412,31 @@ export class OrdersService {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, data]) => ({ date, ...data }));
 
+    const productsArray = Object.values(productsSold).sort((a, b) => b.quantity - a.quantity);
+
+    const byCategory = new Map<number, ProductSold[]>();
+    for (const p of productsArray) {
+      const cid = p.categoryId ?? 0;
+      const cat = byCategory.get(cid) ?? [];
+      cat.push(p);
+      byCategory.set(cid, cat);
+    }
+    const mostOrderedByCategory = Array.from(byCategory.entries())
+      .filter(([cid]) => cid > 0)
+      .map(([categoryId, prods]) => {
+        const sorted = [...prods].sort((a, b) => b.quantity - a.quantity);
+        const top = sorted[0];
+        const catName = top.categoryName ?? 'Sin categoría';
+        return { categoryId, categoryName: catName, topProduct: top };
+      })
+      .sort((a, b) => b.topProduct.quantity - a.topProduct.quantity);
+
     return {
       period: { from, to },
       totalOrders,
+      totalItemsSold,
+      averageItemsPerOrder: totalOrders > 0 ? totalItemsSold / totalOrders : 0,
+      ordersWithPremio,
       totals: {
         subtotal: totalSubtotal,
         deliveryFees: totalDeliveryFees,
@@ -1396,7 +1445,9 @@ export class OrdersService {
       },
       averagePerOrder: totalOrders > 0 ? totalRevenue / totalOrders : 0,
       ordersByType,
-      productsSold: Object.values(productsSold).sort((a, b) => b.quantity - a.quantity),
+      revenueByOrderType,
+      productsSold: productsArray,
+      mostOrderedByCategory,
       dailyBreakdown: dailyArray,
     };
   }
