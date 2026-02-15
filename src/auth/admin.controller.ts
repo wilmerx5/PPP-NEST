@@ -11,6 +11,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Between } from 'typeorm';
 import { Auth } from './decorators/auth.decorator';
 import { ValidRoles } from './interfaces/valid.roles.interface';
 import { User } from './entities/user.entity';
@@ -21,6 +22,8 @@ import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
 import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
+import { getBogotaDateRange } from '../common/utils/date.util';
+import { formatInTimeZone } from 'date-fns-tz';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -269,6 +272,69 @@ export class AdminController {
     @Body() body: { isActive: boolean },
   ) {
     return this.productsService.updateActive(+id, body.isActive);
+  }
+
+  @Get('points/records')
+  @ApiOperation({ summary: 'List points records by date or period (admin only). Includes associated order.' })
+  @ApiQuery({ name: 'date', required: false, description: 'Single day YYYY-MM-DD' })
+  @ApiQuery({ name: 'from', required: false, description: 'Start date YYYY-MM-DD (use with to)' })
+  @ApiQuery({ name: 'to', required: false, description: 'End date YYYY-MM-DD (use with from)' })
+  @ApiResponse({ status: 200, description: 'Points records with order info' })
+  async getPointsRecords(
+    @Query('date') date?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    let startUtc: Date;
+    let endUtc: Date;
+
+    if (date) {
+      if (!dateRegex.test(date)) throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      const range = getBogotaDateRange(date);
+      startUtc = range.start;
+      endUtc = range.end;
+    } else if (from && to) {
+      if (!dateRegex.test(from) || !dateRegex.test(to)) throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      const startRange = getBogotaDateRange(from);
+      const endRange = getBogotaDateRange(to);
+      startUtc = startRange.start;
+      endUtc = endRange.end;
+      if (startUtc > endUtc) throw new BadRequestException('from must be before or equal to to');
+    } else {
+      throw new BadRequestException('Provide date=YYYY-MM-DD or from and to (YYYY-MM-DD)');
+    }
+
+    const points = await this.pointsRepo.find({
+      where: { createdAt: Between(startUtc, endUtc) },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const orderIds = points.map((p) => p.orderId).filter((id): id is number => id != null);
+    const ordersBrief = orderIds.length ? await this.ordersService.getOrdersBrief(orderIds) : [];
+    const orderMap = new Map(ordersBrief.map((o) => [o.id, o]));
+
+    const records = points.map((p) => {
+      const order = p.orderId ? orderMap.get(p.orderId) : null;
+      return {
+        id: p.id,
+        code: p.code,
+        userId: p.userId,
+        user: p.user ? { id: p.user.id, fullName: p.user.fullName, email: p.user.email } : null,
+        orderId: p.orderId,
+        orderDailyNumber: p.orderDailyNumber,
+        orderCreatedAt: order?.createdAt ? formatInTimeZone(order.createdAt, 'America/Bogota', "yyyy-MM-dd'T'HH:mm") : null,
+        type: p.type,
+        isUsed: p.isUsed,
+        isCanceled: p.isCanceled,
+        isRedeemed: p.isRedeemed,
+        description: p.description,
+        createdAt: formatInTimeZone(p.createdAt, 'America/Bogota', "yyyy-MM-dd'T'HH:mm:ss"),
+      };
+    });
+
+    return { records, total: records.length };
   }
 
   @Get('points/leaderboard')

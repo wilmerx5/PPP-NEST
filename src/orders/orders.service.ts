@@ -1092,6 +1092,19 @@ export class OrdersService {
   }
 
   /**
+   * Obtiene datos breves de órdenes por IDs (para listados de puntos u otros reportes).
+   */
+  async getOrdersBrief(orderIds: number[]): Promise<Array<{ id: number; dailyOrderNumber: number; createdAt: Date }>> {
+    if (!orderIds?.length) return [];
+    const uniq = [...new Set(orderIds)];
+    const orders = await this.orderRepo.find({
+      where: { id: In(uniq) },
+      select: ['id', 'dailyOrderNumber', 'createdAt'],
+    });
+    return orders;
+  }
+
+  /**
    * Obtiene órdenes de una fecha específica (Bogotá timezone).
    * Excluye canceladas.
    * 
@@ -1335,6 +1348,17 @@ export class OrdersService {
     };
     const productsSold: Record<number, ProductSold> = {};
     const dailyBreakdown: Record<string, { total: number; orders: number; dayOfWeek: string }> = {};
+    const hourlyBreakdown: Record<number, { orders: number; total: number }> = {};
+    for (let h = 0; h < 24; h++) hourlyBreakdown[h] = { orders: 0, total: 0 };
+
+    const TICKET_BUCKETS = [0, 20000, 50000, 100000, 200000, Infinity];
+    const ticketDistribution: { min: number; max: number; label: string; count: number }[] = [
+      { min: 0, max: 20000, label: 'Hasta $20k', count: 0 },
+      { min: 20000, max: 50000, label: '$20k - $50k', count: 0 },
+      { min: 50000, max: 100000, label: '$50k - $100k', count: 0 },
+      { min: 100000, max: 200000, label: '$100k - $200k', count: 0 },
+      { min: 200000, max: Infinity, label: 'Más de $200k', count: 0 },
+    ];
 
     const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -1403,6 +1427,18 @@ export class OrdersService {
       ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
       const ot = order.orderType as string;
       revenueByOrderType[ot] = (revenueByOrderType[ot] || 0) + orderTotal;
+
+      const hour = parseInt(formatInTimeZone(order.createdAt, 'America/Bogota', 'H'), 10);
+      hourlyBreakdown[hour].orders += 1;
+      hourlyBreakdown[hour].total += orderTotal;
+
+      const bucketIndex = TICKET_BUCKETS.findIndex((max, i) => {
+        const min = i === 0 ? 0 : TICKET_BUCKETS[i - 1];
+        return orderTotal >= min && orderTotal < max;
+      });
+      if (bucketIndex >= 0 && bucketIndex < ticketDistribution.length) {
+        ticketDistribution[bucketIndex].count += 1;
+      }
     }
 
     const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
@@ -1431,6 +1467,83 @@ export class OrdersService {
       })
       .sort((a, b) => b.topProduct.quantity - a.topProduct.quantity);
 
+    const hourlyArray = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      hourLabel: `${h.toString().padStart(2, '0')}:00`,
+      orders: hourlyBreakdown[h].orders,
+      total: hourlyBreakdown[h].total,
+    }));
+
+    const bestDayByOrders = dailyArray.length
+      ? dailyArray.reduce((best, d) => (d.orders >= best.orders ? d : best), dailyArray[0])
+      : null;
+    const bestDayByRevenue = dailyArray.length
+      ? dailyArray.reduce((best, d) => (d.total >= best.total ? d : best), dailyArray[0])
+      : null;
+    const worstDayByOrders = dailyArray.length
+      ? dailyArray.reduce((worst, d) => (d.orders <= worst.orders ? d : worst), dailyArray[0])
+      : null;
+
+    const averageTicketByOrderType: Record<string, number> = {};
+    for (const [type, count] of Object.entries(ordersByType)) {
+      const rev = revenueByOrderType[type] ?? 0;
+      averageTicketByOrderType[type] = count > 0 ? rev / count : 0;
+    }
+
+    let previousPeriod: { from: string; to: string; totalOrders: number; total: number } | null = null;
+    const fromDate = new Date(from + 'T12:00:00');
+    const toDate = new Date(to + 'T12:00:00');
+    const diffDays = Math.round((toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const prevEndDate = new Date(fromDate);
+    prevEndDate.setDate(prevEndDate.getDate() - 1);
+    const prevStartDate = new Date(prevEndDate);
+    prevStartDate.setDate(prevStartDate.getDate() - diffDays + 1);
+    const prevFrom = prevStartDate.toISOString().slice(0, 10);
+    const prevTo = prevEndDate.toISOString().slice(0, 10);
+    if (prevStartDate < prevEndDate) {
+      const { start: prevStartUtc } = getBogotaDateRange(prevFrom);
+      const { end: prevEndUtc } = getBogotaDateRange(prevTo);
+      const prevOrders = await this.orderRepo.find({
+        where: {
+          createdAt: Between(prevStartUtc, prevEndUtc),
+          orderStatus: Not('canceled'),
+        },
+        relations: ['items', 'items.product', 'extras'],
+      });
+      let prevTotalRevenue = 0;
+      for (const order of prevOrders) {
+        let orderSubtotal = 0;
+        let orderDelivery = 0;
+        let orderPremio = 0;
+        for (const item of order.items) {
+          if (item.product) {
+            const product = allProducts.find(p => p.id === item.product.id);
+            if (product) orderSubtotal += Number(product.price);
+          }
+        }
+        for (const ex of (order as any).extras ?? []) {
+          orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+        }
+        if (order.orderType === 'delivery' && order.deliveryFee) orderDelivery = Number(order.deliveryFee);
+        if (order.redemptionCode) {
+          const halfChickenItem = order.items.find(
+            item => item.product && (item.product.code === 2 || item.product.code === 5)
+          );
+          if (halfChickenItem?.product) {
+            const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+            if (product) orderPremio = Number(product.price);
+          }
+        }
+        prevTotalRevenue += orderSubtotal + orderDelivery - orderPremio;
+      }
+      previousPeriod = {
+        from: prevFrom,
+        to: prevTo,
+        totalOrders: prevOrders.length,
+        total: prevTotalRevenue,
+      };
+    }
+
     return {
       period: { from, to },
       totalOrders,
@@ -1446,9 +1559,16 @@ export class OrdersService {
       averagePerOrder: totalOrders > 0 ? totalRevenue / totalOrders : 0,
       ordersByType,
       revenueByOrderType,
+      averageTicketByOrderType,
       productsSold: productsArray,
       mostOrderedByCategory,
       dailyBreakdown: dailyArray,
+      hourlyBreakdown: hourlyArray,
+      ticketDistribution,
+      bestDayByOrders: bestDayByOrders ? { date: bestDayByOrders.date, dayOfWeek: bestDayByOrders.dayOfWeek, orders: bestDayByOrders.orders, total: bestDayByOrders.total } : null,
+      bestDayByRevenue: bestDayByRevenue ? { date: bestDayByRevenue.date, dayOfWeek: bestDayByRevenue.dayOfWeek, orders: bestDayByRevenue.orders, total: bestDayByRevenue.total } : null,
+      worstDayByOrders: worstDayByOrders ? { date: worstDayByOrders.date, dayOfWeek: worstDayByOrders.dayOfWeek, orders: worstDayByOrders.orders, total: worstDayByOrders.total } : null,
+      previousPeriod,
     };
   }
 }
