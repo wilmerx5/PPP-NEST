@@ -274,6 +274,43 @@ export class AdminController {
     return this.productsService.updateActive(+id, body.isActive);
   }
 
+  @Get('points/records/summary')
+  @ApiOperation({ summary: 'Points summary: total, used, unused. By date/period or allTime=1 (admin only).' })
+  @ApiQuery({ name: 'date', required: false })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'allTime', required: false, description: '1 = all time' })
+  @ApiResponse({ status: 200, description: 'Summary counts' })
+  async getPointsSummary(
+    @Query('date') date?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('allTime') allTime?: string,
+  ) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    let qb = this.pointsRepo.createQueryBuilder('p').select('p');
+
+    if (allTime === '1' || allTime === 'true') {
+      // no date filter
+    } else if (date && dateRegex.test(date)) {
+      const range = getBogotaDateRange(date);
+      qb = qb.where('p.createdAt >= :start', { start: range.start }).andWhere('p.createdAt <= :end', { end: range.end });
+    } else if (from && to && dateRegex.test(from) && dateRegex.test(to)) {
+      const startRange = getBogotaDateRange(from);
+      const endRange = getBogotaDateRange(to);
+      if (startRange.start > endRange.end) throw new BadRequestException('from must be before or equal to to');
+      qb = qb.where('p.createdAt >= :start', { start: startRange.start }).andWhere('p.createdAt <= :end', { end: endRange.end });
+    } else {
+      throw new BadRequestException('Provide date=YYYY-MM-DD, from+to, or allTime=1');
+    }
+
+    const points = await qb.getMany();
+    const total = points.length;
+    const used = points.filter((p) => p.isUsed).length;
+    const unused = total - used;
+    return { total, used, unused };
+  }
+
   @Get('points/records')
   @ApiOperation({ summary: 'List points records by date or period (admin only). Includes associated order.' })
   @ApiQuery({ name: 'date', required: false, description: 'Single day YYYY-MM-DD' })
@@ -335,6 +372,61 @@ export class AdminController {
     });
 
     return { records, total: records.length };
+  }
+
+  @Get('points/records/search')
+  @ApiOperation({ summary: 'Search point by code in all records (admin only). No date filter.' })
+  @ApiQuery({ name: 'code', required: true, description: 'Point code (exact or partial)' })
+  @ApiResponse({ status: 200, description: 'Matching points with full details' })
+  async searchPointByCode(@Query('code') code: string) {
+    const trimmed = code?.trim();
+    if (!trimmed || trimmed.length < 2) {
+      throw new BadRequestException('Provide code with at least 2 characters');
+    }
+
+    const points = await this.pointsRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.user', 'user')
+      .where('p.code ILike :code', { code: `%${trimmed}%` })
+      .orderBy('p.createdAt', 'DESC')
+      .getMany();
+
+    const orderIds = points.map((p) => p.orderId).filter((id): id is number => id != null);
+    const ordersBrief = orderIds.length ? await this.ordersService.getOrdersBrief(orderIds) : [];
+    const orderMap = new Map(ordersBrief.map((o) => [o.id, o]));
+
+    const records = points.map((p) => {
+      const order = p.orderId ? orderMap.get(p.orderId) : null;
+      return {
+        id: p.id,
+        code: p.code,
+        userId: p.userId,
+        user: p.user ? { id: p.user.id, fullName: p.user.fullName, email: p.user.email } : null,
+        orderId: p.orderId,
+        orderDailyNumber: p.orderDailyNumber,
+        orderCreatedAt: order?.createdAt ? formatInTimeZone(order.createdAt, 'America/Bogota', "yyyy-MM-dd'T'HH:mm") : null,
+        type: p.type,
+        isUsed: p.isUsed,
+        isCanceled: p.isCanceled,
+        isRedeemed: p.isRedeemed,
+        description: p.description,
+        createdAt: formatInTimeZone(p.createdAt, 'America/Bogota', "yyyy-MM-dd'T'HH:mm:ss"),
+      };
+    });
+
+    return { records };
+  }
+
+  @Patch('points/records/:id/invalidate')
+  @ApiOperation({ summary: 'Invalidate a point (admin only). Point will no longer be valid (e.g. like when order is canceled).' })
+  @ApiResponse({ status: 200, description: 'Point invalidated' })
+  @ApiResponse({ status: 404, description: 'Point not found' })
+  async invalidatePoint(@Param('id') id: string) {
+    const point = await this.pointsRepo.findOne({ where: { id: parseInt(id, 10) } });
+    if (!point) throw new NotFoundException('Point not found');
+    point.isCanceled = true;
+    await this.pointsRepo.save(point);
+    return { success: true, message: 'Punto invalidado', point: { id: point.id, code: point.code, isCanceled: true } };
   }
 
   @Get('points/leaderboard')
