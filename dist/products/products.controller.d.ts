@@ -8,6 +8,11 @@ export declare class ProductsController {
     getAllProducts(): Promise<any[]>;
     getAllCategories(): Promise<import("./entities/category.entity").Category[]>;
     getProductsByCategory(): Promise<any[]>;
+    checkByCode(code: string): Promise<{
+        exists: boolean;
+        isActive?: boolean;
+        name?: string;
+    }>;
     findOne(id: string): Promise<{
         attributes: {
             options: any;
@@ -21,6 +26,7 @@ export declare class ProductsController {
         price: number;
         hasAttributes: boolean;
         code: number;
+        isActive: boolean;
         categories: import("./entities/category.entity").Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
@@ -38,6 +44,7 @@ export declare class ProductsController {
         price: number;
         hasAttributes: boolean;
         code: number;
+        isActive: boolean;
         categories: import("./entities/category.entity").Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;

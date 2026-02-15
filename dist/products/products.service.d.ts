@@ -21,6 +21,36 @@ export declare class ProductsService {
     findAll(): Promise<any[]>;
     findAllCategories(): Promise<Category[]>;
     findProductsGroupedByCategory(): Promise<any[]>;
+    findAllForAdmin(): Promise<{
+        attributes: {
+            options: any;
+            id: number;
+            attributeName: string;
+            product: Product;
+        }[];
+        id: number;
+        name: string;
+        description?: string;
+        price: number;
+        hasAttributes: boolean;
+        code: number;
+        isActive: boolean;
+        categories: Category[];
+        orderItems: import("../orders/entities/order-item.entity").OrderItem[];
+        imageUrl: string;
+    }[]>;
+    updateActive(id: number, isActive: boolean): Promise<{
+        success: boolean;
+        product: {
+            id: number;
+            isActive: boolean;
+        };
+    }>;
+    checkByCode(code: number): Promise<{
+        exists: boolean;
+        isActive?: boolean;
+        name?: string;
+    }>;
     findOne(id: number): Promise<{
         attributes: {
             options: any;
@@ -34,6 +64,7 @@ export declare class ProductsService {
         price: number;
         hasAttributes: boolean;
         code: number;
+        isActive: boolean;
         categories: Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
@@ -51,6 +82,7 @@ export declare class ProductsService {
         price: number;
         hasAttributes: boolean;
         code: number;
+        isActive: boolean;
         categories: Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;

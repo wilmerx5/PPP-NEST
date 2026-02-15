@@ -78,6 +78,17 @@ let OrdersService = class OrdersService {
         if (!hasItems && !hasExtras) {
             throw new common_1.BadRequestException('Order must have at least one item or one extra');
         }
+        if (hasItems && items.length > 0) {
+            const productIds = [...new Set(items.map((i) => i.productId))];
+            const products = await this.productRepo.find({
+                where: { id: (0, typeorm_2.In)(productIds) },
+                select: ['id', 'name', 'isActive'],
+            });
+            const inactive = products.find((p) => p.isActive === false);
+            if (inactive) {
+                throw new common_1.BadRequestException(`El producto "${inactive.name}" está desactivado y no puede agregarse al pedido.`);
+            }
+        }
         const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
         let finalDeliveryFee = 0;
         if (orderType === 'delivery') {
@@ -895,6 +906,108 @@ let OrdersService = class OrdersService {
                 orderType: o.orderType,
                 createdAt: (0, date_util_1.formatToBogotaISO)(o.createdAt),
             })),
+        };
+    }
+    async getSalesReport(from, to) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(from) || !dateRegex.test(to)) {
+            throw new common_1.BadRequestException('Invalid date format. Use YYYY-MM-DD');
+        }
+        const { start: startUtc } = (0, date_util_1.getBogotaDateRange)(from);
+        const { end: endUtc } = (0, date_util_1.getBogotaDateRange)(to);
+        if (startUtc > endUtc) {
+            throw new common_1.BadRequestException('from date must be before or equal to to date');
+        }
+        const orders = await this.orderRepo.find({
+            where: {
+                createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
+                orderStatus: (0, typeorm_2.Not)('canceled'),
+            },
+            relations: ['items', 'items.product', 'extras'],
+        });
+        const allProducts = await this.productRepo.find();
+        let totalSubtotal = 0;
+        let totalDeliveryFees = 0;
+        let totalPremioDiscounts = 0;
+        const ordersByType = {
+            delivery: 0,
+            pickup: 0,
+            table: 0,
+            counter: 0,
+            rappi: 0,
+        };
+        const productsSold = {};
+        const dailyBreakdown = {};
+        for (const order of orders) {
+            const orderDate = (0, date_fns_tz_1.formatInTimeZone)(order.createdAt, 'America/Bogota', 'yyyy-MM-dd');
+            if (!dailyBreakdown[orderDate]) {
+                dailyBreakdown[orderDate] = { total: 0, orders: 0 };
+            }
+            dailyBreakdown[orderDate].orders += 1;
+            let orderSubtotal = 0;
+            let orderDelivery = 0;
+            let orderPremio = 0;
+            for (const item of order.items) {
+                if (!item.product)
+                    continue;
+                const product = allProducts.find(p => p.id === item.product.id);
+                if (product) {
+                    orderSubtotal += Number(product.price);
+                    if (!productsSold[product.code]) {
+                        productsSold[product.code] = {
+                            code: product.code,
+                            name: product.name,
+                            quantity: 0,
+                            totalRevenue: 0,
+                        };
+                    }
+                    productsSold[product.code].quantity += 1;
+                    productsSold[product.code].totalRevenue += Number(product.price);
+                }
+            }
+            for (const ex of order.extras ?? []) {
+                orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+            }
+            if (order.orderType === 'delivery' && order.deliveryFee) {
+                orderDelivery = Number(order.deliveryFee);
+                totalDeliveryFees += orderDelivery;
+            }
+            if (order.redemptionCode) {
+                const halfChickenItem = order.items.find(item => item.product && (item.product.code === 2 || item.product.code === 5));
+                if (halfChickenItem?.product) {
+                    const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+                    if (product) {
+                        orderPremio = Number(product.price);
+                        totalPremioDiscounts += orderPremio;
+                        if (productsSold[product.code]) {
+                            productsSold[product.code].totalRevenue -= Number(product.price);
+                        }
+                    }
+                }
+            }
+            totalSubtotal += orderSubtotal;
+            const orderTotal = orderSubtotal + orderDelivery - orderPremio;
+            dailyBreakdown[orderDate].total += orderTotal;
+            ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+        }
+        const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
+        const totalOrders = orders.length;
+        const dailyArray = Object.entries(dailyBreakdown)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, data]) => ({ date, ...data }));
+        return {
+            period: { from, to },
+            totalOrders,
+            totals: {
+                subtotal: totalSubtotal,
+                deliveryFees: totalDeliveryFees,
+                premioDiscounts: totalPremioDiscounts,
+                total: totalRevenue,
+            },
+            averagePerOrder: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+            ordersByType,
+            productsSold: Object.values(productsSold).sort((a, b) => b.quantity - a.quantity),
+            dailyBreakdown: dailyArray,
         };
     }
 };

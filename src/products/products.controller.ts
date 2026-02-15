@@ -90,6 +90,20 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
+  // CHECK PRODUCT BY CODE (exists + isActive, for order/mesas UX)
+  // -------------------------------------------------------------
+  @Get('check-code/:code')
+  @ApiOperation({
+    summary: 'Check product by code',
+    description: 'Returns whether a product exists and if it is active. Used when adding by code to show "producto desactivado" message.',
+  })
+  @ApiParam({ name: 'code', description: 'Product code', example: 101 })
+  @ApiResponse({ status: 200, description: '{ exists, isActive?, name? }' })
+  async checkByCode(@Param('code') code: string) {
+    return this.productsService.checkByCode(+code);
+  }
+
+  // -------------------------------------------------------------
   // GET ONE PRODUCT
   // -------------------------------------------------------------
   @Get(':id')

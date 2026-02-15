@@ -49,6 +49,7 @@ export class ProductsService {
     const result = await this.circuitBreaker.execute(
       async () => {
         const products = await this.productRepo.find({
+          where: { isActive: true },
           relations: ['categories', 'attributes'],
           order: { id: 'ASC' },
         });
@@ -107,7 +108,7 @@ export class ProductsService {
             categoryName: category.name,
             imageUrl: category.imageUrl,
             products: (category.products || [])
-              .filter((product) => product != null) // Filter out null products
+              .filter((product) => product != null && product.isActive !== false) // Only active products
               .map((product) => ({
                 id: product.id,
                 name: product.name,
@@ -144,6 +145,56 @@ export class ProductsService {
    * @param id - Product ID.
    * @returns {Promise<any>} Product with transformed attributes.
    */
+  /**
+   * Returns all products including inactive (for admin).
+   */
+  async findAllForAdmin() {
+    const products = await this.productRepo.find({
+      relations: ['categories', 'attributes'],
+      order: { id: 'ASC' },
+    });
+    return products.map((product) => ({
+      ...product,
+      attributes: product.attributes.map((attr) => ({
+        ...attr,
+        options: JSON.parse(attr.options || '[]'),
+      })),
+    }));
+  }
+
+  /**
+   * Set product active/inactive (admin). Invalidates product caches.
+   */
+  async updateActive(id: number, isActive: boolean) {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    product.isActive = isActive;
+    await this.productRepo.save(product);
+    this.cache.invalidate('products:');
+    return { success: true, product: { id: product.id, isActive: product.isActive } };
+  }
+
+  /**
+   * Check if a product exists by code and whether it is active.
+   * Used by order/mesas apps when adding by code to show "producto desactivado" when applicable.
+   */
+  async checkByCode(code: number): Promise<{ exists: boolean; isActive?: boolean; name?: string }> {
+    const product = await this.productRepo.findOne({
+      where: { code },
+      select: ['id', 'name', 'isActive'],
+    });
+    if (!product) {
+      return { exists: false };
+    }
+    return {
+      exists: true,
+      isActive: product.isActive !== false,
+      name: product.name,
+    };
+  }
+
   async findOne(id: number) {
     const product = await this.productRepo.findOne({
       where: { id },

@@ -650,6 +650,8 @@ export class PointsService {
     }>;
     total: number;
   }> {
+    const excludedEmail = 'wilmercampos2004@gmail.com';
+
     // First, get all users with their point counts (for total count and ranking)
     let baseQuery = this.pointsRepo
       .createQueryBuilder('point')
@@ -665,23 +667,25 @@ export class PointsService {
       const searchTerm = `%${search.trim()}%`;
       baseQuery = baseQuery
         .innerJoin('ppp_users', 'user', 'user.id = point.userId')
-        .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+        .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm })
+        .andWhere('user.email != :excludedEmail', { excludedEmail });
     } else {
-      baseQuery = baseQuery.innerJoin('ppp_users', 'user', 'user.id = point.userId');
+      baseQuery = baseQuery
+        .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+        .andWhere('user.email != :excludedEmail', { excludedEmail });
     }
 
     // Get total count efficiently using COUNT instead of loading all records
-    // Reset select to only count
     const countQuery = this.pointsRepo
       .createQueryBuilder('point')
       .select('COUNT(DISTINCT point.userId)', 'total')
-      .where('point.userId IS NOT NULL');
-    
+      .innerJoin('ppp_users', 'user', 'user.id = point.userId')
+      .where('point.userId IS NOT NULL')
+      .andWhere('user.email != :excludedEmail', { excludedEmail });
+
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
-      countQuery
-        .innerJoin('ppp_users', 'user', 'user.id = point.userId')
-        .andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
+      countQuery.andWhere('(user.fullName LIKE :search OR user.email LIKE :search)', { search: searchTerm });
     }
     
     const countResult = await countQuery.getRawOne();

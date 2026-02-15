@@ -22,6 +22,7 @@ let Product = class Product {
     price;
     hasAttributes;
     code;
+    isActive;
     attributes;
     categories;
     orderItems;
@@ -82,6 +83,15 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'int', unique: true }),
     __metadata("design:type", Number)
 ], Product.prototype, "code", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Si el producto está activo y visible en listados y pedidos.',
+        example: true,
+        default: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'is_active', type: 'boolean', default: true }),
+    __metadata("design:type", Boolean)
+], Product.prototype, "isActive", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Lista de atributos configurables del producto.',

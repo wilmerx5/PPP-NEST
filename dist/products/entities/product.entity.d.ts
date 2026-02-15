@@ -8,6 +8,7 @@ export declare class Product {
     price: number;
     hasAttributes: boolean;
     code: number;
+    isActive: boolean;
     attributes: ProductAttribute[];
     categories: Category[];
     orderItems: OrderItem[];

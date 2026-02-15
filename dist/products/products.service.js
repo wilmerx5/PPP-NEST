@@ -48,6 +48,7 @@ let ProductsService = class ProductsService {
             return cached;
         const result = await this.circuitBreaker.execute(async () => {
             const products = await this.productRepo.find({
+                where: { isActive: true },
                 relations: ['categories', 'attributes'],
                 order: { id: 'ASC' },
             });
@@ -96,7 +97,7 @@ let ProductsService = class ProductsService {
                 categoryName: category.name,
                 imageUrl: category.imageUrl,
                 products: (category.products || [])
-                    .filter((product) => product != null)
+                    .filter((product) => product != null && product.isActive !== false)
                     .map((product) => ({
                     id: product.id,
                     name: product.name,
@@ -120,6 +121,43 @@ let ProductsService = class ProductsService {
             return stale || [];
         });
         return result || [];
+    }
+    async findAllForAdmin() {
+        const products = await this.productRepo.find({
+            relations: ['categories', 'attributes'],
+            order: { id: 'ASC' },
+        });
+        return products.map((product) => ({
+            ...product,
+            attributes: product.attributes.map((attr) => ({
+                ...attr,
+                options: JSON.parse(attr.options || '[]'),
+            })),
+        }));
+    }
+    async updateActive(id, isActive) {
+        const product = await this.productRepo.findOne({ where: { id } });
+        if (!product) {
+            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+        }
+        product.isActive = isActive;
+        await this.productRepo.save(product);
+        this.cache.invalidate('products:');
+        return { success: true, product: { id: product.id, isActive: product.isActive } };
+    }
+    async checkByCode(code) {
+        const product = await this.productRepo.findOne({
+            where: { code },
+            select: ['id', 'name', 'isActive'],
+        });
+        if (!product) {
+            return { exists: false };
+        }
+        return {
+            exists: true,
+            isActive: product.isActive !== false,
+            name: product.name,
+        };
     }
     async findOne(id) {
         const product = await this.productRepo.findOne({

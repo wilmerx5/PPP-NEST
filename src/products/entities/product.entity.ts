@@ -63,6 +63,14 @@ export class Product {
   @Column({ type: 'int', unique: true })
   code: number;
 
+  @ApiProperty({
+    description: 'Si el producto está activo y visible en listados y pedidos.',
+    example: true,
+    default: true,
+  })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean;
+
   // ------------------------------------------------------------------------
   // Atributos configurables
   // ------------------------------------------------------------------------

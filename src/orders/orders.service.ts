@@ -8,7 +8,7 @@ import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
 import { OrderExtra } from './entities/order-extra.entity';
 import { OrdersGateway } from './Websocket/order.gateway';
-import { getBogotaDayRange, formatToBogotaISO, transformDatesToBogota } from '../common/utils/date.util';
+import { getBogotaDayRange, getBogotaDateRange, formatToBogotaISO, transformDatesToBogota } from '../common/utils/date.util';
 import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
@@ -105,6 +105,21 @@ export class OrdersService {
     const hasExtras = extras && extras.length > 0;
     if (!hasItems && !hasExtras) {
       throw new BadRequestException('Order must have at least one item or one extra');
+    }
+
+    // Reject order if any product is deactivated
+    if (hasItems && items.length > 0) {
+      const productIds = [...new Set(items.map((i) => i.productId))];
+      const products = await this.productRepo.find({
+        where: { id: In(productIds) },
+        select: ['id', 'name', 'isActive'],
+      });
+      const inactive = products.find((p) => p.isActive === false);
+      if (inactive) {
+        throw new BadRequestException(
+          `El producto "${inactive.name}" está desactivado y no puede agregarse al pedido.`,
+        );
+      }
     }
 
     // Get today's range in Bogotá timezone, converted to UTC for database query
@@ -1257,6 +1272,132 @@ export class OrdersService {
         orderType: o.orderType,
         createdAt: formatToBogotaISO(o.createdAt),
       })),
+    };
+  }
+
+  /**
+   * Obtiene el reporte de ventas entre dos fechas (Bogotá timezone).
+   *
+   * @param from - Fecha inicio YYYY-MM-DD
+   * @param to - Fecha fin YYYY-MM-DD
+   * @returns Resumen agregado del periodo + desglose por día
+   */
+  async getSalesReport(from: string, to: string): Promise<any> {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(from) || !dateRegex.test(to)) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+    }
+
+    const { start: startUtc } = getBogotaDateRange(from);
+    const { end: endUtc } = getBogotaDateRange(to);
+    if (startUtc > endUtc) {
+      throw new BadRequestException('from date must be before or equal to to date');
+    }
+
+    const orders = await this.orderRepo.find({
+      where: {
+        createdAt: Between(startUtc, endUtc),
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product', 'extras'],
+    });
+
+    const allProducts = await this.productRepo.find();
+
+    let totalSubtotal = 0;
+    let totalDeliveryFees = 0;
+    let totalPremioDiscounts = 0;
+
+    const ordersByType: Record<string, number> = {
+      delivery: 0,
+      pickup: 0,
+      table: 0,
+      counter: 0,
+      rappi: 0,
+    };
+
+    const productsSold: Record<number, { code: number; name: string; quantity: number; totalRevenue: number }> = {};
+    const dailyBreakdown: Record<string, { total: number; orders: number }> = {};
+
+    for (const order of orders) {
+      const orderDate = formatInTimeZone(order.createdAt, 'America/Bogota', 'yyyy-MM-dd');
+      if (!dailyBreakdown[orderDate]) {
+        dailyBreakdown[orderDate] = { total: 0, orders: 0 };
+      }
+      dailyBreakdown[orderDate].orders += 1;
+
+      let orderSubtotal = 0;
+      let orderDelivery = 0;
+      let orderPremio = 0;
+
+      for (const item of order.items) {
+        if (!item.product) continue;
+        const product = allProducts.find(p => p.id === item.product.id);
+        if (product) {
+          orderSubtotal += Number(product.price);
+          if (!productsSold[product.code]) {
+            productsSold[product.code] = {
+              code: product.code,
+              name: product.name,
+              quantity: 0,
+              totalRevenue: 0,
+            };
+          }
+          productsSold[product.code].quantity += 1;
+          productsSold[product.code].totalRevenue += Number(product.price);
+        }
+      }
+      for (const ex of (order as any).extras ?? []) {
+        orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+      }
+
+      if (order.orderType === 'delivery' && order.deliveryFee) {
+        orderDelivery = Number(order.deliveryFee);
+        totalDeliveryFees += orderDelivery;
+      }
+
+      if (order.redemptionCode) {
+        const halfChickenItem = order.items.find(
+          item => item.product && (item.product.code === 2 || item.product.code === 5)
+        );
+        if (halfChickenItem?.product) {
+          const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+          if (product) {
+            orderPremio = Number(product.price);
+            totalPremioDiscounts += orderPremio;
+            if (productsSold[product.code]) {
+              productsSold[product.code].totalRevenue -= Number(product.price);
+            }
+          }
+        }
+      }
+
+      totalSubtotal += orderSubtotal;
+      const orderTotal = orderSubtotal + orderDelivery - orderPremio;
+      dailyBreakdown[orderDate].total += orderTotal;
+      ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+    }
+
+    const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
+    const totalOrders = orders.length;
+
+    const dailyArray = Object.entries(dailyBreakdown)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => ({ date, ...data }));
+
+    return {
+      period: { from, to },
+      totalOrders,
+      totals: {
+        subtotal: totalSubtotal,
+        deliveryFees: totalDeliveryFees,
+        premioDiscounts: totalPremioDiscounts,
+        total: totalRevenue,
+      },
+      averagePerOrder: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+      ordersByType,
+      productsSold: Object.values(productsSold).sort((a, b) => b.quantity - a.quantity),
+      dailyBreakdown: dailyArray,
     };
   }
 }

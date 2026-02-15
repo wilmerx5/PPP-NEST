@@ -20,6 +20,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
 import { OrdersService } from '../orders/orders.service';
+import { ProductsService } from '../products/products.service';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -29,6 +30,7 @@ export class AdminController {
   constructor(
     private readonly pointsService: PointsService,
     private readonly ordersService: OrdersService,
+    private readonly productsService: ProductsService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
@@ -36,15 +38,46 @@ export class AdminController {
   ) {}
 
   @Get('users')
-  @ApiOperation({ summary: 'Get all users (admin only)' })
+  @ApiOperation({ summary: 'Get all users with pagination and search (admin only)' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 15 })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by name, email or phone' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  async getAllUsers() {
-    const users = await this.userRepo.find({
-      select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
-      order: { fullName: 'ASC' },
-    });
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNum = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const limitNum = limit ? Math.min(100, Math.max(1, parseInt(limit, 10) || 15)) : 15;
+    const searchTrim = search?.trim();
 
-    return users;
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.fullName',
+        'user.phone',
+        'user.isActive',
+        'user.roles',
+        'user.createdAt',
+        'user.provider',
+      ])
+      .orderBy('user.fullName', 'ASC')
+      .skip((pageNum - 1) * limitNum)
+      .take(limitNum);
+
+    if (searchTrim) {
+      qb.andWhere(
+        '(user.fullName ILike :q OR user.email ILike :q OR user.phone ILike :q)',
+        { q: `%${searchTrim}%` },
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return { data, total };
   }
 
   @Patch('users/:id/active')
@@ -176,7 +209,6 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'Daily summary retrieved successfully' })
   async getDailySummary(@Query('date') date?: string) {
     if (date) {
-      // Validate date format
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
         throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
@@ -185,6 +217,58 @@ export class AdminController {
 
     const summary = await this.ordersService.getDailySummary(date);
     return summary;
+  }
+
+  @Get('reports/sales')
+  @ApiOperation({ summary: 'Get sales report between dates (admin only)' })
+  @ApiQuery({ name: 'from', required: false, description: 'Start date YYYY-MM-DD' })
+  @ApiQuery({ name: 'to', required: false, description: 'End date YYYY-MM-DD' })
+  @ApiQuery({ name: 'period', required: false, description: 'Preset: 7d (last 7 days), 30d (last 30 days)' })
+  @ApiResponse({ status: 200, description: 'Sales report retrieved successfully' })
+  async getSalesReport(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('period') period?: string,
+  ) {
+    const { addDays } = await import('date-fns');
+    const { formatInTimeZone } = await import('date-fns-tz');
+    const now = new Date();
+    const todayBogota = formatInTimeZone(now, 'America/Bogota', 'yyyy-MM-dd');
+    let fromStr: string;
+    let toStr: string;
+
+    if (period === '7d') {
+      toStr = todayBogota;
+      fromStr = formatInTimeZone(addDays(now, -6), 'America/Bogota', 'yyyy-MM-dd');
+    } else if (period === '30d') {
+      toStr = todayBogota;
+      fromStr = formatInTimeZone(addDays(now, -29), 'America/Bogota', 'yyyy-MM-dd');
+    } else if (from && to) {
+      fromStr = from;
+      toStr = to;
+    } else {
+      throw new BadRequestException('Provide either period=7d|30d or from+to (YYYY-MM-DD)');
+    }
+
+    return this.ordersService.getSalesReport(fromStr, toStr);
+  }
+
+  @Get('products')
+  @ApiOperation({ summary: 'Get all products including inactive (admin only)' })
+  @ApiResponse({ status: 200, description: 'Products retrieved successfully' })
+  async getAllProducts() {
+    return this.productsService.findAllForAdmin();
+  }
+
+  @Patch('products/:id/active')
+  @ApiOperation({ summary: 'Activate or deactivate product (admin only)' })
+  @ApiResponse({ status: 200, description: 'Product updated successfully' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async updateProductActive(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    return this.productsService.updateActive(+id, body.isActive);
   }
 
   @Get('points/leaderboard')

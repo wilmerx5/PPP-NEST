@@ -35,6 +35,9 @@ let ProductsController = class ProductsController {
     async getProductsByCategory() {
         return this.productsService.findProductsGroupedByCategory();
     }
+    async checkByCode(code) {
+        return this.productsService.checkByCode(+code);
+    }
     async findOne(id) {
         const product = await this.productsService.findOne(+id);
         if (!product) {
@@ -105,6 +108,19 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "getProductsByCategory", null);
+__decorate([
+    (0, common_1.Get)('check-code/:code'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Check product by code',
+        description: 'Returns whether a product exists and if it is active. Used when adding by code to show "producto desactivado" message.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'code', description: 'Product code', example: 101 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '{ exists, isActive?, name? }' }),
+    __param(0, (0, common_1.Param)('code')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "checkByCode", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get a product by ID' }),

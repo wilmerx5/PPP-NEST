@@ -92,4 +92,5 @@ export declare class OrdersService {
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;
     findOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
+    getSalesReport(from: string, to: string): Promise<any>;
 }

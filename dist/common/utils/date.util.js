@@ -5,6 +5,7 @@ exports.toBogotaTime = toBogotaTime;
 exports.fromBogotaTime = fromBogotaTime;
 exports.formatToBogotaISO = formatToBogotaISO;
 exports.formatBogotaDate = formatBogotaDate;
+exports.getBogotaDateRange = getBogotaDateRange;
 exports.getBogotaDayRange = getBogotaDayRange;
 exports.formatBogotaRelative = formatBogotaRelative;
 exports.transformDatesToBogota = transformDatesToBogota;
@@ -30,6 +31,15 @@ function formatBogotaDate(date, formatStr = 'PPp') {
         return null;
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return (0, date_fns_tz_1.formatInTimeZone)(dateObj, exports.APP_TIMEZONE, formatStr, { locale: locale_1.es });
+}
+function getBogotaDateRange(dateStr) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const startBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+    const endBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59.999-05:00`;
+    return {
+        start: new Date(startBogotaString),
+        end: new Date(endBogotaString),
+    };
 }
 function getBogotaDayRange() {
     const now = new Date();

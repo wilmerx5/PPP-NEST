@@ -1,21 +1,24 @@
 # Migraciones PPP-NEST
 
+## Cómo ejecutar
+
+Desde la raíz del proyecto:
+
+```bash
+mysql -u TU_USUARIO -p TU_BASE_DE_DATOS < migrations/NOMBRE_ARCHIVO.sql
+```
+
+O desde el cliente MySQL/MariaDB:
+
+```sql
+SOURCE /ruta/a/PPP-NEST/migrations/NOMBRE_ARCHIVO.sql;
+```
+
+---
+
 ## 001_create_ppp_order_extras.sql
 
 Crea la tabla `ppp_order_extras` para **adicionales** (extras, platos, cubiertos, etc.) asociados a una orden. El código **90** en ppp-orders-front abre un modal para añadir estos adicionales en lugar de registrar un producto.
-
-### Cómo ejecutar
-
-```bash
-# Desde la raíz del proyecto PPP-NEST
-mysql -u TU_USUARIO -p TU_BASE_DE_DATOS < migrations/001_create_ppp_order_extras.sql
-```
-
-O desde tu cliente MySQL/MariaDB:
-
-```sql
-SOURCE /ruta/a/PPP-NEST/migrations/001_create_ppp_order_extras.sql;
-```
 
 ### Estructura de la tabla
 
@@ -26,3 +29,21 @@ SOURCE /ruta/a/PPP-NEST/migrations/001_create_ppp_order_extras.sql;
 - `amount`: precio del adicional
 - `quantity`: cantidad (default 1)
 - `created_at`: timestamp
+
+---
+
+## 002_add_kitchen_prepared_at_to_order_items.sql
+
+Añade `kitchen_prepared_at` a `ppp_order_items` para marcar cuándo cocina da por listos los ítems.
+
+---
+
+## 003_add_is_active_to_ppp_products.sql
+
+Añade la columna `is_active` a `ppp_products` para poder activar/desactivar productos desde el admin.
+
+- **Valores**: `1` = activo (visible en listados y se puede agregar a pedidos), `0` = desactivado.
+- **Por defecto**: los productos existentes quedan con `1` (activos).
+- Los listados públicos (`GET /products`, `GET /products/categories`) solo devuelven productos activos.
+- Al crear una orden, si algún producto está desactivado el backend responde 400 con mensaje claro.
+- El admin usa `GET /admin/products` (ve todos) y `PATCH /admin/products/:id/active` para cambiar el estado.

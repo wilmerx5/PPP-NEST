@@ -69,9 +69,25 @@ export function formatBogotaDate(
 }
 
 /**
+ * Gets the UTC date range for a given Bogotá date string (YYYY-MM-DD).
+ *
+ * @param dateStr - Date in YYYY-MM-DD format
+ * @returns Object with start (00:00:00) and end (23:59:59.999) in UTC
+ */
+export function getBogotaDateRange(dateStr: string): { start: Date; end: Date } {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const startBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;
+  const endBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59.999-05:00`;
+  return {
+    start: new Date(startBogotaString),
+    end: new Date(endBogotaString),
+  };
+}
+
+/**
  * Gets the start and end of today in Bogotá timezone, converted to UTC.
  * Useful for querying daily records (orders, etc.).
- * 
+ *
  * @returns Object with start and end of today in UTC
  */
 export function getBogotaDayRange(): { start: Date; end: Date } {

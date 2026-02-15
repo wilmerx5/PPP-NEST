@@ -11,5 +11,6 @@ import { CommonModule } from '../common/common.module';
   controllers: [ProductsController],
   imports: [TypeOrmModule.forFeature([Product, Category, ProductAttribute]), CommonModule],
   providers: [ProductsService],
+  exports: [ProductsService],
 })
 export class ProductsModule {}

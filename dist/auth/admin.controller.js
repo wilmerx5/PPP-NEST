@@ -23,23 +23,44 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_points_entity_1 = require("./entities/user-points.entity");
 const orders_service_1 = require("../orders/orders.service");
+const products_service_1 = require("../products/products.service");
 let AdminController = class AdminController {
     pointsService;
     ordersService;
+    productsService;
     userRepo;
     pointsRepo;
-    constructor(pointsService, ordersService, userRepo, pointsRepo) {
+    constructor(pointsService, ordersService, productsService, userRepo, pointsRepo) {
         this.pointsService = pointsService;
         this.ordersService = ordersService;
+        this.productsService = productsService;
         this.userRepo = userRepo;
         this.pointsRepo = pointsRepo;
     }
-    async getAllUsers() {
-        const users = await this.userRepo.find({
-            select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
-            order: { fullName: 'ASC' },
-        });
-        return users;
+    async getAllUsers(page, limit, search) {
+        const pageNum = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+        const limitNum = limit ? Math.min(100, Math.max(1, parseInt(limit, 10) || 15)) : 15;
+        const searchTrim = search?.trim();
+        const qb = this.userRepo
+            .createQueryBuilder('user')
+            .select([
+            'user.id',
+            'user.email',
+            'user.fullName',
+            'user.phone',
+            'user.isActive',
+            'user.roles',
+            'user.createdAt',
+            'user.provider',
+        ])
+            .orderBy('user.fullName', 'ASC')
+            .skip((pageNum - 1) * limitNum)
+            .take(limitNum);
+        if (searchTrim) {
+            qb.andWhere('(user.fullName ILike :q OR user.email ILike :q OR user.phone ILike :q)', { q: `%${searchTrim}%` });
+        }
+        const [data, total] = await qb.getManyAndCount();
+        return { data, total };
     }
     async updateUserActive(id, body) {
         const user = await this.userRepo.findOne({ where: { id } });
@@ -134,6 +155,36 @@ let AdminController = class AdminController {
         const summary = await this.ordersService.getDailySummary(date);
         return summary;
     }
+    async getSalesReport(from, to, period) {
+        const { addDays } = await Promise.resolve().then(() => require('date-fns'));
+        const { formatInTimeZone } = await Promise.resolve().then(() => require('date-fns-tz'));
+        const now = new Date();
+        const todayBogota = formatInTimeZone(now, 'America/Bogota', 'yyyy-MM-dd');
+        let fromStr;
+        let toStr;
+        if (period === '7d') {
+            toStr = todayBogota;
+            fromStr = formatInTimeZone(addDays(now, -6), 'America/Bogota', 'yyyy-MM-dd');
+        }
+        else if (period === '30d') {
+            toStr = todayBogota;
+            fromStr = formatInTimeZone(addDays(now, -29), 'America/Bogota', 'yyyy-MM-dd');
+        }
+        else if (from && to) {
+            fromStr = from;
+            toStr = to;
+        }
+        else {
+            throw new common_1.BadRequestException('Provide either period=7d|30d or from+to (YYYY-MM-DD)');
+        }
+        return this.ordersService.getSalesReport(fromStr, toStr);
+    }
+    async getAllProducts() {
+        return this.productsService.findAllForAdmin();
+    }
+    async updateProductActive(id, body) {
+        return this.productsService.updateActive(+id, body.isActive);
+    }
     async getLeaderboard(limit, offset, search) {
         const limitNum = limit ? parseInt(limit, 10) : 100;
         const offsetNum = offset ? parseInt(offset, 10) : 0;
@@ -149,10 +200,16 @@ let AdminController = class AdminController {
 exports.AdminController = AdminController;
 __decorate([
     (0, common_1.Get)('users'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get all users (admin only)' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all users with pagination and search (admin only)' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: 'Page number (1-based)', example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, description: 'Items per page', example: 15 }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false, description: 'Search by name, email or phone' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Users retrieved successfully' }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('search')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getAllUsers", null);
 __decorate([
@@ -208,6 +265,39 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getDailySummary", null);
 __decorate([
+    (0, common_1.Get)('reports/sales'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sales report between dates (admin only)' }),
+    (0, swagger_1.ApiQuery)({ name: 'from', required: false, description: 'Start date YYYY-MM-DD' }),
+    (0, swagger_1.ApiQuery)({ name: 'to', required: false, description: 'End date YYYY-MM-DD' }),
+    (0, swagger_1.ApiQuery)({ name: 'period', required: false, description: 'Preset: 7d (last 7 days), 30d (last 30 days)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Sales report retrieved successfully' }),
+    __param(0, (0, common_1.Query)('from')),
+    __param(1, (0, common_1.Query)('to')),
+    __param(2, (0, common_1.Query)('period')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getSalesReport", null);
+__decorate([
+    (0, common_1.Get)('products'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all products including inactive (admin only)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Products retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllProducts", null);
+__decorate([
+    (0, common_1.Patch)('products/:id/active'),
+    (0, swagger_1.ApiOperation)({ summary: 'Activate or deactivate product (admin only)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Product updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Product not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateProductActive", null);
+__decorate([
     (0, common_1.Get)('points/leaderboard'),
     (0, swagger_1.ApiOperation)({ summary: 'Get points leaderboard (admin only)' }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, description: 'Number of users to return', example: 50 }),
@@ -226,10 +316,11 @@ exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
     (0, swagger_1.ApiBearerAuth)(),
-    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(3, (0, typeorm_1.InjectRepository)(user_points_entity_1.UserPoints)),
+    __param(3, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(4, (0, typeorm_1.InjectRepository)(user_points_entity_1.UserPoints)),
     __metadata("design:paramtypes", [points_service_1.PointsService,
         orders_service_1.OrdersService,
+        products_service_1.ProductsService,
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], AdminController);
