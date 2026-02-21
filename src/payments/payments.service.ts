@@ -69,7 +69,7 @@ export class PaymentsService {
     },
   ) {
     if (!this.client || !this.preference) {
-      throw new BadRequestException('Mercado Pago is not configured. Please set MERCADO_PAGO_ACCESS_TOKEN in environment variables.');
+      throw new BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
     }
 
     // URLs para Mercado Pago (webhooks y redirección)
@@ -369,13 +369,13 @@ export class PaymentsService {
       if (type === 'payment') {
         const paymentId = webhookData?.id;
         if (!paymentId) {
-          return { success: false, message: 'Payment ID not found' };
+          return { success: false, message: 'ID de pago no encontrado' };
         }
 
         const mpPayment: any = await this.payment.get({ id: paymentId.toString() });
 
         if (!mpPayment) {
-          return { success: false, message: 'Payment not found in Mercado Pago' };
+          return { success: false, message: 'Pago no encontrado en Mercado Pago' };
         }
 
         // Buscar el pago por external_reference (mejor método) o paymentId
@@ -410,7 +410,7 @@ export class PaymentsService {
         }
 
         if (!payment) {
-          return { success: false, message: 'Payment record not found' };
+          return { success: false, message: 'Registro de pago no encontrado' };
         }
 
         // En este punto TypeScript sabe que payment no es null
@@ -547,7 +547,7 @@ export class PaymentsService {
         };
       }
 
-      return { success: true, message: 'Webhook processed (not a payment event)' };
+      return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
     } catch (error: any) {
       return { success: false, message: error.message };
     }

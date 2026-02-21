@@ -44,7 +44,7 @@ export class DbExceptionFilter implements ExceptionFilter {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         message: 'Error temporal de base de datos. Reintenta en unos segundos.',
-        error: 'Database temporarily unavailable',
+        error: 'Servicio no disponible',
       });
       return;
     }
@@ -55,7 +55,7 @@ export class DbExceptionFilter implements ExceptionFilter {
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Error de base de datos',
-      error: 'Internal Server Error',
+      error: 'Error interno del servidor',
     });
   }
 }

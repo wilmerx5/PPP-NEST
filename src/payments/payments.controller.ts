@@ -192,7 +192,7 @@ export class PaymentsController {
     try {
       // Validar firma del webhook
       if (!this.validateWebhookSignature(req, body)) {
-        throw new UnauthorizedException('Invalid webhook signature. Request rejected for security reasons.');
+        throw new UnauthorizedException('Firma del webhook inválida. Solicitud rechazada por seguridad.');
       }
       // Mercado Pago puede enviar datos de diferentes formas:
       // 1. POST con body: { type: 'payment', data: { id: '123' } }
@@ -235,9 +235,9 @@ export class PaymentsController {
         return await this.paymentsService.handleWebhook(data);
       }
 
-      return { success: false, message: 'No valid webhook data received' };
+      return { success: false, message: 'No se recibieron datos válidos del webhook' };
     } catch (error: any) {
-      return { success: false, message: error.message || 'Error processing webhook' };
+      return { success: false, message: error.message || 'Error al procesar el webhook' };
     }
   }
 

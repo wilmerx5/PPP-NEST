@@ -57,7 +57,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    if (!user.isActive) throw new UnauthorizedException('Inactive User, pleas active your user');
+    if (!user.isActive) throw new UnauthorizedException('Tu cuenta no está activa. Actívala desde el enlace que enviamos a tu correo.');
 
 
     const tokens = this.getJwtTokens({ id: user.id });
@@ -166,7 +166,7 @@ export class AuthService {
     await this.mailService.sendVerificationCode(email, token);
 
     return {
-      message: 'A new verification code has been sent',
+      message: 'Se ha enviado un nuevo código de verificación',
       email,
     };
   }
@@ -182,14 +182,14 @@ export class AuthService {
     if (!user) {
       // For security, do not reveal if the email exists
       return {
-        message: 'If the email exists and the account is not active, a new activation link will be sent',
+        message: 'Si el correo está registrado y la cuenta no está activa, te enviaremos un nuevo enlace de activación',
       };
     }
 
     // If user is already active, do nothing
     if (user.isActive) {
       return {
-        message: 'This account is already active',
+        message: 'Esta cuenta ya está activa',
       };
     }
 
@@ -206,7 +206,7 @@ export class AuthService {
     await this.mailService.sendActivateUser(user.email, user.id, token);
 
     return {
-      message: 'If the email exists and the account is not active, a new activation link will be sent',
+      message: 'Si el correo está registrado y la cuenta no está activa, te enviaremos un nuevo enlace de activación',
     };
   }
 
@@ -236,7 +236,7 @@ export class AuthService {
       where: { user: { id: idUser }, token: otp, type: 'activation', isUsed: false },
     });
 
-    if (!token) throw new BadRequestException('Invalid token');
+    if (!token) throw new BadRequestException('Código inválido');
 
     if (token.expiresAt < new Date())
       throw new BadRequestException('Token expired');
@@ -277,7 +277,7 @@ return Object.values(ValidRoles);
     if (!user) {
       // For security, do not reveal if the email exists
       return {
-        message: 'If the email exists, a recovery code will be sent',
+        message: 'Si el correo está registrado, te enviaremos un código de recuperación',
       };
     }
 
@@ -294,7 +294,7 @@ return Object.values(ValidRoles);
     await this.mailService.sendPasswordResetCode(email, token);
 
     return {
-      message: 'If the email exists, a recovery code will be sent',
+      message: 'Si el correo está registrado, te enviaremos un código de recuperación',
     };
   }
 
@@ -307,7 +307,7 @@ return Object.values(ValidRoles);
     });
 
     if (!user) {
-      throw new BadRequestException('Email not found');
+      throw new BadRequestException('Correo no encontrado');
     }
 
     // Find password reset token
@@ -328,18 +328,18 @@ return Object.values(ValidRoles);
 
       if (tokenByCode) {
         if (tokenByCode.isUsed) {
-          throw new BadRequestException('This code has already been used. Please request a new code.');
+          throw new BadRequestException('Este código ya fue usado. Solicita un nuevo código.');
         }
         if (tokenByCode.expiresAt < new Date()) {
-          throw new BadRequestException('Code expired. Please request a new code.');
+          throw new BadRequestException('El código expiró. Solicita un nuevo código.');
         }
       }
 
-      throw new BadRequestException('Invalid code');
+      throw new BadRequestException('Código inválido');
     }
 
     if (token.expiresAt < new Date()) {
-      throw new BadRequestException('Code expired');
+      throw new BadRequestException('El código expiró');
     }
 
     // Mark token as used
@@ -351,7 +351,7 @@ return Object.values(ValidRoles);
     await this.userRepository.save(user);
 
     return {
-      message: 'Password updated successfully',
+      message: 'Contraseña actualizada correctamente',
     };
   }
 }

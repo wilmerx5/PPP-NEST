@@ -93,7 +93,7 @@ export class AdminController {
   ) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     user.isActive = body.isActive;
@@ -123,11 +123,11 @@ export class AdminController {
       const { pointsCount, description } = body;
 
       if (!pointsCount) {
-        throw new BadRequestException('pointsCount is required');
+        throw new BadRequestException('La cantidad de puntos es obligatoria');
       }
 
       if (pointsCount < 1 || pointsCount > 100) {
-        throw new BadRequestException('pointsCount must be between 1 and 100');
+        throw new BadRequestException('La cantidad de puntos debe estar entre 1 y 100');
       }
 
       const pointsRecords: UserPoints[] = [];
@@ -173,7 +173,7 @@ export class AdminController {
   async getUserPoints(@Param('userId') userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('Usuario no encontrado');
     }
 
     const totalPoints = await this.pointsService.getTotalPoints(userId);
@@ -193,13 +193,13 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
   async getOrdersByDate(@Query('date') date: string) {
     if (!date) {
-      throw new BadRequestException('Date parameter is required (YYYY-MM-DD)');
+      throw new BadRequestException('El parámetro fecha es obligatorio (formato YYYY-MM-DD)');
     }
     
     // Validate date format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
     }
 
     const orders = await this.ordersService.findOrdersByDate(date);
@@ -214,7 +214,7 @@ export class AdminController {
     if (date) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
-        throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+        throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
       }
     }
 
@@ -250,7 +250,7 @@ export class AdminController {
       fromStr = from;
       toStr = to;
     } else {
-      throw new BadRequestException('Provide either period=7d|30d or from+to (YYYY-MM-DD)');
+      throw new BadRequestException('Indica periodo=7d|30d o las fechas from y to (YYYY-MM-DD)');
     }
 
     return this.ordersService.getSalesReport(fromStr, toStr);
@@ -298,10 +298,10 @@ export class AdminController {
     } else if (from && to && dateRegex.test(from) && dateRegex.test(to)) {
       const startRange = getBogotaDateRange(from);
       const endRange = getBogotaDateRange(to);
-      if (startRange.start > endRange.end) throw new BadRequestException('from must be before or equal to to');
+      if (startRange.start > endRange.end) throw new BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
       qb = qb.where('p.createdAt >= :start', { start: startRange.start }).andWhere('p.createdAt <= :end', { end: endRange.end });
     } else {
-      throw new BadRequestException('Provide date=YYYY-MM-DD, from+to, or allTime=1');
+      throw new BadRequestException('Indica date=YYYY-MM-DD, from y to, o allTime=1');
     }
 
     const points = await qb.getMany();
@@ -327,19 +327,19 @@ export class AdminController {
     let endUtc: Date;
 
     if (date) {
-      if (!dateRegex.test(date)) throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      if (!dateRegex.test(date)) throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
       const range = getBogotaDateRange(date);
       startUtc = range.start;
       endUtc = range.end;
     } else if (from && to) {
-      if (!dateRegex.test(from) || !dateRegex.test(to)) throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      if (!dateRegex.test(from) || !dateRegex.test(to)) throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
       const startRange = getBogotaDateRange(from);
       const endRange = getBogotaDateRange(to);
       startUtc = startRange.start;
       endUtc = endRange.end;
-      if (startUtc > endUtc) throw new BadRequestException('from must be before or equal to to');
+      if (startUtc > endUtc) throw new BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
     } else {
-      throw new BadRequestException('Provide date=YYYY-MM-DD or from and to (YYYY-MM-DD)');
+      throw new BadRequestException('Indica date=YYYY-MM-DD o from y to (YYYY-MM-DD)');
     }
 
     const points = await this.pointsRepo.find({
@@ -381,7 +381,7 @@ export class AdminController {
   async searchPointByCode(@Query('code') code: string) {
     const trimmed = code?.trim();
     if (!trimmed || trimmed.length < 2) {
-      throw new BadRequestException('Provide code with at least 2 characters');
+      throw new BadRequestException('El código debe tener al menos 2 caracteres');
     }
 
     const points = await this.pointsRepo
@@ -423,7 +423,7 @@ export class AdminController {
   @ApiResponse({ status: 404, description: 'Point not found' })
   async invalidatePoint(@Param('id') id: string) {
     const point = await this.pointsRepo.findOne({ where: { id: parseInt(id, 10) } });
-    if (!point) throw new NotFoundException('Point not found');
+    if (!point) throw new NotFoundException('Punto no encontrado');
     point.isCanceled = true;
     await this.pointsRepo.save(point);
     return { success: true, message: 'Punto invalidado', point: { id: point.id, code: point.code, isCanceled: true } };
@@ -444,11 +444,11 @@ export class AdminController {
     const offsetNum = offset ? parseInt(offset, 10) : 0;
 
     if (limitNum < 1 || limitNum > 500) {
-      throw new BadRequestException('Limit must be between 1 and 500');
+      throw new BadRequestException('El límite debe estar entre 1 y 500');
     }
 
     if (offsetNum < 0) {
-      throw new BadRequestException('Offset must be >= 0');
+      throw new BadRequestException('El desplazamiento debe ser mayor o igual a 0');
     }
 
     return await this.pointsService.getLeaderboard(limitNum, offsetNum, search);

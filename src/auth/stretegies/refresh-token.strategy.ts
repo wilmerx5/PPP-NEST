@@ -26,9 +26,9 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
 
         console.log(id)
         const user = await this.userRepository.findOneBy({ id })
-        if (!user) throw new UnauthorizedException('invalid TOken')
+        if (!user) throw new UnauthorizedException('Token inválido')
             console.log(user)
-        if (!user.isActive) throw new UnauthorizedException('User not active')
+        if (!user.isActive) throw new UnauthorizedException('Usuario no activo')
 
         return user;
     }

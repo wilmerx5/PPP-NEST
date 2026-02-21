@@ -168,7 +168,7 @@ export class ProductsService {
   async updateActive(id: number, isActive: boolean) {
     const product = await this.productRepo.findOne({ where: { id } });
     if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró el producto con ID ${id}`);
     }
     product.isActive = isActive;
     await this.productRepo.save(product);
@@ -230,7 +230,7 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró el producto con ID ${id}`);
     }
 
     // Update basic fields
@@ -291,7 +291,7 @@ export class ProductsService {
     });
 
     if (!updated) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró el producto con ID ${id}`);
     }
 
     return {

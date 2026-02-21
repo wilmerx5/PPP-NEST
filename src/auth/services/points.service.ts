@@ -214,7 +214,7 @@ export class PointsService {
     code: string
   ): Promise<UserPoints> {
     if (!code || code.length !== 12) {
-      throw new BadRequestException('Point code must be exactly 12 characters');
+      throw new BadRequestException('El código de punto debe tener exactamente 12 caracteres');
     }
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -228,17 +228,17 @@ export class PointsService {
     });
 
     if (!point) {
-      throw new NotFoundException('Point code not found. Please verify the code from your receipt.');
+      throw new NotFoundException('Código de punto no encontrado. Verifica el código de tu recibo.');
     }
 
     // Check if already used
     if (point.isUsed) {
-      throw new ConflictException('This point code has already been used.');
+      throw new ConflictException('Este código de punto ya fue usado.');
     }
 
     // Check if already assigned to another user
     if (point.userId && point.userId !== userId) {
-      throw new ConflictException('This point code has already been registered by another user.');
+      throw new ConflictException('Este código ya fue registrado por otro usuario.');
     }
 
     // Assign to user and mark as used
@@ -510,7 +510,7 @@ export class PointsService {
     }
 
     if (exists) {
-      throw new Error('Failed to generate unique redemption code after multiple attempts');
+      throw new Error('No se pudo generar un código de premio único después de varios intentos');
     }
 
     return code!;
@@ -532,7 +532,7 @@ export class PointsService {
     });
 
     if (!redemption) {
-      throw new NotFoundException('Redemption code not found');
+      throw new NotFoundException('Código de premio no encontrado');
     }
 
     if (redemption.isUsed) {

@@ -120,7 +120,7 @@ export class ProductsController {
   async findOne(@Param('id') id: string) {
     const product = await this.productsService.findOne(+id);
     if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró el producto con ID ${id}`);
     }
     return product;
   }

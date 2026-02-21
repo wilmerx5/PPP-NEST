@@ -129,7 +129,7 @@ export class OrdersService {
     let finalDeliveryFee = 0;
     if (orderType === 'delivery') {
       if (deliveryFee == null) {
-        throw new BadRequestException('Delivery fee is required for delivery orders');
+        throw new BadRequestException('El domicilio es obligatorio para pedidos a domicilio');
       }
       finalDeliveryFee = deliveryFee;
     }
@@ -158,7 +158,7 @@ export class OrdersService {
 
       if (existingOrder) {
         throw new InternalServerErrorException(
-          'Order number conflict detected. Please try again.'
+          'Hubo un conflicto al generar el número de orden. Intenta de nuevo.'
         );
       }
 
@@ -392,7 +392,7 @@ export class OrdersService {
       // Check if it's a duplicate key error
       if (error?.code === 'ER_DUP_ENTRY' || error?.message?.includes('duplicate')) {
         throw new BadRequestException(
-          'An order with this number already exists. Please try again.'
+          'Ya existe una orden con ese número. Intenta de nuevo.'
         );
       }
       
@@ -555,7 +555,7 @@ export class OrdersService {
   async removeOrder(orderId: number) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
 
-    if (!order) throw new Error(`Order with ID ${orderId} not found`);
+    if (!order) throw new Error(`No se encontró la orden con ID ${orderId}`);
 
     order.orderStatus = 'canceled';
     await this.orderRepo.save(order);
@@ -571,7 +571,7 @@ export class OrdersService {
 
     return {
       success: true,
-      message: `Order #${orderId} marked as canceled`,
+      message: `Orden #${orderId} cancelada`,
     };
   }
 
@@ -589,7 +589,7 @@ export class OrdersService {
       relations: ['items', 'items.attributes'],
     });
 
-    if (!order) throw new Error(`Order not found`);
+    if (!order) throw new Error('No se encontró la orden');
 
     for (const item of order.items) {
       await this.attrRepo.delete({ orderItem: { id: item.id } });
@@ -610,7 +610,7 @@ export class OrdersService {
       this.gateway.emitOrdersUpdates("deleted_order", order);
       return {
         success: true,
-        message: `Order #${orderId} was canceled because no items remained`,
+        message: `Orden #${orderId} cancelada porque no quedaron productos`,
       };
     }
 
@@ -723,7 +723,7 @@ export class OrdersService {
     const order = await this.orderRepo.findOne({
       where: { id: orderId, orderStatus: Not('canceled') },
     });
-    if (!order) throw new NotFoundException('Order not found or canceled');
+    if (!order) throw new NotFoundException('Orden no encontrada o cancelada');
     const extra = this.extraRepo.create({
       order: { id: orderId },
       title: dto.title,
@@ -751,7 +751,7 @@ export class OrdersService {
       where: { id: extraId },
       relations: ['order'],
     });
-    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Extra not found or does not belong to order');
+    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
     await this.extraRepo.remove(extra);
     const full = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -772,7 +772,7 @@ export class OrdersService {
       where: { id: extraId },
       relations: ['order'],
     });
-    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Extra not found or does not belong to order');
+    if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
     if (dto.title !== undefined) extra.title = dto.title;
     if (dto.description !== undefined) extra.description = dto.description;
     if (dto.amount !== undefined) extra.amount = dto.amount;
@@ -805,7 +805,7 @@ export class OrdersService {
    */
   async updateOrderGeneral(orderId: number, dto: UpdateOrderGeneralDto) {
     const order = await this.orderRepo.findOneBy({ id: orderId });
-    if (!order) throw new Error('Order not found');
+    if (!order) throw new Error('No se encontró la orden');
 
     // Check if order is being canceled
     const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
@@ -986,7 +986,7 @@ export class OrdersService {
     });
 
     if (!order) {
-      throw new BadRequestException('Order not found');
+      throw new BadRequestException('Orden no encontrada');
     }
 
     // Check if order already has a redemption code
@@ -1298,13 +1298,13 @@ export class OrdersService {
   async getSalesReport(from: string, to: string): Promise<any> {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(from) || !dateRegex.test(to)) {
-      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+      throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
     }
 
     const { start: startUtc } = getBogotaDateRange(from);
     const { end: endUtc } = getBogotaDateRange(to);
     if (startUtc > endUtc) {
-      throw new BadRequestException('from date must be before or equal to to date');
+      throw new BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
     }
 
     const orders = await this.orderRepo.find({
