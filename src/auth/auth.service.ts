@@ -38,16 +38,26 @@ export class AuthService {
 
 
   async login(logInUserDTO: LogInUserDTO) {
-    const { password, email } = logInUserDTO
+    const { password, email } = logInUserDTO;
 
-    const user = await this.userRepository.findOne({ where: { email }, select: { email: true, password: true, id: true, isActive: true } })
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: { email: true, password: true, id: true, isActive: true, provider: true },
+    });
 
+    if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
-    if (!user) throw new UnauthorizedException("invalid credential")
+    if (user.provider === 'google' || user.password == null || user.password === '') {
+      throw new UnauthorizedException(
+        'Esta cuenta se registró con Google. Inicia sesión usando el botón "Continuar con Google".',
+      );
+    }
 
-    if (!bcrypt.compareSync(password, user.password)) throw new UnauthorizedException("invalid credential")
+    if (!bcrypt.compareSync(password, user.password)) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
 
-    if (!user.isActive) throw new UnauthorizedException("Inactive User, pleas active your user")
+    if (!user.isActive) throw new UnauthorizedException('Inactive User, pleas active your user');
 
 
     const tokens = this.getJwtTokens({ id: user.id });
