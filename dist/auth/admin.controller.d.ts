@@ -72,6 +72,63 @@ export declare class AdminController {
             isActive: boolean;
         };
     }>;
+    getPointsSummary(date?: string, from?: string, to?: string, allTime?: string): Promise<{
+        total: number;
+        used: number;
+        unused: number;
+    }>;
+    getPointsRecords(date?: string, from?: string, to?: string): Promise<{
+        records: {
+            id: number;
+            code: string;
+            userId: string | null;
+            user: {
+                id: string;
+                fullName: string;
+                email: string;
+            } | null;
+            orderId: number | null;
+            orderDailyNumber: number | null;
+            orderCreatedAt: string | null;
+            type: "admin" | "automatic" | "manual";
+            isUsed: boolean;
+            isCanceled: boolean;
+            isRedeemed: boolean;
+            description: string | null;
+            createdAt: string;
+        }[];
+        total: number;
+    }>;
+    searchPointByCode(code: string): Promise<{
+        records: {
+            id: number;
+            code: string;
+            userId: string | null;
+            user: {
+                id: string;
+                fullName: string;
+                email: string;
+            } | null;
+            orderId: number | null;
+            orderDailyNumber: number | null;
+            orderCreatedAt: string | null;
+            type: "admin" | "automatic" | "manual";
+            isUsed: boolean;
+            isCanceled: boolean;
+            isRedeemed: boolean;
+            description: string | null;
+            createdAt: string;
+        }[];
+    }>;
+    invalidatePoint(id: string): Promise<{
+        success: boolean;
+        message: string;
+        point: {
+            id: number;
+            code: string;
+            isCanceled: boolean;
+        };
+    }>;
     getLeaderboard(limit?: string, offset?: string, search?: string): Promise<{
         users: Array<{
             userId: string;

@@ -41,7 +41,7 @@ let ProductsController = class ProductsController {
     async findOne(id) {
         const product = await this.productsService.findOne(+id);
         if (!product) {
-            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            throw new common_1.NotFoundException(`No se encontró el producto con ID ${id}`);
         }
         return product;
     }

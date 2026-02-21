@@ -51,14 +51,14 @@ let MailService = class MailService {
             await this.transporter.sendMail({
                 from: `"Pronto Pollo Portal" <${this.configService.get('MAIL_USER')}>`,
                 to: email,
-                subject: 'Your Verification Code',
+                subject: 'Tu código de verificación',
                 html: htmlBody,
             });
             return true;
         }
         catch (error) {
             console.error(error);
-            throw new common_1.InternalServerErrorException('Error sending email');
+            throw new common_1.InternalServerErrorException('Error al enviar el correo');
         }
     }
     async sendActivateUser(email, userId, code) {
@@ -71,37 +71,37 @@ let MailService = class MailService {
         <div style="text-align: center; margin-bottom: 30px;">
           <img src="${logoUrl}" alt="Pronto Pollo Portal" style="max-width: 200px; height: auto; margin-bottom: 20px;" />
         </div>
-        <h2 style="color: #333;">Activate Your Account</h2>
-        <p>Thank you for registering. To activate your account, please click the link below:</p>
+        <h2 style="color: #333;">Activa tu cuenta</h2>
+        <p>Gracias por registrarte. Para activar tu cuenta, haz clic en el siguiente enlace:</p>
         
         <a 
           href="${activationLink}" 
           style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 6px;">
-          Activate Account
+          Activar cuenta
         </a>
 
         <p style="margin-top: 20px;">
-          If the button doesn't work, copy and paste this link in your browser:
+          Si el botón no funciona, copia y pega este enlace en tu navegador:
         </p>
 
         <p style="color: #555; word-break: break-word;">
           ${activationLink}
         </p>
 
-        <p style="margin-top: 20px;">This activation link will expire in <strong>20 minutes</strong>.</p>
+        <p style="margin-top: 20px;">Este enlace de activación vence en <strong>20 minutos</strong>.</p>
       </div>
     `;
             await this.transporter.sendMail({
                 from: `"Pronto Pollo Portal" <${this.configService.get('MAIL_USER')}>`,
                 to: email,
-                subject: 'Activate Your Account',
+                subject: 'Activa tu cuenta',
                 html: htmlBody,
             });
             return true;
         }
         catch (error) {
             console.error(error);
-            throw new common_1.InternalServerErrorException('Error sending activation email');
+            throw new common_1.InternalServerErrorException('Error al enviar el correo de activación');
         }
     }
     async sendPasswordResetCode(email, code) {
@@ -136,7 +136,7 @@ let MailService = class MailService {
         }
         catch (error) {
             console.error(error);
-            throw new common_1.InternalServerErrorException('Error sending password reset email');
+            throw new common_1.InternalServerErrorException('Error al enviar el correo de recuperación de contraseña');
         }
     }
     async sendOrderConfirmation(email, orderNumber, customerName, items, total, orderType, address, phone, deliveryFee) {
@@ -282,7 +282,7 @@ let MailService = class MailService {
             if (error?.code === 'ETIMEDOUT' || /Greeting never received/i.test(String(error?.message))) {
                 console.error('   💡 Revisa: MAIL_HOST (ej: smtp.gmail.com), MAIL_PORT (465=SSL, 587=STARTTLS), firewall. En Gmail usa contraseña de aplicación.');
             }
-            throw new common_1.InternalServerErrorException('Error sending order confirmation email');
+            throw new common_1.InternalServerErrorException('Error al enviar el correo de confirmación del pedido');
         }
     }
     async sendNewOrderNotification(orderNumber, customerName, phone, address, orderType, items, total, deliveryFee) {

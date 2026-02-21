@@ -60,7 +60,7 @@ let PaymentsService = class PaymentsService {
     }
     async createPreference(orderData, items, totalAmount, customerInfo) {
         if (!this.client || !this.preference) {
-            throw new common_1.BadRequestException('Mercado Pago is not configured. Please set MERCADO_PAGO_ACCESS_TOKEN in environment variables.');
+            throw new common_1.BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
         }
         let mercadopagoFrontendUrl = this.configService.get('FRONTEND_URL_NGROK') ||
             this.configService.get('FRONTEND_URL') ||
@@ -280,11 +280,11 @@ let PaymentsService = class PaymentsService {
             if (type === 'payment') {
                 const paymentId = webhookData?.id;
                 if (!paymentId) {
-                    return { success: false, message: 'Payment ID not found' };
+                    return { success: false, message: 'ID de pago no encontrado' };
                 }
                 const mpPayment = await this.payment.get({ id: paymentId.toString() });
                 if (!mpPayment) {
-                    return { success: false, message: 'Payment not found in Mercado Pago' };
+                    return { success: false, message: 'Pago no encontrado en Mercado Pago' };
                 }
                 let payment = null;
                 if (mpPayment.external_reference) {
@@ -311,7 +311,7 @@ let PaymentsService = class PaymentsService {
                     });
                 }
                 if (!payment) {
-                    return { success: false, message: 'Payment record not found' };
+                    return { success: false, message: 'Registro de pago no encontrado' };
                 }
                 const foundPayment = payment;
                 let status = 'pending';
@@ -405,7 +405,7 @@ let PaymentsService = class PaymentsService {
                         : 'Payment processed but order not created yet',
                 };
             }
-            return { success: true, message: 'Webhook processed (not a payment event)' };
+            return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
         }
         catch (error) {
             return { success: false, message: error.message };

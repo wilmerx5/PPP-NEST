@@ -39,13 +39,20 @@ let AuthService = class AuthService {
     }
     async login(logInUserDTO) {
         const { password, email } = logInUserDTO;
-        const user = await this.userRepository.findOne({ where: { email }, select: { email: true, password: true, id: true, isActive: true } });
+        const user = await this.userRepository.findOne({
+            where: { email },
+            select: { email: true, password: true, id: true, isActive: true, provider: true },
+        });
         if (!user)
-            throw new common_1.UnauthorizedException("invalid credential");
-        if (!bcrypt.compareSync(password, user.password))
-            throw new common_1.UnauthorizedException("invalid credential");
+            throw new common_1.UnauthorizedException('Credenciales inválidas');
+        if (user.provider === 'google' || user.password == null || user.password === '') {
+            throw new common_1.UnauthorizedException('Esta cuenta se registró con Google. Inicia sesión usando el botón "Continuar con Google".');
+        }
+        if (!bcrypt.compareSync(password, user.password)) {
+            throw new common_1.UnauthorizedException('Credenciales inválidas');
+        }
         if (!user.isActive)
-            throw new common_1.UnauthorizedException("Inactive User, pleas active your user");
+            throw new common_1.UnauthorizedException('Tu cuenta no está activa. Actívala desde el enlace que enviamos a tu correo.');
         const tokens = this.getJwtTokens({ id: user.id });
         return { ...tokens, user };
     }
@@ -117,7 +124,7 @@ let AuthService = class AuthService {
         await this.verificationTokenRepository.save(newToken);
         await this.mailService.sendVerificationCode(email, token);
         return {
-            message: 'A new verification code has been sent',
+            message: 'Se ha enviado un nuevo código de verificación',
             email,
         };
     }
@@ -129,19 +136,19 @@ let AuthService = class AuthService {
         });
         if (!user) {
             return {
-                message: 'If the email exists and the account is not active, a new activation link will be sent',
+                message: 'Si el correo está registrado y la cuenta no está activa, te enviaremos un nuevo enlace de activación',
             };
         }
         if (user.isActive) {
             return {
-                message: 'This account is already active',
+                message: 'Esta cuenta ya está activa',
             };
         }
         await this.verificationTokenRepository.update({ user: { id: user.id }, type: 'activation', isUsed: false }, { isUsed: true });
         const token = await this.generateAndStoreToken(user, 'activation');
         await this.mailService.sendActivateUser(user.email, user.id, token);
         return {
-            message: 'If the email exists and the account is not active, a new activation link will be sent',
+            message: 'Si el correo está registrado y la cuenta no está activa, te enviaremos un nuevo enlace de activación',
         };
     }
     async activateUser(validateTokenDTO) {
@@ -162,7 +169,7 @@ let AuthService = class AuthService {
             where: { user: { id: idUser }, token: otp, type: 'activation', isUsed: false },
         });
         if (!token)
-            throw new common_1.BadRequestException('Invalid token');
+            throw new common_1.BadRequestException('Código inválido');
         if (token.expiresAt < new Date())
             throw new common_1.BadRequestException('Token expired');
         token.isUsed = true;
@@ -185,14 +192,14 @@ let AuthService = class AuthService {
         });
         if (!user) {
             return {
-                message: 'If the email exists, a recovery code will be sent',
+                message: 'Si el correo está registrado, te enviaremos un código de recuperación',
             };
         }
         await this.verificationTokenRepository.update({ user: { id: user.id }, type: 'password-reset', isUsed: false }, { isUsed: true });
         const token = await this.generateAndStoreToken(user, 'password-reset');
         await this.mailService.sendPasswordResetCode(email, token);
         return {
-            message: 'If the email exists, a recovery code will be sent',
+            message: 'Si el correo está registrado, te enviaremos un código de recuperación',
         };
     }
     async resetPassword(resetPasswordDTO) {
@@ -202,7 +209,7 @@ let AuthService = class AuthService {
             select: { id: true, email: true, password: true },
         });
         if (!user) {
-            throw new common_1.BadRequestException('Email not found');
+            throw new common_1.BadRequestException('Correo no encontrado');
         }
         const token = await this.verificationTokenRepository.findOne({
             where: {
@@ -218,23 +225,23 @@ let AuthService = class AuthService {
             });
             if (tokenByCode) {
                 if (tokenByCode.isUsed) {
-                    throw new common_1.BadRequestException('This code has already been used. Please request a new code.');
+                    throw new common_1.BadRequestException('Este código ya fue usado. Solicita un nuevo código.');
                 }
                 if (tokenByCode.expiresAt < new Date()) {
-                    throw new common_1.BadRequestException('Code expired. Please request a new code.');
+                    throw new common_1.BadRequestException('El código expiró. Solicita un nuevo código.');
                 }
             }
-            throw new common_1.BadRequestException('Invalid code');
+            throw new common_1.BadRequestException('Código inválido');
         }
         if (token.expiresAt < new Date()) {
-            throw new common_1.BadRequestException('Code expired');
+            throw new common_1.BadRequestException('El código expiró');
         }
         token.isUsed = true;
         await this.verificationTokenRepository.save(token);
         user.password = bcrypt.hashSync(newPassword, 10);
         await this.userRepository.save(user);
         return {
-            message: 'Password updated successfully',
+            message: 'Contraseña actualizada correctamente',
         };
     }
 };

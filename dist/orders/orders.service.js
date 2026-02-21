@@ -78,6 +78,18 @@ let OrdersService = class OrdersService {
         if (!hasItems && !hasExtras) {
             throw new common_1.BadRequestException('Order must have at least one item or one extra');
         }
+        if (orderType === 'table' && address != null && String(address).trim() !== '') {
+            const activeForTable = await this.orderRepo.findOne({
+                where: {
+                    orderType: 'table',
+                    address: String(address).trim(),
+                    orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+                },
+            });
+            if (activeForTable) {
+                throw new common_1.BadRequestException('Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.');
+            }
+        }
         if (hasItems && items.length > 0) {
             const productIds = [...new Set(items.map((i) => i.productId))];
             const products = await this.productRepo.find({
@@ -93,7 +105,7 @@ let OrdersService = class OrdersService {
         let finalDeliveryFee = 0;
         if (orderType === 'delivery') {
             if (deliveryFee == null) {
-                throw new common_1.BadRequestException('Delivery fee is required for delivery orders');
+                throw new common_1.BadRequestException('El domicilio es obligatorio para pedidos a domicilio');
             }
             finalDeliveryFee = deliveryFee;
         }
@@ -109,7 +121,7 @@ let OrdersService = class OrdersService {
                 },
             });
             if (existingOrder) {
-                throw new common_1.InternalServerErrorException('Order number conflict detected. Please try again.');
+                throw new common_1.InternalServerErrorException('Hubo un conflicto al generar el número de orden. Intenta de nuevo.');
             }
             const order = queryRunner.manager.create(order_entity_1.Order, {
                 customerName,
@@ -283,7 +295,7 @@ let OrdersService = class OrdersService {
         catch (error) {
             await queryRunner.rollbackTransaction();
             if (error?.code === 'ER_DUP_ENTRY' || error?.message?.includes('duplicate')) {
-                throw new common_1.BadRequestException('An order with this number already exists. Please try again.');
+                throw new common_1.BadRequestException('Ya existe una orden con ese número. Intenta de nuevo.');
             }
             if (error instanceof common_1.InternalServerErrorException) {
                 throw error;
@@ -397,7 +409,7 @@ let OrdersService = class OrdersService {
     async removeOrder(orderId) {
         const order = await this.orderRepo.findOne({ where: { id: orderId } });
         if (!order)
-            throw new Error(`Order with ID ${orderId} not found`);
+            throw new Error(`No se encontró la orden con ID ${orderId}`);
         order.orderStatus = 'canceled';
         await this.orderRepo.save(order);
         try {
@@ -408,7 +420,7 @@ let OrdersService = class OrdersService {
         this.gateway.emitOrdersUpdates("deleted_order", order);
         return {
             success: true,
-            message: `Order #${orderId} marked as canceled`,
+            message: `Orden #${orderId} cancelada`,
         };
     }
     async updateOrderItems(orderId, dto) {
@@ -417,7 +429,7 @@ let OrdersService = class OrdersService {
             relations: ['items', 'items.attributes'],
         });
         if (!order)
-            throw new Error(`Order not found`);
+            throw new Error('No se encontró la orden');
         for (const item of order.items) {
             await this.attrRepo.delete({ orderItem: { id: item.id } });
             await this.itemRepo.delete(item.id);
@@ -435,7 +447,7 @@ let OrdersService = class OrdersService {
             this.gateway.emitOrdersUpdates("deleted_order", order);
             return {
                 success: true,
-                message: `Order #${orderId} was canceled because no items remained`,
+                message: `Orden #${orderId} cancelada porque no quedaron productos`,
             };
         }
         const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
@@ -518,7 +530,7 @@ let OrdersService = class OrdersService {
             where: { id: orderId, orderStatus: (0, typeorm_2.Not)('canceled') },
         });
         if (!order)
-            throw new common_1.NotFoundException('Order not found or canceled');
+            throw new common_1.NotFoundException('Orden no encontrada o cancelada');
         const extra = this.extraRepo.create({
             order: { id: orderId },
             title: dto.title,
@@ -543,7 +555,7 @@ let OrdersService = class OrdersService {
             relations: ['order'],
         });
         if (!extra || extra.order?.id !== orderId)
-            throw new common_1.NotFoundException('Extra not found or does not belong to order');
+            throw new common_1.NotFoundException('Adicional no encontrado o no pertenece a esta orden');
         await this.extraRepo.remove(extra);
         const full = await this.orderRepo.findOne({
             where: { id: orderId },
@@ -561,7 +573,7 @@ let OrdersService = class OrdersService {
             relations: ['order'],
         });
         if (!extra || extra.order?.id !== orderId)
-            throw new common_1.NotFoundException('Extra not found or does not belong to order');
+            throw new common_1.NotFoundException('Adicional no encontrado o no pertenece a esta orden');
         if (dto.title !== undefined)
             extra.title = dto.title;
         if (dto.description !== undefined)
@@ -584,7 +596,7 @@ let OrdersService = class OrdersService {
     async updateOrderGeneral(orderId, dto) {
         const order = await this.orderRepo.findOneBy({ id: orderId });
         if (!order)
-            throw new Error('Order not found');
+            throw new Error('No se encontró la orden');
         const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
         if (dto.customerName !== undefined)
             order.customerName = dto.customerName;
@@ -711,7 +723,7 @@ let OrdersService = class OrdersService {
             relations: ['items', 'items.product'],
         });
         if (!order) {
-            throw new common_1.BadRequestException('Order not found');
+            throw new common_1.BadRequestException('Orden no encontrada');
         }
         if (order.redemptionCode) {
             throw new common_1.BadRequestException('This order already has a redemption prize applied');
@@ -783,6 +795,16 @@ let OrdersService = class OrdersService {
             this.gateway.emitOrdersUpdates("updated_order_items", formatted);
         }
         return order;
+    }
+    async getOrdersBrief(orderIds) {
+        if (!orderIds?.length)
+            return [];
+        const uniq = [...new Set(orderIds)];
+        const orders = await this.orderRepo.find({
+            where: { id: (0, typeorm_2.In)(uniq) },
+            select: ['id', 'dailyOrderNumber', 'createdAt'],
+        });
+        return orders;
     }
     async findOrdersByDate(date) {
         const [year, month, day] = date.split('-').map(Number);
@@ -911,12 +933,12 @@ let OrdersService = class OrdersService {
     async getSalesReport(from, to) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(from) || !dateRegex.test(to)) {
-            throw new common_1.BadRequestException('Invalid date format. Use YYYY-MM-DD');
+            throw new common_1.BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
         }
         const { start: startUtc } = (0, date_util_1.getBogotaDateRange)(from);
         const { end: endUtc } = (0, date_util_1.getBogotaDateRange)(to);
         if (startUtc > endUtc) {
-            throw new common_1.BadRequestException('from date must be before or equal to to date');
+            throw new common_1.BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
         }
         const orders = await this.orderRepo.find({
             where: {
@@ -925,11 +947,20 @@ let OrdersService = class OrdersService {
             },
             relations: ['items', 'items.product', 'extras'],
         });
-        const allProducts = await this.productRepo.find();
+        const allProducts = await this.productRepo.find({ relations: ['categories'] });
         let totalSubtotal = 0;
         let totalDeliveryFees = 0;
         let totalPremioDiscounts = 0;
+        let totalItemsSold = 0;
+        let ordersWithPremio = 0;
         const ordersByType = {
+            delivery: 0,
+            pickup: 0,
+            table: 0,
+            counter: 0,
+            rappi: 0,
+        };
+        const revenueByOrderType = {
             delivery: 0,
             pickup: 0,
             table: 0,
@@ -938,10 +969,23 @@ let OrdersService = class OrdersService {
         };
         const productsSold = {};
         const dailyBreakdown = {};
+        const hourlyBreakdown = {};
+        for (let h = 0; h < 24; h++)
+            hourlyBreakdown[h] = { orders: 0, total: 0 };
+        const TICKET_BUCKETS = [0, 20000, 50000, 100000, 200000, Infinity];
+        const ticketDistribution = [
+            { min: 0, max: 20000, label: 'Hasta $20k', count: 0 },
+            { min: 20000, max: 50000, label: '$20k - $50k', count: 0 },
+            { min: 50000, max: 100000, label: '$50k - $100k', count: 0 },
+            { min: 100000, max: 200000, label: '$100k - $200k', count: 0 },
+            { min: 200000, max: Infinity, label: 'Más de $200k', count: 0 },
+        ];
+        const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         for (const order of orders) {
             const orderDate = (0, date_fns_tz_1.formatInTimeZone)(order.createdAt, 'America/Bogota', 'yyyy-MM-dd');
+            const dayOfWeek = DAY_NAMES[new Date(orderDate + 'T12:00:00').getDay()];
             if (!dailyBreakdown[orderDate]) {
-                dailyBreakdown[orderDate] = { total: 0, orders: 0 };
+                dailyBreakdown[orderDate] = { total: 0, orders: 0, dayOfWeek };
             }
             dailyBreakdown[orderDate].orders += 1;
             let orderSubtotal = 0;
@@ -953,12 +997,16 @@ let OrdersService = class OrdersService {
                 const product = allProducts.find(p => p.id === item.product.id);
                 if (product) {
                     orderSubtotal += Number(product.price);
+                    totalItemsSold += 1;
+                    const cat = product.categories?.[0];
                     if (!productsSold[product.code]) {
                         productsSold[product.code] = {
                             code: product.code,
                             name: product.name,
                             quantity: 0,
                             totalRevenue: 0,
+                            categoryId: cat?.id,
+                            categoryName: cat?.name,
                         };
                     }
                     productsSold[product.code].quantity += 1;
@@ -973,6 +1021,7 @@ let OrdersService = class OrdersService {
                 totalDeliveryFees += orderDelivery;
             }
             if (order.redemptionCode) {
+                ordersWithPremio += 1;
                 const halfChickenItem = order.items.find(item => item.product && (item.product.code === 2 || item.product.code === 5));
                 if (halfChickenItem?.product) {
                     const product = allProducts.find(p => p.id === halfChickenItem.product.id);
@@ -989,15 +1038,121 @@ let OrdersService = class OrdersService {
             const orderTotal = orderSubtotal + orderDelivery - orderPremio;
             dailyBreakdown[orderDate].total += orderTotal;
             ordersByType[order.orderType] = (ordersByType[order.orderType] || 0) + 1;
+            const ot = order.orderType;
+            revenueByOrderType[ot] = (revenueByOrderType[ot] || 0) + orderTotal;
+            const hour = parseInt((0, date_fns_tz_1.formatInTimeZone)(order.createdAt, 'America/Bogota', 'H'), 10);
+            hourlyBreakdown[hour].orders += 1;
+            hourlyBreakdown[hour].total += orderTotal;
+            const bucketIndex = TICKET_BUCKETS.findIndex((max, i) => {
+                const min = i === 0 ? 0 : TICKET_BUCKETS[i - 1];
+                return orderTotal >= min && orderTotal < max;
+            });
+            if (bucketIndex >= 0 && bucketIndex < ticketDistribution.length) {
+                ticketDistribution[bucketIndex].count += 1;
+            }
         }
         const totalRevenue = totalSubtotal + totalDeliveryFees - totalPremioDiscounts;
         const totalOrders = orders.length;
         const dailyArray = Object.entries(dailyBreakdown)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, data]) => ({ date, ...data }));
+        const productsArray = Object.values(productsSold).sort((a, b) => b.quantity - a.quantity);
+        const byCategory = new Map();
+        for (const p of productsArray) {
+            const cid = p.categoryId ?? 0;
+            const cat = byCategory.get(cid) ?? [];
+            cat.push(p);
+            byCategory.set(cid, cat);
+        }
+        const mostOrderedByCategory = Array.from(byCategory.entries())
+            .filter(([cid]) => cid > 0)
+            .map(([categoryId, prods]) => {
+            const sorted = [...prods].sort((a, b) => b.quantity - a.quantity);
+            const top = sorted[0];
+            const catName = top.categoryName ?? 'Sin categoría';
+            return { categoryId, categoryName: catName, topProduct: top };
+        })
+            .sort((a, b) => b.topProduct.quantity - a.topProduct.quantity);
+        const hourlyArray = Array.from({ length: 24 }, (_, h) => ({
+            hour: h,
+            hourLabel: `${h.toString().padStart(2, '0')}:00`,
+            orders: hourlyBreakdown[h].orders,
+            total: hourlyBreakdown[h].total,
+        }));
+        const bestDayByOrders = dailyArray.length
+            ? dailyArray.reduce((best, d) => (d.orders >= best.orders ? d : best), dailyArray[0])
+            : null;
+        const bestDayByRevenue = dailyArray.length
+            ? dailyArray.reduce((best, d) => (d.total >= best.total ? d : best), dailyArray[0])
+            : null;
+        const worstDayByOrders = dailyArray.length
+            ? dailyArray.reduce((worst, d) => (d.orders <= worst.orders ? d : worst), dailyArray[0])
+            : null;
+        const averageTicketByOrderType = {};
+        for (const [type, count] of Object.entries(ordersByType)) {
+            const rev = revenueByOrderType[type] ?? 0;
+            averageTicketByOrderType[type] = count > 0 ? rev / count : 0;
+        }
+        let previousPeriod = null;
+        const fromDate = new Date(from + 'T12:00:00');
+        const toDate = new Date(to + 'T12:00:00');
+        const diffDays = Math.round((toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+        const prevEndDate = new Date(fromDate);
+        prevEndDate.setDate(prevEndDate.getDate() - 1);
+        const prevStartDate = new Date(prevEndDate);
+        prevStartDate.setDate(prevStartDate.getDate() - diffDays + 1);
+        const prevFrom = prevStartDate.toISOString().slice(0, 10);
+        const prevTo = prevEndDate.toISOString().slice(0, 10);
+        if (prevStartDate < prevEndDate) {
+            const { start: prevStartUtc } = (0, date_util_1.getBogotaDateRange)(prevFrom);
+            const { end: prevEndUtc } = (0, date_util_1.getBogotaDateRange)(prevTo);
+            const prevOrders = await this.orderRepo.find({
+                where: {
+                    createdAt: (0, typeorm_2.Between)(prevStartUtc, prevEndUtc),
+                    orderStatus: (0, typeorm_2.Not)('canceled'),
+                },
+                relations: ['items', 'items.product', 'extras'],
+            });
+            let prevTotalRevenue = 0;
+            for (const order of prevOrders) {
+                let orderSubtotal = 0;
+                let orderDelivery = 0;
+                let orderPremio = 0;
+                for (const item of order.items) {
+                    if (item.product) {
+                        const product = allProducts.find(p => p.id === item.product.id);
+                        if (product)
+                            orderSubtotal += Number(product.price);
+                    }
+                }
+                for (const ex of order.extras ?? []) {
+                    orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+                }
+                if (order.orderType === 'delivery' && order.deliveryFee)
+                    orderDelivery = Number(order.deliveryFee);
+                if (order.redemptionCode) {
+                    const halfChickenItem = order.items.find(item => item.product && (item.product.code === 2 || item.product.code === 5));
+                    if (halfChickenItem?.product) {
+                        const product = allProducts.find(p => p.id === halfChickenItem.product.id);
+                        if (product)
+                            orderPremio = Number(product.price);
+                    }
+                }
+                prevTotalRevenue += orderSubtotal + orderDelivery - orderPremio;
+            }
+            previousPeriod = {
+                from: prevFrom,
+                to: prevTo,
+                totalOrders: prevOrders.length,
+                total: prevTotalRevenue,
+            };
+        }
         return {
             period: { from, to },
             totalOrders,
+            totalItemsSold,
+            averageItemsPerOrder: totalOrders > 0 ? totalItemsSold / totalOrders : 0,
+            ordersWithPremio,
             totals: {
                 subtotal: totalSubtotal,
                 deliveryFees: totalDeliveryFees,
@@ -1006,8 +1161,17 @@ let OrdersService = class OrdersService {
             },
             averagePerOrder: totalOrders > 0 ? totalRevenue / totalOrders : 0,
             ordersByType,
-            productsSold: Object.values(productsSold).sort((a, b) => b.quantity - a.quantity),
+            revenueByOrderType,
+            averageTicketByOrderType,
+            productsSold: productsArray,
+            mostOrderedByCategory,
             dailyBreakdown: dailyArray,
+            hourlyBreakdown: hourlyArray,
+            ticketDistribution,
+            bestDayByOrders: bestDayByOrders ? { date: bestDayByOrders.date, dayOfWeek: bestDayByOrders.dayOfWeek, orders: bestDayByOrders.orders, total: bestDayByOrders.total } : null,
+            bestDayByRevenue: bestDayByRevenue ? { date: bestDayByRevenue.date, dayOfWeek: bestDayByRevenue.dayOfWeek, orders: bestDayByRevenue.orders, total: bestDayByRevenue.total } : null,
+            worstDayByOrders: worstDayByOrders ? { date: worstDayByOrders.date, dayOfWeek: worstDayByOrders.dayOfWeek, orders: worstDayByOrders.orders, total: worstDayByOrders.total } : null,
+            previousPeriod,
         };
     }
 };

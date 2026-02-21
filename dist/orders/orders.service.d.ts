@@ -90,6 +90,11 @@ export declare class OrdersService {
     private mapOrderToGroupedFormat;
     validateRedemptionCodePublic(code: string): Promise<any>;
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;
+    getOrdersBrief(orderIds: number[]): Promise<Array<{
+        id: number;
+        dailyOrderNumber: number;
+        createdAt: Date;
+    }>>;
     findOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
     getSalesReport(from: string, to: string): Promise<any>;

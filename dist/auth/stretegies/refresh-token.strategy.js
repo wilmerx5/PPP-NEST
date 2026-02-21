@@ -38,10 +38,10 @@ let RefreshTokenStrategy = class RefreshTokenStrategy extends (0, passport_1.Pas
         console.log(id);
         const user = await this.userRepository.findOneBy({ id });
         if (!user)
-            throw new common_1.UnauthorizedException('invalid TOken');
+            throw new common_1.UnauthorizedException('Token inválido');
         console.log(user);
         if (!user.isActive)
-            throw new common_1.UnauthorizedException('User not active');
+            throw new common_1.UnauthorizedException('Usuario no activo');
         return user;
     }
 };

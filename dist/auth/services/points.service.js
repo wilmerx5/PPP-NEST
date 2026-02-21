@@ -129,7 +129,7 @@ let PointsService = class PointsService {
     }
     async registerPointByCode(userId, code) {
         if (!code || code.length !== 12) {
-            throw new common_1.BadRequestException('Point code must be exactly 12 characters');
+            throw new common_1.BadRequestException('El código de punto debe tener exactamente 12 caracteres');
         }
         const user = await this.userRepo.findOne({ where: { id: userId } });
         if (!user) {
@@ -139,13 +139,13 @@ let PointsService = class PointsService {
             where: { code: code.toUpperCase() },
         });
         if (!point) {
-            throw new common_1.NotFoundException('Point code not found. Please verify the code from your receipt.');
+            throw new common_1.NotFoundException('Código de punto no encontrado. Verifica el código de tu recibo.');
         }
         if (point.isUsed) {
-            throw new common_1.ConflictException('This point code has already been used.');
+            throw new common_1.ConflictException('Este código de punto ya fue usado.');
         }
         if (point.userId && point.userId !== userId) {
-            throw new common_1.ConflictException('This point code has already been registered by another user.');
+            throw new common_1.ConflictException('Este código ya fue registrado por otro usuario.');
         }
         point.userId = userId;
         point.isUsed = true;
@@ -294,7 +294,7 @@ let PointsService = class PointsService {
             attempts++;
         }
         if (exists) {
-            throw new Error('Failed to generate unique redemption code after multiple attempts');
+            throw new Error('No se pudo generar un código de premio único después de varios intentos');
         }
         return code;
     }
@@ -306,7 +306,7 @@ let PointsService = class PointsService {
             where: { code: code.toUpperCase() },
         });
         if (!redemption) {
-            throw new common_1.NotFoundException('Redemption code not found');
+            throw new common_1.NotFoundException('Código de premio no encontrado');
         }
         if (redemption.isUsed) {
             throw new common_1.ConflictException('This redemption code has already been used');

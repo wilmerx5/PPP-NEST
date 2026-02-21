@@ -67,7 +67,7 @@ let PaymentsController = class PaymentsController {
     async handleWebhook(body, req) {
         try {
             if (!this.validateWebhookSignature(req, body)) {
-                throw new common_1.UnauthorizedException('Invalid webhook signature. Request rejected for security reasons.');
+                throw new common_1.UnauthorizedException('Firma del webhook inválida. Solicitud rechazada por seguridad.');
             }
             let data = body || req.body;
             if (req.query?.id) {
@@ -96,10 +96,10 @@ let PaymentsController = class PaymentsController {
             if (data) {
                 return await this.paymentsService.handleWebhook(data);
             }
-            return { success: false, message: 'No valid webhook data received' };
+            return { success: false, message: 'No se recibieron datos válidos del webhook' };
         }
         catch (error) {
-            return { success: false, message: error.message || 'Error processing webhook' };
+            return { success: false, message: error.message || 'Error al procesar el webhook' };
         }
     }
     async getPaymentStatus(orderId) {

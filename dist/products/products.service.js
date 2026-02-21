@@ -138,7 +138,7 @@ let ProductsService = class ProductsService {
     async updateActive(id, isActive) {
         const product = await this.productRepo.findOne({ where: { id } });
         if (!product) {
-            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            throw new common_1.NotFoundException(`No se encontró el producto con ID ${id}`);
         }
         product.isActive = isActive;
         await this.productRepo.save(product);
@@ -181,7 +181,7 @@ let ProductsService = class ProductsService {
             relations: ['attributes', 'categories'],
         });
         if (!product) {
-            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            throw new common_1.NotFoundException(`No se encontró el producto con ID ${id}`);
         }
         if (updateProductDto.name !== undefined) {
             product.name = updateProductDto.name;
@@ -229,7 +229,7 @@ let ProductsService = class ProductsService {
             relations: ['categories', 'attributes'],
         });
         if (!updated) {
-            throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            throw new common_1.NotFoundException(`No se encontró el producto con ID ${id}`);
         }
         return {
             ...updated,

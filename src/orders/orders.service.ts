@@ -107,6 +107,22 @@ export class OrdersService {
       throw new BadRequestException('Order must have at least one item or one extra');
     }
 
+    // Una sola orden activa por mesa: si es orden de mesa y ya existe una activa para esa mesa, rechazar
+    if (orderType === 'table' && address != null && String(address).trim() !== '') {
+      const activeForTable = await this.orderRepo.findOne({
+        where: {
+          orderType: 'table',
+          address: String(address).trim(),
+          orderStatus: Not(In(['completed', 'canceled'])),
+        },
+      });
+      if (activeForTable) {
+        throw new BadRequestException(
+          'Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.',
+        );
+      }
+    }
+
     // Reject order if any product is deactivated
     if (hasItems && items.length > 0) {
       const productIds = [...new Set(items.map((i) => i.productId))];

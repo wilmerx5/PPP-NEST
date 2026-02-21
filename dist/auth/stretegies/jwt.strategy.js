@@ -37,9 +37,9 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         const { id } = payload;
         const user = await this.userRepository.findOneBy({ id });
         if (!user)
-            throw new common_1.UnauthorizedException('invalid TOken');
+            throw new common_1.UnauthorizedException('Token inválido');
         if (!user.isActive)
-            throw new common_1.UnauthorizedException('User not active');
+            throw new common_1.UnauthorizedException('Usuario no activo');
         return user;
     }
 };
