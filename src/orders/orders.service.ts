@@ -96,6 +96,12 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
+    console.log('[create] Inicio create order:', {
+      orderType: createOrderDto.orderType,
+      address: createOrderDto.address,
+      itemsCount: createOrderDto.items?.length ?? 0,
+    });
+
     const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
@@ -107,20 +113,33 @@ export class OrdersService {
       throw new BadRequestException('Order must have at least one item or one extra');
     }
 
-    // Una sola orden activa por mesa: si es orden de mesa y ya existe una activa para esa mesa, rechazar
+    // Una sola orden activa por mesa: solo considerar órdenes de HOY (no bloquear por órdenes viejas)
     if (orderType === 'table' && address != null && String(address).trim() !== '') {
+      const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+      const tableAddr = String(address).trim();
+
       const activeForTable = await this.orderRepo.findOne({
         where: {
           orderType: 'table',
-          address: String(address).trim(),
+          address: tableAddr,
           orderStatus: Not(In(['completed', 'canceled'])),
+          createdAt: Between(todayStartUtc, todayEndUtc),
         },
       });
+
+      console.log('[create] mesa/table check:', {
+        table: tableAddr,
+        todayRange: { start: todayStartUtc.toISOString(), end: todayEndUtc.toISOString() },
+        activeForTable: activeForTable ? { id: activeForTable.id, status: activeForTable.orderStatus } : null,
+      });
+
       if (activeForTable) {
+        console.log('[create] RECHAZADO: mesa ya tiene orden activa', tableAddr, activeForTable.id);
         throw new BadRequestException(
           'Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.',
         );
       }
+      console.log('[create] OK: no hay orden activa para mesa', tableAddr);
     }
 
     // Reject order if any product is deactivated
@@ -397,12 +416,14 @@ export class OrdersService {
         }
       }
 
+      console.log('[create] Orden creada OK:', { orderId: savedOrder.id, dailyOrderNumber: newOrderNumber, orderType, address });
       return {
         success: true,
         orderId: savedOrder.id,
         dailyOrderNumber: newOrderNumber,
       };
     } catch (error) {
+      console.log('[create] Error en create:', error?.message ?? error);
       await queryRunner.rollbackTransaction();
       
       // Check if it's a duplicate key error

@@ -69,6 +69,11 @@ let OrdersService = class OrdersService {
         return maxNumber + 1;
     }
     async create(createOrderDto) {
+        console.log('[create] Inicio create order:', {
+            orderType: createOrderDto.orderType,
+            address: createOrderDto.address,
+            itemsCount: createOrderDto.items?.length ?? 0,
+        });
         const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
         const orderType = createOrderDto.orderType ?? 'pickup';
         const deliveryFee = createOrderDto.deliveryFee;
@@ -79,16 +84,26 @@ let OrdersService = class OrdersService {
             throw new common_1.BadRequestException('Order must have at least one item or one extra');
         }
         if (orderType === 'table' && address != null && String(address).trim() !== '') {
+            const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
+            const tableAddr = String(address).trim();
             const activeForTable = await this.orderRepo.findOne({
                 where: {
                     orderType: 'table',
-                    address: String(address).trim(),
+                    address: tableAddr,
                     orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+                    createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
                 },
             });
+            console.log('[create] mesa/table check:', {
+                table: tableAddr,
+                todayRange: { start: todayStartUtc.toISOString(), end: todayEndUtc.toISOString() },
+                activeForTable: activeForTable ? { id: activeForTable.id, status: activeForTable.orderStatus } : null,
+            });
             if (activeForTable) {
+                console.log('[create] RECHAZADO: mesa ya tiene orden activa', tableAddr, activeForTable.id);
                 throw new common_1.BadRequestException('Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.');
             }
+            console.log('[create] OK: no hay orden activa para mesa', tableAddr);
         }
         if (hasItems && items.length > 0) {
             const productIds = [...new Set(items.map((i) => i.productId))];
@@ -286,6 +301,7 @@ let OrdersService = class OrdersService {
                     }
                 }
             }
+            console.log('[create] Orden creada OK:', { orderId: savedOrder.id, dailyOrderNumber: newOrderNumber, orderType, address });
             return {
                 success: true,
                 orderId: savedOrder.id,
@@ -293,6 +309,7 @@ let OrdersService = class OrdersService {
             };
         }
         catch (error) {
+            console.log('[create] Error en create:', error?.message ?? error);
             await queryRunner.rollbackTransaction();
             if (error?.code === 'ER_DUP_ENTRY' || error?.message?.includes('duplicate')) {
                 throw new common_1.BadRequestException('Ya existe una orden con ese número. Intenta de nuevo.');
