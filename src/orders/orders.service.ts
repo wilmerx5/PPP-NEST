@@ -451,15 +451,22 @@ export class OrdersService {
    *
    * @returns Lista de órdenes formateadas.
    */
-  async findOrdersToday() {
+  /**
+   * @param orderType - Optional. If provided (e.g. 'table'), only orders of that type are returned. Reduces payload for mesas app.
+   */
+  async findOrdersToday(orderType?: string) {
     return this.circuitBreaker.execute(
       async () => {
         const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+        const where: any = {
+          createdAt: Between(todayStartUtc, todayEndUtc),
+          orderStatus: Not('canceled'),
+        };
+        if (orderType && ['table', 'delivery', 'pickup', 'counter', 'rappi'].includes(orderType)) {
+          where.orderType = orderType;
+        }
         const orders = await this.orderRepo.find({
-          where: {
-            createdAt: Between(todayStartUtc, todayEndUtc),
-            orderStatus: Not('canceled'),
-          },
+          where,
           relations: ['items', 'items.product', 'items.attributes', 'extras'],
           order: { createdAt: 'DESC' },
         });

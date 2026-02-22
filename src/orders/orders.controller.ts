@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     Req,
     UseGuards,
     BadRequestException,
@@ -78,11 +79,11 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Get all orders of today',
     description:
-      'Returns all orders created today (Bogotá timezone), excluding canceled ones.',
+      'Returns all orders created today (Bogotá timezone), excluding canceled ones. Optional orderType (e.g. "table") filters by type for lighter payload (e.g. mesas app).',
   })
   @ApiResponse({ status: 200, description: 'Orders retrieved successfully' })
-  async getTodayOrders() {
-    return this.orderService.findOrdersToday();
+  async getTodayOrders(@Query('orderType') orderType?: string) {
+    return this.orderService.findOrdersToday(orderType);
   }
 
   // -------------------------------------------------------------
