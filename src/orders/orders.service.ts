@@ -1632,4 +1632,24 @@ export class OrdersService {
       previousPeriod,
     };
   }
+
+  /**
+   * Backfill unit_price for all order items where unit_price IS NULL,
+   * setting it to the current product price. Used for historical data.
+   * Returns the number of rows updated.
+   */
+  async backfillUnitPrices(): Promise<{ updated: number }> {
+    const result = await this.dataSource.query(
+      `UPDATE ppp_order_items oi
+       INNER JOIN ppp_products p ON oi.product_id = p.id
+       SET oi.unit_price = p.price
+       WHERE oi.unit_price IS NULL`,
+    );
+    const raw = result as { affectedRows?: number; affected?: number; rowCount?: number } | undefined;
+    const updated = typeof raw?.affectedRows === 'number' ? raw.affectedRows
+      : typeof raw?.affected === 'number' ? raw.affected
+      : typeof raw?.rowCount === 'number' ? raw.rowCount
+      : 0;
+    return { updated };
+  }
 }

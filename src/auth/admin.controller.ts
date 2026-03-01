@@ -222,6 +222,14 @@ export class AdminController {
     return summary;
   }
 
+  @Post('orders/backfill-unit-prices')
+  @ApiOperation({ summary: 'Backfill unit_price on order items where null (admin only)' })
+  @ApiResponse({ status: 200, description: 'Number of rows updated' })
+  async backfillOrderItemsUnitPrices() {
+    const { updated } = await this.ordersService.backfillUnitPrices();
+    return { success: true, updated };
+  }
+
   @Get('reports/sales')
   @ApiOperation({ summary: 'Get sales report between dates (admin only)' })
   @ApiQuery({ name: 'from', required: false, description: 'Start date YYYY-MM-DD' })
