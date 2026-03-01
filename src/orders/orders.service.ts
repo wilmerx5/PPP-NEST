@@ -1544,6 +1544,9 @@ export class OrdersService {
     const worstDayByOrders = dailyArray.length
       ? dailyArray.reduce((worst, d) => (d.orders <= worst.orders ? d : worst), dailyArray[0])
       : null;
+    const worstDayByRevenue = dailyArray.length
+      ? dailyArray.reduce((worst, d) => (d.total <= worst.total ? d : worst), dailyArray[0])
+      : null;
 
     const averageTicketByOrderType: Record<string, number> = {};
     for (const [type, count] of Object.entries(ordersByType)) {
@@ -1629,6 +1632,7 @@ export class OrdersService {
       bestDayByOrders: bestDayByOrders ? { date: bestDayByOrders.date, dayOfWeek: bestDayByOrders.dayOfWeek, orders: bestDayByOrders.orders, total: bestDayByOrders.total } : null,
       bestDayByRevenue: bestDayByRevenue ? { date: bestDayByRevenue.date, dayOfWeek: bestDayByRevenue.dayOfWeek, orders: bestDayByRevenue.orders, total: bestDayByRevenue.total } : null,
       worstDayByOrders: worstDayByOrders ? { date: worstDayByOrders.date, dayOfWeek: worstDayByOrders.dayOfWeek, orders: worstDayByOrders.orders, total: worstDayByOrders.total } : null,
+      worstDayByRevenue: worstDayByRevenue ? { date: worstDayByRevenue.date, dayOfWeek: worstDayByRevenue.dayOfWeek, orders: worstDayByRevenue.orders, total: worstDayByRevenue.total } : null,
       previousPeriod,
     };
   }
