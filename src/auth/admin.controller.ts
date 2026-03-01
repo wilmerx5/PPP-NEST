@@ -437,6 +437,24 @@ export class AdminController {
     return { success: true, message: 'Punto invalidado', point: { id: point.id, code: point.code, isCanceled: true } };
   }
 
+  @Patch('points/records/:id/redeem')
+  @ApiOperation({ summary: 'Mark a point as redeemed manually (admin only). User will not be able to use it for prize accumulation.' })
+  @ApiResponse({ status: 200, description: 'Point marked as redeemed' })
+  @ApiResponse({ status: 404, description: 'Point not found' })
+  async redeemPoint(@Param('id') id: string) {
+    const point = await this.pointsRepo.findOne({ where: { id: parseInt(id, 10) } });
+    if (!point) throw new NotFoundException('Punto no encontrado');
+    if (point.isCanceled) {
+      throw new BadRequestException('No se puede canjear un punto cancelado');
+    }
+    if (point.isRedeemed) {
+      throw new BadRequestException('El punto ya está canjeado');
+    }
+    point.isRedeemed = true;
+    await this.pointsRepo.save(point);
+    return { success: true, message: 'Punto canjeado manualmente', point: { id: point.id, code: point.code, isRedeemed: true } };
+  }
+
   @Get('points/leaderboard')
   @ApiOperation({ summary: 'Get points leaderboard (admin only)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Number of users to return', example: 50 })
