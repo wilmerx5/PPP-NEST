@@ -47,3 +47,13 @@ Añade la columna `is_active` a `ppp_products` para poder activar/desactivar pro
 - Los listados públicos (`GET /products`, `GET /products/categories`) solo devuelven productos activos.
 - Al crear una orden, si algún producto está desactivado el backend responde 400 con mensaje claro.
 - El admin usa `GET /admin/products` (ve todos) y `PATCH /admin/products/:id/active` para cambiar el estado.
+
+---
+
+## 004_add_unit_price_to_order_items.sql
+
+Añade `unit_price` a `ppp_order_items` para guardar el **precio unitario en el momento del pedido**.
+
+- **Objetivo:** Que las órdenes históricas no cambien de total cuando se actualicen precios de productos en el admin. El total de una orden debe ser el que tenía cuando se creó.
+- **Columna:** `unit_price` DECIMAL(10,2) NULL. NULL en ítems de órdenes antiguas (se usa `product.price` como fallback).
+- **Uso:** Al crear una orden o al actualizar ítems, se guarda el precio actual del producto en `unit_price`. En reportes, API y correos se usa `item.unit_price ?? product.price`.

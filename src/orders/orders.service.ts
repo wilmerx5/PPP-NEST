@@ -265,13 +265,19 @@ export class OrdersService {
       order.points = calculatedPoints;
       const savedOrder = await queryRunner.manager.save(order);
 
-      // Create items and attributes
+      // Create items and attributes (unitPrice = precio en el momento del pedido)
       if (items?.length) {
+        const productIds = [...new Set((items as { productId: number }[]).map((i) => i.productId))];
+        const products = await queryRunner.manager.find(Product, { where: { id: In(productIds) }, select: ['id', 'price'] });
+        const priceByProductId = new Map(products.map((p) => [p.id, Number(p.price)]));
+
         for (const item of items) {
+          const unitPrice = priceByProductId.get(item.productId) ?? null;
           const orderItem = queryRunner.manager.create(OrderItem, {
             order: savedOrder,
             product: { id: item.productId },
             note: item.note != null && item.note !== undefined ? String(item.note) : '',
+            unitPrice: unitPrice != null ? unitPrice : undefined,
           });
 
           const savedItem = await queryRunner.manager.save(orderItem);
@@ -379,7 +385,7 @@ export class OrdersService {
             
             finalOrder.items.forEach(item => {
               const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
-              const price = Number(item.product?.price || 0);
+              const price = Number(item.unitPrice ?? item.product?.price ?? 0);
               const key = `${item.product?.id || 'unknown'}-${productName}`;
               
               if (itemsMap.has(key)) {
@@ -533,7 +539,7 @@ export class OrdersService {
         const productName = item.product.name;
         const code = item.product.code;
         const imageUrl = item.product.imageUrl;
-        const price = item.product.price;
+        const price = item.unitPrice != null ? Number(item.unitPrice) : item.product.price;
 
         const attributeMap = item.attributes?.reduce((acc, attr) => {
           acc[attr.attributeName] = attr.attributeValue;
@@ -664,12 +670,20 @@ export class OrdersService {
       await this.orderRepo.save(order);
     }
 
+    const productIds = (dto.items ?? []).map((i) => i.productId);
+    const productsForPrice = productIds.length
+      ? await this.productRepo.find({ where: { id: In(productIds) }, select: ['id', 'price'] })
+      : [];
+    const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
+
     for (const itemDto of dto.items ?? []) {
+      const unitPrice = priceByProductId.get(itemDto.productId) ?? null;
       const orderItem = this.itemRepo.create({
         order,
         product: { id: itemDto.productId },
         note: itemDto.note,
         kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
+        unitPrice: unitPrice != null ? unitPrice : undefined,
       });
 
       await this.itemRepo.save(orderItem);
@@ -940,7 +954,7 @@ export class OrdersService {
       const productName = item.product.name;
       const code = item.product.code;
       const imageUrl = item.product.imageUrl;
-      const price = item.product.price;
+      const price = item.unitPrice != null ? Number(item.unitPrice) : item.product.price;
 
       const attributeMap = item.attributes?.reduce((acc, attr) => {
         acc[attr.attributeName] = attr.attributeValue;
@@ -1266,7 +1280,8 @@ export class OrdersService {
         }
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
-          orderSubtotal += Number(product.price);
+          const itemPrice = Number(item.unitPrice ?? product.price);
+          orderSubtotal += itemPrice;
           if (!productsSold[product.code]) {
             productsSold[product.code] = {
               code: product.code,
@@ -1276,7 +1291,7 @@ export class OrdersService {
             };
           }
           productsSold[product.code].quantity += 1;
-          productsSold[product.code].totalRevenue += Number(product.price);
+          productsSold[product.code].totalRevenue += itemPrice;
         }
       }
       for (const ex of (order as any).extras ?? []) {
@@ -1294,10 +1309,11 @@ export class OrdersService {
         if (halfChickenItem && halfChickenItem.product) {
           const product = allProducts.find(p => p.id === halfChickenItem.product.id);
           if (product) {
-            totalPremioDiscounts += Number(product.price);
+            const premioPrice = Number(halfChickenItem.unitPrice ?? product.price);
+            totalPremioDiscounts += premioPrice;
             // Adjust product revenue (one less sale due to discount)
             if (productsSold[product.code]) {
-              productsSold[product.code].totalRevenue -= Number(product.price);
+              productsSold[product.code].totalRevenue -= premioPrice;
             }
           }
         }
@@ -1422,7 +1438,8 @@ export class OrdersService {
         if (!item.product) continue;
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
-          orderSubtotal += Number(product.price);
+          const itemPrice = Number(item.unitPrice ?? product.price);
+          orderSubtotal += itemPrice;
           totalItemsSold += 1;
           const cat = (product as any).categories?.[0];
           if (!productsSold[product.code]) {
@@ -1436,7 +1453,7 @@ export class OrdersService {
             };
           }
           productsSold[product.code].quantity += 1;
-          productsSold[product.code].totalRevenue += Number(product.price);
+          productsSold[product.code].totalRevenue += itemPrice;
         }
       }
       for (const ex of (order as any).extras ?? []) {
@@ -1456,10 +1473,10 @@ export class OrdersService {
         if (halfChickenItem?.product) {
           const product = allProducts.find(p => p.id === halfChickenItem.product.id);
           if (product) {
-            orderPremio = Number(product.price);
+            orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
             totalPremioDiscounts += orderPremio;
             if (productsSold[product.code]) {
-              productsSold[product.code].totalRevenue -= Number(product.price);
+              productsSold[product.code].totalRevenue -= orderPremio;
             }
           }
         }
@@ -1562,7 +1579,7 @@ export class OrdersService {
         for (const item of order.items) {
           if (item.product) {
             const product = allProducts.find(p => p.id === item.product.id);
-            if (product) orderSubtotal += Number(product.price);
+            if (product) orderSubtotal += Number(item.unitPrice ?? product.price);
           }
         }
         for (const ex of (order as any).extras ?? []) {
@@ -1575,7 +1592,7 @@ export class OrdersService {
           );
           if (halfChickenItem?.product) {
             const product = allProducts.find(p => p.id === halfChickenItem.product.id);
-            if (product) orderPremio = Number(product.price);
+            if (product) orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
           }
         }
         prevTotalRevenue += orderSubtotal + orderDelivery - orderPremio;

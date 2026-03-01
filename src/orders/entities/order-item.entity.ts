@@ -38,6 +38,10 @@ export class OrderItem {
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
+  /** Precio unitario en el momento del pedido. NULL en órdenes antiguas → se usa product.price como fallback. */
+  @Column({ name: 'unit_price', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  unitPrice?: number | null;
+
   @ApiProperty({
     description: 'Atributos seleccionados para el producto (salsas, bebidas, acompañamientos).',
     type: () => [OrderItemAttribute],
