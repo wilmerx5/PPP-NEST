@@ -8,6 +8,7 @@ import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { CommonModule } from './common/common.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ExpensesModule } from './expenses/expenses.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { PaymentsModule } from './payments/payments.module';
     CommonModule,
 
     PaymentsModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

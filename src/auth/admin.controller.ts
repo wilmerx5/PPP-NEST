@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Patch,
@@ -22,6 +23,7 @@ import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
 import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
+import { ExpensesService } from '../expenses/expenses.service';
 import { getBogotaDateRange } from '../common/utils/date.util';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -34,6 +36,7 @@ export class AdminController {
     private readonly pointsService: PointsService,
     private readonly ordersService: OrdersService,
     private readonly productsService: ProductsService,
+    private readonly expensesService: ExpensesService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
@@ -453,6 +456,78 @@ export class AdminController {
     point.isRedeemed = true;
     await this.pointsRepo.save(point);
     return { success: true, message: 'Punto canjeado manualmente', point: { id: point.id, code: point.code, isRedeemed: true } };
+  }
+
+  @Get('expenses/categories')
+  @ApiOperation({ summary: 'List expense categories (admin only)' })
+  @ApiResponse({ status: 200, description: 'Categories list' })
+  getExpenseCategories() {
+    return { categories: this.expensesService.getCategories() };
+  }
+
+  @Post('expenses')
+  @ApiOperation({ summary: 'Create expense (admin only). expenseDate = YYYY-MM-DD (día en Colombia).' })
+  @ApiResponse({ status: 201, description: 'Expense created' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async createExpense(
+    @Body() body: { category: string; name: string; amount: number; expenseDate: string },
+  ) {
+    const expense = await this.expensesService.create(body);
+    return { success: true, expense };
+  }
+
+  @Get('expenses')
+  @ApiOperation({ summary: 'List expenses by period (admin only). Same date logic as orders (Bogotá).' })
+  @ApiQuery({ name: 'from', required: true, description: 'Start date YYYY-MM-DD' })
+  @ApiQuery({ name: 'to', required: true, description: 'End date YYYY-MM-DD' })
+  @ApiResponse({ status: 200, description: 'Expenses list' })
+  async getExpenses(@Query('from') from: string, @Query('to') to: string) {
+    const list = await this.expensesService.findByPeriod(from, to);
+    return { expenses: list };
+  }
+
+  @Delete('expenses/:id')
+  @ApiOperation({ summary: 'Delete expense (admin only)' })
+  @ApiResponse({ status: 200, description: 'Expense deleted' })
+  async deleteExpense(@Param('id') id: string) {
+    await this.expensesService.delete(parseInt(id, 10));
+    return { success: true };
+  }
+
+  @Get('expenses/stats')
+  @ApiOperation({ summary: 'Sales vs expenses by period (admin only). Ventas, egresos, venta neta.' })
+  @ApiQuery({ name: 'from', required: true, description: 'Start date YYYY-MM-DD' })
+  @ApiQuery({ name: 'to', required: true, description: 'End date YYYY-MM-DD' })
+  @ApiResponse({ status: 200, description: 'Stats with sales, expenses, net' })
+  async getExpensesStats(@Query('from') from: string, @Query('to') to: string) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(from) || !dateRegex.test(to)) {
+      throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
+    }
+    if (from > to) {
+      throw new BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
+    }
+    const [salesReport, totalExpenses, expensesList] = await Promise.all([
+      this.ordersService.getSalesReport(from, to),
+      this.expensesService.getTotalByPeriod(from, to),
+      this.expensesService.findByPeriod(from, to),
+    ]);
+    const salesTotal = salesReport?.totals?.total ?? 0;
+    const net = salesTotal - totalExpenses;
+    return {
+      period: { from, to },
+      sales: {
+        total: salesTotal,
+        totalOrders: salesReport?.totalOrders ?? 0,
+        totals: salesReport?.totals ?? { subtotal: 0, deliveryFees: 0, premioDiscounts: 0, total: 0 },
+      },
+      expenses: {
+        total: totalExpenses,
+        count: expensesList.length,
+        list: expensesList,
+      },
+      net,
+    };
   }
 
   @Get('points/leaderboard')

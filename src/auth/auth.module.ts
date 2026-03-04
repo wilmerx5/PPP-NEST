@@ -27,6 +27,7 @@ import { PointRedemption } from './entities/point-redemption.entity';
 import { ProductsModule } from '../products/products.module';
 import { Product } from '../products/entities/product.entity';
 import { OrdersModule } from '../orders/orders.module';
+import { ExpensesModule } from '../expenses/expenses.module';
 
 @Module({
   controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController, AdminController],
@@ -45,6 +46,7 @@ import { OrdersModule } from '../orders/orders.module';
     ConfigModule,
     ProductsModule,
     forwardRef(() => OrdersModule),
+    ExpensesModule,
     TypeOrmModule.forFeature([User, VerificationToken, Address, Phone, UserPoints, PointRedemption, Product]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

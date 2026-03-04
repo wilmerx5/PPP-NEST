@@ -142,7 +142,6 @@ export class OrdersService {
       console.log('[create] OK: no hay orden activa para mesa', tableAddr);
     }
 
-    // Reject order if any product is deactivated
     if (hasItems && items.length > 0) {
       const productIds = [...new Set(items.map((i) => i.productId))];
       const products = await this.productRepo.find({
