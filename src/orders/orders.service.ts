@@ -848,6 +848,8 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('No se encontró la orden');
 
+    order.items = this.deduplicateOrderItemsById(order.items);
+
     const hasItems = dto.items?.length;
     const hasExtrasToAdd = dto.extrasToAdd?.length;
 
@@ -1309,10 +1311,26 @@ export class OrdersService {
    * @param order - Orden completa cargada con relaciones.
    * @returns Objeto con items ordenados y agrupados.
    */
+  /**
+   * TypeORM con relations ['items', 'items.attributes'] puede devolver ítems duplicados por los JOINs.
+   * Deduplicar por id evita duplicar líneas al borrar, inventario y en la respuesta.
+   */
+  private deduplicateOrderItemsById(items: OrderItem[] | undefined): OrderItem[] {
+    if (!items?.length) return [];
+    const seen = new Set<number>();
+    return items.filter((i) => {
+      const id = i.id;
+      if (id == null || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
   private async mapOrderToGroupedFormat(order: Order): Promise<any> {
     const groupedItems: Record<number, any> = {};
+    const items = this.deduplicateOrderItemsById(order.items);
 
-    for (const item of order.items) {
+    for (const item of items) {
       if (!item.product) continue;
       const productId = item.product.id;
       const productName = item.product.name;
