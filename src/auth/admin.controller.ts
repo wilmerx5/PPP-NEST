@@ -11,7 +11,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { Between } from 'typeorm';
 import { Auth } from './decorators/auth.decorator';
 import { ValidRoles } from './interfaces/valid.roles.interface';
@@ -163,8 +163,6 @@ export class AdminController {
         pointCodes,
       };
     } catch (error) {
-      // Log the error for debugging
-      console.error('Error creating points:', error);
       throw error;
     }
   }
@@ -283,6 +281,255 @@ export class AdminController {
     @Body() body: { isActive: boolean },
   ) {
     return this.productsService.updateActive(+id, body.isActive);
+  }
+
+  @Post('products/:id/inventory/adjust')
+  @ApiOperation({ summary: 'Adjust product stock by delta (admin only). delta > 0 = add, delta < 0 = subtract.' })
+  @ApiBody({ schema: { type: 'object', properties: { delta: { type: 'number' } }, required: ['delta'] } })
+  @ApiResponse({ status: 200, description: 'Stock adjusted' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async adjustProductInventory(@Param('id') id: string, @Body() body: { delta: number }) {
+    const delta = typeof body.delta === 'number' ? body.delta : Number(body.delta);
+    if (!Number.isFinite(delta)) throw new BadRequestException('delta debe ser un número');
+    return this.productsService.adjustStock(+id, delta);
+  }
+
+  @Post('products/:id/inventory/variant/adjust')
+  @ApiOperation({ summary: 'Adjust variant stock by delta (admin only). attributeName + attributeValue identify the variant.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        attributeName: { type: 'string' },
+        attributeValue: { type: 'string' },
+        delta: { type: 'number' },
+      },
+      required: ['attributeName', 'attributeValue', 'delta'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Variant stock adjusted' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async adjustProductVariantInventory(
+    @Param('id') id: string,
+    @Body() body: { attributeName: string; attributeValue: string; delta: number },
+  ) {
+    const { attributeName, attributeValue, delta } = body;
+    if (!attributeName?.trim() || !attributeValue?.trim()) throw new BadRequestException('attributeName y attributeValue son requeridos');
+    const d = typeof delta === 'number' ? delta : Number(delta);
+    if (!Number.isFinite(d)) throw new BadRequestException('delta debe ser un número');
+    return this.productsService.adjustVariantStock(+id, attributeName.trim(), attributeValue.trim(), d);
+  }
+
+  @Get('inventory-groups')
+  @ApiOperation({ summary: 'List all inventory groups with items and stock (admin only)' })
+  @ApiResponse({ status: 200, description: 'Groups with items' })
+  async getInventoryGroups() {
+    return this.productsService.findAllInventoryGroups();
+  }
+
+  @Post('inventory-groups')
+  @ApiOperation({ summary: 'Create inventory group (admin only)' })
+  @ApiBody({ schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } })
+  @ApiResponse({ status: 201, description: 'Group created' })
+  async createInventoryGroup(@Body() body: { name: string }) {
+    if (!body.name?.trim()) throw new BadRequestException('name es requerido');
+    return this.productsService.createInventoryGroup(body.name.trim());
+  }
+
+  @Patch('inventory-groups/:id')
+  @ApiOperation({ summary: 'Update inventory group name (admin only)' })
+  @ApiBody({ schema: { type: 'object', properties: { name: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Group updated' })
+  async updateInventoryGroup(@Param('id') id: string, @Body() body: { name: string }) {
+    if (!body.name?.trim()) throw new BadRequestException('name es requerido');
+    await this.productsService.updateInventoryGroup(+id, body.name.trim());
+    return { success: true };
+  }
+
+  @Delete('inventory-groups/:id')
+  @ApiOperation({ summary: 'Delete inventory group (admin only)' })
+  @ApiResponse({ status: 200, description: 'Group deleted' })
+  async deleteInventoryGroup(@Param('id') id: string) {
+    await this.productsService.deleteInventoryGroup(+id);
+    return { success: true };
+  }
+
+  @Post('inventory-groups/:id/items')
+  @ApiOperation({ summary: 'Add product or product variant to inventory group (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'number' },
+        baseUnits: { type: 'number' },
+        attributeName: { type: 'string' },
+        attributeValue: { type: 'string' },
+      },
+      required: ['productId', 'baseUnits'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Item added' })
+  async addInventoryGroupItem(
+    @Param('id') id: string,
+    @Body() body: { productId: number; baseUnits: number; attributeName?: string; attributeValue?: string },
+  ) {
+    const baseUnits = typeof body.baseUnits === 'number' ? body.baseUnits : Number(body.baseUnits);
+    if (!Number.isFinite(baseUnits) || baseUnits < 0) throw new BadRequestException('baseUnits debe ser un número >= 0');
+    return this.productsService.addInventoryGroupItem(
+      +id,
+      body.productId,
+      baseUnits,
+      body.attributeName,
+      body.attributeValue,
+    );
+  }
+
+  @Delete('inventory-groups/:id/items/:productId')
+  @ApiOperation({ summary: 'Remove product or product variant from inventory group (admin only)' })
+  @ApiQuery({ name: 'attributeName', required: false })
+  @ApiQuery({ name: 'attributeValue', required: false })
+  @ApiResponse({ status: 200, description: 'Item removed' })
+  async removeInventoryGroupItem(
+    @Param('id') id: string,
+    @Param('productId') productId: string,
+    @Query('attributeName') attributeName?: string,
+    @Query('attributeValue') attributeValue?: string,
+  ) {
+    await this.productsService.removeInventoryGroupItem(
+      +id,
+      +productId,
+      attributeName,
+      attributeValue,
+    );
+    return { success: true };
+  }
+
+  @Patch('inventory-groups/:id/items/set-also-deduct')
+  @ApiOperation({ summary: 'Set "also deduct from" for a group item (admin only). Variant is taken from the order at runtime.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'number' },
+        attributeName: { type: 'string' },
+        attributeValue: { type: 'string' },
+        alsoDeductProductId: { type: 'number' },
+        alsoDeductBaseUnits: { type: 'number' },
+      },
+      required: ['productId'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Also-deduct updated' })
+  async setGroupItemAlsoDeduct(
+    @Param('id') id: string,
+    @Body() body: {
+      productId: number;
+      attributeName?: string;
+      attributeValue?: string;
+      alsoDeductProductId?: number | null;
+      alsoDeductAttributeName?: string | null;
+      alsoDeductAttributeValue?: string | null;
+      alsoDeductBaseUnits?: number | null;
+    },
+  ) {
+    const alsoDeduct =
+      body.alsoDeductProductId != null &&
+      body.alsoDeductBaseUnits != null &&
+      Number(body.alsoDeductBaseUnits) > 0
+        ? {
+            productId: body.alsoDeductProductId,
+            baseUnits: Number(body.alsoDeductBaseUnits),
+            attributeName: body.alsoDeductAttributeName?.trim() || null,
+            attributeValue: body.alsoDeductAttributeValue?.trim() || null,
+          }
+        : null;
+    await this.productsService.setGroupItemAlsoDeduct(
+      +id,
+      body.productId,
+      body.attributeName,
+      body.attributeValue,
+      alsoDeduct,
+    );
+    return { success: true };
+  }
+
+  @Post('inventory-groups/:id/items/selections')
+  @ApiOperation({ summary: 'Create a named selection for a group item (e.g. "Bebida" with products 28 and 37)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'number' },
+        attributeName: { type: 'string' },
+        attributeValue: { type: 'string' },
+        name: { type: 'string' },
+      },
+      required: ['productId', 'name'],
+    },
+  })
+  async createSelection(
+    @Param('id') id: string,
+    @Body() body: { productId: number; attributeName?: string; attributeValue?: string; name: string },
+  ) {
+    return this.productsService.createSelection(
+      +id,
+      body.productId,
+      body.name,
+      body.attributeName,
+      body.attributeValue,
+    );
+  }
+
+  @Patch('inventory-groups/selections/:selectionId')
+  @ApiOperation({ summary: 'Update selection name' })
+  async updateSelection(@Param('selectionId') selectionId: string, @Body() body: { name: string }) {
+    await this.productsService.updateSelection(+selectionId, body.name?.trim() ?? '');
+  }
+
+  @Delete('inventory-groups/selections/:selectionId')
+  @ApiOperation({ summary: 'Delete a selection and its product links' })
+  async deleteSelection(@Param('selectionId') selectionId: string) {
+    await this.productsService.deleteSelection(+selectionId);
+  }
+
+  @Post('inventory-groups/selections/:selectionId/products')
+  @ApiOperation({ summary: 'Add a product to a selection' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { productId: { type: 'number' }, baseUnits: { type: 'number' }, sortOrder: { type: 'number' } },
+      required: ['productId'],
+    },
+  })
+  async addProductToSelection(
+    @Param('selectionId') selectionId: string,
+    @Body() body: { productId: number; baseUnits?: number; sortOrder?: number },
+  ) {
+    return this.productsService.addProductToSelection(
+      +selectionId,
+      body.productId,
+      body.baseUnits ?? 0,
+      body.sortOrder ?? 0,
+    );
+  }
+
+  @Delete('inventory-groups/selections/:selectionId/products/:productId')
+  @ApiOperation({ summary: 'Remove a product from a selection' })
+  async removeProductFromSelection(
+    @Param('selectionId') selectionId: string,
+    @Param('productId') productId: string,
+  ) {
+    await this.productsService.removeProductFromSelection(+selectionId, +productId);
+  }
+
+  @Post('inventory-groups/:id/adjust')
+  @ApiOperation({ summary: 'Adjust group stock by delta (admin only). Units in base (e.g. whole chickens).' })
+  @ApiBody({ schema: { type: 'object', properties: { delta: { type: 'number' } }, required: ['delta'] } })
+  @ApiResponse({ status: 200, description: 'Group stock adjusted' })
+  async adjustInventoryGroupStock(@Param('id') id: string, @Body() body: { delta: number }) {
+    const delta = typeof body.delta === 'number' ? body.delta : Number(body.delta);
+    if (!Number.isFinite(delta)) throw new BadRequestException('delta debe ser un número');
+    return this.productsService.adjustGroupStock(+id, delta);
   }
 
   @Get('points/records/summary')

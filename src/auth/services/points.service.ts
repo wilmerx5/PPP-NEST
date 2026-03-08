@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { In, Repository, DataSource } from 'typeorm';
 import * as crypto from 'crypto';
 import { UserPoints } from '../entities/user-points.entity';
 import { PointRedemption } from '../entities/point-redemption.entity';
@@ -65,21 +65,22 @@ export class PointsService {
       return 0;
     }
 
-    // Get all product codes
+    // Get all product codes in one query (avoid N+1)
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    if (productIds.length === 0) return 0;
+    const products = await this.productRepo.find({
+      where: { id: In(productIds) },
+      select: ['id', 'code'],
+    });
+    const codeByProductId = new Map(products.map((p) => [p.id, p.code]));
     const codes: number[] = [];
     for (const item of items) {
-      const product = await this.productRepo.findOne({
-        where: { id: item.productId },
-        select: ['code'],
-      });
-      if (product) {
-        // Add the code as many times as the quantity
-        for (let i = 0; i < (item.quantity || 1); i++) {
-          codes.push(product.code);
-        }
+      const code = codeByProductId.get(item.productId);
+      if (code != null) {
+        const q = Math.max(0, item.quantity ?? 1);
+        for (let i = 0; i < q; i++) codes.push(code);
       }
     }
-
     return this.calculatePointsFromCodes(codes);
   }
 

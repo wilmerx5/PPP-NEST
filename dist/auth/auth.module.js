@@ -35,6 +35,7 @@ const point_redemption_entity_1 = require("./entities/point-redemption.entity");
 const products_module_1 = require("../products/products.module");
 const product_entity_1 = require("../products/entities/product.entity");
 const orders_module_1 = require("../orders/orders.module");
+const expenses_module_1 = require("../expenses/expenses.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -56,6 +57,7 @@ exports.AuthModule = AuthModule = __decorate([
             config_1.ConfigModule,
             products_module_1.ProductsModule,
             (0, common_1.forwardRef)(() => orders_module_1.OrdersModule),
+            expenses_module_1.ExpensesModule,
             typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, verification_token_entity_1.VerificationToken, address_entity_1.Address, phone_entity_1.Phone, user_points_entity_1.UserPoints, point_redemption_entity_1.PointRedemption, product_entity_1.Product]),
             passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.registerAsync({

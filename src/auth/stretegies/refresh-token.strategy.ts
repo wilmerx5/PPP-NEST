@@ -22,13 +22,10 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
     }
 
     async validate(payload: JwtPayload) {
-        const { id } = payload
-
-        console.log(id)
-        const user = await this.userRepository.findOneBy({ id })
-        if (!user) throw new UnauthorizedException('Token inválido')
-            console.log(user)
-        if (!user.isActive) throw new UnauthorizedException('Usuario no activo')
+        const { id } = payload;
+        const user = await this.userRepository.findOneBy({ id });
+        if (!user) throw new UnauthorizedException('Token inválido');
+        if (!user.isActive) throw new UnauthorizedException('Usuario no activo');
 
         return user;
     }

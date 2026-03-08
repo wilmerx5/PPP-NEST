@@ -18,7 +18,6 @@ const socket_io_1 = require("socket.io");
 let OrdersGateway = class OrdersGateway {
     server;
     handleJoin(client, room) {
-        console.log(`Cliente ${client.id} se unió a la sala ${room}`);
         client.join(room);
     }
     emitOrdersUpdates(action, order) {
@@ -50,7 +49,6 @@ exports.OrdersGateway = OrdersGateway = __decorate([
                 if (localApp.test(origin) || prod.test(origin)) {
                     return callback(null, true);
                 }
-                console.log("❌ Origin bloqueado por WebSocket:", origin);
                 return callback(new Error("Not allowed by CORS"), false);
             },
             credentials: false,

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderSource, OrderStatus, OrderType } from "../entities/order.entity";
-import { IsEnum, IsNumber, IsOptional, Min, ValidateIf } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemAttributeDto {
@@ -42,6 +42,25 @@ export class CreateOrderItemDto {
     attributeName: string;
     attributeValue: string;
   }[];
+
+  /** Cuando este producto descontará de otro con variantes; indica de qué variante descontar (elegida al añadir). */
+  @ApiProperty({
+    description: 'Variante del producto asociado del que descontar (cuando aplica "también descontar de").',
+    required: false,
+  })
+  @IsOptional()
+  alsoDeductVariant?: {
+    productId: number;
+    attributes: { attributeName: string; attributeValue: string }[];
+  };
+
+  /** Precio unitario con descuento (solo ppp-orders-front). Si se envía, se guarda en la orden en lugar del precio del producto. Inventario se descuenta igual. */
+  @ApiProperty({ description: 'Precio unitario con descuento (opcional).', required: false, example: 15000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
 }
 
 
@@ -183,6 +202,34 @@ export class UpdateOrderItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   kitchenPrepared?: boolean;
+
+  /** Cuando este producto descontará de otro con variantes; indica de qué variante descontar. */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  alsoDeductVariant?: {
+    productId: number;
+    attributes: { attributeName: string; attributeValue: string }[];
+  };
+
+  /** Precio unitario con descuento (solo ppp-orders-front). Si se envía, se usa en lugar del precio del producto. */
+  @ApiProperty({ required: false, example: 15000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+}
+
+export class UpdateOrderItemUnitPriceDto {
+  @ApiProperty({ description: 'ID del producto al que aplicar el precio unitario.' })
+  @IsNumber()
+  productId: number;
+
+  @ApiProperty({ description: 'Precio unitario a aplicar (descuento o precio fijo).' })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  unitPrice: number;
 }
 
 export class UpdateOrderItemsDto {
@@ -290,4 +337,13 @@ export class UpdateOrderGeneralDto {
   @IsNumber()
   @Min(0)
   deliveryFee?: number;
+}
+
+export class ChangeTableDto {
+  @ApiProperty({
+    description: 'Número o identificador de la mesa destino.',
+    example: '7',
+  })
+  @IsString()
+  newTable: string;
 }

@@ -23,9 +23,11 @@ import { AuthGuard } from '@nestjs/passport';
 
 import {
     AddOrderExtraDto,
+    ChangeTableDto,
     CreateOrderDto,
     UpdateOrderExtraDto,
     UpdateOrderGeneralDto,
+    UpdateOrderItemUnitPriceDto,
     UpdateOrderItemsDto,
 } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
@@ -105,6 +107,23 @@ export class OrdersController {
   // -------------------------------------------------------------
   // UPDATE ORDER ITEMS
   // -------------------------------------------------------------
+  @Patch(':id/items/unit-price')
+  @ApiOperation({
+    summary: 'Apply unit price (discount) to a product in the order',
+    description: 'Updates the unit price for all order items of the given product. Does not change inventory.',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: UpdateOrderItemUnitPriceDto })
+  @ApiResponse({ status: 200, description: 'Unit price updated; returns formatted order' })
+  @ApiResponse({ status: 404, description: 'Order or product not found' })
+  async updateItemUnitPrice(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderItemUnitPriceDto
+  ) {
+    const orderId = parseInt(id, 10);
+    return this.orderService.updateOrderItemUnitPrice(orderId, dto);
+  }
+
   @Patch(':id/items')
   @ApiOperation({
     summary: 'Update the list of items in an order',
@@ -179,6 +198,21 @@ export class OrdersController {
     @Body() dto: UpdateOrderGeneralDto,
   ) {
     return this.orderService.updateOrderGeneral(+id, dto);
+  }
+
+  @Patch(':id/table')
+  @ApiOperation({
+    summary: 'Change table of an order (mesas)',
+    description:
+      'Moves order to another table. If the target table has an active order, both orders swap tables.',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: ChangeTableDto })
+  @ApiResponse({ status: 200, description: 'Table changed (or swapped) successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request (e.g. same table, non-table order)' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  async changeTable(@Param('id') id: string, @Body() dto: ChangeTableDto) {
+    return this.orderService.changeTable(parseInt(id, 10), dto);
   }
 
   // -------------------------------------------------------------

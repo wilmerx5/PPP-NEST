@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException, NotFound
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { Between, IsNull, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
-import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -15,6 +15,7 @@ import { User } from '../auth/entities/user.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
 import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
+import { ProductsService, type InventoryInfo } from '../products/products.service';
 
 @Injectable()
 export class OrdersService {
@@ -43,6 +44,8 @@ export class OrdersService {
 
     @Inject(forwardRef(() => PointsService))
     private readonly pointsService: PointsService,
+
+    private readonly productsService: ProductsService,
 
     private readonly mailService: MailService,
 
@@ -83,6 +86,220 @@ export class OrdersService {
   }
 
   /**
+   * Build count-by-key for inventory: "p:productId" (product), "v:productId:attrName:attrValue" (variant), "g:groupId" (group pool, value in base units).
+   */
+  private buildInventoryCountByKey(
+    items: Array<{
+      productId: number;
+      attributes?: Array<{ attributeName: string; attributeValue: string }>;
+      alsoDeductVariant?: { productId: number; attributes: Array<{ attributeName: string; attributeValue: string }> };
+    }>,
+    invMap: Map<number, InventoryInfo>,
+  ): Record<string, number> {
+    const countByKey: Record<string, number> = {};
+    for (const item of items) {
+      const inv = invMap.get(item.productId);
+      if (!inv?.trackInventory) continue;
+      // Variante en grupo: si el ítem tiene atributos y alguna variante está en un grupo, descontar del grupo
+      if (inv.variantGroups?.length && item.attributes?.length) {
+        const variantGroup = item.attributes.find((a) =>
+          inv.variantGroups!.some(
+            (vg) => vg.attributeName === a.attributeName && vg.attributeValue === a.attributeValue,
+          ),
+        );
+        if (variantGroup) {
+          const vg = inv.variantGroups!.find(
+            (x) =>
+              x.attributeName === variantGroup.attributeName &&
+              x.attributeValue === variantGroup.attributeValue,
+          );
+          if (vg) {
+            const key = `g:${vg.groupId}`;
+            countByKey[key] = (countByKey[key] ?? 0) + vg.groupBaseUnits;
+            continue;
+          }
+        }
+      }
+      const processAlsoDeductFrom = () => {
+        if (!inv.alsoDeductFrom?.length) return;
+        for (const ad of inv.alsoDeductFrom) {
+          let attrName = ad.attributeName;
+          let attrVal = ad.attributeValue;
+          const invTarget = invMap.get(ad.productId);
+          const targetHasVariantStock = (invTarget?.variantStocks?.length ?? 0) > 0;
+          if ((attrName == null || attrVal == null) && targetHasVariantStock) {
+            const adv = item.alsoDeductVariant;
+            if (adv?.productId === ad.productId && adv.attributes?.length) {
+              const match = adv.attributes.find((a) =>
+                invTarget!.variantStocks!.some(
+                  (v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue,
+                ),
+              );
+              if (match) {
+                attrName = match.attributeName;
+                attrVal = match.attributeValue;
+              }
+            }
+            if (attrName == null || attrVal == null) {
+              const otherItem = items.find((i) => i.productId === ad.productId);
+              if (otherItem?.attributes?.length) {
+                const match = otherItem.attributes.find((a) =>
+                  invTarget!.variantStocks!.some(
+                    (v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue,
+                  ),
+                );
+                if (match) {
+                  attrName = match.attributeName;
+                  attrVal = match.attributeValue;
+                }
+              }
+            }
+          }
+          if (attrName != null && attrVal != null && targetHasVariantStock) {
+            const vKey = `v:${ad.productId}:${attrName}:${attrVal}`;
+            countByKey[vKey] = (countByKey[vKey] ?? 0) + ad.baseUnits;
+          } else {
+            const pKey = `p:${ad.productId}`;
+            countByKey[pKey] = (countByKey[pKey] ?? 0) + ad.baseUnits;
+          }
+        }
+      };
+
+      if (inv.groupId != null && inv.groupBaseUnits != null) {
+        const key = `g:${inv.groupId}`;
+        countByKey[key] = (countByKey[key] ?? 0) + inv.groupBaseUnits;
+        processAlsoDeductFrom();
+        continue;
+      }
+      processAlsoDeductFrom();
+      let key: string;
+      if (inv.variantStocks?.length && item.attributes?.length) {
+        const match = item.attributes.find(
+          (a) => inv.variantStocks.some((v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue),
+        );
+        if (match) {
+          key = `v:${item.productId}:${match.attributeName}:${match.attributeValue}`;
+        } else {
+          key = `p:${item.productId}`;
+        }
+      } else {
+        key = `p:${item.productId}`;
+      }
+      countByKey[key] = (countByKey[key] ?? 0) + 1;
+    }
+    return countByKey;
+  }
+
+  private parseVariantKey(key: string): { productId: number; attributeName: string; attributeValue: string } | null {
+    if (!key.startsWith('v:')) return null;
+    const parts = key.split(':');
+    if (parts.length < 4) return null;
+    return {
+      productId: Number(parts[1]),
+      attributeName: parts[2],
+      attributeValue: parts.slice(3).join(':'),
+    };
+  }
+
+  private validateInventoryCounts(
+    countByStockKey: Record<string, number>,
+    invMap: Map<number, InventoryInfo>,
+    products: Array<{ id: number; name: string }>,
+  ): void {
+    for (const [key, count] of Object.entries(countByStockKey)) {
+      if (count <= 0) continue;
+      if (key.startsWith('g:')) {
+        const groupId = Number(key.replace('g:', ''));
+        const invWithGroup = [...invMap.values()].find((inv) => inv.groupId === groupId);
+        const available = invWithGroup?.groupStock ?? 0;
+        if (available < count) {
+          throw new BadRequestException(
+            `Stock insuficiente en el grupo de inventario. Disponible: ${available.toFixed(2)} unidades base, solicitado: ${count.toFixed(2)}`,
+          );
+        }
+        continue;
+      }
+      const variant = this.parseVariantKey(key);
+      if (variant) {
+        const { productId, attributeName, attributeValue } = variant;
+        const inv = invMap.get(productId);
+        const variantStock = inv?.variantStocks?.find((v) => v.attributeName === attributeName && v.attributeValue === attributeValue);
+        const available = variantStock?.stock ?? 0;
+        if (available < count) {
+          const p = products.find((x) => x.id === productId);
+          throw new BadRequestException(
+            `Stock insuficiente para "${p?.name ?? 'producto'} - ${attributeValue}". Disponible: ${available}, solicitado: ${count}`,
+          );
+        }
+      } else {
+        const productId = Number(key.replace('p:', ''));
+        const inv = invMap.get(productId);
+        const available = inv?.stock ?? 0;
+        if (inv?.trackInventory && available < count) {
+          const p = products.find((x) => x.id === productId);
+          throw new BadRequestException(
+            `Stock insuficiente para "${p?.name ?? 'producto'}". Disponible: ${available}, solicitado: ${count}`,
+          );
+        }
+      }
+    }
+  }
+
+  private async deductInventory(
+    manager: EntityManager,
+    countByStockKey: Record<string, number>,
+  ): Promise<void> {
+    for (const [key, count] of Object.entries(countByStockKey)) {
+      if (count <= 0) continue;
+      if (key.startsWith('g:')) {
+        const groupId = Number(key.replace('g:', ''));
+        await this.productsService.decrementGroupStock(manager, groupId, count);
+        continue;
+      }
+      const variant = this.parseVariantKey(key);
+      if (variant) {
+        await this.productsService.decrementVariantStock(
+          manager,
+          variant.productId,
+          variant.attributeName,
+          variant.attributeValue,
+          count,
+        );
+      } else {
+        const productId = Number(key.replace('p:', ''));
+        await this.productsService.decrementStock(manager, productId, count);
+      }
+    }
+  }
+
+  private async restoreInventory(
+    manager: EntityManager,
+    countByStockKey: Record<string, number>,
+  ): Promise<void> {
+    for (const [key, count] of Object.entries(countByStockKey)) {
+      if (count <= 0) continue;
+      if (key.startsWith('g:')) {
+        const groupId = Number(key.replace('g:', ''));
+        await this.productsService.incrementGroupStock(manager, groupId, count);
+        continue;
+      }
+      const variant = this.parseVariantKey(key);
+      if (variant) {
+        await this.productsService.incrementVariantStock(
+          manager,
+          variant.productId,
+          variant.attributeName,
+          variant.attributeValue,
+          count,
+        );
+      } else {
+        const productId = Number(key.replace('p:', ''));
+        await this.productsService.incrementStock(manager, productId, count);
+      }
+    }
+  }
+
+  /**
    * Crea una nueva orden con sus items y atributos.
    *
    * Flujo:
@@ -96,12 +313,6 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
-    console.log('[create] Inicio create order:', {
-      orderType: createOrderDto.orderType,
-      address: createOrderDto.address,
-      itemsCount: createOrderDto.items?.length ?? 0,
-    });
-
     const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
@@ -112,6 +323,10 @@ export class OrdersService {
     if (!hasItems && !hasExtras) {
       throw new BadRequestException('Order must have at least one item or one extra');
     }
+
+    // Pre-compute for transaction: inventory keys to deduct and product codes for points (avoids N+1 and duplicate getInventory)
+    let countByStockKeyForDeduct: Record<string, number> = {};
+    let allCodesFromProducts: number[] = [];
 
     // Una sola orden activa por mesa: solo considerar órdenes de HOY (no bloquear por órdenes viejas)
     if (orderType === 'table' && address != null && String(address).trim() !== '') {
@@ -127,26 +342,18 @@ export class OrdersService {
         },
       });
 
-      console.log('[create] mesa/table check:', {
-        table: tableAddr,
-        todayRange: { start: todayStartUtc.toISOString(), end: todayEndUtc.toISOString() },
-        activeForTable: activeForTable ? { id: activeForTable.id, status: activeForTable.orderStatus } : null,
-      });
-
       if (activeForTable) {
-        console.log('[create] RECHAZADO: mesa ya tiene orden activa', tableAddr, activeForTable.id);
         throw new BadRequestException(
           'Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.',
         );
       }
-      console.log('[create] OK: no hay orden activa para mesa', tableAddr);
     }
 
     if (hasItems && items.length > 0) {
       const productIds = [...new Set(items.map((i) => i.productId))];
       const products = await this.productRepo.find({
         where: { id: In(productIds) },
-        select: ['id', 'name', 'isActive'],
+        select: ['id', 'name', 'isActive', 'code'],
       });
       const inactive = products.find((p) => p.isActive === false);
       if (inactive) {
@@ -154,6 +361,12 @@ export class OrdersService {
           `El producto "${inactive.name}" está desactivado y no puede agregarse al pedido.`,
         );
       }
+      // Validate inventory: product-level or variant-level (per attribute) stock (single call; reuse result for deduct)
+      const invMap = await this.productsService.getInventoryByProductIds(productIds, { includeAlsoDeductTargets: true });
+      const countByStockKey = this.buildInventoryCountByKey(items, invMap);
+      this.validateInventoryCounts(countByStockKey, invMap, products);
+      countByStockKeyForDeduct = { ...countByStockKey };
+      allCodesFromProducts = items.map((i) => products.find((p) => p.id === i.productId)?.code).filter((c): c is number => c != null);
     }
 
     // Get today's range in Bogotá timezone, converted to UTC for database query
@@ -209,19 +422,8 @@ export class OrdersService {
         orderSource: source,
       });
 
-      // Calculate points from product codes only (extras do not generate points)
-      const allCodes: number[] = [];
-      if (items?.length) {
-        for (const item of items) {
-          const product = await this.productRepo.findOne({
-            where: { id: item.productId },
-            select: ['code'],
-          });
-          if (product) {
-            allCodes.push(product.code);
-          }
-        }
-      }
+      // Calculate points from product codes only (extras do not generate points; codes pre-computed to avoid N+1)
+      const allCodes = allCodesFromProducts;
 
       // If a redemption prize is applied, adjust point calculation
       // A prize discounts one half chicken (code 2 or 5), so we need to remove one from the calculation
@@ -264,22 +466,33 @@ export class OrdersService {
       order.points = calculatedPoints;
       const savedOrder = await queryRunner.manager.save(order);
 
-      // Create items and attributes (unitPrice = precio en el momento del pedido)
+      // Create items and attributes (unitPrice = enviado con descuento o precio del producto)
       if (items?.length) {
         const productIds = [...new Set((items as { productId: number }[]).map((i) => i.productId))];
         const products = await queryRunner.manager.find(Product, { where: { id: In(productIds) }, select: ['id', 'price'] });
         const priceByProductId = new Map(products.map((p) => [p.id, Number(p.price)]));
 
         for (const item of items) {
-          const unitPrice = priceByProductId.get(item.productId) ?? null;
+          const productPrice = priceByProductId.get(item.productId) ?? null;
+          const rawUnitPrice = (item as unknown as { unitPrice?: unknown }).unitPrice ?? item.unitPrice;
+          const customPrice =
+            rawUnitPrice != null && Number(rawUnitPrice) >= 0 ? Number(rawUnitPrice) : null;
+          const unitPrice = customPrice ?? productPrice;
+          const valueToSave = unitPrice != null ? Number(unitPrice) : null;
           const orderItem = queryRunner.manager.create(OrderItem, {
             order: savedOrder,
             product: { id: item.productId },
             note: item.note != null && item.note !== undefined ? String(item.note) : '',
-            unitPrice: unitPrice != null ? unitPrice : undefined,
+            unitPrice: valueToSave,
           });
 
           const savedItem = await queryRunner.manager.save(orderItem);
+          if (valueToSave !== null) {
+            await queryRunner.manager.query(
+              'UPDATE ppp_order_items SET unit_price = ? WHERE id = ?',
+              [valueToSave, savedItem.id],
+            );
+          }
 
           if (item.attributes?.length) {
             const attrs = item.attributes
@@ -294,6 +507,9 @@ export class OrdersService {
             if (attrs.length > 0) await queryRunner.manager.save(attrs);
           }
         }
+
+        // Deduct inventory using pre-computed count (avoids second getInventoryByProductIds)
+        await this.deductInventory(queryRunner.manager, countByStockKeyForDeduct);
       }
 
       // Create extras (adicionales, código 90)
@@ -332,33 +548,30 @@ export class OrdersService {
           } else {
             // For internal orders, create point codes without assigning to user
             // User will register them manually using the code from receipt
-            // Use DataSource repository directly since transaction is committed
             const pointsRepo = this.dataSource.getRepository(UserPoints);
+            const pointRecords: UserPoints[] = [];
             for (let i = 0; i < calculatedPoints; i++) {
               const code = await this.pointsService.generateUniquePointCode();
-              const pointRecord = pointsRepo.create({
-                code,
-                userId: null, // Not assigned yet
-                orderId: savedOrder.id,
-                orderDailyNumber: newOrderNumber,
-                isUsed: false,
-                type: 'automatic',
-                description: `Punto de orden #${newOrderNumber}`,
-              });
-              await pointsRepo.save(pointRecord);
+              pointRecords.push(
+                pointsRepo.create({
+                  code,
+                  userId: null,
+                  orderId: savedOrder.id,
+                  orderDailyNumber: newOrderNumber,
+                  isUsed: false,
+                  type: 'automatic',
+                  description: `Punto de orden #${newOrderNumber}`,
+                }) as UserPoints,
+              );
             }
+            if (pointRecords.length > 0) await pointsRepo.save(pointRecords);
           }
         } catch {
           // Don't fail order creation if point code generation fails
         }
       }
 
-      const fullOrder = await this.orderRepo.findOne({
-        where: { id: savedOrder.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
-      });
-
-      // Apply redemption prize if provided
+      // Apply redemption prize if provided (before loading order for response)
       if (redemptionCode && redemptionCode.trim()) {
         try {
           await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
@@ -421,14 +634,12 @@ export class OrdersService {
         }
       }
 
-      console.log('[create] Orden creada OK:', { orderId: savedOrder.id, dailyOrderNumber: newOrderNumber, orderType, address });
       return {
         success: true,
         orderId: savedOrder.id,
         dailyOrderNumber: newOrderNumber,
       };
     } catch (error) {
-      console.log('[create] Error en create:', error?.message ?? error);
       await queryRunner.rollbackTransaction();
       
       // Check if it's a duplicate key error
@@ -529,11 +740,7 @@ export class OrdersService {
         const groupedItems: Record<number, any> = {};
 
         for (const item of order.items) {
-        // Validate product exists before accessing properties
-        if (!item.product) {
-          console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
-          continue; // Skip items without product
-        }
+        if (!item.product) continue;
         const productId = item.product.id;
         const productName = item.product.name;
         const code = item.product.code;
@@ -628,6 +835,7 @@ export class OrdersService {
    * Actualiza solamente los productos (items) de una orden.
    * Elimina los items existentes y los vuelve a crear.
    * Si queda sin items → la orden se cancela.
+   * Inventario: restaura stock de items antiguos y descuenta para los nuevos (en transacción).
    *
    * @param orderId - ID de la orden.
    * @param dto - Lista de nuevos items.
@@ -635,82 +843,129 @@ export class OrdersService {
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
-      relations: ['items', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes'],
     });
 
-    if (!order) throw new Error('No se encontró la orden');
-
-    for (const item of order.items) {
-      await this.attrRepo.delete({ orderItem: { id: item.id } });
-      await this.itemRepo.delete(item.id);
-    }
+    if (!order) throw new NotFoundException('No se encontró la orden');
 
     const hasItems = dto.items?.length;
     const hasExtrasToAdd = dto.extrasToAdd?.length;
 
-    if (!hasItems && !hasExtrasToAdd) {
-      order.orderStatus = 'canceled';
-      await this.orderRepo.save(order);
-      try {
-        await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-      } catch {
-        // Don't fail order cancellation if point invalidation fails
+    // Old items: build count-by-stock-key for restore (product or variant)
+    const oldProductIds = [...new Set(order.items.map((i) => i.product?.id).filter((id): id is number => id != null))];
+    const invMapOld = oldProductIds.length ? await this.productsService.getInventoryByProductIds(oldProductIds) : new Map();
+    const oldItemsForInv = order.items.map((i) => ({
+      productId: i.product!.id,
+      attributes: (i.attributes || []).map((a) => ({ attributeName: a.attributeName, attributeValue: a.attributeValue })),
+    }));
+    const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
+
+    // New items: validate inventory (product or variant)
+    const newProductIds = [...new Set((dto.items ?? []).map((i) => i.productId))];
+    if (newProductIds.length > 0) {
+      const invMapNew = await this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true });
+      const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNew);
+      const productsForError = await this.productRepo.find({ where: { id: In(newProductIds) }, select: ['id', 'name'] });
+      this.validateInventoryCounts(newCountByStockKey, invMapNew, productsForError);
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Restore inventory for old items (product or variant)
+      await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
+
+      // Delete old items and attributes in batch (same transaction)
+      const itemIds = order.items.map((i) => i.id);
+      if (itemIds.length > 0) {
+        await queryRunner.manager.delete(OrderItemAttribute, { orderItem: { id: In(itemIds) } });
+        await queryRunner.manager.delete(OrderItem, { id: In(itemIds) });
       }
-      this.gateway.emitOrdersUpdates("deleted_order", order);
-      return {
-        success: true,
-        message: `Orden #${orderId} cancelada porque no quedaron productos`,
-      };
-    }
 
-    const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
-    if (wasPastCooking) {
-      order.orderStatus = 'cooking';
-      await this.orderRepo.save(order);
-    }
-
-    const productIds = (dto.items ?? []).map((i) => i.productId);
-    const productsForPrice = productIds.length
-      ? await this.productRepo.find({ where: { id: In(productIds) }, select: ['id', 'price'] })
-      : [];
-    const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
-
-    for (const itemDto of dto.items ?? []) {
-      const unitPrice = priceByProductId.get(itemDto.productId) ?? null;
-      const orderItem = this.itemRepo.create({
-        order,
-        product: { id: itemDto.productId },
-        note: itemDto.note,
-        kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
-        unitPrice: unitPrice != null ? unitPrice : undefined,
-      });
-
-      await this.itemRepo.save(orderItem);
-
-      if (itemDto.attributes?.length) {
-        const attributes = itemDto.attributes.map(attr =>
-          this.attrRepo.create({
-            orderItem,
-            attributeName: attr.attributeName,
-            attributeValue: attr.attributeValue,
-          })
-        );
-        await this.attrRepo.save(attributes);
+      if (!hasItems && !hasExtrasToAdd) {
+        order.orderStatus = 'canceled';
+        await queryRunner.manager.save(order);
+        await queryRunner.commitTransaction();
+        try {
+          await this.pointsService.invalidatePointsForCanceledOrder(orderId);
+        } catch {
+          // Don't fail if point invalidation fails
+        }
+        this.gateway.emitOrdersUpdates("deleted_order", order);
+        return {
+          success: true,
+          message: `Orden #${orderId} cancelada porque no quedaron productos`,
+        };
       }
-    }
 
-    // Agregar extras (adicionales, código 90)
-    if (dto.extrasToAdd?.length) {
-      for (const ex of dto.extrasToAdd) {
-        const extra = this.extraRepo.create({
+      const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
+      if (wasPastCooking) {
+        order.orderStatus = 'cooking';
+        await queryRunner.manager.save(order);
+      }
+
+      const productIds = (dto.items ?? []).map((i) => i.productId);
+      const productsForPrice = productIds.length
+        ? await queryRunner.manager.find(Product, { where: { id: In(productIds) }, select: ['id', 'price'] })
+        : [];
+      const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
+
+      for (const itemDto of dto.items ?? []) {
+        const productPrice = priceByProductId.get(itemDto.productId) ?? null;
+        const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0 ? Number(itemDto.unitPrice) : null;
+        const unitPrice = customPrice ?? productPrice;
+        const orderItem = queryRunner.manager.create(OrderItem, {
           order,
-          title: ex.title,
-          description: ex.description ?? null,
-          amount: ex.amount,
-          quantity: ex.quantity ?? 1,
+          product: { id: itemDto.productId },
+          note: itemDto.note,
+          kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
+          unitPrice: unitPrice != null ? unitPrice : undefined,
         });
-        await this.extraRepo.save(extra);
+
+        const savedItem = await queryRunner.manager.save(orderItem);
+
+        if (itemDto.attributes?.length) {
+          const attributes = itemDto.attributes.map(attr =>
+            queryRunner.manager.create(OrderItemAttribute, {
+              orderItem: savedItem,
+              attributeName: attr.attributeName,
+              attributeValue: attr.attributeValue,
+            })
+          );
+          await queryRunner.manager.save(attributes);
+        }
       }
+
+      // Deduct inventory for new items (product or variant)
+      const newProductIdsInTx = [...new Set((dto.items ?? []).map((i) => i.productId))];
+      const invMapNewInTx = newProductIdsInTx.length
+        ? await this.productsService.getInventoryByProductIds(newProductIdsInTx, { includeAlsoDeductTargets: true })
+        : new Map();
+      const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNewInTx);
+      await this.deductInventory(queryRunner.manager, newCountByStockKey);
+
+      // Agregar extras (adicionales, código 90)
+      if (dto.extrasToAdd?.length) {
+        for (const ex of dto.extrasToAdd) {
+          const extra = queryRunner.manager.create(OrderExtra, {
+            order,
+            title: ex.title,
+            description: ex.description ?? null,
+            amount: ex.amount,
+            quantity: ex.quantity ?? 1,
+          });
+          await queryRunner.manager.save(extra);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
 
     let fullOrder = await this.orderRepo.findOne({
@@ -730,10 +985,7 @@ export class OrdersService {
       // Recalculate points after updating items (guard: product puede ser null si la relación no cargó)
       const allCodes: number[] = [];
       for (const item of fullOrder.items) {
-        if (!item.product) {
-          console.warn(`[updateOrderItems] Order ${fullOrder.id} item ${item.id} has no product relation, skipping for points`);
-          continue;
-        }
+        if (!item.product) continue;
         allCodes.push(item.product.code);
       }
 
@@ -771,6 +1023,43 @@ export class OrdersService {
       success: true,
       message: `Order #${fullOrder?.dailyOrderNumber} updated successfully`,
     };
+  }
+
+  /**
+   * Actualiza solo el precio unitario de todos los ítems de un producto en la orden (aplicar descuento después de creada).
+   * No modifica inventario ni otros ítems.
+   */
+  async updateOrderItemUnitPrice(orderId: number, dto: UpdateOrderItemUnitPriceDto) {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (!order) throw new NotFoundException('No se encontró la orden');
+    if (['completed', 'canceled'].includes(order.orderStatus)) {
+      throw new BadRequestException('No se puede modificar el precio de una orden completada o cancelada');
+    }
+    const itemsToUpdate = order.items.filter((i) => i.product?.id === dto.productId);
+    if (itemsToUpdate.length === 0) {
+      throw new NotFoundException('No hay ítems de ese producto en la orden');
+    }
+    const value = Number(dto.unitPrice);
+    if (!Number.isFinite(value) || value < 0) {
+      throw new BadRequestException('Precio unitario inválido');
+    }
+    await this.itemRepo.update(
+      { order: { id: orderId }, product: { id: dto.productId } },
+      { unitPrice: value },
+    );
+    const refreshedOrder = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (refreshedOrder) {
+      const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+      return formatted;
+    }
+    return null;
   }
 
   /**
@@ -934,6 +1223,86 @@ export class OrdersService {
   }
 
   /**
+   * Cambia la mesa de una orden (solo tipo table). Si la mesa destino tiene orden activa, se intercambian.
+   */
+  async changeTable(orderId: number, dto: ChangeTableDto) {
+    const newTable = String(dto.newTable ?? '').trim();
+    if (!newTable) throw new BadRequestException('newTable es requerido');
+
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes'],
+    });
+    if (!order) throw new NotFoundException(`No se encontró la orden #${orderId}`);
+    if (order.orderType !== 'table') throw new BadRequestException('Solo se puede cambiar mesa en órdenes tipo mesa');
+    if (order.orderStatus === 'completed' || order.orderStatus === 'canceled') {
+      throw new BadRequestException('No se puede cambiar mesa en una orden completada o cancelada');
+    }
+
+    const currentTable = String(order.address ?? '').trim();
+    if (currentTable === newTable) {
+      throw new BadRequestException('La orden ya está en esa mesa');
+    }
+
+    const otherOrder = await this.orderRepo.findOne({
+      where: {
+        address: newTable,
+        orderType: 'table',
+        orderStatus: Not(In(['completed', 'canceled'])),
+      },
+      relations: ['items', 'items.product', 'items.attributes'],
+    });
+
+    if (!otherOrder) {
+      order.address = newTable;
+      await this.orderRepo.save(order);
+      const formatted = await this.mapOrderToGroupedFormat(order);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+      return {
+        success: true,
+        message: `Orden movida a la mesa ${newTable}`,
+        swapped: false,
+      };
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Order);
+      const o1 = await repo.findOne({ where: { id: order.id } });
+      const o2 = await repo.findOne({ where: { id: otherOrder.id } });
+      if (!o1 || !o2) throw new InternalServerErrorException('Orden no encontrada en transacción');
+      o1.address = newTable;
+      o2.address = currentTable;
+      await repo.save(o1);
+      await repo.save(o2);
+    });
+
+    const [updated1, updated2] = await Promise.all([
+      this.orderRepo.findOne({
+        where: { id: order.id },
+        relations: ['items', 'items.product', 'items.attributes'],
+      }),
+      this.orderRepo.findOne({
+        where: { id: otherOrder.id },
+        relations: ['items', 'items.product', 'items.attributes'],
+      }),
+    ]);
+    if (updated1) {
+      const formatted = await this.mapOrderToGroupedFormat(updated1);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+    if (updated2) {
+      const formatted = await this.mapOrderToGroupedFormat(updated2);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+
+    return {
+      success: true,
+      message: `Mesas intercambiadas: orden de mesa ${currentTable} → ${newTable}, orden de mesa ${newTable} → ${currentTable}`,
+      swapped: true,
+    };
+  }
+
+  /**
    * Convierte una orden en un formato agrupado por producto,
    * útil para cocina y frontend.
    *
@@ -944,16 +1313,13 @@ export class OrdersService {
     const groupedItems: Record<number, any> = {};
 
     for (const item of order.items) {
-      // Validate product exists before accessing properties
-      if (!item.product) {
-        console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
-        continue; // Skip items without product
-      }
+      if (!item.product) continue;
       const productId = item.product.id;
       const productName = item.product.name;
       const code = item.product.code;
       const imageUrl = item.product.imageUrl;
-      const price = item.unitPrice != null ? Number(item.unitPrice) : item.product.price;
+      const rawUnit = (item as any).unitPrice ?? (item as any).unit_price;
+      const price = rawUnit != null && rawUnit !== '' ? Number(rawUnit) : Number(item.product?.price ?? 0);
 
       const attributeMap = item.attributes?.reduce((acc, attr) => {
         acc[attr.attributeName] = attr.attributeValue;
@@ -1253,7 +1619,9 @@ export class OrdersService {
       relations: ['items', 'items.product', 'extras'],
     });
 
-    const allProducts = await this.productRepo.find();
+    const allProducts = await this.productRepo.find({
+      select: ['id', 'name', 'price', 'code'],
+    });
 
     let totalSubtotal = 0;
     let totalDeliveryFees = 0;
@@ -1273,10 +1641,7 @@ export class OrdersService {
     for (const order of orders) {
       let orderSubtotal = 0;
       for (const item of order.items) {
-        if (!item.product) {
-          console.warn(`[getDailySummary] Order has item without product relation`);
-          continue; // Skip items without product
-        }
+        if (!item.product) continue;
         const product = allProducts.find(p => p.id === item.product.id);
         if (product) {
           const itemPrice = Number(item.unitPrice ?? product.price);
@@ -1374,7 +1739,10 @@ export class OrdersService {
       relations: ['items', 'items.product', 'extras'],
     });
 
-    const allProducts = await this.productRepo.find({ relations: ['categories'] });
+    const allProducts = await this.productRepo.find({
+      select: ['id', 'name', 'price', 'code'],
+      relations: ['categories'],
+    });
 
     let totalSubtotal = 0;
     let totalDeliveryFees = 0;

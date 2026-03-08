@@ -26,14 +26,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       (backendUrl ? `${backendUrl}/api/auth/google/callback` : null) ||
       'http://localhost:4000/api/auth/google/callback';
 
-    // Log para debugging
-    console.log('[GoogleStrategy] Configuración OAuth:');
-    console.log('  - GOOGLE_CALLBACK_URL:', explicitCallbackURL || 'no configurado');
-    console.log('  - BACKEND_URL_NGROK:', backendUrlNgrok || 'no configurado');
-    console.log('  - BACKEND_URL:', backendUrl || 'no configurado');
-    console.log('  - Callback URL final:', callbackURL);
-    console.log('  - Client ID:', clientID ? `${clientID.substring(0, 20)}...` : 'no configurado');
-
     if (!clientID || !clientSecret) {
       throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured');
     }
@@ -53,65 +45,33 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<User> {
     const { id, name, emails } = profile;
     const email = emails?.[0]?.value;
-    
-    console.log('[GoogleStrategy.validate] Iniciando validación');
-    console.log('[GoogleStrategy.validate] Email:', email);
-    console.log('[GoogleStrategy.validate] Google ID:', id);
-    console.log('[GoogleStrategy.validate] Full Name:', name?.displayName);
-    
-    if (!email) {
-      console.error('[GoogleStrategy.validate] ERROR: Email no disponible');
-      throw new Error('Email no disponible en el perfil de Google');
-    }
+    if (!email) throw new Error('Email no disponible en el perfil de Google');
 
     const fullName = name?.givenName && name?.familyName
       ? `${name.givenName} ${name.familyName}`
       : name?.displayName || email.split('@')[0] || 'Usuario';
 
-    console.log('[GoogleStrategy.validate] Buscando usuario en DB...');
     let user = await this.userRepository.findOne({
       where: [{ googleId: id }, { email }],
     });
 
     if (!user) {
-      console.log('[GoogleStrategy.validate] Usuario NO encontrado, creando nuevo...');
-      
-      try {
-        user = this.userRepository.create({
-          email,
-          fullName,
-          googleId: id,
-          provider: 'google',
-          isActive: true,
-          phone: undefined,
-          password: undefined,
-          roles: ['user'],
-        });
-        
-        console.log('[GoogleStrategy.validate] Usuario creado en memoria:', {
-          email: user.email,
-          fullName: user.fullName,
-          googleId: user.googleId,
-          provider: user.provider,
-        });
-        
-        await this.userRepository.save(user);
-        console.log('[GoogleStrategy.validate] ✅ Usuario guardado exitosamente en DB. ID:', user.id);
-      } catch (error) {
-        console.error('[GoogleStrategy.validate] ❌ ERROR al guardar usuario:', error);
-        throw error;
-      }
+      user = this.userRepository.create({
+        email,
+        fullName,
+        googleId: id,
+        provider: 'google',
+        isActive: true,
+        phone: undefined,
+        password: undefined,
+        roles: ['user'],
+      });
+      await this.userRepository.save(user);
     } else if (!user.googleId) {
-      console.log('[GoogleStrategy.validate] Usuario encontrado SIN googleId, vinculando cuenta...');
       user.googleId = id;
       user.provider = 'google';
-      if (!user.isActive) {
-        user.isActive = true;
-      }
+      if (!user.isActive) user.isActive = true;
       await this.userRepository.save(user);
-      console.log('[GoogleStrategy.validate] ✅ Cuenta vinculada exitosamente');
-    } else {
-      console.log('[GoogleStrategy.validate] Usuario existente encontrado. ID:', user.id);
     }
 
     return user;

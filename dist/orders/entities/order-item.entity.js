@@ -19,6 +19,7 @@ let OrderItem = class OrderItem {
     id;
     order;
     product;
+    unitPrice;
     attributes;
     note;
     kitchenPreparedAt;
@@ -51,6 +52,10 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'product_id' }),
     __metadata("design:type", product_entity_1.Product)
 ], OrderItem.prototype, "product", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'unit_price', type: 'decimal', precision: 10, scale: 2, nullable: true }),
+    __metadata("design:type", Object)
+], OrderItem.prototype, "unitPrice", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Atributos seleccionados para el producto (salsas, bebidas, acompañamientos).',

@@ -53,8 +53,7 @@ export class MailService {
       });
 
       return true;
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new InternalServerErrorException('Error al enviar el correo');
     }
   }
@@ -102,8 +101,7 @@ export class MailService {
 
     return true;
 
-  } catch (error) {
-    console.error(error);
+  } catch {
     throw new InternalServerErrorException('Error al enviar el correo de activación');
   }
 }
@@ -140,8 +138,7 @@ export class MailService {
       });
 
       return true;
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new InternalServerErrorException('Error al enviar el correo de recuperación de contraseña');
     }
   }
@@ -159,10 +156,7 @@ export class MailService {
   ) {
     const mailHost = this.configService.get<string>('MAIL_HOST');
     const mailUser = this.configService.get<string>('MAIL_USER');
-    if (!mailHost || !mailUser) {
-      console.warn('⚠️ [Mail] MAIL_HOST y/o MAIL_USER no están en .env. No se envía correo de confirmación. Agrega MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASSWORD.');
-      return false;
-    }
+    if (!mailHost || !mailUser) return false;
 
     try {
       const itemsHtml = items
@@ -301,14 +295,8 @@ export class MailService {
         subject: `Confirmación de Pedido #${orderNumber} - Pronto Pollo Portal`,
         html: htmlBody,
       });
-
-      console.log(`✅ [Mail] Order confirmation email sent to ${email} for order #${orderNumber}`);
       return true;
-    } catch (error: any) {
-      console.error('❌ [Mail] Error sending order confirmation email:', error?.message || error);
-      if (error?.code === 'ETIMEDOUT' || /Greeting never received/i.test(String(error?.message))) {
-        console.error('   💡 Revisa: MAIL_HOST (ej: smtp.gmail.com), MAIL_PORT (465=SSL, 587=STARTTLS), firewall. En Gmail usa contraseña de aplicación.');
-      }
+    } catch {
       throw new InternalServerErrorException('Error al enviar el correo de confirmación del pedido');
     }
   }
@@ -325,10 +313,7 @@ export class MailService {
   ) {
     const mailHost = this.configService.get<string>('MAIL_HOST');
     const mailUser = this.configService.get<string>('MAIL_USER');
-    if (!mailHost || !mailUser) {
-      console.warn('⚠️ [Mail] MAIL_HOST y/o MAIL_USER no están en .env. No se envía notificación de nueva orden.');
-      return false;
-    }
+    if (!mailHost || !mailUser) return false;
 
     try {
       const itemsHtml = items
@@ -469,15 +454,8 @@ export class MailService {
           })
         )
       );
-
-      console.log(`✅ [Mail] New order notification sent to ${recipients.join(', ')} for order #${orderNumber}`);
       return true;
-    } catch (error: any) {
-      console.error('❌ [Mail] Error sending new order notification:', error?.message || error);
-      if (error?.code === 'ETIMEDOUT' || /Greeting never received/i.test(String(error?.message))) {
-        console.error('   💡 Revisa: MAIL_HOST (ej: smtp.gmail.com), MAIL_PORT (465=SSL, 587=STARTTLS), firewall. En Gmail usa contraseña de aplicación.');
-      }
-      // No lanzar error para no afectar la creación de la orden
+    } catch {
       return false;
     }
   }

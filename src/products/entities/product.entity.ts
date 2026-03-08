@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Category } from './category.entity';
 import { ProductAttribute } from './product-attribute.entity';
+import { ProductVariantStock } from './product-variant-stock.entity';
 
 @Entity('ppp_products')
 export class Product {
@@ -71,6 +72,22 @@ export class Product {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
+  @ApiProperty({
+    description: 'Si se controla inventario para este producto (descuento automático en órdenes).',
+    example: false,
+    default: false,
+  })
+  @Column({ name: 'track_inventory', type: 'boolean', default: false })
+  trackInventory: boolean;
+
+  @ApiProperty({
+    description: 'Unidades en stock. Solo aplica si trackInventory es true.',
+    example: 0,
+    default: 0,
+  })
+  @Column({ type: 'int', default: 0 })
+  stock: number;
+
   // ------------------------------------------------------------------------
   // Atributos configurables
   // ------------------------------------------------------------------------
@@ -81,6 +98,14 @@ export class Product {
   })
   @OneToMany(() => ProductAttribute, (attr) => attr.product, { cascade: true })
   attributes: ProductAttribute[];
+
+  @ApiProperty({
+    description: 'Stock por variante (atributo). Si hay filas, las órdenes descontarán por atributo seleccionado.',
+    type: () => [ProductVariantStock],
+    required: false,
+  })
+  @OneToMany(() => ProductVariantStock, (vs) => vs.product, { cascade: true })
+  variantStocks: ProductVariantStock[];
 
   // ------------------------------------------------------------------------
   // Categorías
@@ -115,4 +140,19 @@ export class Product {
   })
   @Column({ type: 'varchar', nullable: true, name: 'image_url' })
   imageUrl: string;
+
+  // ------------------------------------------------------------------------
+  // También descontar de (productos que no están en grupos de inventario)
+  // ------------------------------------------------------------------------
+  @Column({ name: 'also_deduct_product_id', type: 'int', nullable: true })
+  alsoDeductProductId?: number | null;
+
+  @Column({ name: 'also_deduct_attribute_name', type: 'varchar', length: 100, nullable: true })
+  alsoDeductAttributeName?: string | null;
+
+  @Column({ name: 'also_deduct_attribute_value', type: 'varchar', length: 100, nullable: true })
+  alsoDeductAttributeValue?: string | null;
+
+  @Column({ name: 'also_deduct_base_units', type: 'decimal', precision: 10, scale: 4, nullable: true })
+  alsoDeductBaseUnits?: number | null;
 }

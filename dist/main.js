@@ -33,13 +33,6 @@ function setupProcessHandlers() {
 }
 async function bootstrap() {
     setupProcessHandlers();
-    process.stdout.write('\n🚀 [Bootstrap] Starting NestJS application...\n');
-    process.stdout.write('📋 [Environment] Checking .env variables...\n');
-    process.stdout.write(`  DB_HOST: ${process.env.DB_HOST || 'NOT SET'}\n`);
-    process.stdout.write(`  DB_PORT: ${process.env.DB_PORT || 'NOT SET'}\n`);
-    process.stdout.write(`  DB_USERNAME: ${process.env.DB_USERNAME || 'NOT SET'}\n`);
-    process.stdout.write(`  DB_DATABASE: ${process.env.DB_DATABASE || 'NOT SET'}\n`);
-    process.stdout.write(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? process.env.DB_PASSWORD.substring(0, 3) + '***' : 'NOT SET'}\n\n`);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.useGlobalFilters(new db_exception_filter_1.DbExceptionFilter());
     app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor(), new request_timeout_interceptor_1.RequestTimeoutInterceptor(30000));

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
+exports.ChangeTableDto = exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemUnitPriceDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -36,6 +36,8 @@ class CreateOrderItemDto {
     productId;
     note;
     attributes;
+    alsoDeductVariant;
+    unitPrice;
 }
 exports.CreateOrderItemDto = CreateOrderItemDto;
 __decorate([
@@ -61,6 +63,22 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], CreateOrderItemDto.prototype, "attributes", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Variante del producto asociado del que descontar (cuando aplica "también descontar de").',
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], CreateOrderItemDto.prototype, "alsoDeductVariant", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Precio unitario con descuento (opcional).', required: false, example: 15000 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateOrderItemDto.prototype, "unitPrice", void 0);
 class CreateOrderDto {
     customerName;
     phone;
@@ -196,6 +214,8 @@ class UpdateOrderItemDto {
     attributes;
     note;
     kitchenPrepared;
+    alsoDeductVariant;
+    unitPrice;
 }
 exports.UpdateOrderItemDto = UpdateOrderItemDto;
 __decorate([
@@ -234,6 +254,36 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], UpdateOrderItemDto.prototype, "kitchenPrepared", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], UpdateOrderItemDto.prototype, "alsoDeductVariant", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, example: 15000 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateOrderItemDto.prototype, "unitPrice", void 0);
+class UpdateOrderItemUnitPriceDto {
+    productId;
+    unitPrice;
+}
+exports.UpdateOrderItemUnitPriceDto = UpdateOrderItemUnitPriceDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID del producto al que aplicar el precio unitario.' }),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdateOrderItemUnitPriceDto.prototype, "productId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Precio unitario a aplicar (descuento o precio fijo).' }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], UpdateOrderItemUnitPriceDto.prototype, "unitPrice", void 0);
 class UpdateOrderItemsDto {
     items;
     extrasToAdd;
@@ -383,4 +433,16 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateOrderGeneralDto.prototype, "deliveryFee", void 0);
+class ChangeTableDto {
+    newTable;
+}
+exports.ChangeTableDto = ChangeTableDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Número o identificador de la mesa destino.',
+        example: '7',
+    }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ChangeTableDto.prototype, "newTable", void 0);
 //# sourceMappingURL=orderDTO.js.map

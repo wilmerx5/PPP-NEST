@@ -15,6 +15,7 @@ const order_item_entity_1 = require("../../orders/entities/order-item.entity");
 const typeorm_1 = require("typeorm");
 const category_entity_1 = require("./category.entity");
 const product_attribute_entity_1 = require("./product-attribute.entity");
+const product_variant_stock_entity_1 = require("./product-variant-stock.entity");
 let Product = class Product {
     id;
     name;
@@ -23,10 +24,17 @@ let Product = class Product {
     hasAttributes;
     code;
     isActive;
+    trackInventory;
+    stock;
     attributes;
+    variantStocks;
     categories;
     orderItems;
     imageUrl;
+    alsoDeductProductId;
+    alsoDeductAttributeName;
+    alsoDeductAttributeValue;
+    alsoDeductBaseUnits;
 };
 exports.Product = Product;
 __decorate([
@@ -94,6 +102,24 @@ __decorate([
 ], Product.prototype, "isActive", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
+        description: 'Si se controla inventario para este producto (descuento automático en órdenes).',
+        example: false,
+        default: false,
+    }),
+    (0, typeorm_1.Column)({ name: 'track_inventory', type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], Product.prototype, "trackInventory", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Unidades en stock. Solo aplica si trackInventory es true.',
+        example: 0,
+        default: 0,
+    }),
+    (0, typeorm_1.Column)({ type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Product.prototype, "stock", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
         description: 'Lista de atributos configurables del producto.',
         type: () => [product_attribute_entity_1.ProductAttribute],
         required: false,
@@ -101,6 +127,15 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => product_attribute_entity_1.ProductAttribute, (attr) => attr.product, { cascade: true }),
     __metadata("design:type", Array)
 ], Product.prototype, "attributes", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Stock por variante (atributo). Si hay filas, las órdenes descontarán por atributo seleccionado.',
+        type: () => [product_variant_stock_entity_1.ProductVariantStock],
+        required: false,
+    }),
+    (0, typeorm_1.OneToMany)(() => product_variant_stock_entity_1.ProductVariantStock, (vs) => vs.product, { cascade: true }),
+    __metadata("design:type", Array)
+], Product.prototype, "variantStocks", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Categorías a las que pertenece este producto.',
@@ -132,6 +167,22 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true, name: 'image_url' }),
     __metadata("design:type", String)
 ], Product.prototype, "imageUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'also_deduct_product_id', type: 'int', nullable: true }),
+    __metadata("design:type", Object)
+], Product.prototype, "alsoDeductProductId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'also_deduct_attribute_name', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Product.prototype, "alsoDeductAttributeName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'also_deduct_attribute_value', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Product.prototype, "alsoDeductAttributeValue", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'also_deduct_base_units', type: 'decimal', precision: 10, scale: 4, nullable: true }),
+    __metadata("design:type", Object)
+], Product.prototype, "alsoDeductBaseUnits", void 0);
 exports.Product = Product = __decorate([
     (0, typeorm_1.Entity)('ppp_products')
 ], Product);

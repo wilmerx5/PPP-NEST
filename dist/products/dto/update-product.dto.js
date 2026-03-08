@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateProductDto = exports.UpdateProductAttributeDto = void 0;
+exports.UpdateProductDto = exports.UpdateVariantStockAttributeDto = exports.UpdateVariantStockItemDto = exports.UpdateProductAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -37,6 +37,46 @@ __decorate([
     (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
 ], UpdateProductAttributeDto.prototype, "options", void 0);
+class UpdateVariantStockItemDto {
+    attributeValue;
+    stock;
+}
+exports.UpdateVariantStockItemDto = UpdateVariantStockItemDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Limonada' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateVariantStockItemDto.prototype, "attributeValue", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 10 }),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdateVariantStockItemDto.prototype, "stock", void 0);
+class UpdateVariantStockAttributeDto {
+    attributeName;
+    trackStock;
+    stocks;
+}
+exports.UpdateVariantStockAttributeDto = UpdateVariantStockAttributeDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Sabor', description: 'Nombre del atributo (ej. Sabor, Tamaño)' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateVariantStockAttributeDto.prototype, "attributeName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateVariantStockAttributeDto.prototype, "trackStock", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [UpdateVariantStockItemDto], description: 'Stock por cada opción (solo si trackStock !== false)' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => UpdateVariantStockItemDto),
+    __metadata("design:type", Array)
+], UpdateVariantStockAttributeDto.prototype, "stocks", void 0);
 class UpdateProductDto {
     name;
     description;
@@ -44,6 +84,13 @@ class UpdateProductDto {
     hasAttributes;
     attributes;
     categoryIds;
+    trackInventory;
+    stock;
+    variantStocks;
+    alsoDeductProductId;
+    alsoDeductAttributeName;
+    alsoDeductAttributeValue;
+    alsoDeductBaseUnits;
 }
 exports.UpdateProductDto = UpdateProductDto;
 __decorate([
@@ -94,4 +141,51 @@ __decorate([
     (0, class_validator_1.IsNumber)({}, { each: true }),
     __metadata("design:type", Array)
 ], UpdateProductDto.prototype, "categoryIds", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Si se controla inventario para este producto', example: false, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateProductDto.prototype, "trackInventory", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Unidades en stock (solo si trackInventory = true)', example: 0, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdateProductDto.prototype, "stock", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: [UpdateVariantStockAttributeDto],
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => UpdateVariantStockAttributeDto),
+    __metadata("design:type", Array)
+], UpdateProductDto.prototype, "variantStocks", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Object)
+], UpdateProductDto.prototype, "alsoDeductProductId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProductDto.prototype, "alsoDeductAttributeName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProductDto.prototype, "alsoDeductAttributeValue", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Object)
+], UpdateProductDto.prototype, "alsoDeductBaseUnits", void 0);
 //# sourceMappingURL=update-product.dto.js.map

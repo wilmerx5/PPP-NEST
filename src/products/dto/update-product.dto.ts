@@ -19,6 +19,32 @@ export class UpdateProductAttributeDto {
   options: string[];
 }
 
+export class UpdateVariantStockItemDto {
+  @ApiProperty({ example: 'Limonada' })
+  @IsString()
+  attributeValue: string;
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  stock: number;
+}
+
+export class UpdateVariantStockAttributeDto {
+  @ApiProperty({ example: 'Sabor', description: 'Nombre del atributo (ej. Sabor, Tamaño)' })
+  @IsString()
+  attributeName: string;
+  /** Si false, se deja de manejar stock por este atributo (se borran las filas de variante). */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  trackStock?: boolean;
+  @ApiProperty({ type: [UpdateVariantStockItemDto], description: 'Stock por cada opción (solo si trackStock !== false)' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateVariantStockItemDto)
+  stocks?: UpdateVariantStockItemDto[];
+}
+
 export class UpdateProductDto {
   @ApiProperty({ description: 'Nombre del producto', example: 'Pollo Asado Familiar', required: false })
   @IsOptional()
@@ -61,4 +87,46 @@ export class UpdateProductDto {
   @IsArray()
   @IsNumber({}, { each: true })
   categoryIds?: number[];
+
+  @ApiProperty({ description: 'Si se controla inventario para este producto', example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  trackInventory?: boolean;
+
+  @ApiProperty({ description: 'Unidades en stock (solo si trackInventory = true)', example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  stock?: number;
+
+  /** Stock por variante (por atributo). Ej. Sabor → Limonada: 10, Gaseosa: 5. Si se envía, reemplaza todo el stock por atributo indicado. */
+  @ApiProperty({
+    type: [UpdateVariantStockAttributeDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateVariantStockAttributeDto)
+  variantStocks?: UpdateVariantStockAttributeDto[];
+
+  /** También descontar de (productos que no están en grupos): ID del producto destino. */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  alsoDeductProductId?: number | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  alsoDeductAttributeName?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  alsoDeductAttributeValue?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  alsoDeductBaseUnits?: number | null;
 }

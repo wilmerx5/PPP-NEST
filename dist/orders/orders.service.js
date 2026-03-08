@@ -29,6 +29,7 @@ const user_entity_1 = require("../auth/entities/user.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
 const mail_service_1 = require("../common/mail/mail.service");
 const circuit_breaker_service_1 = require("../common/circuit-breaker/circuit-breaker.service");
+const products_service_1 = require("../products/products.service");
 let OrdersService = class OrdersService {
     orderRepo;
     itemRepo;
@@ -39,9 +40,10 @@ let OrdersService = class OrdersService {
     gateway;
     dataSource;
     pointsService;
+    productsService;
     mailService;
     circuitBreaker;
-    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, mailService, circuitBreaker) {
+    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, productsService, mailService, circuitBreaker) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
@@ -51,6 +53,7 @@ let OrdersService = class OrdersService {
         this.gateway = gateway;
         this.dataSource = dataSource;
         this.pointsService = pointsService;
+        this.productsService = productsService;
         this.mailService = mailService;
         this.circuitBreaker = circuitBreaker;
     }
@@ -68,12 +71,172 @@ let OrdersService = class OrdersService {
         const maxNumber = result?.maxNumber || 0;
         return maxNumber + 1;
     }
+    buildInventoryCountByKey(items, invMap) {
+        const countByKey = {};
+        for (const item of items) {
+            const inv = invMap.get(item.productId);
+            if (!inv?.trackInventory)
+                continue;
+            if (inv.variantGroups?.length && item.attributes?.length) {
+                const variantGroup = item.attributes.find((a) => inv.variantGroups.some((vg) => vg.attributeName === a.attributeName && vg.attributeValue === a.attributeValue));
+                if (variantGroup) {
+                    const vg = inv.variantGroups.find((x) => x.attributeName === variantGroup.attributeName &&
+                        x.attributeValue === variantGroup.attributeValue);
+                    if (vg) {
+                        const key = `g:${vg.groupId}`;
+                        countByKey[key] = (countByKey[key] ?? 0) + vg.groupBaseUnits;
+                        continue;
+                    }
+                }
+            }
+            const processAlsoDeductFrom = () => {
+                if (!inv.alsoDeductFrom?.length)
+                    return;
+                for (const ad of inv.alsoDeductFrom) {
+                    let attrName = ad.attributeName;
+                    let attrVal = ad.attributeValue;
+                    const invTarget = invMap.get(ad.productId);
+                    const targetHasVariantStock = (invTarget?.variantStocks?.length ?? 0) > 0;
+                    if ((attrName == null || attrVal == null) && targetHasVariantStock) {
+                        const adv = item.alsoDeductVariant;
+                        if (adv?.productId === ad.productId && adv.attributes?.length) {
+                            const match = adv.attributes.find((a) => invTarget.variantStocks.some((v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue));
+                            if (match) {
+                                attrName = match.attributeName;
+                                attrVal = match.attributeValue;
+                            }
+                        }
+                        if (attrName == null || attrVal == null) {
+                            const otherItem = items.find((i) => i.productId === ad.productId);
+                            if (otherItem?.attributes?.length) {
+                                const match = otherItem.attributes.find((a) => invTarget.variantStocks.some((v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue));
+                                if (match) {
+                                    attrName = match.attributeName;
+                                    attrVal = match.attributeValue;
+                                }
+                            }
+                        }
+                    }
+                    if (attrName != null && attrVal != null && targetHasVariantStock) {
+                        const vKey = `v:${ad.productId}:${attrName}:${attrVal}`;
+                        countByKey[vKey] = (countByKey[vKey] ?? 0) + ad.baseUnits;
+                    }
+                    else {
+                        const pKey = `p:${ad.productId}`;
+                        countByKey[pKey] = (countByKey[pKey] ?? 0) + ad.baseUnits;
+                    }
+                }
+            };
+            if (inv.groupId != null && inv.groupBaseUnits != null) {
+                const key = `g:${inv.groupId}`;
+                countByKey[key] = (countByKey[key] ?? 0) + inv.groupBaseUnits;
+                processAlsoDeductFrom();
+                continue;
+            }
+            processAlsoDeductFrom();
+            let key;
+            if (inv.variantStocks?.length && item.attributes?.length) {
+                const match = item.attributes.find((a) => inv.variantStocks.some((v) => v.attributeName === a.attributeName && v.attributeValue === a.attributeValue));
+                if (match) {
+                    key = `v:${item.productId}:${match.attributeName}:${match.attributeValue}`;
+                }
+                else {
+                    key = `p:${item.productId}`;
+                }
+            }
+            else {
+                key = `p:${item.productId}`;
+            }
+            countByKey[key] = (countByKey[key] ?? 0) + 1;
+        }
+        return countByKey;
+    }
+    parseVariantKey(key) {
+        if (!key.startsWith('v:'))
+            return null;
+        const parts = key.split(':');
+        if (parts.length < 4)
+            return null;
+        return {
+            productId: Number(parts[1]),
+            attributeName: parts[2],
+            attributeValue: parts.slice(3).join(':'),
+        };
+    }
+    validateInventoryCounts(countByStockKey, invMap, products) {
+        for (const [key, count] of Object.entries(countByStockKey)) {
+            if (count <= 0)
+                continue;
+            if (key.startsWith('g:')) {
+                const groupId = Number(key.replace('g:', ''));
+                const invWithGroup = [...invMap.values()].find((inv) => inv.groupId === groupId);
+                const available = invWithGroup?.groupStock ?? 0;
+                if (available < count) {
+                    throw new common_1.BadRequestException(`Stock insuficiente en el grupo de inventario. Disponible: ${available.toFixed(2)} unidades base, solicitado: ${count.toFixed(2)}`);
+                }
+                continue;
+            }
+            const variant = this.parseVariantKey(key);
+            if (variant) {
+                const { productId, attributeName, attributeValue } = variant;
+                const inv = invMap.get(productId);
+                const variantStock = inv?.variantStocks?.find((v) => v.attributeName === attributeName && v.attributeValue === attributeValue);
+                const available = variantStock?.stock ?? 0;
+                if (available < count) {
+                    const p = products.find((x) => x.id === productId);
+                    throw new common_1.BadRequestException(`Stock insuficiente para "${p?.name ?? 'producto'} - ${attributeValue}". Disponible: ${available}, solicitado: ${count}`);
+                }
+            }
+            else {
+                const productId = Number(key.replace('p:', ''));
+                const inv = invMap.get(productId);
+                const available = inv?.stock ?? 0;
+                if (inv?.trackInventory && available < count) {
+                    const p = products.find((x) => x.id === productId);
+                    throw new common_1.BadRequestException(`Stock insuficiente para "${p?.name ?? 'producto'}". Disponible: ${available}, solicitado: ${count}`);
+                }
+            }
+        }
+    }
+    async deductInventory(manager, countByStockKey) {
+        for (const [key, count] of Object.entries(countByStockKey)) {
+            if (count <= 0)
+                continue;
+            if (key.startsWith('g:')) {
+                const groupId = Number(key.replace('g:', ''));
+                await this.productsService.decrementGroupStock(manager, groupId, count);
+                continue;
+            }
+            const variant = this.parseVariantKey(key);
+            if (variant) {
+                await this.productsService.decrementVariantStock(manager, variant.productId, variant.attributeName, variant.attributeValue, count);
+            }
+            else {
+                const productId = Number(key.replace('p:', ''));
+                await this.productsService.decrementStock(manager, productId, count);
+            }
+        }
+    }
+    async restoreInventory(manager, countByStockKey) {
+        for (const [key, count] of Object.entries(countByStockKey)) {
+            if (count <= 0)
+                continue;
+            if (key.startsWith('g:')) {
+                const groupId = Number(key.replace('g:', ''));
+                await this.productsService.incrementGroupStock(manager, groupId, count);
+                continue;
+            }
+            const variant = this.parseVariantKey(key);
+            if (variant) {
+                await this.productsService.incrementVariantStock(manager, variant.productId, variant.attributeName, variant.attributeValue, count);
+            }
+            else {
+                const productId = Number(key.replace('p:', ''));
+                await this.productsService.incrementStock(manager, productId, count);
+            }
+        }
+    }
     async create(createOrderDto) {
-        console.log('[create] Inicio create order:', {
-            orderType: createOrderDto.orderType,
-            address: createOrderDto.address,
-            itemsCount: createOrderDto.items?.length ?? 0,
-        });
         const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
         const orderType = createOrderDto.orderType ?? 'pickup';
         const deliveryFee = createOrderDto.deliveryFee;
@@ -83,6 +246,8 @@ let OrdersService = class OrdersService {
         if (!hasItems && !hasExtras) {
             throw new common_1.BadRequestException('Order must have at least one item or one extra');
         }
+        let countByStockKeyForDeduct = {};
+        let allCodesFromProducts = [];
         if (orderType === 'table' && address != null && String(address).trim() !== '') {
             const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
             const tableAddr = String(address).trim();
@@ -94,27 +259,25 @@ let OrdersService = class OrdersService {
                     createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
                 },
             });
-            console.log('[create] mesa/table check:', {
-                table: tableAddr,
-                todayRange: { start: todayStartUtc.toISOString(), end: todayEndUtc.toISOString() },
-                activeForTable: activeForTable ? { id: activeForTable.id, status: activeForTable.orderStatus } : null,
-            });
             if (activeForTable) {
-                console.log('[create] RECHAZADO: mesa ya tiene orden activa', tableAddr, activeForTable.id);
                 throw new common_1.BadRequestException('Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.');
             }
-            console.log('[create] OK: no hay orden activa para mesa', tableAddr);
         }
         if (hasItems && items.length > 0) {
             const productIds = [...new Set(items.map((i) => i.productId))];
             const products = await this.productRepo.find({
                 where: { id: (0, typeorm_2.In)(productIds) },
-                select: ['id', 'name', 'isActive'],
+                select: ['id', 'name', 'isActive', 'code'],
             });
             const inactive = products.find((p) => p.isActive === false);
             if (inactive) {
                 throw new common_1.BadRequestException(`El producto "${inactive.name}" está desactivado y no puede agregarse al pedido.`);
             }
+            const invMap = await this.productsService.getInventoryByProductIds(productIds, { includeAlsoDeductTargets: true });
+            const countByStockKey = this.buildInventoryCountByKey(items, invMap);
+            this.validateInventoryCounts(countByStockKey, invMap, products);
+            countByStockKeyForDeduct = { ...countByStockKey };
+            allCodesFromProducts = items.map((i) => products.find((p) => p.id === i.productId)?.code).filter((c) => c != null);
         }
         const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
         let finalDeliveryFee = 0;
@@ -149,18 +312,7 @@ let OrdersService = class OrdersService {
                 customerEmail: customerEmail || null,
                 orderSource: source,
             });
-            const allCodes = [];
-            if (items?.length) {
-                for (const item of items) {
-                    const product = await this.productRepo.findOne({
-                        where: { id: item.productId },
-                        select: ['code'],
-                    });
-                    if (product) {
-                        allCodes.push(product.code);
-                    }
-                }
-            }
+            const allCodes = allCodesFromProducts;
             let adjustedCodes = [...allCodes];
             if (redemptionCode && redemptionCode.trim()) {
                 const hasCode2 = adjustedCodes.includes(2);
@@ -194,13 +346,25 @@ let OrdersService = class OrdersService {
             order.points = calculatedPoints;
             const savedOrder = await queryRunner.manager.save(order);
             if (items?.length) {
+                const productIds = [...new Set(items.map((i) => i.productId))];
+                const products = await queryRunner.manager.find(product_entity_1.Product, { where: { id: (0, typeorm_2.In)(productIds) }, select: ['id', 'price'] });
+                const priceByProductId = new Map(products.map((p) => [p.id, Number(p.price)]));
                 for (const item of items) {
+                    const productPrice = priceByProductId.get(item.productId) ?? null;
+                    const rawUnitPrice = item.unitPrice ?? item.unitPrice;
+                    const customPrice = rawUnitPrice != null && Number(rawUnitPrice) >= 0 ? Number(rawUnitPrice) : null;
+                    const unitPrice = customPrice ?? productPrice;
+                    const valueToSave = unitPrice != null ? Number(unitPrice) : null;
                     const orderItem = queryRunner.manager.create(order_item_entity_1.OrderItem, {
                         order: savedOrder,
                         product: { id: item.productId },
                         note: item.note != null && item.note !== undefined ? String(item.note) : '',
+                        unitPrice: valueToSave,
                     });
                     const savedItem = await queryRunner.manager.save(orderItem);
+                    if (valueToSave !== null) {
+                        await queryRunner.manager.query('UPDATE ppp_order_items SET unit_price = ? WHERE id = ?', [valueToSave, savedItem.id]);
+                    }
                     if (item.attributes?.length) {
                         const attrs = item.attributes
                             .filter((attr) => attr?.attributeName != null && attr?.attributeValue != null && String(attr.attributeValue).trim() !== '')
@@ -213,6 +377,7 @@ let OrdersService = class OrdersService {
                             await queryRunner.manager.save(attrs);
                     }
                 }
+                await this.deductInventory(queryRunner.manager, countByStockKeyForDeduct);
             }
             if (extras?.length) {
                 for (const ex of extras) {
@@ -237,9 +402,10 @@ let OrdersService = class OrdersService {
                     }
                     else {
                         const pointsRepo = this.dataSource.getRepository(user_points_entity_1.UserPoints);
+                        const pointRecords = [];
                         for (let i = 0; i < calculatedPoints; i++) {
                             const code = await this.pointsService.generateUniquePointCode();
-                            const pointRecord = pointsRepo.create({
+                            pointRecords.push(pointsRepo.create({
                                 code,
                                 userId: null,
                                 orderId: savedOrder.id,
@@ -247,18 +413,15 @@ let OrdersService = class OrdersService {
                                 isUsed: false,
                                 type: 'automatic',
                                 description: `Punto de orden #${newOrderNumber}`,
-                            });
-                            await pointsRepo.save(pointRecord);
+                            }));
                         }
+                        if (pointRecords.length > 0)
+                            await pointsRepo.save(pointRecords);
                     }
                 }
                 catch {
                 }
             }
-            const fullOrder = await this.orderRepo.findOne({
-                where: { id: savedOrder.id },
-                relations: ['items', 'items.product', 'items.attributes', 'extras'],
-            });
             if (redemptionCode && redemptionCode.trim()) {
                 try {
                     await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
@@ -278,7 +441,7 @@ let OrdersService = class OrdersService {
                         const itemsMap = new Map();
                         finalOrder.items.forEach(item => {
                             const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
-                            const price = Number(item.product?.price || 0);
+                            const price = Number(item.unitPrice ?? item.product?.price ?? 0);
                             const key = `${item.product?.id || 'unknown'}-${productName}`;
                             if (itemsMap.has(key)) {
                                 const existing = itemsMap.get(key);
@@ -301,7 +464,6 @@ let OrdersService = class OrdersService {
                     }
                 }
             }
-            console.log('[create] Orden creada OK:', { orderId: savedOrder.id, dailyOrderNumber: newOrderNumber, orderType, address });
             return {
                 success: true,
                 orderId: savedOrder.id,
@@ -309,7 +471,6 @@ let OrdersService = class OrdersService {
             };
         }
         catch (error) {
-            console.log('[create] Error en create:', error?.message ?? error);
             await queryRunner.rollbackTransaction();
             if (error?.code === 'ER_DUP_ENTRY' || error?.message?.includes('duplicate')) {
                 throw new common_1.BadRequestException('Ya existe una orden con ese número. Intenta de nuevo.');
@@ -323,14 +484,18 @@ let OrdersService = class OrdersService {
             await queryRunner.release();
         }
     }
-    async findOrdersToday() {
+    async findOrdersToday(orderType) {
         return this.circuitBreaker.execute(async () => {
             const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
+            const where = {
+                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
+                orderStatus: (0, typeorm_2.Not)('canceled'),
+            };
+            if (orderType && ['table', 'delivery', 'pickup', 'counter', 'rappi'].includes(orderType)) {
+                where.orderType = orderType;
+            }
             const orders = await this.orderRepo.find({
-                where: {
-                    createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
-                    orderStatus: (0, typeorm_2.Not)('canceled'),
-                },
+                where,
                 relations: ['items', 'items.product', 'items.attributes', 'extras'],
                 order: { createdAt: 'DESC' },
             });
@@ -365,15 +530,13 @@ let OrdersService = class OrdersService {
             const createdAtBogota = (0, date_util_1.formatToBogotaISO)(order.createdAt);
             const groupedItems = {};
             for (const item of order.items) {
-                if (!item.product) {
-                    console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+                if (!item.product)
                     continue;
-                }
                 const productId = item.product.id;
                 const productName = item.product.name;
                 const code = item.product.code;
                 const imageUrl = item.product.imageUrl;
-                const price = item.product.price;
+                const price = item.unitPrice != null ? Number(item.unitPrice) : item.product.price;
                 const attributeMap = item.attributes?.reduce((acc, attr) => {
                     acc[attr.attributeName] = attr.attributeValue;
                     return acc;
@@ -443,63 +606,108 @@ let OrdersService = class OrdersService {
     async updateOrderItems(orderId, dto) {
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
-            relations: ['items', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes'],
         });
         if (!order)
-            throw new Error('No se encontró la orden');
-        for (const item of order.items) {
-            await this.attrRepo.delete({ orderItem: { id: item.id } });
-            await this.itemRepo.delete(item.id);
-        }
+            throw new common_1.NotFoundException('No se encontró la orden');
         const hasItems = dto.items?.length;
         const hasExtrasToAdd = dto.extrasToAdd?.length;
-        if (!hasItems && !hasExtrasToAdd) {
-            order.orderStatus = 'canceled';
-            await this.orderRepo.save(order);
-            try {
-                await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-            }
-            catch {
-            }
-            this.gateway.emitOrdersUpdates("deleted_order", order);
-            return {
-                success: true,
-                message: `Orden #${orderId} cancelada porque no quedaron productos`,
-            };
+        const oldProductIds = [...new Set(order.items.map((i) => i.product?.id).filter((id) => id != null))];
+        const invMapOld = oldProductIds.length ? await this.productsService.getInventoryByProductIds(oldProductIds) : new Map();
+        const oldItemsForInv = order.items.map((i) => ({
+            productId: i.product.id,
+            attributes: (i.attributes || []).map((a) => ({ attributeName: a.attributeName, attributeValue: a.attributeValue })),
+        }));
+        const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
+        const newProductIds = [...new Set((dto.items ?? []).map((i) => i.productId))];
+        if (newProductIds.length > 0) {
+            const invMapNew = await this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true });
+            const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNew);
+            const productsForError = await this.productRepo.find({ where: { id: (0, typeorm_2.In)(newProductIds) }, select: ['id', 'name'] });
+            this.validateInventoryCounts(newCountByStockKey, invMapNew, productsForError);
         }
-        const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
-        if (wasPastCooking) {
-            order.orderStatus = 'cooking';
-            await this.orderRepo.save(order);
-        }
-        for (const itemDto of dto.items ?? []) {
-            const orderItem = this.itemRepo.create({
-                order,
-                product: { id: itemDto.productId },
-                note: itemDto.note,
-                kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
-            });
-            await this.itemRepo.save(orderItem);
-            if (itemDto.attributes?.length) {
-                const attributes = itemDto.attributes.map(attr => this.attrRepo.create({
-                    orderItem,
-                    attributeName: attr.attributeName,
-                    attributeValue: attr.attributeValue,
-                }));
-                await this.attrRepo.save(attributes);
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
+            const itemIds = order.items.map((i) => i.id);
+            if (itemIds.length > 0) {
+                await queryRunner.manager.delete(order_item_attribute_entity_1.OrderItemAttribute, { orderItem: { id: (0, typeorm_2.In)(itemIds) } });
+                await queryRunner.manager.delete(order_item_entity_1.OrderItem, { id: (0, typeorm_2.In)(itemIds) });
             }
-        }
-        if (dto.extrasToAdd?.length) {
-            for (const ex of dto.extrasToAdd) {
-                const extra = this.extraRepo.create({
+            if (!hasItems && !hasExtrasToAdd) {
+                order.orderStatus = 'canceled';
+                await queryRunner.manager.save(order);
+                await queryRunner.commitTransaction();
+                try {
+                    await this.pointsService.invalidatePointsForCanceledOrder(orderId);
+                }
+                catch {
+                }
+                this.gateway.emitOrdersUpdates("deleted_order", order);
+                return {
+                    success: true,
+                    message: `Orden #${orderId} cancelada porque no quedaron productos`,
+                };
+            }
+            const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
+            if (wasPastCooking) {
+                order.orderStatus = 'cooking';
+                await queryRunner.manager.save(order);
+            }
+            const productIds = (dto.items ?? []).map((i) => i.productId);
+            const productsForPrice = productIds.length
+                ? await queryRunner.manager.find(product_entity_1.Product, { where: { id: (0, typeorm_2.In)(productIds) }, select: ['id', 'price'] })
+                : [];
+            const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
+            for (const itemDto of dto.items ?? []) {
+                const productPrice = priceByProductId.get(itemDto.productId) ?? null;
+                const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0 ? Number(itemDto.unitPrice) : null;
+                const unitPrice = customPrice ?? productPrice;
+                const orderItem = queryRunner.manager.create(order_item_entity_1.OrderItem, {
                     order,
-                    title: ex.title,
-                    description: ex.description ?? null,
-                    amount: ex.amount,
-                    quantity: ex.quantity ?? 1,
+                    product: { id: itemDto.productId },
+                    note: itemDto.note,
+                    kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
+                    unitPrice: unitPrice != null ? unitPrice : undefined,
                 });
-                await this.extraRepo.save(extra);
+                const savedItem = await queryRunner.manager.save(orderItem);
+                if (itemDto.attributes?.length) {
+                    const attributes = itemDto.attributes.map(attr => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
+                        orderItem: savedItem,
+                        attributeName: attr.attributeName,
+                        attributeValue: attr.attributeValue,
+                    }));
+                    await queryRunner.manager.save(attributes);
+                }
             }
+            const newProductIdsInTx = [...new Set((dto.items ?? []).map((i) => i.productId))];
+            const invMapNewInTx = newProductIdsInTx.length
+                ? await this.productsService.getInventoryByProductIds(newProductIdsInTx, { includeAlsoDeductTargets: true })
+                : new Map();
+            const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNewInTx);
+            await this.deductInventory(queryRunner.manager, newCountByStockKey);
+            if (dto.extrasToAdd?.length) {
+                for (const ex of dto.extrasToAdd) {
+                    const extra = queryRunner.manager.create(order_extra_entity_1.OrderExtra, {
+                        order,
+                        title: ex.title,
+                        description: ex.description ?? null,
+                        amount: ex.amount,
+                        quantity: ex.quantity ?? 1,
+                    });
+                    await queryRunner.manager.save(extra);
+                }
+            }
+            await queryRunner.commitTransaction();
+        }
+        catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e;
+        }
+        finally {
+            await queryRunner.release();
         }
         let fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
@@ -514,10 +722,8 @@ let OrdersService = class OrdersService {
         if (fullOrder) {
             const allCodes = [];
             for (const item of fullOrder.items) {
-                if (!item.product) {
-                    console.warn(`[updateOrderItems] Order ${fullOrder.id} item ${item.id} has no product relation, skipping for points`);
+                if (!item.product)
                     continue;
-                }
                 allCodes.push(item.product.code);
             }
             const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
@@ -541,6 +747,36 @@ let OrdersService = class OrdersService {
             success: true,
             message: `Order #${fullOrder?.dailyOrderNumber} updated successfully`,
         };
+    }
+    async updateOrderItemUnitPrice(orderId, dto) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (!order)
+            throw new common_1.NotFoundException('No se encontró la orden');
+        if (['completed', 'canceled'].includes(order.orderStatus)) {
+            throw new common_1.BadRequestException('No se puede modificar el precio de una orden completada o cancelada');
+        }
+        const itemsToUpdate = order.items.filter((i) => i.product?.id === dto.productId);
+        if (itemsToUpdate.length === 0) {
+            throw new common_1.NotFoundException('No hay ítems de ese producto en la orden');
+        }
+        const value = Number(dto.unitPrice);
+        if (!Number.isFinite(value) || value < 0) {
+            throw new common_1.BadRequestException('Precio unitario inválido');
+        }
+        await this.itemRepo.update({ order: { id: orderId }, product: { id: dto.productId } }, { unitPrice: value });
+        const refreshedOrder = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (refreshedOrder) {
+            const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+            return formatted;
+        }
+        return null;
     }
     async addExtra(orderId, dto) {
         const order = await this.orderRepo.findOne({
@@ -669,18 +905,90 @@ let OrdersService = class OrdersService {
             updatedFields: dto,
         };
     }
+    async changeTable(orderId, dto) {
+        const newTable = String(dto.newTable ?? '').trim();
+        if (!newTable)
+            throw new common_1.BadRequestException('newTable es requerido');
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes'],
+        });
+        if (!order)
+            throw new common_1.NotFoundException(`No se encontró la orden #${orderId}`);
+        if (order.orderType !== 'table')
+            throw new common_1.BadRequestException('Solo se puede cambiar mesa en órdenes tipo mesa');
+        if (order.orderStatus === 'completed' || order.orderStatus === 'canceled') {
+            throw new common_1.BadRequestException('No se puede cambiar mesa en una orden completada o cancelada');
+        }
+        const currentTable = String(order.address ?? '').trim();
+        if (currentTable === newTable) {
+            throw new common_1.BadRequestException('La orden ya está en esa mesa');
+        }
+        const otherOrder = await this.orderRepo.findOne({
+            where: {
+                address: newTable,
+                orderType: 'table',
+                orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+            },
+            relations: ['items', 'items.product', 'items.attributes'],
+        });
+        if (!otherOrder) {
+            order.address = newTable;
+            await this.orderRepo.save(order);
+            const formatted = await this.mapOrderToGroupedFormat(order);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+            return {
+                success: true,
+                message: `Orden movida a la mesa ${newTable}`,
+                swapped: false,
+            };
+        }
+        await this.dataSource.transaction(async (manager) => {
+            const repo = manager.getRepository(order_entity_1.Order);
+            const o1 = await repo.findOne({ where: { id: order.id } });
+            const o2 = await repo.findOne({ where: { id: otherOrder.id } });
+            if (!o1 || !o2)
+                throw new common_1.InternalServerErrorException('Orden no encontrada en transacción');
+            o1.address = newTable;
+            o2.address = currentTable;
+            await repo.save(o1);
+            await repo.save(o2);
+        });
+        const [updated1, updated2] = await Promise.all([
+            this.orderRepo.findOne({
+                where: { id: order.id },
+                relations: ['items', 'items.product', 'items.attributes'],
+            }),
+            this.orderRepo.findOne({
+                where: { id: otherOrder.id },
+                relations: ['items', 'items.product', 'items.attributes'],
+            }),
+        ]);
+        if (updated1) {
+            const formatted = await this.mapOrderToGroupedFormat(updated1);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+        }
+        if (updated2) {
+            const formatted = await this.mapOrderToGroupedFormat(updated2);
+            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+        }
+        return {
+            success: true,
+            message: `Mesas intercambiadas: orden de mesa ${currentTable} → ${newTable}, orden de mesa ${newTable} → ${currentTable}`,
+            swapped: true,
+        };
+    }
     async mapOrderToGroupedFormat(order) {
         const groupedItems = {};
         for (const item of order.items) {
-            if (!item.product) {
-                console.warn(`[mapOrderToGroupedFormat] Order ${order.id} has item without product relation`);
+            if (!item.product)
                 continue;
-            }
             const productId = item.product.id;
             const productName = item.product.name;
             const code = item.product.code;
             const imageUrl = item.product.imageUrl;
-            const price = item.product.price;
+            const rawUnit = item.unitPrice ?? item.unit_price;
+            const price = rawUnit != null && rawUnit !== '' ? Number(rawUnit) : Number(item.product?.price ?? 0);
             const attributeMap = item.attributes?.reduce((acc, attr) => {
                 acc[attr.attributeName] = attr.attributeValue;
                 return acc;
@@ -870,7 +1178,9 @@ let OrdersService = class OrdersService {
             },
             relations: ['items', 'items.product', 'extras'],
         });
-        const allProducts = await this.productRepo.find();
+        const allProducts = await this.productRepo.find({
+            select: ['id', 'name', 'price', 'code'],
+        });
         let totalSubtotal = 0;
         let totalDeliveryFees = 0;
         let totalPremioDiscounts = 0;
@@ -886,13 +1196,12 @@ let OrdersService = class OrdersService {
         for (const order of orders) {
             let orderSubtotal = 0;
             for (const item of order.items) {
-                if (!item.product) {
-                    console.warn(`[getDailySummary] Order has item without product relation`);
+                if (!item.product)
                     continue;
-                }
                 const product = allProducts.find(p => p.id === item.product.id);
                 if (product) {
-                    orderSubtotal += Number(product.price);
+                    const itemPrice = Number(item.unitPrice ?? product.price);
+                    orderSubtotal += itemPrice;
                     if (!productsSold[product.code]) {
                         productsSold[product.code] = {
                             code: product.code,
@@ -902,7 +1211,7 @@ let OrdersService = class OrdersService {
                         };
                     }
                     productsSold[product.code].quantity += 1;
-                    productsSold[product.code].totalRevenue += Number(product.price);
+                    productsSold[product.code].totalRevenue += itemPrice;
                 }
             }
             for (const ex of order.extras ?? []) {
@@ -916,9 +1225,10 @@ let OrdersService = class OrdersService {
                 if (halfChickenItem && halfChickenItem.product) {
                     const product = allProducts.find(p => p.id === halfChickenItem.product.id);
                     if (product) {
-                        totalPremioDiscounts += Number(product.price);
+                        const premioPrice = Number(halfChickenItem.unitPrice ?? product.price);
+                        totalPremioDiscounts += premioPrice;
                         if (productsSold[product.code]) {
-                            productsSold[product.code].totalRevenue -= Number(product.price);
+                            productsSold[product.code].totalRevenue -= premioPrice;
                         }
                     }
                 }
@@ -964,7 +1274,10 @@ let OrdersService = class OrdersService {
             },
             relations: ['items', 'items.product', 'extras'],
         });
-        const allProducts = await this.productRepo.find({ relations: ['categories'] });
+        const allProducts = await this.productRepo.find({
+            select: ['id', 'name', 'price', 'code'],
+            relations: ['categories'],
+        });
         let totalSubtotal = 0;
         let totalDeliveryFees = 0;
         let totalPremioDiscounts = 0;
@@ -1013,7 +1326,8 @@ let OrdersService = class OrdersService {
                     continue;
                 const product = allProducts.find(p => p.id === item.product.id);
                 if (product) {
-                    orderSubtotal += Number(product.price);
+                    const itemPrice = Number(item.unitPrice ?? product.price);
+                    orderSubtotal += itemPrice;
                     totalItemsSold += 1;
                     const cat = product.categories?.[0];
                     if (!productsSold[product.code]) {
@@ -1027,7 +1341,7 @@ let OrdersService = class OrdersService {
                         };
                     }
                     productsSold[product.code].quantity += 1;
-                    productsSold[product.code].totalRevenue += Number(product.price);
+                    productsSold[product.code].totalRevenue += itemPrice;
                 }
             }
             for (const ex of order.extras ?? []) {
@@ -1043,10 +1357,10 @@ let OrdersService = class OrdersService {
                 if (halfChickenItem?.product) {
                     const product = allProducts.find(p => p.id === halfChickenItem.product.id);
                     if (product) {
-                        orderPremio = Number(product.price);
+                        orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
                         totalPremioDiscounts += orderPremio;
                         if (productsSold[product.code]) {
-                            productsSold[product.code].totalRevenue -= Number(product.price);
+                            productsSold[product.code].totalRevenue -= orderPremio;
                         }
                     }
                 }
@@ -1105,6 +1419,9 @@ let OrdersService = class OrdersService {
         const worstDayByOrders = dailyArray.length
             ? dailyArray.reduce((worst, d) => (d.orders <= worst.orders ? d : worst), dailyArray[0])
             : null;
+        const worstDayByRevenue = dailyArray.length
+            ? dailyArray.reduce((worst, d) => (d.total <= worst.total ? d : worst), dailyArray[0])
+            : null;
         const averageTicketByOrderType = {};
         for (const [type, count] of Object.entries(ordersByType)) {
             const rev = revenueByOrderType[type] ?? 0;
@@ -1139,7 +1456,7 @@ let OrdersService = class OrdersService {
                     if (item.product) {
                         const product = allProducts.find(p => p.id === item.product.id);
                         if (product)
-                            orderSubtotal += Number(product.price);
+                            orderSubtotal += Number(item.unitPrice ?? product.price);
                     }
                 }
                 for (const ex of order.extras ?? []) {
@@ -1152,7 +1469,7 @@ let OrdersService = class OrdersService {
                     if (halfChickenItem?.product) {
                         const product = allProducts.find(p => p.id === halfChickenItem.product.id);
                         if (product)
-                            orderPremio = Number(product.price);
+                            orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
                     }
                 }
                 prevTotalRevenue += orderSubtotal + orderDelivery - orderPremio;
@@ -1188,8 +1505,21 @@ let OrdersService = class OrdersService {
             bestDayByOrders: bestDayByOrders ? { date: bestDayByOrders.date, dayOfWeek: bestDayByOrders.dayOfWeek, orders: bestDayByOrders.orders, total: bestDayByOrders.total } : null,
             bestDayByRevenue: bestDayByRevenue ? { date: bestDayByRevenue.date, dayOfWeek: bestDayByRevenue.dayOfWeek, orders: bestDayByRevenue.orders, total: bestDayByRevenue.total } : null,
             worstDayByOrders: worstDayByOrders ? { date: worstDayByOrders.date, dayOfWeek: worstDayByOrders.dayOfWeek, orders: worstDayByOrders.orders, total: worstDayByOrders.total } : null,
+            worstDayByRevenue: worstDayByRevenue ? { date: worstDayByRevenue.date, dayOfWeek: worstDayByRevenue.dayOfWeek, orders: worstDayByRevenue.orders, total: worstDayByRevenue.total } : null,
             previousPeriod,
         };
+    }
+    async backfillUnitPrices() {
+        const result = await this.dataSource.query(`UPDATE ppp_order_items oi
+       INNER JOIN ppp_products p ON oi.product_id = p.id
+       SET oi.unit_price = p.price
+       WHERE oi.unit_price IS NULL`);
+        const raw = result;
+        const updated = typeof raw?.affectedRows === 'number' ? raw.affectedRows
+            : typeof raw?.affected === 'number' ? raw.affected
+                : typeof raw?.rowCount === 'number' ? raw.rowCount
+                    : 0;
+        return { updated };
     }
 };
 exports.OrdersService = OrdersService;
@@ -1211,6 +1541,7 @@ exports.OrdersService = OrdersService = __decorate([
         order_gateway_1.OrdersGateway,
         typeorm_2.DataSource,
         points_service_1.PointsService,
+        products_service_1.ProductsService,
         mail_service_1.MailService,
         circuit_breaker_service_1.CircuitBreakerService])
 ], OrdersService);

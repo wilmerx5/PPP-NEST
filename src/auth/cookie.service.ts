@@ -32,13 +32,6 @@ export class CookieService {
         // Si está configurado, usarlo (debe empezar con punto para subdominios, ej: .ppp.local)
         const cookieDomainEnv = this.config.get<string>('COOKIE_DOMAIN');
         this.cookieDomain = cookieDomainEnv || undefined;
-        
-        // Log para debugging
-        console.log('[CookieService] Cookie domain configurado:', this.cookieDomain || 'undefined (funciona en cualquier dominio)');
-        console.log('[CookieService] Access maxAge (ms):', this.accessMaxAge, '(tipo:', typeof this.accessMaxAge, ')');
-        console.log('[CookieService] Refresh maxAge (ms):', this.refreshMaxAge, '(tipo:', typeof this.refreshMaxAge, ')');
-        console.log('[CookieService] SameSite:', this.sameSite);
-        console.log('[CookieService] Secure:', this.secure);
     }
 
     setAccessToken(res: Response, token: string) {
@@ -54,13 +47,7 @@ export class CookieService {
         if (this.cookieDomain) {
             cookieOptions.domain = this.cookieDomain;
         }
-        
-        console.log('[CookieService] Estableciendo access_token con opciones:', cookieOptions);
-        console.log('[CookieService] Token length:', token?.length || 0);
-        
         res.cookie('access_token', token, cookieOptions);
-        
-        console.log('[CookieService] access_token establecido');
     }
 
     setRefreshToken(res: Response, token: string) {
@@ -76,13 +63,7 @@ export class CookieService {
         if (this.cookieDomain) {
             cookieOptions.domain = this.cookieDomain;
         }
-        
-        console.log('[CookieService] Estableciendo refresh_token con opciones:', cookieOptions);
-        console.log('[CookieService] Token length:', token?.length || 0);
-        
         res.cookie('refresh_token', token, cookieOptions);
-        
-        console.log('[CookieService] refresh_token establecido');
     }
 
     clearAuthCookies(res: Response) {

@@ -22,7 +22,6 @@ import { Server, Socket } from 'socket.io';
       if (localApp.test(origin) || prod.test(origin)) {
         return callback(null, true);
       }
-      console.log("❌ Origin bloqueado por WebSocket:", origin);
       return callback(new Error("Not allowed by CORS"), false);
     },
 
@@ -38,7 +37,6 @@ export class OrdersGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() room: string,
   ) {
-    console.log(`Cliente ${client.id} se unió a la sala ${room}`);
     client.join(room);
   }
 

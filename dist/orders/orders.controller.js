@@ -33,12 +33,16 @@ let OrdersController = class OrdersController {
     async createOrder(createOrderDto) {
         return this.orderService.create(createOrderDto);
     }
-    async getTodayOrders() {
-        return this.orderService.findOrdersToday();
+    async getTodayOrders(orderType) {
+        return this.orderService.findOrdersToday(orderType);
     }
     async deleteOrder(id) {
         const orderId = parseInt(id, 10);
         return this.orderService.removeOrder(orderId);
+    }
+    async updateItemUnitPrice(id, dto) {
+        const orderId = parseInt(id, 10);
+        return this.orderService.updateOrderItemUnitPrice(orderId, dto);
     }
     async updateItems(id, dto) {
         const orderId = parseInt(id, 10);
@@ -55,6 +59,9 @@ let OrdersController = class OrdersController {
     }
     async updateOrderGeneral(id, dto) {
         return this.orderService.updateOrderGeneral(+id, dto);
+    }
+    async changeTable(id, dto) {
+        return this.orderService.changeTable(parseInt(id, 10), dto);
     }
     async validateRedemptionPrize(body) {
         const { code } = body;
@@ -115,11 +122,12 @@ __decorate([
     (0, common_1.Get)('daily'),
     (0, swagger_1.ApiOperation)({
         summary: 'Get all orders of today',
-        description: 'Returns all orders created today (Bogotá timezone), excluding canceled ones.',
+        description: 'Returns all orders created today (Bogotá timezone), excluding canceled ones. Optional orderType (e.g. "table") filters by type for lighter payload (e.g. mesas app).',
     }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Orders retrieved successfully' }),
+    __param(0, (0, common_1.Query)('orderType')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getTodayOrders", null);
 __decorate([
@@ -136,6 +144,22 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "deleteOrder", null);
+__decorate([
+    (0, common_1.Patch)(':id/items/unit-price'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Apply unit price (discount) to a product in the order',
+        description: 'Updates the unit price for all order items of the given product. Does not change inventory.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.UpdateOrderItemUnitPriceDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Unit price updated; returns formatted order' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Order or product not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, orderDTO_1.UpdateOrderItemUnitPriceDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "updateItemUnitPrice", null);
 __decorate([
     (0, common_1.Patch)(':id/items'),
     (0, swagger_1.ApiOperation)({
@@ -209,6 +233,23 @@ __decorate([
     __metadata("design:paramtypes", [Number, orderDTO_1.UpdateOrderGeneralDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "updateOrderGeneral", null);
+__decorate([
+    (0, common_1.Patch)(':id/table'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Change table of an order (mesas)',
+        description: 'Moves order to another table. If the target table has an active order, both orders swap tables.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.ChangeTableDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Table changed (or swapped) successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid request (e.g. same table, non-table order)' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Order not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, orderDTO_1.ChangeTableDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "changeTable", null);
 __decorate([
     (0, common_1.Post)('validate-redemption-prize'),
     (0, swagger_1.ApiOperation)({

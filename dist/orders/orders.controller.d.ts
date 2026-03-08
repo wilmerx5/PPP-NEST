@@ -1,4 +1,4 @@
-import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 export declare class OrdersController {
     private readonly orderService;
@@ -26,11 +26,12 @@ export declare class OrdersController {
         orderId: number;
         dailyOrderNumber: number;
     }>;
-    getTodayOrders(): Promise<any[]>;
+    getTodayOrders(orderType?: string): Promise<any[]>;
     deleteOrder(id: string): Promise<{
         success: boolean;
         message: string;
     }>;
+    updateItemUnitPrice(id: string, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
     updateItems(id: string, dto: UpdateOrderItemsDto): Promise<{
         success: boolean;
         message: string;
@@ -65,6 +66,11 @@ export declare class OrdersController {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;
+    }>;
+    changeTable(id: string, dto: ChangeTableDto): Promise<{
+        success: boolean;
+        message: string;
+        swapped: boolean;
     }>;
     validateRedemptionPrize(body: {
         code: string;

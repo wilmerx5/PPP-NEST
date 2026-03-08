@@ -14,11 +14,31 @@ export declare class ProductsController {
         name?: string;
     }>;
     findOne(id: string): Promise<{
+        inventoryGroup?: {
+            groupId: number;
+            groupName: string;
+            groupStock: number;
+            baseUnits: number;
+            derivedStock: number;
+        } | undefined;
         attributes: {
             options: any;
             id: number;
             attributeName: string;
             product: import("./entities/product.entity").Product;
+        }[];
+        variantStocks: {
+            inventoryGroup?: {
+                groupId: number;
+                groupName: string;
+                groupStock: number;
+                baseUnits: number;
+                derivedStock: number;
+            } | undefined;
+            id: number;
+            attributeName: string;
+            attributeValue: string;
+            stock: number;
         }[];
         id: number;
         name: string;
@@ -27,9 +47,15 @@ export declare class ProductsController {
         hasAttributes: boolean;
         code: number;
         isActive: boolean;
+        trackInventory: boolean;
+        stock: number;
         categories: import("./entities/category.entity").Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
+        alsoDeductProductId?: number | null;
+        alsoDeductAttributeName?: string | null;
+        alsoDeductAttributeValue?: string | null;
+        alsoDeductBaseUnits?: number | null;
     }>;
     update(id: string, updateProductDto: UpdateProductDto): Promise<{
         attributes: {
@@ -38,6 +64,12 @@ export declare class ProductsController {
             attributeName: string;
             product: import("./entities/product.entity").Product;
         }[];
+        variantStocks: {
+            id: number;
+            attributeName: string;
+            attributeValue: string;
+            stock: number;
+        }[];
         id: number;
         name: string;
         description?: string;
@@ -45,9 +77,15 @@ export declare class ProductsController {
         hasAttributes: boolean;
         code: number;
         isActive: boolean;
+        trackInventory: boolean;
+        stock: number;
         categories: import("./entities/category.entity").Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
+        alsoDeductProductId?: number | null;
+        alsoDeductAttributeName?: string | null;
+        alsoDeductAttributeValue?: string | null;
+        alsoDeductBaseUnits?: number | null;
     }>;
     remove(id: string): string;
 }

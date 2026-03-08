@@ -5,6 +5,7 @@ export declare class OrderItem {
     id: number;
     order: Order;
     product: Product;
+    unitPrice?: number | null;
     attributes: OrderItemAttribute[];
     note?: string;
     kitchenPreparedAt?: Date | null;

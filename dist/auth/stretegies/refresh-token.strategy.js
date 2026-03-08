@@ -35,11 +35,9 @@ let RefreshTokenStrategy = class RefreshTokenStrategy extends (0, passport_1.Pas
     }
     async validate(payload) {
         const { id } = payload;
-        console.log(id);
         const user = await this.userRepository.findOneBy({ id });
         if (!user)
             throw new common_1.UnauthorizedException('Token inválido');
-        console.log(user);
         if (!user.isActive)
             throw new common_1.UnauthorizedException('Usuario no activo');
         return user;

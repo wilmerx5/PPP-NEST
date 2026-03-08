@@ -10,6 +10,14 @@ export declare class CreateOrderItemDto {
         attributeName: string;
         attributeValue: string;
     }[];
+    alsoDeductVariant?: {
+        productId: number;
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    };
+    unitPrice?: number;
 }
 export declare class CreateOrderDto {
     customerName: string;
@@ -38,6 +46,18 @@ export declare class UpdateOrderItemDto {
     attributes?: UpdateOrderItemAttributeDto[];
     note?: string;
     kitchenPrepared?: boolean;
+    alsoDeductVariant?: {
+        productId: number;
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    };
+    unitPrice?: number;
+}
+export declare class UpdateOrderItemUnitPriceDto {
+    productId: number;
+    unitPrice: number;
 }
 export declare class UpdateOrderItemsDto {
     items: UpdateOrderItemDto[];
@@ -68,4 +88,7 @@ export declare class UpdateOrderGeneralDto {
     orderStatus?: OrderStatus;
     printed?: boolean;
     deliveryFee?: number;
+}
+export declare class ChangeTableDto {
+    newTable: string;
 }

@@ -51,16 +51,21 @@ let PointsService = class PointsService {
         if (!items || items.length === 0) {
             return 0;
         }
+        const productIds = [...new Set(items.map((i) => i.productId))];
+        if (productIds.length === 0)
+            return 0;
+        const products = await this.productRepo.find({
+            where: { id: (0, typeorm_2.In)(productIds) },
+            select: ['id', 'code'],
+        });
+        const codeByProductId = new Map(products.map((p) => [p.id, p.code]));
         const codes = [];
         for (const item of items) {
-            const product = await this.productRepo.findOne({
-                where: { id: item.productId },
-                select: ['code'],
-            });
-            if (product) {
-                for (let i = 0; i < (item.quantity || 1); i++) {
-                    codes.push(product.code);
-                }
+            const code = codeByProductId.get(item.productId);
+            if (code != null) {
+                const q = Math.max(0, item.quantity ?? 1);
+                for (let i = 0; i < q; i++)
+                    codes.push(code);
             }
         }
         return this.calculatePointsFromCodes(codes);

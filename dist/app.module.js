@@ -17,6 +17,7 @@ const orders_module_1 = require("./orders/orders.module");
 const products_module_1 = require("./products/products.module");
 const common_module_1 = require("./common/common.module");
 const payments_module_1 = require("./payments/payments.module");
+const expenses_module_1 = require("./expenses/expenses.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -29,10 +30,6 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => {
-                    process.stdout.write('\n🔧 [DB Pool Config - Anti-bloqueo]\n');
-                    process.stdout.write('  Pool: 100 | Idle: 10 (60s timeout) | Queue: ilimitada\n');
-                    process.stdout.write('  Query Timeout: 5s | Keep-Alive: true | Retry: 5\n');
-                    process.stdout.write('  Cache: 45s TTL | Circuit Breaker: 5 fallos → OPEN\n\n');
                     const dbConfig = {
                         type: 'mariadb',
                         host: configService.get('DB_HOST'),
@@ -60,14 +57,6 @@ exports.AppModule = AppModule = __decorate([
                             reconnect: true,
                         },
                     };
-                    process.stdout.write('\n🔍 [DB Connection Config]\n');
-                    process.stdout.write(`  Host: ${dbConfig.host || 'NOT SET'}\n`);
-                    process.stdout.write(`  Port: ${dbConfig.port || 'NOT SET'}\n`);
-                    process.stdout.write(`  Username: ${dbConfig.username || 'NOT SET'}\n`);
-                    process.stdout.write(`  Database: ${dbConfig.database || 'NOT SET'}\n`);
-                    process.stdout.write(`  Password: ${dbConfig.password ? dbConfig.password.substring(0, 3) + '***' : 'NOT SET'}\n`);
-                    process.stdout.write(`  Entities path: ${Array.isArray(dbConfig.entities) ? dbConfig.entities[0] : dbConfig.entities}\n`);
-                    process.stdout.write(`  Synchronize: ${dbConfig.synchronize}\n`);
                     const missingVars = [];
                     if (!dbConfig.host)
                         missingVars.push('DB_HOST');
@@ -80,10 +69,7 @@ exports.AppModule = AppModule = __decorate([
                     if (!dbConfig.database)
                         missingVars.push('DB_DATABASE');
                     if (missingVars.length > 0) {
-                        process.stderr.write(`❌ [DB Config Error] Missing environment variables: ${missingVars.join(', ')}\n`);
-                    }
-                    else {
-                        process.stdout.write('✅ [DB Config] All required variables are set\n\n');
+                        process.stderr.write(`❌ [DB Config] Missing: ${missingVars.join(', ')}\n`);
                     }
                     return dbConfig;
                 },
@@ -94,6 +80,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             common_module_1.CommonModule,
             payments_module_1.PaymentsModule,
+            expenses_module_1.ExpensesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

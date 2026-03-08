@@ -1,6 +1,6 @@
 import { Product } from 'src/products/entities/product.entity';
 import { Repository, DataSource } from 'typeorm';
-import { AddOrderExtraDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -10,6 +10,7 @@ import { PointsService } from '../auth/services/points.service';
 import { User } from '../auth/entities/user.entity';
 import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
+import { ProductsService } from '../products/products.service';
 export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
@@ -20,16 +21,22 @@ export declare class OrdersService {
     private readonly gateway;
     private readonly dataSource;
     private readonly pointsService;
+    private readonly productsService;
     private readonly mailService;
     private readonly circuitBreaker;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, mailService: MailService, circuitBreaker: CircuitBreakerService);
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, mailService: MailService, circuitBreaker: CircuitBreakerService);
     private generateNextOrderNumber;
+    private buildInventoryCountByKey;
+    private parseVariantKey;
+    private validateInventoryCounts;
+    private deductInventory;
+    private restoreInventory;
     create(createOrderDto: CreateOrderDto): Promise<{
         success: boolean;
         orderId: number;
         dailyOrderNumber: number;
     }>;
-    findOrdersToday(): Promise<any[]>;
+    findOrdersToday(orderType?: string): Promise<any[]>;
     findMine(email: string): Promise<{
         orderId: number;
         dailyOrderNumber: number;
@@ -56,6 +63,7 @@ export declare class OrdersService {
         success: boolean;
         message: string;
     }>;
+    updateOrderItemUnitPrice(orderId: number, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
     addExtra(orderId: number, dto: AddOrderExtraDto): Promise<{
         success: boolean;
         message: string;
@@ -87,6 +95,11 @@ export declare class OrdersService {
         message: string;
         updatedFields: UpdateOrderGeneralDto;
     }>;
+    changeTable(orderId: number, dto: ChangeTableDto): Promise<{
+        success: boolean;
+        message: string;
+        swapped: boolean;
+    }>;
     private mapOrderToGroupedFormat;
     validateRedemptionCodePublic(code: string): Promise<any>;
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;
@@ -98,4 +111,7 @@ export declare class OrdersService {
     findOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
     getSalesReport(from: string, to: string): Promise<any>;
+    backfillUnitPrices(): Promise<{
+        updated: number;
+    }>;
 }
