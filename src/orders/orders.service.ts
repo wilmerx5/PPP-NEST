@@ -841,10 +841,14 @@ export class OrdersService {
    * @param dto - Lista de nuevos items.
    */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
-    // --- PASO 0: Payload recibido (log completo) ---
+    // --- PASO 0: Payload recibido y deduplicado (igual que en front: productId+atributos+note) ---
     const rawItems = dto.items ?? [];
-    const itemsToCreate = rawItems.slice();
+    const itemsToCreate = this.deduplicateIncomingUpdateItems(rawItems.slice());
+    const rawCount = rawItems.length;
     const incomingCount = itemsToCreate.length;
+    if (rawCount !== incomingCount) {
+      console.log('[PPP-BACKEND] updateOrderItems payload deduplicado', { orderId, rawCount, afterDedup: incomingCount });
+    }
     console.log('[PPP-BACKEND] updateOrderItems PASO 0 ENTRADA', {
       orderId,
       incomingCount,
@@ -1421,6 +1425,33 @@ export class OrdersService {
    * @param order - Orden completa cargada con relaciones.
    * @returns Objeto con items ordenados y agrupados.
    */
+  /**
+   * Firma para ítem entrante (productId + atributos + note). Mismo criterio que en frontend.
+   */
+  private incomingItemSignature(item: {
+    productId: number;
+    note?: string | null;
+    attributes?: Array<{ attributeName: string; attributeValue: string }>;
+  }): string {
+    const attrs = (item.attributes ?? []).slice().sort((a, b) => (a.attributeName || '').localeCompare(b.attributeName || ''));
+    return `${item.productId}|${attrs.map((a) => `${a.attributeName}=${a.attributeValue}`).join(',')}|${item.note ?? ''}`;
+  }
+
+  /**
+   * Deduplica el payload entrante (dto.items) por productId+atributos+note.
+   * Evita crear ítems duplicados al editar o al eliminar si el front envía líneas repetidas.
+   */
+  private deduplicateIncomingUpdateItems<T extends { productId: number; note?: string | null; attributes?: Array<{ attributeName: string; attributeValue: string }> }>(items: T[]): T[] {
+    if (!items?.length) return [];
+    const seen = new Set<string>();
+    return items.filter((it) => {
+      const sig = this.incomingItemSignature(it);
+      if (seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
+    });
+  }
+
   /**
    * TypeORM con relations ['items', 'items.attributes'] puede devolver ítems duplicados por los JOINs.
    * Deduplicar por id evita duplicar líneas al borrar, inventario y en la respuesta.
