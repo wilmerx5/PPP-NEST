@@ -841,11 +841,23 @@ export class OrdersService {
    * @param dto - Lista de nuevos items.
    */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
-    // Copia fija del DTO: creamos exactamente estos ítems, nada puede mutar el array durante el flujo
-    const itemsToCreate = (dto.items ?? []).slice();
+    // --- PASO 0: Payload recibido (log completo) ---
+    const rawItems = dto.items ?? [];
+    const itemsToCreate = rawItems.slice();
     const incomingCount = itemsToCreate.length;
-    const incomingProductIds = itemsToCreate.map((i) => i.productId);
-    console.log('[PPP-BACKEND] updateOrderItems ENTRADA', { orderId, incomingCount, productIds: incomingProductIds });
+    console.log('[PPP-BACKEND] updateOrderItems PASO 0 ENTRADA', {
+      orderId,
+      incomingCount,
+      productIds: itemsToCreate.map((i) => i.productId),
+      items: itemsToCreate.map((i, idx) => ({
+        idx,
+        productId: i.productId,
+        note: i.note,
+        attributes: i.attributes?.length ?? 0,
+        kitchenPrepared: i.kitchenPrepared,
+      })),
+      extrasToAddCount: dto.extrasToAdd?.length ?? 0,
+    });
 
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -857,7 +869,14 @@ export class OrdersService {
     const rawItemsCount = order.items?.length ?? 0;
     order.items = this.deduplicateOrderItemsById(order.items);
     const dedupedItemsCount = order.items.length;
-    console.log('[PPP-BACKEND] updateOrderItems orden cargada', { orderId, rawItemsCount, dedupedItemsCount });
+    const oldItemIds = order.items.map((i) => i.id);
+    console.log('[PPP-BACKEND] updateOrderItems PASO 1 orden cargada', {
+      orderId,
+      rawItemsCount,
+      dedupedItemsCount,
+      oldItemIds,
+      oldProductIds: order.items.map((i) => i.product?.id),
+    });
 
     const hasItems = itemsToCreate.length > 0;
     const hasExtrasToAdd = dto.extrasToAdd?.length;
@@ -892,9 +911,13 @@ export class OrdersService {
       // Delete old items and attributes in batch (same transaction).
       // Solo IDs válidos: TypeORM puede devolver ítems con id undefined en algunas cargas.
       const itemIdsToDelete = order.items.map((i) => i.id).filter((id): id is number => id != null && Number.isInteger(id));
-      console.log('[PPP-BACKEND] updateOrderItems BORRANDO ítems antiguos', { orderId, itemIdsToDelete, count: itemIdsToDelete.length });
+      console.log('[PPP-BACKEND] updateOrderItems PASO 2 BORRANDO ítems antiguos', {
+        orderId,
+        itemIdsToDelete,
+        count: itemIdsToDelete.length,
+      });
       if (itemIdsToDelete.length > 0) {
-        await queryRunner.manager
+        const attrDeleteResult = await queryRunner.manager
           .createQueryBuilder()
           .delete()
           .from(OrderItemAttribute)
@@ -906,7 +929,11 @@ export class OrdersService {
           .from(OrderItem)
           .where('id IN (:...ids)', { ids: itemIdsToDelete })
           .execute();
-        console.log('[PPP-BACKEND] updateOrderItems BORRADO ejecutado', { orderId, orderItemsDeleted: deleteResult.affected ?? 0 });
+        console.log('[PPP-BACKEND] updateOrderItems PASO 2 BORRADO ejecutado', {
+          orderId,
+          attributesDeleted: attrDeleteResult.affected ?? 0,
+          orderItemsDeleted: deleteResult.affected ?? 0,
+        });
       } else if (order.items.length > 0) {
         // Respaldo: había ítems pero sin IDs válidos → borrar por order_id para no dejar huérfanos
         console.log('[PPP-BACKEND] updateOrderItems BORRANDO por order_id (IDs no válidos)', { orderId });
@@ -953,7 +980,11 @@ export class OrdersService {
         : [];
       const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
 
-      console.log('[PPP-BACKEND] updateOrderItems CREANDO ítems (copia fija del DTO)', { orderId, count: itemsToCreate.length, productIds: itemsToCreate.map((i) => i.productId) });
+      console.log('[PPP-BACKEND] updateOrderItems PASO 3 CREANDO ítems', {
+        orderId,
+        count: itemsToCreate.length,
+        productIds: itemsToCreate.map((i) => i.productId),
+      });
       for (const itemDto of itemsToCreate) {
         const productPrice = priceByProductId.get(itemDto.productId) ?? null;
         const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0 ? Number(itemDto.unitPrice) : null;
@@ -980,7 +1011,12 @@ export class OrdersService {
           await queryRunner.manager.save(attributes);
         }
       }
-      console.log('[PPP-BACKEND] updateOrderItems LOOP terminado', { orderId, createdItemsCount, esperado: itemsToCreate.length });
+      console.log('[PPP-BACKEND] updateOrderItems PASO 3 LOOP terminado', {
+        orderId,
+        createdItemsCount,
+        esperado: itemsToCreate.length,
+        ok: createdItemsCount === itemsToCreate.length,
+      });
 
       // Deduct inventory for new items (product or variant)
       const newProductIdsInTx = [...new Set(itemsToCreate.map((i) => i.productId))];
@@ -1005,6 +1041,7 @@ export class OrdersService {
       }
 
       await queryRunner.commitTransaction();
+      console.log('[PPP-BACKEND] updateOrderItems PASO 4 transacción COMMIT ok', { orderId });
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
@@ -1012,37 +1049,62 @@ export class OrdersService {
       await queryRunner.release();
     }
 
-    let fullOrder = await this.orderRepo.findOne({
-      where: { id: order.id },
-      relations: ['items', 'items.product', 'items.attributes', 'extras'],
-    });
+    // Lectura FRESCA con un QueryRunner nuevo: evita identity map del repo que cargó la orden al inicio.
+    // Si usáramos this.orderRepo.findOne() aquí, TypeORM puede devolver la misma entidad en caché con los ítems viejos.
+    console.log('[PPP-BACKEND] updateOrderItems PASO 5 lectura fresca (nuevo QueryRunner)', { orderId });
+    const readRunner = this.dataSource.createQueryRunner();
+    await readRunner.connect();
+    let fullOrder: Order | null = null;
+    try {
+      fullOrder = await readRunner.manager.findOne(Order, {
+        where: { id: order.id },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      });
+      const freshIds = fullOrder?.items?.map((i) => i.id) ?? [];
+      console.log('[PPP-BACKEND] updateOrderItems PASO 5 resultado lectura fresca', {
+        orderId,
+        itemsCount: fullOrder?.items?.length ?? 0,
+        itemIds: freshIds,
+      });
+    } finally {
+      await readRunner.release();
+    }
+
+    if (!fullOrder) {
+      console.log('[PPP-BACKEND] updateOrderItems PASO 5 fullOrder null tras lectura fresca', { orderId });
+    }
 
     // Si algún item vino sin product (relación null), recargar una vez para evitar race
     if (fullOrder?.items?.some((i) => !i.product)) {
-      fullOrder = await this.orderRepo.findOne({
-        where: { id: order.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
-      }) ?? fullOrder;
+      const retryRunner = this.dataSource.createQueryRunner();
+      await retryRunner.connect();
+      try {
+        fullOrder = await retryRunner.manager.findOne(Order, {
+          where: { id: order.id },
+          relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        }) ?? fullOrder;
+      } finally {
+        await retryRunner.release();
+      }
     }
 
     if (fullOrder) {
       // TypeORM con relations puede devolver ítems duplicados (JOINs). Deduplicar antes de puntos.
       fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
+      const itemIdsAfterDedup = fullOrder.items.map((i) => i.id);
+      console.log('[PPP-BACKEND] updateOrderItems PASO 6 dedup + puntos', {
+        orderId,
+        itemsCount: fullOrder.items.length,
+        itemIds: itemIdsAfterDedup,
+      });
       const allCodes: number[] = [];
       for (const item of fullOrder.items) {
         if (!item.product) continue;
         allCodes.push(item.product.code);
       }
-
       const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
-      
-      // Update order points count
       fullOrder.points = recalculatedPoints;
       await this.orderRepo.save(fullOrder);
-      
-      // Regenerate point codes if the number of points changed
-      // This ensures the printed codes match the current order items
-      // IMPORTANT: Do this BEFORE calling mapOrderToGroupedFormat so it gets updated codes
       try {
         await this.pointsService.updatePointCodesForOrder(
           fullOrder.id,
@@ -1053,33 +1115,20 @@ export class OrdersService {
         // Don't fail order update if point code update fails
       }
 
-      const refreshedOrder = await this.orderRepo.findOne({
-        where: { id: fullOrder.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      // Usar fullOrder (lectura fresca) para formatear y emitir; no hacer otro findOne (evita caché).
+      const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+      const responseItemsCount = (formatted?.items ?? []).reduce((acc: number, g: any) => acc + (g.variants?.length ?? 0), 0);
+      const groupCount = (formatted?.items ?? []).length;
+      console.log('[PPP-BACKEND] updateOrderItems PASO 7 EMIT', {
+        orderId,
+        dtoCount: incomingCount,
+        createdItemsCount,
+        fullOrderItemsCount: fullOrder.items.length,
+        emitVariantes: responseItemsCount,
+        emitGrupos: groupCount,
+        esperadoOk: responseItemsCount === createdItemsCount,
       });
-
-      if (refreshedOrder) {
-        const rawRefreshedIds = (refreshedOrder.items ?? []).map((i) => i.id);
-        const dedupedRefreshed = this.deduplicateOrderItemsById(refreshedOrder.items);
-        refreshedOrder.items = dedupedRefreshed;
-        console.log('[PPP-BACKEND] updateOrderItems REFRESH', {
-          orderId,
-          rawFilas: rawRefreshedIds.length,
-          ids: rawRefreshedIds,
-          unicos: dedupedRefreshed.length,
-        });
-        const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
-        const responseItemsCount = (formatted?.items ?? []).reduce((acc: number, g: any) => acc + (g.variants?.length ?? 0), 0);
-        console.log('[PPP-BACKEND] updateOrderItems RESUMEN', {
-          orderId,
-          dtoCount: incomingCount,
-          createdItemsCount,
-          refreshUnicos: dedupedRefreshed.length,
-          emitVariantes: responseItemsCount,
-          emitGrupos: (formatted?.items ?? []).length,
-        });
-        this.gateway.emitOrdersUpdates("updated_order_items", formatted);
-      }
+      this.gateway.emitOrdersUpdates("updated_order_items", formatted);
     }
 
     return {
