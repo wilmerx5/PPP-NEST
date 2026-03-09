@@ -991,6 +991,7 @@ export class OrdersService {
         : [];
       const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
 
+      const createdItemIds: number[] = [];
       console.log('[PPP-BACKEND] updateOrderItems PASO 3 CREANDO ítems', {
         orderId,
         count: itemsToCreate.length,
@@ -1010,6 +1011,7 @@ export class OrdersService {
 
         const savedItem = await queryRunner.manager.save(orderItem);
         createdItemsCount += 1;
+        if (savedItem?.id != null) createdItemIds.push(savedItem.id);
 
         if (itemDto.attributes?.length) {
           const attributes = itemDto.attributes.map(attr =>
@@ -1025,6 +1027,7 @@ export class OrdersService {
       console.log('[PPP-BACKEND] updateOrderItems PASO 3 LOOP terminado', {
         orderId,
         createdItemsCount,
+        createdItemIds,
         esperado: itemsToCreate.length,
         ok: createdItemsCount === itemsToCreate.length,
       });
@@ -1051,18 +1054,28 @@ export class OrdersService {
         }
       }
 
-      // Leer la orden DENTRO de la misma transacción (después de DELETE + INSERT).
-      // Una lectura tras el commit con otro QueryRunner puede ver estado inconsistente (p. ej. ítems borrados aún visibles).
-      console.log('[PPP-BACKEND] updateOrderItems PASO 4 lectura dentro de la transacción', { orderId });
-      fullOrderInTx = await queryRunner.manager.findOne(Order, {
-        where: { id: order.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      // No usar findOne(Order): en REPEATABLE READ la transacción puede seguir viendo ítems ya borrados.
+      // Cargar solo los ítems que acabamos de crear (por ID) y armar la orden con esos.
+      console.log('[PPP-BACKEND] updateOrderItems PASO 4 cargando solo ítems creados', { orderId, createdItemIds });
+      const loadedItems =
+        createdItemIds.length > 0
+          ? await queryRunner.manager.find(OrderItem, {
+              where: { id: In(createdItemIds) },
+              relations: ['product', 'attributes'],
+            })
+          : [];
+      const orderExtras = await queryRunner.manager.find(OrderExtra, {
+        where: { order: { id: order.id } },
       });
-      const idsInTx = fullOrderInTx?.items?.map((i) => i.id) ?? [];
-      console.log('[PPP-BACKEND] updateOrderItems PASO 4 resultado en tx', {
+      fullOrderInTx = {
+        ...order,
+        items: this.deduplicateOrderItemsById(loadedItems),
+        extras: orderExtras,
+      } as Order;
+      console.log('[PPP-BACKEND] updateOrderItems PASO 4 resultado (solo creados)', {
         orderId,
-        itemsCount: fullOrderInTx?.items?.length ?? 0,
-        itemIds: idsInTx,
+        itemsCount: fullOrderInTx.items.length,
+        itemIds: fullOrderInTx.items.map((i) => i.id),
       });
 
       await queryRunner.commitTransaction();
