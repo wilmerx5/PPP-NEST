@@ -910,6 +910,7 @@ export class OrdersService {
     }
 
     let createdItemsCount = 0;
+    let fullOrderInTx: Order | null = null;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -1050,8 +1051,22 @@ export class OrdersService {
         }
       }
 
+      // Leer la orden DENTRO de la misma transacción (después de DELETE + INSERT).
+      // Una lectura tras el commit con otro QueryRunner puede ver estado inconsistente (p. ej. ítems borrados aún visibles).
+      console.log('[PPP-BACKEND] updateOrderItems PASO 4 lectura dentro de la transacción', { orderId });
+      fullOrderInTx = await queryRunner.manager.findOne(Order, {
+        where: { id: order.id },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      });
+      const idsInTx = fullOrderInTx?.items?.map((i) => i.id) ?? [];
+      console.log('[PPP-BACKEND] updateOrderItems PASO 4 resultado en tx', {
+        orderId,
+        itemsCount: fullOrderInTx?.items?.length ?? 0,
+        itemIds: idsInTx,
+      });
+
       await queryRunner.commitTransaction();
-      console.log('[PPP-BACKEND] updateOrderItems PASO 4 transacción COMMIT ok', { orderId });
+      console.log('[PPP-BACKEND] updateOrderItems PASO 5 COMMIT ok', { orderId });
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
@@ -1059,32 +1074,7 @@ export class OrdersService {
       await queryRunner.release();
     }
 
-    // Lectura FRESCA con un QueryRunner nuevo: evita identity map del repo que cargó la orden al inicio.
-    // Si usáramos this.orderRepo.findOne() aquí, TypeORM puede devolver la misma entidad en caché con los ítems viejos.
-    console.log('[PPP-BACKEND] updateOrderItems PASO 5 lectura fresca (nuevo QueryRunner)', { orderId });
-    const readRunner = this.dataSource.createQueryRunner();
-    await readRunner.connect();
-    let fullOrder: Order | null = null;
-    try {
-      fullOrder = await readRunner.manager.findOne(Order, {
-        where: { id: order.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
-      });
-      const freshIds = fullOrder?.items?.map((i) => i.id) ?? [];
-      console.log('[PPP-BACKEND] updateOrderItems PASO 5 resultado lectura fresca', {
-        orderId,
-        itemsCount: fullOrder?.items?.length ?? 0,
-        itemIds: freshIds,
-      });
-    } finally {
-      await readRunner.release();
-    }
-
-    if (!fullOrder) {
-      console.log('[PPP-BACKEND] updateOrderItems PASO 5 fullOrder null tras lectura fresca', { orderId });
-    }
-
-    // Si algún item vino sin product (relación null), recargar una vez para evitar race
+    let fullOrder = fullOrderInTx;
     if (fullOrder?.items?.some((i) => !i.product)) {
       const retryRunner = this.dataSource.createQueryRunner();
       await retryRunner.connect();
@@ -1099,7 +1089,6 @@ export class OrdersService {
     }
 
     if (fullOrder) {
-      // TypeORM con relations puede devolver ítems duplicados (JOINs). Deduplicar antes de puntos.
       fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
       const itemIdsAfterDedup = fullOrder.items.map((i) => i.id);
       console.log('[PPP-BACKEND] updateOrderItems PASO 6 dedup + puntos', {
