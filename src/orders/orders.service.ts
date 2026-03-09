@@ -889,11 +889,40 @@ export class OrdersService {
       // Restore inventory for old items (product or variant)
       await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
 
-      // Delete old items and attributes in batch (same transaction)
-      const itemIds = order.items.map((i) => i.id);
-      if (itemIds.length > 0) {
-        await queryRunner.manager.delete(OrderItemAttribute, { orderItem: { id: In(itemIds) } });
-        await queryRunner.manager.delete(OrderItem, { id: In(itemIds) });
+      // Delete old items and attributes in batch (same transaction).
+      // Solo IDs válidos: TypeORM puede devolver ítems con id undefined en algunas cargas.
+      const itemIdsToDelete = order.items.map((i) => i.id).filter((id): id is number => id != null && Number.isInteger(id));
+      console.log('[PPP-BACKEND] updateOrderItems BORRANDO ítems antiguos', { orderId, itemIdsToDelete, count: itemIdsToDelete.length });
+      if (itemIdsToDelete.length > 0) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItemAttribute)
+          .where('order_item_id IN (:...ids)', { ids: itemIdsToDelete })
+          .execute();
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItem)
+          .where('id IN (:...ids)', { ids: itemIdsToDelete })
+          .execute();
+        console.log('[PPP-BACKEND] updateOrderItems BORRADO ejecutado', { orderId, orderItemsDeleted: deleteResult.affected ?? 0 });
+      } else if (order.items.length > 0) {
+        // Respaldo: había ítems pero sin IDs válidos → borrar por order_id para no dejar huérfanos
+        console.log('[PPP-BACKEND] updateOrderItems BORRANDO por order_id (IDs no válidos)', { orderId });
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItemAttribute)
+          .where('order_item_id IN (SELECT id FROM ppp_order_items WHERE order_id = :orderId)', { orderId })
+          .execute();
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItem)
+          .where('order_id = :orderId', { orderId })
+          .execute();
+        console.log('[PPP-BACKEND] updateOrderItems BORRADO por order_id ejecutado', { orderId, orderItemsDeleted: deleteResult.affected ?? 0 });
       }
 
       if (!hasItems && !hasExtrasToAdd) {
