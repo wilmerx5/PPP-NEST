@@ -841,8 +841,10 @@ export class OrdersService {
    * @param dto - Lista de nuevos items.
    */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
-    const incomingCount = dto.items?.length ?? 0;
-    const incomingProductIds = (dto.items ?? []).map((i) => i.productId);
+    // Copia fija del DTO: creamos exactamente estos ítems, nada puede mutar el array durante el flujo
+    const itemsToCreate = (dto.items ?? []).slice();
+    const incomingCount = itemsToCreate.length;
+    const incomingProductIds = itemsToCreate.map((i) => i.productId);
     console.log('[PPP-BACKEND] updateOrderItems ENTRADA', { orderId, incomingCount, productIds: incomingProductIds });
 
     const order = await this.orderRepo.findOne({
@@ -857,7 +859,7 @@ export class OrdersService {
     const dedupedItemsCount = order.items.length;
     console.log('[PPP-BACKEND] updateOrderItems orden cargada', { orderId, rawItemsCount, dedupedItemsCount });
 
-    const hasItems = dto.items?.length;
+    const hasItems = itemsToCreate.length > 0;
     const hasExtrasToAdd = dto.extrasToAdd?.length;
 
     // Old items: build count-by-stock-key for restore (product or variant)
@@ -870,14 +872,15 @@ export class OrdersService {
     const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
 
     // New items: validate inventory (product or variant)
-    const newProductIds = [...new Set((dto.items ?? []).map((i) => i.productId))];
+    const newProductIds = [...new Set(itemsToCreate.map((i) => i.productId))];
     if (newProductIds.length > 0) {
       const invMapNew = await this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true });
-      const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNew);
+      const newCountByStockKey = this.buildInventoryCountByKey(itemsToCreate, invMapNew);
       const productsForError = await this.productRepo.find({ where: { id: In(newProductIds) }, select: ['id', 'name'] });
       this.validateInventoryCounts(newCountByStockKey, invMapNew, productsForError);
     }
 
+    let createdItemsCount = 0;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -915,13 +918,14 @@ export class OrdersService {
         await queryRunner.manager.save(order);
       }
 
-      const productIds = (dto.items ?? []).map((i) => i.productId);
+      const productIds = itemsToCreate.map((i) => i.productId);
       const productsForPrice = productIds.length
         ? await queryRunner.manager.find(Product, { where: { id: In(productIds) }, select: ['id', 'price'] })
         : [];
       const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
 
-      for (const itemDto of dto.items ?? []) {
+      console.log('[PPP-BACKEND] updateOrderItems CREANDO ítems (copia fija del DTO)', { orderId, count: itemsToCreate.length, productIds: itemsToCreate.map((i) => i.productId) });
+      for (const itemDto of itemsToCreate) {
         const productPrice = priceByProductId.get(itemDto.productId) ?? null;
         const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0 ? Number(itemDto.unitPrice) : null;
         const unitPrice = customPrice ?? productPrice;
@@ -934,6 +938,7 @@ export class OrdersService {
         });
 
         const savedItem = await queryRunner.manager.save(orderItem);
+        createdItemsCount += 1;
 
         if (itemDto.attributes?.length) {
           const attributes = itemDto.attributes.map(attr =>
@@ -946,13 +951,14 @@ export class OrdersService {
           await queryRunner.manager.save(attributes);
         }
       }
+      console.log('[PPP-BACKEND] updateOrderItems LOOP terminado', { orderId, createdItemsCount, esperado: itemsToCreate.length });
 
       // Deduct inventory for new items (product or variant)
-      const newProductIdsInTx = [...new Set((dto.items ?? []).map((i) => i.productId))];
+      const newProductIdsInTx = [...new Set(itemsToCreate.map((i) => i.productId))];
       const invMapNewInTx = newProductIdsInTx.length
         ? await this.productsService.getInventoryByProductIds(newProductIdsInTx, { includeAlsoDeductTargets: true })
         : new Map();
-      const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNewInTx);
+      const newCountByStockKey = this.buildInventoryCountByKey(itemsToCreate, invMapNewInTx);
       await this.deductInventory(queryRunner.manager, newCountByStockKey);
 
       // Agregar extras (adicionales, código 90)
@@ -991,7 +997,8 @@ export class OrdersService {
     }
 
     if (fullOrder) {
-      // Recalculate points after updating items (guard: product puede ser null si la relación no cargó)
+      // TypeORM con relations puede devolver ítems duplicados (JOINs). Deduplicar antes de puntos.
+      fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
       const allCodes: number[] = [];
       for (const item of fullOrder.items) {
         if (!item.product) continue;
@@ -1023,9 +1030,25 @@ export class OrdersService {
       });
 
       if (refreshedOrder) {
+        const rawRefreshedIds = (refreshedOrder.items ?? []).map((i) => i.id);
+        const dedupedRefreshed = this.deduplicateOrderItemsById(refreshedOrder.items);
+        refreshedOrder.items = dedupedRefreshed;
+        console.log('[PPP-BACKEND] updateOrderItems REFRESH', {
+          orderId,
+          rawFilas: rawRefreshedIds.length,
+          ids: rawRefreshedIds,
+          unicos: dedupedRefreshed.length,
+        });
         const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
         const responseItemsCount = (formatted?.items ?? []).reduce((acc: number, g: any) => acc + (g.variants?.length ?? 0), 0);
-        console.log('[PPP-BACKEND] updateOrderItems EMITIENDO updated_order_items', { orderId, responseItemsCount, groupCount: (formatted?.items ?? []).length });
+        console.log('[PPP-BACKEND] updateOrderItems RESUMEN', {
+          orderId,
+          dtoCount: incomingCount,
+          createdItemsCount,
+          refreshUnicos: dedupedRefreshed.length,
+          emitVariantes: responseItemsCount,
+          emitGrupos: (formatted?.items ?? []).length,
+        });
         this.gateway.emitOrdersUpdates("updated_order_items", formatted);
       }
     }
