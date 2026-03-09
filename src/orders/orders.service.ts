@@ -847,7 +847,13 @@ export class OrdersService {
     const rawCount = rawItems.length;
     const incomingCount = itemsToCreate.length;
     if (rawCount !== incomingCount) {
-      console.log('[PPP-BACKEND] updateOrderItems payload deduplicado', { orderId, rawCount, afterDedup: incomingCount });
+      console.log('[PPP-BACKEND] updateOrderItems payload DEDUP (entrante tenía duplicados)', {
+        orderId,
+        rawCount,
+        afterDedup: incomingCount,
+        rawProductIds: rawItems.map((i) => i.productId),
+        afterProductIds: itemsToCreate.map((i) => i.productId),
+      });
     }
     console.log('[PPP-BACKEND] updateOrderItems PASO 0 ENTRADA', {
       orderId,
