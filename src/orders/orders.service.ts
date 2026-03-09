@@ -841,6 +841,10 @@ export class OrdersService {
    * @param dto - Lista de nuevos items.
    */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
+    const incomingCount = dto.items?.length ?? 0;
+    const incomingProductIds = (dto.items ?? []).map((i) => i.productId);
+    console.log('[PPP-BACKEND] updateOrderItems ENTRADA', { orderId, incomingCount, productIds: incomingProductIds });
+
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
       relations: ['items', 'items.product', 'items.attributes'],
@@ -848,7 +852,10 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('No se encontró la orden');
 
+    const rawItemsCount = order.items?.length ?? 0;
     order.items = this.deduplicateOrderItemsById(order.items);
+    const dedupedItemsCount = order.items.length;
+    console.log('[PPP-BACKEND] updateOrderItems orden cargada', { orderId, rawItemsCount, dedupedItemsCount });
 
     const hasItems = dto.items?.length;
     const hasExtrasToAdd = dto.extrasToAdd?.length;
@@ -1017,6 +1024,8 @@ export class OrdersService {
 
       if (refreshedOrder) {
         const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
+        const responseItemsCount = (formatted?.items ?? []).reduce((acc: number, g: any) => acc + (g.variants?.length ?? 0), 0);
+        console.log('[PPP-BACKEND] updateOrderItems EMITIENDO updated_order_items', { orderId, responseItemsCount, groupCount: (formatted?.items ?? []).length });
         this.gateway.emitOrdersUpdates("updated_order_items", formatted);
       }
     }
@@ -1318,12 +1327,16 @@ export class OrdersService {
   private deduplicateOrderItemsById(items: OrderItem[] | undefined): OrderItem[] {
     if (!items?.length) return [];
     const seen = new Set<number>();
-    return items.filter((i) => {
+    const out = items.filter((i) => {
       const id = i.id;
       if (id == null || seen.has(id)) return false;
       seen.add(id);
       return true;
     });
+    if (out.length !== items.length) {
+      console.log('[PPP-BACKEND] deduplicateOrderItemsById eliminó duplicados', { antes: items.length, despues: out.length });
+    }
+    return out;
   }
 
   private async mapOrderToGroupedFormat(order: Order): Promise<any> {
