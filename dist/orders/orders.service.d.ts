@@ -100,6 +100,9 @@ export declare class OrdersService {
         message: string;
         swapped: boolean;
     }>;
+    private incomingItemSignature;
+    private deduplicateIncomingUpdateItems;
+    private deduplicateOrderItemsById;
     private mapOrderToGroupedFormat;
     validateRedemptionCodePublic(code: string): Promise<any>;
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;

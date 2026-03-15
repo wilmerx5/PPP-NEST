@@ -604,13 +604,40 @@ let OrdersService = class OrdersService {
         };
     }
     async updateOrderItems(orderId, dto) {
+        const rawItems = dto.items ?? [];
+        const itemsToCreate = rawItems.slice();
+        const incomingCount = itemsToCreate.length;
+        console.log('[PPP-BACKEND] updateOrderItems PASO 0 ENTRADA', {
+            orderId,
+            incomingCount,
+            productIds: itemsToCreate.map((i) => i.productId),
+            items: itemsToCreate.map((i, idx) => ({
+                idx,
+                productId: i.productId,
+                note: i.note,
+                attributes: i.attributes?.length ?? 0,
+                kitchenPrepared: i.kitchenPrepared,
+            })),
+            extrasToAddCount: dto.extrasToAdd?.length ?? 0,
+        });
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
             relations: ['items', 'items.product', 'items.attributes'],
         });
         if (!order)
             throw new common_1.NotFoundException('No se encontró la orden');
-        const hasItems = dto.items?.length;
+        const rawItemsCount = order.items?.length ?? 0;
+        order.items = this.deduplicateOrderItemsById(order.items);
+        const dedupedItemsCount = order.items.length;
+        const oldItemIds = order.items.map((i) => i.id);
+        console.log('[PPP-BACKEND] updateOrderItems PASO 1 orden cargada', {
+            orderId,
+            rawItemsCount,
+            dedupedItemsCount,
+            oldItemIds,
+            oldProductIds: order.items.map((i) => i.product?.id),
+        });
+        const hasItems = itemsToCreate.length > 0;
         const hasExtrasToAdd = dto.extrasToAdd?.length;
         const oldProductIds = [...new Set(order.items.map((i) => i.product?.id).filter((id) => id != null))];
         const invMapOld = oldProductIds.length ? await this.productsService.getInventoryByProductIds(oldProductIds) : new Map();
@@ -619,22 +646,60 @@ let OrdersService = class OrdersService {
             attributes: (i.attributes || []).map((a) => ({ attributeName: a.attributeName, attributeValue: a.attributeValue })),
         }));
         const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
-        const newProductIds = [...new Set((dto.items ?? []).map((i) => i.productId))];
+        const newProductIds = [...new Set(itemsToCreate.map((i) => i.productId))];
         if (newProductIds.length > 0) {
             const invMapNew = await this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true });
-            const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNew);
+            const newCountByStockKey = this.buildInventoryCountByKey(itemsToCreate, invMapNew);
             const productsForError = await this.productRepo.find({ where: { id: (0, typeorm_2.In)(newProductIds) }, select: ['id', 'name'] });
             this.validateInventoryCounts(newCountByStockKey, invMapNew, productsForError);
         }
+        let createdItemsCount = 0;
+        let fullOrderInTx = null;
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
             await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
-            const itemIds = order.items.map((i) => i.id);
-            if (itemIds.length > 0) {
-                await queryRunner.manager.delete(order_item_attribute_entity_1.OrderItemAttribute, { orderItem: { id: (0, typeorm_2.In)(itemIds) } });
-                await queryRunner.manager.delete(order_item_entity_1.OrderItem, { id: (0, typeorm_2.In)(itemIds) });
+            const itemIdsToDelete = order.items.map((i) => i.id).filter((id) => id != null && Number.isInteger(id));
+            console.log('[PPP-BACKEND] updateOrderItems PASO 2 BORRANDO ítems antiguos', {
+                orderId,
+                itemIdsToDelete,
+                count: itemIdsToDelete.length,
+            });
+            if (itemIdsToDelete.length > 0) {
+                const attrDeleteResult = await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_attribute_entity_1.OrderItemAttribute)
+                    .where('order_item_id IN (:...ids)', { ids: itemIdsToDelete })
+                    .execute();
+                const deleteResult = await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_entity_1.OrderItem)
+                    .where('id IN (:...ids)', { ids: itemIdsToDelete })
+                    .execute();
+                console.log('[PPP-BACKEND] updateOrderItems PASO 2 BORRADO ejecutado', {
+                    orderId,
+                    attributesDeleted: attrDeleteResult.affected ?? 0,
+                    orderItemsDeleted: deleteResult.affected ?? 0,
+                });
+            }
+            else if (order.items.length > 0) {
+                console.log('[PPP-BACKEND] updateOrderItems BORRANDO por order_id (IDs no válidos)', { orderId });
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_attribute_entity_1.OrderItemAttribute)
+                    .where('order_item_id IN (SELECT id FROM ppp_order_items WHERE order_id = :orderId)', { orderId })
+                    .execute();
+                const deleteResult = await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_entity_1.OrderItem)
+                    .where('order_id = :orderId', { orderId })
+                    .execute();
+                console.log('[PPP-BACKEND] updateOrderItems BORRADO por order_id ejecutado', { orderId, orderItemsDeleted: deleteResult.affected ?? 0 });
             }
             if (!hasItems && !hasExtrasToAdd) {
                 order.orderStatus = 'canceled';
@@ -656,12 +721,18 @@ let OrdersService = class OrdersService {
                 order.orderStatus = 'cooking';
                 await queryRunner.manager.save(order);
             }
-            const productIds = (dto.items ?? []).map((i) => i.productId);
+            const productIds = itemsToCreate.map((i) => i.productId);
             const productsForPrice = productIds.length
                 ? await queryRunner.manager.find(product_entity_1.Product, { where: { id: (0, typeorm_2.In)(productIds) }, select: ['id', 'price'] })
                 : [];
             const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
-            for (const itemDto of dto.items ?? []) {
+            const createdItemIds = [];
+            console.log('[PPP-BACKEND] updateOrderItems PASO 3 CREANDO ítems', {
+                orderId,
+                count: itemsToCreate.length,
+                productIds: itemsToCreate.map((i) => i.productId),
+            });
+            for (const itemDto of itemsToCreate) {
                 const productPrice = priceByProductId.get(itemDto.productId) ?? null;
                 const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0 ? Number(itemDto.unitPrice) : null;
                 const unitPrice = customPrice ?? productPrice;
@@ -673,6 +744,9 @@ let OrdersService = class OrdersService {
                     unitPrice: unitPrice != null ? unitPrice : undefined,
                 });
                 const savedItem = await queryRunner.manager.save(orderItem);
+                createdItemsCount += 1;
+                if (savedItem?.id != null)
+                    createdItemIds.push(savedItem.id);
                 if (itemDto.attributes?.length) {
                     const attributes = itemDto.attributes.map(attr => queryRunner.manager.create(order_item_attribute_entity_1.OrderItemAttribute, {
                         orderItem: savedItem,
@@ -682,11 +756,18 @@ let OrdersService = class OrdersService {
                     await queryRunner.manager.save(attributes);
                 }
             }
-            const newProductIdsInTx = [...new Set((dto.items ?? []).map((i) => i.productId))];
+            console.log('[PPP-BACKEND] updateOrderItems PASO 3 LOOP terminado', {
+                orderId,
+                createdItemsCount,
+                createdItemIds,
+                esperado: itemsToCreate.length,
+                ok: createdItemsCount === itemsToCreate.length,
+            });
+            const newProductIdsInTx = [...new Set(itemsToCreate.map((i) => i.productId))];
             const invMapNewInTx = newProductIdsInTx.length
                 ? await this.productsService.getInventoryByProductIds(newProductIdsInTx, { includeAlsoDeductTargets: true })
                 : new Map();
-            const newCountByStockKey = this.buildInventoryCountByKey(dto.items ?? [], invMapNewInTx);
+            const newCountByStockKey = this.buildInventoryCountByKey(itemsToCreate, invMapNewInTx);
             await this.deductInventory(queryRunner.manager, newCountByStockKey);
             if (dto.extrasToAdd?.length) {
                 for (const ex of dto.extrasToAdd) {
@@ -700,7 +781,28 @@ let OrdersService = class OrdersService {
                     await queryRunner.manager.save(extra);
                 }
             }
+            console.log('[PPP-BACKEND] updateOrderItems PASO 4 cargando solo ítems creados', { orderId, createdItemIds });
+            const loadedItems = createdItemIds.length > 0
+                ? await queryRunner.manager.find(order_item_entity_1.OrderItem, {
+                    where: { id: (0, typeorm_2.In)(createdItemIds) },
+                    relations: ['product', 'attributes'],
+                })
+                : [];
+            const orderExtras = await queryRunner.manager.find(order_extra_entity_1.OrderExtra, {
+                where: { order: { id: order.id } },
+            });
+            fullOrderInTx = {
+                ...order,
+                items: this.deduplicateOrderItemsById(loadedItems),
+                extras: orderExtras,
+            };
+            console.log('[PPP-BACKEND] updateOrderItems PASO 4 resultado (solo creados)', {
+                orderId,
+                itemsCount: fullOrderInTx.items.length,
+                itemIds: fullOrderInTx.items.map((i) => i.id),
+            });
             await queryRunner.commitTransaction();
+            console.log('[PPP-BACKEND] updateOrderItems PASO 5 COMMIT ok', { orderId });
         }
         catch (e) {
             await queryRunner.rollbackTransaction();
@@ -709,17 +811,28 @@ let OrdersService = class OrdersService {
         finally {
             await queryRunner.release();
         }
-        let fullOrder = await this.orderRepo.findOne({
-            where: { id: order.id },
-            relations: ['items', 'items.product', 'items.attributes', 'extras'],
-        });
+        let fullOrder = fullOrderInTx;
         if (fullOrder?.items?.some((i) => !i.product)) {
-            fullOrder = await this.orderRepo.findOne({
-                where: { id: order.id },
-                relations: ['items', 'items.product', 'items.attributes', 'extras'],
-            }) ?? fullOrder;
+            const retryRunner = this.dataSource.createQueryRunner();
+            await retryRunner.connect();
+            try {
+                fullOrder = await retryRunner.manager.findOne(order_entity_1.Order, {
+                    where: { id: order.id },
+                    relations: ['items', 'items.product', 'items.attributes', 'extras'],
+                }) ?? fullOrder;
+            }
+            finally {
+                await retryRunner.release();
+            }
         }
         if (fullOrder) {
+            fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
+            const itemIdsAfterDedup = fullOrder.items.map((i) => i.id);
+            console.log('[PPP-BACKEND] updateOrderItems PASO 6 dedup + puntos', {
+                orderId,
+                itemsCount: fullOrder.items.length,
+                itemIds: itemIdsAfterDedup,
+            });
             const allCodes = [];
             for (const item of fullOrder.items) {
                 if (!item.product)
@@ -734,14 +847,19 @@ let OrdersService = class OrdersService {
             }
             catch {
             }
-            const refreshedOrder = await this.orderRepo.findOne({
-                where: { id: fullOrder.id },
-                relations: ['items', 'items.product', 'items.attributes', 'extras'],
+            const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+            const responseItemsCount = (formatted?.items ?? []).reduce((acc, g) => acc + (g.variants?.length ?? 0), 0);
+            const groupCount = (formatted?.items ?? []).length;
+            console.log('[PPP-BACKEND] updateOrderItems PASO 7 EMIT', {
+                orderId,
+                dtoCount: incomingCount,
+                createdItemsCount,
+                fullOrderItemsCount: fullOrder.items.length,
+                emitVariantes: responseItemsCount,
+                emitGrupos: groupCount,
+                esperadoOk: responseItemsCount === createdItemsCount,
             });
-            if (refreshedOrder) {
-                const formatted = await this.mapOrderToGroupedFormat(refreshedOrder);
-                this.gateway.emitOrdersUpdates("updated_order_items", formatted);
-            }
+            this.gateway.emitOrdersUpdates("updated_order_items", formatted);
         }
         return {
             success: true,
@@ -978,9 +1096,42 @@ let OrdersService = class OrdersService {
             swapped: true,
         };
     }
+    incomingItemSignature(item) {
+        const attrs = (item.attributes ?? []).slice().sort((a, b) => (a.attributeName || '').localeCompare(b.attributeName || ''));
+        return `${item.productId}|${attrs.map((a) => `${a.attributeName}=${a.attributeValue}`).join(',')}|${item.note ?? ''}`;
+    }
+    deduplicateIncomingUpdateItems(items) {
+        if (!items?.length)
+            return [];
+        const seen = new Set();
+        return items.filter((it) => {
+            const sig = this.incomingItemSignature(it);
+            if (seen.has(sig))
+                return false;
+            seen.add(sig);
+            return true;
+        });
+    }
+    deduplicateOrderItemsById(items) {
+        if (!items?.length)
+            return [];
+        const seen = new Set();
+        const out = items.filter((i) => {
+            const id = i.id;
+            if (id == null || seen.has(id))
+                return false;
+            seen.add(id);
+            return true;
+        });
+        if (out.length !== items.length) {
+            console.log('[PPP-BACKEND] deduplicateOrderItemsById eliminó duplicados', { antes: items.length, despues: out.length });
+        }
+        return out;
+    }
     async mapOrderToGroupedFormat(order) {
         const groupedItems = {};
-        for (const item of order.items) {
+        const items = this.deduplicateOrderItemsById(order.items);
+        for (const item of items) {
             if (!item.product)
                 continue;
             const productId = item.product.id;

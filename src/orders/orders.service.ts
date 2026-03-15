@@ -841,20 +841,11 @@ export class OrdersService {
    * @param dto - Lista de nuevos items.
    */
   async updateOrderItems(orderId: number, dto: UpdateOrderItemsDto) {
-    // --- PASO 0: Payload recibido y deduplicado (igual que en front: productId+atributos+note) ---
+    // --- PASO 0: Payload recibido. NO deduplicar por productId+atributos+note: varias líneas
+    // idénticas son N unidades del mismo producto (ej. 13 combos iguales = 13 líneas iguales).
     const rawItems = dto.items ?? [];
-    const itemsToCreate = this.deduplicateIncomingUpdateItems(rawItems.slice());
-    const rawCount = rawItems.length;
+    const itemsToCreate = rawItems.slice();
     const incomingCount = itemsToCreate.length;
-    if (rawCount !== incomingCount) {
-      console.log('[PPP-BACKEND] updateOrderItems payload DEDUP (entrante tenía duplicados)', {
-        orderId,
-        rawCount,
-        afterDedup: incomingCount,
-        rawProductIds: rawItems.map((i) => i.productId),
-        afterProductIds: itemsToCreate.map((i) => i.productId),
-      });
-    }
     console.log('[PPP-BACKEND] updateOrderItems PASO 0 ENTRADA', {
       orderId,
       incomingCount,

@@ -218,7 +218,7 @@ export declare class AdminController {
             orderId: number | null;
             orderDailyNumber: number | null;
             orderCreatedAt: string | null;
-            type: "admin" | "automatic" | "manual";
+            type: "automatic" | "manual" | "admin";
             isUsed: boolean;
             isCanceled: boolean;
             isRedeemed: boolean;
@@ -240,7 +240,7 @@ export declare class AdminController {
             orderId: number | null;
             orderDailyNumber: number | null;
             orderCreatedAt: string | null;
-            type: "admin" | "automatic" | "manual";
+            type: "automatic" | "manual" | "admin";
             isUsed: boolean;
             isCanceled: boolean;
             isRedeemed: boolean;
