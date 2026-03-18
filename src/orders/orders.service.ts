@@ -1881,10 +1881,19 @@ export class OrdersService {
    * @param to - Fecha fin YYYY-MM-DD
    * @returns Resumen agregado del periodo + desglose por día
    */
+  /** Estadísticas y reportes solo desde esta fecha (Bogotá, YYYY-MM-DD). */
+  static readonly ADMIN_STATS_MIN_DATE = '2026-01-21';
+
   async getSalesReport(from: string, to: string): Promise<any> {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(from) || !dateRegex.test(to)) {
       throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
+    }
+
+    const MIN = OrdersService.ADMIN_STATS_MIN_DATE;
+    if (from < MIN) from = MIN;
+    if (from > to) {
+      throw new BadRequestException('La fecha de inicio no puede ser posterior a la fecha fin');
     }
 
     const { start: startUtc } = getBogotaDateRange(from);
@@ -2093,7 +2102,7 @@ export class OrdersService {
     prevStartDate.setDate(prevStartDate.getDate() - diffDays + 1);
     const prevFrom = prevStartDate.toISOString().slice(0, 10);
     const prevTo = prevEndDate.toISOString().slice(0, 10);
-    if (prevStartDate < prevEndDate) {
+    if (prevStartDate < prevEndDate && prevFrom >= MIN) {
       const { start: prevStartUtc } = getBogotaDateRange(prevFrom);
       const { end: prevEndUtc } = getBogotaDateRange(prevTo);
       const prevOrders = await this.orderRepo.find({
@@ -2163,6 +2172,117 @@ export class OrdersService {
       worstDayByOrders: worstDayByOrders ? { date: worstDayByOrders.date, dayOfWeek: worstDayByOrders.dayOfWeek, orders: worstDayByOrders.orders, total: worstDayByOrders.total } : null,
       worstDayByRevenue: worstDayByRevenue ? { date: worstDayByRevenue.date, dayOfWeek: worstDayByRevenue.dayOfWeek, orders: worstDayByRevenue.orders, total: worstDayByRevenue.total } : null,
       previousPeriod,
+    };
+  }
+
+  /**
+   * Ventas agregadas por mes (Bogotá) para un año. Año 2026: desde ADMIN_STATS_MIN_DATE.
+   */
+  async getMonthlySalesSummary(year: number): Promise<{
+    year: number;
+    statsMinDate: string;
+    periodFrom: string;
+    periodTo: string;
+    months: Array<{ monthKey: string; label: string; orders: number; totalRevenue: number }>;
+    monthsByRevenueDesc: Array<{ monthKey: string; label: string; orders: number; totalRevenue: number }>;
+    yearTotalOrders: number;
+    yearTotalRevenue: number;
+  }> {
+    const MIN = OrdersService.ADMIN_STATS_MIN_DATE;
+    if (year < 2026) {
+      throw new BadRequestException('Las estadísticas están disponibles desde 2026');
+    }
+    const todayBogota = formatInTimeZone(new Date(), 'America/Bogota', 'yyyy-MM-dd');
+    const yearEnd = `${year}-12-31`;
+    const periodTo = todayBogota < yearEnd ? todayBogota : yearEnd;
+    const periodFrom = year === 2026 ? MIN : `${year}-01-01`;
+    if (periodFrom > periodTo) {
+      return {
+        year,
+        statsMinDate: MIN,
+        periodFrom,
+        periodTo,
+        months: [],
+        monthsByRevenueDesc: [],
+        yearTotalOrders: 0,
+        yearTotalRevenue: 0,
+      };
+    }
+
+    const { start: startUtc } = getBogotaDateRange(periodFrom);
+    const { end: endUtc } = getBogotaDateRange(periodTo);
+    const orders = await this.orderRepo.find({
+      where: {
+        createdAt: Between(startUtc, endUtc),
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product', 'extras'],
+    });
+
+    const allProducts = await this.productRepo.find({
+      select: ['id', 'name', 'price', 'code'],
+    });
+
+    const MONTH_NAMES = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    const byMonth: Record<string, { orders: number; totalRevenue: number; monthNum: number }> = {};
+
+    for (const order of orders) {
+      const ym = formatInTimeZone(order.createdAt, 'America/Bogota', 'yyyy-MM');
+      const m = parseInt(ym.slice(5, 7), 10);
+      if (!byMonth[ym]) byMonth[ym] = { orders: 0, totalRevenue: 0, monthNum: m };
+      byMonth[ym].orders += 1;
+
+      let orderSubtotal = 0;
+      let orderDelivery = 0;
+      let orderPremio = 0;
+      for (const item of order.items) {
+        if (!item.product) continue;
+        const product = allProducts.find((p) => p.id === item.product.id);
+        if (product) orderSubtotal += Number(item.unitPrice ?? product.price);
+      }
+      for (const ex of (order as any).extras ?? []) {
+        orderSubtotal += Number(ex.amount) * (ex.quantity ?? 1);
+      }
+      if (order.orderType === 'delivery' && order.deliveryFee) {
+        orderDelivery = Number(order.deliveryFee);
+      }
+      if (order.redemptionCode) {
+        const halfChickenItem = order.items.find(
+          (item) => item.product && (item.product.code === 2 || item.product.code === 5),
+        );
+        if (halfChickenItem?.product) {
+          const product = allProducts.find((p) => p.id === halfChickenItem.product.id);
+          if (product) orderPremio = Number(halfChickenItem.unitPrice ?? product.price);
+        }
+      }
+      byMonth[ym].totalRevenue += orderSubtotal + orderDelivery - orderPremio;
+    }
+
+    const months = Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([monthKey, d]) => ({
+        monthKey,
+        label: `${MONTH_NAMES[d.monthNum - 1]} ${monthKey.slice(0, 4)}`,
+        orders: d.orders,
+        totalRevenue: d.totalRevenue,
+      }));
+
+    const monthsByRevenueDesc = [...months].sort((a, b) => b.totalRevenue - a.totalRevenue);
+    const yearTotalOrders = months.reduce((s, m) => s + m.orders, 0);
+    const yearTotalRevenue = months.reduce((s, m) => s + m.totalRevenue, 0);
+
+    return {
+      year,
+      statsMinDate: MIN,
+      periodFrom,
+      periodTo,
+      months,
+      monthsByRevenueDesc,
+      yearTotalOrders,
+      yearTotalRevenue,
     };
   }
 

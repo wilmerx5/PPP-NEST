@@ -235,13 +235,14 @@ export class AdminController {
   @ApiOperation({ summary: 'Get sales report between dates (admin only)' })
   @ApiQuery({ name: 'from', required: false, description: 'Start date YYYY-MM-DD' })
   @ApiQuery({ name: 'to', required: false, description: 'End date YYYY-MM-DD' })
-  @ApiQuery({ name: 'period', required: false, description: 'Preset: 7d (last 7 days), 30d (last 30 days)' })
+  @ApiQuery({ name: 'period', required: false, description: '7d | 30d | ytd (año en curso desde 21 ene 2026 en 2026)' })
   @ApiResponse({ status: 200, description: 'Sales report retrieved successfully' })
   async getSalesReport(
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('period') period?: string,
   ) {
+    const MIN_STATS = '2026-01-21';
     const { addDays } = await import('date-fns');
     const { formatInTimeZone } = await import('date-fns-tz');
     const now = new Date();
@@ -255,14 +256,36 @@ export class AdminController {
     } else if (period === '30d') {
       toStr = todayBogota;
       fromStr = formatInTimeZone(addDays(now, -29), 'America/Bogota', 'yyyy-MM-dd');
+    } else if (period === 'ytd') {
+      toStr = todayBogota;
+      const y = parseInt(todayBogota.slice(0, 4), 10);
+      fromStr = y === 2026 ? MIN_STATS : `${y}-01-01`;
+      if (fromStr < MIN_STATS) fromStr = MIN_STATS;
     } else if (from && to) {
       fromStr = from;
       toStr = to;
     } else {
-      throw new BadRequestException('Indica periodo=7d|30d o las fechas from y to (YYYY-MM-DD)');
+      throw new BadRequestException('Indica periodo=7d|30d|ytd o las fechas from y to (YYYY-MM-DD)');
+    }
+
+    if (fromStr < MIN_STATS) fromStr = MIN_STATS;
+    if (fromStr > toStr) {
+      throw new BadRequestException('El rango debe empezar el 21 ene 2026 o después y la fecha fin no puede ser anterior');
     }
 
     return this.ordersService.getSalesReport(fromStr, toStr);
+  }
+
+  @Get('reports/sales/monthly-summary')
+  @ApiOperation({ summary: 'Ventas por mes en un año (desde 21 ene 2026 en 2026)' })
+  @ApiQuery({ name: 'year', required: false, description: 'Año (mín. 2026), por defecto año actual Bogotá' })
+  async getMonthlySalesSummary(@Query('year') yearStr?: string) {
+    const { formatInTimeZone } = await import('date-fns-tz');
+    const y = yearStr ? parseInt(yearStr, 10) : parseInt(formatInTimeZone(new Date(), 'America/Bogota', 'yyyy'), 10);
+    if (!Number.isFinite(y) || y < 2026) {
+      throw new BadRequestException('Indica un año >= 2026');
+    }
+    return this.ordersService.getMonthlySalesSummary(y);
   }
 
   @Get('products')
