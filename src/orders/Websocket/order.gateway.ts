@@ -6,26 +6,18 @@ import {
   ConnectedSocket
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { isAllowedCorsOrigin } from '../../common/cors-allowed';
 
 @WebSocketGateway({
   cors: {
     origin: (origin, callback) => {
-
-      const localApp = /\.ppp\.local(:\d+)?$/;
-
-      const prod = /\.prontopolloportal\.com$/;
-
-      if (!origin) {
+      if (isAllowedCorsOrigin(origin)) {
         return callback(null, true);
       }
-
-      if (localApp.test(origin) || prod.test(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"), false);
+      return callback(new Error('Not allowed by CORS'), false);
     },
 
-    credentials: false, 
+    credentials: false,
   },
 })
 export class OrdersGateway {

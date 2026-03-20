@@ -20,6 +20,7 @@ import { join } from 'path';
 import { DbExceptionFilter } from './common/filters/db-exception.filter';
 import { DbRetryInterceptor } from './common/interceptors/db-retry.interceptor';
 import { RequestTimeoutInterceptor } from './common/interceptors/request-timeout.interceptor';
+import { isAllowedCorsOrigin } from './common/cors-allowed';
 
 // Errores no capturados: log + exit para que Render reinicie
 function setupProcessHandlers() {
@@ -48,39 +49,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 app.enableCors({
   origin: (origin, callback) => {
-
-    if (!origin) return callback(null, true);
-
-    const allowedOrigins = [
-      "http://localhost:5173",
-
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "http://localhost:3001",
-      "http://localhost:3000",
-      "https://unperemptory-premorally-january.ngrok-free.dev",
-      "https://prontopolloportal.com",
-    ];
-
-    const hostname = origin.replace(/^https?:\/\//, "");
-
-    const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
-    const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
-    const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname);
-    const isNgrok = /\.ngrok-free\.app$/.test(hostname) || /\.ngrok\.io$/.test(hostname) || /\.ngrok\.app$/.test(hostname); // ← Permite ngrok
-
-    if (
-      allowedOrigins.includes(origin) ||
-      isProdSubdomain ||
-      isLocalhostSubdomain ||
-      isPppLocalSubdomain ||
-      isNgrok
-    ) {
+    if (isAllowedCorsOrigin(origin)) {
       return callback(null, true);
     }
-
-    return callback(new Error("Origin not allowed by CORS"), false);
+    return callback(new Error('Origin not allowed by CORS'), false);
   },
 
   credentials: true,
