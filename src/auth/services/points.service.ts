@@ -252,6 +252,47 @@ export class PointsService {
   }
 
   /**
+   * Assigns points directly to a user (admin action).
+   * Behaves like manual registration: isUsed=true, type=manual.
+   */
+  async assignPointsToUser(
+    userId: string,
+    pointsCount: number,
+    description?: string,
+  ): Promise<UserPoints[]> {
+    if (!pointsCount || pointsCount < 1 || pointsCount > 100) {
+      throw new BadRequestException('La cantidad de puntos debe estar entre 1 y 100');
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    const pointsRecords: UserPoints[] = [];
+
+    for (let i = 0; i < pointsCount; i++) {
+      const code = await this.generateUniquePointCode();
+      const pointRecord = this.pointsRepo.create({
+        code,
+        userId,
+        orderId: null,
+        orderDailyNumber: null,
+        isUsed: true,
+        isCanceled: false,
+        isRedeemed: false,
+        type: 'manual',
+        description:
+          description ||
+          `Punto asignado por administrador (${pointsCount} punto(s))`,
+      });
+      pointsRecords.push(await this.pointsRepo.save(pointRecord));
+    }
+
+    return pointsRecords;
+  }
+
+  /**
    * Gets total accumulated points for a user.
    * This is the sum of ALL valid points earned by the user (excluding canceled ones).
    * Points accumulate over time and the total keeps increasing.

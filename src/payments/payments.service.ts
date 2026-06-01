@@ -277,7 +277,12 @@ export class PaymentsService {
           throw new BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
         }
         const preferenceId = response.id as string;
-        const initPoint = response.init_point || response.sandbox_init_point || '';
+        const accessToken =
+          this.configService.get<string>('MERCADO_PAGO_ACCESS_TOKEN') || '';
+        const useSandboxCheckout = accessToken.trim().startsWith('TEST-');
+        const initPoint = useSandboxCheckout
+          ? (response.sandbox_init_point || response.init_point || '')
+          : (response.init_point || response.sandbox_init_point || '');
 
         // Guardar el pago en la base de datos (sin orderId aún)
         const payment = this.paymentRepo.create({
@@ -317,7 +322,12 @@ export class PaymentsService {
           }
 
           const preferenceId = response.id as string;
-          const initPoint = response.init_point || response.sandbox_init_point || '';
+          const accessTokenRetry =
+            this.configService.get<string>('MERCADO_PAGO_ACCESS_TOKEN') || '';
+          const useSandboxRetry = accessTokenRetry.trim().startsWith('TEST-');
+          const initPoint = useSandboxRetry
+            ? (response.sandbox_init_point || response.init_point || '')
+            : (response.init_point || response.sandbox_init_point || '');
 
           const payment = this.paymentRepo.create({
             orderId: null,

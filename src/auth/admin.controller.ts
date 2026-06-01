@@ -167,6 +167,74 @@ export class AdminController {
     }
   }
 
+  @Post('points/assign')
+  @ApiOperation({ summary: 'Assign points directly to a user (admin only). Same as if the user registered them.' })
+  @ApiResponse({ status: 201, description: 'Points assigned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async assignPoints(
+    @Body() body: { userId: string; pointsCount: number; description?: string },
+  ) {
+    const { userId, pointsCount, description } = body;
+
+    if (!userId) {
+      throw new BadRequestException('El usuario es obligatorio');
+    }
+
+    if (!pointsCount) {
+      throw new BadRequestException('La cantidad de puntos es obligatoria');
+    }
+
+    const pointsRecords = await this.pointsService.assignPointsToUser(
+      userId,
+      pointsCount,
+      description,
+    );
+
+    const newTotal = await this.pointsService.getTotalPoints(userId);
+
+    return {
+      success: true,
+      message: `${pointsCount} punto(s) asignado(s) exitosamente`,
+      points: pointsRecords,
+      newTotal,
+    };
+  }
+
+  @Post('points/assign-code')
+  @ApiOperation({ summary: 'Assign an existing unassigned point code to a user (admin only). Same as manual registration.' })
+  @ApiResponse({ status: 201, description: 'Point assigned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiResponse({ status: 404, description: 'Point or user not found' })
+  @ApiResponse({ status: 409, description: 'Point already used or assigned' })
+  async assignPointByCode(
+    @Body() body: { userId: string; code: string },
+  ) {
+    const { userId, code } = body;
+
+    if (!userId) {
+      throw new BadRequestException('El usuario es obligatorio');
+    }
+
+    if (!code?.trim()) {
+      throw new BadRequestException('El código del punto es obligatorio');
+    }
+
+    const pointRecord = await this.pointsService.registerPointByCode(
+      userId,
+      code.toUpperCase().trim(),
+    );
+
+    const newTotal = await this.pointsService.getTotalPoints(userId);
+
+    return {
+      success: true,
+      message: 'Punto asignado exitosamente',
+      pointRecord,
+      newTotal,
+    };
+  }
+
   @Get('points/user/:userId')
   @ApiOperation({ summary: 'Get points for a specific user (admin only)' })
   @ApiResponse({ status: 200, description: 'User points retrieved successfully' })
