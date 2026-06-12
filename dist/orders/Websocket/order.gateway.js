@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
+const cors_allowed_1 = require("../../common/cors-allowed");
 let OrdersGateway = class OrdersGateway {
     server;
     handleJoin(client, room) {
@@ -41,15 +42,10 @@ exports.OrdersGateway = OrdersGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
             origin: (origin, callback) => {
-                const localApp = /\.ppp\.local(:\d+)?$/;
-                const prod = /\.prontopolloportal\.com$/;
-                if (!origin) {
+                if ((0, cors_allowed_1.isAllowedCorsOrigin)(origin)) {
                     return callback(null, true);
                 }
-                if (localApp.test(origin) || prod.test(origin)) {
-                    return callback(null, true);
-                }
-                return callback(new Error("Not allowed by CORS"), false);
+                return callback(new Error('Not allowed by CORS'), false);
             },
             credentials: false,
         },

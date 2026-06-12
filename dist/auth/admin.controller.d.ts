@@ -39,6 +39,25 @@ export declare class AdminController {
         points: UserPoints[];
         pointCodes: string[];
     }>;
+    assignPoints(body: {
+        userId: string;
+        pointsCount: number;
+        description?: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        points: UserPoints[];
+        newTotal: number;
+    }>;
+    assignPointByCode(body: {
+        userId: string;
+        code: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        pointRecord: UserPoints;
+        newTotal: number;
+    }>;
     getUserPoints(userId: string): Promise<{
         totalPoints: number;
         availablePoints: number;
@@ -51,6 +70,26 @@ export declare class AdminController {
         updated: number;
     }>;
     getSalesReport(from?: string, to?: string, period?: string): Promise<any>;
+    getMonthlySalesSummary(yearStr?: string): Promise<{
+        year: number;
+        statsMinDate: string;
+        periodFrom: string;
+        periodTo: string;
+        months: Array<{
+            monthKey: string;
+            label: string;
+            orders: number;
+            totalRevenue: number;
+        }>;
+        monthsByRevenueDesc: Array<{
+            monthKey: string;
+            label: string;
+            orders: number;
+            totalRevenue: number;
+        }>;
+        yearTotalOrders: number;
+        yearTotalRevenue: number;
+    }>;
     getAllProducts(): Promise<{
         inventoryGroup?: {
             groupId: number;
@@ -218,7 +257,7 @@ export declare class AdminController {
             orderId: number | null;
             orderDailyNumber: number | null;
             orderCreatedAt: string | null;
-            type: "automatic" | "manual" | "admin";
+            type: "admin" | "automatic" | "manual";
             isUsed: boolean;
             isCanceled: boolean;
             isRedeemed: boolean;
@@ -240,7 +279,7 @@ export declare class AdminController {
             orderId: number | null;
             orderDailyNumber: number | null;
             orderCreatedAt: string | null;
-            type: "automatic" | "manual" | "admin";
+            type: "admin" | "automatic" | "manual";
             isUsed: boolean;
             isCanceled: boolean;
             isRedeemed: boolean;

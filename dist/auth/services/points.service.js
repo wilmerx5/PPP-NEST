@@ -158,6 +158,33 @@ let PointsService = class PointsService {
         point.description = `Punto registrado manualmente (código: ${code})`;
         return await this.pointsRepo.save(point);
     }
+    async assignPointsToUser(userId, pointsCount, description) {
+        if (!pointsCount || pointsCount < 1 || pointsCount > 100) {
+            throw new common_1.BadRequestException('La cantidad de puntos debe estar entre 1 y 100');
+        }
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('Usuario no encontrado');
+        }
+        const pointsRecords = [];
+        for (let i = 0; i < pointsCount; i++) {
+            const code = await this.generateUniquePointCode();
+            const pointRecord = this.pointsRepo.create({
+                code,
+                userId,
+                orderId: null,
+                orderDailyNumber: null,
+                isUsed: true,
+                isCanceled: false,
+                isRedeemed: false,
+                type: 'manual',
+                description: description ||
+                    `Punto asignado por administrador (${pointsCount} punto(s))`,
+            });
+            pointsRecords.push(await this.pointsRepo.save(pointRecord));
+        }
+        return pointsRecords;
+    }
     async getTotalPoints(userId) {
         return await this.pointsRepo.count({
             where: {

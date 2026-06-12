@@ -17,6 +17,7 @@ const path_1 = require("path");
 const db_exception_filter_1 = require("./common/filters/db-exception.filter");
 const db_retry_interceptor_1 = require("./common/interceptors/db-retry.interceptor");
 const request_timeout_interceptor_1 = require("./common/interceptors/request-timeout.interceptor");
+const cors_allowed_1 = require("./common/cors-allowed");
 function setupProcessHandlers() {
     process.on('unhandledRejection', (reason, promise) => {
         process.stderr.write(`\n❌ [unhandledRejection] ${String(reason)}\n`);
@@ -40,31 +41,10 @@ async function bootstrap() {
     app.setGlobalPrefix('api');
     app.enableCors({
         origin: (origin, callback) => {
-            if (!origin)
-                return callback(null, true);
-            const allowedOrigins = [
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175",
-                "http://localhost:5176",
-                "http://localhost:3001",
-                "http://localhost:3000",
-                "https://unperemptory-premorally-january.ngrok-free.dev",
-                "https://prontopolloportal.com",
-            ];
-            const hostname = origin.replace(/^https?:\/\//, "");
-            const isProdSubdomain = /\.prontopolloportal\.com(:\d+)?$/.test(hostname);
-            const isLocalhostSubdomain = /\.localhost(:\d+)?$/.test(hostname);
-            const isPppLocalSubdomain = /\.ppp\.local(:\d+)?$/.test(hostname);
-            const isNgrok = /\.ngrok-free\.app$/.test(hostname) || /\.ngrok\.io$/.test(hostname) || /\.ngrok\.app$/.test(hostname);
-            if (allowedOrigins.includes(origin) ||
-                isProdSubdomain ||
-                isLocalhostSubdomain ||
-                isPppLocalSubdomain ||
-                isNgrok) {
+            if ((0, cors_allowed_1.isAllowedCorsOrigin)(origin)) {
                 return callback(null, true);
             }
-            return callback(new Error("Origin not allowed by CORS"), false);
+            return callback(new Error('Origin not allowed by CORS'), false);
         },
         credentials: true,
     });

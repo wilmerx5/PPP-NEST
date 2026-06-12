@@ -70,11 +70,15 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
             await this.userRepository.save(user);
         }
         else if (!user.googleId) {
+            await this.userRepository.update({ id: user.id }, {
+                googleId: id,
+                provider: 'google',
+                ...(user.isActive ? {} : { isActive: true }),
+            });
             user.googleId = id;
             user.provider = 'google';
             if (!user.isActive)
                 user.isActive = true;
-            await this.userRepository.save(user);
         }
         return user;
     }

@@ -219,8 +219,7 @@ export class AuthService {
     const user = await this.userRepository.findOneBy({ id: idUser });
     if (!user) throw new BadRequestException('Usuario no encontrado');
 
-    user.isActive = true;
-    await this.userRepository.save(user);
+    await this.userRepository.update({ id: idUser }, { isActive: true });
 
     return {
       message: 'Usuario activado correctamente'
@@ -346,9 +345,9 @@ return Object.values(ValidRoles);
     token.isUsed = true;
     await this.verificationTokenRepository.save(token);
 
-    // Update password
-    user.password = bcrypt.hashSync(newPassword, 10);
-    await this.userRepository.save(user);
+    // Update password only — never use save() on a partially loaded user (would reset isActive).
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    await this.userRepository.update({ id: user.id }, { password: hashedPassword });
 
     return {
       message: 'Contraseña actualizada correctamente',

@@ -94,13 +94,28 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: { isActive: boolean },
   ) {
-    const user = await this.userRepo.findOne({ where: { id } });
+    const user = await this.userRepo.findOne({
+      where: { id },
+      select: ['id', 'email', 'fullName', 'isActive'],
+    });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    user.isActive = body.isActive;
-    await this.userRepo.save(user);
+    if (user.isActive === body.isActive) {
+      return {
+        success: true,
+        message: body.isActive ? 'Usuario ya estaba activo' : 'Usuario ya estaba inactivo',
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          isActive: user.isActive,
+        },
+      };
+    }
+
+    await this.userRepo.update({ id }, { isActive: body.isActive });
 
     return {
       success: true,
@@ -109,7 +124,7 @@ export class AdminController {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        isActive: user.isActive,
+        isActive: body.isActive,
       },
     };
   }

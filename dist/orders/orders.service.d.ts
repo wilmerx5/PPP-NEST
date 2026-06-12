@@ -113,7 +113,28 @@ export declare class OrdersService {
     }>>;
     findOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
+    static readonly ADMIN_STATS_MIN_DATE = "2026-01-21";
     getSalesReport(from: string, to: string): Promise<any>;
+    getMonthlySalesSummary(year: number): Promise<{
+        year: number;
+        statsMinDate: string;
+        periodFrom: string;
+        periodTo: string;
+        months: Array<{
+            monthKey: string;
+            label: string;
+            orders: number;
+            totalRevenue: number;
+        }>;
+        monthsByRevenueDesc: Array<{
+            monthKey: string;
+            label: string;
+            orders: number;
+            totalRevenue: number;
+        }>;
+        yearTotalOrders: number;
+        yearTotalRevenue: number;
+    }>;
     backfillUnitPrices(): Promise<{
         updated: number;
     }>;

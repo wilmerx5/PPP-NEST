@@ -19,6 +19,7 @@ export declare class PointsService {
     generateUniquePointCode(): Promise<string>;
     createPointsForOrder(userId: string, orderId: number, orderDailyNumber: number, pointsCount: number): Promise<UserPoints[]>;
     registerPointByCode(userId: string, code: string): Promise<UserPoints>;
+    assignPointsToUser(userId: string, pointsCount: number, description?: string): Promise<UserPoints[]>;
     getTotalPoints(userId: string): Promise<number>;
     getPointsHistory(userId: string, limit?: number): Promise<UserPoints[]>;
     getPointCodesByOrderId(orderId: number): Promise<string[]>;

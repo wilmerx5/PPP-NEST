@@ -69,12 +69,26 @@ let AdminController = class AdminController {
         return { data, total };
     }
     async updateUserActive(id, body) {
-        const user = await this.userRepo.findOne({ where: { id } });
+        const user = await this.userRepo.findOne({
+            where: { id },
+            select: ['id', 'email', 'fullName', 'isActive'],
+        });
         if (!user) {
             throw new common_1.NotFoundException('Usuario no encontrado');
         }
-        user.isActive = body.isActive;
-        await this.userRepo.save(user);
+        if (user.isActive === body.isActive) {
+            return {
+                success: true,
+                message: body.isActive ? 'Usuario ya estaba activo' : 'Usuario ya estaba inactivo',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.fullName,
+                    isActive: user.isActive,
+                },
+            };
+        }
+        await this.userRepo.update({ id }, { isActive: body.isActive });
         return {
             success: true,
             message: body.isActive ? 'Usuario activado' : 'Usuario desactivado',
@@ -82,7 +96,7 @@ let AdminController = class AdminController {
                 id: user.id,
                 email: user.email,
                 fullName: user.fullName,
-                isActive: user.isActive,
+                isActive: body.isActive,
             },
         };
     }
@@ -125,6 +139,40 @@ let AdminController = class AdminController {
             throw error;
         }
     }
+    async assignPoints(body) {
+        const { userId, pointsCount, description } = body;
+        if (!userId) {
+            throw new common_1.BadRequestException('El usuario es obligatorio');
+        }
+        if (!pointsCount) {
+            throw new common_1.BadRequestException('La cantidad de puntos es obligatoria');
+        }
+        const pointsRecords = await this.pointsService.assignPointsToUser(userId, pointsCount, description);
+        const newTotal = await this.pointsService.getTotalPoints(userId);
+        return {
+            success: true,
+            message: `${pointsCount} punto(s) asignado(s) exitosamente`,
+            points: pointsRecords,
+            newTotal,
+        };
+    }
+    async assignPointByCode(body) {
+        const { userId, code } = body;
+        if (!userId) {
+            throw new common_1.BadRequestException('El usuario es obligatorio');
+        }
+        if (!code?.trim()) {
+            throw new common_1.BadRequestException('El código del punto es obligatorio');
+        }
+        const pointRecord = await this.pointsService.registerPointByCode(userId, code.toUpperCase().trim());
+        const newTotal = await this.pointsService.getTotalPoints(userId);
+        return {
+            success: true,
+            message: 'Punto asignado exitosamente',
+            pointRecord,
+            newTotal,
+        };
+    }
     async getUserPoints(userId) {
         const user = await this.userRepo.findOne({ where: { id: userId } });
         if (!user) {
@@ -165,6 +213,7 @@ let AdminController = class AdminController {
         return { success: true, updated };
     }
     async getSalesReport(from, to, period) {
+        const MIN_STATS = '2026-01-21';
         const { addDays } = await Promise.resolve().then(() => require('date-fns'));
         const { formatInTimeZone } = await Promise.resolve().then(() => require('date-fns-tz'));
         const now = new Date();
@@ -179,14 +228,34 @@ let AdminController = class AdminController {
             toStr = todayBogota;
             fromStr = formatInTimeZone(addDays(now, -29), 'America/Bogota', 'yyyy-MM-dd');
         }
+        else if (period === 'ytd') {
+            toStr = todayBogota;
+            const y = parseInt(todayBogota.slice(0, 4), 10);
+            fromStr = y === 2026 ? MIN_STATS : `${y}-01-01`;
+            if (fromStr < MIN_STATS)
+                fromStr = MIN_STATS;
+        }
         else if (from && to) {
             fromStr = from;
             toStr = to;
         }
         else {
-            throw new common_1.BadRequestException('Indica periodo=7d|30d o las fechas from y to (YYYY-MM-DD)');
+            throw new common_1.BadRequestException('Indica periodo=7d|30d|ytd o las fechas from y to (YYYY-MM-DD)');
+        }
+        if (fromStr < MIN_STATS)
+            fromStr = MIN_STATS;
+        if (fromStr > toStr) {
+            throw new common_1.BadRequestException('El rango debe empezar el 21 ene 2026 o después y la fecha fin no puede ser anterior');
         }
         return this.ordersService.getSalesReport(fromStr, toStr);
+    }
+    async getMonthlySalesSummary(yearStr) {
+        const { formatInTimeZone } = await Promise.resolve().then(() => require('date-fns-tz'));
+        const y = yearStr ? parseInt(yearStr, 10) : parseInt(formatInTimeZone(new Date(), 'America/Bogota', 'yyyy'), 10);
+        if (!Number.isFinite(y) || y < 2026) {
+            throw new common_1.BadRequestException('Indica un año >= 2026');
+        }
+        return this.ordersService.getMonthlySalesSummary(y);
     }
     async getAllProducts() {
         return this.productsService.findAllForAdmin();
@@ -500,6 +569,29 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "createPoints", null);
 __decorate([
+    (0, common_1.Post)('points/assign'),
+    (0, swagger_1.ApiOperation)({ summary: 'Assign points directly to a user (admin only). Same as if the user registered them.' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Points assigned successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid request' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "assignPoints", null);
+__decorate([
+    (0, common_1.Post)('points/assign-code'),
+    (0, swagger_1.ApiOperation)({ summary: 'Assign an existing unassigned point code to a user (admin only). Same as manual registration.' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Point assigned successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid request' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Point or user not found' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Point already used or assigned' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "assignPointByCode", null);
+__decorate([
     (0, common_1.Get)('points/user/:userId'),
     (0, swagger_1.ApiOperation)({ summary: 'Get points for a specific user (admin only)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'User points retrieved successfully' }),
@@ -542,7 +634,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get sales report between dates (admin only)' }),
     (0, swagger_1.ApiQuery)({ name: 'from', required: false, description: 'Start date YYYY-MM-DD' }),
     (0, swagger_1.ApiQuery)({ name: 'to', required: false, description: 'End date YYYY-MM-DD' }),
-    (0, swagger_1.ApiQuery)({ name: 'period', required: false, description: 'Preset: 7d (last 7 days), 30d (last 30 days)' }),
+    (0, swagger_1.ApiQuery)({ name: 'period', required: false, description: '7d | 30d | ytd (año en curso desde 21 ene 2026 en 2026)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Sales report retrieved successfully' }),
     __param(0, (0, common_1.Query)('from')),
     __param(1, (0, common_1.Query)('to')),
@@ -551,6 +643,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getSalesReport", null);
+__decorate([
+    (0, common_1.Get)('reports/sales/monthly-summary'),
+    (0, swagger_1.ApiOperation)({ summary: 'Ventas por mes en un año (desde 21 ene 2026 en 2026)' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', required: false, description: 'Año (mín. 2026), por defecto año actual Bogotá' }),
+    __param(0, (0, common_1.Query)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getMonthlySalesSummary", null);
 __decorate([
     (0, common_1.Get)('products'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all products including inactive (admin only)' }),
