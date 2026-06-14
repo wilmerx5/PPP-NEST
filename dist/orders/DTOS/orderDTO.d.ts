@@ -92,3 +92,6 @@ export declare class UpdateOrderGeneralDto {
 export declare class ChangeTableDto {
     newTable: string;
 }
+export declare class LinkTablesDto {
+    tableNumbers: string[];
+}

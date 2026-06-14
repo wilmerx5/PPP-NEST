@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderSource, OrderStatus, OrderType } from "../entities/order.entity";
-import { IsEnum, IsNumber, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemAttributeDto {
@@ -346,4 +346,15 @@ export class ChangeTableDto {
   })
   @IsString()
   newTable: string;
+}
+
+export class LinkTablesDto {
+  @ApiProperty({
+    description: 'Números de mesa a vincular con la orden actual (deben tener orden activa hoy).',
+    example: ['4', '7'],
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  tableNumbers: string[];
 }

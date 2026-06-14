@@ -25,6 +25,7 @@ import {
     AddOrderExtraDto,
     ChangeTableDto,
     CreateOrderDto,
+    LinkTablesDto,
     UpdateOrderExtraDto,
     UpdateOrderGeneralDto,
     UpdateOrderItemUnitPriceDto,
@@ -213,6 +214,29 @@ export class OrdersController {
   @ApiResponse({ status: 404, description: 'Order not found' })
   async changeTable(@Param('id') id: string, @Body() dto: ChangeTableDto) {
     return this.orderService.changeTable(parseInt(id, 10), dto);
+  }
+
+  @Post(':id/table-link')
+  @ApiOperation({
+    summary: 'Link table orders (mesas)',
+    description: 'Links this table order with other active table orders for a unified bill.',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: LinkTablesDto })
+  @ApiResponse({ status: 200, description: 'Tables linked successfully' })
+  async linkTables(@Param('id') id: string, @Body() dto: LinkTablesDto) {
+    return this.orderService.linkTables(parseInt(id, 10), dto.tableNumbers);
+  }
+
+  @Delete(':id/table-link')
+  @ApiOperation({
+    summary: 'Unlink table from group (mesas)',
+    description: 'Removes this table from the linked group.',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiResponse({ status: 200, description: 'Table unlinked successfully' })
+  async unlinkTable(@Param('id') id: string) {
+    return this.orderService.unlinkTable(parseInt(id, 10));
   }
 
   // -------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, LinkTablesDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 export declare class OrdersController {
     private readonly orderService;
@@ -71,6 +71,16 @@ export declare class OrdersController {
         success: boolean;
         message: string;
         swapped: boolean;
+    }>;
+    linkTables(id: string, dto: LinkTablesDto): Promise<{
+        success: boolean;
+        message: string;
+        tableGroupId: number;
+        linkedTables: string[];
+    }>;
+    unlinkTable(id: string): Promise<{
+        success: boolean;
+        message: string;
     }>;
     validateRedemptionPrize(body: {
         code: string;

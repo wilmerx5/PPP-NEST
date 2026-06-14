@@ -1418,6 +1418,150 @@ export class OrdersService {
   }
 
   /**
+   * Vincula la orden de mesa con otras mesas activas (cuenta unificada).
+   */
+  async linkTables(orderId: number, tableNumbers: string[]) {
+    const source = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!source) throw new NotFoundException(`No se encontró la orden #${orderId}`);
+    if (source.orderType !== 'table') {
+      throw new BadRequestException('Solo se pueden vincular órdenes de mesa');
+    }
+    if (source.orderStatus === 'completed' || source.orderStatus === 'canceled') {
+      throw new BadRequestException('No se puede vincular una orden completada o cancelada');
+    }
+
+    const sourceTable = String(source.address ?? '').trim();
+    const uniqueTargets = [
+      ...new Set(
+        (tableNumbers ?? [])
+          .map((t) => String(t).trim())
+          .filter((t) => t && t !== sourceTable),
+      ),
+    ];
+    if (uniqueTargets.length === 0) {
+      throw new BadRequestException('Indica al menos una mesa distinta para vincular');
+    }
+
+    const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+    const ordersToLink: Order[] = [source];
+
+    for (const tableNum of uniqueTargets) {
+      const target = await this.orderRepo.findOne({
+        where: {
+          orderType: 'table',
+          address: tableNum,
+          orderStatus: Not(In(['completed', 'canceled'])),
+          createdAt: Between(todayStartUtc, todayEndUtc),
+        },
+      });
+      if (!target) {
+        throw new BadRequestException(`Mesa ${tableNum} no tiene una orden activa hoy`);
+      }
+      ordersToLink.push(target);
+    }
+
+    const unifiedGroupId = await this.resolveUnifiedTableGroupId(ordersToLink);
+    const orderIds = ordersToLink.map((o) => o.id);
+    await this.orderRepo.update({ id: In(orderIds) }, { tableGroupId: unifiedGroupId });
+
+    const allInGroup = await this.orderRepo.find({
+      where: {
+        tableGroupId: unifiedGroupId,
+        orderStatus: Not(In(['completed', 'canceled'])),
+        createdAt: Between(todayStartUtc, todayEndUtc),
+      },
+    });
+
+    await this.emitFormattedOrdersUpdate(allInGroup.map((o) => o.id));
+
+    const linkedTables = allInGroup
+      .map((o) => String(o.address ?? '').trim())
+      .filter(Boolean)
+      .sort((a, b) => Number(a) - Number(b));
+
+    return {
+      success: true,
+      message: `Mesas vinculadas: ${linkedTables.join(', ')}`,
+      tableGroupId: unifiedGroupId,
+      linkedTables,
+    };
+  }
+
+  /**
+   * Desvincula una mesa del grupo. Si queda solo una mesa en el grupo, se limpia el vínculo.
+   */
+  async unlinkTable(orderId: number) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException(`No se encontró la orden #${orderId}`);
+    if (!order.tableGroupId) {
+      throw new BadRequestException('Esta mesa no está vinculada a otras');
+    }
+
+    const groupId = order.tableGroupId;
+    const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+
+    await this.orderRepo.update({ id: orderId }, { tableGroupId: null });
+
+    const remaining = await this.orderRepo.find({
+      where: {
+        tableGroupId: groupId,
+        orderStatus: Not(In(['completed', 'canceled'])),
+        createdAt: Between(todayStartUtc, todayEndUtc),
+      },
+    });
+
+    if (remaining.length <= 1) {
+      await this.orderRepo.update({ tableGroupId: groupId }, { tableGroupId: null });
+    }
+
+    const affectedIds = [orderId, ...remaining.map((o) => o.id)];
+    await this.emitFormattedOrdersUpdate(affectedIds);
+
+    return {
+      success: true,
+      message: `Mesa ${order.address} desvinculada`,
+    };
+  }
+
+  private async resolveUnifiedTableGroupId(orders: Order[]): Promise<number> {
+    const existingGroupIds = [
+      ...new Set(
+        orders
+          .map((o) => o.tableGroupId)
+          .filter((id): id is number => id != null),
+      ),
+    ];
+
+    if (existingGroupIds.length === 0) {
+      return Date.now();
+    }
+
+    const unifiedId = Math.min(...existingGroupIds);
+
+    if (existingGroupIds.some((id) => id !== unifiedId)) {
+      await this.orderRepo.update(
+        { tableGroupId: In(existingGroupIds) },
+        { tableGroupId: unifiedId },
+      );
+    }
+
+    return unifiedId;
+  }
+
+  private async emitFormattedOrdersUpdate(orderIds: number[]) {
+    const uniqueIds = [...new Set(orderIds)];
+    for (const id of uniqueIds) {
+      const full = await this.orderRepo.findOne({
+        where: { id },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      });
+      if (!full) continue;
+      const formatted = await this.mapOrderToGroupedFormat(full);
+      this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+    }
+  }
+
+  /**
    * Convierte una orden en un formato agrupado por producto,
    * útil para cocina y frontend.
    *
@@ -1538,6 +1682,7 @@ export class OrdersService {
       items: Object.values(groupedItems),
       extras: extrasList,
       redemptionCode: order.redemptionCode ?? null,
+      tableGroupId: order.tableGroupId ?? null,
     };
   }
 

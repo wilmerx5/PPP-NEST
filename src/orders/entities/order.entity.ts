@@ -162,6 +162,14 @@ export class Order {
   redemptionCode: string | null;
 
   @ApiProperty({
+    description: 'ID de grupo cuando varias mesas comparten cuenta (mesas linkeadas).',
+    example: 1735123456789,
+    nullable: true,
+  })
+  @Column({ name: 'table_group_id', type: 'bigint', nullable: true })
+  tableGroupId: number | null;
+
+  @ApiProperty({
     description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',
     type: () => OrderExtra,
     required: false,

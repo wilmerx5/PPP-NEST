@@ -19,5 +19,6 @@ export declare class Order {
     orderSource: OrderSource;
     points: number;
     redemptionCode: string | null;
+    tableGroupId: number | null;
     extras?: OrderExtra[];
 }

@@ -100,6 +100,18 @@ export declare class OrdersService {
         message: string;
         swapped: boolean;
     }>;
+    linkTables(orderId: number, tableNumbers: string[]): Promise<{
+        success: boolean;
+        message: string;
+        tableGroupId: number;
+        linkedTables: string[];
+    }>;
+    unlinkTable(orderId: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    private resolveUnifiedTableGroupId;
+    private emitFormattedOrdersUpdate;
     private incomingItemSignature;
     private deduplicateIncomingUpdateItems;
     private deduplicateOrderItemsById;

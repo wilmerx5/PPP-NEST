@@ -63,6 +63,12 @@ let OrdersController = class OrdersController {
     async changeTable(id, dto) {
         return this.orderService.changeTable(parseInt(id, 10), dto);
     }
+    async linkTables(id, dto) {
+        return this.orderService.linkTables(parseInt(id, 10), dto.tableNumbers);
+    }
+    async unlinkTable(id) {
+        return this.orderService.unlinkTable(parseInt(id, 10));
+    }
     async validateRedemptionPrize(body) {
         const { code } = body;
         if (!code) {
@@ -250,6 +256,34 @@ __decorate([
     __metadata("design:paramtypes", [String, orderDTO_1.ChangeTableDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "changeTable", null);
+__decorate([
+    (0, common_1.Post)(':id/table-link'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Link table orders (mesas)',
+        description: 'Links this table order with other active table orders for a unified bill.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.LinkTablesDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Tables linked successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, orderDTO_1.LinkTablesDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "linkTables", null);
+__decorate([
+    (0, common_1.Delete)(':id/table-link'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Unlink table from group (mesas)',
+        description: 'Removes this table from the linked group.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', example: 15 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Table unlinked successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "unlinkTable", null);
 __decorate([
     (0, common_1.Post)('validate-redemption-prize'),
     (0, swagger_1.ApiOperation)({

@@ -30,6 +30,7 @@ let Order = class Order {
     orderSource;
     points;
     redemptionCode;
+    tableGroupId;
     extras;
 };
 exports.Order = Order;
@@ -183,6 +184,15 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'redemption_code', type: 'varchar', length: 12, nullable: true }),
     __metadata("design:type", Object)
 ], Order.prototype, "redemptionCode", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'ID de grupo cuando varias mesas comparten cuenta (mesas linkeadas).',
+        example: 1735123456789,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'table_group_id', type: 'bigint', nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "tableGroupId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',

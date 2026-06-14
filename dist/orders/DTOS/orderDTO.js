@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChangeTableDto = exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemUnitPriceDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
+exports.LinkTablesDto = exports.ChangeTableDto = exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemUnitPriceDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderItemDto = exports.CreateOrderItemAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -445,4 +445,18 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], ChangeTableDto.prototype, "newTable", void 0);
+class LinkTablesDto {
+    tableNumbers;
+}
+exports.LinkTablesDto = LinkTablesDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Números de mesa a vincular con la orden actual (deben tener orden activa hoy).',
+        example: ['4', '7'],
+        type: [String],
+    }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], LinkTablesDto.prototype, "tableNumbers", void 0);
 //# sourceMappingURL=orderDTO.js.map
