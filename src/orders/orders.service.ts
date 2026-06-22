@@ -1268,6 +1268,58 @@ export class OrdersService {
     const order = await this.orderRepo.findOneBy({ id: orderId });
     if (!order) throw new Error('No se encontró la orden');
 
+    const isCompletingLinkedTable =
+      dto.orderStatus === 'completed' &&
+      order.orderType === 'table' &&
+      order.orderStatus !== 'completed' &&
+      order.orderStatus !== 'canceled' &&
+      order.tableGroupId != null;
+
+    if (isCompletingLinkedTable) {
+      const groupId = order.tableGroupId as number;
+      const { start: todayStartUtc, end: todayEndUtc } = getBogotaDayRange();
+      const groupOrders = await this.orderRepo.find({
+        where: {
+          tableGroupId: groupId,
+          orderType: 'table',
+          orderStatus: Not(In(['completed', 'canceled'])),
+          createdAt: Between(todayStartUtc, todayEndUtc),
+        },
+      });
+
+      const ids = groupOrders.map((o) => o.id);
+      await this.orderRepo.update(
+        { id: In(ids) },
+        { orderStatus: 'completed', tableGroupId: null },
+      );
+
+      for (const id of ids) {
+        const fullOrder = await this.orderRepo.findOne({
+          where: { id },
+          relations: ['items', 'items.product', 'items.attributes'],
+        });
+        if (fullOrder) {
+          const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+          this.gateway.emitOrdersUpdates('orderCompleted', formatted);
+        }
+      }
+
+      const tables = groupOrders
+        .map((o) => String(o.address ?? '').trim())
+        .filter(Boolean)
+        .sort((a, b) => Number(a) - Number(b));
+
+      return {
+        success: true,
+        message:
+          ids.length > 1
+            ? `Mesas vinculadas completadas: ${tables.join(', ')}`
+            : `Order #${orderId} updated successfully`,
+        updatedFields: dto,
+        completedOrderIds: ids,
+      };
+    }
+
     // Check if order is being canceled
     const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
 
@@ -1339,7 +1391,7 @@ export class OrdersService {
 
   /**
    * Cambia la mesa de una orden (solo tipo table). Si la mesa destino tiene orden activa, se intercambian.
-   * Si la orden estaba vinculada, se desvincula del grupo (excepto intercambio dentro del mismo grupo).
+   * Mantiene el vínculo de grupo (tableGroupId) en cada orden.
    */
   async changeTable(orderId: number, dto: ChangeTableDto) {
     const newTable = String(dto.newTable ?? '').trim();
@@ -1372,17 +1424,18 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes'],
     });
 
-    const affectedOrderIds: number[] = [];
+    const movedOrderIds: number[] = [];
 
     if (!otherOrder) {
       await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Order);
-        const affected = await this.removeOrderFromTableGroupInTransaction(manager, order.id);
-        affectedOrderIds.push(...affected);
-        order.address = newTable;
-        await repo.save(order);
-        affectedOrderIds.push(order.id);
+        const o = await repo.findOne({ where: { id: order.id } });
+        if (!o) throw new InternalServerErrorException('Orden no encontrada en transacción');
+        o.address = newTable;
+        await repo.save(o);
+        movedOrderIds.push(o.id);
       });
+      const affectedOrderIds = await this.collectLinkedTableOrderIds(movedOrderIds);
       await this.emitFormattedOrdersUpdate(affectedOrderIds);
       return {
         success: true,
@@ -1391,28 +1444,19 @@ export class OrdersService {
       };
     }
 
-    const sameLinkedGroup =
-      order.tableGroupId != null && order.tableGroupId === otherOrder.tableGroupId;
-
     await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Order);
       const o1 = await repo.findOne({ where: { id: order.id } });
       const o2 = await repo.findOne({ where: { id: otherOrder.id } });
       if (!o1 || !o2) throw new InternalServerErrorException('Orden no encontrada en transacción');
-
-      if (!sameLinkedGroup) {
-        const affected1 = await this.removeOrderFromTableGroupInTransaction(manager, o1.id);
-        const affected2 = await this.removeOrderFromTableGroupInTransaction(manager, o2.id);
-        affectedOrderIds.push(...affected1, ...affected2);
-      }
-
       o1.address = newTable;
       o2.address = currentTable;
       await repo.save(o1);
       await repo.save(o2);
-      affectedOrderIds.push(o1.id, o2.id);
+      movedOrderIds.push(o1.id, o2.id);
     });
 
+    const affectedOrderIds = await this.collectLinkedTableOrderIds(movedOrderIds);
     await this.emitFormattedOrdersUpdate(affectedOrderIds);
 
     return {
@@ -1526,6 +1570,27 @@ export class OrdersService {
       success: true,
       message: `Mesa ${order.address} desvinculada`,
     };
+  }
+
+  private async collectLinkedTableOrderIds(orderIds: number[]): Promise<number[]> {
+    const unique = [...new Set(orderIds)];
+    if (unique.length === 0) return unique;
+
+    const orders = await this.orderRepo.find({ where: { id: In(unique) } });
+    const groupIds = [
+      ...new Set(
+        orders.map((o) => o.tableGroupId).filter((id): id is number => id != null),
+      ),
+    ];
+    if (groupIds.length === 0) return unique;
+
+    const peers = await this.orderRepo.find({
+      where: {
+        tableGroupId: In(groupIds),
+        orderStatus: Not(In(['completed', 'canceled'])),
+      },
+    });
+    return [...new Set([...unique, ...peers.map((p) => p.id)])];
   }
 
   private async removeOrderFromTableGroupInTransaction(

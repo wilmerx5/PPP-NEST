@@ -53,7 +53,7 @@ __decorate([
         required: false,
     }),
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true, name: 'image_url' }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], Category.prototype, "imageUrl", void 0);
 exports.Category = Category = __decorate([
     (0, typeorm_1.Entity)('ppp_categories')

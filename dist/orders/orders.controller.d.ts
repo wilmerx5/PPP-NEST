@@ -66,6 +66,12 @@ export declare class OrdersController {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;
+        completedOrderIds: number[];
+    } | {
+        success: boolean;
+        message: string;
+        updatedFields: UpdateOrderGeneralDto;
+        completedOrderIds?: undefined;
     }>;
     changeTable(id: string, dto: ChangeTableDto): Promise<{
         success: boolean;

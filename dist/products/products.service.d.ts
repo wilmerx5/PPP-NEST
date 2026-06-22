@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
 import { ProductAttribute } from './entities/product-attribute.entity';
@@ -57,6 +58,7 @@ export declare class ProductsService {
     private loadAlsoDeductFromForProductIds;
     findAll(): Promise<any[]>;
     findAllCategories(): Promise<Category[]>;
+    updateCategory(id: number, dto: UpdateCategoryDto): Promise<Category>;
     findProductsGroupedByCategory(): Promise<any[]>;
     findAllForAdmin(): Promise<{
         inventoryGroup?: {

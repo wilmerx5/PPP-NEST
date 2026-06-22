@@ -970,6 +970,47 @@ let OrdersService = class OrdersService {
         const order = await this.orderRepo.findOneBy({ id: orderId });
         if (!order)
             throw new Error('No se encontró la orden');
+        const isCompletingLinkedTable = dto.orderStatus === 'completed' &&
+            order.orderType === 'table' &&
+            order.orderStatus !== 'completed' &&
+            order.orderStatus !== 'canceled' &&
+            order.tableGroupId != null;
+        if (isCompletingLinkedTable) {
+            const groupId = order.tableGroupId;
+            const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
+            const groupOrders = await this.orderRepo.find({
+                where: {
+                    tableGroupId: groupId,
+                    orderType: 'table',
+                    orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+                    createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
+                },
+            });
+            const ids = groupOrders.map((o) => o.id);
+            await this.orderRepo.update({ id: (0, typeorm_2.In)(ids) }, { orderStatus: 'completed', tableGroupId: null });
+            for (const id of ids) {
+                const fullOrder = await this.orderRepo.findOne({
+                    where: { id },
+                    relations: ['items', 'items.product', 'items.attributes'],
+                });
+                if (fullOrder) {
+                    const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+                    this.gateway.emitOrdersUpdates('orderCompleted', formatted);
+                }
+            }
+            const tables = groupOrders
+                .map((o) => String(o.address ?? '').trim())
+                .filter(Boolean)
+                .sort((a, b) => Number(a) - Number(b));
+            return {
+                success: true,
+                message: ids.length > 1
+                    ? `Mesas vinculadas completadas: ${tables.join(', ')}`
+                    : `Order #${orderId} updated successfully`,
+                updatedFields: dto,
+                completedOrderIds: ids,
+            };
+        }
         const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
         if (dto.customerName !== undefined)
             order.customerName = dto.customerName;
@@ -1029,6 +1070,7 @@ let OrdersService = class OrdersService {
         const newTable = String(dto.newTable ?? '').trim();
         if (!newTable)
             throw new common_1.BadRequestException('newTable es requerido');
+        const { start: todayStartUtc, end: todayEndUtc } = (0, date_util_1.getBogotaDayRange)();
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
             relations: ['items', 'items.product', 'items.attributes'],
@@ -1049,14 +1091,23 @@ let OrdersService = class OrdersService {
                 address: newTable,
                 orderType: 'table',
                 orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+                createdAt: (0, typeorm_2.Between)(todayStartUtc, todayEndUtc),
             },
             relations: ['items', 'items.product', 'items.attributes'],
         });
+        const movedOrderIds = [];
         if (!otherOrder) {
-            order.address = newTable;
-            await this.orderRepo.save(order);
-            const formatted = await this.mapOrderToGroupedFormat(order);
-            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
+            await this.dataSource.transaction(async (manager) => {
+                const repo = manager.getRepository(order_entity_1.Order);
+                const o = await repo.findOne({ where: { id: order.id } });
+                if (!o)
+                    throw new common_1.InternalServerErrorException('Orden no encontrada en transacción');
+                o.address = newTable;
+                await repo.save(o);
+                movedOrderIds.push(o.id);
+            });
+            const affectedOrderIds = await this.collectLinkedTableOrderIds(movedOrderIds);
+            await this.emitFormattedOrdersUpdate(affectedOrderIds);
             return {
                 success: true,
                 message: `Orden movida a la mesa ${newTable}`,
@@ -1073,25 +1124,10 @@ let OrdersService = class OrdersService {
             o2.address = currentTable;
             await repo.save(o1);
             await repo.save(o2);
+            movedOrderIds.push(o1.id, o2.id);
         });
-        const [updated1, updated2] = await Promise.all([
-            this.orderRepo.findOne({
-                where: { id: order.id },
-                relations: ['items', 'items.product', 'items.attributes'],
-            }),
-            this.orderRepo.findOne({
-                where: { id: otherOrder.id },
-                relations: ['items', 'items.product', 'items.attributes'],
-            }),
-        ]);
-        if (updated1) {
-            const formatted = await this.mapOrderToGroupedFormat(updated1);
-            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
-        }
-        if (updated2) {
-            const formatted = await this.mapOrderToGroupedFormat(updated2);
-            this.gateway.emitOrdersUpdates('updated_order_items', formatted);
-        }
+        const affectedOrderIds = await this.collectLinkedTableOrderIds(movedOrderIds);
+        await this.emitFormattedOrdersUpdate(affectedOrderIds);
         return {
             success: true,
             message: `Mesas intercambiadas: orden de mesa ${currentTable} → ${newTable}, orden de mesa ${newTable} → ${currentTable}`,
@@ -1181,6 +1217,49 @@ let OrdersService = class OrdersService {
             success: true,
             message: `Mesa ${order.address} desvinculada`,
         };
+    }
+    async collectLinkedTableOrderIds(orderIds) {
+        const unique = [...new Set(orderIds)];
+        if (unique.length === 0)
+            return unique;
+        const orders = await this.orderRepo.find({ where: { id: (0, typeorm_2.In)(unique) } });
+        const groupIds = [
+            ...new Set(orders.map((o) => o.tableGroupId).filter((id) => id != null)),
+        ];
+        if (groupIds.length === 0)
+            return unique;
+        const peers = await this.orderRepo.find({
+            where: {
+                tableGroupId: (0, typeorm_2.In)(groupIds),
+                orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+            },
+        });
+        return [...new Set([...unique, ...peers.map((p) => p.id)])];
+    }
+    async removeOrderFromTableGroupInTransaction(manager, orderId) {
+        const repo = manager.getRepository(order_entity_1.Order);
+        const order = await repo.findOne({ where: { id: orderId } });
+        if (!order?.tableGroupId)
+            return [];
+        const groupId = order.tableGroupId;
+        const affected = [orderId];
+        await repo.update({ id: orderId }, { tableGroupId: null });
+        const remaining = await repo.find({
+            where: {
+                tableGroupId: groupId,
+                orderStatus: (0, typeorm_2.Not)((0, typeorm_2.In)(['completed', 'canceled'])),
+            },
+        });
+        if (remaining.length <= 1) {
+            const toClear = await repo.find({ where: { tableGroupId: groupId } });
+            for (const o of toClear) {
+                affected.push(o.id);
+            }
+            if (toClear.length > 0) {
+                await repo.update({ tableGroupId: groupId }, { tableGroupId: null });
+            }
+        }
+        return [...new Set(affected)];
     }
     async resolveUnifiedTableGroupId(orders) {
         const existingGroupIds = [

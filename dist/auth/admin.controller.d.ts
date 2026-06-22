@@ -134,6 +134,9 @@ export declare class AdminController {
         alsoDeductAttributeValue?: string | null;
         alsoDeductBaseUnits?: number | null;
     }[]>;
+    updateCategory(id: string, body: {
+        imageUrl?: string | null;
+    }): Promise<import("../products/entities/category.entity").Category>;
     updateProductActive(id: string, body: {
         isActive: boolean;
     }): Promise<{

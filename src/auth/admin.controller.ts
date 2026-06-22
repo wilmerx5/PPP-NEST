@@ -378,6 +378,17 @@ export class AdminController {
     return this.productsService.findAllForAdmin();
   }
 
+  @Patch('categories/:id')
+  @ApiOperation({ summary: 'Update category (image URL for landing/menu)' })
+  @ApiResponse({ status: 200, description: 'Category updated' })
+  @ApiResponse({ status: 404, description: 'Category not found' })
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() body: { imageUrl?: string | null },
+  ) {
+    return this.productsService.updateCategory(+id, body);
+  }
+
   @Patch('products/:id/active')
   @ApiOperation({ summary: 'Activate or deactivate product (admin only)' })
   @ApiResponse({ status: 200, description: 'Product updated successfully' })

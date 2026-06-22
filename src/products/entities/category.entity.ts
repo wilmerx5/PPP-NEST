@@ -39,5 +39,5 @@ export class Category {
     required: false,
   })
   @Column({ type: 'varchar', nullable: true, name: 'image_url' })
-  imageUrl: string;
+  imageUrl: string | null;
 }

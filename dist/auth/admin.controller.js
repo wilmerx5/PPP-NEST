@@ -260,6 +260,9 @@ let AdminController = class AdminController {
     async getAllProducts() {
         return this.productsService.findAllForAdmin();
     }
+    async updateCategory(id, body) {
+        return this.productsService.updateCategory(+id, body);
+    }
     async updateProductActive(id, body) {
         return this.productsService.updateActive(+id, body.isActive);
     }
@@ -660,6 +663,17 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getAllProducts", null);
+__decorate([
+    (0, common_1.Patch)('categories/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update category (image URL for landing/menu)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Category updated' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Category not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateCategory", null);
 __decorate([
     (0, common_1.Patch)('products/:id/active'),
     (0, swagger_1.ApiOperation)({ summary: 'Activate or deactivate product (admin only)' }),

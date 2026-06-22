@@ -206,6 +206,19 @@ let ProductsService = ProductsService_1 = class ProductsService {
         });
         return result || [];
     }
+    async updateCategory(id, dto) {
+        const category = await this.categoryRepo.findOne({ where: { id } });
+        if (!category) {
+            throw new common_1.NotFoundException(`Categoría con id ${id} no encontrada`);
+        }
+        if (dto.imageUrl !== undefined) {
+            const trimmed = dto.imageUrl?.trim();
+            category.imageUrl = trimmed || null;
+        }
+        const saved = await this.categoryRepo.save(category);
+        this.cache.invalidate('products:');
+        return saved;
+    }
     async findProductsGroupedByCategory() {
         const cached = this.cache.get(this.CACHE_KEY_GROUPED);
         if (cached)

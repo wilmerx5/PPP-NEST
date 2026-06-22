@@ -94,6 +94,12 @@ export declare class OrdersService {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;
+        completedOrderIds: number[];
+    } | {
+        success: boolean;
+        message: string;
+        updatedFields: UpdateOrderGeneralDto;
+        completedOrderIds?: undefined;
     }>;
     changeTable(orderId: number, dto: ChangeTableDto): Promise<{
         success: boolean;
@@ -110,6 +116,8 @@ export declare class OrdersService {
         success: boolean;
         message: string;
     }>;
+    private collectLinkedTableOrderIds;
+    private removeOrderFromTableGroupInTransaction;
     private resolveUnifiedTableGroupId;
     private emitFormattedOrdersUpdate;
     private incomingItemSignature;

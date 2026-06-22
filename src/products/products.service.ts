@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository, In, Not, IsNull } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
 import { ProductAttribute } from './entities/product-attribute.entity';
@@ -276,6 +277,22 @@ export class ProductsService {
     );
 
     return result || [];
+  }
+
+  async updateCategory(id: number, dto: UpdateCategoryDto) {
+    const category = await this.categoryRepo.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Categoría con id ${id} no encontrada`);
+    }
+
+    if (dto.imageUrl !== undefined) {
+      const trimmed = dto.imageUrl?.trim();
+      category.imageUrl = trimmed || null;
+    }
+
+    const saved = await this.categoryRepo.save(category);
+    this.cache.invalidate('products:');
+    return saved;
   }
 
   async findProductsGroupedByCategory() {
