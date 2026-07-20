@@ -1,6 +1,18 @@
 # Migraciones PPP-NEST
 
-## Cómo ejecutar
+## Automático al arrancar (recomendado)
+
+En `.env`:
+
+```env
+RUN_MIGRATIONS=true
+```
+
+Al iniciar Nest (`start` / `start:prod`), se aplican los `.sql` pendientes de esta carpeta (en orden) y se registran en `ppp_schema_migrations`. Si una columna/tabla ya existía, se marca como aplicada y continúa.
+
+Dejar en `false` en runtime normal después de desplegar.
+
+## Manual
 
 Desde la raíz del proyecto:
 

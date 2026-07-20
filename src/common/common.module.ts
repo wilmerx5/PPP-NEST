@@ -5,11 +5,18 @@ import { CommonService } from './common.service';
 import { MailService } from './mail/mail.service';
 import { CacheService } from './cache/cache.service';
 import { CircuitBreakerService } from './circuit-breaker/circuit-breaker.service';
+import { SqlMigrationsRunner } from './migrations/sql-migrations.runner';
 
 @Global()
 @Module({
   controllers: [CommonController],
-  providers: [CommonService, MailService, CacheService, CircuitBreakerService],
+  providers: [
+    CommonService,
+    MailService,
+    CacheService,
+    CircuitBreakerService,
+    SqlMigrationsRunner,
+  ],
   imports: [ConfigModule],
   exports: [MailService, CacheService, CircuitBreakerService],
 })

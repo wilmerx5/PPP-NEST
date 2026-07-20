@@ -1,0 +1,199 @@
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
+import { existsSync, readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
+
+const MIGRATIONS_TABLE = 'ppp_schema_migrations';
+
+/** Errores MySQL/MariaDB que indican “ya estaba aplicado”. */
+const IDEMPOTENT_ERR_CODES = new Set([
+  'ER_DUP_FIELDNAME', // 1060 columna ya existe
+  'ER_TABLE_EXISTS_ERROR', // 1050 tabla ya existe
+  'ER_DUP_KEYNAME', // 1061 índice ya existe
+  'ER_DUP_ENTRY', // 1062 unique ya existe (ej. índice unique)
+]);
+
+@Injectable()
+export class SqlMigrationsRunner implements OnApplicationBootstrap {
+  private readonly logger = new Logger(SqlMigrationsRunner.name);
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async onApplicationBootstrap() {
+    // Siempre: columnas críticas del código actual (evita caída si olvidan el flag)
+    await this.ensureClientRequestIdColumn();
+
+    if (!this.isEnabled()) {
+      this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
+      return;
+    }
+
+    const dir = this.resolveMigrationsDir();
+    if (!dir) {
+      this.logger.warn('RUN_MIGRATIONS=true but migrations/ folder not found');
+      return;
+    }
+
+    this.logger.log(`Running SQL migrations from ${dir}`);
+    await this.ensureMigrationsTable();
+
+    const files = readdirSync(dir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    const applied = await this.getAppliedNames();
+    let ran = 0;
+
+    for (const file of files) {
+      if (applied.has(file)) continue;
+
+      const fullPath = join(dir, file);
+      const sql = readFileSync(fullPath, 'utf8');
+      const statements = this.splitStatements(sql);
+
+      this.logger.log(`Applying ${file} (${statements.length} statement(s))…`);
+      try {
+        for (const stmt of statements) {
+          try {
+            await this.dataSource.query(stmt);
+          } catch (stmtErr: unknown) {
+            if (this.isIdempotentError(stmtErr)) {
+              this.logger.warn(`  (skipped — already in DB)`);
+              continue;
+            }
+            throw stmtErr;
+          }
+        }
+        await this.markApplied(file);
+        ran += 1;
+        this.logger.log(`✓ ${file}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`✗ ${file}: ${message}`);
+        throw err;
+      }
+    }
+
+    this.logger.log(
+      ran === 0
+        ? 'Migrations up to date'
+        : `Applied ${ran} migration(s)`,
+    );
+  }
+
+  /**
+   * Idempotencia de órdenes: la entidad ya usa client_request_id.
+   * Se aplica siempre al boot para no tumbar la API si no corrieron migrations.
+   */
+  private async ensureClientRequestIdColumn() {
+    try {
+      const rows: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_orders'
+           AND COLUMN_NAME = 'client_request_id'`,
+      );
+      if (Number(rows?.[0]?.c) > 0) {
+        return;
+      }
+
+      this.logger.warn('Missing column ppp_orders.client_request_id — adding now');
+      await this.dataSource.query(`
+        ALTER TABLE ppp_orders
+        ADD COLUMN client_request_id VARCHAR(64) NULL DEFAULT NULL
+          COMMENT 'Clave de idempotencia del cliente (UUID o mp-pay-{id})'
+      `);
+      try {
+        await this.dataSource.query(`
+          CREATE UNIQUE INDEX uq_ppp_orders_client_request_id
+            ON ppp_orders (client_request_id)
+        `);
+      } catch (idxErr: unknown) {
+        if (!this.isIdempotentError(idxErr)) throw idxErr;
+      }
+      this.logger.log('✓ ppp_orders.client_request_id ready');
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure client_request_id: ${message}`);
+      throw err;
+    }
+  }
+
+  private isEnabled(): boolean {
+    const raw = (this.config.get<string>('RUN_MIGRATIONS') ?? '').trim().toLowerCase();
+    return raw === 'true' || raw === '1' || raw === 'yes';
+  }
+
+  private resolveMigrationsDir(): string | null {
+    const candidates = [
+      join(process.cwd(), 'migrations'),
+      join(__dirname, '..', '..', '..', 'migrations'), // dist/common/migrations → root
+      join(__dirname, '..', '..', 'migrations'), // src/common/migrations → src/../migrations unlikely
+    ];
+    for (const dir of candidates) {
+      if (existsSync(dir)) return dir;
+    }
+    return null;
+  }
+
+  private async ensureMigrationsTable() {
+    await this.dataSource.query(`
+      CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_ppp_schema_migrations_name (name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  }
+
+  private async getAppliedNames(): Promise<Set<string>> {
+    const rows: { name: string }[] = await this.dataSource.query(
+      `SELECT name FROM ${MIGRATIONS_TABLE}`,
+    );
+    return new Set(rows.map((r) => r.name));
+  }
+
+  private async markApplied(name: string) {
+    await this.dataSource.query(
+      `INSERT IGNORE INTO ${MIGRATIONS_TABLE} (name) VALUES (?)`,
+      [name],
+    );
+  }
+
+  private splitStatements(sql: string): string[] {
+    return sql
+      .split(';')
+      .map((chunk) =>
+        chunk
+          .split('\n')
+          .map((line) => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('--')) return '';
+            return line.replace(/--.*$/, '');
+          })
+          .join('\n')
+          .trim(),
+      )
+      .filter((s) => s.length > 0);
+  }
+
+  private isIdempotentError(err: unknown): boolean {
+    const e = err as { code?: string; errno?: number; message?: string };
+    if (e?.code && IDEMPOTENT_ERR_CODES.has(e.code)) return true;
+    // errno fallbacks
+    if (e?.errno === 1060 || e?.errno === 1050 || e?.errno === 1061) return true;
+    const msg = String(e?.message ?? err).toLowerCase();
+    return (
+      msg.includes('duplicate column') ||
+      msg.includes('already exists') ||
+      msg.includes('duplicate key name')
+    );
+  }
+}
