@@ -36,6 +36,7 @@ export declare class OrdersService {
         orderId: number;
         dailyOrderNumber: number;
     }>;
+    private finalizeOrderAfterCreate;
     findOrdersToday(orderType?: string): Promise<any[]>;
     findMine(email: string): Promise<{
         orderId: number;

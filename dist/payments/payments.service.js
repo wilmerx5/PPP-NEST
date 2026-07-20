@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var PaymentsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -24,19 +25,22 @@ const payment_entity_1 = require("./entities/payment.entity");
 const orders_service_1 = require("../orders/orders.service");
 const mail_service_1 = require("../common/mail/mail.service");
 const date_util_1 = require("../common/utils/date.util");
-let PaymentsService = class PaymentsService {
+let PaymentsService = PaymentsService_1 = class PaymentsService {
     paymentRepo;
     orderRepo;
+    dataSource;
     configService;
     moduleRef;
     mailService;
+    logger = new common_1.Logger(PaymentsService_1.name);
     client;
     preference;
     payment;
     ordersService;
-    constructor(paymentRepo, orderRepo, configService, moduleRef, mailService) {
+    constructor(paymentRepo, orderRepo, dataSource, configService, moduleRef, mailService) {
         this.paymentRepo = paymentRepo;
         this.orderRepo = orderRepo;
+        this.dataSource = dataSource;
         this.configService = configService;
         this.moduleRef = moduleRef;
         this.mailService = mailService;
@@ -49,7 +53,6 @@ let PaymentsService = class PaymentsService {
                 accessToken: accessToken,
                 options: {
                     timeout: 5000,
-                    idempotencyKey: 'ppp-payment',
                 },
             });
             this.preference = new mercadopago_1.Preference(this.client);
@@ -199,7 +202,12 @@ let PaymentsService = class PaymentsService {
                 throw new common_1.BadRequestException('back_urls.success se perdió durante la serialización del objeto');
             }
             try {
-                const response = await this.preference.create({ body: bodyToSend });
+                const response = await this.preference.create({
+                    body: bodyToSend,
+                    requestOptions: {
+                        idempotencyKey: `pref-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+                    },
+                });
                 if (!response.id) {
                     throw new common_1.BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
                 }
@@ -285,138 +293,195 @@ let PaymentsService = class PaymentsService {
                 return { success: false, message: 'Mercado Pago is not configured' };
             }
             const { type, data: webhookData } = data || {};
-            if (type === 'payment') {
-                const paymentId = webhookData?.id;
-                if (!paymentId) {
-                    return { success: false, message: 'ID de pago no encontrado' };
-                }
-                const mpPayment = await this.payment.get({ id: paymentId.toString() });
-                if (!mpPayment) {
-                    return { success: false, message: 'Pago no encontrado en Mercado Pago' };
-                }
-                let payment = null;
-                if (mpPayment.external_reference) {
-                    const allPayments = await this.paymentRepo.find({
-                        where: {},
-                        relations: ['order'],
-                    });
-                    for (const p of allPayments) {
-                        try {
-                            const meta = JSON.parse(p.metadata || '{}');
-                            if (meta.external_reference === mpPayment.external_reference) {
-                                payment = p;
-                                break;
-                            }
-                        }
-                        catch (e) {
-                        }
-                    }
-                }
-                if (!payment) {
-                    payment = await this.paymentRepo.findOne({
-                        where: { paymentId: paymentId.toString() },
-                        relations: ['order'],
-                    });
-                }
-                if (!payment) {
-                    return { success: false, message: 'Registro de pago no encontrado' };
-                }
-                const foundPayment = payment;
-                let status = 'pending';
-                if (mpPayment.status === 'approved') {
-                    status = 'approved';
-                }
-                else if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
-                    status = mpPayment.status;
-                }
-                else if (mpPayment.status === 'refunded') {
-                    status = 'refunded';
-                }
-                foundPayment.status = status;
-                foundPayment.paymentId = paymentId.toString();
-                let metadataObj = {};
-                try {
-                    if (foundPayment.metadata) {
-                        metadataObj = JSON.parse(foundPayment.metadata);
-                    }
-                }
-                catch {
-                }
-                if (status === 'approved' && !foundPayment.orderId && metadataObj.order_data) {
+            if (type !== 'payment') {
+                return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
+            }
+            const paymentId = webhookData?.id;
+            if (!paymentId) {
+                return { success: false, message: 'ID de pago no encontrado' };
+            }
+            const mpPaymentId = paymentId.toString();
+            const mpPayment = await this.payment.get({ id: mpPaymentId });
+            if (!mpPayment) {
+                return { success: false, message: 'Pago no encontrado en Mercado Pago' };
+            }
+            const alreadyByMpId = await this.paymentRepo.findOne({
+                where: { paymentId: mpPaymentId },
+            });
+            if (alreadyByMpId?.orderId) {
+                this.logger.log(`[webhook] Pago MP ${mpPaymentId} ya tiene orderId=${alreadyByMpId.orderId}; skip`);
+                return {
+                    success: true,
+                    paymentId: alreadyByMpId.id,
+                    status: alreadyByMpId.status,
+                    orderId: alreadyByMpId.orderId,
+                    message: `Order #${alreadyByMpId.orderId} already linked (idempotent)`,
+                };
+            }
+            let paymentRow = alreadyByMpId;
+            if (!paymentRow && mpPayment.external_reference) {
+                const allPayments = await this.paymentRepo.find({ where: {} });
+                for (const p of allPayments) {
                     try {
-                        if (!this.ordersService) {
-                            this.ordersService = this.moduleRef.get(orders_service_1.OrdersService, { strict: false });
-                        }
-                        const orderDataWithEmail = {
-                            ...metadataObj.order_data,
-                            customerEmail: metadataObj.customer_email || null,
-                            orderSource: 'online',
-                        };
-                        const orderResponse = await this.ordersService.create(orderDataWithEmail);
-                        foundPayment.orderId = orderResponse.orderId;
-                        if (orderDataWithEmail.redemptionCode) {
-                            try {
-                                await this.ordersService.applyRedemptionVoucher(orderResponse.orderId, orderDataWithEmail.redemptionCode);
-                            }
-                            catch {
-                            }
-                        }
-                        try {
-                            const fullOrder = await this.orderRepo.findOne({
-                                where: { id: orderResponse.orderId },
-                                relations: ['items', 'items.product'],
-                            });
-                            const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
-                            if (fullOrder && emailTo) {
-                                const groupedItems = {};
-                                for (const item of fullOrder.items) {
-                                    const productId = item.product?.id || 0;
-                                    const productName = item.product?.name || 'Producto';
-                                    const price = item.product?.price || 0;
-                                    if (!groupedItems[productId]) {
-                                        groupedItems[productId] = {
-                                            productName,
-                                            quantity: 0,
-                                            price,
-                                        };
-                                    }
-                                    groupedItems[productId].quantity += 1;
-                                }
-                                const emailItems = Object.values(groupedItems);
-                                const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                                const deliveryNum = Number(fullOrder.deliveryFee) || 0;
-                                const totalForEmail = (mpPayment.transaction_amount != null && mpPayment.transaction_amount !== '')
-                                    ? Number(mpPayment.transaction_amount)
-                                    : subtotal + deliveryNum;
-                                const orderNum = fullOrder.dailyOrderNumber ?? fullOrder.id;
-                                const sent = await this.mailService.sendOrderConfirmation(emailTo, orderNum, fullOrder.customerName || mpPayment.payer?.name || 'Cliente', emailItems, totalForEmail, String(fullOrder.orderType || 'delivery'), fullOrder.address, fullOrder.phone, deliveryNum > 0 ? deliveryNum : undefined);
-                            }
-                        }
-                        catch {
+                        const meta = JSON.parse(p.metadata || '{}');
+                        if (meta.external_reference === mpPayment.external_reference) {
+                            paymentRow = p;
+                            break;
                         }
                     }
                     catch {
                     }
                 }
-                foundPayment.metadata = JSON.stringify({
+            }
+            if (!paymentRow) {
+                return { success: false, message: 'Registro de pago no encontrado' };
+            }
+            let status = 'pending';
+            if (mpPayment.status === 'approved') {
+                status = 'approved';
+            }
+            else if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
+                status = mpPayment.status;
+            }
+            else if (mpPayment.status === 'refunded') {
+                status = 'refunded';
+            }
+            let metadataObj = {};
+            try {
+                if (paymentRow.metadata)
+                    metadataObj = JSON.parse(paymentRow.metadata);
+            }
+            catch {
+                metadataObj = {};
+            }
+            const queryRunner = this.dataSource.createQueryRunner();
+            await queryRunner.connect();
+            await queryRunner.startTransaction();
+            let createdOrderId = null;
+            let shouldSendEmail = false;
+            let emailContext = null;
+            try {
+                const locked = await queryRunner.manager
+                    .getRepository(payment_entity_1.Payment)
+                    .createQueryBuilder('p')
+                    .setLock('pessimistic_write')
+                    .where('p.id = :id', { id: paymentRow.id })
+                    .getOne();
+                if (!locked) {
+                    await queryRunner.rollbackTransaction();
+                    return { success: false, message: 'Registro de pago no encontrado' };
+                }
+                locked.status = status;
+                locked.paymentId = mpPaymentId;
+                locked.metadata = JSON.stringify({
                     ...metadataObj,
                     mp_payment: mpPayment,
                 });
-                await this.paymentRepo.save(foundPayment);
+                if (locked.orderId) {
+                    await queryRunner.manager.save(locked);
+                    await queryRunner.commitTransaction();
+                    this.logger.log(`[webhook] Pago #${locked.id} ya vinculado a orderId=${locked.orderId}; skip create`);
+                    return {
+                        success: true,
+                        paymentId: locked.id,
+                        status: locked.status,
+                        orderId: locked.orderId,
+                        message: `Order #${locked.orderId} already linked (idempotent)`,
+                    };
+                }
+                if (status === 'approved' && metadataObj.order_data) {
+                    if (!this.ordersService) {
+                        this.ordersService = this.moduleRef.get(orders_service_1.OrdersService, { strict: false });
+                    }
+                    const orderDataWithEmail = {
+                        ...metadataObj.order_data,
+                        customerEmail: metadataObj.customer_email || null,
+                        orderSource: 'online',
+                    };
+                    const orderResponse = await this.ordersService.create(orderDataWithEmail);
+                    locked.orderId = orderResponse.orderId;
+                    createdOrderId = orderResponse.orderId;
+                    await queryRunner.manager.save(locked);
+                    await queryRunner.commitTransaction();
+                    if (orderDataWithEmail.redemptionCode) {
+                        try {
+                            await this.ordersService.applyRedemptionVoucher(orderResponse.orderId, orderDataWithEmail.redemptionCode);
+                        }
+                        catch {
+                        }
+                    }
+                    const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
+                    if (emailTo) {
+                        shouldSendEmail = true;
+                        emailContext = {
+                            orderId: orderResponse.orderId,
+                            emailTo,
+                            customerName: metadataObj.order_data?.customerName ||
+                                mpPayment.payer?.name ||
+                                'Cliente',
+                        };
+                    }
+                }
+                else {
+                    await queryRunner.manager.save(locked);
+                    await queryRunner.commitTransaction();
+                }
+                if (shouldSendEmail && emailContext) {
+                    void this.sendOrderConfirmationEmail(emailContext.orderId, emailContext.emailTo, emailContext.customerName, mpPayment);
+                }
                 return {
                     success: true,
-                    paymentId: foundPayment.id,
-                    status: foundPayment.status,
-                    orderId: foundPayment.orderId,
-                    message: foundPayment.orderId
-                        ? `Order #${foundPayment.orderId} created successfully`
+                    paymentId: paymentRow.id,
+                    status,
+                    orderId: createdOrderId ?? paymentRow.orderId,
+                    message: createdOrderId
+                        ? `Order #${createdOrderId} created successfully`
                         : 'Payment processed but order not created yet',
                 };
             }
-            return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
+            catch (err) {
+                if (queryRunner.isTransactionActive) {
+                    await queryRunner.rollbackTransaction();
+                }
+                this.logger.error(`[webhook] Error procesando pago MP ${mpPaymentId}`, err);
+                throw err;
+            }
+            finally {
+                await queryRunner.release();
+            }
         }
         catch (error) {
             return { success: false, message: error.message };
+        }
+    }
+    async sendOrderConfirmationEmail(orderId, emailTo, customerName, mpPayment) {
+        try {
+            const fullOrder = await this.orderRepo.findOne({
+                where: { id: orderId },
+                relations: ['items', 'items.product'],
+            });
+            if (!fullOrder || !emailTo)
+                return;
+            const groupedItems = {};
+            for (const item of fullOrder.items) {
+                const productId = item.product?.id || 0;
+                const productName = item.product?.name || 'Producto';
+                const price = item.product?.price || 0;
+                if (!groupedItems[productId]) {
+                    groupedItems[productId] = { productName, quantity: 0, price };
+                }
+                groupedItems[productId].quantity += 1;
+            }
+            const emailItems = Object.values(groupedItems);
+            const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const deliveryNum = Number(fullOrder.deliveryFee) || 0;
+            const totalForEmail = mpPayment.transaction_amount != null && mpPayment.transaction_amount !== ''
+                ? Number(mpPayment.transaction_amount)
+                : subtotal + deliveryNum;
+            await this.mailService.sendOrderConfirmation(emailTo, fullOrder.dailyOrderNumber ?? fullOrder.id, customerName, emailItems, totalForEmail, String(fullOrder.orderType || 'delivery'), fullOrder.address, fullOrder.phone, deliveryNum > 0 ? deliveryNum : undefined);
+        }
+        catch (e) {
+            this.logger.warn(`[webhook] Falló correo de orden #${orderId}: ${e.message}`);
         }
     }
     async getPaymentStatus(orderId) {
@@ -508,12 +573,13 @@ let PaymentsService = class PaymentsService {
     }
 };
 exports.PaymentsService = PaymentsService;
-exports.PaymentsService = PaymentsService = __decorate([
+exports.PaymentsService = PaymentsService = PaymentsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(payment_entity_1.Payment)),
     __param(1, (0, typeorm_1.InjectRepository)(order_entity_1.Order)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
+        typeorm_2.DataSource,
         config_1.ConfigService,
         core_1.ModuleRef,
         mail_service_1.MailService])

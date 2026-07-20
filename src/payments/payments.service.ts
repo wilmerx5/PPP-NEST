@@ -1,8 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { MercadoPagoConfig, Preference, Payment as MPPayment } from 'mercadopago';
 import { Order } from '../orders/entities/order.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
@@ -13,6 +13,7 @@ import { formatToBogotaISO } from '../common/utils/date.util';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
   private client: MercadoPagoConfig;
   private preference: Preference;
   private payment: MPPayment;
@@ -24,6 +25,7 @@ export class PaymentsService {
     private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
+    private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly moduleRef: ModuleRef,
     private readonly mailService: MailService,
@@ -38,7 +40,6 @@ export class PaymentsService {
         accessToken: accessToken,
         options: {
           timeout: 5000,
-          idempotencyKey: 'ppp-payment',
         },
       });
 
@@ -272,7 +273,12 @@ export class PaymentsService {
       }
 
       try {
-        const response = await this.preference.create({ body: bodyToSend });
+        const response = await this.preference.create({
+          body: bodyToSend,
+          requestOptions: {
+            idempotencyKey: `pref-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          },
+        });
         if (!response.id) {
           throw new BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
         }
@@ -316,7 +322,12 @@ export class PaymentsService {
             notification_url: bodyToSend.notification_url,
             metadata: bodyToSend.metadata,
           }));
-          const response = await this.preference.create({ body: bodyWithoutAutoReturn });
+          const response = await this.preference.create({
+            body: bodyWithoutAutoReturn,
+            requestOptions: {
+              idempotencyKey: `pref-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+            },
+          });
           if (!response.id) {
             throw new BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
           }
@@ -365,8 +376,9 @@ export class PaymentsService {
   }
 
   /**
-   * Maneja el webhook de Mercado Pago
-   * @param data - Datos del webhook
+   * Maneja el webhook de Mercado Pago.
+   * Idempotente: un payment_id / fila de pago solo puede crear UNA orden
+   * (lock FOR UPDATE + persistir orderId ANTES del correo).
    */
   async handleWebhook(data: any) {
     try {
@@ -376,190 +388,254 @@ export class PaymentsService {
 
       const { type, data: webhookData } = data || {};
 
-      if (type === 'payment') {
-        const paymentId = webhookData?.id;
-        if (!paymentId) {
-          return { success: false, message: 'ID de pago no encontrado' };
-        }
+      if (type !== 'payment') {
+        return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
+      }
 
-        const mpPayment: any = await this.payment.get({ id: paymentId.toString() });
+      const paymentId = webhookData?.id;
+      if (!paymentId) {
+        return { success: false, message: 'ID de pago no encontrado' };
+      }
 
-        if (!mpPayment) {
-          return { success: false, message: 'Pago no encontrado en Mercado Pago' };
-        }
+      const mpPaymentId = paymentId.toString();
+      const mpPayment: any = await this.payment.get({ id: mpPaymentId });
 
-        // Buscar el pago por external_reference (mejor método) o paymentId
-        let payment: Payment | null = null;
-        
-        // Primero intentar buscar por external_reference en metadata
-        if (mpPayment.external_reference) {
-          const allPayments = await this.paymentRepo.find({
-            where: {},
-            relations: ['order'],
-          });
-          
-          for (const p of allPayments) {
-            try {
-              const meta = JSON.parse(p.metadata || '{}');
-              if (meta.external_reference === mpPayment.external_reference) {
-                payment = p;
-                break;
-              }
-            } catch (e) {
-              // Ignorar errores de parse
+      if (!mpPayment) {
+        return { success: false, message: 'Pago no encontrado en Mercado Pago' };
+      }
+
+      // 1) Idempotencia por payment_id de MP (si ya hay orden ligada, no crear otra)
+      const alreadyByMpId = await this.paymentRepo.findOne({
+        where: { paymentId: mpPaymentId },
+      });
+      if (alreadyByMpId?.orderId) {
+        this.logger.log(
+          `[webhook] Pago MP ${mpPaymentId} ya tiene orderId=${alreadyByMpId.orderId}; skip`,
+        );
+        return {
+          success: true,
+          paymentId: alreadyByMpId.id,
+          status: alreadyByMpId.status,
+          orderId: alreadyByMpId.orderId,
+          message: `Order #${alreadyByMpId.orderId} already linked (idempotent)`,
+        };
+      }
+
+      // 2) Localizar fila de preferencia
+      let paymentRow: Payment | null = alreadyByMpId;
+
+      if (!paymentRow && mpPayment.external_reference) {
+        const allPayments = await this.paymentRepo.find({ where: {} });
+        for (const p of allPayments) {
+          try {
+            const meta = JSON.parse(p.metadata || '{}');
+            if (meta.external_reference === mpPayment.external_reference) {
+              paymentRow = p;
+              break;
             }
+          } catch {
+            // ignore
           }
         }
-        
-        // Si no se encuentra, buscar por paymentId
-        if (!payment) {
-          payment = await this.paymentRepo.findOne({
-            where: { paymentId: paymentId.toString() },
-            relations: ['order'],
-          });
-        }
+      }
 
-        if (!payment) {
+      if (!paymentRow) {
+        return { success: false, message: 'Registro de pago no encontrado' };
+      }
+
+      let status: PaymentStatus = 'pending';
+      if (mpPayment.status === 'approved') {
+        status = 'approved';
+      } else if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
+        status = mpPayment.status as PaymentStatus;
+      } else if (mpPayment.status === 'refunded') {
+        status = 'refunded';
+      }
+
+      let metadataObj: any = {};
+      try {
+        if (paymentRow.metadata) metadataObj = JSON.parse(paymentRow.metadata);
+      } catch {
+        metadataObj = {};
+      }
+
+      // 3) Transacción con lock: solo un webhook concurrente crea la orden
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      let createdOrderId: number | null = null;
+      let shouldSendEmail = false;
+      let emailContext: {
+        orderId: number;
+        emailTo: string;
+        customerName: string;
+      } | null = null;
+
+      try {
+        const locked = await queryRunner.manager
+          .getRepository(Payment)
+          .createQueryBuilder('p')
+          .setLock('pessimistic_write')
+          .where('p.id = :id', { id: paymentRow.id })
+          .getOne();
+
+        if (!locked) {
+          await queryRunner.rollbackTransaction();
           return { success: false, message: 'Registro de pago no encontrado' };
         }
 
-        // En este punto TypeScript sabe que payment no es null
-        const foundPayment = payment;
-
-        // Actualizar estado del pago
-        let status: PaymentStatus = 'pending';
-        if (mpPayment.status === 'approved') {
-          status = 'approved';
-        } else if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
-          status = mpPayment.status as PaymentStatus;
-        } else if (mpPayment.status === 'refunded') {
-          status = 'refunded';
-        }
-
-        foundPayment.status = status;
-        foundPayment.paymentId = paymentId.toString();
-        
-        // Parse metadata de forma segura
-        let metadataObj: any = {};
-        try {
-          if (foundPayment.metadata) {
-            metadataObj = JSON.parse(foundPayment.metadata);
-          }
-        } catch {
-          // use empty metadata
-        }
-
-        if (status === 'approved' && !foundPayment.orderId && metadataObj.order_data) {
-          try {
-            if (!this.ordersService) {
-              this.ordersService = this.moduleRef.get(OrdersService, { strict: false });
-            }
-            const orderDataWithEmail = {
-              ...metadataObj.order_data,
-              customerEmail: metadataObj.customer_email || null,
-              orderSource: 'online' as const,
-            };
-            const orderResponse = await this.ordersService.create(orderDataWithEmail);
-            foundPayment.orderId = orderResponse.orderId;
-
-            if (orderDataWithEmail.redemptionCode) {
-              try {
-                await this.ordersService.applyRedemptionVoucher(
-                  orderResponse.orderId,
-                  orderDataWithEmail.redemptionCode
-                );
-              } catch {
-                // Orden se crea igual, sin premio aplicado
-              }
-            }
-            
-            // Enviar correo de confirmación de orden
-            try {
-              // Obtener la orden completa para el correo
-              const fullOrder = await this.orderRepo.findOne({
-                where: { id: orderResponse.orderId },
-                relations: ['items', 'items.product'],
-              });
-
-              // Usar email del usuario logueado (customer_email en metadata); en sandbox MP devuelve test_user@testuser.com
-              const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
-              
-              if (fullOrder && emailTo) {
-                // Agrupar items por producto (cada OrderItem es 1 unidad, pero se agrupan)
-                const groupedItems: Record<number, { productName: string; quantity: number; price: number }> = {};
-                
-                for (const item of fullOrder.items) {
-                  const productId = item.product?.id || 0;
-                  const productName = item.product?.name || 'Producto';
-                  const price = item.product?.price || 0;
-                  
-                  if (!groupedItems[productId]) {
-                    groupedItems[productId] = {
-                      productName,
-                      quantity: 0,
-                      price,
-                    };
-                  }
-                  
-                  // Cada OrderItem representa 1 unidad
-                  groupedItems[productId].quantity += 1;
-                }
-                
-                // Preparar items para el correo
-                const emailItems = Object.values(groupedItems);
-                
-                // Total: usar transaction_amount de MP (monto realmente cobrado). Si no hay, subtotal + envío
-                const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                const deliveryNum = Number(fullOrder.deliveryFee) || 0;
-                const totalForEmail =
-                  (mpPayment.transaction_amount != null && mpPayment.transaction_amount !== '')
-                    ? Number(mpPayment.transaction_amount)
-                    : subtotal + deliveryNum;
-                
-                // Enviar correo de confirmación al email del usuario que hizo el pedido
-                const orderNum = fullOrder.dailyOrderNumber ?? fullOrder.id;
-                const sent = await this.mailService.sendOrderConfirmation(
-                  emailTo,
-                  orderNum,
-                  fullOrder.customerName || mpPayment.payer?.name || 'Cliente',
-                  emailItems,
-                  totalForEmail,
-                  String(fullOrder.orderType || 'delivery'),
-                  fullOrder.address,
-                  fullOrder.phone,
-                  deliveryNum > 0 ? deliveryNum : undefined,
-                );
-
-              }
-            } catch {
-              // No fallar el webhook si el correo falla
-            }
-          } catch {
-            // Continuar para actualizar el pago aunque falle la creación de la orden
-          }
-        }
-
-        foundPayment.metadata = JSON.stringify({
+        locked.status = status;
+        locked.paymentId = mpPaymentId;
+        locked.metadata = JSON.stringify({
           ...metadataObj,
           mp_payment: mpPayment,
         });
 
-        await this.paymentRepo.save(foundPayment);
+        // Ya tiene orden → solo actualizar estado/metadata
+        if (locked.orderId) {
+          await queryRunner.manager.save(locked);
+          await queryRunner.commitTransaction();
+          this.logger.log(
+            `[webhook] Pago #${locked.id} ya vinculado a orderId=${locked.orderId}; skip create`,
+          );
+          return {
+            success: true,
+            paymentId: locked.id,
+            status: locked.status,
+            orderId: locked.orderId,
+            message: `Order #${locked.orderId} already linked (idempotent)`,
+          };
+        }
+
+        if (status === 'approved' && metadataObj.order_data) {
+          if (!this.ordersService) {
+            this.ordersService = this.moduleRef.get(OrdersService, { strict: false });
+          }
+
+          const orderDataWithEmail = {
+            ...metadataObj.order_data,
+            customerEmail: metadataObj.customer_email || null,
+            orderSource: 'online' as const,
+            // Misma clave si MP reenvía el webhook del mismo pago
+            clientRequestId: `mp-pay-${locked.paymentId || locked.id}`.slice(0, 64),
+          };
+
+          const orderResponse = await this.ordersService.create(orderDataWithEmail);
+          locked.orderId = orderResponse.orderId;
+          createdOrderId = orderResponse.orderId;
+
+          // Persistir orderId DENTRO de la TX, ANTES del correo (cierra la race)
+          await queryRunner.manager.save(locked);
+          await queryRunner.commitTransaction();
+
+          if (orderDataWithEmail.redemptionCode) {
+            try {
+              await this.ordersService.applyRedemptionVoucher(
+                orderResponse.orderId,
+                orderDataWithEmail.redemptionCode,
+              );
+            } catch {
+              // Orden se crea igual
+            }
+          }
+
+          const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
+          if (emailTo) {
+            shouldSendEmail = true;
+            emailContext = {
+              orderId: orderResponse.orderId,
+              emailTo,
+              customerName:
+                metadataObj.order_data?.customerName ||
+                mpPayment.payer?.name ||
+                'Cliente',
+            };
+          }
+        } else {
+          await queryRunner.manager.save(locked);
+          await queryRunner.commitTransaction();
+        }
+
+        // Correo FUERA de la TX y sin bloquear el claim de orderId
+        if (shouldSendEmail && emailContext) {
+          void this.sendOrderConfirmationEmail(
+            emailContext.orderId,
+            emailContext.emailTo,
+            emailContext.customerName,
+            mpPayment,
+          );
+        }
 
         return {
           success: true,
-          paymentId: foundPayment.id,
-          status: foundPayment.status,
-          orderId: foundPayment.orderId,
-          message: foundPayment.orderId 
-            ? `Order #${foundPayment.orderId} created successfully` 
+          paymentId: paymentRow.id,
+          status,
+          orderId: createdOrderId ?? paymentRow.orderId,
+          message: createdOrderId
+            ? `Order #${createdOrderId} created successfully`
             : 'Payment processed but order not created yet',
         };
+      } catch (err) {
+        if (queryRunner.isTransactionActive) {
+          await queryRunner.rollbackTransaction();
+        }
+        this.logger.error(`[webhook] Error procesando pago MP ${mpPaymentId}`, err);
+        throw err;
+      } finally {
+        await queryRunner.release();
       }
-
-      return { success: true, message: 'Webhook procesado (no es un evento de pago)' };
     } catch (error: any) {
       return { success: false, message: error.message };
+    }
+  }
+
+  /** Confirmación por correo; no debe retrasar ni reabrir la creación de orden. */
+  private async sendOrderConfirmationEmail(
+    orderId: number,
+    emailTo: string,
+    customerName: string,
+    mpPayment: any,
+  ): Promise<void> {
+    try {
+      const fullOrder = await this.orderRepo.findOne({
+        where: { id: orderId },
+        relations: ['items', 'items.product'],
+      });
+      if (!fullOrder || !emailTo) return;
+
+      const groupedItems: Record<number, { productName: string; quantity: number; price: number }> = {};
+      for (const item of fullOrder.items) {
+        const productId = item.product?.id || 0;
+        const productName = item.product?.name || 'Producto';
+        const price = item.product?.price || 0;
+        if (!groupedItems[productId]) {
+          groupedItems[productId] = { productName, quantity: 0, price };
+        }
+        groupedItems[productId].quantity += 1;
+      }
+
+      const emailItems = Object.values(groupedItems);
+      const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const deliveryNum = Number(fullOrder.deliveryFee) || 0;
+      const totalForEmail =
+        mpPayment.transaction_amount != null && mpPayment.transaction_amount !== ''
+          ? Number(mpPayment.transaction_amount)
+          : subtotal + deliveryNum;
+
+      await this.mailService.sendOrderConfirmation(
+        emailTo,
+        fullOrder.dailyOrderNumber ?? fullOrder.id,
+        customerName,
+        emailItems,
+        totalForEmail,
+        String(fullOrder.orderType || 'delivery'),
+        fullOrder.address,
+        fullOrder.phone,
+        deliveryNum > 0 ? deliveryNum : undefined,
+      );
+    } catch (e) {
+      this.logger.warn(`[webhook] Falló correo de orden #${orderId}: ${(e as Error).message}`);
     }
   }
 

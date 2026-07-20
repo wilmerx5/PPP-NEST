@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    Headers,
     Param,
     Patch,
     Post,
@@ -71,7 +72,14 @@ export class OrdersController {
   @ApiBody({ type: CreateOrderDto })
   @ApiResponse({ status: 201, description: 'Order created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createOrder(@Body() createOrderDto: CreateOrderDto) {
+  async createOrder(
+    @Body() createOrderDto: CreateOrderDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const key = (createOrderDto.clientRequestId || idempotencyKey || '').trim();
+    if (key) {
+      createOrderDto.clientRequestId = key.slice(0, 64);
+    }
     return this.orderService.create(createOrderDto);
   }
 

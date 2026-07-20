@@ -170,6 +170,14 @@ export class Order {
   tableGroupId: number | null;
 
   @ApiProperty({
+    description: 'Clave de idempotencia del cliente (evita órdenes duplicadas por reintentos).',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    nullable: true,
+  })
+  @Column({ name: 'client_request_id', type: 'varchar', length: 64, nullable: true, unique: true })
+  clientRequestId: string | null;
+
+  @ApiProperty({
     description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',
     type: () => OrderExtra,
     required: false,

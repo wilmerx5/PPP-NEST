@@ -394,78 +394,19 @@ let OrdersService = class OrdersService {
                 }
             }
             await queryRunner.commitTransaction();
-            if (calculatedPoints > 0) {
-                try {
-                    if (source === 'online' && customerEmail) {
-                        const user = await this.userRepo.findOne({ where: { email: customerEmail } });
-                        if (user) {
-                            await this.pointsService.createPointsForOrder(user.id, savedOrder.id, newOrderNumber, calculatedPoints);
-                        }
-                    }
-                    else {
-                        const pointsRepo = this.dataSource.getRepository(user_points_entity_1.UserPoints);
-                        const pointRecords = [];
-                        for (let i = 0; i < calculatedPoints; i++) {
-                            const code = await this.pointsService.generateUniquePointCode();
-                            pointRecords.push(pointsRepo.create({
-                                code,
-                                userId: null,
-                                orderId: savedOrder.id,
-                                orderDailyNumber: newOrderNumber,
-                                isUsed: false,
-                                type: 'automatic',
-                                description: `Punto de orden #${newOrderNumber}`,
-                            }));
-                        }
-                        if (pointRecords.length > 0)
-                            await pointsRepo.save(pointRecords);
-                    }
-                }
-                catch {
-                }
-            }
-            if (redemptionCode && redemptionCode.trim()) {
-                try {
-                    await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
-                }
-                catch {
-                }
-            }
-            const finalOrder = await this.orderRepo.findOne({
-                where: { id: savedOrder.id },
-                relations: ['items', 'items.product', 'items.attributes', 'extras'],
+            void this.finalizeOrderAfterCreate({
+                orderId: savedOrder.id,
+                dailyOrderNumber: newOrderNumber,
+                calculatedPoints,
+                source,
+                customerEmail,
+                customerName,
+                phone,
+                address,
+                orderType,
+                redemptionCode,
+                deliveryFee: finalDeliveryFee,
             });
-            if (finalOrder) {
-                const formatted = await this.mapOrderToGroupedFormat(finalOrder);
-                this.gateway.emitOrdersUpdates("created_order", formatted);
-                if (source === 'online') {
-                    try {
-                        const itemsMap = new Map();
-                        finalOrder.items.forEach(item => {
-                            const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
-                            const price = Number(item.unitPrice ?? item.product?.price ?? 0);
-                            const key = `${item.product?.id || 'unknown'}-${productName}`;
-                            if (itemsMap.has(key)) {
-                                const existing = itemsMap.get(key);
-                                existing.quantity += 1;
-                            }
-                            else {
-                                itemsMap.set(key, {
-                                    productName,
-                                    quantity: 1,
-                                    price,
-                                });
-                            }
-                        });
-                        const emailItems = Array.from(itemsMap.values());
-                        const subtotal = emailItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                        const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
-                        await this.mailService.sendNewOrderNotification(newOrderNumber, customerName, phone, address, orderType, emailItems, total, finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined);
-                    }
-                    catch {
-                    }
-                }
-            }
             return {
                 success: true,
                 orderId: savedOrder.id,
@@ -484,6 +425,80 @@ let OrdersService = class OrdersService {
         }
         finally {
             await queryRunner.release();
+        }
+    }
+    async finalizeOrderAfterCreate(params) {
+        const { orderId, dailyOrderNumber: newOrderNumber, calculatedPoints, source, customerEmail, customerName, phone, address, orderType, redemptionCode, } = params;
+        try {
+            if (calculatedPoints > 0) {
+                try {
+                    if (source === 'online' && customerEmail) {
+                        const user = await this.userRepo.findOne({ where: { email: customerEmail } });
+                        if (user) {
+                            await this.pointsService.createPointsForOrder(user.id, orderId, newOrderNumber, calculatedPoints);
+                        }
+                    }
+                    else {
+                        const pointsRepo = this.dataSource.getRepository(user_points_entity_1.UserPoints);
+                        const pointRecords = [];
+                        for (let i = 0; i < calculatedPoints; i++) {
+                            const code = await this.pointsService.generateUniquePointCode();
+                            pointRecords.push(pointsRepo.create({
+                                code,
+                                userId: null,
+                                orderId,
+                                orderDailyNumber: newOrderNumber,
+                                isUsed: false,
+                                type: 'automatic',
+                                description: `Punto de orden #${newOrderNumber}`,
+                            }));
+                        }
+                        if (pointRecords.length > 0)
+                            await pointsRepo.save(pointRecords);
+                    }
+                }
+                catch {
+                }
+            }
+            if (redemptionCode && redemptionCode.trim()) {
+                try {
+                    await this.applyRedemptionVoucher(orderId, redemptionCode.trim());
+                }
+                catch {
+                }
+            }
+            const finalOrder = await this.orderRepo.findOne({
+                where: { id: orderId },
+                relations: ['items', 'items.product', 'items.attributes', 'extras'],
+            });
+            if (!finalOrder)
+                return;
+            const formatted = await this.mapOrderToGroupedFormat(finalOrder);
+            this.gateway.emitOrdersUpdates('created_order', formatted);
+            if (source === 'online') {
+                try {
+                    const itemsMap = new Map();
+                    finalOrder.items.forEach((item) => {
+                        const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
+                        const price = Number(item.unitPrice ?? item.product?.price ?? 0);
+                        const key = `${item.product?.id || 'unknown'}-${productName}`;
+                        if (itemsMap.has(key)) {
+                            itemsMap.get(key).quantity += 1;
+                        }
+                        else {
+                            itemsMap.set(key, { productName, quantity: 1, price });
+                        }
+                    });
+                    const emailItems = Array.from(itemsMap.values());
+                    const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                    const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
+                    await this.mailService.sendNewOrderNotification(newOrderNumber, customerName, phone, address, orderType, emailItems, total, finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined);
+                }
+                catch {
+                }
+            }
+        }
+        catch {
         }
     }
     async findOrdersToday(orderType) {

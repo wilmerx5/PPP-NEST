@@ -48,7 +48,8 @@ export class Payment {
     example: '12345678901',
     nullable: true,
   })
-  @Column({ name: 'payment_id', nullable: true })
+  /** Unique cuando no es null: evita vincular el mismo pago MP a dos flujos. */
+  @Column({ name: 'payment_id', nullable: true, unique: true })
   paymentId: string;
 
   @ApiProperty({

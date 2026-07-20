@@ -19,6 +19,17 @@ import { ProductsService, type InventoryInfo } from '../products/products.servic
 
 @Injectable()
 export class OrdersService {
+  /** Candado en memoria: dos POST idénticos concurrentes comparten una sola creación. */
+  private readonly inflightCreates = new Map<string, Promise<{
+    success: boolean;
+    orderId: number;
+    dailyOrderNumber: number;
+    duplicate?: boolean;
+  }>>();
+
+  /** Ventana anti-reintento (cliente timeout → reenvío) sin clientRequestId. */
+  private static readonly SOFT_DEDUPE_WINDOW_MS = 25_000;
+
   constructor(
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
@@ -51,6 +62,114 @@ export class OrdersService {
 
     private readonly circuitBreaker: CircuitBreakerService,
   ) {}
+
+  private buildOrderContentFingerprint(dto: CreateOrderDto): string {
+    const items = (dto.items ?? [])
+      .map((i) => {
+        const attrs = (i.attributes ?? [])
+          .map((a) => `${a.attributeName}=${a.attributeValue}`)
+          .sort()
+          .join(',');
+        const unit =
+          i.unitPrice != null && Number(i.unitPrice) >= 0 ? Number(i.unitPrice) : '';
+        return `${i.productId}:${attrs}:${unit}:${i.note ?? ''}`;
+      })
+      .sort()
+      .join('|');
+    const extras = (dto.extras ?? [])
+      .map((e) => `${e.title}:${e.amount}:${e.quantity ?? 1}`)
+      .sort()
+      .join('|');
+    return [
+      dto.orderType ?? 'pickup',
+      String(dto.phone ?? '').trim(),
+      String(dto.address ?? '').trim(),
+      dto.deliveryFee ?? '',
+      items,
+      extras,
+    ].join('::');
+  }
+
+  private async findExistingByClientRequestId(
+    clientRequestId: string,
+  ): Promise<{ success: true; orderId: number; dailyOrderNumber: number; duplicate: true } | null> {
+    const existing = await this.orderRepo.findOne({
+      where: { clientRequestId },
+      select: ['id', 'dailyOrderNumber'],
+    });
+    if (!existing) return null;
+    return {
+      success: true,
+      orderId: existing.id,
+      dailyOrderNumber: existing.dailyOrderNumber,
+      duplicate: true,
+    };
+  }
+
+  /**
+   * Si el cliente reintentó sin Idempotency-Key (timeout lento), evita un 2º pedido
+   * idéntico en una ventana corta. No bloquea pedidos legítimos minutos después.
+   */
+  private async findSoftDuplicate(
+    dto: CreateOrderDto,
+  ): Promise<{ success: true; orderId: number; dailyOrderNumber: number; duplicate: true } | null> {
+    const phone = String(dto.phone ?? '').trim();
+    const address = String(dto.address ?? '').trim();
+    const orderType = dto.orderType ?? 'pickup';
+    // Evitar falsos positivos: enviador usa phone "00" / address "." por defecto
+    const phoneLooksReal = phone.length >= 7 && phone !== '00';
+    const isTable = orderType === 'table' && address.length > 0;
+    if (!phoneLooksReal && !isTable) return null;
+
+    const since = new Date(Date.now() - OrdersService.SOFT_DEDUPE_WINDOW_MS);
+    const recent = await this.orderRepo.find({
+      where: {
+        orderType,
+        phone,
+        address,
+        createdAt: Between(since, new Date()),
+        orderStatus: Not('canceled'),
+      },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      order: { createdAt: 'DESC' },
+      take: 8,
+    });
+    if (!recent.length) return null;
+
+    const targetFp = this.buildOrderContentFingerprint(dto);
+    for (const order of recent) {
+      const asDto: CreateOrderDto = {
+        customerName: order.customerName,
+        phone: order.phone,
+        address: order.address,
+        orderType: order.orderType,
+        deliveryFee: order.deliveryFee,
+        items: (order.items ?? []).map((it) => ({
+          productId: it.product.id,
+          note: it.note ?? '',
+          unitPrice: it.unitPrice != null ? Number(it.unitPrice) : undefined,
+          attributes: (it.attributes ?? []).map((a) => ({
+            attributeName: a.attributeName,
+            attributeValue: a.attributeValue,
+          })),
+        })),
+        extras: (order.extras ?? []).map((e) => ({
+          title: e.title,
+          amount: Number(e.amount),
+          quantity: e.quantity ?? 1,
+        })),
+      };
+      if (this.buildOrderContentFingerprint(asDto) === targetFp) {
+        return {
+          success: true,
+          orderId: order.id,
+          dailyOrderNumber: order.dailyOrderNumber,
+          duplicate: true,
+        };
+      }
+    }
+    return null;
+  }
 
 
   /**
@@ -313,15 +432,47 @@ export class OrdersService {
    * @returns Detalle de creación con ID y número diario.
    */
   async create(createOrderDto: CreateOrderDto) {
+    const clientRequestId = (createOrderDto.clientRequestId || '').trim().slice(0, 64) || undefined;
+    if (clientRequestId) {
+      createOrderDto.clientRequestId = clientRequestId;
+      const byKey = await this.findExistingByClientRequestId(clientRequestId);
+      if (byKey) return byKey;
+    }
+
+    const soft = await this.findSoftDuplicate(createOrderDto);
+    if (soft) return soft;
+
+    const inflightKey = clientRequestId || `fp:${this.buildOrderContentFingerprint(createOrderDto)}`;
+    const existingInflight = this.inflightCreates.get(inflightKey);
+    if (existingInflight) {
+      const result = await existingInflight;
+      return { ...result, duplicate: true };
+    }
+
+    const run = this.createOrderInternal(createOrderDto).finally(() => {
+      this.inflightCreates.delete(inflightKey);
+    });
+    this.inflightCreates.set(inflightKey, run);
+    return run;
+  }
+
+  private async createOrderInternal(createOrderDto: CreateOrderDto) {
     const { customerName, phone, address, items, customerEmail, orderSource, redemptionCode, extras } = createOrderDto;
     const orderType = createOrderDto.orderType ?? 'pickup';
     const deliveryFee = createOrderDto.deliveryFee;
     const source = orderSource ?? 'internal';
+    const clientRequestId = (createOrderDto.clientRequestId || '').trim().slice(0, 64) || null;
 
     const hasItems = items && items.length > 0;
     const hasExtras = extras && extras.length > 0;
     if (!hasItems && !hasExtras) {
       throw new BadRequestException('Order must have at least one item or one extra');
+    }
+
+    // Re-check idempotency inside the serialized path (race between check and insert)
+    if (clientRequestId) {
+      const byKey = await this.findExistingByClientRequestId(clientRequestId);
+      if (byKey) return byKey;
     }
 
     // Pre-compute for transaction: inventory keys to deduct and product codes for points (avoids N+1 and duplicate getInventory)
@@ -420,6 +571,7 @@ export class OrdersService {
         deliveryFee: finalDeliveryFee,
         customerEmail: customerEmail || null,
         orderSource: source,
+        clientRequestId,
       });
 
       // Calculate points from product codes only (extras do not generate points; codes pre-computed to avoid N+1)
@@ -528,111 +680,22 @@ export class OrdersService {
 
       await queryRunner.commitTransaction();
 
-      // Create point codes for the order (whether online or internal)
-      // Point codes are created even for internal orders, so they can be printed on receipt
-      // Do this after transaction commit to avoid lock issues
-      if (calculatedPoints > 0) {
-        try {
-          // If order is online and has customer email, assign codes to user
-          if (source === 'online' && customerEmail) {
-            const user = await this.userRepo.findOne({ where: { email: customerEmail } });
-            
-            if (user) {
-              await this.pointsService.createPointsForOrder(
-                user.id,
-                savedOrder.id,
-                newOrderNumber,
-                calculatedPoints
-              );
-            }
-          } else {
-            // For internal orders, create point codes without assigning to user
-            // User will register them manually using the code from receipt
-            const pointsRepo = this.dataSource.getRepository(UserPoints);
-            const pointRecords: UserPoints[] = [];
-            for (let i = 0; i < calculatedPoints; i++) {
-              const code = await this.pointsService.generateUniquePointCode();
-              pointRecords.push(
-                pointsRepo.create({
-                  code,
-                  userId: null,
-                  orderId: savedOrder.id,
-                  orderDailyNumber: newOrderNumber,
-                  isUsed: false,
-                  type: 'automatic',
-                  description: `Punto de orden #${newOrderNumber}`,
-                }) as UserPoints,
-              );
-            }
-            if (pointRecords.length > 0) await pointsRepo.save(pointRecords);
-          }
-        } catch {
-          // Don't fail order creation if point code generation fails
-        }
-      }
-
-      // Apply redemption prize if provided (before loading order for response)
-      if (redemptionCode && redemptionCode.trim()) {
-        try {
-          await this.applyRedemptionVoucher(savedOrder.id, redemptionCode.trim());
-        } catch {
-          // Order is created but without prize applied; don't fail order creation
-        }
-      }
-
-      const finalOrder = await this.orderRepo.findOne({
-        where: { id: savedOrder.id },
-        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      // Responder YA: la orden ya está guardada. Puntos, premio, WS y correo
+      // en segundo plano — si se await aquí, el enviador tarda y el usuario
+      // reenvía → se crean 2 órdenes.
+      void this.finalizeOrderAfterCreate({
+        orderId: savedOrder.id,
+        dailyOrderNumber: newOrderNumber,
+        calculatedPoints,
+        source,
+        customerEmail,
+        customerName,
+        phone,
+        address,
+        orderType,
+        redemptionCode,
+        deliveryFee: finalDeliveryFee,
       });
-
-      if (finalOrder) {
-        const formatted = await this.mapOrderToGroupedFormat(finalOrder);
-        this.gateway.emitOrdersUpdates("created_order", formatted);
-
-        // Enviar notificación por correo si la orden es online
-        if (source === 'online') {
-          try {
-            // Agrupar items por producto para el correo
-            const itemsMap = new Map<string, { productName: string; quantity: number; price: number }>();
-            
-            finalOrder.items.forEach(item => {
-              const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
-              const price = Number(item.unitPrice ?? item.product?.price ?? 0);
-              const key = `${item.product?.id || 'unknown'}-${productName}`;
-              
-              if (itemsMap.has(key)) {
-                const existing = itemsMap.get(key)!;
-                existing.quantity += 1;
-              } else {
-                itemsMap.set(key, {
-                  productName,
-                  quantity: 1,
-                  price,
-                });
-              }
-            });
-
-            const emailItems = Array.from(itemsMap.values());
-
-            // Calcular total
-            const subtotal = emailItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
-
-            await this.mailService.sendNewOrderNotification(
-              newOrderNumber,
-              customerName,
-              phone,
-              address,
-              orderType,
-              emailItems,
-              total,
-              finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined,
-            );
-          } catch {
-            // No fallar la creación de la orden si el correo falla
-          }
-        }
-      }
 
       return {
         success: true,
@@ -641,6 +704,15 @@ export class OrdersService {
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
+
+      // Idempotency unique: another request won the race — return that order
+      if (
+        clientRequestId &&
+        (error?.code === 'ER_DUP_ENTRY' || String(error?.message || '').includes('client_request_id'))
+      ) {
+        const byKey = await this.findExistingByClientRequestId(clientRequestId);
+        if (byKey) return byKey;
+      }
       
       // Check if it's a duplicate key error
       if (error?.code === 'ER_DUP_ENTRY' || error?.message?.includes('duplicate')) {
@@ -661,13 +733,131 @@ export class OrdersService {
   }
 
   /**
+   * Post-commit side effects (points, voucher, websocket, email).
+   * Must not block the HTTP response of create().
+   */
+  private async finalizeOrderAfterCreate(params: {
+    orderId: number;
+    dailyOrderNumber: number;
+    calculatedPoints: number;
+    source: string;
+    customerEmail?: string | null;
+    customerName: string;
+    phone: string;
+    address: string;
+    orderType: string;
+    redemptionCode?: string | null;
+    deliveryFee?: number;
+  }): Promise<void> {
+    const {
+      orderId,
+      dailyOrderNumber: newOrderNumber,
+      calculatedPoints,
+      source,
+      customerEmail,
+      customerName,
+      phone,
+      address,
+      orderType,
+      redemptionCode,
+    } = params;
+
+    try {
+      if (calculatedPoints > 0) {
+        try {
+          if (source === 'online' && customerEmail) {
+            const user = await this.userRepo.findOne({ where: { email: customerEmail } });
+            if (user) {
+              await this.pointsService.createPointsForOrder(
+                user.id,
+                orderId,
+                newOrderNumber,
+                calculatedPoints,
+              );
+            }
+          } else {
+            const pointsRepo = this.dataSource.getRepository(UserPoints);
+            const pointRecords: UserPoints[] = [];
+            for (let i = 0; i < calculatedPoints; i++) {
+              const code = await this.pointsService.generateUniquePointCode();
+              pointRecords.push(
+                pointsRepo.create({
+                  code,
+                  userId: null,
+                  orderId,
+                  orderDailyNumber: newOrderNumber,
+                  isUsed: false,
+                  type: 'automatic',
+                  description: `Punto de orden #${newOrderNumber}`,
+                }) as UserPoints,
+              );
+            }
+            if (pointRecords.length > 0) await pointsRepo.save(pointRecords);
+          }
+        } catch {
+          // Don't fail order creation if point code generation fails
+        }
+      }
+
+      if (redemptionCode && redemptionCode.trim()) {
+        try {
+          await this.applyRedemptionVoucher(orderId, redemptionCode.trim());
+        } catch {
+          // Order is created but without prize applied
+        }
+      }
+
+      const finalOrder = await this.orderRepo.findOne({
+        where: { id: orderId },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      });
+
+      if (!finalOrder) return;
+
+      const formatted = await this.mapOrderToGroupedFormat(finalOrder);
+      this.gateway.emitOrdersUpdates('created_order', formatted);
+
+      if (source === 'online') {
+        try {
+          const itemsMap = new Map<string, { productName: string; quantity: number; price: number }>();
+          finalOrder.items.forEach((item) => {
+            const productName = item.product?.name || `Producto #${item.product?.code || 'N/A'}`;
+            const price = Number(item.unitPrice ?? item.product?.price ?? 0);
+            const key = `${item.product?.id || 'unknown'}-${productName}`;
+            if (itemsMap.has(key)) {
+              itemsMap.get(key)!.quantity += 1;
+            } else {
+              itemsMap.set(key, { productName, quantity: 1, price });
+            }
+          });
+          const emailItems = Array.from(itemsMap.values());
+          const subtotal = emailItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const total = subtotal + (finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : 0);
+          await this.mailService.sendNewOrderNotification(
+            newOrderNumber,
+            customerName,
+            phone,
+            address,
+            orderType,
+            emailItems,
+            total,
+            finalOrder.deliveryFee ? Number(finalOrder.deliveryFee) : undefined,
+          );
+        } catch {
+          // No fallar si el correo falla
+        }
+      }
+    } catch {
+      // Side effects must never surface as create() failure
+    }
+  }
+
+  /**
    * Obtiene todas las órdenes del día en Bogotá,
    * excluyendo las canceladas.
    * Agrupa items repetidos por producto.
    *
    * @returns Lista de órdenes formateadas.
-   */
-  /**
    * @param orderType - Optional. If provided (e.g. 'table'), only orders of that type are returned. Reduces payload for mesas app.
    */
   async findOrdersToday(orderType?: string) {

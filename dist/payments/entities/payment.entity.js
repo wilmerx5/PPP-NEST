@@ -61,7 +61,7 @@ __decorate([
         example: '12345678901',
         nullable: true,
     }),
-    (0, typeorm_1.Column)({ name: 'payment_id', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'payment_id', nullable: true, unique: true }),
     __metadata("design:type", String)
 ], Payment.prototype, "paymentId", void 0);
 __decorate([

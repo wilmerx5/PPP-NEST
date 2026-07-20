@@ -1,6 +1,6 @@
 import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
@@ -8,14 +8,16 @@ import { MailService } from '../common/mail/mail.service';
 export declare class PaymentsService {
     private readonly paymentRepo;
     private readonly orderRepo;
+    private readonly dataSource;
     private readonly configService;
     private readonly moduleRef;
     private readonly mailService;
+    private readonly logger;
     private client;
     private preference;
     private payment;
     private ordersService;
-    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, configService: ConfigService, moduleRef: ModuleRef, mailService: MailService);
+    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, dataSource: DataSource, configService: ConfigService, moduleRef: ModuleRef, mailService: MailService);
     createPreference(orderData: CreateOrderDto, items: Array<{
         title: string;
         quantity: number;
@@ -42,6 +44,7 @@ export declare class PaymentsService {
         status?: undefined;
         orderId?: undefined;
     }>;
+    private sendOrderConfirmationEmail;
     getPaymentStatus(orderId: number): Promise<{
         id: number;
         orderId: number | null;
