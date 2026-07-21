@@ -173,13 +173,8 @@ export class OrdersService {
 
 
   /**
-   * Generates the next daily order number atomically to prevent duplicates.
-   * Uses a database transaction with pessimistic lock to ensure thread-safety.
-   * 
-   * @param todayStartUtc - Start of today in UTC
-   * @param todayEndUtc - End of today in UTC
-   * @param manager - Entity manager (optional, uses transaction manager if provided)
-   * @returns Next available order number
+   * Next daily order number (solo lectura MAX+1).
+   * La atomicidad la da GET_LOCK en createOrderInternal hasta el commit.
    */
   private async generateNextOrderNumber(
     todayStartUtc: Date,
@@ -187,9 +182,6 @@ export class OrdersService {
     manager?: EntityManager
   ): Promise<number> {
     const repo = manager ? manager.getRepository(Order) : this.orderRepo;
-
-    // Use raw query with FOR UPDATE lock to prevent concurrent access
-    // This ensures only one transaction can read the max number at a time
     const result = await repo
       .createQueryBuilder('order')
       .select('MAX(order.dailyOrderNumber)', 'maxNumber')
@@ -197,11 +189,8 @@ export class OrdersService {
         start: todayStartUtc,
         end: todayEndUtc,
       })
-      .setLock('pessimistic_write') // Lock rows for write
       .getRawOne();
-
-    const maxNumber = result?.maxNumber || 0;
-    return maxNumber + 1;
+    return (Number(result?.maxNumber) || 0) + 1;
   }
 
   /**
@@ -439,8 +428,11 @@ export class OrdersService {
       if (byKey) return byKey;
     }
 
-    const soft = await this.findSoftDuplicate(createOrderDto);
-    if (soft) return soft;
+    // Soft fingerprint solo si no hay Idempotency-Key (evita query pesada con relations)
+    if (!clientRequestId) {
+      const soft = await this.findSoftDuplicate(createOrderDto);
+      if (soft) return soft;
+    }
 
     const inflightKey = clientRequestId || `fp:${this.buildOrderContentFingerprint(createOrderDto)}`;
     const existingInflight = this.inflightCreates.get(inflightKey);
@@ -539,150 +531,137 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
-      // Generate order number atomically within transaction with lock
-      const newOrderNumber = await this.generateNextOrderNumber(
-        todayStartUtc,
-        todayEndUtc,
-        queryRunner.manager
-      );
-
-      // Verify the number doesn't already exist (safety check)
-      const existingOrder = await queryRunner.manager.findOne(Order, {
-        where: {
-          dailyOrderNumber: newOrderNumber,
-          createdAt: Between(todayStartUtc, todayEndUtc),
-        },
-      });
-
-      if (existingOrder) {
+      const dayKey = formatInTimeZone(todayStartUtc, 'America/Bogota', 'yyyy-MM-dd');
+      const lockName = `ppp_daily_ord_${dayKey}`.slice(0, 64);
+      const lockRows = await queryRunner.manager.query(`SELECT GET_LOCK(?, 8) AS got`, [lockName]);
+      if (Number(lockRows?.[0]?.got) !== 1) {
         throw new InternalServerErrorException(
-          'Hubo un conflicto al generar el número de orden. Intenta de nuevo.'
+          'No se pudo reservar el número de orden. Intenta de nuevo.',
         );
       }
 
-      // Create order
-      const order = queryRunner.manager.create(Order, {
-        customerName,
-        phone,
-        address,
-        dailyOrderNumber: newOrderNumber,
-        orderType: orderType,
-        orderStatus: 'cooking',
-        deliveryFee: finalDeliveryFee,
-        customerEmail: customerEmail || null,
-        orderSource: source,
-        clientRequestId,
-      });
+      let newOrderNumber = 0;
+      let savedOrder!: Order;
+      let calculatedPoints = 0;
 
-      // Calculate points from product codes only (extras do not generate points; codes pre-computed to avoid N+1)
-      const allCodes = allCodesFromProducts;
+      try {
+        newOrderNumber = await this.generateNextOrderNumber(
+          todayStartUtc,
+          todayEndUtc,
+          queryRunner.manager,
+        );
 
-      // If a redemption prize is applied, adjust point calculation
-      // A prize discounts one half chicken (code 2 or 5), so we need to remove one from the calculation
-      let adjustedCodes = [...allCodes];
-      if (redemptionCode && redemptionCode.trim()) {
-        // Check if we have both code 2 and 5 (together they generate 1 point)
-        const hasCode2 = adjustedCodes.includes(2);
-        const hasCode5 = adjustedCodes.includes(5);
-        
-        if (hasCode2 && hasCode5) {
-          // Remove one instance of code 2 or 5 (the one being discounted)
-          // Remove code 2 first if available, otherwise code 5
-          const indexToRemove = adjustedCodes.indexOf(2);
-          if (indexToRemove !== -1) {
-            adjustedCodes.splice(indexToRemove, 1);
-          } else {
-            const index5 = adjustedCodes.indexOf(5);
-            if (index5 !== -1) {
-              adjustedCodes.splice(index5, 1);
+        const order = queryRunner.manager.create(Order, {
+          customerName,
+          phone,
+          address,
+          dailyOrderNumber: newOrderNumber,
+          orderType: orderType,
+          orderStatus: 'cooking',
+          deliveryFee: finalDeliveryFee,
+          customerEmail: customerEmail || null,
+          orderSource: source,
+          clientRequestId,
+        });
+
+        const allCodes = allCodesFromProducts;
+        let adjustedCodes = [...allCodes];
+        if (redemptionCode && redemptionCode.trim()) {
+          const hasCode2 = adjustedCodes.includes(2);
+          const hasCode5 = adjustedCodes.includes(5);
+
+          if (hasCode2 && hasCode5) {
+            const indexToRemove = adjustedCodes.indexOf(2);
+            if (indexToRemove !== -1) {
+              adjustedCodes.splice(indexToRemove, 1);
+            } else {
+              const index5 = adjustedCodes.indexOf(5);
+              if (index5 !== -1) {
+                adjustedCodes.splice(index5, 1);
+              }
+            }
+          } else if (hasCode2) {
+            const indexToRemove = adjustedCodes.indexOf(2);
+            if (indexToRemove !== -1) {
+              adjustedCodes.splice(indexToRemove, 1);
+            }
+          } else if (hasCode5) {
+            const indexToRemove = adjustedCodes.indexOf(5);
+            if (indexToRemove !== -1) {
+              adjustedCodes.splice(indexToRemove, 1);
             }
           }
-        } else if (hasCode2) {
-          // If only code 2, remove one instance
-          const indexToRemove = adjustedCodes.indexOf(2);
-          if (indexToRemove !== -1) {
-            adjustedCodes.splice(indexToRemove, 1);
-          }
-        } else if (hasCode5) {
-          // If only code 5, remove one instance
-          const indexToRemove = adjustedCodes.indexOf(5);
-          if (indexToRemove !== -1) {
-            adjustedCodes.splice(indexToRemove, 1);
-          }
         }
-      }
 
-      const calculatedPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
+        calculatedPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
+        order.points = calculatedPoints;
+        savedOrder = await queryRunner.manager.save(order);
 
-      // Save order with points count (for display purposes)
-      order.points = calculatedPoints;
-      const savedOrder = await queryRunner.manager.save(order);
-
-      // Create items and attributes (unitPrice = enviado con descuento o precio del producto)
-      if (items?.length) {
-        const productIds = [...new Set((items as { productId: number }[]).map((i) => i.productId))];
-        const products = await queryRunner.manager.find(Product, { where: { id: In(productIds) }, select: ['id', 'price'] });
-        const priceByProductId = new Map(products.map((p) => [p.id, Number(p.price)]));
-
-        for (const item of items) {
-          const productPrice = priceByProductId.get(item.productId) ?? null;
-          const rawUnitPrice = (item as unknown as { unitPrice?: unknown }).unitPrice ?? item.unitPrice;
-          const customPrice =
-            rawUnitPrice != null && Number(rawUnitPrice) >= 0 ? Number(rawUnitPrice) : null;
-          const unitPrice = customPrice ?? productPrice;
-          const valueToSave = unitPrice != null ? Number(unitPrice) : null;
-          const orderItem = queryRunner.manager.create(OrderItem, {
-            order: savedOrder,
-            product: { id: item.productId },
-            note: item.note != null && item.note !== undefined ? String(item.note) : '',
-            unitPrice: valueToSave,
+        if (items?.length) {
+          const productIds = [...new Set((items as { productId: number }[]).map((i) => i.productId))];
+          const products = await queryRunner.manager.find(Product, {
+            where: { id: In(productIds) },
+            select: ['id', 'price'],
           });
+          const priceByProductId = new Map(products.map((p) => [p.id, Number(p.price)]));
 
-          const savedItem = await queryRunner.manager.save(orderItem);
-          if (valueToSave !== null) {
-            await queryRunner.manager.query(
-              'UPDATE ppp_order_items SET unit_price = ? WHERE id = ?',
-              [valueToSave, savedItem.id],
-            );
+          for (const item of items) {
+            const productPrice = priceByProductId.get(item.productId) ?? null;
+            const rawUnitPrice = (item as unknown as { unitPrice?: unknown }).unitPrice ?? item.unitPrice;
+            const customPrice =
+              rawUnitPrice != null && Number(rawUnitPrice) >= 0 ? Number(rawUnitPrice) : null;
+            const unitPrice = customPrice ?? productPrice;
+            const valueToSave = unitPrice != null ? Number(unitPrice) : null;
+            const orderItem = queryRunner.manager.create(OrderItem, {
+              order: savedOrder,
+              product: { id: item.productId },
+              note: item.note != null && item.note !== undefined ? String(item.note) : '',
+              unitPrice: valueToSave,
+            });
+
+            const savedItem = await queryRunner.manager.save(orderItem);
+
+            if (item.attributes?.length) {
+              const attrs = item.attributes
+                .filter(
+                  (attr) =>
+                    attr?.attributeName != null &&
+                    attr?.attributeValue != null &&
+                    String(attr.attributeValue).trim() !== '',
+                )
+                .map((attr) =>
+                  queryRunner.manager.create(OrderItemAttribute, {
+                    orderItem: savedItem,
+                    attributeName: String(attr.attributeName).trim(),
+                    attributeValue: String(attr.attributeValue).trim(),
+                  }),
+                );
+              if (attrs.length > 0) await queryRunner.manager.save(attrs);
+            }
           }
 
-          if (item.attributes?.length) {
-            const attrs = item.attributes
-              .filter((attr) => attr?.attributeName != null && attr?.attributeValue != null && String(attr.attributeValue).trim() !== '')
-              .map((attr) =>
-                queryRunner.manager.create(OrderItemAttribute, {
-                  orderItem: savedItem,
-                  attributeName: String(attr.attributeName).trim(),
-                  attributeValue: String(attr.attributeValue).trim(),
-                }),
-              );
-            if (attrs.length > 0) await queryRunner.manager.save(attrs);
-          }
+          await this.deductInventory(queryRunner.manager, countByStockKeyForDeduct);
         }
 
-        // Deduct inventory using pre-computed count (avoids second getInventoryByProductIds)
-        await this.deductInventory(queryRunner.manager, countByStockKeyForDeduct);
-      }
-
-      // Create extras (adicionales, código 90)
-      if (extras?.length) {
-        for (const ex of extras) {
-          const extra = queryRunner.manager.create(OrderExtra, {
-            order: savedOrder,
-            title: ex.title,
-            description: ex.description ?? null,
-            amount: ex.amount,
-            quantity: ex.quantity ?? 1,
-          });
-          await queryRunner.manager.save(extra);
+        if (extras?.length) {
+          const extraEntities = extras.map((ex) =>
+            queryRunner.manager.create(OrderExtra, {
+              order: savedOrder,
+              title: ex.title,
+              description: ex.description ?? null,
+              amount: ex.amount,
+              quantity: ex.quantity ?? 1,
+            }),
+          );
+          await queryRunner.manager.save(extraEntities);
         }
+
+        await queryRunner.commitTransaction();
+      } finally {
+        // Liberar tras commit/rollback: evita # diario duplicado y no usa FOR UPDATE de filas
+        await queryRunner.manager.query(`SELECT RELEASE_LOCK(?)`, [lockName]).catch(() => undefined);
       }
 
-      await queryRunner.commitTransaction();
-
-      // Responder YA: la orden ya está guardada. Puntos, premio, WS y correo
-      // en segundo plano — si se await aquí, el enviador tarda y el usuario
-      // reenvía → se crean 2 órdenes.
       void this.finalizeOrderAfterCreate({
         orderId: savedOrder.id,
         dailyOrderNumber: newOrderNumber,
