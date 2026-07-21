@@ -35,6 +35,7 @@ export declare class CreateOrderDto {
         quantity?: number;
     }[];
     redemptionCode?: string;
+    clientRequestId?: string;
 }
 export declare class UpdateOrderItemAttributeDto {
     attributeName: string;

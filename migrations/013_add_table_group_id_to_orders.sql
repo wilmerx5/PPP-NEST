@@ -11,4 +11,3 @@ ADD INDEX idx_ppp_orders_table_group_id (table_group_id);
 
 -- Si el ALTER falló porque la columna ya existe, ejecuta solo esto:
 -- CREATE INDEX idx_ppp_orders_table_group_id ON ppp_orders (table_group_id);
-+

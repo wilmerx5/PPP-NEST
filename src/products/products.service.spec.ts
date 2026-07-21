@@ -1,12 +1,51 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProductsService } from './products.service';
+import { Product } from './entities/product.entity';
+import { Category } from './entities/category.entity';
+import { ProductAttribute } from './entities/product-attribute.entity';
+import { ProductVariantStock } from './entities/product-variant-stock.entity';
+import { InventoryGroup } from './entities/inventory-group.entity';
+import { InventoryGroupItem } from './entities/inventory-group-item.entity';
+import { InventorySelection } from './entities/inventory-selection.entity';
+import { InventorySelectionProduct } from './entities/inventory-selection-product.entity';
+import { CacheService } from 'src/common/cache/cache.service';
+import { CircuitBreakerService } from 'src/common/circuit-breaker/circuit-breaker.service';
+
+const repoMock = () => ({
+  find: jest.fn().mockResolvedValue([]),
+  findOne: jest.fn(),
+  save: jest.fn(),
+  create: jest.fn(),
+});
 
 describe('ProductsService', () => {
   let service: ProductsService;
+  let groupItemRepo: ReturnType<typeof repoMock>;
+  let productRepo: ReturnType<typeof repoMock>;
+  let variantStockRepo: ReturnType<typeof repoMock>;
+  let groupRepo: ReturnType<typeof repoMock>;
 
   beforeEach(async () => {
+    groupItemRepo = repoMock();
+    productRepo = repoMock();
+    variantStockRepo = repoMock();
+    groupRepo = repoMock();
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ProductsService],
+      providers: [
+        ProductsService,
+        { provide: getRepositoryToken(Product), useValue: productRepo },
+        { provide: getRepositoryToken(Category), useValue: repoMock() },
+        { provide: getRepositoryToken(ProductAttribute), useValue: repoMock() },
+        { provide: getRepositoryToken(ProductVariantStock), useValue: variantStockRepo },
+        { provide: getRepositoryToken(InventoryGroup), useValue: groupRepo },
+        { provide: getRepositoryToken(InventoryGroupItem), useValue: groupItemRepo },
+        { provide: getRepositoryToken(InventorySelection), useValue: repoMock() },
+        { provide: getRepositoryToken(InventorySelectionProduct), useValue: repoMock() },
+        { provide: CacheService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), size: jest.fn() } },
+        { provide: CircuitBreakerService, useValue: { execute: jest.fn(), getState: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
@@ -14,5 +53,57 @@ describe('ProductsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getInventoryByProductIds', () => {
+    it('devuelve mapa vacío sin ids (0 consultas)', async () => {
+      const map = await service.getInventoryByProductIds([]);
+      expect(map.size).toBe(0);
+      expect(groupItemRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('producto sin grupo: usa stock propio y variantes', async () => {
+      productRepo.find.mockResolvedValue([
+        { id: 7, trackInventory: true, stock: 12, alsoDeductProductId: null, alsoDeductBaseUnits: null },
+      ]);
+      variantStockRepo.find.mockResolvedValue([
+        { productId: 7, attributeName: 'Presa', attributeValue: 'Pierna', stock: 4 },
+      ]);
+
+      const map = await service.getInventoryByProductIds([7], { includeAlsoDeductTargets: true });
+
+      const info = map.get(7)!;
+      expect(info.trackInventory).toBe(true);
+      expect(info.stock).toBe(12);
+      expect(info.variantStocks).toEqual([
+        { attributeName: 'Presa', attributeValue: 'Pierna', stock: 4 },
+      ]);
+    });
+
+    it('producto en grupo: reporta stock del grupo', async () => {
+      groupItemRepo.find.mockResolvedValue([
+        {
+          productId: 7,
+          groupId: 3,
+          baseUnits: 2,
+          attributeName: null,
+          attributeValue: null,
+          alsoDeductProductId: null,
+          selections: [],
+        },
+      ]);
+      productRepo.find.mockResolvedValue([
+        { id: 7, trackInventory: false, stock: 0, alsoDeductProductId: null, alsoDeductBaseUnits: null },
+      ]);
+      groupRepo.find.mockResolvedValue([{ id: 3, stock: 20 }]);
+
+      const map = await service.getInventoryByProductIds([7], { includeAlsoDeductTargets: true });
+
+      const info = map.get(7)!;
+      expect(info.trackInventory).toBe(true);
+      expect(info.groupId).toBe(3);
+      expect(info.groupStock).toBe(20);
+      expect(info.groupBaseUnits).toBe(2);
+    });
   });
 });

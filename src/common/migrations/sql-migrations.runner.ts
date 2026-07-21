@@ -24,6 +24,16 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    // Nunca tumbar el API por una migración: log fuerte y seguir sirviendo.
+    try {
+      await this.runAll();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Migrations failed (API continues): ${message}`);
+    }
+  }
+
+  private async runAll() {
     // Siempre: columnas críticas del código actual (evita caída si olvidan el flag)
     await this.ensureClientRequestIdColumn();
 
@@ -53,6 +63,13 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
 
       const fullPath = join(dir, file);
       const sql = readFileSync(fullPath, 'utf8');
+
+      // DELIMITER es sintaxis del cliente mysql (procedures); no ejecutable por driver.
+      if (/^\s*DELIMITER\b/im.test(sql)) {
+        this.logger.warn(`⚠ ${file} usa DELIMITER — ejecutar manualmente; se omite`);
+        continue;
+      }
+
       const statements = this.splitStatements(sql);
 
       this.logger.log(`Applying ${file} (${statements.length} statement(s))…`);
@@ -168,19 +185,19 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   }
 
   private splitStatements(sql: string): string[] {
-    return sql
+    // Quitar comentarios ANTES de dividir por ';' (un comentario puede contener ';')
+    const withoutComments = sql
+      .split('\n')
+      .map((line) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('--')) return '';
+        return line.replace(/--.*$/, '');
+      })
+      .join('\n');
+
+    return withoutComments
       .split(';')
-      .map((chunk) =>
-        chunk
-          .split('\n')
-          .map((line) => {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('--')) return '';
-            return line.replace(/--.*$/, '');
-          })
-          .join('\n')
-          .trim(),
-      )
+      .map((s) => s.trim())
       .filter((s) => s.length > 0);
   }
 

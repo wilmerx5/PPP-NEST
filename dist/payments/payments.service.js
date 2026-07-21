@@ -247,7 +247,12 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                         notification_url: bodyToSend.notification_url,
                         metadata: bodyToSend.metadata,
                     }));
-                    const response = await this.preference.create({ body: bodyWithoutAutoReturn });
+                    const response = await this.preference.create({
+                        body: bodyWithoutAutoReturn,
+                        requestOptions: {
+                            idempotencyKey: `pref-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+                        },
+                    });
                     if (!response.id) {
                         throw new common_1.BadRequestException('No se recibió un ID de preferencia válido de Mercado Pago');
                     }
@@ -397,6 +402,7 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                         ...metadataObj.order_data,
                         customerEmail: metadataObj.customer_email || null,
                         orderSource: 'online',
+                        clientRequestId: `mp-pay-${locked.paymentId || locked.id}`.slice(0, 64),
                     };
                     const orderResponse = await this.ordersService.create(orderDataWithEmail);
                     locked.orderId = orderResponse.orderId;

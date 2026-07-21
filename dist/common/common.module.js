@@ -17,6 +17,7 @@ const common_service_1 = require("./common.service");
 const mail_service_1 = require("./mail/mail.service");
 const cache_service_1 = require("./cache/cache.service");
 const circuit_breaker_service_1 = require("./circuit-breaker/circuit-breaker.service");
+const sql_migrations_runner_1 = require("./migrations/sql-migrations.runner");
 let CommonModule = class CommonModule {
     cache;
     constructor(cache) {
@@ -29,7 +30,13 @@ exports.CommonModule = CommonModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
         controllers: [common_controller_1.CommonController],
-        providers: [common_service_1.CommonService, mail_service_1.MailService, cache_service_1.CacheService, circuit_breaker_service_1.CircuitBreakerService],
+        providers: [
+            common_service_1.CommonService,
+            mail_service_1.MailService,
+            cache_service_1.CacheService,
+            circuit_breaker_service_1.CircuitBreakerService,
+            sql_migrations_runner_1.SqlMigrationsRunner,
+        ],
         imports: [config_1.ConfigModule],
         exports: [mail_service_1.MailService, cache_service_1.CacheService, circuit_breaker_service_1.CircuitBreakerService],
     }),

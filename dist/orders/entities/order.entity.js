@@ -31,6 +31,7 @@ let Order = class Order {
     points;
     redemptionCode;
     tableGroupId;
+    clientRequestId;
     extras;
 };
 exports.Order = Order;
@@ -193,6 +194,15 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'table_group_id', type: 'bigint', nullable: true }),
     __metadata("design:type", Object)
 ], Order.prototype, "tableGroupId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Clave de idempotencia del cliente (evita órdenes duplicadas por reintentos).',
+        example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ name: 'client_request_id', type: 'varchar', length: 64, nullable: true, unique: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "clientRequestId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Adicionales o extras de la orden (platos, cubiertos, etc.).',

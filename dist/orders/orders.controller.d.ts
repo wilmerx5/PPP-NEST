@@ -21,7 +21,12 @@ export declare class OrdersController {
         extras: any;
         redemptionCode: string | null;
     }[]>;
-    createOrder(createOrderDto: CreateOrderDto): Promise<{
+    createOrder(createOrderDto: CreateOrderDto, idempotencyKey?: string): Promise<{
+        success: boolean;
+        orderId: number;
+        dailyOrderNumber: number;
+    } | {
+        duplicate: boolean;
         success: boolean;
         orderId: number;
         dailyOrderNumber: number;
@@ -35,6 +40,13 @@ export declare class OrdersController {
     updateItems(id: string, dto: UpdateOrderItemsDto): Promise<{
         success: boolean;
         message: string;
+        itemsCount?: undefined;
+        dtoCount?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        itemsCount: number;
+        dtoCount: number;
     }>;
     addExtra(id: string, dto: AddOrderExtraDto): Promise<{
         success: boolean;

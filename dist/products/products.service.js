@@ -543,33 +543,43 @@ let ProductsService = ProductsService_1 = class ProductsService {
         if (!productIds.length)
             return new Map();
         let setIds = [...new Set(productIds)];
-        const groupItems = await this.inventoryGroupItemRepo.find({
-            where: { productId: (0, typeorm_2.In)(setIds) },
-            relations: ['group', 'selections', 'selections.products'],
-        });
+        const [groupItems, productLevelTargets] = await Promise.all([
+            this.inventoryGroupItemRepo.find({
+                where: { productId: (0, typeorm_2.In)(setIds) },
+                relations: ['group', 'selections', 'selections.products'],
+            }),
+            opts?.includeAlsoDeductTargets
+                ? this.productRepo.find({
+                    where: { id: (0, typeorm_2.In)(setIds), alsoDeductProductId: (0, typeorm_2.Not)((0, typeorm_2.IsNull)()) },
+                    select: ['id', 'alsoDeductProductId'],
+                })
+                : Promise.resolve([]),
+        ]);
         if (opts?.includeAlsoDeductTargets) {
             const extraIds = [
                 ...groupItems.map((i) => i.alsoDeductProductId).filter((id) => id != null && id > 0),
                 ...(groupItems.flatMap((i) => i.selections ?? []).flatMap((s) => (s.products ?? []).map((p) => p.productId))),
             ];
-            const productLevelTargets = await this.productRepo.find({
-                where: { id: (0, typeorm_2.In)(setIds), alsoDeductProductId: (0, typeorm_2.Not)((0, typeorm_2.IsNull)()) },
-                select: ['id', 'alsoDeductProductId'],
-            });
             const productLevelAlsoDeductIds = productLevelTargets
                 .map((p) => p.alsoDeductProductId)
                 .filter((id) => id != null && id > 0);
             setIds = [...new Set([...setIds, ...extraIds, ...productLevelAlsoDeductIds])];
         }
-        const list = await this.productRepo.find({
-            where: { id: (0, typeorm_2.In)(setIds) },
-            relations: ['variantStocks'],
-            select: ['id', 'trackInventory', 'stock', 'alsoDeductProductId', 'alsoDeductAttributeName', 'alsoDeductAttributeValue', 'alsoDeductBaseUnits'],
-        });
-        const variantList = await this.variantStockRepo.find({
-            where: { productId: (0, typeorm_2.In)(setIds) },
-            select: ['productId', 'attributeName', 'attributeValue', 'stock'],
-        });
+        const groupIds = [...new Set(groupItems.map((i) => i.groupId))];
+        const [list, variantList, groups] = await Promise.all([
+            this.productRepo.find({
+                where: { id: (0, typeorm_2.In)(setIds) },
+                relations: ['variantStocks'],
+                select: ['id', 'trackInventory', 'stock', 'alsoDeductProductId', 'alsoDeductAttributeName', 'alsoDeductAttributeValue', 'alsoDeductBaseUnits'],
+            }),
+            this.variantStockRepo.find({
+                where: { productId: (0, typeorm_2.In)(setIds) },
+                select: ['productId', 'attributeName', 'attributeValue', 'stock'],
+            }),
+            groupIds.length
+                ? this.inventoryGroupRepo.find({ where: { id: (0, typeorm_2.In)(groupIds) }, select: ['id', 'stock'] })
+                : Promise.resolve([]),
+        ]);
         const variantByProduct = new Map();
         for (const v of variantList) {
             const arr = variantByProduct.get(v.productId) ?? [];
@@ -580,10 +590,6 @@ let ProductsService = ProductsService_1 = class ProductsService {
             });
             variantByProduct.set(v.productId, arr);
         }
-        const groupIds = [...new Set(groupItems.map((i) => i.groupId))];
-        const groups = groupIds.length
-            ? await this.inventoryGroupRepo.find({ where: { id: (0, typeorm_2.In)(groupIds) }, select: ['id', 'stock'] })
-            : [];
         const groupStockById = new Map(groups.map((g) => [g.id, Number(g.stock) ?? 0]));
         const productToGroup = new Map();
         const productVariantToGroup = new Map();

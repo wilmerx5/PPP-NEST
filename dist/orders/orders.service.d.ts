@@ -24,7 +24,12 @@ export declare class OrdersService {
     private readonly productsService;
     private readonly mailService;
     private readonly circuitBreaker;
+    private readonly inflightCreates;
+    private static readonly SOFT_DEDUPE_WINDOW_MS;
     constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, mailService: MailService, circuitBreaker: CircuitBreakerService);
+    private buildOrderContentFingerprint;
+    private findExistingByClientRequestId;
+    private findSoftDuplicate;
     private generateNextOrderNumber;
     private buildInventoryCountByKey;
     private parseVariantKey;
@@ -35,7 +40,13 @@ export declare class OrdersService {
         success: boolean;
         orderId: number;
         dailyOrderNumber: number;
+    } | {
+        duplicate: boolean;
+        success: boolean;
+        orderId: number;
+        dailyOrderNumber: number;
     }>;
+    private createOrderInternal;
     private finalizeOrderAfterCreate;
     findOrdersToday(orderType?: string): Promise<any[]>;
     findMine(email: string): Promise<{
@@ -63,7 +74,15 @@ export declare class OrdersService {
     updateOrderItems(orderId: number, dto: UpdateOrderItemsDto): Promise<{
         success: boolean;
         message: string;
+        itemsCount?: undefined;
+        dtoCount?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        itemsCount: number;
+        dtoCount: number;
     }>;
+    private finalizeOrderAfterUpdate;
     updateOrderItemUnitPrice(orderId: number, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
     addExtra(orderId: number, dto: AddOrderExtraDto): Promise<{
         success: boolean;

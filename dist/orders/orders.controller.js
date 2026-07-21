@@ -30,7 +30,11 @@ let OrdersController = class OrdersController {
         }
         return this.orderService.findMine(email);
     }
-    async createOrder(createOrderDto) {
+    async createOrder(createOrderDto, idempotencyKey) {
+        const key = (createOrderDto.clientRequestId || idempotencyKey || '').trim();
+        if (key) {
+            createOrderDto.clientRequestId = key.slice(0, 64);
+        }
         return this.orderService.create(createOrderDto);
     }
     async getTodayOrders(orderType) {
@@ -120,8 +124,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Order created successfully' }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Bad request' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Headers)('idempotency-key')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [orderDTO_1.CreateOrderDto]),
+    __metadata("design:paramtypes", [orderDTO_1.CreateOrderDto, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "createOrder", null);
 __decorate([
