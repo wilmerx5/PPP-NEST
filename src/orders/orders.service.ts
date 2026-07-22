@@ -173,6 +173,30 @@ export class OrdersService {
 
 
   /**
+   * MariaDB/MySQL: en INSERT multi-fila solo confiable insertId (primer id) + affectedRows.
+   * TypeORM identifiers suele devolver 1 solo id → atributos mal ligados y emit incompleto.
+   */
+  private resolveBulkInsertIds(
+    insertResult: { identifiers?: Array<{ id?: unknown }>; raw?: unknown },
+    expectedCount: number,
+  ): number[] {
+    if (expectedCount <= 0) return [];
+    const raw = insertResult.raw as { insertId?: number | string; affectedRows?: number } | undefined;
+    const firstId = Number(raw?.insertId);
+    const affected = Number(raw?.affectedRows ?? 0);
+    if (Number.isFinite(firstId) && firstId > 0 && affected >= expectedCount) {
+      return Array.from({ length: expectedCount }, (_, i) => firstId + i);
+    }
+    const fromOrm = (insertResult.identifiers ?? [])
+      .map((x) => Number(x?.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (fromOrm.length === expectedCount) return fromOrm;
+    throw new InternalServerErrorException(
+      `No se pudieron resolver los IDs de ítems (esperados ${expectedCount}, insertId=${raw?.insertId}, affected=${affected}, orm=${fromOrm.length})`,
+    );
+  }
+
+  /**
    * Next daily order number (solo lectura MAX+1).
    * La atomicidad la da GET_LOCK en createOrderInternal hasta el commit.
    */
@@ -629,8 +653,7 @@ export class OrdersService {
           });
 
           const insertResult = await queryRunner.manager.insert(OrderItem, itemRows);
-          // identifiers alineados con itemRows; un INSERT multi-fila garantiza ids contiguos
-          const itemIds = insertResult.identifiers.map((x) => Number(x.id));
+          const itemIds = this.resolveBulkInsertIds(insertResult, itemRows.length);
 
           // Todos los atributos en un solo INSERT multi-fila.
           const attrRows: Array<{
@@ -989,6 +1012,135 @@ export class OrdersService {
   }
 
   /**
+   * Cancela una orden restaurando inventario, borrando ítems/extras,
+   * limpiando vínculo de mesas e invalidando puntos. Emite deleted_order.
+   */
+  private async cancelOrderFully(orderId: number): Promise<{
+    success: true;
+    message: string;
+    dailyOrderNumber?: number;
+  }> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
+    });
+    if (!order) throw new NotFoundException(`No se encontró la orden con ID ${orderId}`);
+
+    if (order.orderStatus === 'canceled') {
+      return {
+        success: true,
+        message: `Orden #${order.dailyOrderNumber ?? orderId} ya estaba cancelada`,
+        dailyOrderNumber: order.dailyOrderNumber,
+      };
+    }
+
+    if (order.orderStatus === 'completed') {
+      throw new BadRequestException(
+        'No se puede cancelar una orden ya completada. El inventario no se restaura en ventas finalizadas.',
+      );
+    }
+
+    order.items = this.deduplicateOrderItemsById(order.items);
+    const oldProductIds = [
+      ...new Set(order.items.map((i) => i.product?.id).filter((id): id is number => id != null)),
+    ];
+    const invMapOld = oldProductIds.length
+      ? await this.productsService.getInventoryByProductIds(oldProductIds, {
+          includeAlsoDeductTargets: true,
+        })
+      : new Map();
+    const oldItemsForInv = order.items.map((i) => ({
+      productId: i.product!.id,
+      attributes: (i.attributes || []).map((a) => ({
+        attributeName: a.attributeName,
+        attributeValue: a.attributeValue,
+      })),
+    }));
+    const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
+
+      const itemIds = order.items
+        .map((i) => i.id)
+        .filter((id): id is number => id != null && Number.isInteger(id));
+      if (itemIds.length > 0) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItemAttribute)
+          .where('order_item_id IN (:...ids)', { ids: itemIds })
+          .execute();
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItem)
+          .where('id IN (:...ids)', { ids: itemIds })
+          .execute();
+      } else {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItemAttribute)
+          .where(
+            'order_item_id IN (SELECT id FROM ppp_order_items WHERE order_id = :orderId)',
+            { orderId },
+          )
+          .execute();
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(OrderItem)
+          .where('order_id = :orderId', { orderId })
+          .execute();
+      }
+
+      await queryRunner.manager
+        .createQueryBuilder()
+        .delete()
+        .from(OrderExtra)
+        .where('order_id = :orderId', { orderId })
+        .execute();
+
+      await this.removeOrderFromTableGroupInTransaction(queryRunner.manager, orderId);
+
+      await queryRunner.manager.update(
+        Order,
+        { id: orderId },
+        { orderStatus: 'canceled', tableGroupId: null, points: 0 },
+      );
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    try {
+      await this.pointsService.invalidatePointsForCanceledOrder(orderId);
+    } catch {
+      // Don't fail cancellation if point invalidation fails
+    }
+
+    order.orderStatus = 'canceled';
+    order.tableGroupId = null;
+    order.items = [];
+    order.extras = [];
+    this.gateway.emitOrdersUpdates('deleted_order', order);
+
+    return {
+      success: true,
+      message: `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
+      dailyOrderNumber: order.dailyOrderNumber,
+    };
+  }
+
+  /**
    * Marca una orden como cancelada y elimina todos sus items.
    * Se usa cuando se elimina una orden desde el frontend.
    * Notifica por WebSocket.
@@ -996,26 +1148,7 @@ export class OrdersService {
    * @param orderId - ID de la orden a cancelar.
    */
   async removeOrder(orderId: number) {
-    const order = await this.orderRepo.findOne({ where: { id: orderId } });
-
-    if (!order) throw new Error(`No se encontró la orden con ID ${orderId}`);
-
-    order.orderStatus = 'canceled';
-    await this.orderRepo.save(order);
-
-    // Invalidate points for canceled order
-    try {
-      await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-    } catch {
-      // Don't fail order cancellation if point invalidation fails
-    }
-
-    this.gateway.emitOrdersUpdates("deleted_order", order);
-
-    return {
-      success: true,
-      message: `Orden #${orderId} cancelada`,
-    };
+    return this.cancelOrderFully(orderId);
   }
 
   /**
@@ -1036,21 +1169,35 @@ export class OrdersService {
 
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
-      relations: ['items', 'items.product', 'items.attributes'],
+      relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
 
     if (!order) throw new NotFoundException('No se encontró la orden');
 
+    if (['completed', 'canceled'].includes(order.orderStatus)) {
+      throw new BadRequestException(
+        'No se pueden modificar los ítems de una orden completada o cancelada',
+      );
+    }
+
     order.items = this.deduplicateOrderItemsById(order.items);
 
     const hasItems = itemsToCreate.length > 0;
-    const hasExtrasToAdd = dto.extrasToAdd?.length;
+    const hasExtrasToAdd = Boolean(dto.extrasToAdd?.length);
+    const hasExistingExtras = Boolean(order.extras?.length);
+
+    // Sin ítems nuevos: cancelar SOLO si tampoco quedan extras (ni nuevos ni existentes)
+    if (!hasItems && !hasExtrasToAdd && !hasExistingExtras) {
+      return this.cancelOrderFully(orderId);
+    }
 
     // Old + new inventory + precios en paralelo (antes de la TX)
     const oldProductIds = [...new Set(order.items.map((i) => i.product?.id).filter((id): id is number => id != null))];
     const newProductIds = [...new Set(itemsToCreate.map((i) => i.productId))];
     const [invMapOld, invMapNew, productsForPrice] = await Promise.all([
-      oldProductIds.length ? this.productsService.getInventoryByProductIds(oldProductIds) : Promise.resolve(new Map()),
+      oldProductIds.length
+        ? this.productsService.getInventoryByProductIds(oldProductIds, { includeAlsoDeductTargets: true })
+        : Promise.resolve(new Map()),
       newProductIds.length
         ? this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true })
         : Promise.resolve(new Map()),
@@ -1113,21 +1260,8 @@ export class OrdersService {
           .execute();
       }
 
-      if (!hasItems && !hasExtrasToAdd) {
-        order.orderStatus = 'canceled';
-        await queryRunner.manager.save(order);
-        await queryRunner.commitTransaction();
-        try {
-          await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-        } catch {
-          // Don't fail if point invalidation fails
-        }
-        this.gateway.emitOrdersUpdates("deleted_order", order);
-        return {
-          success: true,
-          message: `Orden #${orderId} cancelada porque no quedaron productos`,
-        };
-      }
+      // Sin ítems nuevos pero con extras (existentes o a añadir): no cancelar aquí.
+      // La cancelación total ya se resolvió arriba con cancelOrderFully.
 
       const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
       if (wasPastCooking) {
@@ -1153,7 +1287,7 @@ export class OrdersService {
         });
 
         const insertResult = await queryRunner.manager.insert(OrderItem, itemRows);
-        const itemIds = insertResult.identifiers.map((x) => Number(x.id));
+        const itemIds = this.resolveBulkInsertIds(insertResult, itemRows.length);
         createdItemsCount = itemIds.length;
         createdItemIds.push(...itemIds);
 
@@ -1220,19 +1354,12 @@ export class OrdersService {
       await queryRunner.release();
     }
 
-    let fullOrder = fullOrderInTx;
-    if (fullOrder?.items?.some((i) => !i.product)) {
-      const retryRunner = this.dataSource.createQueryRunner();
-      await retryRunner.connect();
-      try {
-        fullOrder = await retryRunner.manager.findOne(Order, {
-          where: { id: order.id },
-          relations: ['items', 'items.product', 'items.attributes', 'extras'],
-        }) ?? fullOrder;
-      } finally {
-        await retryRunner.release();
-      }
-    }
+    // Siempre recargar fuera de la TX: evita IDs incompletos / REPEATABLE READ / emit a medias
+    let fullOrder =
+      (await this.orderRepo.findOne({
+        where: { id: order.id },
+        relations: ['items', 'items.product', 'items.attributes', 'extras'],
+      })) ?? fullOrderInTx;
 
     // Responder YA: puntos + WS en segundo plano (misma idea que create)
     if (fullOrder) {
@@ -1257,8 +1384,7 @@ export class OrdersService {
     return {
       success: true,
       message: `Order #${fullOrder?.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
-      // Contadores útiles para depurar sin logs síncronos
-      itemsCount: createdItemsCount || fullOrder?.items?.length || 0,
+      itemsCount: fullOrder?.items?.length ?? createdItemsCount,
       dtoCount: incomingCount,
     };
   }
@@ -1327,6 +1453,9 @@ export class OrdersService {
       where: { id: orderId, orderStatus: Not('canceled') },
     });
     if (!order) throw new NotFoundException('Orden no encontrada o cancelada');
+    if (order.orderStatus === 'completed') {
+      throw new BadRequestException('No se pueden añadir adicionales a una orden completada');
+    }
     const extra = this.extraRepo.create({
       order: { id: orderId },
       title: dto.title,
@@ -1355,6 +1484,9 @@ export class OrdersService {
       relations: ['order'],
     });
     if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+    if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
+      throw new BadRequestException('No se pueden eliminar adicionales de una orden completada o cancelada');
+    }
     await this.extraRepo.remove(extra);
     const full = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -1376,6 +1508,9 @@ export class OrdersService {
       relations: ['order'],
     });
     if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+    if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
+      throw new BadRequestException('No se pueden modificar adicionales de una orden completada o cancelada');
+    }
     if (dto.title !== undefined) extra.title = dto.title;
     if (dto.description !== undefined) extra.description = dto.description;
     if (dto.amount !== undefined) extra.amount = dto.amount;
@@ -1462,8 +1597,27 @@ export class OrdersService {
       };
     }
 
-    // Check if order is being canceled
-    const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
+    // Check if order is being canceled → ruta completa (inventario + ítems + extras + grupo)
+    if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
+      return this.cancelOrderFully(orderId);
+    }
+
+    // Órdenes completadas: no reabrir ni cambiar estado/tipo (evita restaurar stock luego)
+    if (order.orderStatus === 'completed') {
+      if (
+        (dto.orderStatus !== undefined && dto.orderStatus !== 'completed') ||
+        dto.orderType !== undefined ||
+        dto.deliveryFee !== undefined
+      ) {
+        throw new BadRequestException(
+          'No se puede modificar estado/tipo/domicilio de una orden ya completada',
+        );
+      }
+    }
+
+    if (order.orderStatus === 'canceled') {
+      throw new BadRequestException('No se puede modificar una orden cancelada');
+    }
 
     // Update only provided fields
     if (dto.customerName !== undefined) order.customerName = dto.customerName;
@@ -1492,15 +1646,6 @@ export class OrdersService {
         { order: { id: orderId }, kitchenPreparedAt: IsNull() },
         { kitchenPreparedAt: new Date() },
       );
-    }
-
-    // Invalidate points if order was just canceled
-    if (wasCanceled) {
-      try {
-        await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-      } catch {
-        // Don't fail order update if point invalidation fails
-      }
     }
 
     const fullOrder = await this.orderRepo.findOne({

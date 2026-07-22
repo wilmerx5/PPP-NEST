@@ -691,16 +691,27 @@ let ProductsService = ProductsService_1 = class ProductsService {
         return map;
     }
     async decrementStock(manager, productId, quantity) {
-        const product = await manager.findOne(product_entity_1.Product, { where: { id: productId }, select: ['id', 'trackInventory', 'stock'] });
-        if (!product)
+        if (quantity <= 0)
             return;
-        if (!product.trackInventory)
+        const product = await manager.findOne(product_entity_1.Product, {
+            where: { id: productId },
+            select: ['id', 'trackInventory', 'stock'],
+        });
+        if (!product || !product.trackInventory)
             return;
-        const current = Number(product.stock) ?? 0;
-        if (current < quantity) {
+        const result = await manager
+            .createQueryBuilder()
+            .update(product_entity_1.Product)
+            .set({ stock: () => 'stock - :qty' })
+            .where('id = :id AND track_inventory = 1 AND stock >= :qty', {
+            id: productId,
+            qty: quantity,
+        })
+            .execute();
+        if (!result.affected) {
+            const current = Number(product.stock) ?? 0;
             throw new common_1.BadRequestException(`Stock insuficiente para el producto ID ${productId}. Disponible: ${current}, solicitado: ${quantity}`);
         }
-        await manager.decrement(product_entity_1.Product, { id: productId }, 'stock', quantity);
     }
     async incrementStock(manager, productId, quantity) {
         const product = await manager.findOne(product_entity_1.Product, { where: { id: productId }, select: ['id', 'trackInventory'] });
@@ -714,11 +725,16 @@ let ProductsService = ProductsService_1 = class ProductsService {
         const group = await manager.findOne(inventory_group_entity_1.InventoryGroup, { where: { id: groupId }, select: ['id', 'stock'] });
         if (!group)
             return;
-        const current = Number(group.stock) ?? 0;
-        if (current < baseUnits) {
+        const result = await manager
+            .createQueryBuilder()
+            .update(inventory_group_entity_1.InventoryGroup)
+            .set({ stock: () => 'stock - :qty' })
+            .where('id = :id AND stock >= :qty', { id: groupId, qty: baseUnits })
+            .execute();
+        if (!result.affected) {
+            const current = Number(group.stock) ?? 0;
             throw new common_1.BadRequestException(`Stock insuficiente en el grupo de inventario (ID ${groupId}). Disponible: ${current.toFixed(2)} unidades base, solicitado: ${baseUnits.toFixed(2)}`);
         }
-        await manager.decrement(inventory_group_entity_1.InventoryGroup, { id: groupId }, 'stock', baseUnits);
     }
     async incrementGroupStock(manager, groupId, baseUnits) {
         if (baseUnits <= 0)
@@ -729,17 +745,24 @@ let ProductsService = ProductsService_1 = class ProductsService {
         await manager.increment(inventory_group_entity_1.InventoryGroup, { id: groupId }, 'stock', baseUnits);
     }
     async decrementVariantStock(manager, productId, attributeName, attributeValue, quantity) {
+        if (quantity <= 0)
+            return;
         const row = await manager.findOne(product_variant_stock_entity_1.ProductVariantStock, {
             where: { productId, attributeName, attributeValue },
             select: ['id', 'stock'],
         });
         if (!row)
             return;
-        const current = Number(row.stock) ?? 0;
-        if (current < quantity) {
+        const result = await manager
+            .createQueryBuilder()
+            .update(product_variant_stock_entity_1.ProductVariantStock)
+            .set({ stock: () => 'stock - :qty' })
+            .where('product_id = :productId AND attribute_name = :attributeName AND attribute_value = :attributeValue AND stock >= :qty', { productId, attributeName, attributeValue, qty: quantity })
+            .execute();
+        if (!result.affected) {
+            const current = Number(row.stock) ?? 0;
             throw new common_1.BadRequestException(`Stock insuficiente para variante "${attributeName}: ${attributeValue}". Disponible: ${current}, solicitado: ${quantity}`);
         }
-        await manager.decrement(product_variant_stock_entity_1.ProductVariantStock, { productId, attributeName, attributeValue }, 'stock', quantity);
     }
     async incrementVariantStock(manager, productId, attributeName, attributeValue, quantity) {
         const row = await manager.findOne(product_variant_stock_entity_1.ProductVariantStock, {

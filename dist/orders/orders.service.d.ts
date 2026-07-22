@@ -30,6 +30,7 @@ export declare class OrdersService {
     private buildOrderContentFingerprint;
     private findExistingByClientRequestId;
     private findSoftDuplicate;
+    private resolveBulkInsertIds;
     private generateNextOrderNumber;
     private buildInventoryCountByKey;
     private parseVariantKey;
@@ -67,15 +68,16 @@ export declare class OrdersService {
         extras: any;
         redemptionCode: string | null;
     }[]>;
+    private cancelOrderFully;
     removeOrder(orderId: number): Promise<{
-        success: boolean;
+        success: true;
         message: string;
+        dailyOrderNumber?: number;
     }>;
     updateOrderItems(orderId: number, dto: UpdateOrderItemsDto): Promise<{
-        success: boolean;
+        success: true;
         message: string;
-        itemsCount?: undefined;
-        dtoCount?: undefined;
+        dailyOrderNumber?: number;
     } | {
         success: boolean;
         message: string;
@@ -111,6 +113,10 @@ export declare class OrdersService {
         };
     }>;
     updateOrderGeneral(orderId: number, dto: UpdateOrderGeneralDto): Promise<{
+        success: true;
+        message: string;
+        dailyOrderNumber?: number;
+    } | {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;

@@ -65,16 +65,28 @@ describe('OrdersService — helpers de update', () => {
   });
 });
 
-describe('Regla de negocio: update NO debe colapsar N líneas idénticas', () => {
-  it('documenta que N combos iguales = N ítems (no dedupe por firma en update)', () => {
-    // El update usa itemsToCreate = rawItems.slice() SIN deduplicateIncomingUpdateItems.
-    // Este test protege esa decisión: si alguien la cambia, falla conscientemente.
-    const raw = Array.from({ length: 13 }, () => ({
-      productId: 99,
-      note: '',
-      attributes: [{ attributeName: 'Combo', attributeValue: 'A' }],
-    }));
-    expect(raw).toHaveLength(13);
-    expect(new Set(raw.map((r) => `${r.productId}|${r.attributes[0].attributeValue}`)).size).toBe(1);
+describe('OrdersService — resolveBulkInsertIds (MariaDB)', () => {
+  const service = Object.create(OrdersService.prototype) as any;
+
+  it('usa insertId + affectedRows (no confía solo en identifiers)', () => {
+    const ids = service.resolveBulkInsertIds(
+      { identifiers: [{ id: 10 }], raw: { insertId: 10, affectedRows: 3 } },
+      3,
+    );
+    expect(ids).toEqual([10, 11, 12]);
+  });
+
+  it('fallback a identifiers si vienen completos', () => {
+    const ids = service.resolveBulkInsertIds(
+      { identifiers: [{ id: 5 }, { id: 6 }], raw: {} },
+      2,
+    );
+    expect(ids).toEqual([5, 6]);
+  });
+
+  it('falla si no puede resolver todos los ids', () => {
+    expect(() =>
+      service.resolveBulkInsertIds({ identifiers: [{ id: 1 }], raw: { insertId: 1, affectedRows: 1 } }, 3),
+    ).toThrow();
   });
 });

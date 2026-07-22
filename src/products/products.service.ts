@@ -859,16 +859,27 @@ export class ProductsService {
    * Decrement stock within a transaction (used by orders). Throws if insufficient stock.
    */
   async decrementStock(manager: EntityManager, productId: number, quantity: number): Promise<void> {
-    const product = await manager.findOne(Product, { where: { id: productId }, select: ['id', 'trackInventory', 'stock'] });
-    if (!product) return;
-    if (!product.trackInventory) return;
-    const current = Number(product.stock) ?? 0;
-    if (current < quantity) {
+    if (quantity <= 0) return;
+    const product = await manager.findOne(Product, {
+      where: { id: productId },
+      select: ['id', 'trackInventory', 'stock'],
+    });
+    if (!product || !product.trackInventory) return;
+    const result = await manager
+      .createQueryBuilder()
+      .update(Product)
+      .set({ stock: () => 'stock - :qty' })
+      .where('id = :id AND track_inventory = 1 AND stock >= :qty', {
+        id: productId,
+        qty: quantity,
+      })
+      .execute();
+    if (!result.affected) {
+      const current = Number(product.stock) ?? 0;
       throw new BadRequestException(
         `Stock insuficiente para el producto ID ${productId}. Disponible: ${current}, solicitado: ${quantity}`,
       );
     }
-    await manager.decrement(Product, { id: productId }, 'stock', quantity);
   }
 
   /**
@@ -887,13 +898,18 @@ export class ProductsService {
     if (baseUnits <= 0) return;
     const group = await manager.findOne(InventoryGroup, { where: { id: groupId }, select: ['id', 'stock'] });
     if (!group) return;
-    const current = Number(group.stock) ?? 0;
-    if (current < baseUnits) {
+    const result = await manager
+      .createQueryBuilder()
+      .update(InventoryGroup)
+      .set({ stock: () => 'stock - :qty' })
+      .where('id = :id AND stock >= :qty', { id: groupId, qty: baseUnits })
+      .execute();
+    if (!result.affected) {
+      const current = Number(group.stock) ?? 0;
       throw new BadRequestException(
         `Stock insuficiente en el grupo de inventario (ID ${groupId}). Disponible: ${current.toFixed(2)} unidades base, solicitado: ${baseUnits.toFixed(2)}`,
       );
     }
-    await manager.decrement(InventoryGroup, { id: groupId }, 'stock', baseUnits);
   }
 
   /**
@@ -916,23 +932,27 @@ export class ProductsService {
     attributeValue: string,
     quantity: number,
   ): Promise<void> {
+    if (quantity <= 0) return;
     const row = await manager.findOne(ProductVariantStock, {
       where: { productId, attributeName, attributeValue },
       select: ['id', 'stock'],
     });
     if (!row) return;
-    const current = Number(row.stock) ?? 0;
-    if (current < quantity) {
+    const result = await manager
+      .createQueryBuilder()
+      .update(ProductVariantStock)
+      .set({ stock: () => 'stock - :qty' })
+      .where(
+        'product_id = :productId AND attribute_name = :attributeName AND attribute_value = :attributeValue AND stock >= :qty',
+        { productId, attributeName, attributeValue, qty: quantity },
+      )
+      .execute();
+    if (!result.affected) {
+      const current = Number(row.stock) ?? 0;
       throw new BadRequestException(
         `Stock insuficiente para variante "${attributeName}: ${attributeValue}". Disponible: ${current}, solicitado: ${quantity}`,
       );
     }
-    await manager.decrement(
-      ProductVariantStock,
-      { productId, attributeName, attributeValue },
-      'stock',
-      quantity,
-    );
   }
 
   /**

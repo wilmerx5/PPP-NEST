@@ -33,15 +33,15 @@ export declare class OrdersController {
     }>;
     getTodayOrders(orderType?: string): Promise<any[]>;
     deleteOrder(id: string): Promise<{
-        success: boolean;
+        success: true;
         message: string;
+        dailyOrderNumber?: number;
     }>;
     updateItemUnitPrice(id: string, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
     updateItems(id: string, dto: UpdateOrderItemsDto): Promise<{
-        success: boolean;
+        success: true;
         message: string;
-        itemsCount?: undefined;
-        dtoCount?: undefined;
+        dailyOrderNumber?: number;
     } | {
         success: boolean;
         message: string;
@@ -75,6 +75,10 @@ export declare class OrdersController {
         };
     }>;
     updateOrderGeneral(id: number, dto: UpdateOrderGeneralDto): Promise<{
+        success: true;
+        message: string;
+        dailyOrderNumber?: number;
+    } | {
         success: boolean;
         message: string;
         updatedFields: UpdateOrderGeneralDto;

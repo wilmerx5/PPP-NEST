@@ -157,6 +157,22 @@ let OrdersService = class OrdersService {
         }
         return null;
     }
+    resolveBulkInsertIds(insertResult, expectedCount) {
+        if (expectedCount <= 0)
+            return [];
+        const raw = insertResult.raw;
+        const firstId = Number(raw?.insertId);
+        const affected = Number(raw?.affectedRows ?? 0);
+        if (Number.isFinite(firstId) && firstId > 0 && affected >= expectedCount) {
+            return Array.from({ length: expectedCount }, (_, i) => firstId + i);
+        }
+        const fromOrm = (insertResult.identifiers ?? [])
+            .map((x) => Number(x?.id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+        if (fromOrm.length === expectedCount)
+            return fromOrm;
+        throw new common_1.InternalServerErrorException(`No se pudieron resolver los IDs de ítems (esperados ${expectedCount}, insertId=${raw?.insertId}, affected=${affected}, orm=${fromOrm.length})`);
+    }
     async generateNextOrderNumber(todayStartUtc, todayEndUtc, manager) {
         const repo = manager ? manager.getRepository(order_entity_1.Order) : this.orderRepo;
         const result = await repo
@@ -498,7 +514,7 @@ let OrdersService = class OrdersService {
                         };
                     });
                     const insertResult = await queryRunner.manager.insert(order_item_entity_1.OrderItem, itemRows);
-                    const itemIds = insertResult.identifiers.map((x) => Number(x.id));
+                    const itemIds = this.resolveBulkInsertIds(insertResult, itemRows.length);
                     const attrRows = [];
                     items.forEach((item, idx) => {
                         if (!item.attributes?.length)
@@ -750,22 +766,111 @@ let OrdersService = class OrdersService {
             };
         });
     }
-    async removeOrder(orderId) {
-        const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    async cancelOrderFully(orderId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
         if (!order)
-            throw new Error(`No se encontró la orden con ID ${orderId}`);
-        order.orderStatus = 'canceled';
-        await this.orderRepo.save(order);
+            throw new common_1.NotFoundException(`No se encontró la orden con ID ${orderId}`);
+        if (order.orderStatus === 'canceled') {
+            return {
+                success: true,
+                message: `Orden #${order.dailyOrderNumber ?? orderId} ya estaba cancelada`,
+                dailyOrderNumber: order.dailyOrderNumber,
+            };
+        }
+        if (order.orderStatus === 'completed') {
+            throw new common_1.BadRequestException('No se puede cancelar una orden ya completada. El inventario no se restaura en ventas finalizadas.');
+        }
+        order.items = this.deduplicateOrderItemsById(order.items);
+        const oldProductIds = [
+            ...new Set(order.items.map((i) => i.product?.id).filter((id) => id != null)),
+        ];
+        const invMapOld = oldProductIds.length
+            ? await this.productsService.getInventoryByProductIds(oldProductIds, {
+                includeAlsoDeductTargets: true,
+            })
+            : new Map();
+        const oldItemsForInv = order.items.map((i) => ({
+            productId: i.product.id,
+            attributes: (i.attributes || []).map((a) => ({
+                attributeName: a.attributeName,
+                attributeValue: a.attributeValue,
+            })),
+        }));
+        const oldCountByStockKey = this.buildInventoryCountByKey(oldItemsForInv, invMapOld);
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
+            const itemIds = order.items
+                .map((i) => i.id)
+                .filter((id) => id != null && Number.isInteger(id));
+            if (itemIds.length > 0) {
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_attribute_entity_1.OrderItemAttribute)
+                    .where('order_item_id IN (:...ids)', { ids: itemIds })
+                    .execute();
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_entity_1.OrderItem)
+                    .where('id IN (:...ids)', { ids: itemIds })
+                    .execute();
+            }
+            else {
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_attribute_entity_1.OrderItemAttribute)
+                    .where('order_item_id IN (SELECT id FROM ppp_order_items WHERE order_id = :orderId)', { orderId })
+                    .execute();
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_entity_1.OrderItem)
+                    .where('order_id = :orderId', { orderId })
+                    .execute();
+            }
+            await queryRunner.manager
+                .createQueryBuilder()
+                .delete()
+                .from(order_extra_entity_1.OrderExtra)
+                .where('order_id = :orderId', { orderId })
+                .execute();
+            await this.removeOrderFromTableGroupInTransaction(queryRunner.manager, orderId);
+            await queryRunner.manager.update(order_entity_1.Order, { id: orderId }, { orderStatus: 'canceled', tableGroupId: null, points: 0 });
+            await queryRunner.commitTransaction();
+        }
+        catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e;
+        }
+        finally {
+            await queryRunner.release();
+        }
         try {
             await this.pointsService.invalidatePointsForCanceledOrder(orderId);
         }
         catch {
         }
-        this.gateway.emitOrdersUpdates("deleted_order", order);
+        order.orderStatus = 'canceled';
+        order.tableGroupId = null;
+        order.items = [];
+        order.extras = [];
+        this.gateway.emitOrdersUpdates('deleted_order', order);
         return {
             success: true,
-            message: `Orden #${orderId} cancelada`,
+            message: `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
+            dailyOrderNumber: order.dailyOrderNumber,
         };
+    }
+    async removeOrder(orderId) {
+        return this.cancelOrderFully(orderId);
     }
     async updateOrderItems(orderId, dto) {
         const rawItems = dto.items ?? [];
@@ -773,17 +878,26 @@ let OrdersService = class OrdersService {
         const incomingCount = itemsToCreate.length;
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
-            relations: ['items', 'items.product', 'items.attributes'],
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
         });
         if (!order)
             throw new common_1.NotFoundException('No se encontró la orden');
+        if (['completed', 'canceled'].includes(order.orderStatus)) {
+            throw new common_1.BadRequestException('No se pueden modificar los ítems de una orden completada o cancelada');
+        }
         order.items = this.deduplicateOrderItemsById(order.items);
         const hasItems = itemsToCreate.length > 0;
-        const hasExtrasToAdd = dto.extrasToAdd?.length;
+        const hasExtrasToAdd = Boolean(dto.extrasToAdd?.length);
+        const hasExistingExtras = Boolean(order.extras?.length);
+        if (!hasItems && !hasExtrasToAdd && !hasExistingExtras) {
+            return this.cancelOrderFully(orderId);
+        }
         const oldProductIds = [...new Set(order.items.map((i) => i.product?.id).filter((id) => id != null))];
         const newProductIds = [...new Set(itemsToCreate.map((i) => i.productId))];
         const [invMapOld, invMapNew, productsForPrice] = await Promise.all([
-            oldProductIds.length ? this.productsService.getInventoryByProductIds(oldProductIds) : Promise.resolve(new Map()),
+            oldProductIds.length
+                ? this.productsService.getInventoryByProductIds(oldProductIds, { includeAlsoDeductTargets: true })
+                : Promise.resolve(new Map()),
             newProductIds.length
                 ? this.productsService.getInventoryByProductIds(newProductIds, { includeAlsoDeductTargets: true })
                 : Promise.resolve(new Map()),
@@ -839,21 +953,6 @@ let OrdersService = class OrdersService {
                     .where('order_id = :orderId', { orderId })
                     .execute();
             }
-            if (!hasItems && !hasExtrasToAdd) {
-                order.orderStatus = 'canceled';
-                await queryRunner.manager.save(order);
-                await queryRunner.commitTransaction();
-                try {
-                    await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-                }
-                catch {
-                }
-                this.gateway.emitOrdersUpdates("deleted_order", order);
-                return {
-                    success: true,
-                    message: `Orden #${orderId} cancelada porque no quedaron productos`,
-                };
-            }
             const wasPastCooking = ['cooked', 'packing', 'inDelivery', 'completed'].includes(order.orderStatus);
             if (wasPastCooking) {
                 order.orderStatus = 'cooking';
@@ -874,7 +973,7 @@ let OrdersService = class OrdersService {
                     };
                 });
                 const insertResult = await queryRunner.manager.insert(order_item_entity_1.OrderItem, itemRows);
-                const itemIds = insertResult.identifiers.map((x) => Number(x.id));
+                const itemIds = this.resolveBulkInsertIds(insertResult, itemRows.length);
                 createdItemsCount = itemIds.length;
                 createdItemIds.push(...itemIds);
                 const attrRows = [];
@@ -929,20 +1028,10 @@ let OrdersService = class OrdersService {
         finally {
             await queryRunner.release();
         }
-        let fullOrder = fullOrderInTx;
-        if (fullOrder?.items?.some((i) => !i.product)) {
-            const retryRunner = this.dataSource.createQueryRunner();
-            await retryRunner.connect();
-            try {
-                fullOrder = await retryRunner.manager.findOne(order_entity_1.Order, {
-                    where: { id: order.id },
-                    relations: ['items', 'items.product', 'items.attributes', 'extras'],
-                }) ?? fullOrder;
-            }
-            finally {
-                await retryRunner.release();
-            }
-        }
+        let fullOrder = (await this.orderRepo.findOne({
+            where: { id: order.id },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        })) ?? fullOrderInTx;
         if (fullOrder) {
             fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
             const allCodes = [];
@@ -965,7 +1054,7 @@ let OrdersService = class OrdersService {
         return {
             success: true,
             message: `Order #${fullOrder?.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
-            itemsCount: createdItemsCount || fullOrder?.items?.length || 0,
+            itemsCount: fullOrder?.items?.length ?? createdItemsCount,
             dtoCount: incomingCount,
         };
     }
@@ -1015,6 +1104,9 @@ let OrdersService = class OrdersService {
         });
         if (!order)
             throw new common_1.NotFoundException('Orden no encontrada o cancelada');
+        if (order.orderStatus === 'completed') {
+            throw new common_1.BadRequestException('No se pueden añadir adicionales a una orden completada');
+        }
         const extra = this.extraRepo.create({
             order: { id: orderId },
             title: dto.title,
@@ -1040,6 +1132,9 @@ let OrdersService = class OrdersService {
         });
         if (!extra || extra.order?.id !== orderId)
             throw new common_1.NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+        if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
+            throw new common_1.BadRequestException('No se pueden eliminar adicionales de una orden completada o cancelada');
+        }
         await this.extraRepo.remove(extra);
         const full = await this.orderRepo.findOne({
             where: { id: orderId },
@@ -1058,6 +1153,9 @@ let OrdersService = class OrdersService {
         });
         if (!extra || extra.order?.id !== orderId)
             throw new common_1.NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+        if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
+            throw new common_1.BadRequestException('No se pueden modificar adicionales de una orden completada o cancelada');
+        }
         if (dto.title !== undefined)
             extra.title = dto.title;
         if (dto.description !== undefined)
@@ -1120,7 +1218,19 @@ let OrdersService = class OrdersService {
                 completedOrderIds: ids,
             };
         }
-        const wasCanceled = dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled';
+        if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
+            return this.cancelOrderFully(orderId);
+        }
+        if (order.orderStatus === 'completed') {
+            if ((dto.orderStatus !== undefined && dto.orderStatus !== 'completed') ||
+                dto.orderType !== undefined ||
+                dto.deliveryFee !== undefined) {
+                throw new common_1.BadRequestException('No se puede modificar estado/tipo/domicilio de una orden ya completada');
+            }
+        }
+        if (order.orderStatus === 'canceled') {
+            throw new common_1.BadRequestException('No se puede modificar una orden cancelada');
+        }
         if (dto.customerName !== undefined)
             order.customerName = dto.customerName;
         if (dto.phone !== undefined)
@@ -1144,13 +1254,6 @@ let OrdersService = class OrdersService {
         await this.orderRepo.save(order);
         if (dto.orderStatus === 'cooked' || dto.orderStatus === 'packing') {
             await this.itemRepo.update({ order: { id: orderId }, kitchenPreparedAt: (0, typeorm_2.IsNull)() }, { kitchenPreparedAt: new Date() });
-        }
-        if (wasCanceled) {
-            try {
-                await this.pointsService.invalidatePointsForCanceledOrder(orderId);
-            }
-            catch {
-            }
         }
         const fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
