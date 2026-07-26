@@ -103,14 +103,19 @@ export class OrdersController {
   @Delete(':id')
   @ApiOperation({
     summary: 'Cancel an order',
-    description: 'Marks the order as canceled and notifies kitchen.',
+    description:
+      'Cancels the order and restores inventory. Use force=true to annul an already completed order (operational mistake).',
   })
   @ApiParam({ name: 'id', example: 15, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Order canceled successfully' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  async deleteOrder(@Param('id') id: string) {
+  async deleteOrder(
+    @Param('id') id: string,
+    @Query('force') force?: string,
+  ) {
     const orderId = parseInt(id, 10);
-    return this.orderService.removeOrder(orderId);
+    const forceCancel = force === '1' || force === 'true';
+    return this.orderService.removeOrder(orderId, forceCancel);
   }
 
   // -------------------------------------------------------------

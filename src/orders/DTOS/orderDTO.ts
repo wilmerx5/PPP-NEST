@@ -336,6 +336,14 @@ export class UpdateOrderGeneralDto {
   orderStatus?: OrderStatus;
 
   @ApiProperty({
+    description:
+      'Si true, permite anular una orden ya completada (orderStatus=canceled). Restaura inventario.',
+    example: true,
+    required: false,
+  })
+  forceCancel?: boolean;
+
+  @ApiProperty({
     description: 'Indica si la orden ya fue impresa.',
     example: true,
     required: false,

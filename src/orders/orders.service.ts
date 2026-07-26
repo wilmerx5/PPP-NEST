@@ -1014,12 +1014,18 @@ export class OrdersService {
   /**
    * Cancela una orden restaurando inventario, borrando ítems/extras,
    * limpiando vínculo de mesas e invalidando puntos. Emite deleted_order.
+   * @param force - Si true, permite cancelar órdenes ya completadas (error operativo).
+   *                Restaura inventario igual que una cancelación normal.
    */
-  private async cancelOrderFully(orderId: number): Promise<{
+  private async cancelOrderFully(
+    orderId: number,
+    options?: { force?: boolean },
+  ): Promise<{
     success: true;
     message: string;
     dailyOrderNumber?: number;
   }> {
+    const force = options?.force === true;
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
@@ -1034,11 +1040,13 @@ export class OrdersService {
       };
     }
 
-    if (order.orderStatus === 'completed') {
+    if (order.orderStatus === 'completed' && !force) {
       throw new BadRequestException(
-        'No se puede cancelar una orden ya completada. El inventario no se restaura en ventas finalizadas.',
+        'No se puede cancelar una orden ya completada sin confirmación. Usa force=true si fue un error (se restaurará inventario).',
       );
     }
+
+    const wasCompleted = order.orderStatus === 'completed';
 
     order.items = this.deduplicateOrderItemsById(order.items);
     const oldProductIds = [
@@ -1135,7 +1143,9 @@ export class OrdersService {
 
     return {
       success: true,
-      message: `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
+      message: wasCompleted
+        ? `Orden #${order.dailyOrderNumber ?? orderId} completada anulada (force). Inventario restaurado.`
+        : `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
       dailyOrderNumber: order.dailyOrderNumber,
     };
   }
@@ -1146,9 +1156,10 @@ export class OrdersService {
    * Notifica por WebSocket.
    *
    * @param orderId - ID de la orden a cancelar.
+   * @param force - Permite anular órdenes ya completadas (error operativo).
    */
-  async removeOrder(orderId: number) {
-    return this.cancelOrderFully(orderId);
+  async removeOrder(orderId: number, force = false) {
+    return this.cancelOrderFully(orderId, { force });
   }
 
   /**
@@ -1376,15 +1387,24 @@ export class OrdersService {
       const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
       fullOrder.points = recalculatedPoints;
 
-      void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints).catch((err) => {
+      const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+      void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
         process.stderr.write(`[updateOrderItems] finalize async failed: ${String(err)}\n`);
       });
+
+      return {
+        ...formatted,
+        success: true,
+        message: `Order #${fullOrder.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
+        itemsCount: fullOrder.items?.length ?? createdItemsCount,
+        dtoCount: incomingCount,
+      };
     }
 
     return {
       success: true,
-      message: `Order #${fullOrder?.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
-      itemsCount: fullOrder?.items?.length ?? createdItemsCount,
+      message: `Order #${order.dailyOrderNumber} updated successfully`,
+      itemsCount: createdItemsCount,
       dtoCount: incomingCount,
     };
   }
@@ -1393,7 +1413,11 @@ export class OrdersService {
    * Post-commit de updateOrderItems: puntos + emit WS.
    * No debe bloquear la respuesta HTTP.
    */
-  private async finalizeOrderAfterUpdate(fullOrder: Order, recalculatedPoints: number) {
+  private async finalizeOrderAfterUpdate(
+    fullOrder: Order,
+    recalculatedPoints: number,
+    formattedOrder?: any,
+  ) {
     await this.orderRepo.update({ id: fullOrder.id }, { points: recalculatedPoints });
     try {
       await this.pointsService.updatePointCodesForOrder(
@@ -1404,7 +1428,8 @@ export class OrdersService {
     } catch {
       // Don't fail order update if point code update fails
     }
-    const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+    const formatted =
+      formattedOrder ?? (await this.mapOrderToGroupedFormat(fullOrder));
     this.gateway.emitOrdersUpdates('updated_order_items', formatted);
   }
 
@@ -1599,7 +1624,7 @@ export class OrdersService {
 
     // Check if order is being canceled → ruta completa (inventario + ítems + extras + grupo)
     if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
-      return this.cancelOrderFully(orderId);
+      return this.cancelOrderFully(orderId, { force: dto.forceCancel === true });
     }
 
     // Órdenes completadas: no reabrir ni cambiar estado/tipo (evita restaurar stock luego)
@@ -1610,7 +1635,7 @@ export class OrdersService {
         dto.deliveryFee !== undefined
       ) {
         throw new BadRequestException(
-          'No se puede modificar estado/tipo/domicilio de una orden ya completada',
+          'No se puede modificar estado/tipo/domicilio de una orden ya completada. Para anularla envía orderStatus=canceled con forceCancel=true.',
         );
       }
     }
