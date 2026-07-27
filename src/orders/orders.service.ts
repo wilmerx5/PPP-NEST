@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { Between, IsNull, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
@@ -1192,6 +1192,17 @@ export class OrdersService {
     }
 
     order.items = this.deduplicateOrderItemsById(order.items);
+
+    const currentItemCount = order.items.length;
+    if (
+      dto.baseItemCount != null &&
+      Number.isFinite(Number(dto.baseItemCount)) &&
+      Number(dto.baseItemCount) !== currentItemCount
+    ) {
+      throw new ConflictException(
+        `La orden cambió en otro dispositivo o la pantalla estaba desactualizada (esperado ${dto.baseItemCount} ítems, ahora hay ${currentItemCount}). Recargá e intentá de nuevo.`,
+      );
+    }
 
     const hasItems = itemsToCreate.length > 0;
     const hasExtrasToAdd = Boolean(dto.extrasToAdd?.length);

@@ -267,6 +267,18 @@ export class UpdateOrderItemsDto {
   })
   @IsOptional()
   extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
+
+  @ApiProperty({
+    description:
+      'Cantidad de ítems (unidades) que el cliente vio en la orden ANTES de este cambio. Si no coincide con la DB, se rechaza (evita duplicar por caché stale / doble envío).',
+    required: false,
+    example: 3,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  baseItemCount?: number;
 }
 
 export class AddOrderExtraDto {
