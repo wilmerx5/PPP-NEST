@@ -24,9 +24,11 @@ import { AuthGuard } from '@nestjs/passport';
 
 import {
     AddOrderExtraDto,
+    AppendOrderItemsDto,
     ChangeTableDto,
     CreateOrderDto,
     LinkTablesDto,
+    RemoveOrderItemsDto,
     UpdateOrderExtraDto,
     UpdateOrderGeneralDto,
     UpdateOrderItemUnitPriceDto,
@@ -138,11 +140,37 @@ export class OrdersController {
     return this.orderService.updateOrderItemUnitPrice(orderId, dto);
   }
 
+  @Post(':id/items')
+  @ApiOperation({
+    summary: 'Append items to an order (delta)',
+    description:
+      'Adds ONLY the given items to the order without replacing existing ones. Prefer this over PATCH for "add product".',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: AppendOrderItemsDto })
+  @ApiResponse({ status: 201, description: 'Items appended; returns formatted order' })
+  async appendItems(@Param('id') id: string, @Body() dto: AppendOrderItemsDto) {
+    return this.orderService.appendOrderItems(parseInt(id, 10), dto);
+  }
+
+  @Delete(':id/items')
+  @ApiOperation({
+    summary: 'Remove items from an order (delta)',
+    description:
+      'Removes all units of a product, or a single unit by unitIndex. Does not require resending the rest of the order.',
+  })
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiBody({ type: RemoveOrderItemsDto })
+  @ApiResponse({ status: 200, description: 'Items removed; returns formatted order' })
+  async removeItems(@Param('id') id: string, @Body() dto: RemoveOrderItemsDto) {
+    return this.orderService.removeOrderItems(parseInt(id, 10), dto);
+  }
+
   @Patch(':id/items')
   @ApiOperation({
-    summary: 'Update the list of items in an order',
+    summary: 'Replace all items in an order',
     description:
-      'Replaces all items and attributes of the order. If items are empty, the order is canceled.',
+      'Full replace of items (legacy). Prefer POST/DELETE delta endpoints for add/remove. Still used for edit-variants.',
   })
   @ApiParam({ name: 'id', example: 15 })
   @ApiBody({ type: UpdateOrderItemsDto })

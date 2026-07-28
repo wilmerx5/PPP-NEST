@@ -281,6 +281,43 @@ export class UpdateOrderItemsDto {
   baseItemCount?: number;
 }
 
+/** Delta: solo ítems NUEVOS a añadir (no reemplaza la orden). */
+export class AppendOrderItemsDto {
+  @ApiProperty({
+    description: 'Ítems a añadir (una línea = una unidad). No enviar los que ya están en la orden.',
+    type: [UpdateOrderItemDto],
+  })
+  @IsArray()
+  items: UpdateOrderItemDto[];
+
+  @ApiProperty({
+    description: 'Adicionales a agregar a la orden (código 90).',
+    required: false,
+  })
+  @IsOptional()
+  extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
+}
+
+/** Delta: quitar unidades de un producto sin reenviar el resto de la orden. */
+export class RemoveOrderItemsDto {
+  @ApiProperty({ description: 'ID del producto a quitar.', example: 12 })
+  @Type(() => Number)
+  @IsNumber()
+  productId: number;
+
+  @ApiProperty({
+    description:
+      'Si se omite, quita TODAS las unidades de ese producto. Si se envía, quita solo la unidad N (0-based, orden por id ASC).',
+    required: false,
+    example: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitIndex?: number;
+}
+
 export class AddOrderExtraDto {
   @ApiProperty({ example: 'Plato extra', description: 'Título del adicional' })
   title: string;
