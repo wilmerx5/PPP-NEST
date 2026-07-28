@@ -912,7 +912,8 @@ export class OrdersService {
         );
         return mappedOrders;
       },
-      async () => [],
+      // Nunca devolver []: cocina interpreta éxito vacío y borra la pantalla.
+      // Mejor fallar para que el cliente conserve la lista en caché.
     );
   }
 
