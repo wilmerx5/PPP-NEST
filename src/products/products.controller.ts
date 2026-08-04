@@ -9,6 +9,7 @@ import {
   Post
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
@@ -19,6 +20,8 @@ import {
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 
 @ApiTags('Products')
 @Controller('products')
@@ -26,21 +29,24 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   // -------------------------------------------------------------
-  // CREATE PRODUCT
+  // CREATE PRODUCT — admin
   // -------------------------------------------------------------
   @Post()
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new product' })
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({
     status: 201,
-    description: 'Product created successfully (placeholder response)',
+    description: 'Product created successfully',
   })
+  @ApiResponse({ status: 409, description: 'Product code already exists' })
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
 
   // -------------------------------------------------------------
-  // GET ALL PRODUCTS
+  // GET ALL PRODUCTS — público (menú / checkout)
   // -------------------------------------------------------------
   @Get()
   @ApiOperation({
@@ -57,7 +63,7 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // GET ALL CATEGORIES
+  // GET ALL CATEGORIES — público
   // -------------------------------------------------------------
   @Get('categories/list')
   @ApiOperation({
@@ -73,7 +79,7 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // GET PRODUCTS GROUPED BY CATEGORY
+  // GET PRODUCTS GROUPED BY CATEGORY — público
   // -------------------------------------------------------------
   @Get('categories')
   @ApiOperation({
@@ -90,9 +96,11 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // CHECK PRODUCT BY CODE (exists + isActive, for order/mesas UX)
+  // CHECK PRODUCT BY CODE — staff (mesas/orders UX)
   // -------------------------------------------------------------
   @Get('check-code/:code')
+  @Auth(ValidRoles.admin, ValidRoles.ordersUser, ValidRoles.tableUser)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Check product by code',
     description: 'Returns whether a product exists and if it is active. Used when adding by code to show "producto desactivado" message.',
@@ -104,7 +112,7 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // GET ONE PRODUCT
+  // GET ONE PRODUCT — público
   // -------------------------------------------------------------
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by ID' })
@@ -126,9 +134,11 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // UPDATE PRODUCT
+  // UPDATE PRODUCT — admin
   // -------------------------------------------------------------
   @Patch(':id')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product by ID' })
   @ApiParam({ name: 'id', description: 'Product ID', example: 1 })
   @ApiBody({ type: UpdateProductDto })
@@ -145,9 +155,11 @@ export class ProductsController {
   }
 
   // -------------------------------------------------------------
-  // DELETE PRODUCT
+  // DELETE PRODUCT — admin
   // -------------------------------------------------------------
   @Delete(':id')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product by ID' })
   @ApiParam({ name: 'id', description: 'Product ID', example: 1 })
   @ApiResponse({

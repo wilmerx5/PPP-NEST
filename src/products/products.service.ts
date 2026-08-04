@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository, In, Not, IsNull } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -78,15 +78,97 @@ export class ProductsService {
   ) {}
 
   /**
-   * Create a new product.
-   * Currently returns a placeholder message.
-   *
-   * @param createProductDto - DTO containing product creation data.
-   * @returns {string} Confirmation message.
+   * Crea un producto con atributos, categorías y stock opcional.
    */
-  create(createProductDto: CreateProductDto) {
+  async create(createProductDto: CreateProductDto) {
+    const code = Math.floor(Number(createProductDto.code));
+    if (!Number.isFinite(code) || code < 1) {
+      throw new BadRequestException('El código del producto debe ser un entero ≥ 1');
+    }
+
+    const existing = await this.productRepo.findOne({
+      where: { code },
+      select: ['id', 'code'],
+    });
+    if (existing) {
+      throw new ConflictException(`Ya existe un producto con código ${code}`);
+    }
+
+    const attrs = (createProductDto.attributes ?? [])
+      .map((a) => ({
+        attributeName: (a.attributeName || '').trim(),
+        options: (a.options || []).map((o) => String(o).trim()).filter(Boolean),
+      }))
+      .filter((a) => a.attributeName && a.options.length > 0);
+
+    const hasAttributes =
+      createProductDto.hasAttributes === true || attrs.length > 0;
+
+    const product = this.productRepo.create({
+      name: createProductDto.name.trim(),
+      description: createProductDto.description?.trim() || undefined,
+      price: Number(createProductDto.price),
+      code,
+      imageUrl: createProductDto.imageUrl?.trim() || undefined,
+      hasAttributes,
+      isActive: createProductDto.isActive !== false,
+      trackInventory: createProductDto.trackInventory === true,
+      stock: Math.max(0, Math.floor(Number(createProductDto.stock) || 0)),
+    });
+
+    if (createProductDto.categoryIds?.length) {
+      product.categories = await this.categoryRepo.find({
+        where: { id: In(createProductDto.categoryIds) },
+      });
+    } else {
+      product.categories = [];
+    }
+
+    const saved = await this.productRepo.save(product);
+
+    if (attrs.length) {
+      const entities = attrs.map((a) => {
+        const attr = new ProductAttribute();
+        attr.attributeName = a.attributeName;
+        attr.options = JSON.stringify(a.options);
+        attr.product = saved;
+        return attr;
+      });
+      await this.attributeRepo.save(entities);
+    }
+
+    if (createProductDto.variantStocks?.length) {
+      for (const vs of createProductDto.variantStocks) {
+        if (vs.trackStock === false) continue;
+        if (vs.stocks?.length) {
+          await this.setVariantStocks(saved.id, vs.attributeName, vs.stocks);
+        }
+      }
+    }
+
     this.cache.invalidate('products:');
-    return 'This action adds a new product';
+
+    const created = await this.productRepo.findOne({
+      where: { id: saved.id },
+      relations: ['categories', 'attributes', 'variantStocks'],
+    });
+    if (!created) {
+      throw new NotFoundException(`No se encontró el producto creado (ID ${saved.id})`);
+    }
+
+    return {
+      ...created,
+      attributes: (created.attributes || []).map((attr) => ({
+        ...attr,
+        options: JSON.parse(attr.options || '[]'),
+      })),
+      variantStocks: (created.variantStocks || []).map((v) => ({
+        id: v.id,
+        attributeName: v.attributeName,
+        attributeValue: v.attributeValue,
+        stock: v.stock,
+      })),
+    };
   }
 
   /** Tipo de una selección para la API pública: nombre + lista de productos (ej. "Bebida" → 28, 37). */

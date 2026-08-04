@@ -2,4 +2,6 @@
 node_modules
 DB.txt
 .env
+.env.*
+!.env.example
 node_modules/

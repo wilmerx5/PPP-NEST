@@ -3,10 +3,21 @@ import {
   WebSocketServer,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { isAllowedCorsOrigin } from '../../common/cors-allowed';
+
+/** Rooms de staff. Los fronts se unen a la suya; emitimos a todas. */
+export const ORDER_STAFF_ROOMS = ['kitchen', 'orders', 'tables'] as const;
+export type OrderStaffRoom = (typeof ORDER_STAFF_ROOMS)[number];
+
+function isStaffRoom(room: unknown): room is OrderStaffRoom {
+  return (
+    typeof room === 'string' &&
+    (ORDER_STAFF_ROOMS as readonly string[]).includes(room)
+  );
+}
 
 @WebSocketGateway({
   cors: {
@@ -29,10 +40,17 @@ export class OrdersGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() room: string,
   ) {
+    if (!isStaffRoom(room)) {
+      return;
+    }
     client.join(room);
   }
 
+  /**
+   * Emite solo a rooms de staff (kitchen / orders / tables),
+   * no a todo el namespace (evita clientes ajenos).
+   */
   emitOrdersUpdates(action: string, order: any) {
-    this.server.emit(action, order); // aun envia a todos
+    this.server.to([...ORDER_STAFF_ROOMS]).emit(action, order);
   }
 }

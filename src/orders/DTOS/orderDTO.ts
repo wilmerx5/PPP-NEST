@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderSource, OrderStatus, OrderType } from "../entities/order.entity";
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemAttributeDto {
@@ -9,13 +19,28 @@ export class CreateOrderItemAttributeDto {
     description: 'Nombre del atributo seleccionable en el producto.',
     example: 'Salsa',
   })
+  @IsString()
   attributeName: string;
 
   @ApiProperty({
     description: 'Valor seleccionado para el atributo.',
     example: 'BBQ',
   })
+  @IsString()
   attributeValue: string;
+}
+
+export class AlsoDeductVariantDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  productId: number;
+
+  @ApiProperty({ type: [CreateOrderItemAttributeDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemAttributeDto)
+  attributes: CreateOrderItemAttributeDto[];
 }
 
 export class CreateOrderItemDto {
@@ -24,6 +49,8 @@ export class CreateOrderItemDto {
     description: 'ID del producto seleccionado.',
     example: 12,
   })
+  @Type(() => Number)
+  @IsNumber()
   productId: number;
 
   @ApiProperty({
@@ -31,6 +58,8 @@ export class CreateOrderItemDto {
     example: 'Bien tostado',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   note?: string;
 
   @ApiProperty({
@@ -38,10 +67,11 @@ export class CreateOrderItemDto {
     required: false,
     type: [CreateOrderItemAttributeDto],
   })
-  attributes?: {
-    attributeName: string;
-    attributeValue: string;
-  }[];
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemAttributeDto)
+  attributes?: CreateOrderItemAttributeDto[];
 
   /** Cuando este producto descontará de otro con variantes; indica de qué variante descontar (elegida al añadir). */
   @ApiProperty({
@@ -49,10 +79,9 @@ export class CreateOrderItemDto {
     required: false,
   })
   @IsOptional()
-  alsoDeductVariant?: {
-    productId: number;
-    attributes: { attributeName: string; attributeValue: string }[];
-  };
+  @ValidateNested()
+  @Type(() => AlsoDeductVariantDto)
+  alsoDeductVariant?: AlsoDeductVariantDto;
 
   /** Precio unitario con descuento (solo ppp-orders-front). Si se envía, se guarda en la orden en lugar del precio del producto. Inventario se descuenta igual. */
   @ApiProperty({ description: 'Precio unitario con descuento (opcional).', required: false, example: 15000 })
@@ -63,6 +92,28 @@ export class CreateOrderItemDto {
   unitPrice?: number;
 }
 
+export class CreateOrderExtraDto {
+  @ApiProperty({ example: 'Plato extra' })
+  @IsString()
+  title: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: 5000 })
+  @Type(() => Number)
+  @IsNumber()
+  amount: number;
+
+  @ApiProperty({ required: false, example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  quantity?: number;
+}
 
 export class CreateOrderDto {
 
@@ -70,18 +121,21 @@ export class CreateOrderDto {
     description: 'Nombre del cliente que realiza la orden.',
     example: 'Carlos Pérez',
   })
+  @IsString()
   customerName: string;
 
   @ApiProperty({
     description: 'Teléfono del cliente.',
     example: '+57 300 456 7890',
   })
+  @IsString()
   phone: string;
 
   @ApiProperty({
     description: 'Dirección del cliente.',
     example: 'Calle 123 #45-67, Bogotá',
   })
+  @IsString()
   address: string;
 
   @ApiProperty({
@@ -89,6 +143,7 @@ export class CreateOrderDto {
     required: false,
   })
   @IsOptional()
+  @IsString()
   customerEmail?: string;
 
   @ApiProperty({
@@ -125,25 +180,21 @@ export class CreateOrderDto {
     description: 'Lista de productos incluidos en la orden.',
     type: [CreateOrderItemDto],
   })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
 
   @ApiProperty({
     description: 'Adicionales o extras (código 90). Título, descripción opcional, monto, cantidad.',
-    type: 'array',
-    items: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', example: 'Plato extra' },
-        description: { type: 'string', example: 'Para llevar', nullable: true },
-        amount: { type: 'number', example: 5000 },
-        quantity: { type: 'number', example: 1, default: 1 },
-      },
-      required: ['title', 'amount'],
-    },
+    type: [CreateOrderExtraDto],
     required: false,
   })
   @IsOptional()
-  extras?: { title: string; description?: string; amount: number; quantity?: number }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderExtraDto)
+  extras?: CreateOrderExtraDto[];
 
   @ApiProperty({
     description: 'Código de premio de redención a aplicar (opcional).',
@@ -151,6 +202,7 @@ export class CreateOrderDto {
     required: false,
   })
   @IsOptional()
+  @IsString()
   redemptionCode?: string;
 
   @ApiProperty({
@@ -170,12 +222,14 @@ export class UpdateOrderItemAttributeDto {
     description: 'Nombre del atributo a modificar.',
     example: 'Bebida',
   })
+  @IsString()
   attributeName: string;
 
   @ApiProperty({
     description: 'Nuevo valor del atributo.',
     example: 'Gaseosa',
   })
+  @IsString()
   attributeValue: string;
 }
 
@@ -186,12 +240,17 @@ export class UpdateOrderItemDto {
     example: 3,
     required: false,
   })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   id?: number;
 
   @ApiProperty({
     description: 'ID del producto.',
     example: 14,
   })
+  @Type(() => Number)
+  @IsNumber()
   productId: number;
 
   @ApiProperty({
@@ -199,6 +258,10 @@ export class UpdateOrderItemDto {
     type: [UpdateOrderItemAttributeDto],
     required: false,
   })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateOrderItemAttributeDto)
   attributes?: UpdateOrderItemAttributeDto[];
 
   @ApiProperty({
@@ -206,20 +269,22 @@ export class UpdateOrderItemDto {
     example: 'Sin picante',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   note?: string;
 
   /** Si true, el ítem ya fue preparado por cocina (solo tiene sentido al añadir items a una orden ya en packing/cooked). */
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsBoolean()
   kitchenPrepared?: boolean;
 
   /** Cuando este producto descontará de otro con variantes; indica de qué variante descontar. */
   @ApiProperty({ required: false })
   @IsOptional()
-  alsoDeductVariant?: {
-    productId: number;
-    attributes: { attributeName: string; attributeValue: string }[];
-  };
+  @ValidateNested()
+  @Type(() => AlsoDeductVariantDto)
+  alsoDeductVariant?: AlsoDeductVariantDto;
 
   /** Precio unitario con descuento (solo ppp-orders-front). Si se envía, se usa en lugar del precio del producto. */
   @ApiProperty({ required: false, example: 15000 })
@@ -232,6 +297,7 @@ export class UpdateOrderItemDto {
 
 export class UpdateOrderItemUnitPriceDto {
   @ApiProperty({ description: 'ID del producto al que aplicar el precio unitario.' })
+  @Type(() => Number)
   @IsNumber()
   productId: number;
 
@@ -248,25 +314,21 @@ export class UpdateOrderItemsDto {
     description: 'Lista de items de la orden para reemplazar.',
     type: [UpdateOrderItemDto],
   })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateOrderItemDto)
   items: UpdateOrderItemDto[];
 
   @ApiProperty({
     description: 'Adicionales a agregar a la orden (código 90).',
-    type: 'array',
-    items: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        description: { type: 'string', nullable: true },
-        amount: { type: 'number' },
-        quantity: { type: 'number', default: 1 },
-      },
-      required: ['title', 'amount'],
-    },
+    type: [CreateOrderExtraDto],
     required: false,
   })
   @IsOptional()
-  extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderExtraDto)
+  extrasToAdd?: CreateOrderExtraDto[];
 
   @ApiProperty({
     description:
@@ -288,14 +350,20 @@ export class AppendOrderItemsDto {
     type: [UpdateOrderItemDto],
   })
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateOrderItemDto)
   items: UpdateOrderItemDto[];
 
   @ApiProperty({
     description: 'Adicionales a agregar a la orden (código 90).',
     required: false,
+    type: [CreateOrderExtraDto],
   })
   @IsOptional()
-  extrasToAdd?: { title: string; description?: string; amount: number; quantity?: number }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderExtraDto)
+  extrasToAdd?: CreateOrderExtraDto[];
 }
 
 /** Delta: quitar unidades de un producto sin reenviar el resto de la orden. */
@@ -320,29 +388,43 @@ export class RemoveOrderItemsDto {
 
 export class AddOrderExtraDto {
   @ApiProperty({ example: 'Plato extra', description: 'Título del adicional' })
+  @IsString()
   title: string;
   @ApiProperty({ example: 'Para llevar', required: false })
   @IsOptional()
+  @IsString()
   description?: string;
   @ApiProperty({ example: 5000 })
+  @Type(() => Number)
+  @IsNumber()
   amount: number;
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
   quantity?: number;
 }
 
 export class UpdateOrderExtraDto {
   @ApiProperty({ example: 'Plato extra', required: false })
   @IsOptional()
+  @IsString()
   title?: string;
   @ApiProperty({ example: 'Para llevar', required: false })
   @IsOptional()
+  @IsString()
   description?: string;
   @ApiProperty({ example: 5000, required: false })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   amount?: number;
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
   quantity?: number;
 }
 
@@ -353,6 +435,8 @@ export class UpdateOrderGeneralDto {
     example: 'Juan López',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   customerName?: string;
 
   @ApiProperty({
@@ -360,6 +444,8 @@ export class UpdateOrderGeneralDto {
     example: '+57 302 555 1234',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @ApiProperty({
@@ -367,6 +453,8 @@ export class UpdateOrderGeneralDto {
     example: 'Carrera 15 #100-25, Bogotá',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @ApiProperty({
@@ -375,6 +463,8 @@ export class UpdateOrderGeneralDto {
     enum: ['delivery', 'pickup', 'table', 'counter', 'rappi'],
     required: false,
   })
+  @IsOptional()
+  @IsEnum(['delivery', 'pickup', 'table', 'counter', 'rappi'])
   orderType?: OrderType;
 
   @ApiProperty({
@@ -382,6 +472,8 @@ export class UpdateOrderGeneralDto {
     example: 'completed',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   orderStatus?: OrderStatus;
 
   @ApiProperty({
@@ -390,6 +482,8 @@ export class UpdateOrderGeneralDto {
     example: true,
     required: false,
   })
+  @IsOptional()
+  @IsBoolean()
   forceCancel?: boolean;
 
   @ApiProperty({
@@ -397,9 +491,11 @@ export class UpdateOrderGeneralDto {
     example: true,
     required: false,
   })
+  @IsOptional()
+  @IsBoolean()
   printed?: boolean;
 
-    @ValidateIf((o) => o.orderType === 'delivery')
+  @ValidateIf((o) => o.orderType === 'delivery')
   @Type(() => Number)
   @IsNumber()
   @Min(0)

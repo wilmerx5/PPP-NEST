@@ -68,7 +68,12 @@ export class PaymentsController {
     const webhookSecret = this.configService.get<string>('MERCADO_PAGO_WEBHOOK_SECRET');
     
     if (!webhookSecret) {
-      return true; // Permitir en desarrollo sin validación
+      const nodeEnv = (this.configService.get<string>('NODE_ENV') || '').toLowerCase();
+      // Solo permitir bypass en desarrollo local; en prod/staging exigir secret
+      if (nodeEnv === 'production' || nodeEnv === 'prod' || nodeEnv === 'staging') {
+        return false;
+      }
+      return true;
     }
 
     const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];
