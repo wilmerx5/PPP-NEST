@@ -62,6 +62,12 @@ Añade la columna `is_active` a `ppp_products` para poder activar/desactivar pro
 
 ---
 
+## 021_index_user_points_order_id.sql
+
+Índice en `ppp_user_points.order_id` para que `GET /orders/daily` no recorra toda la tabla de puntos por cada orden del día.
+
+---
+
 ## 004_add_unit_price_to_order_items.sql
 
 Añade `unit_price` a `ppp_order_items` para guardar el **precio unitario en el momento del pedido**.

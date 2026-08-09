@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, MoreThanOrEqual, Repository } from 'typeorm';
-import { RestaurantSettings } from './entities/restaurant-settings.entity';
+import {
+  RestaurantSettings,
+  type DayHours,
+} from './entities/restaurant-settings.entity';
 import { HolidayClosure } from './entities/holiday-closure.entity';
 import {
   CreateHolidayClosureDto,
@@ -32,6 +35,7 @@ export type BusinessStatus = {
   weeklyClosedDays: number[];
   openTime: string;
   closeTime: string;
+  weeklyHours: DayHours[];
   upcomingClosures: Array<{
     id: number;
     closureDate: string;
@@ -63,20 +67,62 @@ export class BusinessService {
     row.weeklyClosedDays = [];
     row.openTime = '11:00';
     row.closeTime = '22:00';
+    row.weeklyHours = this.buildWeeklyHours([], '11:00', '22:00', null);
     return row;
   }
 
-  private normalizeSettings(row: RestaurantSettings): RestaurantSettings {
-    if (typeof row.weeklyClosedDays === 'string') {
+  private parseJsonField<T>(value: T | string | null | undefined, fallback: T): T {
+    if (typeof value === 'string') {
       try {
-        row.weeklyClosedDays = JSON.parse(row.weeklyClosedDays);
+        return JSON.parse(value) as T;
       } catch {
-        row.weeklyClosedDays = [];
+        return fallback;
       }
     }
-    if (!Array.isArray(row.weeklyClosedDays)) {
-      row.weeklyClosedDays = [];
+    return (value ?? fallback) as T;
+  }
+
+  private buildWeeklyHours(
+    closedDays: number[],
+    openTime: string,
+    closeTime: string,
+    stored: DayHours[] | null,
+  ): DayHours[] {
+    const byDay = new Map<number, DayHours>();
+    if (Array.isArray(stored)) {
+      for (const h of stored) {
+        const d = Number(h?.dayOfWeek);
+        if (d < 0 || d > 6) continue;
+        byDay.set(d, {
+          dayOfWeek: d,
+          closed: !!h.closed,
+          openTime: h.openTime || openTime,
+          closeTime: h.closeTime || closeTime,
+        });
+      }
     }
+    return [0, 1, 2, 3, 4, 5, 6].map(
+      (d) =>
+        byDay.get(d) ?? {
+          dayOfWeek: d,
+          closed: closedDays.includes(d),
+          openTime,
+          closeTime,
+        },
+    );
+  }
+
+  private normalizeSettings(row: RestaurantSettings): RestaurantSettings {
+    row.weeklyClosedDays = this.parseJsonField<number[]>(row.weeklyClosedDays as never, []);
+    if (!Array.isArray(row.weeklyClosedDays)) row.weeklyClosedDays = [];
+    row.weeklyHours = this.parseJsonField<DayHours[] | null>(row.weeklyHours as never, null);
+    row.weeklyHours = this.buildWeeklyHours(
+      row.weeklyClosedDays,
+      row.openTime || '11:00',
+      row.closeTime || '22:00',
+      row.weeklyHours,
+    );
+    row.weeklyClosedDays = row.weeklyHours.filter((h) => h.closed).map((h) => h.dayOfWeek);
     return row;
   }
 
@@ -93,6 +139,7 @@ export class BusinessService {
           weeklyClosedDays: [],
           openTime: '11:00',
           closeTime: '22:00',
+          weeklyHours: null,
         });
         try {
           row = await this.settingsRepo.save(row);
@@ -120,6 +167,26 @@ export class BusinessService {
     }
     if (dto.openTime !== undefined) row.openTime = dto.openTime;
     if (dto.closeTime !== undefined) row.closeTime = dto.closeTime;
+    if (dto.weeklyHours !== undefined) {
+      const hours = this.buildWeeklyHours(
+        row.weeklyClosedDays ?? [],
+        row.openTime || '11:00',
+        row.closeTime || '22:00',
+        dto.weeklyHours.map((h) => ({
+          dayOfWeek: h.dayOfWeek,
+          closed: !!h.closed,
+          openTime: h.openTime || row.openTime || '11:00',
+          closeTime: h.closeTime || row.closeTime || '22:00',
+        })),
+      );
+      row.weeklyHours = hours;
+      row.weeklyClosedDays = hours.filter((h) => h.closed).map((h) => h.dayOfWeek);
+      const sample = hours.find((h) => !h.closed);
+      if (sample) {
+        row.openTime = sample.openTime;
+        row.closeTime = sample.closeTime;
+      }
+    }
     const saved = await this.settingsRepo.save(row);
     this.settingsCache = { at: Date.now(), row: this.normalizeSettings(saved) };
     return saved;
@@ -176,7 +243,15 @@ export class BusinessService {
   async getStatus(): Promise<BusinessStatus> {
     const settings = await this.getSettings();
     const clock = getZonedClock(settings.timezone || DEFAULT_TZ);
-    const closedDays = settings.weeklyClosedDays ?? [];
+    const weeklyHours = this.buildWeeklyHours(
+      settings.weeklyClosedDays ?? [],
+      settings.openTime || '11:00',
+      settings.closeTime || '22:00',
+      settings.weeklyHours,
+    );
+    const todayHours =
+      weeklyHours.find((h) => h.dayOfWeek === clock.dayOfWeek) ?? weeklyHours[0];
+    const closedDays = weeklyHours.filter((h) => h.closed).map((h) => h.dayOfWeek);
     let upcoming: HolidayClosure[] = [];
     try {
       upcoming = await this.closuresRepo.find({
@@ -195,7 +270,7 @@ export class BusinessService {
     let subMessage: string | undefined;
     let holidayName: string | undefined;
 
-    if (closedDays.includes(clock.dayOfWeek)) {
+    if (todayHours.closed) {
       isOpen = false;
       reason = 'weekly_closed';
       message = 'Cerrado hoy';
@@ -215,13 +290,16 @@ export class BusinessService {
       }
     }
 
-    if (isOpen && !isWithinWindow(clock.minutes, settings.openTime, settings.closeTime)) {
+    if (
+      isOpen &&
+      !isWithinWindow(clock.minutes, todayHours.openTime, todayHours.closeTime)
+    ) {
       isOpen = false;
       reason = 'outside_hours';
       message = 'Cerrado ahora';
-      subMessage = `Horario: ${settings.openTime} – ${settings.closeTime}`;
+      subMessage = `Horario: ${todayHours.openTime} – ${todayHours.closeTime}`;
     } else if (isOpen) {
-      subMessage = `Cierra a las ${settings.closeTime}`;
+      subMessage = `Cierra a las ${todayHours.closeTime}`;
     }
 
     return {
@@ -234,8 +312,9 @@ export class BusinessService {
       date: clock.dateStr,
       dayOfWeek: clock.dayOfWeek,
       weeklyClosedDays: closedDays,
-      openTime: settings.openTime,
-      closeTime: settings.closeTime,
+      openTime: todayHours.openTime,
+      closeTime: todayHours.closeTime,
+      weeklyHours,
       upcomingClosures: upcoming.map((c) => ({
         id: c.id,
         closureDate: c.closureDate,

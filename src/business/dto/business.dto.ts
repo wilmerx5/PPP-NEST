@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayUnique,
   IsArray,
@@ -11,9 +12,32 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export class DayHoursDto {
+  @ApiProperty({ example: 1, description: '0=Domingo … 6=Sábado' })
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  dayOfWeek: number;
+
+  @ApiProperty({ example: false })
+  @IsBoolean()
+  closed: boolean;
+
+  @ApiProperty({ example: '11:00', required: false })
+  @IsOptional()
+  @Matches(HHMM, { message: 'openTime debe ser HH:mm' })
+  openTime?: string;
+
+  @ApiProperty({ example: '22:00', required: false })
+  @IsOptional()
+  @Matches(HHMM, { message: 'closeTime debe ser HH:mm' })
+  closeTime?: string;
+}
 
 export class UpdateRestaurantSettingsDto {
   @ApiProperty({ example: 'America/Bogota', required: false })
@@ -40,6 +64,13 @@ export class UpdateRestaurantSettingsDto {
   @IsOptional()
   @Matches(HHMM, { message: 'closeTime debe ser HH:mm' })
   closeTime?: string;
+
+  @ApiProperty({ type: [DayHoursDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DayHoursDto)
+  weeklyHours?: DayHoursDto[];
 }
 
 export class CreateHolidayClosureDto {

@@ -343,6 +343,27 @@ export class PointsService {
     return points.map(p => p.code);
   }
 
+  /** Una sola query para códigos de muchas órdenes (listado diario). */
+  async getPointCodesByOrderIds(orderIds: number[]): Promise<Map<number, string[]>> {
+    const map = new Map<number, string[]>();
+    const unique = [...new Set(orderIds.filter((id) => Number.isFinite(id)))];
+    for (const id of unique) map.set(id, []);
+    if (!unique.length) return map;
+
+    const points = await this.pointsRepo.find({
+      where: { orderId: In(unique) },
+      select: ['code', 'orderId'],
+    });
+
+    for (const p of points) {
+      if (p.orderId == null) continue;
+      const list = map.get(p.orderId);
+      if (list) list.push(p.code);
+      else map.set(p.orderId, [p.code]);
+    }
+    return map;
+  }
+
   /**
    * Updates point codes for an order when items change.
    * Regenerates codes if the number of points changed.

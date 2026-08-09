@@ -41,6 +41,7 @@ export class UserPoints {
     example: 125,
     nullable: true,
   })
+  @Index('idx_user_points_order_id')
   @Column({ name: 'order_id', type: 'int', nullable: true })
   orderId: number | null;
 

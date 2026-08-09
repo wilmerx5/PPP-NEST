@@ -903,26 +903,8 @@ export class OrdersService {
         if (orderType && ['table', 'delivery', 'pickup', 'counter', 'rappi'].includes(orderType)) {
           where.orderType = orderType;
         }
-        const orders = await this.orderRepo.find({
-          where,
-          relations: ['items', 'items.product', 'items.attributes', 'extras'],
-          order: { createdAt: 'DESC' },
-        });
-        const ordersWithPointCodes = await Promise.all(
-          orders.map(async (order) => {
-            const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-            const dbPoints = order.points;
-            const pointsValue = dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
-            return { order, pointCodes, pointsValue };
-          }),
-        );
-        const mappedOrders = await Promise.all(
-          ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-            const formatted = await this.mapOrderToGroupedFormat(order);
-            return { ...formatted, points: pointsValue, pointCodes };
-          }),
-        );
-        return mappedOrders;
+        const orders = await this.loadOrdersWithItemsAndExtras(where);
+        return this.mapOrdersWithPointCodes(orders);
       },
       // Nunca devolver []: cocina interpreta éxito vacío y borra la pantalla.
       // Mejor fallar para que el cliente conserve la lista en caché.
@@ -2360,7 +2342,59 @@ export class OrdersService {
     return out;
   }
 
-  private async mapOrderToGroupedFormat(order: Order): Promise<any> {
+  /**
+   * Evita el JOIN cartesiano items × attributes × extras del find() anidado.
+   */
+  private async loadOrdersWithItemsAndExtras(where: any): Promise<Order[]> {
+    const orders = await this.orderRepo.find({
+      where,
+      relations: ['extras'],
+      order: { createdAt: 'DESC' },
+    });
+    if (!orders.length) return orders;
+
+    const orderIds = orders.map((o) => o.id);
+    const items = await this.itemRepo.find({
+      where: { order: { id: In(orderIds) } },
+      relations: ['product', 'attributes', 'order'],
+    });
+
+    const byOrderId = new Map<number, OrderItem[]>();
+    for (const item of items) {
+      const oid = item.order?.id;
+      if (oid == null) continue;
+      const list = byOrderId.get(oid);
+      if (list) list.push(item);
+      else byOrderId.set(oid, [item]);
+    }
+
+    for (const order of orders) {
+      order.items = byOrderId.get(order.id) ?? [];
+    }
+    return orders;
+  }
+
+  private async mapOrdersWithPointCodes(orders: Order[]): Promise<any[]> {
+    if (!orders.length) return [];
+    const codesByOrderId = await this.pointsService.getPointCodesByOrderIds(
+      orders.map((o) => o.id),
+    );
+    return Promise.all(
+      orders.map(async (order) => {
+        const pointCodes = codesByOrderId.get(order.id) ?? [];
+        const dbPoints = order.points;
+        const pointsValue =
+          dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
+        const formatted = await this.mapOrderToGroupedFormat(order, pointCodes);
+        return { ...formatted, points: pointsValue, pointCodes };
+      }),
+    );
+  }
+
+  private async mapOrderToGroupedFormat(
+    order: Order,
+    preloadedPointCodes?: string[],
+  ): Promise<any> {
     const groupedItems: Record<number, any> = {};
     // Orden estable por id: el unitIndex del DELETE delta coincide con el índice en pantalla
     const items = this.deduplicateOrderItemsById(order.items).sort(
@@ -2404,7 +2438,9 @@ export class OrdersService {
     // Convert createdAt from UTC to Bogotá timezone ISO string
     const createdAtBogota = formatToBogotaISO(order.createdAt);
     
-    const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+    const pointCodes =
+      preloadedPointCodes ??
+      (await this.pointsService.getPointCodesByOrderId(order.id));
 
     const extrasList = (order as any).extras?.map((e: OrderExtra) => ({
       id: e.id,
@@ -2607,31 +2643,12 @@ export class OrdersService {
     const startUtc = new Date(startBogotaString);
     const endUtc = new Date(endBogotaString);
 
-    const orders = await this.orderRepo.find({
-      where: {
-        createdAt: Between(startUtc, endUtc),
-        orderStatus: Not('canceled'),
-      },
-      relations: ['items', 'items.product', 'items.attributes', 'extras'],
-      order: { createdAt: 'DESC' },
+    const orders = await this.loadOrdersWithItemsAndExtras({
+      createdAt: Between(startUtc, endUtc),
+      orderStatus: Not('canceled'),
     });
 
-    const ordersWithPointCodes = await Promise.all(
-      orders.map(async (order) => {
-        const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-        const pointsValue = order.points ?? pointCodes.length ?? 0;
-        return { order, pointCodes, pointsValue };
-      })
-    );
-
-    const mappedOrders = await Promise.all(
-      ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-        const formatted = await this.mapOrderToGroupedFormat(order);
-        return { ...formatted, points: pointsValue, pointCodes };
-      })
-    );
-
-    return mappedOrders;
+    return this.mapOrdersWithPointCodes(orders);
   }
 
   /**
