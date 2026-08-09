@@ -16,6 +16,7 @@ import { UserPoints } from '../auth/entities/user-points.entity';
 import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 import { ProductsService, type InventoryInfo } from '../products/products.service';
+import { BusinessService } from '../business/business.service';
 
 @Injectable()
 export class OrdersService {
@@ -57,6 +58,8 @@ export class OrdersService {
     private readonly pointsService: PointsService,
 
     private readonly productsService: ProductsService,
+
+    private readonly businessService: BusinessService,
 
     private readonly mailService: MailService,
 
@@ -533,6 +536,15 @@ export class OrdersService {
       throw new BadRequestException(
         'Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.',
       );
+    }
+
+    if (source === 'online') {
+      await this.businessService.assertAcceptingOnlineOrders();
+      if (hasItems && items.length > 0) {
+        await this.productsService.assertOnlineProductsAvailable(
+          items.map((i) => i.productId),
+        );
+      }
     }
 
     if (hasItems && items.length > 0) {

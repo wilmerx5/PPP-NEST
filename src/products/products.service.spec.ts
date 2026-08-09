@@ -9,8 +9,10 @@ import { InventoryGroup } from './entities/inventory-group.entity';
 import { InventoryGroupItem } from './entities/inventory-group-item.entity';
 import { InventorySelection } from './entities/inventory-selection.entity';
 import { InventorySelectionProduct } from './entities/inventory-selection-product.entity';
+import { ProductSchedule } from './entities/product-schedule.entity';
 import { CacheService } from 'src/common/cache/cache.service';
 import { CircuitBreakerService } from 'src/common/circuit-breaker/circuit-breaker.service';
+import { BusinessService } from 'src/business/business.service';
 
 const repoMock = () => ({
   find: jest.fn().mockResolvedValue([]),
@@ -43,8 +45,20 @@ describe('ProductsService', () => {
         { provide: getRepositoryToken(InventoryGroupItem), useValue: groupItemRepo },
         { provide: getRepositoryToken(InventorySelection), useValue: repoMock() },
         { provide: getRepositoryToken(InventorySelectionProduct), useValue: repoMock() },
+        { provide: getRepositoryToken(ProductSchedule), useValue: repoMock() },
         { provide: CacheService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), size: jest.fn() } },
         { provide: CircuitBreakerService, useValue: { execute: jest.fn(), getState: jest.fn() } },
+        {
+          provide: BusinessService,
+          useValue: {
+            getClock: jest.fn().mockResolvedValue({
+              timezone: 'America/Bogota',
+              dateStr: '2026-08-09',
+              dayOfWeek: 0,
+              minutes: 12 * 60,
+            }),
+          },
+        },
       ],
     }).compile();
 

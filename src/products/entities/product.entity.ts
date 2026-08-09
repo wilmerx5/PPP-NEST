@@ -11,6 +11,7 @@ import {
 import { Category } from './category.entity';
 import { ProductAttribute } from './product-attribute.entity';
 import { ProductVariantStock } from './product-variant-stock.entity';
+import { ProductSchedule } from './product-schedule.entity';
 
 @Entity('ppp_products')
 export class Product {
@@ -106,6 +107,16 @@ export class Product {
   })
   @OneToMany(() => ProductVariantStock, (vs) => vs.product, { cascade: true })
   variantStocks: ProductVariantStock[];
+
+  @ApiProperty({
+    description: 'Si true, solo se muestra/vende en los horarios de schedules.',
+    default: false,
+  })
+  @Column({ name: 'has_schedule', type: 'boolean', default: false })
+  hasSchedule: boolean;
+
+  @OneToMany(() => ProductSchedule, (s) => s.product, { cascade: true })
+  schedules: ProductSchedule[];
 
   // ------------------------------------------------------------------------
   // Categorías

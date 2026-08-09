@@ -28,6 +28,22 @@ export class UpdateVariantStockItemDto {
   stock: number;
 }
 
+export class UpdateProductScheduleDto {
+  @ApiProperty({ example: 1, description: '0=Domingo … 6=Sábado' })
+  @IsNumber()
+  dayOfWeek: number;
+
+  @ApiProperty({ required: false, example: '11:00' })
+  @IsOptional()
+  @IsString()
+  startTime?: string | null;
+
+  @ApiProperty({ required: false, example: '15:00' })
+  @IsOptional()
+  @IsString()
+  endTime?: string | null;
+}
+
 export class UpdateVariantStockAttributeDto {
   @ApiProperty({ example: 'Sabor', description: 'Nombre del atributo (ej. Sabor, Tamaño)' })
   @IsString()
@@ -129,4 +145,23 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   alsoDeductBaseUnits?: number | null;
+
+  @ApiProperty({
+    description: 'Si true, el producto solo está disponible en los días/horas de schedules.',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasSchedule?: boolean;
+
+  @ApiProperty({
+    description: 'Días/horas de disponibilidad (0=Domingo … 6=Sábado). start/end null = todo el día.',
+    required: false,
+    type: [UpdateProductScheduleDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateProductScheduleDto)
+  schedules?: UpdateProductScheduleDto[];
 }

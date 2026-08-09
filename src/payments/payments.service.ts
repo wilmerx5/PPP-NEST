@@ -10,6 +10,8 @@ import { OrdersService } from '../orders/orders.service';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
 import { MailService } from '../common/mail/mail.service';
 import { formatToBogotaISO } from '../common/utils/date.util';
+import { BusinessService } from '../business/business.service';
+import { ProductsService } from '../products/products.service';
 
 @Injectable()
 export class PaymentsService {
@@ -29,6 +31,8 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly moduleRef: ModuleRef,
     private readonly mailService: MailService,
+    private readonly businessService: BusinessService,
+    private readonly productsService: ProductsService,
   ) {
     try {
       const accessToken = this.configService.get<string>('MERCADO_PAGO_ACCESS_TOKEN');
@@ -72,6 +76,10 @@ export class PaymentsService {
     if (!this.client || !this.preference) {
       throw new BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
     }
+
+    await this.businessService.assertAcceptingOnlineOrders();
+    const productIds = (orderData.items ?? []).map((i) => i.productId);
+    await this.productsService.assertOnlineProductsAvailable(productIds);
 
     // URLs para Mercado Pago (webhooks y redirección)
     // Si hay URLs ngrok configuradas, usarlas para Mercado Pago (requiere HTTPS)

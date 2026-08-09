@@ -8,9 +8,11 @@ import { InventoryGroup } from './entities/inventory-group.entity';
 import { InventoryGroupItem } from './entities/inventory-group-item.entity';
 import { InventorySelection } from './entities/inventory-selection.entity';
 import { InventorySelectionProduct } from './entities/inventory-selection-product.entity';
+import { ProductSchedule } from './entities/product-schedule.entity';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { CommonModule } from '../common/common.module';
+import { BusinessModule } from '../business/business.module';
 
 @Module({
   controllers: [ProductsController],
@@ -24,8 +26,10 @@ import { CommonModule } from '../common/common.module';
       InventoryGroupItem,
       InventorySelection,
       InventorySelectionProduct,
+      ProductSchedule,
     ]),
     CommonModule,
+    BusinessModule,
   ],
   providers: [ProductsService],
   exports: [ProductsService],

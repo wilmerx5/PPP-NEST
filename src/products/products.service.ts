@@ -8,6 +8,9 @@ import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
 import { ProductAttribute } from './entities/product-attribute.entity';
 import { ProductVariantStock } from './entities/product-variant-stock.entity';
+import { ProductSchedule } from './entities/product-schedule.entity';
+import { BusinessService } from '../business/business.service';
+import { isProductOnSchedule } from '../business/business-clock';
 import { InventoryGroup } from './entities/inventory-group.entity';
 import { InventoryGroupItem } from './entities/inventory-group-item.entity';
 import { InventorySelection } from './entities/inventory-selection.entity';
@@ -73,9 +76,58 @@ export class ProductsService {
     @InjectRepository(InventorySelectionProduct)
     private readonly selectionProductRepo: Repository<InventorySelectionProduct>,
 
+    @InjectRepository(ProductSchedule)
+    private readonly scheduleRepo: Repository<ProductSchedule>,
+
     private readonly cache: CacheService,
     private readonly circuitBreaker: CircuitBreakerService,
+    private readonly businessService: BusinessService,
   ) {}
+
+  private mapSchedule(s: ProductSchedule) {
+    return {
+      id: s.id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime ?? null,
+      endTime: s.endTime ?? null,
+    };
+  }
+
+  private async replaceSchedules(
+    productId: number,
+    rows?: Array<{ dayOfWeek: number; startTime?: string | null; endTime?: string | null }>,
+  ) {
+    await this.scheduleRepo.delete({ productId });
+    if (!rows?.length) return;
+    const entities = rows
+      .filter((r) => r.dayOfWeek >= 0 && r.dayOfWeek <= 6)
+      .map((r) =>
+        this.scheduleRepo.create({
+          productId,
+          dayOfWeek: Math.floor(r.dayOfWeek),
+          startTime: r.startTime?.trim() || null,
+          endTime: r.endTime?.trim() || null,
+        }),
+      );
+    if (entities.length) await this.scheduleRepo.save(entities);
+  }
+
+  async assertOnlineProductsAvailable(productIds: number[]): Promise<void> {
+    const ids = [...new Set(productIds.filter((id) => Number.isFinite(id)))];
+    if (!ids.length) return;
+    const clock = await this.businessService.getClock();
+    const products = await this.productRepo.find({
+      where: { id: In(ids) },
+      relations: ['schedules'],
+    });
+    for (const p of products) {
+      if (!isProductOnSchedule(!!p.hasSchedule, p.schedules, clock)) {
+        throw new BadRequestException(
+          `El producto "${p.name}" no está disponible en este horario.`,
+        );
+      }
+    }
+  }
 
   /**
    * Crea un producto con atributos, categorías y stock opcional.
@@ -114,6 +166,7 @@ export class ProductsService {
       isActive: createProductDto.isActive !== false,
       trackInventory: createProductDto.trackInventory === true,
       stock: Math.max(0, Math.floor(Number(createProductDto.stock) || 0)),
+      hasSchedule: createProductDto.hasSchedule === true,
     });
 
     if (createProductDto.categoryIds?.length) {
@@ -146,11 +199,15 @@ export class ProductsService {
       }
     }
 
+    if (createProductDto.hasSchedule || createProductDto.schedules?.length) {
+      await this.replaceSchedules(saved.id, createProductDto.schedules);
+    }
+
     this.cache.invalidate('products:');
 
     const created = await this.productRepo.findOne({
       where: { id: saved.id },
-      relations: ['categories', 'attributes', 'variantStocks'],
+      relations: ['categories', 'attributes', 'variantStocks', 'schedules'],
     });
     if (!created) {
       throw new NotFoundException(`No se encontró el producto creado (ID ${saved.id})`);
@@ -162,6 +219,7 @@ export class ProductsService {
         ...attr,
         options: JSON.parse(attr.options || '[]'),
       })),
+      schedules: (created.schedules || []).map((s) => this.mapSchedule(s)),
       variantStocks: (created.variantStocks || []).map((v) => ({
         id: v.id,
         attributeName: v.attributeName,
@@ -314,7 +372,7 @@ export class ProductsService {
       async () => {
         const products = await this.productRepo.find({
           where: { isActive: true },
-          relations: ['categories', 'attributes'],
+          relations: ['categories', 'attributes', 'schedules'],
           order: { id: 'ASC' },
         });
         const productIds = products.map((p) => p.id);
@@ -327,6 +385,7 @@ export class ProductsService {
               ...attr,
               options: JSON.parse(attr.options),
             })),
+            schedules: (product.schedules || []).map((s) => this.mapSchedule(s)),
             ...(alsoDeductFrom?.length ? { alsoDeductFrom } : {}),
           };
         });
@@ -339,7 +398,11 @@ export class ProductsService {
       },
     );
 
-    return result || [];
+    const list = result || [];
+    const clock = await this.businessService.getClock();
+    return list.filter((p) =>
+      isProductOnSchedule(!!p.hasSchedule, p.schedules, clock),
+    );
   }
 
   async findAllCategories() {
@@ -384,7 +447,7 @@ export class ProductsService {
     const result = await this.circuitBreaker.execute(
       async () => {
         const categories = await this.categoryRepo.find({
-          relations: ['products', 'products.attributes'],
+          relations: ['products', 'products.attributes', 'products.schedules'],
           order: { id: 'ASC' },
         });
         const allProductIds = Array.from(
@@ -414,6 +477,8 @@ export class ProductsService {
                   price: product.price,
                   imageUrl: product.imageUrl,
                   hasAttributes: product.hasAttributes,
+                  hasSchedule: !!product.hasSchedule,
+                  schedules: (product.schedules || []).map((s) => this.mapSchedule(s)),
                   attributes: (product.attributes || [])
                     .filter((attr) => attr != null) // Filter out null attributes
                     .map((attr) => ({
@@ -433,7 +498,14 @@ export class ProductsService {
       },
     );
 
-    return result || [];
+    const grouped = result || [];
+    const clock = await this.businessService.getClock();
+    return grouped.map((cat) => ({
+      ...cat,
+      products: (cat.products || []).filter((p: any) =>
+        isProductOnSchedule(!!p.hasSchedule, p.schedules, clock),
+      ),
+    }));
   }
 
   /**
@@ -449,7 +521,7 @@ export class ProductsService {
    */
   async findAllForAdmin() {
     const products = await this.productRepo.find({
-      relations: ['categories', 'attributes', 'variantStocks'],
+      relations: ['categories', 'attributes', 'variantStocks', 'schedules'],
       order: { id: 'ASC' },
     });
     const productIds = products.map((p) => p.id);
@@ -497,6 +569,7 @@ export class ProductsService {
           ...attr,
           options: JSON.parse(attr.options || '[]'),
         })),
+        schedules: (product.schedules || []).map((s) => this.mapSchedule(s)),
         variantStocks: (product.variantStocks || []).map((vs) => {
           const variantGroup = groupByVariantKey.get(
             `${product.id}:${vs.attributeName}:${vs.attributeValue}`,
@@ -550,7 +623,7 @@ export class ProductsService {
   async findOne(id: number) {
     const product = await this.productRepo.findOne({
       where: { id },
-      relations: ['categories', 'attributes', 'variantStocks'],
+      relations: ['categories', 'attributes', 'variantStocks', 'schedules'],
     });
 
     if (!product) {
@@ -584,12 +657,17 @@ export class ProductsService {
       }
     }
 
+    const clock = await this.businessService.getClock();
+    const availableNow = isProductOnSchedule(!!product.hasSchedule, product.schedules, clock);
+
     return {
       ...product,
+      availableNow,
       attributes: product.attributes.map(attr => ({
         ...attr,
         options: JSON.parse(attr.options),
       })),
+      schedules: (product.schedules || []).map((s) => this.mapSchedule(s)),
       variantStocks: (product.variantStocks || []).map((vs) => {
         const variantGroup = variantGroupByKey.get(`${vs.attributeName}:${vs.attributeValue}`);
         return {
@@ -653,6 +731,9 @@ export class ProductsService {
     if (updateProductDto.alsoDeductBaseUnits !== undefined) {
       product.alsoDeductBaseUnits = updateProductDto.alsoDeductBaseUnits != null && Number(updateProductDto.alsoDeductBaseUnits) >= 0 ? updateProductDto.alsoDeductBaseUnits : null;
     }
+    if (updateProductDto.hasSchedule !== undefined) {
+      product.hasSchedule = updateProductDto.hasSchedule;
+    }
 
     // Update attributes if provided
     if (updateProductDto.attributes !== undefined) {
@@ -707,9 +788,18 @@ export class ProductsService {
       this.cache.invalidate('products:');
     }
 
+    if (updateProductDto.schedules !== undefined || updateProductDto.hasSchedule !== undefined) {
+      if (product.hasSchedule) {
+        await this.replaceSchedules(id, updateProductDto.schedules ?? []);
+      } else {
+        await this.replaceSchedules(id, []);
+      }
+      this.cache.invalidate('products:');
+    }
+
     const updated = await this.productRepo.findOne({
       where: { id },
-      relations: ['categories', 'attributes', 'variantStocks'],
+      relations: ['categories', 'attributes', 'variantStocks', 'schedules'],
     });
 
     if (!updated) {
@@ -718,6 +808,7 @@ export class ProductsService {
 
     return {
       ...updated,
+      schedules: (updated.schedules || []).map((s) => this.mapSchedule(s)),
       attributes: updated.attributes.map((attr) => ({
         ...attr,
         options: JSON.parse(attr.options),

@@ -24,6 +24,11 @@ import { UserPoints } from './entities/user-points.entity';
 import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
 import { ExpensesService } from '../expenses/expenses.service';
+import { BusinessService } from '../business/business.service';
+import {
+  CreateHolidayClosureDto,
+  UpdateRestaurantSettingsDto,
+} from '../business/dto/business.dto';
 import { getBogotaDateRange } from '../common/utils/date.util';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -37,6 +42,7 @@ export class AdminController {
     private readonly ordersService: OrdersService,
     private readonly productsService: ProductsService,
     private readonly expensesService: ExpensesService,
+    private readonly businessService: BusinessService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
@@ -892,6 +898,39 @@ export class AdminController {
       },
       net,
     };
+  }
+
+  @Get('business/settings')
+  @ApiOperation({ summary: 'Get restaurant hours / timezone (admin)' })
+  getBusinessSettings() {
+    return this.businessService.getSettings();
+  }
+
+  @Patch('business/settings')
+  @ApiOperation({ summary: 'Update restaurant timezone, weekly closed days and hours' })
+  updateBusinessSettings(@Body() dto: UpdateRestaurantSettingsDto) {
+    return this.businessService.updateSettings(dto);
+  }
+
+  @Get('business/closures')
+  @ApiOperation({ summary: 'List holiday closures (admin)' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  listBusinessClosures(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.businessService.listClosures(from, to);
+  }
+
+  @Post('business/closures')
+  @ApiOperation({ summary: 'Create a holiday / closed date' })
+  createBusinessClosure(@Body() dto: CreateHolidayClosureDto) {
+    return this.businessService.createClosure(dto);
+  }
+
+  @Delete('business/closures/:id')
+  @ApiOperation({ summary: 'Delete a holiday closure' })
+  async deleteBusinessClosure(@Param('id') id: string) {
+    await this.businessService.deleteClosure(parseInt(id, 10));
+    return { success: true };
   }
 
   @Get('points/leaderboard')

@@ -12,6 +12,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   UpdateProductAttributeDto,
+  UpdateProductScheduleDto,
   UpdateVariantStockAttributeDto,
 } from './update-product.dto';
 
@@ -87,4 +88,16 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => UpdateVariantStockAttributeDto)
   variantStocks?: UpdateVariantStockAttributeDto[];
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  hasSchedule?: boolean;
+
+  @ApiProperty({ type: [UpdateProductScheduleDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateProductScheduleDto)
+  schedules?: UpdateProductScheduleDto[];
 }
