@@ -43,9 +43,12 @@ export type BusinessStatus = {
 };
 
 const DEFAULT_TZ = 'America/Bogota';
+const SETTINGS_TTL_MS = 30_000;
 
 @Injectable()
 export class BusinessService {
+  private settingsCache: { at: number; row: RestaurantSettings } | null = null;
+
   constructor(
     @InjectRepository(RestaurantSettings)
     private readonly settingsRepo: Repository<RestaurantSettings>,
@@ -53,18 +56,17 @@ export class BusinessService {
     private readonly closuresRepo: Repository<HolidayClosure>,
   ) {}
 
-  async getSettings(): Promise<RestaurantSettings> {
-    let row = await this.settingsRepo.findOne({ where: { id: 1 } });
-    if (!row) {
-      row = this.settingsRepo.create({
-        id: 1,
-        timezone: DEFAULT_TZ,
-        weeklyClosedDays: [],
-        openTime: '11:00',
-        closeTime: '22:00',
-      });
-      row = await this.settingsRepo.save(row);
-    }
+  private fallbackSettings(): RestaurantSettings {
+    const row = new RestaurantSettings();
+    row.id = 1;
+    row.timezone = DEFAULT_TZ;
+    row.weeklyClosedDays = [];
+    row.openTime = '11:00';
+    row.closeTime = '22:00';
+    return row;
+  }
+
+  private normalizeSettings(row: RestaurantSettings): RestaurantSettings {
     if (typeof row.weeklyClosedDays === 'string') {
       try {
         row.weeklyClosedDays = JSON.parse(row.weeklyClosedDays);
@@ -78,6 +80,35 @@ export class BusinessService {
     return row;
   }
 
+  async getSettings(): Promise<RestaurantSettings> {
+    if (this.settingsCache && Date.now() - this.settingsCache.at < SETTINGS_TTL_MS) {
+      return this.settingsCache.row;
+    }
+    try {
+      let row = await this.settingsRepo.findOne({ where: { id: 1 } });
+      if (!row) {
+        row = this.settingsRepo.create({
+          id: 1,
+          timezone: DEFAULT_TZ,
+          weeklyClosedDays: [],
+          openTime: '11:00',
+          closeTime: '22:00',
+        });
+        try {
+          row = await this.settingsRepo.save(row);
+        } catch {
+          const again = await this.settingsRepo.findOne({ where: { id: 1 } });
+          row = again ?? row;
+        }
+      }
+      row = this.normalizeSettings(row);
+      this.settingsCache = { at: Date.now(), row };
+      return row;
+    } catch {
+      return this.fallbackSettings();
+    }
+  }
+
   async updateSettings(dto: UpdateRestaurantSettingsDto): Promise<RestaurantSettings> {
     const row = await this.getSettings();
     if (dto.timezone !== undefined) {
@@ -89,7 +120,9 @@ export class BusinessService {
     }
     if (dto.openTime !== undefined) row.openTime = dto.openTime;
     if (dto.closeTime !== undefined) row.closeTime = dto.closeTime;
-    return this.settingsRepo.save(row);
+    const saved = await this.settingsRepo.save(row);
+    this.settingsCache = { at: Date.now(), row: this.normalizeSettings(saved) };
+    return saved;
   }
 
   async listClosures(from?: string, to?: string): Promise<HolidayClosure[]> {
@@ -132,19 +165,28 @@ export class BusinessService {
   }
 
   async getClock(): Promise<ZonedClock> {
-    const settings = await this.getSettings();
-    return getZonedClock(settings.timezone);
+    try {
+      const settings = await this.getSettings();
+      return getZonedClock(settings.timezone || DEFAULT_TZ);
+    } catch {
+      return getZonedClock(DEFAULT_TZ);
+    }
   }
 
   async getStatus(): Promise<BusinessStatus> {
     const settings = await this.getSettings();
-    const clock = getZonedClock(settings.timezone);
+    const clock = getZonedClock(settings.timezone || DEFAULT_TZ);
     const closedDays = settings.weeklyClosedDays ?? [];
-    const upcoming = await this.closuresRepo.find({
-      where: { closureDate: MoreThanOrEqual(clock.dateStr) },
-      order: { closureDate: 'ASC' },
-      take: 20,
-    });
+    let upcoming: HolidayClosure[] = [];
+    try {
+      upcoming = await this.closuresRepo.find({
+        where: { closureDate: MoreThanOrEqual(clock.dateStr) },
+        order: { closureDate: 'ASC' },
+        take: 20,
+      });
+    } catch {
+      upcoming = [];
+    }
 
     const todayClosure = upcoming.find((c) => c.closureDate === clock.dateStr);
     let isOpen = true;

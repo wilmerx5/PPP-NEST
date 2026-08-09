@@ -10,7 +10,7 @@ import { ProductAttribute } from './entities/product-attribute.entity';
 import { ProductVariantStock } from './entities/product-variant-stock.entity';
 import { ProductSchedule } from './entities/product-schedule.entity';
 import { BusinessService } from '../business/business.service';
-import { isProductOnSchedule } from '../business/business-clock';
+import { getZonedClock, isProductOnSchedule, type ZonedClock } from '../business/business-clock';
 import { InventoryGroup } from './entities/inventory-group.entity';
 import { InventoryGroupItem } from './entities/inventory-group-item.entity';
 import { InventorySelection } from './entities/inventory-selection.entity';
@@ -110,6 +110,24 @@ export class ProductsService {
         }),
       );
     if (entities.length) await this.scheduleRepo.save(entities);
+  }
+
+  private async safeClock(): Promise<ZonedClock> {
+    try {
+      return await this.businessService.getClock();
+    } catch {
+      return getZonedClock('America/Bogota');
+    }
+  }
+
+  private async withAvailability<T extends { hasSchedule?: boolean; schedules?: unknown[] }>(
+    items: T[],
+  ): Promise<Array<T & { availableNow: boolean }>> {
+    const clock = await this.safeClock();
+    return items.map((p) => ({
+      ...p,
+      availableNow: isProductOnSchedule(!!p.hasSchedule, p.schedules as never, clock),
+    }));
   }
 
   async assertOnlineProductsAvailable(productIds: number[]): Promise<void> {
@@ -399,10 +417,7 @@ export class ProductsService {
     );
 
     const list = result || [];
-    const clock = await this.businessService.getClock();
-    return list.filter((p) =>
-      isProductOnSchedule(!!p.hasSchedule, p.schedules, clock),
-    );
+    return this.withAvailability(list);
   }
 
   async findAllCategories() {
@@ -499,12 +514,13 @@ export class ProductsService {
     );
 
     const grouped = result || [];
-    const clock = await this.businessService.getClock();
+    const clock = await this.safeClock();
     return grouped.map((cat) => ({
       ...cat,
-      products: (cat.products || []).filter((p: any) =>
-        isProductOnSchedule(!!p.hasSchedule, p.schedules, clock),
-      ),
+      products: (cat.products || []).map((p: any) => ({
+        ...p,
+        availableNow: isProductOnSchedule(!!p.hasSchedule, p.schedules, clock),
+      })),
     }));
   }
 
@@ -657,7 +673,7 @@ export class ProductsService {
       }
     }
 
-    const clock = await this.businessService.getClock();
+    const clock = await this.safeClock();
     const availableNow = isProductOnSchedule(!!product.hasSchedule, product.schedules, clock);
 
     return {
