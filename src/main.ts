@@ -42,6 +42,7 @@ async function bootstrap() {
   setupProcessHandlers();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.use(cookieParser());
 
   app.useGlobalFilters(new DbExceptionFilter());
   app.useGlobalInterceptors(new DbRetryInterceptor(), new RequestTimeoutInterceptor(30000));
@@ -79,10 +80,6 @@ app.enableCors({
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-
-   app.use(cookieParser());
-
-
 
   const port = Number(process.env.PORT) || 3000;
   const host = process.env.HOST || '0.0.0.0';
