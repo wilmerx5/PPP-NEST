@@ -13,10 +13,12 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { CommonModule } from '../common/common.module';
 import { BusinessModule } from '../business/business.module';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   controllers: [ProductsController],
   imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     TypeOrmModule.forFeature([
       Product,
       Category,

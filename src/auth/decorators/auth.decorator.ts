@@ -7,6 +7,8 @@ import { RoleProtected } from "./role-protected/role-protected.decorator";
 export function Auth(...roles:ValidRoles[]){
     return applyDecorators(
         RoleProtected(...roles),
-        UseGuards(AuthGuard(),UserRoleGuard)
+        // Nombre explícito: ProductsModule no puede importar AuthModule (ciclo).
+        // AuthGuard() sin nombre busca defaultStrategy del módulo → 500 Unknown strategy.
+        UseGuards(AuthGuard('jwt'), UserRoleGuard)
     )
 }

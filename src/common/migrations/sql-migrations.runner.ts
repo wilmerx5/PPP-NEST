@@ -36,6 +36,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   private async runAll() {
     // Siempre: columnas críticas del código actual (evita caída si olvidan el flag)
     await this.ensureClientRequestIdColumn();
+    await this.ensureProductScheduleSchema();
 
     if (!this.isEnabled()) {
       this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
@@ -138,6 +139,55 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       if (this.isIdempotentError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to ensure client_request_id: ${message}`);
+      throw err;
+    }
+  }
+
+  /** Horarios por producto: la entidad ya usa has_schedule + ppp_product_schedules. */
+  private async ensureProductScheduleSchema() {
+    try {
+      const col: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_products'
+           AND COLUMN_NAME = 'has_schedule'`,
+      );
+      if (Number(col?.[0]?.c) === 0) {
+        this.logger.warn('Missing column ppp_products.has_schedule — adding now');
+        await this.dataSource.query(`
+          ALTER TABLE ppp_products
+          ADD COLUMN has_schedule TINYINT(1) NOT NULL DEFAULT 0
+        `);
+        this.logger.log('✓ ppp_products.has_schedule ready');
+      }
+
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_product_schedules'`,
+      );
+      if (Number(table?.[0]?.c) === 0) {
+        this.logger.warn('Missing table ppp_product_schedules — creating now');
+        await this.dataSource.query(`
+          CREATE TABLE ppp_product_schedules (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            day_of_week TINYINT NOT NULL,
+            start_time VARCHAR(5) NULL,
+            end_time VARCHAR(5) NULL,
+            INDEX idx_product_schedules_product (product_id),
+            CONSTRAINT fk_product_schedules_product
+              FOREIGN KEY (product_id) REFERENCES ppp_products(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        this.logger.log('✓ ppp_product_schedules ready');
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure product schedule schema: ${message}`);
       throw err;
     }
   }
