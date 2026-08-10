@@ -52,6 +52,42 @@ export class DbExceptionFilter implements ExceptionFilter {
     this.logger.error(
       `[DB] ${code ?? 'unknown'} en ${req.method} ${req.url} – ${(exception as Error).message}`,
     );
+
+    const sqlMessage = String(driverError?.sqlMessage ?? (exception as Error).message ?? '');
+    const looksLikeMissingScheduleSchema =
+      /has_schedule|ppp_product_schedules/i.test(sqlMessage);
+
+    if (code === 'ER_NO_REFERENCED_ROW' || code === 'ER_NO_REFERENCED_ROW_2' || errno === 1452) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Referencia inválida (p. ej. producto relacionado inexistente).',
+        error: 'Solicitud incorrecta',
+      });
+      return;
+    }
+
+    if (code === 'ER_BAD_FIELD_ERROR' || errno === 1054) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: looksLikeMissingScheduleSchema
+          ? 'Falta la columna has_schedule. Ejecuta la migración 018_add_product_has_schedule.sql.'
+          : 'Falta una columna en la base de datos. Revisa migraciones pendientes.',
+        error: 'Error interno del servidor',
+      });
+      return;
+    }
+
+    if (code === 'ER_NO_SUCH_TABLE' || errno === 1146) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: looksLikeMissingScheduleSchema
+          ? 'Falta la tabla ppp_product_schedules. Ejecuta la migración 019_create_product_schedules.sql.'
+          : 'Falta una tabla en la base de datos. Revisa migraciones pendientes.',
+        error: 'Error interno del servidor',
+      });
+      return;
+    }
+
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Error de base de datos',

@@ -17,8 +17,15 @@ import { BusinessService } from 'src/business/business.service';
 const repoMock = () => ({
   find: jest.fn().mockResolvedValue([]),
   findOne: jest.fn(),
-  save: jest.fn(),
-  create: jest.fn(),
+  save: jest.fn(async (row: unknown) => row),
+  create: jest.fn((row: unknown) => row),
+  delete: jest.fn().mockResolvedValue({ affected: 1 }),
+  createQueryBuilder: jest.fn(() => ({
+    delete: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: 1 }),
+  })),
 });
 
 describe('ProductsService', () => {
@@ -27,26 +34,30 @@ describe('ProductsService', () => {
   let productRepo: ReturnType<typeof repoMock>;
   let variantStockRepo: ReturnType<typeof repoMock>;
   let groupRepo: ReturnType<typeof repoMock>;
+  let scheduleRepo: ReturnType<typeof repoMock>;
+  let attributeRepo: ReturnType<typeof repoMock>;
 
   beforeEach(async () => {
     groupItemRepo = repoMock();
     productRepo = repoMock();
     variantStockRepo = repoMock();
     groupRepo = repoMock();
+    scheduleRepo = repoMock();
+    attributeRepo = repoMock();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductsService,
         { provide: getRepositoryToken(Product), useValue: productRepo },
         { provide: getRepositoryToken(Category), useValue: repoMock() },
-        { provide: getRepositoryToken(ProductAttribute), useValue: repoMock() },
+        { provide: getRepositoryToken(ProductAttribute), useValue: attributeRepo },
         { provide: getRepositoryToken(ProductVariantStock), useValue: variantStockRepo },
         { provide: getRepositoryToken(InventoryGroup), useValue: groupRepo },
         { provide: getRepositoryToken(InventoryGroupItem), useValue: groupItemRepo },
         { provide: getRepositoryToken(InventorySelection), useValue: repoMock() },
         { provide: getRepositoryToken(InventorySelectionProduct), useValue: repoMock() },
-        { provide: getRepositoryToken(ProductSchedule), useValue: repoMock() },
-        { provide: CacheService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), size: jest.fn() } },
+        { provide: getRepositoryToken(ProductSchedule), useValue: scheduleRepo },
+        { provide: CacheService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), size: jest.fn(), invalidate: jest.fn() } },
         { provide: CircuitBreakerService, useValue: { execute: jest.fn(), getState: jest.fn() } },
         {
           provide: BusinessService,
@@ -118,6 +129,53 @@ describe('ProductsService', () => {
       expect(info.groupId).toBe(3);
       expect(info.groupStock).toBe(20);
       expect(info.groupBaseUnits).toBe(2);
+    });
+  });
+
+  describe('update', () => {
+    const baseProduct = {
+      id: 1,
+      name: 'Pollo',
+      description: '',
+      price: 10000,
+      hasAttributes: false,
+      trackInventory: false,
+      stock: 0,
+      hasSchedule: false,
+      alsoDeductProductId: null,
+      alsoDeductAttributeName: null,
+      alsoDeductAttributeValue: null,
+      alsoDeductBaseUnits: null,
+      attributes: [],
+      categories: [],
+      variantStocks: [],
+      schedules: [],
+    };
+
+    beforeEach(() => {
+      productRepo.findOne.mockResolvedValue({ ...baseProduct });
+    });
+
+    it('no toca horarios si el DTO no envía hasSchedule/schedules (p. ej. solo precio)', async () => {
+      await service.update(1, { price: 12000 } as any);
+      expect(scheduleRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(productRepo.save).toHaveBeenCalledWith(expect.objectContaining({ price: 12000, hasSchedule: false }));
+    });
+
+    it('alsoDeductProductId 0/null no guarda 0 (rompe FK → 500)', async () => {
+      await service.update(1, { alsoDeductProductId: 0 } as any);
+      expect(productRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ alsoDeductProductId: null }),
+      );
+    });
+
+    it('con hasSchedule guarda filas de horario', async () => {
+      await service.update(1, {
+        hasSchedule: true,
+        schedules: [{ dayOfWeek: 1, startTime: '11:00', endTime: '15:00' }],
+      } as any);
+      expect(scheduleRepo.createQueryBuilder).toHaveBeenCalled();
+      expect(scheduleRepo.save).toHaveBeenCalled();
     });
   });
 });

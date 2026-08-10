@@ -2,6 +2,28 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsNotEmpty, ValidateIf } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
+/** enableImplicitConversion convierte `null` → `0` en @IsNumber(); la FK also_deduct revienta (500). */
+function toNullableId(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '' || value === 0 || value === '0') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function toNullableNumber(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toOptionalBoolean(value: unknown): boolean | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (value === true || value === 1 || value === 'true' || value === '1') return true;
+  if (value === false || value === 0 || value === 'false' || value === '0') return false;
+  return undefined;
+}
+
 export class UpdateProductAttributeDto {
   @ApiProperty({ description: 'ID del atributo (opcional, para actualizar existente)', required: false })
   @IsOptional()
@@ -131,21 +153,27 @@ export class UpdateProductDto {
   /** También descontar de (productos que no están en grupos): ID del producto destino. */
   @ApiProperty({ required: false })
   @IsOptional()
+  @Transform(({ value }) => toNullableId(value))
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsNumber()
   alsoDeductProductId?: number | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
   alsoDeductAttributeName?: string | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
   alsoDeductAttributeValue?: string | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Transform(({ value }) => toNullableNumber(value))
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsNumber()
   alsoDeductBaseUnits?: number | null;
 
@@ -154,7 +182,8 @@ export class UpdateProductDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 1 || value === 'true' || value === '1')
+  @Transform(({ value }) => toOptionalBoolean(value))
+  @ValidateIf((_, v) => v !== undefined)
   @IsBoolean()
   hasSchedule?: boolean;
 

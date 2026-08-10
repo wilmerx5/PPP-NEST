@@ -84,6 +84,20 @@ export class ProductsService {
     private readonly businessService: BusinessService,
   ) {}
 
+  private parseAttrOptions(options: unknown): unknown[] {
+    if (Array.isArray(options)) return options;
+    if (options == null || options === '') return [];
+    if (typeof options === 'string') {
+      try {
+        const parsed = JSON.parse(options);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
   private mapSchedule(s: ProductSchedule) {
     return {
       id: s.id,
@@ -97,7 +111,12 @@ export class ProductsService {
     productId: number,
     rows?: Array<{ dayOfWeek: number; startTime?: string | null; endTime?: string | null }>,
   ) {
-    await this.scheduleRepo.delete({ productId });
+    await this.scheduleRepo
+      .createQueryBuilder()
+      .delete()
+      .from(ProductSchedule)
+      .where('product_id = :productId', { productId })
+      .execute();
     if (!rows?.length) return;
     const entities = rows
       .filter((r) => Number(r.dayOfWeek) >= 0 && Number(r.dayOfWeek) <= 6)
@@ -737,16 +756,21 @@ export class ProductsService {
       product.stock = Math.max(0, Math.floor(updateProductDto.stock));
     }
     if (updateProductDto.alsoDeductProductId !== undefined) {
-      product.alsoDeductProductId = updateProductDto.alsoDeductProductId ?? null;
+      const relatedId = Number(updateProductDto.alsoDeductProductId);
+      product.alsoDeductProductId = Number.isFinite(relatedId) && relatedId > 0 ? relatedId : null;
     }
     if (updateProductDto.alsoDeductAttributeName !== undefined) {
-      product.alsoDeductAttributeName = updateProductDto.alsoDeductAttributeName?.trim() ?? null;
+      const name = updateProductDto.alsoDeductAttributeName?.trim();
+      product.alsoDeductAttributeName = name || null;
     }
     if (updateProductDto.alsoDeductAttributeValue !== undefined) {
-      product.alsoDeductAttributeValue = updateProductDto.alsoDeductAttributeValue?.trim() ?? null;
+      const value = updateProductDto.alsoDeductAttributeValue?.trim();
+      product.alsoDeductAttributeValue = value || null;
     }
     if (updateProductDto.alsoDeductBaseUnits !== undefined) {
-      product.alsoDeductBaseUnits = updateProductDto.alsoDeductBaseUnits != null && Number(updateProductDto.alsoDeductBaseUnits) >= 0 ? updateProductDto.alsoDeductBaseUnits : null;
+      const units = Number(updateProductDto.alsoDeductBaseUnits);
+      product.alsoDeductBaseUnits =
+        updateProductDto.alsoDeductBaseUnits != null && Number.isFinite(units) && units >= 0 ? units : null;
     }
     if (updateProductDto.hasSchedule !== undefined) {
       product.hasSchedule = !!updateProductDto.hasSchedule;
@@ -807,7 +831,17 @@ export class ProductsService {
 
     if (updateProductDto.schedules !== undefined || updateProductDto.hasSchedule !== undefined) {
       const limited = !!product.hasSchedule;
-      await this.replaceSchedules(id, limited ? (updateProductDto.schedules ?? []) : []);
+      try {
+        await this.replaceSchedules(id, limited ? (updateProductDto.schedules ?? []) : []);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/ppp_product_schedules|has_schedule|ER_NO_SUCH_TABLE|ER_BAD_FIELD/i.test(msg)) {
+          throw new BadRequestException(
+            'Faltan migraciones de horarios (018 has_schedule / 019 ppp_product_schedules).',
+          );
+        }
+        throw err;
+      }
       this.cache.invalidate('products:');
     }
 
@@ -824,9 +858,9 @@ export class ProductsService {
       ...updated,
       hasSchedule: !!updated.hasSchedule,
       schedules: (updated.schedules || []).map((s) => this.mapSchedule(s)),
-      attributes: updated.attributes.map((attr) => ({
+      attributes: (updated.attributes || []).map((attr) => ({
         ...attr,
-        options: JSON.parse(attr.options),
+        options: this.parseAttrOptions(attr.options),
       })),
       variantStocks: (updated.variantStocks || []).map((v) => ({
         id: v.id,
