@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsNotEmpty, ValidateIf } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class UpdateProductAttributeDto {
   @ApiProperty({ description: 'ID del atributo (opcional, para actualizar existente)', required: false })
@@ -30,16 +30,19 @@ export class UpdateVariantStockItemDto {
 
 export class UpdateProductScheduleDto {
   @ApiProperty({ example: 1, description: '0=Domingo … 6=Sábado' })
+  @Type(() => Number)
   @IsNumber()
   dayOfWeek: number;
 
   @ApiProperty({ required: false, example: '11:00' })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsString()
   startTime?: string | null;
 
   @ApiProperty({ required: false, example: '15:00' })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsString()
   endTime?: string | null;
 }
@@ -151,6 +154,7 @@ export class UpdateProductDto {
     required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => value === true || value === 1 || value === 'true' || value === '1')
   @IsBoolean()
   hasSchedule?: boolean;
 

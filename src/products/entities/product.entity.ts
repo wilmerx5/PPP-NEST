@@ -115,7 +115,7 @@ export class Product {
   @Column({ name: 'has_schedule', type: 'boolean', default: false })
   hasSchedule: boolean;
 
-  @OneToMany(() => ProductSchedule, (s) => s.product, { cascade: true })
+  @OneToMany(() => ProductSchedule, (s) => s.product)
   schedules: ProductSchedule[];
 
   // ------------------------------------------------------------------------

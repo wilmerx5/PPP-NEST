@@ -100,13 +100,13 @@ export class ProductsService {
     await this.scheduleRepo.delete({ productId });
     if (!rows?.length) return;
     const entities = rows
-      .filter((r) => r.dayOfWeek >= 0 && r.dayOfWeek <= 6)
+      .filter((r) => Number(r.dayOfWeek) >= 0 && Number(r.dayOfWeek) <= 6)
       .map((r) =>
         this.scheduleRepo.create({
           productId,
-          dayOfWeek: Math.floor(r.dayOfWeek),
-          startTime: r.startTime?.trim() || null,
-          endTime: r.endTime?.trim() || null,
+          dayOfWeek: Math.floor(Number(r.dayOfWeek)),
+          startTime: r.startTime ? String(r.startTime).trim().slice(0, 5) : null,
+          endTime: r.endTime ? String(r.endTime).trim().slice(0, 5) : null,
         }),
       );
     if (entities.length) await this.scheduleRepo.save(entities);
@@ -581,6 +581,7 @@ export class ProductsService {
       const groupInfo = groupByProductId.get(product.id);
       return {
         ...product,
+        hasSchedule: !!product.hasSchedule,
         attributes: product.attributes.map((attr) => ({
           ...attr,
           options: JSON.parse(attr.options || '[]'),
@@ -748,7 +749,7 @@ export class ProductsService {
       product.alsoDeductBaseUnits = updateProductDto.alsoDeductBaseUnits != null && Number(updateProductDto.alsoDeductBaseUnits) >= 0 ? updateProductDto.alsoDeductBaseUnits : null;
     }
     if (updateProductDto.hasSchedule !== undefined) {
-      product.hasSchedule = updateProductDto.hasSchedule;
+      product.hasSchedule = !!updateProductDto.hasSchedule;
     }
 
     // Update attributes if provided
@@ -805,11 +806,8 @@ export class ProductsService {
     }
 
     if (updateProductDto.schedules !== undefined || updateProductDto.hasSchedule !== undefined) {
-      if (product.hasSchedule) {
-        await this.replaceSchedules(id, updateProductDto.schedules ?? []);
-      } else {
-        await this.replaceSchedules(id, []);
-      }
+      const limited = !!product.hasSchedule;
+      await this.replaceSchedules(id, limited ? (updateProductDto.schedules ?? []) : []);
       this.cache.invalidate('products:');
     }
 
@@ -824,6 +822,7 @@ export class ProductsService {
 
     return {
       ...updated,
+      hasSchedule: !!updated.hasSchedule,
       schedules: (updated.schedules || []).map((s) => this.mapSchedule(s)),
       attributes: updated.attributes.map((attr) => ({
         ...attr,
