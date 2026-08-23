@@ -70,6 +70,8 @@ export declare class WhatsappOrchestratorService {
     private formatCartLineLabel;
     private matchCartItemsForRemoval;
     private removeCartLines;
+    private isAbandonPendingSelectionIntent;
+    private tryAbandonPendingSelection;
     private tryHandleCartModification;
     private isCancelIntent;
     private formatOrderStatusLabel;
