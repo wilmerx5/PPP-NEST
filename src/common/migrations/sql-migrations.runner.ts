@@ -210,6 +210,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
         );
         await this.ensureWhatsappSettingsColumns();
         await this.ensureWhatsappMessageColumns();
+        await this.ensureWhatsappConversationColumns();
         return;
       }
       this.logger.warn('Missing WhatsApp tables — creating now (022_whatsapp_module)');
@@ -280,6 +281,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       `);
       await this.ensureWhatsappSettingsColumns();
       await this.ensureWhatsappMessageColumns();
+      await this.ensureWhatsappConversationColumns();
       this.logger.log('✓ WhatsApp schema ready');
     } catch (err: unknown) {
       if (this.isIdempotentError(err)) return;
@@ -309,6 +311,27 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       { name: 'prep_time_note', ddl: 'VARCHAR(255) NULL' },
       { name: 'delivery_time_note', ddl: 'VARCHAR(255) NULL' },
       { name: 'min_order_amount', ddl: 'INT NOT NULL DEFAULT 0' },
+      { name: 'max_order_amount', ddl: 'INT NOT NULL DEFAULT 0' },
+      { name: 'max_units_per_item', ddl: 'INT NOT NULL DEFAULT 10' },
+      { name: 'max_total_units', ddl: 'INT NOT NULL DEFAULT 0' },
+      { name: 'max_cart_lines', ddl: 'INT NOT NULL DEFAULT 0' },
+      { name: 'handoff_when_max_exceeded', ddl: 'TINYINT(1) NOT NULL DEFAULT 1' },
+      { name: 'large_order_handoff_message', ddl: 'TEXT NULL' },
+      { name: 'allergens_note', ddl: 'TEXT NULL' },
+      { name: 'promotions_note', ddl: 'TEXT NULL' },
+      { name: 'service_area_note', ddl: 'TEXT NULL' },
+      { name: 'cash_change_note', ddl: 'TEXT NULL' },
+      { name: 'transfer_info_note', ddl: 'TEXT NULL' },
+      { name: 'special_requests_note', ddl: 'TEXT NULL' },
+      { name: 'ask_order_notes', ddl: 'TINYINT(1) NOT NULL DEFAULT 1' },
+      { name: 'rate_limit_per_minute', ddl: 'INT NOT NULL DEFAULT 25' },
+      { name: 'human_agent_idle_minutes', ddl: 'INT NOT NULL DEFAULT 30' },
+      { name: 'human_client_idle_minutes', ddl: 'INT NOT NULL DEFAULT 120' },
+      { name: 'order_draft_idle_minutes', ddl: 'INT NOT NULL DEFAULT 45' },
+      { name: 'pending_choice_idle_minutes', ddl: 'INT NOT NULL DEFAULT 15' },
+      { name: 'mp_payment_idle_minutes', ddl: 'INT NOT NULL DEFAULT 60' },
+      { name: 'session_idle_notify', ddl: 'TINYINT(1) NOT NULL DEFAULT 1' },
+      { name: 'app_secret', ddl: 'TEXT NULL' },
       { name: 'payment_instructions', ddl: 'TEXT NULL' },
       { name: 'hours_note', ddl: 'TEXT NULL' },
       { name: 'cancel_policy_note', ddl: 'TEXT NULL' },
@@ -363,6 +386,58 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
         `ALTER TABLE ppp_whatsapp_messages ADD COLUMN ${col.name} ${col.ddl}`,
       );
       this.logger.log(`✓ WhatsApp messages column added: ${col.name}`);
+    }
+
+    // Índice único para dedupe de webhooks Meta (varios NULL permitidos en MySQL)
+    const idx: { c: number }[] = await this.dataSource.query(
+      `SELECT COUNT(*) AS c
+       FROM information_schema.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'ppp_whatsapp_messages'
+         AND INDEX_NAME = 'uq_whatsapp_wa_message_id'`,
+    );
+    if (Number(idx?.[0]?.c) === 0) {
+      try {
+        await this.dataSource.query(
+          `ALTER TABLE ppp_whatsapp_messages
+           ADD UNIQUE INDEX uq_whatsapp_wa_message_id (wa_message_id)`,
+        );
+        this.logger.log('✓ WhatsApp messages unique index: uq_whatsapp_wa_message_id');
+      } catch (err) {
+        this.logger.warn(
+          `No se pudo crear uq_whatsapp_wa_message_id (puede haber duplicados previos): ${String(err)}`,
+        );
+      }
+    }
+  }
+
+  private async ensureWhatsappConversationColumns() {
+    const table: { c: number }[] = await this.dataSource.query(
+      `SELECT COUNT(*) AS c
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'ppp_whatsapp_conversations'`,
+    );
+    if (Number(table?.[0]?.c) === 0) return;
+
+    const cols: Array<{ name: string; ddl: string }> = [
+      { name: 'human_takeover_at', ddl: 'TIMESTAMP NULL' },
+      { name: 'last_human_outbound_at', ddl: 'TIMESTAMP NULL' },
+    ];
+    for (const col of cols) {
+      const exists: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_whatsapp_conversations'
+           AND COLUMN_NAME = ?`,
+        [col.name],
+      );
+      if (Number(exists?.[0]?.c) > 0) continue;
+      await this.dataSource.query(
+        `ALTER TABLE ppp_whatsapp_conversations ADD COLUMN ${col.name} ${col.ddl}`,
+      );
+      this.logger.log(`✓ WhatsApp conversations column added: ${col.name}`);
     }
   }
 

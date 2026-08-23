@@ -20,6 +20,10 @@ export class WhatsappSettings {
   @Column({ name: 'access_token', type: 'text', nullable: true })
   accessToken: string | null;
 
+  /** App Secret de Meta (firma X-Hub-Signature-256). */
+  @Column({ name: 'app_secret', type: 'text', nullable: true })
+  appSecret: string | null;
+
   @Column({ name: 'verify_token', type: 'varchar', length: 128, nullable: true })
   verifyToken: string | null;
 
@@ -93,6 +97,81 @@ export class WhatsappSettings {
 
   @Column({ name: 'min_order_amount', type: 'int', default: 0 })
   minOrderAmount: number;
+
+  /** 0 = sin tope. Si el carrito lo supera → handoff a humano (si handoffWhenMaxExceeded). */
+  @Column({ name: 'max_order_amount', type: 'int', default: 0 })
+  maxOrderAmount: number;
+
+  /** Máx. unidades del mismo producto (0 = sin límite). */
+  @Column({ name: 'max_units_per_item', type: 'int', default: 10 })
+  maxUnitsPerItem: number;
+
+  /** Máx. unidades totales en el carrito (0 = sin límite). */
+  @Column({ name: 'max_total_units', type: 'int', default: 0 })
+  maxTotalUnits: number;
+
+  /** Máx. líneas / ítems en el carrito (0 = sin límite). */
+  @Column({ name: 'max_cart_lines', type: 'int', default: 0 })
+  maxCartLines: number;
+
+  @Column({ name: 'handoff_when_max_exceeded', type: 'boolean', default: true })
+  handoffWhenMaxExceeded: boolean;
+
+  @Column({ name: 'large_order_handoff_message', type: 'text', nullable: true })
+  largeOrderHandoffMessage: string | null;
+
+  @Column({ name: 'allergens_note', type: 'text', nullable: true })
+  allergensNote: string | null;
+
+  @Column({ name: 'promotions_note', type: 'text', nullable: true })
+  promotionsNote: string | null;
+
+  @Column({ name: 'service_area_note', type: 'text', nullable: true })
+  serviceAreaNote: string | null;
+
+  @Column({ name: 'cash_change_note', type: 'text', nullable: true })
+  cashChangeNote: string | null;
+
+  @Column({ name: 'transfer_info_note', type: 'text', nullable: true })
+  transferInfoNote: string | null;
+
+  @Column({ name: 'special_requests_note', type: 'text', nullable: true })
+  specialRequestsNote: string | null;
+
+  /** Pedir notas / cambio antes de confirmar (default true). */
+  @Column({ name: 'ask_order_notes', type: 'boolean', default: true })
+  askOrderNotes: boolean;
+
+  /** Máx. mensajes entrantes por número / minuto (anti-abuso). */
+  @Column({ name: 'rate_limit_per_minute', type: 'int', default: 25 })
+  rateLimitPerMinute: number;
+
+  /**
+   * Timeouts (minutos). 0 = desactivado.
+   * Agente en takeover sin responder → devolver bot (mantiene carrito).
+   */
+  @Column({ name: 'human_agent_idle_minutes', type: 'int', default: 30 })
+  humanAgentIdleMinutes: number;
+
+  /** Cliente sin responder con humano al mando → liberar + soft reset. */
+  @Column({ name: 'human_client_idle_minutes', type: 'int', default: 120 })
+  humanClientIdleMinutes: number;
+
+  /** Pedido a medias sin actividad del cliente → vaciar carrito. */
+  @Column({ name: 'order_draft_idle_minutes', type: 'int', default: 45 })
+  orderDraftIdleMinutes: number;
+
+  /** Elección de opción / match pendiente sin respuesta. */
+  @Column({ name: 'pending_choice_idle_minutes', type: 'int', default: 15 })
+  pendingChoiceIdleMinutes: number;
+
+  /** Link MP enviado y sin pago / sin actividad. */
+  @Column({ name: 'mp_payment_idle_minutes', type: 'int', default: 60 })
+  mpPaymentIdleMinutes: number;
+
+  /** Avisar por WhatsApp al expirar / devolver bot. */
+  @Column({ name: 'session_idle_notify', type: 'boolean', default: true })
+  sessionIdleNotify: boolean;
 
   @Column({ name: 'payment_instructions', type: 'text', nullable: true })
   paymentInstructions: string | null;

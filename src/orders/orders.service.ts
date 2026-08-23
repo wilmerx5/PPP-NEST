@@ -538,7 +538,7 @@ export class OrdersService {
       );
     }
 
-    // Horario: solo pedidos web (online). WhatsApp puede saltarse con WHATSAPP_IGNORE_BUSINESS_HOURS (default true en pruebas).
+    // Horario: web siempre valida; WhatsApp solo si Admin no tiene "Ignorar horario"
     if (source === 'online') {
       await this.businessService.assertAcceptingOnlineOrders();
       if (hasItems && items.length > 0) {
@@ -547,11 +547,12 @@ export class OrdersService {
         );
       }
     } else if (source === 'whatsapp') {
-      // Productos con horario propio: aún se validan salvo bypass global de WhatsApp
-      const ignoreHours = (process.env.WHATSAPP_IGNORE_BUSINESS_HOURS ?? 'true')
-        .trim()
-        .toLowerCase();
-      const bypass = ignoreHours !== 'false' && ignoreHours !== '0' && ignoreHours !== 'no';
+      // Horario: solo el checkbox Admin → WhatsApp IA → "Ignorar horario"
+      const waSettings: { ignore_business_hours?: number | boolean }[] =
+        await this.dataSource.query(
+          `SELECT ignore_business_hours FROM ppp_whatsapp_settings WHERE id = 1 LIMIT 1`,
+        );
+      const bypass = !!waSettings?.[0]?.ignore_business_hours;
       if (!bypass) {
         await this.businessService.assertAcceptingOnlineOrders();
         if (hasItems && items.length > 0) {

@@ -41,7 +41,10 @@ function setupProcessHandlers() {
 async function bootstrap() {
   setupProcessHandlers();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody: necesario para verificar X-Hub-Signature-256 del webhook WhatsApp (Meta)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.use(cookieParser());
 
   app.useGlobalFilters(new DbExceptionFilter());

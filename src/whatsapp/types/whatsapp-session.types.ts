@@ -40,12 +40,25 @@ export type WhatsappSessionData = {
   orderType: 'delivery' | 'pickup';
   address?: string;
   paymentMethod?: 'cash' | 'mercadopago';
+  /** Con cuánto paga / billete (contraentrega) */
+  cashChangeFor?: string;
+  /** Notas para cocina / domicilio */
+  customerNotes?: string;
+  /** Ya preguntamos notas/cambio (o dijo ninguno) */
+  notesCollected?: boolean;
+  /** Preference MP (para recuperar tras pago) */
+  mpPreferenceId?: string;
+  /**
+   * Tras completar/cerrar un pedido: el historial habla del carrito anterior;
+   * la IA no debe re-agregar esos productos salvo que el cliente los pida de nuevo.
+   */
+  ignorePriorOrderHistory?: boolean;
   pendingMatch?: {
     query: string;
     candidates: WhatsappProductCandidate[];
   };
   pendingAttribute?: WhatsappPendingAttribute;
-  awaitingField?: 'name' | 'address' | 'payment' | 'confirm';
+  awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
   linkedUserId?: string | null;
   linkedUserName?: string | null;
 };
@@ -56,6 +69,7 @@ export type WhatsappConversationState =
   | 'awaiting_name'
   | 'awaiting_address'
   | 'awaiting_payment'
+  | 'awaiting_notes'
   | 'awaiting_final_confirm'
   | 'confirming'
   | 'awaiting_mp_payment'
@@ -81,6 +95,8 @@ export type AiOrderAction = {
   setAddress?: string;
   setOrderType?: 'delivery' | 'pickup';
   setPaymentMethod?: 'cash' | 'mercadopago';
+  setCashChangeFor?: string;
+  setCustomerNotes?: string;
   requestConfirm?: boolean;
   requestHuman?: boolean;
   clearCart?: boolean;

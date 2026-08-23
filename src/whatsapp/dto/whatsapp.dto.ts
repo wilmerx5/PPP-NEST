@@ -36,6 +36,10 @@ export class UpdateWhatsappSettingsDto {
 
   @IsOptional()
   @IsString()
+  appSecret?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(128)
   verifyToken?: string;
 
@@ -146,6 +150,112 @@ export class UpdateWhatsappSettingsDto {
   @IsInt()
   @Min(0)
   minOrderAmount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxOrderAmount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxUnitsPerItem?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxTotalUnits?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxCartLines?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  handoffWhenMaxExceeded?: boolean;
+
+  @IsOptional()
+  @IsString()
+  largeOrderHandoffMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  allergensNote?: string;
+
+  @IsOptional()
+  @IsString()
+  promotionsNote?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceAreaNote?: string;
+
+  @IsOptional()
+  @IsString()
+  cashChangeNote?: string;
+
+  @IsOptional()
+  @IsString()
+  transferInfoNote?: string;
+
+  @IsOptional()
+  @IsString()
+  specialRequestsNote?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  askOrderNotes?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(120)
+  rateLimitPerMinute?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(24 * 60)
+  humanAgentIdleMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(24 * 60)
+  humanClientIdleMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(24 * 60)
+  orderDraftIdleMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(24 * 60)
+  pendingChoiceIdleMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(24 * 60)
+  mpPaymentIdleMinutes?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  sessionIdleNotify?: boolean;
 
   @IsOptional()
   @IsString()

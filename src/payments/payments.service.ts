@@ -72,12 +72,20 @@ export class PaymentsService {
       email: string;
       phone?: string;
     },
+    options?: {
+      channel?: 'online' | 'whatsapp';
+      conversationId?: number;
+      waId?: string;
+      bypassOnlineHours?: boolean;
+    },
   ) {
     if (!this.client || !this.preference) {
       throw new BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
     }
 
-    await this.businessService.assertAcceptingOnlineOrders();
+    if (!options?.bypassOnlineHours) {
+      await this.businessService.assertAcceptingOnlineOrders();
+    }
     const productIds = (orderData.items ?? []).map((i) => i.productId);
     await this.productsService.assertOnlineProductsAvailable(productIds);
 
@@ -224,6 +232,9 @@ export class PaymentsService {
       metadata: {
         // Guardamos los datos de la orden para crearla después del pago
         order_data: orderData,
+        ...(options?.channel && { channel: options.channel }),
+        ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+        ...(options?.waId && { wa_id: options.waId }),
       },
     };
 
@@ -310,6 +321,9 @@ export class PaymentsService {
             order_data: orderData, // Guardamos los datos de la orden para crearla después
             external_reference: preferenceData.external_reference,
             customer_email: customerInfo.email, // Email del usuario logueado (MP en sandbox devuelve test_user@testuser.com)
+            ...(options?.channel && { channel: options.channel }),
+            ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+            ...(options?.waId && { wa_id: options.waId }),
           }),
         });
 
@@ -359,6 +373,9 @@ export class PaymentsService {
               order_data: orderData,
               external_reference: preferenceData.external_reference,
               customer_email: customerInfo.email,
+              ...(options?.channel && { channel: options.channel }),
+              ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+              ...(options?.waId && { wa_id: options.waId }),
             }),
           });
 
@@ -521,10 +538,16 @@ export class PaymentsService {
             this.ordersService = this.moduleRef.get(OrdersService, { strict: false });
           }
 
+          const isWhatsapp =
+            metadataObj.channel === 'whatsapp' ||
+            metadataObj.order_data?.orderSource === 'whatsapp';
+
           const orderDataWithEmail = {
             ...metadataObj.order_data,
-            customerEmail: metadataObj.customer_email || null,
-            orderSource: 'online' as const,
+            customerEmail: isWhatsapp
+              ? metadataObj.customer_email || metadataObj.order_data?.customerEmail || null
+              : metadataObj.customer_email || null,
+            orderSource: isWhatsapp ? ('whatsapp' as const) : ('online' as const),
             // Misma clave si MP reenvía el webhook del mismo pago
             clientRequestId: `mp-pay-${locked.paymentId || locked.id}`.slice(0, 64),
           };
@@ -548,8 +571,24 @@ export class PaymentsService {
             }
           }
 
+          if (isWhatsapp) {
+            const conversationId = Number(metadataObj.conversation_id);
+            const waId = String(metadataObj.wa_id || '');
+            if (conversationId && waId) {
+              void this.notifyWhatsappPaymentSuccess({
+                conversationId,
+                waId,
+                orderId: orderResponse.orderId,
+              });
+            } else {
+              this.logger.warn(
+                `[webhook] Pago WhatsApp sin conversation_id/wa_id (order #${orderResponse.orderId})`,
+              );
+            }
+          }
+
           const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
-          if (emailTo) {
+          if (emailTo && !String(emailTo).endsWith('@whatsapp.ppp.local')) {
             shouldSendEmail = true;
             emailContext = {
               orderId: orderResponse.orderId,
@@ -755,5 +794,28 @@ export class PaymentsService {
         orderStatus: payment.order?.orderStatus,
       } : null,
     };
+  }
+
+  private async notifyWhatsappPaymentSuccess(params: {
+    conversationId: number;
+    waId: string;
+    orderId: number;
+  }) {
+    try {
+      const { WhatsappOrchestratorService } = await import(
+        '../whatsapp/whatsapp-orchestrator.service'
+      );
+      const orch = this.moduleRef.get(WhatsappOrchestratorService, { strict: false });
+      if (!orch?.completeAfterMercadoPagoPayment) {
+        this.logger.warn('[webhook] WhatsappOrchestratorService no disponible para notificar pago');
+        return;
+      }
+      await orch.completeAfterMercadoPagoPayment(params);
+    } catch (err) {
+      this.logger.error(
+        `[webhook] No se pudo notificar WhatsApp tras pago order=#${params.orderId}`,
+        err,
+      );
+    }
   }
 }

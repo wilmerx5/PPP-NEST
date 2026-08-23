@@ -38,6 +38,16 @@ export class WhatsappConversationService {
 
   async touchInbound(conv: WhatsappConversation) {
     conv.lastInboundAt = new Date();
+    conv.lastMessageAt = new Date();
+    return this.convRepo.save(conv);
+  }
+
+  async touchOutbound(conv: WhatsappConversation, kind: 'bot' | 'human' = 'bot') {
+    const now = new Date();
+    conv.lastMessageAt = now;
+    if (kind === 'human') {
+      conv.lastHumanOutboundAt = now;
+    }
     return this.convRepo.save(conv);
   }
 
@@ -91,6 +101,38 @@ export class WhatsappConversationService {
     return conv;
   }
 
+  /**
+   * Limpia carrito y checkout por completo (post-pedido / reopen / reinicio).
+   * Conserva solo vínculo de usuario web.
+   */
+  async resetOrderSession(
+    conv: WhatsappConversation,
+    state: string,
+    opts?: { ignorePriorHistory?: boolean },
+  ): Promise<WhatsappConversation> {
+    const current = this.getSession(conv);
+    const next: WhatsappSessionData = {
+      cart: [],
+      orderType: 'delivery',
+      linkedUserId: current.linkedUserId ?? null,
+      linkedUserName: current.linkedUserName ?? null,
+      ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
+    };
+    // Asignación directa: no mergear con el carrito viejo
+    conv.sessionData = next;
+    conv.state = state;
+    conv.lastMessageAt = new Date();
+    const saved = await this.convRepo.save(conv);
+    const fresh = await this.convRepo.findOne({ where: { id: saved.id } });
+    if (fresh) {
+      conv.sessionData = fresh.sessionData;
+      conv.state = fresh.state;
+      conv.customerName = fresh.customerName;
+      conv.humanTakeover = fresh.humanTakeover;
+    }
+    return conv;
+  }
+
   async reloadConversation(id: number): Promise<WhatsappConversation> {
     const conv = await this.convRepo.findOne({ where: { id } });
     if (!conv) throw new NotFoundException('Conversación no encontrada');
@@ -99,6 +141,12 @@ export class WhatsappConversationService {
 
   async countInboundMessages(conversationId: number): Promise<number> {
     return this.msgRepo.count({ where: { conversationId, direction: 'in' } });
+  }
+
+  async findByWaMessageId(waMessageId: string): Promise<WhatsappMessage | null> {
+    const id = (waMessageId || '').trim();
+    if (!id) return null;
+    return this.msgRepo.findOne({ where: { waMessageId: id } });
   }
 
   async logMessage(params: {
@@ -112,18 +160,31 @@ export class WhatsappConversationService {
     mediaId?: string;
     mimeType?: string;
   }) {
-    const msg = this.msgRepo.create({
-      conversationId: params.conversationId,
-      direction: params.direction,
-      body: params.body,
-      waMessageId: params.waMessageId ?? null,
-      sentBy: params.sentBy ?? (params.direction === 'in' ? 'bot' : 'bot'),
-      rawPayload: params.raw ?? null,
-      messageType: params.messageType || 'text',
-      mediaId: params.mediaId ?? null,
-      mimeType: params.mimeType ?? null,
-    });
-    return this.msgRepo.save(msg);
+    if (params.waMessageId) {
+      const existing = await this.findByWaMessageId(params.waMessageId);
+      if (existing) return existing;
+    }
+    try {
+      const msg = this.msgRepo.create({
+        conversationId: params.conversationId,
+        direction: params.direction,
+        body: params.body,
+        waMessageId: params.waMessageId ?? null,
+        sentBy: params.sentBy ?? (params.direction === 'in' ? 'bot' : 'bot'),
+        rawPayload: params.raw ?? null,
+        messageType: params.messageType || 'text',
+        mediaId: params.mediaId ?? null,
+        mimeType: params.mimeType ?? null,
+      });
+      return await this.msgRepo.save(msg);
+    } catch (err: unknown) {
+      // Carrera de dedupe: unique wa_message_id
+      if (params.waMessageId) {
+        const again = await this.findByWaMessageId(params.waMessageId);
+        if (again) return again;
+      }
+      throw err;
+    }
   }
 
   async updateMessageBody(messageId: string, body: string) {
@@ -218,11 +279,17 @@ export class WhatsappConversationService {
   ) {
     const conv = await this.convRepo.findOne({ where: { id } });
     if (!conv) throw new NotFoundException('Conversación no encontrada');
+    const now = new Date();
     conv.humanTakeover = takeover;
     conv.humanAgentId = takeover && agent ? agent.id : null;
     conv.humanAgentName = takeover && agent ? agent.fullName : null;
-    if (takeover && conv.state === 'closed') {
-      conv.state = 'building_cart';
+    if (takeover) {
+      conv.humanTakeoverAt = now;
+      // Si el agente acaba de tomar el chat, cuenta como actividad
+      conv.lastHumanOutboundAt = now;
+      if (conv.state === 'closed') conv.state = 'building_cart';
+    } else {
+      conv.humanTakeoverAt = null;
     }
     return this.convRepo.save(conv);
   }
@@ -234,31 +301,133 @@ export class WhatsappConversationService {
     conv.humanTakeover = false;
     conv.humanAgentId = null;
     conv.humanAgentName = null;
+    conv.humanTakeoverAt = null;
     conv.sessionData = {
-      ...this.getSession(conv),
       cart: [],
-      pendingMatch: undefined,
-      pendingAttribute: undefined,
-      address: undefined,
-      paymentMethod: undefined,
-    } as WhatsappSessionData;
+      orderType: 'delivery',
+      linkedUserId: this.getSession(conv).linkedUserId ?? null,
+      linkedUserName: this.getSession(conv).linkedUserName ?? null,
+      ignorePriorOrderHistory: true,
+    };
     return this.convRepo.save(conv);
+  }
+
+  /** Libera takeover sin tocar el carrito (bot retoma). */
+  async releaseHumanTakeover(id: number) {
+    return this.setHumanTakeover(id, false);
+  }
+
+  /** Limpia solo pendingMatch / pendingAttribute. */
+  async clearPendingChoices(conv: WhatsappConversation) {
+    const session = this.getSession(conv);
+    return this.saveSession(
+      conv,
+      {
+        ...session,
+        pendingMatch: undefined,
+        pendingAttribute: undefined,
+      },
+      conv.state === 'awaiting_attribute' ? 'building_cart' : conv.state,
+    );
+  }
+
+  /**
+   * Conversaciones con takeover donde el agente no escribe hace `minutes`.
+   * Usa COALESCE(last_human_outbound_at, human_takeover_at).
+   */
+  async findAgentIdleTakeovers(minutes: number, limit = 50): Promise<WhatsappConversation[]> {
+    if (minutes <= 0) return [];
+    return this.convRepo
+      .createQueryBuilder('c')
+      .where('c.humanTakeover = 1')
+      .andWhere(
+        'COALESCE(c.lastHumanOutboundAt, c.humanTakeoverAt, c.updatedAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        { m: minutes },
+      )
+      .orderBy('c.updatedAt', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
+  /** Takeover + cliente sin inbound hace `minutes`. */
+  async findClientIdleTakeovers(minutes: number, limit = 50): Promise<WhatsappConversation[]> {
+    if (minutes <= 0) return [];
+    return this.convRepo
+      .createQueryBuilder('c')
+      .where('c.humanTakeover = 1')
+      .andWhere(
+        'COALESCE(c.lastInboundAt, c.humanTakeoverAt, c.createdAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        { m: minutes },
+      )
+      .orderBy('c.updatedAt', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
+  /** Pedidos a medias (sin humano) sin actividad. */
+  async findIdleOrderDrafts(minutes: number, limit = 50): Promise<WhatsappConversation[]> {
+    if (minutes <= 0) return [];
+    const states = [
+      'building_cart',
+      'awaiting_name',
+      'awaiting_address',
+      'awaiting_payment',
+      'awaiting_notes',
+      'awaiting_final_confirm',
+      'confirming',
+    ];
+    return this.convRepo
+      .createQueryBuilder('c')
+      .where('c.humanTakeover = 0')
+      .andWhere('c.state IN (:...states)', { states })
+      .andWhere(
+        'COALESCE(c.lastInboundAt, c.lastMessageAt, c.updatedAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        { m: minutes },
+      )
+      .orderBy('c.updatedAt', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
+  async findIdlePendingChoices(minutes: number, limit = 50): Promise<WhatsappConversation[]> {
+    if (minutes <= 0) return [];
+    return this.convRepo
+      .createQueryBuilder('c')
+      .where('c.humanTakeover = 0')
+      .andWhere(
+        `(c.state = :attr
+          OR JSON_EXTRACT(c.session_data, '$.pendingMatch') IS NOT NULL
+          OR JSON_EXTRACT(c.session_data, '$.pendingAttribute') IS NOT NULL)`,
+        { attr: 'awaiting_attribute' },
+      )
+      .andWhere(
+        'COALESCE(c.lastInboundAt, c.lastMessageAt, c.updatedAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        { m: minutes },
+      )
+      .orderBy('c.updatedAt', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
+  async findIdleMpPayments(minutes: number, limit = 50): Promise<WhatsappConversation[]> {
+    if (minutes <= 0) return [];
+    return this.convRepo
+      .createQueryBuilder('c')
+      .where('c.humanTakeover = 0')
+      .andWhere('c.state = :st', { st: 'awaiting_mp_payment' })
+      .andWhere(
+        'COALESCE(c.lastInboundAt, c.lastMessageAt, c.updatedAt) < DATE_SUB(NOW(), INTERVAL :m MINUTE)',
+        { m: minutes },
+      )
+      .orderBy('c.updatedAt', 'ASC')
+      .take(limit)
+      .getMany();
   }
 
   /** Segundo pedido / reabrir: mismo chat por número, estado fresco. */
   async reopenForNewOrder(conv: WhatsappConversation) {
     if (conv.state !== 'completed' && conv.state !== 'closed') return conv;
-    return this.saveSession(
-      conv,
-      {
-        cart: [],
-        pendingMatch: undefined,
-        pendingAttribute: undefined,
-        address: undefined,
-        paymentMethod: undefined,
-      },
-      'building_cart',
-    );
+    return this.resetOrderSession(conv, 'building_cart', { ignorePriorHistory: true });
   }
 
   async getRecentMessageTexts(conversationId: number, limit = 10): Promise<string[]> {

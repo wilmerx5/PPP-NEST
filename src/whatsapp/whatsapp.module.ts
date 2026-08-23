@@ -11,6 +11,7 @@ import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { WhatsappCleanupService } from './whatsapp-cleanup.service';
+import { WhatsappRateLimitService } from './whatsapp-rate-limit.service';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappAdminController } from './whatsapp-admin.controller';
 import { WhatsappDeskController } from './whatsapp-desk.controller';
@@ -40,7 +41,8 @@ import { User } from '../auth/entities/user.entity';
     WhatsappOrchestratorService,
     WhatsappActionGuardService,
     WhatsappCleanupService,
+    WhatsappRateLimitService,
   ],
-  exports: [WhatsappSettingsService],
+  exports: [WhatsappSettingsService, WhatsappOrchestratorService, WhatsappMetaService],
 })
 export class WhatsappModule {}

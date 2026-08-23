@@ -23,6 +23,10 @@ export type IncomingWhatsappMessage = {
   mediaId?: string;
   mimeType?: string;
   filename?: string;
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
+  locationAddress?: string;
   timestamp: number;
   raw: Record<string, unknown>;
 };
@@ -133,8 +137,8 @@ export class WhatsappMetaService {
     }
 
     if (type === 'location' && msg.location) {
-      const lat = msg.location.latitude;
-      const lng = msg.location.longitude;
+      const lat = Number(msg.location.latitude);
+      const lng = Number(msg.location.longitude);
       const name = msg.location.name ? String(msg.location.name) : '';
       const address = msg.location.address ? String(msg.location.address) : '';
       const label = [name, address].filter(Boolean).join(' — ') || `${lat}, ${lng}`;
@@ -142,6 +146,10 @@ export class WhatsappMetaService {
         ...base,
         messageType: 'location',
         text: `📍 ${label}`,
+        latitude: Number.isFinite(lat) ? lat : undefined,
+        longitude: Number.isFinite(lng) ? lng : undefined,
+        locationName: name || undefined,
+        locationAddress: address || undefined,
       };
     }
 

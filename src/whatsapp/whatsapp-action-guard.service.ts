@@ -65,6 +65,15 @@ export class WhatsappActionGuardService {
       else warnings.push('Mercado Pago no está habilitado; solo contra entrega.');
     }
 
+    if (params.actions.setCashChangeFor) {
+      const v = params.actions.setCashChangeFor.trim().slice(0, 120);
+      if (v.length >= 1) out.setCashChangeFor = v;
+    }
+    if (params.actions.setCustomerNotes) {
+      const v = params.actions.setCustomerNotes.trim().slice(0, 400);
+      if (v.length >= 1) out.setCustomerNotes = v;
+    }
+
     if (params.actions.removeProductIds?.length) {
       out.removeProductIds = params.actions.removeProductIds.filter((id) => byId.has(id));
     }

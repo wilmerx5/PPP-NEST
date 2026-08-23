@@ -38,6 +38,14 @@ export class WhatsappConversation {
   @Column({ name: 'human_agent_name', type: 'varchar', length: 120, nullable: true })
   humanAgentName: string | null;
 
+  /** Cuándo se activó el takeover (para idle del agente). */
+  @Column({ name: 'human_takeover_at', type: 'timestamp', nullable: true })
+  humanTakeoverAt: Date | null;
+
+  /** Último mensaje saliente de un humano. */
+  @Column({ name: 'last_human_outbound_at', type: 'timestamp', nullable: true })
+  lastHumanOutboundAt: Date | null;
+
   @Column({ name: 'last_message_at', type: 'timestamp', nullable: true })
   lastMessageAt: Date | null;
 

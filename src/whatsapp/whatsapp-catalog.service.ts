@@ -173,6 +173,17 @@ export class WhatsappCatalogService {
       return null;
     }
 
+    // "quiero hacer un pedido" no es categoría
+    if (
+      /\b(hacer|realizar)\s+(un\s+)?(pedido|orden)\b/.test(q) ||
+      /\b(quiero|gustaria|quisiera)\s+(pedir|ordenar|hacer)\b/.test(q) ||
+      (/\b(pedido|orden)\b/.test(q) &&
+        !/\b(pollo|sopa|bebida|porcion|porciones|combo|alas)\b/.test(q) &&
+        q.split(' ').length >= 3)
+    ) {
+      return null;
+    }
+
     const available = products.filter((p) => p.availableNow !== false);
     const categoryNames = [
       ...new Set(available.map((p) => p.categoryName).filter(Boolean) as string[]),
@@ -263,9 +274,30 @@ export class WhatsappCatalogService {
       'favor',
       'hola',
       'buenas',
+      'buenos',
+      'dias',
+      'tardes',
+      'noches',
       'completo',
       'pagina',
       'web',
+      'hacer',
+      'realizar',
+      'armar',
+      'pedido',
+      'orden',
+      'ordenar',
+      'pedir',
+      'gustaria',
+      'quisiera',
+      'deseo',
+      'algo',
+      'este',
+      'esta',
+      'tambien',
+      'solo',
+      'vengo',
+      'vine',
     ]);
 
     const available = products.filter((p) => p.availableNow !== false);

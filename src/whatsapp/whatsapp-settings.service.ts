@@ -16,6 +16,12 @@ const DEFAULT_HUMAN_HANDOFF =
 
 const DEFAULT_ORDER_SUCCESS = 'Gracias por pedirnos, te esperamos 🍗';
 
+const DEFAULT_CLOSED_MESSAGE =
+  'Ahora estamos *cerrados*. Cuando abramos escríbenos de nuevo para pedir.';
+
+const DEFAULT_LARGE_ORDER_HANDOFF =
+  'Ese pedido es más grande de lo que manejamos por WhatsApp.\n\nTe paso con alguien del equipo para ayudarte con el pedido.';
+
 const TONE_GUIDE = `
 TONO (obligatorio en cada reply):
 - Tutéa siempre (tú / te / tu), como un colombiano amable del día a día.
@@ -58,6 +64,17 @@ export type WhatsappLocalContext = {
   prepTimeNote: string | null;
   deliveryTimeNote: string | null;
   minOrderAmount: number;
+  maxOrderAmount: number;
+  maxUnitsPerItem: number;
+  maxTotalUnits: number;
+  maxCartLines: number;
+  handoffWhenMaxExceeded: boolean;
+  allergensNote: string | null;
+  promotionsNote: string | null;
+  serviceAreaNote: string | null;
+  cashChangeNote: string | null;
+  transferInfoNote: string | null;
+  specialRequestsNote: string | null;
   paymentInstructions: string | null;
   hoursNote: string | null;
   cancelPolicyNote: string | null;
@@ -111,19 +128,14 @@ export class WhatsappSettingsService {
       address: localContext.restaurantAddress || '',
     };
 
-    const ignoreFromEnv = (() => {
-      const raw = (this.config.get<string>('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? '').trim().toLowerCase();
-      if (!raw) return null;
-      if (raw === 'false' || raw === '0' || raw === 'no') return false;
-      if (raw === 'true' || raw === '1' || raw === 'yes') return true;
-      return null;
-    })();
-
     const welcomeTpl = row.welcomeMessage?.trim() || DEFAULT_WELCOME;
     const systemTpl = row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
     const menuLinkTpl = row.menuLinkMessage?.trim() || DEFAULT_MENU_LINK;
     const humanTpl = row.humanHandoffMessage?.trim() || DEFAULT_HUMAN_HANDOFF;
     const successTpl = row.orderSuccessMessage?.trim() || DEFAULT_ORDER_SUCCESS;
+    const closedTpl = row.closedMessage?.trim() || DEFAULT_CLOSED_MESSAGE;
+    const largeOrderTpl =
+      row.largeOrderHandoffMessage?.trim() || DEFAULT_LARGE_ORDER_HANDOFF;
 
     const temp = Number(row.aiTemperature);
     return {
@@ -131,10 +143,28 @@ export class WhatsappSettingsService {
       brandName: brand,
       defaultDeliveryFee: Number.isFinite(fee) && fee > 0 ? fee : 2000,
       minOrderAmount: Math.max(0, Number(row.minOrderAmount) || 0),
+      maxOrderAmount: Math.max(0, Number(row.maxOrderAmount) || 0),
+      maxUnitsPerItem: Math.max(0, Number(row.maxUnitsPerItem) || 0),
+      maxTotalUnits: Math.max(0, Number(row.maxTotalUnits) || 0),
+      maxCartLines: Math.max(0, Number(row.maxCartLines) || 0),
+      handoffWhenMaxExceeded: row.handoffWhenMaxExceeded !== false,
+      largeOrderHandoffMessage: this.applyTemplate(largeOrderTpl, templateVars),
+      askOrderNotes: row.askOrderNotes !== false,
+      rateLimitPerMinute: Math.min(120, Math.max(5, Number(row.rateLimitPerMinute) || 25)),
+      humanAgentIdleMinutes: Math.max(0, Number(row.humanAgentIdleMinutes ?? 30)),
+      humanClientIdleMinutes: Math.max(0, Number(row.humanClientIdleMinutes ?? 120)),
+      orderDraftIdleMinutes: Math.max(0, Number(row.orderDraftIdleMinutes ?? 45)),
+      pendingChoiceIdleMinutes: Math.max(0, Number(row.pendingChoiceIdleMinutes ?? 15)),
+      mpPaymentIdleMinutes: Math.max(0, Number(row.mpPaymentIdleMinutes ?? 60)),
+      sessionIdleNotify: row.sessionIdleNotify !== false,
       enabled: !!row.enabled || enabledFromEnv,
       accessToken:
         (row.accessToken || '').trim() ||
         (this.config.get<string>('WHATSAPP_ACCESS_TOKEN') || '').trim() ||
+        null,
+      appSecret:
+        (row.appSecret || '').trim() ||
+        (this.config.get<string>('WHATSAPP_APP_SECRET') || '').trim() ||
         null,
       phoneNumberId:
         (row.phoneNumberId || '').trim() ||
@@ -155,11 +185,10 @@ export class WhatsappSettingsService {
       menuLinkMessage: this.applyTemplate(menuLinkTpl, templateVars),
       humanHandoffMessage: this.applyTemplate(humanTpl, templateVars),
       orderSuccessMessage: this.applyTemplate(successTpl, templateVars),
-      closedMessage: (row.closedMessage || '').trim() || null,
+      closedMessage: this.applyTemplate(closedTpl, templateVars),
       menuUrl,
       websiteUrl: localContext.websiteUrl,
-      ignoreBusinessHours:
-        ignoreFromEnv != null ? ignoreFromEnv : !!row.ignoreBusinessHours,
+      ignoreBusinessHours: !!row.ignoreBusinessHours,
       localContext,
       localContextBlock: this.buildLocalContextBlock(localContext),
       templateVars,
@@ -187,6 +216,17 @@ export class WhatsappSettingsService {
       prepTimeNote: clean(row.prepTimeNote),
       deliveryTimeNote: clean(row.deliveryTimeNote),
       minOrderAmount: Math.max(0, Number(row.minOrderAmount) || 0),
+      maxOrderAmount: Math.max(0, Number(row.maxOrderAmount) || 0),
+      maxUnitsPerItem: Math.max(0, Number(row.maxUnitsPerItem) || 0),
+      maxTotalUnits: Math.max(0, Number(row.maxTotalUnits) || 0),
+      maxCartLines: Math.max(0, Number(row.maxCartLines) || 0),
+      handoffWhenMaxExceeded: row.handoffWhenMaxExceeded !== false,
+      allergensNote: clean(row.allergensNote),
+      promotionsNote: clean(row.promotionsNote),
+      serviceAreaNote: clean(row.serviceAreaNote),
+      cashChangeNote: clean(row.cashChangeNote),
+      transferInfoNote: clean(row.transferInfoNote),
+      specialRequestsNote: clean(row.specialRequestsNote),
       paymentInstructions: clean(row.paymentInstructions),
       hoursNote: clean(row.hoursNote),
       cancelPolicyNote: clean(row.cancelPolicyNote),
@@ -208,12 +248,35 @@ export class WhatsappSettingsService {
     if (ctx.landmarks) lines.push(`Puntos de referencia / cómo llegar: ${ctx.landmarks}`);
     if (ctx.pickupNotes) lines.push(`Notas para recoger en el local: ${ctx.pickupNotes}`);
     if (ctx.deliveryNotes) lines.push(`Notas de domicilio / zonas: ${ctx.deliveryNotes}`);
+    if (ctx.serviceAreaNote) lines.push(`Cobertura / zonas de servicio: ${ctx.serviceAreaNote}`);
     if (ctx.prepTimeNote) lines.push(`Tiempo de preparación (orientativo): ${ctx.prepTimeNote}`);
     if (ctx.deliveryTimeNote) lines.push(`Tiempo de domicilio (orientativo): ${ctx.deliveryTimeNote}`);
     if (ctx.minOrderAmount > 0) {
       lines.push(`Pedido mínimo: $${ctx.minOrderAmount.toLocaleString('es-CO')} COP`);
     }
+    if (ctx.maxOrderAmount > 0) {
+      lines.push(
+        `Pedido máximo por WhatsApp: $${ctx.maxOrderAmount.toLocaleString('es-CO')} COP` +
+          (ctx.handoffWhenMaxExceeded ? ' (si piden más → humano)' : ''),
+      );
+    }
+    if (ctx.maxUnitsPerItem > 0) {
+      lines.push(`Máx. unidades del mismo producto: ${ctx.maxUnitsPerItem}`);
+    }
+    if (ctx.maxTotalUnits > 0) {
+      lines.push(`Máx. unidades totales: ${ctx.maxTotalUnits}`);
+    }
+    if (ctx.maxCartLines > 0) {
+      lines.push(`Máx. ítems en el carrito: ${ctx.maxCartLines}`);
+    }
     if (ctx.paymentInstructions) lines.push(`Instrucciones de pago: ${ctx.paymentInstructions}`);
+    if (ctx.cashChangeNote) lines.push(`Efectivo / cambio: ${ctx.cashChangeNote}`);
+    if (ctx.transferInfoNote) lines.push(`Transferencia / cuentas: ${ctx.transferInfoNote}`);
+    if (ctx.allergensNote) lines.push(`Alérgenos / restricciones: ${ctx.allergensNote}`);
+    if (ctx.promotionsNote) lines.push(`Promociones vigentes: ${ctx.promotionsNote}`);
+    if (ctx.specialRequestsNote) {
+      lines.push(`Pedidos especiales / personalizaciones: ${ctx.specialRequestsNote}`);
+    }
     if (ctx.hoursNote) lines.push(`Notas de horario: ${ctx.hoursNote}`);
     if (ctx.cancelPolicyNote) lines.push(`Política de cancelación: ${ctx.cancelPolicyNote}`);
     if (ctx.aiExtraContext) lines.push(`Info adicional: ${ctx.aiExtraContext}`);
@@ -237,6 +300,7 @@ export class WhatsappSettingsService {
       ...(dto.phoneNumberId !== undefined && { phoneNumberId: strOrNull(dto.phoneNumberId) }),
       ...(dto.wabaId !== undefined && { wabaId: strOrNull(dto.wabaId) }),
       ...(dto.accessToken !== undefined && { accessToken: strOrNull(dto.accessToken) }),
+      ...(dto.appSecret !== undefined && { appSecret: strOrNull(dto.appSecret) }),
       ...(dto.verifyToken !== undefined && { verifyToken: strOrNull(dto.verifyToken) }),
       ...(dto.openaiApiKey !== undefined && { openaiApiKey: strOrNull(dto.openaiApiKey) }),
       ...(dto.openaiModel !== undefined && { openaiModel: dto.openaiModel || 'gpt-4o-mini' }),
@@ -269,6 +333,46 @@ export class WhatsappSettingsService {
         deliveryTimeNote: strOrNull(dto.deliveryTimeNote),
       }),
       ...(dto.minOrderAmount !== undefined && { minOrderAmount: dto.minOrderAmount }),
+      ...(dto.maxOrderAmount !== undefined && { maxOrderAmount: dto.maxOrderAmount }),
+      ...(dto.maxUnitsPerItem !== undefined && { maxUnitsPerItem: dto.maxUnitsPerItem }),
+      ...(dto.maxTotalUnits !== undefined && { maxTotalUnits: dto.maxTotalUnits }),
+      ...(dto.maxCartLines !== undefined && { maxCartLines: dto.maxCartLines }),
+      ...(dto.handoffWhenMaxExceeded !== undefined && {
+        handoffWhenMaxExceeded: dto.handoffWhenMaxExceeded,
+      }),
+      ...(dto.largeOrderHandoffMessage !== undefined && {
+        largeOrderHandoffMessage: strOrNull(dto.largeOrderHandoffMessage),
+      }),
+      ...(dto.allergensNote !== undefined && { allergensNote: strOrNull(dto.allergensNote) }),
+      ...(dto.promotionsNote !== undefined && { promotionsNote: strOrNull(dto.promotionsNote) }),
+      ...(dto.serviceAreaNote !== undefined && { serviceAreaNote: strOrNull(dto.serviceAreaNote) }),
+      ...(dto.cashChangeNote !== undefined && { cashChangeNote: strOrNull(dto.cashChangeNote) }),
+      ...(dto.transferInfoNote !== undefined && {
+        transferInfoNote: strOrNull(dto.transferInfoNote),
+      }),
+      ...(dto.specialRequestsNote !== undefined && {
+        specialRequestsNote: strOrNull(dto.specialRequestsNote),
+      }),
+      ...(dto.askOrderNotes !== undefined && { askOrderNotes: dto.askOrderNotes }),
+      ...(dto.rateLimitPerMinute !== undefined && {
+        rateLimitPerMinute: Math.min(120, Math.max(5, dto.rateLimitPerMinute)),
+      }),
+      ...(dto.humanAgentIdleMinutes !== undefined && {
+        humanAgentIdleMinutes: Math.max(0, dto.humanAgentIdleMinutes),
+      }),
+      ...(dto.humanClientIdleMinutes !== undefined && {
+        humanClientIdleMinutes: Math.max(0, dto.humanClientIdleMinutes),
+      }),
+      ...(dto.orderDraftIdleMinutes !== undefined && {
+        orderDraftIdleMinutes: Math.max(0, dto.orderDraftIdleMinutes),
+      }),
+      ...(dto.pendingChoiceIdleMinutes !== undefined && {
+        pendingChoiceIdleMinutes: Math.max(0, dto.pendingChoiceIdleMinutes),
+      }),
+      ...(dto.mpPaymentIdleMinutes !== undefined && {
+        mpPaymentIdleMinutes: Math.max(0, dto.mpPaymentIdleMinutes),
+      }),
+      ...(dto.sessionIdleNotify !== undefined && { sessionIdleNotify: dto.sessionIdleNotify }),
       ...(dto.paymentInstructions !== undefined && {
         paymentInstructions: strOrNull(dto.paymentInstructions),
       }),
@@ -305,6 +409,8 @@ export class WhatsappSettingsService {
       wabaId: row.wabaId,
       accessTokenSet: !!(row.accessToken || '').trim(),
       accessTokenPreview: mask(row.accessToken),
+      appSecretSet: !!(row.appSecret || '').trim(),
+      appSecretPreview: mask(row.appSecret),
       verifyTokenSet: !!(row.verifyToken || '').trim(),
       verifyTokenPreview: mask(row.verifyToken),
       openaiApiKeySet: !!(row.openaiApiKey || '').trim(),
@@ -331,6 +437,26 @@ export class WhatsappSettingsService {
       prepTimeNote: row.prepTimeNote,
       deliveryTimeNote: row.deliveryTimeNote,
       minOrderAmount: Number(row.minOrderAmount) || 0,
+      maxOrderAmount: Number(row.maxOrderAmount) || 0,
+      maxUnitsPerItem: Number(row.maxUnitsPerItem) || 0,
+      maxTotalUnits: Number(row.maxTotalUnits) || 0,
+      maxCartLines: Number(row.maxCartLines) || 0,
+      handoffWhenMaxExceeded: row.handoffWhenMaxExceeded !== false,
+      largeOrderHandoffMessage: row.largeOrderHandoffMessage,
+      allergensNote: row.allergensNote,
+      promotionsNote: row.promotionsNote,
+      serviceAreaNote: row.serviceAreaNote,
+      cashChangeNote: row.cashChangeNote,
+      transferInfoNote: row.transferInfoNote,
+      specialRequestsNote: row.specialRequestsNote,
+      askOrderNotes: row.askOrderNotes !== false,
+      rateLimitPerMinute: Math.min(120, Math.max(5, Number(row.rateLimitPerMinute) || 25)),
+      humanAgentIdleMinutes: Number(row.humanAgentIdleMinutes ?? 30),
+      humanClientIdleMinutes: Number(row.humanClientIdleMinutes ?? 120),
+      orderDraftIdleMinutes: Number(row.orderDraftIdleMinutes ?? 45),
+      pendingChoiceIdleMinutes: Number(row.pendingChoiceIdleMinutes ?? 15),
+      mpPaymentIdleMinutes: Number(row.mpPaymentIdleMinutes ?? 60),
+      sessionIdleNotify: row.sessionIdleNotify !== false,
       paymentInstructions: row.paymentInstructions,
       hoursNote: row.hoursNote,
       cancelPolicyNote: row.cancelPolicyNote,
