@@ -3,6 +3,14 @@ import { WhatsappSettingsService } from './whatsapp-settings.service';
 import type { AiTurnResult } from './types/whatsapp-session.types';
 import { WHATSAPP_AI_JSON_SCHEMA } from './whatsapp-business-rules';
 
+export type WhatsappImageAnalysis = {
+  kind: 'order' | 'payment_proof' | 'other' | 'unclear';
+  /** Texto como si el cliente lo hubiera escrito (pedido, dirección, etc.) */
+  textForBot: string;
+  /** Respuesta corta si no se puede seguir el flujo de pedido */
+  reply?: string;
+};
+
 @Injectable()
 export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
@@ -60,7 +68,9 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         },
         body: JSON.stringify({
           model: cfg.openaiModel || 'gpt-4o-mini',
-          temperature: input.conversational ? 0.45 : 0.2,
+          temperature: input.conversational
+            ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
+            : cfg.aiTemperature ?? 0.2,
           response_format: { type: 'json_object' },
           messages,
         }),
@@ -99,6 +109,159 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o escribe *humano*.',
       };
     }
+  }
+
+  /** Whisper: nota de voz / audio → texto en español. */
+  async transcribeAudio(buffer: Buffer, mimeType: string): Promise<string | null> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    if (!cfg.openaiApiKey) return null;
+
+    const ext = this.audioExtension(mimeType);
+    const form = new FormData();
+    form.append(
+      'file',
+      new Blob([new Uint8Array(buffer)], { type: mimeType || 'audio/ogg' }),
+      `audio.${ext}`,
+    );
+    form.append('model', 'whisper-1');
+    form.append('language', 'es');
+
+    try {
+      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfg.openaiApiKey}` },
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        this.logger.error(`Whisper error ${res.status}: ${err}`);
+        return null;
+      }
+      const data = (await res.json()) as { text?: string };
+      const text = (data.text || '').trim();
+      return text || null;
+    } catch (err) {
+      this.logger.error(`Whisper failed: ${err}`);
+      return null;
+    }
+  }
+
+  /**
+   * Vision: clasifica imagen (pedido vs comprobante vs otra) y extrae texto útil.
+   * Usa el mismo modelo configurado (4o-mini / 4.1-mini soportan imagen).
+   */
+  async analyzeOrderImage(input: {
+    buffer: Buffer;
+    mimeType: string;
+    caption?: string;
+    menuSummary: string;
+  }): Promise<WhatsappImageAnalysis> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    if (!cfg.openaiApiKey) {
+      return {
+        kind: 'unclear',
+        textForBot: '',
+        reply: 'No pude ver la imagen. Escríbenos el pedido por texto o *humano*.',
+      };
+    }
+
+    const b64 = input.buffer.toString('base64');
+    const dataUrl = `data:${input.mimeType || 'image/jpeg'};base64,${b64}`;
+    const caption = (input.caption || '').trim();
+
+    const system = `Eres el asistente de un restaurante de pollo asado (WhatsApp).
+Analizas UNA imagen del cliente. Responde SOLO JSON:
+{
+  "kind": "order" | "payment_proof" | "other" | "unclear",
+  "textForBot": "string",
+  "reply": "string opcional"
+}
+
+Reglas:
+- payment_proof: comprobante de transferencia, captura de banco, Nequi, Daviplata, QR pagado, recibo.
+  textForBot vacío; reply breve confirmando que lo recibiste y que un asesor lo revisa (menciona escribir humano si necesita).
+- order: la imagen pide comida / muestra menú marcado / lista de productos. textForBot = lo que el cliente querría escribir
+  (códigos o nombres del menú si se ven). Usa SOLO productos del menú si aparecen claros.
+- other / unclear: no sirve para pedir. textForBot vacío; reply amable pidiendo texto (código o nombre) o *humano*.
+- No inventes productos fuera del menú.
+Menú (referencia):
+${input.menuSummary.slice(0, 6000)}`;
+
+    const userText = caption
+      ? `El cliente escribió este pie de foto: "${caption}". Analiza la imagen.`
+      : 'Analiza la imagen del cliente.';
+
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cfg.openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: cfg.openaiModel || 'gpt-4o-mini',
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          max_tokens: 500,
+          messages: [
+            { role: 'system', content: system },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: userText },
+                { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        this.logger.error(`Vision error ${res.status}: ${err}`);
+        return {
+          kind: 'unclear',
+          textForBot: '',
+          reply: 'No pude leer bien la imagen. ¿Me escribes el pedido por texto o *humano*?',
+        };
+      }
+
+      const data = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const parsed = JSON.parse(
+        data.choices?.[0]?.message?.content || '{}',
+      ) as Partial<WhatsappImageAnalysis>;
+      const kind = parsed.kind;
+      if (kind !== 'order' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
+        return {
+          kind: 'unclear',
+          textForBot: '',
+          reply: 'No entendí la imagen. Escríbenos el pedido (código o nombre) o *humano*.',
+        };
+      }
+      return {
+        kind,
+        textForBot: (parsed.textForBot || '').trim().slice(0, 500),
+        reply: parsed.reply?.trim().slice(0, 800),
+      };
+    } catch (err) {
+      this.logger.error(`Vision failed: ${err}`);
+      return {
+        kind: 'unclear',
+        textForBot: '',
+        reply: 'Tuve un problema viendo la imagen. Prueba por texto o escribe *humano*.',
+      };
+    }
+  }
+
+  private audioExtension(mimeType: string): string {
+    const m = (mimeType || '').toLowerCase();
+    if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
+    if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
+    if (m.includes('wav')) return 'wav';
+    if (m.includes('webm')) return 'webm';
+    return 'ogg';
   }
 
   /** Convierte "Cliente: …" / "Bot: …" a roles reales de chat. */

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
-import { WhatsappMetaService, IncomingWhatsappText } from './whatsapp-meta.service';
+import { WhatsappMetaService, IncomingWhatsappMessage } from './whatsapp-meta.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
@@ -36,18 +36,21 @@ export class WhatsappOrchestratorService {
     private readonly actionGuard: WhatsappActionGuardService,
   ) {}
 
-  async handleIncoming(msg: IncomingWhatsappText): Promise<void> {
+  async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
 
-    await this.conversationService.logMessage({
+    const logged = await this.conversationService.logMessage({
       conversationId: conv.id,
       direction: 'in',
       body: msg.text,
       waMessageId: msg.messageId,
       sentBy: 'bot',
       raw: msg.raw,
+      messageType: msg.messageType,
+      mediaId: msg.mediaId,
+      mimeType: msg.mimeType,
     });
 
     if (!cfg.enabled) {
@@ -59,7 +62,39 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    const text = msg.text.trim();
+    // Audio / imagen → texto (Whisper / Vision); resto: avisar
+    let text = (msg.text || '').trim();
+    if (msg.messageType === 'audio' && msg.mediaId) {
+      const resolved = await this.resolveAudioToText(msg, logged.id);
+      if (!resolved) {
+        await this.reply(
+          conv,
+          msg.waId,
+          'No pude escuchar bien el audio 🙏 ¿Me lo escribes por texto o mandas *humano*?',
+        );
+        return;
+      }
+      text = resolved;
+      await this.reply(conv, msg.waId, `Te escuché: _${this.shortQuote(text)}_`);
+    } else if (msg.messageType === 'image' && msg.mediaId) {
+      const img = await this.resolveImageMessage(msg, logged.id, conv, cfg);
+      if (img.done) return;
+      text = img.text;
+    } else if (msg.messageType !== 'text') {
+      await this.reply(
+        conv,
+        msg.waId,
+        'Recibí tu mensaje 👍 El asistente trabaja mejor con *texto* o *nota de voz*.\n\n' +
+          'Escríbenos el pedido (código o nombre) o *humano* y te atendemos.',
+      );
+      return;
+    }
+
+    if (!text) {
+      await this.reply(conv, msg.waId, '¿Qué se te antoja? Puedes pedir por código o nombre.');
+      return;
+    }
+
     const lower = text.toLowerCase();
 
     if (/\b(humano|persona|agente|asesor)\b/.test(lower)) {
@@ -67,9 +102,16 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         msg.waId,
-        'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.',
+        cfg.humanHandoffMessage,
       );
       return;
+    }
+
+    // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
+    if (conv.state === 'completed' || conv.state === 'closed') {
+      await this.conversationService.reopenForNewOrder(conv);
+      const freshReopen = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshReopen);
     }
 
     if (this.isRestartIntent(lower)) {
@@ -89,7 +131,7 @@ export class WhatsappOrchestratorService {
     }
 
     if (this.isCancelIntent(text)) {
-      await this.handleCancelRequest(conv, msg.waId);
+      await this.handleCancelRequest(conv, msg.waId, cfg);
       return;
     }
 
@@ -105,7 +147,7 @@ export class WhatsappOrchestratorService {
     // Primer mensaje de la conversación: siempre saludo + link menú
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
     if (inboundCount <= 1) {
-      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, true));
+      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
       if (this.isGreetingKeyword(text) || text.length < 2) return;
       // Si ya pidió algo en el primer mensaje, seguimos procesando abajo
     }
@@ -211,7 +253,8 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         msg.waId,
-        `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`,
+        cfg.closedMessage ||
+          `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`,
       );
       return;
     }
@@ -317,10 +360,13 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Saludo / menú (siempre respuesta fija, no diluye el carrito)
-    if (isGreeting) {
-      const inboundCount = await this.conversationService.countInboundMessages(conv.id);
-      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, inboundCount <= 1));
+    // Saludo / menú / link del menú (NO agregar productos)
+    if (isGreeting || this.isMenuLinkIntent(text)) {
+      if (this.isMenuLinkIntent(text)) {
+        await this.reply(conv, msg.waId, cfg.menuLinkMessage);
+        return;
+      }
+      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
       return;
     }
 
@@ -508,11 +554,12 @@ export class WhatsappOrchestratorService {
       : 'Sin usuario guardado en WhatsApp. Pide nombre y dirección antes de confirmar.';
 
     const rulesBlock = buildWhatsappBusinessRulesBlock({
-      brandName: 'Pronto Pollo Portal',
+      brandName: cfg.brandName || cfg.localContext?.restaurantName || 'Pronto Pollo Portal',
       businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
       deliveryFee: cfg.defaultDeliveryFee,
       allowMercadoPago: !!cfg.allowMercadoPago,
       menuProductCount: products.filter((p) => p.availableNow !== false).length,
+      localContextBlock: cfg.localContextBlock,
     });
 
     const ai = await this.aiService.generateTurn({
@@ -785,11 +832,12 @@ export class WhatsappOrchestratorService {
       : '';
 
     const rulesBlock = buildWhatsappBusinessRulesBlock({
-      brandName: 'Pronto Pollo Portal',
+      brandName: cfg.brandName || cfg.localContext?.restaurantName || 'Pronto Pollo Portal',
       businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
       deliveryFee: cfg.defaultDeliveryFee,
       allowMercadoPago: !!cfg.allowMercadoPago,
       menuProductCount: products.filter((p) => p.availableNow !== false).length,
+      localContextBlock: cfg.localContextBlock,
     });
 
     const ai = await this.aiService.generateTurn({
@@ -952,6 +1000,7 @@ export class WhatsappOrchestratorService {
       session.pendingAttribute = undefined;
       let opts = 'Escríbeme *contraentrega* (efectivo al recibir).';
       if (cfg.allowMercadoPago) opts += ' O *mercado pago* si quieres un link de pago.';
+      if (cfg.paymentInstructions) opts += `\n\n_${cfg.paymentInstructions}_`;
       await this.conversationService.saveSession(conv, session, 'awaiting_payment');
       await this.reply(
         conv,
@@ -1037,7 +1086,13 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        this.formatOrderSuccessMessage(conv, snapshot, order, cfg.defaultDeliveryFee),
+        this.formatOrderSuccessMessage(
+          conv,
+          snapshot,
+          order,
+          cfg.defaultDeliveryFee,
+          cfg.orderSuccessMessage,
+        ),
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear pedido';
@@ -1046,8 +1101,15 @@ export class WhatsappOrchestratorService {
     }
   }
 
-  async sendHumanReply(conversationId: number, body: string, _agent: { id: string; fullName: string }) {
+  async sendHumanReply(
+    conversationId: number,
+    body: string,
+    agent: { id: string; fullName: string },
+  ) {
     const conv = await this.conversationService.getConversation(conversationId);
+    if (!conv.humanTakeover) {
+      await this.conversationService.setHumanTakeover(conversationId, true, agent);
+    }
     await this.metaService.sendText(conv.waId, body);
     await this.conversationService.logMessage({
       conversationId: conv.id,
@@ -1055,6 +1117,101 @@ export class WhatsappOrchestratorService {
       body,
       sentBy: 'human',
     });
+  }
+
+  private shortQuote(text: string, max = 160): string {
+    const t = text.replace(/\s+/g, ' ').trim();
+    if (t.length <= max) return t;
+    return `${t.slice(0, max - 1)}…`;
+  }
+
+  private async resolveAudioToText(
+    msg: IncomingWhatsappMessage,
+    loggedMessageId: string,
+  ): Promise<string | null> {
+    try {
+      const { buffer, mimeType } = await this.metaService.downloadMedia(msg.mediaId!);
+      const transcript = await this.aiService.transcribeAudio(
+        buffer,
+        msg.mimeType || mimeType,
+      );
+      if (!transcript) return null;
+      await this.conversationService.updateMessageBody(
+        loggedMessageId,
+        `🎤 ${transcript}`,
+      );
+      return transcript;
+    } catch (err) {
+      this.logger.error(`Audio resolve failed: ${err}`);
+      return null;
+    }
+  }
+
+  private async resolveImageMessage(
+    msg: IncomingWhatsappMessage,
+    loggedMessageId: string,
+    conv: WhatsappConversation,
+    cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
+  ): Promise<{ done: true } | { done: false; text: string }> {
+    try {
+      const { buffer, mimeType } = await this.metaService.downloadMedia(msg.mediaId!);
+      const menuSummary = await this.catalogService.getMenuDetailedText();
+      const captionRaw = (msg.text || '').trim();
+      const caption =
+        captionRaw && !/^🖼️/.test(captionRaw) && captionRaw !== 'Imagen'
+          ? captionRaw
+          : undefined;
+
+      const analysis = await this.aiService.analyzeOrderImage({
+        buffer,
+        mimeType: msg.mimeType || mimeType,
+        caption,
+        menuSummary,
+      });
+
+      if (analysis.kind === 'payment_proof') {
+        await this.conversationService.updateMessageBody(
+          loggedMessageId,
+          `🧾 Comprobante de pago${caption ? `: ${caption}` : ''}`,
+        );
+        await this.conversationService.setHumanTakeover(conv.id, true);
+        await this.reply(
+          conv,
+          msg.waId,
+          analysis.reply ||
+            'Recibí tu comprobante ✅ Un asesor lo revisa en un momento. Si necesitas algo más, escribe *humano*.',
+        );
+        return { done: true };
+      }
+
+      if (analysis.kind === 'order' && analysis.textForBot) {
+        await this.conversationService.updateMessageBody(
+          loggedMessageId,
+          `🖼️ ${analysis.textForBot}`,
+        );
+        return { done: false, text: analysis.textForBot };
+      }
+
+      await this.conversationService.updateMessageBody(
+        loggedMessageId,
+        captionRaw || '🖼️ Imagen',
+      );
+      await this.reply(
+        conv,
+        msg.waId,
+        analysis.reply ||
+          'Vi la imagen 👍 Para el pedido me sirve más por *texto* o *nota de voz* (código o nombre). También puedes escribir *humano*.',
+      );
+      return { done: true };
+    } catch (err) {
+      this.logger.error(`Image resolve failed: ${err}`);
+      await this.reply(
+        conv,
+        msg.waId,
+        'No pude abrir la imagen. ¿Me escribes el pedido o *humano*?',
+      );
+      return { done: true };
+    }
   }
 
   private isRestartIntent(lower: string): boolean {
@@ -1083,7 +1240,11 @@ export class WhatsappOrchestratorService {
     return map[status] || status;
   }
 
-  private async handleCancelRequest(conv: WhatsappConversation, waId: string): Promise<void> {
+  private async handleCancelRequest(
+    conv: WhatsappConversation,
+    waId: string,
+    cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
+  ): Promise<void> {
     const todayOrders = await this.ordersService.findTodayOrdersByPhone(conv.phoneE164);
     const active = todayOrders.find((o) => o.orderStatus !== 'canceled');
 
@@ -1095,7 +1256,8 @@ export class WhatsappOrchestratorService {
         waId,
         `Ya tienes un pedido de hoy: *#${num}*.\n` +
           `Estado actual: *${statusLabel}*.\n\n` +
-          `Por este chat no puedo cancelártelo. Si necesitas ayuda, escribe *humano* y el equipo te atiende.`,
+          `Por este chat no puedo cancelártelo. Si necesitas ayuda, escribe *humano* y el equipo te atiende.` +
+          (cfg.cancelPolicyNote ? `\n\n_${cfg.cancelPolicyNote}_` : ''),
       );
       return;
     }
@@ -1129,6 +1291,38 @@ export class WhatsappOrchestratorService {
     return /^(hola|buenas|buen[oa]s?\s*(d[ií]as|tardes|noches)?|hey|hi|menu|menú|ver menu|ver menú)[\s!.?]*$/i.test(
       t,
     );
+  }
+
+  /** “pásame el menú”, “link del menú”, “carta”, etc. — no es un pedido. */
+  private isMenuLinkIntent(text: string): boolean {
+    const t = text
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (!t) return false;
+    if (
+      /\b(link|enlace|url|pagina)\b.{0,40}\b(menu|carta)\b/i.test(t) ||
+      /\b(menu|carta)\b.{0,40}\b(link|enlace|url|pagina)\b/i.test(t)
+    ) {
+      return true;
+    }
+    // "pasame el menu", "dame el menu", "mandame el menu", "quiero ver el menu"
+    if (
+      /\b(pasame|pasa|dame|enviame|envia|mandame|manda|comparte|quiero|necesito|mostrame|muestra)\b.{0,40}\b(el\s+)?(menu|carta)\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    if (
+      /\b(pasame|dame|enviame|mandame|comparte)\b.{0,20}\b(link|enlace|url)\b/i.test(t)
+    ) {
+      return true;
+    }
+    if (/^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?[\s!.?]*$/i.test(t)) return true;
+    if (/^(link|enlace)\s+(del?\s+)?(menu|carta)[\s!.?]*$/i.test(t)) return true;
+    return false;
   }
 
   private isPickupIntent(text: string): boolean {
@@ -1200,16 +1394,18 @@ export class WhatsappOrchestratorService {
     return false;
   }
 
-  private buildWelcomeMessage(menuUrl: string, firstContact: boolean): string {
-    const hello = firstContact
-      ? '¡Hola! 👋 Bienvenido a Pronto Pollo.'
-      : '¡Hola de nuevo! 👋 ¿Qué se te ofrece?';
-    return (
-      `${hello}\n\n` +
-      `Puedes pedirme por *nombre*, *código* o categoría (ej. sopas).\n` +
-      `Aquí tienes el menú completo:\n${menuUrl}\n\n` +
-      `Dime qué se te antoja. Cuando quieras cerrar el pedido, escribe *confirmar*.`
-    );
+  private buildWelcomeMessage(
+    cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
+  ): string {
+    const w = (cfg.welcomeMessage || '').trim();
+    if (!w) {
+      return (
+        `¡Hola! 👋 Bienvenido a *${cfg.brandName}*.\n\n` +
+        `Menú: ${cfg.menuUrl}\n\nDime qué se te antoja.`
+      );
+    }
+    if (w.includes(cfg.menuUrl) || /\bmenu\b|\bmenú\b/i.test(w)) return w;
+    return `${w}\n\nMenú: ${cfg.menuUrl}`;
   }
 
   private formatOrderSuccessMessage(
@@ -1217,6 +1413,7 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     order: { orderId?: number; dailyOrderNumber?: number },
     deliveryFee: number,
+    thanksMessage?: string,
   ): string {
     const subtotal = session.cart.reduce((s, c) => s + c.unitPrice, 0);
     const fee = session.orderType === 'delivery' ? deliveryFee : 0;
@@ -1249,7 +1446,7 @@ export class WhatsappOrchestratorService {
       `📍 ${session.address}\n` +
       `📞 ${conv.phoneE164}\n` +
       `💳 ${session.paymentMethod === 'mercadopago' ? 'Mercado Pago' : 'Contra entrega'}\n\n` +
-      `Gracias por pedirnos, te esperamos 🍗`
+      (thanksMessage?.trim() || 'Gracias por pedirnos, te esperamos 🍗')
     );
   }
 

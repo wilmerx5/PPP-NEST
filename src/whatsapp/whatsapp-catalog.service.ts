@@ -164,6 +164,15 @@ export class WhatsappCatalogService {
     const q = normalizeText(query);
     if (!q || q.length < 3) return null;
 
+    // Pedir el link/carta del menú ≠ pedir una categoría
+    if (
+      /\b(link|enlace|url)\b/.test(q) ||
+      /\b(pasa|dame|envia|manda|comparte)\b.*\b(menu|carta)\b/.test(q) ||
+      /^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?$/.test(q)
+    ) {
+      return null;
+    }
+
     const available = products.filter((p) => p.availableNow !== false);
     const categoryNames = [
       ...new Set(available.map((p) => p.categoryName).filter(Boolean) as string[]),
@@ -180,8 +189,10 @@ export class WhatsappCatalogService {
       else if (q.includes(c) || c.includes(q)) score = 80;
       else if (q.includes(cs) || cs.includes(stemLoose(q))) score = 70;
       else {
-        // tokens del mensaje vs categoría
-        const tokens = q.split(' ').filter((t) => t.length >= 3);
+        // tokens del mensaje vs categoría (ignorar "menu"/"carta" genéricos)
+        const tokens = q
+          .split(' ')
+          .filter((t) => t.length >= 3 && !['menu', 'carta', 'link', 'ver', 'lista'].includes(t));
         for (const t of tokens) {
           const ts = stemLoose(t);
           if (c.includes(t) || c.includes(ts) || ts === cs) score = Math.max(score, 60);
@@ -189,7 +200,7 @@ export class WhatsappCatalogService {
       }
 
       // palabras típicas de menú cerca de la categoría
-      if (score >= 60 && /\b(que|qué|tienen|hay|menu|menú|ver|lista|categoria|categoría)\b/.test(q)) {
+      if (score >= 60 && /\b(que|qué|tienen|hay|ver|lista|categoria|categoría)\b/.test(q)) {
         score += 10;
       }
 
@@ -209,8 +220,72 @@ export class WhatsappCatalogService {
     const q = normalizeText(query);
     if (!q || q.length < 2) return [];
 
+    // Pedidos del tipo "link del menú" no deben buscar productos
+    if (
+      /\b(link|enlace|url)\b/.test(q) ||
+      /\b(pasa|dame|envia|manda|comparte)\b.*\b(menu|carta)\b/.test(q) ||
+      /^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?$/.test(q)
+    ) {
+      return [];
+    }
+
+    const STOP = new Set([
+      'link',
+      'enlace',
+      'url',
+      'menu',
+      'carta',
+      'pasa',
+      'pasame',
+      'dame',
+      'quiero',
+      'necesito',
+      'envia',
+      'enviame',
+      'manda',
+      'mandame',
+      'ver',
+      'por',
+      'para',
+      'una',
+      'unos',
+      'unas',
+      'del',
+      'los',
+      'las',
+      'con',
+      'sin',
+      'que',
+      'como',
+      'tiene',
+      'tienen',
+      'hay',
+      'favor',
+      'hola',
+      'buenas',
+      'completo',
+      'pagina',
+      'web',
+    ]);
+
     const available = products.filter((p) => p.availableNow !== false);
     const qStem = stemLoose(q);
+    const tokens = q
+      .split(' ')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 2 && !STOP.has(t));
+
+    // Si tras quitar stopwords no queda nada útil, no buscar
+    if (!tokens.length && (STOP.has(q) || q === 'menu' || q === 'carta')) return [];
+
+    const wordHas = (hay: string, needle: string) => {
+      if (!needle) return false;
+      // Evitar que "menu" matchee "menudencias"
+      if (needle.length <= 4) {
+        return new RegExp(`(?:^|\\s)${needle}(?:\\s|$)`).test(hay);
+      }
+      return hay.includes(needle);
+    };
 
     const scored = available
       .map((p) => {
@@ -219,19 +294,23 @@ export class WhatsappCatalogService {
         const cat = normalizeText(p.categoryName || '');
         let score = 0;
         if (name === q) score += 100;
-        if (name.includes(q) || name.includes(qStem)) score += 50;
-        if (q.includes(name) && name.length > 3) score += 40;
-        if (desc.includes(q) || desc.includes(qStem)) score += 25;
-        if (cat.includes(q) || cat.includes(qStem)) score += 15;
-        const tokens = q.split(' ').filter((t) => t.length > 2);
-        for (const t of tokens) {
-          const ts = stemLoose(t);
-          if (name.includes(t) || name.includes(ts)) score += 10;
-          if (desc.includes(t) || desc.includes(ts)) score += 5;
+        // Solo substring completo si la query es “producto-like” (>= 4) y no es frase larga
+        if (q.length >= 4 && q.split(' ').length <= 3) {
+          if (wordHas(name, q) || wordHas(name, qStem)) score += 50;
+          if (q.includes(name) && name.length > 3) score += 40;
+        }
+        if (tokens.length) {
+          for (const t of tokens) {
+            const ts = stemLoose(t);
+            if (wordHas(name, t) || wordHas(name, ts)) score += 18;
+            else if (name.includes(t) && t.length >= 5) score += 10;
+            if (wordHas(desc, t) || (desc.includes(t) && t.length >= 5)) score += 4;
+            if (wordHas(cat, t)) score += 8;
+          }
         }
         return { p, score };
       })
-      .filter((x) => x.score > 0)
+      .filter((x) => x.score >= 18)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 

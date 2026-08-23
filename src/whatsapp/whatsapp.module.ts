@@ -10,8 +10,10 @@ import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
+import { WhatsappCleanupService } from './whatsapp-cleanup.service';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappAdminController } from './whatsapp-admin.controller';
+import { WhatsappDeskController } from './whatsapp-desk.controller';
 import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { BusinessModule } from '../business/business.module';
@@ -28,7 +30,7 @@ import { User } from '../auth/entities/user.entity';
     OrdersModule,
     PaymentsModule,
   ],
-  controllers: [WhatsappWebhookController, WhatsappAdminController],
+  controllers: [WhatsappWebhookController, WhatsappAdminController, WhatsappDeskController],
   providers: [
     WhatsappSettingsService,
     WhatsappMetaService,
@@ -37,6 +39,7 @@ import { User } from '../auth/entities/user.entity';
     WhatsappConversationService,
     WhatsappOrchestratorService,
     WhatsappActionGuardService,
+    WhatsappCleanupService,
   ],
   exports: [WhatsappSettingsService],
 })

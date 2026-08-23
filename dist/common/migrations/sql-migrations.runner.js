@@ -188,6 +188,7 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
                 await this.dataSource.query(`UPDATE ppp_whatsapp_settings
            SET default_delivery_fee = 2000
            WHERE id = 1 AND (default_delivery_fee IS NULL OR default_delivery_fee = 0)`);
+                await this.ensureWhatsappSettingsColumns();
                 return;
             }
             this.logger.warn('Missing WhatsApp tables — creating now (022_whatsapp_module)');
@@ -206,6 +207,16 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
           default_delivery_fee INT NOT NULL DEFAULT 2000,
           allow_mercado_pago TINYINT(1) NOT NULL DEFAULT 1,
           welcome_message TEXT NULL,
+          restaurant_name VARCHAR(120) NULL,
+          restaurant_address VARCHAR(500) NULL,
+          restaurant_city VARCHAR(120) NULL,
+          restaurant_neighborhood VARCHAR(120) NULL,
+          maps_url VARCHAR(500) NULL,
+          public_phone VARCHAR(40) NULL,
+          landmarks TEXT NULL,
+          pickup_notes TEXT NULL,
+          delivery_notes TEXT NULL,
+          ai_extra_context TEXT NULL,
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
@@ -246,6 +257,7 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             FOREIGN KEY (conversation_id) REFERENCES ppp_whatsapp_conversations (id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+            await this.ensureWhatsappSettingsColumns();
             this.logger.log('✓ WhatsApp schema ready');
         }
         catch (err) {
@@ -254,6 +266,46 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             const message = err instanceof Error ? err.message : String(err);
             this.logger.error(`Failed to ensure WhatsApp schema: ${message}`);
             throw err;
+        }
+    }
+    async ensureWhatsappSettingsColumns() {
+        const cols = [
+            { name: 'restaurant_name', ddl: 'VARCHAR(120) NULL' },
+            { name: 'restaurant_address', ddl: 'VARCHAR(500) NULL' },
+            { name: 'restaurant_city', ddl: 'VARCHAR(120) NULL' },
+            { name: 'restaurant_neighborhood', ddl: 'VARCHAR(120) NULL' },
+            { name: 'maps_url', ddl: 'VARCHAR(500) NULL' },
+            { name: 'public_phone', ddl: 'VARCHAR(40) NULL' },
+            { name: 'landmarks', ddl: 'TEXT NULL' },
+            { name: 'pickup_notes', ddl: 'TEXT NULL' },
+            { name: 'delivery_notes', ddl: 'TEXT NULL' },
+            { name: 'ai_extra_context', ddl: 'TEXT NULL' },
+            { name: 'menu_url', ddl: 'VARCHAR(500) NULL' },
+            { name: 'website_url', ddl: 'VARCHAR(500) NULL' },
+            { name: 'instagram_url', ddl: 'VARCHAR(500) NULL' },
+            { name: 'ignore_business_hours', ddl: 'TINYINT(1) NOT NULL DEFAULT 0' },
+            { name: 'prep_time_note', ddl: 'VARCHAR(255) NULL' },
+            { name: 'delivery_time_note', ddl: 'VARCHAR(255) NULL' },
+            { name: 'min_order_amount', ddl: 'INT NOT NULL DEFAULT 0' },
+            { name: 'payment_instructions', ddl: 'TEXT NULL' },
+            { name: 'hours_note', ddl: 'TEXT NULL' },
+            { name: 'cancel_policy_note', ddl: 'TEXT NULL' },
+            { name: 'human_handoff_message', ddl: 'TEXT NULL' },
+            { name: 'closed_message', ddl: 'TEXT NULL' },
+            { name: 'menu_link_message', ddl: 'TEXT NULL' },
+            { name: 'order_success_message', ddl: 'TEXT NULL' },
+            { name: 'ai_temperature', ddl: 'DECIMAL(3,2) NULL DEFAULT 0.20' },
+        ];
+        for (const col of cols) {
+            const exists = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_whatsapp_settings'
+           AND COLUMN_NAME = ?`, [col.name]);
+            if (Number(exists?.[0]?.c) > 0)
+                continue;
+            await this.dataSource.query(`ALTER TABLE ppp_whatsapp_settings ADD COLUMN ${col.name} ${col.ddl}`);
+            this.logger.log(`✓ WhatsApp settings column added: ${col.name}`);
         }
     }
     isEnabled() {

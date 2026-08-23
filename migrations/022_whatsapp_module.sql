@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS ppp_whatsapp_settings (
   default_delivery_fee INT NOT NULL DEFAULT 2000,
   allow_mercado_pago TINYINT(1) NOT NULL DEFAULT 1,
   welcome_message TEXT NULL,
+  restaurant_name VARCHAR(120) NULL,
+  restaurant_address VARCHAR(500) NULL,
+  restaurant_city VARCHAR(120) NULL,
+  restaurant_neighborhood VARCHAR(120) NULL,
+  maps_url VARCHAR(500) NULL,
+  public_phone VARCHAR(40) NULL,
+  landmarks TEXT NULL,
+  pickup_notes TEXT NULL,
+  delivery_notes TEXT NULL,
+  ai_extra_context TEXT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

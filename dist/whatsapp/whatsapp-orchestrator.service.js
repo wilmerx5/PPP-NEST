@@ -68,7 +68,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         const lower = text.toLowerCase();
         if (/\b(humano|persona|agente|asesor)\b/.test(lower)) {
             await this.conversationService.setHumanTakeover(conv.id, true);
-            await this.reply(conv, msg.waId, 'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.');
+            await this.reply(conv, msg.waId, cfg.humanHandoffMessage);
             return;
         }
         if (this.isRestartIntent(lower)) {
@@ -83,7 +83,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return;
         }
         if (this.isCancelIntent(text)) {
-            await this.handleCancelRequest(conv, msg.waId);
+            await this.handleCancelRequest(conv, msg.waId, cfg);
             return;
         }
         let session = this.conversationService.getSession(conv);
@@ -95,7 +95,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             : productsRaw;
         const inboundCount = await this.conversationService.countInboundMessages(conv.id);
         if (inboundCount <= 1) {
-            await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, true));
+            await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
             if (this.isGreetingKeyword(text) || text.length < 2)
                 return;
         }
@@ -167,7 +167,8 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             }
         }
         if (!status.isOpen && !cfg.ignoreBusinessHours) {
-            await this.reply(conv, msg.waId, `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`);
+            await this.reply(conv, msg.waId, cfg.closedMessage ||
+                `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`);
             return;
         }
         const isConfirm = this.isConfirmKeyword(text);
@@ -247,9 +248,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, msg.waId, `¿Cómo te queda más fácil pagar?\n${opts}`);
             return;
         }
-        if (isGreeting) {
-            const inboundCount = await this.conversationService.countInboundMessages(conv.id);
-            await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, inboundCount <= 1));
+        if (isGreeting || this.isMenuLinkIntent(text)) {
+            if (this.isMenuLinkIntent(text)) {
+                await this.reply(conv, msg.waId, cfg.menuLinkMessage);
+                return;
+            }
+            await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
             return;
         }
         const pick = session.pendingMatch && /^[1-9]\d*$/.test(lower) ? parseInt(lower, 10) : null;
@@ -391,11 +395,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             ? `Cliente web: ${session.linkedUserName}. Igual pide nombre y dirección nuevos para este pedido.`
             : 'Sin usuario guardado en WhatsApp. Pide nombre y dirección antes de confirmar.';
         const rulesBlock = (0, whatsapp_business_rules_1.buildWhatsappBusinessRulesBlock)({
-            brandName: 'Pronto Pollo Portal',
+            brandName: cfg.brandName || cfg.localContext?.restaurantName || 'Pronto Pollo Portal',
             businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
             deliveryFee: cfg.defaultDeliveryFee,
             allowMercadoPago: !!cfg.allowMercadoPago,
             menuProductCount: products.filter((p) => p.availableNow !== false).length,
+            localContextBlock: cfg.localContextBlock,
         });
         const ai = await this.aiService.generateTurn({
             userMessage: text,
@@ -596,11 +601,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             ? nextAttr.options.map((o, i) => `${i + 1}) ${o}`).join(', ')
             : '';
         const rulesBlock = (0, whatsapp_business_rules_1.buildWhatsappBusinessRulesBlock)({
-            brandName: 'Pronto Pollo Portal',
+            brandName: cfg.brandName || cfg.localContext?.restaurantName || 'Pronto Pollo Portal',
             businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
             deliveryFee: cfg.defaultDeliveryFee,
             allowMercadoPago: !!cfg.allowMercadoPago,
             menuProductCount: products.filter((p) => p.availableNow !== false).length,
+            localContextBlock: cfg.localContextBlock,
         });
         const ai = await this.aiService.generateTurn({
             userMessage: text,
@@ -723,6 +729,8 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             let opts = 'Escríbeme *contraentrega* (efectivo al recibir).';
             if (cfg.allowMercadoPago)
                 opts += ' O *mercado pago* si quieres un link de pago.';
+            if (cfg.paymentInstructions)
+                opts += `\n\n_${cfg.paymentInstructions}_`;
             await this.conversationService.saveSession(conv, session, 'awaiting_payment');
             await this.reply(conv, waId, `${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n¿Cómo pagas?\n${opts}`);
             return;
@@ -776,7 +784,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 pendingMatch: undefined,
                 pendingAttribute: undefined,
             }, 'completed');
-            await this.reply(conv, waId, this.formatOrderSuccessMessage(conv, snapshot, order, cfg.defaultDeliveryFee));
+            await this.reply(conv, waId, this.formatOrderSuccessMessage(conv, snapshot, order, cfg.defaultDeliveryFee, cfg.orderSuccessMessage));
         }
         catch (err) {
             const message = err instanceof Error ? err.message : 'Error al crear pedido';
@@ -817,7 +825,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         };
         return map[status] || status;
     }
-    async handleCancelRequest(conv, waId) {
+    async handleCancelRequest(conv, waId, cfg) {
         const todayOrders = await this.ordersService.findTodayOrdersByPhone(conv.phoneE164);
         const active = todayOrders.find((o) => o.orderStatus !== 'canceled');
         if (active) {
@@ -825,7 +833,8 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             const statusLabel = this.formatOrderStatusLabel(active.orderStatus);
             await this.reply(conv, waId, `Ya tienes un pedido de hoy: *#${num}*.\n` +
                 `Estado actual: *${statusLabel}*.\n\n` +
-                `Por este chat no puedo cancelártelo. Si necesitas ayuda, escribe *humano* y el equipo te atiende.`);
+                `Por este chat no puedo cancelártelo. Si necesitas ayuda, escribe *humano* y el equipo te atiende.` +
+                (cfg.cancelPolicyNote ? `\n\n_${cfg.cancelPolicyNote}_` : ''));
             return;
         }
         await this.conversationService.saveSession(conv, {
@@ -844,6 +853,30 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     isGreetingKeyword(text) {
         const t = text.trim().toLowerCase();
         return /^(hola|buenas|buen[oa]s?\s*(d[ií]as|tardes|noches)?|hey|hi|menu|menú|ver menu|ver menú)[\s!.?]*$/i.test(t);
+    }
+    isMenuLinkIntent(text) {
+        const t = text
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        if (!t)
+            return false;
+        if (/\b(link|enlace|url|pagina)\b.{0,40}\b(menu|carta)\b/i.test(t) ||
+            /\b(menu|carta)\b.{0,40}\b(link|enlace|url|pagina)\b/i.test(t)) {
+            return true;
+        }
+        if (/\b(pasame|pasa|dame|enviame|envia|mandame|manda|comparte|quiero|necesito|mostrame|muestra)\b.{0,40}\b(el\s+)?(menu|carta)\b/i.test(t)) {
+            return true;
+        }
+        if (/\b(pasame|dame|enviame|mandame|comparte)\b.{0,20}\b(link|enlace|url)\b/i.test(t)) {
+            return true;
+        }
+        if (/^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?[\s!.?]*$/i.test(t))
+            return true;
+        if (/^(link|enlace)\s+(del?\s+)?(menu|carta)[\s!.?]*$/i.test(t))
+            return true;
+        return false;
     }
     isPickupIntent(text) {
         const t = text.trim().toLowerCase();
@@ -903,16 +936,17 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return true;
         return false;
     }
-    buildWelcomeMessage(menuUrl, firstContact) {
-        const hello = firstContact
-            ? '¡Hola! 👋 Bienvenido a Pronto Pollo.'
-            : '¡Hola de nuevo! 👋 ¿Qué se te ofrece?';
-        return (`${hello}\n\n` +
-            `Puedes pedirme por *nombre*, *código* o categoría (ej. sopas).\n` +
-            `Aquí tienes el menú completo:\n${menuUrl}\n\n` +
-            `Dime qué se te antoja. Cuando quieras cerrar el pedido, escribe *confirmar*.`);
+    buildWelcomeMessage(cfg) {
+        const w = (cfg.welcomeMessage || '').trim();
+        if (!w) {
+            return (`¡Hola! 👋 Bienvenido a *${cfg.brandName}*.\n\n` +
+                `Menú: ${cfg.menuUrl}\n\nDime qué se te antoja.`);
+        }
+        if (w.includes(cfg.menuUrl) || /\bmenu\b|\bmenú\b/i.test(w))
+            return w;
+        return `${w}\n\nMenú: ${cfg.menuUrl}`;
     }
-    formatOrderSuccessMessage(conv, session, order, deliveryFee) {
+    formatOrderSuccessMessage(conv, session, order, deliveryFee, thanksMessage) {
         const subtotal = session.cart.reduce((s, c) => s + c.unitPrice, 0);
         const fee = session.orderType === 'delivery' ? deliveryFee : 0;
         const total = subtotal + fee;
@@ -942,7 +976,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             `📍 ${session.address}\n` +
             `📞 ${conv.phoneE164}\n` +
             `💳 ${session.paymentMethod === 'mercadopago' ? 'Mercado Pago' : 'Contra entrega'}\n\n` +
-            `Gracias por pedirnos, te esperamos 🍗`);
+            (thanksMessage?.trim() || 'Gracias por pedirnos, te esperamos 🍗'));
     }
     async reply(conv, waId, body) {
         await this.metaService.sendText(waId, body);

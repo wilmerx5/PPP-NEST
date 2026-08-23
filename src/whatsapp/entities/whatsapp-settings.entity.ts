@@ -41,6 +41,91 @@ export class WhatsappSettings {
   @Column({ name: 'welcome_message', type: 'text', nullable: true })
   welcomeMessage: string | null;
 
+  /** Contexto del local para la IA */
+  @Column({ name: 'restaurant_name', type: 'varchar', length: 120, nullable: true })
+  restaurantName: string | null;
+
+  @Column({ name: 'restaurant_address', type: 'varchar', length: 500, nullable: true })
+  restaurantAddress: string | null;
+
+  @Column({ name: 'restaurant_city', type: 'varchar', length: 120, nullable: true })
+  restaurantCity: string | null;
+
+  @Column({ name: 'restaurant_neighborhood', type: 'varchar', length: 120, nullable: true })
+  restaurantNeighborhood: string | null;
+
+  @Column({ name: 'maps_url', type: 'varchar', length: 500, nullable: true })
+  mapsUrl: string | null;
+
+  @Column({ name: 'public_phone', type: 'varchar', length: 40, nullable: true })
+  publicPhone: string | null;
+
+  @Column({ name: 'landmarks', type: 'text', nullable: true })
+  landmarks: string | null;
+
+  @Column({ name: 'pickup_notes', type: 'text', nullable: true })
+  pickupNotes: string | null;
+
+  @Column({ name: 'delivery_notes', type: 'text', nullable: true })
+  deliveryNotes: string | null;
+
+  @Column({ name: 'ai_extra_context', type: 'text', nullable: true })
+  aiExtraContext: string | null;
+
+  /** URLs y operación */
+  @Column({ name: 'menu_url', type: 'varchar', length: 500, nullable: true })
+  menuUrl: string | null;
+
+  @Column({ name: 'website_url', type: 'varchar', length: 500, nullable: true })
+  websiteUrl: string | null;
+
+  @Column({ name: 'instagram_url', type: 'varchar', length: 500, nullable: true })
+  instagramUrl: string | null;
+
+  @Column({ name: 'ignore_business_hours', type: 'boolean', default: false })
+  ignoreBusinessHours: boolean;
+
+  @Column({ name: 'prep_time_note', type: 'varchar', length: 255, nullable: true })
+  prepTimeNote: string | null;
+
+  @Column({ name: 'delivery_time_note', type: 'varchar', length: 255, nullable: true })
+  deliveryTimeNote: string | null;
+
+  @Column({ name: 'min_order_amount', type: 'int', default: 0 })
+  minOrderAmount: number;
+
+  @Column({ name: 'payment_instructions', type: 'text', nullable: true })
+  paymentInstructions: string | null;
+
+  @Column({ name: 'hours_note', type: 'text', nullable: true })
+  hoursNote: string | null;
+
+  @Column({ name: 'cancel_policy_note', type: 'text', nullable: true })
+  cancelPolicyNote: string | null;
+
+  /** Mensajes bot (plantillas; {menuUrl} {brand} {mapsUrl}) */
+  @Column({ name: 'human_handoff_message', type: 'text', nullable: true })
+  humanHandoffMessage: string | null;
+
+  @Column({ name: 'closed_message', type: 'text', nullable: true })
+  closedMessage: string | null;
+
+  @Column({ name: 'menu_link_message', type: 'text', nullable: true })
+  menuLinkMessage: string | null;
+
+  @Column({ name: 'order_success_message', type: 'text', nullable: true })
+  orderSuccessMessage: string | null;
+
+  @Column({
+    name: 'ai_temperature',
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    default: 0.2,
+    nullable: true,
+  })
+  aiTemperature: number | null;
+
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt: Date;
 }

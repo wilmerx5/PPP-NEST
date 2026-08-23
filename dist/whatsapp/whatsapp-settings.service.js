@@ -18,7 +18,10 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
-const DEFAULT_WELCOME = '¡Hola! 👋 Bienvenido a Pronto Pollo. Dime qué se te antoja y te ayudo con el pedido.';
+const DEFAULT_WELCOME = '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
+const DEFAULT_MENU_LINK = 'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
+const DEFAULT_HUMAN_HANDOFF = 'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.';
+const DEFAULT_ORDER_SUCCESS = 'Gracias por pedirnos, te esperamos 🍗';
 const TONE_GUIDE = `
 TONO (obligatorio en cada reply):
 - Tutéa siempre (tú / te / tu), como un colombiano amable del día a día.
@@ -26,7 +29,7 @@ TONO (obligatorio en cada reply):
 - Corto y claro. Usa expresiones suaves tipo “dale”, “listo”, “perfecto”, “con gusto”, “cuando quieras”.
 - Suena a persona del local, no a robot ni a publicidad.
 `.trim();
-const DEFAULT_SYSTEM_PROMPT = `Eres quien atiende pedidos de Pronto Pollo Portal por WhatsApp.
+const DEFAULT_SYSTEM_PROMPT = `Eres quien atiende pedidos de {brand} por WhatsApp.
 Hablas como un mesero colombiano: cercano, claro y servicial.
 
 ${TONE_GUIDE}
@@ -41,7 +44,8 @@ El sistema (no tú) valida menú, precios, carrito, horarios y creación del ped
 - Nunca inventes productos, precios, promociones ni tiempos de entrega exactos.
 - Si el restaurante está CERRADO, solo informa; no uses addItems ni confirmes pedidos.
 - Para confirmar, el cliente debe escribir *confirmar* (tú no confirmas).
-- Temas fuera del pedido: redirige con amabilidad o sugiere escribir *humano*.`;
+- Temas fuera del pedido: redirige con amabilidad o sugiere escribir *humano*.
+- Usa el CONTEXTO DEL LOCAL cuando pregunten dónde quedan o cómo llegar. No inventes ubicación.`;
 let WhatsappSettingsService = class WhatsappSettingsService {
     settingsRepo;
     config;
@@ -57,6 +61,9 @@ let WhatsappSettingsService = class WhatsappSettingsService {
         }
         return row;
     }
+    applyTemplate(tpl, vars) {
+        return (tpl || '').replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
+    }
     async getEffectiveConfig() {
         const row = await this.getSettings();
         const envEnabled = (this.config.get('WHATSAPP_ENABLED') || '')
@@ -64,9 +71,40 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             .toLowerCase();
         const enabledFromEnv = envEnabled === 'true' || envEnabled === '1' || envEnabled === 'yes';
         const fee = Number(row.defaultDeliveryFee);
+        const brand = (row.restaurantName || '').trim() || 'Pronto Pollo Portal';
+        const menuUrl = (row.menuUrl || '').trim() ||
+            (this.config.get('WHATSAPP_MENU_URL') || '').trim() ||
+            `${(this.config.get('FRONTEND_URL') || 'https://prontopolloportal.com').replace(/\/$/, '')}/menu`;
+        const localContext = this.extractLocalContext(row, menuUrl);
+        const templateVars = {
+            brand,
+            menuUrl,
+            mapsUrl: localContext.mapsUrl || '',
+            websiteUrl: localContext.websiteUrl || '',
+            phone: localContext.publicPhone || row.displayPhone || '',
+            address: localContext.restaurantAddress || '',
+        };
+        const ignoreFromEnv = (() => {
+            const raw = (this.config.get('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? '').trim().toLowerCase();
+            if (!raw)
+                return null;
+            if (raw === 'false' || raw === '0' || raw === 'no')
+                return false;
+            if (raw === 'true' || raw === '1' || raw === 'yes')
+                return true;
+            return null;
+        })();
+        const welcomeTpl = row.welcomeMessage?.trim() || DEFAULT_WELCOME;
+        const systemTpl = row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+        const menuLinkTpl = row.menuLinkMessage?.trim() || DEFAULT_MENU_LINK;
+        const humanTpl = row.humanHandoffMessage?.trim() || DEFAULT_HUMAN_HANDOFF;
+        const successTpl = row.orderSuccessMessage?.trim() || DEFAULT_ORDER_SUCCESS;
+        const temp = Number(row.aiTemperature);
         return {
             ...row,
+            brandName: brand,
             defaultDeliveryFee: Number.isFinite(fee) && fee > 0 ? fee : 2000,
+            minOrderAmount: Math.max(0, Number(row.minOrderAmount) || 0),
             enabled: !!row.enabled || enabledFromEnv,
             accessToken: (row.accessToken || '').trim() ||
                 (this.config.get('WHATSAPP_ACCESS_TOKEN') || '').trim() ||
@@ -81,33 +119,152 @@ let WhatsappSettingsService = class WhatsappSettingsService {
                 (this.config.get('OPENAI_API_KEY') || '').trim() ||
                 null,
             openaiModel: row.openaiModel || 'gpt-4o-mini',
-            systemPrompt: `${TONE_GUIDE}\n\n${row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT}`,
-            welcomeMessage: row.welcomeMessage?.trim() || DEFAULT_WELCOME,
-            menuUrl: ((this.config.get('WHATSAPP_MENU_URL') || '').trim() ||
-                `${(this.config.get('FRONTEND_URL') || 'https://prontopolloportal.com').replace(/\/$/, '')}/menu`),
-            ignoreBusinessHours: (() => {
-                const raw = (this.config.get('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? 'true')
-                    .trim()
-                    .toLowerCase();
-                return raw !== 'false' && raw !== '0' && raw !== 'no';
-            })(),
+            aiTemperature: Number.isFinite(temp) ? Math.min(1.5, Math.max(0, temp)) : 0.2,
+            systemPrompt: `${TONE_GUIDE}\n\n${this.applyTemplate(systemTpl, templateVars)}`,
+            welcomeMessage: this.applyTemplate(welcomeTpl, templateVars),
+            menuLinkMessage: this.applyTemplate(menuLinkTpl, templateVars),
+            humanHandoffMessage: this.applyTemplate(humanTpl, templateVars),
+            orderSuccessMessage: this.applyTemplate(successTpl, templateVars),
+            closedMessage: (row.closedMessage || '').trim() || null,
+            menuUrl,
+            websiteUrl: localContext.websiteUrl,
+            ignoreBusinessHours: ignoreFromEnv != null ? ignoreFromEnv : !!row.ignoreBusinessHours,
+            localContext,
+            localContextBlock: this.buildLocalContextBlock(localContext),
+            templateVars,
         };
+    }
+    extractLocalContext(row, menuUrl) {
+        const clean = (v) => {
+            const s = (v || '').trim();
+            return s.length ? s : null;
+        };
+        return {
+            restaurantName: clean(row.restaurantName),
+            restaurantAddress: clean(row.restaurantAddress),
+            restaurantCity: clean(row.restaurantCity),
+            restaurantNeighborhood: clean(row.restaurantNeighborhood),
+            mapsUrl: clean(row.mapsUrl),
+            publicPhone: clean(row.publicPhone),
+            landmarks: clean(row.landmarks),
+            pickupNotes: clean(row.pickupNotes),
+            deliveryNotes: clean(row.deliveryNotes),
+            aiExtraContext: clean(row.aiExtraContext),
+            websiteUrl: clean(row.websiteUrl),
+            instagramUrl: clean(row.instagramUrl),
+            prepTimeNote: clean(row.prepTimeNote),
+            deliveryTimeNote: clean(row.deliveryTimeNote),
+            minOrderAmount: Math.max(0, Number(row.minOrderAmount) || 0),
+            paymentInstructions: clean(row.paymentInstructions),
+            hoursNote: clean(row.hoursNote),
+            cancelPolicyNote: clean(row.cancelPolicyNote),
+            menuUrl: clean(menuUrl),
+        };
+    }
+    buildLocalContextBlock(ctx) {
+        const lines = [];
+        if (ctx.restaurantName)
+            lines.push(`Nombre del local: ${ctx.restaurantName}`);
+        if (ctx.restaurantAddress)
+            lines.push(`Dirección: ${ctx.restaurantAddress}`);
+        if (ctx.restaurantNeighborhood)
+            lines.push(`Barrio: ${ctx.restaurantNeighborhood}`);
+        if (ctx.restaurantCity)
+            lines.push(`Ciudad: ${ctx.restaurantCity}`);
+        if (ctx.mapsUrl)
+            lines.push(`Google Maps / ubicación: ${ctx.mapsUrl}`);
+        if (ctx.publicPhone)
+            lines.push(`Teléfono del local: ${ctx.publicPhone}`);
+        if (ctx.websiteUrl)
+            lines.push(`Sitio web: ${ctx.websiteUrl}`);
+        if (ctx.menuUrl)
+            lines.push(`Menú online: ${ctx.menuUrl}`);
+        if (ctx.instagramUrl)
+            lines.push(`Instagram: ${ctx.instagramUrl}`);
+        if (ctx.landmarks)
+            lines.push(`Puntos de referencia / cómo llegar: ${ctx.landmarks}`);
+        if (ctx.pickupNotes)
+            lines.push(`Notas para recoger en el local: ${ctx.pickupNotes}`);
+        if (ctx.deliveryNotes)
+            lines.push(`Notas de domicilio / zonas: ${ctx.deliveryNotes}`);
+        if (ctx.prepTimeNote)
+            lines.push(`Tiempo de preparación (orientativo): ${ctx.prepTimeNote}`);
+        if (ctx.deliveryTimeNote)
+            lines.push(`Tiempo de domicilio (orientativo): ${ctx.deliveryTimeNote}`);
+        if (ctx.minOrderAmount > 0) {
+            lines.push(`Pedido mínimo: $${ctx.minOrderAmount.toLocaleString('es-CO')} COP`);
+        }
+        if (ctx.paymentInstructions)
+            lines.push(`Instrucciones de pago: ${ctx.paymentInstructions}`);
+        if (ctx.hoursNote)
+            lines.push(`Notas de horario: ${ctx.hoursNote}`);
+        if (ctx.cancelPolicyNote)
+            lines.push(`Política de cancelación: ${ctx.cancelPolicyNote}`);
+        if (ctx.aiExtraContext)
+            lines.push(`Info adicional: ${ctx.aiExtraContext}`);
+        if (!lines.length) {
+            return 'CONTEXTO DEL LOCAL: (sin configurar en admin; no inventes dirección ni ubicación).';
+        }
+        return (`CONTEXTO DEL LOCAL (usa esto si preguntan dónde quedan, cómo llegar, tiempos, pagos, etc.; no inventes):\n` +
+            lines.map((l) => `- ${l}`).join('\n'));
     }
     async updateSettings(dto) {
         const row = await this.getSettings();
+        const strOrNull = (v) => v === undefined ? undefined : v.trim() ? v.trim() : null;
         Object.assign(row, {
             ...(dto.enabled !== undefined && { enabled: dto.enabled }),
-            ...(dto.displayPhone !== undefined && { displayPhone: dto.displayPhone || null }),
-            ...(dto.phoneNumberId !== undefined && { phoneNumberId: dto.phoneNumberId || null }),
-            ...(dto.wabaId !== undefined && { wabaId: dto.wabaId || null }),
-            ...(dto.accessToken !== undefined && { accessToken: dto.accessToken || null }),
-            ...(dto.verifyToken !== undefined && { verifyToken: dto.verifyToken || null }),
-            ...(dto.openaiApiKey !== undefined && { openaiApiKey: dto.openaiApiKey || null }),
+            ...(dto.displayPhone !== undefined && { displayPhone: strOrNull(dto.displayPhone) }),
+            ...(dto.phoneNumberId !== undefined && { phoneNumberId: strOrNull(dto.phoneNumberId) }),
+            ...(dto.wabaId !== undefined && { wabaId: strOrNull(dto.wabaId) }),
+            ...(dto.accessToken !== undefined && { accessToken: strOrNull(dto.accessToken) }),
+            ...(dto.verifyToken !== undefined && { verifyToken: strOrNull(dto.verifyToken) }),
+            ...(dto.openaiApiKey !== undefined && { openaiApiKey: strOrNull(dto.openaiApiKey) }),
             ...(dto.openaiModel !== undefined && { openaiModel: dto.openaiModel || 'gpt-4o-mini' }),
-            ...(dto.systemPrompt !== undefined && { systemPrompt: dto.systemPrompt || null }),
+            ...(dto.systemPrompt !== undefined && { systemPrompt: strOrNull(dto.systemPrompt) }),
             ...(dto.defaultDeliveryFee !== undefined && { defaultDeliveryFee: dto.defaultDeliveryFee }),
             ...(dto.allowMercadoPago !== undefined && { allowMercadoPago: dto.allowMercadoPago }),
-            ...(dto.welcomeMessage !== undefined && { welcomeMessage: dto.welcomeMessage || null }),
+            ...(dto.welcomeMessage !== undefined && { welcomeMessage: strOrNull(dto.welcomeMessage) }),
+            ...(dto.restaurantName !== undefined && { restaurantName: strOrNull(dto.restaurantName) }),
+            ...(dto.restaurantAddress !== undefined && {
+                restaurantAddress: strOrNull(dto.restaurantAddress),
+            }),
+            ...(dto.restaurantCity !== undefined && { restaurantCity: strOrNull(dto.restaurantCity) }),
+            ...(dto.restaurantNeighborhood !== undefined && {
+                restaurantNeighborhood: strOrNull(dto.restaurantNeighborhood),
+            }),
+            ...(dto.mapsUrl !== undefined && { mapsUrl: strOrNull(dto.mapsUrl) }),
+            ...(dto.publicPhone !== undefined && { publicPhone: strOrNull(dto.publicPhone) }),
+            ...(dto.landmarks !== undefined && { landmarks: strOrNull(dto.landmarks) }),
+            ...(dto.pickupNotes !== undefined && { pickupNotes: strOrNull(dto.pickupNotes) }),
+            ...(dto.deliveryNotes !== undefined && { deliveryNotes: strOrNull(dto.deliveryNotes) }),
+            ...(dto.aiExtraContext !== undefined && { aiExtraContext: strOrNull(dto.aiExtraContext) }),
+            ...(dto.menuUrl !== undefined && { menuUrl: strOrNull(dto.menuUrl) }),
+            ...(dto.websiteUrl !== undefined && { websiteUrl: strOrNull(dto.websiteUrl) }),
+            ...(dto.instagramUrl !== undefined && { instagramUrl: strOrNull(dto.instagramUrl) }),
+            ...(dto.ignoreBusinessHours !== undefined && {
+                ignoreBusinessHours: dto.ignoreBusinessHours,
+            }),
+            ...(dto.prepTimeNote !== undefined && { prepTimeNote: strOrNull(dto.prepTimeNote) }),
+            ...(dto.deliveryTimeNote !== undefined && {
+                deliveryTimeNote: strOrNull(dto.deliveryTimeNote),
+            }),
+            ...(dto.minOrderAmount !== undefined && { minOrderAmount: dto.minOrderAmount }),
+            ...(dto.paymentInstructions !== undefined && {
+                paymentInstructions: strOrNull(dto.paymentInstructions),
+            }),
+            ...(dto.hoursNote !== undefined && { hoursNote: strOrNull(dto.hoursNote) }),
+            ...(dto.cancelPolicyNote !== undefined && {
+                cancelPolicyNote: strOrNull(dto.cancelPolicyNote),
+            }),
+            ...(dto.humanHandoffMessage !== undefined && {
+                humanHandoffMessage: strOrNull(dto.humanHandoffMessage),
+            }),
+            ...(dto.closedMessage !== undefined && { closedMessage: strOrNull(dto.closedMessage) }),
+            ...(dto.menuLinkMessage !== undefined && { menuLinkMessage: strOrNull(dto.menuLinkMessage) }),
+            ...(dto.orderSuccessMessage !== undefined && {
+                orderSuccessMessage: strOrNull(dto.orderSuccessMessage),
+            }),
+            ...(dto.aiTemperature !== undefined && { aiTemperature: dto.aiTemperature }),
         });
         return this.settingsRepo.save(row);
     }
@@ -137,6 +294,31 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             defaultDeliveryFee: Number(row.defaultDeliveryFee) > 0 ? Number(row.defaultDeliveryFee) : 2000,
             allowMercadoPago: !!row.allowMercadoPago,
             welcomeMessage: row.welcomeMessage,
+            restaurantName: row.restaurantName,
+            restaurantAddress: row.restaurantAddress,
+            restaurantCity: row.restaurantCity,
+            restaurantNeighborhood: row.restaurantNeighborhood,
+            mapsUrl: row.mapsUrl,
+            publicPhone: row.publicPhone,
+            landmarks: row.landmarks,
+            pickupNotes: row.pickupNotes,
+            deliveryNotes: row.deliveryNotes,
+            aiExtraContext: row.aiExtraContext,
+            menuUrl: row.menuUrl,
+            websiteUrl: row.websiteUrl,
+            instagramUrl: row.instagramUrl,
+            ignoreBusinessHours: !!row.ignoreBusinessHours,
+            prepTimeNote: row.prepTimeNote,
+            deliveryTimeNote: row.deliveryTimeNote,
+            minOrderAmount: Number(row.minOrderAmount) || 0,
+            paymentInstructions: row.paymentInstructions,
+            hoursNote: row.hoursNote,
+            cancelPolicyNote: row.cancelPolicyNote,
+            humanHandoffMessage: row.humanHandoffMessage,
+            closedMessage: row.closedMessage,
+            menuLinkMessage: row.menuLinkMessage,
+            orderSuccessMessage: row.orderSuccessMessage,
+            aiTemperature: row.aiTemperature != null ? Number(row.aiTemperature) : 0.2,
             updatedAt: row.updatedAt,
             webhookUrlHint: '/api/whatsapp/webhook',
         };

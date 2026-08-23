@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   ParseIntPipe,
-  Patch,
   Post,
   Req,
   Res,
@@ -17,44 +16,42 @@ import { User } from '../auth/entities/user.entity';
 import {
   SendWhatsappMessageDto,
   TakeoverWhatsappConversationDto,
-  UpdateWhatsappSettingsDto,
 } from './dto/whatsapp.dto';
-import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 
-@ApiTags('Admin WhatsApp')
-@Controller('admin/whatsapp')
-@Auth(ValidRoles.admin)
+/**
+ * Inbox para asesores (whatsappUser) y admin.
+ * Sin acceso a tokens Meta / OpenAI / settings.
+ */
+@ApiTags('WhatsApp Desk')
+@Controller('whatsapp-desk')
+@Auth(ValidRoles.admin, ValidRoles.whatsappUser)
 @ApiBearerAuth()
-export class WhatsappAdminController {
+export class WhatsappDeskController {
   constructor(
-    private readonly settingsService: WhatsappSettingsService,
     private readonly conversationService: WhatsappConversationService,
     private readonly orchestrator: WhatsappOrchestratorService,
     private readonly metaService: WhatsappMetaService,
   ) {}
 
-  @Get('settings')
-  @ApiOperation({ summary: 'Configuración del bot WhatsApp' })
-  async getSettings() {
-    const row = await this.settingsService.getSettings();
-    return this.settingsService.maskSettings(row);
-  }
-
-  @Patch('settings')
-  @ApiOperation({ summary: 'Actualizar configuración WhatsApp' })
-  async updateSettings(@Body() dto: UpdateWhatsappSettingsDto) {
-    const row = await this.settingsService.updateSettings(dto);
-    return this.settingsService.maskSettings(row);
+  @Get('me')
+  @ApiOperation({ summary: 'Perfil mínimo del agente' })
+  me(@Req() req: Request) {
+    const user = req.user as User;
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      roles: user.roles,
+    };
   }
 
   @Get('conversations')
-  @ApiOperation({ summary: 'Listar conversaciones recientes' })
+  @ApiOperation({ summary: 'Listar conversaciones' })
   async listConversations() {
-    const rows = await this.conversationService.listConversations(80);
+    const rows = await this.conversationService.listConversations(100);
     return rows.map(({ conversation: c, lastMessage, inboxStatus }) => ({
       id: c.id,
       phoneE164: c.phoneE164,
@@ -106,7 +103,6 @@ export class WhatsappAdminController {
   }
 
   @Get('conversations/:id/messages/:messageId/media')
-  @ApiOperation({ summary: 'Proxy de audio/imagen desde Meta' })
   async getMessageMedia(
     @Param('id', ParseIntPipe) id: number,
     @Param('messageId') messageId: string,
@@ -144,7 +140,6 @@ export class WhatsappAdminController {
   }
 
   @Post('conversations/:id/close')
-  @ApiOperation({ summary: 'Archivar / cerrar conversación en el inbox' })
   async closeConversation(@Param('id', ParseIntPipe) id: number) {
     await this.conversationService.closeConversation(id);
     return { success: true, state: 'closed' };

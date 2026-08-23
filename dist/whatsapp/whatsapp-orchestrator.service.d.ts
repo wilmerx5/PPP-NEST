@@ -40,6 +40,7 @@ export declare class WhatsappOrchestratorService {
     private handleCancelRequest;
     private isConfirmKeyword;
     private isGreetingKeyword;
+    private isMenuLinkIntent;
     private isPickupIntent;
     private isDeliveryIntent;
     private applyPickupIntent;

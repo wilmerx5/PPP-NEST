@@ -59,7 +59,8 @@ export type WhatsappConversationState =
   | 'awaiting_final_confirm'
   | 'confirming'
   | 'awaiting_mp_payment'
-  | 'completed';
+  | 'completed'
+  | 'closed';
 
 export const EMPTY_SESSION: WhatsappSessionData = {
   cart: [],

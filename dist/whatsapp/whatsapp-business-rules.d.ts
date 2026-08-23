@@ -5,6 +5,7 @@ export type WhatsappRulesContext = {
     deliveryFee: number;
     allowMercadoPago: boolean;
     menuProductCount: number;
+    localContextBlock?: string;
 };
 export declare function buildWhatsappBusinessRulesBlock(ctx: WhatsappRulesContext): string;
 export declare const WHATSAPP_AI_JSON_SCHEMA: string;

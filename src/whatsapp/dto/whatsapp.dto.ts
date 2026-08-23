@@ -1,11 +1,14 @@
 import {
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateWhatsappSettingsDto {
   @IsOptional()
@@ -50,6 +53,7 @@ export class UpdateWhatsappSettingsDto {
   systemPrompt?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   defaultDeliveryFee?: number;
@@ -61,6 +65,122 @@ export class UpdateWhatsappSettingsDto {
   @IsOptional()
   @IsString()
   welcomeMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  restaurantName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  restaurantAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  restaurantCity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  restaurantNeighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mapsUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  publicPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  landmarks?: string;
+
+  @IsOptional()
+  @IsString()
+  pickupNotes?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryNotes?: string;
+
+  @IsOptional()
+  @IsString()
+  aiExtraContext?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  menuUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  websiteUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  instagramUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  ignoreBusinessHours?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  prepTimeNote?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  deliveryTimeNote?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minOrderAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentInstructions?: string;
+
+  @IsOptional()
+  @IsString()
+  hoursNote?: string;
+
+  @IsOptional()
+  @IsString()
+  cancelPolicyNote?: string;
+
+  @IsOptional()
+  @IsString()
+  humanHandoffMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  closedMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  menuLinkMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  orderSuccessMessage?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1.5)
+  aiTemperature?: number;
 }
 
 export class SendWhatsappMessageDto {

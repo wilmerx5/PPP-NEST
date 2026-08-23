@@ -9,16 +9,20 @@ function buildWhatsappBusinessRulesBlock(ctx) {
     const hoursLine = ctx.businessStatus.isOpen
         ? `- Restaurante ABIERTO. Horario hoy: ${ctx.businessStatus.openTime}–${ctx.businessStatus.closeTime}. ${ctx.businessStatus.subMessage ?? ''}`
         : `- Restaurante CERRADO. ${ctx.businessStatus.message}. ${ctx.businessStatus.subMessage ?? ''} NO tomes pedidos; solo informa y ofrece volver cuando abramos.`;
+    const localBlock = ctx.localContextBlock?.trim()
+        ? `\n${ctx.localContextBlock.trim()}\n`
+        : '';
     return `
 REGLAS OBLIGATORIAS (incumplir = error; el sistema las corrige):
 - Marca: ${ctx.brandName}. Solo pedidos de comida de nuestro menú (${ctx.menuProductCount} productos activos).
 - ${hoursLine}
 - Domicilio: costo fijo $${ctx.deliveryFee.toLocaleString('es-CO')} COP solo si es delivery (no inventes otro valor).
 ${payLines}
-- Cada pedido WhatsApp requiere nombre del cliente. Si es delivery, también dirección; si es pickup/recojo, no pidas dirección de calle.
+${localBlock}- Cada pedido WhatsApp requiere nombre del cliente. Si es delivery, también dirección; si es pickup/recojo, no pidas dirección de calle.
+- Si preguntan dónde quedan / cómo llegar / teléfono del local: usa SOLO el CONTEXTO DEL LOCAL; si no hay dato, dilo y ofrece *humano*.
 - Si el cliente dice que pasa / recoge / "paso en X minutos" / para llevar → setOrderType "pickup" (sin domicilio).
 - Si pide domicilio / envío a casa → setOrderType "delivery" y luego dirección.
-- Nunca interpretes minutos u horas (ej. "15 minutos", "paso en 15") como código de producto.
+- Si piden el link / carta / menú web: solo comparte el enlace; NO uses addItems.
 - Productos: SOLO ids/códigos/nombres del menú provisto. Nunca inventes platos, precios, promos ni descuentos.
 - Si preguntan por categoría (sopas, bebidas…): el sistema lista TODAS; no inventes un subconjunto.
 - Precios: usa EXACTAMENTE los del menú. No calcules totales finales; el sistema los muestra al confirmar.

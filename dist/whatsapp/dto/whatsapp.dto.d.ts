@@ -11,6 +11,31 @@ export declare class UpdateWhatsappSettingsDto {
     defaultDeliveryFee?: number;
     allowMercadoPago?: boolean;
     welcomeMessage?: string;
+    restaurantName?: string;
+    restaurantAddress?: string;
+    restaurantCity?: string;
+    restaurantNeighborhood?: string;
+    mapsUrl?: string;
+    publicPhone?: string;
+    landmarks?: string;
+    pickupNotes?: string;
+    deliveryNotes?: string;
+    aiExtraContext?: string;
+    menuUrl?: string;
+    websiteUrl?: string;
+    instagramUrl?: string;
+    ignoreBusinessHours?: boolean;
+    prepTimeNote?: string;
+    deliveryTimeNote?: string;
+    minOrderAmount?: number;
+    paymentInstructions?: string;
+    hoursNote?: string;
+    cancelPolicyNote?: string;
+    humanHandoffMessage?: string;
+    closedMessage?: string;
+    menuLinkMessage?: string;
+    orderSuccessMessage?: string;
+    aiTemperature?: number;
 }
 export declare class SendWhatsappMessageDto {
     body: string;

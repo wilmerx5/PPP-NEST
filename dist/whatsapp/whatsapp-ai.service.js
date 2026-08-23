@@ -58,7 +58,9 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
                 },
                 body: JSON.stringify({
                     model: cfg.openaiModel || 'gpt-4o-mini',
-                    temperature: input.conversational ? 0.45 : 0.2,
+                    temperature: input.conversational
+                        ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
+                        : cfg.aiTemperature ?? 0.2,
                     response_format: { type: 'json_object' },
                     messages,
                 }),

@@ -25,6 +25,12 @@ export class WhatsappMessage {
   @Column({ type: 'text', nullable: true })
   body: string | null;
 
+  @Column({ name: 'media_id', type: 'varchar', length: 128, nullable: true })
+  mediaId: string | null;
+
+  @Column({ name: 'mime_type', type: 'varchar', length: 120, nullable: true })
+  mimeType: string | null;
+
   @Column({ name: 'wa_message_id', type: 'varchar', length: 128, nullable: true })
   waMessageId: string | null;
 
