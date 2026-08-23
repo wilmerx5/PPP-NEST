@@ -180,6 +180,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (await this.tryHandlePointsFlow(conv, msg.waId, session, text, cfg)) {
             return;
         }
+        if (await this.tryHandleComboAvailabilityQuestion(conv, msg.waId, session, text, products, cfg)) {
+            return;
+        }
         if (session.pendingAttribute || conv.state === 'awaiting_attribute') {
             if (await this.tryAbandonPendingSelection(conv, msg.waId, session, text, cfg)) {
                 return;
@@ -198,6 +201,11 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     }
                 : null;
             if (pa && product) {
+                if (this.catalogService.isVariantPreferenceIntent(text)) {
+                    if (await this.tryApplyVariantPreferenceToProduct(conv, msg.waId, session, text, products, cfg, product, { fromPendingAttribute: true })) {
+                        return;
+                    }
+                }
                 const step = this.catalogService.resolveNextAttributeChoice(product, text, pa.selected || []);
                 if (step.status === 'complete') {
                     const fresh = await this.conversationService.reloadConversation(conv.id);
@@ -561,6 +569,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 if (handled)
                     return;
             }
+        }
+        if (!session.pendingMatch &&
+            !session.pendingAttribute &&
+            !session.pendingMultiOrder &&
+            (await this.tryHandleVariantPreferenceChange(conv, msg.waId, session, text, products, cfg))) {
+            return;
         }
         const embeddedProduct = this.catalogService.findProductEmbeddedInMessage(text, products);
         if (embeddedProduct && !session.pendingMatch && !session.pendingAttribute) {
@@ -928,6 +942,11 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             session: {
                 ...projected,
                 ignorePriorOrderHistory: false,
+                productFocus: {
+                    productId: product.id,
+                    name: product.name,
+                    variantBaseKey: this.catalogService.getProductNameBase(product.name) || undefined,
+                },
             },
         };
     }
@@ -1659,6 +1678,225 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         }
         msg += `\n\n${this.humanHelpHint()}`;
         return msg;
+    }
+    rememberProductFocus(session, product, products) {
+        const family = this.catalogService.findProductVariantFamily(product.name, products, [product]);
+        return {
+            ...session,
+            productFocus: {
+                productId: product.id,
+                name: product.name,
+                variantBaseKey: family?.baseKey,
+            },
+        };
+    }
+    resolveDiscussedProduct(session, text, products) {
+        if (session.pendingAttribute?.productId) {
+            const pending = this.catalogService.getProductById(session.pendingAttribute.productId, products);
+            if (pending)
+                return pending;
+        }
+        if (session.productFocus?.productId) {
+            const focused = this.catalogService.getProductById(session.productFocus.productId, products);
+            if (focused)
+                return focused;
+        }
+        if (session.cart.length) {
+            const last = session.cart[session.cart.length - 1];
+            const fromCart = this.catalogService.getProductById(last.productId, products);
+            if (fromCart)
+                return fromCart;
+        }
+        const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+        if (embedded)
+            return embedded;
+        const query = this.catalogService.extractProductSearchQuery(text);
+        const scored = this.catalogService.searchByNameScored(query, products, 5);
+        if (scored.length === 1 && scored[0].score >= 45)
+            return scored[0].p;
+        if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored))
+            return scored[0].p;
+        return null;
+    }
+    removeCartLinesForProductId(session, productId) {
+        const indices = session.cart
+            .map((item, i) => ({ item, i }))
+            .filter(({ item }) => item.productId === productId)
+            .map(({ i }) => i);
+        return indices.length ? this.removeCartLines(session, indices) : session;
+    }
+    removeCartLinesForVariantFamily(session, family, products) {
+        const variantIds = new Set(family.variants.map((v) => v.id));
+        const indices = session.cart
+            .map((item, i) => ({ item, i }))
+            .filter(({ item }) => {
+            if (variantIds.has(item.productId))
+                return true;
+            const p = this.catalogService.getProductById(item.productId, products);
+            if (!p)
+                return false;
+            return this.catalogService.getProductNameBase(p.name) === family.baseKey;
+        })
+            .map(({ i }) => i);
+        return indices.length ? this.removeCartLines(session, indices) : session;
+    }
+    async tryHandleComboAvailabilityQuestion(conv, waId, session, text, products, cfg) {
+        if (!this.catalogService.isComboAvailabilityQuestion(text))
+            return false;
+        const product = this.resolveDiscussedProduct(session, text, products);
+        if (!product) {
+            await this.reply(conv, waId, '¿De cuál plato quieres saber si hay *combo*? Dime el nombre (ej. *pollo frito*).');
+            return true;
+        }
+        session = this.rememberProductFocus(session, product, products);
+        const family = this.catalogService.findProductVariantFamily(product.name, products, [
+            product,
+            ...(session.pendingMatch?.candidates || []),
+        ]);
+        if (family && family.variants.length >= 2) {
+            session = {
+                ...session,
+                pendingMatch: { query: family.baseLabel, candidates: family.variants },
+                pendingAttribute: undefined,
+            };
+            await this.conversationService.saveSession(conv, session);
+            await this.reply(conv, waId, `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
+                this.catalogService.formatVariantFamilyPrompt(family) +
+                `\n\n_Si quieres el combo, dime *en combo* o el número._`);
+            return true;
+        }
+        if (product.hasAttributes && product.attributes?.length) {
+            await this.conversationService.saveSession(conv, session);
+            await this.reply(conv, waId, this.catalogService.formatProductVariantsOverview(product, 'info'));
+            return true;
+        }
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, waId, `Sobre *${product.name}*, en el menú no veo una variante *combo* aparte. Si quieres, te lo agrego tal cual o escribe *humano*.`);
+        return true;
+    }
+    async tryHandleVariantPreferenceChange(conv, waId, session, text, products, cfg) {
+        if (!this.catalogService.isVariantPreferenceIntent(text))
+            return false;
+        const product = this.resolveDiscussedProduct(session, text, products);
+        if (!product)
+            return false;
+        return this.tryApplyVariantPreferenceToProduct(conv, waId, session, text, products, cfg, product, { fromPendingAttribute: false });
+    }
+    async tryApplyVariantPreferenceToProduct(conv, waId, session, text, products, cfg, product, opts) {
+        const hint = this.catalogService.extractVariantPreferenceHint(text);
+        const cartContext = session.cart.length > 0 || opts.fromPendingAttribute;
+        const family = this.catalogService.findProductVariantFamily(product.name, products, [
+            product,
+            ...(session.pendingMatch?.candidates || []),
+            ...session.cart
+                .map((c) => this.catalogService.getProductById(c.productId, products))
+                .filter((p) => !!p),
+        ]);
+        if (family && family.variants.length >= 2) {
+            let picked = this.catalogService.pickVariantFromFamilyText(text, family) ||
+                (hint === 'combo'
+                    ? family.variants.find((p) => /\bcombo\b/.test(p.name.toLowerCase())) || null
+                    : hint === 'solo'
+                        ? family.variants.find((p) => /\bsolo\b/.test(p.name.toLowerCase())) || null
+                        : null);
+            if (!picked)
+                return false;
+            if (cartContext) {
+                session = this.removeCartLinesForVariantFamily(session, family, products);
+            }
+            session = {
+                ...this.rememberProductFocus(session, picked, products),
+                pendingMatch: undefined,
+                pendingAttribute: undefined,
+            };
+            if (picked.hasAttributes && picked.attributes?.length) {
+                const step = this.catalogService.resolveAttributesFromMessage(picked, text, []);
+                if (step.status === 'complete') {
+                    const added = this.tryAddProductToCart(session, picked, 1, cfg, undefined, step.attributes);
+                    if (added.blocked) {
+                        await this.conversationService.saveSession(conv, session);
+                        await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+                        return true;
+                    }
+                    session = added.session;
+                    await this.conversationService.saveSession(conv, session, 'building_cart');
+                    const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
+                    await this.reply(conv, waId, `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+                        this.buildCartAddReply(session, cfg.defaultDeliveryFee, `${picked.name} (${chosen})`));
+                    return true;
+                }
+                session = {
+                    ...session,
+                    pendingAttribute: {
+                        productId: picked.id,
+                        name: picked.name,
+                        code: picked.code,
+                        price: picked.price,
+                        attributes: picked.attributes || [],
+                        selected: step.status === 'partial' ? step.attributes : [],
+                    },
+                };
+                await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+                await this.reply(conv, waId, `${cartContext ? 'Listo, vamos con *combo* 👍\n\n' : ''}` +
+                    this.catalogService.formatProductOptionsPrompt(picked, step.status === 'partial' ? step.attributes : []));
+                return true;
+            }
+            const added = this.tryAddProductToCart(session, picked, 1, cfg);
+            if (added.blocked) {
+                await this.conversationService.saveSession(conv, session);
+                await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+                return true;
+            }
+            session = added.session;
+            await this.conversationService.saveSession(conv, session, 'building_cart');
+            await this.reply(conv, waId, `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+                this.buildCartAddReply(session, cfg.defaultDeliveryFee, picked.name));
+            return true;
+        }
+        if (!product.hasAttributes || !product.attributes?.length)
+            return false;
+        if (cartContext) {
+            session = this.removeCartLinesForProductId(session, product.id);
+        }
+        let step = this.catalogService.resolveAttributesFromMessage(product, text, []);
+        if (step.status === 'invalid' && hint) {
+            step = this.catalogService.resolveAttributesFromMessage(product, hint === 'combo' ? 'en combo' : 'solo', []);
+        }
+        if (step.status === 'invalid')
+            return false;
+        session = {
+            ...this.rememberProductFocus(session, product, products),
+            pendingMatch: undefined,
+        };
+        if (step.status === 'complete') {
+            const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
+            if (added.blocked) {
+                await this.conversationService.saveSession(conv, session);
+                await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+                return true;
+            }
+            session = { ...added.session, pendingAttribute: undefined };
+            await this.conversationService.saveSession(conv, session, 'building_cart');
+            const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
+            await this.reply(conv, waId, `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+                this.buildCartAddReply(session, cfg.defaultDeliveryFee, `${product.name} (${chosen})`));
+            return true;
+        }
+        session = {
+            ...session,
+            pendingAttribute: {
+                productId: product.id,
+                name: product.name,
+                code: product.code,
+                price: product.price,
+                attributes: product.attributes || [],
+                selected: step.attributes,
+            },
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(conv, waId, `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
+            this.catalogService.formatProductOptionsPrompt(product, step.attributes));
+        return true;
     }
     async tryHandleProductCompositionQuestion(conv, waId, text, products, cfg) {
         if (!this.isProductCompositionQuestion(text))

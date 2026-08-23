@@ -84,6 +84,12 @@ export type WhatsappSessionData = {
     categories: string[];
   };
   pendingAttribute?: WhatsappPendingAttribute;
+  /** Último plato del que se habló (para "damelo en combo", etc.). */
+  productFocus?: {
+    productId: number;
+    name: string;
+    variantBaseKey?: string;
+  };
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
     options: Array<{ cartIndex: number; label: string }>;

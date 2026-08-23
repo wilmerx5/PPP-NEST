@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappMetaService, IncomingWhatsappMessage } from './whatsapp-meta.service';
-import { WhatsappCatalogService, type MultiProductResolveResult } from './whatsapp-catalog.service';
+import { WhatsappCatalogService, type MultiProductResolveResult, type ProductVariantFamily } from './whatsapp-catalog.service';
 import { WhatsappAiService, type WhatsappImageAnalysis } from './whatsapp-ai.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { BusinessService } from '../business/business.service';
@@ -236,6 +236,12 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (
+      await this.tryHandleComboAvailabilityQuestion(conv, msg.waId, session, text, products, cfg)
+    ) {
+      return;
+    }
+
     // PRIORIDAD 1: eligiendo opción de un producto (1, 2, 3… NO es código de producto)
     if (session.pendingAttribute || conv.state === 'awaiting_attribute') {
       if (
@@ -258,6 +264,23 @@ export class WhatsappOrchestratorService {
           } as MenuProduct)
         : null;
       if (pa && product) {
+        if (this.catalogService.isVariantPreferenceIntent(text)) {
+          if (
+            await this.tryApplyVariantPreferenceToProduct(
+              conv,
+              msg.waId,
+              session,
+              text,
+              products,
+              cfg,
+              product,
+              { fromPendingAttribute: true },
+            )
+          ) {
+            return;
+          }
+        }
+
         const step = this.catalogService.resolveNextAttributeChoice(
           product,
           text,
@@ -805,6 +828,15 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    if (
+      !session.pendingMatch &&
+      !session.pendingAttribute &&
+      !session.pendingMultiOrder &&
+      (await this.tryHandleVariantPreferenceChange(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     // Título embebido en la frase ("… arroz con pollo para calle 10") — prioridad máxima
     const embeddedProduct = this.catalogService.findProductEmbeddedInMessage(text, products);
     if (embeddedProduct && !session.pendingMatch && !session.pendingAttribute) {
@@ -1275,6 +1307,11 @@ export class WhatsappOrchestratorService {
       session: {
         ...projected,
         ignorePriorOrderHistory: false,
+        productFocus: {
+          productId: product.id,
+          name: product.name,
+          variantBaseKey: this.catalogService.getProductNameBase(product.name) || undefined,
+        },
       },
     };
   }
@@ -2303,6 +2340,326 @@ export class WhatsappOrchestratorService {
 
     msg += `\n\n${this.humanHelpHint()}`;
     return msg;
+  }
+
+  private rememberProductFocus(
+    session: WhatsappSessionData,
+    product: MenuProduct,
+    products: MenuProduct[],
+  ): WhatsappSessionData {
+    const family = this.catalogService.findProductVariantFamily(product.name, products, [product]);
+    return {
+      ...session,
+      productFocus: {
+        productId: product.id,
+        name: product.name,
+        variantBaseKey: family?.baseKey,
+      },
+    };
+  }
+
+  private resolveDiscussedProduct(
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): MenuProduct | null {
+    if (session.pendingAttribute?.productId) {
+      const pending = this.catalogService.getProductById(session.pendingAttribute.productId, products);
+      if (pending) return pending;
+    }
+    if (session.productFocus?.productId) {
+      const focused = this.catalogService.getProductById(session.productFocus.productId, products);
+      if (focused) return focused;
+    }
+    if (session.cart.length) {
+      const last = session.cart[session.cart.length - 1];
+      const fromCart = this.catalogService.getProductById(last.productId, products);
+      if (fromCart) return fromCart;
+    }
+    const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+    if (embedded) return embedded;
+    const query = this.catalogService.extractProductSearchQuery(text);
+    const scored = this.catalogService.searchByNameScored(query, products, 5);
+    if (scored.length === 1 && scored[0].score >= 45) return scored[0].p;
+    if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored)) return scored[0].p;
+    return null;
+  }
+
+  private removeCartLinesForProductId(
+    session: WhatsappSessionData,
+    productId: number,
+  ): WhatsappSessionData {
+    const indices = session.cart
+      .map((item, i) => ({ item, i }))
+      .filter(({ item }) => item.productId === productId)
+      .map(({ i }) => i);
+    return indices.length ? this.removeCartLines(session, indices) : session;
+  }
+
+  private removeCartLinesForVariantFamily(
+    session: WhatsappSessionData,
+    family: ProductVariantFamily,
+    products: MenuProduct[],
+  ): WhatsappSessionData {
+    const variantIds = new Set(family.variants.map((v) => v.id));
+    const indices = session.cart
+      .map((item, i) => ({ item, i }))
+      .filter(({ item }) => {
+        if (variantIds.has(item.productId)) return true;
+        const p = this.catalogService.getProductById(item.productId, products);
+        if (!p) return false;
+        return this.catalogService.getProductNameBase(p.name) === family.baseKey;
+      })
+      .map(({ i }) => i);
+    return indices.length ? this.removeCartLines(session, indices) : session;
+  }
+
+  private async tryHandleComboAvailabilityQuestion(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isComboAvailabilityQuestion(text)) return false;
+
+    const product = this.resolveDiscussedProduct(session, text, products);
+    if (!product) {
+      await this.reply(
+        conv,
+        waId,
+        '¿De cuál plato quieres saber si hay *combo*? Dime el nombre (ej. *pollo frito*).',
+      );
+      return true;
+    }
+
+    session = this.rememberProductFocus(session, product, products);
+
+    const family = this.catalogService.findProductVariantFamily(product.name, products, [
+      product,
+      ...(session.pendingMatch?.candidates || []),
+    ]);
+    if (family && family.variants.length >= 2) {
+      session = {
+        ...session,
+        pendingMatch: { query: family.baseLabel, candidates: family.variants },
+        pendingAttribute: undefined,
+      };
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(
+        conv,
+        waId,
+        `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
+          this.catalogService.formatVariantFamilyPrompt(family) +
+          `\n\n_Si quieres el combo, dime *en combo* o el número._`,
+      );
+      return true;
+    }
+
+    if (product.hasAttributes && product.attributes?.length) {
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatProductVariantsOverview(product, 'info'),
+      );
+      return true;
+    }
+
+    await this.conversationService.saveSession(conv, session);
+    await this.reply(
+      conv,
+      waId,
+      `Sobre *${product.name}*, en el menú no veo una variante *combo* aparte. Si quieres, te lo agrego tal cual o escribe *humano*.`,
+    );
+    return true;
+  }
+
+  private async tryHandleVariantPreferenceChange(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isVariantPreferenceIntent(text)) return false;
+    const product = this.resolveDiscussedProduct(session, text, products);
+    if (!product) return false;
+
+    return this.tryApplyVariantPreferenceToProduct(
+      conv,
+      waId,
+      session,
+      text,
+      products,
+      cfg,
+      product,
+      { fromPendingAttribute: false },
+    );
+  }
+
+  private async tryApplyVariantPreferenceToProduct(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+    product: MenuProduct,
+    opts: { fromPendingAttribute: boolean },
+  ): Promise<boolean> {
+    const hint = this.catalogService.extractVariantPreferenceHint(text);
+    const cartContext = session.cart.length > 0 || opts.fromPendingAttribute;
+
+    const family = this.catalogService.findProductVariantFamily(product.name, products, [
+      product,
+      ...(session.pendingMatch?.candidates || []),
+      ...session.cart
+        .map((c) => this.catalogService.getProductById(c.productId, products))
+        .filter((p): p is MenuProduct => !!p),
+    ]);
+
+    if (family && family.variants.length >= 2) {
+      let picked =
+        this.catalogService.pickVariantFromFamilyText(text, family) ||
+        (hint === 'combo'
+          ? family.variants.find((p) => /\bcombo\b/.test(p.name.toLowerCase())) || null
+          : hint === 'solo'
+            ? family.variants.find((p) => /\bsolo\b/.test(p.name.toLowerCase())) || null
+            : null);
+      if (!picked) return false;
+
+      if (cartContext) {
+        session = this.removeCartLinesForVariantFamily(session, family, products);
+      }
+      session = {
+        ...this.rememberProductFocus(session, picked, products),
+        pendingMatch: undefined,
+        pendingAttribute: undefined,
+      };
+
+      if (picked.hasAttributes && picked.attributes?.length) {
+        const step = this.catalogService.resolveAttributesFromMessage(picked, text, []);
+        if (step.status === 'complete') {
+          const added = this.tryAddProductToCart(session, picked, 1, cfg, undefined, step.attributes);
+          if (added.blocked) {
+            await this.conversationService.saveSession(conv, session);
+            await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+            return true;
+          }
+          session = added.session;
+          await this.conversationService.saveSession(conv, session, 'building_cart');
+          const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
+          await this.reply(
+            conv,
+            waId,
+            `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+              this.buildCartAddReply(session, cfg.defaultDeliveryFee, `${picked.name} (${chosen})`),
+          );
+          return true;
+        }
+        session = {
+          ...session,
+          pendingAttribute: {
+            productId: picked.id,
+            name: picked.name,
+            code: picked.code,
+            price: picked.price,
+            attributes: picked.attributes || [],
+            selected: step.status === 'partial' ? step.attributes : [],
+          },
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          `${cartContext ? 'Listo, vamos con *combo* 👍\n\n' : ''}` +
+            this.catalogService.formatProductOptionsPrompt(
+              picked,
+              step.status === 'partial' ? step.attributes : [],
+            ),
+        );
+        return true;
+      }
+
+      const added = this.tryAddProductToCart(session, picked, 1, cfg);
+      if (added.blocked) {
+        await this.conversationService.saveSession(conv, session);
+        await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+        return true;
+      }
+      session = added.session;
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+          this.buildCartAddReply(session, cfg.defaultDeliveryFee, picked.name),
+      );
+      return true;
+    }
+
+    if (!product.hasAttributes || !product.attributes?.length) return false;
+
+    if (cartContext) {
+      session = this.removeCartLinesForProductId(session, product.id);
+    }
+
+    let step = this.catalogService.resolveAttributesFromMessage(product, text, []);
+    if (step.status === 'invalid' && hint) {
+      step = this.catalogService.resolveAttributesFromMessage(
+        product,
+        hint === 'combo' ? 'en combo' : 'solo',
+        [],
+      );
+    }
+    if (step.status === 'invalid') return false;
+
+    session = {
+      ...this.rememberProductFocus(session, product, products),
+      pendingMatch: undefined,
+    };
+
+    if (step.status === 'complete') {
+      const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
+      if (added.blocked) {
+        await this.conversationService.saveSession(conv, session);
+        await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+        return true;
+      }
+      session = { ...added.session, pendingAttribute: undefined };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
+      await this.reply(
+        conv,
+        waId,
+        `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
+          this.buildCartAddReply(session, cfg.defaultDeliveryFee, `${product.name} (${chosen})`),
+      );
+      return true;
+    }
+
+    session = {
+      ...session,
+      pendingAttribute: {
+        productId: product.id,
+        name: product.name,
+        code: product.code,
+        price: product.price,
+        attributes: product.attributes || [],
+        selected: step.attributes,
+      },
+    };
+    await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+    await this.reply(
+      conv,
+      waId,
+      `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
+        this.catalogService.formatProductOptionsPrompt(product, step.attributes),
+    );
+    return true;
   }
 
   private async tryHandleProductCompositionQuestion(

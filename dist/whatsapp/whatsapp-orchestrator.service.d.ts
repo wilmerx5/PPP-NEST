@@ -61,6 +61,13 @@ export declare class WhatsappOrchestratorService {
     private isProductCompositionQuestion;
     private findProductForCompositionQuestion;
     private buildProductCompositionReply;
+    private rememberProductFocus;
+    private resolveDiscussedProduct;
+    private removeCartLinesForProductId;
+    private removeCartLinesForVariantFamily;
+    private tryHandleComboAvailabilityQuestion;
+    private tryHandleVariantPreferenceChange;
+    private tryApplyVariantPreferenceToProduct;
     private tryHandleProductCompositionQuestion;
     private resolveImageOrderText;
     private resolveImageMessage;

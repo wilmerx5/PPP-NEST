@@ -75,6 +75,11 @@ export type WhatsappSessionData = {
         categories: string[];
     };
     pendingAttribute?: WhatsappPendingAttribute;
+    productFocus?: {
+        productId: number;
+        name: string;
+        variantBaseKey?: string;
+    };
     pendingCartRemoval?: {
         options: Array<{
             cartIndex: number;

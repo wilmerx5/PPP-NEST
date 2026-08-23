@@ -921,20 +921,56 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         }
         return this.formatAttributeStepPrompt(product, next, alreadySelected, { mode: 'order' });
     }
-    formatOptionsTable(rows) {
-        const labelWidth = Math.min(26, Math.max(10, ...rows.map((r) => r.label.length)));
-        const lines = [
-            '```',
-            `${'#'.padEnd(3)} ${'Opción'.padEnd(labelWidth)} Precio`,
-            '─'.repeat(labelWidth + 16),
-        ];
-        for (const r of rows) {
-            const label = r.label.length > labelWidth ? `${r.label.slice(0, labelWidth - 1)}…` : r.label;
+    optionNumberEmoji(index) {
+        const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+        return emojis[index - 1] || `${index}.`;
+    }
+    formatOptionsList(rows) {
+        return rows
+            .map((r) => {
             const price = `$${Math.round(r.price).toLocaleString('es-CO')}`;
-            lines.push(`${String(r.index).padEnd(3)} ${label.padEnd(labelWidth)} ${price}`);
+            const code = r.code != null ? ` · cód. ${r.code}` : '';
+            return `${this.optionNumberEmoji(r.index)} *${r.label}* — ${price}${code}`;
+        })
+            .join('\n');
+    }
+    formatOptionsTable(rows) {
+        return this.formatOptionsList(rows);
+    }
+    isVariantPreferenceIntent(text) {
+        const q = normalizeText(text);
+        if (!q || q.length < 4)
+            return false;
+        if (/\b(en\s+combo|en\s+solo|sin\s+combo|con\s+combo|que\s+sea\s+combo|que\s+sea\s+solo|mejor\s+en\s+combo|mejor\s+en\s+solo|mejor\s+combo|mejor\s+solo|cambiar\s+a\s+combo|cambialo\s+a\s+combo|cambiar\s+a\s+solo)\b/.test(q)) {
+            return true;
         }
-        lines.push('```');
-        return lines.join('\n');
+        if (/\b(dame(lo|melo)|demelo|pon(lo|me)|ponme|agrega(me)?|quiero)\s+(en\s+)?(combo|solo)\b/.test(q)) {
+            return true;
+        }
+        if (/^(combo|solo)[\s!.?]*$/.test(q.trim()))
+            return true;
+        return false;
+    }
+    isComboAvailabilityQuestion(text) {
+        const q = normalizeText(text);
+        if (!q || q.length < 6)
+            return false;
+        if (!/\?/.test(text.trim()) && !/\b(tienen|tiene|hay|venden|manejan|sirven)\b/.test(q)) {
+            return false;
+        }
+        return (/\b(en\s+combo|version\s+combo|opcion\s+combo|la\s+opcion\s+combo|modo\s+combo)\b/.test(q) ||
+            (/\bcombo\b/.test(q) &&
+                /\b(tienen|tiene|hay|viene|manejan|venden|lo\s+tienen|la\s+tienen)\b/.test(q)));
+    }
+    extractVariantPreferenceHint(text) {
+        const q = normalizeText(text);
+        if (/\bcombo\b/.test(q) && !/\bsolo\b/.test(q))
+            return 'combo';
+        if (/\bsolo\b/.test(q) && !/\bcombo\b/.test(q))
+            return 'solo';
+        if (/\bcombo\b/.test(q))
+            return 'combo';
+        return null;
     }
     formatAttributeStepPrompt(product, attr, alreadySelected = [], opts) {
         const rows = attr.options.map((opt, i) => ({
@@ -943,22 +979,29 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             price: product.price,
         }));
         const parts = [];
+        const totalSteps = (product.attributes || []).filter((a) => !this.isComboOnlyAttribute(a) || this.hasComboPortionSelected(alreadySelected)).length;
+        const doneSteps = alreadySelected.filter((s) => !this.isComboOnlyAttribute({ attributeName: s.attributeName }) ||
+            this.hasComboPortionSelected(alreadySelected)).length;
+        const stepNum = Math.min(totalSteps, doneSteps + 1);
         if (!opts?.skipHeader) {
-            parts.push(`*${product.name}* (cód. ${product.code})`);
+            parts.push(`🍽️ *${product.name}* · cód. ${product.code}`);
         }
         if (alreadySelected.length) {
-            parts.push(`✅ ${alreadySelected.map((s) => s.attributeValue).join(' · ')}`);
+            parts.push(`✅ Ya llevas: _${alreadySelected.map((s) => s.attributeValue).join(' · ')}_`);
+        }
+        if (totalSteps > 1 && opts?.mode !== 'info') {
+            parts.push(`*Paso ${stepNum} de ${totalSteps}*`);
         }
         const question = this.isComboOnlyAttribute(attr)
-            ? `¿Qué *${attr.attributeName}* lleva tu combo?`
-            : `¿Qué *${attr.attributeName}* prefieres?`;
+            ? `¿Qué *${attr.attributeName}* va en tu combo?`
+            : `Elige *${attr.attributeName}*:`;
         parts.push(question);
-        parts.push(this.formatOptionsTable(rows));
+        parts.push(this.formatOptionsList(rows));
         if (opts?.mode === 'info') {
-            parts.push('_Dime el número o el nombre si quieres pedir._');
+            parts.push('_Si quieres pedir, dime el número o escribe solo / combo._');
         }
         else {
-            parts.push('Responde con el *número* o el *nombre* de la opción.');
+            parts.push('_Responde con el *número* (ej. 2) o el *nombre* (ej. combo)._');
         }
         return parts.filter(Boolean).join('\n\n');
     }
@@ -1073,8 +1116,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             code: p.code,
         }));
         return (`Para *${family.baseLabel}*, ¿cómo lo quieres?\n\n` +
-            `${this.formatOptionsTable(rows)}\n\n` +
-            `Responde con el *número* o escribe *solo* / *combo*.`);
+            `${this.formatOptionsList(rows)}\n\n` +
+            `_Responde con el *número* o escribe *solo* / *combo*._`);
     }
     getRemainingAttributes(product, alreadySelected = []) {
         return (product.attributes || []).filter((attr) => {
@@ -1408,10 +1451,17 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             if (o.length >= 3 && (q === o || q.includes(o)))
                 return opt;
         }
-        if (/\bcombo\b/.test(q)) {
+        if (/\b(en\s+combo|modo\s+combo|version\s+combo|que\s+sea\s+combo|dame(lo|melo)\s+en\s+combo|demelo\s+en\s+combo|pon(lo|me)\s+en\s+combo)\b/.test(q) ||
+            (/\bcombo\b/.test(q) && !/\bsolo\b/.test(q))) {
             const comboOpt = attr.options.find((o) => normalizeText(o).includes('combo'));
             if (comboOpt)
                 return comboOpt;
+        }
+        if (/\b(en\s+solo|modo\s+solo|que\s+sea\s+solo|dame(lo|melo)\s+en\s+solo|demelo\s+en\s+solo|sin\s+combo)\b/.test(q) ||
+            (/\bsolo\b/.test(q) && !/\bcombo\b/.test(q))) {
+            const soloOpt = attr.options.find((o) => /\bsolo\b/.test(normalizeText(o)));
+            if (soloOpt)
+                return soloOpt;
         }
         const portionHints = [
             { re: /\b(medio|media)\b/, needle: 'medio' },

@@ -83,12 +83,22 @@ export declare class WhatsappCatalogService {
         attributeName: string;
         attributeValue: string;
     }[]): string;
+    private optionNumberEmoji;
+    formatOptionsList(rows: Array<{
+        index: number;
+        label: string;
+        price: number;
+        code?: number;
+    }>): string;
     formatOptionsTable(rows: Array<{
         index: number;
         label: string;
         price: number;
         code?: number;
     }>): string;
+    isVariantPreferenceIntent(text: string): boolean;
+    isComboAvailabilityQuestion(text: string): boolean;
+    extractVariantPreferenceHint(text: string): 'combo' | 'solo' | null;
     formatAttributeStepPrompt(product: WhatsappCatalogProduct, attr: {
         attributeName: string;
         options: string[];
