@@ -6,14 +6,17 @@ import { UserPoints } from './entities/user-points.entity';
 import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
 import { ExpensesService } from '../expenses/expenses.service';
+import { BusinessService } from '../business/business.service';
+import { CreateHolidayClosureDto, UpdateRestaurantSettingsDto } from '../business/dto/business.dto';
 export declare class AdminController {
     private readonly pointsService;
     private readonly ordersService;
     private readonly productsService;
     private readonly expensesService;
+    private readonly businessService;
     private readonly userRepo;
     private readonly pointsRepo;
-    constructor(pointsService: PointsService, ordersService: OrdersService, productsService: ProductsService, expensesService: ExpensesService, userRepo: Repository<User>, pointsRepo: Repository<UserPoints>);
+    constructor(pointsService: PointsService, ordersService: OrdersService, productsService: ProductsService, expensesService: ExpensesService, businessService: BusinessService, userRepo: Repository<User>, pointsRepo: Repository<UserPoints>);
     getAllUsers(page?: string, limit?: string, search?: string): Promise<{
         data: User[];
         total: number;
@@ -98,11 +101,18 @@ export declare class AdminController {
             baseUnits: number;
             derivedStock: number;
         } | undefined;
+        hasSchedule: boolean;
         attributes: {
             options: any;
             id: number;
             attributeName: string;
             product: import("../products/entities/product.entity").Product;
+        }[];
+        schedules: {
+            id: number;
+            dayOfWeek: number;
+            startTime: string | null;
+            endTime: string | null;
         }[];
         variantStocks: {
             inventoryGroup?: {
@@ -246,6 +256,8 @@ export declare class AdminController {
         total: number;
         used: number;
         unused: number;
+        canceled: number;
+        assigned: number;
     }>;
     getPointsRecords(date?: string, from?: string, to?: string): Promise<{
         records: {
@@ -342,6 +354,13 @@ export declare class AdminController {
             list: import("../expenses/entities/expense.entity").Expense[];
         };
         net: number;
+    }>;
+    getBusinessSettings(): Promise<import("../business/entities/restaurant-settings.entity").RestaurantSettings>;
+    updateBusinessSettings(dto: UpdateRestaurantSettingsDto): Promise<import("../business/entities/restaurant-settings.entity").RestaurantSettings>;
+    listBusinessClosures(from?: string, to?: string): Promise<import("../business/entities/holiday-closure.entity").HolidayClosure[]>;
+    createBusinessClosure(dto: CreateHolidayClosureDto): Promise<import("../business/entities/holiday-closure.entity").HolidayClosure>;
+    deleteBusinessClosure(id: string): Promise<{
+        success: boolean;
     }>;
     getLeaderboard(limit?: string, offset?: string, search?: string): Promise<{
         users: Array<{

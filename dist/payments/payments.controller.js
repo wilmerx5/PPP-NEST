@@ -29,6 +29,10 @@ let PaymentsController = class PaymentsController {
     validateWebhookSignature(req, body) {
         const webhookSecret = this.configService.get('MERCADO_PAGO_WEBHOOK_SECRET');
         if (!webhookSecret) {
+            const nodeEnv = (this.configService.get('NODE_ENV') || '').toLowerCase();
+            if (nodeEnv === 'production' || nodeEnv === 'prod' || nodeEnv === 'staging') {
+                return false;
+            }
             return true;
         }
         const xSignature = req.headers['x-signature'] || req.headers['X-Signature'];

@@ -42,6 +42,8 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
     }
     async runAll() {
         await this.ensureClientRequestIdColumn();
+        await this.ensureProductScheduleSchema();
+        await this.ensureWhatsappSchema();
         if (!this.isEnabled()) {
             this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
             return;
@@ -129,6 +131,125 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
                 return;
             const message = err instanceof Error ? err.message : String(err);
             this.logger.error(`Failed to ensure client_request_id: ${message}`);
+            throw err;
+        }
+    }
+    async ensureProductScheduleSchema() {
+        try {
+            const col = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_products'
+           AND COLUMN_NAME = 'has_schedule'`);
+            if (Number(col?.[0]?.c) === 0) {
+                this.logger.warn('Missing column ppp_products.has_schedule — adding now');
+                await this.dataSource.query(`
+          ALTER TABLE ppp_products
+          ADD COLUMN has_schedule TINYINT(1) NOT NULL DEFAULT 0
+        `);
+                this.logger.log('✓ ppp_products.has_schedule ready');
+            }
+            const table = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_product_schedules'`);
+            if (Number(table?.[0]?.c) === 0) {
+                this.logger.warn('Missing table ppp_product_schedules — creating now');
+                await this.dataSource.query(`
+          CREATE TABLE ppp_product_schedules (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            day_of_week TINYINT NOT NULL,
+            start_time VARCHAR(5) NULL,
+            end_time VARCHAR(5) NULL,
+            INDEX idx_product_schedules_product (product_id),
+            CONSTRAINT fk_product_schedules_product
+              FOREIGN KEY (product_id) REFERENCES ppp_products(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+                this.logger.log('✓ ppp_product_schedules ready');
+            }
+        }
+        catch (err) {
+            if (this.isIdempotentError(err))
+                return;
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to ensure product schedule schema: ${message}`);
+            throw err;
+        }
+    }
+    async ensureWhatsappSchema() {
+        try {
+            const table = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_whatsapp_settings'`);
+            if (Number(table?.[0]?.c) > 0) {
+                return;
+            }
+            this.logger.warn('Missing WhatsApp tables — creating now (022_whatsapp_module)');
+            await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS ppp_whatsapp_settings (
+          id INT NOT NULL PRIMARY KEY DEFAULT 1,
+          enabled TINYINT(1) NOT NULL DEFAULT 0,
+          display_phone VARCHAR(32) NULL,
+          phone_number_id VARCHAR(64) NULL,
+          waba_id VARCHAR(64) NULL,
+          access_token TEXT NULL,
+          verify_token VARCHAR(128) NULL,
+          openai_api_key TEXT NULL,
+          openai_model VARCHAR(64) NOT NULL DEFAULT 'gpt-4o-mini',
+          system_prompt TEXT NULL,
+          default_delivery_fee INT NOT NULL DEFAULT 0,
+          allow_mercado_pago TINYINT(1) NOT NULL DEFAULT 1,
+          welcome_message TEXT NULL,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+            await this.dataSource.query(`INSERT IGNORE INTO ppp_whatsapp_settings (id) VALUES (1)`);
+            await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS ppp_whatsapp_conversations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          wa_id VARCHAR(32) NOT NULL,
+          phone_e164 VARCHAR(32) NOT NULL,
+          customer_name VARCHAR(120) NULL,
+          state VARCHAR(40) NOT NULL DEFAULT 'building_cart',
+          session_data JSON NULL,
+          human_takeover TINYINT(1) NOT NULL DEFAULT 0,
+          human_agent_id VARCHAR(36) NULL,
+          human_agent_name VARCHAR(120) NULL,
+          last_message_at TIMESTAMP NULL,
+          last_inbound_at TIMESTAMP NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_whatsapp_wa_id (wa_id),
+          INDEX idx_whatsapp_conv_phone (phone_e164),
+          INDEX idx_whatsapp_conv_updated (updated_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+            await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS ppp_whatsapp_messages (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          conversation_id INT NOT NULL,
+          direction ENUM('in', 'out') NOT NULL,
+          message_type VARCHAR(20) NOT NULL DEFAULT 'text',
+          body TEXT NULL,
+          wa_message_id VARCHAR(128) NULL,
+          sent_by VARCHAR(20) NOT NULL DEFAULT 'bot',
+          raw_payload JSON NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_whatsapp_msg_conv (conversation_id),
+          CONSTRAINT fk_whatsapp_msg_conv
+            FOREIGN KEY (conversation_id) REFERENCES ppp_whatsapp_conversations (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+            this.logger.log('✓ WhatsApp schema ready');
+        }
+        catch (err) {
+            if (this.isIdempotentError(err))
+                return;
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to ensure WhatsApp schema: ${message}`);
             throw err;
         }
     }

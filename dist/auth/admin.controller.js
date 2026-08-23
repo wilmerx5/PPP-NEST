@@ -26,6 +26,8 @@ const user_points_entity_1 = require("./entities/user-points.entity");
 const orders_service_1 = require("../orders/orders.service");
 const products_service_1 = require("../products/products.service");
 const expenses_service_1 = require("../expenses/expenses.service");
+const business_service_1 = require("../business/business.service");
+const business_dto_1 = require("../business/dto/business.dto");
 const date_util_1 = require("../common/utils/date.util");
 const date_fns_tz_1 = require("date-fns-tz");
 let AdminController = class AdminController {
@@ -33,13 +35,15 @@ let AdminController = class AdminController {
     ordersService;
     productsService;
     expensesService;
+    businessService;
     userRepo;
     pointsRepo;
-    constructor(pointsService, ordersService, productsService, expensesService, userRepo, pointsRepo) {
+    constructor(pointsService, ordersService, productsService, expensesService, businessService, userRepo, pointsRepo) {
         this.pointsService = pointsService;
         this.ordersService = ordersService;
         this.productsService = productsService;
         this.expensesService = expensesService;
+        this.businessService = businessService;
         this.userRepo = userRepo;
         this.pointsRepo = pointsRepo;
     }
@@ -364,10 +368,13 @@ let AdminController = class AdminController {
             throw new common_1.BadRequestException('Indica date=YYYY-MM-DD, from y to, o allTime=1');
         }
         const points = await qb.getMany();
-        const total = points.length;
-        const used = points.filter((p) => p.isUsed).length;
+        const active = points.filter((p) => !p.isCanceled);
+        const total = active.length;
+        const used = active.filter((p) => p.isUsed).length;
         const unused = total - used;
-        return { total, used, unused };
+        const canceled = points.length - active.length;
+        const assigned = active.filter((p) => !!p.userId).length;
+        return { total, used, unused, canceled, assigned };
     }
     async getPointsRecords(date, from, to) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -521,6 +528,22 @@ let AdminController = class AdminController {
             },
             net,
         };
+    }
+    getBusinessSettings() {
+        return this.businessService.getSettings();
+    }
+    updateBusinessSettings(dto) {
+        return this.businessService.updateSettings(dto);
+    }
+    listBusinessClosures(from, to) {
+        return this.businessService.listClosures(from, to);
+    }
+    createBusinessClosure(dto) {
+        return this.businessService.createClosure(dto);
+    }
+    async deleteBusinessClosure(id) {
+        await this.businessService.deleteClosure(parseInt(id, 10));
+        return { success: true };
     }
     async getLeaderboard(limit, offset, search) {
         const limitNum = limit ? parseInt(limit, 10) : 100;
@@ -1002,6 +1025,48 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getExpensesStats", null);
 __decorate([
+    (0, common_1.Get)('business/settings'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get restaurant hours / timezone (admin)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getBusinessSettings", null);
+__decorate([
+    (0, common_1.Patch)('business/settings'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update restaurant timezone, weekly closed days and hours' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [business_dto_1.UpdateRestaurantSettingsDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateBusinessSettings", null);
+__decorate([
+    (0, common_1.Get)('business/closures'),
+    (0, swagger_1.ApiOperation)({ summary: 'List holiday closures (admin)' }),
+    (0, swagger_1.ApiQuery)({ name: 'from', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'to', required: false }),
+    __param(0, (0, common_1.Query)('from')),
+    __param(1, (0, common_1.Query)('to')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "listBusinessClosures", null);
+__decorate([
+    (0, common_1.Post)('business/closures'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a holiday / closed date' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [business_dto_1.CreateHolidayClosureDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createBusinessClosure", null);
+__decorate([
+    (0, common_1.Delete)('business/closures/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a holiday closure' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deleteBusinessClosure", null);
+__decorate([
     (0, common_1.Get)('points/leaderboard'),
     (0, swagger_1.ApiOperation)({ summary: 'Get points leaderboard (admin only)' }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, description: 'Number of users to return', example: 50 }),
@@ -1020,12 +1085,13 @@ exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
     (0, swagger_1.ApiBearerAuth)(),
-    __param(4, (0, typeorm_2.InjectRepository)(user_entity_1.User)),
-    __param(5, (0, typeorm_2.InjectRepository)(user_points_entity_1.UserPoints)),
+    __param(5, (0, typeorm_2.InjectRepository)(user_entity_1.User)),
+    __param(6, (0, typeorm_2.InjectRepository)(user_points_entity_1.UserPoints)),
     __metadata("design:paramtypes", [points_service_1.PointsService,
         orders_service_1.OrdersService,
         products_service_1.ProductsService,
         expenses_service_1.ExpensesService,
+        business_service_1.BusinessService,
         typeorm_3.Repository,
         typeorm_3.Repository])
 ], AdminController);

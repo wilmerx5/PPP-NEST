@@ -3,21 +3,22 @@ export declare class CreateOrderItemAttributeDto {
     attributeName: string;
     attributeValue: string;
 }
+export declare class AlsoDeductVariantDto {
+    productId: number;
+    attributes: CreateOrderItemAttributeDto[];
+}
 export declare class CreateOrderItemDto {
     productId: number;
     note?: string;
-    attributes?: {
-        attributeName: string;
-        attributeValue: string;
-    }[];
-    alsoDeductVariant?: {
-        productId: number;
-        attributes: {
-            attributeName: string;
-            attributeValue: string;
-        }[];
-    };
+    attributes?: CreateOrderItemAttributeDto[];
+    alsoDeductVariant?: AlsoDeductVariantDto;
     unitPrice?: number;
+}
+export declare class CreateOrderExtraDto {
+    title: string;
+    description?: string;
+    amount: number;
+    quantity?: number;
 }
 export declare class CreateOrderDto {
     customerName: string;
@@ -28,12 +29,7 @@ export declare class CreateOrderDto {
     deliveryFee?: number;
     orderSource?: OrderSource;
     items: CreateOrderItemDto[];
-    extras?: {
-        title: string;
-        description?: string;
-        amount: number;
-        quantity?: number;
-    }[];
+    extras?: CreateOrderExtraDto[];
     redemptionCode?: string;
     clientRequestId?: string;
 }
@@ -47,13 +43,7 @@ export declare class UpdateOrderItemDto {
     attributes?: UpdateOrderItemAttributeDto[];
     note?: string;
     kitchenPrepared?: boolean;
-    alsoDeductVariant?: {
-        productId: number;
-        attributes: {
-            attributeName: string;
-            attributeValue: string;
-        }[];
-    };
+    alsoDeductVariant?: AlsoDeductVariantDto;
     unitPrice?: number;
 }
 export declare class UpdateOrderItemUnitPriceDto {
@@ -62,12 +52,16 @@ export declare class UpdateOrderItemUnitPriceDto {
 }
 export declare class UpdateOrderItemsDto {
     items: UpdateOrderItemDto[];
-    extrasToAdd?: {
-        title: string;
-        description?: string;
-        amount: number;
-        quantity?: number;
-    }[];
+    extrasToAdd?: CreateOrderExtraDto[];
+    baseItemCount?: number;
+}
+export declare class AppendOrderItemsDto {
+    items: UpdateOrderItemDto[];
+    extrasToAdd?: CreateOrderExtraDto[];
+}
+export declare class RemoveOrderItemsDto {
+    productId: number;
+    unitIndex?: number;
 }
 export declare class AddOrderExtraDto {
     title: string;
@@ -87,6 +81,7 @@ export declare class UpdateOrderGeneralDto {
     address?: string;
     orderType?: OrderType;
     orderStatus?: OrderStatus;
+    forceCancel?: boolean;
     printed?: boolean;
     deliveryFee?: number;
 }

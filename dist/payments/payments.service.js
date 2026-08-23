@@ -25,6 +25,8 @@ const payment_entity_1 = require("./entities/payment.entity");
 const orders_service_1 = require("../orders/orders.service");
 const mail_service_1 = require("../common/mail/mail.service");
 const date_util_1 = require("../common/utils/date.util");
+const business_service_1 = require("../business/business.service");
+const products_service_1 = require("../products/products.service");
 let PaymentsService = PaymentsService_1 = class PaymentsService {
     paymentRepo;
     orderRepo;
@@ -32,18 +34,22 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
     configService;
     moduleRef;
     mailService;
+    businessService;
+    productsService;
     logger = new common_1.Logger(PaymentsService_1.name);
     client;
     preference;
     payment;
     ordersService;
-    constructor(paymentRepo, orderRepo, dataSource, configService, moduleRef, mailService) {
+    constructor(paymentRepo, orderRepo, dataSource, configService, moduleRef, mailService, businessService, productsService) {
         this.paymentRepo = paymentRepo;
         this.orderRepo = orderRepo;
         this.dataSource = dataSource;
         this.configService = configService;
         this.moduleRef = moduleRef;
         this.mailService = mailService;
+        this.businessService = businessService;
+        this.productsService = productsService;
         try {
             const accessToken = this.configService.get('MERCADO_PAGO_ACCESS_TOKEN');
             if (!accessToken) {
@@ -65,6 +71,9 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
         if (!this.client || !this.preference) {
             throw new common_1.BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
         }
+        await this.businessService.assertAcceptingOnlineOrders();
+        const productIds = (orderData.items ?? []).map((i) => i.productId);
+        await this.productsService.assertOnlineProductsAvailable(productIds);
         let mercadopagoFrontendUrl = this.configService.get('FRONTEND_URL_NGROK') ||
             this.configService.get('FRONTEND_URL') ||
             'http://localhost:3000';
@@ -588,6 +597,8 @@ exports.PaymentsService = PaymentsService = PaymentsService_1 = __decorate([
         typeorm_2.DataSource,
         config_1.ConfigService,
         core_1.ModuleRef,
-        mail_service_1.MailService])
+        mail_service_1.MailService,
+        business_service_1.BusinessService,
+        products_service_1.ProductsService])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

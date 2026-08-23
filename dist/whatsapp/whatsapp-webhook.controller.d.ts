@@ -1,0 +1,14 @@
+import type { Request, Response } from 'express';
+import { WhatsappSettingsService } from './whatsapp-settings.service';
+import { WhatsappMetaService } from './whatsapp-meta.service';
+import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
+export declare class WhatsappWebhookController {
+    private readonly settingsService;
+    private readonly metaService;
+    private readonly orchestrator;
+    constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, orchestrator: WhatsappOrchestratorService);
+    verify(mode: string, token: string, challenge: string, res: Response): Promise<Response<any, Record<string, any>>>;
+    receive(req: Request): Promise<{
+        ok: boolean;
+    }>;
+}

@@ -686,10 +686,13 @@ export class AdminController {
     }
 
     const points = await qb.getMany();
-    const total = points.length;
-    const used = points.filter((p) => p.isUsed).length;
+    const active = points.filter((p) => !p.isCanceled);
+    const total = active.length;
+    const used = active.filter((p) => p.isUsed).length;
     const unused = total - used;
-    return { total, used, unused };
+    const canceled = points.length - active.length;
+    const assigned = active.filter((p) => !!p.userId).length;
+    return { total, used, unused, canceled, assigned };
   }
 
   @Get('points/records')

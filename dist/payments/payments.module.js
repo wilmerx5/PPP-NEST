@@ -17,6 +17,8 @@ const order_entity_1 = require("../orders/entities/order.entity");
 const orders_module_1 = require("../orders/orders.module");
 const auth_module_1 = require("../auth/auth.module");
 const common_module_1 = require("../common/common.module");
+const business_module_1 = require("../business/business.module");
+const products_module_1 = require("../products/products.module");
 let PaymentsModule = class PaymentsModule {
 };
 exports.PaymentsModule = PaymentsModule;
@@ -26,6 +28,8 @@ exports.PaymentsModule = PaymentsModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([payment_entity_1.Payment, order_entity_1.Order]),
             config_1.ConfigModule,
             common_module_1.CommonModule,
+            business_module_1.BusinessModule,
+            products_module_1.ProductsModule,
             orders_module_1.OrdersModule,
             auth_module_1.AuthModule,
         ],

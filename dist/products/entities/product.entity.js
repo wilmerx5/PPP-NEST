@@ -16,6 +16,7 @@ const typeorm_1 = require("typeorm");
 const category_entity_1 = require("./category.entity");
 const product_attribute_entity_1 = require("./product-attribute.entity");
 const product_variant_stock_entity_1 = require("./product-variant-stock.entity");
+const product_schedule_entity_1 = require("./product-schedule.entity");
 let Product = class Product {
     id;
     name;
@@ -28,6 +29,8 @@ let Product = class Product {
     stock;
     attributes;
     variantStocks;
+    hasSchedule;
+    schedules;
     categories;
     orderItems;
     imageUrl;
@@ -136,6 +139,18 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => product_variant_stock_entity_1.ProductVariantStock, (vs) => vs.product, { cascade: true }),
     __metadata("design:type", Array)
 ], Product.prototype, "variantStocks", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Si true, solo se muestra/vende en los horarios de schedules.',
+        default: false,
+    }),
+    (0, typeorm_1.Column)({ name: 'has_schedule', type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], Product.prototype, "hasSchedule", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => product_schedule_entity_1.ProductSchedule, (s) => s.product),
+    __metadata("design:type", Array)
+], Product.prototype, "schedules", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Categorías a las que pertenece este producto.',

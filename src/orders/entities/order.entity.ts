@@ -12,7 +12,7 @@ import { OrderExtra } from './order-extra.entity';
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter' | 'rappi';
 
 /** Origen de la orden: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas */
-export type OrderSource = 'online' | 'internal';
+export type OrderSource = 'online' | 'internal' | 'whatsapp';
 
 export type OrderStatus =
   | 'pending'    // Recién creada / confirmada

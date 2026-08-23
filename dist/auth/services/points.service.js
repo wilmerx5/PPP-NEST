@@ -208,6 +208,28 @@ let PointsService = class PointsService {
         });
         return points.map(p => p.code);
     }
+    async getPointCodesByOrderIds(orderIds) {
+        const map = new Map();
+        const unique = [...new Set(orderIds.filter((id) => Number.isFinite(id)))];
+        for (const id of unique)
+            map.set(id, []);
+        if (!unique.length)
+            return map;
+        const points = await this.pointsRepo.find({
+            where: { orderId: (0, typeorm_2.In)(unique) },
+            select: ['code', 'orderId'],
+        });
+        for (const p of points) {
+            if (p.orderId == null)
+                continue;
+            const list = map.get(p.orderId);
+            if (list)
+                list.push(p.code);
+            else
+                map.set(p.orderId, [p.code]);
+        }
+        return map;
+    }
     async updatePointCodesForOrder(orderId, orderDailyNumber, newPointsCount) {
         const existingPoints = await this.pointsRepo.find({
             where: { orderId },

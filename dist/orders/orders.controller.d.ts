@@ -1,4 +1,4 @@
-import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, LinkTablesDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, AppendOrderItemsDto, ChangeTableDto, CreateOrderDto, LinkTablesDto, RemoveOrderItemsDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
 export declare class OrdersController {
     private readonly orderService;
@@ -32,22 +32,23 @@ export declare class OrdersController {
         dailyOrderNumber: number;
     }>;
     getTodayOrders(orderType?: string): Promise<any[]>;
-    deleteOrder(id: string): Promise<{
+    validateRedemptionPrize(body: {
+        code: string;
+    }): Promise<{
+        valid: boolean;
+        code: any;
+        expiresAt: any;
+        message: string;
+    }>;
+    deleteOrder(id: string, force?: string): Promise<{
         success: true;
         message: string;
         dailyOrderNumber?: number;
     }>;
     updateItemUnitPrice(id: string, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
-    updateItems(id: string, dto: UpdateOrderItemsDto): Promise<{
-        success: true;
-        message: string;
-        dailyOrderNumber?: number;
-    } | {
-        success: boolean;
-        message: string;
-        itemsCount: number;
-        dtoCount: number;
-    }>;
+    appendItems(id: string, dto: AppendOrderItemsDto): Promise<any>;
+    removeItems(id: string, dto: RemoveOrderItemsDto): Promise<any>;
+    updateItems(id: string, dto: UpdateOrderItemsDto): Promise<any>;
     addExtra(id: string, dto: AddOrderExtraDto): Promise<{
         success: boolean;
         message: string;
@@ -102,14 +103,6 @@ export declare class OrdersController {
     }>;
     unlinkTable(id: string): Promise<{
         success: boolean;
-        message: string;
-    }>;
-    validateRedemptionPrize(body: {
-        code: string;
-    }): Promise<{
-        valid: boolean;
-        code: any;
-        expiresAt: any;
         message: string;
     }>;
     applyRedemptionVoucher(id: number, body: {

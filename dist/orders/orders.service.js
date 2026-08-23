@@ -31,6 +31,7 @@ const user_points_entity_1 = require("../auth/entities/user-points.entity");
 const mail_service_1 = require("../common/mail/mail.service");
 const circuit_breaker_service_1 = require("../common/circuit-breaker/circuit-breaker.service");
 const products_service_1 = require("../products/products.service");
+const business_service_1 = require("../business/business.service");
 let OrdersService = class OrdersService {
     static { OrdersService_1 = this; }
     orderRepo;
@@ -43,11 +44,12 @@ let OrdersService = class OrdersService {
     dataSource;
     pointsService;
     productsService;
+    businessService;
     mailService;
     circuitBreaker;
     inflightCreates = new Map();
     static SOFT_DEDUPE_WINDOW_MS = 25_000;
-    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, productsService, mailService, circuitBreaker) {
+    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, productsService, businessService, mailService, circuitBreaker) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
@@ -58,6 +60,7 @@ let OrdersService = class OrdersService {
         this.dataSource = dataSource;
         this.pointsService = pointsService;
         this.productsService = productsService;
+        this.businessService = businessService;
         this.mailService = mailService;
         this.circuitBreaker = circuitBreaker;
     }
@@ -419,6 +422,12 @@ let OrdersService = class OrdersService {
         if (activeForTable) {
             throw new common_1.BadRequestException('Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.');
         }
+        if (source === 'online' || source === 'whatsapp') {
+            await this.businessService.assertAcceptingOnlineOrders();
+            if (hasItems && items.length > 0) {
+                await this.productsService.assertOnlineProductsAvailable(items.map((i) => i.productId));
+            }
+        }
         if (hasItems && items.length > 0) {
             const inactive = products.find((p) => p.isActive === false);
             if (inactive) {
@@ -674,23 +683,9 @@ let OrdersService = class OrdersService {
             if (orderType && ['table', 'delivery', 'pickup', 'counter', 'rappi'].includes(orderType)) {
                 where.orderType = orderType;
             }
-            const orders = await this.orderRepo.find({
-                where,
-                relations: ['items', 'items.product', 'items.attributes', 'extras'],
-                order: { createdAt: 'DESC' },
-            });
-            const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
-                const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-                const dbPoints = order.points;
-                const pointsValue = dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
-                return { order, pointCodes, pointsValue };
-            }));
-            const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-                const formatted = await this.mapOrderToGroupedFormat(order);
-                return { ...formatted, points: pointsValue, pointCodes };
-            }));
-            return mappedOrders;
-        }, async () => []);
+            const orders = await this.loadOrdersWithItemsAndExtras(where);
+            return this.mapOrdersWithPointCodes(orders);
+        });
     }
     async findMine(email) {
         const orders = await this.orderRepo.find({
@@ -766,7 +761,8 @@ let OrdersService = class OrdersService {
             };
         });
     }
-    async cancelOrderFully(orderId) {
+    async cancelOrderFully(orderId, options) {
+        const force = options?.force === true;
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
             relations: ['items', 'items.product', 'items.attributes', 'extras'],
@@ -780,9 +776,10 @@ let OrdersService = class OrdersService {
                 dailyOrderNumber: order.dailyOrderNumber,
             };
         }
-        if (order.orderStatus === 'completed') {
-            throw new common_1.BadRequestException('No se puede cancelar una orden ya completada. El inventario no se restaura en ventas finalizadas.');
+        if (order.orderStatus === 'completed' && !force) {
+            throw new common_1.BadRequestException('No se puede cancelar una orden ya completada sin confirmación. Usa force=true si fue un error (se restaurará inventario).');
         }
+        const wasCompleted = order.orderStatus === 'completed';
         order.items = this.deduplicateOrderItemsById(order.items);
         const oldProductIds = [
             ...new Set(order.items.map((i) => i.product?.id).filter((id) => id != null)),
@@ -865,12 +862,14 @@ let OrdersService = class OrdersService {
         this.gateway.emitOrdersUpdates('deleted_order', order);
         return {
             success: true,
-            message: `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
+            message: wasCompleted
+                ? `Orden #${order.dailyOrderNumber ?? orderId} completada anulada (force). Inventario restaurado.`
+                : `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
             dailyOrderNumber: order.dailyOrderNumber,
         };
     }
-    async removeOrder(orderId) {
-        return this.cancelOrderFully(orderId);
+    async removeOrder(orderId, force = false) {
+        return this.cancelOrderFully(orderId, { force });
     }
     async updateOrderItems(orderId, dto) {
         const rawItems = dto.items ?? [];
@@ -886,6 +885,12 @@ let OrdersService = class OrdersService {
             throw new common_1.BadRequestException('No se pueden modificar los ítems de una orden completada o cancelada');
         }
         order.items = this.deduplicateOrderItemsById(order.items);
+        const currentItemCount = order.items.length;
+        if (dto.baseItemCount != null &&
+            Number.isFinite(Number(dto.baseItemCount)) &&
+            Number(dto.baseItemCount) !== currentItemCount) {
+            throw new common_1.ConflictException(`La orden cambió en otro dispositivo o la pantalla estaba desactualizada (esperado ${dto.baseItemCount} ítems, ahora hay ${currentItemCount}). Recargá e intentá de nuevo.`);
+        }
         const hasItems = itemsToCreate.length > 0;
         const hasExtrasToAdd = Boolean(dto.extrasToAdd?.length);
         const hasExistingExtras = Boolean(order.extras?.length);
@@ -1047,25 +1052,289 @@ let OrdersService = class OrdersService {
             }
             const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
             fullOrder.points = recalculatedPoints;
-            void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints).catch((err) => {
+            const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+            void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
                 process.stderr.write(`[updateOrderItems] finalize async failed: ${String(err)}\n`);
             });
+            return {
+                ...formatted,
+                success: true,
+                message: `Order #${fullOrder.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
+                itemsCount: fullOrder.items?.length ?? createdItemsCount,
+                dtoCount: incomingCount,
+            };
         }
         return {
             success: true,
-            message: `Order #${fullOrder?.dailyOrderNumber ?? order.dailyOrderNumber} updated successfully`,
-            itemsCount: fullOrder?.items?.length ?? createdItemsCount,
+            message: `Order #${order.dailyOrderNumber} updated successfully`,
+            itemsCount: createdItemsCount,
             dtoCount: incomingCount,
         };
     }
-    async finalizeOrderAfterUpdate(fullOrder, recalculatedPoints) {
+    async appendOrderItems(orderId, dto) {
+        const itemsToAdd = (dto.items ?? []).slice();
+        if (itemsToAdd.length === 0 && !dto.extrasToAdd?.length) {
+            throw new common_1.BadRequestException('Debes enviar al menos un ítem o adicional');
+        }
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (!order)
+            throw new common_1.NotFoundException('No se encontró la orden');
+        if (['completed', 'canceled'].includes(order.orderStatus)) {
+            throw new common_1.BadRequestException('No se pueden modificar los ítems de una orden completada o cancelada');
+        }
+        const newProductIds = [...new Set(itemsToAdd.map((i) => i.productId))];
+        const [invMapNew, productsForPrice] = await Promise.all([
+            newProductIds.length
+                ? this.productsService.getInventoryByProductIds(newProductIds, {
+                    includeAlsoDeductTargets: true,
+                })
+                : Promise.resolve(new Map()),
+            newProductIds.length
+                ? this.productRepo.find({
+                    where: { id: (0, typeorm_2.In)(newProductIds) },
+                    select: ['id', 'name', 'price', 'code', 'isActive'],
+                })
+                : Promise.resolve([]),
+        ]);
+        if (newProductIds.length > 0) {
+            const inactive = productsForPrice.find((p) => p.isActive === false);
+            if (inactive) {
+                throw new common_1.BadRequestException(`El producto "${inactive.name}" está desactivado y no puede agregarse al pedido.`);
+            }
+            const missing = newProductIds.filter((id) => !productsForPrice.some((p) => p.id === id));
+            if (missing.length) {
+                throw new common_1.BadRequestException(`Producto(s) no encontrado(s): ${missing.join(', ')}`);
+            }
+        }
+        let newCountByStockKey = {};
+        if (itemsToAdd.length > 0) {
+            newCountByStockKey = this.buildInventoryCountByKey(itemsToAdd, invMapNew);
+            this.validateInventoryCounts(newCountByStockKey, invMapNew, productsForPrice);
+        }
+        const priceByProductId = new Map(productsForPrice.map((p) => [p.id, Number(p.price)]));
+        const codeByProductId = new Map(productsForPrice.map((p) => [p.id, p.code]));
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        let createdCount = 0;
+        try {
+            const wasPastCooking = ['cooked', 'packing', 'inDelivery'].includes(order.orderStatus);
+            if (wasPastCooking) {
+                order.orderStatus = 'cooking';
+                await queryRunner.manager.save(order);
+            }
+            if (itemsToAdd.length > 0) {
+                const itemRows = itemsToAdd.map((itemDto) => {
+                    const productPrice = priceByProductId.get(itemDto.productId) ?? null;
+                    const customPrice = itemDto.unitPrice != null && Number(itemDto.unitPrice) >= 0
+                        ? Number(itemDto.unitPrice)
+                        : null;
+                    const unitPrice = customPrice ?? productPrice;
+                    return {
+                        order: { id: order.id },
+                        product: { id: itemDto.productId },
+                        note: itemDto.note != null ? String(itemDto.note) : '',
+                        kitchenPreparedAt: itemDto.kitchenPrepared === true ? new Date() : null,
+                        unitPrice: unitPrice != null ? unitPrice : null,
+                    };
+                });
+                const insertResult = await queryRunner.manager.insert(order_item_entity_1.OrderItem, itemRows);
+                const itemIds = this.resolveBulkInsertIds(insertResult, itemRows.length);
+                createdCount = itemIds.length;
+                const attrRows = [];
+                itemsToAdd.forEach((itemDto, idx) => {
+                    if (!itemDto.attributes?.length)
+                        return;
+                    for (const attr of itemDto.attributes) {
+                        if (attr?.attributeName != null && attr?.attributeValue != null) {
+                            attrRows.push({
+                                orderItem: { id: itemIds[idx] },
+                                attributeName: String(attr.attributeName).trim(),
+                                attributeValue: String(attr.attributeValue).trim(),
+                            });
+                        }
+                    }
+                });
+                if (attrRows.length > 0) {
+                    await queryRunner.manager.insert(order_item_attribute_entity_1.OrderItemAttribute, attrRows);
+                }
+                await this.deductInventory(queryRunner.manager, newCountByStockKey);
+            }
+            if (dto.extrasToAdd?.length) {
+                const extraEntities = dto.extrasToAdd.map((ex) => queryRunner.manager.create(order_extra_entity_1.OrderExtra, {
+                    order,
+                    title: ex.title,
+                    description: ex.description ?? null,
+                    amount: ex.amount,
+                    quantity: ex.quantity ?? 1,
+                }));
+                await queryRunner.manager.save(extraEntities);
+            }
+            await queryRunner.commitTransaction();
+        }
+        catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e;
+        }
+        finally {
+            await queryRunner.release();
+        }
+        const fullOrder = await this.orderRepo.findOne({
+            where: { id: order.id },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (!fullOrder) {
+            return {
+                success: true,
+                message: `Order #${order.dailyOrderNumber} updated (append)`,
+                itemsCount: createdCount,
+            };
+        }
+        fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
+        const allCodes = [];
+        for (const item of fullOrder.items) {
+            if (item.product?.code != null)
+                allCodes.push(item.product.code);
+            else {
+                const code = codeByProductId.get(item.product?.id ?? 0);
+                if (code != null)
+                    allCodes.push(code);
+            }
+        }
+        const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
+        fullOrder.points = recalculatedPoints;
+        const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+        void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
+            process.stderr.write(`[appendOrderItems] finalize async failed: ${String(err)}\n`);
+        });
+        return {
+            ...formatted,
+            success: true,
+            message: `Order #${fullOrder.dailyOrderNumber} — ${createdCount} ítem(s) añadido(s)`,
+            itemsCount: fullOrder.items.length,
+            appendedCount: createdCount,
+        };
+    }
+    async removeOrderItems(orderId, dto) {
+        const productId = Number(dto.productId);
+        if (!Number.isFinite(productId)) {
+            throw new common_1.BadRequestException('productId inválido');
+        }
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (!order)
+            throw new common_1.NotFoundException('No se encontró la orden');
+        if (['completed', 'canceled'].includes(order.orderStatus)) {
+            throw new common_1.BadRequestException('No se pueden modificar los ítems de una orden completada o cancelada');
+        }
+        order.items = this.deduplicateOrderItemsById(order.items);
+        const ofProduct = order.items
+            .filter((i) => i.product?.id === productId)
+            .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+        if (ofProduct.length === 0) {
+            throw new common_1.NotFoundException('No hay ítems de ese producto en la orden');
+        }
+        let toRemove = ofProduct;
+        if (dto.unitIndex != null) {
+            const idx = Math.floor(Number(dto.unitIndex));
+            if (!Number.isFinite(idx) || idx < 0 || idx >= ofProduct.length) {
+                throw new common_1.BadRequestException(`unitIndex fuera de rango (0..${ofProduct.length - 1})`);
+            }
+            toRemove = [ofProduct[idx]];
+        }
+        const remainingCount = order.items.length - toRemove.length;
+        const hasExtras = Boolean(order.extras?.length);
+        if (remainingCount <= 0 && !hasExtras) {
+            return this.cancelOrderFully(orderId);
+        }
+        const invMap = await this.productsService.getInventoryByProductIds([productId], {
+            includeAlsoDeductTargets: true,
+        });
+        const removeForInv = toRemove.map((i) => ({
+            productId: i.product.id,
+            attributes: (i.attributes || []).map((a) => ({
+                attributeName: a.attributeName,
+                attributeValue: a.attributeValue,
+            })),
+        }));
+        const restoreKeys = this.buildInventoryCountByKey(removeForInv, invMap);
+        const ids = toRemove
+            .map((i) => i.id)
+            .filter((id) => id != null && Number.isInteger(id));
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await this.restoreInventory(queryRunner.manager, restoreKeys);
+            if (ids.length > 0) {
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_attribute_entity_1.OrderItemAttribute)
+                    .where('order_item_id IN (:...ids)', { ids })
+                    .execute();
+                await queryRunner.manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(order_item_entity_1.OrderItem)
+                    .where('id IN (:...ids)', { ids })
+                    .execute();
+            }
+            const wasPastCooking = ['cooked', 'packing', 'inDelivery'].includes(order.orderStatus);
+            if (wasPastCooking) {
+                order.orderStatus = 'cooking';
+                await queryRunner.manager.save(order);
+            }
+            await queryRunner.commitTransaction();
+        }
+        catch (e) {
+            await queryRunner.rollbackTransaction();
+            throw e;
+        }
+        finally {
+            await queryRunner.release();
+        }
+        const fullOrder = await this.orderRepo.findOne({
+            where: { id: order.id },
+            relations: ['items', 'items.product', 'items.attributes', 'extras'],
+        });
+        if (!fullOrder) {
+            return { success: true, message: 'Ítems eliminados', removedCount: ids.length };
+        }
+        fullOrder.items = this.deduplicateOrderItemsById(fullOrder.items);
+        if (fullOrder.items.length === 0 && !(fullOrder.extras?.length)) {
+            return this.cancelOrderFully(orderId);
+        }
+        const allCodes = fullOrder.items
+            .map((i) => i.product?.code)
+            .filter((c) => c != null);
+        const recalculatedPoints = this.pointsService.calculatePointsFromCodes(allCodes);
+        fullOrder.points = recalculatedPoints;
+        const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+        void this.finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formatted).catch((err) => {
+            process.stderr.write(`[removeOrderItems] finalize async failed: ${String(err)}\n`);
+        });
+        return {
+            ...formatted,
+            success: true,
+            message: `Order #${fullOrder.dailyOrderNumber} — ${ids.length} ítem(s) eliminado(s)`,
+            itemsCount: fullOrder.items.length,
+            removedCount: ids.length,
+        };
+    }
+    async finalizeOrderAfterUpdate(fullOrder, recalculatedPoints, formattedOrder) {
         await this.orderRepo.update({ id: fullOrder.id }, { points: recalculatedPoints });
         try {
             await this.pointsService.updatePointCodesForOrder(fullOrder.id, fullOrder.dailyOrderNumber, recalculatedPoints);
         }
         catch {
         }
-        const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+        const formatted = formattedOrder ?? (await this.mapOrderToGroupedFormat(fullOrder));
         this.gateway.emitOrdersUpdates('updated_order_items', formatted);
     }
     async updateOrderItemUnitPrice(orderId, dto) {
@@ -1219,13 +1488,13 @@ let OrdersService = class OrdersService {
             };
         }
         if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
-            return this.cancelOrderFully(orderId);
+            return this.cancelOrderFully(orderId, { force: dto.forceCancel === true });
         }
         if (order.orderStatus === 'completed') {
             if ((dto.orderStatus !== undefined && dto.orderStatus !== 'completed') ||
                 dto.orderType !== undefined ||
                 dto.deliveryFee !== undefined) {
-                throw new common_1.BadRequestException('No se puede modificar estado/tipo/domicilio de una orden ya completada');
+                throw new common_1.BadRequestException('No se puede modificar estado/tipo/domicilio de una orden ya completada. Para anularla envía orderStatus=canceled con forceCancel=true.');
             }
         }
         if (order.orderStatus === 'canceled') {
@@ -1538,9 +1807,50 @@ let OrdersService = class OrdersService {
         }
         return out;
     }
-    async mapOrderToGroupedFormat(order) {
+    async loadOrdersWithItemsAndExtras(where) {
+        const orders = await this.orderRepo.find({
+            where,
+            relations: ['extras'],
+            order: { createdAt: 'DESC' },
+        });
+        if (!orders.length)
+            return orders;
+        const orderIds = orders.map((o) => o.id);
+        const items = await this.itemRepo.find({
+            where: { order: { id: (0, typeorm_2.In)(orderIds) } },
+            relations: ['product', 'attributes', 'order'],
+        });
+        const byOrderId = new Map();
+        for (const item of items) {
+            const oid = item.order?.id;
+            if (oid == null)
+                continue;
+            const list = byOrderId.get(oid);
+            if (list)
+                list.push(item);
+            else
+                byOrderId.set(oid, [item]);
+        }
+        for (const order of orders) {
+            order.items = byOrderId.get(order.id) ?? [];
+        }
+        return orders;
+    }
+    async mapOrdersWithPointCodes(orders) {
+        if (!orders.length)
+            return [];
+        const codesByOrderId = await this.pointsService.getPointCodesByOrderIds(orders.map((o) => o.id));
+        return Promise.all(orders.map(async (order) => {
+            const pointCodes = codesByOrderId.get(order.id) ?? [];
+            const dbPoints = order.points;
+            const pointsValue = dbPoints !== null && dbPoints !== undefined ? dbPoints : pointCodes.length || 0;
+            const formatted = await this.mapOrderToGroupedFormat(order, pointCodes);
+            return { ...formatted, points: pointsValue, pointCodes };
+        }));
+    }
+    async mapOrderToGroupedFormat(order, preloadedPointCodes) {
         const groupedItems = {};
-        const items = this.deduplicateOrderItemsById(order.items);
+        const items = this.deduplicateOrderItemsById(order.items).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
         for (const item of items) {
             if (!item.product)
                 continue;
@@ -1573,7 +1883,8 @@ let OrdersService = class OrdersService {
             });
         }
         const createdAtBogota = (0, date_util_1.formatToBogotaISO)(order.createdAt);
-        const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
+        const pointCodes = preloadedPointCodes ??
+            (await this.pointsService.getPointCodesByOrderId(order.id));
         const extrasList = order.extras?.map((e) => ({
             id: e.id,
             title: e.title,
@@ -1699,24 +2010,11 @@ let OrdersService = class OrdersService {
         const endBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59.999-05:00`;
         const startUtc = new Date(startBogotaString);
         const endUtc = new Date(endBogotaString);
-        const orders = await this.orderRepo.find({
-            where: {
-                createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
-                orderStatus: (0, typeorm_2.Not)('canceled'),
-            },
-            relations: ['items', 'items.product', 'items.attributes', 'extras'],
-            order: { createdAt: 'DESC' },
+        const orders = await this.loadOrdersWithItemsAndExtras({
+            createdAt: (0, typeorm_2.Between)(startUtc, endUtc),
+            orderStatus: (0, typeorm_2.Not)('canceled'),
         });
-        const ordersWithPointCodes = await Promise.all(orders.map(async (order) => {
-            const pointCodes = await this.pointsService.getPointCodesByOrderId(order.id);
-            const pointsValue = order.points ?? pointCodes.length ?? 0;
-            return { order, pointCodes, pointsValue };
-        }));
-        const mappedOrders = await Promise.all(ordersWithPointCodes.map(async ({ order, pointCodes, pointsValue }) => {
-            const formatted = await this.mapOrderToGroupedFormat(order);
-            return { ...formatted, points: pointsValue, pointCodes };
-        }));
-        return mappedOrders;
+        return this.mapOrdersWithPointCodes(orders);
     }
     async getDailySummary(date) {
         let startUtc;
@@ -2203,6 +2501,7 @@ exports.OrdersService = OrdersService = OrdersService_1 = __decorate([
         typeorm_2.DataSource,
         points_service_1.PointsService,
         products_service_1.ProductsService,
+        business_service_1.BusinessService,
         mail_service_1.MailService,
         circuit_breaker_service_1.CircuitBreakerService])
 ], OrdersService);

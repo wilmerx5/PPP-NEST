@@ -62,6 +62,7 @@ __decorate([
         example: 125,
         nullable: true,
     }),
+    (0, typeorm_1.Index)('idx_user_points_order_id'),
     (0, typeorm_1.Column)({ name: 'order_id', type: 'int', nullable: true }),
     __metadata("design:type", Object)
 ], UserPoints.prototype, "orderId", void 0);

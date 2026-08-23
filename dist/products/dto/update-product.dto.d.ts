@@ -7,6 +7,11 @@ export declare class UpdateVariantStockItemDto {
     attributeValue: string;
     stock: number;
 }
+export declare class UpdateProductScheduleDto {
+    dayOfWeek: number;
+    startTime?: string | null;
+    endTime?: string | null;
+}
 export declare class UpdateVariantStockAttributeDto {
     attributeName: string;
     trackStock?: boolean;
@@ -26,4 +31,6 @@ export declare class UpdateProductDto {
     alsoDeductAttributeName?: string | null;
     alsoDeductAttributeValue?: string | null;
     alsoDeductBaseUnits?: number | null;
+    hasSchedule?: boolean;
+    schedules?: UpdateProductScheduleDto[];
 }

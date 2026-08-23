@@ -12,17 +12,25 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OrdersGateway = void 0;
+exports.OrdersGateway = exports.ORDER_STAFF_ROOMS = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const cors_allowed_1 = require("../../common/cors-allowed");
+exports.ORDER_STAFF_ROOMS = ['kitchen', 'orders', 'tables'];
+function isStaffRoom(room) {
+    return (typeof room === 'string' &&
+        exports.ORDER_STAFF_ROOMS.includes(room));
+}
 let OrdersGateway = class OrdersGateway {
     server;
     handleJoin(client, room) {
+        if (!isStaffRoom(room)) {
+            return;
+        }
         client.join(room);
     }
     emitOrdersUpdates(action, order) {
-        this.server.emit(action, order);
+        this.server.to([...exports.ORDER_STAFF_ROOMS]).emit(action, order);
     }
 };
 exports.OrdersGateway = OrdersGateway;

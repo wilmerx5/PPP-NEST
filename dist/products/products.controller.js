@@ -18,6 +18,8 @@ const swagger_1 = require("@nestjs/swagger");
 const create_product_dto_1 = require("./dto/create-product.dto");
 const update_product_dto_1 = require("./dto/update-product.dto");
 const products_service_1 = require("./products.service");
+const auth_decorator_1 = require("../auth/decorators/auth.decorator");
+const valid_roles_interface_1 = require("../auth/interfaces/valid.roles.interface");
 let ProductsController = class ProductsController {
     productsService;
     constructor(productsService) {
@@ -55,12 +57,15 @@ let ProductsController = class ProductsController {
 exports.ProductsController = ProductsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new product' }),
     (0, swagger_1.ApiBody)({ type: create_product_dto_1.CreateProductDto }),
     (0, swagger_1.ApiResponse)({
         status: 201,
-        description: 'Product created successfully (placeholder response)',
+        description: 'Product created successfully',
     }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Product code already exists' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_product_dto_1.CreateProductDto]),
@@ -110,6 +115,8 @@ __decorate([
 ], ProductsController.prototype, "getProductsByCategory", null);
 __decorate([
     (0, common_1.Get)('check-code/:code'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin, valid_roles_interface_1.ValidRoles.ordersUser, valid_roles_interface_1.ValidRoles.tableUser),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Check product by code',
         description: 'Returns whether a product exists and if it is active. Used when adding by code to show "producto desactivado" message.',
@@ -140,6 +147,8 @@ __decorate([
 ], ProductsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Update product by ID' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product ID', example: 1 }),
     (0, swagger_1.ApiBody)({ type: update_product_dto_1.UpdateProductDto }),
@@ -159,6 +168,8 @@ __decorate([
 ], ProductsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Delete product by ID' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product ID', example: 1 }),
     (0, swagger_1.ApiResponse)({

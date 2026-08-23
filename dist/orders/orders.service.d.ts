@@ -1,6 +1,6 @@
 import { Product } from 'src/products/entities/product.entity';
 import { Repository, DataSource } from 'typeorm';
-import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, ChangeTableDto, CreateOrderDto, AppendOrderItemsDto, RemoveOrderItemsDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrderItemAttribute } from './entities/order-item-attribute.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -11,6 +11,7 @@ import { User } from '../auth/entities/user.entity';
 import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 import { ProductsService } from '../products/products.service';
+import { BusinessService } from '../business/business.service';
 export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
@@ -22,11 +23,12 @@ export declare class OrdersService {
     private readonly dataSource;
     private readonly pointsService;
     private readonly productsService;
+    private readonly businessService;
     private readonly mailService;
     private readonly circuitBreaker;
     private readonly inflightCreates;
     private static readonly SOFT_DEDUPE_WINDOW_MS;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, mailService: MailService, circuitBreaker: CircuitBreakerService);
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, businessService: BusinessService, mailService: MailService, circuitBreaker: CircuitBreakerService);
     private buildOrderContentFingerprint;
     private findExistingByClientRequestId;
     private findSoftDuplicate;
@@ -69,21 +71,14 @@ export declare class OrdersService {
         redemptionCode: string | null;
     }[]>;
     private cancelOrderFully;
-    removeOrder(orderId: number): Promise<{
+    removeOrder(orderId: number, force?: boolean): Promise<{
         success: true;
         message: string;
         dailyOrderNumber?: number;
     }>;
-    updateOrderItems(orderId: number, dto: UpdateOrderItemsDto): Promise<{
-        success: true;
-        message: string;
-        dailyOrderNumber?: number;
-    } | {
-        success: boolean;
-        message: string;
-        itemsCount: number;
-        dtoCount: number;
-    }>;
+    updateOrderItems(orderId: number, dto: UpdateOrderItemsDto): Promise<any>;
+    appendOrderItems(orderId: number, dto: AppendOrderItemsDto): Promise<any>;
+    removeOrderItems(orderId: number, dto: RemoveOrderItemsDto): Promise<any>;
     private finalizeOrderAfterUpdate;
     updateOrderItemUnitPrice(orderId: number, dto: UpdateOrderItemUnitPriceDto): Promise<any>;
     addExtra(orderId: number, dto: AddOrderExtraDto): Promise<{
@@ -149,6 +144,8 @@ export declare class OrdersService {
     private incomingItemSignature;
     private deduplicateIncomingUpdateItems;
     private deduplicateOrderItemsById;
+    private loadOrdersWithItemsAndExtras;
+    private mapOrdersWithPointCodes;
     private mapOrderToGroupedFormat;
     validateRedemptionCodePublic(code: string): Promise<any>;
     applyRedemptionVoucher(orderId: number, redemptionCode: string): Promise<Order>;

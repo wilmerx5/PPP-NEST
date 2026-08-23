@@ -5,6 +5,8 @@ import { Order } from '../orders/entities/order.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
 import { MailService } from '../common/mail/mail.service';
+import { BusinessService } from '../business/business.service';
+import { ProductsService } from '../products/products.service';
 export declare class PaymentsService {
     private readonly paymentRepo;
     private readonly orderRepo;
@@ -12,12 +14,14 @@ export declare class PaymentsService {
     private readonly configService;
     private readonly moduleRef;
     private readonly mailService;
+    private readonly businessService;
+    private readonly productsService;
     private readonly logger;
     private client;
     private preference;
     private payment;
     private ordersService;
-    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, dataSource: DataSource, configService: ConfigService, moduleRef: ModuleRef, mailService: MailService);
+    constructor(paymentRepo: Repository<Payment>, orderRepo: Repository<Order>, dataSource: DataSource, configService: ConfigService, moduleRef: ModuleRef, mailService: MailService, businessService: BusinessService, productsService: ProductsService);
     createPreference(orderData: CreateOrderDto, items: Array<{
         title: string;
         quantity: number;

@@ -538,7 +538,7 @@ export class OrdersService {
       );
     }
 
-    if (source === 'online') {
+    if (source === 'online' || source === 'whatsapp') {
       await this.businessService.assertAcceptingOnlineOrders();
       if (hasItems && items.length > 0) {
         await this.productsService.assertOnlineProductsAvailable(

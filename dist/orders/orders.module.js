@@ -19,6 +19,7 @@ const order_gateway_1 = require("./Websocket/order.gateway");
 const auth_module_1 = require("../auth/auth.module");
 const products_module_1 = require("../products/products.module");
 const common_module_1 = require("../common/common.module");
+const business_module_1 = require("../business/business.module");
 const user_entity_1 = require("../auth/entities/user.entity");
 const product_entity_1 = require("../products/entities/product.entity");
 const user_points_entity_1 = require("../auth/entities/user-points.entity");
@@ -35,6 +36,7 @@ exports.OrdersModule = OrdersModule = __decorate([
             (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
             products_module_1.ProductsModule,
             common_module_1.CommonModule,
+            business_module_1.BusinessModule,
         ],
         exports: [orders_service_1.OrdersService],
     })

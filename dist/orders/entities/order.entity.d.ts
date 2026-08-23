@@ -1,7 +1,7 @@
 import { OrderItem } from './order-item.entity';
 import { OrderExtra } from './order-extra.entity';
 export type OrderType = 'delivery' | 'pickup' | 'table' | 'counter' | 'rappi';
-export type OrderSource = 'online' | 'internal';
+export type OrderSource = 'online' | 'internal' | 'whatsapp';
 export type OrderStatus = 'pending' | 'cooking' | 'cooked' | 'packing' | 'inDelivery' | 'completed' | 'canceled';
 export declare class Order {
     id: number;

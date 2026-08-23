@@ -23,6 +23,7 @@ export declare class PointsService {
     getTotalPoints(userId: string): Promise<number>;
     getPointsHistory(userId: string, limit?: number): Promise<UserPoints[]>;
     getPointCodesByOrderId(orderId: number): Promise<string[]>;
+    getPointCodesByOrderIds(orderIds: number[]): Promise<Map<number, string[]>>;
     updatePointCodesForOrder(orderId: number, orderDailyNumber: number, newPointsCount: number): Promise<string[]>;
     invalidatePointsForCanceledOrder(orderId: number): Promise<number>;
     getAvailablePoints(userId: string): Promise<number>;

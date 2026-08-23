@@ -10,6 +10,7 @@ try {
 catch {
 }
 const core_1 = require("@nestjs/core");
+const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
@@ -35,6 +36,7 @@ function setupProcessHandlers() {
 async function bootstrap() {
     setupProcessHandlers();
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.use(cookieParser());
     app.useGlobalFilters(new db_exception_filter_1.DbExceptionFilter());
     app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor(), new request_timeout_interceptor_1.RequestTimeoutInterceptor(30000));
     app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public'));
@@ -56,7 +58,12 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup("api", app, document);
-    app.use(cookieParser());
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: false,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+    }));
     const port = Number(process.env.PORT) || 3000;
     const host = process.env.HOST || '0.0.0.0';
     const bindHost = process.env.BIND_HOST === 'true';

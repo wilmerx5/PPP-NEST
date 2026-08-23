@@ -6,6 +6,8 @@ import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
 import { ProductAttribute } from './entities/product-attribute.entity';
 import { ProductVariantStock } from './entities/product-variant-stock.entity';
+import { ProductSchedule } from './entities/product-schedule.entity';
+import { BusinessService } from '../business/business.service';
 import { InventoryGroup } from './entities/inventory-group.entity';
 import { InventoryGroupItem } from './entities/inventory-group-item.entity';
 import { InventorySelection } from './entities/inventory-selection.entity';
@@ -46,14 +48,58 @@ export declare class ProductsService {
     private readonly inventoryGroupItemRepo;
     private readonly selectionRepo;
     private readonly selectionProductRepo;
+    private readonly scheduleRepo;
     private readonly cache;
     private readonly circuitBreaker;
+    private readonly businessService;
     private readonly CACHE_KEY_ALL;
     private readonly CACHE_KEY_CATEGORIES;
     private readonly CACHE_KEY_GROUPED;
     private readonly CACHE_TTL;
-    constructor(productRepo: Repository<Product>, categoryRepo: Repository<Category>, attributeRepo: Repository<ProductAttribute>, variantStockRepo: Repository<ProductVariantStock>, inventoryGroupRepo: Repository<InventoryGroup>, inventoryGroupItemRepo: Repository<InventoryGroupItem>, selectionRepo: Repository<InventorySelection>, selectionProductRepo: Repository<InventorySelectionProduct>, cache: CacheService, circuitBreaker: CircuitBreakerService);
-    create(createProductDto: CreateProductDto): string;
+    constructor(productRepo: Repository<Product>, categoryRepo: Repository<Category>, attributeRepo: Repository<ProductAttribute>, variantStockRepo: Repository<ProductVariantStock>, inventoryGroupRepo: Repository<InventoryGroup>, inventoryGroupItemRepo: Repository<InventoryGroupItem>, selectionRepo: Repository<InventorySelection>, selectionProductRepo: Repository<InventorySelectionProduct>, scheduleRepo: Repository<ProductSchedule>, cache: CacheService, circuitBreaker: CircuitBreakerService, businessService: BusinessService);
+    private parseAttrOptions;
+    private mapSchedule;
+    private replaceSchedules;
+    private safeClock;
+    private withAvailability;
+    assertOnlineProductsAvailable(productIds: number[]): Promise<void>;
+    create(createProductDto: CreateProductDto): Promise<{
+        attributes: {
+            options: any;
+            id: number;
+            attributeName: string;
+            product: Product;
+        }[];
+        schedules: {
+            id: number;
+            dayOfWeek: number;
+            startTime: string | null;
+            endTime: string | null;
+        }[];
+        variantStocks: {
+            id: number;
+            attributeName: string;
+            attributeValue: string;
+            stock: number;
+        }[];
+        id: number;
+        name: string;
+        description?: string;
+        price: number;
+        hasAttributes: boolean;
+        code: number;
+        isActive: boolean;
+        trackInventory: boolean;
+        stock: number;
+        hasSchedule: boolean;
+        categories: Category[];
+        orderItems: import("../orders/entities/order-item.entity").OrderItem[];
+        imageUrl: string;
+        alsoDeductProductId?: number | null;
+        alsoDeductAttributeName?: string | null;
+        alsoDeductAttributeValue?: string | null;
+        alsoDeductBaseUnits?: number | null;
+    }>;
     private static buildProductTarget;
     private loadAlsoDeductFromForProductIds;
     findAll(): Promise<any[]>;
@@ -68,11 +114,18 @@ export declare class ProductsService {
             baseUnits: number;
             derivedStock: number;
         } | undefined;
+        hasSchedule: boolean;
         attributes: {
             options: any;
             id: number;
             attributeName: string;
             product: Product;
+        }[];
+        schedules: {
+            id: number;
+            dayOfWeek: number;
+            startTime: string | null;
+            endTime: string | null;
         }[];
         variantStocks: {
             inventoryGroup?: {
@@ -124,11 +177,18 @@ export declare class ProductsService {
             baseUnits: number;
             derivedStock: number;
         } | undefined;
+        availableNow: boolean;
         attributes: {
             options: any;
             id: number;
             attributeName: string;
             product: Product;
+        }[];
+        schedules: {
+            id: number;
+            dayOfWeek: number;
+            startTime: string | null;
+            endTime: string | null;
         }[];
         variantStocks: {
             inventoryGroup?: {
@@ -152,6 +212,7 @@ export declare class ProductsService {
         isActive: boolean;
         trackInventory: boolean;
         stock: number;
+        hasSchedule: boolean;
         categories: Category[];
         orderItems: import("../orders/entities/order-item.entity").OrderItem[];
         imageUrl: string;
@@ -161,8 +222,15 @@ export declare class ProductsService {
         alsoDeductBaseUnits?: number | null;
     } | null>;
     update(id: number, updateProductDto: UpdateProductDto): Promise<{
+        hasSchedule: boolean;
+        schedules: {
+            id: number;
+            dayOfWeek: number;
+            startTime: string | null;
+            endTime: string | null;
+        }[];
         attributes: {
-            options: any;
+            options: unknown[];
             id: number;
             attributeName: string;
             product: Product;

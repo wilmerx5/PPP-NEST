@@ -9,10 +9,35 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateProductDto = exports.UpdateVariantStockAttributeDto = exports.UpdateVariantStockItemDto = exports.UpdateProductAttributeDto = void 0;
+exports.UpdateProductDto = exports.UpdateVariantStockAttributeDto = exports.UpdateProductScheduleDto = exports.UpdateVariantStockItemDto = exports.UpdateProductAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+function toNullableId(value) {
+    if (value === undefined)
+        return undefined;
+    if (value === null || value === '' || value === 0 || value === '0')
+        return null;
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+function toNullableNumber(value) {
+    if (value === undefined)
+        return undefined;
+    if (value === null || value === '')
+        return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+function toOptionalBoolean(value) {
+    if (value === undefined || value === null || value === '')
+        return undefined;
+    if (value === true || value === 1 || value === 'true' || value === '1')
+        return true;
+    if (value === false || value === 0 || value === 'false' || value === '0')
+        return false;
+    return undefined;
+}
 class UpdateProductAttributeDto {
     id;
     attributeName;
@@ -52,6 +77,32 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], UpdateVariantStockItemDto.prototype, "stock", void 0);
+class UpdateProductScheduleDto {
+    dayOfWeek;
+    startTime;
+    endTime;
+}
+exports.UpdateProductScheduleDto = UpdateProductScheduleDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 1, description: '0=Domingo … 6=Sábado' }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdateProductScheduleDto.prototype, "dayOfWeek", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, example: '11:00' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined && v !== ''),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProductScheduleDto.prototype, "startTime", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, example: '15:00' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined && v !== ''),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProductScheduleDto.prototype, "endTime", void 0);
 class UpdateVariantStockAttributeDto {
     attributeName;
     trackStock;
@@ -91,6 +142,8 @@ class UpdateProductDto {
     alsoDeductAttributeName;
     alsoDeductAttributeValue;
     alsoDeductBaseUnits;
+    hasSchedule;
+    schedules;
 }
 exports.UpdateProductDto = UpdateProductDto;
 __decorate([
@@ -167,25 +220,54 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => toNullableId(value)),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Object)
 ], UpdateProductDto.prototype, "alsoDeductProductId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", Object)
 ], UpdateProductDto.prototype, "alsoDeductAttributeName", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", Object)
 ], UpdateProductDto.prototype, "alsoDeductAttributeValue", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => toNullableNumber(value)),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== null && v !== undefined),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Object)
 ], UpdateProductDto.prototype, "alsoDeductBaseUnits", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Si true, el producto solo está disponible en los días/horas de schedules.',
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => toOptionalBoolean(value)),
+    (0, class_validator_1.ValidateIf)((_, v) => v !== undefined),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateProductDto.prototype, "hasSchedule", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Días/horas de disponibilidad (0=Domingo … 6=Sábado). start/end null = todo el día.',
+        required: false,
+        type: [UpdateProductScheduleDto],
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => UpdateProductScheduleDto),
+    __metadata("design:type", Array)
+], UpdateProductDto.prototype, "schedules", void 0);
 //# sourceMappingURL=update-product.dto.js.map

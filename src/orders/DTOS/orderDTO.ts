@@ -169,11 +169,11 @@ export class CreateOrderDto {
 
   @ApiProperty({
     description: 'Origen: online = cliente/ppp-front; internal = panel. No enviar = internal.',
-    enum: ['online', 'internal'],
+    enum: ['online', 'internal', 'whatsapp'],
     required: false,
   })
   @IsOptional()
-  @IsEnum(['online', 'internal'])
+  @IsEnum(['online', 'internal', 'whatsapp'])
   orderSource?: OrderSource;
 
   @ApiProperty({

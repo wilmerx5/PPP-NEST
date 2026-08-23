@@ -17,9 +17,12 @@ const inventory_group_entity_1 = require("./entities/inventory-group.entity");
 const inventory_group_item_entity_1 = require("./entities/inventory-group-item.entity");
 const inventory_selection_entity_1 = require("./entities/inventory-selection.entity");
 const inventory_selection_product_entity_1 = require("./entities/inventory-selection-product.entity");
+const product_schedule_entity_1 = require("./entities/product-schedule.entity");
 const products_controller_1 = require("./products.controller");
 const products_service_1 = require("./products.service");
 const common_module_1 = require("../common/common.module");
+const business_module_1 = require("../business/business.module");
+const passport_1 = require("@nestjs/passport");
 let ProductsModule = class ProductsModule {
 };
 exports.ProductsModule = ProductsModule;
@@ -27,6 +30,7 @@ exports.ProductsModule = ProductsModule = __decorate([
     (0, common_1.Module)({
         controllers: [products_controller_1.ProductsController],
         imports: [
+            passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             typeorm_1.TypeOrmModule.forFeature([
                 product_entity_1.Product,
                 category_entity_1.Category,
@@ -36,8 +40,10 @@ exports.ProductsModule = ProductsModule = __decorate([
                 inventory_group_item_entity_1.InventoryGroupItem,
                 inventory_selection_entity_1.InventorySelection,
                 inventory_selection_product_entity_1.InventorySelectionProduct,
+                product_schedule_entity_1.ProductSchedule,
             ]),
             common_module_1.CommonModule,
+            business_module_1.BusinessModule,
         ],
         providers: [products_service_1.ProductsService],
         exports: [products_service_1.ProductsService],

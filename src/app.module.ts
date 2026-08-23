@@ -10,6 +10,7 @@ import { CommonModule } from './common/common.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { BusinessModule } from './business/business.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { BusinessModule } from './business/business.module';
     PaymentsModule,
     ExpensesModule,
     BusinessModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
   providers: [AppService],
