@@ -538,12 +538,27 @@ export class OrdersService {
       );
     }
 
-    if (source === 'online' || source === 'whatsapp') {
+    // Horario: solo pedidos web (online). WhatsApp puede saltarse con WHATSAPP_IGNORE_BUSINESS_HOURS (default true en pruebas).
+    if (source === 'online') {
       await this.businessService.assertAcceptingOnlineOrders();
       if (hasItems && items.length > 0) {
         await this.productsService.assertOnlineProductsAvailable(
           items.map((i) => i.productId),
         );
+      }
+    } else if (source === 'whatsapp') {
+      // Productos con horario propio: aún se validan salvo bypass global de WhatsApp
+      const ignoreHours = (process.env.WHATSAPP_IGNORE_BUSINESS_HOURS ?? 'true')
+        .trim()
+        .toLowerCase();
+      const bypass = ignoreHours !== 'false' && ignoreHours !== '0' && ignoreHours !== 'no';
+      if (!bypass) {
+        await this.businessService.assertAcceptingOnlineOrders();
+        if (hasItems && items.length > 0) {
+          await this.productsService.assertOnlineProductsAvailable(
+            items.map((i) => i.productId),
+          );
+        }
       }
     }
 

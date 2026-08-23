@@ -16,6 +16,7 @@ export declare class WhatsappSettingsService {
         openaiModel: string;
         systemPrompt: string;
         welcomeMessage: string;
+        ignoreBusinessHours: boolean;
         id: number;
         displayPhone: string | null;
         wabaId: string | null;

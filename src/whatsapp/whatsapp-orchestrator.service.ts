@@ -79,8 +79,13 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    const products = await this.catalogService.getMenuProducts();
+    const productsRaw = await this.catalogService.getMenuProducts();
     const status = await this.businessService.getStatus();
+    const businessOpenForBot = status.isOpen || !!cfg.ignoreBusinessHours;
+    // En pruebas nocturnas: no filtrar por horario de producto
+    const products = cfg.ignoreBusinessHours
+      ? productsRaw.map((p) => ({ ...p, availableNow: true }))
+      : productsRaw;
 
     if (session.pendingAttribute) {
       const pa = session.pendingAttribute;
@@ -108,7 +113,7 @@ export class WhatsappOrchestratorService {
       session.pendingAttribute = undefined;
     }
 
-    if (!status.isOpen) {
+    if (!status.isOpen && !cfg.ignoreBusinessHours) {
       await this.reply(
         conv,
         msg.waId,
@@ -233,7 +238,7 @@ export class WhatsappOrchestratorService {
 
     const rulesBlock = buildWhatsappBusinessRulesBlock({
       brandName: 'Pronto Pollo Portal',
-      businessStatus: status,
+      businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
       deliveryFee: cfg.defaultDeliveryFee,
       allowMercadoPago: !!cfg.allowMercadoPago,
       menuProductCount: products.filter((p) => p.availableNow !== false).length,
@@ -251,7 +256,7 @@ export class WhatsappOrchestratorService {
     const guarded = this.actionGuard.sanitize({
       actions: ai.actions,
       products,
-      businessOpen: status.isOpen,
+      businessOpen: businessOpenForBot,
       allowMercadoPago: !!cfg.allowMercadoPago,
     });
 

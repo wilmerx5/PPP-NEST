@@ -66,6 +66,16 @@ export class WhatsappSettingsService {
       openaiModel: row.openaiModel || 'gpt-4o-mini',
       systemPrompt: row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT,
       welcomeMessage: row.welcomeMessage?.trim() || DEFAULT_WELCOME,
+      /**
+       * Temporal (pruebas): por defecto ignora horario en WhatsApp.
+       * Para volver a respetar horario: WHATSAPP_IGNORE_BUSINESS_HOURS=false
+       */
+      ignoreBusinessHours: (() => {
+        const raw = (this.config.get<string>('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? 'true')
+          .trim()
+          .toLowerCase();
+        return raw !== 'false' && raw !== '0' && raw !== 'no';
+      })(),
     };
   }
 

@@ -422,10 +422,22 @@ let OrdersService = class OrdersService {
         if (activeForTable) {
             throw new common_1.BadRequestException('Esta mesa ya tiene una orden activa. Añade los productos a la orden existente.');
         }
-        if (source === 'online' || source === 'whatsapp') {
+        if (source === 'online') {
             await this.businessService.assertAcceptingOnlineOrders();
             if (hasItems && items.length > 0) {
                 await this.productsService.assertOnlineProductsAvailable(items.map((i) => i.productId));
+            }
+        }
+        else if (source === 'whatsapp') {
+            const ignoreHours = (process.env.WHATSAPP_IGNORE_BUSINESS_HOURS ?? 'true')
+                .trim()
+                .toLowerCase();
+            const bypass = ignoreHours !== 'false' && ignoreHours !== '0' && ignoreHours !== 'no';
+            if (!bypass) {
+                await this.businessService.assertAcceptingOnlineOrders();
+                if (hasItems && items.length > 0) {
+                    await this.productsService.assertOnlineProductsAvailable(items.map((i) => i.productId));
+                }
             }
         }
         if (hasItems && items.length > 0) {

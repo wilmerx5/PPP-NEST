@@ -77,8 +77,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return;
         }
         let session = this.conversationService.getSession(conv);
-        const products = await this.catalogService.getMenuProducts();
+        const productsRaw = await this.catalogService.getMenuProducts();
         const status = await this.businessService.getStatus();
+        const businessOpenForBot = status.isOpen || !!cfg.ignoreBusinessHours;
+        const products = cfg.ignoreBusinessHours
+            ? productsRaw.map((p) => ({ ...p, availableNow: true }))
+            : productsRaw;
         if (session.pendingAttribute) {
             const pa = session.pendingAttribute;
             const product = this.catalogService.getProductById(pa.productId, products);
@@ -96,7 +100,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             }
             session.pendingAttribute = undefined;
         }
-        if (!status.isOpen) {
+        if (!status.isOpen && !cfg.ignoreBusinessHours) {
             await this.reply(conv, msg.waId, `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`);
             return;
         }
@@ -185,7 +189,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             : 'Sin usuario guardado en WhatsApp. Pide nombre y dirección antes de confirmar.';
         const rulesBlock = (0, whatsapp_business_rules_1.buildWhatsappBusinessRulesBlock)({
             brandName: 'Pronto Pollo Portal',
-            businessStatus: status,
+            businessStatus: businessOpenForBot ? { ...status, isOpen: true } : status,
             deliveryFee: cfg.defaultDeliveryFee,
             allowMercadoPago: !!cfg.allowMercadoPago,
             menuProductCount: products.filter((p) => p.availableNow !== false).length,
@@ -201,7 +205,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         const guarded = this.actionGuard.sanitize({
             actions: ai.actions,
             products,
-            businessOpen: status.isOpen,
+            businessOpen: businessOpenForBot,
             allowMercadoPago: !!cfg.allowMercadoPago,
         });
         session = await this.applyActions(conv, session, guarded.actions, products);

@@ -45,9 +45,13 @@ let WhatsappSettingsService = class WhatsappSettingsService {
     }
     async getEffectiveConfig() {
         const row = await this.getSettings();
+        const envEnabled = (this.config.get('WHATSAPP_ENABLED') || '')
+            .trim()
+            .toLowerCase();
+        const enabledFromEnv = envEnabled === 'true' || envEnabled === '1' || envEnabled === 'yes';
         return {
             ...row,
-            enabled: !!row.enabled,
+            enabled: !!row.enabled || enabledFromEnv,
             accessToken: (row.accessToken || '').trim() ||
                 (this.config.get('WHATSAPP_ACCESS_TOKEN') || '').trim() ||
                 null,
@@ -63,6 +67,12 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             openaiModel: row.openaiModel || 'gpt-4o-mini',
             systemPrompt: row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT,
             welcomeMessage: row.welcomeMessage?.trim() || DEFAULT_WELCOME,
+            ignoreBusinessHours: (() => {
+                const raw = (this.config.get('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? 'true')
+                    .trim()
+                    .toLowerCase();
+                return raw !== 'false' && raw !== '0' && raw !== 'no';
+            })(),
         };
     }
     async updateSettings(dto) {
