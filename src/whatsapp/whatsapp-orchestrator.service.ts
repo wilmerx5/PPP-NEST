@@ -73,7 +73,11 @@ export class WhatsappOrchestratorService {
     }
 
     if (lower === 'cancelar' || lower === 'reiniciar') {
-      await this.conversationService.saveSession(conv, { cart: [], pendingMatch: undefined }, 'building_cart');
+      await this.conversationService.saveSession(
+        conv,
+        { cart: [], pendingMatch: undefined, pendingAttribute: undefined, address: undefined, paymentMethod: undefined },
+        'building_cart',
+      );
       await this.reply(conv, msg.waId, 'Listo, reinicié tu pedido. ¿Qué te gustaría ordenar?');
       return;
     }
@@ -86,6 +90,14 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
+
+    // Primer mensaje de la conversación: siempre saludo + link menú
+    const inboundCount = await this.conversationService.countInboundMessages(conv.id);
+    if (inboundCount <= 1) {
+      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, true));
+      if (this.isGreetingKeyword(text) || text.length < 2) return;
+      // Si ya pidió algo en el primer mensaje, seguimos procesando abajo
+    }
 
     if (session.pendingAttribute) {
       const pa = session.pendingAttribute;
@@ -106,7 +118,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          `Indica la opción para *${product.name}*:\n${this.actionGuard.formatAttributeOptions(product)}`,
+          this.catalogService.formatProductOptionsPrompt(product),
         );
         return;
       }
@@ -122,30 +134,95 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (conv.state === 'awaiting_name' && text.length >= 2) {
+    // Confirmación / palabras clave de flujo — ANTES de tratar el texto como nombre o dirección
+    const isConfirm = this.isConfirmKeyword(text);
+    const isGreeting = this.isGreetingKeyword(text);
+
+    if (conv.state === 'awaiting_name' && !isConfirm && !isGreeting && text.length >= 2) {
+      if (this.looksLikeAddress(text) || this.looksLikePayment(text, cfg.allowMercadoPago)) {
+        await this.reply(
+          conv,
+          msg.waId,
+          'Necesito tu *nombre completo* para el pedido (ej. Juan Pérez). Luego te pediré la dirección.',
+        );
+        return;
+      }
       await this.conversationService.updateCustomerName(conv, text);
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, msg.waId, `Gracias, ${text}. ¿Qué productos quieres? (nombre o código)`);
+      // Releer sesión y seguir el flujo de confirmación (no pedir otro producto)
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.reply(conv, msg.waId, `Gracias, *${text.trim()}*.`);
+      await this.tryConfirmOrder(conv, msg.waId, session);
       return;
     }
 
-    if (conv.state === 'awaiting_address' && text.length >= 8) {
-      session.address = text;
+    if (conv.state === 'awaiting_address' && !isConfirm && !isGreeting && text.length >= 8) {
+      if (!this.looksLikeAddress(text)) {
+        await this.reply(
+          conv,
+          msg.waId,
+          'Necesito una *dirección de entrega* completa (barrio, calle/carrera, número o punto de referencia). Ejemplo: Calle 10 #5-20, barrio Centro.',
+        );
+        return;
+      }
+      session.address = text.trim();
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, msg.waId, 'Dirección anotada. ¿Algo más en el pedido o escribe *confirmar*?');
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.reply(conv, msg.waId, 'Perfecto, dirección anotada ✅');
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
+
+    if (conv.state === 'awaiting_payment' && !isConfirm && !isGreeting) {
+      if (/\b(contraentrega|efectivo|cash)\b/.test(lower)) {
+        session.paymentMethod = 'cash';
+        await this.conversationService.saveSession(conv, session, 'confirming');
+        session = this.conversationService.getSession(conv);
+        await this.tryConfirmOrder(conv, msg.waId, session);
+        return;
+      }
+      if (cfg.allowMercadoPago && /\b(mercado\s*pago|tarjeta|link\s*de\s*pago)\b/.test(lower)) {
+        session.paymentMethod = 'mercadopago';
+        await this.conversationService.saveSession(conv, session, 'confirming');
+        session = this.conversationService.getSession(conv);
+        await this.tryConfirmOrder(conv, msg.waId, session);
+        return;
+      }
+      let opts = 'Responde *contraentrega* (efectivo al recibir).';
+      if (cfg.allowMercadoPago) opts += ' O *mercado pago* para un link de pago.';
+      await this.reply(conv, msg.waId, `¿Cómo deseas pagar?\n${opts}`);
+      return;
+    }
+
+    // Saludo / menú (siempre respuesta fija, no diluye el carrito)
+    if (isGreeting) {
+      const inboundCount = await this.conversationService.countInboundMessages(conv.id);
+      await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg.menuUrl, inboundCount <= 1));
       return;
     }
 
     const pick = session.pendingMatch && /^[1-9]\d*$/.test(lower) ? parseInt(lower, 10) : null;
     if (pick && session.pendingMatch && pick <= session.pendingMatch.candidates.length) {
-      const chosen = session.pendingMatch.candidates[pick - 1];
-      session = this.addProductToCart(session, chosen, 1);
+      const chosenLite = session.pendingMatch.candidates[pick - 1];
+      const chosen =
+        this.catalogService.getProductById(chosenLite.id, products) || (chosenLite as MenuProduct);
       session.pendingMatch = undefined;
+      if (chosen.hasAttributes && chosen.attributes?.length) {
+        session = { ...session, pendingAttribute: this.toPendingAttribute(chosen) };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(chosen));
+        return;
+      }
+      session = this.addProductToCart(session, chosen, 1);
       await this.conversationService.saveSession(conv, session);
       await this.reply(
         conv,
         msg.waId,
-        `Agregué *${chosen.name}* (código ${chosen.code}). ¿Algo más o escribe *confirmar*?`,
+        `Agregué *${chosen.name}* (código ${chosen.code}) — $${Math.round(chosen.price).toLocaleString('es-CO')}. ¿Algo más o escribe *confirmar*?`,
       );
       return;
     }
@@ -161,19 +238,16 @@ export class WhatsappOrchestratorService {
         if (found.hasAttributes && found.attributes?.length) {
           session = { ...session, pendingAttribute: this.toPendingAttribute(found), pendingMatch: undefined };
           await this.conversationService.saveSession(conv, session);
-          await this.reply(
-            conv,
-            msg.waId,
-            `*${found.name}* (código ${found.code}). Elige opción:\n${this.actionGuard.formatAttributeOptions(found)}`,
-          );
+          await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(found));
           return;
         }
         session = this.addProductToCart(session, found, 1);
         await this.conversationService.saveSession(conv, { ...session, pendingMatch: undefined });
+        const desc = found.description ? `\n_${found.description}_` : '';
         await this.reply(
           conv,
           msg.waId,
-          `Agregué *${found.name}* (código ${found.code}) — $${Math.round(found.price).toLocaleString('es-CO')}. ¿Deseas algo más?`,
+          `Agregué *${found.name}* (código ${found.code}) — $${Math.round(found.price).toLocaleString('es-CO')}.${desc}\n¿Deseas algo más?`,
         );
         return;
       }
@@ -182,6 +256,10 @@ export class WhatsappOrchestratorService {
     }
 
     if (/\b(confirmar|confirmo|listo pedido|finalizar)\b/.test(lower)) {
+      // Recargar sesión desde DB (fuente de verdad del carrito)
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
       await this.tryConfirmOrder(conv, msg.waId, session);
       return;
     }
@@ -189,43 +267,65 @@ export class WhatsappOrchestratorService {
     if (/\b(contraentrega|efectivo|cash)\b/.test(lower)) {
       session.paymentMethod = 'cash';
       await this.conversationService.saveSession(conv, session, 'confirming');
-    } else if (cfg.allowMercadoPago && /\b(mercado\s*pago|tarjeta|link\s*de\s*pago)\b/.test(lower)) {
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
+    if (cfg.allowMercadoPago && /\b(mercado\s*pago|tarjeta|link\s*de\s*pago)\b/.test(lower)) {
       session.paymentMethod = 'mercadopago';
       await this.conversationService.saveSession(conv, session, 'confirming');
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
     }
 
-    const nameMatches = this.catalogService.searchByName(text, products, 5);
+    // Categoría completa (ej. "sopas", "qué bebidas tienen")
+    const categoryHit = this.catalogService.findByCategory(text, products);
+    if (categoryHit && categoryHit.products.length > 0 && !session.pendingMatch) {
+      session.pendingMatch = {
+        query: text,
+        candidates: categoryHit.products,
+      };
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(
+        conv,
+        msg.waId,
+        this.catalogService.formatCategoryList(categoryHit.categoryName, categoryHit.products),
+      );
+      return;
+    }
+
+    const nameMatches = this.catalogService.searchByName(text, products, 8);
     if (nameMatches.length === 1 && !session.pendingMatch) {
       const one = nameMatches[0];
       if (one.hasAttributes && one.attributes?.length) {
         session = { ...session, pendingAttribute: this.toPendingAttribute(one), pendingMatch: undefined };
         await this.conversationService.saveSession(conv, session);
-        await this.reply(
-          conv,
-          msg.waId,
-          `*${one.name}* (código ${one.code}). Elige opción:\n${this.actionGuard.formatAttributeOptions(one)}`,
-        );
+        await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(one));
         return;
       }
       session = this.addProductToCart(session, one, 1);
       await this.conversationService.saveSession(conv, session);
+      const desc = one.description ? `\n_${one.description}_` : '';
       await this.reply(
         conv,
         msg.waId,
-        `Agregué *${nameMatches[0].name}* (código ${nameMatches[0].code}). ¿Algo más?`,
+        `Agregué *${one.name}* (código ${one.code}) — $${Math.round(one.price).toLocaleString('es-CO')}.${desc}\n¿Algo más?`,
       );
       return;
     }
     if (nameMatches.length > 1 && !session.pendingMatch) {
       session.pendingMatch = { query: text, candidates: nameMatches };
       await this.conversationService.saveSession(conv, session);
-      const opts = nameMatches
-        .map((c, i) => `${i + 1}. ${c.name} (código ${c.code}) — $${Math.round(c.price).toLocaleString('es-CO')}`)
-        .join('\n');
+      const opts = nameMatches.map((c, i) => this.catalogService.formatProductListItem(c, i + 1)).join('\n\n');
       await this.reply(
         conv,
         msg.waId,
-        `Encontré varias opciones parecidas:\n${opts}\n\nResponde con el *número* de tu elección.`,
+        `Encontré varias opciones:\n\n${opts}\n\nResponde con el *número* o el *código*.`,
       );
       return;
     }
@@ -274,9 +374,20 @@ export class WhatsappOrchestratorService {
     }
     if (session.pendingMatch?.candidates?.length) {
       const opts = session.pendingMatch.candidates
-        .map((c, i) => `${i + 1}. ${c.name} (código ${c.code})`)
-        .join('\n');
-      reply += `\n\n¿Cuál prefieres?\n${opts}`;
+        .map((c, i) => this.catalogService.formatProductListItem(c, i + 1))
+        .join('\n\n');
+      reply += `\n\n¿Cuál prefieres?\n\n${opts}\n\nResponde con el *número* o el *código*.`;
+    }
+
+    // Si la IA intentó agregar producto con opciones y el guard lo bloqueó → pedir opciones + descripción
+    if (!session.pendingAttribute && ai.actions?.addItems?.length && !guarded.actions?.addItems?.length) {
+      const firstId = ai.actions.addItems[0]?.productId;
+      const product = firstId != null ? this.catalogService.getProductById(firstId, products) : null;
+      if (product?.hasAttributes) {
+        session = { ...session, pendingAttribute: this.toPendingAttribute(product) };
+        await this.conversationService.saveSession(conv, session);
+        reply = this.catalogService.formatProductOptionsPrompt(product);
+      }
     }
 
     if ((ai.actions?.requestConfirm || /\bconfirmar\b/.test(lower)) && this.isReadyToConfirm(session, conv)) {
@@ -296,9 +407,17 @@ export class WhatsappOrchestratorService {
     if (!actions) return session;
     let next = { ...session };
 
-    if (actions.clearCart) next.cart = [];
+    if (actions.clearCart) {
+      // Solo vaciar si el cliente lo pidió explícitamente (el orquestador usa cancelar/reiniciar)
+      // Evita que la IA borre el carrito por error y luego "confirmar" diga vacío.
+    }
 
-    if (actions.setAddress) next.address = actions.setAddress.trim();
+    if (actions.setAddress) {
+      const addr = actions.setAddress.trim();
+      if (addr.length >= 10 && !this.isConfirmKeyword(addr) && !this.isGreetingKeyword(addr)) {
+        next.address = addr;
+      }
+    }
     if (actions.setOrderType) next.orderType = actions.setOrderType;
     if (actions.setPaymentMethod) next.paymentMethod = actions.setPaymentMethod;
 
@@ -415,19 +534,24 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        'No tenemos tu nombre guardado aquí. ¿Cómo te llamas? (para este pedido)',
+        `${this.formatOrderSummary(conv, session, (await this.settingsService.getEffectiveConfig()).defaultDeliveryFee)}\n\n` +
+          'Para continuar, ¿cuál es tu *nombre completo*?',
       );
       return;
     }
     if (!session.address?.trim()) {
       await this.conversationService.saveSession(conv, session, 'awaiting_address');
-      await this.reply(conv, waId, 'Indícame la *dirección de entrega* completa para este pedido.');
+      await this.reply(
+        conv,
+        waId,
+        'Indícame la *dirección de entrega* completa (calle/carrera, número, barrio o referencia).',
+      );
       return;
     }
     if (!session.paymentMethod) {
-      const cfg = await this.settingsService.getEffectiveConfig();
+      const cfgPay = await this.settingsService.getEffectiveConfig();
       let opts = 'Responde *contraentrega* (efectivo al recibir).';
-      if (cfg.allowMercadoPago) opts += ' O *mercado pago* para un link de pago.';
+      if (cfgPay.allowMercadoPago) opts += ' O *mercado pago* para un link de pago.';
       await this.conversationService.saveSession(conv, session, 'awaiting_payment');
       await this.reply(conv, waId, `¿Cómo pagas?\n${opts}`);
       return;
@@ -482,18 +606,17 @@ export class WhatsappOrchestratorService {
       }
 
       const order = await this.ordersService.create(orderDto);
+      const snapshot = { ...session };
+      const cfg2 = cfg;
       await this.conversationService.saveSession(
         conv,
-        { cart: [], address: undefined, paymentMethod: undefined },
+        { cart: [], address: undefined, paymentMethod: undefined, pendingMatch: undefined, pendingAttribute: undefined },
         'completed',
       );
       await this.reply(
         conv,
         waId,
-        `✅ *Pedido registrado* #${String(order.dailyOrderNumber).padStart(2, '0')}\n` +
-          `A nombre de: ${conv.customerName}\n` +
-          `Pago: contra entrega\n` +
-          `¡Gracias por tu pedido en Pronto Pollo Portal!`,
+        this.formatOrderSuccessMessage(conv, snapshot, order, cfg2.defaultDeliveryFee),
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear pedido';
@@ -511,6 +634,89 @@ export class WhatsappOrchestratorService {
       body,
       sentBy: 'human',
     });
+  }
+
+  private isConfirmKeyword(text: string): boolean {
+    return /^(confirmar|confirmo|listo pedido|finalizar)$/i.test(text.trim()) ||
+      /\b(confirmar|confirmo|listo pedido|finalizar)\b/i.test(text.trim());
+  }
+
+  private isGreetingKeyword(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    return /^(hola|buenas|buen[oa]s?\s*(d[ií]as|tardes|noches)?|hey|hi|menu|menú|ver menu|ver menú)[\s!.?]*$/i.test(
+      t,
+    );
+  }
+
+  private looksLikeAddress(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    if (t.length < 10) return false;
+    if (this.isConfirmKeyword(t) || this.isGreetingKeyword(t)) return false;
+    if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
+    // Heurística: calle/carrera/av/barrio/# o texto largo con números
+    if (/\b(calle|carrera|cra|cll|av\.?|avenida|diag|diagonal|transversal|barrio|conjunto|apto|apartamento|torre|casa|mz|manzana|#)\b/i.test(t)) {
+      return true;
+    }
+    return t.length >= 15 && /\d/.test(t);
+  }
+
+  private looksLikePayment(text: string, allowMp: boolean): boolean {
+    const t = text.toLowerCase();
+    if (/\b(contraentrega|efectivo|cash)\b/.test(t)) return true;
+    if (allowMp && /\b(mercado\s*pago|tarjeta)\b/.test(t)) return true;
+    return false;
+  }
+
+  private buildWelcomeMessage(menuUrl: string, firstContact: boolean): string {
+    const hello = firstContact
+      ? '¡Hola! 👋 ¿Cómo podemos ayudarte?'
+      : '¡Hola de nuevo! 👋 ¿Cómo podemos ayudarte?';
+    return (
+      `${hello}\n\n` +
+      `Puedes pedir por *nombre*, *código* o categoría (ej. sopas).\n` +
+      `También conoce nuestro menú completo aquí:\n${menuUrl}\n\n` +
+      `Cuando quieras, dime qué deseas ordenar. Para finalizar escribe *confirmar*.`
+    );
+  }
+
+  private formatOrderSuccessMessage(
+    conv: WhatsappConversation,
+    session: WhatsappSessionData,
+    order: { orderId?: number; dailyOrderNumber?: number },
+    deliveryFee: number,
+  ): string {
+    const subtotal = session.cart.reduce((s, c) => s + c.unitPrice, 0);
+    const fee = session.orderType === 'delivery' ? deliveryFee : 0;
+    const total = subtotal + fee;
+    const now = new Date().toLocaleString('es-CO', {
+      timeZone: 'America/Bogota',
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+    const num = String(order.dailyOrderNumber ?? order.orderId ?? '').padStart(2, '0');
+    const items = session.cart
+      .map((c) => {
+        const attrs = c.attributes?.length
+          ? ` (${c.attributes.map((a) => a.attributeValue).join(', ')})`
+          : '';
+        return `• ${c.name}${attrs} — $${Math.round(c.unitPrice).toLocaleString('es-CO')}`;
+      })
+      .join('\n');
+
+    return (
+      `✅ *¡Tu pedido se creó con éxito!*\n\n` +
+      `🧾 Orden *#${num}*\n` +
+      `🕐 ${now}\n\n` +
+      `*Detalle:*\n${items}\n\n` +
+      `Subtotal: $${Math.round(subtotal).toLocaleString('es-CO')}\n` +
+      (fee ? `Domicilio: $${Math.round(fee).toLocaleString('es-CO')}\n` : '') +
+      `*Total: $${Math.round(total).toLocaleString('es-CO')}*\n\n` +
+      `👤 ${conv.customerName}\n` +
+      `📍 ${session.address}\n` +
+      `📞 ${conv.phoneE164}\n` +
+      `💳 ${session.paymentMethod === 'mercadopago' ? 'Mercado Pago' : 'Contra entrega'}\n\n` +
+      `¡Gracias por elegir Pronto Pollo Portal! 🍗`
+    );
   }
 
   private async reply(conv: WhatsappConversation, waId: string, body: string) {

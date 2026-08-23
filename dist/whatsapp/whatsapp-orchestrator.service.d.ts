@@ -31,5 +31,11 @@ export declare class WhatsappOrchestratorService {
         id: string;
         fullName: string;
     }): Promise<void>;
+    private isConfirmKeyword;
+    private isGreetingKeyword;
+    private looksLikeAddress;
+    private looksLikePayment;
+    private buildWelcomeMessage;
+    private formatOrderSuccessMessage;
     private reply;
 }

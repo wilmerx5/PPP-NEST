@@ -15,4 +15,5 @@ export declare class WhatsappActionGuardService {
     }): GuardResult;
     private normalizeAttributes;
     formatAttributeOptions(product: WhatsappCatalogProduct): string;
+    private formatProductOptionsInline;
 }

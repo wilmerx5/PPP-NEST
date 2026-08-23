@@ -9,10 +9,18 @@ export declare class WhatsappCatalogService {
     getMenuProducts(): Promise<WhatsappCatalogProduct[]>;
     getMenuCompactText(): Promise<string>;
     getMenuDetailedText(): Promise<string>;
+    getCategoryNames(): Promise<string[]>;
     getProductById(id: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractCodeFromMessage(text: string): number | null;
     findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
+    findByCategory(query: string, products: WhatsappCatalogProduct[]): {
+        categoryName: string;
+        products: WhatsappCatalogProduct[];
+    } | null;
     searchByName(query: string, products: WhatsappCatalogProduct[], limit?: number): WhatsappCatalogProduct[];
+    formatProductListItem(product: WhatsappCatalogProduct, index?: number): string;
+    formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string;
+    formatProductOptionsPrompt(product: WhatsappCatalogProduct): string;
     resolveAttributesFromText(product: WhatsappCatalogProduct, text: string): {
         attributeName: string;
         attributeValue: string;

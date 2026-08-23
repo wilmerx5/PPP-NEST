@@ -14,6 +14,8 @@ export declare class WhatsappConversationService {
     findUserByPhone(phoneE164: string): Promise<User | null>;
     getSession(conv: WhatsappConversation): WhatsappSessionData;
     saveSession(conv: WhatsappConversation, patch: Partial<WhatsappSessionData>, state?: string): Promise<WhatsappConversation>;
+    reloadConversation(id: number): Promise<WhatsappConversation>;
+    countInboundMessages(conversationId: number): Promise<number>;
     logMessage(params: {
         conversationId: number;
         direction: 'in' | 'out';

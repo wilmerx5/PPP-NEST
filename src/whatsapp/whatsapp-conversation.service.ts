@@ -60,14 +60,45 @@ export class WhatsappConversationService {
   }
 
   getSession(conv: WhatsappConversation): WhatsappSessionData {
-    return { ...EMPTY_SESSION, ...(conv.sessionData || {}) };
+    const raw = (conv.sessionData || {}) as Partial<WhatsappSessionData>;
+    return {
+      ...EMPTY_SESSION,
+      ...raw,
+      cart: Array.isArray(raw.cart) ? raw.cart : [],
+    };
   }
 
   async saveSession(conv: WhatsappConversation, patch: Partial<WhatsappSessionData>, state?: string) {
-    conv.sessionData = { ...this.getSession(conv), ...patch };
+    const current = this.getSession(conv);
+    const next: WhatsappSessionData = {
+      ...current,
+      ...patch,
+      // Nunca perder el carrito si el patch no trae cart explícito
+      cart: patch.cart !== undefined ? patch.cart : current.cart,
+    };
+    // Limpiar claves undefined para JSON limpio en MariaDB
+    conv.sessionData = JSON.parse(JSON.stringify(next)) as WhatsappSessionData;
     if (state) conv.state = state;
     conv.lastMessageAt = new Date();
-    return this.convRepo.save(conv);
+    const saved = await this.convRepo.save(conv);
+    // Releer para asegurar session_data desde DB
+    const fresh = await this.convRepo.findOne({ where: { id: saved.id } });
+    if (fresh) {
+      conv.sessionData = fresh.sessionData;
+      conv.state = fresh.state;
+      conv.customerName = fresh.customerName;
+    }
+    return conv;
+  }
+
+  async reloadConversation(id: number): Promise<WhatsappConversation> {
+    const conv = await this.convRepo.findOne({ where: { id } });
+    if (!conv) throw new NotFoundException('Conversación no encontrada');
+    return conv;
+  }
+
+  async countInboundMessages(conversationId: number): Promise<number> {
+    return this.msgRepo.count({ where: { conversationId, direction: 'in' } });
   }
 
   async logMessage(params: {

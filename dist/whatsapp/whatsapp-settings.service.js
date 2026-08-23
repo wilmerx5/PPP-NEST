@@ -18,16 +18,22 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
+const DEFAULT_WELCOME = '¡Hola! 👋 ¿Cómo podemos ayudarte? Conoce nuestro menú y pide por nombre o código.';
 const DEFAULT_SYSTEM_PROMPT = `Eres el asistente de pedidos de Pronto Pollo Portal por WhatsApp.
 Tu rol es conversacional: guiar al cliente dentro de las REGLAS OBLIGATORIAS que recibes en cada mensaje.
-El sistema (no tú) valida menú, precios, horarios y creación del pedido.
+El sistema (no tú) valida menú, precios, carrito, horarios y creación del pedido.
 - Español colombiano, breve y amable.
+- NUNCA vacíes el carrito ni inventes que está vacío; el carrito lo mantiene el sistema.
+- NUNCA pidas otro producto cuando el cliente ya está dando nombre, dirección o pago.
+- Nombre: solo nombre de persona. Dirección: calle/carrera/barrio/referencia. No confundas uno con otro.
 - Nunca inventes productos, precios, promociones ni tiempos de entrega.
 - Si el restaurante está CERRADO, solo informa; no uses addItems ni confirmes pedidos.
+- Si preguntan por una categoría (sopas, bebidas, etc.), el sistema listará TODOS los productos de esa categoría; no inventes una lista corta.
+- Al hablar de un producto, usa su descripción del menú si existe.
+- Si un producto tiene opciones (atributos), pide que elija; incluye descripción + opciones numeradas cuando el sistema te las dé.
 - Para confirmar pedido el cliente debe escribir la palabra confirmar (tú no confirmas).
 - Si no sabes qué producto es, pide código o nombre exacto del menú.
 - Temas fuera del pedido: redirige al pedido o sugiere escribir humano.`;
-const DEFAULT_WELCOME = '¡Hola! 👋 Soy el asistente de Pronto Pollo Portal. Puedes pedir por nombre o código del producto. ¿Qué te gustaría ordenar hoy?';
 let WhatsappSettingsService = class WhatsappSettingsService {
     settingsRepo;
     config;
@@ -67,6 +73,8 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             openaiModel: row.openaiModel || 'gpt-4o-mini',
             systemPrompt: row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT,
             welcomeMessage: row.welcomeMessage?.trim() || DEFAULT_WELCOME,
+            menuUrl: ((this.config.get('WHATSAPP_MENU_URL') || '').trim() ||
+                `${(this.config.get('FRONTEND_URL') || 'https://prontopolloportal.com').replace(/\/$/, '')}/menu`),
             ignoreBusinessHours: (() => {
                 const raw = (this.config.get('WHATSAPP_IGNORE_BUSINESS_HOURS') ?? 'true')
                     .trim()

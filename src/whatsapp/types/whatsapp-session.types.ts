@@ -18,6 +18,7 @@ export type WhatsappProductCandidate = {
   name: string;
   code: number;
   price: number;
+  description?: string | null;
   categoryName?: string;
   hasAttributes?: boolean;
   attributes?: WhatsappProductAttribute[];

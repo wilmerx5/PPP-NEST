@@ -114,9 +114,18 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
         return normalized;
     }
     formatAttributeOptions(product) {
-        return (product.attributes || [])
-            .map((a) => `${a.attributeName}: ${a.options.join(' / ')}`)
-            .join('; ');
+        return this.formatProductOptionsInline(product);
+    }
+    formatProductOptionsInline(product) {
+        const parts = [];
+        if (product.description) {
+            parts.push(`📝 ${product.description}`);
+        }
+        for (const a of product.attributes || []) {
+            const opts = a.options.map((o, i) => `${i + 1}) ${o}`).join('\n  ');
+            parts.push(`*${a.attributeName}:*\n  ${opts}`);
+        }
+        return parts.join('\n\n') || (product.attributes || []).map((a) => `${a.attributeName}: ${a.options.join(' / ')}`).join('; ');
     }
 };
 exports.WhatsappActionGuardService = WhatsappActionGuardService;

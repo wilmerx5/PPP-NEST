@@ -69,14 +69,41 @@ let WhatsappConversationService = class WhatsappConversationService {
             .getOne();
     }
     getSession(conv) {
-        return { ...whatsapp_session_types_1.EMPTY_SESSION, ...(conv.sessionData || {}) };
+        const raw = (conv.sessionData || {});
+        return {
+            ...whatsapp_session_types_1.EMPTY_SESSION,
+            ...raw,
+            cart: Array.isArray(raw.cart) ? raw.cart : [],
+        };
     }
     async saveSession(conv, patch, state) {
-        conv.sessionData = { ...this.getSession(conv), ...patch };
+        const current = this.getSession(conv);
+        const next = {
+            ...current,
+            ...patch,
+            cart: patch.cart !== undefined ? patch.cart : current.cart,
+        };
+        conv.sessionData = JSON.parse(JSON.stringify(next));
         if (state)
             conv.state = state;
         conv.lastMessageAt = new Date();
-        return this.convRepo.save(conv);
+        const saved = await this.convRepo.save(conv);
+        const fresh = await this.convRepo.findOne({ where: { id: saved.id } });
+        if (fresh) {
+            conv.sessionData = fresh.sessionData;
+            conv.state = fresh.state;
+            conv.customerName = fresh.customerName;
+        }
+        return conv;
+    }
+    async reloadConversation(id) {
+        const conv = await this.convRepo.findOne({ where: { id } });
+        if (!conv)
+            throw new common_1.NotFoundException('Conversación no encontrada');
+        return conv;
+    }
+    async countInboundMessages(conversationId) {
+        return this.msgRepo.count({ where: { conversationId, direction: 'in' } });
     }
     async logMessage(params) {
         const msg = this.msgRepo.create({

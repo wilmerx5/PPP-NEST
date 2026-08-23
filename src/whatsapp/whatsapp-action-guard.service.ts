@@ -135,8 +135,19 @@ export class WhatsappActionGuardService {
   }
 
   formatAttributeOptions(product: WhatsappCatalogProduct): string {
-    return (product.attributes || [])
-      .map((a) => `${a.attributeName}: ${a.options.join(' / ')}`)
-      .join('; ');
+    // Delega al formato enriquecido del catálogo (descripción + opciones numeradas)
+    return this.formatProductOptionsInline(product);
+  }
+
+  private formatProductOptionsInline(product: WhatsappCatalogProduct): string {
+    const parts: string[] = [];
+    if (product.description) {
+      parts.push(`📝 ${product.description}`);
+    }
+    for (const a of product.attributes || []) {
+      const opts = a.options.map((o, i) => `${i + 1}) ${o}`).join('\n  ');
+      parts.push(`*${a.attributeName}:*\n  ${opts}`);
+    }
+    return parts.join('\n\n') || (product.attributes || []).map((a) => `${a.attributeName}: ${a.options.join(' / ')}`).join('; ');
   }
 }
