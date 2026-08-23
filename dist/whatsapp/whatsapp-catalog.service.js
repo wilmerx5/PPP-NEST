@@ -619,7 +619,68 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const list = available.filter((p) => p.categoryName === best.categoryName);
         if (!list.length)
             return null;
-        return { categoryName: best.categoryName, products: list };
+        return this.refineCategoryListByQuery(q, best.categoryName, list);
+    }
+    refineCategoryListByQuery(q, categoryName, list) {
+        const catNorm = stemLoose(categoryName);
+        const STOP = new Set([
+            'que',
+            'hay',
+            'tienen',
+            'tiene',
+            'ver',
+            'lista',
+            'mostrar',
+            'muestrame',
+            'mostrame',
+            'opciones',
+            'categoria',
+            'categoría',
+            'como',
+            'cual',
+            'cuales',
+            'para',
+            'por',
+            'con',
+            'sin',
+            'algo',
+            'algun',
+            'alguna',
+            'dime',
+            'dame',
+            'quiero',
+            'tengo',
+            'interesa',
+            'pregunto',
+        ]);
+        const tokens = q
+            .split(' ')
+            .filter((t) => t.length >= 3 && !STOP.has(t))
+            .map((t) => stemLoose(t))
+            .filter((t) => t !== catNorm && !catNorm.includes(t) && !t.includes(catNorm));
+        if (!tokens.length) {
+            return { categoryName, products: list };
+        }
+        const relevant = tokens.filter((t) => list.some((p) => {
+            const hay = normalizeText(`${p.name} ${p.description || ''}`);
+            return hay.includes(t);
+        }));
+        if (!relevant.length) {
+            return { categoryName, products: list };
+        }
+        const filtered = list.filter((p) => {
+            const hay = normalizeText(`${p.name} ${p.description || ''}`);
+            return relevant.some((t) => hay.includes(t));
+        });
+        if (!filtered.length) {
+            return { categoryName, products: list };
+        }
+        const displayName = relevant.length === 1
+            ? titleCaseWords(relevant[0])
+            : relevant.length <= 3
+                ? titleCaseWords(relevant.join(' / '))
+                : categoryName;
+        return { categoryName: displayName, products: filtered };
     }
     findCategoryBrowseHit(text, products, menuConceptGroups) {
         const trimmed = text.trim();

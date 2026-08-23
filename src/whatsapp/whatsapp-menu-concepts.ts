@@ -52,11 +52,27 @@ export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
   {
     id: 'bebida',
     label: 'Bebidas',
-    triggers: ['bebida', 'bebidas', 'gaseosa', 'jugo', 'limonada'],
+    triggers: [
+      'bebida',
+      'bebidas',
+      'gaseosa',
+      'gaseosas',
+      'refresco',
+      'refrescos',
+      'jugo',
+      'jugos',
+      'limonada',
+      'limonadas',
+      'malta',
+      'agua',
+      'cerveza',
+    ],
     productKeywords: [
       'gaseosa',
       'coca',
       'sprite',
+      'pepsi',
+      'postobon',
       'limonada',
       'jugo',
       'malta',
@@ -64,6 +80,9 @@ export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
       'te',
       'té',
       'cerveza',
+      'hit',
+      'mr tea',
+      'cysco',
     ],
   },
 ];
@@ -76,6 +95,83 @@ function normalizeText(s: string): string {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function stemLoose(s: string): string {
+  const n = normalizeText(s);
+  if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
+  if (n.length > 4 && n.endsWith('es')) return n.slice(0, -2);
+  return n;
+}
+
+function titleCaseWords(s: string): string {
+  return s
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/** Triggers genéricos del concepto (muestran todo el grupo). */
+const BROAD_CONCEPT_TRIGGERS: Record<string, string[]> = {
+  bebida: ['bebida', 'bebidas'],
+  pollo: ['pollo', 'pollos'],
+  sopa: ['sopa', 'sopas', 'caldo', 'caldos'],
+  carne: ['carne', 'carnes'],
+  arroz: ['arroz'],
+};
+
+function isBroadConceptTrigger(concept: MenuConceptGroup, trigger: string): boolean {
+  const t = stemLoose(trigger);
+  const label = stemLoose(concept.label);
+  if (t === label) return true;
+  const broad = BROAD_CONCEPT_TRIGGERS[concept.id] || [label];
+  return broad.some((b) => stemLoose(b) === t);
+}
+
+function getMatchedConceptTriggers(q: string, concept: MenuConceptGroup): string[] {
+  const matched: string[] = [];
+  for (const trigger of concept.triggers) {
+    const t = normalizeText(trigger);
+    if (!t || t.length < 3) continue;
+    if (q === t || q.includes(t) || (q.length >= 4 && t.includes(q))) {
+      matched.push(t);
+      continue;
+    }
+    for (const token of q.split(' ').filter((x) => x.length >= 3)) {
+      const ts = stemLoose(token);
+      const tst = stemLoose(t);
+      if (
+        token === t ||
+        ts === tst ||
+        t.includes(token) ||
+        token.includes(t) ||
+        tst.includes(ts) ||
+        ts.includes(tst)
+      ) {
+        matched.push(t);
+      }
+    }
+  }
+  return [...new Set(matched)];
+}
+
+function filterProductsByConceptTriggers(
+  products: WhatsappProductCandidate[],
+  triggers: string[],
+): WhatsappProductCandidate[] {
+  const needles = [...new Set(triggers.map((t) => stemLoose(t)).filter((t) => t.length >= 3))];
+  if (!needles.length) return products;
+  return products.filter((p) => {
+    const hay = normalizeText(`${p.name} ${p.description || ''}`);
+    return needles.some((n) => hay.includes(n));
+  });
+}
+
+function buildConceptListLabel(concept: MenuConceptGroup, narrowTriggers: string[]): string {
+  if (!narrowTriggers.length) return concept.label;
+  if (narrowTriggers.length === 1) return titleCaseWords(narrowTriggers[0]);
+  return titleCaseWords(narrowTriggers.slice(0, 3).join(' / '));
 }
 
 export function resolveMenuConceptGroups(stored: unknown): MenuConceptGroup[] {
@@ -153,6 +249,7 @@ export function findByMenuConcept(
     concept: MenuConceptGroup;
     products: WhatsappProductCandidate[];
     score: number;
+    narrowTriggers: string[];
   } | null = null;
 
   for (const concept of concepts) {
@@ -160,21 +257,29 @@ export function findByMenuConcept(
     if (!queryMatchesConcept(q, concept)) continue;
 
     const available = products.filter((p) => p.availableNow !== false);
-    const matched = available.filter((p) => productMatchesConcept(p, concept));
+    let matched = available.filter((p) => productMatchesConcept(p, concept));
     if (!matched.length) continue;
+
+    const matchedTriggers = getMatchedConceptTriggers(q, concept);
+    const narrowTriggers = matchedTriggers.filter((t) => !isBroadConceptTrigger(concept, t));
+    if (narrowTriggers.length) {
+      const filtered = filterProductsByConceptTriggers(matched, narrowTriggers);
+      if (filtered.length) matched = filtered;
+    }
 
     let score = 70;
     if (concept.triggers.some((t) => q === normalizeText(t))) score = 100;
     else if (concept.triggers.some((t) => q.includes(normalizeText(t)))) score = 85;
+    if (narrowTriggers.length) score += 8;
 
     if (!best || score > best.score || (score === best.score && matched.length > best.products.length)) {
-      best = { concept, products: matched, score };
+      best = { concept, products: matched, score, narrowTriggers };
     }
   }
 
   if (!best) return null;
   return {
-    categoryName: best.concept.label,
+    categoryName: buildConceptListLabel(best.concept, best.narrowTriggers),
     products: best.products,
     conceptId: best.concept.id,
   };

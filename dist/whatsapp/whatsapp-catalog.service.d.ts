@@ -62,6 +62,7 @@ export declare class WhatsappCatalogService {
         categoryName: string;
         products: WhatsappCatalogProduct[];
     } | null;
+    private refineCategoryListByQuery;
     findCategoryBrowseHit(text: string, products: WhatsappCatalogProduct[], menuConceptGroups?: MenuConceptGroup[]): {
         categoryName: string;
         products: WhatsappCatalogProduct[];

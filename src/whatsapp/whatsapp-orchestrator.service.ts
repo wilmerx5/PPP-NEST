@@ -3503,21 +3503,22 @@ export class WhatsappOrchestratorService {
     const stripped = this.catalogService.stripPriceInquiryNoise(text);
     const query = this.catalogService.extractProductSearchQuery(stripped || text);
 
-    if (this.catalogService.isShortGenericFoodQuery(query)) {
-      const hit = this.catalogService.findCategoryBrowseHit(query, products, cfg.menuConceptGroups);
-      if (hit?.products.length) {
-        const body = hit.products
-          .slice(0, 10)
-          .map((p, i) => this.catalogService.formatProductListItem(p, i + 1))
-          .join('\n\n');
-        await this.reply(
-          conv,
-          waId,
-          `Sobre *${hit.categoryName}*, tenemos:\n\n${body}\n\n` +
-            `¿Cuál te interesa? Dime el *número* o el *nombre*.`,
-        );
-        return true;
-      }
+    const browseHit =
+      this.catalogService.findCategoryBrowseHit(query, products, cfg.menuConceptGroups) ||
+      this.catalogService.findCategoryBrowseHit(text, products, cfg.menuConceptGroups);
+    if (browseHit?.products.length) {
+      const list = browseHit.products.slice(0, 12);
+      const session = this.conversationService.getSession(conv);
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingMatch: { query: browseHit.categoryName, candidates: list },
+      });
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatCategoryList(browseHit.categoryName, list),
+      );
+      return true;
     }
 
     const embedded =
