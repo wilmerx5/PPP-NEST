@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 
+export type WhatsappCatalogProduct = WhatsappProductCandidate;
+
 function normalizeText(s: string): string {
   return s
     .toLowerCase()
@@ -14,46 +16,84 @@ function normalizeText(s: string): string {
 
 @Injectable()
 export class WhatsappCatalogService {
-  private menuCache: { at: number; products: WhatsappProductCandidate[]; compact: string } | null =
-    null;
+  private menuCache: {
+    at: number;
+    products: WhatsappCatalogProduct[];
+    compact: string;
+    detailed: string;
+  } | null = null;
   private readonly TTL_MS = 60_000;
 
   constructor(private readonly productsService: ProductsService) {}
 
-  async getMenuProducts(): Promise<WhatsappProductCandidate[]> {
+  async getMenuProducts(): Promise<WhatsappCatalogProduct[]> {
     const cached = this.menuCache;
     if (cached && Date.now() - cached.at < this.TTL_MS) {
       return cached.products;
     }
 
     const grouped = await this.productsService.findProductsGroupedByCategory();
-    const products: WhatsappProductCandidate[] = [];
+    const products: WhatsappCatalogProduct[] = [];
     for (const cat of grouped || []) {
       for (const p of cat.products || []) {
+        const attrs = (p.attributes || []).map(
+          (a: { attributeName: string; options: string[] | unknown[] }) => ({
+            attributeName: a.attributeName,
+            options: Array.isArray(a.options) ? a.options.map(String) : [],
+          }),
+        );
         products.push({
           id: p.id,
           name: p.name,
-          code: p.code,
+          code: Number(p.code) || 0,
           price: Number(p.price) || 0,
           categoryName: cat.categoryName,
+          hasAttributes: !!p.hasAttributes && attrs.length > 0,
+          attributes: attrs,
+          availableNow: p.availableNow !== false,
         });
       }
     }
 
     const compact = products
+      .filter((p) => p.availableNow !== false)
       .map(
         (p) =>
-          `[${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`,
+          `[id=${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}` +
+          (p.hasAttributes ? ' (requiere opciones)' : ''),
       )
       .join('\n');
 
-    this.menuCache = { at: Date.now(), products, compact };
+    const detailed = products
+      .filter((p) => p.availableNow !== false)
+      .map((p) => {
+        let line = `[id=${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`;
+        if (p.hasAttributes && p.attributes?.length) {
+          const opts = p.attributes
+            .map((a) => `${a.attributeName}: ${a.options.join(', ')}`)
+            .join(' | ');
+          line += ` → ${opts}`;
+        }
+        return line;
+      })
+      .join('\n');
+
+    this.menuCache = { at: Date.now(), products, compact, detailed };
     return products;
   }
 
   async getMenuCompactText(): Promise<string> {
     await this.getMenuProducts();
     return this.menuCache?.compact || '';
+  }
+
+  async getMenuDetailedText(): Promise<string> {
+    await this.getMenuProducts();
+    return this.menuCache?.detailed || '';
+  }
+
+  getProductById(id: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
+    return products.find((p) => p.id === id) ?? null;
   }
 
   extractCodeFromMessage(text: string): number | null {
@@ -63,15 +103,17 @@ export class WhatsappCatalogService {
     return null;
   }
 
-  findByCode(code: number, products: WhatsappProductCandidate[]): WhatsappProductCandidate | null {
+  findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
     return products.find((p) => p.code === code) ?? null;
   }
 
-  searchByName(query: string, products: WhatsappProductCandidate[], limit = 5): WhatsappProductCandidate[] {
+  searchByName(query: string, products: WhatsappCatalogProduct[], limit = 5): WhatsappCatalogProduct[] {
     const q = normalizeText(query);
     if (!q || q.length < 2) return [];
 
-    const scored = products
+    const available = products.filter((p) => p.availableNow !== false);
+
+    const scored = available
       .map((p) => {
         const name = normalizeText(p.name);
         let score = 0;
@@ -89,5 +131,34 @@ export class WhatsappCatalogService {
       .slice(0, limit);
 
     return scored.map((x) => x.p);
+  }
+
+  /** Intenta resolver opciones de atributos desde texto libre del cliente */
+  resolveAttributesFromText(
+    product: WhatsappCatalogProduct,
+    text: string,
+  ): { attributeName: string; attributeValue: string }[] | null {
+    if (!product.attributes?.length) return [];
+    const t = normalizeText(text);
+    const selected: { attributeName: string; attributeValue: string }[] = [];
+
+    for (const attr of product.attributes) {
+      let picked: string | null = null;
+      for (const opt of attr.options) {
+        if (normalizeText(opt) === t || t.includes(normalizeText(opt))) {
+          picked = opt;
+          break;
+        }
+      }
+      if (!picked) {
+        const num = parseInt(text.trim(), 10);
+        if (Number.isFinite(num) && num >= 1 && num <= attr.options.length) {
+          picked = attr.options[num - 1];
+        }
+      }
+      if (!picked) return null;
+      selected.push({ attributeName: attr.attributeName, attributeValue: picked });
+    }
+    return selected;
   }
 }

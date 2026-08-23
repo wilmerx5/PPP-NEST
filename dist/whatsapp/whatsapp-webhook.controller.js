@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var WhatsappWebhookController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsappWebhookController = void 0;
 const common_1 = require("@nestjs/common");
@@ -18,10 +19,11 @@ const swagger_1 = require("@nestjs/swagger");
 const whatsapp_settings_service_1 = require("./whatsapp-settings.service");
 const whatsapp_meta_service_1 = require("./whatsapp-meta.service");
 const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service");
-let WhatsappWebhookController = class WhatsappWebhookController {
+let WhatsappWebhookController = WhatsappWebhookController_1 = class WhatsappWebhookController {
     settingsService;
     metaService;
     orchestrator;
+    logger = new common_1.Logger(WhatsappWebhookController_1.name);
     constructor(settingsService, metaService, orchestrator) {
         this.settingsService = settingsService;
         this.metaService = metaService;
@@ -29,10 +31,19 @@ let WhatsappWebhookController = class WhatsappWebhookController {
     }
     async verify(mode, token, challenge, res) {
         const cfg = await this.settingsService.getEffectiveConfig();
-        if (mode === 'subscribe' && token && token === cfg.verifyToken) {
-            return res.status(200).send(challenge);
+        const expected = (cfg.verifyToken || '').trim();
+        const received = (token || '').trim();
+        if (mode === 'subscribe' && received && expected && received === expected) {
+            this.logger.log('Webhook Meta verificado correctamente');
+            return res.status(200).type('text/plain').send(challenge);
         }
-        return res.status(403).send('Forbidden');
+        if (!expected) {
+            this.logger.warn('Webhook verify falló: no hay verify token en servidor. Guárdalo en Admin → WhatsApp IA o env WHATSAPP_VERIFY_TOKEN.');
+        }
+        else {
+            this.logger.warn('Webhook verify falló: token recibido no coincide con el configurado en PPP.');
+        }
+        return res.status(403).type('text/plain').send('Forbidden');
     }
     async receive(req) {
         const body = (req.body || {});
@@ -67,7 +78,7 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], WhatsappWebhookController.prototype, "receive", null);
-exports.WhatsappWebhookController = WhatsappWebhookController = __decorate([
+exports.WhatsappWebhookController = WhatsappWebhookController = WhatsappWebhookController_1 = __decorate([
     (0, swagger_1.ApiExcludeController)(),
     (0, common_1.Controller)('whatsapp'),
     __metadata("design:paramtypes", [whatsapp_settings_service_1.WhatsappSettingsService,

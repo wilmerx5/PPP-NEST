@@ -37,24 +37,53 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const products = [];
         for (const cat of grouped || []) {
             for (const p of cat.products || []) {
+                const attrs = (p.attributes || []).map((a) => ({
+                    attributeName: a.attributeName,
+                    options: Array.isArray(a.options) ? a.options.map(String) : [],
+                }));
                 products.push({
                     id: p.id,
                     name: p.name,
-                    code: p.code,
+                    code: Number(p.code) || 0,
                     price: Number(p.price) || 0,
                     categoryName: cat.categoryName,
+                    hasAttributes: !!p.hasAttributes && attrs.length > 0,
+                    attributes: attrs,
+                    availableNow: p.availableNow !== false,
                 });
             }
         }
         const compact = products
-            .map((p) => `[${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`)
+            .filter((p) => p.availableNow !== false)
+            .map((p) => `[id=${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}` +
+            (p.hasAttributes ? ' (requiere opciones)' : ''))
             .join('\n');
-        this.menuCache = { at: Date.now(), products, compact };
+        const detailed = products
+            .filter((p) => p.availableNow !== false)
+            .map((p) => {
+            let line = `[id=${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`;
+            if (p.hasAttributes && p.attributes?.length) {
+                const opts = p.attributes
+                    .map((a) => `${a.attributeName}: ${a.options.join(', ')}`)
+                    .join(' | ');
+                line += ` → ${opts}`;
+            }
+            return line;
+        })
+            .join('\n');
+        this.menuCache = { at: Date.now(), products, compact, detailed };
         return products;
     }
     async getMenuCompactText() {
         await this.getMenuProducts();
         return this.menuCache?.compact || '';
+    }
+    async getMenuDetailedText() {
+        await this.getMenuProducts();
+        return this.menuCache?.detailed || '';
+    }
+    getProductById(id, products) {
+        return products.find((p) => p.id === id) ?? null;
     }
     extractCodeFromMessage(text) {
         const m = text.match(/\b(?:codigo|código|code|#)?\s*(\d{1,4})\b/i);
@@ -71,7 +100,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const q = normalizeText(query);
         if (!q || q.length < 2)
             return [];
-        const scored = products
+        const available = products.filter((p) => p.availableNow !== false);
+        const scored = available
             .map((p) => {
             const name = normalizeText(p.name);
             let score = 0;
@@ -92,6 +122,31 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             .sort((a, b) => b.score - a.score)
             .slice(0, limit);
         return scored.map((x) => x.p);
+    }
+    resolveAttributesFromText(product, text) {
+        if (!product.attributes?.length)
+            return [];
+        const t = normalizeText(text);
+        const selected = [];
+        for (const attr of product.attributes) {
+            let picked = null;
+            for (const opt of attr.options) {
+                if (normalizeText(opt) === t || t.includes(normalizeText(opt))) {
+                    picked = opt;
+                    break;
+                }
+            }
+            if (!picked) {
+                const num = parseInt(text.trim(), 10);
+                if (Number.isFinite(num) && num >= 1 && num <= attr.options.length) {
+                    picked = attr.options[num - 1];
+                }
+            }
+            if (!picked)
+                return null;
+            selected.push({ attributeName: attr.attributeName, attributeValue: picked });
+        }
+        return selected;
     }
 };
 exports.WhatsappCatalogService = WhatsappCatalogService;

@@ -6,8 +6,8 @@ export declare class WhatsappAiService {
     constructor(settingsService: WhatsappSettingsService);
     generateTurn(input: {
         userMessage: string;
-        menuText: string;
-        businessOpen: boolean;
+        businessRulesBlock: string;
+        menuDetailedText: string;
         sessionSummary: string;
         recentMessages: string[];
         customerHint: string;

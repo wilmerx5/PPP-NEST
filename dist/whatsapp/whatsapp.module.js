@@ -18,6 +18,7 @@ const whatsapp_catalog_service_1 = require("./whatsapp-catalog.service");
 const whatsapp_ai_service_1 = require("./whatsapp-ai.service");
 const whatsapp_conversation_service_1 = require("./whatsapp-conversation.service");
 const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service");
+const whatsapp_action_guard_service_1 = require("./whatsapp-action-guard.service");
 const whatsapp_webhook_controller_1 = require("./whatsapp-webhook.controller");
 const whatsapp_admin_controller_1 = require("./whatsapp-admin.controller");
 const auth_module_1 = require("../auth/auth.module");
@@ -47,6 +48,7 @@ exports.WhatsappModule = WhatsappModule = __decorate([
             whatsapp_ai_service_1.WhatsappAiService,
             whatsapp_conversation_service_1.WhatsappConversationService,
             whatsapp_orchestrator_service_1.WhatsappOrchestratorService,
+            whatsapp_action_guard_service_1.WhatsappActionGuardService,
         ],
         exports: [whatsapp_settings_service_1.WhatsappSettingsService],
     })

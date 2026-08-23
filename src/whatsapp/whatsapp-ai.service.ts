@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import type { AiTurnResult } from './types/whatsapp-session.types';
+import { WHATSAPP_AI_JSON_SCHEMA } from './whatsapp-business-rules';
 
 @Injectable()
 export class WhatsappAiService {
@@ -10,8 +11,8 @@ export class WhatsappAiService {
 
   async generateTurn(input: {
     userMessage: string;
-    menuText: string;
-    businessOpen: boolean;
+    businessRulesBlock: string;
+    menuDetailedText: string;
     sessionSummary: string;
     recentMessages: string[];
     customerHint: string;
@@ -20,25 +21,28 @@ export class WhatsappAiService {
     if (!cfg.openaiApiKey) {
       return {
         reply:
-          'El asistente IA aún no está configurado. Un momento, te atenderá el equipo o configura OPENAI_API_KEY en admin.',
+          'El asistente aún no está configurado. Escribe *humano* para hablar con el restaurante.',
         actions: { requestHuman: true },
       };
     }
 
     const system = `${cfg.systemPrompt}
 
-Estado del restaurante: ${input.businessOpen ? 'ABIERTO' : 'CERRADO'}.
+${input.businessRulesBlock}
+
 ${input.customerHint}
 
-Resumen de sesión:
+Resumen de sesión (fuente de verdad del carrito):
 ${input.sessionSummary}
 
-Menú (usa solo estos productos):
-${input.menuText}`;
+Menú autorizado (SOLO estos productos; ids y precios exactos):
+${input.menuDetailedText}
+
+${WHATSAPP_AI_JSON_SCHEMA}`;
 
     const messages = [
       { role: 'system' as const, content: system },
-      ...input.recentMessages.slice(-8).map((line, i) => ({
+      ...input.recentMessages.slice(-6).map((line, i) => ({
         role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
         content: line,
       })),
@@ -54,7 +58,7 @@ ${input.menuText}`;
         },
         body: JSON.stringify({
           model: cfg.openaiModel,
-          temperature: 0.4,
+          temperature: 0.15,
           response_format: { type: 'json_object' },
           messages,
         }),
@@ -64,7 +68,7 @@ ${input.menuText}`;
         const err = await res.text();
         this.logger.error(`OpenAI error ${res.status}: ${err}`);
         return {
-          reply: 'Tuve un problema técnico. Escribe *humano* para hablar con alguien del restaurante.',
+          reply: 'Tuve un problema técnico. Escribe *humano* para hablar con el restaurante.',
         };
       }
 
@@ -73,14 +77,24 @@ ${input.menuText}`;
       };
       const content = data.choices?.[0]?.message?.content || '{}';
       const parsed = JSON.parse(content) as AiTurnResult;
+
       if (!parsed.reply || typeof parsed.reply !== 'string') {
-        return { reply: '¿Podrías repetir tu pedido? Recuerda que puedes decir el nombre o el código del producto.' };
+        return {
+          reply:
+            'Puedes pedir por *código* o *nombre* del producto. Ejemplo: "2" o "medio pollo". Escribe *humano* si necesitas ayuda.',
+        };
       }
+
+      parsed.reply = parsed.reply.trim().slice(0, 3500);
+      if (parsed.actions?.requestConfirm) {
+        delete parsed.actions.requestConfirm;
+      }
+
       return parsed;
     } catch (err) {
       this.logger.error(`OpenAI call failed: ${err}`);
       return {
-        reply: 'No pude procesar tu mensaje. Intenta de nuevo o escribe *humano* para ayuda del equipo.',
+        reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o escribe *humano*.',
       };
     }
   }

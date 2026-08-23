@@ -6,6 +6,7 @@ import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { BusinessService } from '../business/business.service';
 import { OrdersService } from '../orders/orders.service';
 import { PaymentsService } from '../payments/payments.service';
+import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 export declare class WhatsappOrchestratorService {
     private readonly settingsService;
     private readonly metaService;
@@ -15,11 +16,13 @@ export declare class WhatsappOrchestratorService {
     private readonly businessService;
     private readonly ordersService;
     private readonly paymentsService;
+    private readonly actionGuard;
     private readonly logger;
-    constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, catalogService: WhatsappCatalogService, aiService: WhatsappAiService, conversationService: WhatsappConversationService, businessService: BusinessService, ordersService: OrdersService, paymentsService: PaymentsService);
+    constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, catalogService: WhatsappCatalogService, aiService: WhatsappAiService, conversationService: WhatsappConversationService, businessService: BusinessService, ordersService: OrdersService, paymentsService: PaymentsService, actionGuard: WhatsappActionGuardService);
     handleIncoming(msg: IncomingWhatsappText): Promise<void>;
     private applyActions;
     private addProductToCart;
+    private toPendingAttribute;
     private buildSessionSummary;
     private formatOrderSummary;
     private isReadyToConfirm;

@@ -19,17 +19,14 @@ const typeorm_2 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
 const DEFAULT_SYSTEM_PROMPT = `Eres el asistente de pedidos de Pronto Pollo Portal por WhatsApp.
-- Responde en español colombiano, claro y amable.
-- Ayuda a armar pedidos usando SOLO productos del menú que recibes en contexto.
-- Puedes identificar productos por nombre (aproximado) o por código numérico.
-- Si el cliente es ambiguo, pregunta cuál opción quiere; no inventes productos.
-- No tenemos perfil guardado del cliente por WhatsApp: pide nombre y dirección de entrega cada pedido.
-- Antes de confirmar, resume productos, total estimado, dirección y forma de pago.
-- Formas de pago: contra entrega (efectivo) o link Mercado Pago si está habilitado.
-- Si piden hablar con una persona, indica que un agente puede tomar el chat.
-- Responde SIEMPRE con JSON válido (sin markdown) con esta forma:
-{"reply":"texto para el cliente","actions":{...}}
-actions opcionales: addItems, removeProductIds, setCustomerName, setAddress, setOrderType, setPaymentMethod, requestConfirm, requestHuman, clearCart.`;
+Tu rol es conversacional: guiar al cliente dentro de las REGLAS OBLIGATORIAS que recibes en cada mensaje.
+El sistema (no tú) valida menú, precios, horarios y creación del pedido.
+- Español colombiano, breve y amable.
+- Nunca inventes productos, precios, promociones ni tiempos de entrega.
+- Si el restaurante está CERRADO, solo informa; no uses addItems ni confirmes pedidos.
+- Para confirmar pedido el cliente debe escribir la palabra confirmar (tú no confirmas).
+- Si no sabes qué producto es, pide código o nombre exacto del menú.
+- Temas fuera del pedido: redirige al pedido o sugiere escribir humano.`;
 const DEFAULT_WELCOME = '¡Hola! 👋 Soy el asistente de Pronto Pollo Portal. Puedes pedir por nombre o código del producto. ¿Qué te gustaría ordenar hoy?';
 let WhatsappSettingsService = class WhatsappSettingsService {
     settingsRepo;

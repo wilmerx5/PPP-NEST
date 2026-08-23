@@ -9,6 +9,7 @@ import { WhatsappCatalogService } from './whatsapp-catalog.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
+import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappAdminController } from './whatsapp-admin.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -35,6 +36,7 @@ import { User } from '../auth/entities/user.entity';
     WhatsappAiService,
     WhatsappConversationService,
     WhatsappOrchestratorService,
+    WhatsappActionGuardService,
   ],
   exports: [WhatsappSettingsService],
 })

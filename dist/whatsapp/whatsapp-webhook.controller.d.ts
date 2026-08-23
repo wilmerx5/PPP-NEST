@@ -6,6 +6,7 @@ export declare class WhatsappWebhookController {
     private readonly settingsService;
     private readonly metaService;
     private readonly orchestrator;
+    private readonly logger;
     constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, orchestrator: WhatsappOrchestratorService);
     verify(mode: string, token: string, challenge: string, res: Response): Promise<Response<any, Record<string, any>>>;
     receive(req: Request): Promise<{

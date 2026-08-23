@@ -8,12 +8,30 @@ export type WhatsappCartItem = {
   attributes?: { attributeName: string; attributeValue: string }[];
 };
 
+export type WhatsappProductAttribute = {
+  attributeName: string;
+  options: string[];
+};
+
 export type WhatsappProductCandidate = {
   id: number;
   name: string;
   code: number;
   price: number;
   categoryName?: string;
+  hasAttributes?: boolean;
+  attributes?: WhatsappProductAttribute[];
+  availableNow?: boolean;
+};
+
+export type WhatsappPendingAttribute = {
+  productId: number;
+  name: string;
+  code: number;
+  price: number;
+  attributes: WhatsappProductAttribute[];
+  /** Atributos ya elegidos en orden */
+  selected: { attributeName: string; attributeValue: string }[];
 };
 
 export type WhatsappSessionData = {
@@ -25,6 +43,7 @@ export type WhatsappSessionData = {
     query: string;
     candidates: WhatsappProductCandidate[];
   };
+  pendingAttribute?: WhatsappPendingAttribute;
   awaitingField?: 'name' | 'address' | 'payment' | 'confirm';
   linkedUserId?: string | null;
   linkedUserName?: string | null;
