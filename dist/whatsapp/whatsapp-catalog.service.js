@@ -40,6 +40,68 @@ function stemLoose(s) {
 function escapeRegExp(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+function fixCommonOrderTypos(text) {
+    return (text || '')
+        .replace(/\bquieor\b/gi, 'quiero')
+        .replace(/\bquiiero\b/gi, 'quiero')
+        .replace(/\bqiero\b/gi, 'quiero')
+        .replace(/\bkiero\b/gi, 'quiero')
+        .replace(/\bquero\b/gi, 'quiero')
+        .replace(/\bejeuctivo\b/gi, 'ejecutivo')
+        .replace(/\bejecutvo\b/gi, 'ejecutivo')
+        .replace(/\bejecutivo\b/gi, 'ejecutivo')
+        .replace(/\bpollo\s+frito\b/gi, 'pollo frito')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+const ORDER_INTENT_ONLY = new Set([
+    'quiero',
+    'quieor',
+    'qiero',
+    'kiero',
+    'quisiera',
+    'gustaria',
+    'dame',
+    'ponme',
+    'mandame',
+    'enviame',
+    'traeme',
+    'regalame',
+    'necesito',
+    'deseo',
+]);
+function tokenEditDistance(a, b) {
+    if (a === b)
+        return 0;
+    if (!a.length)
+        return b.length;
+    if (!b.length)
+        return a.length;
+    const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++)
+        dp[i][0] = i;
+    for (let j = 0; j <= b.length; j++)
+        dp[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+    }
+    return dp[a.length][b.length];
+}
+function fuzzyTokenMatch(queryToken, candidateToken) {
+    const q = normalizeText(queryToken);
+    const c = normalizeText(candidateToken);
+    if (!q || !c)
+        return false;
+    if (q === c || c.includes(q) || q.includes(c))
+        return true;
+    if (q.length < 4 || c.length < 4)
+        return false;
+    const maxDist = q.length <= 5 ? 1 : 2;
+    return tokenEditDistance(q, c) <= maxDist;
+}
 let WhatsappCatalogService = class WhatsappCatalogService {
     productsService;
     menuCache = null;
@@ -284,7 +346,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return products.find((p) => p.code === code) ?? null;
     }
     extractProductSearchQuery(text) {
-        let q = text.trim();
+        let q = fixCommonOrderTypos(text.trim());
         if (!q)
             return q;
         const paraSplit = q.match(/^(.+?)\s+\bpara\b\s+(.+)$/is);
@@ -302,12 +364,12 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
             .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
             .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)\s+/i, '')
-            .replace(/^(quiero|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)?\s*/i, '')
+            .replace(/^(quieor|qiero|kiero|quiiero|quero|quiero|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)?\s*/i, '')
             .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
             .trim();
         q = this.cleanOrderSegment(q);
         q = this.stripProductSearchNoise(q);
-        return q || text.trim();
+        return q || fixCommonOrderTypos(text.trim());
     }
     stripProductSearchNoise(query) {
         return query
@@ -402,14 +464,71 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     }
     looksLikeDeliveryTail(tail) {
         const t = normalizeText(tail);
-        if (t.length < 5)
+        if (t.length < 4)
             return false;
-        if (/\b(domicilio|delivery|la casa|mi casa|mi direccion)\b/.test(t))
+        if (/\b(domicilio|delivery|la casa|mi casa|mi direccion|direccion)\b/.test(t))
             return true;
+        if (/\b(habitacion|apto|apartamento|cuarto|suite|hostal|hotel|residencia)\b/.test(t) &&
+            /\d/.test(t)) {
+            return true;
+        }
         if (/\b(calle|carrera|cra|cll|av|avenida|barrio|conjunto|apto|apartamento|torre|#)\b/.test(t)) {
             return true;
         }
-        return t.length >= 8 && /\d/.test(t);
+        return t.length >= 6 && /\d/.test(t);
+    }
+    dedupeProductsById(products) {
+        const map = new Map();
+        for (const p of products)
+            map.set(p.id, p);
+        return [...map.values()];
+    }
+    formatProductChoicePrompt(query, candidates, opts) {
+        const deduped = this.dedupeProductsById(candidates);
+        if (deduped.length === 1) {
+            return ((opts?.intro || `Encontré *${deduped[0].name}* (cód. ${deduped[0].code}).`) +
+                `\n\n${this.formatProductListItem(deduped[0])}\n\n` +
+                `¿Lo agrego? Responde *sí* o dime la porción/opción si aplica.`);
+        }
+        const family = this.findProductVariantFamily(query, deduped, deduped);
+        if (family && family.variants.length >= 2) {
+            return this.formatVariantFamilyPrompt(family);
+        }
+        const baseGroups = new Map();
+        for (const p of deduped) {
+            const base = this.getProductNameBase(p.name) || normalizeText(p.name);
+            const list = baseGroups.get(base) || [];
+            list.push(p);
+            baseGroups.set(base, list);
+        }
+        if (baseGroups.size === 1) {
+            const base = [...baseGroups.keys()][0];
+            const variants = baseGroups.get(base);
+            if (variants.length >= 2) {
+                return this.formatVariantFamilyPrompt({
+                    baseLabel: titleCaseWords(base),
+                    baseKey: base,
+                    variants,
+                });
+            }
+        }
+        const intro = opts?.intro || `Encontré *${deduped.length} opciones*:`;
+        const body = deduped
+            .map((p, i) => {
+            const base = this.getProductNameBase(p.name);
+            const label = base && normalizeText(p.name) !== base
+                ? this.getVariantDisplayLabel(p.name, base)
+                : p.name;
+            const price = `$${Math.round(p.price).toLocaleString('es-CO')}`;
+            let line = `${i + 1}. *${label}* (cód. ${p.code}) — ${price}`;
+            if (label !== p.name)
+                line += `\n   _${p.name}_`;
+            if (p.hasAttributes)
+                line += `\n   ↳ Elige opciones al pedirlo`;
+            return line;
+        })
+            .join('\n\n');
+        return `${intro}\n\n${body}\n\nRespóndeme con el *número* o el *código*.`;
     }
     findByCategory(query, products) {
         const q = normalizeText(query);
@@ -604,7 +723,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const tokens = q
             .split(' ')
             .map((t) => t.trim())
-            .filter((t) => t.length > 2 && !STOP.has(t));
+            .filter((t) => t.length > 2 && !STOP.has(t) && !ORDER_INTENT_ONLY.has(t));
         if (!tokens.length && (STOP.has(q) || q === 'menu' || q === 'carta'))
             return [];
         const wordHas = (hay, needle) => {
@@ -654,6 +773,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                         score += 18;
                     else if (name.includes(t) && t.length >= 5)
                         score += 10;
+                    else if (nameTokens.some((nt) => fuzzyTokenMatch(t, nt)))
+                        score += 16;
                     if (wordHas(desc, t) || (desc.includes(t) && t.length >= 5))
                         score += 4;
                     if (wordHas(cat, t))
@@ -996,11 +1117,14 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return out;
     }
     splitSegmentOnArticles(chunk) {
-        const parts = chunk
+        const fixed = fixCommonOrderTypos(chunk);
+        const parts = fixed
             .split(/\s+(?=(?:un|una|unos|unas|el|la|los|las)\s+)/i)
             .map((s) => s.trim())
             .filter((s) => s.length >= 3);
-        return parts.length ? parts : [chunk.trim()].filter((s) => s.length >= 3);
+        const merged = parts.filter((s) => !ORDER_INTENT_ONLY.has(normalizeText(s)));
+        const use = merged.length ? merged : parts;
+        return use.length ? use : [fixed.trim()].filter((s) => s.length >= 3);
     }
     resolveMultiProductOrder(text, products) {
         if (this.isPriceInquiryIntent(text))
@@ -1072,8 +1196,9 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             const segNorm = normalizeText(segment);
             if (/\bejecutivo\b/.test(segNorm)) {
                 const ejecutivoHits = scored.filter((x) => normalizeText(x.p.name).includes('ejecutivo'));
-                if (ejecutivoHits.length === 1) {
-                    const top = ejecutivoHits[0];
+                if (ejecutivoHits.length >= 1) {
+                    const withPollo = ejecutivoHits.find((x) => /\bpollo\b/.test(normalizeText(x.p.name)));
+                    const top = withPollo || ejecutivoHits[0];
                     if (!usedProductIds.has(top.p.id)) {
                         usedProductIds.add(top.p.id);
                         const match = { segment, product: top.p, score: top.score };

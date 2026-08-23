@@ -54,6 +54,10 @@ export declare class WhatsappCatalogService {
     looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     private looksLikeDeliveryTail;
+    dedupeProductsById(products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
+    formatProductChoicePrompt(query: string, candidates: WhatsappCatalogProduct[], opts?: {
+        intro?: string;
+    }): string;
     findByCategory(query: string, products: WhatsappCatalogProduct[]): {
         categoryName: string;
         products: WhatsappCatalogProduct[];

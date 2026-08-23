@@ -10,26 +10,69 @@ import {
 } from './whatsapp-points-help';
 
 const TWELVE_CHAR_CODE = /\b([A-Za-z0-9]{12})\b/;
+/** Mismo alfabeto que genera el backend (sin 0, O, I, L, 1). */
+const POINT_CODE_CHARSET = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/;
+
+/** Palabras típicas de pedido — evita confundir "unpollofrito" con código de factura. */
+const ORDER_INTENT_WORD =
+  /\b(quiero|quieor|qiero|kiero|dame|ponme|pedir|ordenar|agrega|agregame|un|una|unos|unas|medio|cuarto|entero|combo|pollo|arroz|sopa|ejecutivo|frito|broaster|bandeja|bebida|gaseosa|domicilio|habitacion|habitaci[oó]n)\b/i;
 
 @Injectable()
 export class WhatsappPointsService {
   constructor(private readonly pointsService: PointsService) {}
 
-  extractTwelveCharCode(text: string): string | null {
-    const m = (text || '').trim().match(TWELVE_CHAR_CODE);
-    return m ? m[1].toUpperCase() : null;
+  /**
+   * Extrae un posible código de puntos/premio (12 caracteres).
+   * No dispara con palabras pegadas del pedido ("unpollofrito").
+   */
+  extractPointCodeCandidate(text: string): string | null {
+    const raw = (text || '').trim();
+    if (!raw) return null;
+
+    const bare = raw.match(/^[A-Za-z0-9]{12}$/);
+    if (bare) {
+      const code = bare[0].toUpperCase();
+      return POINT_CODE_CHARSET.test(code) ? code : null;
+    }
+
+    const m = raw.match(TWELVE_CHAR_CODE);
+    if (!m?.[1]) return null;
+
+    const code = m[1].toUpperCase();
+    if (!POINT_CODE_CHARSET.test(code)) return null;
+
+    const hasDigit = /\d/.test(code);
+    const pointsContext = this.hasPointsKeywords(raw);
+    const orderContext = ORDER_INTENT_WORD.test(raw);
+
+    // "quiero unpollofrito" → palabra de 12 letras, no es código de factura
+    if (orderContext && !pointsContext && !hasDigit) return null;
+
+    // Código embebido en frase: exigir contexto de puntos o al menos un dígito
+    if (!pointsContext && !hasDigit) return null;
+
+    return code;
   }
 
-  isPointsTopic(text: string): boolean {
+  /** @deprecated use extractPointCodeCandidate */
+  extractTwelveCharCode(text: string): string | null {
+    return this.extractPointCodeCandidate(text);
+  }
+
+  private hasPointsKeywords(text: string): boolean {
     const t = (text || '').toLowerCase();
-    if (this.extractTwelveCharCode(text)) return true;
     return (
-      /\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio))\b/.test(
+      /\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio)|registrar)\b/.test(
         t,
       ) ||
       /\b(c[oó]mo\s+(funcionan|gano|acumulo|registro|uso)\s+(los\s+)?puntos)\b/.test(t) ||
       /\b(qu[eé]\s+(son|genera)\s+(los\s+)?puntos)\b/.test(t)
     );
+  }
+
+  isPointsTopic(text: string): boolean {
+    if (this.extractPointCodeCandidate(text)) return true;
+    return this.hasPointsKeywords(text);
   }
 
   isBalanceIntent(text: string): boolean {
@@ -49,7 +92,7 @@ export class WhatsappPointsService {
     return (
       /\b(registrar(\s+(el\s+)?(punto|c[oó]digo|factura))?|registro\s+de\s+punto|c[oó]digo\s+de\s+factura)\b/.test(
         t,
-      ) || (this.extractTwelveCharCode(text) != null && /\bregistrar\b/i.test(t))
+      ) || (this.extractPointCodeCandidate(text) != null && /\bregistrar\b/i.test(t))
     );
   }
 
@@ -57,7 +100,7 @@ export class WhatsappPointsService {
     const t = (text || '').toLowerCase();
     return (
       /\b(premio|cup[oó]n|voucher|canje)\b/.test(t) &&
-      (this.extractTwelveCharCode(text) != null ||
+      (this.extractPointCodeCandidate(text) != null ||
         /\b(usar|aplicar|tengo|aplica)\b/.test(t))
     );
   }

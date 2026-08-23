@@ -387,6 +387,11 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 return;
             }
         }
+        const abandoned = this.tryAbandonStalePendingState(session, text, products);
+        if (abandoned) {
+            session = abandoned;
+            await this.conversationService.saveSession(conv, session);
+        }
         const pendingPickHandled = await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg);
         if (pendingPickHandled)
             return;
@@ -590,13 +595,14 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             : this.catalogService.searchByNameScored(text, products, 8));
         const nameMatches = nameScored.map((x) => x.p);
         const strongProduct = this.catalogService.isStrongProductMatch(nameScored);
+        const uniqueNameMatches = this.catalogService.dedupeProductsById(nameMatches);
         if (!session.pendingMatch &&
             (await this.tryHandleVariantFamily(conv, msg.waId, session, text, products, cfg))) {
             return;
         }
         const resolvedMatches = strongProduct && nameScored.length >= 1 && nameScored[0].score >= 80
             ? [nameScored[0].p]
-            : nameMatches;
+            : uniqueNameMatches;
         if (resolvedMatches.length === 1 && !session.pendingMatch && !session.pendingAttribute) {
             const one = resolvedMatches[0];
             const deliveryTail = this.extractDeliveryTail(text);
@@ -644,9 +650,13 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             }
             session.pendingMatch = { query: text, candidates: resolvedMatches };
             await this.conversationService.saveSession(conv, session);
-            const opts = resolvedMatches.map((c, i) => this.catalogService.formatProductListItem(c, i + 1)).join('\n\n');
-            await this.reply(conv, msg.waId, `Encontré varias opciones:\n\n${opts}\n\nRespóndeme con el *número* o el *código*.`);
+            await this.reply(conv, msg.waId, this.catalogService.formatProductChoicePrompt(text, resolvedMatches));
             return;
+        }
+        const aiSessionCleanup = this.tryAbandonStalePendingState(session, text, products);
+        if (aiSessionCleanup) {
+            session = aiSessionCleanup;
+            await this.conversationService.saveSession(conv, session);
         }
         const menuDetailed = await this.catalogService.getMenuDetailedText();
         const recent = await this.conversationService.getRecentMessageTexts(conv.id, 10);
@@ -668,6 +678,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             session.pendingCategoryBrowse?.categories?.length
                 ? `CATEGORÍAS MOSTRADAS: ${session.pendingCategoryBrowse.categories.join(', ')}. Si elige una, profundiza ahí; no repitas todo el menú.`
                 : '',
+            'Responde al ÚLTIMO mensaje del cliente. No repitas que no encontraste un plato si ya pidió otro distinto. Si no reconoces el producto, sugiere nombre/código o escribir *menú* — no insistas con el mensaje anterior.',
         ]
             .filter(Boolean)
             .join(' ');
@@ -1044,6 +1055,98 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return true;
         }
         return false;
+    }
+    looksLikeFreshOrderIntent(text) {
+        const t = text.trim().toLowerCase();
+        if (!t)
+            return false;
+        if (this.isGreetingKeyword(text) || this.isMenuLinkIntent(text))
+            return true;
+        if (/\b(hola|buenas|hey|menu|menú|humano|asesor|agente)\b/i.test(t))
+            return true;
+        if (/\b(quiero|quieor|qiero|kiero|dame|ponme|me das|pedir|ordenar|agrega|agregame|otro|otra|mejor|en realidad|no era|olvidalo|olvídalo|olvidate|empezar de nuevo|de nuevo)\b/i.test(t)) {
+            return true;
+        }
+        const q = this.catalogService.extractProductSearchQuery(text);
+        return q.length >= 4;
+    }
+    messageRelatesToPendingMatch(text, pending) {
+        const trimmed = text.trim();
+        if (!trimmed)
+            return true;
+        const code = this.catalogService.extractCodeFromMessage(text);
+        if (code != null) {
+            return pending.candidates.some((c) => c.code === code);
+        }
+        const bareNum = /^[1-9]\d{0,3}$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+        if (bareNum != null) {
+            if (bareNum >= 1 && bareNum <= pending.candidates.length)
+                return true;
+            if (pending.candidates.some((c) => c.code === bareNum))
+                return true;
+            return false;
+        }
+        if (this.isPendingListRepromptText(text, pending))
+            return true;
+        const q = this.normalizeForMatch(this.catalogService.extractProductSearchQuery(text));
+        if (q.length < 3)
+            return false;
+        for (const c of pending.candidates) {
+            const name = this.normalizeForMatch(c.name);
+            if (name.includes(q) || q.includes(name))
+                return true;
+            const qTokens = q.split(' ').filter((tok) => tok.length >= 4);
+            if (qTokens.some((tok) => name.includes(tok)))
+                return true;
+        }
+        return false;
+    }
+    shouldAbandonPendingMultiOrder(text, pending, products) {
+        if (this.isMultiOrderAffirmative(text))
+            return false;
+        const lower = text.trim().toLowerCase();
+        if (/^[1-9]\d*$/.test(lower) && pending.ambiguous.length)
+            return false;
+        for (const seg of [
+            ...pending.unresolved,
+            ...pending.ambiguous.map((a) => a.segment),
+        ]) {
+            const segNorm = this.normalizeForMatch(seg);
+            if (segNorm.length >= 4 && this.normalizeForMatch(text).includes(segNorm))
+                return false;
+        }
+        if (this.looksLikeFreshOrderIntent(text))
+            return true;
+        if (this.catalogService.findProductEmbeddedInMessage(text, products))
+            return true;
+        return text.trim().length >= 12;
+    }
+    tryAbandonStalePendingState(session, text, products) {
+        let next = session;
+        let changed = false;
+        if (session.pendingMatch?.candidates?.length) {
+            if (!this.messageRelatesToPendingMatch(text, session.pendingMatch)) {
+                next = { ...next, pendingMatch: undefined };
+                changed = true;
+            }
+        }
+        if (session.pendingMultiOrder) {
+            if (this.shouldAbandonPendingMultiOrder(text, session.pendingMultiOrder, products)) {
+                next = { ...next, pendingMultiOrder: undefined };
+                changed = true;
+            }
+        }
+        if (session.pendingCategoryBrowse?.categories?.length) {
+            const picked = this.catalogService.resolveCategoryBrowsePick(text, session.pendingCategoryBrowse.categories);
+            const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+            if (!picked &&
+                embedded &&
+                !this.catalogService.isMenuExploreIntent(text, products)) {
+                next = { ...next, pendingCategoryBrowse: undefined };
+                changed = true;
+            }
+        }
+        return changed ? next : null;
     }
     async tryHandleVariantFamily(conv, waId, session, text, products, cfg) {
         const family = this.catalogService.findProductVariantFamily(text, products);
@@ -1913,7 +2016,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             /\bhola\b.{0,40}\b(pedido|pedir|ordenar)\b/i.test(t);
         if (!wantsOrder)
             return false;
-        if (/\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia|arroz|bandeja|chino|paisa)\b/i.test(t)) {
+        if (/\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia|arroz|bandeja|chino|paisa|ejecutivo|frito)\b/i.test(t)) {
             return false;
         }
         return true;
@@ -2019,8 +2122,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             /\d/.test(t)) {
             return true;
         }
-        if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección)\b/i.test(t))
+        if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección|direccion|dirección)\b/i.test(t)) {
             return true;
+        }
         if (this.looksLikeAddress(t))
             return true;
         return t.length >= 6 && /\d/.test(t);
@@ -2771,7 +2875,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, waId, 'Listo, quité el premio de este pedido ✅');
             return true;
         }
-        const code = this.pointsHandler.extractTwelveCharCode(text);
+        const code = this.pointsHandler.extractPointCodeCandidate(text);
         if (code) {
             if (this.pointsHandler.isRegisterIntent(text) && !this.pointsHandler.isPremioApplyIntent(text)) {
                 const reg = await this.pointsHandler.tryRegisterOnly(linkedUserId, code);

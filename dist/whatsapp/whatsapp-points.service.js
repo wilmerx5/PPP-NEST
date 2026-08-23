@@ -14,22 +14,50 @@ const common_1 = require("@nestjs/common");
 const points_service_1 = require("../auth/services/points.service");
 const whatsapp_points_help_1 = require("./whatsapp-points-help");
 const TWELVE_CHAR_CODE = /\b([A-Za-z0-9]{12})\b/;
+const POINT_CODE_CHARSET = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/;
+const ORDER_INTENT_WORD = /\b(quiero|quieor|qiero|kiero|dame|ponme|pedir|ordenar|agrega|agregame|un|una|unos|unas|medio|cuarto|entero|combo|pollo|arroz|sopa|ejecutivo|frito|broaster|bandeja|bebida|gaseosa|domicilio|habitacion|habitaci[oó]n)\b/i;
 let WhatsappPointsService = class WhatsappPointsService {
     pointsService;
     constructor(pointsService) {
         this.pointsService = pointsService;
     }
-    extractTwelveCharCode(text) {
-        const m = (text || '').trim().match(TWELVE_CHAR_CODE);
-        return m ? m[1].toUpperCase() : null;
+    extractPointCodeCandidate(text) {
+        const raw = (text || '').trim();
+        if (!raw)
+            return null;
+        const bare = raw.match(/^[A-Za-z0-9]{12}$/);
+        if (bare) {
+            const code = bare[0].toUpperCase();
+            return POINT_CODE_CHARSET.test(code) ? code : null;
+        }
+        const m = raw.match(TWELVE_CHAR_CODE);
+        if (!m?.[1])
+            return null;
+        const code = m[1].toUpperCase();
+        if (!POINT_CODE_CHARSET.test(code))
+            return null;
+        const hasDigit = /\d/.test(code);
+        const pointsContext = this.hasPointsKeywords(raw);
+        const orderContext = ORDER_INTENT_WORD.test(raw);
+        if (orderContext && !pointsContext && !hasDigit)
+            return null;
+        if (!pointsContext && !hasDigit)
+            return null;
+        return code;
     }
-    isPointsTopic(text) {
+    extractTwelveCharCode(text) {
+        return this.extractPointCodeCandidate(text);
+    }
+    hasPointsKeywords(text) {
         const t = (text || '').toLowerCase();
-        if (this.extractTwelveCharCode(text))
-            return true;
-        return (/\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio))\b/.test(t) ||
+        return (/\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio)|registrar)\b/.test(t) ||
             /\b(c[oó]mo\s+(funcionan|gano|acumulo|registro|uso)\s+(los\s+)?puntos)\b/.test(t) ||
             /\b(qu[eé]\s+(son|genera)\s+(los\s+)?puntos)\b/.test(t));
+    }
+    isPointsTopic(text) {
+        if (this.extractPointCodeCandidate(text))
+            return true;
+        return this.hasPointsKeywords(text);
     }
     isBalanceIntent(text) {
         return /\b(mis\s+puntos|cu[aá]ntos\s+puntos|saldo\s+de\s+puntos|ver\s+puntos)\b/i.test(text);
@@ -41,12 +69,12 @@ let WhatsappPointsService = class WhatsappPointsService {
     }
     isRegisterIntent(text) {
         const t = (text || '').toLowerCase();
-        return (/\b(registrar(\s+(el\s+)?(punto|c[oó]digo|factura))?|registro\s+de\s+punto|c[oó]digo\s+de\s+factura)\b/.test(t) || (this.extractTwelveCharCode(text) != null && /\bregistrar\b/i.test(t)));
+        return (/\b(registrar(\s+(el\s+)?(punto|c[oó]digo|factura))?|registro\s+de\s+punto|c[oó]digo\s+de\s+factura)\b/.test(t) || (this.extractPointCodeCandidate(text) != null && /\bregistrar\b/i.test(t)));
     }
     isPremioApplyIntent(text) {
         const t = (text || '').toLowerCase();
         return (/\b(premio|cup[oó]n|voucher|canje)\b/.test(t) &&
-            (this.extractTwelveCharCode(text) != null ||
+            (this.extractPointCodeCandidate(text) != null ||
                 /\b(usar|aplicar|tengo|aplica)\b/.test(t)));
     }
     isRemovePremioIntent(text) {

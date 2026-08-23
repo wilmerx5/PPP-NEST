@@ -32,6 +32,10 @@ export declare class WhatsappOrchestratorService {
     private replyLooksLikeProductDump;
     private tryHandleCategoryBrowse;
     private isPendingListRepromptText;
+    private looksLikeFreshOrderIntent;
+    private messageRelatesToPendingMatch;
+    private shouldAbandonPendingMultiOrder;
+    private tryAbandonStalePendingState;
     private tryHandleVariantFamily;
     private tryResolvePendingMatchPick;
     private looksLikeSideQuestion;

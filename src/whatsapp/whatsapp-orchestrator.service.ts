@@ -549,6 +549,12 @@ export class WhatsappOrchestratorService {
       // Si además nombró algo del menú, seguimos el flujo normal abajo
     }
 
+    const abandoned = this.tryAbandonStalePendingState(session, text, products);
+    if (abandoned) {
+      session = abandoned;
+      await this.conversationService.saveSession(conv, session);
+    }
+
     const pendingPickHandled = await this.tryResolvePendingMatchPick(
       conv,
       msg.waId,
@@ -839,6 +845,7 @@ export class WhatsappOrchestratorService {
     );
     const nameMatches = nameScored.map((x) => x.p);
     const strongProduct = this.catalogService.isStrongProductMatch(nameScored);
+    const uniqueNameMatches = this.catalogService.dedupeProductsById(nameMatches);
 
     if (
       !session.pendingMatch &&
@@ -853,7 +860,7 @@ export class WhatsappOrchestratorService {
     const resolvedMatches =
       strongProduct && nameScored.length >= 1 && nameScored[0].score >= 80
         ? [nameScored[0].p]
-        : nameMatches;
+        : uniqueNameMatches;
 
     if (resolvedMatches.length === 1 && !session.pendingMatch && !session.pendingAttribute) {
       const one = resolvedMatches[0];
@@ -912,13 +919,18 @@ export class WhatsappOrchestratorService {
       }
       session.pendingMatch = { query: text, candidates: resolvedMatches };
       await this.conversationService.saveSession(conv, session);
-      const opts = resolvedMatches.map((c, i) => this.catalogService.formatProductListItem(c, i + 1)).join('\n\n');
       await this.reply(
         conv,
         msg.waId,
-        `Encontré varias opciones:\n\n${opts}\n\nRespóndeme con el *número* o el *código*.`,
+        this.catalogService.formatProductChoicePrompt(text, resolvedMatches),
       );
       return;
+    }
+
+    const aiSessionCleanup = this.tryAbandonStalePendingState(session, text, products);
+    if (aiSessionCleanup) {
+      session = aiSessionCleanup;
+      await this.conversationService.saveSession(conv, session);
     }
 
     const menuDetailed = await this.catalogService.getMenuDetailedText();
@@ -942,6 +954,7 @@ export class WhatsappOrchestratorService {
       session.pendingCategoryBrowse?.categories?.length
         ? `CATEGORÍAS MOSTRADAS: ${session.pendingCategoryBrowse.categories.join(', ')}. Si elige una, profundiza ahí; no repitas todo el menú.`
         : '',
+      'Responde al ÚLTIMO mensaje del cliente. No repitas que no encontraste un plato si ya pidió otro distinto. Si no reconoces el producto, sugiere nombre/código o escribir *menú* — no insistas con el mensaje anterior.',
     ]
       .filter(Boolean)
       .join(' ');
@@ -1446,6 +1459,119 @@ export class WhatsappOrchestratorService {
       return true;
     }
     return false;
+  }
+
+  /** El cliente cambió de tema: no seguir atascado en una lista vieja. */
+  private looksLikeFreshOrderIntent(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    if (!t) return false;
+    if (this.isGreetingKeyword(text) || this.isMenuLinkIntent(text)) return true;
+    if (/\b(hola|buenas|hey|menu|menú|humano|asesor|agente)\b/i.test(t)) return true;
+    if (/\b(quiero|quieor|qiero|kiero|dame|ponme|me das|pedir|ordenar|agrega|agregame|otro|otra|mejor|en realidad|no era|olvidalo|olvídalo|olvidate|empezar de nuevo|de nuevo)\b/i.test(t)) {
+      return true;
+    }
+    const q = this.catalogService.extractProductSearchQuery(text);
+    return q.length >= 4;
+  }
+
+  private messageRelatesToPendingMatch(
+    text: string,
+    pending: NonNullable<WhatsappSessionData['pendingMatch']>,
+  ): boolean {
+    const trimmed = text.trim();
+    if (!trimmed) return true;
+
+    const code = this.catalogService.extractCodeFromMessage(text);
+    if (code != null) {
+      return pending.candidates.some((c) => c.code === code);
+    }
+
+    const bareNum = /^[1-9]\d{0,3}$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+    if (bareNum != null) {
+      if (bareNum >= 1 && bareNum <= pending.candidates.length) return true;
+      if (pending.candidates.some((c) => c.code === bareNum)) return true;
+      return false;
+    }
+
+    if (this.isPendingListRepromptText(text, pending)) return true;
+
+    const q = this.normalizeForMatch(this.catalogService.extractProductSearchQuery(text));
+    if (q.length < 3) return false;
+
+    for (const c of pending.candidates) {
+      const name = this.normalizeForMatch(c.name);
+      if (name.includes(q) || q.includes(name)) return true;
+      const qTokens = q.split(' ').filter((tok) => tok.length >= 4);
+      if (qTokens.some((tok) => name.includes(tok))) return true;
+    }
+    return false;
+  }
+
+  private shouldAbandonPendingMultiOrder(
+    text: string,
+    pending: NonNullable<WhatsappSessionData['pendingMultiOrder']>,
+    products: MenuProduct[],
+  ): boolean {
+    if (this.isMultiOrderAffirmative(text)) return false;
+    const lower = text.trim().toLowerCase();
+    if (/^[1-9]\d*$/.test(lower) && pending.ambiguous.length) return false;
+
+    for (const seg of [
+      ...pending.unresolved,
+      ...pending.ambiguous.map((a) => a.segment),
+    ]) {
+      const segNorm = this.normalizeForMatch(seg);
+      if (segNorm.length >= 4 && this.normalizeForMatch(text).includes(segNorm)) return false;
+    }
+
+    if (this.looksLikeFreshOrderIntent(text)) return true;
+    if (this.catalogService.findProductEmbeddedInMessage(text, products)) return true;
+    return text.trim().length >= 12;
+  }
+
+  /**
+   * Si el cliente manda algo distinto a la lista pendiente, limpiar estado
+   * para que el flujo de productos vuelva a funcionar (evita loop de IA).
+   */
+  private tryAbandonStalePendingState(
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): WhatsappSessionData | null {
+    let next = session;
+    let changed = false;
+
+    if (session.pendingMatch?.candidates?.length) {
+      if (!this.messageRelatesToPendingMatch(text, session.pendingMatch)) {
+        next = { ...next, pendingMatch: undefined };
+        changed = true;
+      }
+    }
+
+    if (session.pendingMultiOrder) {
+      if (this.shouldAbandonPendingMultiOrder(text, session.pendingMultiOrder, products)) {
+        next = { ...next, pendingMultiOrder: undefined };
+        changed = true;
+      }
+    }
+
+    if (session.pendingCategoryBrowse?.categories?.length) {
+      const picked = this.catalogService.resolveCategoryBrowsePick(
+        text,
+        session.pendingCategoryBrowse.categories,
+      );
+      const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+      if (
+        !picked &&
+        embedded &&
+        !this.catalogService.isMenuExploreIntent(text, products)
+      ) {
+        next = { ...next, pendingCategoryBrowse: undefined };
+        changed = true;
+      }
+    }
+
+    return changed ? next : null;
   }
 
   private async tryHandleVariantFamily(
@@ -2693,7 +2819,7 @@ export class WhatsappOrchestratorService {
 
     // Si nombra algo típico del menú en la misma frase, no cortar el flujo
     if (
-      /\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia|arroz|bandeja|chino|paisa)\b/i.test(
+      /\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia|arroz|bandeja|chino|paisa|ejecutivo|frito)\b/i.test(
         t,
       )
     ) {
@@ -2833,7 +2959,9 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
-    if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección)\b/i.test(t)) return true;
+    if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección|direccion|dirección)\b/i.test(t)) {
+      return true;
+    }
     if (this.looksLikeAddress(t)) return true;
 
     return t.length >= 6 && /\d/.test(t);
@@ -3835,7 +3963,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const code = this.pointsHandler.extractTwelveCharCode(text);
+    const code = this.pointsHandler.extractPointCodeCandidate(text);
 
     if (code) {
       if (this.pointsHandler.isRegisterIntent(text) && !this.pointsHandler.isPremioApplyIntent(text)) {

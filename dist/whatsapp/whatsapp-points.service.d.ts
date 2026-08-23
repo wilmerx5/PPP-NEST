@@ -4,7 +4,9 @@ import { type PointsHelpContext } from './whatsapp-points-help';
 export declare class WhatsappPointsService {
     private readonly pointsService;
     constructor(pointsService: PointsService);
+    extractPointCodeCandidate(text: string): string | null;
     extractTwelveCharCode(text: string): string | null;
+    private hasPointsKeywords;
     isPointsTopic(text: string): boolean;
     isBalanceIntent(text: string): boolean;
     isRedeemIntent(text: string): boolean;
