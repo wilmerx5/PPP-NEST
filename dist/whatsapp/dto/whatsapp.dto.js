@@ -18,6 +18,7 @@ class UpdateWhatsappSettingsDto {
     phoneNumberId;
     wabaId;
     accessToken;
+    appSecret;
     verifyToken;
     openaiApiKey;
     openaiModel;
@@ -42,6 +43,26 @@ class UpdateWhatsappSettingsDto {
     prepTimeNote;
     deliveryTimeNote;
     minOrderAmount;
+    maxOrderAmount;
+    maxUnitsPerItem;
+    maxTotalUnits;
+    maxCartLines;
+    handoffWhenMaxExceeded;
+    largeOrderHandoffMessage;
+    allergensNote;
+    promotionsNote;
+    serviceAreaNote;
+    cashChangeNote;
+    transferInfoNote;
+    specialRequestsNote;
+    askOrderNotes;
+    rateLimitPerMinute;
+    humanAgentIdleMinutes;
+    humanClientIdleMinutes;
+    orderDraftIdleMinutes;
+    pendingChoiceIdleMinutes;
+    mpPaymentIdleMinutes;
+    sessionIdleNotify;
     paymentInstructions;
     hoursNote;
     cancelPolicyNote;
@@ -80,6 +101,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateWhatsappSettingsDto.prototype, "accessToken", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "appSecret", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -217,6 +243,132 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateWhatsappSettingsDto.prototype, "minOrderAmount", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "maxOrderAmount", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "maxUnitsPerItem", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "maxTotalUnits", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "maxCartLines", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateWhatsappSettingsDto.prototype, "handoffWhenMaxExceeded", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "largeOrderHandoffMessage", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "allergensNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "promotionsNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "serviceAreaNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "cashChangeNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "transferInfoNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "specialRequestsNote", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateWhatsappSettingsDto.prototype, "askOrderNotes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(5),
+    (0, class_validator_1.Max)(120),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "rateLimitPerMinute", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(24 * 60),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "humanAgentIdleMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(24 * 60),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "humanClientIdleMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(24 * 60),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "orderDraftIdleMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(24 * 60),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "pendingChoiceIdleMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(24 * 60),
+    __metadata("design:type", Number)
+], UpdateWhatsappSettingsDto.prototype, "mpPaymentIdleMinutes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateWhatsappSettingsDto.prototype, "sessionIdleNotify", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

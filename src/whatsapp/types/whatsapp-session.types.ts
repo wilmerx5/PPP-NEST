@@ -57,6 +57,10 @@ export type WhatsappSessionData = {
     query: string;
     candidates: WhatsappProductCandidate[];
   };
+  /** Tras mostrar resumen de categorías: el cliente elige número o nombre. */
+  pendingCategoryBrowse?: {
+    categories: string[];
+  };
   pendingAttribute?: WhatsappPendingAttribute;
   awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
   linkedUserId?: string | null;

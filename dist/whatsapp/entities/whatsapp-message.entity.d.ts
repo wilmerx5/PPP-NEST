@@ -5,6 +5,8 @@ export declare class WhatsappMessage {
     direction: 'in' | 'out';
     messageType: string;
     body: string | null;
+    mediaId: string | null;
+    mimeType: string | null;
     waMessageId: string | null;
     sentBy: string;
     rawPayload: Record<string, unknown> | null;

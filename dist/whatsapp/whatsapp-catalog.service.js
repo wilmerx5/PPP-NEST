@@ -29,6 +29,9 @@ function stemLoose(s) {
         return n.slice(0, -2);
     return n;
 }
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 let WhatsappCatalogService = class WhatsappCatalogService {
     productsService;
     menuCache = null;
@@ -116,6 +119,141 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         await this.getMenuProducts();
         return this.menuCache?.categories || [];
     }
+    groupProductsByCategory(products) {
+        const available = products.filter((p) => p.availableNow !== false);
+        const byCat = new Map();
+        for (const p of available) {
+            const key = p.categoryName || 'Otros';
+            if (!byCat.has(key))
+                byCat.set(key, []);
+            byCat.get(key).push(p);
+        }
+        return byCat;
+    }
+    isMenuExploreIntent(text, products = []) {
+        const q = normalizeText(text);
+        if (!q || q.length < 5)
+            return false;
+        if (/\b(link|enlace|url)\b/.test(q) ||
+            /\b(pasa|dame|envia|manda|comparte)\b.*\b(menu|carta)\b/.test(q) ||
+            /^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?$/.test(q)) {
+            return false;
+        }
+        if (this.extractCodeFromMessage(text) != null)
+            return false;
+        if (products.length && this.findProductEmbeddedInMessage(text, products))
+            return false;
+        if (products.length && this.findByCategory(text, products))
+            return false;
+        const explorePatterns = [
+            /\b(que|qué)\s+(hay|tienen|tiene|ofrecen|sirven|ponen|venden)\b/,
+            /\b(que|qué)\s+(me\s+)?(recomiend|sugier|aconsej)/,
+            /\b(que|qué)\s+(de|para)\s+(almuerzo|comer|comida|cena|desayuno|merienda|hoy|la\s+casa)\b/,
+            /\b(que|qué)\s+(hay|tienen)\s+(de\s+)?(comida|comer|almuerzo|cena)\b/,
+            /\b(que|qué)\s+(se\s+)?(puede|podemos|puedo)\s+(pedir|ordenar|comer)\b/,
+            /\b(opciones|recomendaciones|sugerencias)\b/,
+            /\b(carta|menu)\s+(de|del)\s+(hoy|dia|día)\b/,
+            /\bque\s+me\s+antoj/,
+            /\bno\s+se\s+que\s+(pedir|comer|ordenar)\b/,
+            /\b(estoy|ando)\s+(indecis|buscando)\b/,
+            /\b(muestrame|mostrame|ver)\s+(las\s+)?(opciones|categorias|categorías)\b/,
+        ];
+        if (!explorePatterns.some((re) => re.test(q)))
+            return false;
+        const hasExploreQuestion = /\b(que|qué|hay|tienen|recomiend|categor|opciones|antoj)\b/.test(q);
+        if (/\b(quiero|dame|necesito)\b/.test(q) && !hasExploreQuestion)
+            return false;
+        return true;
+    }
+    buildMenuExploreIntro(text) {
+        const q = normalizeText(text);
+        if (/\balmuerzo\b/.test(q)) {
+            return 'Para *almorzar* tenemos varias cosas ricas.';
+        }
+        if (/\bcena\b/.test(q))
+            return 'Para *cenar* también tenemos buenas opciones.';
+        if (/\brecomiend|\bsugier|\baconsej/.test(q)) {
+            return 'Con gusto te oriento.';
+        }
+        if (/\bno\s+se\s+que\s+(pedir|comer|ordenar)\b/.test(q)) {
+            return 'Te ayudo a orientarte.';
+        }
+        if (/\b(comida|platos|carta)\b/.test(q)) {
+            return 'Claro, tenemos varias opciones de comida.';
+        }
+        return 'Dale, te cuento qué manejamos.';
+    }
+    formatMenuCategoryOverview(products, opts) {
+        const examplesPerCategory = opts?.examplesPerCategory ?? 2;
+        const byCat = this.groupProductsByCategory(products);
+        const categories = [...byCat.keys()];
+        const lines = [];
+        const menuUrl = (opts?.menuUrl || '').trim();
+        if (opts?.intro) {
+            lines.push(opts.intro);
+        }
+        if (menuUrl) {
+            lines.push('', `Puedes conocer *todos nuestros productos* aquí:\n${menuUrl}`, '', 'O si prefieres, te oriento por acá. Un resumen por categorías:');
+        }
+        else if (opts?.intro) {
+            lines.push('', 'Te dejo un resumen por categorías:');
+        }
+        lines.push('');
+        categories.forEach((cat, idx) => {
+            const list = byCat.get(cat);
+            lines.push(`*${idx + 1}. ${cat}* (${list.length} ${list.length === 1 ? 'opción' : 'opciones'})`);
+            for (const p of list.slice(0, examplesPerCategory)) {
+                lines.push(`   • ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`);
+            }
+            if (list.length > examplesPerCategory) {
+                lines.push(`   _…y ${list.length - examplesPerCategory} más_`);
+            }
+            lines.push('');
+        });
+        lines.push('¿Qué categoría te provoca? Escríbeme el *número* o el *nombre* (ej. *pollo*).', 'Si ya sabes el plato, dime el *nombre* o *código* y te lo agrego.');
+        return { text: lines.join('\n').replace(/\n{3,}/g, '\n\n'), categories };
+    }
+    buildMenuCategoryContextForAi(products) {
+        const { text } = this.formatMenuCategoryOverview(products, {
+            intro: 'Resumen por categorías (orienta al cliente; NO vuelques todo el menú ni códigos en bloque):',
+            examplesPerCategory: 2,
+        });
+        return text;
+    }
+    resolveCategoryBrowsePick(text, categories) {
+        const raw = text.trim();
+        const lower = normalizeText(raw);
+        if (!lower)
+            return null;
+        if (/^[1-9]\d{0,2}$/.test(raw)) {
+            const n = parseInt(raw, 10);
+            if (n >= 1 && n <= categories.length)
+                return categories[n - 1];
+        }
+        let best = null;
+        for (const cat of categories) {
+            const c = normalizeText(cat);
+            const cs = stemLoose(cat);
+            let score = 0;
+            if (lower === c || lower === cs)
+                score = 100;
+            else if (lower.includes(c) || c.includes(lower))
+                score = 85;
+            else if (lower.includes(cs))
+                score = 75;
+            else {
+                for (const token of lower.split(' ').filter((t) => t.length >= 3)) {
+                    const ts = stemLoose(token);
+                    if (c === token || cs === ts || c.includes(token) || token.includes(c)) {
+                        score = Math.max(score, 70);
+                    }
+                }
+            }
+            if (score >= 70 && (!best || score > best.score))
+                best = { name: cat, score };
+        }
+        return best?.name ?? null;
+    }
     getProductById(id, products) {
         return products.find((p) => p.id === id) ?? null;
     }
@@ -137,44 +275,116 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     findByCode(code, products) {
         return products.find((p) => p.code === code) ?? null;
     }
+    extractProductSearchQuery(text) {
+        let q = text.trim();
+        if (!q)
+            return q;
+        const paraSplit = q.match(/^(.+?)\s+\bpara\b\s+(.+)$/is);
+        if (paraSplit) {
+            const tail = paraSplit[2].trim();
+            if (this.looksLikeDeliveryTail(tail)) {
+                q = paraSplit[1].trim();
+            }
+        }
+        q = q
+            .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
+            .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)\s+/i, '')
+            .replace(/^(quiero|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)?\s*/i, '')
+            .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
+            .trim();
+        return q || text.trim();
+    }
+    findProductEmbeddedInMessage(text, products) {
+        const q = normalizeText(text);
+        if (!q || q.length < 4)
+            return null;
+        const available = products.filter((p) => p.availableNow !== false);
+        const hits = [];
+        for (const p of available) {
+            const name = normalizeText(p.name);
+            if (name.length < 4)
+                continue;
+            if (!q.includes(name))
+                continue;
+            hits.push({
+                p,
+                nameLen: name.length,
+                tokenCount: name.split(' ').filter((t) => t.length > 2).length,
+            });
+        }
+        if (!hits.length)
+            return null;
+        hits.sort((a, b) => b.nameLen - a.nameLen || b.tokenCount - a.tokenCount);
+        const best = hits[0];
+        if (hits.length >= 2 &&
+            hits[1].nameLen === best.nameLen &&
+            hits[1].p.id !== best.p.id) {
+            return null;
+        }
+        return best.p;
+    }
+    looksLikeDeliveryTail(tail) {
+        const t = normalizeText(tail);
+        if (t.length < 5)
+            return false;
+        if (/\b(domicilio|delivery|la casa|mi casa|mi direccion)\b/.test(t))
+            return true;
+        if (/\b(calle|carrera|cra|cll|av|avenida|barrio|conjunto|apto|apartamento|torre|#)\b/.test(t)) {
+            return true;
+        }
+        return t.length >= 8 && /\d/.test(t);
+    }
     findByCategory(query, products) {
         const q = normalizeText(query);
         if (!q || q.length < 3)
+            return null;
+        if (this.findProductEmbeddedInMessage(query, products))
             return null;
         if (/\b(link|enlace|url)\b/.test(q) ||
             /\b(pasa|dame|envia|manda|comparte)\b.*\b(menu|carta)\b/.test(q) ||
             /^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?$/.test(q)) {
             return null;
         }
+        if (/\b(hacer|realizar)\s+(un\s+)?(pedido|orden)\b/.test(q) ||
+            /\b(quiero|gustaria|quisiera)\s+(pedir|ordenar|hacer)\b/.test(q) ||
+            (/\b(pedido|orden)\b/.test(q) &&
+                !/\b(pollo|sopa|bebida|porcion|porciones|combo|alas)\b/.test(q) &&
+                q.split(' ').length >= 3)) {
+            return null;
+        }
         const available = products.filter((p) => p.availableNow !== false);
         const categoryNames = [
             ...new Set(available.map((p) => p.categoryName).filter(Boolean)),
         ];
+        const significantTokens = q.split(' ').filter((t) => t.length >= 3);
+        const isBrowseIntent = /\b(que|qué|tienen|hay|ver|lista|categoria|categoría|mostrame|muestrame|mostrar|opciones|recomiend|sugier|almuerzo|cena|antojo|platos|comer)\b/.test(q);
+        const isShortCategoryQuery = significantTokens.length <= 2;
         let best = null;
         for (const cat of categoryNames) {
             const c = normalizeText(cat);
             const cs = stemLoose(cat);
             let score = 0;
-            if (q === c || q === cs)
+            if (q === c || q === cs) {
                 score = 100;
-            else if (q.includes(c) || c.includes(q))
-                score = 80;
-            else if (q.includes(cs) || cs.includes(stemLoose(q)))
-                score = 70;
-            else {
-                const tokens = q
-                    .split(' ')
-                    .filter((t) => t.length >= 3 && !['menu', 'carta', 'link', 'ver', 'lista'].includes(t));
-                for (const t of tokens) {
-                    const ts = stemLoose(t);
-                    if (c.includes(t) || c.includes(ts) || ts === cs)
-                        score = Math.max(score, 60);
+            }
+            else if (isShortCategoryQuery && (q.includes(c) || c.includes(q) || q.includes(cs))) {
+                score = 85;
+            }
+            else if (isBrowseIntent) {
+                if (q.includes(c) || q.includes(cs) || c.includes(q))
+                    score = 80;
+                else {
+                    for (const t of significantTokens) {
+                        const ts = stemLoose(t);
+                        if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
+                            score = Math.max(score, 70);
+                        }
+                    }
                 }
             }
-            if (score >= 60 && /\b(que|qué|tienen|hay|ver|lista|categoria|categoría)\b/.test(q)) {
+            if (score >= 70 && isBrowseIntent)
                 score += 10;
-            }
-            if (score >= 60 && (!best || score > best.score)) {
+            if (score >= 70 && (!best || score > best.score)) {
                 best = { categoryName: cat, score };
             }
         }
@@ -186,6 +396,9 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return { categoryName: best.categoryName, products: list };
     }
     searchByName(query, products, limit = 8) {
+        return this.searchByNameScored(query, products, limit).map((x) => x.p);
+    }
+    searchByNameScored(query, products, limit = 8) {
         const q = normalizeText(query);
         if (!q || q.length < 2)
             return [];
@@ -228,9 +441,37 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             'favor',
             'hola',
             'buenas',
+            'buenos',
+            'dias',
+            'tardes',
+            'noches',
             'completo',
             'pagina',
             'web',
+            'hacer',
+            'realizar',
+            'armar',
+            'pedido',
+            'orden',
+            'ordenar',
+            'pedir',
+            'gustaria',
+            'quisiera',
+            'deseo',
+            'algo',
+            'este',
+            'esta',
+            'tambien',
+            'solo',
+            'vengo',
+            'vine',
+            'direccion',
+            'domicilio',
+            'envio',
+            'llevar',
+            'calle',
+            'carrera',
+            'barrio',
         ]);
         const available = products.filter((p) => p.availableNow !== false);
         const qStem = stemLoose(q);
@@ -244,7 +485,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             if (!needle)
                 return false;
             if (needle.length <= 4) {
-                return new RegExp(`(?:^|\\s)${needle}(?:\\s|$)`).test(hay);
+                return new RegExp(`(?:^|\\s)${escapeRegExp(needle)}(?:\\s|$)`).test(hay);
             }
             return hay.includes(needle);
         };
@@ -255,8 +496,26 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             const cat = normalizeText(p.categoryName || '');
             let score = 0;
             if (name === q)
-                score += 100;
-            if (q.length >= 4 && q.split(' ').length <= 3) {
+                score += 120;
+            if (name.length >= 5 && q.includes(name)) {
+                score += 95;
+            }
+            const nameTokens = name
+                .split(' ')
+                .map((t) => t.trim())
+                .filter((t) => t.length > 2 && !STOP.has(t));
+            if (nameTokens.length >= 2) {
+                const hits = nameTokens.filter((t) => wordHas(q, t) || q.includes(t)).length;
+                if (hits === nameTokens.length)
+                    score += 85;
+                else if (hits >= Math.ceil(nameTokens.length * 0.75))
+                    score += 40;
+            }
+            else if (nameTokens.length === 1) {
+                if (wordHas(q, nameTokens[0]))
+                    score += 35;
+            }
+            if (q.length >= 4 && q.split(' ').length <= 4) {
                 if (wordHas(name, q) || wordHas(name, qStem))
                     score += 50;
                 if (q.includes(name) && name.length > 3)
@@ -272,15 +531,30 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     if (wordHas(desc, t) || (desc.includes(t) && t.length >= 5))
                         score += 4;
                     if (wordHas(cat, t))
-                        score += 8;
+                        score += 6;
                 }
+            }
+            if (score >= 50 && nameTokens.length >= 2) {
+                score += Math.min(12, nameTokens.length * 3);
             }
             return { p, score };
         })
             .filter((x) => x.score >= 18)
-            .sort((a, b) => b.score - a.score)
+            .sort((a, b) => b.score - a.score || b.p.name.length - a.p.name.length)
             .slice(0, limit);
-        return scored.map((x) => x.p);
+        return scored;
+    }
+    isStrongProductMatch(scored) {
+        if (!scored.length)
+            return false;
+        const top = scored[0].score;
+        if (top >= 80)
+            return true;
+        if (scored.length === 1 && top >= 50)
+            return true;
+        if (scored.length >= 2 && top >= 70 && top - scored[1].score >= 25)
+            return true;
+        return false;
     }
     formatProductListItem(product, index) {
         const prefix = index != null ? `${index}. ` : '';
@@ -299,7 +573,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     }
     formatCategoryList(categoryName, list) {
         const body = list.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n\n');
-        return (`*${categoryName}* — ${list.length} opción${list.length === 1 ? '' : 'es'}:\n\n` +
+        return (`*${categoryName}* — ${list.length} ${list.length === 1 ? 'opción' : 'opciones'}:\n\n` +
             `${body}\n\n` +
             `Respóndeme con el *número* o el *código* del que quieras.`);
     }

@@ -41,6 +41,7 @@ Menú autorizado (SOLO estos productos; ids y precios exactos):
 ${input.menuDetailedText}
 
 Estilo: tutea, sé cálido y atento como un colombiano del local (sin empalagar). Responde primero la duda del cliente; no te portes como un menú rígido.
+Si exploran qué pedir: orienta por categorías y ejemplos breves; no enumeres todo el catálogo con códigos.
 
 ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
         const history = this.toChatMessages(input.recentMessages).slice(-12);
@@ -50,20 +51,24 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
             { role: 'user', content: input.userMessage },
         ];
         try {
+            const model = cfg.openaiModel || 'gpt-4o-mini';
+            const body = {
+                model,
+                response_format: { type: 'json_object' },
+                messages,
+            };
+            if (!/^gpt-5/i.test(model)) {
+                body.temperature = input.conversational
+                    ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
+                    : cfg.aiTemperature ?? 0.2;
+            }
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${cfg.openaiApiKey}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    model: cfg.openaiModel || 'gpt-4o-mini',
-                    temperature: input.conversational
-                        ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
-                        : cfg.aiTemperature ?? 0.2,
-                    response_format: { type: 'json_object' },
-                    messages,
-                }),
+                body: JSON.stringify(body),
             });
             if (!res.ok) {
                 const err = await res.text();
@@ -92,6 +97,144 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
                 reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o escribe *humano*.',
             };
         }
+    }
+    async transcribeAudio(buffer, mimeType) {
+        const cfg = await this.settingsService.getEffectiveConfig();
+        if (!cfg.openaiApiKey)
+            return null;
+        const ext = this.audioExtension(mimeType);
+        const form = new FormData();
+        form.append('file', new Blob([new Uint8Array(buffer)], { type: mimeType || 'audio/ogg' }), `audio.${ext}`);
+        form.append('model', 'whisper-1');
+        form.append('language', 'es');
+        try {
+            const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${cfg.openaiApiKey}` },
+                body: form,
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                this.logger.error(`Whisper error ${res.status}: ${err}`);
+                return null;
+            }
+            const data = (await res.json());
+            const text = (data.text || '').trim();
+            return text || null;
+        }
+        catch (err) {
+            this.logger.error(`Whisper failed: ${err}`);
+            return null;
+        }
+    }
+    async analyzeOrderImage(input) {
+        const cfg = await this.settingsService.getEffectiveConfig();
+        if (!cfg.openaiApiKey) {
+            return {
+                kind: 'unclear',
+                textForBot: '',
+                reply: 'No pude ver la imagen. Escríbenos el pedido por texto o *humano*.',
+            };
+        }
+        const b64 = input.buffer.toString('base64');
+        const dataUrl = `data:${input.mimeType || 'image/jpeg'};base64,${b64}`;
+        const caption = (input.caption || '').trim();
+        const system = `Eres el asistente de un restaurante de pollo asado (WhatsApp).
+Analizas UNA imagen del cliente. Responde SOLO JSON:
+{
+  "kind": "order" | "payment_proof" | "other" | "unclear",
+  "textForBot": "string",
+  "reply": "string opcional"
+}
+
+Reglas:
+- payment_proof: comprobante de transferencia, captura de banco, Nequi, Daviplata, QR pagado, recibo.
+  textForBot vacío; reply breve confirmando que lo recibiste y que un asesor lo revisa (menciona escribir humano si necesita).
+- order: la imagen pide comida / muestra menú marcado / lista de productos. textForBot = lo que el cliente querría escribir
+  (códigos o nombres del menú si se ven). Usa SOLO productos del menú si aparecen claros.
+- other / unclear: no sirve para pedir. textForBot vacío; reply amable pidiendo texto (código o nombre) o *humano*.
+- No inventes productos fuera del menú.
+Menú (referencia):
+${input.menuSummary.slice(0, 6000)}`;
+        const userText = caption
+            ? `El cliente escribió este pie de foto: "${caption}". Analiza la imagen.`
+            : 'Analiza la imagen del cliente.';
+        try {
+            const model = cfg.openaiModel || 'gpt-4o-mini';
+            const body = {
+                model,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: system },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: userText },
+                            { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } },
+                        ],
+                    },
+                ],
+            };
+            if (/^gpt-5/i.test(model)) {
+                body.max_completion_tokens = 500;
+            }
+            else {
+                body.temperature = 0.1;
+                body.max_tokens = 500;
+            }
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${cfg.openaiApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                this.logger.error(`Vision error ${res.status}: ${err}`);
+                return {
+                    kind: 'unclear',
+                    textForBot: '',
+                    reply: 'No pude leer bien la imagen. ¿Me escribes el pedido por texto o *humano*?',
+                };
+            }
+            const data = (await res.json());
+            const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+            const kind = parsed.kind;
+            if (kind !== 'order' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
+                return {
+                    kind: 'unclear',
+                    textForBot: '',
+                    reply: 'No entendí la imagen. Escríbenos el pedido (código o nombre) o *humano*.',
+                };
+            }
+            return {
+                kind,
+                textForBot: (parsed.textForBot || '').trim().slice(0, 500),
+                reply: parsed.reply?.trim().slice(0, 800),
+            };
+        }
+        catch (err) {
+            this.logger.error(`Vision failed: ${err}`);
+            return {
+                kind: 'unclear',
+                textForBot: '',
+                reply: 'Tuve un problema viendo la imagen. Prueba por texto o escribe *humano*.',
+            };
+        }
+    }
+    audioExtension(mimeType) {
+        const m = (mimeType || '').toLowerCase();
+        if (m.includes('mpeg') || m.includes('mp3'))
+            return 'mp3';
+        if (m.includes('mp4') || m.includes('m4a'))
+            return 'm4a';
+        if (m.includes('wav'))
+            return 'wav';
+        if (m.includes('webm'))
+            return 'webm';
+        return 'ogg';
     }
     toChatMessages(recent) {
         const out = [];

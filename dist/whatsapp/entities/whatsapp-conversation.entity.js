@@ -22,6 +22,8 @@ let WhatsappConversation = class WhatsappConversation {
     humanTakeover;
     humanAgentId;
     humanAgentName;
+    humanTakeoverAt;
+    lastHumanOutboundAt;
     lastMessageAt;
     lastInboundAt;
     createdAt;
@@ -65,6 +67,14 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'human_agent_name', type: 'varchar', length: 120, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "humanAgentName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'human_takeover_at', type: 'timestamp', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappConversation.prototype, "humanTakeoverAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_human_outbound_at', type: 'timestamp', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappConversation.prototype, "lastHumanOutboundAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'last_message_at', type: 'timestamp', nullable: true }),
     __metadata("design:type", Object)

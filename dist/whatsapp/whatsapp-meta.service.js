@@ -33,21 +33,107 @@ let WhatsappMetaService = WhatsappMetaService_1 = class WhatsappMetaService {
                     continue;
                 const messages = Array.isArray(value.messages) ? value.messages : [];
                 for (const msg of messages) {
-                    if (msg.type !== 'text' || !msg.text?.body)
-                        continue;
-                    const from = String(msg.from || '');
-                    out.push({
-                        waId: from,
-                        phoneE164: this.normalizePhone(from),
-                        messageId: String(msg.id || ''),
-                        text: String(msg.text.body).trim(),
-                        timestamp: Number(msg.timestamp || 0),
-                        raw: msg,
-                    });
+                    const parsed = this.parseOneMessage(msg);
+                    if (parsed)
+                        out.push(parsed);
                 }
             }
         }
         return out;
+    }
+    parseOneMessage(msg) {
+        const from = String(msg.from || '');
+        if (!from)
+            return null;
+        const base = {
+            waId: from,
+            phoneE164: this.normalizePhone(from),
+            messageId: String(msg.id || ''),
+            timestamp: Number(msg.timestamp || 0),
+            raw: msg,
+        };
+        const type = String(msg.type || '');
+        if (type === 'text' && msg.text?.body) {
+            return {
+                ...base,
+                messageType: 'text',
+                text: String(msg.text.body).trim(),
+            };
+        }
+        if (type === 'audio' && msg.audio?.id) {
+            return {
+                ...base,
+                messageType: 'audio',
+                text: msg.audio.voice ? '🎤 Nota de voz' : '🎵 Audio',
+                mediaId: String(msg.audio.id),
+                mimeType: msg.audio.mime_type ? String(msg.audio.mime_type) : 'audio/ogg',
+            };
+        }
+        if (type === 'image' && msg.image?.id) {
+            const caption = msg.image.caption ? String(msg.image.caption).trim() : '';
+            return {
+                ...base,
+                messageType: 'image',
+                text: caption || '🖼️ Imagen',
+                mediaId: String(msg.image.id),
+                mimeType: msg.image.mime_type ? String(msg.image.mime_type) : 'image/jpeg',
+            };
+        }
+        if (type === 'video' && msg.video?.id) {
+            const caption = msg.video.caption ? String(msg.video.caption).trim() : '';
+            return {
+                ...base,
+                messageType: 'video',
+                text: caption || '🎬 Video',
+                mediaId: String(msg.video.id),
+                mimeType: msg.video.mime_type ? String(msg.video.mime_type) : 'video/mp4',
+            };
+        }
+        if (type === 'document' && msg.document?.id) {
+            const name = msg.document.filename ? String(msg.document.filename) : 'Documento';
+            const caption = msg.document.caption ? String(msg.document.caption).trim() : '';
+            return {
+                ...base,
+                messageType: 'document',
+                text: caption || `📄 ${name}`,
+                mediaId: String(msg.document.id),
+                mimeType: msg.document.mime_type ? String(msg.document.mime_type) : 'application/octet-stream',
+                filename: name,
+            };
+        }
+        if (type === 'sticker' && msg.sticker?.id) {
+            return {
+                ...base,
+                messageType: 'sticker',
+                text: 'Sticker',
+                mediaId: String(msg.sticker.id),
+                mimeType: msg.sticker.mime_type ? String(msg.sticker.mime_type) : 'image/webp',
+            };
+        }
+        if (type === 'location' && msg.location) {
+            const lat = Number(msg.location.latitude);
+            const lng = Number(msg.location.longitude);
+            const name = msg.location.name ? String(msg.location.name) : '';
+            const address = msg.location.address ? String(msg.location.address) : '';
+            const label = [name, address].filter(Boolean).join(' — ') || `${lat}, ${lng}`;
+            return {
+                ...base,
+                messageType: 'location',
+                text: `📍 ${label}`,
+                latitude: Number.isFinite(lat) ? lat : undefined,
+                longitude: Number.isFinite(lng) ? lng : undefined,
+                locationName: name || undefined,
+                locationAddress: address || undefined,
+            };
+        }
+        if (type && type !== 'text') {
+            return {
+                ...base,
+                messageType: 'other',
+                text: `Mensaje (${type})`,
+            };
+        }
+        return null;
     }
     normalizePhone(raw) {
         const digits = raw.replace(/\D/g, '');
@@ -83,6 +169,34 @@ let WhatsappMetaService = WhatsappMetaService_1 = class WhatsappMetaService {
             this.logger.error(`Meta send failed (${res.status}): ${errText}`);
             throw new Error(`WhatsApp send failed: ${res.status}`);
         }
+    }
+    async downloadMedia(mediaId) {
+        const cfg = await this.settingsService.getEffectiveConfig();
+        if (!cfg.accessToken) {
+            throw new common_1.NotFoundException('WhatsApp no configurado');
+        }
+        const metaRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`, {
+            headers: { Authorization: `Bearer ${cfg.accessToken}` },
+        });
+        if (!metaRes.ok) {
+            const errText = await metaRes.text();
+            this.logger.error(`Meta media meta failed (${metaRes.status}): ${errText}`);
+            throw new common_1.NotFoundException('Media no disponible (¿expiró en Meta?)');
+        }
+        const meta = (await metaRes.json());
+        if (!meta.url)
+            throw new common_1.NotFoundException('Media sin URL');
+        const binRes = await fetch(meta.url, {
+            headers: { Authorization: `Bearer ${cfg.accessToken}` },
+        });
+        if (!binRes.ok) {
+            throw new common_1.NotFoundException('No se pudo descargar el media');
+        }
+        const arr = await binRes.arrayBuffer();
+        return {
+            buffer: Buffer.from(arr),
+            mimeType: meta.mime_type || 'application/octet-stream',
+        };
     }
 };
 exports.WhatsappMetaService = WhatsappMetaService;

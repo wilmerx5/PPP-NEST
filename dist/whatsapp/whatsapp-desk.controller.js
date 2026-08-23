@@ -12,37 +12,34 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WhatsappAdminController = void 0;
+exports.WhatsappDeskController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const auth_decorator_1 = require("../auth/decorators/auth.decorator");
 const valid_roles_interface_1 = require("../auth/interfaces/valid.roles.interface");
 const whatsapp_dto_1 = require("./dto/whatsapp.dto");
-const whatsapp_settings_service_1 = require("./whatsapp-settings.service");
 const whatsapp_conversation_service_1 = require("./whatsapp-conversation.service");
 const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service");
 const whatsapp_meta_service_1 = require("./whatsapp-meta.service");
-let WhatsappAdminController = class WhatsappAdminController {
-    settingsService;
+let WhatsappDeskController = class WhatsappDeskController {
     conversationService;
     orchestrator;
     metaService;
-    constructor(settingsService, conversationService, orchestrator, metaService) {
-        this.settingsService = settingsService;
+    constructor(conversationService, orchestrator, metaService) {
         this.conversationService = conversationService;
         this.orchestrator = orchestrator;
         this.metaService = metaService;
     }
-    async getSettings() {
-        const row = await this.settingsService.getSettings();
-        return this.settingsService.maskSettings(row);
-    }
-    async updateSettings(dto) {
-        const row = await this.settingsService.updateSettings(dto);
-        return this.settingsService.maskSettings(row);
+    me(req) {
+        const user = req.user;
+        return {
+            id: user.id,
+            fullName: user.fullName,
+            roles: user.roles,
+        };
     }
     async listConversations() {
-        const rows = await this.conversationService.listConversations(80);
+        const rows = await this.conversationService.listConversations(100);
         return rows.map(({ conversation: c, lastMessage, inboxStatus }) => ({
             id: c.id,
             phoneE164: c.phoneE164,
@@ -129,46 +126,38 @@ let WhatsappAdminController = class WhatsappAdminController {
         return { success: true };
     }
 };
-exports.WhatsappAdminController = WhatsappAdminController;
+exports.WhatsappDeskController = WhatsappDeskController;
 __decorate([
-    (0, common_1.Get)('settings'),
-    (0, swagger_1.ApiOperation)({ summary: 'Configuración del bot WhatsApp' }),
+    (0, common_1.Get)('me'),
+    (0, swagger_1.ApiOperation)({ summary: 'Perfil mínimo del agente' }),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "getSettings", null);
-__decorate([
-    (0, common_1.Patch)('settings'),
-    (0, swagger_1.ApiOperation)({ summary: 'Actualizar configuración WhatsApp' }),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [whatsapp_dto_1.UpdateWhatsappSettingsDto]),
-    __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "updateSettings", null);
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], WhatsappDeskController.prototype, "me", null);
 __decorate([
     (0, common_1.Get)('conversations'),
-    (0, swagger_1.ApiOperation)({ summary: 'Listar conversaciones recientes' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Listar conversaciones' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "listConversations", null);
+], WhatsappDeskController.prototype, "listConversations", null);
 __decorate([
     (0, common_1.Get)('conversations/:id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "getConversation", null);
+], WhatsappDeskController.prototype, "getConversation", null);
 __decorate([
     (0, common_1.Get)('conversations/:id/messages/:messageId/media'),
-    (0, swagger_1.ApiOperation)({ summary: 'Proxy de audio/imagen desde Meta' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Param)('messageId')),
     __param(2, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String, Object]),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "getMessageMedia", null);
+], WhatsappDeskController.prototype, "getMessageMedia", null);
 __decorate([
     (0, common_1.Post)('conversations/:id/takeover'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -177,15 +166,14 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, whatsapp_dto_1.TakeoverWhatsappConversationDto, Object]),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "takeover", null);
+], WhatsappDeskController.prototype, "takeover", null);
 __decorate([
     (0, common_1.Post)('conversations/:id/close'),
-    (0, swagger_1.ApiOperation)({ summary: 'Archivar / cerrar conversación en el inbox' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "closeConversation", null);
+], WhatsappDeskController.prototype, "closeConversation", null);
 __decorate([
     (0, common_1.Post)('conversations/:id/messages'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -194,15 +182,14 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, whatsapp_dto_1.SendWhatsappMessageDto, Object]),
     __metadata("design:returntype", Promise)
-], WhatsappAdminController.prototype, "sendMessage", null);
-exports.WhatsappAdminController = WhatsappAdminController = __decorate([
-    (0, swagger_1.ApiTags)('Admin WhatsApp'),
-    (0, common_1.Controller)('admin/whatsapp'),
-    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+], WhatsappDeskController.prototype, "sendMessage", null);
+exports.WhatsappDeskController = WhatsappDeskController = __decorate([
+    (0, swagger_1.ApiTags)('WhatsApp Desk'),
+    (0, common_1.Controller)('whatsapp-desk'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin, valid_roles_interface_1.ValidRoles.whatsappUser),
     (0, swagger_1.ApiBearerAuth)(),
-    __metadata("design:paramtypes", [whatsapp_settings_service_1.WhatsappSettingsService,
-        whatsapp_conversation_service_1.WhatsappConversationService,
+    __metadata("design:paramtypes", [whatsapp_conversation_service_1.WhatsappConversationService,
         whatsapp_orchestrator_service_1.WhatsappOrchestratorService,
         whatsapp_meta_service_1.WhatsappMetaService])
-], WhatsappAdminController);
-//# sourceMappingURL=whatsapp-admin.controller.js.map
+], WhatsappDeskController);
+//# sourceMappingURL=whatsapp-desk.controller.js.map

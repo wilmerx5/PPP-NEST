@@ -19,8 +19,11 @@ const whatsapp_ai_service_1 = require("./whatsapp-ai.service");
 const whatsapp_conversation_service_1 = require("./whatsapp-conversation.service");
 const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service");
 const whatsapp_action_guard_service_1 = require("./whatsapp-action-guard.service");
+const whatsapp_cleanup_service_1 = require("./whatsapp-cleanup.service");
+const whatsapp_rate_limit_service_1 = require("./whatsapp-rate-limit.service");
 const whatsapp_webhook_controller_1 = require("./whatsapp-webhook.controller");
 const whatsapp_admin_controller_1 = require("./whatsapp-admin.controller");
+const whatsapp_desk_controller_1 = require("./whatsapp-desk.controller");
 const auth_module_1 = require("../auth/auth.module");
 const products_module_1 = require("../products/products.module");
 const business_module_1 = require("../business/business.module");
@@ -40,7 +43,7 @@ exports.WhatsappModule = WhatsappModule = __decorate([
             orders_module_1.OrdersModule,
             payments_module_1.PaymentsModule,
         ],
-        controllers: [whatsapp_webhook_controller_1.WhatsappWebhookController, whatsapp_admin_controller_1.WhatsappAdminController],
+        controllers: [whatsapp_webhook_controller_1.WhatsappWebhookController, whatsapp_admin_controller_1.WhatsappAdminController, whatsapp_desk_controller_1.WhatsappDeskController],
         providers: [
             whatsapp_settings_service_1.WhatsappSettingsService,
             whatsapp_meta_service_1.WhatsappMetaService,
@@ -49,8 +52,10 @@ exports.WhatsappModule = WhatsappModule = __decorate([
             whatsapp_conversation_service_1.WhatsappConversationService,
             whatsapp_orchestrator_service_1.WhatsappOrchestratorService,
             whatsapp_action_guard_service_1.WhatsappActionGuardService,
+            whatsapp_cleanup_service_1.WhatsappCleanupService,
+            whatsapp_rate_limit_service_1.WhatsappRateLimitService,
         ],
-        exports: [whatsapp_settings_service_1.WhatsappSettingsService],
+        exports: [whatsapp_settings_service_1.WhatsappSettingsService, whatsapp_orchestrator_service_1.WhatsappOrchestratorService, whatsapp_meta_service_1.WhatsappMetaService],
     })
 ], WhatsappModule);
 //# sourceMappingURL=whatsapp.module.js.map

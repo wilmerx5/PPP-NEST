@@ -1,5 +1,10 @@
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import type { AiTurnResult } from './types/whatsapp-session.types';
+export type WhatsappImageAnalysis = {
+    kind: 'order' | 'payment_proof' | 'other' | 'unclear';
+    textForBot: string;
+    reply?: string;
+};
 export declare class WhatsappAiService {
     private readonly settingsService;
     private readonly logger;
@@ -13,5 +18,13 @@ export declare class WhatsappAiService {
         customerHint: string;
         conversational?: boolean;
     }): Promise<AiTurnResult>;
+    transcribeAudio(buffer: Buffer, mimeType: string): Promise<string | null>;
+    analyzeOrderImage(input: {
+        buffer: Buffer;
+        mimeType: string;
+        caption?: string;
+        menuSummary: string;
+    }): Promise<WhatsappImageAnalysis>;
+    private audioExtension;
     private toChatMessages;
 }

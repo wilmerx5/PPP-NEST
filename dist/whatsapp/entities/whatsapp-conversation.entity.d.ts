@@ -9,6 +9,8 @@ export declare class WhatsappConversation {
     humanTakeover: boolean;
     humanAgentId: string | null;
     humanAgentName: string | null;
+    humanTakeoverAt: Date | null;
+    lastHumanOutboundAt: Date | null;
     lastMessageAt: Date | null;
     lastInboundAt: Date | null;
     createdAt: Date;

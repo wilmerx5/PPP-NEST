@@ -35,7 +35,9 @@ function setupProcessHandlers() {
 }
 async function bootstrap() {
     setupProcessHandlers();
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, {
+        rawBody: true,
+    });
     app.use(cookieParser());
     app.useGlobalFilters(new db_exception_filter_1.DbExceptionFilter());
     app.useGlobalInterceptors(new db_retry_interceptor_1.DbRetryInterceptor(), new request_timeout_interceptor_1.RequestTimeoutInterceptor(30000));

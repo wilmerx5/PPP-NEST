@@ -30,6 +30,11 @@ export declare class PaymentsService {
         name: string;
         email: string;
         phone?: string;
+    }, options?: {
+        channel?: 'online' | 'whatsapp';
+        conversationId?: number;
+        waId?: string;
+        bypassOnlineHours?: boolean;
     }): Promise<{
         preferenceId: string;
         initPoint: string;
@@ -93,4 +98,5 @@ export declare class PaymentsService {
             orderStatus: import("../orders/entities/order.entity").OrderStatus;
         } | null;
     } | null>;
+    private notifyWhatsappPaymentSuccess;
 }

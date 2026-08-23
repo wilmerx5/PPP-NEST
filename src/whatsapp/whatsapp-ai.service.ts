@@ -49,6 +49,7 @@ Menú autorizado (SOLO estos productos; ids y precios exactos):
 ${input.menuDetailedText}
 
 Estilo: tutea, sé cálido y atento como un colombiano del local (sin empalagar). Responde primero la duda del cliente; no te portes como un menú rígido.
+Si exploran qué pedir: orienta por categorías y ejemplos breves; no enumeres todo el catálogo con códigos.
 
 ${WHATSAPP_AI_JSON_SCHEMA}`;
 

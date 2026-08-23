@@ -1,13 +1,15 @@
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { SendWhatsappMessageDto, TakeoverWhatsappConversationDto, UpdateWhatsappSettingsDto } from './dto/whatsapp.dto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
+import { WhatsappMetaService } from './whatsapp-meta.service';
 export declare class WhatsappAdminController {
     private readonly settingsService;
     private readonly conversationService;
     private readonly orchestrator;
-    constructor(settingsService: WhatsappSettingsService, conversationService: WhatsappConversationService, orchestrator: WhatsappOrchestratorService);
+    private readonly metaService;
+    constructor(settingsService: WhatsappSettingsService, conversationService: WhatsappConversationService, orchestrator: WhatsappOrchestratorService, metaService: WhatsappMetaService);
     getSettings(): Promise<{
         id: number;
         enabled: boolean;
@@ -16,6 +18,8 @@ export declare class WhatsappAdminController {
         wabaId: string | null;
         accessTokenSet: boolean;
         accessTokenPreview: string | null;
+        appSecretSet: boolean;
+        appSecretPreview: string | null;
         verifyTokenSet: boolean;
         verifyTokenPreview: string | null;
         openaiApiKeySet: boolean;
@@ -42,6 +46,26 @@ export declare class WhatsappAdminController {
         prepTimeNote: string | null;
         deliveryTimeNote: string | null;
         minOrderAmount: number;
+        maxOrderAmount: number;
+        maxUnitsPerItem: number;
+        maxTotalUnits: number;
+        maxCartLines: number;
+        handoffWhenMaxExceeded: boolean;
+        largeOrderHandoffMessage: string | null;
+        allergensNote: string | null;
+        promotionsNote: string | null;
+        serviceAreaNote: string | null;
+        cashChangeNote: string | null;
+        transferInfoNote: string | null;
+        specialRequestsNote: string | null;
+        askOrderNotes: boolean;
+        rateLimitPerMinute: number;
+        humanAgentIdleMinutes: number;
+        humanClientIdleMinutes: number;
+        orderDraftIdleMinutes: number;
+        pendingChoiceIdleMinutes: number;
+        mpPaymentIdleMinutes: number;
+        sessionIdleNotify: boolean;
         paymentInstructions: string | null;
         hoursNote: string | null;
         cancelPolicyNote: string | null;
@@ -61,6 +85,8 @@ export declare class WhatsappAdminController {
         wabaId: string | null;
         accessTokenSet: boolean;
         accessTokenPreview: string | null;
+        appSecretSet: boolean;
+        appSecretPreview: string | null;
         verifyTokenSet: boolean;
         verifyTokenPreview: string | null;
         openaiApiKeySet: boolean;
@@ -87,6 +113,26 @@ export declare class WhatsappAdminController {
         prepTimeNote: string | null;
         deliveryTimeNote: string | null;
         minOrderAmount: number;
+        maxOrderAmount: number;
+        maxUnitsPerItem: number;
+        maxTotalUnits: number;
+        maxCartLines: number;
+        handoffWhenMaxExceeded: boolean;
+        largeOrderHandoffMessage: string | null;
+        allergensNote: string | null;
+        promotionsNote: string | null;
+        serviceAreaNote: string | null;
+        cashChangeNote: string | null;
+        transferInfoNote: string | null;
+        specialRequestsNote: string | null;
+        askOrderNotes: boolean;
+        rateLimitPerMinute: number;
+        humanAgentIdleMinutes: number;
+        humanClientIdleMinutes: number;
+        orderDraftIdleMinutes: number;
+        pendingChoiceIdleMinutes: number;
+        mpPaymentIdleMinutes: number;
+        sessionIdleNotify: boolean;
         paymentInstructions: string | null;
         hoursNote: string | null;
         cancelPolicyNote: string | null;
@@ -103,11 +149,16 @@ export declare class WhatsappAdminController {
         phoneE164: string;
         customerName: string | null;
         state: string;
+        inboxStatus: "completed" | "closed" | "needs_human" | "ordering";
         humanTakeover: boolean;
         humanAgentName: string | null;
         lastMessageAt: Date | null;
+        lastInboundAt: Date | null;
         updatedAt: Date;
         cartCount: number;
+        lastMessagePreview: string | null;
+        lastMessageDirection: string | null;
+        lastMessageSentBy: string | null;
     }[]>;
     getConversation(id: number): Promise<{
         id: number;
@@ -115,20 +166,34 @@ export declare class WhatsappAdminController {
         phoneE164: string;
         customerName: string | null;
         state: string;
+        inboxStatus: "completed" | "closed" | "needs_human" | "ordering";
         sessionData: Record<string, unknown> | null;
         humanTakeover: boolean;
         humanAgentName: string | null;
+        cartCount: number;
+        orderType: "delivery" | "pickup" | null;
+        paymentMethod: "cash" | "mercadopago" | null;
+        address: string | null;
         messages: {
             id: string;
             direction: "in" | "out";
             body: string | null;
             sentBy: string;
             createdAt: Date;
+            messageType: string;
+            mediaId: string | null;
+            mimeType: string | null;
+            hasMedia: boolean;
         }[];
     }>;
+    getMessageMedia(id: number, messageId: string, res: Response): Promise<Response<any, Record<string, any>>>;
     takeover(id: number, body: TakeoverWhatsappConversationDto, req: Request): Promise<{
         success: boolean;
         humanTakeover: boolean;
+    }>;
+    closeConversation(id: number): Promise<{
+        success: boolean;
+        state: string;
     }>;
     sendMessage(id: number, dto: SendWhatsappMessageDto, req: Request): Promise<{
         success: boolean;

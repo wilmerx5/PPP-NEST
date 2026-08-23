@@ -67,11 +67,13 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
         catch {
         }
     }
-    async createPreference(orderData, items, totalAmount, customerInfo) {
+    async createPreference(orderData, items, totalAmount, customerInfo, options) {
         if (!this.client || !this.preference) {
             throw new common_1.BadRequestException('Mercado Pago no está configurado. Configura MERCADO_PAGO_ACCESS_TOKEN en las variables de entorno.');
         }
-        await this.businessService.assertAcceptingOnlineOrders();
+        if (!options?.bypassOnlineHours) {
+            await this.businessService.assertAcceptingOnlineOrders();
+        }
         const productIds = (orderData.items ?? []).map((i) => i.productId);
         await this.productsService.assertOnlineProductsAvailable(productIds);
         let mercadopagoFrontendUrl = this.configService.get('FRONTEND_URL_NGROK') ||
@@ -165,6 +167,9 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
             notification_url: `${backendUrl}/api/payments/webhook`,
             metadata: {
                 order_data: orderData,
+                ...(options?.channel && { channel: options.channel }),
+                ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+                ...(options?.waId && { wa_id: options.waId }),
             },
         };
         if (!preferenceData.back_urls || typeof preferenceData.back_urls !== 'object') {
@@ -237,6 +242,9 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                         order_data: orderData,
                         external_reference: preferenceData.external_reference,
                         customer_email: customerInfo.email,
+                        ...(options?.channel && { channel: options.channel }),
+                        ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+                        ...(options?.waId && { wa_id: options.waId }),
                     }),
                 });
                 await this.paymentRepo.save(payment);
@@ -282,6 +290,9 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                             order_data: orderData,
                             external_reference: preferenceData.external_reference,
                             customer_email: customerInfo.email,
+                            ...(options?.channel && { channel: options.channel }),
+                            ...(options?.conversationId != null && { conversation_id: options.conversationId }),
+                            ...(options?.waId && { wa_id: options.waId }),
                         }),
                     });
                     await this.paymentRepo.save(payment);
@@ -407,10 +418,14 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                     if (!this.ordersService) {
                         this.ordersService = this.moduleRef.get(orders_service_1.OrdersService, { strict: false });
                     }
+                    const isWhatsapp = metadataObj.channel === 'whatsapp' ||
+                        metadataObj.order_data?.orderSource === 'whatsapp';
                     const orderDataWithEmail = {
                         ...metadataObj.order_data,
-                        customerEmail: metadataObj.customer_email || null,
-                        orderSource: 'online',
+                        customerEmail: isWhatsapp
+                            ? metadataObj.customer_email || metadataObj.order_data?.customerEmail || null
+                            : metadataObj.customer_email || null,
+                        orderSource: isWhatsapp ? 'whatsapp' : 'online',
                         clientRequestId: `mp-pay-${locked.paymentId || locked.id}`.slice(0, 64),
                     };
                     const orderResponse = await this.ordersService.create(orderDataWithEmail);
@@ -425,8 +440,22 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                         catch {
                         }
                     }
+                    if (isWhatsapp) {
+                        const conversationId = Number(metadataObj.conversation_id);
+                        const waId = String(metadataObj.wa_id || '');
+                        if (conversationId && waId) {
+                            void this.notifyWhatsappPaymentSuccess({
+                                conversationId,
+                                waId,
+                                orderId: orderResponse.orderId,
+                            });
+                        }
+                        else {
+                            this.logger.warn(`[webhook] Pago WhatsApp sin conversation_id/wa_id (order #${orderResponse.orderId})`);
+                        }
+                    }
                     const emailTo = metadataObj.customer_email || mpPayment?.payer?.email;
-                    if (emailTo) {
+                    if (emailTo && !String(emailTo).endsWith('@whatsapp.ppp.local')) {
                         shouldSendEmail = true;
                         emailContext = {
                             orderId: orderResponse.orderId,
@@ -585,6 +614,20 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                 orderStatus: payment.order?.orderStatus,
             } : null,
         };
+    }
+    async notifyWhatsappPaymentSuccess(params) {
+        try {
+            const { WhatsappOrchestratorService } = await Promise.resolve().then(() => require('../whatsapp/whatsapp-orchestrator.service'));
+            const orch = this.moduleRef.get(WhatsappOrchestratorService, { strict: false });
+            if (!orch?.completeAfterMercadoPagoPayment) {
+                this.logger.warn('[webhook] WhatsappOrchestratorService no disponible para notificar pago');
+                return;
+            }
+            await orch.completeAfterMercadoPagoPayment(params);
+        }
+        catch (err) {
+            this.logger.error(`[webhook] No se pudo notificar WhatsApp tras pago order=#${params.orderId}`, err);
+        }
     }
 };
 exports.PaymentsService = PaymentsService;

@@ -18,6 +18,7 @@ let WhatsappSettings = class WhatsappSettings {
     phoneNumberId;
     wabaId;
     accessToken;
+    appSecret;
     verifyToken;
     openaiApiKey;
     openaiModel;
@@ -42,6 +43,26 @@ let WhatsappSettings = class WhatsappSettings {
     prepTimeNote;
     deliveryTimeNote;
     minOrderAmount;
+    maxOrderAmount;
+    maxUnitsPerItem;
+    maxTotalUnits;
+    maxCartLines;
+    handoffWhenMaxExceeded;
+    largeOrderHandoffMessage;
+    allergensNote;
+    promotionsNote;
+    serviceAreaNote;
+    cashChangeNote;
+    transferInfoNote;
+    specialRequestsNote;
+    askOrderNotes;
+    rateLimitPerMinute;
+    humanAgentIdleMinutes;
+    humanClientIdleMinutes;
+    orderDraftIdleMinutes;
+    pendingChoiceIdleMinutes;
+    mpPaymentIdleMinutes;
+    sessionIdleNotify;
     paymentInstructions;
     hoursNote;
     cancelPolicyNote;
@@ -77,6 +98,10 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'access_token', type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "accessToken", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'app_secret', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "appSecret", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'verify_token', type: 'varchar', length: 128, nullable: true }),
     __metadata("design:type", Object)
@@ -173,6 +198,86 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'min_order_amount', type: 'int', default: 0 }),
     __metadata("design:type", Number)
 ], WhatsappSettings.prototype, "minOrderAmount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'max_order_amount', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "maxOrderAmount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'max_units_per_item', type: 'int', default: 10 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "maxUnitsPerItem", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'max_total_units', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "maxTotalUnits", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'max_cart_lines', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "maxCartLines", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'handoff_when_max_exceeded', type: 'boolean', default: true }),
+    __metadata("design:type", Boolean)
+], WhatsappSettings.prototype, "handoffWhenMaxExceeded", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'large_order_handoff_message', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "largeOrderHandoffMessage", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'allergens_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "allergensNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'promotions_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "promotionsNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'service_area_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "serviceAreaNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'cash_change_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "cashChangeNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'transfer_info_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "transferInfoNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'special_requests_note', type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "specialRequestsNote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'ask_order_notes', type: 'boolean', default: true }),
+    __metadata("design:type", Boolean)
+], WhatsappSettings.prototype, "askOrderNotes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'rate_limit_per_minute', type: 'int', default: 25 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "rateLimitPerMinute", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'human_agent_idle_minutes', type: 'int', default: 30 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "humanAgentIdleMinutes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'human_client_idle_minutes', type: 'int', default: 120 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "humanClientIdleMinutes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'order_draft_idle_minutes', type: 'int', default: 45 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "orderDraftIdleMinutes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'pending_choice_idle_minutes', type: 'int', default: 15 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "pendingChoiceIdleMinutes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'mp_payment_idle_minutes', type: 'int', default: 60 }),
+    __metadata("design:type", Number)
+], WhatsappSettings.prototype, "mpPaymentIdleMinutes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'session_idle_notify', type: 'boolean', default: true }),
+    __metadata("design:type", Boolean)
+], WhatsappSettings.prototype, "sessionIdleNotify", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'payment_instructions', type: 'text', nullable: true }),
     __metadata("design:type", Object)

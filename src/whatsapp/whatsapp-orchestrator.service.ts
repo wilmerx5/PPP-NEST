@@ -181,7 +181,12 @@ export class WhatsappOrchestratorService {
       if (
         this.isVagueOrderIntent(text) &&
         this.catalogService.extractCodeFromMessage(text) == null &&
-        this.catalogService.searchByName(text, products, 5).length === 0
+        this.catalogService.findProductEmbeddedInMessage(text, products) == null &&
+        this.catalogService.searchByName(
+          this.catalogService.extractProductSearchQuery(text),
+          products,
+          5,
+        ).length === 0
       ) {
         await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
         return;
@@ -498,6 +503,30 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (session.pendingCategoryBrowse?.categories?.length) {
+      const pickedCategory = this.catalogService.resolveCategoryBrowsePick(
+        text,
+        session.pendingCategoryBrowse.categories,
+      );
+      if (pickedCategory) {
+        const catProducts = products.filter(
+          (p) => p.categoryName === pickedCategory && p.availableNow !== false,
+        );
+        session = {
+          ...session,
+          pendingCategoryBrowse: undefined,
+          pendingMatch: { query: pickedCategory, candidates: catProducts },
+        };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(
+          conv,
+          msg.waId,
+          this.catalogService.formatCategoryList(pickedCategory, catProducts),
+        );
+        return;
+      }
+    }
+
     // Pickup / delivery explícito (antes de códigos: "paso en 15 minutos" ≠ código 15)
     if (this.isPickupIntent(text)) {
       session = this.applyPickupIntent(session, text);
@@ -600,13 +629,81 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Producto por nombre ANTES que categoría (evita: "arroz con pollo" → listar categoría Pollo)
-    const nameScored = this.catalogService.searchByNameScored(text, products, 8);
+    // "¿Qué hay de almuerzo?" / recomendaciones → categorías con ejemplos (no códigos 1-9)
+    if (
+      this.catalogService.isMenuExploreIntent(text, products) &&
+      !session.pendingAttribute &&
+      conv.state === 'building_cart'
+    ) {
+      const intro = this.catalogService.buildMenuExploreIntro(text);
+      const overview = this.catalogService.formatMenuCategoryOverview(products, {
+        intro,
+        menuUrl: cfg.menuUrl,
+      });
+      session = {
+        ...session,
+        pendingCategoryBrowse: { categories: overview.categories },
+        pendingMatch: undefined,
+      };
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(conv, msg.waId, overview.text);
+      return;
+    }
+
+    // Título embebido en la frase ("… arroz con pollo para calle 10") — prioridad máxima
+    const embeddedProduct = this.catalogService.findProductEmbeddedInMessage(text, products);
+    if (embeddedProduct && !session.pendingMatch) {
+      const deliveryTail = this.extractDeliveryTail(text);
+      if (deliveryTail) {
+        session = { ...session, orderType: 'delivery', address: deliveryTail };
+      }
+      if (embeddedProduct.hasAttributes && embeddedProduct.attributes?.length) {
+        session = {
+          ...session,
+          pendingAttribute: this.toPendingAttribute(embeddedProduct),
+          pendingMatch: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          msg.waId,
+          this.catalogService.formatProductOptionsPrompt(embeddedProduct, []),
+        );
+        return;
+      }
+      const embeddedAdd = this.tryAddProductToCart(session, embeddedProduct, 1, cfg);
+      if (embeddedAdd.blocked) {
+        await this.conversationService.saveSession(conv, session);
+        await this.handleCartLimitBlocked(conv, msg.waId, embeddedAdd.blocked, cfg);
+        return;
+      }
+      session = embeddedAdd.session;
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const embeddedDesc = embeddedProduct.description
+        ? `\n_${embeddedProduct.description}_`
+        : '';
+      const addrNote = deliveryTail ? `\n\nDomicilio anotado: _${deliveryTail}_` : '';
+      await this.reply(
+        conv,
+        msg.waId,
+        `Te agregué *${embeddedProduct.name}* (código ${embeddedProduct.code}) — $${Math.round(embeddedProduct.price).toLocaleString('es-CO')}.${embeddedDesc}\n\n` +
+          `${this.formatCartOnly(session, cfg.defaultDeliveryFee)}${addrNote}\n\n¿Algo más? Cuando quieras escribe *confirmar*.`,
+      );
+      return;
+    }
+
+    const productQuery = this.catalogService.extractProductSearchQuery(text);
+    const nameScored = this.mergeNameScores(
+      this.catalogService.searchByNameScored(productQuery, products, 8),
+      productQuery === text
+        ? []
+        : this.catalogService.searchByNameScored(text, products, 8),
+    );
     const nameMatches = nameScored.map((x) => x.p);
     const strongProduct = this.catalogService.isStrongProductMatch(nameScored);
 
     if (!strongProduct) {
-      const categoryHit = this.catalogService.findByCategory(text, products);
+      const categoryHit = this.catalogService.findByCategory(productQuery, products);
       if (categoryHit && categoryHit.products.length > 0 && !session.pendingMatch) {
         session.pendingMatch = {
           query: text,
@@ -630,6 +727,10 @@ export class WhatsappOrchestratorService {
 
     if (resolvedMatches.length === 1 && !session.pendingMatch) {
       const one = resolvedMatches[0];
+      const deliveryTail = this.extractDeliveryTail(text);
+      if (deliveryTail) {
+        session = { ...session, orderType: 'delivery', address: deliveryTail };
+      }
       if (one.hasAttributes && one.attributes?.length) {
         session = { ...session, pendingAttribute: this.toPendingAttribute(one), pendingMatch: undefined };
         await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -645,11 +746,12 @@ export class WhatsappOrchestratorService {
       session = added.session;
       await this.conversationService.saveSession(conv, session, 'building_cart');
       const desc = one.description ? `\n_${one.description}_` : '';
+      const addrNote = deliveryTail ? `\n\nDomicilio anotado: _${deliveryTail}_` : '';
       await this.reply(
         conv,
         msg.waId,
         `Te agregué *${one.name}* (código ${one.code}) — $${Math.round(one.price).toLocaleString('es-CO')}.${desc}\n\n` +
-          `${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n¿Algo más? Cuando quieras escribe *confirmar*.`,
+          `${this.formatCartOnly(session, cfg.defaultDeliveryFee)}${addrNote}\n\n¿Algo más? Cuando quieras escribe *confirmar*.`,
       );
       return;
     }
@@ -667,12 +769,24 @@ export class WhatsappOrchestratorService {
 
     const menuDetailed = await this.catalogService.getMenuDetailedText();
     const recent = await this.conversationService.getRecentMessageTexts(conv.id, 10);
+    const exploringMenu =
+      this.catalogService.isMenuExploreIntent(text, products) ||
+      !!session.pendingCategoryBrowse?.categories?.length;
+    const menuForAi = exploringMenu
+      ? this.catalogService.buildMenuCategoryContextForAi(products)
+      : menuDetailed;
     const customerHint = [
       session.linkedUserId
         ? `Cliente web: ${session.linkedUserName}. Igual pide nombre y dirección nuevos para este pedido.`
         : 'Sin usuario guardado en WhatsApp. Pide nombre y dirección antes de confirmar.',
       session.ignorePriorOrderHistory && session.cart.length === 0
         ? 'IMPORTANTE: El pedido anterior YA se cerró. El carrito está VACÍO. NO uses addItems con productos del historial; solo agrega si el cliente nombra un producto AHORA.'
+        : '',
+      exploringMenu
+        ? 'El cliente EXPLORA el menú. Comparte el link del menú online si está disponible. NO listes productos numerados ni códigos en bloque. Orienta por CATEGORÍAS con 1-2 ejemplos, pregunta qué categoría le antoja, y sigue el hilo. addItems solo si nombra un plato concreto.'
+        : '',
+      session.pendingCategoryBrowse?.categories?.length
+        ? `CATEGORÍAS MOSTRADAS: ${session.pendingCategoryBrowse.categories.join(', ')}. Si elige una, profundiza ahí; no repitas todo el menú.`
         : '',
     ]
       .filter(Boolean)
@@ -691,10 +805,11 @@ export class WhatsappOrchestratorService {
     const ai = await this.aiService.generateTurn({
       userMessage: text,
       businessRulesBlock: rulesBlock,
-      menuDetailedText: menuDetailed,
+      menuDetailedText: menuForAi,
       sessionSummary: this.buildSessionSummary(conv, session, cfg.defaultDeliveryFee),
       recentMessages: recent,
       customerHint,
+      conversational: exploringMenu,
     });
 
     const guarded = this.actionGuard.sanitize({
@@ -804,6 +919,17 @@ export class WhatsappOrchestratorService {
 
     // Reply limpio: solo texto de la IA (sin pegar listas ni warnings de opciones)
     let reply = (ai.reply || '').trim();
+    if (exploringMenu && this.replyLooksLikeProductDump(reply)) {
+      const overview = this.catalogService.formatMenuCategoryOverview(products, {
+        intro: this.catalogService.buildMenuExploreIntro(text),
+        menuUrl: cfg.menuUrl,
+      });
+      reply = overview.text;
+      session = {
+        ...session,
+        pendingCategoryBrowse: { categories: overview.categories },
+      };
+    }
     const softWarnings = guarded.warnings.filter(
       (w) => !/requiere elegir|opciones inválidas|elige:/i.test(w),
     );
@@ -1016,7 +1142,19 @@ export class WhatsappOrchestratorService {
         `LISTA PENDIENTE (${session.pendingMatch.candidates.length}): el cliente debe elegir número o código.`,
       );
     }
+    if (session.pendingCategoryBrowse?.categories?.length) {
+      lines.push(
+        `EXPLORANDO MENÚ — categorías mostradas: ${session.pendingCategoryBrowse.categories.join(', ')}. Espera que elija categoría o plato concreto.`,
+      );
+    }
     return lines.join('\n');
+  }
+
+  /** La IA a veces vuelca códigos 1-9; lo reemplazamos por resumen de categorías. */
+  private replyLooksLikeProductDump(reply: string): boolean {
+    const codeHits = (reply.match(/\bc[oó]d(?:igo|\.)?\s*\d{1,3}\b/gi) || []).length;
+    const numberedList = (reply.match(/^\s*\d{1,2}[.)]\s/mg) || []).length;
+    return codeHits >= 4 || numberedList >= 5;
   }
 
   /** Pregunta / comentario mientras hay opciones pendientes (no es un "1"/"2"). */
@@ -1605,7 +1743,7 @@ export class WhatsappOrchestratorService {
 
     // Si nombra algo típico del menú en la misma frase, no cortar el flujo
     if (
-      /\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia)\b/i.test(
+      /\b(pollo|medio|cuarto|entero|porcion|porciones|sopa|bebida|gaseosa|limonada|arepa|papa|maduro|chorizo|alas|pechuga|combo|menudencia|arroz|bandeja|chino|paisa)\b/i.test(
         t,
       )
     ) {
@@ -1707,6 +1845,32 @@ export class WhatsappOrchestratorService {
     if (!m?.[1]) return null;
     const cleaned = m[1].replace(/\s+/g, ' ').trim().toLowerCase();
     return `paso en ~${cleaned}`;
+  }
+
+  private extractDeliveryTail(text: string): string | null {
+    const m = text.match(/\bpara\b\s+(.+)$/is);
+    if (!m?.[1]) return null;
+    const tail = m[1].trim();
+    if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección)\b/i.test(tail)) return tail;
+    if (this.looksLikeAddress(tail)) return tail;
+    if (tail.length >= 10 && /\d/.test(tail) && !/\b(minutos?|mins?|horas?)\b/i.test(tail)) {
+      return tail;
+    }
+    return null;
+  }
+
+  private mergeNameScores(
+    primary: Array<{ p: MenuProduct; score: number }>,
+    secondary: Array<{ p: MenuProduct; score: number }>,
+  ): Array<{ p: MenuProduct; score: number }> {
+    const byId = new Map<number, { p: MenuProduct; score: number }>();
+    for (const row of [...primary, ...secondary]) {
+      const prev = byId.get(row.p.id);
+      if (!prev || row.score > prev.score) byId.set(row.p.id, row);
+    }
+    return [...byId.values()].sort(
+      (a, b) => b.score - a.score || b.p.name.length - a.p.name.length,
+    );
   }
 
   private looksLikeAddress(text: string): boolean {

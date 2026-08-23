@@ -3,5 +3,6 @@ export declare enum ValidRoles {
     admin = "admin",
     kitchenUser = "kitchenUser",
     tableUser = "tableUser",
-    ordersUser = "ordersUser"
+    ordersUser = "ordersUser",
+    whatsappUser = "whatsappUser"
 }

@@ -429,10 +429,8 @@ let OrdersService = class OrdersService {
             }
         }
         else if (source === 'whatsapp') {
-            const ignoreHours = (process.env.WHATSAPP_IGNORE_BUSINESS_HOURS ?? 'true')
-                .trim()
-                .toLowerCase();
-            const bypass = ignoreHours !== 'false' && ignoreHours !== '0' && ignoreHours !== 'no';
+            const waSettings = await this.dataSource.query(`SELECT ignore_business_hours FROM ppp_whatsapp_settings WHERE id = 1 LIMIT 1`);
+            const bypass = !!waSettings?.[0]?.ignore_business_hours;
             if (!bypass) {
                 await this.businessService.assertAcceptingOnlineOrders();
                 if (hasItems && items.length > 0) {

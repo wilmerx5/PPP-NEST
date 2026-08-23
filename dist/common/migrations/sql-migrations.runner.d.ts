@@ -12,6 +12,8 @@ export declare class SqlMigrationsRunner implements OnApplicationBootstrap {
     private ensureProductScheduleSchema;
     private ensureWhatsappSchema;
     private ensureWhatsappSettingsColumns;
+    private ensureWhatsappMessageColumns;
+    private ensureWhatsappConversationColumns;
     private isEnabled;
     private resolveMigrationsDir;
     private ensureMigrationsTable;

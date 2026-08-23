@@ -18,6 +18,8 @@ let WhatsappMessage = class WhatsappMessage {
     direction;
     messageType;
     body;
+    mediaId;
+    mimeType;
     waMessageId;
     sentBy;
     rawPayload;
@@ -45,6 +47,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappMessage.prototype, "body", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'media_id', type: 'varchar', length: 128, nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappMessage.prototype, "mediaId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'mime_type', type: 'varchar', length: 120, nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappMessage.prototype, "mimeType", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'wa_message_id', type: 'varchar', length: 128, nullable: true }),
     __metadata("design:type", Object)
