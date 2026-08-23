@@ -7,6 +7,7 @@ import { BusinessService } from '../business/business.service';
 import { OrdersService } from '../orders/orders.service';
 import { PaymentsService } from '../payments/payments.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
+import { WhatsappPointsService } from './whatsapp-points.service';
 export declare class WhatsappOrchestratorService {
     private readonly settingsService;
     private readonly metaService;
@@ -17,8 +18,9 @@ export declare class WhatsappOrchestratorService {
     private readonly ordersService;
     private readonly paymentsService;
     private readonly actionGuard;
+    private readonly pointsHandler;
     private readonly logger;
-    constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, catalogService: WhatsappCatalogService, aiService: WhatsappAiService, conversationService: WhatsappConversationService, businessService: BusinessService, ordersService: OrdersService, paymentsService: PaymentsService, actionGuard: WhatsappActionGuardService);
+    constructor(settingsService: WhatsappSettingsService, metaService: WhatsappMetaService, catalogService: WhatsappCatalogService, aiService: WhatsappAiService, conversationService: WhatsappConversationService, businessService: BusinessService, ordersService: OrdersService, paymentsService: PaymentsService, actionGuard: WhatsappActionGuardService, pointsHandler: WhatsappPointsService);
     handleIncoming(msg: IncomingWhatsappMessage): Promise<void>;
     private applyActions;
     private toCartLimitsConfig;
@@ -30,6 +32,7 @@ export declare class WhatsappOrchestratorService {
     private replyLooksLikeProductDump;
     private tryHandleCategoryBrowse;
     private isPendingListRepromptText;
+    private tryHandleVariantFamily;
     private tryResolvePendingMatchPick;
     private looksLikeSideQuestion;
     private answerSideQuestionWithAi;
@@ -76,6 +79,9 @@ export declare class WhatsappOrchestratorService {
     private isDeliveryIntent;
     private applyPickupIntent;
     private extractEtaPhrase;
+    private applyDeliveryHintFromMessage;
+    private normalizeDeliveryAddress;
+    private isPlausibleDeliveryAddress;
     private extractDeliveryTail;
     private mergeNameScores;
     private looksLikeAddress;
@@ -104,5 +110,9 @@ export declare class WhatsappOrchestratorService {
     private addPendingMultiConfidentToCart;
     private tryHandleMultiProductOrder;
     private tryResolvePendingMultiOrder;
+    private popCompletedNeedsAttribute;
+    private findNewProductOrderCandidate;
+    private tryAddProductDuringPendingAttribute;
+    private tryHandlePointsFlow;
     private reply;
 }

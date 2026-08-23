@@ -84,6 +84,8 @@ export type WhatsappSessionData = {
     awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
     linkedUserId?: string | null;
     linkedUserName?: string | null;
+    pendingRedemptionCode?: string | null;
+    pendingRedemptionExpiresAt?: string | null;
 };
 export type WhatsappConversationState = 'building_cart' | 'awaiting_attribute' | 'awaiting_name' | 'awaiting_address' | 'awaiting_payment' | 'awaiting_notes' | 'awaiting_final_confirm' | 'confirming' | 'awaiting_mp_payment' | 'completed' | 'closed';
 export declare const EMPTY_SESSION: WhatsappSessionData;

@@ -21,6 +21,7 @@ const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service
 const whatsapp_action_guard_service_1 = require("./whatsapp-action-guard.service");
 const whatsapp_cleanup_service_1 = require("./whatsapp-cleanup.service");
 const whatsapp_rate_limit_service_1 = require("./whatsapp-rate-limit.service");
+const whatsapp_points_service_1 = require("./whatsapp-points.service");
 const whatsapp_webhook_controller_1 = require("./whatsapp-webhook.controller");
 const whatsapp_admin_controller_1 = require("./whatsapp-admin.controller");
 const whatsapp_desk_controller_1 = require("./whatsapp-desk.controller");
@@ -54,6 +55,7 @@ exports.WhatsappModule = WhatsappModule = __decorate([
             whatsapp_action_guard_service_1.WhatsappActionGuardService,
             whatsapp_cleanup_service_1.WhatsappCleanupService,
             whatsapp_rate_limit_service_1.WhatsappRateLimitService,
+            whatsapp_points_service_1.WhatsappPointsService,
         ],
         exports: [whatsapp_settings_service_1.WhatsappSettingsService, whatsapp_orchestrator_service_1.WhatsappOrchestratorService, whatsapp_meta_service_1.WhatsappMetaService],
     })

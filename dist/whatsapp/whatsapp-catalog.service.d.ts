@@ -17,6 +17,11 @@ export type MultiProductResolveResult = {
     unresolved: string[];
     needsAttributes: MultiProductSegmentMatch[];
 };
+export type ProductVariantFamily = {
+    baseLabel: string;
+    baseKey: string;
+    variants: WhatsappCatalogProduct[];
+};
 export declare class WhatsappCatalogService {
     private readonly productsService;
     private menuCache;
@@ -73,6 +78,27 @@ export declare class WhatsappCatalogService {
         attributeName: string;
         attributeValue: string;
     }[]): string;
+    formatOptionsTable(rows: Array<{
+        index: number;
+        label: string;
+        price: number;
+        code?: number;
+    }>): string;
+    formatAttributeStepPrompt(product: WhatsappCatalogProduct, attr: {
+        attributeName: string;
+        options: string[];
+    }, alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[], opts?: {
+        mode?: 'info' | 'order';
+        skipHeader?: boolean;
+    }): string;
+    getProductNameBase(name: string): string;
+    getVariantDisplayLabel(fullName: string, baseKey: string): string;
+    findProductVariantFamily(query: string, products: WhatsappCatalogProduct[], hints?: WhatsappCatalogProduct[]): ProductVariantFamily | null;
+    pickVariantFromFamilyText(text: string, family: ProductVariantFamily): WhatsappCatalogProduct | null;
+    formatVariantFamilyPrompt(family: ProductVariantFamily): string;
     getRemainingAttributes(product: WhatsappCatalogProduct, alreadySelected?: {
         attributeName: string;
         attributeValue: string;

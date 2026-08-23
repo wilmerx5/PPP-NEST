@@ -6,5 +6,7 @@ exports.EMPTY_SESSION = {
     orderType: 'delivery',
     linkedUserId: null,
     linkedUserName: null,
+    pendingRedemptionCode: null,
+    pendingRedemptionExpiresAt: null,
 };
 //# sourceMappingURL=whatsapp-session.types.js.map

@@ -13,6 +13,13 @@ exports.WhatsappCatalogService = void 0;
 const common_1 = require("@nestjs/common");
 const products_service_1 = require("../products/products.service");
 const whatsapp_menu_concepts_1 = require("./whatsapp-menu-concepts");
+function titleCaseWords(s) {
+    return s
+        .split(' ')
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+}
 function normalizeText(s) {
     return s
         .toLowerCase()
@@ -707,48 +714,185 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return msg;
     }
     formatProductVariantsOverview(product, mode = 'info', alreadySelected = []) {
-        const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
-        let msg = `*${product.name}* (cód. ${product.code})`;
-        msg += `\n\nPrecio base en menú: *${price}*`;
         const remaining = this.getRemainingAttributes(product, alreadySelected);
         const next = remaining[0];
-        const desc = this.formatDescriptionForAttributeStep(product.description, alreadySelected, next);
-        if (desc) {
-            msg += `\n_${desc}_`;
-        }
         if (mode === 'info') {
             const infoAttrs = remaining.filter((a) => !this.isComboOnlyAttribute(a));
-            for (const attr of infoAttrs) {
-                if (!attr.options?.length)
-                    continue;
-                msg += `\n\n*${attr.attributeName}*:`;
-                attr.options.forEach((opt, i) => {
-                    msg += `\n  ${i + 1}) ${opt}`;
+            if (!infoAttrs.length && (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))) {
+                return (`*${product.name}* — precio base $${Math.round(product.price).toLocaleString('es-CO')}.\n\n` +
+                    `_Si pides *combo*, después eliges las gaseosas._\n\n` +
+                    `_Dime cuál porción te interesa o si quieres pedir._`);
+            }
+            if (infoAttrs.length === 1) {
+                return this.formatAttributeStepPrompt(product, infoAttrs[0], alreadySelected, {
+                    mode: 'info',
                 });
             }
-            if (!infoAttrs.some((a) => this.isComboOnlyAttribute(a)) &&
-                (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))) {
-                msg += '\n\n_Si pides *combo*, después eliges las gaseosas._';
+            let msg = `*${product.name}* — precio base $${Math.round(product.price).toLocaleString('es-CO')}.`;
+            for (const attr of infoAttrs) {
+                msg += `\n\n${this.formatAttributeStepPrompt(product, attr, alreadySelected, { mode: 'info', skipHeader: true })}`;
             }
-            msg +=
-                '\n\n_Te muestro las porciones. Dime cuál te interesa o si quieres pedir alguna._';
+            return msg;
         }
-        else if (next?.options?.length) {
-            msg += `\n\n*${next.attributeName}*:`;
-            next.options.forEach((opt, i) => {
-                msg += `\n  ${i + 1}) ${opt}`;
-            });
-            if (this.isComboOnlyAttribute(next)) {
-                msg += '\n\n_Recuerda elegir todas las gaseosas del combo._';
-            }
-            msg +=
-                '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, combo…) o el *número*.';
+        if (!next?.options?.length) {
+            return `*${product.name}* — ¿cuál opción prefieres?`;
+        }
+        return this.formatAttributeStepPrompt(product, next, alreadySelected, { mode: 'order' });
+    }
+    formatOptionsTable(rows) {
+        const labelWidth = Math.min(26, Math.max(10, ...rows.map((r) => r.label.length)));
+        const lines = [
+            '```',
+            `${'#'.padEnd(3)} ${'Opción'.padEnd(labelWidth)} Precio`,
+            '─'.repeat(labelWidth + 16),
+        ];
+        for (const r of rows) {
+            const label = r.label.length > labelWidth ? `${r.label.slice(0, labelWidth - 1)}…` : r.label;
+            const price = `$${Math.round(r.price).toLocaleString('es-CO')}`;
+            lines.push(`${String(r.index).padEnd(3)} ${label.padEnd(labelWidth)} ${price}`);
+        }
+        lines.push('```');
+        return lines.join('\n');
+    }
+    formatAttributeStepPrompt(product, attr, alreadySelected = [], opts) {
+        const rows = attr.options.map((opt, i) => ({
+            index: i + 1,
+            label: opt,
+            price: product.price,
+        }));
+        const parts = [];
+        if (!opts?.skipHeader) {
+            parts.push(`*${product.name}* (cód. ${product.code})`);
+        }
+        if (alreadySelected.length) {
+            parts.push(`✅ ${alreadySelected.map((s) => s.attributeValue).join(' · ')}`);
+        }
+        const question = this.isComboOnlyAttribute(attr)
+            ? `¿Qué *${attr.attributeName}* lleva tu combo?`
+            : `¿Qué *${attr.attributeName}* prefieres?`;
+        parts.push(question);
+        parts.push(this.formatOptionsTable(rows));
+        if (opts?.mode === 'info') {
+            parts.push('_Dime el número o el nombre si quieres pedir._');
         }
         else {
-            msg +=
-                '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, combo…) o el *número*.';
+            parts.push('Responde con el *número* o el *nombre* de la opción.');
         }
-        return msg;
+        return parts.filter(Boolean).join('\n\n');
+    }
+    getProductNameBase(name) {
+        return normalizeText(name)
+            .replace(/\b(solo|sola|completo|completa|combo|con\s+gaseosa|con\s+bebida|sin\s+gaseosa|sin\s+bebida|mas\s+gaseosa|y\s+gaseosa)\b/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+    getVariantDisplayLabel(fullName, baseKey) {
+        const n = normalizeText(fullName);
+        const tail = n.replace(baseKey, '').trim();
+        if (/\bsolo\b/.test(tail) || /\bsola\b/.test(tail))
+            return 'Solo (sin combo/bebida)';
+        if (/\bcombo\b/.test(tail))
+            return 'Combo (con bebida)';
+        if (/\b(completo|completa)\b/.test(tail))
+            return 'Completo (con bebida)';
+        if (/\b(con\s+gaseosa|con\s+bebida|gaseosa|bebida)\b/.test(tail)) {
+            return 'Con gaseosa / bebida';
+        }
+        if (tail.length >= 3)
+            return titleCaseWords(tail);
+        return fullName;
+    }
+    findProductVariantFamily(query, products, hints = []) {
+        const q = normalizeText(this.extractProductSearchQuery(query));
+        if (q.length < 4)
+            return null;
+        const available = products.filter((p) => p.availableNow !== false);
+        const scored = this.searchByNameScored(q, available, 12).filter((x) => x.score >= 38);
+        const seed = [
+            ...hints,
+            ...scored.map((x) => x.p),
+        ];
+        if (!seed.length)
+            return null;
+        let bestBase = '';
+        let bestCount = 0;
+        const baseCounts = new Map();
+        for (const p of seed) {
+            const base = this.getProductNameBase(p.name);
+            if (base.length < 4)
+                continue;
+            baseCounts.set(base, (baseCounts.get(base) || 0) + 1);
+            if ((baseCounts.get(base) || 0) > bestCount) {
+                bestCount = baseCounts.get(base) || 0;
+                bestBase = base;
+            }
+        }
+        if (!bestBase)
+            return null;
+        const queryHitsBase = q.includes(bestBase) ||
+            bestBase.includes(q) ||
+            q.split(' ').filter((t) => t.length >= 4).every((t) => bestBase.includes(t));
+        if (!queryHitsBase && bestCount < 2)
+            return null;
+        const variants = available.filter((p) => {
+            const base = this.getProductNameBase(p.name);
+            const name = normalizeText(p.name);
+            return base === bestBase || (name.includes(bestBase) && base.length >= 4);
+        });
+        if (variants.length < 2)
+            return null;
+        const hasVariantCue = variants.some((p) => /\b(solo|sola|combo|completo|completa|gaseosa|bebida)\b/i.test(p.name));
+        if (!hasVariantCue && !variants.some((p) => p.hasAttributes))
+            return null;
+        const uniq = new Map();
+        for (const v of variants)
+            uniq.set(v.id, v);
+        const sorted = [...uniq.values()].sort((a, b) => {
+            const rank = (n) => {
+                const x = normalizeText(n);
+                if (/\bsolo\b/.test(x))
+                    return 0;
+                if (/\bcombo\b/.test(x))
+                    return 1;
+                if (/\b(completo|gaseosa|bebida)\b/.test(x))
+                    return 2;
+                return 3;
+            };
+            const d = rank(a.name) - rank(b.name);
+            return d !== 0 ? d : a.name.localeCompare(b.name, 'es');
+        });
+        return {
+            baseLabel: titleCaseWords(bestBase),
+            baseKey: bestBase,
+            variants: sorted,
+        };
+    }
+    pickVariantFromFamilyText(text, family) {
+        const q = normalizeText(text);
+        for (const p of family.variants) {
+            const name = normalizeText(p.name);
+            if (name.length > family.baseKey.length + 3 && (q === name || q.includes(name))) {
+                return p;
+            }
+        }
+        if (/\bsolo\b/.test(q)) {
+            return family.variants.find((p) => /\bsolo\b/.test(normalizeText(p.name))) || null;
+        }
+        if (/\b(combo|completo|completa|gaseosa|bebida)\b/.test(q)) {
+            return (family.variants.find((p) => /\b(combo|completo|completa|gaseosa|bebida)\b/.test(normalizeText(p.name))) || null);
+        }
+        return null;
+    }
+    formatVariantFamilyPrompt(family) {
+        const rows = family.variants.map((p, i) => ({
+            index: i + 1,
+            label: this.getVariantDisplayLabel(p.name, family.baseKey),
+            price: p.price,
+            code: p.code,
+        }));
+        return (`Para *${family.baseLabel}*, ¿cómo lo quieres?\n\n` +
+            `${this.formatOptionsTable(rows)}\n\n` +
+            `Responde con el *número* o escribe *solo* / *combo*.`);
     }
     getRemainingAttributes(product, alreadySelected = []) {
         return (product.attributes || []).filter((attr) => {
@@ -1013,34 +1157,12 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             `Respóndeme con el *número* o el *código* del que quieras.`);
     }
     formatProductOptionsPrompt(product, alreadySelected = []) {
-        const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
-        let msg = `*${product.name}* (código ${product.code}) — ${price}`;
         const remaining = this.getRemainingAttributes(product, alreadySelected);
         const next = remaining[0];
-        const desc = this.formatDescriptionForAttributeStep(product.description, alreadySelected, next);
-        if (desc) {
-            msg += `\n\n📝 ${desc}`;
+        if (!product.hasAttributes || !product.attributes?.length || !next) {
+            return `*${product.name}* (cód. ${product.code})`;
         }
-        if (!product.hasAttributes || !product.attributes?.length) {
-            return msg;
-        }
-        if (!next)
-            return msg;
-        if (alreadySelected.length) {
-            msg +=
-                '\n\nElegido: ' +
-                    alreadySelected.map((s) => `${s.attributeName}: ${s.attributeValue}`).join(', ');
-        }
-        msg += `\n\n¿Con qué *${next.attributeName}* lo quieres?`;
-        next.options.forEach((opt, i) => {
-            msg += `\n  ${i + 1}) ${opt}`;
-        });
-        if (this.isComboOnlyAttribute(next)) {
-            msg += '\n\n_Recuerda elegir todas las gaseosas del combo._';
-        }
-        msg +=
-            '\n\nRespóndeme con el *número* (1, 2, 3…) o el nombre. _Aquí el número es la opción, no el código del producto._';
-        return msg;
+        return this.formatAttributeStepPrompt(product, next, alreadySelected, { mode: 'order' });
     }
     resolveAttributesFromMessage(product, text, alreadySelected = []) {
         if (!product.attributes?.length) {

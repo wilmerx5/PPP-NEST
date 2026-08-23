@@ -91,6 +91,9 @@ export type WhatsappSessionData = {
   awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
   linkedUserId?: string | null;
   linkedUserName?: string | null;
+  /** Premio de puntos validado para aplicar al confirmar pedido */
+  pendingRedemptionCode?: string | null;
+  pendingRedemptionExpiresAt?: string | null;
 };
 
 export type WhatsappConversationState =
@@ -111,6 +114,8 @@ export const EMPTY_SESSION: WhatsappSessionData = {
   orderType: 'delivery',
   linkedUserId: null,
   linkedUserName: null,
+  pendingRedemptionCode: null,
+  pendingRedemptionExpiresAt: null,
 };
 
 export type AiOrderAction = {
