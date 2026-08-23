@@ -212,6 +212,10 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 }
                 if (this.looksLikeSideQuestion(text)) {
                     await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+                    if (this.isProductCompositionQuestion(text)) {
+                        await this.reply(conv, msg.waId, this.buildProductCompositionReply(text, product, cfg));
+                        return;
+                    }
                     const reply = await this.answerSideQuestionWithAi({
                         conv,
                         session,
@@ -468,9 +472,10 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             !session.pendingMatch &&
             !session.pendingAttribute &&
             this.looksLikeStandaloneOrderNote(text)) {
-            session = this.appendCustomerNote(session, text);
+            session = this.applyInlineOrderNote(session, text);
             await this.conversationService.saveSession(conv, session);
-            await this.reply(conv, msg.waId, `Anotado 📝 _${session.customerNotes}_\n\n¿Algo más o escribes *confirmar*?`);
+            const ack = this.formatInlineNoteAck(session);
+            await this.reply(conv, msg.waId, `${ack}\n\n¿Algo más o escribes *confirmar*?`);
             return;
         }
         if (/\b(contraentrega|efectivo|cash|transferencia|nequi|mercadopago|mercado\s*pago)\b/.test(lower) ||
@@ -505,6 +510,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             };
             await this.conversationService.saveSession(conv, session);
             await this.reply(conv, msg.waId, overview.text);
+            return;
+        }
+        if (!session.pendingMatch &&
+            !session.pendingAttribute &&
+            !session.pendingMultiOrder &&
+            (await this.tryHandleProductCompositionQuestion(conv, msg.waId, text, products, cfg))) {
             return;
         }
         if (!session.pendingMatch &&
@@ -1230,6 +1241,73 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     humanHelpHint() {
         return 'Si prefieres, escribe *asesor* o *humano* y una persona te atiende por aquí 😊';
     }
+    isProductCompositionQuestion(text) {
+        const t = text.trim();
+        if (!t || t.length < 6)
+            return false;
+        if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(t)) {
+            return false;
+        }
+        if (this.catalogService.isPriceInquiryIntent(text))
+            return false;
+        const q = t
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        const patterns = [
+            /\bde\s+que\b/,
+            /\bde\s+que\s+es\b/,
+            /\bde\s+que\s+tr(ae|ae)/,
+            /\bque\s+lleva\b/,
+            /\bque\s+trae\b/,
+            /\bcon\s+que\s+viene\b/,
+            /\bque\s+ingredientes\b/,
+            /\bque\s+tiene\b/,
+            /\b(incluye|trae|viene)\s+con\b/,
+            /\b(tiene|lleva|trae)\s+(cebolla|aji|ají|huevo|huevos|queso|lechuga|tomate|gluten|lacteos|lácteos)\b/,
+            /\b(alergeno|alergenos|alérgeno|alérgenos)\b/,
+            /\b(composicion|composición|preparacion|preparación)\b/,
+        ];
+        if (patterns.some((p) => p.test(q)))
+            return true;
+        return (/\?/.test(t) &&
+            /\b(lleva|trae|viene|ingredientes|ensalada|sopa|arroz|pollo|bebida|postre)\b/i.test(t));
+    }
+    findProductForCompositionQuestion(text, products) {
+        const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+        if (embedded)
+            return embedded;
+        const query = this.catalogService.extractProductSearchQuery(text);
+        const scored = this.catalogService.searchByNameScored(query, products, 5);
+        if (scored.length === 1 && scored[0].score >= 40)
+            return scored[0].p;
+        if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored))
+            return scored[0].p;
+        return null;
+    }
+    buildProductCompositionReply(text, product, cfg) {
+        const allergens = (cfg.localContext?.allergensNote || '').trim();
+        const desc = product?.description?.trim();
+        let msg = 'No tengo esa información por este chat 😅';
+        if (product && desc) {
+            msg += `\n\nEn el menú de *${product.name}* solo aparece:\n_${desc}_`;
+        }
+        else if (product) {
+            msg += `\n\nSobre *${product.name}*, no tengo el detalle de ingredientes aquí.`;
+        }
+        if (allergens && /\b(alergeno|alérgeno|gluten|lacteo|lácteo|celiaco)\b/i.test(text)) {
+            msg += `\n\nLo que sí tenemos registrado sobre alérgenos:\n_${allergens}_`;
+        }
+        msg += `\n\n${this.humanHelpHint()}`;
+        return msg;
+    }
+    async tryHandleProductCompositionQuestion(conv, waId, text, products, cfg) {
+        if (!this.isProductCompositionQuestion(text))
+            return false;
+        const product = this.findProductForCompositionQuestion(text, products);
+        await this.reply(conv, waId, this.buildProductCompositionReply(text, product, cfg));
+        return true;
+    }
     resolveImageOrderText(analysis, caption, products) {
         const blobs = [analysis.textForBot, analysis.visibleText, caption].filter((s) => !!s?.trim());
         for (const raw of blobs) {
@@ -1506,7 +1584,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             ? `Ya anoté: _${existing}_\n\n¿Algo *más* para cocina o domicilio (o cambio si pagas en efectivo)?`
             : '¿Alguna *nota* para el pedido o *cambio* (con cuánto pagas)?';
         msg +=
-            '\nEj: _platos y cubiertos_ / _sin cebolla_ / _no quiero ají_ / _timbre 302_ / _cambio de 50 mil_.\n' +
+            '\nEj: _platos y cubiertos_ / _sin cebolla_ / _timbre 302_ / _cambio de 50 mil_ / _traer vueltas de 20 mil_.\n' +
                 'Si no aplica, escribe *ninguno*.';
         if (hint)
             msg += `\n\n_${hint}_`;
@@ -1524,11 +1602,65 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             /^(sin|no\s+quiero)\s+/i,
             /\b(platos?\s*y\s*cubiertos?|solo\s*cubiertos?|con\s*cubiertos?)\b/i,
             /\b(timbre|apto|apartamento|torre|piso|intercomunicador|porter[ií]a|rejas?)\b/i,
-            /\b(cambio\s+de|billete|paga\s+con)\b/i,
+            /\b(cambio\s+de|billete|paga\s+con|vueltas?|devuelta|traer?\s+vueltas?|trae\s+vueltas?|traeme\s+vueltas?)\b/i,
             /\bsin\s+(cebolla|aj[ií]|sal|picante|huevo|queso|tomate)\b/i,
             /^(nota|notas?)[:\s]/i,
         ];
         return patterns.some((p) => p.test(t));
+    }
+    CASH_CHANGE_AMOUNT = String.raw `[\d.,]+(?:\s*(?:mil|k))?`;
+    extractCashChangeFromText(text) {
+        const t = text.trim();
+        const patterns = [
+            new RegExp(String.raw `(?:traer|trae|traeme|traiga|con)\s+vueltas?\s*(?:de\s*)?\$?\s*(${this.CASH_CHANGE_AMOUNT})`, 'i'),
+            new RegExp(String.raw `(?:vueltas?|devuelta)\s*(?:de\s*)?\$?\s*(${this.CASH_CHANGE_AMOUNT})`, 'i'),
+            new RegExp(String.raw `(?:cambio|billete|paga(?:s|r)?(?:\s+con)?)\s*(?:de\s*)?\$?\s*(${this.CASH_CHANGE_AMOUNT})`, 'i'),
+        ];
+        for (const re of patterns) {
+            const m = t.match(re);
+            if (m?.[0]) {
+                return m[0].replace(/\s+/g, ' ').trim().slice(0, 120);
+            }
+        }
+        if (/^\d[\d.,\s]*(mil|k)?$/i.test(t)) {
+            return `cambio de ${t}`;
+        }
+        return null;
+    }
+    stripCashChangePhrases(text) {
+        return text
+            .replace(new RegExp(String.raw `(?:traer|trae|traeme|traiga|con)\s+vueltas?\s*(?:de\s*)?\$?\s*${this.CASH_CHANGE_AMOUNT}`, 'gi'), '')
+            .replace(new RegExp(String.raw `(?:vueltas?|devuelta)\s*(?:de\s*)?\$?\s*${this.CASH_CHANGE_AMOUNT}`, 'gi'), '')
+            .replace(new RegExp(String.raw `(?:cambio|billete|paga(?:s|r)?(?:\s+con)?)\s*(?:de\s*)?\$?\s*${this.CASH_CHANGE_AMOUNT}`, 'gi'), '')
+            .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/gi, '')
+            .replace(/^[,.\s\-–—]+|[,.\s\-–—]+$/g, '')
+            .trim();
+    }
+    applyInlineOrderNote(session, text) {
+        const t = text.trim();
+        const change = this.extractCashChangeFromText(t);
+        let next = { ...session };
+        if (change) {
+            next.cashChangeFor = change;
+        }
+        const rest = this.stripCashChangePhrases(t);
+        if (rest && !/^(ninguno|ninguna|no|nada)$/i.test(rest)) {
+            next = this.appendCustomerNote(next, rest);
+        }
+        else if (!change) {
+            next = this.appendCustomerNote(next, t);
+        }
+        return next;
+    }
+    formatInlineNoteAck(session) {
+        const parts = [];
+        if (session.cashChangeFor?.trim()) {
+            parts.push(`Anotado 💵 _${session.cashChangeFor.trim()}_`);
+        }
+        if (session.customerNotes?.trim()) {
+            parts.push(`Anotado 📝 _${session.customerNotes.trim()}_`);
+        }
+        return parts.join('\n') || 'Anotado ✅';
     }
     appendCustomerNote(session, note) {
         const trimmed = note.trim().slice(0, 400);
@@ -1545,17 +1677,15 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (/^(ninguno|ninguna|no|nada|sin notas?|n\/a|na)$/i.test(lower)) {
             return next;
         }
-        const changeMatch = t.match(/(?:cambio|billete|paga(?:s|r)?(?:\s+con)?)\s*(?:de\s*)?\$?\s*([\d.,]+(?:\s*(?:mil|k))?)/i);
-        if (changeMatch?.[1]) {
-            next.cashChangeFor = changeMatch[0].replace(/\s+/g, ' ').trim().slice(0, 120);
+        const change = this.extractCashChangeFromText(t);
+        if (change) {
+            next.cashChangeFor = change;
         }
-        else if (/^\d[\d.,\s]*(mil|k)?$/i.test(t) && (session.paymentMethod === 'cash' || session.paymentMethod === 'contraentrega')) {
+        else if (/^\d[\d.,\s]*(mil|k)?$/i.test(t) &&
+            (session.paymentMethod === 'cash' || session.paymentMethod === 'contraentrega')) {
             next.cashChangeFor = `cambio de ${t}`;
         }
-        const notesOnly = t
-            .replace(/(?:cambio|billete|paga(?:s|r)?(?:\s+con)?)\s*(?:de\s*)?\$?\s*[\d.,]+(?:\s*(?:mil|k))?/gi, '')
-            .replace(/^[,.\s\-–—]+|[,.\s\-–—]+$/g, '')
-            .trim();
+        const notesOnly = this.stripCashChangePhrases(t);
         if (notesOnly && !/^(ninguno|ninguna|no|nada)$/i.test(notesOnly)) {
             next.customerNotes = notesOnly.slice(0, 400);
         }

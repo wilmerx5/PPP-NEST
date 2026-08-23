@@ -48,6 +48,10 @@ export declare class WhatsappOrchestratorService {
     private shortQuote;
     private resolveAudioToText;
     private humanHelpHint;
+    private isProductCompositionQuestion;
+    private findProductForCompositionQuestion;
+    private buildProductCompositionReply;
+    private tryHandleProductCompositionQuestion;
     private resolveImageOrderText;
     private resolveImageMessage;
     private isRestartIntent;
@@ -69,6 +73,11 @@ export declare class WhatsappOrchestratorService {
     private formatLocationAddress;
     private buildAskNotesMessage;
     private looksLikeStandaloneOrderNote;
+    private readonly CASH_CHANGE_AMOUNT;
+    private extractCashChangeFromText;
+    private stripCashChangePhrases;
+    private applyInlineOrderNote;
+    private formatInlineNoteAck;
     private appendCustomerNote;
     private applyNotesFromText;
     private buildOrderExtras;
