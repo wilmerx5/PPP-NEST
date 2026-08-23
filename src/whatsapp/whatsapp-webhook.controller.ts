@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Req, Res, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Query, Req, Res, HttpCode, Logger } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -8,6 +8,8 @@ import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 @ApiExcludeController()
 @Controller('whatsapp')
 export class WhatsappWebhookController {
+  private readonly logger = new Logger(WhatsappWebhookController.name);
+
   constructor(
     private readonly settingsService: WhatsappSettingsService,
     private readonly metaService: WhatsappMetaService,
@@ -23,10 +25,23 @@ export class WhatsappWebhookController {
     @Res() res: Response,
   ) {
     const cfg = await this.settingsService.getEffectiveConfig();
-    if (mode === 'subscribe' && token && token === cfg.verifyToken) {
-      return res.status(200).send(challenge);
+    const expected = (cfg.verifyToken || '').trim();
+    const received = (token || '').trim();
+
+    if (mode === 'subscribe' && received && expected && received === expected) {
+      this.logger.log('Webhook Meta verificado correctamente');
+      return res.status(200).type('text/plain').send(challenge);
     }
-    return res.status(403).send('Forbidden');
+
+    if (!expected) {
+      this.logger.warn(
+        'Webhook verify falló: no hay verify token en servidor. Guárdalo en Admin → WhatsApp IA o env WHATSAPP_VERIFY_TOKEN.',
+      );
+    } else {
+      this.logger.warn('Webhook verify falló: token recibido no coincide con el configurado en PPP.');
+    }
+
+    return res.status(403).type('text/plain').send('Forbidden');
   }
 
   @Post('webhook')
