@@ -13,28 +13,28 @@ export class WhatsappMessage {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ name: 'conversation_id' })
+  @Column({ name: 'conversation_id', type: 'int' })
   conversationId: number;
 
   @Column({ type: 'enum', enum: ['in', 'out'] })
   direction: 'in' | 'out';
 
-  @Column({ name: 'message_type', length: 20, default: 'text' })
+  @Column({ name: 'message_type', type: 'varchar', length: 20, default: 'text' })
   messageType: string;
 
   @Column({ type: 'text', nullable: true })
   body: string | null;
 
-  @Column({ name: 'wa_message_id', length: 128, nullable: true })
+  @Column({ name: 'wa_message_id', type: 'varchar', length: 128, nullable: true })
   waMessageId: string | null;
 
-  @Column({ name: 'sent_by', length: 20, default: 'bot' })
-  sentBy: 'bot' | 'human' | 'system';
+  @Column({ name: 'sent_by', type: 'varchar', length: 20, default: 'bot' })
+  sentBy: string;
 
   @Column({ name: 'raw_payload', type: 'json', nullable: true })
   rawPayload: Record<string, unknown> | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
   @ManyToOne(() => WhatsappConversation, (c) => c.messages, { onDelete: 'CASCADE' })

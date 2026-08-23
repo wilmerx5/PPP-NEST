@@ -1,12 +1,11 @@
 import { WhatsappMessage } from './whatsapp-message.entity';
-import type { WhatsappSessionData } from '../types/whatsapp-session.types';
 export declare class WhatsappConversation {
     id: number;
     waId: string;
     phoneE164: string;
     customerName: string | null;
     state: string;
-    sessionData: WhatsappSessionData | null;
+    sessionData: Record<string, unknown> | null;
     humanTakeover: boolean;
     humanAgentId: string | null;
     humanAgentName: string | null;

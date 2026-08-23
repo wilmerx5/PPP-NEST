@@ -30,23 +30,23 @@ let WhatsappConversation = class WhatsappConversation {
 };
 exports.WhatsappConversation = WhatsappConversation;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ type: 'int' }),
     __metadata("design:type", Number)
 ], WhatsappConversation.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'wa_id', length: 32 }),
+    (0, typeorm_1.Column)({ name: 'wa_id', type: 'varchar', length: 32 }),
     __metadata("design:type", String)
 ], WhatsappConversation.prototype, "waId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'phone_e164', length: 32 }),
+    (0, typeorm_1.Column)({ name: 'phone_e164', type: 'varchar', length: 32 }),
     __metadata("design:type", String)
 ], WhatsappConversation.prototype, "phoneE164", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'customer_name', length: 120, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'customer_name', type: 'varchar', length: 120, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "customerName", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 40, default: 'building_cart' }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 40, default: 'building_cart' }),
     __metadata("design:type", String)
 ], WhatsappConversation.prototype, "state", void 0);
 __decorate([
@@ -54,15 +54,15 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "sessionData", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'human_takeover', type: 'tinyint', default: 0 }),
+    (0, typeorm_1.Column)({ name: 'human_takeover', type: 'boolean', default: false }),
     __metadata("design:type", Boolean)
 ], WhatsappConversation.prototype, "humanTakeover", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'human_agent_id', length: 36, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'human_agent_id', type: 'varchar', length: 36, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "humanAgentId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'human_agent_name', length: 120, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'human_agent_name', type: 'varchar', length: 120, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "humanAgentName", void 0);
 __decorate([
@@ -74,11 +74,11 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappConversation.prototype, "lastInboundAt", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at', type: 'timestamp' }),
     __metadata("design:type", Date)
 ], WhatsappConversation.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at', type: 'timestamp' }),
     __metadata("design:type", Date)
 ], WhatsappConversation.prototype, "updatedAt", void 0);
 __decorate([

@@ -21,6 +21,7 @@ import {
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
+import type { WhatsappSessionData } from './types/whatsapp-session.types';
 
 @ApiTags('Admin WhatsApp')
 @Controller('admin/whatsapp')
@@ -60,7 +61,7 @@ export class WhatsappAdminController {
       humanAgentName: c.humanAgentName,
       lastMessageAt: c.lastMessageAt,
       updatedAt: c.updatedAt,
-      cartCount: c.sessionData?.cart?.length ?? 0,
+      cartCount: (c.sessionData as WhatsappSessionData | null)?.cart?.length ?? 0,
     }));
   }
 

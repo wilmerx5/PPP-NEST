@@ -65,14 +65,14 @@ export declare class WhatsappAdminController {
         phoneE164: string;
         customerName: string | null;
         state: string;
-        sessionData: import("./types/whatsapp-session.types").WhatsappSessionData | null;
+        sessionData: Record<string, unknown> | null;
         humanTakeover: boolean;
         humanAgentName: string | null;
         messages: {
             id: string;
             direction: "in" | "out";
             body: string | null;
-            sentBy: "bot" | "human" | "system";
+            sentBy: string;
             createdAt: Date;
         }[];
     }>;

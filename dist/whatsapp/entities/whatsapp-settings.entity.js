@@ -29,23 +29,23 @@ let WhatsappSettings = class WhatsappSettings {
 };
 exports.WhatsappSettings = WhatsappSettings;
 __decorate([
-    (0, typeorm_1.PrimaryColumn)(),
+    (0, typeorm_1.PrimaryColumn)({ type: 'int' }),
     __metadata("design:type", Number)
 ], WhatsappSettings.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'tinyint', default: 0 }),
+    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
     __metadata("design:type", Boolean)
 ], WhatsappSettings.prototype, "enabled", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'display_phone', length: 32, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'display_phone', type: 'varchar', length: 32, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "displayPhone", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'phone_number_id', length: 64, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'phone_number_id', type: 'varchar', length: 64, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "phoneNumberId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'waba_id', length: 64, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'waba_id', type: 'varchar', length: 64, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "wabaId", void 0);
 __decorate([
@@ -53,7 +53,7 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "accessToken", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'verify_token', length: 128, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'verify_token', type: 'varchar', length: 128, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "verifyToken", void 0);
 __decorate([
@@ -61,7 +61,7 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "openaiApiKey", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'openai_model', length: 64, default: 'gpt-4o-mini' }),
+    (0, typeorm_1.Column)({ name: 'openai_model', type: 'varchar', length: 64, default: 'gpt-4o-mini' }),
     __metadata("design:type", String)
 ], WhatsappSettings.prototype, "openaiModel", void 0);
 __decorate([
@@ -73,7 +73,7 @@ __decorate([
     __metadata("design:type", Number)
 ], WhatsappSettings.prototype, "defaultDeliveryFee", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'allow_mercado_pago', type: 'tinyint', default: 1 }),
+    (0, typeorm_1.Column)({ name: 'allow_mercado_pago', type: 'boolean', default: true }),
     __metadata("design:type", Boolean)
 ], WhatsappSettings.prototype, "allowMercadoPago", void 0);
 __decorate([
@@ -81,7 +81,7 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappSettings.prototype, "welcomeMessage", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at', type: 'timestamp' }),
     __metadata("design:type", Date)
 ], WhatsappSettings.prototype, "updatedAt", void 0);
 exports.WhatsappSettings = WhatsappSettings = __decorate([

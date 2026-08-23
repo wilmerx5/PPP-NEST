@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsappMessage.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'conversation_id' }),
+    (0, typeorm_1.Column)({ name: 'conversation_id', type: 'int' }),
     __metadata("design:type", Number)
 ], WhatsappMessage.prototype, "conversationId", void 0);
 __decorate([
@@ -38,7 +38,7 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsappMessage.prototype, "direction", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'message_type', length: 20, default: 'text' }),
+    (0, typeorm_1.Column)({ name: 'message_type', type: 'varchar', length: 20, default: 'text' }),
     __metadata("design:type", String)
 ], WhatsappMessage.prototype, "messageType", void 0);
 __decorate([
@@ -46,11 +46,11 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappMessage.prototype, "body", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'wa_message_id', length: 128, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'wa_message_id', type: 'varchar', length: 128, nullable: true }),
     __metadata("design:type", Object)
 ], WhatsappMessage.prototype, "waMessageId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'sent_by', length: 20, default: 'bot' }),
+    (0, typeorm_1.Column)({ name: 'sent_by', type: 'varchar', length: 20, default: 'bot' }),
     __metadata("design:type", String)
 ], WhatsappMessage.prototype, "sentBy", void 0);
 __decorate([
@@ -58,7 +58,7 @@ __decorate([
     __metadata("design:type", Object)
 ], WhatsappMessage.prototype, "rawPayload", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at', type: 'timestamp' }),
     __metadata("design:type", Date)
 ], WhatsappMessage.prototype, "createdAt", void 0);
 __decorate([

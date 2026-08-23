@@ -6,7 +6,7 @@ export declare class WhatsappMessage {
     messageType: string;
     body: string | null;
     waMessageId: string | null;
-    sentBy: 'bot' | 'human' | 'system';
+    sentBy: string;
     rawPayload: Record<string, unknown> | null;
     createdAt: Date;
     conversation: WhatsappConversation;
