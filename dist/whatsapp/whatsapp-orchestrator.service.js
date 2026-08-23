@@ -1611,7 +1611,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     await this.reply(conv, waId, `Listo, quité ${removedLabel}.\n\n🛒 Carrito vacío. ¿Qué te gustaría pedir?`);
                     return true;
                 }
-                await this.reply(conv, waId, `Listo, quité ${removedLabel}.\n\n${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n¿Algo más?`);
+                await this.reply(conv, waId, `Listo, quité ${removedLabel}.\n\n${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n${this.formatContinueShoppingPrompt()}`);
                 return true;
             }
         }
@@ -1670,7 +1670,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, waId, `Listo, quité ${match.label}${removedNote}.\n\n🛒 Carrito vacío. ¿Qué te gustaría pedir?`);
             return true;
         }
-        await this.reply(conv, waId, `Listo, quité ${match.label}${removedNote}.\n\n${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n¿Algo más?`);
+        await this.reply(conv, waId, `Listo, quité ${match.label}${removedNote}.\n\n${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n${this.formatContinueShoppingPrompt()}`);
         return true;
     }
     isCancelIntent(text) {
@@ -2080,7 +2080,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     async handleProductWithVariants(conv, waId, session, product, text, cfg) {
         if (!product.hasAttributes || !product.attributes?.length)
             return false;
-        const step = this.catalogService.resolveNextAttributeChoice(product, text, []);
+        const step = this.catalogService.resolveAttributesFromMessage(product, text, []);
         if (step.status === 'complete') {
             const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
             if (added.blocked) {
@@ -2092,6 +2092,23 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.conversationService.saveSession(conv, session, 'building_cart');
             const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
             await this.reply(conv, waId, this.buildCartAddReply(session, cfg.defaultDeliveryFee, `${product.name} (${chosen})`));
+            return true;
+        }
+        if (step.status === 'partial') {
+            session = {
+                ...session,
+                pendingAttribute: {
+                    productId: product.id,
+                    name: product.name,
+                    code: product.code,
+                    price: product.price,
+                    attributes: product.attributes || [],
+                    selected: step.attributes,
+                },
+                pendingMatch: undefined,
+            };
+            await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+            await this.reply(conv, waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes));
             return true;
         }
         const mode = this.catalogService.isGenericProductInquiry(text) ||

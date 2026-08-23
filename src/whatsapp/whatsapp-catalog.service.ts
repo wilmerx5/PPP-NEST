@@ -355,8 +355,23 @@ export class WhatsappCatalogService {
       .trim();
 
     q = this.cleanOrderSegment(q);
+    q = this.stripProductSearchNoise(q);
 
     return q || text.trim();
+  }
+
+  /** Quita porción/bebida del texto para buscar el producto base. */
+  stripProductSearchNoise(query: string): string {
+    return query
+      .replace(
+        /\s+con\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?(?:manzana|coca\s*cola?|cola|sprite|pepsi|uva|postobon|postob[oó]n|litro\s*personal|personal|limonada|hit|mr\s*tea|cysco|agua|fresa|naranja|maracuya|maracuy[aá]|mango|poker|costena|coste[nñ]a)[\w\s]*/gi,
+        '',
+      )
+      .replace(/^combo\s+de\s+/i, '')
+      .replace(/^combo\s+/i, '')
+      .replace(/\s+de\s+combo\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   /** Limpia ruido coloquial dentro de un segmento de pedido. */
@@ -971,33 +986,13 @@ export class WhatsappCatalogService {
     return tokens.length === 1;
   }
 
-  /** ¿El cliente ya nombró una variante concreta (medio, cuarto, entero…)? */
+  /** ¿El cliente ya nombró variante(s) en el mensaje (medio, combo, manzana…)? */
   extractExplicitAttributeChoice(
     text: string,
     product: WhatsappCatalogProduct,
   ): { attributeName: string; attributeValue: string }[] | null {
-    if (!product.attributes?.length) return null;
-    const q = normalizeText(text);
-
-    for (const attr of product.attributes) {
-      for (const opt of attr.options) {
-        const o = normalizeText(opt);
-        if (o.length >= 4 && (q === o || q.includes(o))) {
-          return [{ attributeName: attr.attributeName, attributeValue: opt }];
-        }
-      }
-      // Token suelto: "medio", "cuarto" si coincide con inicio de una opción
-      for (const opt of attr.options) {
-        const o = normalizeText(opt);
-        for (const token of o.split(' ').filter((t) => t.length >= 4)) {
-          if (['pollo', 'frito', 'broaster', 'pechuga'].includes(token)) continue;
-          const re = new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`);
-          if (re.test(q)) {
-            return [{ attributeName: attr.attributeName, attributeValue: opt }];
-          }
-        }
-      }
-    }
+    const step = this.resolveAttributesFromMessage(product, text, []);
+    if (step.status === 'complete') return step.attributes;
     return null;
   }
 
@@ -1261,6 +1256,116 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Resuelve todas las opciones que el cliente nombró en un mensaje
+   * (ej. "combo de pollo frito con manzana" → combo + gaseosa).
+   */
+  resolveAttributesFromMessage(
+    product: WhatsappCatalogProduct,
+    text: string,
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+  ):
+    | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'invalid' } {
+    if (!product.attributes?.length) {
+      return { status: 'complete', attributes: alreadySelected };
+    }
+
+    let selected = [...alreadySelected];
+    let progress = true;
+
+    while (progress) {
+      progress = false;
+      const remaining = this.getRemainingAttributes(product, selected);
+      if (!remaining.length) {
+        return { status: 'complete', attributes: selected };
+      }
+
+      for (const attr of remaining) {
+        const picked = this.pickAttributeOptionFromText(text, attr);
+        if (!picked) continue;
+        selected = [...selected, { attributeName: attr.attributeName, attributeValue: picked }];
+        progress = true;
+        break;
+      }
+    }
+
+    const stillRemaining = this.getRemainingAttributes(product, selected);
+    if (!stillRemaining.length) return { status: 'complete', attributes: selected };
+    if (selected.length > alreadySelected.length) {
+      return { status: 'partial', attributes: selected };
+    }
+    return { status: 'invalid' };
+  }
+
+  /** Encuentra una opción de atributo mencionada en texto libre. */
+  pickAttributeOptionFromText(
+    text: string,
+    attr: { attributeName: string; options: string[] },
+  ): string | null {
+    const q = normalizeText(text);
+    if (!q) return null;
+
+    if (this.isComboOnlyAttribute(attr)) {
+      const conMatch = q.match(
+        /\bcon\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?([a-z0-9\s]{3,40})/,
+      );
+      if (conMatch?.[1]) {
+        const tail = normalizeText(conMatch[1]);
+        for (const opt of attr.options) {
+          const o = normalizeText(opt);
+          if (tail.includes(o) || o.includes(tail)) return opt;
+          const tailTokens = tail.split(' ').filter((t) => t.length >= 3);
+          for (const tok of tailTokens) {
+            if (o.includes(tok) && tok.length >= 4) return opt;
+            if (
+              tok.length >= 4 &&
+              o.split(' ').some((part) => part.startsWith(tok) || tok.startsWith(part))
+            ) {
+              return opt;
+            }
+          }
+        }
+      }
+    }
+
+    for (const opt of attr.options) {
+      const o = normalizeText(opt);
+      if (o.length >= 3 && (q === o || q.includes(o))) return opt;
+    }
+
+    if (/\bcombo\b/.test(q)) {
+      const comboOpt = attr.options.find((o) => normalizeText(o).includes('combo'));
+      if (comboOpt) return comboOpt;
+    }
+
+    const portionHints: Array<{ re: RegExp; needle: string }> = [
+      { re: /\b(medio|media)\b/, needle: 'medio' },
+      { re: /\b(cuarto|cuarta)\b/, needle: 'cuarto' },
+      { re: /\b(entero|entera|unidad)\b/, needle: 'entero' },
+      { re: /\b(uno|una)\b/, needle: 'uno' },
+    ];
+    for (const hint of portionHints) {
+      if (!hint.re.test(q)) continue;
+      const hit = attr.options.find((o) => normalizeText(o).includes(hint.needle));
+      if (hit) return hit;
+    }
+
+    for (const opt of attr.options) {
+      const o = normalizeText(opt);
+      for (const token of o.split(' ').filter((t) => t.length >= 3)) {
+        if (['pollo', 'frito', 'broaster', 'pechuga', 'gaseosa', 'combo'].includes(token)) {
+          continue;
+        }
+        const re = new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`);
+        if (re.test(q)) return opt;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Resuelve la SIGUIENTE opción pendiente (una a la vez).
    * Cualquier número solo (1, 2, 3…) = índice de esa opción, no código de producto.
    */
@@ -1273,8 +1378,11 @@ export class WhatsappCatalogService {
     | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
     | { status: 'invalid' } {
     if (!product.attributes?.length) {
-      return { status: 'complete', attributes: [] };
+      return { status: 'complete', attributes: alreadySelected };
     }
+
+    const fromMessage = this.resolveAttributesFromMessage(product, text, alreadySelected);
+    if (fromMessage.status !== 'invalid') return fromMessage;
 
     const remaining = this.getRemainingAttributes(product, alreadySelected);
     if (!remaining.length) {
@@ -1295,13 +1403,7 @@ export class WhatsappCatalogService {
     }
 
     if (!picked) {
-      for (const opt of attr.options) {
-        const no = normalizeText(opt);
-        if (no === t || t.includes(no) || no.includes(t)) {
-          picked = opt;
-          break;
-        }
-      }
+      picked = this.pickAttributeOptionFromText(text, attr);
     }
 
     // "opcion 2" / "la 2"
@@ -1331,7 +1433,7 @@ export class WhatsappCatalogService {
     product: WhatsappCatalogProduct,
     text: string,
   ): { attributeName: string; attributeValue: string }[] | null {
-    const step = this.resolveNextAttributeChoice(product, text, []);
+    const step = this.resolveAttributesFromMessage(product, text, []);
     if (step.status === 'complete') return step.attributes;
     if (step.status === 'partial') return null;
     return null;

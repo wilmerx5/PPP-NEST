@@ -28,6 +28,7 @@ import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 import type {
   AiOrderAction,
   WhatsappCartItem,
+  WhatsappPendingAttribute,
   WhatsappSessionData,
 } from './types/whatsapp-session.types';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
@@ -1219,7 +1220,7 @@ export class WhatsappOrchestratorService {
     return { ...session, cart };
   }
 
-  private toPendingAttribute(product: MenuProduct): WhatsappSessionData['pendingAttribute'] {
+  private toPendingAttribute(product: MenuProduct): WhatsappPendingAttribute {
     return {
       productId: product.id,
       name: product.name,
@@ -2864,7 +2865,7 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!product.hasAttributes || !product.attributes?.length) return false;
 
-    const step = this.catalogService.resolveNextAttributeChoice(product, text, []);
+    const step = this.catalogService.resolveAttributesFromMessage(product, text, []);
     if (step.status === 'complete') {
       const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
       if (added.blocked) {
@@ -2883,6 +2884,28 @@ export class WhatsappOrchestratorService {
           cfg.defaultDeliveryFee,
           `${product.name} (${chosen})`,
         ),
+      );
+      return true;
+    }
+
+    if (step.status === 'partial') {
+      session = {
+        ...session,
+        pendingAttribute: {
+          productId: product.id,
+          name: product.name,
+          code: product.code,
+          price: product.price,
+          attributes: product.attributes || [],
+          selected: step.attributes,
+        },
+        pendingMatch: undefined,
+      };
+      await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatProductOptionsPrompt(product, step.attributes),
       );
       return true;
     }

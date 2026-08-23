@@ -43,6 +43,7 @@ export declare class WhatsappCatalogService {
     extractCodeFromMessage(text: string): number | null;
     findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractProductSearchQuery(text: string): string;
+    stripProductSearchNoise(query: string): string;
     cleanOrderSegment(segment: string): string;
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     looksLikeMultiItemOrderMessage(text: string): boolean;
@@ -106,6 +107,28 @@ export declare class WhatsappCatalogService {
         attributeName: string;
         attributeValue: string;
     }[]): string;
+    resolveAttributesFromMessage(product: WhatsappCatalogProduct, text: string, alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): {
+        status: 'complete';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'partial';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'invalid';
+    };
+    pickAttributeOptionFromText(text: string, attr: {
+        attributeName: string;
+        options: string[];
+    }): string | null;
     resolveNextAttributeChoice(product: WhatsappCatalogProduct, text: string, alreadySelected: {
         attributeName: string;
         attributeValue: string;
