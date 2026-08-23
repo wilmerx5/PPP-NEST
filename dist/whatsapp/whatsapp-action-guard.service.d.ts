@@ -1,5 +1,6 @@
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import type { WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
 export type GuardResult = {
     actions: AiOrderAction | undefined;
     warnings: string[];
@@ -12,6 +13,7 @@ export declare class WhatsappActionGuardService {
         products: WhatsappCatalogProduct[];
         businessOpen: boolean;
         allowMercadoPago: boolean;
+        paymentMethods?: WhatsappPaymentMethodConfig[];
     }): GuardResult;
     private normalizeAttributes;
     formatAttributeOptions(product: WhatsappCatalogProduct): string;

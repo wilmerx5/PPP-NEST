@@ -40,7 +40,7 @@ export type WhatsappSessionData = {
     cart: WhatsappCartItem[];
     orderType: 'delivery' | 'pickup';
     address?: string;
-    paymentMethod?: 'cash' | 'mercadopago';
+    paymentMethod?: string;
     cashChangeFor?: string;
     customerNotes?: string;
     notesCollected?: boolean;
@@ -74,7 +74,7 @@ export type AiOrderAction = {
     setCustomerName?: string;
     setAddress?: string;
     setOrderType?: 'delivery' | 'pickup';
-    setPaymentMethod?: 'cash' | 'mercadopago';
+    setPaymentMethod?: string;
     setCashChangeFor?: string;
     setCustomerNotes?: string;
     requestConfirm?: boolean;

@@ -9,9 +9,96 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TakeoverWhatsappConversationDto = exports.SendWhatsappMessageDto = exports.UpdateWhatsappSettingsDto = void 0;
+exports.TakeoverWhatsappConversationDto = exports.SendWhatsappMessageDto = exports.UpdateWhatsappSettingsDto = exports.MenuConceptGroupDto = exports.WhatsappPaymentMethodDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+class WhatsappPaymentMethodDto {
+    id;
+    enabled;
+    label;
+    keywords;
+    optionText;
+    confirmReply;
+    flow;
+}
+exports.WhatsappPaymentMethodDto = WhatsappPaymentMethodDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(40),
+    __metadata("design:type", String)
+], WhatsappPaymentMethodDto.prototype, "id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], WhatsappPaymentMethodDto.prototype, "enabled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(80),
+    __metadata("design:type", String)
+], WhatsappPaymentMethodDto.prototype, "label", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], WhatsappPaymentMethodDto.prototype, "keywords", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], WhatsappPaymentMethodDto.prototype, "optionText", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1500),
+    __metadata("design:type", String)
+], WhatsappPaymentMethodDto.prototype, "confirmReply", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['immediate', 'mercadopago']),
+    __metadata("design:type", String)
+], WhatsappPaymentMethodDto.prototype, "flow", void 0);
+class MenuConceptGroupDto {
+    id;
+    label;
+    triggers;
+    productKeywords;
+    enabled;
+}
+exports.MenuConceptGroupDto = MenuConceptGroupDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(40),
+    __metadata("design:type", String)
+], MenuConceptGroupDto.prototype, "id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(80),
+    __metadata("design:type", String)
+], MenuConceptGroupDto.prototype, "label", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], MenuConceptGroupDto.prototype, "triggers", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], MenuConceptGroupDto.prototype, "productKeywords", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], MenuConceptGroupDto.prototype, "enabled", void 0);
 class UpdateWhatsappSettingsDto {
     enabled;
     displayPhone;
@@ -25,6 +112,8 @@ class UpdateWhatsappSettingsDto {
     systemPrompt;
     defaultDeliveryFee;
     allowMercadoPago;
+    paymentMethods;
+    menuConceptGroups;
     welcomeMessage;
     restaurantName;
     restaurantAddress;
@@ -140,6 +229,18 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateWhatsappSettingsDto.prototype, "allowMercadoPago", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => WhatsappPaymentMethodDto),
+    __metadata("design:type", Array)
+], UpdateWhatsappSettingsDto.prototype, "paymentMethods", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    __metadata("design:type", Array)
+], UpdateWhatsappSettingsDto.prototype, "menuConceptGroups", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

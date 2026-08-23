@@ -1,4 +1,6 @@
 import type { BusinessStatus } from '../business/business.service';
+import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
+import { getEnabledPaymentMethods } from './whatsapp-payment-methods';
 
 export type WhatsappRulesContext = {
   brandName: string;
@@ -10,13 +12,22 @@ export type WhatsappRulesContext = {
   localContextBlock?: string;
   /** Límites de pedido (admin) */
   orderLimitsBlock?: string;
+  paymentMethods?: WhatsappPaymentMethodConfig[];
 };
 
 /** Reglas fijas del negocio — la IA no puede contradecirlas; el código las valida. */
 export function buildWhatsappBusinessRulesBlock(ctx: WhatsappRulesContext): string {
-  const payLines = ctx.allowMercadoPago
-    ? '- Pagos permitidos: contra entrega (efectivo) o link Mercado Pago.'
-    : '- Pago permitido: solo contra entrega (efectivo). No menciones Mercado Pago.';
+  const enabledPay = getEnabledPaymentMethods(ctx.paymentMethods || []);
+  const payLines = enabledPay.length
+    ? `- Pagos permitidos:\n` +
+      enabledPay
+        .map(
+          (m) =>
+            `  • id="${m.id}" (${m.label}): el cliente puede decir: ${m.keywords.slice(0, 6).join(', ')}. ` +
+            `Usa setPaymentMethod con el id "${m.id}".`,
+        )
+        .join('\n')
+    : '- No hay métodos de pago configurados; ofrece *humano*.';
 
   const hoursLine = ctx.businessStatus.isOpen
     ? `- Restaurante ABIERTO. Horario hoy: ${ctx.businessStatus.openTime}–${ctx.businessStatus.closeTime}. ${ctx.businessStatus.subMessage ?? ''}`
@@ -45,7 +56,7 @@ ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. S
 - Si solo dicen que quieren hacer un pedido / ordenar (sin nombrar producto): pregunta qué se les antoja; NO uses addItems ni listes porciones.
 - Si preguntan qué hay / almuerzo / comida / recomendaciones / explorar menú: NO listes todos los productos ni códigos en bloque. Comparte el link del menú si está en el contexto, orienta por CATEGORÍAS con 1-2 ejemplos y pregunta qué categoría les antoja. Sigue el hilo de la conversación.
 - Productos: SOLO ids/códigos/nombres del menú provisto. Nunca inventes platos, precios, promos ni descuentos.
-- Si preguntan por una categoría concreta (sopas, bebidas, pollo…): el sistema lista esa categoría; no inventes un subconjunto.
+- Si preguntan por una categoría concreta (sopas, bebidas, pollo…) o un concepto (carne, arroz…): el sistema lista productos; no inventes un subconjunto. "Carne" puede incluir churrasco/sobrebarriga aunque no haya categoría "Carne".
 - Precios: usa EXACTAMENTE los del menú. No calcules totales finales; el sistema los muestra al confirmar.
 - Productos con variantes/atributos: pregunta SOLO la opción (números 1, 2, 3…). No pidas nombre ni dirección en el mismo mensaje.
 - UNA sola pregunta por mensaje. Orden: (1) producto/opciones → (2) ¿algo más? → (3) nombre → (4) domicilio O recojo → (5) pago → (6) confirmar.
@@ -70,7 +81,7 @@ Responde SOLO JSON válido (sin markdown):
     "setCustomerName": "string",
     "setAddress": "string",
     "setOrderType": "delivery" | "pickup",
-    "setPaymentMethod": "cash" | "mercadopago",
+    "setPaymentMethod": "string (id del método permitido, ej. cash, transfer, mercadopago)",
     "setCashChangeFor": "string opcional (billete / con cuánto paga)",
     "setCustomerNotes": "string opcional (notas cocina/domicilio)",
     "requestHuman": true,

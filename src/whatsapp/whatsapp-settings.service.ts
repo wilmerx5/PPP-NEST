@@ -4,6 +4,12 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 import { UpdateWhatsappSettingsDto } from './dto/whatsapp.dto';
+import {
+  resolvePaymentMethods,
+  sanitizePaymentMethodsInput,
+  type WhatsappPaymentMethodConfig,
+} from './whatsapp-payment-methods';
+import { resolveMenuConceptGroups, buildMenuConceptsPromptBlock, type MenuConceptGroup } from './whatsapp-menu-concepts';
 
 const DEFAULT_WELCOME =
   '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
@@ -140,6 +146,13 @@ export class WhatsappSettingsService {
       row.largeOrderHandoffMessage?.trim() || DEFAULT_LARGE_ORDER_HANDOFF;
 
     const temp = Number(row.aiTemperature);
+    const paymentMethods = resolvePaymentMethods(row.paymentMethods, {
+      allowMercadoPago: row.allowMercadoPago !== false,
+    });
+    const menuConceptGroups = resolveMenuConceptGroups(row.menuConceptGroups);
+    const allowMercadoPago = paymentMethods.some(
+      (m) => m.enabled && (m.flow === 'mercadopago' || m.id === 'mercadopago'),
+    );
     return {
       ...row,
       brandName: brand,
@@ -192,8 +205,11 @@ export class WhatsappSettingsService {
       websiteUrl: localContext.websiteUrl,
       ignoreBusinessHours: !!row.ignoreBusinessHours,
       localContext,
-      localContextBlock: this.buildLocalContextBlock(localContext),
+      localContextBlock: this.buildLocalContextBlock(localContext, menuConceptGroups),
       templateVars,
+      paymentMethods,
+      menuConceptGroups,
+      allowMercadoPago,
     };
   }
 
@@ -236,7 +252,7 @@ export class WhatsappSettingsService {
     };
   }
 
-  buildLocalContextBlock(ctx: WhatsappLocalContext): string {
+  buildLocalContextBlock(ctx: WhatsappLocalContext, menuConceptGroups?: MenuConceptGroup[]): string {
     const lines: string[] = [];
     if (ctx.restaurantName) lines.push(`Nombre del local: ${ctx.restaurantName}`);
     if (ctx.restaurantAddress) lines.push(`Dirección: ${ctx.restaurantAddress}`);
@@ -282,6 +298,8 @@ export class WhatsappSettingsService {
     if (ctx.hoursNote) lines.push(`Notas de horario: ${ctx.hoursNote}`);
     if (ctx.cancelPolicyNote) lines.push(`Política de cancelación: ${ctx.cancelPolicyNote}`);
     if (ctx.aiExtraContext) lines.push(`Info adicional: ${ctx.aiExtraContext}`);
+    const conceptsBlock = buildMenuConceptsPromptBlock(menuConceptGroups);
+    if (conceptsBlock) lines.push(conceptsBlock.replace(/\n/g, ' '));
     if (!lines.length) {
       return 'CONTEXTO DEL LOCAL: (sin configurar en admin; no inventes dirección ni ubicación).';
     }
@@ -309,6 +327,17 @@ export class WhatsappSettingsService {
       ...(dto.systemPrompt !== undefined && { systemPrompt: strOrNull(dto.systemPrompt) }),
       ...(dto.defaultDeliveryFee !== undefined && { defaultDeliveryFee: dto.defaultDeliveryFee }),
       ...(dto.allowMercadoPago !== undefined && { allowMercadoPago: dto.allowMercadoPago }),
+      ...(dto.paymentMethods !== undefined && {
+        paymentMethods: sanitizePaymentMethodsInput(dto.paymentMethods, {
+          allowMercadoPago:
+            dto.allowMercadoPago !== undefined
+              ? dto.allowMercadoPago
+              : row.allowMercadoPago !== false,
+        }) as unknown as WhatsappPaymentMethodConfig[],
+      }),
+      ...(dto.menuConceptGroups !== undefined && {
+        menuConceptGroups: dto.menuConceptGroups,
+      }),
       ...(dto.welcomeMessage !== undefined && { welcomeMessage: strOrNull(dto.welcomeMessage) }),
       ...(dto.restaurantName !== undefined && { restaurantName: strOrNull(dto.restaurantName) }),
       ...(dto.restaurantAddress !== undefined && {
@@ -392,6 +421,27 @@ export class WhatsappSettingsService {
       }),
       ...(dto.aiTemperature !== undefined && { aiTemperature: dto.aiTemperature }),
     });
+
+    // Mantener allowMercadoPago alineado con métodos configurados
+    if (dto.paymentMethods !== undefined) {
+      const methods = resolvePaymentMethods(row.paymentMethods, {
+        allowMercadoPago: true,
+      });
+      row.allowMercadoPago = methods.some(
+        (m) => m.enabled && (m.flow === 'mercadopago' || m.id === 'mercadopago'),
+      );
+      row.paymentMethods = methods;
+    } else if (dto.allowMercadoPago !== undefined && Array.isArray(row.paymentMethods)) {
+      const methods = resolvePaymentMethods(row.paymentMethods, {
+        allowMercadoPago: dto.allowMercadoPago,
+      }).map((m) =>
+        m.flow === 'mercadopago' || m.id === 'mercadopago'
+          ? { ...m, enabled: !!dto.allowMercadoPago }
+          : m,
+      );
+      row.paymentMethods = methods;
+    }
+
     return this.settingsRepo.save(row);
   }
 
@@ -421,6 +471,10 @@ export class WhatsappSettingsService {
       systemPrompt: row.systemPrompt,
       defaultDeliveryFee: Number(row.defaultDeliveryFee) > 0 ? Number(row.defaultDeliveryFee) : 2000,
       allowMercadoPago: !!row.allowMercadoPago,
+      paymentMethods: resolvePaymentMethods(row.paymentMethods, {
+        allowMercadoPago: row.allowMercadoPago !== false,
+      }),
+      menuConceptGroups: resolveMenuConceptGroups(row.menuConceptGroups),
       welcomeMessage: row.welcomeMessage,
       restaurantName: row.restaurantName,
       restaurantAddress: row.restaurantAddress,

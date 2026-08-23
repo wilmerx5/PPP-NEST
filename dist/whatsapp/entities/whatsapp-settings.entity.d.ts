@@ -12,6 +12,8 @@ export declare class WhatsappSettings {
     systemPrompt: string | null;
     defaultDeliveryFee: number;
     allowMercadoPago: boolean;
+    paymentMethods: unknown | null;
+    menuConceptGroups: unknown | null;
     welcomeMessage: string | null;
     restaurantName: string | null;
     restaurantAddress: string | null;

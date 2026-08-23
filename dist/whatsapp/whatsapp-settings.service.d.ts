@@ -2,6 +2,8 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 import { UpdateWhatsappSettingsDto } from './dto/whatsapp.dto';
+import { type WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
+import { type MenuConceptGroup } from './whatsapp-menu-concepts';
 export type WhatsappLocalContext = {
     restaurantName: string | null;
     restaurantAddress: string | null;
@@ -85,10 +87,12 @@ export declare class WhatsappSettingsService {
             phone: string;
             address: string;
         };
+        paymentMethods: WhatsappPaymentMethodConfig[];
+        menuConceptGroups: MenuConceptGroup[];
+        allowMercadoPago: boolean;
         id: number;
         displayPhone: string | null;
         wabaId: string | null;
-        allowMercadoPago: boolean;
         restaurantName: string | null;
         restaurantAddress: string | null;
         restaurantCity: string | null;
@@ -114,7 +118,7 @@ export declare class WhatsappSettingsService {
         updatedAt: Date;
     }>;
     extractLocalContext(row: WhatsappSettings, menuUrl: string): WhatsappLocalContext;
-    buildLocalContextBlock(ctx: WhatsappLocalContext): string;
+    buildLocalContextBlock(ctx: WhatsappLocalContext, menuConceptGroups?: MenuConceptGroup[]): string;
     updateSettings(dto: UpdateWhatsappSettingsDto): Promise<WhatsappSettings>;
     maskSettings(row: WhatsappSettings): {
         id: number;
@@ -134,6 +138,8 @@ export declare class WhatsappSettingsService {
         systemPrompt: string | null;
         defaultDeliveryFee: number;
         allowMercadoPago: boolean;
+        paymentMethods: WhatsappPaymentMethodConfig[];
+        menuConceptGroups: MenuConceptGroup[];
         welcomeMessage: string | null;
         restaurantName: string | null;
         restaurantAddress: string | null;

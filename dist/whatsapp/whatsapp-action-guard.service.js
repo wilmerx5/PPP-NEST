@@ -9,6 +9,7 @@ var WhatsappActionGuardService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsappActionGuardService = void 0;
 const common_1 = require("@nestjs/common");
+const whatsapp_payment_methods_1 = require("./whatsapp-payment-methods");
 let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappActionGuardService {
     logger = new common_1.Logger(WhatsappActionGuardService_1.name);
     sanitize(params) {
@@ -50,14 +51,32 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
         if (params.actions.setOrderType === 'delivery' || params.actions.setOrderType === 'pickup') {
             out.setOrderType = params.actions.setOrderType;
         }
-        if (params.actions.setPaymentMethod === 'cash') {
-            out.setPaymentMethod = 'cash';
-        }
-        else if (params.actions.setPaymentMethod === 'mercadopago') {
-            if (params.allowMercadoPago)
-                out.setPaymentMethod = 'mercadopago';
-            else
-                warnings.push('Mercado Pago no está habilitado; solo contra entrega.');
+        if (params.actions.setPaymentMethod) {
+            const methods = params.paymentMethods || [];
+            const enabled = (0, whatsapp_payment_methods_1.getEnabledPaymentMethods)(methods);
+            const raw = String(params.actions.setPaymentMethod).trim();
+            const byIdMatch = enabled.find((m) => m.id === raw);
+            const byText = (0, whatsapp_payment_methods_1.findPaymentMethodByText)(raw, methods);
+            const matched = byIdMatch || byText;
+            if (matched) {
+                if (matched.flow === 'mercadopago' && !params.allowMercadoPago) {
+                    warnings.push('Mercado Pago no está habilitado.');
+                }
+                else {
+                    out.setPaymentMethod = matched.id;
+                }
+            }
+            else if (raw === 'cash' || raw === 'mercadopago') {
+                if (raw === 'cash')
+                    out.setPaymentMethod = 'cash';
+                else if (params.allowMercadoPago)
+                    out.setPaymentMethod = 'mercadopago';
+                else
+                    warnings.push('Mercado Pago no está habilitado.');
+            }
+            else {
+                warnings.push('Método de pago no disponible.');
+            }
         }
         if (params.actions.setCashChangeFor) {
             const v = params.actions.setCashChangeFor.trim().slice(0, 120);

@@ -25,6 +25,8 @@ let WhatsappSettings = class WhatsappSettings {
     systemPrompt;
     defaultDeliveryFee;
     allowMercadoPago;
+    paymentMethods;
+    menuConceptGroups;
     welcomeMessage;
     restaurantName;
     restaurantAddress;
@@ -126,6 +128,14 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'allow_mercado_pago', type: 'boolean', default: true }),
     __metadata("design:type", Boolean)
 ], WhatsappSettings.prototype, "allowMercadoPago", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'payment_methods', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "paymentMethods", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'menu_concept_groups', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "menuConceptGroups", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'welcome_message', type: 'text', nullable: true }),
     __metadata("design:type", Object)

@@ -18,6 +18,8 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
+const whatsapp_payment_methods_1 = require("./whatsapp-payment-methods");
+const whatsapp_menu_concepts_1 = require("./whatsapp-menu-concepts");
 const DEFAULT_WELCOME = '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
 const DEFAULT_MENU_LINK = 'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
 const DEFAULT_HUMAN_HANDOFF = 'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.';
@@ -96,6 +98,11 @@ let WhatsappSettingsService = class WhatsappSettingsService {
         const closedTpl = row.closedMessage?.trim() || DEFAULT_CLOSED_MESSAGE;
         const largeOrderTpl = row.largeOrderHandoffMessage?.trim() || DEFAULT_LARGE_ORDER_HANDOFF;
         const temp = Number(row.aiTemperature);
+        const paymentMethods = (0, whatsapp_payment_methods_1.resolvePaymentMethods)(row.paymentMethods, {
+            allowMercadoPago: row.allowMercadoPago !== false,
+        });
+        const menuConceptGroups = (0, whatsapp_menu_concepts_1.resolveMenuConceptGroups)(row.menuConceptGroups);
+        const allowMercadoPago = paymentMethods.some((m) => m.enabled && (m.flow === 'mercadopago' || m.id === 'mercadopago'));
         return {
             ...row,
             brandName: brand,
@@ -143,8 +150,11 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             websiteUrl: localContext.websiteUrl,
             ignoreBusinessHours: !!row.ignoreBusinessHours,
             localContext,
-            localContextBlock: this.buildLocalContextBlock(localContext),
+            localContextBlock: this.buildLocalContextBlock(localContext, menuConceptGroups),
             templateVars,
+            paymentMethods,
+            menuConceptGroups,
+            allowMercadoPago,
         };
     }
     extractLocalContext(row, menuUrl) {
@@ -185,7 +195,7 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             menuUrl: clean(menuUrl),
         };
     }
-    buildLocalContextBlock(ctx) {
+    buildLocalContextBlock(ctx, menuConceptGroups) {
         const lines = [];
         if (ctx.restaurantName)
             lines.push(`Nombre del local: ${ctx.restaurantName}`);
@@ -252,6 +262,9 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             lines.push(`Política de cancelación: ${ctx.cancelPolicyNote}`);
         if (ctx.aiExtraContext)
             lines.push(`Info adicional: ${ctx.aiExtraContext}`);
+        const conceptsBlock = (0, whatsapp_menu_concepts_1.buildMenuConceptsPromptBlock)(menuConceptGroups);
+        if (conceptsBlock)
+            lines.push(conceptsBlock.replace(/\n/g, ' '));
         if (!lines.length) {
             return 'CONTEXTO DEL LOCAL: (sin configurar en admin; no inventes dirección ni ubicación).';
         }
@@ -274,6 +287,16 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             ...(dto.systemPrompt !== undefined && { systemPrompt: strOrNull(dto.systemPrompt) }),
             ...(dto.defaultDeliveryFee !== undefined && { defaultDeliveryFee: dto.defaultDeliveryFee }),
             ...(dto.allowMercadoPago !== undefined && { allowMercadoPago: dto.allowMercadoPago }),
+            ...(dto.paymentMethods !== undefined && {
+                paymentMethods: (0, whatsapp_payment_methods_1.sanitizePaymentMethodsInput)(dto.paymentMethods, {
+                    allowMercadoPago: dto.allowMercadoPago !== undefined
+                        ? dto.allowMercadoPago
+                        : row.allowMercadoPago !== false,
+                }),
+            }),
+            ...(dto.menuConceptGroups !== undefined && {
+                menuConceptGroups: dto.menuConceptGroups,
+            }),
             ...(dto.welcomeMessage !== undefined && { welcomeMessage: strOrNull(dto.welcomeMessage) }),
             ...(dto.restaurantName !== undefined && { restaurantName: strOrNull(dto.restaurantName) }),
             ...(dto.restaurantAddress !== undefined && {
@@ -357,6 +380,21 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             }),
             ...(dto.aiTemperature !== undefined && { aiTemperature: dto.aiTemperature }),
         });
+        if (dto.paymentMethods !== undefined) {
+            const methods = (0, whatsapp_payment_methods_1.resolvePaymentMethods)(row.paymentMethods, {
+                allowMercadoPago: true,
+            });
+            row.allowMercadoPago = methods.some((m) => m.enabled && (m.flow === 'mercadopago' || m.id === 'mercadopago'));
+            row.paymentMethods = methods;
+        }
+        else if (dto.allowMercadoPago !== undefined && Array.isArray(row.paymentMethods)) {
+            const methods = (0, whatsapp_payment_methods_1.resolvePaymentMethods)(row.paymentMethods, {
+                allowMercadoPago: dto.allowMercadoPago,
+            }).map((m) => m.flow === 'mercadopago' || m.id === 'mercadopago'
+                ? { ...m, enabled: !!dto.allowMercadoPago }
+                : m);
+            row.paymentMethods = methods;
+        }
         return this.settingsRepo.save(row);
     }
     maskSettings(row) {
@@ -386,6 +424,10 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             systemPrompt: row.systemPrompt,
             defaultDeliveryFee: Number(row.defaultDeliveryFee) > 0 ? Number(row.defaultDeliveryFee) : 2000,
             allowMercadoPago: !!row.allowMercadoPago,
+            paymentMethods: (0, whatsapp_payment_methods_1.resolvePaymentMethods)(row.paymentMethods, {
+                allowMercadoPago: row.allowMercadoPago !== false,
+            }),
+            menuConceptGroups: (0, whatsapp_menu_concepts_1.resolveMenuConceptGroups)(row.menuConceptGroups),
             welcomeMessage: row.welcomeMessage,
             restaurantName: row.restaurantName,
             restaurantAddress: row.restaurantAddress,

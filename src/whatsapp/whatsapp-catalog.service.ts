@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
+import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 
@@ -456,6 +457,38 @@ export class WhatsappCatalogService {
           }
         }
       }
+
+      // "ahora pollo", "pregunto por carne" (sin ver/lista explícito)
+      const SKIP = new Set([
+        'por',
+        'que',
+        'un',
+        'una',
+        'el',
+        'la',
+        'los',
+        'las',
+        'de',
+        'del',
+        'y',
+        'o',
+        'ahora',
+        'tambien',
+        'pregunto',
+        'interesa',
+        'ver',
+        'dame',
+      ]);
+      if (significantTokens.length <= 4) {
+        for (const t of significantTokens) {
+          if (SKIP.has(t)) continue;
+          const ts = stemLoose(t);
+          if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
+            score = Math.max(score, 72);
+          }
+        }
+      }
+
       // Frase larga de pedido sin intención de “ver categoría”: no matchear
       // solo porque incluye la palabra de la categoría (pollo dentro de “arroz con pollo”).
 
@@ -471,6 +504,32 @@ export class WhatsappCatalogService {
     const list = available.filter((p) => p.categoryName === best!.categoryName);
     if (!list.length) return null;
     return { categoryName: best.categoryName, products: list };
+  }
+
+  /** Busca categoría en texto crudo y en versión sin muletillas de pedido. */
+  findCategoryBrowseHit(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    menuConceptGroups?: MenuConceptGroup[],
+  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    const extracted = this.extractProductSearchQuery(trimmed);
+    const queries = extracted !== trimmed ? [extracted, trimmed] : [extracted];
+
+    for (const q of queries) {
+      const byCat = this.findByCategory(q, products);
+      if (byCat) return byCat;
+    }
+
+    for (const q of queries) {
+      const byConcept = findByMenuConcept(q, products, menuConceptGroups);
+      if (byConcept) {
+        return { categoryName: byConcept.categoryName, products: byConcept.products };
+      }
+    }
+
+    return null;
   }
 
   searchByName(query: string, products: WhatsappCatalogProduct[], limit = 8): WhatsappCatalogProduct[] {

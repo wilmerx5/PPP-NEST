@@ -28,6 +28,8 @@ export declare class WhatsappOrchestratorService {
     private toPendingAttribute;
     private buildSessionSummary;
     private replyLooksLikeProductDump;
+    private tryHandleCategoryBrowse;
+    private isPendingListRepromptText;
     private looksLikeSideQuestion;
     private answerSideQuestionWithAi;
     private formatCartOnly;
@@ -64,9 +66,13 @@ export declare class WhatsappOrchestratorService {
     private looksLikeAddress;
     private formatLocationAddress;
     private buildAskNotesMessage;
+    private looksLikeStandaloneOrderNote;
+    private appendCustomerNote;
     private applyNotesFromText;
     private buildOrderExtras;
     private looksLikePayment;
+    private resolvePaymentChoice;
+    private buildPaymentConfirmReply;
     private buildWelcomeMessage;
     private formatOrderSuccessMessage;
     private reply;

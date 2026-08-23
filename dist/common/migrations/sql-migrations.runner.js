@@ -312,6 +312,8 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             { name: 'mp_payment_idle_minutes', ddl: 'INT NOT NULL DEFAULT 60' },
             { name: 'session_idle_notify', ddl: 'TINYINT(1) NOT NULL DEFAULT 1' },
             { name: 'app_secret', ddl: 'TEXT NULL' },
+            { name: 'payment_methods', ddl: 'JSON NULL' },
+            { name: 'menu_concept_groups', ddl: 'JSON NULL' },
             { name: 'payment_instructions', ddl: 'TEXT NULL' },
             { name: 'hours_note', ddl: 'TEXT NULL' },
             { name: 'cancel_policy_note', ddl: 'TEXT NULL' },

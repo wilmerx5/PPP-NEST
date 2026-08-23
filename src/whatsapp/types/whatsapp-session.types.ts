@@ -39,7 +39,7 @@ export type WhatsappSessionData = {
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
-  paymentMethod?: 'cash' | 'mercadopago';
+  paymentMethod?: string;
   /** Con cuánto paga / billete (contraentrega) */
   cashChangeFor?: string;
   /** Notas para cocina / domicilio */
@@ -98,7 +98,7 @@ export type AiOrderAction = {
   setCustomerName?: string;
   setAddress?: string;
   setOrderType?: 'delivery' | 'pickup';
-  setPaymentMethod?: 'cash' | 'mercadopago';
+  setPaymentMethod?: string;
   setCashChangeFor?: string;
   setCustomerNotes?: string;
   requestConfirm?: boolean;

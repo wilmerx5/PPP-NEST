@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsappCatalogService = void 0;
 const common_1 = require("@nestjs/common");
 const products_service_1 = require("../products/products.service");
+const whatsapp_menu_concepts_1 = require("./whatsapp-menu-concepts");
 function normalizeText(s) {
     return s
         .toLowerCase()
@@ -382,6 +383,36 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     }
                 }
             }
+            const SKIP = new Set([
+                'por',
+                'que',
+                'un',
+                'una',
+                'el',
+                'la',
+                'los',
+                'las',
+                'de',
+                'del',
+                'y',
+                'o',
+                'ahora',
+                'tambien',
+                'pregunto',
+                'interesa',
+                'ver',
+                'dame',
+            ]);
+            if (significantTokens.length <= 4) {
+                for (const t of significantTokens) {
+                    if (SKIP.has(t))
+                        continue;
+                    const ts = stemLoose(t);
+                    if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
+                        score = Math.max(score, 72);
+                    }
+                }
+            }
             if (score >= 70 && isBrowseIntent)
                 score += 10;
             if (score >= 70 && (!best || score > best.score)) {
@@ -394,6 +425,25 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         if (!list.length)
             return null;
         return { categoryName: best.categoryName, products: list };
+    }
+    findCategoryBrowseHit(text, products, menuConceptGroups) {
+        const trimmed = text.trim();
+        if (!trimmed)
+            return null;
+        const extracted = this.extractProductSearchQuery(trimmed);
+        const queries = extracted !== trimmed ? [extracted, trimmed] : [extracted];
+        for (const q of queries) {
+            const byCat = this.findByCategory(q, products);
+            if (byCat)
+                return byCat;
+        }
+        for (const q of queries) {
+            const byConcept = (0, whatsapp_menu_concepts_1.findByMenuConcept)(q, products, menuConceptGroups);
+            if (byConcept) {
+                return { categoryName: byConcept.categoryName, products: byConcept.products };
+            }
+        }
+        return null;
     }
     searchByName(query, products, limit = 8) {
         return this.searchByNameScored(query, products, limit).map((x) => x.p);

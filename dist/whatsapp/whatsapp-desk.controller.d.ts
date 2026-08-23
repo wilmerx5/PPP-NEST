@@ -41,7 +41,7 @@ export declare class WhatsappDeskController {
         humanAgentName: string | null;
         cartCount: number;
         orderType: "delivery" | "pickup" | null;
-        paymentMethod: "cash" | "mercadopago" | null;
+        paymentMethod: string | null;
         address: string | null;
         messages: {
             id: string;

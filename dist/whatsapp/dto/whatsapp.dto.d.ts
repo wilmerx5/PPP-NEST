@@ -1,3 +1,19 @@
+export declare class WhatsappPaymentMethodDto {
+    id?: string;
+    enabled?: boolean;
+    label?: string;
+    keywords?: string[];
+    optionText?: string;
+    confirmReply?: string;
+    flow?: 'immediate' | 'mercadopago';
+}
+export declare class MenuConceptGroupDto {
+    id?: string;
+    label?: string;
+    triggers?: string[];
+    productKeywords?: string[];
+    enabled?: boolean;
+}
 export declare class UpdateWhatsappSettingsDto {
     enabled?: boolean;
     displayPhone?: string;
@@ -11,6 +27,8 @@ export declare class UpdateWhatsappSettingsDto {
     systemPrompt?: string;
     defaultDeliveryFee?: number;
     allowMercadoPago?: boolean;
+    paymentMethods?: WhatsappPaymentMethodDto[];
+    menuConceptGroups?: MenuConceptGroupDto[];
     welcomeMessage?: string;
     restaurantName?: string;
     restaurantAddress?: string;

@@ -1,5 +1,6 @@
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
+import { type MenuConceptGroup } from './whatsapp-menu-concepts';
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 export declare class WhatsappCatalogService {
     private readonly productsService;
@@ -30,6 +31,10 @@ export declare class WhatsappCatalogService {
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     private looksLikeDeliveryTail;
     findByCategory(query: string, products: WhatsappCatalogProduct[]): {
+        categoryName: string;
+        products: WhatsappCatalogProduct[];
+    } | null;
+    findCategoryBrowseHit(text: string, products: WhatsappCatalogProduct[], menuConceptGroups?: MenuConceptGroup[]): {
         categoryName: string;
         products: WhatsappCatalogProduct[];
     } | null;

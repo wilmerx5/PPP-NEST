@@ -28,6 +28,8 @@ export declare class WhatsappAdminController {
         systemPrompt: string | null;
         defaultDeliveryFee: number;
         allowMercadoPago: boolean;
+        paymentMethods: import("./whatsapp-payment-methods").WhatsappPaymentMethodConfig[];
+        menuConceptGroups: import("./whatsapp-menu-concepts").MenuConceptGroup[];
         welcomeMessage: string | null;
         restaurantName: string | null;
         restaurantAddress: string | null;
@@ -95,6 +97,8 @@ export declare class WhatsappAdminController {
         systemPrompt: string | null;
         defaultDeliveryFee: number;
         allowMercadoPago: boolean;
+        paymentMethods: import("./whatsapp-payment-methods").WhatsappPaymentMethodConfig[];
+        menuConceptGroups: import("./whatsapp-menu-concepts").MenuConceptGroup[];
         welcomeMessage: string | null;
         restaurantName: string | null;
         restaurantAddress: string | null;
@@ -172,7 +176,7 @@ export declare class WhatsappAdminController {
         humanAgentName: string | null;
         cartCount: number;
         orderType: "delivery" | "pickup" | null;
-        paymentMethod: "cash" | "mercadopago" | null;
+        paymentMethod: string | null;
         address: string | null;
         messages: {
             id: string;

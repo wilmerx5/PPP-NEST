@@ -42,6 +42,20 @@ export class WhatsappSettings {
   @Column({ name: 'allow_mercado_pago', type: 'boolean', default: true })
   allowMercadoPago: boolean;
 
+  /**
+   * Métodos de pago WhatsApp (JSON):
+   * [{ id, enabled, label, keywords[], optionText, confirmReply, flow }]
+   */
+  @Column({ name: 'payment_methods', type: 'json', nullable: true })
+  paymentMethods: unknown | null;
+
+  /**
+   * Grupos concepto menú (JSON): carne → churrasco, sobrebarriga…
+   * [{ id, label, triggers[], productKeywords[], enabled? }]
+   */
+  @Column({ name: 'menu_concept_groups', type: 'json', nullable: true })
+  menuConceptGroups: unknown | null;
+
   @Column({ name: 'welcome_message', type: 'text', nullable: true })
   welcomeMessage: string | null;
 

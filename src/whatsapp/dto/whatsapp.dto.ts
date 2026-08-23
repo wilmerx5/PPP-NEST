@@ -1,5 +1,7 @@
 import {
+  IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -7,8 +9,70 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class WhatsappPaymentMethodDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  label?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  keywords?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  optionText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1500)
+  confirmReply?: string;
+
+  @IsOptional()
+  @IsIn(['immediate', 'mercadopago'])
+  flow?: 'immediate' | 'mercadopago';
+}
+
+export class MenuConceptGroupDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  label?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  triggers?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productKeywords?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
 
 export class UpdateWhatsappSettingsDto {
   @IsOptional()
@@ -65,6 +129,16 @@ export class UpdateWhatsappSettingsDto {
   @IsOptional()
   @IsBoolean()
   allowMercadoPago?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WhatsappPaymentMethodDto)
+  paymentMethods?: WhatsappPaymentMethodDto[];
+
+  @IsOptional()
+  @IsArray()
+  menuConceptGroups?: MenuConceptGroupDto[];
 
   @IsOptional()
   @IsString()
