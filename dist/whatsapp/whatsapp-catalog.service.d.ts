@@ -43,6 +43,9 @@ export declare class WhatsappCatalogService {
     extractCodeFromMessage(text: string): number | null;
     findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractProductSearchQuery(text: string): string;
+    cleanOrderSegment(segment: string): string;
+    findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
+    looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     private looksLikeDeliveryTail;
     findByCategory(query: string, products: WhatsappCatalogProduct[]): {
@@ -65,7 +68,27 @@ export declare class WhatsappCatalogService {
     isPriceInquiryIntent(text: string): boolean;
     stripPriceInquiryNoise(text: string): string;
     formatProductPriceReply(product: WhatsappCatalogProduct): string;
-    formatProductVariantsOverview(product: WhatsappCatalogProduct, mode?: 'info' | 'order'): string;
+    formatProductVariantsOverview(product: WhatsappCatalogProduct, mode?: 'info' | 'order', alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): string;
+    getRemainingAttributes(product: WhatsappCatalogProduct, alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): NonNullable<WhatsappCatalogProduct['attributes']>;
+    isComboOnlyAttribute(attr: {
+        attributeName: string;
+    }): boolean;
+    hasComboPortionSelected(alreadySelected: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): boolean;
+    formatDescriptionForAttributeStep(description: string | null | undefined, alreadySelected: {
+        attributeName: string;
+        attributeValue: string;
+    }[], nextAttr?: {
+        attributeName: string;
+    }): string | null;
     isGenericProductInquiry(text: string): boolean;
     isShortGenericFoodQuery(query: string): boolean;
     extractExplicitAttributeChoice(text: string, product: WhatsappCatalogProduct): {

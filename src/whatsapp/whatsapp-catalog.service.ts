@@ -344,6 +344,9 @@ export class WhatsappCatalogService {
 
     q = q
       .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
+      .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
+      .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme|regalarme)\s+)/i, '')
+      .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
       .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
       .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
       .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)\s+/i, '')
@@ -351,7 +354,76 @@ export class WhatsappCatalogService {
       .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
       .trim();
 
+    q = this.cleanOrderSegment(q);
+
     return q || text.trim();
+  }
+
+  /** Limpia ruido coloquial dentro de un segmento de pedido. */
+  cleanOrderSegment(segment: string): string {
+    return segment
+      .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
+      .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme)\s+)/i, '')
+      .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
+      .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
+      .replace(/\bde\s+con\b/gi, 'con')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /** Todos los productos cuyo nombre aparece en el mensaje (sin solaparse). */
+  findAllProductsEmbeddedInMessage(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const q = normalizeText(text);
+    if (!q || q.length < 4) return [];
+
+    const available = products.filter((p) => p.availableNow !== false);
+    const hits: Array<{
+      p: WhatsappCatalogProduct;
+      start: number;
+      end: number;
+      nameLen: number;
+    }> = [];
+
+    for (const p of available) {
+      const name = normalizeText(p.name);
+      if (name.length < 4) continue;
+      let idx = 0;
+      while ((idx = q.indexOf(name, idx)) !== -1) {
+        hits.push({ p, start: idx, end: idx + name.length, nameLen: name.length });
+        idx += 1;
+      }
+    }
+
+    hits.sort((a, b) => b.nameLen - a.nameLen || a.start - b.start);
+
+    const picked: WhatsappCatalogProduct[] = [];
+    const ranges: Array<{ start: number; end: number }> = [];
+    const usedIds = new Set<number>();
+
+    for (const h of hits) {
+      if (usedIds.has(h.p.id)) continue;
+      const overlaps = ranges.some((r) => !(h.end <= r.start || h.start >= r.end));
+      if (overlaps) continue;
+      picked.push(h.p);
+      usedIds.add(h.p.id);
+      ranges.push({ start: h.start, end: h.end });
+    }
+
+    return picked.sort((a, b) => {
+      const aIdx = q.indexOf(normalizeText(a.name));
+      const bIdx = q.indexOf(normalizeText(b.name));
+      return aIdx - bIdx;
+    });
+  }
+
+  /** Mensaje con varios ítems unidos por "y" o coma. */
+  looksLikeMultiItemOrderMessage(text: string): boolean {
+    if (!/\s+\by\b\s+|\s*,\s*/i.test(text)) return false;
+    if (this.isPriceInquiryIntent(text)) return false;
+    return this.splitMultiProductSegments(text).length >= 2;
   }
 
   /**
@@ -771,35 +843,112 @@ export class WhatsappCatalogService {
   }
 
   /**
-   * Muestra TODAS las porciones/opciones de una vez (no empuja solo la primera, ej. "medio").
+   * Muestra porciones/opciones de a UNA vez — solo el siguiente paso (no adelanta gaseosas del combo).
    */
   formatProductVariantsOverview(
     product: WhatsappCatalogProduct,
     mode: 'info' | 'order' = 'info',
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
   ): string {
     const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
     let msg = `*${product.name}* (cód. ${product.code})`;
     msg += `\n\nPrecio base en menú: *${price}*`;
-    if (product.description) {
-      msg += `\n_${product.description}_`;
-    }
 
-    for (const attr of product.attributes || []) {
-      if (!attr.options?.length) continue;
-      msg += `\n\n*${attr.attributeName}*:`;
-      attr.options.forEach((opt, i) => {
-        msg += `\n  ${i + 1}) ${opt}`;
-      });
+    const remaining = this.getRemainingAttributes(product, alreadySelected);
+    const next = remaining[0];
+    const desc = this.formatDescriptionForAttributeStep(
+      product.description,
+      alreadySelected,
+      next,
+    );
+    if (desc) {
+      msg += `\n_${desc}_`;
     }
 
     if (mode === 'info') {
+      const infoAttrs = remaining.filter((a) => !this.isComboOnlyAttribute(a));
+      for (const attr of infoAttrs) {
+        if (!attr.options?.length) continue;
+        msg += `\n\n*${attr.attributeName}*:`;
+        attr.options.forEach((opt, i) => {
+          msg += `\n  ${i + 1}) ${opt}`;
+        });
+      }
+      if (
+        !infoAttrs.some((a) => this.isComboOnlyAttribute(a)) &&
+        (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))
+      ) {
+        msg += '\n\n_Si pides *combo*, después eliges las gaseosas._';
+      }
       msg +=
-        '\n\n_Te muestro todas las opciones. Dime cuál te interesa o si quieres pedir alguna._';
+        '\n\n_Te muestro las porciones. Dime cuál te interesa o si quieres pedir alguna._';
+    } else if (next?.options?.length) {
+      msg += `\n\n*${next.attributeName}*:`;
+      next.options.forEach((opt, i) => {
+        msg += `\n  ${i + 1}) ${opt}`;
+      });
+      if (this.isComboOnlyAttribute(next)) {
+        msg += '\n\n_Recuerda elegir todas las gaseosas del combo._';
+      }
+      msg +=
+        '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, combo…) o el *número*.';
     } else {
       msg +=
-        '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, entero…) o el *número*.';
+        '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, combo…) o el *número*.';
     }
     return msg;
+  }
+
+  /** Atributos que faltan por elegir (respeta reglas tipo combo → gaseosas). */
+  getRemainingAttributes(
+    product: WhatsappCatalogProduct,
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+  ): NonNullable<WhatsappCatalogProduct['attributes']> {
+    return (product.attributes || []).filter((attr) => {
+      if (alreadySelected.some((s) => s.attributeName === attr.attributeName)) return false;
+      if (this.isComboOnlyAttribute(attr) && !this.hasComboPortionSelected(alreadySelected)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  /** Gaseosas/bebidas del combo: solo después de elegir porción combo. */
+  isComboOnlyAttribute(attr: { attributeName: string }): boolean {
+    const n = normalizeText(attr.attributeName);
+    return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
+  }
+
+  hasComboPortionSelected(
+    alreadySelected: { attributeName: string; attributeValue: string }[],
+  ): boolean {
+    return alreadySelected.some((s) => /\bcombo\b/.test(normalizeText(s.attributeValue)));
+  }
+
+  /** Oculta notas de combo/gaseosas hasta que aplique ese paso. */
+  formatDescriptionForAttributeStep(
+    description: string | null | undefined,
+    alreadySelected: { attributeName: string; attributeValue: string }[],
+    nextAttr?: { attributeName: string },
+  ): string | null {
+    if (!description?.trim()) return null;
+
+    const showComboNotes =
+      this.hasComboPortionSelected(alreadySelected) ||
+      (nextAttr != null && this.isComboOnlyAttribute(nextAttr));
+
+    if (showComboNotes) return description.trim();
+
+    const filtered = description
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => {
+        const n = normalizeText(sentence);
+        return !/\b(combo|gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
+      })
+      .join(' ')
+      .trim();
+
+    return filtered || null;
   }
 
   /** Consulta informativa: precio, qué hay, opciones — sin pedir porción concreta aún. */
@@ -881,15 +1030,11 @@ export class WhatsappCatalogService {
    */
   splitMultiProductSegments(text: string): string[] {
     let q = this.extractProductSearchQuery(text);
-    q = q
-      .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
-      .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
-      .trim();
     if (!q) return [];
 
     const byCommaOrY = q
       .split(/\s*,\s*|\s+\by\b\s+/i)
-      .map((s) => s.trim())
+      .map((s) => this.cleanOrderSegment(s.trim()))
       .filter((s) => s.length >= 3);
 
     const expanded: string[] = [];
@@ -900,10 +1045,9 @@ export class WhatsappCatalogService {
     const seen = new Set<string>();
     const out: string[] = [];
     for (const seg of expanded) {
-      const cleaned = seg
-        .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
-        .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
-        .trim();
+      const cleaned = this.cleanOrderSegment(
+        seg.replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim(),
+      );
       if (cleaned.length < 3) continue;
       const key = normalizeText(cleaned);
       if (seen.has(key)) continue;
@@ -931,11 +1075,38 @@ export class WhatsappCatalogService {
   ): MultiProductResolveResult | null {
     if (this.isPriceInquiryIntent(text)) return null;
     if (this.isMenuExploreIntent(text, products)) return null;
-    if (this.findProductEmbeddedInMessage(text, products) && this.splitMultiProductSegments(text).length < 2) {
-      return null;
-    }
 
     const segments = this.splitMultiProductSegments(text);
+    const embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
+
+    if (embeddedAll.length >= 2) {
+      const confident: MultiProductSegmentMatch[] = [];
+      const needsAttributes: MultiProductSegmentMatch[] = [];
+      for (const product of embeddedAll) {
+        const segment =
+          segments.find((s) => normalizeText(s).includes(normalizeText(product.name))) ||
+          product.name;
+        const match = { segment, product, score: 100 };
+        if (product.hasAttributes && product.attributes?.length) {
+          const explicit = this.extractExplicitAttributeChoice(segment, product);
+          if (explicit) confident.push(match);
+          else needsAttributes.push(match);
+        } else {
+          confident.push(match);
+        }
+      }
+      const resolvedCount = confident.length + needsAttributes.length;
+      if (resolvedCount >= 2) {
+        return {
+          segments,
+          confident,
+          ambiguous: [],
+          unresolved: [],
+          needsAttributes,
+        };
+      }
+    }
+
     if (segments.length < 2) return null;
 
     const confident: MultiProductSegmentMatch[] = [];
@@ -944,14 +1115,17 @@ export class WhatsappCatalogService {
     const needsAttributes: MultiProductSegmentMatch[] = [];
     const usedProductIds = new Set<number>();
 
-    for (const segment of segments) {
+    for (const rawSegment of segments) {
+      const segment = this.cleanOrderSegment(rawSegment);
       const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (embedded) {
         if (usedProductIds.has(embedded.id)) continue;
         usedProductIds.add(embedded.id);
         const match = { segment, product: embedded, score: 100 };
-        if (embedded.hasAttributes && embedded.attributes?.length) needsAttributes.push(match);
-        else confident.push(match);
+        if (embedded.hasAttributes && embedded.attributes?.length) {
+          if (this.extractExplicitAttributeChoice(segment, embedded)) confident.push(match);
+          else needsAttributes.push(match);
+        } else confident.push(match);
         continue;
       }
 
@@ -962,31 +1136,56 @@ export class WhatsappCatalogService {
         continue;
       }
 
+      // Segmentos tipo "ejecutivo con pierna..." → priorizar productos con "ejecutivo" en el nombre
+      const segNorm = normalizeText(segment);
+      if (/\bejecutivo\b/.test(segNorm)) {
+        const ejecutivoHits = scored.filter((x) => normalizeText(x.p.name).includes('ejecutivo'));
+        if (ejecutivoHits.length === 1) {
+          const top = ejecutivoHits[0];
+          if (!usedProductIds.has(top.p.id)) {
+            usedProductIds.add(top.p.id);
+            const match = { segment, product: top.p, score: top.score };
+            if (top.p.hasAttributes && top.p.attributes?.length) {
+              if (this.extractExplicitAttributeChoice(segment, top.p)) confident.push(match);
+              else needsAttributes.push(match);
+            } else confident.push(match);
+            continue;
+          }
+        }
+      }
+
       if (this.isStrongProductMatch(scored)) {
         const top = scored[0];
         if (usedProductIds.has(top.p.id)) continue;
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
-        if (top.p.hasAttributes && top.p.attributes?.length) needsAttributes.push(match);
-        else confident.push(match);
+        if (top.p.hasAttributes && top.p.attributes?.length) {
+          if (this.extractExplicitAttributeChoice(segment, top.p)) confident.push(match);
+          else needsAttributes.push(match);
+        } else confident.push(match);
         continue;
       }
 
       if (scored.length >= 2 && scored[0].score >= 35) {
         ambiguous.push({ segment, candidates: scored.slice(0, 4).map((x) => x.p) });
-      } else if (scored.length === 1 && scored[0].score >= 45) {
+      } else if (scored.length === 1 && scored[0].score >= 40) {
         const top = scored[0];
         if (usedProductIds.has(top.p.id)) continue;
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
-        if (top.p.hasAttributes && top.p.attributes?.length) needsAttributes.push(match);
-        else confident.push(match);
+        if (top.p.hasAttributes && top.p.attributes?.length) {
+          if (this.extractExplicitAttributeChoice(segment, top.p)) confident.push(match);
+          else needsAttributes.push(match);
+        } else confident.push(match);
       } else {
         unresolved.push(segment);
       }
     }
 
     const resolvedCount = confident.length + ambiguous.length + needsAttributes.length;
+    if (segments.length >= 2 && (resolvedCount >= 1 || unresolved.length > 0)) {
+      return { segments, confident, ambiguous, unresolved, needsAttributes };
+    }
     if (resolvedCount < 2) return null;
 
     return { segments, confident, ambiguous, unresolved, needsAttributes };
@@ -1026,17 +1225,21 @@ export class WhatsappCatalogService {
   ): string {
     const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
     let msg = `*${product.name}* (código ${product.code}) — ${price}`;
-    if (product.description) {
-      msg += `\n\n📝 ${product.description}`;
+
+    const remaining = this.getRemainingAttributes(product, alreadySelected);
+    const next = remaining[0];
+    const desc = this.formatDescriptionForAttributeStep(
+      product.description,
+      alreadySelected,
+      next,
+    );
+    if (desc) {
+      msg += `\n\n📝 ${desc}`;
     }
     if (!product.hasAttributes || !product.attributes?.length) {
       return msg;
     }
 
-    const remaining = product.attributes.filter(
-      (a) => !alreadySelected.some((s) => s.attributeName === a.attributeName),
-    );
-    const next = remaining[0];
     if (!next) return msg;
 
     if (alreadySelected.length) {
@@ -1049,6 +1252,9 @@ export class WhatsappCatalogService {
     next.options.forEach((opt, i) => {
       msg += `\n  ${i + 1}) ${opt}`;
     });
+    if (this.isComboOnlyAttribute(next)) {
+      msg += '\n\n_Recuerda elegir todas las gaseosas del combo._';
+    }
     msg +=
       '\n\nRespóndeme con el *número* (1, 2, 3…) o el nombre. _Aquí el número es la opción, no el código del producto._';
     return msg;
@@ -1070,9 +1276,7 @@ export class WhatsappCatalogService {
       return { status: 'complete', attributes: [] };
     }
 
-    const remaining = product.attributes.filter(
-      (a) => !alreadySelected.some((s) => s.attributeName === a.attributeName),
-    );
+    const remaining = this.getRemainingAttributes(product, alreadySelected);
     if (!remaining.length) {
       return { status: 'complete', attributes: alreadySelected };
     }
@@ -1116,7 +1320,7 @@ export class WhatsappCatalogService {
       { attributeName: attr.attributeName, attributeValue: picked },
     ];
 
-    if (nextSelected.length >= product.attributes.length) {
+    if (!this.getRemainingAttributes(product, nextSelected).length) {
       return { status: 'complete', attributes: nextSelected };
     }
     return { status: 'partial', attributes: nextSelected };

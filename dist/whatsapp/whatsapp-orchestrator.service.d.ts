@@ -32,7 +32,9 @@ export declare class WhatsappOrchestratorService {
     private isPendingListRepromptText;
     private looksLikeSideQuestion;
     private answerSideQuestionWithAi;
+    private formatContinueShoppingPrompt;
     private formatCartOnly;
+    private buildCartAddReply;
     private formatOrderSummary;
     private isReadyToConfirm;
     private tryConfirmOrder;
@@ -54,7 +56,13 @@ export declare class WhatsappOrchestratorService {
     private tryHandleProductCompositionQuestion;
     private resolveImageOrderText;
     private resolveImageMessage;
-    private isRestartIntent;
+    private normalizeForMatch;
+    private isClearCartIntent;
+    private extractCartRemovalQuery;
+    private formatCartLineLabel;
+    private matchCartItemsForRemoval;
+    private removeCartLines;
+    private tryHandleCartModification;
     private isCancelIntent;
     private formatOrderStatusLabel;
     private handleCancelRequest;

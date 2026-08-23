@@ -136,7 +136,15 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
                 normalized.push({ attributeName: def.attributeName, attributeValue: opt || match.attributeValue.trim() });
             }
         }
-        if (normalized.length !== product.attributes.length) {
+        const hasCombo = normalized.some((s) => /\bcombo\b/i.test(s.attributeValue));
+        const requiredAttrs = product.attributes.filter((def) => {
+            const n = def.attributeName.toLowerCase();
+            const comboOnly = /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
+            if (comboOnly && !hasCombo)
+                return false;
+            return true;
+        });
+        if (normalized.length !== requiredAttrs.length) {
             warnings.push(`Opciones inválidas para "${product.name}". Elige: ${this.formatAttributeOptions(product)}.`);
             return undefined;
         }
