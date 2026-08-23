@@ -22,6 +22,10 @@ function stemLoose(s: string): string {
   return n;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 @Injectable()
 export class WhatsappCatalogService {
   private menuCache: {
@@ -156,6 +160,8 @@ export class WhatsappCatalogService {
   /**
    * Si el mensaje pide una categoría (ej. "sopas", "qué bebidas tienen"),
    * devuelve TODOS los productos de esa categoría.
+   * No debe dispararse cuando el cliente nombra un producto concreto
+   * (ej. "arroz con pollo" ≠ categoría "Pollo").
    */
   findByCategory(
     query: string,
@@ -189,6 +195,14 @@ export class WhatsappCatalogService {
       ...new Set(available.map((p) => p.categoryName).filter(Boolean) as string[]),
     ];
 
+    const significantTokens = q.split(' ').filter((t) => t.length >= 3);
+    const isBrowseIntent =
+      /\b(que|qué|tienen|hay|ver|lista|categoria|categoría|mostrame|muestrame|mostrar|opciones)\b/.test(
+        q,
+      );
+    // "pollo" / "las sopas" → OK; "quiero un arroz con pollo para la 10" → NO
+    const isShortCategoryQuery = significantTokens.length <= 2;
+
     let best: { categoryName: string; score: number } | null = null;
 
     for (const cat of categoryNames) {
@@ -196,26 +210,27 @@ export class WhatsappCatalogService {
       const cs = stemLoose(cat);
       let score = 0;
 
-      if (q === c || q === cs) score = 100;
-      else if (q.includes(c) || c.includes(q)) score = 80;
-      else if (q.includes(cs) || cs.includes(stemLoose(q))) score = 70;
-      else {
-        // tokens del mensaje vs categoría (ignorar "menu"/"carta" genéricos)
-        const tokens = q
-          .split(' ')
-          .filter((t) => t.length >= 3 && !['menu', 'carta', 'link', 'ver', 'lista'].includes(t));
-        for (const t of tokens) {
-          const ts = stemLoose(t);
-          if (c.includes(t) || c.includes(ts) || ts === cs) score = Math.max(score, 60);
+      if (q === c || q === cs) {
+        score = 100;
+      } else if (isShortCategoryQuery && (q.includes(c) || c.includes(q) || q.includes(cs))) {
+        score = 85;
+      } else if (isBrowseIntent) {
+        if (q.includes(c) || q.includes(cs) || c.includes(q)) score = 80;
+        else {
+          for (const t of significantTokens) {
+            const ts = stemLoose(t);
+            if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
+              score = Math.max(score, 70);
+            }
+          }
         }
       }
+      // Frase larga de pedido sin intención de “ver categoría”: no matchear
+      // solo porque incluye la palabra de la categoría (pollo dentro de “arroz con pollo”).
 
-      // palabras típicas de menú cerca de la categoría
-      if (score >= 60 && /\b(que|qué|tienen|hay|ver|lista|categoria|categoría)\b/.test(q)) {
-        score += 10;
-      }
+      if (score >= 70 && isBrowseIntent) score += 10;
 
-      if (score >= 60 && (!best || score > best.score)) {
+      if (score >= 70 && (!best || score > best.score)) {
         best = { categoryName: cat, score };
       }
     }
@@ -228,6 +243,15 @@ export class WhatsappCatalogService {
   }
 
   searchByName(query: string, products: WhatsappCatalogProduct[], limit = 8): WhatsappCatalogProduct[] {
+    return this.searchByNameScored(query, products, limit).map((x) => x.p);
+  }
+
+  /** Igual que searchByName pero con score (para priorizar vs categoría). */
+  searchByNameScored(
+    query: string,
+    products: WhatsappCatalogProduct[],
+    limit = 8,
+  ): Array<{ p: WhatsappCatalogProduct; score: number }> {
     const q = normalizeText(query);
     if (!q || q.length < 2) return [];
 
@@ -298,6 +322,13 @@ export class WhatsappCatalogService {
       'solo',
       'vengo',
       'vine',
+      'direccion',
+      'domicilio',
+      'envio',
+      'llevar',
+      'calle',
+      'carrera',
+      'barrio',
     ]);
 
     const available = products.filter((p) => p.availableNow !== false);
@@ -314,7 +345,7 @@ export class WhatsappCatalogService {
       if (!needle) return false;
       // Evitar que "menu" matchee "menudencias"
       if (needle.length <= 4) {
-        return new RegExp(`(?:^|\\s)${needle}(?:\\s|$)`).test(hay);
+        return new RegExp(`(?:^|\\s)${escapeRegExp(needle)}(?:\\s|$)`).test(hay);
       }
       return hay.includes(needle);
     };
@@ -325,28 +356,64 @@ export class WhatsappCatalogService {
         const desc = normalizeText(p.description || '');
         const cat = normalizeText(p.categoryName || '');
         let score = 0;
-        if (name === q) score += 100;
-        // Solo substring completo si la query es “producto-like” (>= 4) y no es frase larga
-        if (q.length >= 4 && q.split(' ').length <= 3) {
+        if (name === q) score += 120;
+
+        // Título del producto contenido en la frase (aunque sea larga: "... arroz con pollo para ...")
+        if (name.length >= 5 && q.includes(name)) {
+          score += 95;
+        }
+
+        // Cobertura de tokens del título (arroz + pollo → producto "Arroz con pollo")
+        const nameTokens = name
+          .split(' ')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 2 && !STOP.has(t));
+        if (nameTokens.length >= 2) {
+          const hits = nameTokens.filter((t) => wordHas(q, t) || q.includes(t)).length;
+          if (hits === nameTokens.length) score += 85;
+          else if (hits >= Math.ceil(nameTokens.length * 0.75)) score += 40;
+        } else if (nameTokens.length === 1) {
+          if (wordHas(q, nameTokens[0])) score += 35;
+        }
+
+        // Query corta tipo producto
+        if (q.length >= 4 && q.split(' ').length <= 4) {
           if (wordHas(name, q) || wordHas(name, qStem)) score += 50;
           if (q.includes(name) && name.length > 3) score += 40;
         }
+
         if (tokens.length) {
           for (const t of tokens) {
             const ts = stemLoose(t);
             if (wordHas(name, t) || wordHas(name, ts)) score += 18;
             else if (name.includes(t) && t.length >= 5) score += 10;
             if (wordHas(desc, t) || (desc.includes(t) && t.length >= 5)) score += 4;
-            if (wordHas(cat, t)) score += 8;
+            if (wordHas(cat, t)) score += 6;
           }
         }
+
+        // Preferir títulos más específicos (más tokens) cuando empatan
+        if (score >= 50 && nameTokens.length >= 2) {
+          score += Math.min(12, nameTokens.length * 3);
+        }
+
         return { p, score };
       })
       .filter((x) => x.score >= 18)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || b.p.name.length - a.p.name.length)
       .slice(0, limit);
 
-    return scored.map((x) => x.p);
+    return scored;
+  }
+
+  /** Match fuerte de producto (priorizar sobre listar categoría). */
+  isStrongProductMatch(scored: Array<{ p: WhatsappCatalogProduct; score: number }>): boolean {
+    if (!scored.length) return false;
+    const top = scored[0].score;
+    if (top >= 80) return true;
+    if (scored.length === 1 && top >= 50) return true;
+    if (scored.length >= 2 && top >= 70 && top - scored[1].score >= 25) return true;
+    return false;
   }
 
   /** Línea corta para listados WhatsApp (precio + descripción corta). */

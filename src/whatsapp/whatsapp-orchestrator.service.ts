@@ -600,25 +600,36 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Categoría completa (ej. "sopas", "qué bebidas tienen")
-    const categoryHit = this.catalogService.findByCategory(text, products);
-    if (categoryHit && categoryHit.products.length > 0 && !session.pendingMatch) {
-      session.pendingMatch = {
-        query: text,
-        candidates: categoryHit.products,
-      };
-      await this.conversationService.saveSession(conv, session);
-      await this.reply(
-        conv,
-        msg.waId,
-        this.catalogService.formatCategoryList(categoryHit.categoryName, categoryHit.products),
-      );
-      return;
+    // Producto por nombre ANTES que categoría (evita: "arroz con pollo" → listar categoría Pollo)
+    const nameScored = this.catalogService.searchByNameScored(text, products, 8);
+    const nameMatches = nameScored.map((x) => x.p);
+    const strongProduct = this.catalogService.isStrongProductMatch(nameScored);
+
+    if (!strongProduct) {
+      const categoryHit = this.catalogService.findByCategory(text, products);
+      if (categoryHit && categoryHit.products.length > 0 && !session.pendingMatch) {
+        session.pendingMatch = {
+          query: text,
+          candidates: categoryHit.products,
+        };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(
+          conv,
+          msg.waId,
+          this.catalogService.formatCategoryList(categoryHit.categoryName, categoryHit.products),
+        );
+        return;
+      }
     }
 
-    const nameMatches = this.catalogService.searchByName(text, products, 8);
-    if (nameMatches.length === 1 && !session.pendingMatch) {
-      const one = nameMatches[0];
+    // Si hay un ganador claro por título (ej. "arroz con pollo"), no listar ambigüedades débiles
+    const resolvedMatches =
+      strongProduct && nameScored.length >= 1 && nameScored[0].score >= 80
+        ? [nameScored[0].p]
+        : nameMatches;
+
+    if (resolvedMatches.length === 1 && !session.pendingMatch) {
+      const one = resolvedMatches[0];
       if (one.hasAttributes && one.attributes?.length) {
         session = { ...session, pendingAttribute: this.toPendingAttribute(one), pendingMatch: undefined };
         await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
@@ -642,10 +653,10 @@ export class WhatsappOrchestratorService {
       );
       return;
     }
-    if (nameMatches.length > 1 && !session.pendingMatch) {
-      session.pendingMatch = { query: text, candidates: nameMatches };
+    if (resolvedMatches.length > 1 && !session.pendingMatch) {
+      session.pendingMatch = { query: text, candidates: resolvedMatches };
       await this.conversationService.saveSession(conv, session);
-      const opts = nameMatches.map((c, i) => this.catalogService.formatProductListItem(c, i + 1)).join('\n\n');
+      const opts = resolvedMatches.map((c, i) => this.catalogService.formatProductListItem(c, i + 1)).join('\n\n');
       await this.reply(
         conv,
         msg.waId,
