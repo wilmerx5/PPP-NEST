@@ -357,28 +357,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 return;
             }
         }
-        const pick = session.pendingMatch && /^[1-9]\d*$/.test(lower) ? parseInt(lower, 10) : null;
-        if (pick && session.pendingMatch && pick <= session.pendingMatch.candidates.length) {
-            const chosenLite = session.pendingMatch.candidates[pick - 1];
-            const chosen = this.catalogService.getProductById(chosenLite.id, products) || chosenLite;
-            session.pendingMatch = undefined;
-            if (chosen.hasAttributes && chosen.attributes?.length) {
-                if (await this.handleProductWithVariants(conv, msg.waId, session, chosen, text, cfg)) {
-                    return;
-                }
-            }
-            const added = this.tryAddProductToCart(session, chosen, 1, cfg);
-            if (added.blocked) {
-                await this.conversationService.saveSession(conv, session);
-                await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
-                return;
-            }
-            session = added.session;
-            session.pendingMatch = undefined;
-            await this.conversationService.saveSession(conv, session, 'building_cart');
-            await this.reply(conv, msg.waId, this.buildCartAddReply(session, cfg.defaultDeliveryFee, chosen.name));
+        const pendingPickHandled = await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg);
+        if (pendingPickHandled)
             return;
-        }
         if (session.pendingMultiOrder) {
             const multiHandled = await this.tryResolvePendingMultiOrder(conv, msg.waId, session, text, products, cfg);
             if (multiHandled)
@@ -430,8 +411,16 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return;
         }
         const code = this.catalogService.extractCodeFromMessage(text);
-        const bareOptionNumber = /^[1-9]\d{0,2}$/.test(text.trim());
-        if (code != null && !(bareOptionNumber && (session.pendingMatch || session.pendingAttribute || conv.state === 'awaiting_attribute'))) {
+        const bareOptionNumber = /^[1-9]\d{0,3}$/.test(text.trim());
+        const pendingListIndex = bareOptionNumber &&
+            session.pendingMatch &&
+            code != null &&
+            code >= 1 &&
+            code <= session.pendingMatch.candidates.length &&
+            !session.pendingMatch.candidates.some((c) => c.code === code);
+        if (code != null &&
+            !pendingListIndex &&
+            !(bareOptionNumber && (session.pendingAttribute || conv.state === 'awaiting_attribute'))) {
             const found = this.catalogService.findByCode(code, products);
             if (found) {
                 if (found.availableNow === false) {
@@ -727,7 +716,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(product, pa.selected || []));
             return;
         }
-        if (session.pendingMatch?.candidates?.length && this.isPendingListRepromptText(text)) {
+        if (session.pendingMatch?.candidates?.length && this.isPendingListRepromptText(text, session.pendingMatch)) {
             const catName = session.pendingMatch.candidates[0]?.categoryName;
             const allSameCat = catName &&
                 session.pendingMatch.candidates.every((c) => c.categoryName === catName);
@@ -973,18 +962,77 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         await this.reply(conv, waId, this.catalogService.formatCategoryList(hit.categoryName, hit.products));
         return null;
     }
-    isPendingListRepromptText(text) {
+    isPendingListRepromptText(text, pending) {
         const t = text.trim().toLowerCase();
         if (!t)
             return true;
-        if (/^[1-9]\d{0,2}$/.test(t))
+        if (/^[1-9]\d{0,3}$/.test(t)) {
+            if (!pending?.candidates?.length)
+                return true;
+            const n = parseInt(t, 10);
+            if (n >= 1 && n <= pending.candidates.length)
+                return false;
+            if (pending.candidates.some((c) => c.code === n))
+                return false;
             return true;
+        }
         if (/\?/.test(t))
             return true;
         if (/\b(cuales|cuáles|opciones|lista|no entendi|no entendí|otra vez|de nuevo|cuál|cual|numero|número)\b/i.test(t)) {
             return true;
         }
         return false;
+    }
+    async tryResolvePendingMatchPick(conv, waId, session, text, products, cfg) {
+        const pending = session.pendingMatch;
+        if (!pending?.candidates?.length)
+            return false;
+        const trimmed = text.trim();
+        const code = this.catalogService.extractCodeFromMessage(text);
+        const bareNum = /^[1-9]\d{0,3}$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+        let chosenLite = pending.candidates.find((c) => code != null && c.code === code) ?? null;
+        if (!chosenLite && bareNum != null && bareNum >= 1 && bareNum <= pending.candidates.length) {
+            chosenLite = pending.candidates[bareNum - 1];
+        }
+        if (!chosenLite && code != null) {
+            const found = this.catalogService.findByCode(code, products);
+            if (found && pending.candidates.some((c) => c.id === found.id)) {
+                chosenLite = found;
+            }
+        }
+        if (!chosenLite) {
+            const q = this.normalizeForMatch(this.catalogService.extractProductSearchQuery(text));
+            if (q.length >= 3) {
+                chosenLite =
+                    pending.candidates.find((c) => {
+                        const name = this.normalizeForMatch(c.name);
+                        return name.includes(q) || q.includes(name);
+                    }) ?? null;
+            }
+        }
+        if (!chosenLite)
+            return false;
+        const chosen = this.catalogService.getProductById(chosenLite.id, products) || chosenLite;
+        if (chosen.availableNow === false) {
+            await this.reply(conv, waId, `*${chosen.name}* no está disponible en este horario. Elige otro de la lista o dime otro plato.`);
+            return true;
+        }
+        session = { ...session, pendingMatch: undefined };
+        if (chosen.hasAttributes && chosen.attributes?.length) {
+            if (await this.handleProductWithVariants(conv, waId, session, chosen, text, cfg)) {
+                return true;
+            }
+        }
+        const added = this.tryAddProductToCart(session, chosen, 1, cfg);
+        if (added.blocked) {
+            await this.conversationService.saveSession(conv, session);
+            await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+            return true;
+        }
+        session = added.session;
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(conv, waId, this.buildCartAddReply(session, cfg.defaultDeliveryFee, chosen.name));
+        return true;
     }
     looksLikeSideQuestion(text) {
         const t = text.trim();

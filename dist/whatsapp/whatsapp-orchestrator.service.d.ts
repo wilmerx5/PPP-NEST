@@ -30,6 +30,7 @@ export declare class WhatsappOrchestratorService {
     private replyLooksLikeProductDump;
     private tryHandleCategoryBrowse;
     private isPendingListRepromptText;
+    private tryResolvePendingMatchPick;
     private looksLikeSideQuestion;
     private answerSideQuestionWithAi;
     private formatContinueShoppingPrompt;
