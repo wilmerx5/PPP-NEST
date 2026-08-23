@@ -5,6 +5,20 @@ import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concep
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 
+export type MultiProductSegmentMatch = {
+  segment: string;
+  product: WhatsappCatalogProduct;
+  score: number;
+};
+
+export type MultiProductResolveResult = {
+  segments: string[];
+  confident: MultiProductSegmentMatch[];
+  ambiguous: Array<{ segment: string; candidates: WhatsappCatalogProduct[] }>;
+  unresolved: string[];
+  needsAttributes: MultiProductSegmentMatch[];
+};
+
 function normalizeText(s: string): string {
   return s
     .toLowerCase()
@@ -330,6 +344,8 @@ export class WhatsappCatalogService {
 
     q = q
       .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
+      .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
+      .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
       .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)\s+/i, '')
       .replace(/^(quiero|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)?\s*/i, '')
       .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
@@ -704,6 +720,276 @@ export class WhatsappCatalogService {
     if (scored.length === 1 && top >= 50) return true;
     if (scored.length >= 2 && top >= 70 && top - scored[1].score >= 25) return true;
     return false;
+  }
+
+  /** Pregunta por precio, no por pedir: "¿cuánto vale un pollo frito?" */
+  isPriceInquiryIntent(text: string): boolean {
+    const raw = text.trim();
+    const q = normalizeText(raw);
+    if (!q) return false;
+
+    const hasPriceAsk =
+      /\b(cuanto vale|cuanto cuesta|cuanto sale|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|que precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale)\b/.test(
+        q,
+      ) ||
+      (/\b(cuanto|precio|valor|cuesta)\b/.test(q) && /\?/.test(raw));
+
+    if (!hasPriceAsk) return false;
+
+    const orderDominant =
+      /^(quiero|dame|ponme|agrega|agregame|me das|me regalas|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)\s+/i.test(
+        raw,
+      ) && !/\b(cuanto|precio|vale|cuesta|valor)\b/i.test(raw);
+
+    return !orderDominant;
+  }
+
+  /** Quita muletillas de consulta de precio para buscar el producto. */
+  stripPriceInquiryNoise(text: string): string {
+    return text
+      .replace(
+        /\b(cu[aá]nto vale|cu[aá]nto cuesta|cu[aá]nto sale|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|qu[eé] precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a)\b/gi,
+        ' ',
+      )
+      .replace(/\b(cu[aá]nto|precio|valor|cuesta|cobran)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /** Respuesta informativa de precio — NO inicia flujo de pedido ni pide elegir opción. */
+  formatProductPriceReply(product: WhatsappCatalogProduct): string {
+    if (product.hasAttributes && product.attributes?.length) {
+      return this.formatProductVariantsOverview(product, 'info');
+    }
+    const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
+    let msg = `*${product.name}* (cód. ${product.code}) — *${price}*`;
+    if (product.description) {
+      msg += `\n\n_${product.description}_`;
+    }
+    msg += '\n\n_¿Te lo agrego al pedido?_';
+    return msg;
+  }
+
+  /**
+   * Muestra TODAS las porciones/opciones de una vez (no empuja solo la primera, ej. "medio").
+   */
+  formatProductVariantsOverview(
+    product: WhatsappCatalogProduct,
+    mode: 'info' | 'order' = 'info',
+  ): string {
+    const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
+    let msg = `*${product.name}* (cód. ${product.code})`;
+    msg += `\n\nPrecio base en menú: *${price}*`;
+    if (product.description) {
+      msg += `\n_${product.description}_`;
+    }
+
+    for (const attr of product.attributes || []) {
+      if (!attr.options?.length) continue;
+      msg += `\n\n*${attr.attributeName}*:`;
+      attr.options.forEach((opt, i) => {
+        msg += `\n  ${i + 1}) ${opt}`;
+      });
+    }
+
+    if (mode === 'info') {
+      msg +=
+        '\n\n_Te muestro todas las opciones. Dime cuál te interesa o si quieres pedir alguna._';
+    } else {
+      msg +=
+        '\n\n¿Cuál quieres? Respóndeme con el *nombre* (medio, cuarto, entero…) o el *número*.';
+    }
+    return msg;
+  }
+
+  /** Consulta informativa: precio, qué hay, opciones — sin pedir porción concreta aún. */
+  isGenericProductInquiry(text: string): boolean {
+    if (this.isPriceInquiryIntent(text)) return true;
+    const raw = text.trim();
+    const q = normalizeText(raw);
+    return (
+      /\?$/.test(raw) &&
+      /\b(cuanto|precio|valor|cuesta|cobran|sale|tienen|hay|opciones|que hay|informacion|info)\b/.test(
+        q,
+      )
+    );
+  }
+
+  /** Query corta tipo concepto: "pollo", "sopa", "carne". */
+  isShortGenericFoodQuery(query: string): boolean {
+    const q = normalizeText(this.extractProductSearchQuery(query));
+    const tokens = q.split(' ').filter((t) => t.length >= 3);
+    return tokens.length === 1;
+  }
+
+  /** ¿El cliente ya nombró una variante concreta (medio, cuarto, entero…)? */
+  extractExplicitAttributeChoice(
+    text: string,
+    product: WhatsappCatalogProduct,
+  ): { attributeName: string; attributeValue: string }[] | null {
+    if (!product.attributes?.length) return null;
+    const q = normalizeText(text);
+
+    for (const attr of product.attributes) {
+      for (const opt of attr.options) {
+        const o = normalizeText(opt);
+        if (o.length >= 4 && (q === o || q.includes(o))) {
+          return [{ attributeName: attr.attributeName, attributeValue: opt }];
+        }
+      }
+      // Token suelto: "medio", "cuarto" si coincide con inicio de una opción
+      for (const opt of attr.options) {
+        const o = normalizeText(opt);
+        for (const token of o.split(' ').filter((t) => t.length >= 4)) {
+          if (['pollo', 'frito', 'broaster', 'pechuga'].includes(token)) continue;
+          const re = new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`);
+          if (re.test(q)) {
+            return [{ attributeName: attr.attributeName, attributeValue: opt }];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Producto con variantes pero el cliente no dijo cuál → mostrar todas, no asumir "medio". */
+  shouldShowVariantsOverview(text: string, product: WhatsappCatalogProduct): boolean {
+    if (!product.hasAttributes || !product.attributes?.length) return false;
+    if (this.extractExplicitAttributeChoice(text, product)) return false;
+    if (this.isGenericProductInquiry(text)) return true;
+
+    const q = normalizeText(this.stripPriceInquiryNoise(this.extractProductSearchQuery(text)));
+    for (const attr of product.attributes) {
+      for (const opt of attr.options) {
+        const o = normalizeText(opt);
+        if (o.length >= 4 && q.includes(o)) return false;
+      }
+    }
+    return true;
+  }
+
+  formatPriceInquiryList(products: WhatsappCatalogProduct[]): string {
+    const body = products.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n\n');
+    return (
+      `Estas son las opciones relacionadas:\n\n${body}\n\n` +
+      `¿Cuál te interesa? Dime el *número* o el *nombre*.`
+    );
+  }
+
+  /**
+   * Parte un mensaje con varios platos: "sopa de mondongo, cuarto de pollo y costillas".
+   */
+  splitMultiProductSegments(text: string): string[] {
+    let q = this.extractProductSearchQuery(text);
+    q = q
+      .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
+      .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
+      .trim();
+    if (!q) return [];
+
+    const byCommaOrY = q
+      .split(/\s*,\s*|\s+\by\b\s+/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3);
+
+    const expanded: string[] = [];
+    for (const chunk of byCommaOrY.length ? byCommaOrY : [q]) {
+      expanded.push(...this.splitSegmentOnArticles(chunk));
+    }
+
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const seg of expanded) {
+      const cleaned = seg
+        .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
+        .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
+        .trim();
+      if (cleaned.length < 3) continue;
+      const key = normalizeText(cleaned);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(cleaned);
+    }
+    return out;
+  }
+
+  private splitSegmentOnArticles(chunk: string): string[] {
+    const parts = chunk
+      .split(/\s+(?=(?:un|una|unos|unas|el|la|los|las)\s+)/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3);
+    return parts.length ? parts : [chunk.trim()].filter((s) => s.length >= 3);
+  }
+
+  /**
+   * Resuelve varios productos nombrados en un solo mensaje.
+   * Devuelve null si no parece un pedido multi-ítem.
+   */
+  resolveMultiProductOrder(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): MultiProductResolveResult | null {
+    if (this.isPriceInquiryIntent(text)) return null;
+    if (this.isMenuExploreIntent(text, products)) return null;
+    if (this.findProductEmbeddedInMessage(text, products) && this.splitMultiProductSegments(text).length < 2) {
+      return null;
+    }
+
+    const segments = this.splitMultiProductSegments(text);
+    if (segments.length < 2) return null;
+
+    const confident: MultiProductSegmentMatch[] = [];
+    const ambiguous: Array<{ segment: string; candidates: WhatsappCatalogProduct[] }> = [];
+    const unresolved: string[] = [];
+    const needsAttributes: MultiProductSegmentMatch[] = [];
+    const usedProductIds = new Set<number>();
+
+    for (const segment of segments) {
+      const embedded = this.findProductEmbeddedInMessage(segment, products);
+      if (embedded) {
+        if (usedProductIds.has(embedded.id)) continue;
+        usedProductIds.add(embedded.id);
+        const match = { segment, product: embedded, score: 100 };
+        if (embedded.hasAttributes && embedded.attributes?.length) needsAttributes.push(match);
+        else confident.push(match);
+        continue;
+      }
+
+      const query = this.extractProductSearchQuery(segment);
+      const scored = this.searchByNameScored(query, products, 5);
+      if (!scored.length) {
+        unresolved.push(segment);
+        continue;
+      }
+
+      if (this.isStrongProductMatch(scored)) {
+        const top = scored[0];
+        if (usedProductIds.has(top.p.id)) continue;
+        usedProductIds.add(top.p.id);
+        const match = { segment, product: top.p, score: top.score };
+        if (top.p.hasAttributes && top.p.attributes?.length) needsAttributes.push(match);
+        else confident.push(match);
+        continue;
+      }
+
+      if (scored.length >= 2 && scored[0].score >= 35) {
+        ambiguous.push({ segment, candidates: scored.slice(0, 4).map((x) => x.p) });
+      } else if (scored.length === 1 && scored[0].score >= 45) {
+        const top = scored[0];
+        if (usedProductIds.has(top.p.id)) continue;
+        usedProductIds.add(top.p.id);
+        const match = { segment, product: top.p, score: top.score };
+        if (top.p.hasAttributes && top.p.attributes?.length) needsAttributes.push(match);
+        else confident.push(match);
+      } else {
+        unresolved.push(segment);
+      }
+    }
+
+    const resolvedCount = confident.length + ambiguous.length + needsAttributes.length;
+    if (resolvedCount < 2) return null;
+
+    return { segments, confident, ambiguous, unresolved, needsAttributes };
   }
 
   /** Línea corta para listados WhatsApp (precio + descripción corta). */

@@ -47,6 +47,8 @@ export declare class WhatsappOrchestratorService {
     }): Promise<void>;
     private shortQuote;
     private resolveAudioToText;
+    private humanHelpHint;
+    private resolveImageOrderText;
     private resolveImageMessage;
     private isRestartIntent;
     private isCancelIntent;
@@ -75,5 +77,14 @@ export declare class WhatsappOrchestratorService {
     private buildPaymentConfirmReply;
     private buildWelcomeMessage;
     private formatOrderSuccessMessage;
+    private isMultiOrderAffirmative;
+    private handleProductWithVariants;
+    private tryHandleProductInfoInquiry;
+    private toPendingMultiProduct;
+    private formatMultiOrderProposal;
+    private sessionFromMultiResolve;
+    private addPendingMultiConfidentToCart;
+    private tryHandleMultiProductOrder;
+    private tryResolvePendingMultiOrder;
     private reply;
 }

@@ -7,6 +7,8 @@ export type WhatsappImageAnalysis = {
   kind: 'order' | 'payment_proof' | 'other' | 'unclear';
   /** Texto como si el cliente lo hubiera escrito (pedido, dirección, etc.) */
   textForBot: string;
+  /** Texto visible leído en la imagen (OCR) */
+  visibleText?: string;
   /** Respuesta corta si no se puede seguir el flujo de pedido */
   reply?: string;
 };
@@ -162,13 +164,15 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     mimeType: string;
     caption?: string;
     menuSummary: string;
+    /** Segundo intento enfocado solo en leer texto/código */
+    ocrRetry?: boolean;
   }): Promise<WhatsappImageAnalysis> {
     const cfg = await this.settingsService.getEffectiveConfig();
     if (!cfg.openaiApiKey) {
       return {
         kind: 'unclear',
         textForBot: '',
-        reply: 'No pude ver la imagen. Escríbenos el pedido por texto o *humano*.',
+        reply: this.imageFallbackReply(),
       };
     }
 
@@ -176,27 +180,43 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     const dataUrl = `data:${input.mimeType || 'image/jpeg'};base64,${b64}`;
     const caption = (input.caption || '').trim();
 
-    const system = `Eres el asistente de un restaurante de pollo asado (WhatsApp).
+    const system = input.ocrRetry
+      ? `Lee TODO el texto visible en la imagen (OCR). Restaurante WhatsApp. Responde SOLO JSON:
+{
+  "kind": "order" | "payment_proof" | "other" | "unclear",
+  "visibleText": "texto que ves (códigos, nombres, precios)",
+  "textForBot": "pedido en lenguaje natural si hay producto/código",
+  "reply": "opcional"
+}
+Si hay un CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
+Menú referencia:\n${input.menuSummary.slice(0, 4000)}`
+      : `Eres el asistente de un restaurante de pollo asado (WhatsApp).
 Analizas UNA imagen del cliente. Responde SOLO JSON:
 {
   "kind": "order" | "payment_proof" | "other" | "unclear",
+  "visibleText": "todo el texto legible en la imagen",
   "textForBot": "string",
   "reply": "string opcional"
 }
 
 Reglas:
 - payment_proof: comprobante de transferencia, captura de banco, Nequi, Daviplata, QR pagado, recibo.
-  textForBot vacío; reply breve confirmando que lo recibiste y que un asesor lo revisa (menciona escribir humano si necesita).
-- order: la imagen pide comida / muestra menú marcado / lista de productos. textForBot = lo que el cliente querría escribir
-  (códigos o nombres del menú si se ven). Usa SOLO productos del menú si aparecen claros.
-- other / unclear: no sirve para pedir. textForBot vacío; reply amable pidiendo texto (código o nombre) o *humano*.
+  textForBot vacío; reply breve confirmando recepción.
+- order: pide comida, foto de carta/menú, pantalla con plato, captura con CÓDIGO y nombre visibles.
+  visibleText = transcribe título, código, precio si se ven.
+  textForBot = lo que el cliente querría escribir ("código 28", "28", "medio pollo frito", nombre del plato).
+  Si ves un número de código claro (ej. cód. 12, #28, código 5) → SIEMPRE kind=order e inclúyelo en textForBot.
+  Si la imagen muestra UN producto del menú con título legible → kind=order (NO unclear).
+- other / unclear: solo si no hay texto de menú ni comprobante legible.
 - No inventes productos fuera del menú.
 Menú (referencia):
 ${input.menuSummary.slice(0, 6000)}`;
 
     const userText = caption
-      ? `El cliente escribió este pie de foto: "${caption}". Analiza la imagen.`
-      : 'Analiza la imagen del cliente.';
+      ? `Pie de foto del cliente: "${caption}". ${input.ocrRetry ? 'Transcribe y detecta pedido.' : 'Analiza la imagen.'}`
+      : input.ocrRetry
+        ? 'Transcribe el texto visible y detecta si es un pedido (código o nombre de plato).'
+        : 'Analiza la imagen del cliente.';
 
     try {
       const model = cfg.openaiModel || 'gpt-4o-mini';
@@ -209,16 +229,19 @@ ${input.menuSummary.slice(0, 6000)}`;
             role: 'user',
             content: [
               { type: 'text', text: userText },
-              { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl, detail: input.ocrRetry ? 'high' : 'high' },
+              },
             ],
           },
         ],
       };
       if (/^gpt-5/i.test(model)) {
-        body.max_completion_tokens = 500;
+        body.max_completion_tokens = 700;
       } else {
         body.temperature = 0.1;
-        body.max_tokens = 500;
+        body.max_tokens = 700;
       }
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -236,7 +259,7 @@ ${input.menuSummary.slice(0, 6000)}`;
         return {
           kind: 'unclear',
           textForBot: '',
-          reply: 'No pude leer bien la imagen. ¿Me escribes el pedido por texto o *humano*?',
+          reply: this.imageFallbackReply(),
         };
       }
 
@@ -251,12 +274,14 @@ ${input.menuSummary.slice(0, 6000)}`;
         return {
           kind: 'unclear',
           textForBot: '',
-          reply: 'No entendí la imagen. Escríbenos el pedido (código o nombre) o *humano*.',
+          visibleText: parsed.visibleText?.trim(),
+          reply: this.imageFallbackReply(),
         };
       }
       return {
         kind,
         textForBot: (parsed.textForBot || '').trim().slice(0, 500),
+        visibleText: (parsed.visibleText || '').trim().slice(0, 800),
         reply: parsed.reply?.trim().slice(0, 800),
       };
     } catch (err) {
@@ -264,9 +289,18 @@ ${input.menuSummary.slice(0, 6000)}`;
       return {
         kind: 'unclear',
         textForBot: '',
-        reply: 'Tuve un problema viendo la imagen. Prueba por texto o escribe *humano*.',
+        reply: this.imageFallbackReply(),
       };
     }
+  }
+
+  /** Mensaje amable cuando la imagen no se pudo usar para pedir. */
+  imageFallbackReply(): string {
+    return (
+      'Vi tu imagen 👀 pero no pude leer bien el plato o el código.\n\n' +
+      '¿Me lo escribes por texto (nombre o código)?\n\n' +
+      'Si prefieres, escribe *asesor* o *humano* y una persona te atiende por aquí 😊'
+    );
   }
 
   private audioExtension(mimeType: string): string {

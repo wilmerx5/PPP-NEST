@@ -3,6 +3,7 @@ import type { AiTurnResult } from './types/whatsapp-session.types';
 export type WhatsappImageAnalysis = {
     kind: 'order' | 'payment_proof' | 'other' | 'unclear';
     textForBot: string;
+    visibleText?: string;
     reply?: string;
 };
 export declare class WhatsappAiService {
@@ -24,7 +25,9 @@ export declare class WhatsappAiService {
         mimeType: string;
         caption?: string;
         menuSummary: string;
+        ocrRetry?: boolean;
     }): Promise<WhatsappImageAnalysis>;
+    imageFallbackReply(): string;
     private audioExtension;
     private toChatMessages;
 }

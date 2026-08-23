@@ -2,6 +2,21 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { type MenuConceptGroup } from './whatsapp-menu-concepts';
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
+export type MultiProductSegmentMatch = {
+    segment: string;
+    product: WhatsappCatalogProduct;
+    score: number;
+};
+export type MultiProductResolveResult = {
+    segments: string[];
+    confident: MultiProductSegmentMatch[];
+    ambiguous: Array<{
+        segment: string;
+        candidates: WhatsappCatalogProduct[];
+    }>;
+    unresolved: string[];
+    needsAttributes: MultiProductSegmentMatch[];
+};
 export declare class WhatsappCatalogService {
     private readonly productsService;
     private menuCache;
@@ -47,6 +62,21 @@ export declare class WhatsappCatalogService {
         p: WhatsappCatalogProduct;
         score: number;
     }>): boolean;
+    isPriceInquiryIntent(text: string): boolean;
+    stripPriceInquiryNoise(text: string): string;
+    formatProductPriceReply(product: WhatsappCatalogProduct): string;
+    formatProductVariantsOverview(product: WhatsappCatalogProduct, mode?: 'info' | 'order'): string;
+    isGenericProductInquiry(text: string): boolean;
+    isShortGenericFoodQuery(query: string): boolean;
+    extractExplicitAttributeChoice(text: string, product: WhatsappCatalogProduct): {
+        attributeName: string;
+        attributeValue: string;
+    }[] | null;
+    shouldShowVariantsOverview(text: string, product: WhatsappCatalogProduct): boolean;
+    formatPriceInquiryList(products: WhatsappCatalogProduct[]): string;
+    splitMultiProductSegments(text: string): string[];
+    private splitSegmentOnArticles;
+    resolveMultiProductOrder(text: string, products: WhatsappCatalogProduct[]): MultiProductResolveResult | null;
     formatProductListItem(product: WhatsappCatalogProduct, index?: number): string;
     formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string;
     formatProductOptionsPrompt(product: WhatsappCatalogProduct, alreadySelected?: {

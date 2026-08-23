@@ -18,7 +18,7 @@ const DEFAULT_MENU_LINK =
   'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
 
 const DEFAULT_HUMAN_HANDOFF =
-  'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.';
+  'Listo 🙋 Ya te conecté con el equipo — en un momento alguien te escribe por aquí. Cuéntanos con calma qué necesitas.';
 
 const DEFAULT_ORDER_SUCCESS = 'Gracias por pedirnos, te esperamos 🍗';
 

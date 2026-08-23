@@ -50,6 +50,27 @@ export type WhatsappSessionData = {
         query: string;
         candidates: WhatsappProductCandidate[];
     };
+    pendingMultiOrder?: {
+        confident: Array<{
+            segment: string;
+            productId: number;
+            name: string;
+            code: number;
+            price: number;
+        }>;
+        ambiguous: Array<{
+            segment: string;
+            candidates: WhatsappProductCandidate[];
+        }>;
+        needsAttributes: Array<{
+            segment: string;
+            productId: number;
+            name: string;
+            code: number;
+            price: number;
+        }>;
+        unresolved: string[];
+    };
     pendingCategoryBrowse?: {
         categories: string[];
     };

@@ -57,6 +57,28 @@ export type WhatsappSessionData = {
     query: string;
     candidates: WhatsappProductCandidate[];
   };
+  /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
+  pendingMultiOrder?: {
+    confident: Array<{
+      segment: string;
+      productId: number;
+      name: string;
+      code: number;
+      price: number;
+    }>;
+    ambiguous: Array<{
+      segment: string;
+      candidates: WhatsappProductCandidate[];
+    }>;
+    needsAttributes: Array<{
+      segment: string;
+      productId: number;
+      name: string;
+      code: number;
+      price: number;
+    }>;
+    unresolved: string[];
+  };
   /** Tras mostrar resumen de categorías: el cliente elige número o nombre. */
   pendingCategoryBrowse?: {
     categories: string[];
