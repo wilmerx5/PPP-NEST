@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS ppp_whatsapp_settings (
   openai_api_key TEXT NULL,
   openai_model VARCHAR(64) NOT NULL DEFAULT 'gpt-4o-mini',
   system_prompt TEXT NULL,
-  default_delivery_fee INT NOT NULL DEFAULT 0,
+  default_delivery_fee INT NOT NULL DEFAULT 2000,
   allow_mercado_pago TINYINT(1) NOT NULL DEFAULT 1,
   welcome_message TEXT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

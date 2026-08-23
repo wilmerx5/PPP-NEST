@@ -133,9 +133,19 @@ export class WhatsappCatalogService {
   }
 
   extractCodeFromMessage(text: string): number | null {
-    const m = text.match(/\b(?:codigo|código|code|#)?\s*(\d{1,4})\b/i);
-    if (m?.[1]) return parseInt(m[1], 10);
-    if (/^\d{1,4}$/.test(text.trim())) return parseInt(text.trim(), 10);
+    const raw = text.trim();
+    // Nunca tratar tiempos ("en 15 minutos", "15-20 min") como código
+    if (/\b\d{1,3}\s*(?:-|a|o|\/)?\s*\d{0,3}\s*(?:minutos?|mins?|horas?|hrs?)\b/i.test(raw)) {
+      return null;
+    }
+    if (/\b(?:en|para|dentro\s+de)\s+\d{1,3}\b/i.test(raw) && !/\b(?:codigo|código|code|#)\b/i.test(raw)) {
+      return null;
+    }
+    // Prefijo explícito: "código 12", "#5", "code 28"
+    const explicit = raw.match(/\b(?:codigo|código|code)\s*(\d{1,4})\b/i) || raw.match(/#\s*(\d{1,4})\b/);
+    if (explicit?.[1]) return parseInt(explicit[1], 10);
+    // Solo dígitos puros (el orquestador decide opción vs código)
+    if (/^\d{1,4}$/.test(raw)) return parseInt(raw, 10);
     return null;
   }
 
@@ -251,12 +261,15 @@ export class WhatsappCatalogService {
     return (
       `*${categoryName}* — ${list.length} opción${list.length === 1 ? '' : 'es'}:\n\n` +
       `${body}\n\n` +
-      `Responde con el *número* o el *código* del que quieras.`
+      `Respóndeme con el *número* o el *código* del que quieras.`
     );
   }
 
   /** Texto para pedir atributos / “con qué viene”. */
-  formatProductOptionsPrompt(product: WhatsappCatalogProduct): string {
+  formatProductOptionsPrompt(
+    product: WhatsappCatalogProduct,
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+  ): string {
     const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
     let msg = `*${product.name}* (código ${product.code}) — ${price}`;
     if (product.description) {
@@ -265,43 +278,104 @@ export class WhatsappCatalogService {
     if (!product.hasAttributes || !product.attributes?.length) {
       return msg;
     }
-    msg += '\n\n¿Con qué lo quieres?';
-    for (const attr of product.attributes) {
-      msg += `\n\n*${attr.attributeName}:*`;
-      attr.options.forEach((opt, i) => {
-        msg += `\n  ${i + 1}) ${opt}`;
-      });
+
+    const remaining = product.attributes.filter(
+      (a) => !alreadySelected.some((s) => s.attributeName === a.attributeName),
+    );
+    const next = remaining[0];
+    if (!next) return msg;
+
+    if (alreadySelected.length) {
+      msg +=
+        '\n\nElegido: ' +
+        alreadySelected.map((s) => `${s.attributeName}: ${s.attributeValue}`).join(', ');
     }
-    msg += '\n\nResponde con el número o el nombre de la opción.';
+
+    msg += `\n\n¿Con qué *${next.attributeName}* lo quieres?`;
+    next.options.forEach((opt, i) => {
+      msg += `\n  ${i + 1}) ${opt}`;
+    });
+    msg +=
+      '\n\nRespóndeme con el *número* (1, 2, 3…) o el nombre. _Aquí el número es la opción, no el código del producto._';
     return msg;
   }
 
-  /** Intenta resolver opciones de atributos desde texto libre del cliente */
-  resolveAttributesFromText(
+  /**
+   * Resuelve la SIGUIENTE opción pendiente (una a la vez).
+   * Cualquier número solo (1, 2, 3…) = índice de esa opción, no código de producto.
+   */
+  resolveNextAttributeChoice(
     product: WhatsappCatalogProduct,
     text: string,
-  ): { attributeName: string; attributeValue: string }[] | null {
-    if (!product.attributes?.length) return [];
-    const t = normalizeText(text);
-    const selected: { attributeName: string; attributeValue: string }[] = [];
+    alreadySelected: { attributeName: string; attributeValue: string }[],
+  ):
+    | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'invalid' } {
+    if (!product.attributes?.length) {
+      return { status: 'complete', attributes: [] };
+    }
 
-    for (const attr of product.attributes) {
-      let picked: string | null = null;
+    const remaining = product.attributes.filter(
+      (a) => !alreadySelected.some((s) => s.attributeName === a.attributeName),
+    );
+    if (!remaining.length) {
+      return { status: 'complete', attributes: alreadySelected };
+    }
+
+    const attr = remaining[0];
+    const t = normalizeText(text);
+    let picked: string | null = null;
+
+    // Solo dígitos → índice de opción (1-based)
+    const bare = text.trim().match(/^([1-9]\d{0,2})$/);
+    if (bare) {
+      const num = parseInt(bare[1], 10);
+      if (num >= 1 && num <= attr.options.length) {
+        picked = attr.options[num - 1];
+      }
+    }
+
+    if (!picked) {
       for (const opt of attr.options) {
-        if (normalizeText(opt) === t || t.includes(normalizeText(opt))) {
+        const no = normalizeText(opt);
+        if (no === t || t.includes(no) || no.includes(t)) {
           picked = opt;
           break;
         }
       }
-      if (!picked) {
-        const num = parseInt(text.trim(), 10);
-        if (Number.isFinite(num) && num >= 1 && num <= attr.options.length) {
-          picked = attr.options[num - 1];
-        }
-      }
-      if (!picked) return null;
-      selected.push({ attributeName: attr.attributeName, attributeValue: picked });
     }
-    return selected;
+
+    // "opcion 2" / "la 2"
+    if (!picked) {
+      const m = text.trim().match(/(?:opci[oó]n|la|el)\s*([1-9]\d{0,2})/i);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num >= 1 && num <= attr.options.length) picked = attr.options[num - 1];
+      }
+    }
+
+    if (!picked) return { status: 'invalid' };
+
+    const nextSelected = [
+      ...alreadySelected,
+      { attributeName: attr.attributeName, attributeValue: picked },
+    ];
+
+    if (nextSelected.length >= product.attributes.length) {
+      return { status: 'complete', attributes: nextSelected };
+    }
+    return { status: 'partial', attributes: nextSelected };
+  }
+
+  /** Intenta resolver opciones de atributos desde texto libre del cliente (legacy / todo de una vez) */
+  resolveAttributesFromText(
+    product: WhatsappCatalogProduct,
+    text: string,
+  ): { attributeName: string; attributeValue: string }[] | null {
+    const step = this.resolveNextAttributeChoice(product, text, []);
+    if (step.status === 'complete') return step.attributes;
+    if (step.status === 'partial') return null;
+    return null;
   }
 }

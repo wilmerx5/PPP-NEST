@@ -157,7 +157,7 @@ __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Origen: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas.',
         example: 'online',
-        enum: ['online', 'internal'],
+        enum: ['online', 'internal', 'whatsapp'],
     }),
     (0, typeorm_1.Column)({
         name: 'order_source',

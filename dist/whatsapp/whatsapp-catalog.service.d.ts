@@ -20,7 +20,28 @@ export declare class WhatsappCatalogService {
     searchByName(query: string, products: WhatsappCatalogProduct[], limit?: number): WhatsappCatalogProduct[];
     formatProductListItem(product: WhatsappCatalogProduct, index?: number): string;
     formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string;
-    formatProductOptionsPrompt(product: WhatsappCatalogProduct): string;
+    formatProductOptionsPrompt(product: WhatsappCatalogProduct, alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): string;
+    resolveNextAttributeChoice(product: WhatsappCatalogProduct, text: string, alreadySelected: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): {
+        status: 'complete';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'partial';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'invalid';
+    };
     resolveAttributesFromText(product: WhatsappCatalogProduct, text: string): {
         attributeName: string;
         attributeValue: string;

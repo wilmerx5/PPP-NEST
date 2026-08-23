@@ -77,7 +77,7 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
                 const qty = Math.min(Math.max(1, item.quantity ?? 1), 10);
                 const attrs = this.normalizeAttributes(product, item.attributes, warnings);
                 if (product.hasAttributes && !attrs?.length) {
-                    warnings.push(`"${product.name}" requiere elegir: ${this.formatAttributeOptions(product)}.`);
+                    warnings.push(`"${product.name}" requiere elegir opciones antes de agregarlo.`);
                     continue;
                 }
                 out.addItems.push({

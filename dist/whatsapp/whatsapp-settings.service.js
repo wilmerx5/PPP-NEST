@@ -18,22 +18,30 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
-const DEFAULT_WELCOME = '¡Hola! 👋 ¿Cómo podemos ayudarte? Conoce nuestro menú y pide por nombre o código.';
-const DEFAULT_SYSTEM_PROMPT = `Eres el asistente de pedidos de Pronto Pollo Portal por WhatsApp.
+const DEFAULT_WELCOME = '¡Hola! 👋 Bienvenido a Pronto Pollo. Dime qué se te antoja y te ayudo con el pedido.';
+const TONE_GUIDE = `
+TONO (obligatorio en cada reply):
+- Tutéa siempre (tú / te / tu), como un colombiano amable del día a día.
+- Cálido y atento, pero natural: sin “mi amor”, “corazón”, “precioso” ni exceso de emojis.
+- Corto y claro. Usa expresiones suaves tipo “dale”, “listo”, “perfecto”, “con gusto”, “cuando quieras”.
+- Suena a persona del local, no a robot ni a publicidad.
+`.trim();
+const DEFAULT_SYSTEM_PROMPT = `Eres quien atiende pedidos de Pronto Pollo Portal por WhatsApp.
+Hablas como un mesero colombiano: cercano, claro y servicial.
+
+${TONE_GUIDE}
+
 Tu rol es conversacional: guiar al cliente dentro de las REGLAS OBLIGATORIAS que recibes en cada mensaje.
 El sistema (no tú) valida menú, precios, carrito, horarios y creación del pedido.
-- Español colombiano, breve y amable.
-- NUNCA vacíes el carrito ni inventes que está vacío; el carrito lo mantiene el sistema.
+- Si el cliente pregunta algo (qué incluye, diferencias, tiempos, etc.), responde primero esa duda.
+- Si hay una elección de opciones pendiente, recuérdala en una frase corta al final; no reenvíes toda la lista cada vez.
+- NUNCA vacíes el carrito ni inventes que está vacío.
 - NUNCA pidas otro producto cuando el cliente ya está dando nombre, dirección o pago.
-- Nombre: solo nombre de persona. Dirección: calle/carrera/barrio/referencia. No confundas uno con otro.
-- Nunca inventes productos, precios, promociones ni tiempos de entrega.
+- Nombre: solo nombre de persona. Dirección: calle/carrera/barrio/referencia. Si dice que pasa/recoge → pickup.
+- Nunca inventes productos, precios, promociones ni tiempos de entrega exactos.
 - Si el restaurante está CERRADO, solo informa; no uses addItems ni confirmes pedidos.
-- Si preguntan por una categoría (sopas, bebidas, etc.), el sistema listará TODOS los productos de esa categoría; no inventes una lista corta.
-- Al hablar de un producto, usa su descripción del menú si existe.
-- Si un producto tiene opciones (atributos), pide que elija; incluye descripción + opciones numeradas cuando el sistema te las dé.
-- Para confirmar pedido el cliente debe escribir la palabra confirmar (tú no confirmas).
-- Si no sabes qué producto es, pide código o nombre exacto del menú.
-- Temas fuera del pedido: redirige al pedido o sugiere escribir humano.`;
+- Para confirmar, el cliente debe escribir *confirmar* (tú no confirmas).
+- Temas fuera del pedido: redirige con amabilidad o sugiere escribir *humano*.`;
 let WhatsappSettingsService = class WhatsappSettingsService {
     settingsRepo;
     config;
@@ -44,7 +52,7 @@ let WhatsappSettingsService = class WhatsappSettingsService {
     async getSettings() {
         let row = await this.settingsRepo.findOne({ where: { id: 1 } });
         if (!row) {
-            row = this.settingsRepo.create({ id: 1 });
+            row = this.settingsRepo.create({ id: 1, defaultDeliveryFee: 2000 });
             row = await this.settingsRepo.save(row);
         }
         return row;
@@ -55,8 +63,10 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             .trim()
             .toLowerCase();
         const enabledFromEnv = envEnabled === 'true' || envEnabled === '1' || envEnabled === 'yes';
+        const fee = Number(row.defaultDeliveryFee);
         return {
             ...row,
+            defaultDeliveryFee: Number.isFinite(fee) && fee > 0 ? fee : 2000,
             enabled: !!row.enabled || enabledFromEnv,
             accessToken: (row.accessToken || '').trim() ||
                 (this.config.get('WHATSAPP_ACCESS_TOKEN') || '').trim() ||
@@ -71,7 +81,7 @@ let WhatsappSettingsService = class WhatsappSettingsService {
                 (this.config.get('OPENAI_API_KEY') || '').trim() ||
                 null,
             openaiModel: row.openaiModel || 'gpt-4o-mini',
-            systemPrompt: row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT,
+            systemPrompt: `${TONE_GUIDE}\n\n${row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT}`,
             welcomeMessage: row.welcomeMessage?.trim() || DEFAULT_WELCOME,
             menuUrl: ((this.config.get('WHATSAPP_MENU_URL') || '').trim() ||
                 `${(this.config.get('FRONTEND_URL') || 'https://prontopolloportal.com').replace(/\/$/, '')}/menu`),
@@ -124,7 +134,7 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             openaiApiKeyPreview: mask(row.openaiApiKey),
             openaiModel: row.openaiModel,
             systemPrompt: row.systemPrompt,
-            defaultDeliveryFee: row.defaultDeliveryFee,
+            defaultDeliveryFee: Number(row.defaultDeliveryFee) > 0 ? Number(row.defaultDeliveryFee) : 2000,
             allowMercadoPago: !!row.allowMercadoPago,
             welcomeMessage: row.welcomeMessage,
             updatedAt: row.updatedAt,

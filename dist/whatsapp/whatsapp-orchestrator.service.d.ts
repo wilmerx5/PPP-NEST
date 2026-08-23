@@ -24,6 +24,9 @@ export declare class WhatsappOrchestratorService {
     private addProductToCart;
     private toPendingAttribute;
     private buildSessionSummary;
+    private looksLikeSideQuestion;
+    private answerSideQuestionWithAi;
+    private formatCartOnly;
     private formatOrderSummary;
     private isReadyToConfirm;
     private tryConfirmOrder;
@@ -31,8 +34,16 @@ export declare class WhatsappOrchestratorService {
         id: string;
         fullName: string;
     }): Promise<void>;
+    private isRestartIntent;
+    private isCancelIntent;
+    private formatOrderStatusLabel;
+    private handleCancelRequest;
     private isConfirmKeyword;
     private isGreetingKeyword;
+    private isPickupIntent;
+    private isDeliveryIntent;
+    private applyPickupIntent;
+    private extractEtaPhrase;
     private looksLikeAddress;
     private looksLikePayment;
     private buildWelcomeMessage;

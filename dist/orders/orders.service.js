@@ -2016,6 +2016,36 @@ let OrdersService = class OrdersService {
         });
         return orders;
     }
+    async findTodayOrdersByPhone(phone) {
+        const digits = String(phone || '').replace(/\D/g, '');
+        const tail = digits.slice(-10);
+        if (tail.length < 10)
+            return [];
+        const { start, end } = (0, date_util_1.getBogotaDayRange)();
+        const rows = await this.orderRepo
+            .createQueryBuilder('o')
+            .select([
+            'o.id',
+            'o.dailyOrderNumber',
+            'o.orderStatus',
+            'o.orderType',
+            'o.orderSource',
+            'o.createdAt',
+        ])
+            .where('o.createdAt BETWEEN :start AND :end', { start, end })
+            .andWhere(`REPLACE(REPLACE(REPLACE(REPLACE(o.phone, ' ', ''), '+', ''), '-', ''), ' ', '') LIKE :tail`, { tail: `%${tail}` })
+            .orderBy('o.createdAt', 'DESC')
+            .take(10)
+            .getMany();
+        return rows.map((o) => ({
+            id: o.id,
+            dailyOrderNumber: o.dailyOrderNumber,
+            orderStatus: o.orderStatus,
+            orderType: o.orderType,
+            orderSource: o.orderSource,
+            createdAt: o.createdAt,
+        }));
+    }
     async findOrdersByDate(date) {
         const [year, month, day] = date.split('-').map(Number);
         const startBogotaString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`;

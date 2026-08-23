@@ -32,7 +32,7 @@ export class WhatsappSettings {
   @Column({ name: 'system_prompt', type: 'text', nullable: true })
   systemPrompt: string | null;
 
-  @Column({ name: 'default_delivery_fee', type: 'int', default: 0 })
+  @Column({ name: 'default_delivery_fee', type: 'int', default: 2000 })
   defaultDeliveryFee: number;
 
   @Column({ name: 'allow_mercado_pago', type: 'boolean', default: true })

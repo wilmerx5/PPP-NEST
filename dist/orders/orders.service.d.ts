@@ -154,6 +154,14 @@ export declare class OrdersService {
         dailyOrderNumber: number;
         createdAt: Date;
     }>>;
+    findTodayOrdersByPhone(phone: string): Promise<Array<{
+        id: number;
+        dailyOrderNumber: number;
+        orderStatus: Order['orderStatus'];
+        orderType: Order['orderType'];
+        orderSource: Order['orderSource'];
+        createdAt: Date;
+    }>>;
     findOrdersByDate(date: string): Promise<any[]>;
     getDailySummary(date?: string): Promise<any>;
     static readonly ADMIN_STATS_MIN_DATE = "2026-01-21";

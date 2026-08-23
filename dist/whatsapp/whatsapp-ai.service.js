@@ -34,19 +34,19 @@ ${input.businessRulesBlock}
 
 ${input.customerHint}
 
-Resumen de sesión (fuente de verdad del carrito):
+Resumen de sesión (fuente de verdad del carrito y elecciones pendientes):
 ${input.sessionSummary}
 
 Menú autorizado (SOLO estos productos; ids y precios exactos):
 ${input.menuDetailedText}
 
+Estilo: tutea, sé cálido y atento como un colombiano del local (sin empalagar). Responde primero la duda del cliente; no te portes como un menú rígido.
+
 ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
+        const history = this.toChatMessages(input.recentMessages).slice(-12);
         const messages = [
             { role: 'system', content: system },
-            ...input.recentMessages.slice(-6).map((line, i) => ({
-                role: (i % 2 === 0 ? 'user' : 'assistant'),
-                content: line,
-            })),
+            ...history,
             { role: 'user', content: input.userMessage },
         ];
         try {
@@ -57,8 +57,8 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: cfg.openaiModel,
-                    temperature: 0.15,
+                    model: cfg.openaiModel || 'gpt-4o-mini',
+                    temperature: input.conversational ? 0.45 : 0.2,
                     response_format: { type: 'json_object' },
                     messages,
                 }),
@@ -75,7 +75,7 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
             const parsed = JSON.parse(content);
             if (!parsed.reply || typeof parsed.reply !== 'string') {
                 return {
-                    reply: 'Puedes pedir por *código* o *nombre* del producto. Ejemplo: "2" o "medio pollo". Escribe *humano* si necesitas ayuda.',
+                    reply: 'Puedes pedir por *código* o *nombre* del producto. Ejemplo: "28" o "medio pollo". Escribe *humano* si necesitas ayuda.',
                 };
             }
             parsed.reply = parsed.reply.trim().slice(0, 3500);
@@ -90,6 +90,24 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
                 reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o escribe *humano*.',
             };
         }
+    }
+    toChatMessages(recent) {
+        const out = [];
+        for (const line of recent) {
+            const trimmed = (line || '').trim();
+            if (!trimmed)
+                continue;
+            if (/^Cliente:\s*/i.test(trimmed)) {
+                out.push({ role: 'user', content: trimmed.replace(/^Cliente:\s*/i, '').trim() });
+            }
+            else if (/^Bot:\s*/i.test(trimmed)) {
+                out.push({ role: 'assistant', content: trimmed.replace(/^Bot:\s*/i, '').trim() });
+            }
+            else {
+                out.push({ role: 'user', content: trimmed });
+            }
+        }
+        return out.filter((m) => m.content.length > 0);
     }
 };
 exports.WhatsappAiService = WhatsappAiService;

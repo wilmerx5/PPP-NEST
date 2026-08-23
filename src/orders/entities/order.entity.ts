@@ -135,7 +135,7 @@ export class Order {
   @ApiProperty({
     description: 'Origen: online = cliente/ppp-front (pago); internal = panel orders-ppp-front o ppp-mesas.',
     example: 'online',
-    enum: ['online', 'internal'],
+    enum: ['online', 'internal', 'whatsapp'],
   })
   @Column({
     name: 'order_source',

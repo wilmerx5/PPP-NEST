@@ -11,5 +11,7 @@ export declare class WhatsappAiService {
         sessionSummary: string;
         recentMessages: string[];
         customerHint: string;
+        conversational?: boolean;
     }): Promise<AiTurnResult>;
+    private toChatMessages;
 }

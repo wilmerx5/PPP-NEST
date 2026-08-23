@@ -8,6 +8,7 @@ export declare class WhatsappSettingsService {
     constructor(settingsRepo: Repository<WhatsappSettings>, config: ConfigService);
     getSettings(): Promise<WhatsappSettings>;
     getEffectiveConfig(): Promise<{
+        defaultDeliveryFee: number;
         enabled: boolean;
         accessToken: string | null;
         phoneNumberId: string | null;
@@ -21,7 +22,6 @@ export declare class WhatsappSettingsService {
         id: number;
         displayPhone: string | null;
         wabaId: string | null;
-        defaultDeliveryFee: number;
         allowMercadoPago: boolean;
         updatedAt: Date;
     }>;

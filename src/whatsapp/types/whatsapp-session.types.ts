@@ -52,9 +52,11 @@ export type WhatsappSessionData = {
 
 export type WhatsappConversationState =
   | 'building_cart'
+  | 'awaiting_attribute'
   | 'awaiting_name'
   | 'awaiting_address'
   | 'awaiting_payment'
+  | 'awaiting_final_confirm'
   | 'confirming'
   | 'awaiting_mp_payment'
   | 'completed';

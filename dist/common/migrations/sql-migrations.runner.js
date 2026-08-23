@@ -185,6 +185,9 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = 'ppp_whatsapp_settings'`);
             if (Number(table?.[0]?.c) > 0) {
+                await this.dataSource.query(`UPDATE ppp_whatsapp_settings
+           SET default_delivery_fee = 2000
+           WHERE id = 1 AND (default_delivery_fee IS NULL OR default_delivery_fee = 0)`);
                 return;
             }
             this.logger.warn('Missing WhatsApp tables — creating now (022_whatsapp_module)');
@@ -200,7 +203,7 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
           openai_api_key TEXT NULL,
           openai_model VARCHAR(64) NOT NULL DEFAULT 'gpt-4o-mini',
           system_prompt TEXT NULL,
-          default_delivery_fee INT NOT NULL DEFAULT 0,
+          default_delivery_fee INT NOT NULL DEFAULT 2000,
           allow_mercado_pago TINYINT(1) NOT NULL DEFAULT 1,
           welcome_message TEXT NULL,
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

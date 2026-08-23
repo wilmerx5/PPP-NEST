@@ -50,7 +50,7 @@ export type WhatsappSessionData = {
     linkedUserId?: string | null;
     linkedUserName?: string | null;
 };
-export type WhatsappConversationState = 'building_cart' | 'awaiting_name' | 'awaiting_address' | 'awaiting_payment' | 'confirming' | 'awaiting_mp_payment' | 'completed';
+export type WhatsappConversationState = 'building_cart' | 'awaiting_attribute' | 'awaiting_name' | 'awaiting_address' | 'awaiting_payment' | 'awaiting_final_confirm' | 'confirming' | 'awaiting_mp_payment' | 'completed';
 export declare const EMPTY_SESSION: WhatsappSessionData;
 export type AiOrderAction = {
     addItems?: Array<{
