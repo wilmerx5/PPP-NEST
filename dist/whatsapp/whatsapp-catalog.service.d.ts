@@ -52,8 +52,12 @@ export declare class WhatsappCatalogService {
     cleanOrderSegment(segment: string): string;
     private readonly WEAK_PRODUCT_TOKENS;
     looksLikeFoodPlusDrinkOrder(text: string): boolean;
+    detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null;
+    detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null;
+    resolveSizedChickenProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean;
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
+    private drinkPreferenceRank;
     looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     splitFoodPlusDrinkSegments(text: string): string[];

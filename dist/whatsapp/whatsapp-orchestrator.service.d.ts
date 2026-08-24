@@ -42,8 +42,11 @@ export declare class WhatsappOrchestratorService {
     private looksLikeSideQuestion;
     private answerSideQuestionWithAi;
     private formatContinueShoppingPrompt;
+    private formatCartTiny;
+    private withPreface;
     private formatCartOnly;
     private buildCartAddReply;
+    private maybeAdvanceCheckoutAfterAdd;
     private formatOrderSummary;
     private isReadyToConfirm;
     private formatWaPhoneDisplay;
@@ -101,10 +104,15 @@ export declare class WhatsappOrchestratorService {
     private isDeliveryIntent;
     private applyPickupIntent;
     private extractEtaPhrase;
+    private withDeliveryAddress;
     private applyDeliveryHintFromMessage;
     private normalizeDeliveryAddress;
     private isPlausibleDeliveryAddress;
+    private isStrongExplicitAddress;
+    private looksLikeFoodNotAddress;
     private extractDeliveryTail;
+    private splitProductAndDelivery;
+    private parseCompoundOrderMessage;
     private mergeNameScores;
     private looksLikeAddress;
     private formatLocationAddress;

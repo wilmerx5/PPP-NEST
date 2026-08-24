@@ -100,7 +100,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       text = resolved;
-      await this.reply(conv, msg.waId, `Te escuché: _${this.shortQuote(text)}_`);
+      // Sin eco aparte: el siguiente mensaje útil ya responde (menos burbujas / latencia)
     } else if (msg.messageType === 'image' && msg.mediaId) {
       const img = await this.resolveImageMessage(msg, logged.id, conv, cfg);
       if (img.done) return;
@@ -189,6 +189,25 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Mensaje largo: productos + dirección + nombre + teléfono en un solo texto
+    const compound = this.parseCompoundOrderMessage(text);
+    session = this.withDeliveryAddress(session, compound.address);
+    if (compound.phone) {
+      session = {
+        ...session,
+        contactPhone: compound.phone,
+        phoneConfirmed: true,
+      };
+    }
+    if (compound.customerName && !conv.customerName?.trim()) {
+      await this.conversationService.updateCustomerName(conv, compound.customerName);
+      const freshName = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshName);
+    }
+    if (compound.productText.length >= 3) {
+      text = compound.productText;
+    }
+    await this.conversationService.saveSession(conv, session);
     const productsRaw = await this.catalogService.getMenuProducts();
     const status = await this.businessService.getStatus();
     const businessOpenForBot = status.isOpen || !!cfg.ignoreBusinessHours;
@@ -487,8 +506,9 @@ export class WhatsappOrchestratorService {
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
-      await this.reply(conv, msg.waId, `Con gusto, *${text.trim()}* ✅`);
-      await this.tryConfirmOrder(conv, msg.waId, session);
+      await this.tryConfirmOrder(conv, msg.waId, session, {
+        preface: `Con gusto, *${text.trim()}* ✅`,
+      });
       return;
     }
     if (conv.state === 'awaiting_name') {
@@ -507,12 +527,9 @@ export class WhatsappOrchestratorService {
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
-        await this.reply(
-          conv,
-          msg.waId,
-          `Perfecto, *pasas tú por el local* ✅\n_${session.address}_`,
-        );
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Perfecto, *pasas tú por el local* ✅`,
+        });
         return;
       }
       if (this.isDeliveryIntent(text) || this.looksLikeAddress(text) || text.length >= 6) {
@@ -523,11 +540,17 @@ export class WhatsappOrchestratorService {
         };
         const addrHint = this.extractDeliveryTail(text) || (this.isPlausibleDeliveryAddress(text) ? text.trim() : null);
         if (addrHint && this.isPlausibleDeliveryAddress(addrHint) && !this.isDeliveryIntent(text)) {
-          session.address = addrHint;
-          session.addressConfirmed = false;
+          session = this.withDeliveryAddress(session, addrHint);
         } else {
           session.address = undefined;
           session.addressConfirmed = false;
+        }
+        if (session.addressConfirmed && session.address?.trim()) {
+          await this.conversationService.saveSession(conv, session, 'building_cart');
+          await this.tryConfirmOrder(conv, msg.waId, session, {
+            preface: `Perfecto, domicilio a *${session.address.trim()}* ✅`,
+          });
+          return;
         }
         await this.conversationService.saveSession(conv, session, 'awaiting_address');
         await this.reply(conv, msg.waId, this.buildAskAddressMessage(session, cfg.defaultDeliveryFee));
@@ -546,12 +569,9 @@ export class WhatsappOrchestratorService {
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
-        await this.reply(
-          conv,
-          msg.waId,
-          `Perfecto, entonces *pasas tú por el local* ✅ (sin domicilio).\n_${session.address}_`,
-        );
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Perfecto, *pasas tú por el local* ✅`,
+        });
         return;
       }
       // Confirmar dirección sugerida
@@ -569,11 +589,12 @@ export class WhatsappOrchestratorService {
           addressConfirmed: true,
         };
         await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(conv, msg.waId, `Listo, dirección confirmada ✅\n_${session.address}_`);
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Dirección lista ✅ _${session.address}_`,
+        });
         return;
       }
       if (text.length >= 6) {
@@ -586,19 +607,18 @@ export class WhatsappOrchestratorService {
           );
           return;
         }
-        session = {
-          ...session,
-          orderType: 'delivery',
-          fulfillmentChosen: true,
-          address: addrHint,
-          addressConfirmed: true,
-        };
+        session = this.withDeliveryAddress(
+          { ...session, fulfillmentChosen: true },
+          addrHint,
+        );
+        session = { ...session, addressConfirmed: true };
         await this.conversationService.saveSession(conv, session, 'building_cart');
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
-        await this.reply(conv, msg.waId, `Listo, anoté la dirección ✅\n_${addrHint}_`);
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Dirección lista ✅ _${addrHint}_`,
+        });
         return;
       }
     }
@@ -626,13 +646,14 @@ export class WhatsappOrchestratorService {
       const payPick = this.resolvePaymentChoice(text, cfg);
       if (payPick) {
         session.paymentMethod = payPick.id;
+        session.notesCollected = true;
         await this.conversationService.saveSession(conv, session, 'confirming');
         const confirmExtra = this.buildPaymentConfirmReply(payPick, cfg);
-        if (confirmExtra) {
-          await this.reply(conv, msg.waId, confirmExtra);
-        }
         session = this.conversationService.getSession(conv);
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: confirmExtra || undefined,
+          skipFinalConfirm: true,
+        });
         return;
       }
     }
@@ -736,17 +757,38 @@ export class WhatsappOrchestratorService {
       }
     }
 
-    // Cambio de categoría (ej. ya vio sopas y pregunta por pollo / carne)
-    const categorySwitch = await this.tryHandleCategoryBrowse(
-      conv,
-      msg.waId,
-      session,
-      products,
-      text,
-      cfg.menuConceptGroups,
-    );
-    if (categorySwitch === null) return;
-    session = categorySwitch;
+    // Cambio de categoría solo si NO hay producto concreto claro
+    {
+      const productQueryEarly = this.catalogService.extractProductSearchQuery(text);
+      const qCheck = productQueryEarly || text;
+      const orderNoise = new Set([
+        'quiero', 'dame', 'ponme', 'pedir', 'ordenar', 'agrega', 'necesito', 'una', 'uno',
+      ]);
+      const significant = qCheck
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .split(/\s+/)
+        .filter((t) => t.length >= 3 && !orderNoise.has(t));
+      const looksSpecificDish = significant.length >= 2;
+      const earlyScored = this.catalogService.searchByNameScored(qCheck, products, 5);
+      const hasConcreteProduct =
+        looksSpecificDish &&
+        (this.catalogService.isStrongProductMatch(earlyScored) ||
+          !!this.catalogService.findProductEmbeddedInMessage(text, products));
+      if (!hasConcreteProduct) {
+        const categorySwitch = await this.tryHandleCategoryBrowse(
+          conv,
+          msg.waId,
+          session,
+          products,
+          text,
+          cfg.menuConceptGroups,
+        );
+        if (categorySwitch === null) return;
+        session = categorySwitch;
+      }
+    }
 
     // Pickup / delivery explícito (antes de códigos: "paso en 15 minutos" ≠ código 15)
     if (this.isPickupIntent(text)) {
@@ -964,7 +1006,7 @@ export class WhatsappOrchestratorService {
     ) {
       const deliveryTail = this.extractDeliveryTail(text);
       if (deliveryTail) {
-        session = { ...session, orderType: 'delivery', address: deliveryTail };
+        session = this.withDeliveryAddress(session, deliveryTail);
       }
       if (embeddedProduct.hasAttributes && embeddedProduct.attributes?.length) {
         if (await this.handleProductWithVariants(conv, msg.waId, session, embeddedProduct, text, cfg)) {
@@ -979,13 +1021,16 @@ export class WhatsappOrchestratorService {
       }
       session = embeddedAdd.session;
       await this.conversationService.saveSession(conv, session, 'building_cart');
+      if (await this.maybeAdvanceCheckoutAfterAdd(conv, msg.waId, session)) return;
       await this.reply(
         conv,
         msg.waId,
         this.buildCartAddReply(session, cfg.defaultDeliveryFee, embeddedProduct.name, {
           extraLine: [
             embeddedProduct.description ? `_${embeddedProduct.description}_` : '',
-            deliveryTail ? `\nDomicilio anotado: _${deliveryTail}_` : '',
+            deliveryTail || session.address
+              ? `\nDomicilio anotado: _${deliveryTail || session.address}_`
+              : '',
           ]
             .filter(Boolean)
             .join('\n'),
@@ -1042,7 +1087,7 @@ export class WhatsappOrchestratorService {
       }
       const deliveryTail = this.extractDeliveryTail(text);
       if (deliveryTail) {
-        session = { ...session, orderType: 'delivery', address: deliveryTail };
+        session = this.withDeliveryAddress(session, deliveryTail);
       }
       if (one.hasAttributes && one.attributes?.length) {
         if (await this.handleProductWithVariants(conv, msg.waId, session, one, text, cfg)) {
@@ -1057,13 +1102,16 @@ export class WhatsappOrchestratorService {
       }
       session = added.session;
       await this.conversationService.saveSession(conv, session, 'building_cart');
+      if (await this.maybeAdvanceCheckoutAfterAdd(conv, msg.waId, session)) return;
       await this.reply(
         conv,
         msg.waId,
         this.buildCartAddReply(session, cfg.defaultDeliveryFee, one.name, {
           extraLine: [
             one.description ? `_${one.description}_` : '',
-            deliveryTail ? `\nDomicilio anotado: _${deliveryTail}_` : '',
+            deliveryTail || session.address
+              ? `\nDomicilio anotado: _${deliveryTail || session.address}_`
+              : '',
           ]
             .filter(Boolean)
             .join('\n'),
@@ -1498,12 +1546,11 @@ export class WhatsappOrchestratorService {
 
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
-      if (addr.length >= 10 && !this.isConfirmKeyword(addr) && !this.isGreetingKeyword(addr)) {
-        next.address = addr;
+      if (addr.length >= 5 && !this.isConfirmKeyword(addr) && !this.isGreetingKeyword(addr)) {
         if (!this.isPickupIntent(addr)) {
-          next.orderType = 'delivery';
-          next.fulfillmentChosen = true;
-          next.addressConfirmed = false;
+          next = this.withDeliveryAddress(next, addr);
+        } else {
+          next.address = addr;
         }
       }
     }
@@ -1512,8 +1559,6 @@ export class WhatsappOrchestratorService {
     } else if (actions.setOrderType === 'delivery') {
       next.orderType = 'delivery';
       next.fulfillmentChosen = true;
-      // Dirección la confirmamos en el paso explícito
-      if (!next.addressConfirmed) next.addressConfirmed = false;
     }
     if (actions.setPaymentMethod) next.paymentMethod = actions.setPaymentMethod;
 
@@ -2198,8 +2243,26 @@ export class WhatsappOrchestratorService {
     return reply;
   }
 
-  private formatContinueShoppingPrompt(): string {
-    return '¿Te gustaría agregar algo más? Cuando quieras escribe *confirmar*.';
+  private formatContinueShoppingPrompt(session?: WhatsappSessionData): string {
+    if (session?.addressConfirmed && session.cart.length > 0) {
+      return 'Si ya está tu pedido, escribe *listo* para continuar.';
+    }
+    return '¿Algo más? Si ya está, escribe *listo*.';
+  }
+
+  private formatCartTiny(session: WhatsappSessionData, deliveryFee: number): string {
+    const n = session.cart.length;
+    if (!n) return '🛒 Carrito vacío';
+    const subtotal = session.cart.reduce((s, c) => s + c.unitPrice, 0);
+    const fee = session.orderType === 'delivery' ? deliveryFee : 0;
+    const total = subtotal + fee;
+    return `🛒 ${n} ${n === 1 ? 'ítem' : 'ítems'} · *$${Math.round(total).toLocaleString('es-CO')}*`;
+  }
+
+  private withPreface(preface: string | undefined, body: string): string {
+    const p = (preface || '').trim();
+    if (!p) return body;
+    return `${p}\n\n${body}`;
   }
 
   private formatCartOnly(session: WhatsappSessionData, deliveryFee: number): string {
@@ -2218,7 +2281,10 @@ export class WhatsappOrchestratorService {
       lines.join('\n') +
       `\n\nSubtotal: $${Math.round(subtotal).toLocaleString('es-CO')}` +
       (fee ? `\nDomicilio: $${Math.round(fee).toLocaleString('es-CO')}` : '') +
-      `\n*Total: $${Math.round(total).toLocaleString('es-CO')}*`
+      `\n*Total: $${Math.round(total).toLocaleString('es-CO')}*` +
+      (session.orderType === 'delivery' && session.address?.trim()
+        ? `\n📍 ${session.address.trim()}${session.addressConfirmed ? ' ✅' : ''}`
+        : '')
     );
   }
 
@@ -2238,8 +2304,28 @@ export class WhatsappOrchestratorService {
 
     return (
       `${head}\n\n${this.formatCartOnly(session, deliveryFee)}\n\n` +
-      (opts?.suffix ?? this.formatContinueShoppingPrompt())
+      (opts?.suffix ?? this.formatContinueShoppingPrompt(session))
     );
+  }
+
+  /** Tras agregar ítems: si ya hay dirección/nombre, avanzar checkout sin otra pregunta. */
+  private async maybeAdvanceCheckoutAfterAdd(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+  ): Promise<boolean> {
+    if (!session.cart.length) return false;
+    if (!(session.addressConfirmed && session.address?.trim())) return false;
+    if (!conv.customerName?.trim() && !session.phoneConfirmed) {
+      // Tiene domicilio: pedir nombre de una (sin “¿algo más?”)
+      await this.tryConfirmOrder(conv, waId, session);
+      return true;
+    }
+    if (conv.customerName?.trim()) {
+      await this.tryConfirmOrder(conv, waId, session);
+      return true;
+    }
+    return false;
   }
 
   private formatOrderSummary(
@@ -2315,19 +2401,17 @@ export class WhatsappOrchestratorService {
 
   private buildAskNameMessage(session: WhatsappSessionData, deliveryFee: number): string {
     return (
-      `${this.formatCartOnly(session, deliveryFee)}\n\n` +
-      `Para armar tu pedido, ¿me regalas tu *nombre completo*?\n` +
-      `_Ejemplo: Juan Pérez_`
+      `${this.formatCartTiny(session, deliveryFee)}\n\n` +
+      `¿Me regalas tu *nombre completo*?\n` +
+      `_Ej: Juan Pérez_`
     );
   }
 
   private buildAskFulfillmentMessage(session: WhatsappSessionData, deliveryFee: number): string {
     return (
-      `${this.formatCartOnly(session, deliveryFee)}\n\n` +
-      `¿Cómo quieres recibir el pedido?\n\n` +
-      `1️⃣ *Domicilio* — te lo llevamos\n` +
-      `2️⃣ *Recojo* — pasas tú por el local\n\n` +
-      `_Responde *domicilio* o *paso a recoger* (ej. paso en 15 minutos)._`
+      `${this.formatCartTiny(session, deliveryFee)}\n\n` +
+      `¿*Domicilio* o *paso a recoger*?\n` +
+      `_Si es domicilio, puedes mandar la dirección de una._`
     );
   }
 
@@ -2338,26 +2422,21 @@ export class WhatsappOrchestratorService {
   ): string {
     const head = retry
       ? 'No me quedó clara la dirección 🙏'
-      : `${this.formatCartOnly(session, deliveryFee)}\n\n` +
-        `Perfecto, *domicilio*.`;
+      : `${this.formatCartTiny(session, deliveryFee)}\n\nDomicilio:`;
 
     if (session.address?.trim() && !session.addressConfirmed) {
       return (
-        `${head}\n\n` +
-        `Tengo anotado:\n📍 _${session.address.trim()}_\n\n` +
-        `¿Es correcta?\n` +
-        `• Escribe *sí* para confirmarla\n` +
-        `• O mándame la *dirección completa* corregida\n\n` +
-        `_Ej: Calle 10 #5-20, habitación 202, barrio Centro_`
+        `${head}\n` +
+        `📍 _${session.address.trim()}_\n\n` +
+        `¿Está bien? Responde *sí* o manda la dirección corregida.`
       );
     }
 
     return (
-      `${head}\n\n` +
-      `¿Me escribes la *dirección de entrega completa*?\n` +
-      `_Incluye calle/carrera, número, barrio, habitación/apto o referencia._\n\n` +
-      `Ejemplo: *Calle 10 #5-20, habitación 202, Centro*\n\n` +
-      `_Si en realidad pasas tú, escribe *paso a recoger*._`
+      `${head}\n` +
+      `¿Me escribes la *dirección*?\n` +
+      `_Ej: Calle 10 #5-20, apto 202, Centro_\n` +
+      `_O escribe *paso a recoger*._`
     );
   }
 
@@ -2368,11 +2447,10 @@ export class WhatsappOrchestratorService {
   ): string {
     const wa = this.formatWaPhoneDisplay(conv.phoneE164);
     return (
-      `${this.formatCartOnly(session, deliveryFee)}\n\n` +
-      `¿A qué *teléfono* te podemos contactar por este pedido?\n\n` +
-      `WhatsApp de este chat: *${wa}*\n\n` +
-      `• Escribe *sí* para usar ese mismo\n` +
-      `• O mándame *otro número* (ej. 3001234567)`
+      `${this.formatCartTiny(session, deliveryFee)}\n\n` +
+      `¿Teléfono de contacto?\n` +
+      `• *sí* → usar ${wa}\n` +
+      `• u otro número (ej. 3001234567)`
     );
   }
 
@@ -2391,15 +2469,12 @@ export class WhatsappOrchestratorService {
         contactPhone: conv.phoneE164,
       };
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(
-        conv,
-        waId,
-        `Listo, teléfono confirmado ✅ *${this.formatWaPhoneDisplay(conv.phoneE164)}*`,
-      );
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
-      await this.tryConfirmOrder(conv, waId, session);
+      await this.tryConfirmOrder(conv, waId, session, {
+        preface: `Teléfono listo ✅ *${this.formatWaPhoneDisplay(conv.phoneE164)}*`,
+      });
       return true;
     }
 
@@ -2419,15 +2494,12 @@ export class WhatsappOrchestratorService {
         contactPhone: normalized,
       };
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(
-        conv,
-        waId,
-        `Listo, teléfono anotado ✅ *${this.formatWaPhoneDisplay(normalized)}*`,
-      );
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
-      await this.tryConfirmOrder(conv, waId, session);
+      await this.tryConfirmOrder(conv, waId, session, {
+        preface: `Teléfono listo ✅ *${this.formatWaPhoneDisplay(normalized)}*`,
+      });
       return true;
     }
 
@@ -2439,11 +2511,16 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation,
     waId: string,
     session: WhatsappSessionData,
+    opts?: { preface?: string; skipFinalConfirm?: boolean },
   ): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
+    const say = async (body: string) => {
+      await this.reply(conv, waId, this.withPreface(opts?.preface, body));
+      opts = { ...opts, preface: undefined };
+    };
 
     if (!session.cart.length) {
-      await this.reply(conv, waId, 'Aún no tienes nada en el carrito. Dime qué quieres por nombre o código.');
+      await say('Aún no tienes nada en el carrito. Dime qué quieres por nombre o código.');
       return;
     }
 
@@ -2460,7 +2537,7 @@ export class WhatsappOrchestratorService {
       checkMin: true,
     });
     if (!minCheck.ok && minCheck.kind === 'min') {
-      await this.reply(conv, waId, minCheck.reason || 'El pedido no alcanza el mínimo.');
+      await say(minCheck.reason || 'El pedido no alcanza el mínimo.');
       return;
     }
 
@@ -2469,17 +2546,32 @@ export class WhatsappOrchestratorService {
       session.pendingMatch = undefined;
       session.pendingAttribute = undefined;
       await this.conversationService.saveSession(conv, session, 'awaiting_name');
-      await this.reply(conv, waId, this.buildAskNameMessage(session, cfg.defaultDeliveryFee));
+      await say(this.buildAskNameMessage(session, cfg.defaultDeliveryFee));
       return;
     }
 
-    // 2) Domicilio vs recojo (pregunta explícita)
+    // 2) Domicilio vs recojo
     if (!session.fulfillmentChosen) {
       session.pendingMatch = undefined;
       session.pendingAttribute = undefined;
-      // Si ya hay dirección inferida, igual pedimos confirmar modalidad/dirección
-      if (session.orderType === 'pickup' && session.address?.trim()) {
-        session = { ...session, fulfillmentChosen: true, addressConfirmed: true };
+      if (session.orderType === 'pickup') {
+        session = {
+          ...session,
+          fulfillmentChosen: true,
+          addressConfirmed: true,
+          address: session.address?.trim() || 'Recoge en el local',
+        };
+        await this.conversationService.saveSession(conv, session);
+      } else if (session.address?.trim() && session.addressConfirmed) {
+        session = { ...session, orderType: 'delivery', fulfillmentChosen: true };
+        await this.conversationService.saveSession(conv, session);
+      } else if (session.address?.trim() && this.isStrongExplicitAddress(session.address)) {
+        session = {
+          ...session,
+          orderType: 'delivery',
+          fulfillmentChosen: true,
+          addressConfirmed: true,
+        };
         await this.conversationService.saveSession(conv, session);
       } else if (session.address?.trim()) {
         session = {
@@ -2489,22 +2581,26 @@ export class WhatsappOrchestratorService {
           addressConfirmed: false,
         };
         await this.conversationService.saveSession(conv, session, 'awaiting_address');
-        await this.reply(conv, waId, this.buildAskAddressMessage(session, cfg.defaultDeliveryFee));
+        await say(this.buildAskAddressMessage(session, cfg.defaultDeliveryFee));
         return;
       } else {
         await this.conversationService.saveSession(conv, session, 'awaiting_fulfillment');
-        await this.reply(conv, waId, this.buildAskFulfillmentMessage(session, cfg.defaultDeliveryFee));
+        await say(this.buildAskFulfillmentMessage(session, cfg.defaultDeliveryFee));
         return;
       }
     }
 
-    // 3) Dirección (solo domicilio) — siempre pregunta explícita si no está confirmada
+    // 3) Dirección
     if (session.orderType !== 'pickup') {
+      if (session.address?.trim() && !session.addressConfirmed && this.isStrongExplicitAddress(session.address)) {
+        session = { ...session, addressConfirmed: true, fulfillmentChosen: true };
+        await this.conversationService.saveSession(conv, session);
+      }
       if (!session.address?.trim() || !session.addressConfirmed) {
         session.pendingMatch = undefined;
         session.pendingAttribute = undefined;
         await this.conversationService.saveSession(conv, session, 'awaiting_address');
-        await this.reply(conv, waId, this.buildAskAddressMessage(session, cfg.defaultDeliveryFee));
+        await say(this.buildAskAddressMessage(session, cfg.defaultDeliveryFee));
         return;
       }
     } else if (!session.address?.trim()) {
@@ -2517,13 +2613,14 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, session);
     }
 
-    // 4) Teléfono — pregunta explícita siempre
+    // 4) Teléfono — por defecto el de WhatsApp (sin preguntar)
     if (!session.phoneConfirmed) {
-      session.pendingMatch = undefined;
-      session.pendingAttribute = undefined;
-      await this.conversationService.saveSession(conv, session, 'awaiting_phone');
-      await this.reply(conv, waId, this.buildAskPhoneMessage(conv, session, cfg.defaultDeliveryFee));
-      return;
+      session = {
+        ...session,
+        phoneConfirmed: true,
+        contactPhone: session.contactPhone || conv.phoneE164,
+      };
+      await this.conversationService.saveSession(conv, session);
     }
 
     // 5) Pago
@@ -2531,50 +2628,53 @@ export class WhatsappOrchestratorService {
       session.pendingMatch = undefined;
       session.pendingAttribute = undefined;
       await this.conversationService.saveSession(conv, session, 'awaiting_payment');
-      await this.reply(
-        conv,
-        waId,
-        `${this.formatCartOnly(session, cfg.defaultDeliveryFee)}\n\n` +
+      await say(
+        `${this.formatCartTiny(session, cfg.defaultDeliveryFee)}\n\n` +
           buildPaymentOptionsPrompt(cfg.paymentMethods, cfg.paymentInstructions),
       );
       return;
     }
 
-    // 6) Notas / cambio
-    if (cfg.askOrderNotes !== false && !session.notesCollected) {
-      session.pendingMatch = undefined;
-      session.pendingAttribute = undefined;
-      await this.conversationService.saveSession(conv, session, 'awaiting_notes');
-      await this.reply(conv, waId, this.buildAskNotesMessage(cfg, session));
-      return;
+    // 6) Notas — opcional: no bloquear el pedido
+    if (!session.notesCollected) {
+      session = { ...session, notesCollected: true };
+      await this.conversationService.saveSession(conv, session);
     }
 
-    // 7) Resumen + confirmar
-    if (conv.state !== 'awaiting_final_confirm') {
+    // 7) Resumen + confirmar (o crear ya si venimos del pago)
+    const canSkipFinal = !!opts?.skipFinalConfirm && this.isReadyToConfirm(session, conv);
+    if (conv.state !== 'awaiting_final_confirm' && !canSkipFinal) {
       if (
         session.pendingRedemptionCode &&
         !this.pointsHandler.cartHasHalfChicken(session.cart)
       ) {
         await this.conversationService.saveSession(conv, session, 'awaiting_final_confirm');
-        await this.reply(
-          conv,
-          waId,
+        await say(
           `${this.formatOrderSummary(conv, session, cfg.defaultDeliveryFee, cfg.paymentMethods)}\n\n` +
             `${formatCartNeedsHalfChickenForPremio()}\n\n` +
-            `Cuando agregues el medio pollo, escribe *confirmar*.`,
+            `Cuando agregues el medio pollo, escribe *listo*.`,
         );
         return;
       }
       await this.conversationService.saveSession(conv, session, 'awaiting_final_confirm');
-      await this.reply(
-        conv,
-        waId,
+      await say(
         `${this.formatOrderSummary(conv, session, cfg.defaultDeliveryFee, cfg.paymentMethods)}\n\n` +
-          `Si todo te cuadra, escribe *confirmar* y armamos el pedido.`,
+          `Si todo cuadra, responde *listo* y armamos el pedido.`,
       );
       return;
     }
 
+    if (
+      session.pendingRedemptionCode &&
+      !this.pointsHandler.cartHasHalfChicken(session.cart)
+    ) {
+      await say(
+        `${formatCartNeedsHalfChickenForPremio()}\n\nAgrega medio pollo (cód. 2 o 5) y vuelve a escribir *listo*.`,
+      );
+      return;
+    }
+
+    // Crear pedido
     const items = session.cart.flatMap((c) =>
       Array.from({ length: c.quantity }, () => ({
         productId: c.productId,
@@ -2586,7 +2686,7 @@ export class WhatsappOrchestratorService {
     const extras = this.buildOrderExtras(session);
 
     const orderDto: CreateOrderDto = {
-      customerName: conv.customerName.trim(),
+      customerName: conv.customerName!.trim(),
       phone: (session.contactPhone || conv.phoneE164).trim(),
       address: (session.address || '').trim(),
       orderType: session.orderType,
@@ -2599,18 +2699,6 @@ export class WhatsappOrchestratorService {
         : {}),
       clientRequestId: `wa-${conv.id}-${randomUUID()}`.slice(0, 64),
     };
-
-    if (
-      session.pendingRedemptionCode &&
-      !this.pointsHandler.cartHasHalfChicken(session.cart)
-    ) {
-      await this.reply(
-        conv,
-        waId,
-        `${formatCartNeedsHalfChickenForPremio()}\n\nAgrega medio pollo (cód. 2 o 5) y vuelve a *confirmar*.`,
-      );
-      return;
-    }
 
     try {
       const payMethod =
@@ -2631,7 +2719,7 @@ export class WhatsappOrchestratorService {
           mpItems,
           total,
           {
-            name: conv.customerName.trim(),
+            name: conv.customerName!.trim(),
             email: `${(session.contactPhone || conv.phoneE164).replace(/\D/g, '')}@whatsapp.ppp.local`,
             phone: session.contactPhone || conv.phoneE164,
           },
@@ -2644,9 +2732,7 @@ export class WhatsappOrchestratorService {
         );
         session.mpPreferenceId = pref.preferenceId;
         await this.conversationService.saveSession(conv, session, 'awaiting_mp_payment');
-        await this.reply(
-          conv,
-          waId,
+        await say(
           `${this.formatOrderSummary(conv, session, cfg.defaultDeliveryFee, cfg.paymentMethods)}\n\n` +
             `Link de pago Mercado Pago:\n${pref.initPoint}\n\nCuando el pago se confirme, te avisamos aquí y armamos el pedido.`,
         );
@@ -2658,9 +2744,7 @@ export class WhatsappOrchestratorService {
       await this.conversationService.resetOrderSession(conv, 'completed', {
         ignorePriorHistory: true,
       });
-      await this.reply(
-        conv,
-        waId,
+      await say(
         this.formatOrderSuccessMessage(
           conv,
           snapshot,
@@ -2673,7 +2757,7 @@ export class WhatsappOrchestratorService {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear pedido';
       this.logger.error(`Order create failed: ${message}`);
-      await this.reply(conv, waId, `Uy, no pude registrar el pedido: ${message}. Escribe *humano* y te ayudamos.`);
+      await say(`Uy, no pude registrar el pedido: ${message}. Escribe *humano* y te ayudamos.`);
     }
   }
 
@@ -3714,8 +3798,10 @@ export class WhatsappOrchestratorService {
   }
 
   private isConfirmKeyword(text: string): boolean {
-    return /^(confirmar|confirmo|listo pedido|finalizar)$/i.test(text.trim()) ||
-      /\b(confirmar|confirmo|listo pedido|finalizar)\b/i.test(text.trim());
+    return (
+      /^(confirmar|confirmo|listo|listo pedido|finalizar|ok|dale)[\s!.?]*$/i.test(text.trim()) ||
+      /\b(confirmar|confirmo|listo pedido|finalizar)\b/i.test(text.trim())
+    );
   }
 
   private isGreetingKeyword(text: string): boolean {
@@ -3860,25 +3946,36 @@ export class WhatsappOrchestratorService {
     return `paso en ~${cleaned}`;
   }
 
-  private applyDeliveryHintFromMessage(
+  private withDeliveryAddress(
     session: WhatsappSessionData,
-    text: string,
+    address: string | null | undefined,
   ): WhatsappSessionData {
-    const addr = this.extractDeliveryTail(text);
+    const addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
+    const strong =
+      this.isStrongExplicitAddress(addr) ||
+      (this.isPlausibleDeliveryAddress(addr) && this.looksLikeAddress(addr));
     return {
       ...session,
       orderType: 'delivery',
       address: addr,
       fulfillmentChosen: true,
-      addressConfirmed: false,
+      addressConfirmed: strong || !!session.addressConfirmed,
     };
+  }
+
+  private applyDeliveryHintFromMessage(
+    session: WhatsappSessionData,
+    text: string,
+  ): WhatsappSessionData {
+    return this.withDeliveryAddress(session, this.extractDeliveryTail(text));
   }
 
   private normalizeDeliveryAddress(raw: string): string {
     return (raw || '')
       .replace(/\s+/g, ' ')
       .replace(/^[\s,.-]+|[\s,.-]+$/g, '')
+      .replace(/^(?:la|el|los|las)\s+/i, '')
       .trim();
   }
 
@@ -3888,6 +3985,7 @@ export class WhatsappOrchestratorService {
     if (this.isConfirmKeyword(t) || this.isGreetingKeyword(t)) return false;
     if (this.isPickupIntent(t)) return false;
     if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
+    if (this.looksLikeFoodNotAddress(t)) return false;
     if (/\b(minutos?|mins?|horas?)\b/i.test(t) && !/\b(habitaci[oó]n|apto|apartamento|calle|carrera|barrio|torre)\b/i.test(t)) {
       return false;
     }
@@ -3906,29 +4004,80 @@ export class WhatsappOrchestratorService {
     return t.length >= 6 && /\d/.test(t);
   }
 
+  /** Dirección lo bastante clara para no pedir confirmación (calle/carrera + número, etc.). */
+  private isStrongExplicitAddress(text: string): boolean {
+    const t = this.normalizeDeliveryAddress(text);
+    if (!t || this.looksLikeFoodNotAddress(t)) return false;
+    if (
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|transversal|tv)\b/i.test(t) &&
+      /\d/.test(t)
+    ) {
+      return true;
+    }
+    if (
+      /\b(habitaci[oó]n|apto?|apartamento|cuarto|suite|torre|bloque|conjunto)\b/i.test(t) &&
+      /\d/.test(t) &&
+      t.length >= 8
+    ) {
+      return true;
+    }
+    if (/\bbarrio\b/i.test(t) && /\d/.test(t) && t.length >= 12) return true;
+    return false;
+  }
+
+  /** Evita tomar "a la broaster / frito / plancha" como dirección. */
+  private looksLikeFoodNotAddress(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    if (
+      /^(?:la\s+|el\s+)?(broaster|frito|frita|asado|asada|plancha|apanad[oa]|francesa|salada|yuca|arepa|gaseosa|combo|solo|medio|cuarto)s?\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    if (
+      /\b(broaster|frito|asado|plancha|gaseosa|arepa|combo|mondongo|ajiaco|pechuga|costilla)\b/i.test(
+        t,
+      ) &&
+      !/\b(calle|carrera|cra|cll|av|avenida|barrio|habitaci[oó]n|apto|apartamento|torre|#)\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   private extractDeliveryTail(text: string): string | null {
     const raw = (text || '').trim();
     if (!raw) return null;
 
-    const tailPatterns = [
-      /\bpara\b\s+(.+)$/is,
-      /\ba la\b\s+(.+)$/is,
-      /\ben la\b\s+(.+)$/is,
-      /\ba\b\s+(?:la|el)\s+(.+)$/is,
-      /\ben\b\s+(?:la|el|los|las)\s+(.+)$/is,
-      /\b(?:enviar|mandar|llevar|traer)\s+(?:a|en|para)\s+(.+)$/is,
+    // Priorizar "para …" (domicilio). "a la …" suele ser cocción (a la broaster).
+    const tailPatterns: Array<{ re: RegExp; requireStrong?: boolean }> = [
+      { re: /\bpara\b\s+(.+)$/is },
+      { re: /\b(?:enviar|mandar|llevar|traer|domicilio)\s+(?:a|en|para)\s+(.+)$/is },
+      { re: /\ben\b\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida|habitaci[oó]n|apto|apartamento|torre|barrio)\b.+)$/is },
+      // "a la carrera 10" sí; "a la broaster" no
+      { re: /\ba la\b\s+(.+)$/is, requireStrong: true },
+      { re: /\ben la\b\s+(.+)$/is, requireStrong: true },
     ];
 
-    for (const pattern of tailPatterns) {
-      const m = raw.match(pattern);
+    for (const { re, requireStrong } of tailPatterns) {
+      const m = raw.match(re);
       if (!m?.[1]) continue;
       const addr = this.normalizeDeliveryAddress(m[1]);
-      if (addr && this.isPlausibleDeliveryAddress(addr)) return addr;
+      if (!addr || !this.isPlausibleDeliveryAddress(addr)) continue;
+      if (requireStrong && !this.isStrongExplicitAddress(addr) && !this.looksLikeAddress(addr)) {
+        continue;
+      }
+      if (this.looksLikeFoodNotAddress(addr)) continue;
+      return addr;
     }
 
     const inlinePatterns = [
       /\b(?:para|a|en)\s+(?:la\s+|el\s+)?(habitaci[oó]n\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?)\b/i,
       /\b(?:para|a|en)\s+(?:la\s+|el\s+)?((?:apto?|apartamento|cuarto|suite|oficina)\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?)\b/i,
+      /\b(?:para|a|en)\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida)\s+\d[\w\s#\-.]{2,40})\b/i,
       /\b(habitaci[oó]n\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?)\b/i,
       /\b(?:apto?|apartamento|cuarto|suite|oficina)\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?\b/i,
       /\b(?:torre|bloque|piso|interior|local)\s+[a-z0-9#\-\s]{1,24}\d{1,4}[a-z]?\b/i,
@@ -3938,10 +4087,80 @@ export class WhatsappOrchestratorService {
       const m = raw.match(pattern);
       if (!m?.[0]) continue;
       const addr = this.normalizeDeliveryAddress(m[1] || m[0]);
-      if (addr && this.isPlausibleDeliveryAddress(addr)) return addr;
+      if (addr && this.isPlausibleDeliveryAddress(addr) && !this.looksLikeFoodNotAddress(addr)) {
+        return addr;
+      }
     }
 
     return null;
+  }
+
+  /** Separa el pedido del domicilio para matching de producto (audios compuestos). */
+  private splitProductAndDelivery(text: string): { productText: string; address: string | null } {
+    const address = this.extractDeliveryTail(text);
+    if (!address) return { productText: text.trim(), address: null };
+
+    let productText = text.trim();
+    const escaped = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    productText = productText
+      .replace(new RegExp(`\\b(?:para|a|en)\\s+(?:la\\s+|el\\s+)?${escaped}\\s*$`, 'i'), '')
+      .replace(new RegExp(`\\bpara\\b\\s+${escaped}\\s*$`, 'i'), '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Si el corte falló, quitar desde el último "para …dirección"
+    if (productText === text.trim() || productText.length < 3) {
+      const m = text.match(/^(.*)\bpara\b\s+.+$/is);
+      if (m?.[1]?.trim()) productText = m[1].trim();
+    }
+
+    return { productText: productText || text.trim(), address };
+  }
+
+  /**
+   * Un solo mensaje largo: "sopa de menudencias y medio broaster para la carrera 78,
+   * me llamo Juan, cel 3001234567".
+   */
+  private parseCompoundOrderMessage(text: string): {
+    productText: string;
+    address: string | null;
+    phone: string | null;
+    customerName: string | null;
+  } {
+    let working = (text || '').trim();
+    let phone: string | null = null;
+    let customerName: string | null = null;
+
+    const phonePatterns = [
+      /\b(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*([+]?\d[\d\s().-]{6,16}\d)\b/i,
+      /\b(?:al|llamar\s+al)\s*([+]?\d[\d\s().-]{6,16}\d)\b/i,
+      /(?:^|[,\s])([3](?:\d[\s().-]*){9})(?=$|[,\s.])/i,
+    ];
+    for (const re of phonePatterns) {
+      const m = working.match(re);
+      if (!m?.[1] || !this.looksLikePhoneNumber(m[1])) continue;
+      phone = this.normalizeContactPhone(m[1], '') || null;
+      if (!phone) continue;
+      working = working.replace(m[0], ' ').replace(/\s+/g, ' ').trim();
+      break;
+    }
+
+    const namePatterns = [
+      /\b(?:me\s+llamo|soy|mi\s+nombre\s+es|nombre\s*:)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{1,60}?)(?=$|[.,;]|\b(?:para|cel|tel|whatsapp|direcci[oó]n|domicilio)\b)/i,
+    ];
+    for (const re of namePatterns) {
+      const m = working.match(re);
+      if (!m?.[1]) continue;
+      const name = m[1].replace(/\s+/g, ' ').trim();
+      if (name.length >= 2 && name.split(' ').length <= 6 && !this.looksLikeAddress(name)) {
+        customerName = name;
+        working = working.replace(m[0], ' ').replace(/\s+/g, ' ').trim();
+        break;
+      }
+    }
+
+    const { productText, address } = this.splitProductAndDelivery(working);
+    return { productText, address, phone, customerName };
   }
 
   private mergeNameScores(
@@ -4289,7 +4508,7 @@ export class WhatsappOrchestratorService {
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
       if (deliveryHint) {
-        session = { ...session, orderType: 'delivery', address: deliveryHint };
+        session = this.withDeliveryAddress(session, deliveryHint);
       }
       const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
       if (added.blocked) {
@@ -4313,9 +4532,11 @@ export class WhatsappOrchestratorService {
     }
 
     if (step.status === 'partial') {
+      if (deliveryHint) {
+        session = this.withDeliveryAddress(session, deliveryHint);
+      }
       session = {
         ...session,
-        ...(deliveryHint ? { orderType: 'delivery' as const, address: deliveryHint } : {}),
         pendingAttribute: {
           productId: product.id,
           name: product.name,
@@ -4342,9 +4563,11 @@ export class WhatsappOrchestratorService {
         ? 'info'
         : 'order';
 
+    if (deliveryHint) {
+      session = this.withDeliveryAddress(session, deliveryHint);
+    }
     session = {
       ...session,
-      ...(deliveryHint ? { orderType: 'delivery' as const, address: deliveryHint } : {}),
       pendingAttribute: this.toPendingAttribute(product, { sourceText: text }),
       pendingMatch: undefined,
     };
@@ -4547,7 +4770,7 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const deliveryTail = this.extractDeliveryTail(text);
     if (deliveryTail) {
-      session = { ...session, orderType: 'delivery', address: deliveryTail };
+      session = this.withDeliveryAddress(session, deliveryTail);
     }
 
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {

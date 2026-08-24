@@ -240,6 +240,31 @@ function findByMenuConcept(query, products, groups) {
             if (filtered.length)
                 matched = filtered;
         }
+        else {
+            const stop = new Set([
+                'con', 'de', 'del', 'la', 'el', 'los', 'las', 'una', 'un', 'unos', 'unas',
+                'quiero', 'dame', 'ponme', 'para', 'por',
+            ]);
+            const broadNeedles = new Set([...matchedTriggers, ...(BROAD_CONCEPT_TRIGGERS[concept.id] || []), concept.label]
+                .map((t) => stemLoose(normalizeText(t)))
+                .filter((t) => t.length >= 3));
+            const extraTokens = q
+                .split(' ')
+                .map((t) => t.trim())
+                .filter((t) => t.length >= 4 && !stop.has(t) && !broadNeedles.has(stemLoose(t)));
+            if (extraTokens.length) {
+                const filtered = matched.filter((p) => {
+                    const hay = normalizeText(`${p.name} ${p.description || ''}`);
+                    return extraTokens.some((tok) => hay.includes(tok) || hay.includes(stemLoose(tok)));
+                });
+                if (filtered.length >= 1) {
+                    matched = filtered;
+                }
+                else {
+                    continue;
+                }
+            }
+        }
         let score = 70;
         if (concept.triggers.some((t) => q === normalizeText(t)))
             score = 100;

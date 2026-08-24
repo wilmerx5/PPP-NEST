@@ -38,6 +38,11 @@ function normalizeText(s: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    // Porciones del menú PPP: "1/2 Pollo Broaster" ≡ "medio pollo broaster"
+    .replace(/\b1\s*\/\s*2\b/g, 'medio')
+    .replace(/\b1\s*\/\s*4\b/g, 'cuarto')
+    .replace(/\bmedias?\b/g, 'medio')
+    .replace(/\bcuartos?\b/g, 'cuarto')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -73,6 +78,9 @@ function fixCommonOrderTypos(text: string): string {
     .replace(/\bpollo\s+ala\s+broaster\b/gi, 'pollo broaster')
     .replace(/\ba\s+la\s+broaster\b/gi, 'broaster')
     .replace(/\sala\s+broaster\b/gi, 'broaster')
+    // "medio de pollo" / "un medio pollo"
+    .replace(/\bun\s+medio\s+(?:de\s+)?pollo\b/gi, 'medio pollo')
+    .replace(/\bmedio\s+de\s+pollo\b/gi, 'medio pollo')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -509,6 +517,86 @@ export class WhatsappCatalogService {
     return hasFood && hasDrink;
   }
 
+  /** Porción pedida en texto libre: medio / cuarto / entero. */
+  detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null {
+    const q = normalizeText(text);
+    if (/\b(medio|media)\b/.test(q)) return 'medio';
+    if (/\b(cuarto|cuarta)\b/.test(q)) return 'cuarto';
+    if (/\b(entero|entera|unidad)\b/.test(q)) return 'entero';
+    return null;
+  }
+
+  /** Porción que representa el SKU del menú (1/2 → medio, 1/4 → cuarto, 1 Pollo → entero). */
+  detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null {
+    const n = normalizeText(name);
+    if (/\bmedio\b/.test(n) || /\b1\s*2\b/.test(n)) return 'medio';
+    if (/\bcuarto\b/.test(n) || /\b1\s*4\b/.test(n)) return 'cuarto';
+    // "1 Pollo Broaster" / "1 Pollo Frito" (entero), no combos ni 1.5L
+    if (/^1\s+pollo\b/.test(n)) return 'entero';
+    return null;
+  }
+
+  /**
+   * "medio pollo a la broaster" → producto exacto "1/2 Pollo Broaster".
+   * El menú PPP usa SKUs separados por porción, no un atributo "Medio".
+   */
+  resolveSizedChickenProduct(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = normalizeText(fixCommonOrderTypos(text));
+    if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q)) {
+      return null;
+    }
+    // No forzar si pide combo/bandeja/ejecutivo explícito
+    if (/\b(combo|bandeja|ejecutivo|alitas|arroz chino|taco|hamburguesa)\b/.test(q)) {
+      return null;
+    }
+
+    const style = /\bbroaster\b/.test(q)
+      ? 'broaster'
+      : /\bfrito\b/.test(q)
+        ? 'frito'
+        : null;
+    if (!style && !/\bpollo\b/.test(q)) return null;
+
+    const portion = this.detectPortionHint(q) || 'entero';
+    const available = products.filter((p) => p.availableNow !== false);
+
+    const candidates = available.filter((p) => {
+      const n = normalizeText(p.name);
+      if (/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa|milensa|pechuga)\b/.test(n)) {
+        return false;
+      }
+      if (style === 'broaster' && !/\bbroaster\b/.test(n)) return false;
+      if (style === 'frito' && !/\bfrito\b/.test(n)) return false;
+      if (!style && !/\bpollo\b/.test(n)) return false;
+      return this.detectProductPortionSize(n) === portion;
+    });
+
+    if (candidates.length === 1) return candidates[0];
+    if (candidates.length > 1) {
+      // Preferir el nombre más corto: "1/2 Pollo Broaster" vs variantes largas
+      return [...candidates].sort((a, b) => a.name.length - b.name.length)[0];
+    }
+
+    // Fallback: buscar por nombre normalizado exacto
+    const want =
+      portion === 'medio'
+        ? style
+          ? `medio pollo ${style}`
+          : 'medio pollo'
+        : portion === 'cuarto'
+          ? style
+            ? `cuarto pollo ${style}`
+            : 'cuarto pollo'
+          : style
+            ? `1 pollo ${style}`
+            : '1 pollo';
+    const exact = available.find((p) => normalizeText(p.name) === want);
+    return exact || null;
+  }
+
   isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean {
     const hay = normalizeText(`${product.name} ${product.categoryName || ''} ${product.description || ''}`);
     return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon)\b/.test(
@@ -616,6 +704,21 @@ export class WhatsappCatalogService {
       }
     }
 
+    const portionHint = this.detectPortionHint(q);
+    if (portionHint) {
+      for (const h of hits) {
+        const pPortion = this.detectProductPortionSize(normalizeText(h.p.name));
+        if (pPortion === portionHint) h.priority += 80;
+        else if (pPortion && pPortion !== portionHint) h.priority -= 50;
+        if (
+          portionHint === 'medio' &&
+          /^1\s+pollo\b/.test(normalizeText(h.p.name))
+        ) {
+          h.priority -= 70;
+        }
+      }
+    }
+
     hits.sort((a, b) => b.priority - a.priority || b.nameLen - a.nameLen || a.start - b.start);
 
     const picked: WhatsappCatalogProduct[] = [];
@@ -642,28 +745,61 @@ export class WhatsappCatalogService {
       ranges.push({ start: h.start, end: h.end });
     }
 
+    let result = [...picked];
+
     // Comida + bebida: si solo hay comidas, forzar al menos una gaseosa del menú
     if (foodDrink) {
-      const hasDrink = picked.some((p) => this.isLikelyDrinkProduct(p));
-      const hasFood = picked.some((p) => !this.isLikelyDrinkProduct(p));
+      const hasDrink = result.some((p) => this.isLikelyDrinkProduct(p));
+      const hasFood = result.some((p) => !this.isLikelyDrinkProduct(p));
       if (hasFood && !hasDrink) {
-        const drinkHit = hits.find((h) => this.isLikelyDrinkProduct(h.p) && !usedIds.has(h.p.id));
-        if (drinkHit) {
-          picked.push(drinkHit.p);
+        const drinkHits = hits
+          .filter((h) => this.isLikelyDrinkProduct(h.p) && !usedIds.has(h.p.id))
+          .sort((a, b) => this.drinkPreferenceRank(a.p) - this.drinkPreferenceRank(b.p));
+        if (drinkHits[0]) {
+          result.push(drinkHits[0].p);
         } else {
-          const companion = this.findFoodDrinkCompanionProduct(raw, picked[0], available);
+          const companion = this.findFoodDrinkCompanionProduct(raw, result[0], available);
           if (companion && this.isLikelyDrinkProduct(companion)) {
-            picked.push(companion);
+            result.push(companion);
+          }
+        }
+      } else if (hasDrink) {
+        // Preferir gaseosa 400ml sobre 2.5L cuando el cliente solo dijo "gaseosa"
+        const drinks = result.filter((p) => this.isLikelyDrinkProduct(p));
+        if (drinks.length >= 1 && /gaseosa/.test(q) && !/\d/.test(q)) {
+          const best =
+            available
+              .filter((p) => this.isLikelyDrinkProduct(p) && /\bgaseosa\b/.test(normalizeText(p.name)))
+              .sort((a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b))[0] ||
+            [...drinks].sort((a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b))[0];
+          if (best) {
+            result = [...result.filter((p) => !this.isLikelyDrinkProduct(p)), best];
           }
         }
       }
     }
 
-    return picked.sort((a, b) => {
+    // Comida con porción primero, luego bebida
+    return result.sort((a, b) => {
+      const aDrink = this.isLikelyDrinkProduct(a) ? 1 : 0;
+      const bDrink = this.isLikelyDrinkProduct(b) ? 1 : 0;
+      if (aDrink !== bDrink) return aDrink - bDrink;
       const aIdx = hits.find((h) => h.p.id === a.id)?.start ?? 0;
       const bIdx = hits.find((h) => h.p.id === b.id)?.start ?? 0;
       return aIdx - bIdx;
     });
+  }
+
+  /** Menor = más preferido para "una gaseosa" genérica. */
+  private drinkPreferenceRank(product: WhatsappCatalogProduct): number {
+    const n = normalizeText(product.name);
+    if (/\b400\s*ml\b/.test(n)) return 1;
+    if (/\b250\s*ml\b/.test(n)) return 2;
+    if (/\b500\s*ml\b/.test(n)) return 3;
+    if (/\bpersonal\b/.test(n)) return 4;
+    if (/\b1\s*5\s*l\b/.test(n)) return 6;
+    if (/\b2\s*5\s*l\b/.test(n)) return 9;
+    return 5;
   }
 
   /** Mensaje con varios ítems unidos por "y", "con" (comida+bebida) o coma. */
@@ -784,11 +920,14 @@ export class WhatsappCatalogService {
 
     const drinkMatch = q.match(new RegExp(DRINK_ORDER_TOKEN, 'i'));
     if (!drinkMatch) return null;
-    const scored = this.searchByNameScored(drinkMatch[0], products, 6).filter((x) =>
+    const scored = this.searchByNameScored(drinkMatch[0], products, 8).filter((x) =>
       this.isLikelyDrinkProduct(x.p),
     );
-    if (scored.length && scored[0].score >= 35) return scored[0].p;
-    return null;
+    if (!scored.length) return null;
+    const preferred = [...scored].sort(
+      (a, b) => this.drinkPreferenceRank(a.p) - this.drinkPreferenceRank(b.p),
+    )[0];
+    return preferred?.p ?? null;
   }
 
   private looksLikeDeliveryTail(tail: string): boolean {
@@ -1088,6 +1227,25 @@ export class WhatsappCatalogService {
     const extracted = this.extractProductSearchQuery(trimmed);
     const queries = extracted !== trimmed ? [extracted, trimmed] : [extracted];
 
+    // "sopa de menudencias" → producto concreto, NO listar todas las sopas
+    // "sopas" / "pollo" genérico → sí listar categoría
+    const orderNoise = new Set([
+      'quiero', 'dame', 'ponme', 'pedir', 'ordenar', 'agrega', 'agregame', 'necesito',
+      'gustaria', 'quisiera', 'una', 'uno', 'unos', 'unas', 'por', 'favor',
+    ]);
+    for (const q of queries) {
+      const qNorm = normalizeText(q);
+      const significant = qNorm
+        .split(' ')
+        .filter((t) => t.length >= 3 && !orderNoise.has(t));
+      const looksSpecificDish = significant.length >= 2;
+      if (!looksSpecificDish) continue;
+
+      const scored = this.searchByNameScored(q, products, 5);
+      if (this.isStrongProductMatch(scored) && scored[0].score >= 70) return null;
+      if (this.findProductEmbeddedInMessage(q, products)) return null;
+    }
+
     for (const q of queries) {
       const byCat = this.findByCategory(q, products);
       if (byCat) return byCat;
@@ -1257,6 +1415,24 @@ export class WhatsappCatalogService {
         // Preferir títulos más específicos (más tokens) cuando empatan
         if (score >= 50 && nameTokens.length >= 2) {
           score += Math.min(12, nameTokens.length * 3);
+        }
+
+        // "medio pollo broaster" → 1/2 Pollo Broaster (no el entero ni el combo)
+        const qPortion = this.detectPortionHint(q);
+        const pPortion = this.detectProductPortionSize(name);
+        if (qPortion && pPortion) {
+          if (qPortion === pPortion) score += 90;
+          else score -= 55;
+        } else if (qPortion === 'medio' && /^1\s+pollo\b/.test(name)) {
+          score -= 50; // "1 Pollo Broaster" no es "medio"
+        }
+        if (
+          /\b(pollo|broaster|frito)\b/.test(q) &&
+          !/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa)\b/.test(q)
+        ) {
+          if (/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa)\b/.test(name)) {
+            score -= 60;
+          }
         }
 
         return { p, score };
@@ -1466,16 +1642,16 @@ export class WhatsappCatalogService {
     }
 
     const question = this.isComboOnlyAttribute(attr)
-      ? `¿Qué *${attr.attributeName}* va en tu combo?`
+      ? `¿Qué *${attr.attributeName}* quieres?`
       : `Elige *${attr.attributeName}*:`;
 
     parts.push(question);
     parts.push(this.formatOptionsList(rows));
 
     if (opts?.mode === 'info') {
-      parts.push('_Si quieres pedir, dime el número o escribe solo / combo._');
+      parts.push('_Dime el número o solo / combo._');
     } else {
-      parts.push('_Responde con el *número* (ej. 2) o el *nombre* (ej. combo)._');
+      parts.push('_Número o nombre (ej. 2)._');
     }
 
     return parts.filter(Boolean).join('\n\n');
@@ -1870,6 +2046,21 @@ export class WhatsappCatalogService {
     let segments = this.splitMultiProductSegments(text);
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
 
+    // PPP: "medio pollo broaster" es el SKU "1/2 Pollo Broaster" (no atributo)
+    const sizedChicken = this.resolveSizedChickenProduct(text, products);
+    if (sizedChicken) {
+      embeddedAll = [
+        sizedChicken,
+        ...embeddedAll.filter(
+          (p) => p.id !== sizedChicken.id && this.isLikelyDrinkProduct(p),
+        ),
+      ];
+      if (this.looksLikeFoodPlusDrinkOrder(text) && !embeddedAll.some((p) => this.isLikelyDrinkProduct(p))) {
+        const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
+        if (drinkCompanion) embeddedAll.push(drinkCompanion);
+      }
+    }
+
     if (embeddedAll.length === 1 && this.looksLikeFoodPlusDrinkOrder(text)) {
       const companion = this.findFoodDrinkCompanionProduct(text, embeddedAll[0], products);
       if (companion && companion.id !== embeddedAll[0].id) {
@@ -2015,11 +2206,19 @@ export class WhatsappCatalogService {
       ) {
         const drinks = uniqueScored.filter((x) => this.isLikelyDrinkProduct(x.p));
         if (drinks.length >= 1) {
-          const personal =
-            drinks.find((x) => /\bpersonal\b/.test(normalizeText(x.p.name))) || drinks[0];
-          if (!usedProductIds.has(personal.p.id)) {
-            usedProductIds.add(personal.p.id);
-            confident.push({ segment, product: personal.p, score: personal.score });
+          const preferred =
+            drinks.find((x) => /\b400\s*ml\b/.test(normalizeText(x.p.name))) ||
+            drinks.find((x) => /\bpersonal\b/.test(normalizeText(x.p.name))) ||
+            drinks.find((x) => /\b250\s*ml\b/.test(normalizeText(x.p.name))) ||
+            drinks[0];
+          if (!usedProductIds.has(preferred.p.id)) {
+            usedProductIds.add(preferred.p.id);
+            const match = { segment, product: preferred.p, score: preferred.score };
+            if (preferred.p.hasAttributes && preferred.p.attributes?.length) {
+              needsAttributes.push(match);
+            } else {
+              confident.push(match);
+            }
           }
           continue;
         }
