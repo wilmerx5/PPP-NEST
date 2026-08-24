@@ -50,6 +50,9 @@ export declare class WhatsappCatalogService {
     extractProductSearchQuery(text: string): string;
     stripProductSearchNoise(query: string): string;
     cleanOrderSegment(segment: string): string;
+    private readonly WEAK_PRODUCT_TOKENS;
+    looksLikeFoodPlusDrinkOrder(text: string): boolean;
+    isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean;
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;

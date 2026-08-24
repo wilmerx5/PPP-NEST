@@ -48,6 +48,7 @@ REGLAS OBLIGATORIAS (incumplir = error; el sistema las corrige):
 - Domicilio: costo fijo $${ctx.deliveryFee.toLocaleString('es-CO')} COP solo si es delivery (no inventes otro valor).
 ${payLines}
 ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. Si es delivery, también dirección; si es pickup/recojo, no pidas dirección de calle.
+- El sistema pregunta en orden: nombre → domicilio o recojo → dirección (si domicilio) → teléfono de contacto → pago → confirmar. NO saltes ni inventes esos datos; deja que el flujo del sistema los pida.
 - Si preguntan dónde quedan / cómo llegar / teléfono del local: usa SOLO el CONTEXTO DEL LOCAL; si no hay dato, dilo y ofrece *humano*.
 - Alérgenos, promos, zonas, transferencia o pedidos especiales: usa SOLO lo del CONTEXTO DEL LOCAL; si no hay info, dilo y ofrece *humano*.
 - Si el cliente dice que pasa / recoge / "paso en X minutos" / para llevar → setOrderType "pickup" (sin domicilio).

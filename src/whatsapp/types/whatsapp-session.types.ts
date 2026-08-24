@@ -94,7 +94,15 @@ export type WhatsappSessionData = {
   pendingCartRemoval?: {
     options: Array<{ cartIndex: number; label: string }>;
   };
-  awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
+  /** Ya eligió domicilio vs recojo en este pedido */
+  fulfillmentChosen?: boolean;
+  /** Dirección ya confirmada (no solo inferida del mensaje) */
+  addressConfirmed?: boolean;
+  /** Teléfono de contacto ya confirmado para este pedido */
+  phoneConfirmed?: boolean;
+  /** Teléfono de contacto (si difiere del WhatsApp) */
+  contactPhone?: string | null;
+  awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm' | 'phone' | 'fulfillment';
   linkedUserId?: string | null;
   linkedUserName?: string | null;
   /** Premio de puntos validado para aplicar al confirmar pedido */
@@ -106,7 +114,9 @@ export type WhatsappConversationState =
   | 'building_cart'
   | 'awaiting_attribute'
   | 'awaiting_name'
+  | 'awaiting_fulfillment'
   | 'awaiting_address'
+  | 'awaiting_phone'
   | 'awaiting_payment'
   | 'awaiting_notes'
   | 'awaiting_final_confirm'
@@ -122,6 +132,10 @@ export const EMPTY_SESSION: WhatsappSessionData = {
   linkedUserName: null,
   pendingRedemptionCode: null,
   pendingRedemptionExpiresAt: null,
+  fulfillmentChosen: false,
+  addressConfirmed: false,
+  phoneConfirmed: false,
+  contactPhone: null,
 };
 
 export type AiOrderAction = {

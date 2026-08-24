@@ -113,6 +113,10 @@ let WhatsappConversationService = class WhatsappConversationService {
             linkedUserId: current.linkedUserId ?? null,
             linkedUserName: current.linkedUserName ?? null,
             ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
+            fulfillmentChosen: false,
+            addressConfirmed: false,
+            phoneConfirmed: false,
+            contactPhone: null,
         };
         conv.sessionData = next;
         conv.state = state;
@@ -315,7 +319,9 @@ let WhatsappConversationService = class WhatsappConversationService {
         const states = [
             'building_cart',
             'awaiting_name',
+            'awaiting_fulfillment',
             'awaiting_address',
+            'awaiting_phone',
             'awaiting_payment',
             'awaiting_notes',
             'awaiting_final_confirm',

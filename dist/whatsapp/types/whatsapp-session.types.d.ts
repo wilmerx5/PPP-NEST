@@ -86,13 +86,17 @@ export type WhatsappSessionData = {
             label: string;
         }>;
     };
-    awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm';
+    fulfillmentChosen?: boolean;
+    addressConfirmed?: boolean;
+    phoneConfirmed?: boolean;
+    contactPhone?: string | null;
+    awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm' | 'phone' | 'fulfillment';
     linkedUserId?: string | null;
     linkedUserName?: string | null;
     pendingRedemptionCode?: string | null;
     pendingRedemptionExpiresAt?: string | null;
 };
-export type WhatsappConversationState = 'building_cart' | 'awaiting_attribute' | 'awaiting_name' | 'awaiting_address' | 'awaiting_payment' | 'awaiting_notes' | 'awaiting_final_confirm' | 'confirming' | 'awaiting_mp_payment' | 'completed' | 'closed';
+export type WhatsappConversationState = 'building_cart' | 'awaiting_attribute' | 'awaiting_name' | 'awaiting_fulfillment' | 'awaiting_address' | 'awaiting_phone' | 'awaiting_payment' | 'awaiting_notes' | 'awaiting_final_confirm' | 'confirming' | 'awaiting_mp_payment' | 'completed' | 'closed';
 export declare const EMPTY_SESSION: WhatsappSessionData;
 export type AiOrderAction = {
     addItems?: Array<{

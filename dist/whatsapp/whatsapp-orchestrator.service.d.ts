@@ -45,6 +45,14 @@ export declare class WhatsappOrchestratorService {
     private buildCartAddReply;
     private formatOrderSummary;
     private isReadyToConfirm;
+    private formatWaPhoneDisplay;
+    private looksLikePhoneNumber;
+    private normalizeContactPhone;
+    private buildAskNameMessage;
+    private buildAskFulfillmentMessage;
+    private buildAskAddressMessage;
+    private buildAskPhoneMessage;
+    private tryResolvePhoneConfirmation;
     private tryConfirmOrder;
     completeAfterMercadoPagoPayment(params: {
         conversationId: number;

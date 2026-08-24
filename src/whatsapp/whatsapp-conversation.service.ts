@@ -117,6 +117,10 @@ export class WhatsappConversationService {
       linkedUserId: current.linkedUserId ?? null,
       linkedUserName: current.linkedUserName ?? null,
       ignorePriorOrderHistory: opts?.ignorePriorHistory !== false,
+      fulfillmentChosen: false,
+      addressConfirmed: false,
+      phoneConfirmed: false,
+      contactPhone: null,
     };
     // Asignación directa: no mergear con el carrito viejo
     conv.sessionData = next;
@@ -370,7 +374,9 @@ export class WhatsappConversationService {
     const states = [
       'building_cart',
       'awaiting_name',
+      'awaiting_fulfillment',
       'awaiting_address',
+      'awaiting_phone',
       'awaiting_payment',
       'awaiting_notes',
       'awaiting_final_confirm',

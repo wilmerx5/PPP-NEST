@@ -390,6 +390,37 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             .replace(/\s+/g, ' ')
             .trim();
     }
+    WEAK_PRODUCT_TOKENS = new Set([
+        'pollo',
+        'carne',
+        'arroz',
+        'sopa',
+        'bebida',
+        'bebidas',
+        'gaseosa',
+        'gaseosas',
+        'combo',
+        'solo',
+        'medio',
+        'cuarto',
+        'entero',
+        'porcion',
+        'porciones',
+        'plato',
+        'orden',
+    ]);
+    looksLikeFoodPlusDrinkOrder(text) {
+        const q = normalizeText(text);
+        if (!q || q.length < 8)
+            return false;
+        const hasFood = /\b(pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|sobrebarriga|mondongo|sopa|arroz|paisa|chino)\b/.test(q);
+        const hasDrink = /\b(gaseosa|gaseosas|coca|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n)\b/.test(q);
+        return hasFood && hasDrink;
+    }
+    isLikelyDrinkProduct(product) {
+        const hay = normalizeText(`${product.name} ${product.categoryName || ''} ${product.description || ''}`);
+        return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon)\b/.test(hay);
+    }
     findAllProductsEmbeddedInMessage(text, products) {
         const q = normalizeText(text);
         if (!q || q.length < 4)
@@ -401,9 +432,30 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             if (name.length < 4)
                 continue;
             let idx = 0;
+            let foundFull = false;
             while ((idx = q.indexOf(name, idx)) !== -1) {
                 hits.push({ p, start: idx, end: idx + name.length, nameLen: name.length });
+                foundFull = true;
                 idx += 1;
+            }
+            if (foundFull)
+                continue;
+            const tokens = name
+                .split(' ')
+                .map((t) => t.trim())
+                .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
+            for (const tok of tokens) {
+                const re = new RegExp(`(?:^|\\s)${escapeRegExp(tok)}(?:\\s|$)`);
+                const m = re.exec(q);
+                if (!m || m.index == null)
+                    continue;
+                hits.push({
+                    p,
+                    start: m.index,
+                    end: m.index + tok.length,
+                    nameLen: tok.length,
+                });
+                break;
             }
         }
         hits.sort((a, b) => b.nameLen - a.nameLen || a.start - b.start);
@@ -421,8 +473,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             ranges.push({ start: h.start, end: h.end });
         }
         return picked.sort((a, b) => {
-            const aIdx = q.indexOf(normalizeText(a.name));
-            const bIdx = q.indexOf(normalizeText(b.name));
+            const aIdx = hits.find((h) => h.p.id === a.id)?.start ?? 0;
+            const bIdx = hits.find((h) => h.p.id === b.id)?.start ?? 0;
             return aIdx - bIdx;
         });
     }
@@ -1241,13 +1293,22 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             const confident = [];
             const needsAttributes = [];
             for (const product of embeddedAll) {
-                const segment = segments.find((s) => normalizeText(s).includes(normalizeText(product.name))) ||
-                    product.name;
+                const segment = segments.find((s) => {
+                    const sn = normalizeText(s);
+                    const pn = normalizeText(product.name);
+                    if (sn.includes(pn) || pn.includes(sn))
+                        return true;
+                    const tokens = pn
+                        .split(' ')
+                        .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
+                    return tokens.some((t) => sn.includes(t));
+                }) || product.name;
+                const attrText = `${segment} ${text}`;
                 const match = { segment, product, score: 100 };
                 if (product.hasAttributes && product.attributes?.length) {
-                    const explicit = this.extractExplicitAttributeChoice(segment, product);
+                    const explicit = this.extractExplicitAttributeChoice(attrText, product);
                     if (explicit)
-                        confident.push(match);
+                        confident.push({ ...match, segment: attrText });
                     else
                         needsAttributes.push(match);
                 }
@@ -1282,8 +1343,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 usedProductIds.add(embedded.id);
                 const match = { segment, product: embedded, score: 100 };
                 if (embedded.hasAttributes && embedded.attributes?.length) {
-                    if (this.extractExplicitAttributeChoice(segment, embedded))
-                        confident.push(match);
+                    const attrText = `${segment} ${text}`;
+                    if (this.extractExplicitAttributeChoice(attrText, embedded)) {
+                        confident.push({ ...match, segment: attrText });
+                    }
                     else
                         needsAttributes.push(match);
                 }
@@ -1292,14 +1355,31 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 continue;
             }
             const query = this.extractProductSearchQuery(segment);
-            const scored = this.searchByNameScored(query, products, 5);
+            let scored = this.searchByNameScored(query, products, 5);
+            if (!scored.length) {
+                const strongTok = normalizeText(segment)
+                    .split(' ')
+                    .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
+                if (strongTok.length) {
+                    scored = this.searchByNameScored(strongTok.join(' '), products, 5);
+                }
+            }
             if (!scored.length) {
                 unresolved.push(segment);
                 continue;
             }
+            const uniqueScored = (() => {
+                const seen = new Set();
+                return scored.filter((x) => {
+                    if (seen.has(x.p.id))
+                        return false;
+                    seen.add(x.p.id);
+                    return true;
+                });
+            })();
             const segNorm = normalizeText(segment);
             if (/\bejecutivo\b/.test(segNorm)) {
-                const ejecutivoHits = scored.filter((x) => normalizeText(x.p.name).includes('ejecutivo'));
+                const ejecutivoHits = uniqueScored.filter((x) => normalizeText(x.p.name).includes('ejecutivo'));
                 if (ejecutivoHits.length >= 1) {
                     const withPollo = ejecutivoHits.find((x) => /\bpollo\b/.test(normalizeText(x.p.name)));
                     const top = withPollo || ejecutivoHits[0];
@@ -1307,8 +1387,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                         usedProductIds.add(top.p.id);
                         const match = { segment, product: top.p, score: top.score };
                         if (top.p.hasAttributes && top.p.attributes?.length) {
-                            if (this.extractExplicitAttributeChoice(segment, top.p))
-                                confident.push(match);
+                            const attrText = `${segment} ${text}`;
+                            if (this.extractExplicitAttributeChoice(attrText, top.p)) {
+                                confident.push({ ...match, segment: attrText });
+                            }
                             else
                                 needsAttributes.push(match);
                         }
@@ -1318,15 +1400,17 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     }
                 }
             }
-            if (this.isStrongProductMatch(scored)) {
-                const top = scored[0];
+            if (this.isStrongProductMatch(uniqueScored)) {
+                const top = uniqueScored[0];
                 if (usedProductIds.has(top.p.id))
                     continue;
                 usedProductIds.add(top.p.id);
                 const match = { segment, product: top.p, score: top.score };
                 if (top.p.hasAttributes && top.p.attributes?.length) {
-                    if (this.extractExplicitAttributeChoice(segment, top.p))
-                        confident.push(match);
+                    const attrText = `${segment} ${text}`;
+                    if (this.extractExplicitAttributeChoice(attrText, top.p)) {
+                        confident.push({ ...match, segment: attrText });
+                    }
                     else
                         needsAttributes.push(match);
                 }
@@ -1334,18 +1418,20 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     confident.push(match);
                 continue;
             }
-            if (scored.length >= 2 && scored[0].score >= 35) {
-                ambiguous.push({ segment, candidates: scored.slice(0, 4).map((x) => x.p) });
+            if (uniqueScored.length >= 2 && uniqueScored[0].score >= 35) {
+                ambiguous.push({ segment, candidates: uniqueScored.slice(0, 4).map((x) => x.p) });
             }
-            else if (scored.length === 1 && scored[0].score >= 40) {
-                const top = scored[0];
+            else if (uniqueScored.length === 1 && uniqueScored[0].score >= 40) {
+                const top = uniqueScored[0];
                 if (usedProductIds.has(top.p.id))
                     continue;
                 usedProductIds.add(top.p.id);
                 const match = { segment, product: top.p, score: top.score };
                 if (top.p.hasAttributes && top.p.attributes?.length) {
-                    if (this.extractExplicitAttributeChoice(segment, top.p))
-                        confident.push(match);
+                    const attrText = `${segment} ${text}`;
+                    if (this.extractExplicitAttributeChoice(attrText, top.p)) {
+                        confident.push({ ...match, segment: attrText });
+                    }
                     else
                         needsAttributes.push(match);
                 }

@@ -8,5 +8,9 @@ exports.EMPTY_SESSION = {
     linkedUserName: null,
     pendingRedemptionCode: null,
     pendingRedemptionExpiresAt: null,
+    fulfillmentChosen: false,
+    addressConfirmed: false,
+    phoneConfirmed: false,
+    contactPhone: null,
 };
 //# sourceMappingURL=whatsapp-session.types.js.map

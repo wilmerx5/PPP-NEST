@@ -122,7 +122,9 @@ let WhatsappCleanupService = WhatsappCleanupService_1 = class WhatsappCleanupSer
                     !!session.pendingAttribute ||
                     [
                         'awaiting_name',
+                        'awaiting_fulfillment',
                         'awaiting_address',
+                        'awaiting_phone',
                         'awaiting_payment',
                         'awaiting_notes',
                         'awaiting_final_confirm',
