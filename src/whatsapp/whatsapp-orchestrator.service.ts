@@ -198,6 +198,11 @@ export class WhatsappOrchestratorService {
         contactPhone: compound.phone,
         phoneConfirmed: true,
       };
+    } else if (compound.phoneUsesWhatsapp) {
+      session = {
+        ...session,
+        phoneConfirmed: true,
+      };
     }
     if (compound.customerName && !conv.customerName?.trim()) {
       await this.conversationService.updateCustomerName(conv, compound.customerName);
@@ -3971,11 +3976,50 @@ export class WhatsappOrchestratorService {
     return this.withDeliveryAddress(session, this.extractDeliveryTail(text));
   }
 
+  /** Quita prefijos de entrega ("domicilio a", "a domicilio en") del texto de dirección. */
+  private stripDeliveryAddressPreface(raw: string): string {
+    let t = (raw || '').trim();
+    for (let i = 0; i < 3; i++) {
+      const next = t
+        .replace(/^(?:enviar|mandar|llevar|traer)\s+(?:a\s+)?domicilio\s+(?:a|en|para)\s+/i, '')
+        .replace(/^domicilio\s+(?:a|en|para)\s+/i, '')
+        .replace(/^(?:a|en|para)\s+domicilio\s+(?:a|en|para)\s+/i, '')
+        .replace(/^domicilio\s+/i, '')
+        .trim();
+      if (next === t) break;
+      t = next;
+    }
+    return t;
+  }
+
+  /** Corta teléfono, nombre u otras colas que no son parte de la dirección. */
+  private truncateAddressAfterContactClauses(raw: string): string {
+    let t = (raw || '').trim();
+    if (!t) return t;
+
+    const cutPatterns = [
+      /[,;]\s*(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa|n[uú]mero)\b.*/is,
+      /[,;]\s*(?:me\s+llamo|soy|mi\s+nombre\s+es|nombre\s*:)\b.*/is,
+      /\s+(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa|n[uú]mero)\s*(?:es|:)\s*(?:este|el\s+de\s+(?:whatsapp|wa|aqu[ií])|este\s+n[uú]mero|el\s+mismo|el\s+que\s+(?:tengo|escribo|est[aá]\s+usando))\b.*/is,
+      /\s+y\s+(?:mi\s+)?(?:cel(?:ular)?|tel\w*)\b.*/is,
+    ];
+
+    for (const re of cutPatterns) {
+      t = t.replace(re, '').trim();
+    }
+    return t.replace(/[,;]\s*$/, '').trim();
+  }
+
   private normalizeDeliveryAddress(raw: string): string {
-    return (raw || '')
+    let t = (raw || '')
       .replace(/\s+/g, ' ')
       .replace(/^[\s,.-]+|[\s,.-]+$/g, '')
-      .replace(/^(?:la|el|los|las)\s+/i, '')
+      .trim();
+    t = this.truncateAddressAfterContactClauses(t);
+    t = this.stripDeliveryAddressPreface(t);
+    return t
+      .replace(/^(?:a\s+)?(?:la|el|los|las|al)\s+/i, '')
+      .replace(/^[\s,.-]+|[\s,.-]+$/g, '')
       .trim();
   }
 
@@ -4055,6 +4099,9 @@ export class WhatsappOrchestratorService {
     // Priorizar "para …" (domicilio). "a la …" suele ser cocción (a la broaster).
     const tailPatterns: Array<{ re: RegExp; requireStrong?: boolean }> = [
       { re: /\bpara\b\s+(.+)$/is },
+      {
+        re: /\b(?:enviar|mandar|llevar|traer)\s+a\s+domicilio\s+(?:a|en|para)\s+(.+)$/is,
+      },
       { re: /\b(?:enviar|mandar|llevar|traer|domicilio)\s+(?:a|en|para)\s+(.+)$/is },
       { re: /\ben\b\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida|habitaci[oó]n|apto|apartamento|torre|barrio)\b.+)$/is },
       // "a la carrera 10" sí; "a la broaster" no
@@ -4126,10 +4173,22 @@ export class WhatsappOrchestratorService {
     address: string | null;
     phone: string | null;
     customerName: string | null;
+    phoneUsesWhatsapp?: boolean;
   } {
     let working = (text || '').trim();
     let phone: string | null = null;
     let customerName: string | null = null;
+    let phoneUsesWhatsapp = false;
+
+    const phoneRefPatterns = [
+      /\b(?:mi\s+)?(?:cel(?:ular)?|tel\w*|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*(?:este|el\s+de\s+(?:whatsapp|wa|aqu[ií])|este\s+n[uú]mero|el\s+mismo|el\s+que\s+(?:tengo|escribo|est[aá]\s+usando))\b/gi,
+    ];
+    for (const re of phoneRefPatterns) {
+      if (!re.test(working)) continue;
+      phoneUsesWhatsapp = true;
+      working = working.replace(re, ' ').replace(/\s+/g, ' ').trim();
+      break;
+    }
 
     const phonePatterns = [
       /\b(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*([+]?\d[\d\s().-]{6,16}\d)\b/i,
@@ -4160,7 +4219,7 @@ export class WhatsappOrchestratorService {
     }
 
     const { productText, address } = this.splitProductAndDelivery(working);
-    return { productText, address, phone, customerName };
+    return { productText, address, phone, customerName, phoneUsesWhatsapp };
   }
 
   private mergeNameScores(
