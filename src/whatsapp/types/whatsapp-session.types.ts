@@ -33,6 +33,8 @@ export type WhatsappPendingAttribute = {
   attributes: WhatsappProductAttribute[];
   /** Atributos ya elegidos en orden */
   selected: { attributeName: string; attributeValue: string }[];
+  /** Intención solo/combo detectada al iniciar la elección */
+  variantIntent?: 'combo' | 'solo';
 };
 
 export type WhatsappSessionData = {

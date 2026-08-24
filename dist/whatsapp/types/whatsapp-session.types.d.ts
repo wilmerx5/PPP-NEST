@@ -35,6 +35,7 @@ export type WhatsappPendingAttribute = {
         attributeName: string;
         attributeValue: string;
     }[];
+    variantIntent?: 'combo' | 'solo';
 };
 export type WhatsappSessionData = {
     cart: WhatsappCartItem[];

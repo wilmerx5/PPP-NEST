@@ -208,8 +208,19 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                         return;
                     }
                 }
-                const step = this.catalogService.resolveNextAttributeChoice(product, text, pa.selected || []);
+                const attrOpts = this.attributeFlowOpts(pa);
+                const step = this.catalogService.resolveNextAttributeChoice(product, text, pa.selected || [], attrOpts);
                 if (step.status === 'complete') {
+                    const stillNeed = this.catalogService.getRemainingAttributes(product, step.attributes, attrOpts);
+                    if (stillNeed.length) {
+                        session.pendingAttribute = {
+                            ...pa,
+                            selected: step.attributes,
+                        };
+                        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+                        await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes, attrOpts));
+                        return;
+                    }
                     const fresh = await this.conversationService.reloadConversation(conv.id);
                     Object.assign(conv, fresh);
                     session = this.conversationService.getSession(conv);
@@ -229,7 +240,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     if (nextProduct?.hasAttributes && nextProduct.attributes?.length) {
                         session = {
                             ...session,
-                            pendingAttribute: this.toPendingAttribute(nextProduct),
+                            pendingAttribute: this.toPendingAttribute(nextProduct, {
+                                sourceText: nextNeeds?.segment ? `${nextNeeds.segment} ${text}` : text,
+                            }),
                         };
                         await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
                         const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
@@ -249,7 +262,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                         selected: step.attributes,
                     };
                     await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
-                    await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes));
+                    await this.reply(conv, msg.waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes, attrOpts));
                     return;
                 }
                 if (await this.tryAddProductDuringPendingAttribute(conv, msg.waId, session, text, products, cfg, product)) {
@@ -703,6 +716,15 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             : uniqueNameMatches;
         if (resolvedMatches.length === 1 && !session.pendingMatch && !session.pendingAttribute) {
             const one = resolvedMatches[0];
+            if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) &&
+                this.catalogService.isLikelyDrinkProduct(one)) {
+                const multiRetry = this.catalogService.resolveMultiProductOrder(text, products);
+                if (multiRetry) {
+                    const handledMulti = await this.tryHandleMultiProductOrder(conv, msg.waId, session, multiRetry, cfg, text, products);
+                    if (handledMulti)
+                        return;
+                }
+            }
             const deliveryTail = this.extractDeliveryTail(text);
             if (deliveryTail) {
                 session = { ...session, orderType: 'delivery', address: deliveryTail };
@@ -884,7 +906,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     session = {
                         ...session,
                         pendingAttribute: {
-                            ...this.toPendingAttribute(product),
+                            ...this.toPendingAttribute(product, { sourceText: text }),
                             selected,
                         },
                         pendingMatch: undefined,
@@ -930,7 +952,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     session = {
                         ...session,
                         pendingAttribute: {
-                            ...this.toPendingAttribute(first),
+                            ...this.toPendingAttribute(first, { sourceText: text }),
                             selected: step.status === 'partial' ? step.attributes : [],
                         },
                         pendingMultiOrder: {
@@ -1154,15 +1176,23 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         }
         return { ...session, cart };
     }
-    toPendingAttribute(product) {
+    toPendingAttribute(product, opts) {
+        const variantIntent = opts?.variantIntent ||
+            (opts?.sourceText
+                ? this.catalogService.extractVariantPreferenceHint(opts.sourceText) || undefined
+                : undefined);
         return {
             productId: product.id,
             name: product.name,
             code: product.code,
             price: product.price,
             attributes: product.attributes || [],
-            selected: [],
+            selected: opts?.selected || [],
+            variantIntent,
         };
+    }
+    attributeFlowOpts(pa) {
+        return pa?.variantIntent ? { variantIntent: pa.variantIntent } : undefined;
     }
     buildSessionSummary(conv, session, deliveryFee) {
         const subtotal = session.cart.reduce((s, c) => s + c.unitPrice, 0);
@@ -1191,7 +1221,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 hasAttributes: true,
                 attributes: pa.attributes || [],
             };
-            const remaining = this.catalogService.getRemainingAttributes(productForRemaining, pa.selected || []);
+            const remaining = this.catalogService.getRemainingAttributes(productForRemaining, pa.selected || [], this.attributeFlowOpts(pa));
             const next = remaining[0];
             lines.push(`ELECCIÓN PENDIENTE: producto "${pa.name}" (código ${pa.code}, id ${pa.productId}).` +
                 (pa.selected?.length
@@ -1491,7 +1521,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             hasAttributes: true,
             attributes: pa.attributes || [],
         };
-        const remainingAttrs = this.catalogService.getRemainingAttributes(productForRemaining, pa.selected || []);
+        const remainingAttrs = this.catalogService.getRemainingAttributes(productForRemaining, pa.selected || [], this.attributeFlowOpts(pa));
         const nextAttr = remainingAttrs[0];
         const optionsHint = nextAttr
             ? nextAttr.options.map((o, i) => `${i + 1}) ${o}`).join(', ')
@@ -2183,9 +2213,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (cartContext) {
             session = this.removeCartLinesForProductId(session, product.id);
         }
-        let step = this.catalogService.resolveAttributesFromMessage(product, text, []);
+        let step = this.catalogService.resolveAttributesFromMessage(product, text, [], hint ? { variantIntent: hint } : undefined);
         if (step.status === 'invalid' && hint) {
-            step = this.catalogService.resolveAttributesFromMessage(product, hint === 'combo' ? 'en combo' : 'solo', []);
+            step = this.catalogService.resolveAttributesFromMessage(product, hint === 'combo' ? 'en combo' : 'solo', [], { variantIntent: hint });
         }
         if (step.status === 'invalid')
             return false;
@@ -2216,11 +2246,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 price: product.price,
                 attributes: product.attributes || [],
                 selected: step.attributes,
+                variantIntent: hint || undefined,
             },
         };
         await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
         await this.reply(conv, waId, `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
-            this.catalogService.formatProductOptionsPrompt(product, step.attributes));
+            this.catalogService.formatProductOptionsPrompt(product, step.attributes, hint ? { variantIntent: hint } : undefined));
         return true;
     }
     async tryHandleProductCompositionQuestion(conv, waId, text, products, cfg) {
@@ -3052,7 +3083,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     async handleProductWithVariants(conv, waId, session, product, text, cfg) {
         if (!product.hasAttributes || !product.attributes?.length)
             return false;
-        const step = this.catalogService.resolveAttributesFromMessage(product, text, []);
+        const variantIntent = this.catalogService.extractVariantPreferenceHint(text) || undefined;
+        const attrOpts = variantIntent ? { variantIntent } : undefined;
+        const step = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
         const deliveryHint = this.extractDeliveryTail(text);
         if (step.status === 'complete') {
             const fresh = await this.conversationService.reloadConversation(conv.id);
@@ -3084,11 +3117,12 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     price: product.price,
                     attributes: product.attributes || [],
                     selected: step.attributes,
+                    variantIntent,
                 },
                 pendingMatch: undefined,
             };
             await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
-            await this.reply(conv, waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes));
+            await this.reply(conv, waId, this.catalogService.formatProductOptionsPrompt(product, step.attributes, attrOpts));
             return true;
         }
         const mode = this.catalogService.isGenericProductInquiry(text) ||
@@ -3098,7 +3132,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         session = {
             ...session,
             ...(deliveryHint ? { orderType: 'delivery', address: deliveryHint } : {}),
-            pendingAttribute: this.toPendingAttribute(product),
+            pendingAttribute: this.toPendingAttribute(product, { sourceText: text }),
             pendingMatch: undefined,
         };
         await this.conversationService.saveSession(conv, session, 'building_cart');
@@ -3243,11 +3277,46 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (deliveryTail) {
             session = { ...session, orderType: 'delivery', address: deliveryTail };
         }
+        if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {
+            const stillUnresolved = [];
+            for (const seg of multi.unresolved) {
+                const embedded = this.catalogService.findProductEmbeddedInMessage(seg, products);
+                const foodProduct = embedded && !this.catalogService.isLikelyDrinkProduct(embedded)
+                    ? embedded
+                    : this.catalogService
+                        .searchByNameScored(seg, products, 6)
+                        .find((x) => !this.catalogService.isLikelyDrinkProduct(x.p))?.p;
+                if (!foodProduct) {
+                    stillUnresolved.push(seg);
+                    continue;
+                }
+                const match = { segment: seg, product: foodProduct, score: 100 };
+                if (foodProduct.hasAttributes && foodProduct.attributes?.length) {
+                    const attrText = `${seg} ${text}`;
+                    if (this.catalogService.extractExplicitAttributeChoice(attrText, foodProduct)) {
+                        multi.confident.push({ ...match, segment: attrText });
+                    }
+                    else {
+                        multi.needsAttributes.push(match);
+                    }
+                }
+                else {
+                    multi.confident.push(match);
+                }
+            }
+            multi.unresolved = stillUnresolved;
+        }
         const onlyNeedsAttrs = multi.needsAttributes.length > 0 &&
             multi.ambiguous.length === 0 &&
             multi.unresolved.length === 0;
-        const needsConfirm = multi.ambiguous.length > 0 || multi.unresolved.length > 0;
-        if ((!needsConfirm && multi.confident.length >= 2) || onlyNeedsAttrs) {
+        const drinkFirstFoodPending = this.catalogService.looksLikeFoodPlusDrinkOrder(text) &&
+            multi.confident.length >= 1 &&
+            multi.confident.every((c) => this.catalogService.isLikelyDrinkProduct(c.product)) &&
+            (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) &&
+            multi.ambiguous.length === 0;
+        const needsConfirm = multi.ambiguous.length > 0 ||
+            (multi.unresolved.length > 0 && !drinkFirstFoodPending);
+        if ((!needsConfirm && multi.confident.length >= 2) || onlyNeedsAttrs || drinkFirstFoodPending) {
             session = {
                 ...session,
                 pendingMultiOrder: this.sessionFromMultiResolve(multi),
@@ -3299,7 +3368,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                                 next = {
                                     ...next,
                                     pendingAttribute: {
-                                        ...this.toPendingAttribute(nextProd),
+                                        ...this.toPendingAttribute(nextProd, {
+                                            sourceText: `${rest[0].segment} ${text}`,
+                                        }),
                                         selected: pre.status === 'partial' ? pre.attributes : [],
                                     },
                                     pendingMultiOrder: {
@@ -3332,7 +3403,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     next = {
                         ...next,
                         pendingAttribute: {
-                            ...this.toPendingAttribute(product),
+                            ...this.toPendingAttribute(product, { sourceText: text }),
                             selected: step.status === 'partial' ? step.attributes : [],
                         },
                         pendingMultiOrder: {
@@ -3474,7 +3545,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                             next = {
                                 ...next,
                                 pendingAttribute: {
-                                    ...this.toPendingAttribute(nextProduct),
+                                    ...this.toPendingAttribute(nextProduct, { sourceText: `${first.segment} ${text}` }),
                                     selected: pre.status === 'partial' ? pre.attributes : [],
                                 },
                             };
@@ -3492,7 +3563,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     next = {
                         ...next,
                         pendingAttribute: {
-                            ...this.toPendingAttribute(product),
+                            ...this.toPendingAttribute(product, { sourceText: text }),
                             selected: step.status === 'partial' ? step.attributes : [],
                         },
                         pendingMultiOrder: next.pendingMultiOrder,

@@ -67,9 +67,16 @@ function fixCommonOrderTypos(text: string): string {
     .replace(/\bejecutvo\b/gi, 'ejecutivo')
     .replace(/\bejecutivo\b/gi, 'ejecutivo')
     .replace(/\bpollo\s+frito\b/gi, 'pollo frito')
+    .replace(/\b(?:roaster|broster|brouster|broaster)\b/gi, 'broaster')
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+const DRINK_ORDER_TOKEN =
+  '(?:gaseosa|gaseosas|coca\\s*cola?|cola|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n|mr\\s*tea|cysco)';
+
+const FOOD_ORDER_TOKEN =
+  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|sobrebarriga|mondongo|sopa|arroz|paisa|chino)';
 
 const ORDER_INTENT_ONLY = new Set([
   'quiero',
@@ -539,12 +546,22 @@ export class WhatsappCatalogService {
         .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
       for (const tok of tokens) {
         const re = new RegExp(`(?:^|\\s)${escapeRegExp(tok)}(?:\\s|$)`);
-        const m = re.exec(q);
-        if (!m || m.index == null) continue;
+        let m = re.exec(q);
+        let start = m?.index ?? null;
+        if (start == null) {
+          const qWords = q.split(/\s+/).filter((w) => w.length >= 4);
+          for (const w of qWords) {
+            if (fuzzyTokenMatch(w, tok)) {
+              start = q.indexOf(w);
+              break;
+            }
+          }
+        }
+        if (start == null) continue;
         hits.push({
           p,
-          start: m.index,
-          end: m.index + tok.length,
+          start,
+          end: start + tok.length,
           nameLen: tok.length,
         });
         break;
@@ -588,34 +605,113 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
+    const embedded = this.findAllProductsEmbeddedInMessage(text, products);
+    if (!embedded.length) return null;
+    if (embedded.length === 1) return embedded[0];
+
     const q = normalizeText(text);
-    if (!q || q.length < 4) return null;
-
-    const available = products.filter((p) => p.availableNow !== false);
-    const hits: Array<{ p: WhatsappCatalogProduct; nameLen: number; tokenCount: number }> = [];
-
-    for (const p of available) {
-      const name = normalizeText(p.name);
-      if (name.length < 4) continue;
-      if (!q.includes(name)) continue;
-      hits.push({
-        p,
-        nameLen: name.length,
-        tokenCount: name.split(' ').filter((t) => t.length > 2).length,
-      });
-    }
-
-    if (!hits.length) return null;
-    hits.sort((a, b) => b.nameLen - a.nameLen || b.tokenCount - a.tokenCount);
-    const best = hits[0];
-    if (
-      hits.length >= 2 &&
-      hits[1].nameLen === best.nameLen &&
-      hits[1].p.id !== best.p.id
-    ) {
+    const ranked = embedded
+      .map((p) => {
+        const name = normalizeText(p.name);
+        const inSegment = q.includes(name);
+        const tokens = name
+          .split(' ')
+          .filter((t) => t.length >= 4 && !this.WEAK_PRODUCT_TOKENS.has(t));
+        const tokenHits = tokens.filter(
+          (t) =>
+            new RegExp(`(?:^|\\s)${escapeRegExp(t)}(?:\\s|$)`).test(q) ||
+            q.split(/\s+/).some((w) => fuzzyTokenMatch(w, t)),
+        ).length;
+        return { p, score: (inSegment ? name.length + 50 : 0) + tokenHits * 20 };
+      })
+      .sort((a, b) => b.score - a.score);
+    if (ranked.length >= 2 && ranked[0].score === ranked[1].score && ranked[0].score === 0) {
       return null;
     }
-    return best.p;
+    return ranked[0]?.p ?? null;
+  }
+
+  /**
+   * Parte comida + bebida en el texto crudo (sin stripProductSearchNoise),
+   * para que "medio broaster con gaseosa de manzana" no pierda la bebida.
+   */
+  splitFoodPlusDrinkSegments(text: string): string[] {
+    const raw = fixCommonOrderTypos(text.trim());
+    if (!raw) return [];
+
+    const drinkTail = new RegExp(DRINK_ORDER_TOKEN, 'i');
+    const pairRe = new RegExp(
+      `^(.+?)\\s+(?:y|con|mas|más|\\+|,)\\s+(?:un|una|unos|unas|el|la|los|las)?\\s*(${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w]+)*)`,
+      'i',
+    );
+    let m = raw.match(pairRe);
+    if (m?.[1] && m?.[2]) {
+      const food = this.cleanOrderSegment(m[1]);
+      const drink = this.cleanOrderSegment(m[2]);
+      if (food.length >= 3 && drink.length >= 3) return [food, drink];
+    }
+
+    const articleDrinkRe = new RegExp(
+      `^(.+?)\\s+(?:un|una|unos|unas)\\s+(${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w]+)*)`,
+      'i',
+    );
+    m = raw.match(articleDrinkRe);
+    if (m?.[1] && m?.[2]) {
+      const food = this.cleanOrderSegment(m[1]);
+      const drink = this.cleanOrderSegment(m[2]);
+      if (food.length >= 3 && drink.length >= 3 && new RegExp(FOOD_ORDER_TOKEN, 'i').test(food)) {
+        return [food, drink];
+      }
+    }
+
+    if (drinkTail.test(raw) && new RegExp(FOOD_ORDER_TOKEN, 'i').test(raw)) {
+      const idx = raw.search(new RegExp(`\\b(?:y|con|mas|más)\\s+(?:un|una|el|la)?\\s*${DRINK_ORDER_TOKEN}`, 'i'));
+      if (idx > 0) {
+        const food = this.cleanOrderSegment(raw.slice(0, idx));
+        const drink = this.cleanOrderSegment(raw.slice(idx).replace(/^(?:y|con|mas|más)\s+/i, ''));
+        if (food.length >= 3 && drink.length >= 3) return [food, drink];
+      }
+    }
+
+    return [];
+  }
+
+  /** Si ya hallamos la bebida (o la comida), busca el otro ítem en el mensaje. */
+  private findFoodDrinkCompanionProduct(
+    text: string,
+    known: WhatsappCatalogProduct,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = normalizeText(text);
+    if (!q) return null;
+
+    if (this.isLikelyDrinkProduct(known)) {
+      const pair = this.splitFoodPlusDrinkSegments(text);
+      const foodQuery = pair[0] || text.replace(/\s+(?:y|con|mas|más)\s+.*$/i, '').trim();
+      const scored = this.searchByNameScored(foodQuery, products, 6);
+      const foodHits = scored.filter((x) => !this.isLikelyDrinkProduct(x.p));
+      if (foodHits.length && (this.isStrongProductMatch(foodHits) || foodHits[0].score >= 40)) {
+        return foodHits[0].p;
+      }
+      const strongTok = normalizeText(foodQuery)
+        .split(' ')
+        .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
+      if (strongTok.length) {
+        const retry = this.searchByNameScored(strongTok.join(' '), products, 6).filter(
+          (x) => !this.isLikelyDrinkProduct(x.p),
+        );
+        if (retry.length && retry[0].score >= 35) return retry[0].p;
+      }
+      return null;
+    }
+
+    const drinkMatch = q.match(new RegExp(DRINK_ORDER_TOKEN, 'i'));
+    if (!drinkMatch) return null;
+    const scored = this.searchByNameScored(drinkMatch[0], products, 6).filter((x) =>
+      this.isLikelyDrinkProduct(x.p),
+    );
+    if (scored.length && scored[0].score >= 35) return scored[0].p;
+    return null;
   }
 
   private looksLikeDeliveryTail(tail: string): boolean {
@@ -1270,13 +1366,13 @@ export class WhatsappCatalogService {
       price: product.price,
     }));
     const parts: string[] = [];
+    const showComboOnly = this.shouldShowComboOnlyAttributes(product, alreadySelected);
     const totalSteps = (product.attributes || []).filter(
-      (a) => !this.isComboOnlyAttribute(a) || this.hasComboPortionSelected(alreadySelected),
+      (a) => !this.isComboOnlyAttribute(a) || showComboOnly,
     ).length;
     const doneSteps = alreadySelected.filter(
       (s) =>
-        !this.isComboOnlyAttribute({ attributeName: s.attributeName }) ||
-        this.hasComboPortionSelected(alreadySelected),
+        !this.isComboOnlyAttribute({ attributeName: s.attributeName }) || showComboOnly,
     ).length;
     const stepNum = Math.min(totalSteps, doneSteps + 1);
 
@@ -1449,12 +1545,14 @@ export class WhatsappCatalogService {
   getRemainingAttributes(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+    opts?: { variantIntent?: 'combo' | 'solo' },
   ): NonNullable<WhatsappCatalogProduct['attributes']> {
-    return (product.attributes || []).filter((attr) => {
+    const attrs = product.attributes || [];
+    const showComboOnly = this.shouldShowComboOnlyAttributes(product, alreadySelected, opts);
+
+    return attrs.filter((attr) => {
       if (alreadySelected.some((s) => s.attributeName === attr.attributeName)) return false;
-      if (this.isComboOnlyAttribute(attr) && !this.hasComboPortionSelected(alreadySelected)) {
-        return false;
-      }
+      if (this.isComboOnlyAttribute(attr) && !showComboOnly) return false;
       return true;
     });
   }
@@ -1465,10 +1563,84 @@ export class WhatsappCatalogService {
     return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
   }
 
+  /** Atributo que define solo vs combo (porción, modalidad, presentación…). */
+  isModalityAttribute(attr: { attributeName: string; options: string[] }): boolean {
+    const n = normalizeText(attr.attributeName);
+    if (
+      /\b(modalidad|presentacion|presentación|porcion|porción|tipo|variante|estilo|formato)\b/.test(
+        n,
+      )
+    ) {
+      return true;
+    }
+    return attr.options.some((opt) => {
+      const v = normalizeText(opt);
+      return (
+        /\b(solo|combo|completo|completa)\b/.test(v) ||
+        /\b(con\s+bebida|con\s+gaseosa|sin\s+bebida|sin\s+gaseosa)\b/.test(v)
+      );
+    });
+  }
+
+  hasModalityAttribute(attrs: NonNullable<WhatsappCatalogProduct['attributes']>): boolean {
+    return attrs.some((a) => !this.isComboOnlyAttribute(a) && this.isModalityAttribute(a));
+  }
+
   hasComboPortionSelected(
     alreadySelected: { attributeName: string; attributeValue: string }[],
   ): boolean {
-    return alreadySelected.some((s) => /\bcombo\b/.test(normalizeText(s.attributeValue)));
+    return alreadySelected.some((s) => this.isComboLikeValue(s.attributeValue));
+  }
+
+  hasSoloPortionSelected(
+    alreadySelected: { attributeName: string; attributeValue: string }[],
+  ): boolean {
+    return alreadySelected.some((s) => this.isSoloLikeValue(s.attributeValue));
+  }
+
+  private isComboLikeValue(value: string): boolean {
+    const v = normalizeText(value);
+    return (
+      /\bcombo\b/.test(v) ||
+      /\b(completo|completa)\b/.test(v) ||
+      /\b(con\s+bebida|con\s+gaseosa|incluye\s+bebida|incluye\s+gaseosa)\b/.test(v)
+    );
+  }
+
+  private isSoloLikeValue(value: string): boolean {
+    const v = normalizeText(value);
+    return (
+      /\bsolo\b/.test(v) ||
+      /\b(sin\s+bebida|sin\s+gaseosa|sin\s+combo)\b/.test(v)
+    );
+  }
+
+  private shouldShowComboOnlyAttributes(
+    product: WhatsappCatalogProduct,
+    alreadySelected: { attributeName: string; attributeValue: string }[],
+    opts?: { variantIntent?: 'combo' | 'solo' },
+  ): boolean {
+    if (opts?.variantIntent === 'solo' || this.hasSoloPortionSelected(alreadySelected)) {
+      return false;
+    }
+    if (opts?.variantIntent === 'combo' || this.hasComboPortionSelected(alreadySelected)) {
+      return true;
+    }
+
+    const attrs = product.attributes || [];
+    const nonComboAttrs = attrs.filter((a) => !this.isComboOnlyAttribute(a));
+    const allNonComboSelected =
+      nonComboAttrs.length > 0 &&
+      nonComboAttrs.every((a) =>
+        alreadySelected.some((s) => s.attributeName === a.attributeName),
+      );
+
+    if (!allNonComboSelected) return false;
+
+    // Sin atributo solo/combo: si ya eligió arepas/etc., falta la bebida del combo.
+    if (!this.hasModalityAttribute(nonComboAttrs)) return true;
+
+    return false;
   }
 
   /** Oculta notas de combo/gaseosas hasta que aplique ese paso. */
@@ -1555,11 +1727,24 @@ export class WhatsappCatalogService {
    * Parte un mensaje con varios platos: "sopa de mondongo, cuarto de pollo y costillas".
    */
   splitMultiProductSegments(text: string): string[] {
+    if (this.looksLikeFoodPlusDrinkOrder(text)) {
+      const foodDrink = this.splitFoodPlusDrinkSegments(text);
+      if (foodDrink.length >= 2) {
+        const seen = new Set<string>();
+        return foodDrink.filter((seg) => {
+          const key = normalizeText(seg);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+    }
+
     let q = this.extractProductSearchQuery(text);
     if (!q) return [];
 
     const byCommaOrY = q
-      .split(/\s*,\s*|\s+\by\b\s+/i)
+      .split(/\s*,\s*|\s+\by\b\s+|\s+(?:mas|más|\+)\s+/i)
       .map((s) => this.cleanOrderSegment(s.trim()))
       .filter((s) => s.length >= 3);
 
@@ -1605,8 +1790,17 @@ export class WhatsappCatalogService {
     if (this.isPriceInquiryIntent(text)) return null;
     if (this.isMenuExploreIntent(text, products)) return null;
 
-    const segments = this.splitMultiProductSegments(text);
-    const embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
+    let segments = this.splitMultiProductSegments(text);
+    let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
+
+    if (embeddedAll.length === 1 && this.looksLikeFoodPlusDrinkOrder(text)) {
+      const companion = this.findFoodDrinkCompanionProduct(text, embeddedAll[0], products);
+      if (companion && companion.id !== embeddedAll[0].id) {
+        embeddedAll = this.isLikelyDrinkProduct(embeddedAll[0])
+          ? [companion, embeddedAll[0]]
+          : [embeddedAll[0], companion];
+      }
+    }
 
     if (embeddedAll.length >= 2) {
       const confident: MultiProductSegmentMatch[] = [];
@@ -1645,7 +1839,13 @@ export class WhatsappCatalogService {
       }
     }
 
-    if (segments.length < 2) return null;
+    if (segments.length < 2) {
+      if (this.looksLikeFoodPlusDrinkOrder(text)) {
+        const forced = this.splitFoodPlusDrinkSegments(text);
+        if (forced.length >= 2) segments = forced;
+      }
+      if (segments.length < 2 && embeddedAll.length < 2) return null;
+    }
 
     const confident: MultiProductSegmentMatch[] = [];
     const ambiguous: Array<{ segment: string; candidates: WhatsappCatalogProduct[] }> = [];
@@ -1791,8 +1991,9 @@ export class WhatsappCatalogService {
   formatProductOptionsPrompt(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+    opts?: { variantIntent?: 'combo' | 'solo' },
   ): string {
-    const remaining = this.getRemainingAttributes(product, alreadySelected);
+    const remaining = this.getRemainingAttributes(product, alreadySelected, opts);
     const next = remaining[0];
     if (!product.hasAttributes || !product.attributes?.length || !next) {
       return `*${product.name}* (cód. ${product.code})`;
@@ -1808,6 +2009,7 @@ export class WhatsappCatalogService {
     product: WhatsappCatalogProduct,
     text: string,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+    opts?: { variantIntent?: 'combo' | 'solo' },
   ):
     | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
     | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
@@ -1821,7 +2023,7 @@ export class WhatsappCatalogService {
 
     while (progress) {
       progress = false;
-      const remaining = this.getRemainingAttributes(product, selected);
+      const remaining = this.getRemainingAttributes(product, selected, opts);
       if (!remaining.length) {
         return { status: 'complete', attributes: selected };
       }
@@ -1835,7 +2037,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    const stillRemaining = this.getRemainingAttributes(product, selected);
+    const stillRemaining = this.getRemainingAttributes(product, selected, opts);
     if (!stillRemaining.length) return { status: 'complete', attributes: selected };
     if (selected.length > alreadySelected.length) {
       return { status: 'partial', attributes: selected };
@@ -1885,7 +2087,12 @@ export class WhatsappCatalogService {
       ) ||
       (/\bcombo\b/.test(q) && !/\bsolo\b/.test(q))
     ) {
-      const comboOpt = attr.options.find((o) => normalizeText(o).includes('combo'));
+      let comboOpt = attr.options.find((o) => normalizeText(o).includes('combo'));
+      if (!comboOpt) {
+        comboOpt = attr.options.find((o) =>
+          /\b(completo|completa|con\s+bebida|con\s+gaseosa)\b/.test(normalizeText(o)),
+        );
+      }
       if (comboOpt) return comboOpt;
     }
 
@@ -1895,7 +2102,12 @@ export class WhatsappCatalogService {
       ) ||
       (/\bsolo\b/.test(q) && !/\bcombo\b/.test(q))
     ) {
-      const soloOpt = attr.options.find((o) => /\bsolo\b/.test(normalizeText(o)));
+      let soloOpt = attr.options.find((o) => /\bsolo\b/.test(normalizeText(o)));
+      if (!soloOpt) {
+        soloOpt = attr.options.find((o) =>
+          /\b(sin\s+bebida|sin\s+gaseosa)\b/.test(normalizeText(o)),
+        );
+      }
       if (soloOpt) return soloOpt;
     }
 
@@ -1933,6 +2145,7 @@ export class WhatsappCatalogService {
     product: WhatsappCatalogProduct,
     text: string,
     alreadySelected: { attributeName: string; attributeValue: string }[],
+    opts?: { variantIntent?: 'combo' | 'solo' },
   ):
     | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
     | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
@@ -1941,10 +2154,10 @@ export class WhatsappCatalogService {
       return { status: 'complete', attributes: alreadySelected };
     }
 
-    const fromMessage = this.resolveAttributesFromMessage(product, text, alreadySelected);
+    const fromMessage = this.resolveAttributesFromMessage(product, text, alreadySelected, opts);
     if (fromMessage.status !== 'invalid') return fromMessage;
 
-    const remaining = this.getRemainingAttributes(product, alreadySelected);
+    const remaining = this.getRemainingAttributes(product, alreadySelected, opts);
     if (!remaining.length) {
       return { status: 'complete', attributes: alreadySelected };
     }
@@ -1982,7 +2195,7 @@ export class WhatsappCatalogService {
       { attributeName: attr.attributeName, attributeValue: picked },
     ];
 
-    if (!this.getRemainingAttributes(product, nextSelected).length) {
+    if (!this.getRemainingAttributes(product, nextSelected, opts).length) {
       return { status: 'complete', attributes: nextSelected };
     }
     return { status: 'partial', attributes: nextSelected };

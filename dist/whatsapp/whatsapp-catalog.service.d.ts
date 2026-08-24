@@ -56,6 +56,8 @@ export declare class WhatsappCatalogService {
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
+    splitFoodPlusDrinkSegments(text: string): string[];
+    private findFoodDrinkCompanionProduct;
     private looksLikeDeliveryTail;
     dedupeProductsById(products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     formatProductChoicePrompt(query: string, candidates: WhatsappCatalogProduct[], opts?: {
@@ -120,14 +122,28 @@ export declare class WhatsappCatalogService {
     getRemainingAttributes(product: WhatsappCatalogProduct, alreadySelected?: {
         attributeName: string;
         attributeValue: string;
-    }[]): NonNullable<WhatsappCatalogProduct['attributes']>;
+    }[], opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): NonNullable<WhatsappCatalogProduct['attributes']>;
     isComboOnlyAttribute(attr: {
         attributeName: string;
     }): boolean;
+    isModalityAttribute(attr: {
+        attributeName: string;
+        options: string[];
+    }): boolean;
+    hasModalityAttribute(attrs: NonNullable<WhatsappCatalogProduct['attributes']>): boolean;
     hasComboPortionSelected(alreadySelected: {
         attributeName: string;
         attributeValue: string;
     }[]): boolean;
+    hasSoloPortionSelected(alreadySelected: {
+        attributeName: string;
+        attributeValue: string;
+    }[]): boolean;
+    private isComboLikeValue;
+    private isSoloLikeValue;
+    private shouldShowComboOnlyAttributes;
     formatDescriptionForAttributeStep(description: string | null | undefined, alreadySelected: {
         attributeName: string;
         attributeValue: string;
@@ -150,11 +166,15 @@ export declare class WhatsappCatalogService {
     formatProductOptionsPrompt(product: WhatsappCatalogProduct, alreadySelected?: {
         attributeName: string;
         attributeValue: string;
-    }[]): string;
+    }[], opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): string;
     resolveAttributesFromMessage(product: WhatsappCatalogProduct, text: string, alreadySelected?: {
         attributeName: string;
         attributeValue: string;
-    }[]): {
+    }[], opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): {
         status: 'complete';
         attributes: {
             attributeName: string;
@@ -176,7 +196,9 @@ export declare class WhatsappCatalogService {
     resolveNextAttributeChoice(product: WhatsappCatalogProduct, text: string, alreadySelected: {
         attributeName: string;
         attributeValue: string;
-    }[]): {
+    }[], opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): {
         status: 'complete';
         attributes: {
             attributeName: string;
