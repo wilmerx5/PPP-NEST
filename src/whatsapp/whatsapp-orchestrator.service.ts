@@ -4553,13 +4553,25 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {
       const stillUnresolved: string[] = [];
       for (const seg of multi.unresolved) {
+        let foodProduct: MenuProduct | undefined;
         const embedded = this.catalogService.findProductEmbeddedInMessage(seg, products);
-        const foodProduct =
-          embedded && !this.catalogService.isLikelyDrinkProduct(embedded)
-            ? embedded
-            : this.catalogService
-                .searchByNameScored(seg, products, 6)
-                .find((x) => !this.catalogService.isLikelyDrinkProduct(x.p))?.p;
+        if (embedded && !this.catalogService.isLikelyDrinkProduct(embedded)) {
+          foodProduct = embedded;
+        }
+        if (!foodProduct) {
+          const queries = [seg, 'pollo broaster', 'broaster', 'pollo frito'].filter(
+            (q, i, arr) => arr.indexOf(q) === i,
+          );
+          for (const q of queries) {
+            const hit = this.catalogService
+              .searchByNameScored(q, products, 6)
+              .find((x) => !this.catalogService.isLikelyDrinkProduct(x.p));
+            if (hit && hit.score >= 30) {
+              foodProduct = hit.p;
+              break;
+            }
+          }
+        }
         if (!foodProduct) {
           stillUnresolved.push(seg);
           continue;
@@ -4590,6 +4602,11 @@ export class WhatsappOrchestratorService {
       multi.confident.every((c) => this.catalogService.isLikelyDrinkProduct(c.product)) &&
       (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) &&
       multi.ambiguous.length === 0;
+
+    // Comida + gaseosa aparte: el pollo va en "solo" (la gaseosa es otro ítem del carrito)
+    const foodPlusDrinkAttrOpts = this.catalogService.looksLikeFoodPlusDrinkOrder(text)
+      ? { variantIntent: 'solo' as const }
+      : undefined;
 
     const needsConfirm =
       multi.ambiguous.length > 0 ||
@@ -4628,10 +4645,15 @@ export class WhatsappOrchestratorService {
         const first = needsQueue[0];
         const product = products.find((p) => p.id === first.productId);
         if (product?.hasAttributes && product.attributes?.length) {
+          // Usar el segmento de comida (sin “con gaseosa”) para no confundir atributos del combo
+          const foodAttrText = foodPlusDrinkAttrOpts
+            ? first.segment
+            : `${first.segment} ${text}`;
           const step = this.catalogService.resolveAttributesFromMessage(
             product,
-            `${first.segment} ${text}`,
+            foodAttrText,
             [],
+            foodPlusDrinkAttrOpts,
           );
           if (step.status === 'complete') {
             const attempt = this.tryAddProductToCart(
@@ -4664,18 +4686,23 @@ export class WhatsappOrchestratorService {
             if (rest.length) {
               const nextProd = products.find((p) => p.id === rest[0].productId);
               if (nextProd?.hasAttributes) {
+                const preText = foodPlusDrinkAttrOpts
+                  ? rest[0].segment
+                  : `${rest[0].segment} ${text}`;
                 const pre = this.catalogService.resolveAttributesFromMessage(
                   nextProd,
-                  `${rest[0].segment} ${text}`,
+                  preText,
                   [],
+                  foodPlusDrinkAttrOpts,
                 );
                 next = {
                   ...next,
                   pendingAttribute: {
                     ...this.toPendingAttribute(nextProd, {
-                      sourceText: `${rest[0].segment} ${text}`,
+                      sourceText: preText,
+                      variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                      selected: pre.status === 'partial' ? pre.attributes : [],
                     }),
-                    selected: pre.status === 'partial' ? pre.attributes : [],
                   },
                   pendingMultiOrder: {
                     confident: [],
@@ -4701,6 +4728,7 @@ export class WhatsappOrchestratorService {
                     this.catalogService.formatProductOptionsPrompt(
                       nextProd,
                       pre.status === 'partial' ? pre.attributes : [],
+                      foodPlusDrinkAttrOpts,
                     ),
                 );
                 return true;
@@ -4724,8 +4752,11 @@ export class WhatsappOrchestratorService {
           next = {
             ...next,
             pendingAttribute: {
-              ...this.toPendingAttribute(product, { sourceText: text }),
-              selected: step.status === 'partial' ? step.attributes : [],
+              ...this.toPendingAttribute(product, {
+                sourceText: foodAttrText,
+                variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                selected: step.status === 'partial' ? step.attributes : [],
+              }),
             },
             pendingMultiOrder: {
               confident: [],
@@ -4749,6 +4780,7 @@ export class WhatsappOrchestratorService {
               this.catalogService.formatProductOptionsPrompt(
                 product,
                 step.status === 'partial' ? step.attributes : [],
+                foodPlusDrinkAttrOpts,
               ),
           );
           return true;

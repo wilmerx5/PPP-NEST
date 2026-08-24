@@ -3280,12 +3280,23 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {
             const stillUnresolved = [];
             for (const seg of multi.unresolved) {
+                let foodProduct;
                 const embedded = this.catalogService.findProductEmbeddedInMessage(seg, products);
-                const foodProduct = embedded && !this.catalogService.isLikelyDrinkProduct(embedded)
-                    ? embedded
-                    : this.catalogService
-                        .searchByNameScored(seg, products, 6)
-                        .find((x) => !this.catalogService.isLikelyDrinkProduct(x.p))?.p;
+                if (embedded && !this.catalogService.isLikelyDrinkProduct(embedded)) {
+                    foodProduct = embedded;
+                }
+                if (!foodProduct) {
+                    const queries = [seg, 'pollo broaster', 'broaster', 'pollo frito'].filter((q, i, arr) => arr.indexOf(q) === i);
+                    for (const q of queries) {
+                        const hit = this.catalogService
+                            .searchByNameScored(q, products, 6)
+                            .find((x) => !this.catalogService.isLikelyDrinkProduct(x.p));
+                        if (hit && hit.score >= 30) {
+                            foodProduct = hit.p;
+                            break;
+                        }
+                    }
+                }
                 if (!foodProduct) {
                     stillUnresolved.push(seg);
                     continue;
@@ -3314,6 +3325,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             multi.confident.every((c) => this.catalogService.isLikelyDrinkProduct(c.product)) &&
             (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) &&
             multi.ambiguous.length === 0;
+        const foodPlusDrinkAttrOpts = this.catalogService.looksLikeFoodPlusDrinkOrder(text)
+            ? { variantIntent: 'solo' }
+            : undefined;
         const needsConfirm = multi.ambiguous.length > 0 ||
             (multi.unresolved.length > 0 && !drinkFirstFoodPending);
         if ((!needsConfirm && multi.confident.length >= 2) || onlyNeedsAttrs || drinkFirstFoodPending) {
@@ -3340,7 +3354,10 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 const first = needsQueue[0];
                 const product = products.find((p) => p.id === first.productId);
                 if (product?.hasAttributes && product.attributes?.length) {
-                    const step = this.catalogService.resolveAttributesFromMessage(product, `${first.segment} ${text}`, []);
+                    const foodAttrText = foodPlusDrinkAttrOpts
+                        ? first.segment
+                        : `${first.segment} ${text}`;
+                    const step = this.catalogService.resolveAttributesFromMessage(product, foodAttrText, [], foodPlusDrinkAttrOpts);
                     if (step.status === 'complete') {
                         const attempt = this.tryAddProductToCart(next, product, 1, cfg, undefined, step.attributes);
                         if (attempt.blocked) {
@@ -3364,14 +3381,18 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                         if (rest.length) {
                             const nextProd = products.find((p) => p.id === rest[0].productId);
                             if (nextProd?.hasAttributes) {
-                                const pre = this.catalogService.resolveAttributesFromMessage(nextProd, `${rest[0].segment} ${text}`, []);
+                                const preText = foodPlusDrinkAttrOpts
+                                    ? rest[0].segment
+                                    : `${rest[0].segment} ${text}`;
+                                const pre = this.catalogService.resolveAttributesFromMessage(nextProd, preText, [], foodPlusDrinkAttrOpts);
                                 next = {
                                     ...next,
                                     pendingAttribute: {
                                         ...this.toPendingAttribute(nextProd, {
-                                            sourceText: `${rest[0].segment} ${text}`,
+                                            sourceText: preText,
+                                            variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                                            selected: pre.status === 'partial' ? pre.attributes : [],
                                         }),
-                                        selected: pre.status === 'partial' ? pre.attributes : [],
                                     },
                                     pendingMultiOrder: {
                                         confident: [],
@@ -3386,7 +3407,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                                     ...addResult.addedNames,
                                     `${product.name} (${chosen})`,
                                 ], { suffix: '' })}\n\nAhora elige opciones para *${nextProd.name}*:\n\n` +
-                                    this.catalogService.formatProductOptionsPrompt(nextProd, pre.status === 'partial' ? pre.attributes : []));
+                                    this.catalogService.formatProductOptionsPrompt(nextProd, pre.status === 'partial' ? pre.attributes : [], foodPlusDrinkAttrOpts));
                                 return true;
                             }
                         }
@@ -3403,8 +3424,11 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                     next = {
                         ...next,
                         pendingAttribute: {
-                            ...this.toPendingAttribute(product, { sourceText: text }),
-                            selected: step.status === 'partial' ? step.attributes : [],
+                            ...this.toPendingAttribute(product, {
+                                sourceText: foodAttrText,
+                                variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                                selected: step.status === 'partial' ? step.attributes : [],
+                            }),
                         },
                         pendingMultiOrder: {
                             confident: [],
@@ -3422,7 +3446,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                             ? `${this.formatCartOnly(next, cfg.defaultDeliveryFee)}\n\n`
                             : '';
                     await this.reply(conv, waId, `${prefix}Ahora elige opciones para *${product.name}*:\n\n` +
-                        this.catalogService.formatProductOptionsPrompt(product, step.status === 'partial' ? step.attributes : []));
+                        this.catalogService.formatProductOptionsPrompt(product, step.status === 'partial' ? step.attributes : [], foodPlusDrinkAttrOpts));
                     return true;
                 }
             }

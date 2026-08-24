@@ -68,6 +68,11 @@ function fixCommonOrderTypos(text: string): string {
     .replace(/\bejecutivo\b/gi, 'ejecutivo')
     .replace(/\bpollo\s+frito\b/gi, 'pollo frito')
     .replace(/\b(?:roaster|broster|brouster|broaster)\b/gi, 'broaster')
+    // Whisper: "pollo a la broaster" / "pollo ala broaster"
+    .replace(/\bpollo\s+a\s+la\s+broaster\b/gi, 'pollo broaster')
+    .replace(/\bpollo\s+ala\s+broaster\b/gi, 'pollo broaster')
+    .replace(/\ba\s+la\s+broaster\b/gi, 'broaster')
+    .replace(/\sala\s+broaster\b/gi, 'broaster')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -516,15 +521,18 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct[] {
-    const q = normalizeText(text);
+    const raw = fixCommonOrderTypos(text);
+    const q = normalizeText(raw);
     if (!q || q.length < 4) return [];
 
     const available = products.filter((p) => p.availableNow !== false);
+    const foodDrink = this.looksLikeFoodPlusDrinkOrder(raw);
     const hits: Array<{
       p: WhatsappCatalogProduct;
       start: number;
       end: number;
       nameLen: number;
+      priority: number;
     }> = [];
 
     for (const p of available) {
@@ -533,13 +541,19 @@ export class WhatsappCatalogService {
       let idx = 0;
       let foundFull = false;
       while ((idx = q.indexOf(name, idx)) !== -1) {
-        hits.push({ p, start: idx, end: idx + name.length, nameLen: name.length });
+        hits.push({
+          p,
+          start: idx,
+          end: idx + name.length,
+          nameLen: name.length,
+          priority: name.length + (this.isLikelyDrinkProduct(p) ? 5 : 40),
+        });
         foundFull = true;
         idx += 1;
       }
       if (foundFull) continue;
 
-      // "medio broaster" debe hallar "Pollo Broaster" aunque el título completo no esté
+      // "medio broaster" / "pollo a la broaster" → "Pollo Broaster"
       const tokens = name
         .split(' ')
         .map((t) => t.trim())
@@ -563,12 +577,46 @@ export class WhatsappCatalogService {
           start,
           end: start + tok.length,
           nameLen: tok.length,
+          priority: tok.length + 30,
         });
         break;
       }
+
+      // Bebida suelta: "… con gaseosa" debe hallar "Gaseosa Personal"
+      if (foodDrink && this.isLikelyDrinkProduct(p)) {
+        const drinkToks = name
+          .split(' ')
+          .filter((t) =>
+            /\b(gaseosa|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|hit|postobon)\b/.test(
+              t,
+            ),
+          );
+        for (const tok of drinkToks) {
+          const re = new RegExp(`(?:^|\\s)${escapeRegExp(tok)}(?:\\s|$)`);
+          const m = re.exec(q);
+          if (!m || m.index == null) continue;
+          hits.push({
+            p,
+            start: m.index,
+            end: m.index + tok.length,
+            nameLen: tok.length,
+            priority: 15,
+          });
+          break;
+        }
+      }
     }
 
-    hits.sort((a, b) => b.nameLen - a.nameLen || a.start - b.start);
+    // Si hay "broaster" en el mensaje, priorizar productos que lo traen
+    // (evitar que "Medio Pollo" robe el match de "medio pollo … broaster").
+    if (/\bbroaster\b/.test(q)) {
+      for (const h of hits) {
+        if (/\bbroaster\b/.test(normalizeText(h.p.name))) h.priority += 50;
+        if (/^medio\s+pollo$/.test(normalizeText(h.p.name))) h.priority -= 40;
+      }
+    }
+
+    hits.sort((a, b) => b.priority - a.priority || b.nameLen - a.nameLen || a.start - b.start);
 
     const picked: WhatsappCatalogProduct[] = [];
     const ranges: Array<{ start: number; end: number }> = [];
@@ -576,11 +624,39 @@ export class WhatsappCatalogService {
 
     for (const h of hits) {
       if (usedIds.has(h.p.id)) continue;
+      // No dejar que un "Medio Pollo" genérico tape al broaster
+      if (
+        foodDrink &&
+        /^medio\s+pollo$/.test(normalizeText(h.p.name)) &&
+        /\bbroaster\b/.test(q)
+      ) {
+        continue;
+      }
       const overlaps = ranges.some((r) => !(h.end <= r.start || h.start >= r.end));
-      if (overlaps) continue;
+      if (overlaps) {
+        // Si el overlap es comida genérica vs comida específica, preferir la ya pickeada
+        continue;
+      }
       picked.push(h.p);
       usedIds.add(h.p.id);
       ranges.push({ start: h.start, end: h.end });
+    }
+
+    // Comida + bebida: si solo hay comidas, forzar al menos una gaseosa del menú
+    if (foodDrink) {
+      const hasDrink = picked.some((p) => this.isLikelyDrinkProduct(p));
+      const hasFood = picked.some((p) => !this.isLikelyDrinkProduct(p));
+      if (hasFood && !hasDrink) {
+        const drinkHit = hits.find((h) => this.isLikelyDrinkProduct(h.p) && !usedIds.has(h.p.id));
+        if (drinkHit) {
+          picked.push(drinkHit.p);
+        } else {
+          const companion = this.findFoodDrinkCompanionProduct(raw, picked[0], available);
+          if (companion && this.isLikelyDrinkProduct(companion)) {
+            picked.push(companion);
+          }
+        }
+      }
     }
 
     return picked.sort((a, b) => {
@@ -590,10 +666,11 @@ export class WhatsappCatalogService {
     });
   }
 
-  /** Mensaje con varios ítems unidos por "y" o coma. */
+  /** Mensaje con varios ítems unidos por "y", "con" (comida+bebida) o coma. */
   looksLikeMultiItemOrderMessage(text: string): boolean {
-    if (!/\s+\by\b\s+|\s*,\s*/i.test(text)) return false;
     if (this.isPriceInquiryIntent(text)) return false;
+    if (this.looksLikeFoodPlusDrinkOrder(text)) return true;
+    if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text)) return false;
     return this.splitMultiProductSegments(text).length >= 2;
   }
 
@@ -1857,27 +1934,49 @@ export class WhatsappCatalogService {
       const segment = this.cleanOrderSegment(rawSegment);
       const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (embedded) {
-        if (usedProductIds.has(embedded.id)) continue;
-        usedProductIds.add(embedded.id);
-        const match = { segment, product: embedded, score: 100 };
-        if (embedded.hasAttributes && embedded.attributes?.length) {
-          const attrText = `${segment} ${text}`;
-          if (this.extractExplicitAttributeChoice(attrText, embedded)) {
-            confident.push({ ...match, segment: attrText });
-          } else needsAttributes.push(match);
-        } else confident.push(match);
-        continue;
+        // Evitar "Medio Pollo" cuando el segmento trae broaster
+        const skipGenericMedio =
+          /^medio\s+pollo$/.test(normalizeText(embedded.name)) &&
+          /\bbroaster\b/.test(normalizeText(`${segment} ${text}`));
+        if (!skipGenericMedio) {
+          if (usedProductIds.has(embedded.id)) continue;
+          usedProductIds.add(embedded.id);
+          const match = { segment, product: embedded, score: 100 };
+          if (embedded.hasAttributes && embedded.attributes?.length) {
+            const attrText = `${segment} ${text}`;
+            if (this.extractExplicitAttributeChoice(attrText, embedded)) {
+              confident.push({ ...match, segment: attrText });
+            } else needsAttributes.push(match);
+          } else confident.push(match);
+          continue;
+        }
       }
 
       const query = this.extractProductSearchQuery(segment);
       let scored = this.searchByNameScored(query, products, 5);
-      if (!scored.length) {
+      if (!scored.length || (scored[0].score < 40 && /\bbroaster\b/.test(normalizeText(segment)))) {
         // Reintento: tokens fuertes del segmento (broaster, mondongo…)
         const strongTok = normalizeText(segment)
           .split(' ')
           .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
         if (strongTok.length) {
-          scored = this.searchByNameScored(strongTok.join(' '), products, 5);
+          const retry = this.searchByNameScored(strongTok.join(' '), products, 5);
+          if (retry.length && (!scored.length || retry[0].score > scored[0].score)) {
+            scored = retry;
+          }
+        }
+        // Alias común: "pollo a la broaster" → buscar broaster / pollo broaster / pollo frito
+        if (/\bbroaster\b/.test(normalizeText(segment))) {
+          for (const alias of ['pollo broaster', 'broaster', 'pollo frito', 'pollo asado']) {
+            const retry = this.searchByNameScored(alias, products, 5).filter(
+              (x) => !this.isLikelyDrinkProduct(x.p),
+            );
+            if (!retry.length) continue;
+            if (!scored.length || retry[0].score > scored[0].score) {
+              scored = retry;
+            }
+            if (this.isStrongProductMatch(retry) || retry[0].score >= 50) break;
+          }
         }
       }
       if (!scored.length) {
@@ -1885,7 +1984,7 @@ export class WhatsappCatalogService {
         continue;
       }
 
-      const uniqueScored = (() => {
+      let uniqueScored = (() => {
         const seen = new Set<number>();
         return scored.filter((x) => {
           if (seen.has(x.p.id)) return false;
@@ -1894,8 +1993,39 @@ export class WhatsappCatalogService {
         });
       })();
 
-      // Segmentos tipo "ejecutivo con pierna..." → priorizar productos con "ejecutivo" en el nombre
       const segNorm = normalizeText(segment);
+
+      // Preferir broaster cuando el cliente lo dijo
+      if (/\bbroaster\b/.test(segNorm)) {
+        const broasterHits = uniqueScored.filter((x) =>
+          /\bbroaster\b/.test(normalizeText(x.p.name)),
+        );
+        if (broasterHits.length) uniqueScored = broasterHits;
+        else {
+          uniqueScored = uniqueScored.filter(
+            (x) => !/^medio\s+pollo$/.test(normalizeText(x.p.name)),
+          );
+        }
+      }
+
+      // Bebida genérica "gaseosa": no bloquear el pedido multi por empate entre marcas
+      if (
+        this.looksLikeFoodPlusDrinkOrder(text) &&
+        new RegExp(`^${DRINK_ORDER_TOKEN}`, 'i').test(segNorm)
+      ) {
+        const drinks = uniqueScored.filter((x) => this.isLikelyDrinkProduct(x.p));
+        if (drinks.length >= 1) {
+          const personal =
+            drinks.find((x) => /\bpersonal\b/.test(normalizeText(x.p.name))) || drinks[0];
+          if (!usedProductIds.has(personal.p.id)) {
+            usedProductIds.add(personal.p.id);
+            confident.push({ segment, product: personal.p, score: personal.score });
+          }
+          continue;
+        }
+      }
+
+      // Segmentos tipo "ejecutivo con pierna..." → priorizar productos con "ejecutivo" en el nombre
       if (/\bejecutivo\b/.test(segNorm)) {
         const ejecutivoHits = uniqueScored.filter((x) =>
           normalizeText(x.p.name).includes('ejecutivo'),
@@ -1946,6 +2076,18 @@ export class WhatsappCatalogService {
             confident.push({ ...match, segment: attrText });
           } else needsAttributes.push(match);
         } else confident.push(match);
+      } else if (uniqueScored.length >= 1 && uniqueScored[0].score >= 30) {
+        // Umbral más bajo para comida+bebida (audio Whisper)
+        const top = uniqueScored[0];
+        if (!usedProductIds.has(top.p.id) && !this.isLikelyDrinkProduct(top.p)) {
+          usedProductIds.add(top.p.id);
+          const match = { segment, product: top.p, score: top.score };
+          if (top.p.hasAttributes && top.p.attributes?.length) {
+            needsAttributes.push(match);
+          } else confident.push(match);
+        } else {
+          unresolved.push(segment);
+        }
       } else {
         unresolved.push(segment);
       }
@@ -2020,6 +2162,33 @@ export class WhatsappCatalogService {
 
     let selected = [...alreadySelected];
     let progress = true;
+
+    // Comida + gaseosa aparte → forzar modalidad "solo" si existe
+    if (opts?.variantIntent === 'solo' || opts?.variantIntent === 'combo') {
+      const remaining = this.getRemainingAttributes(product, selected, opts);
+      for (const attr of remaining) {
+        if (!this.isModalityAttribute(attr)) continue;
+        const needle = opts.variantIntent === 'combo' ? 'combo' : 'solo';
+        let picked = attr.options.find((o) => normalizeText(o).includes(needle));
+        if (!picked && opts.variantIntent === 'combo') {
+          picked = attr.options.find((o) =>
+            /\b(completo|completa|con\s+bebida|con\s+gaseosa)\b/.test(normalizeText(o)),
+          );
+        }
+        if (!picked && opts.variantIntent === 'solo') {
+          picked = attr.options.find((o) =>
+            /\b(sin\s+bebida|sin\s+gaseosa)\b/.test(normalizeText(o)),
+          );
+        }
+        if (picked) {
+          selected = [
+            ...selected,
+            { attributeName: attr.attributeName, attributeValue: picked },
+          ];
+        }
+        break;
+      }
+    }
 
     while (progress) {
       progress = false;
