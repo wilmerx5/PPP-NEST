@@ -342,7 +342,7 @@ export class WhatsappCatalogService {
       const list = byCat.get(cat)!;
       lines.push(`*${idx + 1}. ${cat}* (${list.length} ${list.length === 1 ? 'opción' : 'opciones'})`);
       for (const p of list.slice(0, examplesPerCategory)) {
-        lines.push(`   • ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}`);
+        lines.push(`   • *${p.name}* — ${this.formatMoney(p.price)}`);
       }
       if (list.length > examplesPerCategory) {
         lines.push(`   _…y ${list.length - examplesPerCategory} más_`);
@@ -450,9 +450,29 @@ export class WhatsappCatalogService {
       .trim();
 
     q = this.cleanOrderSegment(q);
+    q = this.stripProductDescriptionInquiryNoise(q);
     q = this.stripProductSearchNoise(q);
 
     return q || fixCommonOrderTypos(text.trim());
+  }
+
+  /** Quita muletillas de consulta ("con qué viene el…", "qué lleva la…"). */
+  stripProductDescriptionInquiryNoise(text: string): string {
+    return (text || '')
+      .replace(
+        /\b(?:con\s+que|de\s+que|que)\s+(?:viene|vienen|trae|traen|lleva|llava|incluye|incluyen|contiene|contienen|tiene|tienen)\s+(?:el|la|los|las|un|una|unos|unas)?\s*/gi,
+        ' ',
+      )
+      .replace(
+        /\b(?:que|cu[aá]les)\s+(?:ingredientes|componentes)\s+(?:tiene|trae|lleva)\s+(?:el|la|los|las)?\s*/gi,
+        ' ',
+      )
+      .replace(
+        /\b(?:me\s+)?(?:puedes\s+)?(?:decir|contar|explicar)\s+(?:que|con\s+que)\s+(?:viene|trae|lleva)\s+(?:el|la)?\s*/gi,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   /** Quita porción/bebida del texto para buscar el producto base. */
@@ -964,9 +984,9 @@ export class WhatsappCatalogService {
     const deduped = this.dedupeProductsById(candidates);
     if (deduped.length === 1) {
       return (
-        (opts?.intro || `Encontré *${deduped[0].name}* (cód. ${deduped[0].code}).`) +
+        (opts?.intro || `Encontré esto en el menú 👇`) +
         `\n\n${this.formatProductListItem(deduped[0])}\n\n` +
-        `¿Lo agrego? Responde *sí* o dime la porción/opción si aplica.`
+        `_¿Lo agrego? Responde *sí* o dime la porción/opción si aplica._`
       );
     }
 
@@ -995,7 +1015,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    const intro = opts?.intro || `Encontré *${deduped.length} opciones*:`;
+    const intro = opts?.intro || `Encontré *${deduped.length} opciones* 👇`;
     const body = deduped
       .map((p, i) => {
         const base = this.getProductNameBase(p.name);
@@ -1003,15 +1023,17 @@ export class WhatsappCatalogService {
           base && normalizeText(p.name) !== base
             ? this.getVariantDisplayLabel(p.name, base)
             : p.name;
-        const price = `$${Math.round(p.price).toLocaleString('es-CO')}`;
-        let line = `${i + 1}. *${label}* (cód. ${p.code}) — ${price}`;
-        if (label !== p.name) line += `\n   _${p.name}_`;
-        if (p.hasAttributes) line += `\n   ↳ Elige opciones al pedirlo`;
-        return line;
+        const lines = [
+          `${this.optionNumberEmoji(i + 1)} *${label}*`,
+          `   ${this.formatProductMeta(p.price, p.code)}`,
+        ];
+        if (label !== p.name) lines.push(`   _${p.name}_`);
+        if (p.hasAttributes) lines.push(`   ↳ Elige opciones al pedir`);
+        return lines.join('\n');
       })
       .join('\n\n');
 
-    return `${intro}\n\n${body}\n\nRespóndeme con el *número* o el *código*.`;
+    return `${intro}\n\n${body}\n\n${this.formatListChoiceHint()}`;
   }
 
   /**
@@ -1493,10 +1515,9 @@ export class WhatsappCatalogService {
     if (product.hasAttributes && product.attributes?.length) {
       return this.formatProductVariantsOverview(product, 'info');
     }
-    const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
-    let msg = `*${product.name}* (cód. ${product.code}) — *${price}*`;
+    let msg = this.formatProductHeader(product.name, product.price, product.code);
     if (product.description) {
-      msg += `\n\n_${product.description}_`;
+      msg += `\n\n${this.formatProductSubtitle(product.description, 280)}`;
     }
     msg += '\n\n_¿Te lo agrego al pedido?_';
     return msg;
@@ -1517,7 +1538,7 @@ export class WhatsappCatalogService {
       const infoAttrs = remaining.filter((a) => !this.isComboOnlyAttribute(a));
       if (!infoAttrs.length && (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))) {
         return (
-          `*${product.name}* — precio base $${Math.round(product.price).toLocaleString('es-CO')}.\n\n` +
+          `${this.formatProductHeader(product.name, product.price, product.code)}\n\n` +
           `_Si pides *combo*, después eliges las gaseosas._\n\n` +
           `_Dime cuál porción te interesa o si quieres pedir._`
         );
@@ -1527,7 +1548,7 @@ export class WhatsappCatalogService {
           mode: 'info',
         });
       }
-      let msg = `*${product.name}* — precio base $${Math.round(product.price).toLocaleString('es-CO')}.`;
+      let msg = this.formatProductHeader(product.name, product.price, product.code);
       for (const attr of infoAttrs) {
         msg += `\n\n${this.formatAttributeStepPrompt(product, attr, alreadySelected, { mode: 'info', skipHeader: true })}`;
       }
@@ -1535,13 +1556,13 @@ export class WhatsappCatalogService {
     }
 
     if (!next?.options?.length) {
-      return `*${product.name}* — ¿cuál opción prefieres?`;
+      return `${this.formatProductHeader(product.name, product.price, product.code)}\n\n_¿Cuál opción prefieres?_`;
     }
 
     return this.formatAttributeStepPrompt(product, next, alreadySelected, { mode: 'order' });
   }
 
-  private optionNumberEmoji(index: number): string {
+  optionNumberEmoji(index: number): string {
     const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
     return emojis[index - 1] || `${index}.`;
   }
@@ -1552,11 +1573,10 @@ export class WhatsappCatalogService {
   ): string {
     return rows
       .map((r) => {
-        const price = `$${Math.round(r.price).toLocaleString('es-CO')}`;
-        const code = r.code != null ? ` · cód. ${r.code}` : '';
-        return `${this.optionNumberEmoji(r.index)} *${r.label}* — ${price}${code}`;
+        const code = r.code != null ? `  ·  Cód. ${this.formatProductCode(r.code)}` : '';
+        return `${this.optionNumberEmoji(r.index)} *${r.label}*\n   💰 ${this.formatMoney(r.price)}${code}`;
       })
-      .join('\n');
+      .join('\n\n');
   }
 
   /** Tabla compacta (variantes de producto distinto). */
@@ -1630,7 +1650,8 @@ export class WhatsappCatalogService {
     const stepNum = Math.min(totalSteps, doneSteps + 1);
 
     if (!opts?.skipHeader) {
-      parts.push(`🍽️ *${product.name}* · cód. ${product.code}`);
+      parts.push(`🍽️ *${product.name}*`);
+      parts.push(`Cód. ${this.formatProductCode(product.code)}`);
     }
 
     if (alreadySelected.length) {
@@ -1922,9 +1943,49 @@ export class WhatsappCatalogService {
     return filtered || null;
   }
 
+  /** "Con qué viene", "qué lleva", ingredientes — consulta, no pedido. */
+  isProductDescriptionInquiry(text: string): boolean {
+    const raw = text.trim();
+    if (!raw || raw.length < 5) return false;
+    if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
+      return false;
+    }
+    if (this.isPriceInquiryIntent(text)) return false;
+
+    const q = normalizeText(raw);
+    const patterns = [
+      /\bde que\b/,
+      /\bde que es\b/,
+      /\bde que trae\b/,
+      /\bde que viene\b/,
+      /\bque lleva\b/,
+      /\bque llava\b/,
+      /\bque trae\b/,
+      /\bcon que viene\b/,
+      /\bcon que trae\b/,
+      /\bque incluye\b/,
+      /\bque contiene\b/,
+      /\bque ingredientes\b/,
+      /\bque tiene el\b/,
+      /\bque tiene la\b/,
+      /\b(incluye|trae|viene)\s+con\b/,
+      /\b(tiene|lleva|trae|viene)\s+(cebolla|aji|ají|huevo|huevos|queso|lechuga|tomate|gluten|lacteos|lacteos|arepa|papas|yuca|arroz|sopa|bebida|gaseosa)\b/,
+      /\b(composicion|preparacion|descripcion|descrpcion)\b/,
+      /\bcomo es el\b/,
+      /\bcomo es la\b/,
+      /\bcomo viene\b/,
+    ];
+    if (patterns.some((p) => p.test(q))) return true;
+    return (
+      /\?/.test(raw) &&
+      /\b(lleva|llava|trae|viene|incluye|contiene|ingredientes|descripcion|composicion)\b/.test(q)
+    );
+  }
+
   /** Consulta informativa: precio, qué hay, opciones — sin pedir porción concreta aún. */
   isGenericProductInquiry(text: string): boolean {
     if (this.isPriceInquiryIntent(text)) return true;
+    if (this.isProductDescriptionInquiry(text)) return true;
     const raw = text.trim();
     const q = normalizeText(raw);
     return (
@@ -1971,8 +2032,8 @@ export class WhatsappCatalogService {
   formatPriceInquiryList(products: WhatsappCatalogProduct[]): string {
     const body = products.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n\n');
     return (
-      `Estas son las opciones relacionadas:\n\n${body}\n\n` +
-      `¿Cuál te interesa? Dime el *número* o el *nombre*.`
+      `Estas son las opciones relacionadas 👇\n\n${body}\n\n` +
+      `_¿Cuál te interesa? Dime el *número* o el *nombre*._`
     );
   }
 
@@ -2301,30 +2362,64 @@ export class WhatsappCatalogService {
     return { segments, confident, ambiguous, unresolved, needsAttributes };
   }
 
+  /** Formato COP consistente en todo el bot. */
+  formatMoney(amount: number): string {
+    return `$${Math.round(amount).toLocaleString('es-CO')}`;
+  }
+
+  /** Código de menú legible (#28). */
+  formatProductCode(code: number): string {
+    return `*#${code}*`;
+  }
+
+  /** Línea precio + código. */
+  formatProductMeta(price: number, code: number): string {
+    return `💰 ${this.formatMoney(price)}  ·  Cód. ${this.formatProductCode(code)}`;
+  }
+
+  formatProductSubtitle(description: string, maxLen = 120): string {
+    const short =
+      description.length > maxLen ? `${description.slice(0, maxLen - 1)}…` : description;
+    return `_${short}_`;
+  }
+
+  formatProductHeader(name: string, price?: number, code?: number): string {
+    const lines = [`🍽️ *${name}*`];
+    if (price != null && code != null) {
+      lines.push(this.formatProductMeta(price, code));
+    } else if (code != null) {
+      lines.push(`Cód. ${this.formatProductCode(code)}`);
+    }
+    return lines.join('\n');
+  }
+
+  formatListChoiceHint(): string {
+    return '_Responde con el *número* o el *código* (#)._';
+  }
+
   /** Línea corta para listados WhatsApp (precio + descripción corta). */
   formatProductListItem(product: WhatsappCatalogProduct, index?: number): string {
-    const prefix = index != null ? `${index}. ` : '';
-    const price = `$${Math.round(product.price).toLocaleString('es-CO')}`;
-    let line = `${prefix}*${product.name}* (cód. ${product.code}) — ${price}`;
+    const prefix = index != null ? `${this.optionNumberEmoji(index)} ` : '• ';
+    const lines = [
+      `${prefix}*${product.name}*`,
+      `   ${this.formatProductMeta(product.price, product.code)}`,
+    ];
     if (product.description) {
-      const short =
-        product.description.length > 120
-          ? `${product.description.slice(0, 117)}…`
-          : product.description;
-      line += `\n   _${short}_`;
+      lines.push(`   ${this.formatProductSubtitle(product.description)}`);
     }
     if (product.hasAttributes) {
-      line += `\n   ↳ Elige opciones al pedirlo`;
+      lines.push(`   ↳ Elige opciones al pedir`);
     }
-    return line;
+    return lines.join('\n');
   }
 
   formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string {
     const body = list.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n\n');
     return (
-      `*${categoryName}* — ${list.length} ${list.length === 1 ? 'opción' : 'opciones'}:\n\n` +
+      `📋 *${categoryName}*\n` +
+      `_${list.length} ${list.length === 1 ? 'opción' : 'opciones'} en el menú_\n\n` +
       `${body}\n\n` +
-      `Respóndeme con el *número* o el *código* del que quieras.`
+      this.formatListChoiceHint()
     );
   }
 
@@ -2337,7 +2432,7 @@ export class WhatsappCatalogService {
     const remaining = this.getRemainingAttributes(product, alreadySelected, opts);
     const next = remaining[0];
     if (!product.hasAttributes || !product.attributes?.length || !next) {
-      return `*${product.name}* (cód. ${product.code})`;
+      return this.formatProductHeader(product.name, product.price, product.code);
     }
     return this.formatAttributeStepPrompt(product, next, alreadySelected, { mode: 'order' });
   }

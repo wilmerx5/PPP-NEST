@@ -106,6 +106,8 @@ export declare class WhatsappOrchestratorService {
     private extractEtaPhrase;
     private withDeliveryAddress;
     private applyDeliveryHintFromMessage;
+    private stripDeliveryAddressPreface;
+    private truncateAddressAfterContactClauses;
     private normalizeDeliveryAddress;
     private isPlausibleDeliveryAddress;
     private isStrongExplicitAddress;

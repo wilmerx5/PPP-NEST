@@ -48,6 +48,7 @@ export declare class WhatsappCatalogService {
     extractCodeFromMessage(text: string): number | null;
     findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractProductSearchQuery(text: string): string;
+    stripProductDescriptionInquiryNoise(text: string): string;
     stripProductSearchNoise(query: string): string;
     cleanOrderSegment(segment: string): string;
     private readonly WEAK_PRODUCT_TOKENS;
@@ -92,7 +93,7 @@ export declare class WhatsappCatalogService {
         attributeName: string;
         attributeValue: string;
     }[]): string;
-    private optionNumberEmoji;
+    optionNumberEmoji(index: number): string;
     formatOptionsList(rows: Array<{
         index: number;
         label: string;
@@ -154,6 +155,7 @@ export declare class WhatsappCatalogService {
     }[], nextAttr?: {
         attributeName: string;
     }): string | null;
+    isProductDescriptionInquiry(text: string): boolean;
     isGenericProductInquiry(text: string): boolean;
     isShortGenericFoodQuery(query: string): boolean;
     extractExplicitAttributeChoice(text: string, product: WhatsappCatalogProduct): {
@@ -165,6 +167,12 @@ export declare class WhatsappCatalogService {
     splitMultiProductSegments(text: string): string[];
     private splitSegmentOnArticles;
     resolveMultiProductOrder(text: string, products: WhatsappCatalogProduct[]): MultiProductResolveResult | null;
+    formatMoney(amount: number): string;
+    formatProductCode(code: number): string;
+    formatProductMeta(price: number, code: number): string;
+    formatProductSubtitle(description: string, maxLen?: number): string;
+    formatProductHeader(name: string, price?: number, code?: number): string;
+    formatListChoiceHint(): string;
     formatProductListItem(product: WhatsappCatalogProduct, index?: number): string;
     formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string;
     formatProductOptionsPrompt(product: WhatsappCatalogProduct, alreadySelected?: {
