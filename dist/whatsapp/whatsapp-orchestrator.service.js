@@ -501,6 +501,19 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
             return;
         }
+        if (this.catalogService.isCourtesyOnlyMessage(text)) {
+            const courtesyConfirm = session.cart.length > 0 &&
+                /^(ok|okay|oki|dale|listo|perfecto|va|vale)[\s!.?]*$/i.test(text.trim());
+            if (courtesyConfirm) {
+                const fresh = await this.conversationService.reloadConversation(conv.id);
+                Object.assign(conv, fresh);
+                session = this.conversationService.getSession(conv);
+                await this.tryConfirmOrder(conv, msg.waId, session);
+                return;
+            }
+            await this.reply(conv, msg.waId, this.catalogService.formatCourtesyReply(cfg.brandName || cfg.localContext?.restaurantName || undefined));
+            return;
+        }
         if (this.isVagueOrderIntent(text)) {
             const codeProbe = this.catalogService.extractCodeFromMessage(text);
             const nameProbe = this.catalogService.searchByName(text, products, 5);

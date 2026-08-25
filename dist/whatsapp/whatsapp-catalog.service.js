@@ -302,10 +302,44 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         }
         return byCat;
     }
+    isCourtesyOnlyMessage(text) {
+        const raw = (text || '').trim();
+        if (!raw || raw.length > 80)
+            return false;
+        const q = normalizeText(raw);
+        if (!q)
+            return false;
+        if (this.extractCodeFromMessage(raw) != null)
+            return false;
+        if (new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) || new RegExp(DRINK_ORDER_TOKEN, 'i').test(q)) {
+            return false;
+        }
+        if (/\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho|frito|broaster|plancha)\b/.test(q)) {
+            return false;
+        }
+        if (/^(gracias|muchas\s+gracias|mil\s+gracias|te\s+agradezco|thanks|thank\s+you|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de\s+nada|con\s+gusto|entendido|claro|okey|okis)([\s!.?]|$)/.test(q) &&
+            !/\b(quiero|dame|ponme|agrega|pedir|ordenar|codigo|menu|carta)\b/.test(q)) {
+            const stripped = q
+                .replace(/\b(gracias|muchas|mil|te|agradezco|thanks|thank|you|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de|nada|con|gusto|entendido|claro|okey|okis|si|sí|por|favor|porfa)\b/g, ' ')
+                .replace(/[!.?]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return stripped.length < 3;
+        }
+        return false;
+    }
+    formatCourtesyReply(brandName) {
+        const brand = (brandName || '').trim();
+        return brand
+            ? `¡Con gusto! Cuando quieras pedir en *${brand}*, dime el plato o el código 🍗`
+            : `¡Con gusto! Cuando quieras pedir, dime el plato o el código 🍗`;
+    }
     isOffTopicChitchat(text) {
         const raw = (text || '').trim();
         if (!raw || raw.length < 4)
             return false;
+        if (this.isCourtesyOnlyMessage(raw))
+            return true;
         if (this.extractCodeFromMessage(raw) != null)
             return false;
         if (this.isPriceInquiryIntent(raw))
@@ -697,13 +731,18 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const t = normalizeText(token);
         const sing = singularizeEsToken(t);
         const words = q.split(/\s+/).filter(Boolean);
+        const similarLen = (a, b) => {
+            if (a.length < 5 || b.length < 5)
+                return false;
+            return Math.min(a.length, b.length) / Math.max(a.length, b.length) >= 0.75;
+        };
         for (const w of words) {
             const ws = singularizeEsToken(w);
             if (w === t || ws === sing || w === sing || ws === t)
                 return true;
-            if (t.length >= 5 && (w.includes(t) || t.includes(w)))
+            if (similarLen(t, w) && (w.includes(t) || t.includes(w)))
                 return true;
-            if (sing.length >= 5 && (ws.includes(sing) || sing.includes(ws)))
+            if (similarLen(sing, ws) && (ws.includes(sing) || sing.includes(ws)))
                 return true;
         }
         return false;
@@ -1402,7 +1441,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const q = normalizeText(query);
         if (!q || q.length < 2)
             return [];
-        if (this.isOffTopicChitchat(query))
+        if (this.isCourtesyOnlyMessage(query) || this.isOffTopicChitchat(query))
             return [];
         if (/\b(link|enlace|url)\b/.test(q) ||
             /\b(pasa|dame|envia|manda|comparte)\b.*\b(menu|carta)\b/.test(q) ||
@@ -1441,6 +1480,16 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             'tienen',
             'hay',
             'favor',
+            'gracias',
+            'gracia',
+            'muchas',
+            'thanks',
+            'thank',
+            'ok',
+            'okay',
+            'dale',
+            'listo',
+            'perfecto',
             'hola',
             'buenas',
             'buenos',

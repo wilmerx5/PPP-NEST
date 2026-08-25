@@ -343,10 +343,59 @@ export class WhatsappCatalogService {
     return byCat;
   }
 
+  /**
+   * Agradecimiento / ok / listo sueltos: NUNCA buscar ni agregar productos.
+   * ("gracias" llegaba a matchear "Pechuga a la Plancha" por un bug de substring).
+   */
+  isCourtesyOnlyMessage(text: string): boolean {
+    const raw = (text || '').trim();
+    if (!raw || raw.length > 80) return false;
+    const q = normalizeText(raw);
+    if (!q) return false;
+    // Si nombra comida/bebida/código, no es solo cortesía
+    if (this.extractCodeFromMessage(raw) != null) return false;
+    if (new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) || new RegExp(DRINK_ORDER_TOKEN, 'i').test(q)) {
+      return false;
+    }
+    if (
+      /\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho|frito|broaster|plancha)\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+    if (
+      /^(gracias|muchas\s+gracias|mil\s+gracias|te\s+agradezco|thanks|thank\s+you|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de\s+nada|con\s+gusto|entendido|claro|okey|okis)([\s!.?]|$)/.test(
+        q,
+      ) &&
+      !/\b(quiero|dame|ponme|agrega|pedir|ordenar|codigo|menu|carta)\b/.test(q)
+    ) {
+      // Solo cortesía si al quitar muletillas no queda nada con sentido de pedido
+      const stripped = q
+        .replace(
+          /\b(gracias|muchas|mil|te|agradezco|thanks|thank|you|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de|nada|con|gusto|entendido|claro|okey|okis|si|sí|por|favor|porfa)\b/g,
+          ' ',
+        )
+        .replace(/[!.?]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return stripped.length < 3;
+    }
+    return false;
+  }
+
+  formatCourtesyReply(brandName?: string): string {
+    const brand = (brandName || '').trim();
+    return brand
+      ? `¡Con gusto! Cuando quieras pedir en *${brand}*, dime el plato o el código 🍗`
+      : `¡Con gusto! Cuando quieras pedir, dime el plato o el código 🍗`;
+  }
+
   /** Charla fuera del pedido: cuentos, programar, clima, etc. */
   isOffTopicChitchat(text: string): boolean {
     const raw = (text || '').trim();
     if (!raw || raw.length < 4) return false;
+    if (this.isCourtesyOnlyMessage(raw)) return true;
 
     // Pedido / menú explícito gana
     if (this.extractCodeFromMessage(raw) != null) return false;
@@ -839,11 +888,16 @@ export class WhatsappCatalogService {
     const t = normalizeText(token);
     const sing = singularizeEsToken(t);
     const words = q.split(/\s+/).filter(Boolean);
+    const similarLen = (a: string, b: string) => {
+      if (a.length < 5 || b.length < 5) return false;
+      return Math.min(a.length, b.length) / Math.max(a.length, b.length) >= 0.75;
+    };
     for (const w of words) {
       const ws = singularizeEsToken(w);
       if (w === t || ws === sing || w === sing || ws === t) return true;
-      if (t.length >= 5 && (w.includes(t) || t.includes(w))) return true;
-      if (sing.length >= 5 && (ws.includes(sing) || sing.includes(ws))) return true;
+      // NUNCA: "gracias".includes("a") → matcheaba "Pechuga a la Plancha"
+      if (similarLen(t, w) && (w.includes(t) || t.includes(w))) return true;
+      if (similarLen(sing, ws) && (ws.includes(sing) || sing.includes(ws))) return true;
     }
     return false;
   }
@@ -1709,7 +1763,7 @@ export class WhatsappCatalogService {
   ): Array<{ p: WhatsappCatalogProduct; score: number }> {
     const q = normalizeText(query);
     if (!q || q.length < 2) return [];
-    if (this.isOffTopicChitchat(query)) return [];
+    if (this.isCourtesyOnlyMessage(query) || this.isOffTopicChitchat(query)) return [];
 
     // Pedidos del tipo "link del menú" no deben buscar productos
     if (
@@ -1752,6 +1806,16 @@ export class WhatsappCatalogService {
       'tienen',
       'hay',
       'favor',
+      'gracias',
+      'gracia',
+      'muchas',
+      'thanks',
+      'thank',
+      'ok',
+      'okay',
+      'dale',
+      'listo',
+      'perfecto',
       'hola',
       'buenas',
       'buenos',

@@ -32,6 +32,8 @@ export declare class WhatsappCatalogService {
     getMenuDetailedText(): Promise<string>;
     getCategoryNames(): Promise<string[]>;
     groupProductsByCategory(products: WhatsappCatalogProduct[]): Map<string, WhatsappCatalogProduct[]>;
+    isCourtesyOnlyMessage(text: string): boolean;
+    formatCourtesyReply(brandName?: string): string;
     isOffTopicChitchat(text: string): boolean;
     formatOffTopicRedirect(brandName?: string): string;
     isMenuExploreIntent(text: string, products?: WhatsappCatalogProduct[]): boolean;

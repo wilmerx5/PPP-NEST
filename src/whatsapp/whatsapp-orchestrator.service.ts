@@ -695,6 +695,29 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "gracias" suelto → NUNCA agregar productos.
+    // "listo"/"ok"/"dale" con carrito → checkout (no tragar la confirmación).
+    if (this.catalogService.isCourtesyOnlyMessage(text)) {
+      const courtesyConfirm =
+        session.cart.length > 0 &&
+        /^(ok|okay|oki|dale|listo|perfecto|va|vale)[\s!.?]*$/i.test(text.trim());
+      if (courtesyConfirm) {
+        const fresh = await this.conversationService.reloadConversation(conv.id);
+        Object.assign(conv, fresh);
+        session = this.conversationService.getSession(conv);
+        await this.tryConfirmOrder(conv, msg.waId, session);
+        return;
+      }
+      await this.reply(
+        conv,
+        msg.waId,
+        this.catalogService.formatCourtesyReply(
+          cfg.brandName || cfg.localContext?.restaurantName || undefined,
+        ),
+      );
+      return;
+    }
+
     // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos)
     if (this.isVagueOrderIntent(text)) {
       const codeProbe = this.catalogService.extractCodeFromMessage(text);
