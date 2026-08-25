@@ -71,6 +71,7 @@ export declare class WhatsappOrchestratorService {
     private resolveAudioToText;
     private humanHelpHint;
     private isProductCompositionQuestion;
+    private findProductsForCompositionQuestion;
     private findProductForCompositionQuestion;
     private buildProductCompositionReply;
     private rememberProductFocus;

@@ -50,6 +50,7 @@ export type WhatsappSessionData = {
     pendingMatch?: {
         query: string;
         candidates: WhatsappProductCandidate[];
+        intent?: 'info' | 'order';
     };
     pendingMultiOrder?: {
         confident: Array<{

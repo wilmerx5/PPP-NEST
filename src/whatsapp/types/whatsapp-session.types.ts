@@ -58,6 +58,8 @@ export type WhatsappSessionData = {
   pendingMatch?: {
     query: string;
     candidates: WhatsappProductCandidate[];
+    /** info = eligió variante para ver detalle (no agregar al carrito) */
+    intent?: 'info' | 'order';
   };
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   pendingMultiOrder?: {

@@ -32,6 +32,8 @@ export declare class WhatsappCatalogService {
     getMenuDetailedText(): Promise<string>;
     getCategoryNames(): Promise<string[]>;
     groupProductsByCategory(products: WhatsappCatalogProduct[]): Map<string, WhatsappCatalogProduct[]>;
+    isOffTopicChitchat(text: string): boolean;
+    formatOffTopicRedirect(brandName?: string): string;
     isMenuExploreIntent(text: string, products?: WhatsappCatalogProduct[]): boolean;
     buildMenuExploreIntro(text: string): string;
     formatMenuCategoryOverview(products: WhatsappCatalogProduct[], opts?: {
@@ -46,6 +48,7 @@ export declare class WhatsappCatalogService {
     resolveCategoryBrowsePick(text: string, categories: string[]): string | null;
     getProductById(id: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractCodeFromMessage(text: string): number | null;
+    extractListPickNumber(text: string): number | null;
     findByCode(code: number, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     extractProductSearchQuery(text: string): string;
     stripProductDescriptionInquiryNoise(text: string): string;

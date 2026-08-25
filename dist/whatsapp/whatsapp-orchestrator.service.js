@@ -512,6 +512,28 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (await this.tryHandleProductCompositionQuestion(conv, msg.waId, text, products, cfg, session)) {
             return;
         }
+        if (this.catalogService.isOffTopicChitchat(text)) {
+            await this.reply(conv, msg.waId, this.catalogService.formatOffTopicRedirect(cfg.brandName || cfg.localContext?.restaurantName || undefined));
+            return;
+        }
+        if (this.catalogService.isMenuExploreIntent(text, products) &&
+            !session.pendingAttribute &&
+            !session.pendingMatch &&
+            (conv.state === 'building_cart' || !conv.state)) {
+            const intro = this.catalogService.buildMenuExploreIntro(text);
+            const overview = this.catalogService.formatMenuCategoryOverview(products, {
+                intro,
+                menuUrl: cfg.menuUrl,
+            });
+            session = {
+                ...session,
+                pendingCategoryBrowse: { categories: overview.categories },
+                pendingMatch: undefined,
+            };
+            await this.conversationService.saveSession(conv, session);
+            await this.reply(conv, msg.waId, overview.text);
+            return;
+        }
         const pendingPickHandled = await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg);
         if (pendingPickHandled)
             return;
@@ -600,15 +622,19 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             return;
         }
         const code = this.catalogService.extractCodeFromMessage(text);
-        const bareOptionNumber = /^[1-9]\d{0,3}$/.test(text.trim());
+        const listPick = this.catalogService.extractListPickNumber(text);
+        const bareOptionNumber = listPick != null;
+        const hasPendingList = !!session.pendingMatch?.candidates?.length ||
+            !!session.pendingCategoryBrowse?.categories?.length ||
+            !!session.pendingAttribute ||
+            conv.state === 'awaiting_attribute' ||
+            !!session.pendingCartRemoval?.options?.length;
         const pendingListIndex = bareOptionNumber &&
             !!session.pendingMatch?.candidates?.length &&
-            code != null &&
-            code >= 1 &&
-            code <= session.pendingMatch.candidates.length;
-        if (code != null &&
-            !pendingListIndex &&
-            !(bareOptionNumber && (session.pendingAttribute || conv.state === 'awaiting_attribute'))) {
+            listPick != null &&
+            listPick >= 1 &&
+            listPick <= session.pendingMatch.candidates.length;
+        if (code != null && !pendingListIndex && !hasPendingList) {
             const found = this.catalogService.findByCode(code, products);
             if (found) {
                 session = this.applyDeliveryHintFromMessage(session, text);
@@ -675,23 +701,6 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                 await this.tryConfirmOrder(conv, msg.waId, session);
                 return;
             }
-        }
-        if (this.catalogService.isMenuExploreIntent(text, products) &&
-            !session.pendingAttribute &&
-            conv.state === 'building_cart') {
-            const intro = this.catalogService.buildMenuExploreIntro(text);
-            const overview = this.catalogService.formatMenuCategoryOverview(products, {
-                intro,
-                menuUrl: cfg.menuUrl,
-            });
-            session = {
-                ...session,
-                pendingCategoryBrowse: { categories: overview.categories },
-                pendingMatch: undefined,
-            };
-            await this.conversationService.saveSession(conv, session);
-            await this.reply(conv, msg.waId, overview.text);
-            return;
         }
         if (!session.pendingAttribute &&
             !session.pendingMultiOrder &&
@@ -819,14 +828,26 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
                         return;
                 }
             }
+            const infoAsk = this.catalogService.isProductDescriptionInquiry(text);
             const family = this.catalogService.findProductVariantFamily(text, products, resolvedMatches);
             if (family && family.variants.length >= 2) {
-                session = { ...session, pendingMatch: { query: text, candidates: family.variants } };
+                session = {
+                    ...session,
+                    pendingMatch: {
+                        query: text,
+                        candidates: family.variants,
+                        intent: infoAsk ? 'info' : 'order',
+                    },
+                };
                 await this.conversationService.saveSession(conv, session);
                 await this.reply(conv, msg.waId, this.catalogService.formatVariantFamilyPrompt(family));
                 return;
             }
-            session.pendingMatch = { query: text, candidates: resolvedMatches };
+            session.pendingMatch = {
+                query: text,
+                candidates: resolvedMatches,
+                intent: infoAsk ? 'info' : 'order',
+            };
             await this.conversationService.saveSession(conv, session);
             await this.reply(conv, msg.waId, this.catalogService.formatProductChoicePrompt(text, resolvedMatches));
             return;
@@ -856,6 +877,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             session.pendingCategoryBrowse?.categories?.length
                 ? `CATEGORÍAS MOSTRADAS: ${session.pendingCategoryBrowse.categories.join(', ')}. Si elige una, profundiza ahí; no repitas todo el menú.`
                 : '',
+            'Si el mensaje es charla (cuentos, programar, clima, chistes) y NO pide comida: NO busques platos ni digas "no encontré el plato X". Redirige al menú o *asesor*.',
             'Responde al ÚLTIMO mensaje del cliente. No repitas que no encontraste un plato si ya pidió otro distinto. Si no reconoces el producto, sugiere nombre/código o escribir *menú* — no insistas con el mensaje anterior.',
         ]
             .filter(Boolean)
@@ -887,7 +909,9 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             paymentMethods: cfg.paymentMethods,
         });
         if ((this.catalogService.isPriceInquiryIntent(text) ||
-            this.catalogService.isGenericProductInquiry(text)) &&
+            this.catalogService.isGenericProductInquiry(text) ||
+            this.catalogService.isMenuExploreIntent(text, products) ||
+            exploringMenu) &&
             guarded.actions) {
             delete guarded.actions.addItems;
             delete guarded.actions.setAddress;
@@ -1480,7 +1504,7 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
         if (this.catalogService.isProductDescriptionInquiry(text))
             return false;
         const trimmed = text.trim();
-        const bareNum = /^[1-9]\d{0,3}$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+        const bareNum = this.catalogService.extractListPickNumber(text);
         let chosenLite = null;
         if (bareNum != null && bareNum >= 1 && bareNum <= pending.candidates.length) {
             chosenLite = pending.candidates[bareNum - 1];
@@ -1529,7 +1553,17 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
             await this.reply(conv, waId, `*${chosen.name}* no está disponible en este horario. Elige otro de la lista o dime otro plato.`);
             return true;
         }
-        session = { ...session, pendingMatch: undefined };
+        const infoIntent = pending.intent === 'info';
+        session = {
+            ...session,
+            pendingMatch: undefined,
+        };
+        session = this.rememberProductFocus(session, chosen, products);
+        if (infoIntent) {
+            await this.conversationService.saveSession(conv, session, 'building_cart');
+            await this.reply(conv, waId, this.catalogService.formatProductPriceReply(chosen));
+            return true;
+        }
         session = this.applyDeliveryHintFromMessage(session, text);
         if (chosen.hasAttributes && chosen.attributes?.length) {
             if (await this.handleProductWithVariants(conv, waId, session, chosen, text, cfg)) {
@@ -2091,18 +2125,44 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     isProductCompositionQuestion(text) {
         return this.catalogService.isProductDescriptionInquiry(text);
     }
-    findProductForCompositionQuestion(text, products, session) {
+    findProductsForCompositionQuestion(text, products, session) {
         const stripped = this.catalogService.stripProductDescriptionInquiryNoise(text);
-        const embedded = this.catalogService.findProductEmbeddedInMessage(stripped || text, products);
-        if (embedded)
-            return embedded;
         const query = this.catalogService.extractProductSearchQuery(stripped || text);
-        const scored = this.catalogService.searchByNameScored(query, products, 5);
+        const family = this.catalogService.findProductVariantFamily(query || text, products);
+        if (family && family.variants.length >= 2) {
+            return family.variants;
+        }
+        const embedded = this.catalogService.findProductEmbeddedInMessage(stripped || text, products);
+        if (embedded) {
+            const embFamily = this.catalogService.findProductVariantFamily(embedded.name, products, [embedded]);
+            if (embFamily && embFamily.variants.length >= 2)
+                return embFamily.variants;
+            return [embedded];
+        }
+        const scored = this.catalogService.searchByNameScored(query, products, 6);
+        if (scored.length >= 2) {
+            const top = scored[0].score;
+            const close = scored
+                .filter((x) => x.score >= Math.max(40, top - 20))
+                .map((x) => x.p);
+            const uniq = this.catalogService.dedupeProductsById(close);
+            if (uniq.length >= 2) {
+                const asFamily = this.catalogService.findProductVariantFamily(query || text, products, uniq);
+                if (asFamily && asFamily.variants.length >= 2)
+                    return asFamily.variants;
+                return uniq.slice(0, 5);
+            }
+        }
         if (scored.length === 1 && scored[0].score >= 40)
-            return scored[0].p;
-        if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored))
-            return scored[0].p;
-        return this.resolveDiscussedProduct(session, stripped || text, products);
+            return [scored[0].p];
+        if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored)) {
+            return [scored[0].p];
+        }
+        const focused = this.resolveDiscussedProduct(session, stripped || text, products);
+        return focused ? [focused] : [];
+    }
+    findProductForCompositionQuestion(text, products, session) {
+        return this.findProductsForCompositionQuestion(text, products, session)[0] || null;
     }
     buildProductCompositionReply(text, product, cfg) {
         const allergens = (cfg.localContext?.allergensNote || '').trim();
@@ -2338,7 +2398,40 @@ let WhatsappOrchestratorService = WhatsappOrchestratorService_1 = class Whatsapp
     async tryHandleProductCompositionQuestion(conv, waId, text, products, cfg, session) {
         if (!this.isProductCompositionQuestion(text))
             return false;
-        const product = this.findProductForCompositionQuestion(text, products, session);
+        const candidates = this.findProductsForCompositionQuestion(text, products, session);
+        if (candidates.length > 1) {
+            const family = this.catalogService.findProductVariantFamily(text, products, candidates);
+            session = {
+                ...session,
+                pendingMatch: {
+                    query: text,
+                    candidates: family?.variants?.length ? family.variants : candidates,
+                    intent: 'info',
+                },
+            };
+            await this.conversationService.saveSession(conv, session, 'building_cart');
+            let prompt;
+            if (family?.variants?.length) {
+                const rows = family.variants.map((p, i) => ({
+                    index: i + 1,
+                    label: this.catalogService.getVariantDisplayLabel(p.name, family.baseKey),
+                    price: p.price,
+                    code: p.code,
+                }));
+                prompt =
+                    `Para contarte *con qué va ${family.baseLabel}*, ¿cuál variante?\n\n` +
+                        `${this.catalogService.formatOptionsList(rows)}\n\n` +
+                        `_Responde con el *número* y te muestro el detalle._`;
+            }
+            else {
+                prompt = this.catalogService.formatProductChoicePrompt(text, candidates, {
+                    intro: 'Hay *varias opciones*. ¿De cuál quieres el detalle?',
+                });
+            }
+            await this.reply(conv, waId, prompt);
+            return true;
+        }
+        const product = candidates[0] || null;
         if (product) {
             session = this.rememberProductFocus(session, product, products);
             await this.conversationService.saveSession(conv, session);
