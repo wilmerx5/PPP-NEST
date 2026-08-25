@@ -89,6 +89,14 @@ export type WhatsappSessionData = {
   pendingCategoryBrowse?: {
     categories: string[];
   };
+  /**
+   * Cantidad pedida cuando aún no se resolvió el plato
+   * (ej. "quiero 3 mojarras" → luego "mojarras" / variante).
+   */
+  pendingQuantityHint?: {
+    quantity: number;
+    query: string;
+  };
   pendingAttribute?: WhatsappPendingAttribute;
   /** Último plato del que se habló (para "damelo en combo", etc.). */
   productFocus?: {

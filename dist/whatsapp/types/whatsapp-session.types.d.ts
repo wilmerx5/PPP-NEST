@@ -77,6 +77,10 @@ export type WhatsappSessionData = {
     pendingCategoryBrowse?: {
         categories: string[];
     };
+    pendingQuantityHint?: {
+        quantity: number;
+        query: string;
+    };
     pendingAttribute?: WhatsappPendingAttribute;
     productFocus?: {
         productId: number;

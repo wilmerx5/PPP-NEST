@@ -832,10 +832,17 @@ export class WhatsappOrchestratorService {
     }
 
     if (session.pendingCategoryBrowse?.categories?.length) {
-      const pickedCategory = this.catalogService.resolveCategoryBrowsePick(
-        text,
-        session.pendingCategoryBrowse.categories,
-      );
+      const qtyHere = this.catalogService.extractQuantityFromMessage(text);
+      const looksLikeFoodOrder =
+        qtyHere >= 2 ||
+        (/\b(quiero|dame|ponme|agrega)\b/i.test(text) &&
+          /\b(mojarra|pollo|sopa|pechuga|bandeja|alitas?|arepa|broaster|frito)\b/i.test(text));
+      const pickedCategory = looksLikeFoodOrder
+        ? null
+        : this.catalogService.resolveCategoryBrowsePick(
+            text,
+            session.pendingCategoryBrowse.categories,
+          );
       if (pickedCategory) {
         const catProducts = products.filter(
           (p) => p.categoryName === pickedCategory && p.availableNow !== false,
@@ -853,6 +860,10 @@ export class WhatsappOrchestratorService {
         );
         return;
       }
+      // Pedido concreto con browse pendiente → soltar categorías y seguir al match de producto
+      if (looksLikeFoodOrder) {
+        session = { ...session, pendingCategoryBrowse: undefined };
+      }
     }
 
     // Cambio de categoría solo si NO hay producto concreto claro
@@ -861,19 +872,31 @@ export class WhatsappOrchestratorService {
       const qCheck = productQueryEarly || text;
       const orderNoise = new Set([
         'quiero', 'dame', 'ponme', 'pedir', 'ordenar', 'agrega', 'necesito', 'una', 'uno',
+        'por', 'favor', 'gracias',
       ]);
       const significant = qCheck
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .split(/\s+/)
-        .filter((t) => t.length >= 3 && !orderNoise.has(t));
-      const looksSpecificDish = significant.length >= 2;
-      const earlyScored = this.catalogService.searchByNameScored(qCheck, products, 5);
+        .filter((t) => t.length >= 3 && !orderNoise.has(t) && !/^\d+$/.test(t));
+      const earlyQty = this.catalogService.extractQuantityFromMessage(text);
+      const earlyScored = this.catalogService.searchByNameScored(
+        this.catalogService.stripQuantityFromSearchQuery(qCheck) || qCheck,
+        products,
+        5,
+      );
+      const looksSpecificDish =
+        significant.length >= 2 ||
+        (significant.length === 1 &&
+          (this.catalogService.isStrongProductMatch(earlyScored) ||
+            earlyScored[0]?.score >= 40));
       const hasConcreteProduct =
-        looksSpecificDish &&
-        (this.catalogService.isStrongProductMatch(earlyScored) ||
-          !!this.catalogService.findProductEmbeddedInMessage(text, products));
+        earlyQty >= 2 ||
+        (looksSpecificDish &&
+          (this.catalogService.isStrongProductMatch(earlyScored) ||
+            earlyScored[0]?.score >= 40 ||
+            !!this.catalogService.findProductEmbeddedInMessage(text, products)));
       if (!hasConcreteProduct) {
         const categorySwitch = await this.tryHandleCategoryBrowse(
           conv,
@@ -945,11 +968,11 @@ export class WhatsappOrchestratorService {
       listPick != null &&
       listPick >= 1 &&
       listPick <= session.pendingMatch.candidates.length;
-    // Con cantidad ("5 pollos") no tratar el dígito como código de menú
+    // "5 pollos" / "quiero 3 mojarras" → no tratar el dígito como código de menú
     const qtyInText = this.catalogService.extractQuantityFromMessage(text);
     const qtyLooksLikeOrder =
       qtyInText >= 2 &&
-      /\b(pollos?|sopas?|bandejas?|platos?|unidades?|combos?|gaseosas?|broaster|fritos?)\b/i.test(
+      /\b(pollos?|sopas?|bandejas?|platos?|unidades?|combos?|gaseosas?|broaster|fritos?|mojarras?|pechugas?|alitas?|arepas?|carnes?|ejecutivos?|churrascos?)\b/i.test(
         text,
       );
     // Con cualquier lista pendiente, un número suelto NUNCA es código de menú
@@ -1073,7 +1096,10 @@ export class WhatsappOrchestratorService {
     }
 
     // Título embebido en la frase ("… arroz con pollo para calle 10") — prioridad máxima
-    const orderQty = this.catalogService.extractQuantityFromMessage(text);
+    let orderQty = this.resolveOrderQuantity(session, text);
+    if (orderQty >= 2) {
+      session = this.rememberQuantityHint(session, text, orderQty);
+    }
     const embeddedProduct = this.catalogService.findProductEmbeddedInMessage(text, products);
     if (
       embeddedProduct &&
@@ -1103,7 +1129,7 @@ export class WhatsappOrchestratorService {
         await this.handleCartLimitBlocked(conv, msg.waId, embeddedAdd.blocked, cfg);
         return;
       }
-      session = embeddedAdd.session;
+      session = this.clearQuantityHint(embeddedAdd.session);
       await this.conversationService.saveSession(conv, session, 'building_cart');
       if (await this.maybeAdvanceCheckoutAfterAdd(conv, msg.waId, session)) return;
       const qtyNote = orderQty > 1 ? ` _(x${orderQty})_` : '';
@@ -1180,6 +1206,7 @@ export class WhatsappOrchestratorService {
               candidates: family.variants,
               quantity: orderQty,
             },
+            pendingQuantityHint: { quantity: orderQty, query: productQuery || text },
           };
           await this.conversationService.saveSession(conv, session);
           await this.reply(
@@ -1200,6 +1227,7 @@ export class WhatsappOrchestratorService {
               candidates: qtyScored.slice(0, 6).map((x) => x.p),
               quantity: orderQty,
             },
+            pendingQuantityHint: { quantity: orderQty, query: productQuery || text },
           };
           await this.conversationService.saveSession(conv, session);
           await this.reply(
@@ -1255,7 +1283,7 @@ export class WhatsappOrchestratorService {
         await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
         return;
       }
-      session = added.session;
+      session = this.clearQuantityHint(added.session);
       await this.conversationService.saveSession(conv, session, 'building_cart');
       if (await this.maybeAdvanceCheckoutAfterAdd(conv, msg.waId, session)) return;
       const qtyNote = orderQty > 1 ? ` _(x${orderQty})_` : '';
@@ -1302,6 +1330,9 @@ export class WhatsappOrchestratorService {
             intent: infoAsk ? 'info' : 'order',
             quantity: orderQty > 1 ? orderQty : undefined,
           },
+          ...(orderQty > 1
+            ? { pendingQuantityHint: { quantity: orderQty, query: productQuery || text } }
+            : {}),
         };
         await this.conversationService.saveSession(conv, session);
         const qtyHint = orderQty > 1 ? `\n_Cantidad anotada: *${orderQty}*_\n\n` : '\n\n';
@@ -1320,6 +1351,9 @@ export class WhatsappOrchestratorService {
         intent: infoAsk ? 'info' : 'order',
         quantity: orderQty > 1 ? orderQty : undefined,
       };
+      if (orderQty > 1) {
+        session.pendingQuantityHint = { quantity: orderQty, query: productQuery || text };
+      }
       await this.conversationService.saveSession(conv, session);
       await this.reply(
         conv,
@@ -1848,6 +1882,53 @@ export class WhatsappOrchestratorService {
     };
   }
 
+  /** Cantidad del mensaje actual, o la que quedó pendiente ("3 mojarras" → luego "mojarras"). */
+  private resolveOrderQuantity(session: WhatsappSessionData, text: string): number {
+    const fromText = this.catalogService.extractQuantityFromMessage(text);
+    if (fromText >= 2) return Math.min(30, fromText);
+    const hint = session.pendingQuantityHint;
+    if (!hint || hint.quantity < 2) return Math.max(1, fromText);
+    const q = this.normalizeForMatch(
+      this.catalogService.stripQuantityFromSearchQuery(
+        this.catalogService.extractProductSearchQuery(text),
+      ) || text,
+    );
+    const hintQ = this.normalizeForMatch(hint.query || '');
+    if (!q || q.length < 4) return Math.max(1, fromText);
+    // Misma familia de producto (mojarras / mojarra frita)
+    if (
+      hintQ.includes(q) ||
+      q.includes(hintQ) ||
+      hintQ.split(' ').some((t) => t.length >= 5 && q.includes(t)) ||
+      q.split(' ').some((t) => t.length >= 5 && hintQ.includes(t))
+    ) {
+      return Math.min(30, hint.quantity);
+    }
+    return Math.max(1, fromText);
+  }
+
+  private rememberQuantityHint(
+    session: WhatsappSessionData,
+    text: string,
+    quantity: number,
+  ): WhatsappSessionData {
+    if (quantity < 2) return session;
+    const query =
+      this.catalogService.stripQuantityFromSearchQuery(
+        this.catalogService.extractProductSearchQuery(text),
+      ) || text;
+    return {
+      ...session,
+      pendingQuantityHint: { quantity: Math.min(30, quantity), query },
+    };
+  }
+
+  private clearQuantityHint(session: WhatsappSessionData): WhatsappSessionData {
+    if (!session.pendingQuantityHint) return session;
+    const { pendingQuantityHint: _drop, ...rest } = session;
+    return rest;
+  }
+
   private async handleCartLimitBlocked(
     conv: WhatsappConversation,
     waId: string,
@@ -2241,7 +2322,10 @@ export class WhatsappOrchestratorService {
     if (!family || family.variants.length < 2) return false;
 
     const picked = this.catalogService.pickVariantFromFamilyText(text, family);
-    const qty = this.catalogService.extractQuantityFromMessage(text);
+    const qty = this.resolveOrderQuantity(session, text);
+    if (qty >= 2) {
+      session = this.rememberQuantityHint(session, text, qty);
+    }
     if (picked) {
       session = { ...session, pendingMatch: undefined };
       if (picked.hasAttributes && picked.attributes?.length) {
@@ -2255,7 +2339,7 @@ export class WhatsappOrchestratorService {
         await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
         return true;
       }
-      session = added.session;
+      session = this.clearQuantityHint(added.session);
       await this.conversationService.saveSession(conv, session, 'building_cart');
       const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
       await this.reply(
@@ -2273,6 +2357,14 @@ export class WhatsappOrchestratorService {
         candidates: family.variants,
         quantity: qty > 1 ? qty : undefined,
       },
+      ...(qty > 1
+        ? {
+            pendingQuantityHint: {
+              quantity: qty,
+              query: this.catalogService.extractProductSearchQuery(text) || text,
+            },
+          }
+        : {}),
     };
     await this.conversationService.saveSession(conv, session);
     await this.reply(
@@ -2368,7 +2460,12 @@ export class WhatsappOrchestratorService {
     }
 
     const infoIntent = pending.intent === 'info';
-    const qty = Math.max(1, pending.quantity || this.catalogService.extractQuantityFromMessage(text) || 1);
+    const qty = Math.max(
+      1,
+      pending.quantity ||
+        this.resolveOrderQuantity(session, text) ||
+        1,
+    );
     session = {
       ...session,
       pendingMatch: undefined,
@@ -2396,7 +2493,7 @@ export class WhatsappOrchestratorService {
       await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
       return true;
     }
-    session = added.session;
+    session = this.clearQuantityHint(added.session);
     await this.conversationService.saveSession(conv, session, 'building_cart');
     const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
     await this.reply(

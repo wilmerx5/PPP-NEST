@@ -697,10 +697,45 @@ export class WhatsappCatalogService {
     const lower = normalizeText(raw);
     if (!lower) return null;
 
+    // "quiero 3 mojarras por favor" NO es elegir categoría (evita "favor"→Favoritos)
+    if (this.extractQuantityFromMessage(raw) >= 2) return null;
+    if (
+      /\b(quiero|dame|ponme|agrega|necesito)\b/.test(lower) &&
+      new RegExp(FOOD_ORDER_TOKEN, 'i').test(lower)
+    ) {
+      return null;
+    }
+
     if (/^[1-9]\d{0,2}$/.test(raw)) {
       const n = parseInt(raw, 10);
       if (n >= 1 && n <= categories.length) return categories[n - 1];
     }
+
+    const NOISE = new Set([
+      'quiero',
+      'dame',
+      'ponme',
+      'agrega',
+      'necesito',
+      'pedir',
+      'ordenar',
+      'por',
+      'favor',
+      'porfa',
+      'gracias',
+      'hola',
+      'buenas',
+      'una',
+      'uno',
+      'unos',
+      'unas',
+      'los',
+      'las',
+      'del',
+      'con',
+      'sin',
+      'para',
+    ]);
 
     let best: { name: string; score: number } | null = null;
     for (const cat of categories) {
@@ -708,13 +743,16 @@ export class WhatsappCatalogService {
       const cs = stemLoose(cat);
       let score = 0;
       if (lower === c || lower === cs) score = 100;
-      else if (lower.includes(c) || c.includes(lower)) score = 85;
-      else if (lower.includes(cs)) score = 75;
+      else if (lower.includes(c) || (c.length >= 4 && c.includes(lower))) score = 85;
+      else if (lower.includes(cs) && cs.length >= 4) score = 75;
       else {
-        for (const token of lower.split(' ').filter((t) => t.length >= 3)) {
+        for (const token of lower.split(' ').filter((t) => t.length >= 4 && !NOISE.has(t))) {
           const ts = stemLoose(token);
-          if (c === token || cs === ts || c.includes(token) || token.includes(c)) {
-            score = Math.max(score, 70);
+          if (c === token || cs === ts) score = Math.max(score, 90);
+          else if (c.length >= 4 && token.length >= 4 && (c.includes(token) || token.includes(c))) {
+            // Evitar "favor"⊂"favoritos" con tokens de cortesía (ya en NOISE)
+            const ratio = Math.min(c.length, token.length) / Math.max(c.length, token.length);
+            if (ratio >= 0.6) score = Math.max(score, 70);
           }
         }
       }
@@ -779,8 +817,11 @@ export class WhatsappCatalogService {
       .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
       .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
       .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
-      .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)\s+/i, '')
-      .replace(/^(quieor|qiero|kiero|quiiero|quero|quiero|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)?\s*/i, '')
+      .replace(/^(quisiera|gustaria|deseo|necesito|dame|me das|me gustaria)[.!?,;:]*\s*/i, '')
+      .replace(
+        /^(quieor|qiero|kiero|quiiero|quero|quiero|voy a pedir)[.!?,;:]*\s*(?:un|una|unos|unas|el|la|los|las)?\s*/i,
+        '',
+      )
       .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
       .trim();
 
@@ -1591,6 +1632,10 @@ export class WhatsappCatalogService {
         'interesa',
         'ver',
         'dame',
+        'favor',
+        'gracias',
+        'quiero',
+        'necesito',
       ]);
       if (significantTokens.length <= 4) {
         for (const t of significantTokens) {
@@ -1711,7 +1756,10 @@ export class WhatsappCatalogService {
     if (!trimmed) return null;
     // "5 pollos" es pedido con cantidad, no browse de categoría
     if (this.extractQuantityFromMessage(trimmed) >= 2) return null;
-    if (/^(quiero|dame|ponme|agrega)\b/i.test(trimmed) && new RegExp(FOOD_ORDER_TOKEN, 'i').test(trimmed)) {
+    if (
+      /^(quiero|dame|ponme|agrega)[.!?,;:]*/i.test(trimmed) &&
+      new RegExp(FOOD_ORDER_TOKEN, 'i').test(trimmed)
+    ) {
       return null;
     }
     const extracted = this.extractProductSearchQuery(trimmed);
