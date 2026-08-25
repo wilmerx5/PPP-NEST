@@ -1394,6 +1394,34 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // Pedido claro de un plato ("4 mojarras fritas"): la IA no debe colar plátano/alitas.
+    if (
+      guarded.actions?.addItems?.length &&
+      !session.pendingAttribute &&
+      !session.pendingMultiOrder &&
+      !this.catalogService.looksLikeMultiItemOrderMessage(text) &&
+      !this.catalogService.looksLikeFoodPlusDrinkOrder(text)
+    ) {
+      const emb = this.catalogService.findProductEmbeddedInMessage(text, products);
+      const q = this.catalogService.stripQuantityFromSearchQuery(
+        this.catalogService.extractProductSearchQuery(text),
+      );
+      const scored = this.catalogService.searchByNameScored(q || text, products, 5);
+      const strong =
+        emb ||
+        (this.catalogService.isStrongProductMatch(scored) ? scored[0]?.p : null);
+      if (strong) {
+        const family = this.catalogService.findProductVariantFamily(text, products, [strong]);
+        const allowed = new Set(
+          (family?.variants?.length ? family.variants : [strong]).map((p) => p.id),
+        );
+        guarded.actions.addItems = guarded.actions.addItems.filter((i) =>
+          allowed.has(i.productId),
+        );
+        if (!guarded.actions.addItems.length) delete guarded.actions.addItems;
+      }
+    }
+
     const cartCountBeforeAi = session.cart.length;
 
     // Antes de confiar en la IA: si el texto es multi-ítem (audio “medio broaster y gaseosa”),

@@ -58,6 +58,8 @@ export declare class WhatsappCatalogService {
     stripProductSearchNoise(query: string): string;
     cleanOrderSegment(segment: string): string;
     private readonly WEAK_PRODUCT_TOKENS;
+    private isDistinctiveProductToken;
+    private queryHasToken;
     looksLikeFoodPlusDrinkOrder(text: string): boolean;
     detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null;
     detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null;
@@ -126,6 +128,7 @@ export declare class WhatsappCatalogService {
         skipHeader?: boolean;
     }): string;
     getProductNameBase(name: string): string;
+    stripCookingStyleTokens(name: string): string;
     getVariantDisplayLabel(fullName: string, baseKey: string): string;
     findProductVariantFamily(query: string, products: WhatsappCatalogProduct[], hints?: WhatsappCatalogProduct[]): ProductVariantFamily | null;
     pickVariantFromFamilyText(text: string, family: ProductVariantFamily): WhatsappCatalogProduct | null;
