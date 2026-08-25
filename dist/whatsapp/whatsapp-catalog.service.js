@@ -319,17 +319,22 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         }
         if (this.extractCodeFromMessage(text) != null)
             return false;
-        if (products.length && this.findProductEmbeddedInMessage(text, products))
-            return false;
-        if (products.length && this.findByCategory(text, products))
-            return false;
+        if (products.length) {
+            const embedded = this.findProductEmbeddedInMessage(text, products);
+            if (embedded) {
+                const name = normalizeText(embedded.name);
+                if (name.length >= 5 && q.includes(name))
+                    return false;
+            }
+        }
         const explorePatterns = [
-            /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|sirven|ponen|venden)\b/,
+            /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|ponen|venden)\b/,
             /\b(que|qué)\s+(me\s+)?(recomiend|sugier|aconsej)/,
             /\b(que|qué)\s+(de|para)\s+(almuerzo|comer|comida|cena|desayuno|merienda|hoy|la\s+casa)\b/,
-            /\b(que|qué)\s+(hay|tienen|tiene|tienes)\s+(de\s+)?(comida|comer|almuerzo|cena|platos?)\b/,
+            /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces)\s+(de\s+)?(comida|comer|almuerzo|cena|platos?|carne|carnes|pollo|sopas?|bebidas?)?\b/,
             /\b(que|qué)\s+(se\s+)?(puede|podemos|puedo)\s+(pedir|ordenar|comer)\b/,
             /\b(que|qué)\s+tienes\s+(de\s+)?(comer|comida|almuerzo|cena)?\b/,
+            /\b(que|qué)\s+ofreces\b/,
             /\b(opciones|recomendaciones|sugerencias)\b/,
             /\b(carta|menu)\s+(de|del)\s+(hoy|dia|día)\b/,
             /\bque\s+me\s+antoj/,
@@ -339,10 +344,96 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         ];
         if (!explorePatterns.some((re) => re.test(q)))
             return false;
-        const hasExploreQuestion = /\b(que|qué|hay|tienen|tiene|tienes|recomiend|categor|opciones|antoj|comer|comida)\b/.test(q);
+        if (this.extractQuantityFromMessage(text) >= 2 && new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)) {
+            return false;
+        }
+        if (/^(quiero|dame|ponme|agrega)\b/.test(q) &&
+            new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)) {
+            return false;
+        }
+        const hasExploreQuestion = /\b(que|qué|hay|tienen|tiene|tienes|ofrecen|ofreces|recomiend|categor|opciones|antoj|comer|comida)\b/.test(q);
         if (/\b(quiero|dame|necesito)\b/.test(q) && !hasExploreQuestion)
             return false;
         return true;
+    }
+    isCategoryBrowseQuestion(text) {
+        const q = normalizeText(text);
+        if (!q || q.length < 5)
+            return false;
+        if (this.extractCodeFromMessage(text) != null)
+            return false;
+        if (/^(quiero|dame|ponme|agrega)\b/.test(q))
+            return false;
+        return (/\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden|ponen)\b/.test(q) ||
+            /\b(muestrame|mostrame|ver)\s+(las?\s+)?(opciones|lista)?\b/.test(q) ||
+            /\b(opciones|lista)\s+de\b/.test(q));
+    }
+    extractQuantityFromMessage(text) {
+        const raw = (text || '').trim();
+        if (!raw)
+            return 1;
+        const q = normalizeText(raw);
+        if (/\b(medio|media|cuarto|cuarta|1\/2|1\/4)\b/.test(q) && !/\b\d+\s*(pollo|sopas?|bandejas?)/.test(q)) {
+            if (!/\b([2-9]|1[0-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(q)) {
+                return 1;
+            }
+        }
+        const wordMap = {
+            un: 1,
+            una: 1,
+            uno: 1,
+            dos: 2,
+            tres: 3,
+            cuatro: 4,
+            cinco: 5,
+            seis: 6,
+            siete: 7,
+            ocho: 8,
+            nueve: 9,
+            diez: 10,
+            once: 11,
+            doce: 12,
+        };
+        const xMatch = q.match(/(?:^|\s)(?:x|×)\s*(\d{1,2})(?:\s|$)/) || q.match(/(?:^|\s)(\d{1,2})\s*(?:x|×)(?:\s|$)/);
+        if (xMatch?.[1]) {
+            const n = parseInt(xMatch[1], 10);
+            if (n >= 1 && n <= 30)
+                return n;
+        }
+        const digitMatch = q.match(/\b(\d{1,2})\s*(?:de\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?)?\b/);
+        if (digitMatch?.[1]) {
+            const n = parseInt(digitMatch[1], 10);
+            if (n >= 2 && n <= 30)
+                return n;
+            if (n === 1)
+                return 1;
+        }
+        for (const [word, n] of Object.entries(wordMap)) {
+            if (n < 2)
+                continue;
+            const re = new RegExp(`\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|broaster|fritos?)\\b`);
+            if (re.test(q))
+                return n;
+        }
+        for (const [word, n] of Object.entries(wordMap)) {
+            if (n < 2)
+                continue;
+            if (new RegExp(`\\b${word}\\b`).test(q) &&
+                new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)) {
+                return n;
+            }
+        }
+        return 1;
+    }
+    stripQuantityFromSearchQuery(text) {
+        let t = text || '';
+        t = t
+            .replace(/\b(?:x|×)\s*\d{1,2}\b/gi, ' ')
+            .replace(/\b\d{1,2}\s*(?:x|×)\b/gi, ' ')
+            .replace(/\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(?:de\s+)?/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return t || text;
     }
     buildMenuExploreIntro(text) {
         const q = normalizeText(text);
@@ -1132,6 +1223,11 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const trimmed = text.trim();
         if (!trimmed)
             return null;
+        if (this.extractQuantityFromMessage(trimmed) >= 2)
+            return null;
+        if (/^(quiero|dame|ponme|agrega)\b/i.test(trimmed) && new RegExp(FOOD_ORDER_TOKEN, 'i').test(trimmed)) {
+            return null;
+        }
         const extracted = this.extractProductSearchQuery(trimmed);
         const queries = extracted !== trimmed ? [extracted, trimmed] : [extracted];
         const orderNoise = new Set([

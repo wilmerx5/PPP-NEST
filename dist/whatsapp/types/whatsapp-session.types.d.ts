@@ -51,6 +51,7 @@ export type WhatsappSessionData = {
         query: string;
         candidates: WhatsappProductCandidate[];
         intent?: 'info' | 'order';
+        quantity?: number;
     };
     pendingMultiOrder?: {
         confident: Array<{

@@ -60,6 +60,8 @@ export type WhatsappSessionData = {
     candidates: WhatsappProductCandidate[];
     /** info = eligió variante para ver detalle (no agregar al carrito) */
     intent?: 'info' | 'order';
+    /** Cantidad pedida al elegir de la lista (ej. 5 pollos) */
+    quantity?: number;
   };
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   pendingMultiOrder?: {

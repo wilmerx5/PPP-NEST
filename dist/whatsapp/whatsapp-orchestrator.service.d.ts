@@ -26,6 +26,8 @@ export declare class WhatsappOrchestratorService {
     private toCartLimitsConfig;
     private tryAddProductToCart;
     private handleCartLimitBlocked;
+    private cartLineKey;
+    private consolidateCart;
     private addProductToCart;
     private toPendingAttribute;
     private attributeFlowOpts;

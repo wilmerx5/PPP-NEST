@@ -35,6 +35,9 @@ export declare class WhatsappCatalogService {
     isOffTopicChitchat(text: string): boolean;
     formatOffTopicRedirect(brandName?: string): string;
     isMenuExploreIntent(text: string, products?: WhatsappCatalogProduct[]): boolean;
+    isCategoryBrowseQuestion(text: string): boolean;
+    extractQuantityFromMessage(text: string): number;
+    stripQuantityFromSearchQuery(text: string): string;
     buildMenuExploreIntro(text: string): string;
     formatMenuCategoryOverview(products: WhatsappCatalogProduct[], opts?: {
         intro?: string;
