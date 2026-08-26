@@ -342,6 +342,11 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       { name: 'menu_link_message', ddl: 'TEXT NULL' },
       { name: 'order_success_message', ddl: 'TEXT NULL' },
       { name: 'ai_temperature', ddl: 'DECIMAL(3,2) NULL DEFAULT 0.20' },
+      { name: 'delivery_fee_mode', ddl: "VARCHAR(20) NOT NULL DEFAULT 'route_tiers'" },
+      { name: 'restaurant_lat', ddl: 'DECIMAL(10, 7) NULL' },
+      { name: 'restaurant_lng', ddl: 'DECIMAL(10, 7) NULL' },
+      { name: 'delivery_max_km', ddl: 'DECIMAL(6, 2) NULL DEFAULT 5.50' },
+      { name: 'delivery_fee_tiers', ddl: 'JSON NULL' },
     ];
     for (const col of cols) {
       const exists: { c: number }[] = await this.dataSource.query(
@@ -358,6 +363,31 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       );
       this.logger.log(`✓ WhatsApp settings column added: ${col.name}`);
     }
+
+    // Seed domicilio por ruta (Dg. 6b #78b-20) si coords/tramos están vacíos
+    await this.dataSource.query(`
+      UPDATE ppp_whatsapp_settings
+      SET
+        restaurant_lat = COALESCE(restaurant_lat, 4.6323019),
+        restaurant_lng = COALESCE(restaurant_lng, -74.1471957),
+        restaurant_address = COALESCE(NULLIF(TRIM(restaurant_address), ''), 'Dg. 6b #78b-20, Bogotá'),
+        restaurant_city = COALESCE(NULLIF(TRIM(restaurant_city), ''), 'Bogotá'),
+        maps_url = COALESCE(
+          NULLIF(TRIM(maps_url), ''),
+          'https://www.google.com/maps/place/Dg.+6b+%2378b-20,+Bogot%C3%A1/@4.6323019,-74.1471957,17z'
+        ),
+        delivery_fee_mode = COALESCE(NULLIF(TRIM(delivery_fee_mode), ''), 'route_tiers'),
+        delivery_max_km = COALESCE(delivery_max_km, 5.50),
+        delivery_fee_tiers = COALESCE(
+          delivery_fee_tiers,
+          JSON_ARRAY(
+            JSON_OBJECT('maxKm', 2.5, 'fee', 2000),
+            JSON_OBJECT('maxKm', 3.5, 'fee', 5000),
+            JSON_OBJECT('maxKm', 5.5, 'fee', 6000)
+          )
+        )
+      WHERE id = 1
+    `);
   }
 
   /** media_id / mime_type para audio e imágenes en el inbox admin. */
