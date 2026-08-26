@@ -245,6 +245,64 @@ export class UserAddressesService {
     }
   }
 
+  /**
+   * Dirección legible a partir del pin (reverse geocode).
+   * Se usa al confirmar ubicación en el mapa.
+   */
+  async reverseGeocodePreview(lat: number, lng: number): Promise<{
+    lat: number;
+    lng: number;
+    formattedAddress?: string;
+  }> {
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) {
+      throw new BadRequestException('Coordenadas inválidas.');
+    }
+
+    const key = (this.config.get<string>('GOOGLE_MAPS_API_KEY') || '').trim();
+    if (!key) {
+      return { lat: la, lng: ln };
+    }
+
+    const near = this.restaurantNear();
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.set('latlng', `${la},${ln}`);
+    url.searchParams.set('key', key);
+    url.searchParams.set('language', 'es');
+    url.searchParams.set('region', 'co');
+
+    try {
+      const res = await fetch(url.toString());
+      const data = (await res.json()) as {
+        status?: string;
+        results?: Array<{
+          formatted_address?: string;
+          address_components?: Array<{ short_name?: string; types?: string[] }>;
+        }>;
+      };
+      if (data.status !== 'OK' || !data.results?.length) {
+        return { lat: la, lng: ln };
+      }
+
+      for (const result of data.results) {
+        const country = result.address_components?.find((c) =>
+          (c.types || []).includes('country'),
+        );
+        if (country?.short_name && country.short_name !== 'CO') continue;
+
+        const formatted = (result.formatted_address || '').trim();
+        if (formatted) {
+          return { lat: la, lng: ln, formattedAddress: formatted };
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`Reverse geocode error: ${(e as Error).message}`);
+    }
+
+    return { lat: la, lng: ln };
+  }
+
   private haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
     const R = 6371;
     const toRad = (d: number) => (d * Math.PI) / 180;

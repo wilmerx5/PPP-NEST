@@ -101,3 +101,19 @@ export class GeocodeAddressDto {
   @IsNotEmpty()
   address: string;
 }
+
+export class ReverseGeocodeDto {
+  @ApiProperty({ description: 'Latitud del pin confirmado.', example: 4.6323 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat: number;
+
+  @ApiProperty({ description: 'Longitud del pin confirmado.', example: -74.1472 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng: number;
+}

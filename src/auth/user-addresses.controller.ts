@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UserAddressesService } from './user-addresses.service';
-import { CreateAddressDto, GeocodeAddressDto } from './dto/create-address.dto';
+import {
+  CreateAddressDto,
+  GeocodeAddressDto,
+  ReverseGeocodeDto,
+} from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { Auth } from './decorators/auth.decorator';
 import { User } from './entities/user.entity';
@@ -39,6 +43,13 @@ export class UserAddressesController {
   @ApiResponse({ status: 200, description: 'Coordenadas sugeridas' })
   async geocode(@Body() body: GeocodeAddressDto) {
     return this.addressesService.geocodePreview(body.address);
+  }
+
+  @Post('reverse-geocode')
+  @ApiOperation({ summary: 'Dirección legible a partir del pin confirmado' })
+  @ApiResponse({ status: 200, description: 'Texto de dirección según Google Maps' })
+  async reverseGeocode(@Body() body: ReverseGeocodeDto) {
+    return this.addressesService.reverseGeocodePreview(body.lat, body.lng);
   }
 
   @Get()
