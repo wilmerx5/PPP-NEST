@@ -210,7 +210,8 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    // Mensaje largo: productos + dirección + nombre + teléfono en un solo texto
+    // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
+    const originalText = text;
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
     if (compound.phone) {
@@ -271,7 +272,14 @@ export class WhatsappOrchestratorService {
       session = this.conversationService.getSession(conv);
     }
 
-    session = this.applyDeliveryHintFromMessage(session, text);
+    // Reaplicar domicilio desde el texto ORIGINAL (el de productos ya no trae "para …")
+    session = this.applyDeliveryHintFromMessage(session, originalText);
+    if (!session.address?.trim() && compound.address) {
+      session = this.withDeliveryAddress(session, compound.address);
+    }
+    if (session.address?.trim()) {
+      await this.conversationService.saveSession(conv, session);
+    }
 
     if (
       await this.tryHandleCartModification(conv, msg.waId, session, text, products, cfg)
@@ -527,7 +535,7 @@ export class WhatsappOrchestratorService {
           conv,
           msg.waId,
           'Primero necesito tu *nombre completo* (ej. Juan Pérez).\n' +
-            'Después te pregunto domicilio/recojo, dirección y teléfono.',
+            'Después te pido la dirección de domicilio.',
         );
         return;
       }
@@ -551,6 +559,7 @@ export class WhatsappOrchestratorService {
     }
 
     if (conv.state === 'awaiting_fulfillment' && !isConfirm && !isGreeting) {
+      // Legacy: ya no preguntamos domicilio vs recojo; por defecto domicilio.
       if (this.isPickupIntent(text)) {
         session = this.applyPickupIntent(session, text);
         await this.conversationService.saveSession(conv, session, 'building_cart');
@@ -562,33 +571,32 @@ export class WhatsappOrchestratorService {
         });
         return;
       }
-      if (this.isDeliveryIntent(text) || this.looksLikeAddress(text) || text.length >= 6) {
-        session = {
-          ...session,
-          orderType: 'delivery',
-          fulfillmentChosen: true,
-        };
-        const addrHint = this.extractDeliveryTail(text) || (this.isPlausibleDeliveryAddress(text) ? text.trim() : null);
-        if (addrHint && this.isPlausibleDeliveryAddress(addrHint) && !this.isDeliveryIntent(text)) {
-          session = this.withDeliveryAddress(session, addrHint);
-        } else {
-          session.address = undefined;
-          session.addressConfirmed = false;
-        }
-        if (session.addressConfirmed && session.address?.trim()) {
-          await this.conversationService.saveSession(conv, session, 'building_cart');
-          await this.tryConfirmOrder(conv, msg.waId, session, {
-            preface: `Perfecto, domicilio a *${session.address.trim()}* ✅`,
-          });
-          return;
-        }
-        await this.conversationService.saveSession(conv, session, 'awaiting_address');
-        await this.reply(conv, msg.waId, this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
+      session = {
+        ...session,
+        orderType: 'delivery',
+        fulfillmentChosen: true,
+      };
+      const addrHint =
+        this.extractDeliveryTail(text) ||
+        (this.isPlausibleDeliveryAddress(text) ? text.trim() : null);
+      if (addrHint && this.isPlausibleDeliveryAddress(addrHint)) {
+        session = this.withDeliveryAddress(session, addrHint);
+      }
+      if (session.addressConfirmed && session.address?.trim()) {
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Perfecto, domicilio a *${session.address.trim()}* ✅`,
+        });
         return;
       }
+      await this.conversationService.saveSession(conv, session, 'awaiting_address');
+      await this.reply(conv, msg.waId, this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
+      return;
     }
     if (conv.state === 'awaiting_fulfillment') {
-      await this.reply(conv, msg.waId, this.buildAskFulfillmentMessage(session, this.deliveryFeeFor(session, cfg)));
+      session = { ...session, orderType: 'delivery', fulfillmentChosen: true };
+      await this.conversationService.saveSession(conv, session, 'awaiting_address');
+      await this.reply(conv, msg.waId, this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
       return;
     }
 
@@ -1141,6 +1149,7 @@ export class WhatsappOrchestratorService {
           cfg,
           text,
           products,
+          originalText,
         );
         if (handled) return;
       }
@@ -1174,7 +1183,8 @@ export class WhatsappOrchestratorService {
       ) &&
       !this.catalogService.looksLikeMultiItemOrderMessage(text)
     ) {
-      const deliveryTail = this.extractDeliveryTail(text);
+      const deliveryTail =
+        this.extractDeliveryTail(originalText) || this.extractDeliveryTail(text);
       if (deliveryTail) {
         session = this.withDeliveryAddress(session, deliveryTail);
       }
@@ -1335,11 +1345,12 @@ export class WhatsappOrchestratorService {
             cfg,
             text,
             products,
+            originalText,
           );
           if (handledMulti) return;
         }
       }
-      const deliveryTail = this.extractDeliveryTail(text);
+      const deliveryTail = this.extractDeliveryTail(originalText) || this.extractDeliveryTail(text);
       if (deliveryTail) {
         session = this.withDeliveryAddress(session, deliveryTail);
       }
@@ -1388,6 +1399,7 @@ export class WhatsappOrchestratorService {
             cfg,
             text,
             products,
+            originalText,
           );
           if (handledMulti) return;
         }
@@ -1580,13 +1592,17 @@ export class WhatsappOrchestratorService {
           cfg,
           text,
           products,
+          originalText,
         );
         if (handledMulti) return;
       }
     }
 
     const applied = await this.applyActions(conv, session, guarded.actions, products, cfg, text);
-    session = this.applyDeliveryHintFromMessage(applied.session, text);
+    session = this.applyDeliveryHintFromMessage(applied.session, originalText);
+    if (!session.address?.trim()) {
+      session = this.applyDeliveryHintFromMessage(session, text);
+    }
     if (session.cart.length > 0 && session.ignorePriorOrderHistory) {
       session = { ...session, ignorePriorOrderHistory: false };
     }
@@ -2056,6 +2072,24 @@ export class WhatsappOrchestratorService {
           notice: `🚚 Domicilio: *$${cfg.defaultDeliveryFee.toLocaleString('es-CO')}* _(tarifa fija)_`,
         };
       }
+      // Dirección tipo landmark/conjunto no geocodificable: se toma igual con fee default.
+      if (quote.reason === 'geocode_failed' || quote.reason === 'route_failed') {
+        this.logger.warn(`Delivery fee unverified address (${quote.reason}): ${address.slice(0, 80)}`);
+        return {
+          session: {
+            ...session,
+            deliveryFeeCalculated: cfg.defaultDeliveryFee,
+            deliveryDistanceKm: null,
+            deliveryOutOfCoverage: false,
+            deliveryLat: lat,
+            deliveryLng: lng,
+          },
+          notice:
+            `📍 Anoté: _${address}_\n` +
+            `🚚 Domicilio por ahora: *$${cfg.defaultDeliveryFee.toLocaleString('es-CO')}*\n` +
+            `_No pude ubicarla exacta en el mapa; el costo del domicilio puede cambiar al confirmar la ubicación._`,
+        };
+      }
       return {
         session: {
           ...session,
@@ -2307,7 +2341,7 @@ export class WhatsappOrchestratorService {
           ? ` (ruta ~${Number(session.deliveryDistanceKm).toFixed(1)} km)`
           : '') +
         (session.deliveryOutOfCoverage ? ' [FUERA DE COBERTURA]' : ''),
-      'Checkout: el sistema pregunta UNA cosa a la vez (nombre → domicilio/recojo → dirección → teléfono → pago). NO inventes ni saltes esos pasos.',
+      'Checkout: el sistema pregunta UNA cosa a la vez (nombre → dirección de domicilio → teléfono → pago). Por defecto es *domicilio*; recojo solo si el cliente lo dijo (ej. paso en 15 min). NO inventes ni saltes esos pasos.',
     ];
     if (session.ignorePriorOrderHistory && session.cart.length === 0) {
       lines.push(
@@ -3087,8 +3121,8 @@ export class WhatsappOrchestratorService {
     return (
       `${head}\n` +
       `¿Me escribes la *dirección*?\n` +
-      `_Ej: Calle 10 #5-20, apto 202, Centro_\n` +
-      `_O escribe *paso a recoger*._`
+      `_Ej: Calle 10 #5-20, apto 202_ · _Hospital de Kennedy_ · _Conjunto Nuevo Sol_\n` +
+      `_Si pasas tú por el local, escribe p. ej. "paso en 15 minutos"._`
     );
   }
 
@@ -3202,7 +3236,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // 2) Domicilio vs recojo
+    // 2) Entrega: por defecto domicilio (no preguntar). Recojo solo si ya lo dijo el cliente.
     if (!session.fulfillmentChosen) {
       session.pendingMatch = undefined;
       session.pendingAttribute = undefined;
@@ -3214,31 +3248,17 @@ export class WhatsappOrchestratorService {
           address: session.address?.trim() || 'Recoge en el local',
         };
         await this.conversationService.saveSession(conv, session);
-      } else if (session.address?.trim() && session.addressConfirmed) {
-        session = { ...session, orderType: 'delivery', fulfillmentChosen: true };
-        await this.conversationService.saveSession(conv, session);
-      } else if (session.address?.trim() && this.isStrongExplicitAddress(session.address)) {
-        session = {
-          ...session,
-          orderType: 'delivery',
-          fulfillmentChosen: true,
-          addressConfirmed: true,
-        };
-        await this.conversationService.saveSession(conv, session);
-      } else if (session.address?.trim()) {
-        session = {
-          ...session,
-          orderType: 'delivery',
-          fulfillmentChosen: true,
-          addressConfirmed: false,
-        };
-        await this.conversationService.saveSession(conv, session, 'awaiting_address');
-        await say(this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
-        return;
       } else {
-        await this.conversationService.saveSession(conv, session, 'awaiting_fulfillment');
-        await say(this.buildAskFulfillmentMessage(session, this.deliveryFeeFor(session, cfg)));
-        return;
+        session = {
+          ...session,
+          orderType: 'delivery',
+          fulfillmentChosen: true,
+        };
+        if (session.address?.trim() && this.isStrongExplicitAddress(session.address)) {
+          session = { ...session, addressConfirmed: true };
+        }
+        await this.conversationService.saveSession(conv, session);
+        // Sigue al paso 3 (dirección) abajo
       }
     }
 
@@ -4652,8 +4672,14 @@ export class WhatsappOrchestratorService {
         t,
       ) ||
       /\bpaso\s+en\s+\d/i.test(t) ||
-      /\brecojo\s+(en|por|a)\b/i.test(t) ||
-      /\b(paso|pasar[eé])\s+por\s+(el\s+)?(local|restaurante|all[ií]|allá)\b/i.test(t)
+      /\brecojo\s+(en|por|a|yo)\b/i.test(t) ||
+      /\b(paso|pasar[eé])\s+por\s+(el\s+)?(local|restaurante|all[ií]|allá|él|el)\b/i.test(t) ||
+      /\byo\s+paso(\s+por)?\b/i.test(t) ||
+      /\bya\s+paso\b/i.test(t) ||
+      /\bal[ií]st(a|e|o)(lo|la)?\b.{0,40}\bpaso\b/i.test(t) ||
+      /\b(lo\s+)?paso\s+a\s+(buscar|recoger)\b/i.test(t) ||
+      /\bpasa(r[eé])?\s+a\s+(buscar|recoger)\b/i.test(t) ||
+      /\bvoy\s+(pasando|para\s+all[aá]|para\s+el\s+local)\b/i.test(t)
     );
   }
 
@@ -4783,7 +4809,7 @@ export class WhatsappOrchestratorService {
     if (this.isPickupIntent(t)) return false;
     if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
-    if (/\b(minutos?|mins?|horas?)\b/i.test(t) && !/\b(habitaci[oó]n|apto|apartamento|calle|carrera|barrio|torre)\b/i.test(t)) {
+    if (/\b(minutos?|mins?|horas?)\b/i.test(t) && !/\b(habitaci[oó]n|apto|apartamento|calle|carrera|barrio|torre|conjunto|hospital)\b/i.test(t)) {
       return false;
     }
 
@@ -4797,8 +4823,39 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (this.looksLikeAddress(t)) return true;
+    if (this.looksLikeLandmarkOrComplexName(t)) return true;
 
     return t.length >= 6 && /\d/.test(t);
+  }
+
+  /**
+   * Referencias sueltas: hospital, conjunto, "Nuevo Sol", "Tierras del Sol", etc.
+   * (sin exigir calle/#).
+   */
+  private looksLikeLandmarkOrComplexName(text: string): boolean {
+    const t = text.trim();
+    if (t.length < 4 || t.length > 90) return false;
+    if (this.looksLikeFoodNotAddress(t)) return false;
+    if (
+      /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estación|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    const words = t.split(/\s+/).filter(Boolean);
+    if (
+      words.length >= 2 &&
+      words.length <= 7 &&
+      !/\d/.test(t) &&
+      /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'°-]+$/.test(t) &&
+      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme)\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    return false;
   }
 
   /** Dirección lo bastante clara para no pedir confirmación (calle/carrera + número, etc.). */
@@ -4819,6 +4876,8 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (/\bbarrio\b/i.test(t) && /\d/.test(t) && t.length >= 12) return true;
+    // Landmarks / conjuntos por nombre (hospital de kennedy, nuevo sol…)
+    if (this.looksLikeLandmarkOrComplexName(t) && t.length >= 6) return true;
     return false;
   }
 
@@ -4849,29 +4908,30 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (!raw) return null;
 
-    // Priorizar "para …" (domicilio). "a la …" suele ser cocción (a la broaster).
-    const tailPatterns: Array<{ re: RegExp; requireStrong?: boolean }> = [
-      { re: /\bpara\b\s+(.+)$/is },
-      {
-        re: /\b(?:enviar|mandar|llevar|traer)\s+a\s+domicilio\s+(?:a|en|para)\s+(.+)$/is,
-      },
-      { re: /\b(?:enviar|mandar|llevar|traer|domicilio)\s+(?:a|en|para)\s+(.+)$/is },
-      { re: /\ben\b\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida|habitaci[oó]n|apto|apartamento|torre|barrio)\b.+)$/is },
-      // "a la carrera 10" sí; "a la broaster" no
-      { re: /\ba la\b\s+(.+)$/is, requireStrong: true },
-      { re: /\ben la\b\s+(.+)$/is, requireStrong: true },
-    ];
+    const candidates: string[] = [];
 
-    for (const { re, requireStrong } of tailPatterns) {
+    // Cláusulas típicas al final (audio/Whisper): ", para hospital de kennedy"
+    const endPatterns: RegExp[] = [
+      /(?:^|[.,;:\n]\s*)\b(?:para|direcci[oó]n|domicilio)\s*[:\-]?\s+(.+)$/is,
+      /\b(?:enviar|mandar|llevar|traer)\s+a\s+domicilio\s+(?:a|en|para)\s+(.+)$/is,
+      /\b(?:enviar|mandar|llevar|traer|domicilio)\s+(?:a|en|para)\s+(.+)$/is,
+      /\ben\b\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida|habitaci[oó]n|apto|apartamento|torre|barrio|hospital|conjunto|urbanizaci[oó]n)\b.+)$/is,
+      /\ba la\b\s+(.+)$/is,
+      /\ben la\b\s+(.+)$/is,
+    ];
+    for (const re of endPatterns) {
       const m = raw.match(re);
-      if (!m?.[1]) continue;
-      const addr = this.normalizeDeliveryAddress(m[1]);
-      if (!addr || !this.isPlausibleDeliveryAddress(addr)) continue;
-      if (requireStrong && !this.isStrongExplicitAddress(addr) && !this.looksLikeAddress(addr)) {
-        continue;
-      }
-      if (this.looksLikeFoodNotAddress(addr)) continue;
-      return addr;
+      if (m?.[1]) candidates.push(m[1]);
+    }
+
+    // Último "para …" del mensaje (evita tomar el primero si hay varios)
+    const paraRe = /\bpara\b/gi;
+    let lastParaIdx = -1;
+    let pm: RegExpExecArray | null;
+    while ((pm = paraRe.exec(raw)) !== null) lastParaIdx = pm.index;
+    if (lastParaIdx >= 0) {
+      const after = raw.slice(lastParaIdx).replace(/^\s*para\s+/i, '').trim();
+      if (after) candidates.push(after);
     }
 
     const inlinePatterns = [
@@ -4882,17 +4942,48 @@ export class WhatsappOrchestratorService {
       /\b(?:apto?|apartamento|cuarto|suite|oficina)\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?\b/i,
       /\b(?:torre|bloque|piso|interior|local)\s+[a-z0-9#\-\s]{1,24}\d{1,4}[a-z]?\b/i,
     ];
-
     for (const pattern of inlinePatterns) {
       const m = raw.match(pattern);
-      if (!m?.[0]) continue;
-      const addr = this.normalizeDeliveryAddress(m[1] || m[0]);
-      if (addr && this.isPlausibleDeliveryAddress(addr) && !this.looksLikeFoodNotAddress(addr)) {
-        return addr;
+      if (m?.[0]) candidates.push(m[1] || m[0]);
+    }
+
+    const orderLike =
+      this.catalogService.looksLikeMultiItemOrderMessage(raw) ||
+      this.catalogService.looksLikeFoodPlusDrinkOrder(raw) ||
+      /\b(quiero|dame|pedi|pedir|medio|cuarto|gaseosa|pollo)\b/i.test(raw);
+
+    for (const cand of candidates) {
+      const addr = this.normalizeDeliveryAddress(cand);
+      if (!addr || addr.length < 3) continue;
+      if (this.isPickupOnlyDeliveryClause(addr)) continue;
+      if (this.looksLikeFoodNotAddress(addr)) continue;
+      // En pedido compuesto, aceptar landmarks / nombres sueltos aunque no tengan #
+      if (orderLike) {
+        if (
+          this.isPlausibleDeliveryAddress(addr) ||
+          this.looksLikeLandmarkOrComplexName(addr) ||
+          (addr.length >= 4 &&
+            !this.isConfirmKeyword(addr) &&
+            !this.isGreetingKeyword(addr) &&
+            !/^(llevar|recoger|el\s+local|all[ií]|allá|mi|me|yo)\b/i.test(addr))
+        ) {
+          return addr;
+        }
+        continue;
       }
+      if (!this.isPlausibleDeliveryAddress(addr)) continue;
+      return addr;
     }
 
     return null;
+  }
+
+  /** "para llevar / para el local" no es dirección. */
+  private isPickupOnlyDeliveryClause(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    if (/^(llevar|recoger|el\s+local|el\s+restaurante|all[ií]|allá)\b/i.test(t)) return true;
+    if (/^llevar\b.{0,20}$/i.test(t)) return true;
+    return false;
   }
 
   /** Separa el pedido del domicilio para matching de producto (audios compuestos). */
@@ -4903,15 +4994,29 @@ export class WhatsappOrchestratorService {
     let productText = text.trim();
     const escaped = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     productText = productText
+      .replace(
+        new RegExp(
+          `(?:^|[.,;:\\n]\\s*)(?:para|direcci[oó]n|domicilio)\\s*[:\\-]?\\s*${escaped}\\s*$`,
+          'i',
+        ),
+        '',
+      )
       .replace(new RegExp(`\\b(?:para|a|en)\\s+(?:la\\s+|el\\s+)?${escaped}\\s*$`, 'i'), '')
       .replace(new RegExp(`\\bpara\\b\\s+${escaped}\\s*$`, 'i'), '')
+      .replace(/[.,;:\s]+$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
 
     // Si el corte falló, quitar desde el último "para …dirección"
     if (productText === text.trim() || productText.length < 3) {
-      const m = text.match(/^(.*)\bpara\b\s+.+$/is);
-      if (m?.[1]?.trim()) productText = m[1].trim();
+      const paraRe = /\bpara\b/gi;
+      let lastParaIdx = -1;
+      let pm: RegExpExecArray | null;
+      while ((pm = paraRe.exec(text)) !== null) lastParaIdx = pm.index;
+      if (lastParaIdx > 0) {
+        const head = text.slice(0, lastParaIdx).replace(/[.,;:\s]+$/g, '').trim();
+        if (head.length >= 3) productText = head;
+      }
     }
 
     return { productText: productText || text.trim(), address };
@@ -5003,12 +5108,13 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (
-      /\b(calle|carrera|cra|cll|av\.?|avenida|diag|diagonal|transversal|barrio|conjunto|apto|apartamento|torre|casa|mz|manzana|#)\b/i.test(
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag|diagonal|transversal|barrio|conjunto|apto|apartamento|torre|casa|mz|manzana|#|hospital|cl[ií]nica|urbanizaci[oó]n)\b/i.test(
         t,
       )
     ) {
       return true;
     }
+    if (this.looksLikeLandmarkOrComplexName(text)) return true;
     return t.length >= 12 && /\d/.test(t) && !/\b(minutos?|mins?|horas?)\b/i.test(t);
   }
 
@@ -5591,11 +5697,18 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
     text: string,
     products: MenuProduct[],
+    /** Texto completo del mensaje (antes de cortar "para …") */
+    fullTextForDelivery?: string,
   ): Promise<boolean> {
-    const deliveryTail = this.extractDeliveryTail(text);
+    const deliverySource = (fullTextForDelivery || text || '').trim();
+    const deliveryTail =
+      this.extractDeliveryTail(deliverySource) ||
+      (deliverySource !== text ? this.extractDeliveryTail(text) : null);
     if (deliveryTail) {
       session = this.withDeliveryAddress(session, deliveryTail);
     }
+    const addressNote =
+      (deliveryTail || session.address || '').trim() || null;
 
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {
       const stillUnresolved: string[] = [];

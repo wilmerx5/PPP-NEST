@@ -81,6 +81,11 @@ function fixCommonOrderTypos(text: string): string {
     // "medio de pollo" / "un medio pollo"
     .replace(/\bun\s+medio\s+(?:de\s+)?pollo\b/gi, 'medio pollo')
     .replace(/\bmedio\s+de\s+pollo\b/gi, 'medio pollo')
+    // Tamaños bebida (Whisper / typos)
+    .replace(/\blitrso\b/gi, 'litros')
+    .replace(/\blitros?\b/gi, (m) => m.toLowerCase())
+    .replace(/\b(?:un\s+)?litro\s+y\s+medi[oa]\b/gi, '1.5 litros')
+    .replace(/\bmedia?\s+de\s+litro\b/gi, '0.5 litros')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1360,24 +1365,22 @@ export class WhatsappCatalogService {
       if (hasFood && !hasDrink) {
         const drinkHits = hits
           .filter((h) => this.isLikelyDrinkProduct(h.p) && !usedIds.has(h.p.id))
-          .sort((a, b) => this.drinkPreferenceRank(a.p) - this.drinkPreferenceRank(b.p));
-        if (drinkHits[0]) {
-          result.push(drinkHits[0].p);
-        } else {
-          const companion = this.findFoodDrinkCompanionProduct(raw, result[0], available);
-          if (companion && this.isLikelyDrinkProduct(companion)) {
-            result.push(companion);
-          }
+          .map((h) => h.p);
+        const bestDrink =
+          this.pickBestDrinkProduct(drinkHits, raw) ||
+          this.findFoodDrinkCompanionProduct(raw, result[0], available);
+        if (bestDrink && this.isLikelyDrinkProduct(bestDrink)) {
+          result.push(bestDrink);
         }
       } else if (hasDrink) {
-        // Preferir gaseosa 400ml sobre 2.5L cuando el cliente solo dijo "gaseosa"
+        // Sin tamaño pedido → preferir 400ml; con tamaño → respetarlo
         const drinks = result.filter((p) => this.isLikelyDrinkProduct(p));
-        if (drinks.length >= 1 && /gaseosa/.test(q) && !/\d/.test(q)) {
-          const best =
-            available
-              .filter((p) => this.isLikelyDrinkProduct(p) && /\bgaseosa\b/.test(normalizeText(p.name)))
-              .sort((a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b))[0] ||
-            [...drinks].sort((a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b))[0];
+        if (drinks.length >= 1 && /gaseosa/.test(q)) {
+          const pool =
+            available.filter(
+              (p) => this.isLikelyDrinkProduct(p) && /\bgaseosa\b/.test(normalizeText(p.name)),
+            ) || drinks;
+          const best = this.pickBestDrinkProduct(pool.length ? pool : drinks, raw);
           if (best) {
             result = [...result.filter((p) => !this.isLikelyDrinkProduct(p)), best];
           }
@@ -1455,7 +1458,7 @@ export class WhatsappCatalogService {
     });
   }
 
-  /** Menor = más preferido para "una gaseosa" genérica. */
+  /** Menor = más preferido para "una gaseosa" genérica (sin tamaño). */
   private drinkPreferenceRank(product: WhatsappCatalogProduct): number {
     const n = normalizeText(product.name);
     if (/\b400\s*ml\b/.test(n)) return 1;
@@ -1465,6 +1468,116 @@ export class WhatsappCatalogService {
     if (/\b1\s*5\s*l\b/.test(n)) return 6;
     if (/\b2\s*5\s*l\b/.test(n)) return 9;
     return 5;
+  }
+
+  /**
+   * Volumen de bebida pedido en ml (ej. "gaseosa 1.5 litros" → 1500).
+   * null = no especificó tamaño.
+   */
+  extractRequestedDrinkVolumeMl(text: string): number | null {
+    const raw = fixCommonOrderTypos(text || '');
+    if (!raw.trim()) return null;
+    const lower = raw.toLowerCase();
+
+    let m = lower.match(
+      /\b(\d+)\s*[.,]\s*(\d+)\s*(?:l|lt|lts|litro|litros|litrso)\b/i,
+    );
+    if (m) {
+      const v = Number(m[1]) + Number(m[2]) / Math.pow(10, m[2].length);
+      if (v > 0 && v <= 5) return Math.round(v * 1000);
+    }
+
+    if (/\b(?:un\s+)?litro\s+y\s+medi[oa]\b/i.test(lower)) return 1500;
+    if (/\bmedia?\s+de\s+litro\b/i.test(lower)) return 500;
+
+    const q = normalizeText(raw);
+
+    m = q.match(/\b(\d{2,4})\s*(?:ml|cc)\b/);
+    if (m) {
+      const ml = Number(m[1]);
+      if (ml >= 200 && ml <= 5000) return ml;
+    }
+
+    m = q.match(/\b(\d)\s+(\d)\s*(?:l|lt|lts|litro|litros)\b/);
+    if (m) {
+      const whole = Number(m[1]);
+      const frac = Number(m[2]);
+      if (whole >= 1 && whole <= 3 && frac >= 0 && frac <= 9) {
+        return Math.round((whole + frac / 10) * 1000);
+      }
+    }
+
+    m = q.match(/\b(\d)\s*(?:l|lt|lts|litro|litros)\b/);
+    if (m) {
+      const n = Number(m[1]);
+      if (n >= 1 && n <= 5) return n * 1000;
+    }
+
+    if (/\bpersonal\b/.test(q)) return 400;
+    if (/\bfamiliar\b/.test(q)) return 2500;
+    return null;
+  }
+
+  /** Volumen en ml según el nombre del producto del menú. */
+  productDrinkVolumeMl(product: WhatsappCatalogProduct): number | null {
+    const raw = product.name || '';
+    const n = normalizeText(raw);
+
+    let m = n.match(/\b(\d{2,4})\s*ml\b/);
+    if (m) return Number(m[1]);
+
+    m = raw.toLowerCase().match(/\b(\d+)\s*[.,]\s*(\d+)\s*l\b/);
+    if (m) {
+      const v = Number(m[1]) + Number(m[2]) / Math.pow(10, m[2].length);
+      if (v > 0 && v <= 5) return Math.round(v * 1000);
+    }
+
+    m = n.match(/\b(\d)\s+(\d)\s*l\b/);
+    if (m) {
+      return Math.round((Number(m[1]) + Number(m[2]) / 10) * 1000);
+    }
+
+    m = n.match(/\b(\d)\s*l\b/);
+    if (m) {
+      const lit = Number(m[1]);
+      if (lit >= 1 && lit <= 5) return lit * 1000;
+    }
+
+    if (/\bpersonal\b/.test(n)) return 400;
+    if (/\bfamiliar\b/.test(n)) return 2500;
+    return null;
+  }
+
+  /** Elige la gaseosa/bebida que mejor calza con el tamaño pedido. */
+  pickBestDrinkProduct(
+    drinks: WhatsappCatalogProduct[],
+    queryText: string,
+  ): WhatsappCatalogProduct | null {
+    if (!drinks.length) return null;
+    const want = this.extractRequestedDrinkVolumeMl(queryText);
+    if (want != null) {
+      const ranked = drinks
+        .map((p) => {
+          const vol = this.productDrinkVolumeMl(p);
+          const diff = vol == null ? 99999 : Math.abs(vol - want);
+          return { p, vol, diff };
+        })
+        .sort(
+          (a, b) =>
+            a.diff - b.diff ||
+            this.drinkPreferenceRank(a.p) - this.drinkPreferenceRank(b.p),
+        );
+      const best = ranked[0];
+      if (best && best.diff <= Math.max(150, want * 0.2)) {
+        return best.p;
+      }
+      if (best && best.vol != null && best.diff < want) {
+        return best.p;
+      }
+    }
+    return [...drinks].sort(
+      (a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b),
+    )[0];
   }
 
   /** Mensaje con varios ítems unidos por "y", "con" (comida+bebida) o coma. */
@@ -1530,8 +1643,10 @@ export class WhatsappCatalogService {
     if (!raw) return [];
 
     const drinkTail = new RegExp(DRINK_ORDER_TOKEN, 'i');
+    // Incluye tamaño: "gaseosa 1.5 litros", "gaseosa de 400 ml"
+    const drinkWithSize = `${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w.,]+)*`;
     const pairRe = new RegExp(
-      `^(.+?)\\s+(?:y|con|mas|más|\\+|,)\\s+(?:un|una|unos|unas|el|la|los|las)?\\s*(${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w]+)*)`,
+      `^(.+?)\\s+(?:y|con|mas|más|\\+|,)\\s+(?:un|una|unos|unas|el|la|los|las)?\\s*(${drinkWithSize})`,
       'i',
     );
     let m = raw.match(pairRe);
@@ -1542,7 +1657,7 @@ export class WhatsappCatalogService {
     }
 
     const articleDrinkRe = new RegExp(
-      `^(.+?)\\s+(?:un|una|unos|unas)\\s+(${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w]+)*)`,
+      `^(.+?)\\s+(?:un|una|unos|unas)\\s+(${drinkWithSize})`,
       'i',
     );
     m = raw.match(articleDrinkRe);
@@ -1597,14 +1712,17 @@ export class WhatsappCatalogService {
 
     const drinkMatch = q.match(new RegExp(DRINK_ORDER_TOKEN, 'i'));
     if (!drinkMatch) return null;
-    const scored = this.searchByNameScored(drinkMatch[0], products, 8).filter((x) =>
+    const pair = this.splitFoodPlusDrinkSegments(text);
+    const drinkQuery = pair[1] || drinkMatch[0];
+    // Buscar con el segmento completo ("gaseosa 1.5 litros") + mensaje (por si el tamaño quedó afuera)
+    const scored = this.searchByNameScored(`${drinkQuery} ${text}`, products, 10).filter((x) =>
       this.isLikelyDrinkProduct(x.p),
     );
-    if (!scored.length) return null;
-    const preferred = [...scored].sort(
-      (a, b) => this.drinkPreferenceRank(a.p) - this.drinkPreferenceRank(b.p),
-    )[0];
-    return preferred?.p ?? null;
+    const pool =
+      scored.length > 0
+        ? scored.map((x) => x.p)
+        : products.filter((p) => p.availableNow !== false && this.isLikelyDrinkProduct(p));
+    return this.pickBestDrinkProduct(pool, `${drinkQuery} ${text}`);
   }
 
   private looksLikeDeliveryTail(tail: string): boolean {
@@ -2191,6 +2309,19 @@ export class WhatsappCatalogService {
         ) {
           if (/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa)\b/.test(name)) {
             score -= 60;
+          }
+        }
+
+        // Gaseosa 1.5L vs 400ml: boost / penaliza según volumen pedido
+        if (this.isLikelyDrinkProduct(p)) {
+          const wantMl = this.extractRequestedDrinkVolumeMl(query);
+          const vol = this.productDrinkVolumeMl(p);
+          if (wantMl != null && vol != null) {
+            const diff = Math.abs(vol - wantMl);
+            if (diff === 0) score += 95;
+            else if (diff <= 100) score += 60;
+            else if (diff <= wantMl * 0.2) score += 30;
+            else score -= 70;
           }
         }
 
@@ -3133,26 +3264,26 @@ export class WhatsappCatalogService {
         }
       }
 
-      // Bebida genérica "gaseosa": no bloquear el pedido multi por empate entre marcas
+      // Bebida "gaseosa" / "gaseosa 1.5 litros": respetar tamaño si lo dijo
       if (
         this.looksLikeFoodPlusDrinkOrder(text) &&
         new RegExp(`^${DRINK_ORDER_TOKEN}`, 'i').test(segNorm)
       ) {
         const drinks = uniqueScored.filter((x) => this.isLikelyDrinkProduct(x.p));
-        if (drinks.length >= 1) {
-          const preferred =
-            drinks.find((x) => /\b400\s*ml\b/.test(normalizeText(x.p.name))) ||
-            drinks.find((x) => /\bpersonal\b/.test(normalizeText(x.p.name))) ||
-            drinks.find((x) => /\b250\s*ml\b/.test(normalizeText(x.p.name))) ||
-            drinks[0];
-          if (!usedProductIds.has(preferred.p.id)) {
-            usedProductIds.add(preferred.p.id);
-            const match = { segment, product: preferred.p, score: preferred.score };
-            if (preferred.p.hasAttributes && preferred.p.attributes?.length) {
-              needsAttributes.push(match);
-            } else {
-              confident.push(match);
-            }
+        const pool =
+          drinks.length > 0
+            ? drinks.map((x) => x.p)
+            : products.filter((p) => p.availableNow !== false && this.isLikelyDrinkProduct(p));
+        const preferredP = this.pickBestDrinkProduct(pool, `${segment} ${text}`);
+        if (preferredP && !usedProductIds.has(preferredP.id)) {
+          const preferredScore =
+            drinks.find((x) => x.p.id === preferredP.id)?.score ?? drinks[0]?.score ?? 50;
+          usedProductIds.add(preferredP.id);
+          const match = { segment, product: preferredP, score: preferredScore };
+          if (preferredP.hasAttributes && preferredP.attributes?.length) {
+            needsAttributes.push(match);
+          } else {
+            confident.push(match);
           }
           continue;
         }
