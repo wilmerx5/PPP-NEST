@@ -10,6 +10,56 @@ export type MenuConceptGroup = {
   enabled?: boolean;
 };
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Match de palabra completa / stem — evita que "res" matchee dentro de "restaurante".
+ */
+function hasWholeWordOrStem(haystack: string, needle: string): boolean {
+  const h = normalizeText(haystack);
+  const n = normalizeText(needle);
+  if (!h || !n || n.length < 2) return false;
+  if (h === n) return true;
+  const nStem = stemLoose(n);
+  // Triggers cortos (res, lomo…): solo frontera de palabra
+  if (n.length <= 4) {
+    const re = new RegExp(`(?:^|\\s)${escapeRegExp(n)}(?:\\s|$)`);
+    const reStem =
+      nStem !== n && nStem.length >= 3
+        ? new RegExp(`(?:^|\\s)${escapeRegExp(nStem)}(?:\\s|$)`)
+        : null;
+    return re.test(h) || (!!reStem && reStem.test(h));
+  }
+  if (new RegExp(`(?:^|\\s)${escapeRegExp(n)}(?:\\s|$)`).test(h)) return true;
+  if (
+    nStem.length >= 5 &&
+    new RegExp(`(?:^|\\s)${escapeRegExp(nStem)}(?:\\s|$)`).test(h)
+  ) {
+    return true;
+  }
+  // Substring solo si el needle es largo (p. ej. "sobrebarriga" dentro de una frase)
+  if (n.length >= 6 && h.includes(n)) return true;
+  return false;
+}
+
+/** ¿El token del mensaje corresponde al trigger? Sin substrings sueltos. */
+function tokenMatchesTrigger(token: string, trigger: string): boolean {
+  const t = normalizeText(token);
+  const tr = normalizeText(trigger);
+  if (!t || !tr) return false;
+  if (t === tr) return true;
+  const ts = stemLoose(t);
+  const trs = stemLoose(tr);
+  if (ts === trs) return true;
+  // "res" ⊂ "restaurante" → NO
+  if (tr.length <= 4 || t.length <= 4) return false;
+  const ratio = Math.min(t.length, tr.length) / Math.max(t.length, tr.length);
+  if (ratio < 0.75) return false;
+  return t.includes(tr) || tr.includes(t) || ts.includes(trs) || trs.includes(ts);
+}
+
 /** Conceptos por defecto (Colombia / restaurante). El admin puede ampliar vía JSON. */
 export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
   {
@@ -99,6 +149,14 @@ function normalizeText(s: string): string {
 
 function stemLoose(s: string): string {
   const n = normalizeText(s);
+  // No cortar días / -antes / -entes: "lunes"↛"lun", "restaurantes"→"restaurante"
+  if (/(antes|entes|iones|unes|artes|ueves|iernes|abados|omingos)$/.test(n)) {
+    if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
+    if (n.length > 4 && n.endsWith('es') && /(antes|entes|iones)$/.test(n)) {
+      return n.slice(0, -1); // restaurantes → restaurante
+    }
+    return n;
+  }
   if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
   if (n.length > 4 && n.endsWith('es')) return n.slice(0, -2);
   return n;
@@ -134,21 +192,12 @@ function getMatchedConceptTriggers(q: string, concept: MenuConceptGroup): string
   for (const trigger of concept.triggers) {
     const t = normalizeText(trigger);
     if (!t || t.length < 3) continue;
-    if (q === t || q.includes(t) || (q.length >= 4 && t.includes(q))) {
+    if (q === t || hasWholeWordOrStem(q, t)) {
       matched.push(t);
       continue;
     }
     for (const token of q.split(' ').filter((x) => x.length >= 3)) {
-      const ts = stemLoose(token);
-      const tst = stemLoose(t);
-      if (
-        token === t ||
-        ts === tst ||
-        t.includes(token) ||
-        token.includes(t) ||
-        tst.includes(ts) ||
-        ts.includes(tst)
-      ) {
+      if (tokenMatchesTrigger(token, t)) {
         matched.push(t);
       }
     }
@@ -160,11 +209,11 @@ function filterProductsByConceptTriggers(
   products: WhatsappProductCandidate[],
   triggers: string[],
 ): WhatsappProductCandidate[] {
-  const needles = [...new Set(triggers.map((t) => stemLoose(t)).filter((t) => t.length >= 3))];
+  const needles = [...new Set(triggers.map((t) => normalizeText(t)).filter((t) => t.length >= 3))];
   if (!needles.length) return products;
   return products.filter((p) => {
     const hay = normalizeText(`${p.name} ${p.description || ''}`);
-    return needles.some((n) => hay.includes(n));
+    return needles.some((n) => hasWholeWordOrStem(hay, n));
   });
 }
 
@@ -216,9 +265,9 @@ function queryMatchesConcept(q: string, concept: MenuConceptGroup): boolean {
   for (const trigger of concept.triggers) {
     const t = normalizeText(trigger);
     if (!t || t.length < 3) continue;
-    if (q === t || q.includes(t) || (q.length >= 4 && t.includes(q))) return true;
+    if (q === t || hasWholeWordOrStem(q, t)) return true;
     for (const token of q.split(' ').filter((x) => x.length >= 3)) {
-      if (token === t || t.includes(token) || token.includes(t)) return true;
+      if (tokenMatchesTrigger(token, t)) return true;
     }
   }
   return false;
@@ -227,7 +276,8 @@ function queryMatchesConcept(q: string, concept: MenuConceptGroup): boolean {
 function productMatchesConcept(p: WhatsappProductCandidate, concept: MenuConceptGroup): boolean {
   const hay = normalizeText(`${p.name} ${p.description || ''} ${p.categoryName || ''}`);
   for (const kw of concept.productKeywords) {
-    if (kw.length >= 3 && hay.includes(kw)) return true;
+    const k = normalizeText(kw);
+    if (k.length >= 3 && hasWholeWordOrStem(hay, k)) return true;
   }
   return false;
 }
@@ -298,7 +348,7 @@ export function findByMenuConcept(
 
     let score = 70;
     if (concept.triggers.some((t) => q === normalizeText(t))) score = 100;
-    else if (concept.triggers.some((t) => q.includes(normalizeText(t)))) score = 85;
+    else if (concept.triggers.some((t) => hasWholeWordOrStem(q, normalizeText(t)))) score = 85;
     if (narrowTriggers.length) score += 8;
 
     if (!best || score > best.score || (score === best.score && matched.length > best.products.length)) {

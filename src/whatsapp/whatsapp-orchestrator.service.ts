@@ -849,6 +849,12 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "dónde queda el restaurante" → ubicación del local (no productos con "res")
+    if (this.catalogService.isRestaurantLocationInquiry(text)) {
+      await this.reply(conv, msg.waId, this.formatRestaurantLocationReply(cfg));
+      return;
+    }
+
     // Explorar menú / "qué ofreces de carne" → listar, NUNCA agregar ni pedir "sí"
     const browseAsk =
       this.catalogService.isMenuExploreIntent(text, products) ||
@@ -1212,7 +1218,8 @@ export class WhatsappOrchestratorService {
         this.catalogService.looksLikeFoodPlusDrinkOrder(text) &&
         this.catalogService.isLikelyDrinkProduct(embeddedProduct)
       ) &&
-      !this.catalogService.looksLikeMultiItemOrderMessage(text)
+      !this.catalogService.looksLikeMultiItemOrderMessage(text) &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(text)
     ) {
       const deliveryTail =
         this.extractDeliveryTail(originalText) || this.extractDeliveryTail(text);
@@ -1587,6 +1594,7 @@ export class WhatsappOrchestratorService {
       guarded.actions?.addItems?.length &&
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
       !this.catalogService.looksLikeMultiItemOrderMessage(text) &&
       !this.catalogService.looksLikeFoodPlusDrinkOrder(text)
     ) {
@@ -1617,7 +1625,8 @@ export class WhatsappOrchestratorService {
     if (
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
-      (this.catalogService.looksLikeMultiItemOrderMessage(text) ||
+      (this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(text) ||
         this.catalogService.looksLikeFoodPlusDrinkOrder(text))
     ) {
       const multiLate = this.catalogService.resolveMultiProductOrder(text, products);
@@ -1726,6 +1735,7 @@ export class WhatsappOrchestratorService {
     if (
       !session.pendingAttribute &&
       (this.catalogService.looksLikeFoodPlusDrinkOrder(text) ||
+        this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
         this.catalogService.looksLikeMultiItemOrderMessage(text))
     ) {
       const multiRecover = this.catalogService.resolveMultiProductOrder(text, products);
@@ -1957,6 +1967,11 @@ export class WhatsappOrchestratorService {
 
     if (actions.addItems?.length) {
       const forcedQty = sourceText ? this.resolveOrderQuantity(next, sourceText) : 1;
+      const multiQtyOrder =
+        actions.addItems.length > 1 ||
+        (!!sourceText &&
+          (this.catalogService.looksLikeMultiItemOrderMessage(sourceText) ||
+            this.catalogService.countQuantityMentions(sourceText) >= 2));
       const modNote = sourceText
         ? this.catalogService.extractProductModificationNote(sourceText)
         : null;
@@ -1979,26 +1994,68 @@ export class WhatsappOrchestratorService {
         });
         if (!items.length) items = actions.addItems.slice(0, 1);
       }
+      const deferredNeedsAttrs: Array<{
+        segment: string;
+        productId: number;
+        name: string;
+        code: number;
+        price: number;
+      }> = [];
+      let pendingAttr:
+        | {
+            product: (typeof products)[number];
+            selected: { attributeName: string; attributeValue: string }[];
+            sourceText: string;
+          }
+        | undefined;
       for (const item of items) {
         const product = products.find((p) => p.id === item.productId);
         if (!product) continue;
-        const qty =
-          forcedQty >= 2
-            ? forcedQty
-            : Math.max(1, item.quantity ?? 1);
-        const note = item.note?.trim() || modNote || undefined;
-        const attempt = this.tryAddProductToCart(next, product, qty, cfg, note, item.attributes);
+        const qty = this.resolveAddItemQuantity({
+          product,
+          aiQuantity: item.quantity,
+          sourceText,
+          multiQtyOrder,
+          forcedQty,
+        });
+        // En multi-ítem: la nota de "con queso" solo aplica al plato que la menciona
+        const itemNote =
+          item.note?.trim() || (multiQtyOrder ? undefined : modNote || undefined) || undefined;
+        const attempt = this.tryAddProductToCart(next, product, qty, cfg, itemNote, item.attributes);
         if (attempt.missingAttributes) {
-          // No agregar a medias: pedir el siguiente atributo
-          next = this.buildPendingAttributeSession(next, product, attempt.missingAttributes, {
-            sourceText: note || product.name,
+          deferredNeedsAttrs.push({
+            segment: sourceText || product.name,
+            ...this.toPendingMultiProduct(product),
           });
-          return { session: next };
+          if (!pendingAttr) {
+            pendingAttr = {
+              product,
+              selected: attempt.missingAttributes,
+              sourceText: itemNote || sourceText || product.name,
+            };
+          }
+          continue;
         }
         if (attempt.blocked) {
           return { session: next, limitBlocked: attempt.blocked };
         }
         next = this.clearQuantityHint(attempt.session);
+      }
+      if (pendingAttr) {
+        next = this.buildPendingAttributeSession(
+          next,
+          pendingAttr.product,
+          pendingAttr.selected,
+          {
+            sourceText: pendingAttr.sourceText,
+            pendingMultiOrder: {
+              confident: [],
+              ambiguous: [],
+              unresolved: [],
+              needsAttributes: deferredNeedsAttrs,
+            },
+          },
+        );
       }
     }
 
@@ -2293,6 +2350,45 @@ export class WhatsappOrchestratorService {
     return Math.max(1, fromText);
   }
 
+  /**
+   * Cantidad al aplicar addItems de la IA.
+   * En pedidos multi-ítem nunca reutilizar el primer número del mensaje para todos.
+   */
+  private resolveAddItemQuantity(opts: {
+    product: { name: string };
+    aiQuantity?: number;
+    sourceText?: string;
+    multiQtyOrder: boolean;
+    forcedQty: number;
+  }): number {
+    const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
+    if (opts.multiQtyOrder && opts.sourceText) {
+      const near = this.catalogService.extractQuantityNearProduct(
+        opts.sourceText,
+        opts.product.name,
+      );
+      if (near != null) return Math.max(1, Math.min(30, near));
+      return aiQty;
+    }
+    if (opts.forcedQty >= 2) return Math.min(30, opts.forcedQty);
+    return aiQty;
+  }
+
+  /** Cantidad de un ítem multi-pedido según su segmento (y el mensaje completo si hace falta). */
+  private quantityForMultiSegment(
+    segment: string,
+    productName: string,
+    fullText?: string,
+  ): number {
+    const fromSeg = this.catalogService.extractQuantityFromMessage(segment || '');
+    if (fromSeg >= 2) return Math.min(30, fromSeg);
+    const near = this.catalogService.extractQuantityNearProduct(
+      fullText || segment || '',
+      productName,
+    );
+    return Math.max(1, Math.min(30, near ?? fromSeg));
+  }
+
   private rememberQuantityHint(
     session: WhatsappSessionData,
     text: string,
@@ -2519,6 +2615,41 @@ export class WhatsappOrchestratorService {
     const codeHits = (reply.match(/\bc[oó]d(?:igo|\.)?\s*\d{1,3}\b/gi) || []).length;
     const numberedList = (reply.match(/^\s*\d{1,2}[.)]\s/mg) || []).length;
     return codeHits >= 4 || numberedList >= 5;
+  }
+
+  /** Respuesta a "dónde queda el restaurante / cómo llego". */
+  private formatRestaurantLocationReply(cfg: EffectiveWhatsappConfig): string {
+    const ctx = cfg.localContext;
+    const brand = cfg.brandName || ctx?.restaurantName || 'el local';
+    const lines: string[] = [`📍 *${brand}*`];
+    const addressParts = [
+      ctx?.restaurantAddress,
+      ctx?.restaurantNeighborhood,
+      ctx?.restaurantCity,
+    ].filter(Boolean);
+    if (addressParts.length) {
+      lines.push(addressParts.join(', '));
+    }
+    if (ctx?.landmarks?.trim()) {
+      lines.push(`_Referencia:_ ${ctx.landmarks.trim()}`);
+    }
+    if (ctx?.mapsUrl?.trim()) {
+      lines.push(`Mapa: ${ctx.mapsUrl.trim()}`);
+    }
+    if (ctx?.publicPhone?.trim()) {
+      lines.push(`Tel: ${ctx.publicPhone.trim()}`);
+    }
+    if (ctx?.pickupNotes?.trim()) {
+      lines.push(ctx.pickupNotes.trim());
+    }
+    if (lines.length <= 1) {
+      return (
+        `Aún no tengo la dirección del local configurada por aquí.\n` +
+        `_Escribe *asesor* / *humano* y te orientan._`
+      );
+    }
+    lines.push('\n_¿Te antoja algo del menú o prefieres *recojo* / *domicilio*?_');
+    return lines.join('\n');
   }
 
   /**
@@ -6040,6 +6171,7 @@ export class WhatsappOrchestratorService {
       const product = products.find((p) => p.id === item.productId);
       if (!product) continue;
       const attrSource = [item.segment, sourceText].filter(Boolean).join(' ');
+      const qty = this.quantityForMultiSegment(item.segment, product.name, sourceText);
       const attrs =
         product.hasAttributes && product.attributes?.length
           ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || undefined
@@ -6061,7 +6193,7 @@ export class WhatsappOrchestratorService {
         };
         continue;
       }
-      const attempt = this.tryAddProductToCart(next, product, 1, cfg, undefined, attrs);
+      const attempt = this.tryAddProductToCart(next, product, qty, cfg, undefined, attrs);
       if (attempt.missingAttributes) {
         next = {
           ...next,
@@ -6231,10 +6363,11 @@ export class WhatsappOrchestratorService {
             productAttrOpts,
           );
           if (step.status === 'complete') {
+            const attrQty = this.quantityForMultiSegment(first.segment, product.name, text);
             const attempt = this.tryAddProductToCart(
               next,
               product,
-              1,
+              attrQty,
               cfg,
               undefined,
               step.attributes,
@@ -6541,10 +6674,15 @@ export class WhatsappOrchestratorService {
             ),
           );
           if (step.status === 'complete') {
+            const attrQty = this.quantityForMultiSegment(
+              first.segment,
+              product.name,
+              `${first.segment} ${text}`,
+            );
             const attempt = this.tryAddProductToCart(
               next,
               product,
-              1,
+              attrQty,
               cfg,
               undefined,
               step.attributes,

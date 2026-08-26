@@ -50,6 +50,14 @@ function normalizeText(s: string): string {
 
 function stemLoose(s: string): string {
   const n = normalizeText(s);
+  // No cortar días / -antes / -entes: "lunes"↛"lun", "restaurantes"→"restaurante"
+  if (/(antes|entes|iones|unes|artes|ueves|iernes|abados|omingos)$/.test(n)) {
+    if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
+    if (n.length > 4 && n.endsWith('es') && /(antes|entes|iones)$/.test(n)) {
+      return n.slice(0, -1); // restaurantes → restaurante
+    }
+    return n;
+  }
   // quita plural simple (sopas→sopa, bebidas→bebida)
   if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
   if (n.length > 4 && n.endsWith('es')) return n.slice(0, -2);
@@ -464,6 +472,7 @@ export class WhatsappCatalogService {
   isMenuExploreIntent(text: string, products: WhatsappCatalogProduct[] = []): boolean {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
+    if (this.isRestaurantLocationInquiry(text)) return false;
 
     if (
       /\b(link|enlace|url)\b/.test(q) ||
@@ -529,6 +538,7 @@ export class WhatsappCatalogService {
   isCategoryBrowseQuestion(text: string): boolean {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
+    if (this.isRestaurantLocationInquiry(text)) return false;
     if (this.extractCodeFromMessage(text) != null) return false;
     if (/^(quiero|dame|ponme|agrega)\b/.test(q)) return false;
     return (
@@ -538,11 +548,145 @@ export class WhatsappCatalogService {
     );
   }
 
+  /**
+   * "dónde queda el restaurante", "cómo llego", "dirección del local".
+   * No es pedido ni browse de productos.
+   */
+  isRestaurantLocationInquiry(text: string): boolean {
+    const q = normalizeText(text);
+    if (!q || q.length < 5) return false;
+    if (new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) && /\b(quiero|dame|ponme|agrega)\b/.test(q)) {
+      return false;
+    }
+    return (
+      /\bdonde\s+(queda|quedan|estan|es|esta|ubican|ubica|encuentran|encuentra)\b/.test(q) ||
+      /\bcomo\s+(llego|llegar|llegamos|ubicar|ubicarlos)\b/.test(q) ||
+      /\b(cual\s+es\s+la\s+)?(direccion|ubicacion)\s+(del?\s+)?(local|restaurante|negocio|sitio)?\b/.test(
+        q,
+      ) ||
+      /\bdonde\s+(queda|estan)\s+(su|el|la)?\s*(local|restaurante|negocio|sede)\b/.test(q) ||
+      /\b(mapa|google\s+maps|pin)\s+(del?\s+)?(local|restaurante)?\b/.test(q) ||
+      /\b(ubicacion|direccion)\s+del\s+(local|restaurante)\b/.test(q)
+    );
+  }
+
+  private readonly QTY_WORD_MAP: Record<string, number> = {
+    un: 1,
+    una: 1,
+    uno: 1,
+    dos: 2,
+    tres: 3,
+    cuatro: 4,
+    cinco: 5,
+    seis: 6,
+    siete: 7,
+    ocho: 8,
+    nueve: 9,
+    diez: 10,
+    once: 11,
+    doce: 12,
+  };
+
+  private readonly QTY_SKIP_AFTER_NUM = new Set([
+    'calle',
+    'carrera',
+    'cra',
+    'cl',
+    'cll',
+    'av',
+    'avenida',
+    'casa',
+    'apto',
+    'apartamento',
+    'torre',
+    'piso',
+    'local',
+    'numero',
+    'num',
+    'norte',
+    'sur',
+    'este',
+    'oeste',
+    'bis',
+  ]);
+
+  /**
+   * Cuántas menciones de cantidad hay ("3 churrascos, 2 mojarras, 1 platano" → 3).
+   * Si hay ≥2, no se debe aplicar una sola cantidad global al mensaje entero.
+   */
+  countQuantityMentions(text: string): number {
+    const q = normalizeText(text || '');
+    if (!q) return 0;
+    let count = 0;
+    const re =
+      /\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(?:de\s+)?([a-z0-9]{3,})/g;
+    for (const m of q.matchAll(re)) {
+      const rawNum = m[1];
+      const after = m[2];
+      if (this.QTY_SKIP_AFTER_NUM.has(after)) continue;
+      const n = this.QTY_WORD_MAP[rawNum] ?? parseInt(rawNum, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 30) count += 1;
+    }
+    return count;
+  }
+
+  /**
+   * Cantidad asociada a un producto concreto dentro de un pedido multi-ítem.
+   * Ej. "3 churrascos, 2 mojarras, 1 platano…" + "Plátano con queso" → 1.
+   * null si no hay segmento/cercanía clara.
+   */
+  extractQuantityNearProduct(fullText: string, productName: string): number | null {
+    const raw = (fullText || '').trim();
+    if (!raw || !productName) return null;
+
+    const segments = this.splitMultiProductSegments(raw);
+    const pn = normalizeText(productName);
+    const tokens = pn
+      .split(/\s+/)
+      .filter((t) => t.length >= 4 && !this.WEAK_PRODUCT_TOKENS.has(t));
+
+    let bestSeg = '';
+    let bestScore = 0;
+    for (const seg of segments) {
+      const sn = normalizeText(seg);
+      if (!sn) continue;
+      let score = 0;
+      if (sn.includes(pn) || (pn.length >= 6 && pn.includes(sn))) score = 100;
+      else score = tokens.filter((t) => sn.includes(t)).length * 25;
+      // Preferir segmento que ya trae cantidad explícita
+      if (score > 0 && this.countQuantityMentions(seg) >= 1) score += 10;
+      if (score > bestScore) {
+        bestScore = score;
+        bestSeg = seg;
+      }
+    }
+
+    if (bestScore >= 25 && bestSeg) {
+      return this.extractQuantityFromMessage(bestSeg);
+    }
+
+    // Fallback: "N … tokenDelProducto" en el texto completo
+    const q = normalizeText(raw);
+    for (const t of tokens.length ? tokens : pn.split(/\s+/).filter((x) => x.length >= 4)) {
+      const re = new RegExp(
+        `\\b(\\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\\s+(?:de\\s+)?[\\w\\s]{0,40}\\b${t}\\b`,
+      );
+      const m = q.match(re);
+      if (!m?.[1]) continue;
+      const n = this.QTY_WORD_MAP[m[1]] ?? parseInt(m[1], 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 30) return n;
+    }
+    return null;
+  }
+
   /** Extrae cantidad pedida: "5 pollos", "cinco", "x3", "dos sopas". Default 1. */
   extractQuantityFromMessage(text: string): number {
     const raw = (text || '').trim();
     if (!raw) return 1;
     const q = normalizeText(raw);
+
+    // Pedido multi-cantidad: no devolver el primer número como cantidad global
+    if (this.countQuantityMentions(raw) >= 2) return 1;
 
     // No confundir porciones con cantidad
     if (/\b(medio|media|cuarto|cuarta|1\/2|1\/4)\b/.test(q) && !/\b\d+\s*(pollo|sopas?|bandejas?)/.test(q)) {
@@ -552,22 +696,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    const wordMap: Record<string, number> = {
-      un: 1,
-      una: 1,
-      uno: 1,
-      dos: 2,
-      tres: 3,
-      cuatro: 4,
-      cinco: 5,
-      seis: 6,
-      siete: 7,
-      ocho: 8,
-      nueve: 9,
-      diez: 10,
-      once: 11,
-      doce: 12,
-    };
+    const wordMap = this.QTY_WORD_MAP;
 
     // "x5", "5x", "×5"
     const xMatch = q.match(/(?:^|\s)(?:x|×)\s*(\d{1,2})(?:\s|$)/) || q.match(/(?:^|\s)(\d{1,2})\s*(?:x|×)(?:\s|$)/);
@@ -578,7 +707,7 @@ export class WhatsappCatalogService {
 
     // "5 pollos", "5 de pollo", "quiero 5"
     const digitMatch = q.match(
-      /\b(\d{1,2})\s*(?:de\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?)?\b/,
+      /\b(\d{1,2})\s*(?:de\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?)?\b/,
     );
     if (digitMatch?.[1]) {
       const n = parseInt(digitMatch[1], 10);
@@ -590,7 +719,7 @@ export class WhatsappCatalogService {
     for (const [word, n] of Object.entries(wordMap)) {
       if (n < 2) continue;
       const re = new RegExp(
-        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|broaster|fritos?)\\b`,
+        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)\\b`,
       );
       if (re.test(q)) return n;
     }
@@ -941,6 +1070,8 @@ export class WhatsappCatalogService {
     for (const w of words) {
       const ws = singularizeEsToken(w);
       if (w === t || ws === sing || w === sing || ws === t) return true;
+      // Tokens cortos: nunca por substring ("res" ⊂ "restaurante")
+      if (t.length <= 4 || w.length <= 4) continue;
       // NUNCA: "gracias".includes("a") → matcheaba "Pechuga a la Plancha"
       if (similarLen(t, w) && (w.includes(t) || t.includes(w))) return true;
       if (similarLen(sing, ws) && (ws.includes(sing) || sing.includes(ws))) return true;
@@ -1081,6 +1212,8 @@ export class WhatsappCatalogService {
   extractProductModificationNote(text: string): string | null {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return null;
+    // Pedido multi-plato: "con queso" del plátano no convierte todo el mensaje en 1 plato + nota
+    if (this.looksLikeClearlyMultiDishOrder(raw)) return null;
     const q = normalizeText(raw);
 
     // Exigir al menos un marcador de preferencia
@@ -1121,8 +1254,28 @@ export class WhatsappCatalogService {
     return chunks.join(', ').slice(0, 180);
   }
 
+  /**
+   * Varios platos en un mensaje: "3 churrascos, 2 mojarras, 1 plátano…".
+   * No confundir con un solo plato + "con queso / sin yuca".
+   */
+  looksLikeClearlyMultiDishOrder(text: string): boolean {
+    const raw = (text || '').trim();
+    if (!raw) return false;
+    if (this.countQuantityMentions(raw) >= 2) return true;
+    if (!/\s*,\s*|\s+\by\b\s+/i.test(raw)) return false;
+    const q = normalizeText(raw);
+    const dishRe =
+      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|fritos?|asados?)\b/g;
+    const hits = new Set<string>();
+    for (const m of q.matchAll(dishRe)) {
+      hits.add(singularizeEsToken(m[1]));
+    }
+    return hits.size >= 2;
+  }
+
   /** ¿El mensaje es un plato + notas de guarnición (no multi-ítem)? */
   looksLikeSingleProductWithMods(text: string): boolean {
+    if (this.looksLikeClearlyMultiDishOrder(text)) return false;
     return !!this.extractProductModificationNote(text);
   }
 
@@ -1390,8 +1543,13 @@ export class WhatsappCatalogService {
 
     // Familia estilo (Mojarra / Mojarra Frita): si no dijeron el estilo, no auto-elegir un SKU.
     // El orquestador preguntará la variante. Si sí dijeron "fritas", quedarse con ese.
+    // En pedidos multi-plato no borrar familias enteras (eso dejaba solo el plátano).
     const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
-    if (result.length >= 1 && !this.looksLikeFoodPlusDrinkOrder(raw)) {
+    if (
+      result.length >= 1 &&
+      !this.looksLikeFoodPlusDrinkOrder(raw) &&
+      !this.looksLikeClearlyMultiDishOrder(raw)
+    ) {
       const head = result.find((p) => !this.isLikelyDrinkProduct(p));
       if (head) {
         const baseKey = this.stripCookingStyleTokens(normalizeText(head.name));
@@ -1420,6 +1578,38 @@ export class WhatsappCatalogService {
           }
         }
       }
+    } else if (
+      result.length >= 1 &&
+      this.looksLikeClearlyMultiDishOrder(raw) &&
+      !this.looksLikeFoodPlusDrinkOrder(raw)
+    ) {
+      // Multi: quitar solo el SKU ambiguo de estilo, conservar el resto de platos
+      const foods = result.filter((p) => !this.isLikelyDrinkProduct(p));
+      const drinks = result.filter((p) => this.isLikelyDrinkProduct(p));
+      const kept: WhatsappCatalogProduct[] = [];
+      const seenBase = new Set<string>();
+      for (const food of foods) {
+        const baseKey = this.stripCookingStyleTokens(normalizeText(food.name));
+        if (seenBase.has(baseKey)) continue;
+        seenBase.add(baseKey);
+        const siblings = available.filter(
+          (p) =>
+            !this.isLikelyDrinkProduct(p) &&
+            this.stripCookingStyleTokens(normalizeText(p.name)) === baseKey,
+        );
+        if (siblings.length < 2) {
+          kept.push(food);
+          continue;
+        }
+        if (styleAsked.length) {
+          const styled = siblings.filter((p) =>
+            styleAsked.some((st) => normalizeText(p.name).includes(st)),
+          );
+          if (styled.length === 1) kept.push(styled[0]);
+        }
+        // Sin estilo: no auto-elegir; el resolve por segmento pondrá la familia en ambiguous
+      }
+      result = [...kept, ...drinks];
     }
 
     // "churrasco sin yuca más papa" → solo el plato; yuca/papa son nota
@@ -1585,6 +1775,10 @@ export class WhatsappCatalogService {
     if (this.isOffTopicChitchat(text)) return false;
     if (this.isPriceInquiryIntent(text)) return false;
     if (this.looksLikeFoodPlusDrinkOrder(text)) return true;
+    if (this.looksLikeClearlyMultiDishOrder(text)) {
+      // "3 churrascos, 2 mojarras, 1 platano con queso…" — multi aunque haya "con …"
+      return this.splitMultiProductSegments(text).length >= 2;
+    }
     // "churrasco sin yuca más papa" = 1 plato + nota, no 2 ítems
     if (this.looksLikeSingleProductWithMods(text)) return false;
     if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text)) return false;
@@ -2025,6 +2219,7 @@ export class WhatsappCatalogService {
   ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
     const trimmed = text.trim();
     if (!trimmed) return null;
+    if (this.isRestaurantLocationInquiry(trimmed)) return null;
     // "5 pollos" es pedido con cantidad, no browse de categoría
     if (this.extractQuantityFromMessage(trimmed) >= 2) return null;
     if (
@@ -2083,6 +2278,7 @@ export class WhatsappCatalogService {
     const q = normalizeText(query);
     if (!q || q.length < 2) return [];
     if (this.isCourtesyOnlyMessage(query) || this.isOffTopicChitchat(query)) return [];
+    if (this.isRestaurantLocationInquiry(query)) return [];
 
     // Pedidos del tipo "link del menú" no deben buscar productos
     if (
@@ -2179,6 +2375,19 @@ export class WhatsappCatalogService {
       'programar',
       'sabes',
       'puedes',
+      'donde',
+      'queda',
+      'quedan',
+      'estan',
+      'restaurante',
+      'restaurantes',
+      'local',
+      'negocio',
+      'ubicacion',
+      'mapa',
+      'llego',
+      'llegar',
+      'sede',
       ...CHITCHAT_NOISE_TOKENS,
     ]);
 
@@ -3151,14 +3360,21 @@ export class WhatsappCatalogService {
       /\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi,
       (m) => m.replace(/\s+(?:mas|más)\s+/i, ' con '),
     );
+    // No partir toppings del mismo plato: "platano con queso y bocadillo"
+    q = q.replace(
+      /\bcon\s+[^\s,]+(?:\s+[^\s,]+)?(?:\s+y\s+[^\s,]+)+/gi,
+      (m) => m.replace(/\s+y\s+/gi, ' __Y__ '),
+    );
 
     const byCommaOrY = q
       .split(/\s*,\s*|\s+\by\b\s+|\s+(?:mas|más|\+)\s+/i)
-      .map((s) => this.cleanOrderSegment(s.trim()))
+      .map((s) => this.cleanOrderSegment(s.replace(/__Y__/g, ' y ').trim()))
       .filter((s) => s.length >= 3);
 
     const expanded: string[] = [];
-    for (const chunk of byCommaOrY.length ? byCommaOrY : [q]) {
+    for (const chunk of byCommaOrY.length
+      ? byCommaOrY
+      : [q.replace(/__Y__/g, ' y ')]) {
       expanded.push(...this.splitSegmentOnArticles(chunk));
     }
 
@@ -3231,7 +3447,9 @@ export class WhatsappCatalogService {
     if (embeddedAll.length >= 2) {
       // Si el mensaje NO parece multi-ítem (sin "y"/coma comida+bebida),
       // quedarnos con el mejor match — evita "fritas"→alitas + mojarra.
+      // Excepción: varias cantidades/platos claros ("3 churrascos, 2 mojarras…").
       if (
+        !this.looksLikeClearlyMultiDishOrder(text) &&
         !this.looksLikeMultiItemOrderMessage(text) &&
         !this.looksLikeFoodPlusDrinkOrder(text)
       ) {
@@ -3253,7 +3471,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    if (embeddedAll.length >= 2) {
+    if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text)) {
       const confident: MultiProductSegmentMatch[] = [];
       const needsAttributes: MultiProductSegmentMatch[] = [];
       for (const product of embeddedAll) {
