@@ -69,6 +69,32 @@ export class Address {
   notes?: string;
 
   @ApiProperty({
+    description: 'Latitud confirmada en el mapa.',
+    example: 4.6323,
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lat?: number | null;
+
+  @ApiProperty({
+    description: 'Longitud confirmada en el mapa.',
+    example: -74.1472,
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lng?: number | null;
+
+  @ApiProperty({
+    description: 'El usuario ya confirmó el pin en el mapa (una sola vez).',
+    example: false,
+    default: false,
+  })
+  @Column({ name: 'location_confirmed', type: 'boolean', default: false })
+  locationConfirmed: boolean;
+
+  @ApiProperty({
     description: 'Fecha de creación.',
     example: '2025-01-18T10:00:00.000Z',
   })

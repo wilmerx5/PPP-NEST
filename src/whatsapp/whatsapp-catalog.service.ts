@@ -2520,11 +2520,12 @@ export class WhatsappCatalogService {
     const parts: string[] = [];
     const showComboOnly = this.shouldShowComboOnlyAttributes(product, alreadySelected);
     const totalSteps = (product.attributes || []).filter(
-      (a) => !this.isComboOnlyAttribute(a) || showComboOnly,
+      (a) => !this.isDeferredDrinkAttribute(a, product) || showComboOnly,
     ).length;
     const doneSteps = alreadySelected.filter(
       (s) =>
-        !this.isComboOnlyAttribute({ attributeName: s.attributeName }) || showComboOnly,
+        !this.isDeferredDrinkAttribute({ attributeName: s.attributeName }, product) ||
+        showComboOnly,
     ).length;
     const stepNum = Math.min(totalSteps, doneSteps + 1);
 
@@ -2771,15 +2772,73 @@ export class WhatsappCatalogService {
 
     return attrs.filter((attr) => {
       if (alreadySelected.some((s) => s.attributeName === attr.attributeName)) return false;
-      if (this.isComboOnlyAttribute(attr) && !showComboOnly) return false;
+      if (this.isDeferredDrinkAttribute(attr, product) && !showComboOnly) return false;
       return true;
     });
   }
 
-  /** Gaseosas/bebidas del combo: solo después de elegir porción combo. */
+  /** ¿Ya eligió todo lo que aplica ahora (incl. sabor/gaseosa si toca)? */
+  isAttributeSelectionComplete(
+    product: WhatsappCatalogProduct,
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+    opts?: { variantIntent?: 'combo' | 'solo' },
+  ): boolean {
+    if (!product.hasAttributes || !product.attributes?.length) return true;
+    return this.getRemainingAttributes(product, alreadySelected, opts).length === 0;
+  }
+
+  /**
+   * Si un step dice "complete" pero aún faltan attrs, lo degrada a partial.
+   * Úsalo en cualquier flujo (combo o no).
+   */
+  coerceAttributeStep(
+    product: WhatsappCatalogProduct,
+    step:
+      | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+      | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+      | { status: 'invalid' },
+    opts?: { variantIntent?: 'combo' | 'solo' },
+  ):
+    | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'invalid' } {
+    if (step.status === 'invalid') return step;
+    if (this.isAttributeSelectionComplete(product, step.attributes, opts)) {
+      return { status: 'complete', attributes: step.attributes };
+    }
+    return { status: 'partial', attributes: step.attributes };
+  }
+
+  /**
+   * Bebida/sabor del combo: se pide después (o nunca si es "solo").
+   * En producto que SOLO tiene sabor/gaseosa, no se difiere.
+   */
+  isDeferredDrinkAttribute(
+    attr: { attributeName: string },
+    product?: WhatsappCatalogProduct,
+  ): boolean {
+    if (!this.isComboOnlyAttribute(attr)) return false;
+    const attrs = product?.attributes || [];
+    if (!attrs.length) return true;
+    const hasNonDrink = attrs.some((a) => !this.isComboOnlyAttribute(a));
+    // Gaseosa/jugo suelto: sabor es obligatorio ya, no diferir
+    return hasNonDrink;
+  }
+
+  /**
+   * Atributos de bebida del combo (gaseosa / sabor).
+   * En gaseosa suelta (solo esos attrs) se muestran igual vía shouldShowComboOnlyAttributes.
+   */
   isComboOnlyAttribute(attr: { attributeName: string }): boolean {
     const n = normalizeText(attr.attributeName);
-    return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos|sabor|sabores)\b/.test(n);
+    if (/\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n)) {
+      return true;
+    }
+    // "Sabor" / "Sabor gaseosa" / "Sabores"
+    if (/\bsabor/.test(n)) {
+      return true;
+    }
+    return false;
   }
 
   /** Atributo que define solo vs combo (porción, modalidad, presentación…). */
@@ -2793,8 +2852,8 @@ export class WhatsappCatalogService {
       );
     });
 
-    // "Tipo de arepa" / "Variante de papa" NO es modalidad solo↔combo
-    if (/\b(arepa|arepas|papa|papas|yuca|ensalada|acompan|acompañ)\b/.test(n)) {
+    // "Tipo de arepa" / "Sabor" / papas NO es modalidad solo↔combo
+    if (/\b(arepa|arepas|papa|papas|yuca|ensalada|acompan|acompañ|sabor|sabores)\b/.test(n)) {
       return false;
     }
 
@@ -2817,14 +2876,48 @@ export class WhatsappCatalogService {
 
   hasComboPortionSelected(
     alreadySelected: { attributeName: string; attributeValue: string }[],
+    product?: WhatsappCatalogProduct,
   ): boolean {
-    return alreadySelected.some((s) => this.isComboLikeValue(s.attributeValue));
+    return alreadySelected.some((s) => {
+      if (!this.isComboLikeValue(s.attributeValue)) return false;
+      return this.selectionIsModalityChoice(s, product);
+    });
   }
 
   hasSoloPortionSelected(
     alreadySelected: { attributeName: string; attributeValue: string }[],
+    product?: WhatsappCatalogProduct,
   ): boolean {
-    return alreadySelected.some((s) => this.isSoloLikeValue(s.attributeValue));
+    return alreadySelected.some((s) => {
+      if (!this.isSoloLikeValue(s.attributeValue)) return false;
+      return this.selectionIsModalityChoice(s, product);
+    });
+  }
+
+  /**
+   * "Queso solo" / "Arepa sola" NO cuenta como modalidad solo↔combo.
+   * Solo porción/modalidad (o valores puros solo/combo sin acompañamiento).
+   */
+  private selectionIsModalityChoice(
+    selected: { attributeName: string; attributeValue: string },
+    product?: WhatsappCatalogProduct,
+  ): boolean {
+    const attr = product?.attributes?.find((a) => a.attributeName === selected.attributeName);
+    if (attr) {
+      return this.isModalityAttribute(attr);
+    }
+    const v = normalizeText(selected.attributeValue);
+    if (
+      /\b(arepa|queso|huevo|carne|chicharr|chorizo|papa|yuca|aguacate|jamon|pollo|maiz|maíz)\b/.test(
+        v,
+      )
+    ) {
+      return false;
+    }
+    return (
+      /^(solo|sola|combo|completo|completa)$/.test(v) ||
+      /\b(sin\s+(bebida|gaseosa|combo)|con\s+(bebida|gaseosa))\b/.test(v)
+    );
   }
 
   private isComboLikeValue(value: string): boolean {
@@ -2840,6 +2933,7 @@ export class WhatsappCatalogService {
     const v = normalizeText(value);
     return (
       /\bsolo\b/.test(v) ||
+      /\bsola\b/.test(v) ||
       /\b(sin\s+bebida|sin\s+gaseosa|sin\s+combo)\b/.test(v)
     );
   }
@@ -2854,27 +2948,46 @@ export class WhatsappCatalogService {
     alreadySelected: { attributeName: string; attributeValue: string }[],
     opts?: { variantIntent?: 'combo' | 'solo' },
   ): boolean {
-    if (opts?.variantIntent === 'solo' || this.hasSoloPortionSelected(alreadySelected)) {
+    const attrs = product.attributes || [];
+    const nonDrinkAttrs = attrs.filter((a) => !this.isComboOnlyAttribute(a));
+
+    // Producto solo con sabor/gaseosa → siempre pedir
+    if (attrs.length > 0 && nonDrinkAttrs.length === 0) {
+      return true;
+    }
+
+    if (opts?.variantIntent === 'solo' || this.hasSoloPortionSelected(alreadySelected, product)) {
       return false;
     }
     if (
       opts?.variantIntent === 'combo' ||
-      this.hasComboPortionSelected(alreadySelected) ||
+      this.hasComboPortionSelected(alreadySelected, product) ||
       this.productImpliesCombo(product)
     ) {
       return true;
     }
 
-    const attrs = product.attributes || [];
-    const nonComboAttrs = attrs.filter((a) => !this.isComboOnlyAttribute(a));
-    const allNonComboSelected =
-      nonComboAttrs.length > 0 &&
-      nonComboAttrs.every((a) =>
+    // Cualquier producto multi-atributo: tras completar los attrs "de comida",
+    // pedir sabor/gaseosa si aplica.
+    const allNonDrinkSelected =
+      nonDrinkAttrs.length > 0 &&
+      nonDrinkAttrs.every((a) =>
         alreadySelected.some((s) => s.attributeName === a.attributeName),
       );
+    if (allNonDrinkSelected) return true;
 
-    // Ya eligió arepas/etc.: pedir bebida del combo (salvo que haya dicho solo).
-    if (allNonComboSelected) return true;
+    // Sin modalidad solo/combo: ir pidiendo sabor en cuanto avance el primer attr
+    const hasDrinkPending = attrs.some(
+      (a) =>
+        this.isDeferredDrinkAttribute(a, product) &&
+        !alreadySelected.some((s) => s.attributeName === a.attributeName),
+    );
+    const anyNonDrinkSelected = nonDrinkAttrs.some((a) =>
+      alreadySelected.some((s) => s.attributeName === a.attributeName),
+    );
+    if (hasDrinkPending && anyNonDrinkSelected && !this.hasModalityAttribute(attrs)) {
+      return true;
+    }
 
     return false;
   }
@@ -2973,8 +3086,13 @@ export class WhatsappCatalogService {
   extractExplicitAttributeChoice(
     text: string,
     product: WhatsappCatalogProduct,
+    opts?: { variantIntent?: 'combo' | 'solo' },
   ): { attributeName: string; attributeValue: string }[] | null {
-    const step = this.resolveAttributesFromMessage(product, text, []);
+    const step = this.coerceAttributeStep(
+      product,
+      this.resolveAttributesFromMessage(product, text, [], opts),
+      opts,
+    );
     if (step.status === 'complete') return step.attributes;
     return null;
   }
@@ -3492,7 +3610,7 @@ export class WhatsappCatalogService {
       progress = false;
       const remaining = this.getRemainingAttributes(product, selected, opts);
       if (!remaining.length) {
-        return { status: 'complete', attributes: selected };
+        break;
       }
 
       for (const attr of remaining) {
@@ -3504,8 +3622,9 @@ export class WhatsappCatalogService {
       }
     }
 
-    const stillRemaining = this.getRemainingAttributes(product, selected, opts);
-    if (!stillRemaining.length) return { status: 'complete', attributes: selected };
+    if (this.isAttributeSelectionComplete(product, selected, opts)) {
+      return { status: 'complete', attributes: selected };
+    }
     if (selected.length > alreadySelected.length) {
       return { status: 'partial', attributes: selected };
     }
@@ -3607,6 +3726,7 @@ export class WhatsappCatalogService {
   /**
    * Resuelve la SIGUIENTE opción pendiente (una a la vez).
    * Cualquier número solo (1, 2, 3…) = índice de esa opción, no código de producto.
+   * En productos con varios atributos, nunca salta el siguiente paso.
    */
   resolveNextAttributeChoice(
     product: WhatsappCatalogProduct,
@@ -3621,19 +3741,15 @@ export class WhatsappCatalogService {
       return { status: 'complete', attributes: alreadySelected };
     }
 
-    const fromMessage = this.resolveAttributesFromMessage(product, text, alreadySelected, opts);
-    if (fromMessage.status !== 'invalid') return fromMessage;
-
     const remaining = this.getRemainingAttributes(product, alreadySelected, opts);
     if (!remaining.length) {
       return { status: 'complete', attributes: alreadySelected };
     }
 
     const attr = remaining[0];
-    const t = normalizeText(text);
     let picked: string | null = null;
 
-    // Solo dígitos → índice de opción (1-based)
+    // Solo dígitos → índice de opción (1-based) del paso actual
     const bare = text.trim().match(/^([1-9]\d{0,2})$/);
     if (bare) {
       const num = parseInt(bare[1], 10);
@@ -3642,30 +3758,46 @@ export class WhatsappCatalogService {
       }
     }
 
-    if (!picked) {
-      picked = this.pickAttributeOptionFromText(text, attr);
-    }
-
     // "opcion 2" / "la 2"
     if (!picked) {
-      const m = text.trim().match(/(?:opci[oó]n|la|el)\s*([1-9]\d{0,2})/i);
+      const m = text.trim().match(/(?:opci[oó]n|la|el)\s*([1-9]\d{0,2})\s*$/i);
       if (m) {
         const num = parseInt(m[1], 10);
         if (num >= 1 && num <= attr.options.length) picked = attr.options[num - 1];
       }
     }
 
-    if (!picked) return { status: 'invalid' };
-
-    const nextSelected = [
-      ...alreadySelected,
-      { attributeName: attr.attributeName, attributeValue: picked },
-    ];
-
-    if (!this.getRemainingAttributes(product, nextSelected, opts).length) {
-      return { status: 'complete', attributes: nextSelected };
+    if (!picked) {
+      picked = this.pickAttributeOptionFromText(text, attr);
     }
-    return { status: 'partial', attributes: nextSelected };
+
+    if (picked) {
+      const nextSelected = [
+        ...alreadySelected,
+        { attributeName: attr.attributeName, attributeValue: picked },
+      ];
+      // Si el mismo mensaje nombra más opciones (ej. "queso y cocacola"), completar el resto
+      const bulk = this.resolveAttributesFromMessage(product, text, nextSelected, opts);
+      const merged =
+        bulk.status === 'complete' || bulk.status === 'partial' ? bulk.attributes : nextSelected;
+      return this.coerceAttributeStep(
+        product,
+        this.isAttributeSelectionComplete(product, merged, opts)
+          ? { status: 'complete', attributes: merged }
+          : { status: 'partial', attributes: merged },
+        opts,
+      );
+    }
+
+    // Mensaje largo: intentar resolver varios de una (sin haber matcheado el paso actual solo)
+    const fromMessage = this.coerceAttributeStep(
+      product,
+      this.resolveAttributesFromMessage(product, text, alreadySelected, opts),
+      opts,
+    );
+    if (fromMessage.status !== 'invalid') return fromMessage;
+
+    return { status: 'invalid' };
   }
 
   /** Intenta resolver opciones de atributos desde texto libre del cliente (legacy / todo de una vez) */

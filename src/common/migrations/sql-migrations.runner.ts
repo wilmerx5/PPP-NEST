@@ -38,6 +38,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureClientRequestIdColumn();
     await this.ensureProductScheduleSchema();
     await this.ensureWhatsappSchema();
+    await this.ensureUserAddressLocationColumns();
 
     if (!this.isEnabled()) {
       this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
@@ -141,6 +142,48 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to ensure client_request_id: ${message}`);
       throw err;
+    }
+  }
+
+  /** Pin de mapa en direcciones guardadas del usuario. */
+  private async ensureUserAddressLocationColumns() {
+    try {
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_user_addresses'`,
+      );
+      if (Number(table?.[0]?.c) === 0) return;
+
+      const cols: Array<{ name: string; ddl: string }> = [
+        { name: 'lat', ddl: 'DECIMAL(10,7) NULL' },
+        { name: 'lng', ddl: 'DECIMAL(10,7) NULL' },
+        {
+          name: 'location_confirmed',
+          ddl: 'TINYINT(1) NOT NULL DEFAULT 0',
+        },
+      ];
+
+      for (const col of cols) {
+        const rows: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_user_addresses'
+             AND COLUMN_NAME = ?`,
+          [col.name],
+        );
+        if (Number(rows?.[0]?.c) > 0) continue;
+        this.logger.warn(`Missing ppp_user_addresses.${col.name} — adding now`);
+        await this.dataSource.query(
+          `ALTER TABLE ppp_user_addresses ADD COLUMN ${col.name} ${col.ddl}`,
+        );
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure user address location columns: ${message}`);
     }
   }
 

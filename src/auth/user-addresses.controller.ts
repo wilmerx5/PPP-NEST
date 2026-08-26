@@ -6,13 +6,12 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   Req,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UserAddressesService } from './user-addresses.service';
-import { CreateAddressDto } from './dto/create-address.dto';
+import { CreateAddressDto, GeocodeAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { Auth } from './decorators/auth.decorator';
 import { User } from './entities/user.entity';
@@ -35,13 +34,20 @@ export class UserAddressesController {
     return transformDatesToBogota(address, ['createdAt', 'updatedAt']);
   }
 
+  @Post('geocode')
+  @ApiOperation({ summary: 'Vista previa de ubicación en mapa (antes de confirmar el pin)' })
+  @ApiResponse({ status: 200, description: 'Coordenadas sugeridas' })
+  async geocode(@Body() body: GeocodeAddressDto) {
+    return this.addressesService.geocodePreview(body.address);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Obtener todas las direcciones del usuario autenticado' })
   @ApiResponse({ status: 200, description: 'Lista de direcciones' })
   async findAll(@Req() req: Request) {
     const user = req.user as User;
     const addresses = await this.addressesService.findAll(user.id);
-    return addresses.map(addr => transformDatesToBogota(addr, ['createdAt', 'updatedAt']));
+    return addresses.map((addr) => transformDatesToBogota(addr, ['createdAt', 'updatedAt']));
   }
 
   @Get(':id')

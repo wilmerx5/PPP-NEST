@@ -369,7 +369,32 @@ export class WhatsappOrchestratorService {
           const fresh = await this.conversationService.reloadConversation(conv.id);
           Object.assign(conv, fresh);
           session = this.conversationService.getSession(conv);
-          const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
+          const added = this.tryAddProductToCart(
+            session,
+            product,
+            1,
+            cfg,
+            undefined,
+            step.attributes,
+            attrOpts,
+          );
+          if (added.missingAttributes) {
+            session = this.buildPendingAttributeSession(session, product, added.missingAttributes, {
+              variantIntent: pa.variantIntent,
+              pendingMultiOrder: session.pendingMultiOrder,
+            });
+            await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+            await this.reply(
+              conv,
+              msg.waId,
+              this.catalogService.formatProductOptionsPrompt(
+                product,
+                added.missingAttributes,
+                attrOpts,
+              ),
+            );
+            return;
+          }
           if (added.blocked) {
             await this.conversationService.saveSession(conv, session);
             await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
@@ -753,6 +778,15 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "listo" / "confirmar" / typos → checkout (antes de menú/cortesía/productos)
+    if (isConfirm && session.cart.length > 0) {
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
+
     // Saludo / menú / “quiero pedir” sin producto concreto
     if (isGreeting || this.isMenuLinkIntent(text)) {
       if (this.isMenuLinkIntent(text)) {
@@ -766,10 +800,7 @@ export class WhatsappOrchestratorService {
     // "gracias" suelto → NUNCA agregar productos.
     // "listo"/"ok"/"dale" con carrito → checkout (no tragar la confirmación).
     if (this.catalogService.isCourtesyOnlyMessage(text)) {
-      const courtesyConfirm =
-        session.cart.length > 0 &&
-        /^(ok|okay|oki|dale|listo|perfecto|va|vale)[\s!.?]*$/i.test(text.trim());
-      if (courtesyConfirm) {
+      if (session.cart.length > 0 && this.isConfirmKeyword(text)) {
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
@@ -1082,7 +1113,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (/\b(confirmar|confirmo|listo pedido|finalizar)\b/.test(lower)) {
+    if (this.isConfirmKeyword(text)) {
       // Recargar sesión desde DB (fuente de verdad del carrito)
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
@@ -1187,6 +1218,13 @@ export class WhatsappOrchestratorService {
         this.extractDeliveryTail(originalText) || this.extractDeliveryTail(text);
       if (deliveryTail) {
         session = this.withDeliveryAddress(session, deliveryTail);
+        const feeEarly = await this.ensureDeliveryFeeQuoted(session, cfg);
+        session = feeEarly.session;
+        if (feeEarly.blocked) {
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, feeEarly.blocked);
+          return;
+        }
       }
       if (embeddedProduct.hasAttributes && embeddedProduct.attributes?.length) {
         if (await this.handleProductWithVariants(conv, msg.waId, session, embeddedProduct, text, cfg)) {
@@ -1353,6 +1391,13 @@ export class WhatsappOrchestratorService {
       const deliveryTail = this.extractDeliveryTail(originalText) || this.extractDeliveryTail(text);
       if (deliveryTail) {
         session = this.withDeliveryAddress(session, deliveryTail);
+        const feeEarly = await this.ensureDeliveryFeeQuoted(session, cfg);
+        session = feeEarly.session;
+        if (feeEarly.blocked) {
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, feeEarly.blocked);
+          return;
+        }
       }
       if (one.hasAttributes && one.attributes?.length) {
         if (await this.handleProductWithVariants(conv, msg.waId, session, one, text, cfg)) {
@@ -1707,6 +1752,10 @@ export class WhatsappOrchestratorService {
             undefined,
             attrs || undefined,
           );
+          if (attempt.missingAttributes) {
+            missingNeeds.push(m);
+            continue;
+          }
           if (!attempt.blocked) session = attempt.session;
         }
         if (missingNeeds.length) {
@@ -1807,7 +1856,7 @@ export class WhatsappOrchestratorService {
     // Checkout: no usar reply mezclado de la IA; una pregunta a la vez vía tryConfirmOrder
     const wantsCheckout =
       !!ai.actions?.requestConfirm ||
-      /\b(confirmar|listo|finalizar|pagar|domicilio)\b/.test(lower) ||
+      this.isConfirmKeyword(text) ||
       !!(ai.actions?.setCustomerName || ai.actions?.setAddress || ai.actions?.setPaymentMethod);
 
     if (wantsCheckout && session.cart.length > 0) {
@@ -1939,6 +1988,13 @@ export class WhatsappOrchestratorService {
             : Math.max(1, item.quantity ?? 1);
         const note = item.note?.trim() || modNote || undefined;
         const attempt = this.tryAddProductToCart(next, product, qty, cfg, note, item.attributes);
+        if (attempt.missingAttributes) {
+          // No agregar a medias: pedir el siguiente atributo
+          next = this.buildPendingAttributeSession(next, product, attempt.missingAttributes, {
+            sourceText: note || product.name,
+          });
+          return { session: next };
+        }
         if (attempt.blocked) {
           return { session: next, limitBlocked: attempt.blocked };
         }
@@ -1974,13 +2030,37 @@ export class WhatsappOrchestratorService {
     };
   }
 
-  /** Fee a mostrar/cobrar: calculado por ruta o fijo de respaldo. */
+  /** Fee a mostrar/cobrar: solo el calculado por ruta (o 0 si aún no hay). */
   private deliveryFeeFor(session: WhatsappSessionData, cfg: EffectiveWhatsappConfig): number {
     if (session.orderType === 'pickup') return 0;
     if (typeof session.deliveryFeeCalculated === 'number' && session.deliveryFeeCalculated >= 0) {
       return session.deliveryFeeCalculated;
     }
-    return Math.max(0, Number(cfg.defaultDeliveryFee) || 0);
+    // No mostrar tarifa fija provisional (evita $2.000 → luego $5.000)
+    return 0;
+  }
+
+  /** ¿Ya tenemos fee de ruta/fijo resuelto para este pedido? */
+  private hasResolvedDeliveryFee(session: WhatsappSessionData): boolean {
+    return typeof session.deliveryFeeCalculated === 'number' && session.deliveryFeeCalculated >= 0;
+  }
+
+  /**
+   * Si la dirección ya está confirmada y aún no hay fee, cotiza ya
+   * (evita mostrar un valor y luego otro al confirmar).
+   */
+  private async ensureDeliveryFeeQuoted(
+    session: WhatsappSessionData,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<{
+    session: WhatsappSessionData;
+    notice?: string;
+    blocked?: string;
+  }> {
+    if (session.orderType === 'pickup') return { session };
+    if (!session.address?.trim() || !session.addressConfirmed) return { session };
+    if (this.hasResolvedDeliveryFee(session)) return { session };
+    return this.recalculateDeliveryFee(session, cfg);
   }
 
   /**
@@ -2128,7 +2208,21 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
     note?: string,
     attributes?: { attributeName: string; attributeValue: string }[],
-  ): { session: WhatsappSessionData; blocked?: CartLimitCheck } {
+    attrOpts?: { variantIntent?: 'combo' | 'solo' },
+  ): {
+    session: WhatsappSessionData;
+    blocked?: CartLimitCheck;
+    /** Faltan atributos: no se agregó al carrito */
+    missingAttributes?: { attributeName: string; attributeValue: string }[];
+  } {
+    const selected = attributes || [];
+    if (
+      product.hasAttributes &&
+      product.attributes?.length &&
+      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOpts)
+    ) {
+      return { session, missingAttributes: selected };
+    }
     const projected = this.addProductToCart(session, product, quantity, note, attributes);
     const check = evaluateCartLimits(projected.cart, this.toCartLimitsConfig(cfg, session), {
       orderType: projected.orderType,
@@ -2144,6 +2238,33 @@ export class WhatsappOrchestratorService {
           variantBaseKey: this.catalogService.getProductNameBase(product.name) || undefined,
         },
       },
+    };
+  }
+
+  /** Si faltan attrs, deja pendingAttribute y arma el prompt del siguiente paso. */
+  private buildPendingAttributeSession(
+    session: WhatsappSessionData,
+    product: MenuProduct,
+    selected: { attributeName: string; attributeValue: string }[],
+    opts?: {
+      sourceText?: string;
+      variantIntent?: 'combo' | 'solo';
+      pendingMultiOrder?: WhatsappSessionData['pendingMultiOrder'];
+    },
+  ): WhatsappSessionData {
+    return {
+      ...session,
+      pendingAttribute: {
+        ...this.toPendingAttribute(product, {
+          sourceText: opts?.sourceText,
+          variantIntent: opts?.variantIntent,
+          selected,
+        }),
+      },
+      pendingMatch: undefined,
+      ...(opts?.pendingMultiOrder !== undefined
+        ? { pendingMultiOrder: opts.pendingMultiOrder }
+        : {}),
     };
   }
 
@@ -2904,9 +3025,9 @@ export class WhatsappOrchestratorService {
     const lockNote =
       '_Cuando confirmes el pedido ya *no podrás modificarlo*._';
     if (session?.addressConfirmed && session.cart.length > 0) {
-      return `Si ya está tu pedido, escribe *listo* para continuar.\n${lockNote}`;
+      return `Si ya está tu pedido, escribe *listo* o *confirmar*.\n${lockNote}`;
     }
-    return `¿Algo más? Si ya está, escribe *listo*.\n${lockNote}`;
+    return `¿Algo más? Si ya está, escribe *listo* o *confirmar*.\n${lockNote}`;
   }
 
   private formatCartTiny(session: WhatsappSessionData, deliveryFee: number): string {
@@ -2917,7 +3038,10 @@ export class WhatsappOrchestratorService {
       (s, c) => s + c.unitPrice * Math.max(1, c.quantity || 1),
       0,
     );
-    const fee = session.orderType === 'delivery' ? deliveryFee : 0;
+    const fee =
+      session.orderType === 'delivery' && this.hasResolvedDeliveryFee(session)
+        ? deliveryFee
+        : 0;
     const total = subtotal + fee;
     return `🛒 ${n} ${n === 1 ? 'ítem' : 'ítems'} · *$${Math.round(total).toLocaleString('es-CO')}*`;
   }
@@ -2937,7 +3061,9 @@ export class WhatsappOrchestratorService {
       (s, c) => s + c.unitPrice * Math.max(1, c.quantity || 1),
       0,
     );
-    const fee = session.orderType === 'delivery' ? deliveryFee : 0;
+    const feeResolved = this.hasResolvedDeliveryFee(session);
+    const fee =
+      session.orderType === 'delivery' && feeResolved ? deliveryFee : 0;
     const total = subtotal + fee;
     const lines = cart.map((c, i) => {
       const qty = Math.max(1, c.quantity || 1);
@@ -2955,18 +3081,27 @@ export class WhatsappOrchestratorService {
       );
     });
 
+    let deliveryLine = '';
+    if (session.orderType === 'delivery') {
+      if (feeResolved && fee > 0) {
+        deliveryLine = `\nDomicilio${
+          session.deliveryDistanceKm != null && session.deliveryDistanceKm > 0
+            ? ` (ruta ~${Number(session.deliveryDistanceKm).toFixed(1)} km)`
+            : ''
+        }: $${Math.round(fee).toLocaleString('es-CO')}`;
+      } else if (session.address?.trim()) {
+        deliveryLine = `\nDomicilio: _se confirma según la ruta_`;
+      } else {
+        deliveryLine = `\nDomicilio: _según dirección_`;
+      }
+    }
+
     return (
       `🛒 *Tu carrito*\n\n` +
       lines.join('\n\n') +
       `\n\n────────────\n` +
       `Subtotal: $${Math.round(subtotal).toLocaleString('es-CO')}` +
-      (fee
-        ? `\nDomicilio${
-            session.deliveryDistanceKm != null && session.deliveryDistanceKm > 0
-              ? ` (ruta ~${Number(session.deliveryDistanceKm).toFixed(1)} km)`
-              : ''
-          }: $${Math.round(fee).toLocaleString('es-CO')}`
-        : '') +
+      deliveryLine +
       `\n*Total: $${Math.round(total).toLocaleString('es-CO')}*` +
       (session.orderType === 'delivery' && session.address?.trim()
         ? `\n\n📍 ${session.address.trim()}${session.addressConfirmed ? ' ✅' : ''}`
@@ -3349,14 +3484,14 @@ export class WhatsappOrchestratorService {
         await say(
           `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n` +
             `${formatCartNeedsHalfChickenForPremio()}\n\n` +
-            `Cuando agregues el medio pollo, escribe *listo*.`,
+            `Cuando agregues el medio pollo, escribe *listo* o *confirmar*.`,
         );
         return;
       }
       await this.conversationService.saveSession(conv, session, 'awaiting_final_confirm');
       await say(
         `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n` +
-          `Si todo cuadra, responde *listo* y armamos el pedido.\n` +
+          `Si todo cuadra, responde *listo* o *confirmar* y armamos el pedido.\n` +
           `_Al confirmar ya *no podrás modificar* el carrito._`,
       );
       return;
@@ -3367,7 +3502,7 @@ export class WhatsappOrchestratorService {
       !this.pointsHandler.cartHasHalfChicken(session.cart)
     ) {
       await say(
-        `${formatCartNeedsHalfChickenForPremio()}\n\nAgrega medio pollo (cód. 2 o 5) y vuelve a escribir *listo*.`,
+        `${formatCartNeedsHalfChickenForPremio()}\n\nAgrega medio pollo (cód. 2 o 5) y vuelve a escribir *listo* o *confirmar*.`,
       );
       return;
     }
@@ -3827,9 +3962,31 @@ export class WhatsappOrchestratorService {
       };
 
       if (picked.hasAttributes && picked.attributes?.length) {
-        const step = this.catalogService.resolveAttributesFromMessage(picked, text, []);
+        const step = this.catalogService.coerceAttributeStep(
+          picked,
+          this.catalogService.resolveAttributesFromMessage(picked, text, []),
+        );
         if (step.status === 'complete') {
           const added = this.tryAddProductToCart(session, picked, 1, cfg, undefined, step.attributes);
+          if (added.missingAttributes) {
+            session = this.buildPendingAttributeSession(
+              session,
+              picked,
+              added.missingAttributes,
+              { sourceText: text },
+            );
+            await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+            await this.reply(
+              conv,
+              waId,
+              `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
+                this.catalogService.formatProductOptionsPrompt(
+                  picked,
+                  added.missingAttributes,
+                ),
+            );
+            return true;
+          }
           if (added.blocked) {
             await this.conversationService.saveSession(conv, session);
             await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
@@ -3915,7 +4072,64 @@ export class WhatsappOrchestratorService {
     };
 
     if (step.status === 'complete') {
-      const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
+      const stillNeed = this.catalogService.getRemainingAttributes(
+        product,
+        step.attributes,
+        hint ? { variantIntent: hint } : undefined,
+      );
+      if (stillNeed.length) {
+        session = {
+          ...session,
+          pendingAttribute: {
+            productId: product.id,
+            name: product.name,
+            code: product.code,
+            price: product.price,
+            attributes: product.attributes || [],
+            selected: step.attributes,
+            variantIntent: hint || undefined,
+          },
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
+            this.catalogService.formatProductOptionsPrompt(
+              product,
+              step.attributes,
+              hint ? { variantIntent: hint } : undefined,
+            ),
+        );
+        return true;
+      }
+      const added = this.tryAddProductToCart(
+        session,
+        product,
+        1,
+        cfg,
+        undefined,
+        step.attributes,
+        hint ? { variantIntent: hint } : undefined,
+      );
+      if (added.missingAttributes) {
+        session = this.buildPendingAttributeSession(session, product, added.missingAttributes, {
+          sourceText: text,
+          variantIntent: hint || undefined,
+        });
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          `${cartContext ? 'Listo, vamos con esa opción 👍\n\n' : ''}` +
+            this.catalogService.formatProductOptionsPrompt(
+              product,
+              added.missingAttributes,
+              hint ? { variantIntent: hint } : undefined,
+            ),
+        );
+        return true;
+      }
       if (added.blocked) {
         await this.conversationService.saveSession(conv, session);
         await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
@@ -4559,11 +4773,120 @@ export class WhatsappOrchestratorService {
     );
   }
 
+  /**
+   * Cliente quiere cerrar/confirmar el pedido.
+   * Acepta sinónimos (confirmar, aprobado…) y typos leves (conirfmar, listoo…).
+   */
   private isConfirmKeyword(text: string): boolean {
-    return (
-      /^(confirmar|confirmo|listo|listo pedido|finalizar|ok|dale)[\s!.?]*$/i.test(text.trim()) ||
-      /\b(confirmar|confirmo|listo pedido|finalizar)\b/i.test(text.trim())
+    const raw = (text || '').trim();
+    if (!raw || raw.length > 72) return false;
+
+    const t = raw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[¡!?.…,;:"'`´]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) return false;
+
+    // Frases claras de cierre
+    if (
+      /^(ya esta|ya esta todo|ya quedo|todo bien|asi esta|asi quedo|de una|mande(lo)?|envia(lo|me)?|hagalo|hagale|proceda|vamos|dale pues)$/.test(
+        t,
+      ) ||
+      /\b((confirmar?|confirmo|confirmado|aprobar|apruebo|aprobado|finalizar|listo)\s+(el\s+)?pedido|pedido\s+(listo|confirmado|aprobado)|listo\s+pedido)\b/.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+
+    const tokens = t.split(' ').filter(Boolean);
+    if (!tokens.length || tokens.length > 6) return false;
+
+    // No confundir con pedido nuevo
+    if (
+      /\b(quiero|dame|ponme|agrega|agregame|pedir|ordenar|codigo|#\d+|gaseosa|pollo|medio|cuarto|domicilio\s+a)\b/.test(
+        t,
+      )
+    ) {
+      return false;
+    }
+
+    const confirmWords = [
+      'listo',
+      'lista',
+      'confirmar',
+      'confirmo',
+      'confirma',
+      'confirmado',
+      'confirmada',
+      'aprobado',
+      'aprobada',
+      'apruebo',
+      'aprobar',
+      'finalizar',
+      'finaliza',
+      'finalizo',
+      'ok',
+      'okay',
+      'oki',
+      'okey',
+      'dale',
+      'va',
+      'vale',
+      'perfecto',
+      'correcto',
+    ];
+
+    return tokens.some((tok) =>
+      confirmWords.some((w) => this.confirmTokenMatches(tok, w)),
     );
+  }
+
+  /** Match exacto o typo leve (edit distance / anagrama corto). */
+  private confirmTokenMatches(token: string, word: string): boolean {
+    if (token === word) return true;
+    // listoo / listooo
+    if (word.length >= 4 && token.length <= word.length + 3 && token.startsWith(word)) {
+      return /^o*$/.test(token.slice(word.length));
+    }
+    // Cortos: solo exacto (ok, va)
+    if (token.length < 4 || word.length < 4) return false;
+
+    const dist = this.simpleEditDistance(token, word);
+    const maxDist = word.length <= 5 ? 1 : word.length <= 8 ? 2 : 3;
+    if (dist <= maxDist) return true;
+
+    // Mismo largo + mismos caracteres + mismo prefijo → typo scramble (conirfmar≈confirmar)
+    if (
+      word.length >= 7 &&
+      token.length === word.length &&
+      token.slice(0, 3) === word.slice(0, 3) &&
+      [...token].sort().join('') === [...word].sort().join('')
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private simpleEditDistance(a: string, b: string): number {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      let diag = prev[0];
+      prev[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const nextDiag = prev[j];
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + cost);
+        diag = nextDiag;
+      }
+    }
+    return prev[b.length];
   }
 
   private isGreetingKeyword(text: string): boolean {
@@ -5432,14 +5755,76 @@ export class WhatsappOrchestratorService {
     const attrOpts = variantIntent ? { variantIntent } : undefined;
     const step = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
     const deliveryHint = this.extractDeliveryTail(text);
+
+    // Tras "complete", revalidar: combos suelen tener arepa + sabor gaseosa
     if (step.status === 'complete') {
+      const stillNeed = this.catalogService.getRemainingAttributes(
+        product,
+        step.attributes,
+        attrOpts,
+      );
+      if (stillNeed.length) {
+        if (deliveryHint) {
+          session = this.withDeliveryAddress(session, deliveryHint);
+        }
+        session = {
+          ...session,
+          pendingAttribute: {
+            ...this.toPendingAttribute(product, {
+              sourceText: text,
+              variantIntent,
+              selected: step.attributes,
+            }),
+          },
+          pendingMatch: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          this.catalogService.formatProductOptionsPrompt(product, step.attributes, attrOpts),
+        );
+        return true;
+      }
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
       if (deliveryHint) {
         session = this.withDeliveryAddress(session, deliveryHint);
+        const feeEarly = await this.ensureDeliveryFeeQuoted(session, cfg);
+        session = feeEarly.session;
+        if (feeEarly.blocked) {
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, waId, feeEarly.blocked);
+          return true;
+        }
       }
-      const added = this.tryAddProductToCart(session, product, 1, cfg, undefined, step.attributes);
+      const added = this.tryAddProductToCart(
+        session,
+        product,
+        1,
+        cfg,
+        undefined,
+        step.attributes,
+        attrOpts,
+      );
+      if (added.missingAttributes) {
+        session = this.buildPendingAttributeSession(session, product, added.missingAttributes, {
+          sourceText: text,
+          variantIntent,
+        });
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          this.catalogService.formatProductOptionsPrompt(
+            product,
+            added.missingAttributes,
+            attrOpts,
+          ),
+        );
+        return true;
+      }
       if (added.blocked) {
         await this.conversationService.saveSession(conv, session);
         await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
@@ -5677,6 +6062,22 @@ export class WhatsappOrchestratorService {
         continue;
       }
       const attempt = this.tryAddProductToCart(next, product, 1, cfg, undefined, attrs);
+      if (attempt.missingAttributes) {
+        next = {
+          ...next,
+          pendingMultiOrder: {
+            ...(next.pendingMultiOrder || pending),
+            confident: (next.pendingMultiOrder || pending).confident.filter(
+              (c) => c.productId !== product.id,
+            ),
+            needsAttributes: [
+              ...((next.pendingMultiOrder || pending).needsAttributes || []),
+              { segment: item.segment, ...this.toPendingMultiProduct(product) },
+            ],
+          },
+        };
+        continue;
+      }
       if (attempt.blocked) {
         return { session: next, addedNames, blocked: attempt.blocked };
       }
@@ -5707,9 +6108,15 @@ export class WhatsappOrchestratorService {
     if (deliveryTail) {
       session = this.withDeliveryAddress(session, deliveryTail);
     }
-    const addressNote =
-      (deliveryTail || session.address || '').trim() || null;
-
+    {
+      const feeEarly = await this.ensureDeliveryFeeQuoted(session, cfg);
+      session = feeEarly.session;
+      if (feeEarly.blocked) {
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, waId, feeEarly.blocked);
+        return true;
+      }
+    }
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text) && multi.unresolved.length) {
       const stillUnresolved: string[] = [];
       for (const seg of multi.unresolved) {
@@ -5763,10 +6170,13 @@ export class WhatsappOrchestratorService {
       (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) &&
       multi.ambiguous.length === 0;
 
-    // Comida + gaseosa aparte: el pollo va en "solo" (la gaseosa es otro ítem del carrito)
-    const foodPlusDrinkAttrOpts = this.catalogService.looksLikeFoodPlusDrinkOrder(text)
-      ? { variantIntent: 'solo' as const }
-      : undefined;
+    // Comida + gaseosa aparte: solo la COMIDA va en modalidad "solo"
+    // (no aplicar a la gaseosa: debe pedir sabor/variante)
+    const isFoodPlusDrink = this.catalogService.looksLikeFoodPlusDrinkOrder(text);
+    const attrOptsFor = (product: MenuProduct): { variantIntent: 'solo' } | undefined =>
+      isFoodPlusDrink && !this.catalogService.isLikelyDrinkProduct(product)
+        ? { variantIntent: 'solo' }
+        : undefined;
 
     const needsConfirm =
       multi.ambiguous.length > 0 ||
@@ -5805,15 +6215,20 @@ export class WhatsappOrchestratorService {
         const first = needsQueue[0];
         const product = products.find((p) => p.id === first.productId);
         if (product?.hasAttributes && product.attributes?.length) {
+          const productAttrOpts = attrOptsFor(product);
           // Usar el segmento de comida (sin “con gaseosa”) para no confundir atributos del combo
-          const foodAttrText = foodPlusDrinkAttrOpts
+          const foodAttrText = productAttrOpts
             ? first.segment
             : `${first.segment} ${text}`;
-          const step = this.catalogService.resolveAttributesFromMessage(
+          const step = this.catalogService.coerceAttributeStep(
             product,
-            foodAttrText,
-            [],
-            foodPlusDrinkAttrOpts,
+            this.catalogService.resolveAttributesFromMessage(
+              product,
+              foodAttrText,
+              [],
+              productAttrOpts,
+            ),
+            productAttrOpts,
           );
           if (step.status === 'complete') {
             const attempt = this.tryAddProductToCart(
@@ -5823,7 +6238,42 @@ export class WhatsappOrchestratorService {
               cfg,
               undefined,
               step.attributes,
+              productAttrOpts,
             );
+            if (attempt.missingAttributes) {
+              next = this.buildPendingAttributeSession(
+                next,
+                product,
+                attempt.missingAttributes,
+                {
+                  sourceText: foodAttrText,
+                  variantIntent: productAttrOpts?.variantIntent,
+                  pendingMultiOrder: {
+                    confident: [],
+                    ambiguous: [],
+                    unresolved: [],
+                    needsAttributes: needsQueue,
+                  },
+                },
+              );
+              await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+              const prefix = addResult.addedNames.length
+                ? this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), addResult.addedNames, {
+                    suffix: '',
+                  }) + '\n\n'
+                : '';
+              await this.reply(
+                conv,
+                waId,
+                `${prefix}Ahora elige opciones para *${product.name}*:\n\n` +
+                  this.catalogService.formatProductOptionsPrompt(
+                    product,
+                    attempt.missingAttributes,
+                    productAttrOpts,
+                  ),
+              );
+              return true;
+            }
             if (attempt.blocked) {
               await this.conversationService.saveSession(conv, next);
               await this.handleCartLimitBlocked(conv, waId, attempt.blocked, cfg);
@@ -5846,21 +6296,22 @@ export class WhatsappOrchestratorService {
             if (rest.length) {
               const nextProd = products.find((p) => p.id === rest[0].productId);
               if (nextProd?.hasAttributes) {
-                const preText = foodPlusDrinkAttrOpts
+                const nextAttrOpts = attrOptsFor(nextProd);
+                const preText = nextAttrOpts
                   ? rest[0].segment
                   : `${rest[0].segment} ${text}`;
                 const pre = this.catalogService.resolveAttributesFromMessage(
                   nextProd,
                   preText,
                   [],
-                  foodPlusDrinkAttrOpts,
+                  nextAttrOpts,
                 );
                 next = {
                   ...next,
                   pendingAttribute: {
                     ...this.toPendingAttribute(nextProd, {
                       sourceText: preText,
-                      variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                      variantIntent: nextAttrOpts?.variantIntent,
                       selected: pre.status === 'partial' ? pre.attributes : [],
                     }),
                   },
@@ -5888,7 +6339,7 @@ export class WhatsappOrchestratorService {
                     this.catalogService.formatProductOptionsPrompt(
                       nextProd,
                       pre.status === 'partial' ? pre.attributes : [],
-                      foodPlusDrinkAttrOpts,
+                      nextAttrOpts,
                     ),
                 );
                 return true;
@@ -5914,7 +6365,7 @@ export class WhatsappOrchestratorService {
             pendingAttribute: {
               ...this.toPendingAttribute(product, {
                 sourceText: foodAttrText,
-                variantIntent: foodPlusDrinkAttrOpts?.variantIntent,
+                variantIntent: productAttrOpts?.variantIntent,
                 selected: step.status === 'partial' ? step.attributes : [],
               }),
             },
@@ -5940,7 +6391,7 @@ export class WhatsappOrchestratorService {
               this.catalogService.formatProductOptionsPrompt(
                 product,
                 step.status === 'partial' ? step.attributes : [],
-                foodPlusDrinkAttrOpts,
+                productAttrOpts,
               ),
           );
           return true;
@@ -6081,10 +6532,13 @@ export class WhatsappOrchestratorService {
         const first = pending.needsAttributes[0];
         const product = products.find((p) => p.id === first.productId);
         if (product?.hasAttributes && product.attributes?.length) {
-          const step = this.catalogService.resolveAttributesFromMessage(
+          const step = this.catalogService.coerceAttributeStep(
             product,
-            `${first.segment} ${text}`,
-            [],
+            this.catalogService.resolveAttributesFromMessage(
+              product,
+              `${first.segment} ${text}`,
+              [],
+            ),
           );
           if (step.status === 'complete') {
             const attempt = this.tryAddProductToCart(
@@ -6095,6 +6549,33 @@ export class WhatsappOrchestratorService {
               undefined,
               step.attributes,
             );
+            if (attempt.missingAttributes) {
+              next = this.buildPendingAttributeSession(
+                next,
+                product,
+                attempt.missingAttributes,
+                {
+                  sourceText: `${first.segment} ${text}`,
+                  pendingMultiOrder: next.pendingMultiOrder,
+                },
+              );
+              await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+              const prefix = addResult.addedNames.length
+                ? this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), addResult.addedNames, {
+                    suffix: '',
+                  }) + '\n\n'
+                : '';
+              await this.reply(
+                conv,
+                waId,
+                `${prefix}Ahora elige opciones para *${product.name}*:\n\n` +
+                  this.catalogService.formatProductOptionsPrompt(
+                    product,
+                    attempt.missingAttributes,
+                  ),
+              );
+              return true;
+            }
             if (attempt.blocked) {
               await this.conversationService.saveSession(conv, next);
               await this.handleCartLimitBlocked(conv, waId, attempt.blocked, cfg);
