@@ -112,6 +112,15 @@ export type WhatsappSessionData = {
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */
   addressConfirmed?: boolean;
+  /** Lat/lng del domicilio (geocode o pin de WhatsApp) */
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
+  /** Km de ruta restaurante → domicilio */
+  deliveryDistanceKm?: number | null;
+  /** Fee calculado para este pedido (COP) */
+  deliveryFeeCalculated?: number | null;
+  /** Dirección fuera de cobertura por km */
+  deliveryOutOfCoverage?: boolean;
   /** Teléfono de contacto ya confirmado para este pedido */
   phoneConfirmed?: boolean;
   /** Teléfono de contacto (si difiere del WhatsApp) */

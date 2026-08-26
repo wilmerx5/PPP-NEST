@@ -66,7 +66,7 @@ function fixCommonOrderTypos(text) {
         .trim();
 }
 const DRINK_ORDER_TOKEN = '(?:gaseosa|gaseosas|coca\\s*cola?|cola|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n|mr\\s*tea|cysco)';
-const FOOD_ORDER_TOKEN = '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?)';
+const FOOD_ORDER_TOKEN = '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas)';
 const ORDER_INTENT_ONLY = new Set([
     'quiero',
     'quieor',
@@ -863,9 +863,99 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const hay = normalizeText(`${product.name} ${product.categoryName || ''} ${product.description || ''}`);
         return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon)\b/.test(hay);
     }
+    SIDE_NOTE_TOKENS = new Set([
+        'yuca',
+        'papa',
+        'papas',
+        'patacon',
+        'patacones',
+        'platano',
+        'platanos',
+        'arroz',
+        'ensalada',
+        'aguacate',
+        'huevo',
+        'arepa',
+        'cebolla',
+        'tomate',
+        'limon',
+        'ají',
+        'aji',
+        'picante',
+        'queso',
+        'maduro',
+        'verde',
+    ]);
+    extractProductModificationNote(text) {
+        const raw = fixCommonOrderTypos((text || '').trim());
+        if (!raw)
+            return null;
+        const q = normalizeText(raw);
+        if (!/\b(sin|con|mas|más|en\s+vez\s+de|envez\s+de|pero\s+sin|pero\s+con)\b/.test(q)) {
+            return null;
+        }
+        const chunks = [];
+        const re = /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi;
+        let m;
+        const source = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        while ((m = re.exec(source)) !== null) {
+            const phrase = m[1].replace(/\s+/g, ' ').trim();
+            const norm = normalizeText(phrase);
+            if (new RegExp(`\\b${DRINK_ORDER_TOKEN}\\b`, 'i').test(norm))
+                continue;
+            if (/\b(con|mas|más)\s+(pollo|carne|churrasco|pechuga|mojarra|bandeja|sopa)\b/.test(norm)) {
+                continue;
+            }
+            chunks.push(phrase);
+        }
+        if (!chunks.length)
+            return null;
+        const withoutMods = q
+            .replace(/\b(?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-z]+(?:\s+[a-z]+){0,2}/g, ' ')
+            .replace(/\b(quiero|dame|ponme|agrega|un|una|unos|unas|el|la|por|favor)\b/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const mainTokens = withoutMods.split(' ').filter((t) => t.length >= 4);
+        if (!mainTokens.length)
+            return null;
+        return chunks.join(', ').slice(0, 180);
+    }
+    looksLikeSingleProductWithMods(text) {
+        return !!this.extractProductModificationNote(text);
+    }
+    stripProductModificationNoise(text) {
+        const raw = fixCommonOrderTypos((text || '').trim());
+        if (!raw)
+            return raw;
+        let cleaned = raw
+            .replace(/\b(?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[^\s,]+(?:\s+[^\s,]+){0,2}/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        cleaned = this.extractProductSearchQuery(cleaned) || cleaned;
+        cleaned = this.cleanOrderSegment(cleaned);
+        return cleaned;
+    }
+    tokenAppearsOnlyUnderSin(q, token) {
+        const t = normalizeText(token);
+        if (!t || t.length < 3)
+            return false;
+        const re = new RegExp(`\\b${escapeRegExp(t)}\\b`, 'g');
+        let m;
+        let found = false;
+        let positive = false;
+        while ((m = re.exec(q)) !== null) {
+            found = true;
+            const before = q.slice(Math.max(0, m.index - 16), m.index);
+            const negated = /\bsin\s+(?:la|el|las|los|de|una|un)?\s*$/.test(before);
+            if (!negated)
+                positive = true;
+        }
+        return found && !positive;
+    }
     findAllProductsEmbeddedInMessage(text, products) {
         const raw = fixCommonOrderTypos(text);
         const q = normalizeText(raw);
+        const modNote = this.extractProductModificationNote(raw);
         if (!q || q.length < 4)
             return [];
         const available = products.filter((p) => p.availableNow !== false);
@@ -878,6 +968,11 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             let idx = 0;
             let foundFull = false;
             while ((idx = q.indexOf(name, idx)) !== -1) {
+                const before = q.slice(Math.max(0, idx - 16), idx);
+                if (/\bsin\s+(?:la|el|las|los|de|una|un)?\s*$/.test(before)) {
+                    idx += 1;
+                    continue;
+                }
                 hits.push({
                     p,
                     start: idx,
@@ -896,6 +991,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 .filter((t) => this.isDistinctiveProductToken(t));
             let matched = false;
             for (const tok of tokens) {
+                if (this.tokenAppearsOnlyUnderSin(q, tok))
+                    continue;
                 const sing = singularizeEsToken(tok);
                 const qWords = q.split(/\s+/).filter(Boolean);
                 let hitWord = null;
@@ -919,6 +1016,13 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 }
                 if (!hitWord)
                     continue;
+                if (this.tokenAppearsOnlyUnderSin(q, hitWord))
+                    continue;
+                if (modNote &&
+                    (this.SIDE_NOTE_TOKENS.has(tok) || this.SIDE_NOTE_TOKENS.has(sing)) &&
+                    normalizeText(modNote).includes(sing)) {
+                    continue;
+                }
                 const start = Math.max(0, q.indexOf(hitWord));
                 hits.push({
                     p,
@@ -1074,6 +1178,27 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 }
             }
         }
+        if (modNote) {
+            const noteQ = normalizeText(modNote);
+            result = result.filter((p) => {
+                if (this.isLikelyDrinkProduct(p))
+                    return true;
+                const name = normalizeText(p.name);
+                const sideHit = name
+                    .split(' ')
+                    .map((t) => singularizeEsToken(t))
+                    .some((t) => this.SIDE_NOTE_TOKENS.has(t) && (noteQ.includes(t) || this.tokenAppearsOnlyUnderSin(q, t)));
+                const baseToks = name
+                    .split(' ')
+                    .filter((t) => t.length >= 3 && !COOKING_STYLE_TOKENS.has(t) && t !== 'porcion' && t !== 'porciones');
+                if (baseToks.length &&
+                    baseToks.every((t) => this.SIDE_NOTE_TOKENS.has(t) || this.SIDE_NOTE_TOKENS.has(singularizeEsToken(t))) &&
+                    sideHit) {
+                    return false;
+                }
+                return true;
+            });
+        }
         return result.sort((a, b) => {
             const aDrink = this.isLikelyDrinkProduct(a) ? 1 : 0;
             const bDrink = this.isLikelyDrinkProduct(b) ? 1 : 0;
@@ -1107,12 +1232,14 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             return false;
         if (this.looksLikeFoodPlusDrinkOrder(text))
             return true;
+        if (this.looksLikeSingleProductWithMods(text))
+            return false;
         if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text))
             return false;
         const q = normalizeText(text);
         if (!new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) &&
             !new RegExp(DRINK_ORDER_TOKEN, 'i').test(q) &&
-            !/\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho)\b/.test(q)) {
+            !/\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho|churrasco)\b/.test(q)) {
             return false;
         }
         return this.splitMultiProductSegments(text).length >= 2;
@@ -2043,18 +2170,25 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     }
     isComboOnlyAttribute(attr) {
         const n = normalizeText(attr.attributeName);
-        return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
+        return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos|sabor|sabores)\b/.test(n);
     }
     isModalityAttribute(attr) {
         const n = normalizeText(attr.attributeName);
-        if (/\b(modalidad|presentacion|presentación|porcion|porción|tipo|variante|estilo|formato)\b/.test(n)) {
-            return true;
-        }
-        return attr.options.some((opt) => {
+        const optionsHaveSoloCombo = attr.options.some((opt) => {
             const v = normalizeText(opt);
             return (/\b(solo|combo|completo|completa)\b/.test(v) ||
                 /\b(con\s+bebida|con\s+gaseosa|sin\s+bebida|sin\s+gaseosa)\b/.test(v));
         });
+        if (/\b(arepa|arepas|papa|papas|yuca|ensalada|acompan|acompañ)\b/.test(n)) {
+            return false;
+        }
+        if (/\b(modalidad|presentacion|presentación)\b/.test(n)) {
+            return optionsHaveSoloCombo || attr.options.length <= 4;
+        }
+        if (/\b(porcion|porción|tipo|variante|estilo|formato)\b/.test(n)) {
+            return optionsHaveSoloCombo;
+        }
+        return optionsHaveSoloCombo;
     }
     hasModalityAttribute(attrs) {
         return attrs.some((a) => !this.isComboOnlyAttribute(a) && this.isModalityAttribute(a));
@@ -2076,20 +2210,23 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return (/\bsolo\b/.test(v) ||
             /\b(sin\s+bebida|sin\s+gaseosa|sin\s+combo)\b/.test(v));
     }
+    productImpliesCombo(product) {
+        return /\bcombo\b/.test(normalizeText(product.name));
+    }
     shouldShowComboOnlyAttributes(product, alreadySelected, opts) {
         if (opts?.variantIntent === 'solo' || this.hasSoloPortionSelected(alreadySelected)) {
             return false;
         }
-        if (opts?.variantIntent === 'combo' || this.hasComboPortionSelected(alreadySelected)) {
+        if (opts?.variantIntent === 'combo' ||
+            this.hasComboPortionSelected(alreadySelected) ||
+            this.productImpliesCombo(product)) {
             return true;
         }
         const attrs = product.attributes || [];
         const nonComboAttrs = attrs.filter((a) => !this.isComboOnlyAttribute(a));
         const allNonComboSelected = nonComboAttrs.length > 0 &&
             nonComboAttrs.every((a) => alreadySelected.some((s) => s.attributeName === a.attributeName));
-        if (!allNonComboSelected)
-            return false;
-        if (!this.hasModalityAttribute(nonComboAttrs))
+        if (allNonComboSelected)
             return true;
         return false;
     }
@@ -2197,6 +2334,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     splitMultiProductSegments(text) {
         if (this.isOffTopicChitchat(text))
             return [];
+        if (this.looksLikeSingleProductWithMods(text) && !this.looksLikeFoodPlusDrinkOrder(text)) {
+            const main = this.stripProductModificationNoise(text);
+            return main ? [main] : [];
+        }
         if (this.looksLikeFoodPlusDrinkOrder(text)) {
             const foodDrink = this.splitFoodPlusDrinkSegments(text);
             if (foodDrink.length >= 2) {
@@ -2213,6 +2354,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         let q = this.extractProductSearchQuery(text);
         if (!q)
             return [];
+        q = q.replace(/\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi, (m) => m.replace(/\s+(?:mas|más)\s+/i, ' con '));
         const byCommaOrY = q
             .split(/\s*,\s*|\s+\by\b\s+|\s+(?:mas|más|\+)\s+/i)
             .map((s) => this.cleanOrderSegment(s.trim()))

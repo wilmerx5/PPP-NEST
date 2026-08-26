@@ -89,7 +89,7 @@ const DRINK_ORDER_TOKEN =
   '(?:gaseosa|gaseosas|coca\\s*cola?|cola|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n|mr\\s*tea|cysco)';
 
 const FOOD_ORDER_TOKEN =
-  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?)';
+  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas)';
 
 const ORDER_INTENT_ONLY = new Set([
   'quiero',
@@ -1045,6 +1045,115 @@ export class WhatsappCatalogService {
     );
   }
 
+  /** Acompañamientos típicos que suelen ir como nota, no como plato aparte. */
+  private readonly SIDE_NOTE_TOKENS = new Set([
+    'yuca',
+    'papa',
+    'papas',
+    'patacon',
+    'patacones',
+    'platano',
+    'platanos',
+    'arroz',
+    'ensalada',
+    'aguacate',
+    'huevo',
+    'arepa',
+    'cebolla',
+    'tomate',
+    'limon',
+    'ají',
+    'aji',
+    'picante',
+    'queso',
+    'maduro',
+    'verde',
+  ]);
+
+  /**
+   * "sin yuca más papa", "con ensalada", "sin cebolla": preferencias del plato, no ítems nuevos.
+   */
+  extractProductModificationNote(text: string): string | null {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw) return null;
+    const q = normalizeText(raw);
+
+    // Exigir al menos un marcador de preferencia
+    if (!/\b(sin|con|mas|más|en\s+vez\s+de|envez\s+de|pero\s+sin|pero\s+con)\b/.test(q)) {
+      return null;
+    }
+
+    const chunks: string[] = [];
+    const re =
+      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi;
+    let m: RegExpExecArray | null;
+    const source = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    while ((m = re.exec(source)) !== null) {
+      const phrase = m[1].replace(/\s+/g, ' ').trim();
+      const norm = normalizeText(phrase);
+      // "con gaseosa" es otro producto, no nota de guarnición
+      if (new RegExp(`\\b${DRINK_ORDER_TOKEN}\\b`, 'i').test(norm)) continue;
+      // "con pollo" / "con carne" como plato compuesto → no tratar todo el mensaje como sola nota
+      if (/\b(con|mas|más)\s+(pollo|carne|churrasco|pechuga|mojarra|bandeja|sopa)\b/.test(norm)) {
+        continue;
+      }
+      chunks.push(phrase);
+    }
+    if (!chunks.length) return null;
+
+    // Si hay un plato principal + solo preferencias de guarnición → es nota
+    const withoutMods = q
+      .replace(
+        /\b(?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-z]+(?:\s+[a-z]+){0,2}/g,
+        ' ',
+      )
+      .replace(/\b(quiero|dame|ponme|agrega|un|una|unos|unas|el|la|por|favor)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const mainTokens = withoutMods.split(' ').filter((t) => t.length >= 4);
+    if (!mainTokens.length) return null;
+
+    return chunks.join(', ').slice(0, 180);
+  }
+
+  /** ¿El mensaje es un plato + notas de guarnición (no multi-ítem)? */
+  looksLikeSingleProductWithMods(text: string): boolean {
+    return !!this.extractProductModificationNote(text);
+  }
+
+  /** Quita “sin X / más Y / con Z” para buscar solo el plato principal. */
+  stripProductModificationNoise(text: string): string {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw) return raw;
+    let cleaned = raw
+      .replace(
+        /\b(?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[^\s,]+(?:\s+[^\s,]+){0,2}/gi,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+    cleaned = this.extractProductSearchQuery(cleaned) || cleaned;
+    cleaned = this.cleanOrderSegment(cleaned);
+    return cleaned;
+  }
+
+  /** True si el token aparece solo bajo negación "sin …". */
+  private tokenAppearsOnlyUnderSin(q: string, token: string): boolean {
+    const t = normalizeText(token);
+    if (!t || t.length < 3) return false;
+    const re = new RegExp(`\\b${escapeRegExp(t)}\\b`, 'g');
+    let m: RegExpExecArray | null;
+    let found = false;
+    let positive = false;
+    while ((m = re.exec(q)) !== null) {
+      found = true;
+      const before = q.slice(Math.max(0, m.index - 16), m.index);
+      const negated = /\bsin\s+(?:la|el|las|los|de|una|un)?\s*$/.test(before);
+      if (!negated) positive = true;
+    }
+    return found && !positive;
+  }
+
   /** Todos los productos cuyo nombre (o token distintivo) aparece en el mensaje. */
   findAllProductsEmbeddedInMessage(
     text: string,
@@ -1052,6 +1161,7 @@ export class WhatsappCatalogService {
   ): WhatsappCatalogProduct[] {
     const raw = fixCommonOrderTypos(text);
     const q = normalizeText(raw);
+    const modNote = this.extractProductModificationNote(raw);
     if (!q || q.length < 4) return [];
 
     const available = products.filter((p) => p.availableNow !== false);
@@ -1067,9 +1177,15 @@ export class WhatsappCatalogService {
     for (const p of available) {
       const name = normalizeText(p.name);
       if (name.length < 4) continue;
+
       let idx = 0;
       let foundFull = false;
       while ((idx = q.indexOf(name, idx)) !== -1) {
+        const before = q.slice(Math.max(0, idx - 16), idx);
+        if (/\bsin\s+(?:la|el|las|los|de|una|un)?\s*$/.test(before)) {
+          idx += 1;
+          continue;
+        }
         hits.push({
           p,
           start: idx,
@@ -1090,6 +1206,7 @@ export class WhatsappCatalogService {
         .filter((t) => this.isDistinctiveProductToken(t));
       let matched = false;
       for (const tok of tokens) {
+        if (this.tokenAppearsOnlyUnderSin(q, tok)) continue;
         const sing = singularizeEsToken(tok);
         const qWords = q.split(/\s+/).filter(Boolean);
         let hitWord: string | null = null;
@@ -1113,6 +1230,15 @@ export class WhatsappCatalogService {
           }
         }
         if (!hitWord) continue;
+        // "sin yuca" / nota de guarnición: no agregar acompañamiento como ítem
+        if (this.tokenAppearsOnlyUnderSin(q, hitWord)) continue;
+        if (
+          modNote &&
+          (this.SIDE_NOTE_TOKENS.has(tok) || this.SIDE_NOTE_TOKENS.has(sing)) &&
+          normalizeText(modNote).includes(sing)
+        ) {
+          continue;
+        }
         const start = Math.max(0, q.indexOf(hitWord));
         hits.push({
           p,
@@ -1293,6 +1419,31 @@ export class WhatsappCatalogService {
       }
     }
 
+    // "churrasco sin yuca más papa" → solo el plato; yuca/papa son nota
+    if (modNote) {
+      const noteQ = normalizeText(modNote);
+      result = result.filter((p) => {
+        if (this.isLikelyDrinkProduct(p)) return true;
+        const name = normalizeText(p.name);
+        const sideHit = name
+          .split(' ')
+          .map((t) => singularizeEsToken(t))
+          .some((t) => this.SIDE_NOTE_TOKENS.has(t) && (noteQ.includes(t) || this.tokenAppearsOnlyUnderSin(q, t)));
+        // Si el producto ES solo un acompañamiento mencionado en la nota, fuera
+        const baseToks = name
+          .split(' ')
+          .filter((t) => t.length >= 3 && !COOKING_STYLE_TOKENS.has(t) && t !== 'porcion' && t !== 'porciones');
+        if (
+          baseToks.length &&
+          baseToks.every((t) => this.SIDE_NOTE_TOKENS.has(t) || this.SIDE_NOTE_TOKENS.has(singularizeEsToken(t))) &&
+          sideHit
+        ) {
+          return false;
+        }
+        return true;
+      });
+    }
+
     // Comida con porción primero, luego bebida
     return result.sort((a, b) => {
       const aDrink = this.isLikelyDrinkProduct(a) ? 1 : 0;
@@ -1321,13 +1472,15 @@ export class WhatsappCatalogService {
     if (this.isOffTopicChitchat(text)) return false;
     if (this.isPriceInquiryIntent(text)) return false;
     if (this.looksLikeFoodPlusDrinkOrder(text)) return true;
+    // "churrasco sin yuca más papa" = 1 plato + nota, no 2 ítems
+    if (this.looksLikeSingleProductWithMods(text)) return false;
     if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text)) return false;
     // "cuéntame un cuento" no es multi-ítem: exige señal de comida o bebida
     const q = normalizeText(text);
     if (
       !new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) &&
       !new RegExp(DRINK_ORDER_TOKEN, 'i').test(q) &&
-      !/\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho)\b/.test(q)
+      !/\b(mojarra|bandeja|mondongo|arepa|chorizo|pechuga|costilla|ajiaco|sancocho|churrasco)\b/.test(q)
     ) {
       return false;
     }
@@ -2495,26 +2648,36 @@ export class WhatsappCatalogService {
   /** Gaseosas/bebidas del combo: solo después de elegir porción combo. */
   isComboOnlyAttribute(attr: { attributeName: string }): boolean {
     const n = normalizeText(attr.attributeName);
-    return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
+    return /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos|sabor|sabores)\b/.test(n);
   }
 
   /** Atributo que define solo vs combo (porción, modalidad, presentación…). */
   isModalityAttribute(attr: { attributeName: string; options: string[] }): boolean {
     const n = normalizeText(attr.attributeName);
-    if (
-      /\b(modalidad|presentacion|presentación|porcion|porción|tipo|variante|estilo|formato)\b/.test(
-        n,
-      )
-    ) {
-      return true;
-    }
-    return attr.options.some((opt) => {
+    const optionsHaveSoloCombo = attr.options.some((opt) => {
       const v = normalizeText(opt);
       return (
         /\b(solo|combo|completo|completa)\b/.test(v) ||
         /\b(con\s+bebida|con\s+gaseosa|sin\s+bebida|sin\s+gaseosa)\b/.test(v)
       );
     });
+
+    // "Tipo de arepa" / "Variante de papa" NO es modalidad solo↔combo
+    if (/\b(arepa|arepas|papa|papas|yuca|ensalada|acompan|acompañ)\b/.test(n)) {
+      return false;
+    }
+
+    // Nombre claro de modalidad
+    if (/\b(modalidad|presentacion|presentación)\b/.test(n)) {
+      return optionsHaveSoloCombo || attr.options.length <= 4;
+    }
+
+    // Porción / tipo / variante: solo si las OPCIONES son solo↔combo
+    if (/\b(porcion|porción|tipo|variante|estilo|formato)\b/.test(n)) {
+      return optionsHaveSoloCombo;
+    }
+
+    return optionsHaveSoloCombo;
   }
 
   hasModalityAttribute(attrs: NonNullable<WhatsappCatalogProduct['attributes']>): boolean {
@@ -2550,6 +2713,11 @@ export class WhatsappCatalogService {
     );
   }
 
+  /** Producto que por nombre ya es combo (no hay que elegir “combo” aparte). */
+  productImpliesCombo(product: WhatsappCatalogProduct): boolean {
+    return /\bcombo\b/.test(normalizeText(product.name));
+  }
+
   private shouldShowComboOnlyAttributes(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[],
@@ -2558,7 +2726,11 @@ export class WhatsappCatalogService {
     if (opts?.variantIntent === 'solo' || this.hasSoloPortionSelected(alreadySelected)) {
       return false;
     }
-    if (opts?.variantIntent === 'combo' || this.hasComboPortionSelected(alreadySelected)) {
+    if (
+      opts?.variantIntent === 'combo' ||
+      this.hasComboPortionSelected(alreadySelected) ||
+      this.productImpliesCombo(product)
+    ) {
       return true;
     }
 
@@ -2570,10 +2742,8 @@ export class WhatsappCatalogService {
         alreadySelected.some((s) => s.attributeName === a.attributeName),
       );
 
-    if (!allNonComboSelected) return false;
-
-    // Sin atributo solo/combo: si ya eligió arepas/etc., falta la bebida del combo.
-    if (!this.hasModalityAttribute(nonComboAttrs)) return true;
+    // Ya eligió arepas/etc.: pedir bebida del combo (salvo que haya dicho solo).
+    if (allNonComboSelected) return true;
 
     return false;
   }
@@ -2707,6 +2877,11 @@ export class WhatsappCatalogService {
    */
   splitMultiProductSegments(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
+    // Un plato + "sin X más Y" → un solo segmento
+    if (this.looksLikeSingleProductWithMods(text) && !this.looksLikeFoodPlusDrinkOrder(text)) {
+      const main = this.stripProductModificationNoise(text);
+      return main ? [main] : [];
+    }
     if (this.looksLikeFoodPlusDrinkOrder(text)) {
       const foodDrink = this.splitFoodPlusDrinkSegments(text);
       if (foodDrink.length >= 2) {
@@ -2722,6 +2897,11 @@ export class WhatsappCatalogService {
 
     let q = this.extractProductSearchQuery(text);
     if (!q) return [];
+    // No partir "sin yuca más papa" por el "más"
+    q = q.replace(
+      /\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi,
+      (m) => m.replace(/\s+(?:mas|más)\s+/i, ' con '),
+    );
 
     const byCommaOrY = q
       .split(/\s*,\s*|\s+\by\b\s+|\s+(?:mas|más|\+)\s+/i)

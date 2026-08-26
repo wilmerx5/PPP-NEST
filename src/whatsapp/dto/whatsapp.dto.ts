@@ -74,6 +74,18 @@ export class MenuConceptGroupDto {
   enabled?: boolean;
 }
 
+export class DeliveryFeeTierDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.1)
+  maxKm: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  fee: number;
+}
+
 export class UpdateWhatsappSettingsDto {
   @IsOptional()
   @IsBoolean()
@@ -125,6 +137,32 @@ export class UpdateWhatsappSettingsDto {
   @IsInt()
   @Min(0)
   defaultDeliveryFee?: number;
+
+  @IsOptional()
+  @IsIn(['fixed', 'route_tiers'])
+  deliveryFeeMode?: 'fixed' | 'route_tiers';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  restaurantLat?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  restaurantLng?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  deliveryMaxKm?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DeliveryFeeTierDto)
+  deliveryFeeTiers?: DeliveryFeeTierDto[];
 
   @IsOptional()
   @IsBoolean()
@@ -377,4 +415,22 @@ export class TakeoverWhatsappConversationDto {
   @IsOptional()
   @IsBoolean()
   takeover?: boolean;
+}
+
+/** Prueba de domicilio por ruta (sin WhatsApp). */
+export class TestDeliveryQuoteDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lng?: number;
 }

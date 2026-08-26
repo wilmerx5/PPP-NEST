@@ -6,6 +6,8 @@ export type WhatsappRulesContext = {
   brandName: string;
   businessStatus: BusinessStatus;
   deliveryFee: number;
+  /** Bloque de tramos de domicilio (opcional) */
+  deliveryFeeTiersBlock?: string;
   allowMercadoPago: boolean;
   menuProductCount: number;
   /** Bloque de ubicación / notas del local (admin) */
@@ -45,7 +47,9 @@ export function buildWhatsappBusinessRulesBlock(ctx: WhatsappRulesContext): stri
 REGLAS OBLIGATORIAS (incumplir = error; el sistema las corrige):
 - Marca: ${ctx.brandName}. Solo pedidos de comida de nuestro menú (${ctx.menuProductCount} productos activos).
 - ${hoursLine}
-- Domicilio: costo fijo $${ctx.deliveryFee.toLocaleString('es-CO')} COP solo si es delivery (no inventes otro valor).
+- Domicilio: el sistema calcula el costo por *ruta* según la dirección confirmada (no inventes otro valor). Si aún no hay dirección, menciona que el domicilio depende de la distancia. Tarifas de referencia:
+${ctx.deliveryFeeTiersBlock || `- Costo de referencia $${ctx.deliveryFee.toLocaleString('es-CO')} COP (puede variar al confirmar dirección).`}
+- Si el cliente ya tiene domicilio calculado en sesión, usa ese valor; NO inventes otro.
 ${payLines}
 ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. Si es delivery, también dirección; si es pickup/recojo, no pidas dirección de calle.
 - El sistema pregunta en orden: nombre → domicilio o recojo → dirección (si domicilio) → teléfono de contacto → pago → confirmar. NO saltes ni inventes esos datos; deja que el flujo del sistema los pida.

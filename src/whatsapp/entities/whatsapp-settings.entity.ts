@@ -39,6 +39,24 @@ export class WhatsappSettings {
   @Column({ name: 'default_delivery_fee', type: 'int', default: 2000 })
   defaultDeliveryFee: number;
 
+  /** fixed = siempre defaultDeliveryFee; route_tiers = Google Directions + tramos */
+  @Column({ name: 'delivery_fee_mode', type: 'varchar', length: 20, default: 'route_tiers' })
+  deliveryFeeMode: string;
+
+  @Column({ name: 'restaurant_lat', type: 'decimal', precision: 10, scale: 7, nullable: true })
+  restaurantLat: number | string | null;
+
+  @Column({ name: 'restaurant_lng', type: 'decimal', precision: 10, scale: 7, nullable: true })
+  restaurantLng: number | string | null;
+
+  /** Cobertura máxima en km de ruta (null/0 = último tramo). */
+  @Column({ name: 'delivery_max_km', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  deliveryMaxKm: number | string | null;
+
+  /** [{ maxKm, fee }] */
+  @Column({ name: 'delivery_fee_tiers', type: 'json', nullable: true })
+  deliveryFeeTiers: unknown | null;
+
   @Column({ name: 'allow_mercado_pago', type: 'boolean', default: true })
   allowMercadoPago: boolean;
 

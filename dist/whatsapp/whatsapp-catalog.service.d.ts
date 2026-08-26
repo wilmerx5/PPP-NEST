@@ -67,6 +67,11 @@ export declare class WhatsappCatalogService {
     detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null;
     resolveSizedChickenProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean;
+    private readonly SIDE_NOTE_TOKENS;
+    extractProductModificationNote(text: string): string | null;
+    looksLikeSingleProductWithMods(text: string): boolean;
+    stripProductModificationNoise(text: string): string;
+    private tokenAppearsOnlyUnderSin;
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     private drinkPreferenceRank;
     looksLikeMultiItemOrderMessage(text: string): boolean;
@@ -159,6 +164,7 @@ export declare class WhatsappCatalogService {
     }[]): boolean;
     private isComboLikeValue;
     private isSoloLikeValue;
+    productImpliesCombo(product: WhatsappCatalogProduct): boolean;
     private shouldShowComboOnlyAttributes;
     formatDescriptionForAttributeStep(description: string | null | undefined, alreadySelected: {
         attributeName: string;

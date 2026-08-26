@@ -17,12 +17,14 @@ import { User } from '../auth/entities/user.entity';
 import {
   SendWhatsappMessageDto,
   TakeoverWhatsappConversationDto,
+  TestDeliveryQuoteDto,
   UpdateWhatsappSettingsDto,
 } from './dto/whatsapp.dto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
+import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 
 @ApiTags('Admin WhatsApp')
@@ -35,6 +37,7 @@ export class WhatsappAdminController {
     private readonly conversationService: WhatsappConversationService,
     private readonly orchestrator: WhatsappOrchestratorService,
     private readonly metaService: WhatsappMetaService,
+    private readonly deliveryRouting: WhatsappDeliveryRoutingService,
   ) {}
 
   @Get('settings')
@@ -49,6 +52,72 @@ export class WhatsappAdminController {
   async updateSettings(@Body() dto: UpdateWhatsappSettingsDto) {
     const row = await this.settingsService.updateSettings(dto);
     return this.settingsService.maskSettings(row);
+  }
+
+  @Post('delivery/quote-test')
+  @ApiOperation({
+    summary: 'Probar cálculo de domicilio por ruta (Geocoding + Directions)',
+  })
+  async testDeliveryQuote(@Body() dto: TestDeliveryQuoteDto) {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    const address = (dto.address || '').trim();
+    const hasCoords =
+      dto.lat != null &&
+      dto.lng != null &&
+      Number.isFinite(Number(dto.lat)) &&
+      Number.isFinite(Number(dto.lng));
+
+    if (!address && !hasCoords) {
+      return {
+        ok: false,
+        error: 'Envía address y/o lat+lng',
+        hint: 'Ej: { "address": "Calle 80 #100-20, Bogotá" }',
+      };
+    }
+
+    const apiKeyConfigured = this.deliveryRouting.hasApiKey();
+    const restaurant = {
+      lat: Number(cfg.restaurantLat),
+      lng: Number(cfg.restaurantLng),
+    };
+
+    if (cfg.deliveryFeeMode === 'fixed') {
+      return {
+        ok: true,
+        mode: 'fixed',
+        apiKeyConfigured,
+        restaurant,
+        fee: cfg.defaultDeliveryFee,
+        message: `Modo tarifa fija: $${cfg.defaultDeliveryFee.toLocaleString('es-CO')}`,
+      };
+    }
+
+    const quote = await this.deliveryRouting.quoteDeliveryFee({
+      customerAddress: address || `${dto.lat},${dto.lng}`,
+      customerCoords: hasCoords
+        ? { lat: Number(dto.lat), lng: Number(dto.lng) }
+        : null,
+      restaurant,
+      tiers: cfg.deliveryFeeTiers || [],
+      maxKm: Number(cfg.deliveryMaxKm) || 5.5,
+      fallbackFee: cfg.defaultDeliveryFee,
+      regionBias: 'co',
+    });
+
+    return {
+      ok: quote.ok,
+      mode: cfg.deliveryFeeMode,
+      apiKeyConfigured,
+      restaurant,
+      tiers: cfg.deliveryFeeTiers,
+      maxKm: cfg.deliveryMaxKm,
+      input: {
+        address: address || null,
+        lat: hasCoords ? Number(dto.lat) : null,
+        lng: hasCoords ? Number(dto.lng) : null,
+      },
+      quote,
+    };
   }
 
   @Get('conversations')
