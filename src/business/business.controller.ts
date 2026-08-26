@@ -16,4 +16,13 @@ export class BusinessController {
   getStatus() {
     return this.businessService.getStatus();
   }
+
+  @Get('web-delivery-config')
+  @ApiOperation({
+    summary: 'Tarifas de domicilio web (público)',
+    description: 'Tramos configurados en admin para mostrar en checkout.',
+  })
+  getWebDeliveryConfig() {
+    return this.businessService.getWebDeliveryConfig();
+  }
 }

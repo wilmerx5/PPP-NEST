@@ -17,6 +17,7 @@ import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 import { ProductsService, type InventoryInfo } from '../products/products.service';
 import { BusinessService } from '../business/business.service';
+import { WebDeliveryService } from '../delivery/web-delivery.service';
 
 @Injectable()
 export class OrdersService {
@@ -60,6 +61,8 @@ export class OrdersService {
     private readonly productsService: ProductsService,
 
     private readonly businessService: BusinessService,
+
+    private readonly webDelivery: WebDeliveryService,
 
     private readonly mailService: MailService,
 
@@ -587,7 +590,19 @@ export class OrdersService {
       if (deliveryFee == null) {
         throw new BadRequestException('El domicilio es obligatorio para pedidos a domicilio');
       }
-      finalDeliveryFee = deliveryFee;
+      if (source === 'online') {
+        try {
+          finalDeliveryFee = await this.webDelivery.assertOnlineDeliveryFee(deliveryFee, {
+            address,
+            lat: createOrderDto.deliveryLat,
+            lng: createOrderDto.deliveryLng,
+          });
+        } catch (e) {
+          throw new BadRequestException((e as Error).message || 'Costo de envío inválido');
+        }
+      } else {
+        finalDeliveryFee = deliveryFee;
+      }
     }
 
     // Create order within a transaction to ensure atomicity

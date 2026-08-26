@@ -39,6 +39,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureProductScheduleSchema();
     await this.ensureWhatsappSchema();
     await this.ensureUserAddressLocationColumns();
+    await this.ensureWebDeliverySettingsColumns();
 
     if (!this.isEnabled()) {
       this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
@@ -184,6 +185,45 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       if (this.isIdempotentError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to ensure user address location columns: ${message}`);
+    }
+  }
+
+  /** Domicilio web (checkout): tramos por km en ppp_restaurant_settings. */
+  private async ensureWebDeliverySettingsColumns() {
+    try {
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_restaurant_settings'`,
+      );
+      if (Number(table?.[0]?.c) === 0) return;
+
+      const cols: Array<{ name: string; ddl: string }> = [
+        { name: 'web_delivery_default_fee', ddl: 'INT NOT NULL DEFAULT 4000' },
+        { name: 'web_delivery_max_km', ddl: 'DECIMAL(6,2) NULL DEFAULT 6.00' },
+        { name: 'web_delivery_fee_tiers', ddl: 'JSON NULL' },
+      ];
+
+      for (const col of cols) {
+        const rows: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_restaurant_settings'
+             AND COLUMN_NAME = ?`,
+          [col.name],
+        );
+        if (Number(rows?.[0]?.c) > 0) continue;
+        this.logger.warn(`Missing ppp_restaurant_settings.${col.name} — adding now`);
+        await this.dataSource.query(
+          `ALTER TABLE ppp_restaurant_settings ADD COLUMN ${col.name} ${col.ddl}`,
+        );
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure web delivery settings columns: ${message}`);
     }
   }
 

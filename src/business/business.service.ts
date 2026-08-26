@@ -22,6 +22,23 @@ import {
   type ProductScheduleLike,
   type ZonedClock,
 } from './business-clock';
+import {
+  normalizeDeliveryFeeTiers,
+  type DeliveryFeeTier,
+} from '../whatsapp/whatsapp-delivery-fee';
+import {
+  WEB_DELIVERY_DEFAULT_FEE,
+  WEB_DELIVERY_FEE_TIERS,
+  WEB_DELIVERY_MAX_KM,
+  formatWebDeliveryTiersHint,
+} from '../delivery/web-delivery-fee';
+
+export type WebDeliveryConfig = {
+  defaultFee: number;
+  maxKm: number;
+  tiers: DeliveryFeeTier[];
+  tiersHint: string;
+};
 
 export type BusinessStatus = {
   timezone: string;
@@ -68,6 +85,9 @@ export class BusinessService {
     row.openTime = '11:00';
     row.closeTime = '22:00';
     row.weeklyHours = this.buildWeeklyHours([], '11:00', '22:00', null);
+    row.webDeliveryDefaultFee = WEB_DELIVERY_DEFAULT_FEE;
+    row.webDeliveryMaxKm = WEB_DELIVERY_MAX_KM;
+    row.webDeliveryFeeTiers = WEB_DELIVERY_FEE_TIERS;
     return row;
   }
 
@@ -123,7 +143,33 @@ export class BusinessService {
       row.weeklyHours,
     );
     row.weeklyClosedDays = row.weeklyHours.filter((h) => h.closed).map((h) => h.dayOfWeek);
+    row.webDeliveryFeeTiers = this.parseJsonField<unknown>(
+      row.webDeliveryFeeTiers as never,
+      WEB_DELIVERY_FEE_TIERS,
+    );
     return row;
+  }
+
+  /** Tramos de domicilio para pedidos online (ppp-front). */
+  async getWebDeliveryConfig(): Promise<WebDeliveryConfig> {
+    const settings = await this.getSettings();
+    const tiers = normalizeDeliveryFeeTiers(settings.webDeliveryFeeTiers);
+    const maxKmRaw = Number(settings.webDeliveryMaxKm);
+    const maxKm =
+      Number.isFinite(maxKmRaw) && maxKmRaw > 0
+        ? maxKmRaw
+        : tiers[tiers.length - 1]?.maxKm || WEB_DELIVERY_MAX_KM;
+    const defaultFeeRaw = Number(settings.webDeliveryDefaultFee);
+    const defaultFee =
+      Number.isFinite(defaultFeeRaw) && defaultFeeRaw >= 0
+        ? Math.round(defaultFeeRaw)
+        : WEB_DELIVERY_DEFAULT_FEE;
+    return {
+      defaultFee,
+      maxKm,
+      tiers,
+      tiersHint: formatWebDeliveryTiersHint(tiers, maxKm),
+    };
   }
 
   async getSettings(): Promise<RestaurantSettings> {
@@ -140,6 +186,9 @@ export class BusinessService {
           openTime: '11:00',
           closeTime: '22:00',
           weeklyHours: null,
+          webDeliveryDefaultFee: WEB_DELIVERY_DEFAULT_FEE,
+          webDeliveryMaxKm: WEB_DELIVERY_MAX_KM,
+          webDeliveryFeeTiers: WEB_DELIVERY_FEE_TIERS,
         });
         try {
           row = await this.settingsRepo.save(row);
@@ -186,6 +235,15 @@ export class BusinessService {
         row.openTime = sample.openTime;
         row.closeTime = sample.closeTime;
       }
+    }
+    if (dto.webDeliveryDefaultFee !== undefined) {
+      row.webDeliveryDefaultFee = Math.max(0, Math.round(Number(dto.webDeliveryDefaultFee) || 0));
+    }
+    if (dto.webDeliveryMaxKm !== undefined) {
+      row.webDeliveryMaxKm = Math.max(0.5, Number(dto.webDeliveryMaxKm) || WEB_DELIVERY_MAX_KM);
+    }
+    if (dto.webDeliveryFeeTiers !== undefined) {
+      row.webDeliveryFeeTiers = normalizeDeliveryFeeTiers(dto.webDeliveryFeeTiers);
     }
     const saved = await this.settingsRepo.save(row);
     this.settingsCache = { at: Date.now(), row: this.normalizeSettings(saved) };

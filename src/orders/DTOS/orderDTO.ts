@@ -214,6 +214,48 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   clientRequestId?: string;
+
+  @ApiProperty({
+    description: 'Latitud del domicilio (pedidos online con pin confirmado).',
+    required: false,
+    example: 4.6323,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  deliveryLat?: number;
+
+  @ApiProperty({
+    description: 'Longitud del domicilio (pedidos online con pin confirmado).',
+    required: false,
+    example: -74.1472,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  deliveryLng?: number;
+}
+
+export class DeliveryQuoteDto {
+  @ApiProperty({
+    description: 'Texto de la dirección (fallback si no hay pin).',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({ description: 'Latitud del pin confirmado.', required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
+
+  @ApiProperty({ description: 'Longitud del pin confirmado.', required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lng?: number;
 }
 
 export class UpdateOrderItemAttributeDto {

@@ -5,6 +5,7 @@ import {
   IsArray,
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
@@ -14,8 +15,27 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  WEB_DELIVERY_DEFAULT_FEE,
+  WEB_DELIVERY_FEE_TIERS,
+  WEB_DELIVERY_MAX_KM,
+} from '../../delivery/web-delivery-fee';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export class WebDeliveryFeeTierDto {
+  @ApiProperty({ example: 4 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.1)
+  maxKm: number;
+
+  @ApiProperty({ example: 4000 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  fee: number;
+}
 
 export class DayHoursDto {
   @ApiProperty({ example: 1, description: '0=Domingo … 6=Sábado' })
@@ -71,6 +91,39 @@ export class UpdateRestaurantSettingsDto {
   @ValidateNested({ each: true })
   @Type(() => DayHoursDto)
   weeklyHours?: DayHoursDto[];
+
+  @ApiProperty({
+    description: 'Tarifa de respaldo domicilio web (COP)',
+    required: false,
+    example: WEB_DELIVERY_DEFAULT_FEE,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  webDeliveryDefaultFee?: number;
+
+  @ApiProperty({
+    description: 'Cobertura máxima domicilio web (km de ruta)',
+    required: false,
+    example: WEB_DELIVERY_MAX_KM,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.5)
+  webDeliveryMaxKm?: number;
+
+  @ApiProperty({
+    type: [WebDeliveryFeeTierDto],
+    required: false,
+    example: WEB_DELIVERY_FEE_TIERS,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WebDeliveryFeeTierDto)
+  webDeliveryFeeTiers?: WebDeliveryFeeTierDto[];
 }
 
 export class CreateHolidayClosureDto {

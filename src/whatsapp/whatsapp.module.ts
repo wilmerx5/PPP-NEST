@@ -14,6 +14,7 @@ import { WhatsappCleanupService } from './whatsapp-cleanup.service';
 import { WhatsappRateLimitService } from './whatsapp-rate-limit.service';
 import { WhatsappPointsService } from './whatsapp-points.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
+import { DeliveryModule } from '../delivery/delivery.module';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappAdminController } from './whatsapp-admin.controller';
 import { WhatsappDeskController } from './whatsapp-desk.controller';
@@ -32,6 +33,7 @@ import { User } from '../auth/entities/user.entity';
     BusinessModule,
     OrdersModule,
     PaymentsModule,
+    DeliveryModule,
   ],
   controllers: [WhatsappWebhookController, WhatsappAdminController, WhatsappDeskController],
   providers: [
@@ -45,7 +47,6 @@ import { User } from '../auth/entities/user.entity';
     WhatsappCleanupService,
     WhatsappRateLimitService,
     WhatsappPointsService,
-    WhatsappDeliveryRoutingService,
   ],
   exports: [WhatsappSettingsService, WhatsappOrchestratorService, WhatsappMetaService],
 })

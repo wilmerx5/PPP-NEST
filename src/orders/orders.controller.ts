@@ -25,6 +25,7 @@ import {
     AppendOrderItemsDto,
     ChangeTableDto,
     CreateOrderDto,
+    DeliveryQuoteDto,
     LinkTablesDto,
     RemoveOrderItemsDto,
     UpdateOrderExtraDto,
@@ -33,6 +34,7 @@ import {
     UpdateOrderItemsDto,
 } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
+import { WebDeliveryService } from '../delivery/web-delivery.service';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 
@@ -55,7 +57,10 @@ const OPS = [
 @Controller('orders')
 export class OrdersController {
 
-  constructor(private readonly orderService: OrdersService) {}
+  constructor(
+    private readonly orderService: OrdersService,
+    private readonly webDelivery: WebDeliveryService,
+  ) {}
 
   // -------------------------------------------------------------
   // MIS PEDIDOS (usuario autenticado)
@@ -98,6 +103,34 @@ export class OrdersController {
       createOrderDto.clientRequestId = key.slice(0, 64);
     }
     return this.orderService.create(createOrderDto);
+  }
+
+  // -------------------------------------------------------------
+  // COTIZAR DOMICILIO — checkout online
+  // -------------------------------------------------------------
+  @Post('delivery-quote')
+  @ApiOperation({
+    summary: 'Cotizar domicilio para pedidos online',
+    description:
+      'Calcula el costo de envío según distancia por ruta. Hasta 4 km: $4.000; más de 4 km: $6.000 (máx. 6 km).',
+  })
+  @ApiBody({ type: DeliveryQuoteDto })
+  @ApiResponse({ status: 200, description: 'Cotización de domicilio' })
+  async quoteDelivery(@Body() body: DeliveryQuoteDto) {
+    const [quote, config] = await Promise.all([
+      this.webDelivery.quote({
+        address: body.address,
+        lat: body.lat,
+        lng: body.lng,
+      }),
+      this.webDelivery.getConfig(),
+    ]);
+    return {
+      ...quote,
+      tiersHint: config.tiersHint,
+      maxKm: config.maxKm,
+      tiers: config.tiers,
+    };
   }
 
   // -------------------------------------------------------------

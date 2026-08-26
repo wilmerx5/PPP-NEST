@@ -11,6 +11,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { CommonModule } from '../common/common.module';
 import { BusinessModule } from '../business/business.module';
+import { DeliveryModule } from '../delivery/delivery.module';
 import { User } from '../auth/entities/user.entity';
 import { Product } from '../products/entities/product.entity';
 import { UserPoints } from '../auth/entities/user-points.entity';
@@ -25,6 +26,7 @@ import { PointRedemption } from '../auth/entities/point-redemption.entity';
     ProductsModule,
     CommonModule,
     BusinessModule,
+    DeliveryModule,
   ],
   exports: [OrdersService],
 })

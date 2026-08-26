@@ -29,6 +29,18 @@ export class RestaurantSettings {
   @Column({ name: 'weekly_hours', type: 'json', nullable: true })
   weeklyHours: DayHours[] | null;
 
+  /** Domicilio web (checkout): tarifa de respaldo si no hay ruta. */
+  @Column({ name: 'web_delivery_default_fee', type: 'int', default: 4000 })
+  webDeliveryDefaultFee: number;
+
+  /** Cobertura máxima en km de ruta para pedidos online. */
+  @Column({ name: 'web_delivery_max_km', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  webDeliveryMaxKm: number | string | null;
+
+  /** [{ maxKm, fee }] — tramos para ppp-front */
+  @Column({ name: 'web_delivery_fee_tiers', type: 'json', nullable: true })
+  webDeliveryFeeTiers: unknown | null;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
