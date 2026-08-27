@@ -115,6 +115,8 @@ const MENU_WRAPPER_TOKENS = new Set([
   'especiales',
   'promocion',
   'promo',
+  'combo',
+  'combos',
 ]);
 
 const ORDER_INTENT_ONLY = new Set([
@@ -1533,15 +1535,29 @@ export class WhatsappCatalogService {
   /**
    * Varios platos en un mensaje: "3 churrascos, 2 mojarras, 1 plátano…".
    * No confundir con un solo plato + "con queso / sin yuca".
+   * Tampoco "quiero un pollo frito, por favor" (coma de cortesía + estilo ≠ 2 platos).
    */
   looksLikeClearlyMultiDishOrder(text: string): boolean {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
-    if (!/\s*,\s*|\s+\by\b\s+/i.test(raw)) return false;
-    const q = normalizeText(raw);
+
+    // Quitar cola de cortesía: "…, por favor" no es separador de platos
+    const withoutCourtesy = raw
+      .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
+      .trim();
+    if (!/\s*,\s*|\s+\by\b\s+/i.test(withoutCourtesy)) return false;
+
+    let q = normalizeText(withoutCourtesy);
+    // "pollo frito / asado / broaster" = UN plato, no dos tokens
+    q = q
+      .replace(/\bpollos?\s+(?:fritos?|asados?|broaster|apana(?:do|da)s?)\b/g, 'pollo')
+      .replace(/\bmojarras?\s+(?:fritas?|asadas?|plancha)\b/g, 'mojarra')
+      .replace(/\bpechugas?\s+(?:fritas?|asadas?|plancha|broaster)\b/g, 'pechuga');
+
+    // NO incluir frito/asado solos: son estilos de cocción, no platos
     const dishRe =
-      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|fritos?|asados?|limonadas?)\b/g;
+      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?)\b/g;
     const hits = new Set<string>();
     for (const m of q.matchAll(dishRe)) {
       hits.add(singularizeEsToken(m[1]));
@@ -1611,6 +1627,17 @@ export class WhatsappCatalogService {
     for (const p of available) {
       const name = normalizeText(p.name);
       if (name.length < 4) continue;
+
+      // "pollo frito" ≠ "Bandeja / Menú ejecutivo con pollo frito"
+      const nameHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) =>
+        this.queryHasToken(name, t),
+      );
+      const queryHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) =>
+        this.queryHasToken(q, t),
+      );
+      if (nameHasMenuWrapper && !queryHasMenuWrapper) {
+        continue;
+      }
 
       let idx = 0;
       let foundFull = false;
@@ -2118,7 +2145,10 @@ export class WhatsappCatalogService {
     }
     // "churrasco sin yuca más papa" = 1 plato + nota, no 2 ítems
     if (this.looksLikeSingleProductWithMods(text)) return false;
-    if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text)) return false;
+    const withoutCourtesy = (text || '')
+      .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
+      .trim();
+    if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(withoutCourtesy)) return false;
     // "cuéntame un cuento" no es multi-ítem: exige señal de comida o bebida
     const q = normalizeText(text);
     if (
@@ -2882,11 +2912,11 @@ export class WhatsappCatalogService {
           score -= 90;
         }
 
-        // "Menú ejecutivo con pollo frito" ≠ "pollo frito"
+        // "Menú ejecutivo con pollo frito" ≠ "pollo frito" — excluir, no solo penalizar
         const nameHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(name, t));
         const queryHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(q, t));
         if (nameHasMenuWrapper && !queryHasMenuWrapper) {
-          score -= 100;
+          return { p, score: 0 };
         }
 
         // Contención: si el pedido es solo una parte del nombre largo, penalizar

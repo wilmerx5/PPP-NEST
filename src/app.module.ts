@@ -11,6 +11,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { BusinessModule } from './business/business.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { FactusModule } from './factus/factus.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     ExpensesModule,
     BusinessModule,
     WhatsappModule,
+    FactusModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -184,4 +184,90 @@ export class Order {
   })
   @OneToMany(() => OrderExtra, (e) => e.order, { cascade: true })
   extras?: OrderExtra[];
+
+  // --- Facturación electrónica (Factus). Emisión manual desde tomar pedidos. ---
+
+  @Column({
+    name: 'electronic_invoice_status',
+    type: 'varchar',
+    length: 20,
+    default: 'none',
+  })
+  electronicInvoiceStatus:
+    | 'none'
+    | 'pending'
+    | 'accepted'
+    | 'rejected'
+    | 'error';
+
+  @Column({
+    name: 'electronic_invoice_reference',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  electronicInvoiceReference: string | null;
+
+  @Column({
+    name: 'electronic_invoice_number',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  electronicInvoiceNumber: string | null;
+
+  @Column({
+    name: 'electronic_invoice_cufe',
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+  })
+  electronicInvoiceCufe: string | null;
+
+  @Column({
+    name: 'electronic_invoice_public_url',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  electronicInvoicePublicUrl: string | null;
+
+  @Column({
+    name: 'electronic_invoice_qr_url',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  electronicInvoiceQrUrl: string | null;
+
+  @Column({
+    name: 'electronic_invoice_issued_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  electronicInvoiceIssuedAt: Date | null;
+
+  @Column({
+    name: 'electronic_invoice_error',
+    type: 'varchar',
+    length: 1000,
+    nullable: true,
+  })
+  electronicInvoiceError: string | null;
+
+  @Column({
+    name: 'invoice_customer_doc_type',
+    type: 'varchar',
+    length: 5,
+    nullable: true,
+  })
+  invoiceCustomerDocType: string | null;
+
+  @Column({
+    name: 'invoice_customer_doc_number',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  invoiceCustomerDocNumber: string | null;
 }

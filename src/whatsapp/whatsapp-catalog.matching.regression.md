@@ -11,6 +11,7 @@ Casos que **no** deben volver a fallar. Tras cambios en `whatsapp-catalog.servic
 | Mensaje del cliente | Debe matchear | NO debe matchear |
 |---------------------|---------------|------------------|
 | `quiero un pollo frito` | Pollo Frito / 1 Pollo Frito | Menú ejecutivo con pollo frito |
+| `quiero un pollo frito, por favor` | Pollo Frito (NO multi-plato) | Bandeja con pollo frito |
 | `quiero un pollo frito para el conjunto senderos de santa ana` | Pollo Frito + domicilio | Menú ejecutivo… |
 | `quiero un pollo frito par ale conjunto senderos…` (typo para) | Pollo Frito + domicilio | Menú ejecutivo… |
 | `pedi una hamburguesa` | Hamburguesa | Duo de hamburguesas |

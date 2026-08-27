@@ -22,4 +22,14 @@ export declare class Order {
     tableGroupId: number | null;
     clientRequestId: string | null;
     extras?: OrderExtra[];
+    electronicInvoiceStatus: 'none' | 'pending' | 'accepted' | 'rejected' | 'error';
+    electronicInvoiceReference: string | null;
+    electronicInvoiceNumber: string | null;
+    electronicInvoiceCufe: string | null;
+    electronicInvoicePublicUrl: string | null;
+    electronicInvoiceQrUrl: string | null;
+    electronicInvoiceIssuedAt: Date | null;
+    electronicInvoiceError: string | null;
+    invoiceCustomerDocType: string | null;
+    invoiceCustomerDocNumber: string | null;
 }

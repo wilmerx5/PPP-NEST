@@ -105,3 +105,81 @@ describe('WhatsappCatalogService matching regressions', () => {
     ).toEqual([]);
   });
 });
+
+const chickenMenu: WhatsappCatalogProduct[] = [
+  {
+    id: 1,
+    code: 1,
+    name: '1 Pollo Frito',
+    price: 42000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+  {
+    id: 2,
+    code: 2,
+    name: 'Pollo Frito',
+    price: 42000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+  {
+    id: 80,
+    code: 80,
+    name: 'Bandeja con pollo frito',
+    price: 18000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+  {
+    id: 81,
+    code: 81,
+    name: 'Menú ejecutivo con pollo frito',
+    price: 16000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+];
+
+describe('pollo frito vs bandeja/menú', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+
+  it('no trata "pollo frito, por favor" como multi-plato', () => {
+    expect(
+      catalog.looksLikeClearlyMultiDishOrder('quiero un pollo frito, por favor'),
+    ).toBe(false);
+    expect(
+      catalog.looksLikeMultiItemOrderMessage('quiero un pollo frito, por favor'),
+    ).toBe(false);
+  });
+
+  it('quiero un pollo frito → Pollo Frito, no bandeja', () => {
+    const p = catalog.findProductEmbeddedInMessage(
+      'quiero un pollo frito, por favor',
+      chickenMenu,
+    );
+    expect(p).toBeTruthy();
+    expect(p!.name.toLowerCase()).toMatch(/pollo frito/);
+    expect(p!.name.toLowerCase()).not.toMatch(/bandeja|men[uú]|ejecutivo/);
+  });
+
+  it('searchByNameScored: pollo frito gana a bandeja', () => {
+    const scored = catalog.searchByNameScored('un pollo frito', chickenMenu, 5);
+    expect(scored[0]?.p.name.toLowerCase()).toMatch(/^(1\s+)?pollo frito$/);
+    expect(
+      scored.find((x) => /bandeja/i.test(x.p.name))?.score ?? 0,
+    ).toBeLessThan(scored[0]?.score ?? 0);
+  });
+
+  it('si pide bandeja explícita, sí matchea bandeja', () => {
+    const p = catalog.findProductEmbeddedInMessage(
+      'quiero la bandeja con pollo frito',
+      chickenMenu,
+    );
+    expect(p?.name).toMatch(/bandeja/i);
+  });
+});

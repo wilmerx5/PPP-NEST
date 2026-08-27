@@ -20,6 +20,7 @@ const payments_module_1 = require("./payments/payments.module");
 const expenses_module_1 = require("./expenses/expenses.module");
 const business_module_1 = require("./business/business.module");
 const whatsapp_module_1 = require("./whatsapp/whatsapp.module");
+const factus_module_1 = require("./factus/factus.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -85,6 +86,7 @@ exports.AppModule = AppModule = __decorate([
             expenses_module_1.ExpensesModule,
             business_module_1.BusinessModule,
             whatsapp_module_1.WhatsappModule,
+            factus_module_1.FactusModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

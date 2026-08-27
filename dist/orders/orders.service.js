@@ -1937,6 +1937,15 @@ let OrdersService = class OrdersService {
             extras: extrasList,
             redemptionCode: order.redemptionCode ?? null,
             tableGroupId: order.tableGroupId ?? null,
+            electronicInvoiceStatus: order.electronicInvoiceStatus ?? 'none',
+            electronicInvoiceNumber: order.electronicInvoiceNumber ?? null,
+            electronicInvoiceCufe: order.electronicInvoiceCufe ?? null,
+            electronicInvoicePublicUrl: order.electronicInvoicePublicUrl ?? null,
+            electronicInvoiceQrUrl: order.electronicInvoiceQrUrl ?? null,
+            electronicInvoiceIssuedAt: order.electronicInvoiceIssuedAt ?? null,
+            electronicInvoiceError: order.electronicInvoiceError ?? null,
+            invoiceCustomerDocType: order.invoiceCustomerDocType ?? null,
+            invoiceCustomerDocNumber: order.invoiceCustomerDocNumber ?? null,
         };
     }
     async validateRedemptionCodePublic(code) {

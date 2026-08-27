@@ -33,6 +33,16 @@ let Order = class Order {
     tableGroupId;
     clientRequestId;
     extras;
+    electronicInvoiceStatus;
+    electronicInvoiceReference;
+    electronicInvoiceNumber;
+    electronicInvoiceCufe;
+    electronicInvoicePublicUrl;
+    electronicInvoiceQrUrl;
+    electronicInvoiceIssuedAt;
+    electronicInvoiceError;
+    invoiceCustomerDocType;
+    invoiceCustomerDocNumber;
 };
 exports.Order = Order;
 __decorate([
@@ -212,6 +222,95 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => order_extra_entity_1.OrderExtra, (e) => e.order, { cascade: true }),
     __metadata("design:type", Array)
 ], Order.prototype, "extras", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_status',
+        type: 'varchar',
+        length: 20,
+        default: 'none',
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "electronicInvoiceStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_reference',
+        type: 'varchar',
+        length: 64,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceReference", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_number',
+        type: 'varchar',
+        length: 64,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_cufe',
+        type: 'varchar',
+        length: 128,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceCufe", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_public_url',
+        type: 'varchar',
+        length: 500,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoicePublicUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_qr_url',
+        type: 'varchar',
+        length: 500,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceQrUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_issued_at',
+        type: 'timestamp',
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceIssuedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_invoice_error',
+        type: 'varchar',
+        length: 1000,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicInvoiceError", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'invoice_customer_doc_type',
+        type: 'varchar',
+        length: 5,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "invoiceCustomerDocType", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'invoice_customer_doc_number',
+        type: 'varchar',
+        length: 20,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "invoiceCustomerDocNumber", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: true })
 ], Order);
