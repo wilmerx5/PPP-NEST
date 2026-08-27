@@ -141,7 +141,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         msg.waId,
-        `Listo, anoté tu ubicación como domicilio ✅\n_${addr}_${feeLine}`,
+        `Listo, anoté tu ubicación como domicilio ✅\n_${sessionLoc.address || addr}_${feeLine}`,
       );
       if (feeResult.blocked) {
         await this.reply(conv, msg.waId, feeResult.blocked);
@@ -369,10 +369,13 @@ export class WhatsappOrchestratorService {
           const fresh = await this.conversationService.reloadConversation(conv.id);
           Object.assign(conv, fresh);
           session = this.conversationService.getSession(conv);
+          const addQty = this.resolveAddQuantity(session, product, {
+            sourceText: pa.sourceText || text,
+          });
           const added = this.tryAddProductToCart(
             session,
             product,
-            1,
+            addQty,
             cfg,
             undefined,
             step.attributes,
@@ -1757,7 +1760,7 @@ export class WhatsappOrchestratorService {
           const attempt = this.tryAddProductToCart(
             session,
             m.product,
-            1,
+            this.quantityForMultiSegment(m.segment, m.product.name, text),
             cfg,
             undefined,
             attrs || undefined,
@@ -2146,6 +2149,8 @@ export class WhatsappOrchestratorService {
     const address = (session.address || '').trim();
     if (!address) return { session };
 
+    const { geocodeQuery, customerHint } = this.splitAddressCustomerHint(address);
+
     if (cfg.deliveryFeeMode === 'fixed') {
       return {
         session: {
@@ -2172,7 +2177,7 @@ export class WhatsappOrchestratorService {
           : null;
 
     const quote = await this.deliveryRouting.quoteDeliveryFee({
-      customerAddress: address,
+      customerAddress: geocodeQuery,
       customerCoords: lat != null && lng != null ? { lat, lng } : null,
       restaurant: { lat: Number(cfg.restaurantLat), lng: Number(cfg.restaurantLng) },
       tiers: cfg.deliveryFeeTiers || [],
@@ -2252,7 +2257,10 @@ export class WhatsappOrchestratorService {
         deliveryOutOfCoverage: false,
         deliveryLat: quote.customer.lat || lat,
         deliveryLng: quote.customer.lng || lng,
-        address: quote.geocodedAddress || session.address,
+        address: this.mergeGeocodedAddressWithCustomerHint(
+          quote.geocodedAddress || geocodeQuery,
+          customerHint,
+        ),
       },
       notice: `🚚 Domicilio: *$${quote.fee.toLocaleString('es-CO')}*${kmPart}`,
     };
@@ -2380,13 +2388,70 @@ export class WhatsappOrchestratorService {
     productName: string,
     fullText?: string,
   ): number {
-    const fromSeg = this.catalogService.extractQuantityFromMessage(segment || '');
+    const rawSeg = this.rawOrderSegmentForQuantity(segment, fullText);
+    const fromSeg = this.catalogService.extractQuantityFromSegment(rawSeg || '');
     if (fromSeg >= 2) return Math.min(30, fromSeg);
     const near = this.catalogService.extractQuantityNearProduct(
-      fullText || segment || '',
+      fullText || rawSeg || '',
       productName,
     );
     return Math.max(1, Math.min(30, near ?? fromSeg));
+  }
+
+  /** Quita texto de atributos repetido al calcular qty ("3 pollos 3 pollos y 2 limonadas" → "3 pollos"). */
+  private rawOrderSegmentForQuantity(segment: string, fullText?: string): string {
+    let s = (segment || '').trim();
+    const ft = (fullText || '').trim();
+    if (!s || !ft || s === ft) return s;
+    if (s.endsWith(ft) && s.length > ft.length) {
+      s = s.slice(0, -ft.length).trim();
+    }
+    return s;
+  }
+
+  /** Cantidad al agregar tras elegir variante o completar pendingAttribute. */
+  private resolveAddQuantity(
+    session: WhatsappSessionData,
+    product: MenuProduct,
+    opts?: { sourceText?: string; segment?: string },
+  ): number {
+    const pm = session.pendingMultiOrder;
+    const segment =
+      opts?.segment ||
+      pm?.needsAttributes?.find((n) => n.productId === product.id)?.segment ||
+      pm?.confident?.find((n) => n.productId === product.id)?.segment;
+    const sourceText = opts?.sourceText || segment || session.pendingMatch?.query || '';
+
+    if (segment || sourceText) {
+      const qty = this.quantityForMultiSegment(segment || sourceText, product.name, sourceText);
+      if (qty >= 2) return qty;
+      if (segment && this.catalogService.extractQuantityFromSegment(
+        this.rawOrderSegmentForQuantity(segment, sourceText),
+      ) >= 1) {
+        return qty;
+      }
+    }
+
+    if (session.pendingMatch?.quantity && session.pendingMatch.quantity >= 2) {
+      const ids = new Set(session.pendingMatch.candidates?.map((c) => c.id) || []);
+      if (ids.has(product.id)) return Math.min(30, session.pendingMatch.quantity);
+    }
+
+    const hint = session.pendingQuantityHint;
+    if (hint && hint.quantity >= 2) {
+      const pn = this.normalizeForMatch(product.name);
+      const hq = this.normalizeForMatch(hint.query || '');
+      if (hq && (pn.includes(hq) || hq.split(' ').some((t) => t.length >= 4 && pn.includes(t)))) {
+        return Math.min(30, hint.quantity);
+      }
+    }
+
+    if (sourceText) {
+      const fromSeg = this.catalogService.extractQuantityFromSegment(sourceText);
+      if (fromSeg >= 2) return Math.min(30, fromSeg);
+    }
+
+    return 1;
   }
 
   private rememberQuantityHint(
@@ -2519,6 +2584,7 @@ export class WhatsappOrchestratorService {
       attributes: product.attributes || [],
       selected: opts?.selected || [],
       variantIntent,
+      ...(opts?.sourceText ? { sourceText: opts.sourceText.slice(0, 200) } : {}),
     };
   }
 
@@ -4098,7 +4164,14 @@ export class WhatsappOrchestratorService {
           this.catalogService.resolveAttributesFromMessage(picked, text, []),
         );
         if (step.status === 'complete') {
-          const added = this.tryAddProductToCart(session, picked, 1, cfg, undefined, step.attributes);
+          const added = this.tryAddProductToCart(
+            session,
+            picked,
+            this.resolveAddQuantity(session, picked, { sourceText: text }),
+            cfg,
+            undefined,
+            step.attributes,
+          );
           if (added.missingAttributes) {
             session = this.buildPendingAttributeSession(
               session,
@@ -4158,7 +4231,12 @@ export class WhatsappOrchestratorService {
         return true;
       }
 
-      const added = this.tryAddProductToCart(session, picked, 1, cfg);
+      const added = this.tryAddProductToCart(
+        session,
+        picked,
+        this.resolveAddQuantity(session, picked, { sourceText: text }),
+        cfg,
+      );
       if (added.blocked) {
         await this.conversationService.saveSession(conv, session);
         await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
@@ -4237,7 +4315,7 @@ export class WhatsappOrchestratorService {
       const added = this.tryAddProductToCart(
         session,
         product,
-        1,
+        this.resolveAddQuantity(session, product, { sourceText: text }),
         cfg,
         undefined,
         step.attributes,
@@ -5256,6 +5334,47 @@ export class WhatsappOrchestratorService {
       .trim();
   }
 
+  /**
+   * Separa dirección geocodificada de la referencia que dijo el cliente.
+   * Ej. "Calle 10, Bogotá (nuevo sol)" → query + hint "nuevo sol".
+   */
+  private splitAddressCustomerHint(address: string): { geocodeQuery: string; customerHint: string } {
+    const trimmed = (address || '').trim();
+    if (!trimmed) return { geocodeQuery: '', customerHint: '' };
+    const paren = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    if (paren?.[1] && paren[2]) {
+      return { geocodeQuery: paren[1].trim(), customerHint: paren[2].trim() };
+    }
+    return { geocodeQuery: trimmed, customerHint: trimmed };
+  }
+
+  /**
+   * Guarda la dirección validada por Google y, si hace falta, lo que dijo el cliente entre paréntesis.
+   * Ej. cliente: "nuevo sol" → Google: "Cl 6B # 78-20, Bogotá" → "Cl 6B # 78-20, Bogotá (nuevo sol)".
+   */
+  private mergeGeocodedAddressWithCustomerHint(geocoded: string, customerHint: string): string {
+    const geo = (geocoded || '').trim();
+    const hint = (customerHint || '').trim();
+    if (!geo) return hint;
+    if (!hint) return geo;
+
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const ng = norm(geo);
+    const nh = norm(hint);
+    if (ng === nh || ng.includes(nh)) return geo;
+
+    const existingParen = geo.match(/\(([^)]+)\)\s*$/);
+    if (existingParen?.[1] && norm(existingParen[1]) === nh) return geo;
+
+    return `${geo} (${hint.slice(0, 120)})`;
+  }
+
   private isPlausibleDeliveryAddress(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 3) return false;
@@ -5933,7 +6052,7 @@ export class WhatsappOrchestratorService {
       const added = this.tryAddProductToCart(
         session,
         product,
-        1,
+        this.resolveAddQuantity(session, product, { sourceText: text }),
         cfg,
         undefined,
         step.attributes,

@@ -662,7 +662,7 @@ export class WhatsappCatalogService {
     }
 
     if (bestScore >= 25 && bestSeg) {
-      return this.extractQuantityFromMessage(bestSeg);
+      return this.extractQuantityFromSegment(bestSeg);
     }
 
     // Fallback: "N … tokenDelProducto" en el texto completo
@@ -679,18 +679,14 @@ export class WhatsappCatalogService {
     return null;
   }
 
-  /** Extrae cantidad pedida: "5 pollos", "cinco", "x3", "dos sopas". Default 1. */
-  extractQuantityFromMessage(text: string): number {
+  /** Extrae cantidad de UN segmento/ítem ("3 pollos", "2 limonadas"). Sin regla multi-ítem global. */
+  extractQuantityFromSegment(text: string): number {
     const raw = (text || '').trim();
     if (!raw) return 1;
     const q = normalizeText(raw);
 
-    // Pedido multi-cantidad: no devolver el primer número como cantidad global
-    if (this.countQuantityMentions(raw) >= 2) return 1;
-
     // No confundir porciones con cantidad
     if (/\b(medio|media|cuarto|cuarta|1\/2|1\/4)\b/.test(q) && !/\b\d+\s*(pollo|sopas?|bandejas?)/.test(q)) {
-      // "medio pollo" → 1 unidad del SKU medio
       if (!/\b([2-9]|1[0-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(q)) {
         return 1;
       }
@@ -698,20 +694,17 @@ export class WhatsappCatalogService {
 
     const wordMap = this.QTY_WORD_MAP;
 
-    // "x5", "5x", "×5"
     const xMatch = q.match(/(?:^|\s)(?:x|×)\s*(\d{1,2})(?:\s|$)/) || q.match(/(?:^|\s)(\d{1,2})\s*(?:x|×)(?:\s|$)/);
     if (xMatch?.[1]) {
       const n = parseInt(xMatch[1], 10);
       if (n >= 1 && n <= 30) return n;
     }
 
-    // "5 pollos", "5 de pollo", "quiero 5"
     const digitMatch = q.match(
-      /\b(\d{1,2})\s*(?:de\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?)?\b/,
+      /\b(\d{1,2})\s*(?:de\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)?\b/,
     );
     if (digitMatch?.[1]) {
       const n = parseInt(digitMatch[1], 10);
-      // Evitar códigos de menú sueltos ("28") y direcciones
       if (n >= 2 && n <= 30) return n;
       if (n === 1) return 1;
     }
@@ -719,12 +712,11 @@ export class WhatsappCatalogService {
     for (const [word, n] of Object.entries(wordMap)) {
       if (n < 2) continue;
       const re = new RegExp(
-        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)\\b`,
+        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)\\b`,
       );
       if (re.test(q)) return n;
     }
 
-    // "cinco por favor" cerca de comida
     for (const [word, n] of Object.entries(wordMap)) {
       if (n < 2) continue;
       if (
@@ -736,6 +728,17 @@ export class WhatsappCatalogService {
     }
 
     return 1;
+  }
+
+  /** Extrae cantidad pedida: "5 pollos", "cinco", "x3", "dos sopas". Default 1. */
+  extractQuantityFromMessage(text: string): number {
+    const raw = (text || '').trim();
+    if (!raw) return 1;
+
+    // Pedido multi-cantidad en el mensaje entero: no devolver el primer número como qty global
+    if (this.countQuantityMentions(raw) >= 2) return 1;
+
+    return this.extractQuantityFromSegment(raw);
   }
 
   /** Quita la cantidad del texto para buscar el producto ("5 pollos" → "pollos"). */
@@ -1837,37 +1840,47 @@ export class WhatsappCatalogService {
     if (!raw) return [];
 
     const drinkTail = new RegExp(DRINK_ORDER_TOKEN, 'i');
-    // Incluye tamaño: "gaseosa 1.5 litros", "gaseosa de 400 ml"
+    const qtyWord = 'dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce';
+    // Incluye cantidad antes de la bebida: "y 2 limonadas"
     const drinkWithSize = `${DRINK_ORDER_TOKEN}(?:\\s+(?:de\\s+)?[\\w.,]+)*`;
     const pairRe = new RegExp(
-      `^(.+?)\\s+(?:y|con|mas|más|\\+|,)\\s+(?:un|una|unos|unas|el|la|los|las)?\\s*(${drinkWithSize})`,
+      `^(.+?)\\s+(?:y|con|mas|más|\\+|,)\\s+(?:(\\d{1,2}|${qtyWord})\\s+)?(?:un|una|unos|unas|el|la|los|las)?\\s*(${drinkWithSize})`,
       'i',
     );
     let m = raw.match(pairRe);
-    if (m?.[1] && m?.[2]) {
+    if (m?.[1] && m?.[3]) {
       const food = this.cleanOrderSegment(m[1]);
-      const drink = this.cleanOrderSegment(m[2]);
+      const drinkQty = m[2]?.trim();
+      const drink = this.cleanOrderSegment(`${drinkQty ? `${drinkQty} ` : ''}${m[3]}`);
       if (food.length >= 3 && drink.length >= 3) return [food, drink];
     }
 
     const articleDrinkRe = new RegExp(
-      `^(.+?)\\s+(?:un|una|unos|unas)\\s+(${drinkWithSize})`,
+      `^(.+?)\\s+(?:(\\d{1,2}|${qtyWord})\\s+)?(?:un|una|unos|unas)\\s+(${drinkWithSize})`,
       'i',
     );
     m = raw.match(articleDrinkRe);
-    if (m?.[1] && m?.[2]) {
+    if (m?.[1] && m?.[3]) {
       const food = this.cleanOrderSegment(m[1]);
-      const drink = this.cleanOrderSegment(m[2]);
+      const drinkQty = m[2]?.trim();
+      const drink = this.cleanOrderSegment(`${drinkQty ? `${drinkQty} ` : ''}${m[3]}`);
       if (food.length >= 3 && drink.length >= 3 && new RegExp(FOOD_ORDER_TOKEN, 'i').test(food)) {
         return [food, drink];
       }
     }
 
     if (drinkTail.test(raw) && new RegExp(FOOD_ORDER_TOKEN, 'i').test(raw)) {
-      const idx = raw.search(new RegExp(`\\b(?:y|con|mas|más)\\s+(?:un|una|el|la)?\\s*${DRINK_ORDER_TOKEN}`, 'i'));
+      const idx = raw.search(
+        new RegExp(
+          `\\b(?:y|con|mas|más)\\s+(?:(?:\\d{1,2}|${qtyWord})\\s+)?(?:un|una|el|la)?\\s*${DRINK_ORDER_TOKEN}`,
+          'i',
+        ),
+      );
       if (idx > 0) {
         const food = this.cleanOrderSegment(raw.slice(0, idx));
-        const drink = this.cleanOrderSegment(raw.slice(idx).replace(/^(?:y|con|mas|más)\s+/i, ''));
+        const drink = this.cleanOrderSegment(
+          raw.slice(idx).replace(/^(?:y|con|mas|más)\s+/i, ''),
+        );
         if (food.length >= 3 && drink.length >= 3) return [food, drink];
       }
     }
@@ -3341,15 +3354,18 @@ export class WhatsappCatalogService {
       return main ? [main] : [];
     }
     if (this.looksLikeFoodPlusDrinkOrder(text)) {
-      const foodDrink = this.splitFoodPlusDrinkSegments(text);
-      if (foodDrink.length >= 2) {
-        const seen = new Set<string>();
-        return foodDrink.filter((seg) => {
-          const key = normalizeText(seg);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+      // "3 pollos y 2 limonadas" → partir por y/coma (conserva cantidades en cada segmento)
+      if (this.countQuantityMentions(text) < 2) {
+        const foodDrink = this.splitFoodPlusDrinkSegments(text);
+        if (foodDrink.length >= 2) {
+          const seen = new Set<string>();
+          return foodDrink.filter((seg) => {
+            const key = normalizeText(seg);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
       }
     }
 

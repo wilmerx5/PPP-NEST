@@ -35,6 +35,8 @@ export type WhatsappPendingAttribute = {
   selected: { attributeName: string; attributeValue: string }[];
   /** Intención solo/combo detectada al iniciar la elección */
   variantIntent?: 'combo' | 'solo';
+  /** Texto/segmento original del pedido (para cantidad: "3 pollos") */
+  sourceText?: string;
 };
 
 export type WhatsappSessionData = {
