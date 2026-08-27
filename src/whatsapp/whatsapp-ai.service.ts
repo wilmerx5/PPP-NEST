@@ -28,6 +28,8 @@ export class WhatsappAiService {
     customerHint: string;
     /** Más natural al responder dudas (no flujo estricto de pedido) */
     conversational?: boolean;
+    /** Clasificación previa: pedido / nota / duda / etc. */
+    detectedIntent?: string;
   }): Promise<AiTurnResult> {
     const cfg = await this.settingsService.getEffectiveConfig();
     if (!cfg.openaiApiKey) {
@@ -38,11 +40,16 @@ export class WhatsappAiService {
       };
     }
 
+    const intentLine = input.detectedIntent
+      ? `\nIntención detectada por el sistema: ${input.detectedIntent}. Respeta las restricciones de esa intención en customerHint.`
+      : '';
+
     const system = `${cfg.systemPrompt}
 
 ${input.businessRulesBlock}
 
 ${input.customerHint}
+${intentLine}
 
 Resumen de sesión (fuente de verdad del carrito y elecciones pendientes):
 ${input.sessionSummary}

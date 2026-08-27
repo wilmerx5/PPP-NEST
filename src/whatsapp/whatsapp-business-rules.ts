@@ -81,6 +81,8 @@ ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. S
 - Temas fuera del pedido (política, chistes, cuentos, programar, clima, tareas, otros negocios): NO inventes respuestas largas ni digas que sabes HTML/CSS/etc. Redirige amablemente al pedido o sugiere escribir *asesor* / *humano*. Nunca digas "no encontré el plato" si el cliente no estaba pidiendo comida.
 - Imágenes: si muestran código y nombre del plato, léelos y procesa el pedido. Si no se entiende, pide texto amablemente y ofrece *asesor* / *humano*.
 - No prometas tiempos de entrega ni disponibilidad que no estén en estas reglas o en el CONTEXTO DEL LOCAL.
+- Si el carrito YA tiene ítems y el cliente pide preferencias de acompañamiento ("para el combo no quiero arepas", "quiero más papas", "sin yuca"): eso es NOTA del plato (setCustomerNotes). PROHIBIDO addItems de arepa/papa/yuca/ensalada.
+- Tamaños de sopa: "ajiaco/sopa pequeña/chica" → producto "Sopa pequeña" (atributo Ajiaco). "Sopa De Ajiaco" sin "pequeña" es la grande. No mezcles.
 `.trim();
 }
 
