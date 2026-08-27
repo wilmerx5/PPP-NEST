@@ -11,6 +11,7 @@ export type WhatsappMessageIntent =
   | 'price_question'
   | 'payment'
   | 'checkout_data'
+  | 'address'
   | 'human'
   | 'chitchat'
   | 'other';
@@ -28,6 +29,8 @@ export type WhatsappIntentHints = {
   isHumanRequest?: boolean;
   isPaymentMention?: boolean;
   isCheckoutFieldReply?: boolean;
+  /** Solo domicilio / landmark (hospital, conjunto…). */
+  looksLikeAddressOnly?: boolean;
 };
 
 const HUMAN_RE =
@@ -39,8 +42,11 @@ const PAYMENT_RE =
 const CHECKOUT_DATA_RE =
   /\b(me\s+llamo|mi\s+nombre\s+es|soy\s+[a-záéíóúñ]|vivo\s+en|dirección|direccion|carrera|calle|diagonal|transversal|conjunto|urbanizaci[oó]n|apto|apartamento|torre)\b/i;
 
+const ADDRESS_ONLY_RE =
+  /^(?:para|direcci[oó]n|domicilio)\b.+/i;
+
 /**
- * Prioridad: humano > pago > nota de guarnición > precio > menú/duda >
+ * Prioridad: humano > pago > dirección > nota > precio > menú >
  * checkout > charla > pedido > other.
  */
 export function classifyWhatsappCustomerIntent(
@@ -55,12 +61,28 @@ export function classifyWhatsappCustomerIntent(
 
   if (
     hints.cartLength > 0 &&
+    (hints.looksLikeAddressOnly ||
+      (ADDRESS_ONLY_RE.test(text) &&
+        /\b(hospital|cl[ií]nica|conjunto|calle|carrera|barrio|kennedy|urbanizaci[oó]n|apto|torre)\b/i.test(
+          text,
+        )))
+  ) {
+    if (
+      !/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster)\b/i.test(
+        text,
+      )
+    ) {
+      return 'address';
+    }
+  }
+
+  if (
+    hints.cartLength > 0 &&
     (hints.looksLikeSideModificationNote ||
       /\b(no\s+quiero|sin|mas|más)\s+(?:de\s+)?(?:arepas?|papas?|yuca|ensalada|cebolla)\b/i.test(
         text,
       ))
   ) {
-    // "dame 2 arepas" es pedido; "no quiero arepas" con carrito es nota
     if (
       !/\b(dame|ponme|agrega|agregar|pedi|pido|ordenar)\b/i.test(text) ||
       /\bno\s+quiero\b/i.test(text)
@@ -85,7 +107,6 @@ export function classifyWhatsappCustomerIntent(
   }
 
   if (hints.isCheckoutFieldReply || CHECKOUT_DATA_RE.test(text)) {
-    // Si también nombra comida clara, priorizar pedido
     if (
       !/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster)\b/i.test(
         text,
@@ -117,6 +138,11 @@ export function intentAllowsAddItems(intent: WhatsappMessageIntent): boolean {
 /** Texto corto para inyectar en el prompt de la IA. */
 export function formatIntentHintForAi(intent: WhatsappMessageIntent): string {
   switch (intent) {
+    case 'address':
+      return (
+        'INTENCIÓN DETECTADA: dirección de domicilio. ' +
+        'Usa setAddress con el texto del cliente. PROHIBIDO addItems y PROHIBIDO decir que no encontraste un plato.'
+      );
     case 'side_note':
       return (
         'INTENCIÓN DETECTADA: nota de guarnición/preferencia sobre un ítem YA en el carrito. ' +

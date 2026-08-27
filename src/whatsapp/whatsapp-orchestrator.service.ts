@@ -290,6 +290,20 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, session);
     }
 
+    // Con carrito: "para el hospital de kennedy" = domicilio, NO buscar platos
+    if (
+      await this.tryHandleAddressOnlyWhileBuildingCart(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        compound,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
     if (
       await this.tryHandleCartModification(conv, msg.waId, session, text, products, cfg)
     ) {
@@ -1544,6 +1558,7 @@ export class WhatsappOrchestratorService {
       isOffTopicChitchat: this.catalogService.isOffTopicChitchat(text),
       isHumanRequest: /\b(humano|persona|agente|asesor|asesora)\b/i.test(text),
       isPaymentMention: !!findPaymentMethodByText(text, cfg.paymentMethods),
+      looksLikeAddressOnly: this.isAddressOnlyCustomerMessage(originalText || text),
     });
 
     const menuForAi = exploringMenu
@@ -3306,6 +3321,13 @@ export class WhatsappOrchestratorService {
       '_Cuando confirmes el pedido ya *no podrás modificarlo*._';
     if (session?.addressConfirmed && session.cart.length > 0) {
       return `Si ya está tu pedido, escribe *listo* o *confirmar*.\n${lockNote}`;
+    }
+    if (session?.cart.length && !session.address?.trim()) {
+      return (
+        `¿Algo más?\n` +
+        `También puedes mandar la *dirección* (ej. _para el hospital de Kennedy_).\n` +
+        `Si ya está, escribe *listo* o *confirmar*.\n${lockNote}`
+      );
     }
     return `¿Algo más? Si ya está, escribe *listo* o *confirmar*.\n${lockNote}`;
   }
@@ -5370,6 +5392,149 @@ export class WhatsappOrchestratorService {
     return this.withDeliveryAddress(session, this.extractDeliveryTail(text));
   }
 
+  /**
+   * Tras armar carrito, el cliente a menudo manda solo la dirección
+   * ("para el hospital de kennedy") en vez de "listo/confirmar".
+   * No buscar platos ni decir "no encontré".
+   */
+  private async tryHandleAddressOnlyWhileBuildingCart(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    originalText: string,
+    compound: { productText: string; address: string | null },
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (session.cart.length === 0) return false;
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
+      return false;
+    }
+    // No interferir en pasos de pago / notas / confirmación final
+    if (
+      conv.state &&
+      [
+        'awaiting_payment',
+        'awaiting_notes',
+        'awaiting_phone',
+        'awaiting_name',
+        'confirming',
+        'completed',
+        'closed',
+        'human_takeover',
+      ].includes(conv.state)
+    ) {
+      return false;
+    }
+
+    if (!this.isAddressOnlyCustomerMessage(originalText, compound)) return false;
+
+    const addr =
+      compound.address ||
+      this.extractDeliveryTail(originalText) ||
+      (this.isPlausibleDeliveryAddress(originalText.trim())
+        ? originalText.trim()
+        : null);
+    if (!addr || !this.isPlausibleDeliveryAddress(addr)) return false;
+
+    session = this.withDeliveryAddress(
+      { ...session, fulfillmentChosen: true, orderType: 'delivery' },
+      addr,
+    );
+    session = {
+      ...session,
+      addressConfirmed: true,
+      deliveryFeeCalculated: undefined,
+      deliveryDistanceKm: undefined,
+      deliveryOutOfCoverage: false,
+      deliveryLat: null,
+      deliveryLng: null,
+    };
+
+    const feeOk = await this.recalculateDeliveryFee(session, cfg);
+    session = feeOk.session;
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+
+    if (feeOk.blocked) {
+      await this.reply(
+        conv,
+        waId,
+        `Dirección anotada: _${session.address}_\n\n${feeOk.blocked}`,
+      );
+      return true;
+    }
+
+    const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
+    await this.reply(
+      conv,
+      waId,
+      `📍 Domicilio anotado: _${session.address}_${feeLine}\n\n` +
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n` +
+        `¿Algo más o escribimos *listo* / *confirmar*?`,
+    );
+    return true;
+  }
+
+  /** ¿El mensaje es solo domicilio (sin platos nuevos)? */
+  private isAddressOnlyCustomerMessage(
+    text: string,
+    compound?: { productText: string; address: string | null },
+  ): boolean {
+    const raw = (text || '').trim();
+    if (raw.length < 4) return false;
+
+    // Pedido claro de comida → no
+    if (
+      this.catalogService.looksLikeClearlyMultiDishOrder(raw) ||
+      this.catalogService.looksLikeFoodPlusDrinkOrder(raw) ||
+      this.catalogService.looksLikeMultiItemOrderMessage(raw)
+    ) {
+      return false;
+    }
+    if (
+      /\b(quiero|dame|ponme|agrega|pedi|pido|ordenar)\b/i.test(raw) &&
+      /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo)\b/i.test(
+        raw,
+      )
+    ) {
+      return false;
+    }
+
+    // Compound ya separó: sin producto y con dirección
+    if (compound?.address && (!compound.productText || compound.productText.trim().length < 3)) {
+      return true;
+    }
+
+    const addr =
+      this.extractDeliveryTail(raw) ||
+      (this.isPlausibleDeliveryAddress(raw) ? raw : null);
+    if (!addr) return false;
+
+    // Empieza con para/dirección/domicilio + landmark
+    if (
+      /^(?:para|direcci[oó]n|domicilio)\b/i.test(raw) &&
+      this.isPlausibleDeliveryAddress(addr)
+    ) {
+      return true;
+    }
+
+    // Casi todo el mensaje es la dirección
+    const compact = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const cr = compact(raw.replace(/^(?:para|direcci[oó]n|domicilio)\s+/i, ''));
+    const ca = compact(addr);
+    if (ca && (cr === ca || cr.includes(ca) || ca.includes(cr))) {
+      return this.looksLikeAddress(addr) || this.looksLikeLandmarkOrComplexName(addr);
+    }
+
+    return false;
+  }
+
   /** Quita prefijos de entrega ("domicilio a", "a domicilio en") del texto de dirección. */
   private stripDeliveryAddressPreface(raw: string): string {
     let t = (raw || '').trim();
@@ -5681,7 +5846,15 @@ export class WhatsappOrchestratorService {
       if (lastParaIdx > 0) {
         const head = text.slice(0, lastParaIdx).replace(/[.,;:\s]+$/g, '').trim();
         if (head.length >= 3) productText = head;
+      } else if (lastParaIdx === 0) {
+        // Todo el mensaje es domicilio: "para el hospital de kennedy"
+        productText = '';
       }
+    }
+
+    // No devolver el texto completo como "producto" si solo era la dirección
+    if (!productText.trim() && address) {
+      return { productText: '', address };
     }
 
     return { productText: productText || text.trim(), address };

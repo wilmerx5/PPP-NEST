@@ -83,6 +83,7 @@ ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. S
 - No prometas tiempos de entrega ni disponibilidad que no estén en estas reglas o en el CONTEXTO DEL LOCAL.
 - Si el carrito YA tiene ítems y el cliente pide preferencias de acompañamiento ("para el combo no quiero arepas", "quiero más papas", "sin yuca"): eso es NOTA del plato (setCustomerNotes). PROHIBIDO addItems de arepa/papa/yuca/ensalada.
 - Tamaños de sopa: "ajiaco/sopa pequeña/chica" → producto "Sopa pequeña" (atributo Ajiaco). "Sopa De Ajiaco" sin "pequeña" es la grande. No mezcles.
+- Si el carrito tiene ítems y el cliente escribe solo un lugar ("para el hospital de Kennedy", "dirección: conjunto X"): es DOMICILIO (setAddress). NUNCA digas que no encontraste un plato.
 `.trim();
 }
 

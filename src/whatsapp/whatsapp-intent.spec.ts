@@ -61,4 +61,14 @@ describe('classifyWhatsappCustomerIntent', () => {
       }),
     ).toBe('chitchat');
   });
+
+  it('detecta dirección con carrito', () => {
+    const intent = classifyWhatsappCustomerIntent({
+      text: 'para el hospital de kennedy',
+      cartLength: 2,
+      looksLikeAddressOnly: true,
+    });
+    expect(intent).toBe('address');
+    expect(intentAllowsAddItems(intent)).toBe(false);
+  });
 });

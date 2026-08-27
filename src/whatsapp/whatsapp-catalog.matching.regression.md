@@ -21,6 +21,7 @@ Casos que **no** deben volver a fallar. Tras cambios en `whatsapp-catalog.servic
 | `pedi dos sopas de ajiaco pequeñas` | Sopa pequeña (+ attr Ajiaco) x2 | Sopa De Ajiaco (grande) |
 | `sopa de mondongo pequeña` | Sopa De Mondongo Pequeña | Sopa De Mondongo |
 | `sopa de ajiaco grande` / `sopa de ajiaco` | Sopa De Ajiaco | Sopa pequeña |
+| `tres churrascos, dos mojarrras y una limonada` | 3 Churrasco + 2 Mojarra + 1 Limonada | 2 churrascos + limonada (sin mojarra) |
 
 ## Checklist al tocar matching
 
