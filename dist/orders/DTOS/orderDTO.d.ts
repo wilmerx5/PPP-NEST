@@ -32,6 +32,13 @@ export declare class CreateOrderDto {
     extras?: CreateOrderExtraDto[];
     redemptionCode?: string;
     clientRequestId?: string;
+    deliveryLat?: number;
+    deliveryLng?: number;
+}
+export declare class DeliveryQuoteDto {
+    address?: string;
+    lat?: number;
+    lng?: number;
 }
 export declare class UpdateOrderItemAttributeDto {
     attributeName: string;

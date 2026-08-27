@@ -11,6 +11,11 @@ export declare class WhatsappSettings {
     openaiModel: string;
     systemPrompt: string | null;
     defaultDeliveryFee: number;
+    deliveryFeeMode: string;
+    restaurantLat: number | string | null;
+    restaurantLng: number | string | null;
+    deliveryMaxKm: number | string | null;
+    deliveryFeeTiers: unknown | null;
     allowMercadoPago: boolean;
     paymentMethods: unknown | null;
     menuConceptGroups: unknown | null;

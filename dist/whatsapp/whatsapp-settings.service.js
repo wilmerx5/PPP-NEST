@@ -20,6 +20,7 @@ const config_1 = require("@nestjs/config");
 const whatsapp_settings_entity_1 = require("./entities/whatsapp-settings.entity");
 const whatsapp_payment_methods_1 = require("./whatsapp-payment-methods");
 const whatsapp_menu_concepts_1 = require("./whatsapp-menu-concepts");
+const whatsapp_delivery_fee_1 = require("./whatsapp-delivery-fee");
 const DEFAULT_WELCOME = '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
 const DEFAULT_MENU_LINK = 'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
 const DEFAULT_HUMAN_HANDOFF = 'Listo 🙋 Ya te conecté con el equipo — en un momento alguien te escribe por aquí. Cuéntanos con calma qué necesitas.';
@@ -62,7 +63,22 @@ let WhatsappSettingsService = class WhatsappSettingsService {
     async getSettings() {
         let row = await this.settingsRepo.findOne({ where: { id: 1 } });
         if (!row) {
-            row = this.settingsRepo.create({ id: 1, defaultDeliveryFee: 2000 });
+            row = this.settingsRepo.create({
+                id: 1,
+                defaultDeliveryFee: 2000,
+                deliveryFeeMode: 'route_tiers',
+                restaurantLat: 4.6323019,
+                restaurantLng: -74.1471957,
+                deliveryMaxKm: 5.5,
+                deliveryFeeTiers: [
+                    { maxKm: 2.5, fee: 2000 },
+                    { maxKm: 3.5, fee: 5000 },
+                    { maxKm: 5.5, fee: 6000 },
+                ],
+                restaurantAddress: 'Dg. 6b #78b-20, Bogotá',
+                restaurantCity: 'Bogotá',
+                mapsUrl: 'https://www.google.com/maps/place/Dg.+6b+%2378b-20,+Bogot%C3%A1/@4.6323019,-74.1471957,17z',
+            });
             row = await this.settingsRepo.save(row);
         }
         return row;
@@ -78,6 +94,11 @@ let WhatsappSettingsService = class WhatsappSettingsService {
         const enabledFromEnv = envEnabled === 'true' || envEnabled === '1' || envEnabled === 'yes';
         const fee = Number(row.defaultDeliveryFee);
         const brand = (row.restaurantName || '').trim() || 'Pronto Pollo Portal';
+        const deliveryFeeMode = (row.deliveryFeeMode || '').trim() === 'fixed' ? 'fixed' : 'route_tiers';
+        const restaurantLat = Number(row.restaurantLat);
+        const restaurantLng = Number(row.restaurantLng);
+        const deliveryMaxKm = Number(row.deliveryMaxKm);
+        const deliveryFeeTiers = (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(row.deliveryFeeTiers);
         const menuUrl = (row.menuUrl || '').trim() ||
             (this.config.get('WHATSAPP_MENU_URL') || '').trim() ||
             `${(this.config.get('FRONTEND_URL') || 'https://prontopolloportal.com').replace(/\/$/, '')}/menu`;
@@ -107,6 +128,16 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             ...row,
             brandName: brand,
             defaultDeliveryFee: Number.isFinite(fee) && fee > 0 ? fee : 2000,
+            deliveryFeeMode,
+            restaurantLat: Number.isFinite(restaurantLat) ? restaurantLat : 4.6323019,
+            restaurantLng: Number.isFinite(restaurantLng) ? restaurantLng : -74.1471957,
+            deliveryMaxKm: Number.isFinite(deliveryMaxKm) && deliveryMaxKm > 0
+                ? deliveryMaxKm
+                : deliveryFeeTiers[deliveryFeeTiers.length - 1]?.maxKm || 5.5,
+            deliveryFeeTiers,
+            deliveryFeeTiersPrompt: (0, whatsapp_delivery_fee_1.formatDeliveryFeeTiersForPrompt)(deliveryFeeTiers, Number.isFinite(deliveryMaxKm) && deliveryMaxKm > 0
+                ? deliveryMaxKm
+                : deliveryFeeTiers[deliveryFeeTiers.length - 1]?.maxKm || 5.5),
             minOrderAmount: Math.max(0, Number(row.minOrderAmount) || 0),
             maxOrderAmount: Math.max(0, Number(row.maxOrderAmount) || 0),
             maxUnitsPerItem: Math.max(0, Number(row.maxUnitsPerItem) || 0),
@@ -286,6 +317,21 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             ...(dto.openaiModel !== undefined && { openaiModel: dto.openaiModel || 'gpt-4o-mini' }),
             ...(dto.systemPrompt !== undefined && { systemPrompt: strOrNull(dto.systemPrompt) }),
             ...(dto.defaultDeliveryFee !== undefined && { defaultDeliveryFee: dto.defaultDeliveryFee }),
+            ...(dto.deliveryFeeMode !== undefined && {
+                deliveryFeeMode: dto.deliveryFeeMode === 'fixed' ? 'fixed' : 'route_tiers',
+            }),
+            ...(dto.restaurantLat !== undefined && {
+                restaurantLat: dto.restaurantLat == null ? null : Number(dto.restaurantLat),
+            }),
+            ...(dto.restaurantLng !== undefined && {
+                restaurantLng: dto.restaurantLng == null ? null : Number(dto.restaurantLng),
+            }),
+            ...(dto.deliveryMaxKm !== undefined && {
+                deliveryMaxKm: dto.deliveryMaxKm == null ? null : Number(dto.deliveryMaxKm),
+            }),
+            ...(dto.deliveryFeeTiers !== undefined && {
+                deliveryFeeTiers: (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(dto.deliveryFeeTiers),
+            }),
             ...(dto.allowMercadoPago !== undefined && { allowMercadoPago: dto.allowMercadoPago }),
             ...(dto.paymentMethods !== undefined && {
                 paymentMethods: (0, whatsapp_payment_methods_1.sanitizePaymentMethodsInput)(dto.paymentMethods, {
@@ -395,6 +441,17 @@ let WhatsappSettingsService = class WhatsappSettingsService {
                 : m);
             row.paymentMethods = methods;
         }
+        if (dto.deliveryFeeTiers !== undefined) {
+            const tiers = (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(row.deliveryFeeTiers);
+            row.deliveryFeeTiers = tiers;
+            const lastMax = tiers[tiers.length - 1]?.maxKm;
+            if (lastMax != null && Number.isFinite(lastMax)) {
+                const currentMax = Number(row.deliveryMaxKm);
+                if (dto.deliveryMaxKm === undefined || !Number.isFinite(currentMax) || currentMax < lastMax) {
+                    row.deliveryMaxKm = lastMax;
+                }
+            }
+        }
         return this.settingsRepo.save(row);
     }
     maskSettings(row) {
@@ -423,6 +480,13 @@ let WhatsappSettingsService = class WhatsappSettingsService {
             openaiModel: row.openaiModel,
             systemPrompt: row.systemPrompt,
             defaultDeliveryFee: Number(row.defaultDeliveryFee) > 0 ? Number(row.defaultDeliveryFee) : 2000,
+            deliveryFeeMode: (row.deliveryFeeMode || '').trim() === 'fixed' ? 'fixed' : 'route_tiers',
+            restaurantLat: row.restaurantLat != null ? Number(row.restaurantLat) : 4.6323019,
+            restaurantLng: row.restaurantLng != null ? Number(row.restaurantLng) : -74.1471957,
+            deliveryMaxKm: row.deliveryMaxKm != null ? Number(row.deliveryMaxKm) : 5.5,
+            deliveryFeeTiers: (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(Array.isArray(row.deliveryFeeTiers) && row.deliveryFeeTiers.length
+                ? row.deliveryFeeTiers
+                : whatsapp_delivery_fee_1.DEFAULT_DELIVERY_FEE_TIERS),
             allowMercadoPago: !!row.allowMercadoPago,
             paymentMethods: (0, whatsapp_payment_methods_1.resolvePaymentMethods)(row.paymentMethods, {
                 allowMercadoPago: row.allowMercadoPago !== false,

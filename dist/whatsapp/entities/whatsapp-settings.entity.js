@@ -24,6 +24,11 @@ let WhatsappSettings = class WhatsappSettings {
     openaiModel;
     systemPrompt;
     defaultDeliveryFee;
+    deliveryFeeMode;
+    restaurantLat;
+    restaurantLng;
+    deliveryMaxKm;
+    deliveryFeeTiers;
     allowMercadoPago;
     paymentMethods;
     menuConceptGroups;
@@ -124,6 +129,26 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'default_delivery_fee', type: 'int', default: 2000 }),
     __metadata("design:type", Number)
 ], WhatsappSettings.prototype, "defaultDeliveryFee", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'delivery_fee_mode', type: 'varchar', length: 20, default: 'route_tiers' }),
+    __metadata("design:type", String)
+], WhatsappSettings.prototype, "deliveryFeeMode", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'restaurant_lat', type: 'decimal', precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "restaurantLat", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'restaurant_lng', type: 'decimal', precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "restaurantLng", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'delivery_max_km', type: 'decimal', precision: 6, scale: 2, nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "deliveryMaxKm", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'delivery_fee_tiers', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], WhatsappSettings.prototype, "deliveryFeeTiers", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'allow_mercado_pago', type: 'boolean', default: true }),
     __metadata("design:type", Boolean)

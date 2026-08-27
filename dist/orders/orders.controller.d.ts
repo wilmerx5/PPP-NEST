@@ -1,8 +1,10 @@
-import { AddOrderExtraDto, AppendOrderItemsDto, ChangeTableDto, CreateOrderDto, LinkTablesDto, RemoveOrderItemsDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
+import { AddOrderExtraDto, AppendOrderItemsDto, ChangeTableDto, CreateOrderDto, DeliveryQuoteDto, LinkTablesDto, RemoveOrderItemsDto, UpdateOrderExtraDto, UpdateOrderGeneralDto, UpdateOrderItemUnitPriceDto, UpdateOrderItemsDto } from './DTOS/orderDTO';
 import { OrdersService } from './orders.service';
+import { WebDeliveryService } from '../delivery/web-delivery.service';
 export declare class OrdersController {
     private readonly orderService;
-    constructor(orderService: OrdersService);
+    private readonly webDelivery;
+    constructor(orderService: OrdersService, webDelivery: WebDeliveryService);
     getMine(req: any): Promise<{
         orderId: number;
         dailyOrderNumber: number;
@@ -30,6 +32,22 @@ export declare class OrdersController {
         success: boolean;
         orderId: number;
         dailyOrderNumber: number;
+    }>;
+    quoteDelivery(body: DeliveryQuoteDto): Promise<{
+        tiersHint: string;
+        maxKm: number;
+        tiers: import("../whatsapp/whatsapp-delivery-fee").DeliveryFeeTier[];
+        ok: true;
+        fee: number;
+        distanceKm: number;
+        source: "google_directions" | "haversine_estimate" | "fallback_default";
+    } | {
+        tiersHint: string;
+        maxKm: number;
+        tiers: import("../whatsapp/whatsapp-delivery-fee").DeliveryFeeTier[];
+        ok: false;
+        message: string;
+        reason?: string;
     }>;
     getTodayOrders(orderType?: string): Promise<any[]>;
     validateRedemptionPrize(body: {

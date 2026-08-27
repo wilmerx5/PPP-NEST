@@ -30,10 +30,16 @@ let UserAddressesController = class UserAddressesController {
         const address = await this.addressesService.create(user.id, createAddressDto);
         return (0, date_util_1.transformDatesToBogota)(address, ['createdAt', 'updatedAt']);
     }
+    async geocode(body) {
+        return this.addressesService.geocodePreview(body.address);
+    }
+    async reverseGeocode(body) {
+        return this.addressesService.reverseGeocodePreview(body.lat, body.lng);
+    }
     async findAll(req) {
         const user = req.user;
         const addresses = await this.addressesService.findAll(user.id);
-        return addresses.map(addr => (0, date_util_1.transformDatesToBogota)(addr, ['createdAt', 'updatedAt']));
+        return addresses.map((addr) => (0, date_util_1.transformDatesToBogota)(addr, ['createdAt', 'updatedAt']));
     }
     async findOne(req, id) {
         const user = req.user;
@@ -66,6 +72,24 @@ __decorate([
     __metadata("design:paramtypes", [Object, create_address_dto_1.CreateAddressDto]),
     __metadata("design:returntype", Promise)
 ], UserAddressesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('geocode'),
+    (0, swagger_1.ApiOperation)({ summary: 'Vista previa de ubicación en mapa (antes de confirmar el pin)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Coordenadas sugeridas' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_address_dto_1.GeocodeAddressDto]),
+    __metadata("design:returntype", Promise)
+], UserAddressesController.prototype, "geocode", null);
+__decorate([
+    (0, common_1.Post)('reverse-geocode'),
+    (0, swagger_1.ApiOperation)({ summary: 'Dirección legible a partir del pin confirmado' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Texto de dirección según Google Maps' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_address_dto_1.ReverseGeocodeDto]),
+    __metadata("design:returntype", Promise)
+], UserAddressesController.prototype, "reverseGeocode", null);
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Obtener todas las direcciones del usuario autenticado' }),

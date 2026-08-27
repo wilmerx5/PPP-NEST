@@ -4,6 +4,7 @@ export type WhatsappRulesContext = {
     brandName: string;
     businessStatus: BusinessStatus;
     deliveryFee: number;
+    deliveryFeeTiersBlock?: string;
     allowMercadoPago: boolean;
     menuProductCount: number;
     localContextBlock?: string;

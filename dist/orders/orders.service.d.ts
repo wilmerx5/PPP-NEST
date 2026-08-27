@@ -12,6 +12,7 @@ import { MailService } from '../common/mail/mail.service';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
 import { ProductsService } from '../products/products.service';
 import { BusinessService } from '../business/business.service';
+import { WebDeliveryService } from '../delivery/web-delivery.service';
 export declare class OrdersService {
     private readonly orderRepo;
     private readonly itemRepo;
@@ -24,11 +25,12 @@ export declare class OrdersService {
     private readonly pointsService;
     private readonly productsService;
     private readonly businessService;
+    private readonly webDelivery;
     private readonly mailService;
     private readonly circuitBreaker;
     private readonly inflightCreates;
     private static readonly SOFT_DEDUPE_WINDOW_MS;
-    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, businessService: BusinessService, mailService: MailService, circuitBreaker: CircuitBreakerService);
+    constructor(orderRepo: Repository<Order>, itemRepo: Repository<OrderItem>, attrRepo: Repository<OrderItemAttribute>, extraRepo: Repository<OrderExtra>, productRepo: Repository<Product>, userRepo: Repository<User>, gateway: OrdersGateway, dataSource: DataSource, pointsService: PointsService, productsService: ProductsService, businessService: BusinessService, webDelivery: WebDeliveryService, mailService: MailService, circuitBreaker: CircuitBreakerService);
     private buildOrderContentFingerprint;
     private findExistingByClientRequestId;
     private findSoftDuplicate;

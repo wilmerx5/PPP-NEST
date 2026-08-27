@@ -22,16 +22,19 @@ const whatsapp_settings_service_1 = require("./whatsapp-settings.service");
 const whatsapp_conversation_service_1 = require("./whatsapp-conversation.service");
 const whatsapp_orchestrator_service_1 = require("./whatsapp-orchestrator.service");
 const whatsapp_meta_service_1 = require("./whatsapp-meta.service");
+const whatsapp_delivery_routing_service_1 = require("./whatsapp-delivery-routing.service");
 let WhatsappAdminController = class WhatsappAdminController {
     settingsService;
     conversationService;
     orchestrator;
     metaService;
-    constructor(settingsService, conversationService, orchestrator, metaService) {
+    deliveryRouting;
+    constructor(settingsService, conversationService, orchestrator, metaService, deliveryRouting) {
         this.settingsService = settingsService;
         this.conversationService = conversationService;
         this.orchestrator = orchestrator;
         this.metaService = metaService;
+        this.deliveryRouting = deliveryRouting;
     }
     async getSettings() {
         const row = await this.settingsService.getSettings();
@@ -40,6 +43,61 @@ let WhatsappAdminController = class WhatsappAdminController {
     async updateSettings(dto) {
         const row = await this.settingsService.updateSettings(dto);
         return this.settingsService.maskSettings(row);
+    }
+    async testDeliveryQuote(dto) {
+        const cfg = await this.settingsService.getEffectiveConfig();
+        const address = (dto.address || '').trim();
+        const hasCoords = dto.lat != null &&
+            dto.lng != null &&
+            Number.isFinite(Number(dto.lat)) &&
+            Number.isFinite(Number(dto.lng));
+        if (!address && !hasCoords) {
+            return {
+                ok: false,
+                error: 'Envía address y/o lat+lng',
+                hint: 'Ej: { "address": "Calle 80 #100-20, Bogotá" }',
+            };
+        }
+        const apiKeyConfigured = this.deliveryRouting.hasApiKey();
+        const restaurant = {
+            lat: Number(cfg.restaurantLat),
+            lng: Number(cfg.restaurantLng),
+        };
+        if (cfg.deliveryFeeMode === 'fixed') {
+            return {
+                ok: true,
+                mode: 'fixed',
+                apiKeyConfigured,
+                restaurant,
+                fee: cfg.defaultDeliveryFee,
+                message: `Modo tarifa fija: $${cfg.defaultDeliveryFee.toLocaleString('es-CO')}`,
+            };
+        }
+        const quote = await this.deliveryRouting.quoteDeliveryFee({
+            customerAddress: address || `${dto.lat},${dto.lng}`,
+            customerCoords: hasCoords
+                ? { lat: Number(dto.lat), lng: Number(dto.lng) }
+                : null,
+            restaurant,
+            tiers: cfg.deliveryFeeTiers || [],
+            maxKm: Number(cfg.deliveryMaxKm) || 5.5,
+            fallbackFee: cfg.defaultDeliveryFee,
+            regionBias: 'co',
+        });
+        return {
+            ok: quote.ok,
+            mode: cfg.deliveryFeeMode,
+            apiKeyConfigured,
+            restaurant,
+            tiers: cfg.deliveryFeeTiers,
+            maxKm: cfg.deliveryMaxKm,
+            input: {
+                address: address || null,
+                lat: hasCoords ? Number(dto.lat) : null,
+                lng: hasCoords ? Number(dto.lng) : null,
+            },
+            quote,
+        };
     }
     async listConversations() {
         const rows = await this.conversationService.listConversations(80);
@@ -146,6 +204,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], WhatsappAdminController.prototype, "updateSettings", null);
 __decorate([
+    (0, common_1.Post)('delivery/quote-test'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Probar cálculo de domicilio por ruta (Geocoding + Directions)',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [whatsapp_dto_1.TestDeliveryQuoteDto]),
+    __metadata("design:returntype", Promise)
+], WhatsappAdminController.prototype, "testDeliveryQuote", null);
+__decorate([
     (0, common_1.Get)('conversations'),
     (0, swagger_1.ApiOperation)({ summary: 'Listar conversaciones recientes' }),
     __metadata("design:type", Function),
@@ -203,6 +271,7 @@ exports.WhatsappAdminController = WhatsappAdminController = __decorate([
     __metadata("design:paramtypes", [whatsapp_settings_service_1.WhatsappSettingsService,
         whatsapp_conversation_service_1.WhatsappConversationService,
         whatsapp_orchestrator_service_1.WhatsappOrchestratorService,
-        whatsapp_meta_service_1.WhatsappMetaService])
+        whatsapp_meta_service_1.WhatsappMetaService,
+        whatsapp_delivery_routing_service_1.WhatsappDeliveryRoutingService])
 ], WhatsappAdminController);
 //# sourceMappingURL=whatsapp-admin.controller.js.map

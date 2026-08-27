@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const orderDTO_1 = require("./DTOS/orderDTO");
 const orders_service_1 = require("./orders.service");
+const web_delivery_service_1 = require("../delivery/web-delivery.service");
 const auth_decorator_1 = require("../auth/decorators/auth.decorator");
 const valid_roles_interface_1 = require("../auth/interfaces/valid.roles.interface");
 const STAFF = [
@@ -32,8 +33,10 @@ const OPS = [
 ];
 let OrdersController = class OrdersController {
     orderService;
-    constructor(orderService) {
+    webDelivery;
+    constructor(orderService, webDelivery) {
         this.orderService = orderService;
+        this.webDelivery = webDelivery;
     }
     async getMine(req) {
         const email = req.user?.email;
@@ -48,6 +51,22 @@ let OrdersController = class OrdersController {
             createOrderDto.clientRequestId = key.slice(0, 64);
         }
         return this.orderService.create(createOrderDto);
+    }
+    async quoteDelivery(body) {
+        const [quote, config] = await Promise.all([
+            this.webDelivery.quote({
+                address: body.address,
+                lat: body.lat,
+                lng: body.lng,
+            }),
+            this.webDelivery.getConfig(),
+        ]);
+        return {
+            ...quote,
+            tiersHint: config.tiersHint,
+            maxKm: config.maxKm,
+            tiers: config.tiers,
+        };
     }
     async getTodayOrders(orderType) {
         return this.orderService.findOrdersToday(orderType);
@@ -148,6 +167,19 @@ __decorate([
     __metadata("design:paramtypes", [orderDTO_1.CreateOrderDto, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "createOrder", null);
+__decorate([
+    (0, common_1.Post)('delivery-quote'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Cotizar domicilio para pedidos online',
+        description: 'Calcula el costo de envío según distancia por ruta. Hasta 4 km: $4.000; más de 4 km: $6.000 (máx. 6 km).',
+    }),
+    (0, swagger_1.ApiBody)({ type: orderDTO_1.DeliveryQuoteDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Cotización de domicilio' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [orderDTO_1.DeliveryQuoteDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "quoteDelivery", null);
 __decorate([
     (0, common_1.Get)('daily'),
     (0, auth_decorator_1.Auth)(...STAFF),
@@ -431,6 +463,7 @@ __decorate([
 exports.OrdersController = OrdersController = __decorate([
     (0, swagger_1.ApiTags)('Orders'),
     (0, common_1.Controller)('orders'),
-    __metadata("design:paramtypes", [orders_service_1.OrdersService])
+    __metadata("design:paramtypes", [orders_service_1.OrdersService,
+        web_delivery_service_1.WebDeliveryService])
 ], OrdersController);
 //# sourceMappingURL=orders.controller.js.map

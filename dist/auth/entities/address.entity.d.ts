@@ -8,6 +8,9 @@ export declare class Address {
     isDefault: boolean;
     type: 'home' | 'work' | 'other';
     notes?: string;
+    lat?: number | null;
+    lng?: number | null;
+    locationConfirmed: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

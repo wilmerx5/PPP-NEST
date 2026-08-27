@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LinkTablesDto = exports.ChangeTableDto = exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.RemoveOrderItemsDto = exports.AppendOrderItemsDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemUnitPriceDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.CreateOrderDto = exports.CreateOrderExtraDto = exports.CreateOrderItemDto = exports.AlsoDeductVariantDto = exports.CreateOrderItemAttributeDto = void 0;
+exports.LinkTablesDto = exports.ChangeTableDto = exports.UpdateOrderGeneralDto = exports.UpdateOrderExtraDto = exports.AddOrderExtraDto = exports.RemoveOrderItemsDto = exports.AppendOrderItemsDto = exports.UpdateOrderItemsDto = exports.UpdateOrderItemUnitPriceDto = exports.UpdateOrderItemDto = exports.UpdateOrderItemAttributeDto = exports.DeliveryQuoteDto = exports.CreateOrderDto = exports.CreateOrderExtraDto = exports.CreateOrderItemDto = exports.AlsoDeductVariantDto = exports.CreateOrderItemAttributeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -153,6 +153,8 @@ class CreateOrderDto {
     extras;
     redemptionCode;
     clientRequestId;
+    deliveryLat;
+    deliveryLng;
 }
 exports.CreateOrderDto = CreateOrderDto;
 __decorate([
@@ -263,6 +265,57 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "clientRequestId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Latitud del domicilio (pedidos online con pin confirmado).',
+        required: false,
+        example: 4.6323,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "deliveryLat", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Longitud del domicilio (pedidos online con pin confirmado).',
+        required: false,
+        example: -74.1472,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "deliveryLng", void 0);
+class DeliveryQuoteDto {
+    address;
+    lat;
+    lng;
+}
+exports.DeliveryQuoteDto = DeliveryQuoteDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Texto de la dirección (fallback si no hay pin).',
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], DeliveryQuoteDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Latitud del pin confirmado.', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], DeliveryQuoteDto.prototype, "lat", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Longitud del pin confirmado.', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], DeliveryQuoteDto.prototype, "lng", void 0);
 class UpdateOrderItemAttributeDto {
     attributeName;
     attributeValue;

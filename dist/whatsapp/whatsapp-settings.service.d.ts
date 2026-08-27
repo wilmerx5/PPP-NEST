@@ -45,6 +45,12 @@ export declare class WhatsappSettingsService {
     getEffectiveConfig(): Promise<{
         brandName: string;
         defaultDeliveryFee: number;
+        deliveryFeeMode: string;
+        restaurantLat: number;
+        restaurantLng: number;
+        deliveryMaxKm: number;
+        deliveryFeeTiers: import("./whatsapp-delivery-fee").DeliveryFeeTier[];
+        deliveryFeeTiersPrompt: string;
         minOrderAmount: number;
         maxOrderAmount: number;
         maxUnitsPerItem: number;
@@ -137,6 +143,11 @@ export declare class WhatsappSettingsService {
         openaiModel: string;
         systemPrompt: string | null;
         defaultDeliveryFee: number;
+        deliveryFeeMode: string;
+        restaurantLat: number;
+        restaurantLng: number;
+        deliveryMaxKm: number;
+        deliveryFeeTiers: import("./whatsapp-delivery-fee").DeliveryFeeTier[];
         allowMercadoPago: boolean;
         paymentMethods: WhatsappPaymentMethodConfig[];
         menuConceptGroups: MenuConceptGroup[];

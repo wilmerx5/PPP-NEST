@@ -1,15 +1,17 @@
 import { Request, Response } from 'express';
-import { SendWhatsappMessageDto, TakeoverWhatsappConversationDto, UpdateWhatsappSettingsDto } from './dto/whatsapp.dto';
+import { SendWhatsappMessageDto, TakeoverWhatsappConversationDto, TestDeliveryQuoteDto, UpdateWhatsappSettingsDto } from './dto/whatsapp.dto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
+import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
 export declare class WhatsappAdminController {
     private readonly settingsService;
     private readonly conversationService;
     private readonly orchestrator;
     private readonly metaService;
-    constructor(settingsService: WhatsappSettingsService, conversationService: WhatsappConversationService, orchestrator: WhatsappOrchestratorService, metaService: WhatsappMetaService);
+    private readonly deliveryRouting;
+    constructor(settingsService: WhatsappSettingsService, conversationService: WhatsappConversationService, orchestrator: WhatsappOrchestratorService, metaService: WhatsappMetaService, deliveryRouting: WhatsappDeliveryRoutingService);
     getSettings(): Promise<{
         id: number;
         enabled: boolean;
@@ -27,6 +29,11 @@ export declare class WhatsappAdminController {
         openaiModel: string;
         systemPrompt: string | null;
         defaultDeliveryFee: number;
+        deliveryFeeMode: string;
+        restaurantLat: number;
+        restaurantLng: number;
+        deliveryMaxKm: number;
+        deliveryFeeTiers: import("./whatsapp-delivery-fee").DeliveryFeeTier[];
         allowMercadoPago: boolean;
         paymentMethods: import("./whatsapp-payment-methods").WhatsappPaymentMethodConfig[];
         menuConceptGroups: import("./whatsapp-menu-concepts").MenuConceptGroup[];
@@ -96,6 +103,11 @@ export declare class WhatsappAdminController {
         openaiModel: string;
         systemPrompt: string | null;
         defaultDeliveryFee: number;
+        deliveryFeeMode: string;
+        restaurantLat: number;
+        restaurantLng: number;
+        deliveryMaxKm: number;
+        deliveryFeeTiers: import("./whatsapp-delivery-fee").DeliveryFeeTier[];
         allowMercadoPago: boolean;
         paymentMethods: import("./whatsapp-payment-methods").WhatsappPaymentMethodConfig[];
         menuConceptGroups: import("./whatsapp-menu-concepts").MenuConceptGroup[];
@@ -147,6 +159,56 @@ export declare class WhatsappAdminController {
         aiTemperature: number;
         updatedAt: Date;
         webhookUrlHint: string;
+    }>;
+    testDeliveryQuote(dto: TestDeliveryQuoteDto): Promise<{
+        ok: boolean;
+        error: string;
+        hint: string;
+        mode?: undefined;
+        apiKeyConfigured?: undefined;
+        restaurant?: undefined;
+        fee?: undefined;
+        message?: undefined;
+        tiers?: undefined;
+        maxKm?: undefined;
+        input?: undefined;
+        quote?: undefined;
+    } | {
+        ok: boolean;
+        mode: string;
+        apiKeyConfigured: boolean;
+        restaurant: {
+            lat: number;
+            lng: number;
+        };
+        fee: number;
+        message: string;
+        error?: undefined;
+        hint?: undefined;
+        tiers?: undefined;
+        maxKm?: undefined;
+        input?: undefined;
+        quote?: undefined;
+    } | {
+        ok: boolean;
+        mode: string;
+        apiKeyConfigured: boolean;
+        restaurant: {
+            lat: number;
+            lng: number;
+        };
+        tiers: import("./whatsapp-delivery-fee").DeliveryFeeTier[];
+        maxKm: number;
+        input: {
+            address: string | null;
+            lat: number | null;
+            lng: number | null;
+        };
+        quote: import("./whatsapp-delivery-routing.service").DeliveryRouteQuote;
+        error?: undefined;
+        hint?: undefined;
+        fee?: undefined;
+        message?: undefined;
     }>;
     listConversations(): Promise<{
         id: number;

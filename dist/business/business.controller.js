@@ -21,6 +21,9 @@ let BusinessController = class BusinessController {
     getStatus() {
         return this.businessService.getStatus();
     }
+    getWebDeliveryConfig() {
+        return this.businessService.getWebDeliveryConfig();
+    }
 };
 exports.BusinessController = BusinessController;
 __decorate([
@@ -33,6 +36,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], BusinessController.prototype, "getStatus", null);
+__decorate([
+    (0, common_1.Get)('web-delivery-config'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Tarifas de domicilio web (público)',
+        description: 'Tramos configurados en admin para mostrar en checkout.',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], BusinessController.prototype, "getWebDeliveryConfig", null);
 exports.BusinessController = BusinessController = __decorate([
     (0, swagger_1.ApiTags)('Business'),
     (0, common_1.Controller)('business'),

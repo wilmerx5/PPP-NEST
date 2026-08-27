@@ -44,6 +44,8 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
         await this.ensureClientRequestIdColumn();
         await this.ensureProductScheduleSchema();
         await this.ensureWhatsappSchema();
+        await this.ensureUserAddressLocationColumns();
+        await this.ensureWebDeliverySettingsColumns();
         if (!this.isEnabled()) {
             this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
             return;
@@ -132,6 +134,73 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             const message = err instanceof Error ? err.message : String(err);
             this.logger.error(`Failed to ensure client_request_id: ${message}`);
             throw err;
+        }
+    }
+    async ensureUserAddressLocationColumns() {
+        try {
+            const table = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_user_addresses'`);
+            if (Number(table?.[0]?.c) === 0)
+                return;
+            const cols = [
+                { name: 'lat', ddl: 'DECIMAL(10,7) NULL' },
+                { name: 'lng', ddl: 'DECIMAL(10,7) NULL' },
+                {
+                    name: 'location_confirmed',
+                    ddl: 'TINYINT(1) NOT NULL DEFAULT 0',
+                },
+            ];
+            for (const col of cols) {
+                const rows = await this.dataSource.query(`SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_user_addresses'
+             AND COLUMN_NAME = ?`, [col.name]);
+                if (Number(rows?.[0]?.c) > 0)
+                    continue;
+                this.logger.warn(`Missing ppp_user_addresses.${col.name} — adding now`);
+                await this.dataSource.query(`ALTER TABLE ppp_user_addresses ADD COLUMN ${col.name} ${col.ddl}`);
+            }
+        }
+        catch (err) {
+            if (this.isIdempotentError(err))
+                return;
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to ensure user address location columns: ${message}`);
+        }
+    }
+    async ensureWebDeliverySettingsColumns() {
+        try {
+            const table = await this.dataSource.query(`SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_restaurant_settings'`);
+            if (Number(table?.[0]?.c) === 0)
+                return;
+            const cols = [
+                { name: 'web_delivery_default_fee', ddl: 'INT NOT NULL DEFAULT 4000' },
+                { name: 'web_delivery_max_km', ddl: 'DECIMAL(6,2) NULL DEFAULT 6.00' },
+                { name: 'web_delivery_fee_tiers', ddl: 'JSON NULL' },
+            ];
+            for (const col of cols) {
+                const rows = await this.dataSource.query(`SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_restaurant_settings'
+             AND COLUMN_NAME = ?`, [col.name]);
+                if (Number(rows?.[0]?.c) > 0)
+                    continue;
+                this.logger.warn(`Missing ppp_restaurant_settings.${col.name} — adding now`);
+                await this.dataSource.query(`ALTER TABLE ppp_restaurant_settings ADD COLUMN ${col.name} ${col.ddl}`);
+            }
+        }
+        catch (err) {
+            if (this.isIdempotentError(err))
+                return;
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to ensure web delivery settings columns: ${message}`);
         }
     }
     async ensureProductScheduleSchema() {
@@ -322,6 +391,11 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             { name: 'menu_link_message', ddl: 'TEXT NULL' },
             { name: 'order_success_message', ddl: 'TEXT NULL' },
             { name: 'ai_temperature', ddl: 'DECIMAL(3,2) NULL DEFAULT 0.20' },
+            { name: 'delivery_fee_mode', ddl: "VARCHAR(20) NOT NULL DEFAULT 'route_tiers'" },
+            { name: 'restaurant_lat', ddl: 'DECIMAL(10, 7) NULL' },
+            { name: 'restaurant_lng', ddl: 'DECIMAL(10, 7) NULL' },
+            { name: 'delivery_max_km', ddl: 'DECIMAL(6, 2) NULL DEFAULT 5.50' },
+            { name: 'delivery_fee_tiers', ddl: 'JSON NULL' },
         ];
         for (const col of cols) {
             const exists = await this.dataSource.query(`SELECT COUNT(*) AS c
@@ -334,6 +408,29 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
             await this.dataSource.query(`ALTER TABLE ppp_whatsapp_settings ADD COLUMN ${col.name} ${col.ddl}`);
             this.logger.log(`✓ WhatsApp settings column added: ${col.name}`);
         }
+        await this.dataSource.query(`
+      UPDATE ppp_whatsapp_settings
+      SET
+        restaurant_lat = COALESCE(restaurant_lat, 4.6323019),
+        restaurant_lng = COALESCE(restaurant_lng, -74.1471957),
+        restaurant_address = COALESCE(NULLIF(TRIM(restaurant_address), ''), 'Dg. 6b #78b-20, Bogotá'),
+        restaurant_city = COALESCE(NULLIF(TRIM(restaurant_city), ''), 'Bogotá'),
+        maps_url = COALESCE(
+          NULLIF(TRIM(maps_url), ''),
+          'https://www.google.com/maps/place/Dg.+6b+%2378b-20,+Bogot%C3%A1/@4.6323019,-74.1471957,17z'
+        ),
+        delivery_fee_mode = COALESCE(NULLIF(TRIM(delivery_fee_mode), ''), 'route_tiers'),
+        delivery_max_km = COALESCE(delivery_max_km, 5.50),
+        delivery_fee_tiers = COALESCE(
+          delivery_fee_tiers,
+          JSON_ARRAY(
+            JSON_OBJECT('maxKm', 2.5, 'fee', 2000),
+            JSON_OBJECT('maxKm', 3.5, 'fee', 5000),
+            JSON_OBJECT('maxKm', 5.5, 'fee', 6000)
+          )
+        )
+      WHERE id = 1
+    `);
     }
     async ensureWhatsappMessageColumns() {
         const table = await this.dataSource.query(`SELECT COUNT(*) AS c

@@ -183,6 +183,7 @@ export class WhatsappOrchestratorService {
 
     // Glosario local: typos / aliases antes de matching e IA
     text = applyLocalGlossary(text);
+    const originalText = text;
 
     const lower = text.toLowerCase();
 
@@ -224,7 +225,6 @@ export class WhatsappOrchestratorService {
 
     let session = this.conversationService.getSession(conv);
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
-    const originalText = text;
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
     if (compound.phone) {

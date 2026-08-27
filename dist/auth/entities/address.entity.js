@@ -22,6 +22,9 @@ let Address = class Address {
     isDefault;
     type;
     notes;
+    lat;
+    lng;
+    locationConfirmed;
     createdAt;
     updatedAt;
 };
@@ -98,6 +101,35 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Address.prototype, "notes", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Latitud confirmada en el mapa.',
+        example: 4.6323,
+        required: false,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Object)
+], Address.prototype, "lat", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Longitud confirmada en el mapa.',
+        example: -74.1472,
+        required: false,
+        nullable: true,
+    }),
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Object)
+], Address.prototype, "lng", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'El usuario ya confirmó el pin en el mapa (una sola vez).',
+        example: false,
+        default: false,
+    }),
+    (0, typeorm_1.Column)({ name: 'location_confirmed', type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], Address.prototype, "locationConfirmed", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Fecha de creación.',

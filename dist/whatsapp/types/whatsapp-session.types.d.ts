@@ -36,6 +36,7 @@ export type WhatsappPendingAttribute = {
         attributeValue: string;
     }[];
     variantIntent?: 'combo' | 'solo';
+    sourceText?: string;
 };
 export type WhatsappSessionData = {
     cart: WhatsappCartItem[];
@@ -95,6 +96,11 @@ export type WhatsappSessionData = {
     };
     fulfillmentChosen?: boolean;
     addressConfirmed?: boolean;
+    deliveryLat?: number | null;
+    deliveryLng?: number | null;
+    deliveryDistanceKm?: number | null;
+    deliveryFeeCalculated?: number | null;
+    deliveryOutOfCoverage?: boolean;
     phoneConfirmed?: boolean;
     contactPhone?: string | null;
     awaitingField?: 'name' | 'address' | 'payment' | 'notes' | 'confirm' | 'phone' | 'fulfillment';

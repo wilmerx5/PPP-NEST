@@ -3,6 +3,13 @@ import { RestaurantSettings, type DayHours } from './entities/restaurant-setting
 import { HolidayClosure } from './entities/holiday-closure.entity';
 import { CreateHolidayClosureDto, UpdateRestaurantSettingsDto } from './dto/business.dto';
 import { type ProductScheduleLike, type ZonedClock } from './business-clock';
+import { type DeliveryFeeTier } from '../whatsapp/whatsapp-delivery-fee';
+export type WebDeliveryConfig = {
+    defaultFee: number;
+    maxKm: number;
+    tiers: DeliveryFeeTier[];
+    tiersHint: string;
+};
 export type BusinessStatus = {
     timezone: string;
     isOpen: boolean;
@@ -34,6 +41,7 @@ export declare class BusinessService {
     private parseJsonField;
     private buildWeeklyHours;
     private normalizeSettings;
+    getWebDeliveryConfig(): Promise<WebDeliveryConfig>;
     getSettings(): Promise<RestaurantSettings>;
     updateSettings(dto: UpdateRestaurantSettingsDto): Promise<RestaurantSettings>;
     listClosures(from?: string, to?: string): Promise<HolidayClosure[]>;

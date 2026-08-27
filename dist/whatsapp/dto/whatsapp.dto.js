@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TakeoverWhatsappConversationDto = exports.SendWhatsappMessageDto = exports.UpdateWhatsappSettingsDto = exports.MenuConceptGroupDto = exports.WhatsappPaymentMethodDto = void 0;
+exports.TestDeliveryQuoteDto = exports.TakeoverWhatsappConversationDto = exports.SendWhatsappMessageDto = exports.UpdateWhatsappSettingsDto = exports.DeliveryFeeTierDto = exports.MenuConceptGroupDto = exports.WhatsappPaymentMethodDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class WhatsappPaymentMethodDto {
@@ -99,6 +99,23 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], MenuConceptGroupDto.prototype, "enabled", void 0);
+class DeliveryFeeTierDto {
+    maxKm;
+    fee;
+}
+exports.DeliveryFeeTierDto = DeliveryFeeTierDto;
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0.1),
+    __metadata("design:type", Number)
+], DeliveryFeeTierDto.prototype, "maxKm", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], DeliveryFeeTierDto.prototype, "fee", void 0);
 class UpdateWhatsappSettingsDto {
     enabled;
     displayPhone;
@@ -111,6 +128,11 @@ class UpdateWhatsappSettingsDto {
     openaiModel;
     systemPrompt;
     defaultDeliveryFee;
+    deliveryFeeMode;
+    restaurantLat;
+    restaurantLng;
+    deliveryMaxKm;
+    deliveryFeeTiers;
     allowMercadoPago;
     paymentMethods;
     menuConceptGroups;
@@ -224,6 +246,37 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateWhatsappSettingsDto.prototype, "defaultDeliveryFee", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['fixed', 'route_tiers']),
+    __metadata("design:type", String)
+], UpdateWhatsappSettingsDto.prototype, "deliveryFeeMode", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Object)
+], UpdateWhatsappSettingsDto.prototype, "restaurantLat", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Object)
+], UpdateWhatsappSettingsDto.prototype, "restaurantLng", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Object)
+], UpdateWhatsappSettingsDto.prototype, "deliveryMaxKm", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => DeliveryFeeTierDto),
+    __metadata("design:type", Array)
+], UpdateWhatsappSettingsDto.prototype, "deliveryFeeTiers", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
@@ -531,4 +584,28 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], TakeoverWhatsappConversationDto.prototype, "takeover", void 0);
+class TestDeliveryQuoteDto {
+    address;
+    lat;
+    lng;
+}
+exports.TestDeliveryQuoteDto = TestDeliveryQuoteDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], TestDeliveryQuoteDto.prototype, "address", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], TestDeliveryQuoteDto.prototype, "lat", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], TestDeliveryQuoteDto.prototype, "lng", void 0);
 //# sourceMappingURL=whatsapp.dto.js.map

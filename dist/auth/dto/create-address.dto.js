@@ -9,15 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateAddressDto = void 0;
+exports.ReverseGeocodeDto = exports.GeocodeAddressDto = exports.CreateAddressDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateAddressDto {
     label;
     address;
     isDefault;
     type;
     notes;
+    lat;
+    lng;
+    locationConfirmed;
 }
 exports.CreateAddressDto = CreateAddressDto;
 __decorate([
@@ -70,4 +74,74 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateAddressDto.prototype, "notes", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Latitud del pin confirmado en el mapa.',
+        example: 4.6323,
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(-90),
+    (0, class_validator_1.Max)(90),
+    __metadata("design:type", Number)
+], CreateAddressDto.prototype, "lat", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Longitud del pin confirmado en el mapa.',
+        example: -74.1472,
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(-180),
+    (0, class_validator_1.Max)(180),
+    __metadata("design:type", Number)
+], CreateAddressDto.prototype, "lng", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Si el usuario ya confirmó la ubicación en el mapa.',
+        example: true,
+        required: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateAddressDto.prototype, "locationConfirmed", void 0);
+class GeocodeAddressDto {
+    address;
+}
+exports.GeocodeAddressDto = GeocodeAddressDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Texto de dirección a ubicar en el mapa.',
+        example: 'Calle 123 #45-67, Kennedy, Bogotá',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], GeocodeAddressDto.prototype, "address", void 0);
+class ReverseGeocodeDto {
+    lat;
+    lng;
+}
+exports.ReverseGeocodeDto = ReverseGeocodeDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Latitud del pin confirmado.', example: 4.6323 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(-90),
+    (0, class_validator_1.Max)(90),
+    __metadata("design:type", Number)
+], ReverseGeocodeDto.prototype, "lat", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Longitud del pin confirmado.', example: -74.1472 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(-180),
+    (0, class_validator_1.Max)(180),
+    __metadata("design:type", Number)
+], ReverseGeocodeDto.prototype, "lng", void 0);
 //# sourceMappingURL=create-address.dto.js.map

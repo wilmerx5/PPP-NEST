@@ -14,6 +14,10 @@ export declare class MenuConceptGroupDto {
     productKeywords?: string[];
     enabled?: boolean;
 }
+export declare class DeliveryFeeTierDto {
+    maxKm: number;
+    fee: number;
+}
 export declare class UpdateWhatsappSettingsDto {
     enabled?: boolean;
     displayPhone?: string;
@@ -26,6 +30,11 @@ export declare class UpdateWhatsappSettingsDto {
     openaiModel?: string;
     systemPrompt?: string;
     defaultDeliveryFee?: number;
+    deliveryFeeMode?: 'fixed' | 'route_tiers';
+    restaurantLat?: number | null;
+    restaurantLng?: number | null;
+    deliveryMaxKm?: number | null;
+    deliveryFeeTiers?: DeliveryFeeTierDto[];
     allowMercadoPago?: boolean;
     paymentMethods?: WhatsappPaymentMethodDto[];
     menuConceptGroups?: MenuConceptGroupDto[];
@@ -81,4 +90,9 @@ export declare class SendWhatsappMessageDto {
 }
 export declare class TakeoverWhatsappConversationDto {
     takeover?: boolean;
+}
+export declare class TestDeliveryQuoteDto {
+    address?: string;
+    lat?: number;
+    lng?: number;
 }

@@ -18,6 +18,7 @@ export declare class WhatsappAiService {
         recentMessages: string[];
         customerHint: string;
         conversational?: boolean;
+        detectedIntent?: string;
     }): Promise<AiTurnResult>;
     transcribeAudio(buffer: Buffer, mimeType: string): Promise<string | null>;
     analyzeOrderImage(input: {

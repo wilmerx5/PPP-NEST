@@ -4,6 +4,52 @@ exports.DEFAULT_MENU_CONCEPTS = void 0;
 exports.resolveMenuConceptGroups = resolveMenuConceptGroups;
 exports.findByMenuConcept = findByMenuConcept;
 exports.buildMenuConceptsPromptBlock = buildMenuConceptsPromptBlock;
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function hasWholeWordOrStem(haystack, needle) {
+    const h = normalizeText(haystack);
+    const n = normalizeText(needle);
+    if (!h || !n || n.length < 2)
+        return false;
+    if (h === n)
+        return true;
+    const nStem = stemLoose(n);
+    if (n.length <= 4) {
+        const re = new RegExp(`(?:^|\\s)${escapeRegExp(n)}(?:\\s|$)`);
+        const reStem = nStem !== n && nStem.length >= 3
+            ? new RegExp(`(?:^|\\s)${escapeRegExp(nStem)}(?:\\s|$)`)
+            : null;
+        return re.test(h) || (!!reStem && reStem.test(h));
+    }
+    if (new RegExp(`(?:^|\\s)${escapeRegExp(n)}(?:\\s|$)`).test(h))
+        return true;
+    if (nStem.length >= 5 &&
+        new RegExp(`(?:^|\\s)${escapeRegExp(nStem)}(?:\\s|$)`).test(h)) {
+        return true;
+    }
+    if (n.length >= 6 && h.includes(n))
+        return true;
+    return false;
+}
+function tokenMatchesTrigger(token, trigger) {
+    const t = normalizeText(token);
+    const tr = normalizeText(trigger);
+    if (!t || !tr)
+        return false;
+    if (t === tr)
+        return true;
+    const ts = stemLoose(t);
+    const trs = stemLoose(tr);
+    if (ts === trs)
+        return true;
+    if (tr.length <= 4 || t.length <= 4)
+        return false;
+    const ratio = Math.min(t.length, tr.length) / Math.max(t.length, tr.length);
+    if (ratio < 0.75)
+        return false;
+    return t.includes(tr) || tr.includes(t) || ts.includes(trs) || trs.includes(ts);
+}
 exports.DEFAULT_MENU_CONCEPTS = [
     {
         id: 'carne',
@@ -90,6 +136,14 @@ function normalizeText(s) {
 }
 function stemLoose(s) {
     const n = normalizeText(s);
+    if (/(antes|entes|iones|unes|artes|ueves|iernes|abados|omingos)$/.test(n)) {
+        if (n.length > 3 && n.endsWith('s') && !n.endsWith('es'))
+            return n.slice(0, -1);
+        if (n.length > 4 && n.endsWith('es') && /(antes|entes|iones)$/.test(n)) {
+            return n.slice(0, -1);
+        }
+        return n;
+    }
     if (n.length > 3 && n.endsWith('s') && !n.endsWith('es'))
         return n.slice(0, -1);
     if (n.length > 4 && n.endsWith('es'))
@@ -124,19 +178,12 @@ function getMatchedConceptTriggers(q, concept) {
         const t = normalizeText(trigger);
         if (!t || t.length < 3)
             continue;
-        if (q === t || q.includes(t) || (q.length >= 4 && t.includes(q))) {
+        if (q === t || hasWholeWordOrStem(q, t)) {
             matched.push(t);
             continue;
         }
         for (const token of q.split(' ').filter((x) => x.length >= 3)) {
-            const ts = stemLoose(token);
-            const tst = stemLoose(t);
-            if (token === t ||
-                ts === tst ||
-                t.includes(token) ||
-                token.includes(t) ||
-                tst.includes(ts) ||
-                ts.includes(tst)) {
+            if (tokenMatchesTrigger(token, t)) {
                 matched.push(t);
             }
         }
@@ -144,12 +191,12 @@ function getMatchedConceptTriggers(q, concept) {
     return [...new Set(matched)];
 }
 function filterProductsByConceptTriggers(products, triggers) {
-    const needles = [...new Set(triggers.map((t) => stemLoose(t)).filter((t) => t.length >= 3))];
+    const needles = [...new Set(triggers.map((t) => normalizeText(t)).filter((t) => t.length >= 3))];
     if (!needles.length)
         return products;
     return products.filter((p) => {
         const hay = normalizeText(`${p.name} ${p.description || ''}`);
-        return needles.some((n) => hay.includes(n));
+        return needles.some((n) => hasWholeWordOrStem(hay, n));
     });
 }
 function buildConceptListLabel(concept, narrowTriggers) {
@@ -201,10 +248,10 @@ function queryMatchesConcept(q, concept) {
         const t = normalizeText(trigger);
         if (!t || t.length < 3)
             continue;
-        if (q === t || q.includes(t) || (q.length >= 4 && t.includes(q)))
+        if (q === t || hasWholeWordOrStem(q, t))
             return true;
         for (const token of q.split(' ').filter((x) => x.length >= 3)) {
-            if (token === t || t.includes(token) || token.includes(t))
+            if (tokenMatchesTrigger(token, t))
                 return true;
         }
     }
@@ -213,7 +260,8 @@ function queryMatchesConcept(q, concept) {
 function productMatchesConcept(p, concept) {
     const hay = normalizeText(`${p.name} ${p.description || ''} ${p.categoryName || ''}`);
     for (const kw of concept.productKeywords) {
-        if (kw.length >= 3 && hay.includes(kw))
+        const k = normalizeText(kw);
+        if (k.length >= 3 && hasWholeWordOrStem(hay, k))
             return true;
     }
     return false;
@@ -268,7 +316,7 @@ function findByMenuConcept(query, products, groups) {
         let score = 70;
         if (concept.triggers.some((t) => q === normalizeText(t)))
             score = 100;
-        else if (concept.triggers.some((t) => q.includes(normalizeText(t))))
+        else if (concept.triggers.some((t) => hasWholeWordOrStem(q, normalizeText(t))))
             score = 85;
         if (narrowTriggers.length)
             score += 8;

@@ -32,6 +32,7 @@ const mail_service_1 = require("../common/mail/mail.service");
 const circuit_breaker_service_1 = require("../common/circuit-breaker/circuit-breaker.service");
 const products_service_1 = require("../products/products.service");
 const business_service_1 = require("../business/business.service");
+const web_delivery_service_1 = require("../delivery/web-delivery.service");
 let OrdersService = class OrdersService {
     static { OrdersService_1 = this; }
     orderRepo;
@@ -45,11 +46,12 @@ let OrdersService = class OrdersService {
     pointsService;
     productsService;
     businessService;
+    webDelivery;
     mailService;
     circuitBreaker;
     inflightCreates = new Map();
     static SOFT_DEDUPE_WINDOW_MS = 25_000;
-    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, productsService, businessService, mailService, circuitBreaker) {
+    constructor(orderRepo, itemRepo, attrRepo, extraRepo, productRepo, userRepo, gateway, dataSource, pointsService, productsService, businessService, webDelivery, mailService, circuitBreaker) {
         this.orderRepo = orderRepo;
         this.itemRepo = itemRepo;
         this.attrRepo = attrRepo;
@@ -61,6 +63,7 @@ let OrdersService = class OrdersService {
         this.pointsService = pointsService;
         this.productsService = productsService;
         this.businessService = businessService;
+        this.webDelivery = webDelivery;
         this.mailService = mailService;
         this.circuitBreaker = circuitBreaker;
     }
@@ -456,7 +459,21 @@ let OrdersService = class OrdersService {
             if (deliveryFee == null) {
                 throw new common_1.BadRequestException('El domicilio es obligatorio para pedidos a domicilio');
             }
-            finalDeliveryFee = deliveryFee;
+            if (source === 'online') {
+                try {
+                    finalDeliveryFee = await this.webDelivery.assertOnlineDeliveryFee(deliveryFee, {
+                        address,
+                        lat: createOrderDto.deliveryLat,
+                        lng: createOrderDto.deliveryLng,
+                    });
+                }
+                catch (e) {
+                    throw new common_1.BadRequestException(e.message || 'Costo de envío inválido');
+                }
+            }
+            else {
+                finalDeliveryFee = deliveryFee;
+            }
         }
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
@@ -2542,6 +2559,7 @@ exports.OrdersService = OrdersService = OrdersService_1 = __decorate([
         points_service_1.PointsService,
         products_service_1.ProductsService,
         business_service_1.BusinessService,
+        web_delivery_service_1.WebDeliveryService,
         mail_service_1.MailService,
         circuit_breaker_service_1.CircuitBreakerService])
 ], OrdersService);

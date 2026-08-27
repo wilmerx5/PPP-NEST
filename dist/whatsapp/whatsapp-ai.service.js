@@ -28,11 +28,15 @@ let WhatsappAiService = WhatsappAiService_1 = class WhatsappAiService {
                 actions: { requestHuman: true },
             };
         }
+        const intentLine = input.detectedIntent
+            ? `\nIntención detectada por el sistema: ${input.detectedIntent}. Respeta las restricciones de esa intención en customerHint.`
+            : '';
         const system = `${cfg.systemPrompt}
 
 ${input.businessRulesBlock}
 
 ${input.customerHint}
+${intentLine}
 
 Resumen de sesión (fuente de verdad del carrito y elecciones pendientes):
 ${input.sessionSummary}

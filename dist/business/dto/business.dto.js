@@ -9,11 +9,31 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateHolidayClosureDto = exports.UpdateRestaurantSettingsDto = exports.DayHoursDto = void 0;
+exports.CreateHolidayClosureDto = exports.UpdateRestaurantSettingsDto = exports.DayHoursDto = exports.WebDeliveryFeeTierDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const web_delivery_fee_1 = require("../../delivery/web-delivery-fee");
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+class WebDeliveryFeeTierDto {
+    maxKm;
+    fee;
+}
+exports.WebDeliveryFeeTierDto = WebDeliveryFeeTierDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 4 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0.1),
+    __metadata("design:type", Number)
+], WebDeliveryFeeTierDto.prototype, "maxKm", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 4000 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], WebDeliveryFeeTierDto.prototype, "fee", void 0);
 class DayHoursDto {
     dayOfWeek;
     closed;
@@ -51,6 +71,9 @@ class UpdateRestaurantSettingsDto {
     openTime;
     closeTime;
     weeklyHours;
+    webDeliveryDefaultFee;
+    webDeliveryMaxKm;
+    webDeliveryFeeTiers;
 }
 exports.UpdateRestaurantSettingsDto = UpdateRestaurantSettingsDto;
 __decorate([
@@ -90,6 +113,42 @@ __decorate([
     (0, class_transformer_1.Type)(() => DayHoursDto),
     __metadata("design:type", Array)
 ], UpdateRestaurantSettingsDto.prototype, "weeklyHours", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Tarifa de respaldo domicilio web (COP)',
+        required: false,
+        example: web_delivery_fee_1.WEB_DELIVERY_DEFAULT_FEE,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateRestaurantSettingsDto.prototype, "webDeliveryDefaultFee", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Cobertura máxima domicilio web (km de ruta)',
+        required: false,
+        example: web_delivery_fee_1.WEB_DELIVERY_MAX_KM,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0.5),
+    __metadata("design:type", Number)
+], UpdateRestaurantSettingsDto.prototype, "webDeliveryMaxKm", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: [WebDeliveryFeeTierDto],
+        required: false,
+        example: web_delivery_fee_1.WEB_DELIVERY_FEE_TIERS,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => WebDeliveryFeeTierDto),
+    __metadata("design:type", Array)
+], UpdateRestaurantSettingsDto.prototype, "webDeliveryFeeTiers", void 0);
 class CreateHolidayClosureDto {
     closureDate;
     name;

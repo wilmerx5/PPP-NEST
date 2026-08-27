@@ -19,6 +19,8 @@ const typeorm_2 = require("typeorm");
 const restaurant_settings_entity_1 = require("./entities/restaurant-settings.entity");
 const holiday_closure_entity_1 = require("./entities/holiday-closure.entity");
 const business_clock_1 = require("./business-clock");
+const whatsapp_delivery_fee_1 = require("../whatsapp/whatsapp-delivery-fee");
+const web_delivery_fee_1 = require("../delivery/web-delivery-fee");
 const DEFAULT_TZ = 'America/Bogota';
 const SETTINGS_TTL_MS = 30_000;
 let BusinessService = class BusinessService {
@@ -37,6 +39,9 @@ let BusinessService = class BusinessService {
         row.openTime = '11:00';
         row.closeTime = '22:00';
         row.weeklyHours = this.buildWeeklyHours([], '11:00', '22:00', null);
+        row.webDeliveryDefaultFee = web_delivery_fee_1.WEB_DELIVERY_DEFAULT_FEE;
+        row.webDeliveryMaxKm = web_delivery_fee_1.WEB_DELIVERY_MAX_KM;
+        row.webDeliveryFeeTiers = web_delivery_fee_1.WEB_DELIVERY_FEE_TIERS;
         return row;
     }
     parseJsonField(value, fallback) {
@@ -79,7 +84,26 @@ let BusinessService = class BusinessService {
         row.weeklyHours = this.parseJsonField(row.weeklyHours, null);
         row.weeklyHours = this.buildWeeklyHours(row.weeklyClosedDays, row.openTime || '11:00', row.closeTime || '22:00', row.weeklyHours);
         row.weeklyClosedDays = row.weeklyHours.filter((h) => h.closed).map((h) => h.dayOfWeek);
+        row.webDeliveryFeeTiers = this.parseJsonField(row.webDeliveryFeeTiers, web_delivery_fee_1.WEB_DELIVERY_FEE_TIERS);
         return row;
+    }
+    async getWebDeliveryConfig() {
+        const settings = await this.getSettings();
+        const tiers = (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(settings.webDeliveryFeeTiers);
+        const maxKmRaw = Number(settings.webDeliveryMaxKm);
+        const maxKm = Number.isFinite(maxKmRaw) && maxKmRaw > 0
+            ? maxKmRaw
+            : tiers[tiers.length - 1]?.maxKm || web_delivery_fee_1.WEB_DELIVERY_MAX_KM;
+        const defaultFeeRaw = Number(settings.webDeliveryDefaultFee);
+        const defaultFee = Number.isFinite(defaultFeeRaw) && defaultFeeRaw >= 0
+            ? Math.round(defaultFeeRaw)
+            : web_delivery_fee_1.WEB_DELIVERY_DEFAULT_FEE;
+        return {
+            defaultFee,
+            maxKm,
+            tiers,
+            tiersHint: (0, web_delivery_fee_1.formatWebDeliveryTiersHint)(tiers, maxKm),
+        };
     }
     async getSettings() {
         if (this.settingsCache && Date.now() - this.settingsCache.at < SETTINGS_TTL_MS) {
@@ -95,6 +119,9 @@ let BusinessService = class BusinessService {
                     openTime: '11:00',
                     closeTime: '22:00',
                     weeklyHours: null,
+                    webDeliveryDefaultFee: web_delivery_fee_1.WEB_DELIVERY_DEFAULT_FEE,
+                    webDeliveryMaxKm: web_delivery_fee_1.WEB_DELIVERY_MAX_KM,
+                    webDeliveryFeeTiers: web_delivery_fee_1.WEB_DELIVERY_FEE_TIERS,
                 });
                 try {
                     row = await this.settingsRepo.save(row);
@@ -139,6 +166,15 @@ let BusinessService = class BusinessService {
                 row.openTime = sample.openTime;
                 row.closeTime = sample.closeTime;
             }
+        }
+        if (dto.webDeliveryDefaultFee !== undefined) {
+            row.webDeliveryDefaultFee = Math.max(0, Math.round(Number(dto.webDeliveryDefaultFee) || 0));
+        }
+        if (dto.webDeliveryMaxKm !== undefined) {
+            row.webDeliveryMaxKm = Math.max(0.5, Number(dto.webDeliveryMaxKm) || web_delivery_fee_1.WEB_DELIVERY_MAX_KM);
+        }
+        if (dto.webDeliveryFeeTiers !== undefined) {
+            row.webDeliveryFeeTiers = (0, whatsapp_delivery_fee_1.normalizeDeliveryFeeTiers)(dto.webDeliveryFeeTiers);
         }
         const saved = await this.settingsRepo.save(row);
         this.settingsCache = { at: Date.now(), row: this.normalizeSettings(saved) };

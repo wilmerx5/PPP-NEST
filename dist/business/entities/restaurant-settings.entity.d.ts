@@ -11,5 +11,8 @@ export declare class RestaurantSettings {
     openTime: string;
     closeTime: string;
     weeklyHours: DayHours[] | null;
+    webDeliveryDefaultFee: number;
+    webDeliveryMaxKm: number | string | null;
+    webDeliveryFeeTiers: unknown | null;
     updatedAt: Date;
 }

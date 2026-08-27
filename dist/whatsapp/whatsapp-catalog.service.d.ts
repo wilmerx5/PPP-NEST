@@ -38,6 +38,12 @@ export declare class WhatsappCatalogService {
     formatOffTopicRedirect(brandName?: string): string;
     isMenuExploreIntent(text: string, products?: WhatsappCatalogProduct[]): boolean;
     isCategoryBrowseQuestion(text: string): boolean;
+    isRestaurantLocationInquiry(text: string): boolean;
+    private readonly QTY_WORD_MAP;
+    private readonly QTY_SKIP_AFTER_NUM;
+    countQuantityMentions(text: string): number;
+    extractQuantityNearProduct(fullText: string, productName: string): number | null;
+    extractQuantityFromSegment(text: string): number;
     extractQuantityFromMessage(text: string): number;
     stripQuantityFromSearchQuery(text: string): string;
     buildMenuExploreIntro(text: string): string;
@@ -61,19 +67,30 @@ export declare class WhatsappCatalogService {
     cleanOrderSegment(segment: string): string;
     private readonly WEAK_PRODUCT_TOKENS;
     private isDistinctiveProductToken;
+    private productNameHasPackMultiplier;
+    private queryAsksForPackMultiplier;
+    private unrequestedNameTokens;
     private queryHasToken;
     looksLikeFoodPlusDrinkOrder(text: string): boolean;
     detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null;
+    detectServingSizeHint(text: string): 'pequena' | 'grande' | null;
+    productIsSmallServing(name: string): boolean;
     detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null;
     resolveSizedChickenProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
+    resolveSizedSoupProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean;
     private readonly SIDE_NOTE_TOKENS;
     extractProductModificationNote(text: string): string | null;
+    looksLikeSideModificationNote(text: string): boolean;
     looksLikeSingleProductWithMods(text: string): boolean;
+    looksLikeClearlyMultiDishOrder(text: string): boolean;
     stripProductModificationNoise(text: string): string;
     private tokenAppearsOnlyUnderSin;
     findAllProductsEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     private drinkPreferenceRank;
+    extractRequestedDrinkVolumeMl(text: string): number | null;
+    productDrinkVolumeMl(product: WhatsappCatalogProduct): number | null;
+    pickBestDrinkProduct(drinks: WhatsappCatalogProduct[], queryText: string): WhatsappCatalogProduct | null;
     looksLikeMultiItemOrderMessage(text: string): boolean;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     splitFoodPlusDrinkSegments(text: string): string[];
@@ -146,6 +163,46 @@ export declare class WhatsappCatalogService {
     }[], opts?: {
         variantIntent?: 'combo' | 'solo';
     }): NonNullable<WhatsappCatalogProduct['attributes']>;
+    isAttributeSelectionComplete(product: WhatsappCatalogProduct, alreadySelected?: {
+        attributeName: string;
+        attributeValue: string;
+    }[], opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): boolean;
+    coerceAttributeStep(product: WhatsappCatalogProduct, step: {
+        status: 'complete';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'partial';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'invalid';
+    }, opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): {
+        status: 'complete';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'partial';
+        attributes: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    } | {
+        status: 'invalid';
+    };
+    isDeferredDrinkAttribute(attr: {
+        attributeName: string;
+    }, product?: WhatsappCatalogProduct): boolean;
     isComboOnlyAttribute(attr: {
         attributeName: string;
     }): boolean;
@@ -157,11 +214,12 @@ export declare class WhatsappCatalogService {
     hasComboPortionSelected(alreadySelected: {
         attributeName: string;
         attributeValue: string;
-    }[]): boolean;
+    }[], product?: WhatsappCatalogProduct): boolean;
     hasSoloPortionSelected(alreadySelected: {
         attributeName: string;
         attributeValue: string;
-    }[]): boolean;
+    }[], product?: WhatsappCatalogProduct): boolean;
+    private selectionIsModalityChoice;
     private isComboLikeValue;
     private isSoloLikeValue;
     productImpliesCombo(product: WhatsappCatalogProduct): boolean;
@@ -175,7 +233,9 @@ export declare class WhatsappCatalogService {
     isProductDescriptionInquiry(text: string): boolean;
     isGenericProductInquiry(text: string): boolean;
     isShortGenericFoodQuery(query: string): boolean;
-    extractExplicitAttributeChoice(text: string, product: WhatsappCatalogProduct): {
+    extractExplicitAttributeChoice(text: string, product: WhatsappCatalogProduct, opts?: {
+        variantIntent?: 'combo' | 'solo';
+    }): {
         attributeName: string;
         attributeValue: string;
     }[] | null;
@@ -183,6 +243,7 @@ export declare class WhatsappCatalogService {
     formatPriceInquiryList(products: WhatsappCatalogProduct[]): string;
     splitMultiProductSegments(text: string): string[];
     private splitSegmentOnArticles;
+    private splitSegmentOnQuantityBoundaries;
     resolveMultiProductOrder(text: string, products: WhatsappCatalogProduct[]): MultiProductResolveResult | null;
     formatMoney(amount: number): string;
     formatProductCode(code: number): string;

@@ -1,3 +1,7 @@
+export declare class WebDeliveryFeeTierDto {
+    maxKm: number;
+    fee: number;
+}
 export declare class DayHoursDto {
     dayOfWeek: number;
     closed: boolean;
@@ -10,6 +14,9 @@ export declare class UpdateRestaurantSettingsDto {
     openTime?: string;
     closeTime?: string;
     weeklyHours?: DayHoursDto[];
+    webDeliveryDefaultFee?: number;
+    webDeliveryMaxKm?: number;
+    webDeliveryFeeTiers?: WebDeliveryFeeTierDto[];
 }
 export declare class CreateHolidayClosureDto {
     closureDate: string;

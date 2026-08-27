@@ -18,6 +18,9 @@ let RestaurantSettings = class RestaurantSettings {
     openTime;
     closeTime;
     weeklyHours;
+    webDeliveryDefaultFee;
+    webDeliveryMaxKm;
+    webDeliveryFeeTiers;
     updatedAt;
 };
 exports.RestaurantSettings = RestaurantSettings;
@@ -45,6 +48,18 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'weekly_hours', type: 'json', nullable: true }),
     __metadata("design:type", Object)
 ], RestaurantSettings.prototype, "weeklyHours", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'web_delivery_default_fee', type: 'int', default: 4000 }),
+    __metadata("design:type", Number)
+], RestaurantSettings.prototype, "webDeliveryDefaultFee", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'web_delivery_max_km', type: 'decimal', precision: 6, scale: 2, nullable: true }),
+    __metadata("design:type", Object)
+], RestaurantSettings.prototype, "webDeliveryMaxKm", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'web_delivery_fee_tiers', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], RestaurantSettings.prototype, "webDeliveryFeeTiers", void 0);
 __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
