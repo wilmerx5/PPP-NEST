@@ -1023,8 +1023,6 @@ export class WhatsappCatalogService {
 
   /** Quita muletillas de consulta ("con qué viene el…", "qué lleva la…"). */
   stripProductDescriptionInquiryNoise(text: string): string {
-    const base = normalizeText(text || '');
-    // Trabajar sobre texto original pero con patrones tolerantes a tildes vía base
     let cleaned = (text || '')
       .replace(
         /\b(?:con\s+qu[eé]|de\s+qu[eé]|qu[eé])\s+(?:viene|vienen|va|van|trae|traen|lleva|llava|incluye|incluyen|contiene|contienen|tiene|tienen|acompa[nñ]a)\s+(?:el|la|los|las|una|un|unos|unas)?\s*/gi,
@@ -1044,17 +1042,8 @@ export class WhatsappCatalogService {
       )
       .replace(/\s+/g, ' ')
       .trim();
-    // Si el original no limpió (tildes raras), usar versión normalizada
-    if (cleaned === (text || '').trim() && base !== cleaned) {
-      cleaned = base
-        .replace(
-          /\b(?:con\s+que|de\s+que|que)\s+(?:viene|vienen|va|van|trae|traen|lleva|llava|incluye|incluyen|contiene|contienen|tiene|tienen|acompana)\s+(?:el|la|los|las|una|un|unos|unas)?\s*/gi,
-          ' ',
-        )
-        .replace(/\b(?:como)\s+(?:viene|va|es)\s+(?:el|la|los|las|un|una)?\s*/gi, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
+    // No reemplazar con normalizeText: destruye comas necesarias para multi-ítem
+    // ("tres churrascos, dos mojarras y una limonada").
     return cleaned;
   }
 
@@ -3856,7 +3845,35 @@ export class WhatsappCatalogService {
       .filter((s) => s.length >= 3);
     const merged = parts.filter((s) => !ORDER_INTENT_ONLY.has(normalizeText(s)));
     const use = merged.length ? merged : parts;
+    if (use.length > 1) return use;
+
+    if (this.countQuantityMentions(fixed) >= 2) {
+      const qtyParts = this.splitSegmentOnQuantityBoundaries(fixed);
+      if (qtyParts.length >= 2) return qtyParts;
+    }
+
     return use.length ? use : [fixed.trim()].filter((s) => s.length >= 3);
+  }
+
+  /**
+   * "tres churrascos dos mojarras y una limonada" (sin comas) → un segmento por cantidad+plato.
+   */
+  private splitSegmentOnQuantityBoundaries(chunk: string): string[] {
+    const fixed = fixCommonOrderTypos((chunk || '').trim());
+    if (!fixed) return [];
+
+    const qtyWord =
+      '(?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|\\d{1,2})';
+    const boundary = new RegExp(
+      `(?=(?:^|\\s)(?:${qtyWord})\\s+(?:de\\s+)?(?:${FOOD_ORDER_TOKEN}|${DRINK_ORDER_TOKEN}))`,
+      'i',
+    );
+    const parts = fixed
+      .split(boundary)
+      .map((s) => this.cleanOrderSegment(s.trim()))
+      .filter((s) => s.length >= 3);
+
+    return parts.length >= 2 ? parts : [fixed];
   }
 
   /**

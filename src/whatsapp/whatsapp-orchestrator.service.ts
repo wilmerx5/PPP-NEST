@@ -205,7 +205,7 @@ export class WhatsappOrchestratorService {
       reopenedFreshOrder = true;
     }
 
-    if (this.isClearCartIntent(text)) {
+    if (this.isClearCartIntent(originalText)) {
       await this.conversationService.resetOrderSession(conv, 'building_cart', {
         ignorePriorHistory: true,
       });
@@ -217,7 +217,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (this.isCancelIntent(text)) {
+    if (this.isCancelIntent(originalText)) {
       await this.handleCancelRequest(conv, msg.waId, cfg);
       return;
     }
@@ -337,7 +337,15 @@ export class WhatsappOrchestratorService {
     }
 
     if (
-      await this.tryHandleCartModification(conv, msg.waId, session, text, products, cfg)
+      await this.tryHandleCartModification(
+        conv,
+        msg.waId,
+        session,
+        text,
+        products,
+        cfg,
+        originalText,
+      )
     ) {
       return;
     }
@@ -354,6 +362,19 @@ export class WhatsappOrchestratorService {
 
     // PRIORIDAD 1: eligiendo opción de un producto (1, 2, 3… NO es código de producto)
     if (session.pendingAttribute || conv.state === 'awaiting_attribute') {
+      if (
+        await this.tryHandleCartModification(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+          originalText,
+        )
+      ) {
+        return;
+      }
       if (
         await this.tryAbandonPendingSelection(conv, msg.waId, session, text, cfg)
       ) {
@@ -608,6 +629,19 @@ export class WhatsappOrchestratorService {
 
     if (conv.state === 'awaiting_name' && !isConfirm && !isGreeting && text.length >= 2) {
       if (
+        await this.tryHandleCartModification(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+          originalText,
+        )
+      ) {
+        return;
+      }
+      if (
         this.looksLikeAddress(text) ||
         this.looksLikePayment(text, cfg.paymentMethods) ||
         this.isPickupIntent(text) ||
@@ -684,6 +718,19 @@ export class WhatsappOrchestratorService {
     }
 
     if (conv.state === 'awaiting_address' && !isConfirm && !isGreeting) {
+      if (
+        await this.tryHandleCartModification(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+          originalText,
+        )
+      ) {
+        return;
+      }
       if (this.isPickupIntent(text)) {
         session = this.applyPickupIntent(session, text);
         await this.conversationService.saveSession(conv, session, 'building_cart');
@@ -799,6 +846,19 @@ export class WhatsappOrchestratorService {
     }
 
     if (conv.state === 'awaiting_payment' && !isConfirm && !isGreeting) {
+      if (
+        await this.tryHandleCartModification(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+          originalText,
+        )
+      ) {
+        return;
+      }
       const payPick = this.resolvePaymentChoice(text, cfg);
       if (payPick) {
         session.paymentMethod = payPick.id;
@@ -823,6 +883,19 @@ export class WhatsappOrchestratorService {
     }
 
     if (conv.state === 'awaiting_notes' && !isConfirm && !isGreeting) {
+      if (
+        await this.tryHandleCartModification(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+          originalText,
+        )
+      ) {
+        return;
+      }
       session = this.applyNotesFromText(session, text);
       await this.conversationService.saveSession(conv, session, 'confirming');
       const freshNotes = await this.conversationService.reloadConversation(conv.id);
@@ -1234,7 +1307,7 @@ export class WhatsappOrchestratorService {
 
     // Varios platos en un mensaje ("sopa de mondongo, cuarto de pollo y costillas")
     if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
-      const multi = this.catalogService.resolveMultiProductOrder(text, products);
+      const multi = this.catalogService.resolveMultiProductOrder(originalText || text, products);
       if (multi) {
         const handled = await this.tryHandleMultiProductOrder(
           conv,
@@ -4933,8 +5006,10 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
+    probeText?: string,
   ): Promise<boolean> {
-    const trimmed = text.trim();
+    const probe = (probeText || text).trim();
+    const trimmed = probe;
 
     if (session.pendingCartRemoval?.options.length) {
       const pick = /^[1-9]\d*$/.test(trimmed) ? parseInt(trimmed, 10) : null;
@@ -4966,7 +5041,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if (this.isClearCartIntent(text)) {
+    if (this.isClearCartIntent(probe)) {
       if (
         !session.cart.length &&
         !session.pendingAttribute &&
@@ -4987,7 +5062,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const removalQuery = this.extractCartRemovalQuery(text);
+    const removalQuery = this.extractCartRemovalQuery(probe);
     if (!removalQuery) return false;
 
     if (!session.cart.length) {

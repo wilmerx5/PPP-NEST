@@ -33,7 +33,7 @@ export function looksLikeClearCartMessage(text: string): boolean {
   if (!t) return false;
 
   if (
-    /^(reiniciar|empezar\s+de\s+nuevo|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo)$/.test(
+    /^(reiniciar|reinicia|reinciar|empezar\s+de\s+nuevo|empezar\s+otra\s+vez|nuevo\s+pedido|otro\s+pedido|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo|limpiar|limpia|vaciar|vacia)$/.test(
       t,
     )
   ) {
@@ -41,10 +41,14 @@ export function looksLikeClearCartMessage(text: string): boolean {
   }
 
   const clearVerb =
-    '(?:limpiar|limpia|vaciar|vacia|vacio|borrar|borra|quitar|quita|eliminar|elimina|sacar|saca|resetear|resetea)';
-  const clearTarget = '(?:el\\s+|la\\s+|mi\\s+)?(?:carrito|pedido|todo|lo\\s+que\\s+llevo|lo\\s+que\\s+pedi)';
+    '(?:limpiar|limpia|vaciar|vacia|vacio|borrar|borra|quitar|quita|eliminar|elimina|sacar|saca|resetear|resetea|reiniciar|reinicia|reinciar)';
+  const clearTarget =
+    '(?:el\\s+|la\\s+|mi\\s+)?(?:carrito|pedido|todo|orden|lo\\s+que\\s+llevo|lo\\s+que\\s+pedi|de\\s+nuevo)';
 
   if (new RegExp(`\\b${clearVerb}\\s+${clearTarget}\\b`).test(t)) {
+    return true;
+  }
+  if (new RegExp(`\\b${clearVerb}\\b`).test(t) && /\b(todo|carrito|pedido|orden)\b/.test(t)) {
     return true;
   }
 

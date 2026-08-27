@@ -82,6 +82,9 @@ describe('classifyWhatsappCustomerIntent', () => {
       'vacia el carrito',
       'limpia todo',
       'ya no quiero nada',
+      'reiniciar',
+      'reiniciar pedido',
+      'limpiar',
     ]) {
       expect(looksLikeClearCartMessage(text)).toBe(true);
       const intent = classifyWhatsappCustomerIntent({ text, cartLength: 3 });
