@@ -12,9 +12,54 @@ export type WhatsappMessageIntent =
   | 'payment'
   | 'checkout_data'
   | 'address'
+  | 'clear_cart'
   | 'human'
   | 'chitchat'
   | 'other';
+
+function normalizeIntentText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Vaciar / limpiar carrito o pedido en armado (imperativo y typos comunes). */
+export function looksLikeClearCartMessage(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t) return false;
+
+  if (
+    /^(reiniciar|empezar\s+de\s+nuevo|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo)$/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+
+  const clearVerb =
+    '(?:limpiar|limpia|vaciar|vacia|vacio|borrar|borra|quitar|quita|eliminar|elimina|sacar|saca|resetear|resetea)';
+  const clearTarget = '(?:el\\s+|la\\s+|mi\\s+)?(?:carrito|pedido|todo|lo\\s+que\\s+llevo|lo\\s+que\\s+pedi)';
+
+  if (new RegExp(`\\b${clearVerb}\\s+${clearTarget}\\b`).test(t)) {
+    return true;
+  }
+
+  if (/\b(carrito|pedido)\s+(vacio|vacia|limpio|en blanco)\b/.test(t)) {
+    return true;
+  }
+  if (/^(ya\s+)?no\s+quiero\s+nada\b/.test(t)) {
+    return true;
+  }
+  if (/\bdejar\s+(el\s+)?(carrito|pedido)\s+(vacio|en blanco)\b/.test(t)) {
+    return true;
+  }
+
+  return false;
+}
 
 export type WhatsappIntentHints = {
   text: string;
@@ -31,6 +76,8 @@ export type WhatsappIntentHints = {
   isCheckoutFieldReply?: boolean;
   /** Solo domicilio / landmark (hospital, conjunto…). */
   looksLikeAddressOnly?: boolean;
+  compoundAddress?: string | null;
+  compoundProductText?: string | null;
 };
 
 const HUMAN_RE =
@@ -45,8 +92,78 @@ const CHECKOUT_DATA_RE =
 const ADDRESS_ONLY_RE =
   /^(?:para|direcci[oó]n|domicilio)\b.+/i;
 
+const LANDMARK_KEYWORD_RE =
+  /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i;
+
+const STREET_ADDRESS_RE =
+  /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|transversal|barrio|habitaci[oó]n|apto|apartamento|torre)\b/i;
+
+/** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
+export function looksLikeNonAddressCommand(text: string): boolean {
+  if (looksLikeClearCartMessage(text)) return true;
+
+  const t = normalizeIntentText(text);
+  if (!t) return false;
+
+  if (/^(listo|ok|dale|confirmar|confirmo|si|no|ninguno|ninguna|nada|gracias)$/.test(t)) {
+    return true;
+  }
+  if (/\b(cancelar|cancela|anular|anula)\b/.test(t)) return true;
+  if (/\b(humano|asesor|persona|agente)\b/.test(t)) return true;
+  if (PAYMENT_RE.test(text)) return true;
+  if (
+    /\b(quiero|dame|ponme|pedi|pido|agrega|agregar|ordenar|mandame|traeme)\b/.test(t) &&
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export type AddressOnlyHints = {
+  compoundAddress?: string | null;
+  compoundProductText?: string | null;
+};
+
 /**
- * Prioridad: humano > pago > dirección > nota > precio > menú >
+ * ¿El mensaje es SOLO domicilio? Reglas estrictas: prefijo para/dirección,
+ * landmark conocido o calle con número. NO acepta frases genéricas de 2–7 palabras.
+ */
+export function looksLikeAddressOnlyMessage(
+  text: string,
+  hints: AddressOnlyHints = {},
+): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 4) return false;
+  if (looksLikeNonAddressCommand(raw)) return false;
+
+  if (
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/i.test(
+      raw,
+    )
+  ) {
+    return false;
+  }
+
+  const compoundAddr = hints.compoundAddress?.trim();
+  const compoundProduct = hints.compoundProductText?.trim() || '';
+  if (compoundAddr && compoundProduct.length < 3) return true;
+
+  if (ADDRESS_ONLY_RE.test(raw)) {
+    if (LANDMARK_KEYWORD_RE.test(raw) || STREET_ADDRESS_RE.test(raw)) return true;
+  }
+
+  if (STREET_ADDRESS_RE.test(raw) && /\d/.test(raw)) return true;
+  if (LANDMARK_KEYWORD_RE.test(raw) && raw.length >= 6) return true;
+
+  return false;
+}
+
+/**
+ * Prioridad: humano > vaciar carrito > pago > nota > dirección > precio > menú >
  * checkout > charla > pedido > other.
  */
 export function classifyWhatsappCustomerIntent(
@@ -57,24 +174,9 @@ export function classifyWhatsappCustomerIntent(
 
   if (hints.isHumanRequest || HUMAN_RE.test(text)) return 'human';
 
-  if (hints.isPaymentMention || PAYMENT_RE.test(text)) return 'payment';
+  if (looksLikeClearCartMessage(text)) return 'clear_cart';
 
-  if (
-    hints.cartLength > 0 &&
-    (hints.looksLikeAddressOnly ||
-      (ADDRESS_ONLY_RE.test(text) &&
-        /\b(hospital|cl[ií]nica|conjunto|calle|carrera|barrio|kennedy|urbanizaci[oó]n|apto|torre)\b/i.test(
-          text,
-        )))
-  ) {
-    if (
-      !/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster)\b/i.test(
-        text,
-      )
-    ) {
-      return 'address';
-    }
-  }
+  if (hints.isPaymentMention || PAYMENT_RE.test(text)) return 'payment';
 
   if (
     hints.cartLength > 0 &&
@@ -94,6 +196,17 @@ export function classifyWhatsappCustomerIntent(
         return 'side_note';
       }
     }
+  }
+
+  if (
+    hints.cartLength > 0 &&
+    (looksLikeAddressOnlyMessage(text, {
+      compoundAddress: hints.compoundAddress,
+      compoundProductText: hints.compoundProductText,
+    }) ||
+      hints.looksLikeAddressOnly)
+  ) {
+    return 'address';
   }
 
   if (hints.isPriceInquiry) return 'price_question';
@@ -142,6 +255,11 @@ export function formatIntentHintForAi(intent: WhatsappMessageIntent): string {
       return (
         'INTENCIÓN DETECTADA: dirección de domicilio. ' +
         'Usa setAddress con el texto del cliente. PROHIBIDO addItems y PROHIBIDO decir que no encontraste un plato.'
+      );
+    case 'clear_cart':
+      return (
+        'INTENCIÓN DETECTADA: vaciar o borrar el carrito/pedido en armado. ' +
+        'Usa clearCart: true. PROHIBIDO setAddress, addItems y PROHIBIDO anotar el mensaje como dirección.'
       );
     case 'side_note':
       return (

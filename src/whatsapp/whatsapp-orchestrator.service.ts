@@ -20,6 +20,10 @@ import {
   classifyWhatsappCustomerIntent,
   formatIntentHintForAi,
   intentAllowsAddItems,
+  looksLikeAddressOnlyMessage,
+  looksLikeClearCartMessage,
+  looksLikeNonAddressCommand,
+  type WhatsappMessageIntent,
 } from './whatsapp-intent';
 import { applyLocalGlossary, buildLocalGlossaryPromptBlock } from './whatsapp-local-glossary';
 import {
@@ -282,24 +286,52 @@ export class WhatsappOrchestratorService {
     }
 
     // Reaplicar domicilio desde el texto ORIGINAL (el de productos ya no trae "para …")
-    session = this.applyDeliveryHintFromMessage(session, originalText);
-    if (!session.address?.trim() && compound.address) {
-      session = this.withDeliveryAddress(session, compound.address);
+    const customerIntent = this.resolveCustomerIntent(
+      originalText,
+      session,
+      products,
+      cfg,
+      compound,
+    );
+
+    if (
+      !looksLikeClearCartMessage(originalText) &&
+      !looksLikeNonAddressCommand(originalText) &&
+      customerIntent === 'address'
+    ) {
+      session = this.applyDeliveryHintFromMessage(session, originalText);
+      if (!session.address?.trim() && compound.address) {
+        session = this.withDeliveryAddress(session, compound.address);
+      }
+      if (session.address?.trim()) {
+        await this.conversationService.saveSession(conv, session);
+      }
     }
-    if (session.address?.trim()) {
-      await this.conversationService.saveSession(conv, session);
+
+    if (
+      await this.tryHandleInlineOrderNoteEarly(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        customerIntent,
+        cfg,
+      )
+    ) {
+      return;
     }
 
     // Con carrito: "para el hospital de kennedy" = domicilio, NO buscar platos
     if (
-      await this.tryHandleAddressOnlyWhileBuildingCart(
+      customerIntent === 'address' &&
+      (await this.tryHandleAddressOnlyWhileBuildingCart(
         conv,
         msg.waId,
         session,
         originalText,
         compound,
         cfg,
-      )
+      ))
     ) {
       return;
     }
@@ -1546,20 +1578,13 @@ export class WhatsappOrchestratorService {
       this.catalogService.isMenuExploreIntent(text, products) ||
       !!session.pendingCategoryBrowse?.categories?.length;
 
-    const detectedIntent = classifyWhatsappCustomerIntent({
-      text,
-      cartLength: session.cart.length,
-      looksLikeSideModificationNote:
-        this.catalogService.looksLikeSideModificationNote(text),
-      isPriceInquiry: this.catalogService.isPriceInquiryIntent(text),
-      isMenuExplore: exploringMenu,
-      isCategoryBrowse: this.catalogService.isCategoryBrowseQuestion(text),
-      isGenericProductInquiry: this.catalogService.isGenericProductInquiry(text),
-      isOffTopicChitchat: this.catalogService.isOffTopicChitchat(text),
-      isHumanRequest: /\b(humano|persona|agente|asesor|asesora)\b/i.test(text),
-      isPaymentMention: !!findPaymentMethodByText(text, cfg.paymentMethods),
-      looksLikeAddressOnly: this.isAddressOnlyCustomerMessage(originalText || text),
-    });
+    const detectedIntent = this.resolveCustomerIntent(
+      originalText || text,
+      session,
+      products,
+      cfg,
+      this.parseCompoundOrderMessage(originalText || text),
+    );
 
     const menuForAi = exploringMenu
       ? this.catalogService.buildMenuCategoryContextForAi(products)
@@ -1633,11 +1658,22 @@ export class WhatsappOrchestratorService {
         detectedIntent === 'price_question' ||
         detectedIntent === 'menu_question' ||
         detectedIntent === 'chitchat' ||
+        detectedIntent === 'clear_cart' ||
+        detectedIntent === 'side_note' ||
         exploringMenu
       ) {
         delete guarded.actions.setAddress;
         delete guarded.actions.setPaymentMethod;
       }
+    }
+
+    if (
+      looksLikeClearCartMessage(originalText || text) &&
+      guarded.actions
+    ) {
+      guarded.actions.clearCart = true;
+      delete guarded.actions.setAddress;
+      delete guarded.actions.addItems;
     }
 
     // Tras pedido cerrado: no dejar que la IA rearme el carrito desde el historial
@@ -2024,7 +2060,12 @@ export class WhatsappOrchestratorService {
 
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
-      if (addr.length >= 5 && !this.isConfirmKeyword(addr) && !this.isGreetingKeyword(addr)) {
+      if (
+        addr.length >= 5 &&
+        !this.isConfirmKeyword(addr) &&
+        !this.isGreetingKeyword(addr) &&
+        !looksLikeClearCartMessage(sourceText || addr)
+      ) {
         if (!this.isPickupIntent(addr)) {
           next = this.withDeliveryAddress(next, addr);
         } else {
@@ -4678,32 +4719,7 @@ export class WhatsappOrchestratorService {
   /** Vaciar / limpiar carrito o pedido en armado (no cancelar orden ya registrada). */
   private isClearCartIntent(text: string): boolean {
     if (this.isCancelIntent(text)) return false;
-
-    const t = this.normalizeForMatch(text);
-    if (!t) return false;
-
-    if (
-      /^(reiniciar|empezar\s+de\s+nuevo|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo)$/.test(
-        t,
-      )
-    ) {
-      return true;
-    }
-
-    if (/\b(limpiar|vaciar|borrar|quitar)\s+(el\s+)?(carrito|pedido|todo)\b/.test(t)) {
-      return true;
-    }
-    if (/\b(carrito|pedido)\s+(vacio|limpio|en blanco)\b/.test(t)) {
-      return true;
-    }
-    if (/^(ya\s+)?no\s+quiero\s+nada\b/.test(t)) {
-      return true;
-    }
-    if (/\bdejar\s+(el\s+)?(carrito|pedido)\s+(vacio|en blanco)\b/.test(t)) {
-      return true;
-    }
-
-    return false;
+    return looksLikeClearCartMessage(text);
   }
 
   private extractCartRemovalQuery(text: string): string | null {
@@ -5392,6 +5408,63 @@ export class WhatsappOrchestratorService {
     return this.withDeliveryAddress(session, this.extractDeliveryTail(text));
   }
 
+  private resolveCustomerIntent(
+    text: string,
+    session: WhatsappSessionData,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+    compound?: { productText: string; address: string | null },
+  ): WhatsappMessageIntent {
+    const exploringMenu =
+      this.catalogService.isMenuExploreIntent(text, products) ||
+      !!session.pendingCategoryBrowse?.categories?.length;
+
+    return classifyWhatsappCustomerIntent({
+      text,
+      cartLength: session.cart.length,
+      looksLikeSideModificationNote:
+        this.catalogService.looksLikeSideModificationNote(text),
+      isPriceInquiry: this.catalogService.isPriceInquiryIntent(text),
+      isMenuExplore: exploringMenu,
+      isCategoryBrowse: this.catalogService.isCategoryBrowseQuestion(text),
+      isGenericProductInquiry: this.catalogService.isGenericProductInquiry(text),
+      isOffTopicChitchat: this.catalogService.isOffTopicChitchat(text),
+      isHumanRequest: /\b(humano|persona|agente|asesor|asesora)\b/i.test(text),
+      isPaymentMention: !!findPaymentMethodByText(text, cfg.paymentMethods),
+      looksLikeAddressOnly: this.isAddressOnlyCustomerMessage(text, compound),
+      compoundAddress: compound?.address,
+      compoundProductText: compound?.productText,
+    });
+  }
+
+  /** Nota de guarnición / cocina antes de matching de catálogo o dirección. */
+  private async tryHandleInlineOrderNoteEarly(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    intent: WhatsappMessageIntent,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (session.cart.length === 0) return false;
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
+      return false;
+    }
+    if (intent !== 'side_note' && !this.looksLikeStandaloneOrderNote(text)) {
+      return false;
+    }
+
+    session = this.applyInlineOrderNote(session, text);
+    await this.conversationService.saveSession(conv, session);
+    const ack = this.formatInlineNoteAck(session);
+    await this.reply(
+      conv,
+      waId,
+      `${ack}\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt()}`,
+    );
+    return true;
+  }
+
   /**
    * Tras armar carrito, el cliente a menudo manda solo la dirección
    * ("para el hospital de kennedy") en vez de "listo/confirmar".
@@ -5409,6 +5482,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return false;
     }
+    if (looksLikeClearCartMessage(originalText)) return false;
     // No interferir en pasos de pago / notas / confirmación final
     if (
       conv.state &&
@@ -5482,7 +5556,6 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (raw.length < 4) return false;
 
-    // Pedido claro de comida → no
     if (
       this.catalogService.looksLikeClearlyMultiDishOrder(raw) ||
       this.catalogService.looksLikeFoodPlusDrinkOrder(raw) ||
@@ -5490,46 +5563,19 @@ export class WhatsappOrchestratorService {
     ) {
       return false;
     }
+
     if (
-      /\b(quiero|dame|ponme|agrega|pedi|pido|ordenar)\b/i.test(raw) &&
-      /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo)\b/i.test(
-        raw,
-      )
-    ) {
-      return false;
-    }
-
-    // Compound ya separó: sin producto y con dirección
-    if (compound?.address && (!compound.productText || compound.productText.trim().length < 3)) {
-      return true;
-    }
-
-    const addr =
-      this.extractDeliveryTail(raw) ||
-      (this.isPlausibleDeliveryAddress(raw) ? raw : null);
-    if (!addr) return false;
-
-    // Empieza con para/dirección/domicilio + landmark
-    if (
-      /^(?:para|direcci[oó]n|domicilio)\b/i.test(raw) &&
-      this.isPlausibleDeliveryAddress(addr)
+      looksLikeAddressOnlyMessage(raw, {
+        compoundAddress: compound?.address,
+        compoundProductText: compound?.productText,
+      })
     ) {
       return true;
     }
 
-    // Casi todo el mensaje es la dirección
-    const compact = (s: string) =>
-      s
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    const cr = compact(raw.replace(/^(?:para|direcci[oó]n|domicilio)\s+/i, ''));
-    const ca = compact(addr);
-    if (ca && (cr === ca || cr.includes(ca) || ca.includes(cr))) {
-      return this.looksLikeAddress(addr) || this.looksLikeLandmarkOrComplexName(addr);
+    const tail = this.extractDeliveryTail(raw);
+    if (tail && looksLikeAddressOnlyMessage(tail)) {
+      return true;
     }
 
     return false;
@@ -5644,26 +5690,34 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (this.looksLikeAddress(t)) return true;
-    if (this.looksLikeLandmarkOrComplexName(t)) return true;
+    if (this.looksLikeExplicitLandmarkKeyword(t)) return true;
 
     return t.length >= 6 && /\d/.test(t);
+  }
+
+  /** Landmarks/barrios conocidos — sin aceptar frases genéricas sueltas. */
+  private looksLikeExplicitLandmarkKeyword(text: string): boolean {
+    return looksLikeAddressOnlyMessage(text) || /\b(kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i.test(
+      text,
+    );
   }
 
   /**
    * Referencias sueltas: hospital, conjunto, "Nuevo Sol", "Tierras del Sol", etc.
    * (sin exigir calle/#).
    */
-  private looksLikeLandmarkOrComplexName(text: string): boolean {
+  private looksLikeLandmarkOrComplexName(
+    text: string,
+    opts?: { allowGenericPhrase?: boolean },
+  ): boolean {
     const t = text.trim();
     if (t.length < 4 || t.length > 90) return false;
+    if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
-    if (
-      /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estación|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i.test(
-        t,
-      )
-    ) {
-      return true;
-    }
+    if (this.looksLikeExplicitLandmarkKeyword(t)) return true;
+
+    if (!opts?.allowGenericPhrase) return false;
+
     const words = t.split(/\s+/).filter(Boolean);
     if (
       words.length >= 2 &&
@@ -5791,7 +5845,7 @@ export class WhatsappOrchestratorService {
       if (orderLike) {
         if (
           this.isPlausibleDeliveryAddress(addr) ||
-          this.looksLikeLandmarkOrComplexName(addr) ||
+          this.looksLikeLandmarkOrComplexName(addr, { allowGenericPhrase: true }) ||
           (addr.length >= 4 &&
             !this.isConfirmKeyword(addr) &&
             !this.isGreetingKeyword(addr) &&

@@ -1,6 +1,9 @@
 import {
   classifyWhatsappCustomerIntent,
   intentAllowsAddItems,
+  looksLikeAddressOnlyMessage,
+  looksLikeClearCartMessage,
+  looksLikeNonAddressCommand,
 } from './whatsapp-intent';
 
 describe('classifyWhatsappCustomerIntent', () => {
@@ -70,5 +73,60 @@ describe('classifyWhatsappCustomerIntent', () => {
     });
     expect(intent).toBe('address');
     expect(intentAllowsAddItems(intent)).toBe(false);
+  });
+
+  it('detecta vaciar carrito (imperativo y compuesto)', () => {
+    for (const text of [
+      'borra el pedido y vacio el carrito',
+      'borra el pedido y vacia el carrito',
+      'vacia el carrito',
+      'limpia todo',
+      'ya no quiero nada',
+    ]) {
+      expect(looksLikeClearCartMessage(text)).toBe(true);
+      const intent = classifyWhatsappCustomerIntent({ text, cartLength: 3 });
+      expect(intent).toBe('clear_cart');
+      expect(intentAllowsAddItems(intent)).toBe(false);
+    }
+  });
+
+  it('no confunde vaciar carrito con dirección', () => {
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'borra el pedido y vacio el carrito',
+        cartLength: 2,
+        looksLikeAddressOnly: false,
+      }),
+    ).toBe('clear_cart');
+    expect(looksLikeAddressOnlyMessage('borra el pedido y vacio el carrito')).toBe(false);
+    expect(looksLikeNonAddressCommand('borra el pedido y vacio el carrito')).toBe(true);
+  });
+
+  it('detecta dirección estricta con landmark', () => {
+    expect(
+      looksLikeAddressOnlyMessage('para el hospital de kennedy'),
+    ).toBe(true);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'para el hospital de kennedy',
+        cartLength: 2,
+      }),
+    ).toBe('address');
+  });
+
+  it('no trata frases genéricas como dirección', () => {
+    expect(looksLikeAddressOnlyMessage('borra el pedido y vacio el carrito')).toBe(false);
+    expect(looksLikeAddressOnlyMessage('ya no quiero nada')).toBe(false);
+  });
+
+  it('prioriza nota de combo sobre dirección', () => {
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'para el combo no quiero arepas, quiero mas papas',
+        cartLength: 1,
+        looksLikeSideModificationNote: true,
+      }),
+    ).toBe('side_note');
+    expect(looksLikeAddressOnlyMessage('para el combo no quiero arepas')).toBe(false);
   });
 });
