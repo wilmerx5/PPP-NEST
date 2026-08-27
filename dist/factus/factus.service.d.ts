@@ -33,4 +33,5 @@ export declare class FactusService {
             total?: string;
         } | undefined;
     }>;
+    private isDebug;
 }

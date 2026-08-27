@@ -46,7 +46,15 @@ export class FactusService {
   }
 
   async issueForOrder(orderId: number, dto: IssueElectronicInvoiceDto) {
+    const debug = this.isDebug();
+    this.logger.log(
+      `[FE] inicio orden=#${orderId} env=${process.env.FACTUS_ENV || 'sandbox'} ` +
+        `doc=${dto.identificationDocumentCode}:${dto.identification} ` +
+        `persona=${dto.legalOrganizationCode}`,
+    );
+
     if (!this.auth.isConfigured()) {
+      this.logger.error('[FE] Factus no configurado (faltan FACTUS_* en .env)');
       throw new BadRequestException(
         'Facturación electrónica no configurada. Pide a un admin cargar las credenciales Factus.',
       );
@@ -56,13 +64,20 @@ export class FactusService {
       where: { id: orderId },
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
-    if (!order) throw new NotFoundException('Orden no encontrada');
+    if (!order) {
+      this.logger.warn(`[FE] orden #${orderId} no encontrada`);
+      throw new NotFoundException('Orden no encontrada');
+    }
 
     if (order.orderStatus === 'canceled') {
+      this.logger.warn(`[FE] orden #${orderId} anulada — no facturable`);
       throw new BadRequestException('No se puede facturar una orden anulada');
     }
 
     if (order.electronicInvoiceStatus === 'accepted' && order.electronicInvoiceNumber) {
+      this.logger.warn(
+        `[FE] orden #${orderId} ya facturada → ${order.electronicInvoiceNumber}`,
+      );
       throw new ConflictException({
         message: 'Esta orden ya tiene factura electrónica',
         number: order.electronicInvoiceNumber,
@@ -72,6 +87,7 @@ export class FactusService {
     }
 
     if (!order.items?.length && !order.extras?.length) {
+      this.logger.warn(`[FE] orden #${orderId} sin ítems`);
       throw new BadRequestException('La orden no tiene ítems para facturar');
     }
 
@@ -87,7 +103,15 @@ export class FactusService {
     order.electronicInvoiceReference = `PPP-ORD-${order.id}`;
     await this.orderRepo.save(order);
 
-    const { payload } = this.mapper.buildValidatePayload(order, dto);
+    const { payload, invoiceTotal } = this.mapper.buildValidatePayload(order, dto);
+    this.logger.log(
+      `[FE] payload listo orden=#${order.id} ref=${payload.reference_code} ` +
+        `items=${payload.items?.length ?? 0} total≈${invoiceTotal} ` +
+        `cliente=${payload.customer?.names || payload.customer?.company || '?'}`,
+    );
+    if (debug) {
+      this.logger.debug(`[FE] payload completo: ${JSON.stringify(payload)}`);
+    }
 
     try {
       const result = await this.api.validateBill(payload);
@@ -103,16 +127,28 @@ export class FactusService {
         ? null
         : JSON.stringify(data?.errors || result.message || 'No validada').slice(0, 1000);
 
-      // Guardar datos fiscales del cliente en la orden para reintentos / auditoría
       order.invoiceCustomerDocType = dto.identificationDocumentCode;
       order.invoiceCustomerDocNumber = dto.identification.replace(/\D/g, '');
       if (dto.email) order.customerEmail = dto.email;
 
       await this.orderRepo.save(order);
 
-      this.logger.log(
-        `FE orden #${order.id} → ${order.electronicInvoiceNumber} validated=${data?.is_validated}`,
-      );
+      if (data?.is_validated) {
+        this.logger.log(
+          `[FE] OK orden=#${order.id} number=${order.electronicInvoiceNumber} ` +
+            `cufe=${(order.electronicInvoiceCufe || '').slice(0, 24)}… ` +
+            `url=${order.electronicInvoicePublicUrl || '-'}`,
+        );
+      } else {
+        this.logger.warn(
+          `[FE] RECHAZADA/sin validar orden=#${order.id} number=${order.electronicInvoiceNumber} ` +
+            `msg=${result.message} errors=${JSON.stringify(data?.errors || {})}`,
+        );
+      }
+
+      if (debug && data?.errors && Object.keys(data.errors).length) {
+        this.logger.debug(`[FE] avisos DIAN: ${JSON.stringify(data.errors)}`);
+      }
 
       return {
         success: !!data?.is_validated,
@@ -128,10 +164,19 @@ export class FactusService {
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `[FE] ERROR orden=#${order.id} ref=${payload.reference_code}: ${message}`,
+        stack,
+      );
       order.electronicInvoiceStatus = 'error';
       order.electronicInvoiceError = message.slice(0, 1000);
       await this.orderRepo.save(order);
       throw err;
     }
+  }
+
+  private isDebug(): boolean {
+    return (process.env.FACTUS_DEBUG || '').toLowerCase() === 'true';
   }
 }

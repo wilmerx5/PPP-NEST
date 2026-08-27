@@ -67,8 +67,15 @@ export class FactusApiClient {
     body?: unknown,
     retried = false,
   ): Promise<T> {
+    const debug = (process.env.FACTUS_DEBUG || '').toLowerCase() === 'true';
     const token = await this.auth.getAccessToken();
     const url = `${this.auth.getBaseUrl()}${path}`;
+    this.logger.log(`[Factus API] ${method} ${path}${retried ? ' (retry auth)' : ''}`);
+    if (debug && body) {
+      this.logger.debug(`[Factus API] body: ${JSON.stringify(body)}`);
+    }
+
+    const started = Date.now();
     const res = await fetch(url, {
       method,
       headers: {
@@ -80,6 +87,7 @@ export class FactusApiClient {
     });
 
     if (res.status === 401 && !retried) {
+      this.logger.warn('[Factus API] 401 — invalidando token y reintentando');
       this.auth.invalidateToken();
       return this.requestJson<T>(method, path, body, true);
     }
@@ -92,8 +100,12 @@ export class FactusApiClient {
       json = { message: text };
     }
 
+    const ms = Date.now() - started;
     if (!res.ok) {
-      this.logger.error(`Factus ${method} ${path} → ${res.status}: ${text.slice(0, 800)}`);
+      // Log completo del error (hasta 4k) para depurar en docker logs
+      this.logger.error(
+        `[Factus API] FAIL ${method} ${path} → HTTP ${res.status} (${ms}ms)\n${text.slice(0, 4000)}`,
+      );
       const msg =
         (json as { message?: string })?.message ||
         (json as { error?: string })?.error ||
@@ -104,6 +116,10 @@ export class FactusApiClient {
       throw new ServiceUnavailableException(msg);
     }
 
+    this.logger.log(`[Factus API] OK ${method} ${path} → HTTP ${res.status} (${ms}ms)`);
+    if (debug) {
+      this.logger.debug(`[Factus API] response: ${text.slice(0, 2000)}`);
+    }
     return json as T;
   }
 }

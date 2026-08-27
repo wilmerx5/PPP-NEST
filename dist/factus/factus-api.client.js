@@ -52,8 +52,14 @@ let FactusApiClient = FactusApiClient_1 = class FactusApiClient {
         return Buffer.from(ab);
     }
     async requestJson(method, path, body, retried = false) {
+        const debug = (process.env.FACTUS_DEBUG || '').toLowerCase() === 'true';
         const token = await this.auth.getAccessToken();
         const url = `${this.auth.getBaseUrl()}${path}`;
+        this.logger.log(`[Factus API] ${method} ${path}${retried ? ' (retry auth)' : ''}`);
+        if (debug && body) {
+            this.logger.debug(`[Factus API] body: ${JSON.stringify(body)}`);
+        }
+        const started = Date.now();
         const res = await fetch(url, {
             method,
             headers: {
@@ -64,6 +70,7 @@ let FactusApiClient = FactusApiClient_1 = class FactusApiClient {
             body: body ? JSON.stringify(body) : undefined,
         });
         if (res.status === 401 && !retried) {
+            this.logger.warn('[Factus API] 401 — invalidando token y reintentando');
             this.auth.invalidateToken();
             return this.requestJson(method, path, body, true);
         }
@@ -75,8 +82,9 @@ let FactusApiClient = FactusApiClient_1 = class FactusApiClient {
         catch {
             json = { message: text };
         }
+        const ms = Date.now() - started;
         if (!res.ok) {
-            this.logger.error(`Factus ${method} ${path} → ${res.status}: ${text.slice(0, 800)}`);
+            this.logger.error(`[Factus API] FAIL ${method} ${path} → HTTP ${res.status} (${ms}ms)\n${text.slice(0, 4000)}`);
             const msg = json?.message ||
                 json?.error ||
                 `Error Factus (${res.status})`;
@@ -84,6 +92,10 @@ let FactusApiClient = FactusApiClient_1 = class FactusApiClient {
                 throw new common_1.BadRequestException(msg);
             }
             throw new common_1.ServiceUnavailableException(msg);
+        }
+        this.logger.log(`[Factus API] OK ${method} ${path} → HTTP ${res.status} (${ms}ms)`);
+        if (debug) {
+            this.logger.debug(`[Factus API] response: ${text.slice(0, 2000)}`);
         }
         return json;
     }

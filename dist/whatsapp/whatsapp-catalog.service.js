@@ -86,6 +86,8 @@ const MENU_WRAPPER_TOKENS = new Set([
     'especiales',
     'promocion',
     'promo',
+    'combo',
+    'combos',
 ]);
 const ORDER_INTENT_ONLY = new Set([
     'quiero',
@@ -1262,10 +1264,17 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             return false;
         if (this.countQuantityMentions(raw) >= 2)
             return true;
-        if (!/\s*,\s*|\s+\by\b\s+/i.test(raw))
+        const withoutCourtesy = raw
+            .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
+            .trim();
+        if (!/\s*,\s*|\s+\by\b\s+/i.test(withoutCourtesy))
             return false;
-        const q = normalizeText(raw);
-        const dishRe = /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|fritos?|asados?|limonadas?)\b/g;
+        let q = normalizeText(withoutCourtesy);
+        q = q
+            .replace(/\bpollos?\s+(?:fritos?|asados?|broaster|apana(?:do|da)s?)\b/g, 'pollo')
+            .replace(/\bmojarras?\s+(?:fritas?|asadas?|plancha)\b/g, 'mojarra')
+            .replace(/\bpechugas?\s+(?:fritas?|asadas?|plancha|broaster)\b/g, 'pechuga');
+        const dishRe = /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?)\b/g;
         const hits = new Set();
         for (const m of q.matchAll(dishRe)) {
             hits.add(singularizeEsToken(m[1]));
@@ -1317,6 +1326,11 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             const name = normalizeText(p.name);
             if (name.length < 4)
                 continue;
+            const nameHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(name, t));
+            const queryHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(q, t));
+            if (nameHasMenuWrapper && !queryHasMenuWrapper) {
+                continue;
+            }
             let idx = 0;
             let foundFull = false;
             while ((idx = q.indexOf(name, idx)) !== -1) {
@@ -1747,7 +1761,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         }
         if (this.looksLikeSingleProductWithMods(text))
             return false;
-        if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(text))
+        const withoutCourtesy = (text || '')
+            .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
+            .trim();
+        if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(withoutCourtesy))
             return false;
         const q = normalizeText(text);
         if (!new RegExp(FOOD_ORDER_TOKEN, 'i').test(q) &&
@@ -2368,7 +2385,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             const nameHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(name, t));
             const queryHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(q, t));
             if (nameHasMenuWrapper && !queryHasMenuWrapper) {
-                score -= 100;
+                return { p, score: 0 };
             }
             if (q.length >= 5 && name.includes(q) && name !== q) {
                 const ratio = q.length / Math.max(name.length, 1);

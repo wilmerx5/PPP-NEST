@@ -8,6 +8,7 @@ export declare class SqlMigrationsRunner implements OnApplicationBootstrap {
     constructor(config: ConfigService, dataSource: DataSource);
     onApplicationBootstrap(): Promise<void>;
     private runAll;
+    private ensureElectronicInvoiceColumns;
     private ensureClientRequestIdColumn;
     private ensureUserAddressLocationColumns;
     private ensureWebDeliverySettingsColumns;

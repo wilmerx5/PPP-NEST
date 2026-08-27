@@ -40,6 +40,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureWhatsappSchema();
     await this.ensureUserAddressLocationColumns();
     await this.ensureWebDeliverySettingsColumns();
+    await this.ensureElectronicInvoiceColumns();
 
     if (!this.isEnabled()) {
       this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
@@ -110,6 +111,82 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
    * Idempotencia de órdenes: la entidad ya usa client_request_id.
    * Se aplica siempre al boot para no tumbar la API si no corrieron migrations.
    */
+  /** Columnas FE Factus en ppp_orders — críticas: sin ellas /orders/daily cae. */
+  private async ensureElectronicInvoiceColumns() {
+    try {
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_orders'`,
+      );
+      if (Number(table?.[0]?.c) === 0) return;
+
+      const cols: Array<{ name: string; ddl: string }> = [
+        {
+          name: 'electronic_invoice_status',
+          ddl: "VARCHAR(20) NOT NULL DEFAULT 'none'",
+        },
+        { name: 'electronic_invoice_reference', ddl: 'VARCHAR(64) NULL' },
+        { name: 'electronic_invoice_number', ddl: 'VARCHAR(64) NULL' },
+        { name: 'electronic_invoice_cufe', ddl: 'VARCHAR(128) NULL' },
+        { name: 'electronic_invoice_public_url', ddl: 'VARCHAR(500) NULL' },
+        { name: 'electronic_invoice_qr_url', ddl: 'VARCHAR(500) NULL' },
+        { name: 'electronic_invoice_issued_at', ddl: 'TIMESTAMP NULL' },
+        { name: 'electronic_invoice_error', ddl: 'VARCHAR(1000) NULL' },
+        { name: 'invoice_customer_doc_type', ddl: 'VARCHAR(5) NULL' },
+        { name: 'invoice_customer_doc_number', ddl: 'VARCHAR(20) NULL' },
+      ];
+
+      for (const col of cols) {
+        const rows: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_orders'
+             AND COLUMN_NAME = ?`,
+          [col.name],
+        );
+        if (Number(rows?.[0]?.c) > 0) continue;
+        this.logger.warn(`Missing ppp_orders.${col.name} — adding now`);
+        await this.dataSource.query(
+          `ALTER TABLE ppp_orders ADD COLUMN ${col.name} ${col.ddl}`,
+        );
+      }
+
+      // Índices (idempotente)
+      for (const idx of [
+        {
+          name: 'idx_ppp_orders_einvoice_status',
+          sql: 'CREATE INDEX idx_ppp_orders_einvoice_status ON ppp_orders (electronic_invoice_status)',
+        },
+        {
+          name: 'idx_ppp_orders_einvoice_number',
+          sql: 'CREATE INDEX idx_ppp_orders_einvoice_number ON ppp_orders (electronic_invoice_number)',
+        },
+      ]) {
+        const exists: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.STATISTICS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_orders'
+             AND INDEX_NAME = ?`,
+          [idx.name],
+        );
+        if (Number(exists?.[0]?.c) > 0) continue;
+        try {
+          await this.dataSource.query(idx.sql);
+        } catch (err: unknown) {
+          if (!this.isIdempotentError(err)) throw err;
+        }
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure electronic invoice columns: ${message}`);
+    }
+  }
+
   private async ensureClientRequestIdColumn() {
     try {
       const rows: { c: number }[] = await this.dataSource.query(

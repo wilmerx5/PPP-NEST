@@ -75,11 +75,12 @@ let FactusAuthService = FactusAuthService_1 = class FactusAuthService {
         });
         if (!res.ok) {
             const errText = await res.text();
-            this.logger.error(`Factus OAuth error ${res.status}: ${errText}`);
+            this.logger.error(`Factus OAuth error ${res.status}: ${errText.slice(0, 2000)}`);
             throw new common_1.ServiceUnavailableException('No se pudo autenticar con Factus. Revisa credenciales / sandbox.');
         }
         const data = (await res.json());
         this.storeTokens(data);
+        this.logger.log(`Factus OAuth OK (expires_in=${data.expires_in || '?'}s, env=${this.getBaseUrl()})`);
         return this.accessToken;
     }
     async refreshAccessToken() {
