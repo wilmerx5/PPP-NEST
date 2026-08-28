@@ -43,6 +43,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureFactusInvoiceSettingsColumns();
     await this.ensureElectronicInvoiceColumns();
     await this.ensureInvoiceCustomersTable();
+    await this.ensureUserTotpColumns();
 
     if (!this.isEnabled()) {
       this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
@@ -220,6 +221,48 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       if (this.isIdempotentError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to ensure ppp_invoice_customers: ${message}`);
+    }
+  }
+
+  /** TOTP 2FA en ppp_users — sin estas columnas auth/refresh tumba la API. */
+  private async ensureUserTotpColumns() {
+    try {
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_users'`,
+      );
+      if (Number(table?.[0]?.c) === 0) return;
+
+      const cols: Array<{ name: string; ddl: string }> = [
+        {
+          name: 'totp_enabled',
+          ddl: 'TINYINT(1) NOT NULL DEFAULT 0',
+        },
+        { name: 'totp_secret', ddl: 'VARCHAR(64) NULL' },
+        { name: 'totp_recovery_codes', ddl: 'TEXT NULL' },
+      ];
+
+      for (const col of cols) {
+        const rows: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_users'
+             AND COLUMN_NAME = ?`,
+          [col.name],
+        );
+        if (Number(rows?.[0]?.c) > 0) continue;
+        this.logger.warn(`Missing ppp_users.${col.name} — adding now`);
+        await this.dataSource.query(
+          `ALTER TABLE ppp_users ADD COLUMN ${col.name} ${col.ddl}`,
+        );
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure user TOTP columns: ${message}`);
     }
   }
 
