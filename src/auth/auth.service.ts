@@ -5,6 +5,8 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/common/mail/mail.service';
 import { Repository } from 'typeorm';
 import { CreateUserDTO } from './dto/create-user-dto';
+import { CreateStaffUserDto } from './dto/create-staff-user.dto';
+import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
 import { LogInUserDTO } from './dto/login-user.dto';
 import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
@@ -14,6 +16,7 @@ import { User } from './entities/user.entity';
 import { VerificationToken } from './entities/verification-token.entity';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { ValidRoles } from './interfaces/valid.roles.interface';
+import { userHasStaffRole } from './staff.roles.util';
 
 @Injectable()
 export class AuthService {
@@ -351,6 +354,77 @@ return Object.values(ValidRoles);
 
     return {
       message: 'Contraseña actualizada correctamente',
+    };
+  }
+
+  async createStaffUser(dto: CreateStaffUserDto) {
+    try {
+      const existing = await this.userRepository.findOne({
+        where: { email: dto.email.trim().toLowerCase() },
+        select: ['id'],
+      });
+      if (existing) {
+        throw new BadRequestException('Ya existe un usuario con ese correo');
+      }
+
+      const user = this.userRepository.create({
+        email: dto.email.trim().toLowerCase(),
+        fullName: dto.fullName.trim(),
+        phone: dto.phone?.trim() || undefined,
+        password: bcrypt.hashSync(dto.password, 10),
+        isActive: true,
+        provider: 'local',
+        roles: [...new Set(dto.roles)],
+      });
+
+      await this.userRepository.save(user);
+
+      return {
+        success: true,
+        message: 'Usuario de staff creado y activo',
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          phone: user.phone,
+          isActive: user.isActive,
+          roles: user.roles,
+          createdAt: user.createdAt,
+        },
+      };
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      this.handleDBErrors(e);
+    }
+  }
+
+  async updateStaffUser(id: string, dto: UpdateStaffUserDto) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+    if (!userHasStaffRole(user.roles)) {
+      throw new BadRequestException('Este usuario no es de staff interno');
+    }
+
+    const patch: Partial<User> = {};
+    if (dto.fullName?.trim()) patch.fullName = dto.fullName.trim();
+    if (dto.phone !== undefined) patch.phone = dto.phone.trim() || undefined;
+    if (dto.roles?.length) patch.roles = [...new Set(dto.roles)];
+    if (dto.isActive !== undefined) patch.isActive = dto.isActive;
+    if (dto.password) patch.password = bcrypt.hashSync(dto.password, 10);
+
+    await this.userRepository.update({ id }, patch);
+
+    const updated = await this.userRepository.findOne({
+      where: { id },
+      select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
+    });
+
+    return {
+      success: true,
+      message: 'Usuario de staff actualizado',
+      user: updated,
     };
   }
 }

@@ -16,7 +16,15 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } 
 import { Between } from 'typeorm';
 import { Auth } from './decorators/auth.decorator';
 import { ValidRoles } from './interfaces/valid.roles.interface';
-import { User } from './entities/user.entity';
+import { AuthService } from './auth.service';
+import { CreateStaffUserDto } from './dto/create-staff-user.dto';
+import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
+import {
+  staffRolesSqlParams,
+  staffRolesSqlWhere,
+  userHasStaffRole,
+} from './staff.roles.util';
+import { formatInTimeZone } from 'date-fns-tz';
 import { Request, Response } from 'express';
 import { PointsService } from './services/points.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -31,7 +39,7 @@ import {
   UpdateRestaurantSettingsDto,
 } from '../business/dto/business.dto';
 import { getBogotaDateRange } from '../common/utils/date.util';
-import { formatInTimeZone } from 'date-fns-tz';
+import { User } from './entities/user.entity';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -39,6 +47,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 @ApiBearerAuth()
 export class AdminController {
   constructor(
+    private readonly authService: AuthService,
     private readonly pointsService: PointsService,
     private readonly ordersService: OrdersService,
     private readonly productsService: ProductsService,
@@ -55,15 +64,23 @@ export class AdminController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 15 })
   @ApiQuery({ name: 'search', required: false, description: 'Search by name, email or phone' })
+  @ApiQuery({
+    name: 'audience',
+    required: false,
+    description: 'customers = solo clientes del portal; staff = personal interno; all = todos',
+    enum: ['customers', 'staff', 'all'],
+  })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async getAllUsers(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('audience') audience?: string,
   ) {
     const pageNum = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
     const limitNum = limit ? Math.min(100, Math.max(1, parseInt(limit, 10) || 15)) : 15;
     const searchTrim = search?.trim();
+    const audienceNorm = (audience || 'all').toLowerCase();
 
     const qb = this.userRepo
       .createQueryBuilder('user')
@@ -88,9 +105,44 @@ export class AdminController {
       );
     }
 
+    const staffWhere = staffRolesSqlWhere('user');
+    const staffParams = staffRolesSqlParams();
+    if (audienceNorm === 'staff') {
+      qb.andWhere(`(${staffWhere})`, staffParams);
+    } else if (audienceNorm === 'customers') {
+      qb.andWhere(`NOT (${staffWhere})`, staffParams);
+    }
+
     const [data, total] = await qb.getManyAndCount();
 
     return { data, total };
+  }
+
+  @Post('staff')
+  @ApiOperation({ summary: 'Crear usuario de staff interno (activo de inmediato)' })
+  @ApiResponse({ status: 201, description: 'Staff user created' })
+  createStaffUser(@Body() dto: CreateStaffUserDto) {
+    return this.authService.createStaffUser(dto);
+  }
+
+  @Patch('staff/:id')
+  @ApiOperation({ summary: 'Actualizar usuario de staff (roles, estado, contraseña)' })
+  @ApiResponse({ status: 200, description: 'Staff user updated' })
+  updateStaffUser(@Param('id') id: string, @Body() dto: UpdateStaffUserDto) {
+    return this.authService.updateStaffUser(id, dto);
+  }
+
+  @Get('staff/:id')
+  @ApiOperation({ summary: 'Detalle de usuario staff' })
+  async getStaffUser(@Param('id') id: string) {
+    const user = await this.userRepo.findOne({
+      where: { id },
+      select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
+    });
+    if (!user || !userHasStaffRole(user.roles)) {
+      throw new NotFoundException('Usuario de staff no encontrado');
+    }
+    return user;
   }
 
   @Patch('users/:id/active')
