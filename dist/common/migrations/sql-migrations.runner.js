@@ -47,6 +47,7 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
         await this.ensureUserAddressLocationColumns();
         await this.ensureWebDeliverySettingsColumns();
         await this.ensureElectronicInvoiceColumns();
+        await this.ensureInvoiceCustomersTable();
         if (!this.isEnabled()) {
             this.logger.log('RUN_MIGRATIONS disabled — skipping folder SQL migrations');
             return;
@@ -123,6 +124,11 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
                 { name: 'electronic_invoice_error', ddl: 'VARCHAR(1000) NULL' },
                 { name: 'invoice_customer_doc_type', ddl: 'VARCHAR(5) NULL' },
                 { name: 'invoice_customer_doc_number', ddl: 'VARCHAR(20) NULL' },
+                { name: 'invoice_customer_doc_dv', ddl: 'VARCHAR(1) NULL' },
+                { name: 'electronic_credit_note_number', ddl: 'VARCHAR(64) NULL' },
+                { name: 'electronic_credit_note_cufe', ddl: 'VARCHAR(128) NULL' },
+                { name: 'electronic_credit_note_public_url', ddl: 'VARCHAR(500) NULL' },
+                { name: 'electronic_credit_note_issued_at', ddl: 'TIMESTAMP NULL' },
             ];
             for (const col of cols) {
                 const rows = await this.dataSource.query(`SELECT COUNT(*) AS c
@@ -166,6 +172,35 @@ let SqlMigrationsRunner = SqlMigrationsRunner_1 = class SqlMigrationsRunner {
                 return;
             const message = err instanceof Error ? err.message : String(err);
             this.logger.error(`Failed to ensure electronic invoice columns: ${message}`);
+        }
+    }
+    async ensureInvoiceCustomersTable() {
+        try {
+            await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS ppp_invoice_customers (
+          id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          identification_document_code VARCHAR(5) NOT NULL,
+          identification VARCHAR(20) NOT NULL,
+          dv VARCHAR(1) NULL,
+          legal_organization_code VARCHAR(1) NOT NULL,
+          names VARCHAR(150) NULL,
+          company VARCHAR(150) NULL,
+          email VARCHAR(255) NULL,
+          phone VARCHAR(20) NULL,
+          address VARCHAR(250) NULL,
+          municipality_code VARCHAR(10) NULL,
+          times_used INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_invoice_customer_doc (identification_document_code, identification)
+        )
+      `);
+        }
+        catch (err) {
+            if (this.isIdempotentError(err))
+                return;
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to ensure ppp_invoice_customers: ${message}`);
         }
     }
     async ensureClientRequestIdColumn() {

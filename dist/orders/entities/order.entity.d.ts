@@ -22,7 +22,7 @@ export declare class Order {
     tableGroupId: number | null;
     clientRequestId: string | null;
     extras?: OrderExtra[];
-    electronicInvoiceStatus: 'none' | 'pending' | 'accepted' | 'rejected' | 'error';
+    electronicInvoiceStatus: 'none' | 'pending' | 'accepted' | 'rejected' | 'error' | 'credit_noted';
     electronicInvoiceReference: string | null;
     electronicInvoiceNumber: string | null;
     electronicInvoiceCufe: string | null;
@@ -30,6 +30,11 @@ export declare class Order {
     electronicInvoiceQrUrl: string | null;
     electronicInvoiceIssuedAt: Date | null;
     electronicInvoiceError: string | null;
+    electronicCreditNoteNumber: string | null;
+    electronicCreditNoteCufe: string | null;
+    electronicCreditNotePublicUrl: string | null;
+    electronicCreditNoteIssuedAt: Date | null;
     invoiceCustomerDocType: string | null;
     invoiceCustomerDocNumber: string | null;
+    invoiceCustomerDocDv: string | null;
 }

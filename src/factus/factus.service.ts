@@ -6,6 +6,7 @@ import {
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
@@ -18,16 +19,22 @@ import { InvoiceCustomer } from './entities/invoice-customer.entity';
 import { FactusApiClient } from './factus-api.client';
 import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
+import { pickCreditNoteRangeId } from './factus-numbering.util';
+import type { FactusValidateCreditNoteRequest } from './types/factus.types';
 
 @Injectable()
 export class FactusService {
   private readonly logger = new Logger(FactusService.name);
+  /** Cache del rango NC auto-detectado (como Loggro: sin obligar .env si hay uno solo). */
+  private creditNoteRangeCache: { id: number; expiresAt: number } | null = null;
+  private static readonly NC_RANGE_CACHE_MS = 10 * 60 * 1000;
 
   constructor(
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(InvoiceCustomer)
     private readonly customerRepo: Repository<InvoiceCustomer>,
+    private readonly config: ConfigService,
     private readonly auth: FactusAuthService,
     private readonly api: FactusApiClient,
     private readonly mapper: FactusInvoiceMapper,
@@ -254,12 +261,26 @@ export class FactusService {
       );
     }
 
+    let savedCustomer: InvoiceCustomer | null = null;
+    if (order.invoiceCustomerDocType && order.invoiceCustomerDocNumber) {
+      savedCustomer = await this.customerRepo.findOne({
+        where: {
+          identificationDocumentCode: order.invoiceCustomerDocType,
+          identification: order.invoiceCustomerDocNumber.replace(/\D/g, ''),
+        },
+      });
+    }
+
     const payload = this.mapper.buildCreditNotePayload(order, {
       observation: dto.observation,
       correctionConceptCode: dto.correctionConceptCode,
+      savedCustomer,
+      numberingRangeId: await this.resolveCreditNoteRangeId(),
     });
+    await this.ensureCreditNoteCustomer(payload, order);
     this.logger.log(
-      `[FE] nota crédito orden=#${orderId} bill=${payload.bill_number} ref=${payload.reference_code}`,
+      `[FE] nota crédito orden=#${orderId} bill=${payload.bill_number} ref=${payload.reference_code} ` +
+        `cliente=${payload.customer.identification_document_code}:${payload.customer.identification}`,
     );
 
     try {
@@ -386,6 +407,68 @@ export class FactusService {
         'Facturación electrónica no configurada. Pide a un admin cargar las credenciales Factus.',
       );
     }
+  }
+
+  /**
+   * Rango NC: FACTUS_CREDIT_NOTE_RANGE_ID o auto-detecta vía GET /v2/numbering-ranges
+   * (mismo criterio que software tipo Loggro cuando no configuras NC a mano).
+   */
+  /**
+   * Factus exige customer completo en NC. Si PPP no lo tiene en BD,
+   * lo tomamos de GET /v2/bills/:number (misma FE ya validada).
+   */
+  private async ensureCreditNoteCustomer(
+    payload: FactusValidateCreditNoteRequest,
+    order: Order,
+  ): Promise<void> {
+    const c = payload.customer;
+    const id = c?.identification?.replace(/\D/g, '') || '';
+    const complete =
+      id.length >= 5 &&
+      !!c?.identification_document_code &&
+      !!c?.legal_organization_code &&
+      Array.isArray(c?.responsibilities) &&
+      c.responsibilities.length > 0;
+
+    if (complete) return;
+
+    if (!order.electronicInvoiceNumber) {
+      throw new BadRequestException('La orden no tiene número de factura electrónica');
+    }
+
+    this.logger.log(
+      `[FE] NC cliente incompleto orden=#${order.id} — consultando ${order.electronicInvoiceNumber} en Factus`,
+    );
+    const bill = await this.api.getBill(order.electronicInvoiceNumber);
+    payload.customer = this.mapper.customerFromBillDetail(bill);
+  }
+
+  private async resolveCreditNoteRangeId(): Promise<number> {
+    const fromEnv = this.config.get<string>('FACTUS_CREDIT_NOTE_RANGE_ID');
+    const parsed = fromEnv ? parseInt(fromEnv, 10) : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+
+    const now = Date.now();
+    if (
+      this.creditNoteRangeCache &&
+      this.creditNoteRangeCache.expiresAt > now
+    ) {
+      return this.creditNoteRangeCache.id;
+    }
+
+    const billRangeRaw = this.config.get<string>('FACTUS_NUMBERING_RANGE_ID');
+    const billRangeId = billRangeRaw ? parseInt(billRangeRaw, 10) : undefined;
+
+    const ranges = await this.api.listNumberingRanges();
+    const id = pickCreditNoteRangeId(ranges, billRangeId);
+    this.logger.log(`[FE] rango NC auto-detectado → id=${id}`);
+    this.creditNoteRangeCache = {
+      id,
+      expiresAt: now + FactusService.NC_RANGE_CACHE_MS,
+    };
+    return id;
   }
 
   private isDebug(): boolean {

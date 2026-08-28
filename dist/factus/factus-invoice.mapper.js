@@ -83,14 +83,159 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
         }
         return { payload, invoiceTotal: total };
     }
-    mapItems(order) {
-        const taxCode = this.config.get('FACTUS_ITEM_TAX_CODE') || '01';
-        const taxRate = this.config.get('FACTUS_ITEM_TAX_RATE') || '0.00';
-        const excluded = (this.config.get('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
+    buildCreditNotePayload(order, opts) {
+        if (!order.electronicInvoiceNumber) {
+            throw new common_1.BadRequestException('La orden no tiene número de factura electrónica');
+        }
+        if (!Number.isFinite(opts.numberingRangeId) || opts.numberingRangeId <= 0) {
+            throw new common_1.BadRequestException('Rango de nota crédito inválido');
+        }
+        const allItems = [
+            ...this.mapItems(order),
+            ...this.deliveryAsExtra(order),
+            ...this.mapExtras(order),
+        ];
+        const total = this.sumItemsGross(allItems);
+        const paymentMethod = (this.config.get('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
+        const payload = {
+            reference_code: `PPP-NC-${order.id}-${Date.now()}`,
+            correction_concept_code: (opts.correctionConceptCode || '2').trim(),
+            customization_id: '20',
+            bill_number: order.electronicInvoiceNumber,
+            numbering_range_id: opts.numberingRangeId,
+            observation: (opts.observation ||
+                `Anulación FE ${order.electronicInvoiceNumber} — pedido #${order.dailyOrderNumber ?? order.id}`).slice(0, 250),
+            payment_details: [
+                {
+                    payment_form: '1',
+                    payment_method_code: paymentMethod,
+                    reference_code: `nc-order-${order.id}`,
+                    amount: factusMoney(total),
+                },
+            ],
+            customer: this.buildCreditNoteCustomer(order, opts.savedCustomer),
+            items: allItems,
+        };
+        return payload;
+    }
+    customerFromBillDetail(bill) {
+        const c = bill.customer;
+        if (!c?.identification?.trim()) {
+            throw new common_1.BadRequestException('Factus no devolvió el documento del cliente en la factura original');
+        }
+        const identification = c.identification.replace(/\D/g, '');
+        const docType = c.identification_document?.code?.trim() || '13';
+        const legalOrg = c.legal_organization?.code?.trim() ||
+            (docType === '31' ? '1' : '2');
+        let responsibilities = [];
+        if (Array.isArray(c.responsibilities)) {
+            responsibilities = c.responsibilities
+                .map((r) => (typeof r === 'string' ? r : r.code || ''))
+                .map((code) => code.trim())
+                .filter(Boolean);
+        }
+        if (!responsibilities.length) {
+            responsibilities = ['R-99-PN'];
+        }
+        const names = legalOrg === '2'
+            ? (c.names || c.graphic_representation_name || 'Consumidor final').trim()
+            : undefined;
+        const company = legalOrg === '1'
+            ? (c.company || c.trade_name || c.graphic_representation_name || 'Cliente').trim()
+            : undefined;
+        return {
+            identification_document_code: docType,
+            identification,
+            dv: c.dv?.trim() || undefined,
+            legal_organization_code: legalOrg,
+            tribute_code: c.tribute?.code?.trim() || 'ZZ',
+            responsibilities,
+            names,
+            company,
+            address: c.address?.trim() || undefined,
+            email: c.email?.trim() || undefined,
+            phone: c.phone?.replace(/\D/g, '').slice(-10) || undefined,
+            country_code: c.country?.code?.trim() || 'CO',
+            municipality_code: c.municipality?.code?.trim() || '11001',
+        };
+    }
+    buildCreditNoteCustomer(order, saved) {
+        const docType = saved?.identificationDocumentCode ||
+            order.invoiceCustomerDocType ||
+            '13';
+        const identification = (saved?.identification ||
+            order.invoiceCustomerDocNumber ||
+            '').replace(/\D/g, '');
+        if (identification.length < 5) {
+            throw new common_1.BadRequestException('No hay documento del cliente en la orden. Emite de nuevo la FE o contacta soporte.');
+        }
+        const legalOrg = saved?.legalOrganizationCode ||
+            (docType === '31' ? '1' : '2');
+        const municipality = saved?.municipalityCode ||
+            this.config.get('FACTUS_DEFAULT_MUNICIPALITY_CODE') ||
+            '11001';
+        const names = legalOrg === '2'
+            ? (saved?.names || order.customerName || 'Consumidor final').trim()
+            : undefined;
+        const company = legalOrg === '1'
+            ? (saved?.company || order.customerName || 'Cliente').trim()
+            : undefined;
+        return {
+            identification_document_code: docType,
+            identification,
+            dv: saved?.dv || order.invoiceCustomerDocDv || undefined,
+            legal_organization_code: legalOrg,
+            tribute_code: 'ZZ',
+            responsibilities: ['R-99-PN'],
+            names,
+            company,
+            address: (saved?.address || order.address || '').trim() || undefined,
+            email: (saved?.email || order.customerEmail || '').trim() || undefined,
+            phone: (saved?.phone || order.phone || '').replace(/\D/g, '').slice(-10) || undefined,
+            country_code: 'CO',
+            municipality_code: municipality,
+        };
+    }
+    getItemTaxConfig() {
+        const taxCode = this.config.get('FACTUS_ITEM_TAX_CODE') || '04';
+        const taxRate = this.config.get('FACTUS_ITEM_TAX_RATE') || '8.00';
+        const excluded = (this.config.get('FACTUS_ITEM_TAX_EXCLUDED') || 'false').toLowerCase() ===
             'true';
         const pricesIncludeTax = (this.config.get('FACTUS_PRICES_INCLUDE_TAX') || 'true').toLowerCase() ===
             'true';
         const rateNum = parseFloat(taxRate) || 0;
+        return { taxCode, excluded, pricesIncludeTax, rateNum };
+    }
+    netUnitPrice(grossUnit, cfg) {
+        if (cfg.pricesIncludeTax && cfg.rateNum > 0 && !cfg.excluded) {
+            return grossUnit / (1 + cfg.rateNum / 100);
+        }
+        return grossUnit;
+    }
+    buildItemTaxes(cfg) {
+        return [
+            {
+                code: cfg.taxCode,
+                rate: factusMoney(cfg.rateNum),
+                ...(cfg.excluded ? { is_excluded: true } : {}),
+            },
+        ];
+    }
+    toFactusBillItem(params) {
+        const cfg = this.getItemTaxConfig();
+        return {
+            code_reference: params.code_reference,
+            name: params.name.slice(0, 200),
+            quantity: factusMoney(params.quantity),
+            discount_rate: '0.00',
+            price: factusMoney(this.netUnitPrice(params.grossUnit, cfg)),
+            unit_measure_code: '94',
+            standard_code: '999',
+            note: params.note,
+            taxes: this.buildItemTaxes(cfg),
+        };
+    }
+    mapItems(order) {
         const grouped = new Map();
         for (const item of order.items || []) {
             if (!item.product)
@@ -113,92 +258,47 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
                 });
             }
         }
-        const out = [];
-        for (const g of grouped.values()) {
-            let unitPrice = g.unit;
-            if (pricesIncludeTax && rateNum > 0 && !excluded) {
-                unitPrice = unitPrice / (1 + rateNum / 100);
-            }
-            out.push({
-                code_reference: g.code,
-                name: g.name.slice(0, 200),
-                quantity: factusMoney(g.qty),
-                discount_rate: '0.00',
-                price: factusMoney(unitPrice),
-                unit_measure_code: '94',
-                standard_code: '999',
-                note: g.note,
-                taxes: [
-                    {
-                        code: taxCode,
-                        rate: factusMoney(rateNum),
-                        ...(excluded ? { is_excluded: true } : {}),
-                    },
-                ],
-            });
-        }
-        return out;
+        return [...grouped.values()].map((g) => this.toFactusBillItem({
+            code_reference: g.code,
+            name: g.name,
+            quantity: g.qty,
+            grossUnit: g.unit,
+            note: g.note,
+        }));
     }
     mapExtras(order) {
-        const taxCode = this.config.get('FACTUS_ITEM_TAX_CODE') || '01';
-        const taxRate = this.config.get('FACTUS_ITEM_TAX_RATE') || '0.00';
-        const excluded = (this.config.get('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
-            'true';
-        const rateNum = parseFloat(taxRate) || 0;
-        return (order.extras || []).map((ex, idx) => ({
+        return (order.extras || []).map((ex, idx) => this.toFactusBillItem({
             code_reference: `EXTRA-${ex.id ?? idx}`,
-            name: (ex.title || 'Adicional').slice(0, 200),
-            quantity: factusMoney(ex.quantity ?? 1),
-            discount_rate: '0.00',
-            price: factusMoney(Number(ex.amount) || 0),
-            unit_measure_code: '94',
-            standard_code: '999',
+            name: ex.title || 'Adicional',
+            quantity: ex.quantity ?? 1,
+            grossUnit: Number(ex.amount) || 0,
             note: ex.description || undefined,
-            taxes: [
-                {
-                    code: taxCode,
-                    rate: factusMoney(rateNum),
-                    ...(excluded ? { is_excluded: true } : {}),
-                },
-            ],
         }));
     }
     deliveryAsExtra(order) {
         const fee = Number(order.deliveryFee) || 0;
         if (fee <= 0 || order.orderType !== 'delivery')
             return [];
-        const taxCode = this.config.get('FACTUS_ITEM_TAX_CODE') || '01';
-        const taxRate = this.config.get('FACTUS_ITEM_TAX_RATE') || '0.00';
-        const excluded = (this.config.get('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
-            'true';
-        const rateNum = parseFloat(taxRate) || 0;
         return [
-            {
+            this.toFactusBillItem({
                 code_reference: 'DELIVERY',
                 name: 'Domicilio',
-                quantity: '1.00',
-                discount_rate: '0.00',
-                price: factusMoney(fee),
-                unit_measure_code: '94',
-                standard_code: '999',
-                taxes: [
-                    {
-                        code: taxCode,
-                        rate: factusMoney(rateNum),
-                        ...(excluded ? { is_excluded: true } : {}),
-                    },
-                ],
-            },
+                quantity: 1,
+                grossUnit: fee,
+            }),
         ];
     }
     sumItemsGross(items) {
         return items.reduce((sum, i) => {
             const qty = parseFloat(i.quantity) || 0;
             const price = parseFloat(i.price) || 0;
-            const rate = parseFloat(i.taxes?.[0]?.rate || '0') || 0;
-            const excluded = !!i.taxes?.[0]?.is_excluded;
             const line = qty * price;
-            const tax = excluded || rate <= 0 ? 0 : line * (rate / 100);
+            let tax = 0;
+            for (const t of i.taxes || []) {
+                const rate = parseFloat(t.rate || '0') || 0;
+                if (!t.is_excluded && rate > 0)
+                    tax += line * (rate / 100);
+            }
             return sum + line + tax;
         }, 0);
     }

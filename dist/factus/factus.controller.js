@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const auth_decorator_1 = require("../auth/decorators/auth.decorator");
 const valid_roles_interface_1 = require("../auth/interfaces/valid.roles.interface");
+const factus_actions_dto_1 = require("./dto/factus-actions.dto");
 const issue_electronic_invoice_dto_1 = require("./dto/issue-electronic-invoice.dto");
 const factus_service_1 = require("./factus.service");
 const OPS = [
@@ -32,8 +33,20 @@ let FactusController = class FactusController {
     getStatus() {
         return this.factusService.getStatus();
     }
+    lookupCustomer(identificationDocumentCode, identification) {
+        return this.factusService.lookupCustomer(identificationDocumentCode, identification);
+    }
     issueInvoice(id, dto) {
         return this.factusService.issueForOrder(id, dto);
+    }
+    downloadPdf(id) {
+        return this.factusService.getInvoicePdf(id);
+    }
+    resendEmail(id, dto) {
+        return this.factusService.resendInvoiceEmail(id, dto);
+    }
+    cancelInvoice(id, dto) {
+        return this.factusService.cancelInvoice(id, dto);
     }
 };
 exports.FactusController = FactusController;
@@ -46,6 +59,19 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], FactusController.prototype, "getStatus", null);
+__decorate([
+    (0, common_1.Get)('factus/customers/lookup'),
+    (0, auth_decorator_1.Auth)(...OPS),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Buscar cliente fiscal guardado (autocomplete FE)' }),
+    (0, swagger_1.ApiQuery)({ name: 'identificationDocumentCode', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'identification', required: true }),
+    __param(0, (0, common_1.Query)('identificationDocumentCode')),
+    __param(1, (0, common_1.Query)('identification')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "lookupCustomer", null);
 __decorate([
     (0, common_1.Post)('orders/:id/electronic-invoice'),
     (0, auth_decorator_1.Auth)(...OPS),
@@ -64,6 +90,41 @@ __decorate([
     __metadata("design:paramtypes", [Number, issue_electronic_invoice_dto_1.IssueElectronicInvoiceDto]),
     __metadata("design:returntype", void 0)
 ], FactusController.prototype, "issueInvoice", null);
+__decorate([
+    (0, common_1.Get)('orders/:id/electronic-invoice/pdf'),
+    (0, auth_decorator_1.Auth)(...OPS),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Descargar / imprimir PDF de la factura electrónica' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'ID de la orden PPP' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "downloadPdf", null);
+__decorate([
+    (0, common_1.Post)('orders/:id/electronic-invoice/resend-email'),
+    (0, auth_decorator_1.Auth)(...OPS),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Reenviar factura electrónica por correo' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, factus_actions_dto_1.ResendElectronicInvoiceEmailDto]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "resendEmail", null);
+__decorate([
+    (0, common_1.Post)('orders/:id/electronic-invoice/cancel'),
+    (0, auth_decorator_1.Auth)(...OPS),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Anular factura electrónica (nota crédito Factus → DIAN)',
+    }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, factus_actions_dto_1.CancelElectronicInvoiceDto]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "cancelInvoice", null);
 exports.FactusController = FactusController = __decorate([
     (0, swagger_1.ApiTags)('Facturación electrónica (Factus)'),
     (0, common_1.Controller)(),

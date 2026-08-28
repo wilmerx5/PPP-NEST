@@ -1944,8 +1944,13 @@ let OrdersService = class OrdersService {
             electronicInvoiceQrUrl: order.electronicInvoiceQrUrl ?? null,
             electronicInvoiceIssuedAt: order.electronicInvoiceIssuedAt ?? null,
             electronicInvoiceError: order.electronicInvoiceError ?? null,
+            electronicCreditNoteNumber: order.electronicCreditNoteNumber ?? null,
+            electronicCreditNoteCufe: order.electronicCreditNoteCufe ?? null,
+            electronicCreditNotePublicUrl: order.electronicCreditNotePublicUrl ?? null,
+            electronicCreditNoteIssuedAt: order.electronicCreditNoteIssuedAt ?? null,
             invoiceCustomerDocType: order.invoiceCustomerDocType ?? null,
             invoiceCustomerDocNumber: order.invoiceCustomerDocNumber ?? null,
+            invoiceCustomerDocDv: order.invoiceCustomerDocDv ?? null,
         };
     }
     async validateRedemptionCodePublic(code) {
@@ -2081,6 +2086,179 @@ let OrdersService = class OrdersService {
             orderStatus: (0, typeorm_2.Not)('canceled'),
         });
         return this.mapOrdersWithPointCodes(orders);
+    }
+    async findElectronicInvoices(opts) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(opts.from) || !dateRegex.test(opts.to)) {
+            throw new common_1.BadRequestException('from/to deben ser YYYY-MM-DD');
+        }
+        if (opts.from > opts.to) {
+            throw new common_1.BadRequestException('from no puede ser mayor que to');
+        }
+        const { start } = (0, date_util_1.getBogotaDateRange)(opts.from);
+        const { end } = (0, date_util_1.getBogotaDateRange)(opts.to);
+        const page = Math.max(1, opts.page || 1);
+        const limit = opts.exportMode
+            ? Math.min(10_000, Math.max(1, opts.limit || 10_000))
+            : Math.min(100, Math.max(1, opts.limit || 25));
+        const status = (opts.status || 'all').trim().toLowerCase();
+        const search = opts.search?.trim() || '';
+        const baseQb = () => {
+            const qb = this.orderRepo
+                .createQueryBuilder('o')
+                .where("o.electronicInvoiceStatus IS NOT NULL")
+                .andWhere("o.electronicInvoiceStatus != :none", { none: 'none' })
+                .andWhere(`(
+            (o.electronicInvoiceIssuedAt IS NOT NULL AND o.electronicInvoiceIssuedAt BETWEEN :start AND :end)
+            OR (o.electronicInvoiceIssuedAt IS NULL AND o.createdAt BETWEEN :start AND :end)
+          )`, { start, end });
+            if (status && status !== 'all') {
+                qb.andWhere('o.electronicInvoiceStatus = :status', { status });
+            }
+            if (search) {
+                const like = `%${search}%`;
+                qb.andWhere(`(
+            o.electronicInvoiceNumber LIKE :like
+            OR o.electronicCreditNoteNumber LIKE :like
+            OR o.customerName LIKE :like
+            OR o.invoiceCustomerDocNumber LIKE :like
+            OR CAST(o.dailyOrderNumber AS CHAR) LIKE :like
+            OR CAST(o.id AS CHAR) LIKE :like
+          )`, { like });
+            }
+            return qb;
+        };
+        const summaryRows = await this.orderRepo
+            .createQueryBuilder('o')
+            .select('o.electronicInvoiceStatus', 'status')
+            .addSelect('COUNT(*)', 'c')
+            .where("o.electronicInvoiceStatus IS NOT NULL")
+            .andWhere("o.electronicInvoiceStatus != :none", { none: 'none' })
+            .andWhere(`(
+          (o.electronicInvoiceIssuedAt IS NOT NULL AND o.electronicInvoiceIssuedAt BETWEEN :start AND :end)
+          OR (o.electronicInvoiceIssuedAt IS NULL AND o.createdAt BETWEEN :start AND :end)
+        )`, { start, end })
+            .groupBy('o.electronicInvoiceStatus')
+            .getRawMany();
+        const summary = {
+            accepted: 0,
+            credit_noted: 0,
+            rejected: 0,
+            error: 0,
+            pending: 0,
+            total: 0,
+        };
+        for (const row of summaryRows) {
+            const n = Number(row.c) || 0;
+            summary[row.status] = n;
+            summary.total += n;
+        }
+        const total = await baseQb().getCount();
+        const orders = await baseQb()
+            .orderBy('COALESCE(o.electronic_invoice_issued_at, o.created_at)', 'DESC')
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getMany();
+        const items = orders.map((o) => ({
+            orderId: o.id,
+            dailyOrderNumber: o.dailyOrderNumber,
+            customerName: o.customerName,
+            phone: o.phone,
+            orderType: o.orderType,
+            orderStatus: o.orderStatus,
+            createdAt: (0, date_util_1.formatToBogotaISO)(o.createdAt),
+            electronicInvoiceStatus: o.electronicInvoiceStatus ?? 'none',
+            electronicInvoiceNumber: o.electronicInvoiceNumber ?? null,
+            electronicInvoiceCufe: o.electronicInvoiceCufe ?? null,
+            electronicInvoicePublicUrl: o.electronicInvoicePublicUrl ?? null,
+            electronicInvoiceQrUrl: o.electronicInvoiceQrUrl ?? null,
+            electronicInvoiceIssuedAt: (0, date_util_1.formatToBogotaISO)(o.electronicInvoiceIssuedAt),
+            electronicInvoiceError: o.electronicInvoiceError ?? null,
+            electronicCreditNoteNumber: o.electronicCreditNoteNumber ?? null,
+            electronicCreditNoteCufe: o.electronicCreditNoteCufe ?? null,
+            electronicCreditNotePublicUrl: o.electronicCreditNotePublicUrl ?? null,
+            electronicCreditNoteIssuedAt: (0, date_util_1.formatToBogotaISO)(o.electronicCreditNoteIssuedAt),
+            invoiceCustomerDocType: o.invoiceCustomerDocType ?? null,
+            invoiceCustomerDocNumber: o.invoiceCustomerDocNumber ?? null,
+            invoiceCustomerDocDv: o.invoiceCustomerDocDv ?? null,
+            customerEmail: o.customerEmail ?? null,
+        }));
+        return {
+            from: opts.from,
+            to: opts.to,
+            page,
+            limit,
+            total,
+            summary,
+            items,
+        };
+    }
+    async exportElectronicInvoicesCsv(opts) {
+        const data = await this.findElectronicInvoices({
+            ...opts,
+            page: 1,
+            limit: 10_000,
+            exportMode: true,
+        });
+        const headers = [
+            'pedido_diario',
+            'order_id',
+            'cliente',
+            'telefono',
+            'email',
+            'tipo_doc',
+            'documento',
+            'dv',
+            'estado_fe',
+            'numero_fe',
+            'cufe',
+            'url_publica',
+            'emitida_at',
+            'numero_nc',
+            'cufe_nc',
+            'nc_at',
+            'error',
+            'tipo_orden',
+            'estado_orden',
+            'creada_at',
+        ];
+        const escape = (v) => {
+            if (v == null || v === '')
+                return '';
+            const s = String(v);
+            if (/[",\n\r]/.test(s))
+                return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        };
+        const lines = [headers.join(',')];
+        for (const row of data.items) {
+            lines.push([
+                row.dailyOrderNumber,
+                row.orderId,
+                row.customerName,
+                row.phone,
+                row.customerEmail,
+                row.invoiceCustomerDocType,
+                row.invoiceCustomerDocNumber,
+                row.invoiceCustomerDocDv,
+                row.electronicInvoiceStatus,
+                row.electronicInvoiceNumber,
+                row.electronicInvoiceCufe,
+                row.electronicInvoicePublicUrl,
+                row.electronicInvoiceIssuedAt,
+                row.electronicCreditNoteNumber,
+                row.electronicCreditNoteCufe,
+                row.electronicCreditNoteIssuedAt,
+                row.electronicInvoiceError,
+                row.orderType,
+                row.orderStatus,
+                row.createdAt,
+            ]
+                .map(escape)
+                .join(','));
+        }
+        const filename = `facturas-fe_${opts.from}_${opts.to}.csv`;
+        return { filename, csv: `\uFEFF${lines.join('\n')}\n` };
     }
     async getDailySummary(date) {
         let startUtc;

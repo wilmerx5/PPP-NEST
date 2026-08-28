@@ -91,3 +91,78 @@ export type FactusNumberingRange = {
     current?: number;
     is_active?: boolean;
 };
+export type FactusValidateCreditNoteRequest = {
+    reference_code: string;
+    correction_concept_code: string;
+    customization_id?: string;
+    bill_number: string;
+    numbering_range_id?: number;
+    observation?: string;
+    payment_details: FactusPaymentDetail[];
+    items: FactusBillItem[];
+    customer: FactusCustomer;
+};
+export type FactusBillDetailCustomer = {
+    identification_document?: {
+        code?: string;
+        name?: string;
+    };
+    identification?: string;
+    dv?: string | null;
+    graphic_representation_name?: string;
+    trade_name?: string | null;
+    company?: string | null;
+    names?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+    legal_organization?: {
+        code?: string;
+        name?: string;
+    };
+    tribute?: {
+        code?: string;
+        name?: string;
+    };
+    responsibilities?: Array<{
+        code?: string;
+        name?: string;
+    } | string>;
+    country?: {
+        code?: string;
+        name?: string;
+    };
+    municipality?: {
+        code?: string;
+        name?: string;
+    };
+};
+export type FactusBillDetail = {
+    reference_code?: string;
+    number?: string;
+    customer?: FactusBillDetailCustomer;
+};
+export type FactusValidateCreditNoteResponse = {
+    status: string;
+    message: string;
+    data: {
+        reference_code?: string;
+        number?: string;
+        is_validated?: boolean;
+        cufe?: string;
+        errors?: Record<string, unknown>;
+        links?: {
+            qr?: string;
+            public_url?: string;
+        };
+    };
+};
+export type FactusDownloadPdfResponse = {
+    status?: string;
+    message?: string;
+    data?: {
+        pdf_base_64_encoded?: string;
+        file_name?: string;
+        number?: string;
+    };
+};

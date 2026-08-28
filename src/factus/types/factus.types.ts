@@ -110,7 +110,32 @@ export type FactusValidateCreditNoteRequest = {
   observation?: string;
   payment_details: FactusPaymentDetail[];
   items: FactusBillItem[];
-  customer?: FactusCustomer;
+  customer: FactusCustomer;
+};
+
+/** Cliente en GET /v2/bills/:number (estructura anidada Factus). */
+export type FactusBillDetailCustomer = {
+  identification_document?: { code?: string; name?: string };
+  identification?: string;
+  dv?: string | null;
+  graphic_representation_name?: string;
+  trade_name?: string | null;
+  company?: string | null;
+  names?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  legal_organization?: { code?: string; name?: string };
+  tribute?: { code?: string; name?: string };
+  responsibilities?: Array<{ code?: string; name?: string } | string>;
+  country?: { code?: string; name?: string };
+  municipality?: { code?: string; name?: string };
+};
+
+export type FactusBillDetail = {
+  reference_code?: string;
+  number?: string;
+  customer?: FactusBillDetailCustomer;
 };
 
 export type FactusValidateCreditNoteResponse = {

@@ -41,8 +41,13 @@ let Order = class Order {
     electronicInvoiceQrUrl;
     electronicInvoiceIssuedAt;
     electronicInvoiceError;
+    electronicCreditNoteNumber;
+    electronicCreditNoteCufe;
+    electronicCreditNotePublicUrl;
+    electronicCreditNoteIssuedAt;
     invoiceCustomerDocType;
     invoiceCustomerDocNumber;
+    invoiceCustomerDocDv;
 };
 exports.Order = Order;
 __decorate([
@@ -295,6 +300,41 @@ __decorate([
 ], Order.prototype, "electronicInvoiceError", void 0);
 __decorate([
     (0, typeorm_1.Column)({
+        name: 'electronic_credit_note_number',
+        type: 'varchar',
+        length: 64,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicCreditNoteNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_credit_note_cufe',
+        type: 'varchar',
+        length: 128,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicCreditNoteCufe", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_credit_note_public_url',
+        type: 'varchar',
+        length: 500,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicCreditNotePublicUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'electronic_credit_note_issued_at',
+        type: 'timestamp',
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "electronicCreditNoteIssuedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
         name: 'invoice_customer_doc_type',
         type: 'varchar',
         length: 5,
@@ -311,6 +351,15 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], Order.prototype, "invoiceCustomerDocNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'invoice_customer_doc_dv',
+        type: 'varchar',
+        length: 1,
+        nullable: true,
+    }),
+    __metadata("design:type", Object)
+], Order.prototype, "invoiceCustomerDocDv", void 0);
 exports.Order = Order = __decorate([
     (0, typeorm_1.Entity)({ name: 'ppp_orders', synchronize: true })
 ], Order);

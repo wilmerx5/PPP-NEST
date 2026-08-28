@@ -202,6 +202,33 @@ let AdminController = class AdminController {
         const orders = await this.ordersService.findOrdersByDate(date);
         return orders;
     }
+    async getElectronicInvoices(from, to, status, search, page, limit) {
+        if (!from || !to) {
+            throw new common_1.BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
+        }
+        return this.ordersService.findElectronicInvoices({
+            from,
+            to,
+            status,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 25,
+        });
+    }
+    async exportElectronicInvoices(res, from, to, status, search) {
+        if (!from || !to) {
+            throw new common_1.BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
+        }
+        const { filename, csv } = await this.ordersService.exportElectronicInvoicesCsv({
+            from,
+            to,
+            status,
+            search,
+        });
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return csv;
+    }
     async getDailySummary(date) {
         if (date) {
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -637,6 +664,44 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getOrdersByDate", null);
+__decorate([
+    (0, common_1.Get)('orders/electronic-invoices'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Listar facturas electrónicas (admin)',
+        description: 'Filtra por rango de fechas (Bogotá) y estado FE: accepted, credit_noted, rejected, error, pending, all.',
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'from', required: true, example: '2026-08-01' }),
+    (0, swagger_1.ApiQuery)({ name: 'to', required: true, example: '2026-08-27' }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false, example: 'all' }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 25 }),
+    __param(0, (0, common_1.Query)('from')),
+    __param(1, (0, common_1.Query)('to')),
+    __param(2, (0, common_1.Query)('status')),
+    __param(3, (0, common_1.Query)('search')),
+    __param(4, (0, common_1.Query)('page')),
+    __param(5, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getElectronicInvoices", null);
+__decorate([
+    (0, common_1.Get)('orders/electronic-invoices/export'),
+    (0, swagger_1.ApiOperation)({ summary: 'Exportar facturas electrónicas a CSV (admin)' }),
+    (0, swagger_1.ApiQuery)({ name: 'from', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'to', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
+    __param(0, (0, common_1.Res)({ passthrough: true })),
+    __param(1, (0, common_1.Query)('from')),
+    __param(2, (0, common_1.Query)('to')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('search')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "exportElectronicInvoices", null);
 __decorate([
     (0, common_1.Get)('orders/daily-summary'),
     (0, swagger_1.ApiOperation)({ summary: 'Get daily summary/cash register report (admin only)' }),

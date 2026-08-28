@@ -165,6 +165,32 @@ export declare class OrdersService {
         createdAt: Date;
     }>>;
     findOrdersByDate(date: string): Promise<any[]>;
+    findElectronicInvoices(opts: {
+        from: string;
+        to: string;
+        status?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+        exportMode?: boolean;
+    }): Promise<{
+        from: string;
+        to: string;
+        page: number;
+        limit: number;
+        total: number;
+        summary: Record<string, number>;
+        items: Array<Record<string, unknown>>;
+    }>;
+    exportElectronicInvoicesCsv(opts: {
+        from: string;
+        to: string;
+        status?: string;
+        search?: string;
+    }): Promise<{
+        filename: string;
+        csv: string;
+    }>;
     getDailySummary(date?: string): Promise<any>;
     static readonly ADMIN_STATS_MIN_DATE = "2026-01-21";
     getSalesReport(from: string, to: string): Promise<any>;

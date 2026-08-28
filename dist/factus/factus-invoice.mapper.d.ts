@@ -1,7 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import type { Order } from '../orders/entities/order.entity';
 import type { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
-import type { FactusValidateBillRequest } from './types/factus.types';
+import type { InvoiceCustomer } from './entities/invoice-customer.entity';
+import type { FactusBillDetail, FactusCustomer, FactusValidateBillRequest, FactusValidateCreditNoteRequest } from './types/factus.types';
 export declare function factusMoney(n: number): string;
 export declare class FactusInvoiceMapper {
     private readonly config;
@@ -10,6 +11,18 @@ export declare class FactusInvoiceMapper {
         payload: FactusValidateBillRequest;
         invoiceTotal: number;
     };
+    buildCreditNotePayload(order: Order, opts: {
+        observation?: string;
+        correctionConceptCode?: string;
+        savedCustomer?: InvoiceCustomer | null;
+        numberingRangeId: number;
+    }): FactusValidateCreditNoteRequest;
+    customerFromBillDetail(bill: FactusBillDetail): FactusCustomer;
+    private buildCreditNoteCustomer;
+    private getItemTaxConfig;
+    private netUnitPrice;
+    private buildItemTaxes;
+    private toFactusBillItem;
     private mapItems;
     private mapExtras;
     private deliveryAsExtra;

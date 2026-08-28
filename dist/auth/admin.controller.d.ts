@@ -1,5 +1,5 @@
 import { User } from './entities/user.entity';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { PointsService } from './services/points.service';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
@@ -67,6 +67,16 @@ export declare class AdminController {
         history: UserPoints[];
     }>;
     getOrdersByDate(date: string): Promise<any[]>;
+    getElectronicInvoices(from: string, to: string, status?: string, search?: string, page?: string, limit?: string): Promise<{
+        from: string;
+        to: string;
+        page: number;
+        limit: number;
+        total: number;
+        summary: Record<string, number>;
+        items: Array<Record<string, unknown>>;
+    }>;
+    exportElectronicInvoices(res: Response, from: string, to: string, status?: string, search?: string): Promise<string>;
     getDailySummary(date?: string): Promise<any>;
     backfillOrderItemsUnitPrices(): Promise<{
         success: boolean;

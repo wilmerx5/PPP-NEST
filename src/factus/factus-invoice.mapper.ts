@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Order } from '../orders/entities/order.entity';
 import type { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
+import type { InvoiceCustomer } from './entities/invoice-customer.entity';
 import type {
+  FactusBillDetail,
   FactusBillItem,
+  FactusCustomer,
+  FactusItemTax,
   FactusValidateBillRequest,
   FactusValidateCreditNoteRequest,
 } from './types/factus.types';
@@ -105,10 +109,19 @@ export class FactusInvoiceMapper {
    */
   buildCreditNotePayload(
     order: Order,
-    opts: { observation?: string; correctionConceptCode?: string },
+    opts: {
+      observation?: string;
+      correctionConceptCode?: string;
+      savedCustomer?: InvoiceCustomer | null;
+      numberingRangeId: number;
+    },
   ): FactusValidateCreditNoteRequest {
     if (!order.electronicInvoiceNumber) {
-      throw new Error('La orden no tiene número de factura electrónica');
+      throw new BadRequestException('La orden no tiene número de factura electrónica');
+    }
+
+    if (!Number.isFinite(opts.numberingRangeId) || opts.numberingRangeId <= 0) {
+      throw new BadRequestException('Rango de nota crédito inválido');
     }
 
     const allItems = [
@@ -120,14 +133,12 @@ export class FactusInvoiceMapper {
     const paymentMethod =
       (this.config.get<string>('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
 
-    const rangeRaw = this.config.get<string>('FACTUS_CREDIT_NOTE_RANGE_ID');
-    const numberingRangeId = rangeRaw ? parseInt(rangeRaw, 10) : undefined;
-
     const payload: FactusValidateCreditNoteRequest = {
       reference_code: `PPP-NC-${order.id}-${Date.now()}`,
       correction_concept_code: (opts.correctionConceptCode || '2').trim(),
       customization_id: '20',
       bill_number: order.electronicInvoiceNumber,
+      numbering_range_id: opts.numberingRangeId,
       observation: (
         opts.observation ||
         `Anulación FE ${order.electronicInvoiceNumber} — pedido #${order.dailyOrderNumber ?? order.id}`
@@ -140,27 +151,179 @@ export class FactusInvoiceMapper {
           amount: factusMoney(total),
         },
       ],
+      customer: this.buildCreditNoteCustomer(order, opts.savedCustomer),
       items: allItems,
     };
-
-    if (Number.isFinite(numberingRangeId) && numberingRangeId! > 0) {
-      payload.numbering_range_id = numberingRangeId;
-    }
 
     return payload;
   }
 
-  private mapItems(order: Order): FactusBillItem[] {
-    const taxCode = this.config.get<string>('FACTUS_ITEM_TAX_CODE') || '01';
-    const taxRate = this.config.get<string>('FACTUS_ITEM_TAX_RATE') || '0.00';
+  /** Mapea el cliente de GET /v2/bills/:number al formato POST /v2/credit-notes/validate. */
+  customerFromBillDetail(bill: FactusBillDetail): FactusCustomer {
+    const c = bill.customer;
+    if (!c?.identification?.trim()) {
+      throw new BadRequestException(
+        'Factus no devolvió el documento del cliente en la factura original',
+      );
+    }
+
+    const identification = c.identification.replace(/\D/g, '');
+    const docType = c.identification_document?.code?.trim() || '13';
+    const legalOrg =
+      c.legal_organization?.code?.trim() ||
+      (docType === '31' ? '1' : '2');
+
+    let responsibilities: string[] = [];
+    if (Array.isArray(c.responsibilities)) {
+      responsibilities = c.responsibilities
+        .map((r) => (typeof r === 'string' ? r : r.code || ''))
+        .map((code) => code.trim())
+        .filter(Boolean);
+    }
+    if (!responsibilities.length) {
+      responsibilities = ['R-99-PN'];
+    }
+
+    const names =
+      legalOrg === '2'
+        ? (c.names || c.graphic_representation_name || 'Consumidor final').trim()
+        : undefined;
+    const company =
+      legalOrg === '1'
+        ? (c.company || c.trade_name || c.graphic_representation_name || 'Cliente').trim()
+        : undefined;
+
+    return {
+      identification_document_code: docType,
+      identification,
+      dv: c.dv?.trim() || undefined,
+      legal_organization_code: legalOrg,
+      tribute_code: c.tribute?.code?.trim() || 'ZZ',
+      responsibilities,
+      names,
+      company,
+      address: c.address?.trim() || undefined,
+      email: c.email?.trim() || undefined,
+      phone: c.phone?.replace(/\D/g, '').slice(-10) || undefined,
+      country_code: c.country?.code?.trim() || 'CO',
+      municipality_code: c.municipality?.code?.trim() || '11001',
+    };
+  }
+
+  /** Cliente adquiriente para NC — Factus lo exige aunque exista bill_number. */
+  private buildCreditNoteCustomer(
+    order: Order,
+    saved?: InvoiceCustomer | null,
+  ): FactusCustomer {
+    const docType =
+      saved?.identificationDocumentCode ||
+      order.invoiceCustomerDocType ||
+      '13';
+    const identification = (
+      saved?.identification ||
+      order.invoiceCustomerDocNumber ||
+      ''
+    ).replace(/\D/g, '');
+
+    if (identification.length < 5) {
+      throw new BadRequestException(
+        'No hay documento del cliente en la orden. Emite de nuevo la FE o contacta soporte.',
+      );
+    }
+
+    const legalOrg =
+      saved?.legalOrganizationCode ||
+      (docType === '31' ? '1' : '2');
+    const municipality =
+      saved?.municipalityCode ||
+      this.config.get<string>('FACTUS_DEFAULT_MUNICIPALITY_CODE') ||
+      '11001';
+
+    const names =
+      legalOrg === '2'
+        ? (saved?.names || order.customerName || 'Consumidor final').trim()
+        : undefined;
+    const company =
+      legalOrg === '1'
+        ? (saved?.company || order.customerName || 'Cliente').trim()
+        : undefined;
+
+    return {
+      identification_document_code: docType,
+      identification,
+      dv: saved?.dv || order.invoiceCustomerDocDv || undefined,
+      legal_organization_code: legalOrg,
+      tribute_code: 'ZZ',
+      responsibilities: ['R-99-PN'],
+      names,
+      company,
+      address: (saved?.address || order.address || '').trim() || undefined,
+      email: (saved?.email || order.customerEmail || '').trim() || undefined,
+      phone: (saved?.phone || order.phone || '').replace(/\D/g, '').slice(-10) || undefined,
+      country_code: 'CO',
+      municipality_code: municipality,
+    };
+  }
+
+  private getItemTaxConfig() {
+    // Restaurantes Colombia: INC (impoconsumo) = código Factus/DIAN `04`, tarifa 8%
+    const taxCode = this.config.get<string>('FACTUS_ITEM_TAX_CODE') || '04';
+    const taxRate = this.config.get<string>('FACTUS_ITEM_TAX_RATE') || '8.00';
     const excluded =
-      (this.config.get<string>('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
+      (this.config.get<string>('FACTUS_ITEM_TAX_EXCLUDED') || 'false').toLowerCase() ===
       'true';
     const pricesIncludeTax =
       (this.config.get<string>('FACTUS_PRICES_INCLUDE_TAX') || 'true').toLowerCase() ===
       'true';
     const rateNum = parseFloat(taxRate) || 0;
+    return { taxCode, excluded, pricesIncludeTax, rateNum };
+  }
 
+  /** Precio unitario neto para Factus (`price` = sin impuesto). */
+  private netUnitPrice(
+    grossUnit: number,
+    cfg: ReturnType<FactusInvoiceMapper['getItemTaxConfig']>,
+  ): number {
+    if (cfg.pricesIncludeTax && cfg.rateNum > 0 && !cfg.excluded) {
+      return grossUnit / (1 + cfg.rateNum / 100);
+    }
+    return grossUnit;
+  }
+
+  private buildItemTaxes(
+    cfg: ReturnType<FactusInvoiceMapper['getItemTaxConfig']>,
+  ): FactusItemTax[] {
+    return [
+      {
+        code: cfg.taxCode,
+        rate: factusMoney(cfg.rateNum),
+        ...(cfg.excluded ? { is_excluded: true } : {}),
+      },
+    ];
+  }
+
+  private toFactusBillItem(params: {
+    code_reference: string;
+    name: string;
+    quantity: number;
+    grossUnit: number;
+    note?: string;
+  }): FactusBillItem {
+    const cfg = this.getItemTaxConfig();
+    return {
+      code_reference: params.code_reference,
+      name: params.name.slice(0, 200),
+      quantity: factusMoney(params.quantity),
+      discount_rate: '0.00',
+      price: factusMoney(this.netUnitPrice(params.grossUnit, cfg)),
+      unit_measure_code: '94',
+      standard_code: '999',
+      note: params.note,
+      taxes: this.buildItemTaxes(cfg),
+    };
+  }
+
+  private mapItems(order: Order): FactusBillItem[] {
     const grouped = new Map<
       string,
       { code: string; name: string; qty: number; unit: number; note?: string }
@@ -187,86 +350,39 @@ export class FactusInvoiceMapper {
       }
     }
 
-    const out: FactusBillItem[] = [];
-    for (const g of grouped.values()) {
-      let unitPrice = g.unit;
-      if (pricesIncludeTax && rateNum > 0 && !excluded) {
-        unitPrice = unitPrice / (1 + rateNum / 100);
-      }
-      out.push({
+    return [...grouped.values()].map((g) =>
+      this.toFactusBillItem({
         code_reference: g.code,
-        name: g.name.slice(0, 200),
-        quantity: factusMoney(g.qty),
-        discount_rate: '0.00',
-        price: factusMoney(unitPrice),
-        unit_measure_code: '94',
-        standard_code: '999',
+        name: g.name,
+        quantity: g.qty,
+        grossUnit: g.unit,
         note: g.note,
-        taxes: [
-          {
-            code: taxCode,
-            rate: factusMoney(rateNum),
-            ...(excluded ? { is_excluded: true } : {}),
-          },
-        ],
-      });
-    }
-    return out;
+      }),
+    );
   }
 
   private mapExtras(order: Order): FactusBillItem[] {
-    const taxCode = this.config.get<string>('FACTUS_ITEM_TAX_CODE') || '01';
-    const taxRate = this.config.get<string>('FACTUS_ITEM_TAX_RATE') || '0.00';
-    const excluded =
-      (this.config.get<string>('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
-      'true';
-    const rateNum = parseFloat(taxRate) || 0;
-
-    return (order.extras || []).map((ex, idx) => ({
-      code_reference: `EXTRA-${ex.id ?? idx}`,
-      name: (ex.title || 'Adicional').slice(0, 200),
-      quantity: factusMoney(ex.quantity ?? 1),
-      discount_rate: '0.00',
-      price: factusMoney(Number(ex.amount) || 0),
-      unit_measure_code: '94',
-      standard_code: '999',
-      note: ex.description || undefined,
-      taxes: [
-        {
-          code: taxCode,
-          rate: factusMoney(rateNum),
-          ...(excluded ? { is_excluded: true } : {}),
-        },
-      ],
-    }));
+    return (order.extras || []).map((ex, idx) =>
+      this.toFactusBillItem({
+        code_reference: `EXTRA-${ex.id ?? idx}`,
+        name: ex.title || 'Adicional',
+        quantity: ex.quantity ?? 1,
+        grossUnit: Number(ex.amount) || 0,
+        note: ex.description || undefined,
+      }),
+    );
   }
 
   private deliveryAsExtra(order: Order): FactusBillItem[] {
     const fee = Number(order.deliveryFee) || 0;
     if (fee <= 0 || order.orderType !== 'delivery') return [];
-    const taxCode = this.config.get<string>('FACTUS_ITEM_TAX_CODE') || '01';
-    const taxRate = this.config.get<string>('FACTUS_ITEM_TAX_RATE') || '0.00';
-    const excluded =
-      (this.config.get<string>('FACTUS_ITEM_TAX_EXCLUDED') || 'true').toLowerCase() ===
-      'true';
-    const rateNum = parseFloat(taxRate) || 0;
     return [
-      {
+      this.toFactusBillItem({
         code_reference: 'DELIVERY',
         name: 'Domicilio',
-        quantity: '1.00',
-        discount_rate: '0.00',
-        price: factusMoney(fee),
-        unit_measure_code: '94',
-        standard_code: '999',
-        taxes: [
-          {
-            code: taxCode,
-            rate: factusMoney(rateNum),
-            ...(excluded ? { is_excluded: true } : {}),
-          },
-        ],
-      },
+        quantity: 1,
+        grossUnit: fee,
+      }),
     ];
   }
 
@@ -274,10 +390,12 @@ export class FactusInvoiceMapper {
     return items.reduce((sum, i) => {
       const qty = parseFloat(i.quantity) || 0;
       const price = parseFloat(i.price) || 0;
-      const rate = parseFloat(i.taxes?.[0]?.rate || '0') || 0;
-      const excluded = !!i.taxes?.[0]?.is_excluded;
       const line = qty * price;
-      const tax = excluded || rate <= 0 ? 0 : line * (rate / 100);
+      let tax = 0;
+      for (const t of i.taxes || []) {
+        const rate = parseFloat(t.rate || '0') || 0;
+        if (!t.is_excluded && rate > 0) tax += line * (rate / 100);
+      }
       return sum + line + tax;
     }, 0);
   }

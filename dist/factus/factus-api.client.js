@@ -22,34 +22,96 @@ let FactusApiClient = FactusApiClient_1 = class FactusApiClient {
     async validateBill(payload) {
         return this.requestJson('POST', '/v2/bills/validate', payload);
     }
+    async validateCreditNote(payload) {
+        return this.requestJson('POST', '/v2/credit-notes/validate', payload);
+    }
+    async getBill(number) {
+        const json = await this.requestJson('GET', `/v2/bills/${encodeURIComponent(number)}`);
+        const data = json.data;
+        if (!data?.number && !data?.customer) {
+            throw new common_1.BadRequestException(`Factus no devolvió la factura ${number} para armar la nota crédito`);
+        }
+        return data;
+    }
     async listNumberingRanges() {
-        const data = await this.requestJson('GET', '/v2/numbering-ranges');
-        return data.data || data || [];
+        const json = await this.requestJson('GET', '/v2/numbering-ranges');
+        const inner = json.data;
+        if (Array.isArray(inner))
+            return inner;
+        if (inner && Array.isArray(inner.data))
+            return inner.data;
+        return json || [];
+    }
+    async sendBillEmail(number, email) {
+        const paths = [
+            `/v2/bills/send-email/${encodeURIComponent(number)}`,
+            `/v2/bills/${encodeURIComponent(number)}/send-email`,
+        ];
+        let lastErr;
+        for (const path of paths) {
+            try {
+                return await this.requestJson('POST', path, { email });
+            }
+            catch (err) {
+                lastErr = err;
+                this.logger.warn(`[Factus API] email path falló ${path}: ${err instanceof Error ? err.message : err}`);
+            }
+        }
+        throw lastErr instanceof Error
+            ? lastErr
+            : new common_1.ServiceUnavailableException('No se pudo reenviar el correo');
     }
     async downloadBillPdf(number) {
+        const paths = [
+            `/v2/bills/download-pdf/${encodeURIComponent(number)}`,
+            `/v2/bills/${encodeURIComponent(number)}/download-pdf`,
+        ];
+        let lastErr;
+        for (const path of paths) {
+            try {
+                return await this.downloadPdfAt(path, number);
+            }
+            catch (err) {
+                lastErr = err;
+                this.logger.warn(`[Factus API] PDF path falló ${path}: ${err instanceof Error ? err.message : err}`);
+            }
+        }
+        throw lastErr instanceof Error
+            ? lastErr
+            : new common_1.ServiceUnavailableException('No se pudo descargar el PDF de Factus');
+    }
+    async downloadPdfAt(path, number) {
         const token = await this.auth.getAccessToken();
-        const url = `${this.auth.getBaseUrl()}/v2/bills/download-pdf/${encodeURIComponent(number)}`;
+        const url = `${this.auth.getBaseUrl()}${path}`;
+        this.logger.log(`[Factus API] GET ${path}`);
         const res = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: 'application/json',
             },
         });
+        const contentType = res.headers.get('content-type') || '';
         if (!res.ok) {
             const text = await res.text();
-            this.logger.error(`Factus PDF ${res.status}: ${text}`);
+            this.logger.error(`[Factus API] PDF FAIL ${path} → ${res.status}: ${text.slice(0, 500)}`);
+            if (res.status >= 400 && res.status < 500) {
+                throw new common_1.BadRequestException('No se pudo descargar el PDF de la factura');
+            }
             throw new common_1.ServiceUnavailableException('No se pudo descargar el PDF de Factus');
         }
-        const contentType = res.headers.get('content-type') || '';
+        const defaultName = `${number}.pdf`;
         if (contentType.includes('application/json')) {
             const json = (await res.json());
             const b64 = json.data?.pdf_base_64_encoded;
             if (!b64)
                 throw new common_1.ServiceUnavailableException('Respuesta PDF sin contenido');
-            return Buffer.from(b64, 'base64');
+            return {
+                buffer: Buffer.from(b64, 'base64'),
+                fileName: json.data?.file_name || defaultName,
+            };
         }
         const ab = await res.arrayBuffer();
-        return Buffer.from(ab);
+        return { buffer: Buffer.from(ab), fileName: defaultName };
     }
     async requestJson(method, path, body, retried = false) {
         const debug = (process.env.FACTUS_DEBUG || '').toLowerCase() === 'true';

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { FactusAuthService } from './factus-auth.service';
 import type {
+  FactusBillDetail,
   FactusDownloadPdfResponse,
   FactusNumberingRange,
   FactusValidateBillRequest,
@@ -40,12 +41,29 @@ export class FactusApiClient {
     );
   }
 
-  async listNumberingRanges(): Promise<FactusNumberingRange[]> {
-    const data = await this.requestJson<{ data?: FactusNumberingRange[] }>(
+  /** GET /v2/bills/:number — datos del adquiriente de la FE ya emitida. */
+  async getBill(number: string): Promise<FactusBillDetail> {
+    const json = await this.requestJson<{ data?: FactusBillDetail }>(
       'GET',
-      '/v2/numbering-ranges',
+      `/v2/bills/${encodeURIComponent(number)}`,
     );
-    return data.data || (data as unknown as FactusNumberingRange[]) || [];
+    const data = json.data;
+    if (!data?.number && !data?.customer) {
+      throw new BadRequestException(
+        `Factus no devolvió la factura ${number} para armar la nota crédito`,
+      );
+    }
+    return data;
+  }
+
+  async listNumberingRanges(): Promise<FactusNumberingRange[]> {
+    const json = await this.requestJson<{
+      data?: FactusNumberingRange[] | { data?: FactusNumberingRange[] };
+    }>('GET', '/v2/numbering-ranges');
+    const inner = json.data;
+    if (Array.isArray(inner)) return inner;
+    if (inner && Array.isArray(inner.data)) return inner.data;
+    return (json as unknown as FactusNumberingRange[]) || [];
   }
 
   async sendBillEmail(number: string, email: string): Promise<{ message?: string }> {
