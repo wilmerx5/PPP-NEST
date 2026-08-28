@@ -19,6 +19,7 @@ import { ValidRoles } from './interfaces/valid.roles.interface';
 import { AuthService } from './auth.service';
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
+import { Confirm2faDto } from './dto/confirm-2fa.dto';
 import {
   staffRolesSqlParams,
   staffRolesSqlWhere,
@@ -134,9 +135,28 @@ export class AdminController {
   }
 
   @Post('staff/:id/reset-2fa')
-  @ApiOperation({ summary: 'Reiniciar 2FA de un usuario staff (si perdió el authenticator)' })
+  @ApiOperation({ summary: 'Desactivar / reiniciar 2FA de un usuario staff (sin código)' })
   resetStaff2fa(@Param('id') id: string) {
     return this.authService.adminResetStaff2fa(id);
+  }
+
+  @Post('staff/:id/2fa/setup')
+  @ApiOperation({ summary: 'Iniciar o regenerar setup TOTP para un staff (QR)' })
+  adminSetupStaff2fa(@Param('id') id: string) {
+    return this.authService.adminSetupStaff2fa(id);
+  }
+
+  @Post('staff/:id/2fa/confirm')
+  @ApiOperation({ summary: 'Confirmar setup TOTP de un staff con código de 6 dígitos' })
+  @ApiBody({ type: Confirm2faDto })
+  adminConfirmStaff2fa(@Param('id') id: string, @Body() dto: Confirm2faDto) {
+    return this.authService.adminConfirmStaff2fa(id, dto);
+  }
+
+  @Post('staff/:id/2fa/disable')
+  @ApiOperation({ summary: 'Desactivar 2FA de un staff (sin código)' })
+  adminDisableStaff2fa(@Param('id') id: string) {
+    return this.authService.adminDisableStaff2fa(id);
   }
 
   @Get('staff/:id')

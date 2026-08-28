@@ -160,17 +160,37 @@ export class AuthService {
     };
   }
 
-  async setup2fa(userId: string) {
+  private async getStaffUserOrThrow(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'email', 'roles', 'totpEnabled', 'totpSecret'],
+      select: ['id', 'email', 'fullName', 'roles', 'totpEnabled', 'totpSecret', 'totpRecoveryCodes'],
     });
     if (!user) throw new BadRequestException('Usuario no encontrado');
     if (!userHasStaffRole(user.roles)) {
-      throw new BadRequestException('El 2FA solo está disponible para personal interno (staff)');
+      throw new BadRequestException('Este usuario no es de staff interno');
     }
-    if (user.totpEnabled) {
-      throw new BadRequestException('Ya tienes 2FA activo. Desactívalo primero para reconfigurarlo.');
+    return user;
+  }
+
+  async setup2fa(userId: string) {
+    return this.setup2faForUser(userId);
+  }
+
+  /** Admin: inicia o regenera setup TOTP de un staff (muestra QR). */
+  async adminSetupStaff2fa(staffId: string) {
+    return this.setup2faForUser(staffId, { forceRestart: true });
+  }
+
+  private async setup2faForUser(
+    userId: string,
+    opts?: { forceRestart?: boolean },
+  ) {
+    const user = await this.getStaffUserOrThrow(userId);
+
+    if (user.totpEnabled && !opts?.forceRestart) {
+      throw new BadRequestException(
+        'Ya tiene 2FA activo. Desactívalo primero para reconfigurarlo.',
+      );
     }
 
     const secret = this.totpService.createSecret();
@@ -183,22 +203,28 @@ export class AuthService {
     );
 
     return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
       secret,
       otpauthUrl,
       qrDataUrl,
-      message: 'Escanea el QR con tu app authenticator y confirma con un código',
+      message:
+        'Escanea el QR con la app authenticator del usuario y confirma con un código de 6 dígitos',
     };
   }
 
   async confirm2fa(userId: string, dto: Confirm2faDto) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'email', 'roles', 'totpEnabled', 'totpSecret'],
-    });
-    if (!user) throw new BadRequestException('Usuario no encontrado');
-    if (!userHasStaffRole(user.roles)) {
-      throw new BadRequestException('El 2FA solo está disponible para personal interno (staff)');
-    }
+    return this.confirm2faForUser(userId, dto);
+  }
+
+  async adminConfirmStaff2fa(staffId: string, dto: Confirm2faDto) {
+    return this.confirm2faForUser(staffId, dto);
+  }
+
+  private async confirm2faForUser(userId: string, dto: Confirm2faDto) {
+    const user = await this.getStaffUserOrThrow(userId);
+
     if (user.totpEnabled) {
       throw new BadRequestException('El 2FA ya está activo');
     }
@@ -206,7 +232,9 @@ export class AuthService {
       throw new BadRequestException('Primero inicia la configuración de 2FA');
     }
     if (!this.totpService.verifyToken(user.totpSecret, dto.code)) {
-      throw new BadRequestException('Código inválido. Revisa la hora del teléfono e inténtalo de nuevo.');
+      throw new BadRequestException(
+        'Código inválido. Revisa la hora del teléfono e inténtalo de nuevo.',
+      );
     }
 
     const recoveryCodes = this.totpService.generateRecoveryCodes();
@@ -219,9 +247,12 @@ export class AuthService {
 
     return {
       enabled: true,
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
       recoveryCodes,
       message:
-        '2FA activado. Guarda estos códigos de recuperación en un lugar seguro; no se mostrarán otra vez.',
+        '2FA activado. Guarda estos códigos de recuperación; no se mostrarán otra vez.',
     };
   }
 
@@ -254,15 +285,13 @@ export class AuthService {
     return { enabled: false, message: '2FA desactivado' };
   }
 
+  /** Admin: desactiva 2FA de un staff sin pedir código (p. ej. perdió el teléfono). */
+  async adminDisableStaff2fa(staffId: string) {
+    return this.adminResetStaff2fa(staffId);
+  }
+
   async adminResetStaff2fa(staffId: string) {
-    const user = await this.userRepository.findOne({
-      where: { id: staffId },
-      select: ['id', 'email', 'fullName', 'roles', 'totpEnabled'],
-    });
-    if (!user) throw new BadRequestException('Usuario no encontrado');
-    if (!userHasStaffRole(user.roles)) {
-      throw new BadRequestException('Este usuario no es de staff interno');
-    }
+    const user = await this.getStaffUserOrThrow(staffId);
 
     await this.userRepository.update(
       { id: user.id },
@@ -271,8 +300,13 @@ export class AuthService {
 
     return {
       success: true,
-      message: `2FA reiniciado para ${user.email}. La persona puede configurarlo de nuevo al iniciar sesión.`,
-      user: { id: user.id, email: user.email, fullName: user.fullName, totpEnabled: false },
+      message: `2FA desactivado para ${user.email}.`,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        totpEnabled: false,
+      },
     };
   }
 
