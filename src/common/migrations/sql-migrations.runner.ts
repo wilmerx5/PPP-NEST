@@ -40,6 +40,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     await this.ensureWhatsappSchema();
     await this.ensureUserAddressLocationColumns();
     await this.ensureWebDeliverySettingsColumns();
+    await this.ensureFactusInvoiceSettingsColumns();
     await this.ensureElectronicInvoiceColumns();
     await this.ensureInvoiceCustomersTable();
 
@@ -336,6 +337,44 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       if (this.isIdempotentError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to ensure web delivery settings columns: ${message}`);
+    }
+  }
+
+  /** Impuestos FE configurables desde admin (SaaS). */
+  private async ensureFactusInvoiceSettingsColumns() {
+    try {
+      const table: { c: number }[] = await this.dataSource.query(
+        `SELECT COUNT(*) AS c
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'ppp_restaurant_settings'`,
+      );
+      if (Number(table?.[0]?.c) === 0) return;
+
+      const cols: Array<{ name: string; ddl: string }> = [
+        { name: 'factus_item_taxes', ddl: 'JSON NULL' },
+        { name: 'factus_prices_include_tax', ddl: 'TINYINT(1) NULL' },
+      ];
+
+      for (const col of cols) {
+        const rows: { c: number }[] = await this.dataSource.query(
+          `SELECT COUNT(*) AS c
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'ppp_restaurant_settings'
+             AND COLUMN_NAME = ?`,
+          [col.name],
+        );
+        if (Number(rows?.[0]?.c) > 0) continue;
+        this.logger.warn(`Missing ppp_restaurant_settings.${col.name} — adding now`);
+        await this.dataSource.query(
+          `ALTER TABLE ppp_restaurant_settings ADD COLUMN ${col.name} ${col.ddl}`,
+        );
+      }
+    } catch (err: unknown) {
+      if (this.isIdempotentError(err)) return;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to ensure factus invoice settings columns: ${message}`);
     }
   }
 

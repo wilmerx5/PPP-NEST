@@ -14,5 +14,11 @@ export declare class RestaurantSettings {
     webDeliveryDefaultFee: number;
     webDeliveryMaxKm: number | string | null;
     webDeliveryFeeTiers: unknown | null;
+    factusItemTaxes: Array<{
+        code: string;
+        rate: number;
+        isExcluded?: boolean;
+    }> | null;
+    factusPricesIncludeTax: boolean | null;
     updatedAt: Date;
 }

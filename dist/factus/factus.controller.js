@@ -19,7 +19,9 @@ const auth_decorator_1 = require("../auth/decorators/auth.decorator");
 const valid_roles_interface_1 = require("../auth/interfaces/valid.roles.interface");
 const factus_actions_dto_1 = require("./dto/factus-actions.dto");
 const issue_electronic_invoice_dto_1 = require("./dto/issue-electronic-invoice.dto");
+const factus_invoice_settings_dto_1 = require("./dto/factus-invoice-settings.dto");
 const factus_service_1 = require("./factus.service");
+const factus_invoice_settings_service_1 = require("./factus-invoice-settings.service");
 const OPS = [
     valid_roles_interface_1.ValidRoles.admin,
     valid_roles_interface_1.ValidRoles.ordersUser,
@@ -27,11 +29,19 @@ const OPS = [
 ];
 let FactusController = class FactusController {
     factusService;
-    constructor(factusService) {
+    invoiceSettings;
+    constructor(factusService, invoiceSettings) {
         this.factusService = factusService;
+        this.invoiceSettings = invoiceSettings;
     }
     getStatus() {
         return this.factusService.getStatus();
+    }
+    getInvoiceSettings() {
+        return this.invoiceSettings.getAdminSettings();
+    }
+    updateInvoiceSettings(dto) {
+        return this.invoiceSettings.updateAdminSettings(dto);
     }
     lookupCustomer(identificationDocumentCode, identification) {
         return this.factusService.lookupCustomer(identificationDocumentCode, identification);
@@ -59,6 +69,25 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], FactusController.prototype, "getStatus", null);
+__decorate([
+    (0, common_1.Get)('admin/factus/invoice-settings'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Config impuestos FE (admin) — editable sin tocar .env' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "getInvoiceSettings", null);
+__decorate([
+    (0, common_1.Patch)('admin/factus/invoice-settings'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Guardar impuestos FE por ítem (admin)' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [factus_invoice_settings_dto_1.UpdateFactusInvoiceSettingsDto]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "updateInvoiceSettings", null);
 __decorate([
     (0, common_1.Get)('factus/customers/lookup'),
     (0, auth_decorator_1.Auth)(...OPS),
@@ -128,6 +157,7 @@ __decorate([
 exports.FactusController = FactusController = __decorate([
     (0, swagger_1.ApiTags)('Facturación electrónica (Factus)'),
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [factus_service_1.FactusService])
+    __metadata("design:paramtypes", [factus_service_1.FactusService,
+        factus_invoice_settings_service_1.FactusInvoiceSettingsService])
 ], FactusController);
 //# sourceMappingURL=factus.controller.js.map

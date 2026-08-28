@@ -41,6 +41,14 @@ export class RestaurantSettings {
   @Column({ name: 'web_delivery_fee_tiers', type: 'json', nullable: true })
   webDeliveryFeeTiers: unknown | null;
 
+  /** Impuestos FE por ítem: [{ code, rate, isExcluded? }] — admin / SaaS */
+  @Column({ name: 'factus_item_taxes', type: 'json', nullable: true })
+  factusItemTaxes: Array<{ code: string; rate: number; isExcluded?: boolean }> | null;
+
+  /** true = precios del menú ya incluyen los impuestos de factus_item_taxes */
+  @Column({ name: 'factus_prices_include_tax', type: 'boolean', nullable: true })
+  factusPricesIncludeTax: boolean | null;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

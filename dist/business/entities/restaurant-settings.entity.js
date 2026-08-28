@@ -21,6 +21,8 @@ let RestaurantSettings = class RestaurantSettings {
     webDeliveryDefaultFee;
     webDeliveryMaxKm;
     webDeliveryFeeTiers;
+    factusItemTaxes;
+    factusPricesIncludeTax;
     updatedAt;
 };
 exports.RestaurantSettings = RestaurantSettings;
@@ -60,6 +62,14 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'web_delivery_fee_tiers', type: 'json', nullable: true }),
     __metadata("design:type", Object)
 ], RestaurantSettings.prototype, "webDeliveryFeeTiers", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'factus_item_taxes', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], RestaurantSettings.prototype, "factusItemTaxes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'factus_prices_include_tax', type: 'boolean', nullable: true }),
+    __metadata("design:type", Object)
+], RestaurantSettings.prototype, "factusPricesIncludeTax", void 0);
 __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)

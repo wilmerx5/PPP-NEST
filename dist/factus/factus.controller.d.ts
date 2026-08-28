@@ -1,14 +1,19 @@
 import { CancelElectronicInvoiceDto, ResendElectronicInvoiceEmailDto } from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
+import { UpdateFactusInvoiceSettingsDto } from './dto/factus-invoice-settings.dto';
 import { FactusService } from './factus.service';
+import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
 export declare class FactusController {
     private readonly factusService;
-    constructor(factusService: FactusService);
+    private readonly invoiceSettings;
+    constructor(factusService: FactusService, invoiceSettings: FactusInvoiceSettingsService);
     getStatus(): {
         configured: boolean;
         env: string;
         baseUrl: string;
     };
+    getInvoiceSettings(): Promise<import("./factus-invoice-settings.types").FactusInvoiceSettingsResponse>;
+    updateInvoiceSettings(dto: UpdateFactusInvoiceSettingsDto): Promise<import("./factus-invoice-settings.types").FactusInvoiceSettingsResponse>;
     lookupCustomer(identificationDocumentCode: string, identification: string): Promise<{
         identificationDocumentCode: string;
         identification: string;

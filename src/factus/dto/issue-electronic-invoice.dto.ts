@@ -38,13 +38,15 @@ export class IssueElectronicInvoiceDto {
   @MaxLength(1)
   dv?: string;
 
-  @ApiProperty({
-    description: '1=persona jurídica, 2=persona natural',
+  @ApiPropertyOptional({
+    description:
+      '1=persona jurídica, 2=persona natural. Opcional: se infiere (NIT→jurídica, resto→natural).',
     example: '2',
   })
+  @IsOptional()
   @IsString()
   @IsIn(['1', '2'])
-  legalOrganizationCode: string;
+  legalOrganizationCode?: string;
 
   @ApiPropertyOptional({
     description: 'Nombre (obligatorio si persona natural)',

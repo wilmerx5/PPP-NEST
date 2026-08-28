@@ -8,6 +8,7 @@ import { InvoiceCustomer } from './entities/invoice-customer.entity';
 import { FactusApiClient } from './factus-api.client';
 import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
+import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
 export declare class FactusService {
     private readonly orderRepo;
     private readonly customerRepo;
@@ -15,10 +16,11 @@ export declare class FactusService {
     private readonly auth;
     private readonly api;
     private readonly mapper;
+    private readonly invoiceSettings;
     private readonly logger;
     private creditNoteRangeCache;
     private static readonly NC_RANGE_CACHE_MS;
-    constructor(orderRepo: Repository<Order>, customerRepo: Repository<InvoiceCustomer>, config: ConfigService, auth: FactusAuthService, api: FactusApiClient, mapper: FactusInvoiceMapper);
+    constructor(orderRepo: Repository<Order>, customerRepo: Repository<InvoiceCustomer>, config: ConfigService, auth: FactusAuthService, api: FactusApiClient, mapper: FactusInvoiceMapper, invoiceSettings: FactusInvoiceSettingsService);
     getStatus(): {
         configured: boolean;
         env: string;

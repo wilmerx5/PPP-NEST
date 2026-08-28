@@ -23,6 +23,7 @@ const invoice_customer_entity_1 = require("./entities/invoice-customer.entity");
 const factus_api_client_1 = require("./factus-api.client");
 const factus_auth_service_1 = require("./factus-auth.service");
 const factus_invoice_mapper_1 = require("./factus-invoice.mapper");
+const factus_invoice_settings_service_1 = require("./factus-invoice-settings.service");
 const factus_numbering_util_1 = require("./factus-numbering.util");
 let FactusService = class FactusService {
     static { FactusService_1 = this; }
@@ -32,16 +33,18 @@ let FactusService = class FactusService {
     auth;
     api;
     mapper;
+    invoiceSettings;
     logger = new common_1.Logger(FactusService_1.name);
     creditNoteRangeCache = null;
     static NC_RANGE_CACHE_MS = 10 * 60 * 1000;
-    constructor(orderRepo, customerRepo, config, auth, api, mapper) {
+    constructor(orderRepo, customerRepo, config, auth, api, mapper, invoiceSettings) {
         this.orderRepo = orderRepo;
         this.customerRepo = customerRepo;
         this.config = config;
         this.auth = auth;
         this.api = api;
         this.mapper = mapper;
+        this.invoiceSettings = invoiceSettings;
     }
     getStatus() {
         const env = (process.env.FACTUS_ENV || 'sandbox').toLowerCase();
@@ -120,9 +123,11 @@ let FactusService = class FactusService {
         order.electronicInvoiceError = null;
         order.electronicInvoiceReference = `PPP-ORD-${order.id}`;
         await this.orderRepo.save(order);
-        const { payload, invoiceTotal } = this.mapper.buildValidatePayload(order, dto);
+        const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
+        const { payload, invoiceTotal } = this.mapper.buildValidatePayload(order, dto, taxConfig);
         this.logger.log(`[FE] payload listo orden=#${order.id} ref=${payload.reference_code} ` +
             `items=${payload.items?.length ?? 0} total≈${invoiceTotal} ` +
+            `impuestos=${taxConfig.source} ` +
             `cliente=${payload.customer?.names || payload.customer?.company || '?'}`);
         if (debug) {
             this.logger.debug(`[FE] payload completo: ${JSON.stringify(payload)}`);
@@ -229,11 +234,13 @@ let FactusService = class FactusService {
                 },
             });
         }
+        const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
         const payload = this.mapper.buildCreditNotePayload(order, {
             observation: dto.observation,
             correctionConceptCode: dto.correctionConceptCode,
             savedCustomer,
             numberingRangeId: await this.resolveCreditNoteRangeId(),
+            taxConfig,
         });
         await this.ensureCreditNoteCustomer(payload, order);
         this.logger.log(`[FE] nota crédito orden=#${orderId} bill=${payload.bill_number} ref=${payload.reference_code} ` +
@@ -400,6 +407,7 @@ exports.FactusService = FactusService = FactusService_1 = __decorate([
         config_1.ConfigService,
         factus_auth_service_1.FactusAuthService,
         factus_api_client_1.FactusApiClient,
-        factus_invoice_mapper_1.FactusInvoiceMapper])
+        factus_invoice_mapper_1.FactusInvoiceMapper,
+        factus_invoice_settings_service_1.FactusInvoiceSettingsService])
 ], FactusService);
 //# sourceMappingURL=factus.service.js.map

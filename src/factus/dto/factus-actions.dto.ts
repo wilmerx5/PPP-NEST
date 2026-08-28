@@ -41,3 +41,31 @@ export class LookupInvoiceCustomerQueryDto {
   @MaxLength(20)
   identification: string;
 }
+
+export class SearchInvoiceCustomersQueryDto {
+  @ApiProperty({ example: 'Juan' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  q: string;
+
+  @ApiPropertyOptional({ example: 10, default: 10 })
+  @IsOptional()
+  limit?: number;
+}
+
+export class ListAdminInvoiceCustomersQueryDto {
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional()
+  page?: number;
+
+  @ApiPropertyOptional({ example: 50, default: 50 })
+  @IsOptional()
+  limit?: number;
+
+  @ApiPropertyOptional({ example: 'Juan' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  search?: string;
+}

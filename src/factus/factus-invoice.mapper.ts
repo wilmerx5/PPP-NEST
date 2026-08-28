@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import type { Order } from '../orders/entities/order.entity';
 import type { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
 import type { InvoiceCustomer } from './entities/invoice-customer.entity';
+import type { ResolvedFactusTaxConfig } from './factus-invoice-settings.types';
+import { resolveLegalOrganizationFromDocType } from './factus-customer.utils';
 import type {
   FactusBillDetail,
   FactusBillItem,
@@ -28,16 +30,13 @@ export class FactusInvoiceMapper {
   buildValidatePayload(
     order: Order,
     dto: IssueElectronicInvoiceDto,
+    taxConfig: ResolvedFactusTaxConfig,
   ): { payload: FactusValidateBillRequest; invoiceTotal: number } {
-    const items = this.mapItems(order);
-    const invoiceTotal = this.sumItemsGross(items) + this.deliveryAsExtra(order).reduce((s, i) => {
-      const qty = parseFloat(i.quantity);
-      const price = parseFloat(i.price);
-      return s + qty * price;
-    }, 0);
-
-    // delivery ya va en items si aplica
-    const allItems = [...items, ...this.deliveryAsExtra(order), ...this.mapExtras(order)];
+    const allItems = [
+      ...this.mapItems(order, taxConfig),
+      ...this.deliveryAsExtra(order, taxConfig),
+      ...this.mapExtras(order, taxConfig),
+    ];
     const total = this.sumItemsGross(allItems);
 
     const paymentMethod =
@@ -51,12 +50,16 @@ export class FactusInvoiceMapper {
         this.config.get<string>('FACTUS_DEFAULT_MUNICIPALITY_CODE') ||
         '11001').trim();
 
+    const legalOrganizationCode =
+      dto.legalOrganizationCode ||
+      resolveLegalOrganizationFromDocType(dto.identificationDocumentCode);
+
     const customerNames =
-      dto.legalOrganizationCode === '2'
+      legalOrganizationCode === '2'
         ? (dto.names || order.customerName || 'Consumidor final').trim()
         : undefined;
     const customerCompany =
-      dto.legalOrganizationCode === '1'
+      legalOrganizationCode === '1'
         ? (dto.company || order.customerName || 'Cliente').trim()
         : undefined;
 
@@ -79,7 +82,7 @@ export class FactusInvoiceMapper {
         identification_document_code: dto.identificationDocumentCode,
         identification: dto.identification.replace(/\D/g, ''),
         dv: dto.dv,
-        legal_organization_code: dto.legalOrganizationCode,
+        legal_organization_code: legalOrganizationCode,
         tribute_code: 'ZZ',
         responsibilities: ['R-99-PN'],
         names: customerNames,
@@ -114,6 +117,7 @@ export class FactusInvoiceMapper {
       correctionConceptCode?: string;
       savedCustomer?: InvoiceCustomer | null;
       numberingRangeId: number;
+      taxConfig: ResolvedFactusTaxConfig;
     },
   ): FactusValidateCreditNoteRequest {
     if (!order.electronicInvoiceNumber) {
@@ -125,9 +129,9 @@ export class FactusInvoiceMapper {
     }
 
     const allItems = [
-      ...this.mapItems(order),
-      ...this.deliveryAsExtra(order),
-      ...this.mapExtras(order),
+      ...this.mapItems(order, opts.taxConfig),
+      ...this.deliveryAsExtra(order, opts.taxConfig),
+      ...this.mapExtras(order, opts.taxConfig),
     ];
     const total = this.sumItemsGross(allItems);
     const paymentMethod =
@@ -265,65 +269,53 @@ export class FactusInvoiceMapper {
     };
   }
 
-  private getItemTaxConfig() {
-    // Restaurantes Colombia: INC (impoconsumo) = código Factus/DIAN `04`, tarifa 8%
-    const taxCode = this.config.get<string>('FACTUS_ITEM_TAX_CODE') || '04';
-    const taxRate = this.config.get<string>('FACTUS_ITEM_TAX_RATE') || '8.00';
-    const excluded =
-      (this.config.get<string>('FACTUS_ITEM_TAX_EXCLUDED') || 'false').toLowerCase() ===
-      'true';
-    const pricesIncludeTax =
-      (this.config.get<string>('FACTUS_PRICES_INCLUDE_TAX') || 'true').toLowerCase() ===
-      'true';
-    const rateNum = parseFloat(taxRate) || 0;
-    return { taxCode, excluded, pricesIncludeTax, rateNum };
+  private combinedTaxRatePercent(taxConfig: ResolvedFactusTaxConfig): number {
+    return taxConfig.taxes
+      .filter((t) => !t.isExcluded && t.rate > 0)
+      .reduce((sum, t) => sum + t.rate, 0);
   }
 
   /** Precio unitario neto para Factus (`price` = sin impuesto). */
-  private netUnitPrice(
-    grossUnit: number,
-    cfg: ReturnType<FactusInvoiceMapper['getItemTaxConfig']>,
-  ): number {
-    if (cfg.pricesIncludeTax && cfg.rateNum > 0 && !cfg.excluded) {
-      return grossUnit / (1 + cfg.rateNum / 100);
+  private netUnitPrice(grossUnit: number, taxConfig: ResolvedFactusTaxConfig): number {
+    const totalRate = this.combinedTaxRatePercent(taxConfig);
+    if (taxConfig.pricesIncludeTax && totalRate > 0) {
+      return grossUnit / (1 + totalRate / 100);
     }
     return grossUnit;
   }
 
-  private buildItemTaxes(
-    cfg: ReturnType<FactusInvoiceMapper['getItemTaxConfig']>,
-  ): FactusItemTax[] {
-    return [
-      {
-        code: cfg.taxCode,
-        rate: factusMoney(cfg.rateNum),
-        ...(cfg.excluded ? { is_excluded: true } : {}),
-      },
-    ];
+  private buildItemTaxes(taxConfig: ResolvedFactusTaxConfig): FactusItemTax[] {
+    return taxConfig.taxes.map((t) => ({
+      code: t.code,
+      rate: factusMoney(t.rate),
+      ...(t.isExcluded ? { is_excluded: true } : {}),
+    }));
   }
 
-  private toFactusBillItem(params: {
-    code_reference: string;
-    name: string;
-    quantity: number;
-    grossUnit: number;
-    note?: string;
-  }): FactusBillItem {
-    const cfg = this.getItemTaxConfig();
+  private toFactusBillItem(
+    params: {
+      code_reference: string;
+      name: string;
+      quantity: number;
+      grossUnit: number;
+      note?: string;
+    },
+    taxConfig: ResolvedFactusTaxConfig,
+  ): FactusBillItem {
     return {
       code_reference: params.code_reference,
       name: params.name.slice(0, 200),
       quantity: factusMoney(params.quantity),
       discount_rate: '0.00',
-      price: factusMoney(this.netUnitPrice(params.grossUnit, cfg)),
+      price: factusMoney(this.netUnitPrice(params.grossUnit, taxConfig)),
       unit_measure_code: '94',
       standard_code: '999',
       note: params.note,
-      taxes: this.buildItemTaxes(cfg),
+      taxes: this.buildItemTaxes(taxConfig),
     };
   }
 
-  private mapItems(order: Order): FactusBillItem[] {
+  private mapItems(order: Order, taxConfig: ResolvedFactusTaxConfig): FactusBillItem[] {
     const grouped = new Map<
       string,
       { code: string; name: string; qty: number; unit: number; note?: string }
@@ -351,38 +343,47 @@ export class FactusInvoiceMapper {
     }
 
     return [...grouped.values()].map((g) =>
-      this.toFactusBillItem({
-        code_reference: g.code,
-        name: g.name,
-        quantity: g.qty,
-        grossUnit: g.unit,
-        note: g.note,
-      }),
+      this.toFactusBillItem(
+        {
+          code_reference: g.code,
+          name: g.name,
+          quantity: g.qty,
+          grossUnit: g.unit,
+          note: g.note,
+        },
+        taxConfig,
+      ),
     );
   }
 
-  private mapExtras(order: Order): FactusBillItem[] {
+  private mapExtras(order: Order, taxConfig: ResolvedFactusTaxConfig): FactusBillItem[] {
     return (order.extras || []).map((ex, idx) =>
-      this.toFactusBillItem({
-        code_reference: `EXTRA-${ex.id ?? idx}`,
-        name: ex.title || 'Adicional',
-        quantity: ex.quantity ?? 1,
-        grossUnit: Number(ex.amount) || 0,
-        note: ex.description || undefined,
-      }),
+      this.toFactusBillItem(
+        {
+          code_reference: `EXTRA-${ex.id ?? idx}`,
+          name: ex.title || 'Adicional',
+          quantity: ex.quantity ?? 1,
+          grossUnit: Number(ex.amount) || 0,
+          note: ex.description || undefined,
+        },
+        taxConfig,
+      ),
     );
   }
 
-  private deliveryAsExtra(order: Order): FactusBillItem[] {
+  private deliveryAsExtra(order: Order, taxConfig: ResolvedFactusTaxConfig): FactusBillItem[] {
     const fee = Number(order.deliveryFee) || 0;
     if (fee <= 0 || order.orderType !== 'delivery') return [];
     return [
-      this.toFactusBillItem({
-        code_reference: 'DELIVERY',
-        name: 'Domicilio',
-        quantity: 1,
-        grossUnit: fee,
-      }),
+      this.toFactusBillItem(
+        {
+          code_reference: 'DELIVERY',
+          name: 'Domicilio',
+          quantity: 1,
+          grossUnit: fee,
+        },
+        taxConfig,
+      ),
     ];
   }
 

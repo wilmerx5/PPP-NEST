@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -22,7 +23,9 @@ import {
   ResendElectronicInvoiceEmailDto,
 } from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
+import { UpdateFactusInvoiceSettingsDto } from './dto/factus-invoice-settings.dto';
 import { FactusService } from './factus.service';
+import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
 
 const OPS = [
   ValidRoles.admin,
@@ -33,7 +36,10 @@ const OPS = [
 @ApiTags('Facturación electrónica (Factus)')
 @Controller()
 export class FactusController {
-  constructor(private readonly factusService: FactusService) {}
+  constructor(
+    private readonly factusService: FactusService,
+    private readonly invoiceSettings: FactusInvoiceSettingsService,
+  ) {}
 
   @Get('factus/status')
   @Auth(ValidRoles.admin, ValidRoles.ordersUser)
@@ -41,6 +47,54 @@ export class FactusController {
   @ApiOperation({ summary: 'Estado de configuración Factus (sin secretos)' })
   getStatus() {
     return this.factusService.getStatus();
+  }
+
+  @Get('admin/factus/invoice-settings')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Config impuestos FE (admin) — editable sin tocar .env' })
+  getInvoiceSettings() {
+    return this.invoiceSettings.getAdminSettings();
+  }
+
+  @Patch('admin/factus/invoice-settings')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Guardar impuestos FE por ítem (admin)' })
+  updateInvoiceSettings(@Body() dto: UpdateFactusInvoiceSettingsDto) {
+    return this.invoiceSettings.updateAdminSettings(dto);
+  }
+
+  @Get('factus/customers/search')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Buscar clientes fiscales guardados por nombre (autocomplete FE)' })
+  @ApiQuery({ name: 'q', required: true })
+  @ApiQuery({ name: 'limit', required: false })
+  searchCustomers(@Query('q') q: string, @Query('limit') limit?: string) {
+    const parsedLimit = limit ? Number(limit) : 10;
+    return this.factusService.searchCustomers(q, Number.isFinite(parsedLimit) ? parsedLimit : 10);
+  }
+
+  @Get('admin/factus/customers')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar clientes fiscales guardados al emitir FE (admin)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  listCustomersAdmin(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 50;
+    return this.factusService.listCustomersAdmin(
+      Number.isFinite(p) ? p : 1,
+      Number.isFinite(l) ? l : 50,
+      search,
+    );
   }
 
   @Get('factus/customers/lookup')

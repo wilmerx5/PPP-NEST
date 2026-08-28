@@ -21,14 +21,12 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
     constructor(config) {
         this.config = config;
     }
-    buildValidatePayload(order, dto) {
-        const items = this.mapItems(order);
-        const invoiceTotal = this.sumItemsGross(items) + this.deliveryAsExtra(order).reduce((s, i) => {
-            const qty = parseFloat(i.quantity);
-            const price = parseFloat(i.price);
-            return s + qty * price;
-        }, 0);
-        const allItems = [...items, ...this.deliveryAsExtra(order), ...this.mapExtras(order)];
+    buildValidatePayload(order, dto, taxConfig) {
+        const allItems = [
+            ...this.mapItems(order, taxConfig),
+            ...this.deliveryAsExtra(order, taxConfig),
+            ...this.mapExtras(order, taxConfig),
+        ];
         const total = this.sumItemsGross(allItems);
         const paymentMethod = (dto.paymentMethodCode || this.config.get('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
         const rangeRaw = this.config.get('FACTUS_NUMBERING_RANGE_ID');
@@ -91,9 +89,9 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
             throw new common_1.BadRequestException('Rango de nota crédito inválido');
         }
         const allItems = [
-            ...this.mapItems(order),
-            ...this.deliveryAsExtra(order),
-            ...this.mapExtras(order),
+            ...this.mapItems(order, opts.taxConfig),
+            ...this.deliveryAsExtra(order, opts.taxConfig),
+            ...this.mapExtras(order, opts.taxConfig),
         ];
         const total = this.sumItemsGross(allItems);
         const paymentMethod = (this.config.get('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
@@ -196,46 +194,39 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
             municipality_code: municipality,
         };
     }
-    getItemTaxConfig() {
-        const taxCode = this.config.get('FACTUS_ITEM_TAX_CODE') || '04';
-        const taxRate = this.config.get('FACTUS_ITEM_TAX_RATE') || '8.00';
-        const excluded = (this.config.get('FACTUS_ITEM_TAX_EXCLUDED') || 'false').toLowerCase() ===
-            'true';
-        const pricesIncludeTax = (this.config.get('FACTUS_PRICES_INCLUDE_TAX') || 'true').toLowerCase() ===
-            'true';
-        const rateNum = parseFloat(taxRate) || 0;
-        return { taxCode, excluded, pricesIncludeTax, rateNum };
+    combinedTaxRatePercent(taxConfig) {
+        return taxConfig.taxes
+            .filter((t) => !t.isExcluded && t.rate > 0)
+            .reduce((sum, t) => sum + t.rate, 0);
     }
-    netUnitPrice(grossUnit, cfg) {
-        if (cfg.pricesIncludeTax && cfg.rateNum > 0 && !cfg.excluded) {
-            return grossUnit / (1 + cfg.rateNum / 100);
+    netUnitPrice(grossUnit, taxConfig) {
+        const totalRate = this.combinedTaxRatePercent(taxConfig);
+        if (taxConfig.pricesIncludeTax && totalRate > 0) {
+            return grossUnit / (1 + totalRate / 100);
         }
         return grossUnit;
     }
-    buildItemTaxes(cfg) {
-        return [
-            {
-                code: cfg.taxCode,
-                rate: factusMoney(cfg.rateNum),
-                ...(cfg.excluded ? { is_excluded: true } : {}),
-            },
-        ];
+    buildItemTaxes(taxConfig) {
+        return taxConfig.taxes.map((t) => ({
+            code: t.code,
+            rate: factusMoney(t.rate),
+            ...(t.isExcluded ? { is_excluded: true } : {}),
+        }));
     }
-    toFactusBillItem(params) {
-        const cfg = this.getItemTaxConfig();
+    toFactusBillItem(params, taxConfig) {
         return {
             code_reference: params.code_reference,
             name: params.name.slice(0, 200),
             quantity: factusMoney(params.quantity),
             discount_rate: '0.00',
-            price: factusMoney(this.netUnitPrice(params.grossUnit, cfg)),
+            price: factusMoney(this.netUnitPrice(params.grossUnit, taxConfig)),
             unit_measure_code: '94',
             standard_code: '999',
             note: params.note,
-            taxes: this.buildItemTaxes(cfg),
+            taxes: this.buildItemTaxes(taxConfig),
         };
     }
-    mapItems(order) {
+    mapItems(order, taxConfig) {
         const grouped = new Map();
         for (const item of order.items || []) {
             if (!item.product)
@@ -264,18 +255,18 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
             quantity: g.qty,
             grossUnit: g.unit,
             note: g.note,
-        }));
+        }, taxConfig));
     }
-    mapExtras(order) {
+    mapExtras(order, taxConfig) {
         return (order.extras || []).map((ex, idx) => this.toFactusBillItem({
             code_reference: `EXTRA-${ex.id ?? idx}`,
             name: ex.title || 'Adicional',
             quantity: ex.quantity ?? 1,
             grossUnit: Number(ex.amount) || 0,
             note: ex.description || undefined,
-        }));
+        }, taxConfig));
     }
-    deliveryAsExtra(order) {
+    deliveryAsExtra(order, taxConfig) {
         const fee = Number(order.deliveryFee) || 0;
         if (fee <= 0 || order.orderType !== 'delivery')
             return [];
@@ -285,7 +276,7 @@ let FactusInvoiceMapper = class FactusInvoiceMapper {
                 name: 'Domicilio',
                 quantity: 1,
                 grossUnit: fee,
-            }),
+            }, taxConfig),
         ];
     }
     sumItemsGross(items) {

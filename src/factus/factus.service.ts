@@ -19,8 +19,28 @@ import { InvoiceCustomer } from './entities/invoice-customer.entity';
 import { FactusApiClient } from './factus-api.client';
 import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
+import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
+import {
+  invoiceCustomerDisplayName,
+  resolveLegalOrganizationFromDocType,
+} from './factus-customer.utils';
 import { pickCreditNoteRangeId } from './factus-numbering.util';
 import type { FactusValidateCreditNoteRequest } from './types/factus.types';
+
+type InvoiceCustomerRow = {
+  identificationDocumentCode: string;
+  identification: string;
+  dv: string | null;
+  legalOrganizationCode: string;
+  names: string | null;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  municipalityCode: string | null;
+  timesUsed: number;
+  updatedAt?: Date;
+};
 
 @Injectable()
 export class FactusService {
@@ -38,6 +58,7 @@ export class FactusService {
     private readonly auth: FactusAuthService,
     private readonly api: FactusApiClient,
     private readonly mapper: FactusInvoiceMapper,
+    private readonly invoiceSettings: FactusInvoiceSettingsService,
   ) {}
 
   getStatus(): {
@@ -63,6 +84,69 @@ export class FactusService {
       },
     });
     if (!row) return null;
+    return this.toInvoiceCustomerDto(row);
+  }
+
+  async searchCustomers(query: string, limit = 10) {
+    const q = query.trim();
+    if (q.length < 2) return [];
+    const pattern = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
+    const idDigits = q.replace(/\D/g, '');
+    const qb = this.customerRepo.createQueryBuilder('c');
+    if (idDigits.length >= 3) {
+      qb.where(
+        '(c.names ILIKE :pattern OR c.company ILIKE :pattern OR c.identification LIKE :idPattern)',
+        { pattern, idPattern: `%${idDigits}%` },
+      );
+    } else {
+      qb.where('(c.names ILIKE :pattern OR c.company ILIKE :pattern)', { pattern });
+    }
+    const rows = await qb
+      .orderBy('c.times_used', 'DESC')
+      .addOrderBy('c.updated_at', 'DESC')
+      .take(Math.min(Math.max(limit, 1), 20))
+      .getMany();
+    return rows.map((row) => this.toInvoiceCustomerDto(row));
+  }
+
+  async listCustomersAdmin(page = 1, limit = 50, search?: string) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const qb = this.customerRepo.createQueryBuilder('c');
+    const q = search?.trim();
+    if (q) {
+      const pattern = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
+      const idDigits = q.replace(/\D/g, '');
+      if (idDigits.length >= 3) {
+        qb.where(
+          '(c.names ILIKE :pattern OR c.company ILIKE :pattern OR c.identification LIKE :idPattern)',
+          { pattern, idPattern: `%${idDigits}%` },
+        );
+      } else {
+        qb.where('(c.names ILIKE :pattern OR c.company ILIKE :pattern)', { pattern });
+      }
+    }
+    qb.orderBy('c.times_used', 'DESC').addOrderBy('c.updated_at', 'DESC');
+    const [rows, total] = await qb
+      .skip((safePage - 1) * safeLimit)
+      .take(safeLimit)
+      .getManyAndCount();
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        ...this.toInvoiceCustomerDto(row),
+        displayName: invoiceCustomerDisplayName(row),
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    };
+  }
+
+  private toInvoiceCustomerDto(row: InvoiceCustomer): InvoiceCustomerRow {
     return {
       identificationDocumentCode: row.identificationDocumentCode,
       identification: row.identification,
@@ -75,10 +159,19 @@ export class FactusService {
       address: row.address,
       municipalityCode: row.municipalityCode,
       timesUsed: row.timesUsed,
+      updatedAt: row.updatedAt,
     };
   }
 
-  async issueForOrder(orderId: number, dto: IssueElectronicInvoiceDto) {
+  private normalizeIssueDto(dto: IssueElectronicInvoiceDto): IssueElectronicInvoiceDto {
+    const legalOrganizationCode =
+      dto.legalOrganizationCode ||
+      resolveLegalOrganizationFromDocType(dto.identificationDocumentCode);
+    return { ...dto, legalOrganizationCode };
+  }
+
+  async issueForOrder(orderId: number, rawDto: IssueElectronicInvoiceDto) {
+    const dto = this.normalizeIssueDto(rawDto);
     const debug = this.isDebug();
     this.logger.log(
       `[FE] inicio orden=#${orderId} env=${process.env.FACTUS_ENV || 'sandbox'} ` +
@@ -136,10 +229,12 @@ export class FactusService {
     order.electronicInvoiceReference = `PPP-ORD-${order.id}`;
     await this.orderRepo.save(order);
 
-    const { payload, invoiceTotal } = this.mapper.buildValidatePayload(order, dto);
+    const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
+    const { payload, invoiceTotal } = this.mapper.buildValidatePayload(order, dto, taxConfig);
     this.logger.log(
       `[FE] payload listo orden=#${order.id} ref=${payload.reference_code} ` +
         `items=${payload.items?.length ?? 0} total≈${invoiceTotal} ` +
+        `impuestos=${taxConfig.source} ` +
         `cliente=${payload.customer?.names || payload.customer?.company || '?'}`,
     );
     if (debug) {
@@ -271,11 +366,13 @@ export class FactusService {
       });
     }
 
+    const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
     const payload = this.mapper.buildCreditNotePayload(order, {
       observation: dto.observation,
       correctionConceptCode: dto.correctionConceptCode,
       savedCustomer,
       numberingRangeId: await this.resolveCreditNoteRangeId(),
+      taxConfig,
     });
     await this.ensureCreditNoteCustomer(payload, order);
     this.logger.log(
@@ -334,6 +431,9 @@ export class FactusService {
 
   private async upsertInvoiceCustomer(dto: IssueElectronicInvoiceDto) {
     const identification = dto.identification.replace(/\D/g, '');
+    const legalOrganizationCode =
+      dto.legalOrganizationCode ||
+      resolveLegalOrganizationFromDocType(dto.identificationDocumentCode);
     try {
       const existing = await this.customerRepo.findOne({
         where: {
@@ -343,7 +443,7 @@ export class FactusService {
       });
       if (existing) {
         existing.dv = dto.dv?.trim() || existing.dv;
-        existing.legalOrganizationCode = dto.legalOrganizationCode;
+        existing.legalOrganizationCode = legalOrganizationCode;
         existing.names = dto.names?.trim() || existing.names;
         existing.company = dto.company?.trim() || existing.company;
         existing.email = dto.email?.trim() || existing.email;
@@ -359,7 +459,7 @@ export class FactusService {
           identificationDocumentCode: dto.identificationDocumentCode,
           identification,
           dv: dto.dv?.trim() || null,
-          legalOrganizationCode: dto.legalOrganizationCode,
+          legalOrganizationCode,
           names: dto.names?.trim() || null,
           company: dto.company?.trim() || null,
           email: dto.email?.trim() || null,
