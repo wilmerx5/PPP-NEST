@@ -222,6 +222,43 @@ export class AuthService {
     return this.confirm2faForUser(staffId, dto);
   }
 
+  /** Muestra el secreto/QR actual sin rotarlo (para agregar otro teléfono). */
+  async reveal2fa(userId: string, dto: Confirm2faDto) {
+    return this.reveal2faForUser(userId, dto);
+  }
+
+  async adminRevealStaff2fa(staffId: string, dto: Confirm2faDto) {
+    return this.reveal2faForUser(staffId, dto);
+  }
+
+  private async reveal2faForUser(userId: string, dto: Confirm2faDto) {
+    const user = await this.getStaffUserOrThrow(userId);
+
+    if (!user.totpEnabled || !user.totpSecret) {
+      throw new BadRequestException('Este usuario no tiene 2FA activo');
+    }
+
+    if (!this.totpService.verifyToken(user.totpSecret, dto.code)) {
+      throw new UnauthorizedException(
+        'Código inválido. Usa el código del teléfono que ya tiene 2FA.',
+      );
+    }
+
+    const otpauthUrl = this.totpService.buildOtpAuthUri(user.email, user.totpSecret);
+    const qrDataUrl = await this.totpService.buildQrDataUrl(otpauthUrl);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      secret: user.totpSecret,
+      otpauthUrl,
+      qrDataUrl,
+      message:
+        'Escanea este QR en el teléfono nuevo. El actual sigue funcionando (mismo secreto).',
+    };
+  }
+
   private async confirm2faForUser(userId: string, dto: Confirm2faDto) {
     const user = await this.getStaffUserOrThrow(userId);
 

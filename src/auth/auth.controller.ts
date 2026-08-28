@@ -158,6 +158,22 @@ export class AuthController {
     return this.authService.disable2fa((req.user as User).id, dto);
   }
 
+  @Post('2fa/reveal')
+  @Auth(
+    ValidRoles.admin,
+    ValidRoles.kitchenUser,
+    ValidRoles.tableUser,
+    ValidRoles.ordersUser,
+    ValidRoles.whatsappUser,
+  )
+  @ApiOperation({
+    summary: 'Mostrar QR/secreto actual (sin rotar) tras verificar código TOTP',
+  })
+  @ApiBody({ type: Confirm2faDto })
+  reveal2fa(@Req() req: Request, @Body() dto: Confirm2faDto) {
+    return this.authService.reveal2fa((req.user as User).id, dto);
+  }
+
   // -------------------------------------------------------------
   // REFRESH TOKENS
   // -------------------------------------------------------------

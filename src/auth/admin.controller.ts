@@ -159,6 +159,15 @@ export class AdminController {
     return this.authService.adminDisableStaff2fa(id);
   }
 
+  @Post('staff/:id/2fa/reveal')
+  @ApiOperation({
+    summary: 'Mostrar QR/secreto actual de un staff (sin rotar) tras verificar su código TOTP',
+  })
+  @ApiBody({ type: Confirm2faDto })
+  adminRevealStaff2fa(@Param('id') id: string, @Body() dto: Confirm2faDto) {
+    return this.authService.adminRevealStaff2fa(id, dto);
+  }
+
   @Get('staff/:id')
   @ApiOperation({ summary: 'Detalle de usuario staff' })
   async getStaffUser(@Param('id') id: string) {
