@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { generateSecret, generateSync, generateURI, verifySync } from 'otplib';
+import { authenticator } from 'otplib';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
@@ -10,15 +10,11 @@ const RECOVERY_CODE_COUNT = 8;
 @Injectable()
 export class TotpService {
   createSecret(): string {
-    return generateSecret();
+    return authenticator.generateSecret();
   }
 
   buildOtpAuthUri(email: string, secret: string): string {
-    return generateURI({
-      issuer: ISSUER,
-      label: email,
-      secret,
-    });
+    return authenticator.keyuri(email, ISSUER, secret);
   }
 
   async buildQrDataUrl(otpauthUri: string): Promise<string> {
@@ -32,13 +28,16 @@ export class TotpService {
   verifyToken(secret: string, token: string): boolean {
     const code = (token || '').replace(/\s/g, '');
     if (!/^\d{6}$/.test(code)) return false;
-    const result = verifySync({ secret, token: code });
-    return Boolean(result?.valid);
+    try {
+      return authenticator.check(code, secret);
+    } catch {
+      return false;
+    }
   }
 
   /** For tests / debugging only */
   generateToken(secret: string): string {
-    return generateSync({ secret });
+    return authenticator.generate(secret);
   }
 
   generateRecoveryCodes(): string[] {
