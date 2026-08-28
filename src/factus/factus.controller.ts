@@ -1,13 +1,26 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
+import {
+  CancelElectronicInvoiceDto,
+  ResendElectronicInvoiceEmailDto,
+} from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
 import { FactusService } from './factus.service';
 
@@ -30,6 +43,22 @@ export class FactusController {
     return this.factusService.getStatus();
   }
 
+  @Get('factus/customers/lookup')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Buscar cliente fiscal guardado (autocomplete FE)' })
+  @ApiQuery({ name: 'identificationDocumentCode', required: true })
+  @ApiQuery({ name: 'identification', required: true })
+  lookupCustomer(
+    @Query('identificationDocumentCode') identificationDocumentCode: string,
+    @Query('identification') identification: string,
+  ) {
+    return this.factusService.lookupCustomer(
+      identificationDocumentCode,
+      identification,
+    );
+  }
+
   @Post('orders/:id/electronic-invoice')
   @Auth(...OPS)
   @ApiBearerAuth()
@@ -47,5 +76,38 @@ export class FactusController {
     @Body() dto: IssueElectronicInvoiceDto,
   ) {
     return this.factusService.issueForOrder(id, dto);
+  }
+
+  @Get('orders/:id/electronic-invoice/pdf')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Descargar / imprimir PDF de la factura electrónica' })
+  @ApiParam({ name: 'id', description: 'ID de la orden PPP' })
+  downloadPdf(@Param('id', ParseIntPipe) id: number) {
+    return this.factusService.getInvoicePdf(id);
+  }
+
+  @Post('orders/:id/electronic-invoice/resend-email')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reenviar factura electrónica por correo' })
+  resendEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ResendElectronicInvoiceEmailDto,
+  ) {
+    return this.factusService.resendInvoiceEmail(id, dto);
+  }
+
+  @Post('orders/:id/electronic-invoice/cancel')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Anular factura electrónica (nota crédito Factus → DIAN)',
+  })
+  cancelInvoice(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CancelElectronicInvoiceDto,
+  ) {
+    return this.factusService.cancelInvoice(id, dto);
   }
 }

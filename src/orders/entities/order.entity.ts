@@ -198,7 +198,8 @@ export class Order {
     | 'pending'
     | 'accepted'
     | 'rejected'
-    | 'error';
+    | 'error'
+    | 'credit_noted';
 
   @Column({
     name: 'electronic_invoice_reference',
@@ -256,6 +257,37 @@ export class Order {
   electronicInvoiceError: string | null;
 
   @Column({
+    name: 'electronic_credit_note_number',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  electronicCreditNoteNumber: string | null;
+
+  @Column({
+    name: 'electronic_credit_note_cufe',
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+  })
+  electronicCreditNoteCufe: string | null;
+
+  @Column({
+    name: 'electronic_credit_note_public_url',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  electronicCreditNotePublicUrl: string | null;
+
+  @Column({
+    name: 'electronic_credit_note_issued_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  electronicCreditNoteIssuedAt: Date | null;
+
+  @Column({
     name: 'invoice_customer_doc_type',
     type: 'varchar',
     length: 5,
@@ -270,4 +302,12 @@ export class Order {
     nullable: true,
   })
   invoiceCustomerDocNumber: string | null;
+
+  @Column({
+    name: 'invoice_customer_doc_dv',
+    type: 'varchar',
+    length: 1,
+    nullable: true,
+  })
+  invoiceCustomerDocDv: string | null;
 }

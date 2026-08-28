@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   Req,
+  Res,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,7 +17,7 @@ import { Between } from 'typeorm';
 import { Auth } from './decorators/auth.decorator';
 import { ValidRoles } from './interfaces/valid.roles.interface';
 import { User } from './entities/user.entity';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { PointsService } from './services/points.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -294,6 +295,66 @@ export class AdminController {
 
     const orders = await this.ordersService.findOrdersByDate(date);
     return orders;
+  }
+
+  @Get('orders/electronic-invoices')
+  @ApiOperation({
+    summary: 'Listar facturas electrónicas (admin)',
+    description:
+      'Filtra por rango de fechas (Bogotá) y estado FE: accepted, credit_noted, rejected, error, pending, all.',
+  })
+  @ApiQuery({ name: 'from', required: true, example: '2026-08-01' })
+  @ApiQuery({ name: 'to', required: true, example: '2026-08-27' })
+  @ApiQuery({ name: 'status', required: false, example: 'all' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 25 })
+  async getElectronicInvoices(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!from || !to) {
+      throw new BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
+    }
+    return this.ordersService.findElectronicInvoices({
+      from,
+      to,
+      status,
+      search,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 25,
+    });
+  }
+
+  @Get('orders/electronic-invoices/export')
+  @ApiOperation({ summary: 'Exportar facturas electrónicas a CSV (admin)' })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  async exportElectronicInvoices(
+    @Res({ passthrough: true }) res: Response,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    if (!from || !to) {
+      throw new BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
+    }
+    const { filename, csv } = await this.ordersService.exportElectronicInvoicesCsv({
+      from,
+      to,
+      status,
+      search,
+    });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return csv;
   }
 
   @Get('orders/daily-summary')

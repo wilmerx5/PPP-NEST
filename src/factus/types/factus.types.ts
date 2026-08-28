@@ -100,3 +100,41 @@ export type FactusNumberingRange = {
   current?: number;
   is_active?: boolean;
 };
+
+export type FactusValidateCreditNoteRequest = {
+  reference_code: string;
+  correction_concept_code: string;
+  customization_id?: string;
+  bill_number: string;
+  numbering_range_id?: number;
+  observation?: string;
+  payment_details: FactusPaymentDetail[];
+  items: FactusBillItem[];
+  customer?: FactusCustomer;
+};
+
+export type FactusValidateCreditNoteResponse = {
+  status: string;
+  message: string;
+  data: {
+    reference_code?: string;
+    number?: string;
+    is_validated?: boolean;
+    cufe?: string;
+    errors?: Record<string, unknown>;
+    links?: {
+      qr?: string;
+      public_url?: string;
+    };
+  };
+};
+
+export type FactusDownloadPdfResponse = {
+  status?: string;
+  message?: string;
+  data?: {
+    pdf_base_64_encoded?: string;
+    file_name?: string;
+    number?: string;
+  };
+};

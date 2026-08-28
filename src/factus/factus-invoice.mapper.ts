@@ -5,6 +5,7 @@ import type { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.d
 import type {
   FactusBillItem,
   FactusValidateBillRequest,
+  FactusValidateCreditNoteRequest,
 } from './types/factus.types';
 
 /** Formatea número a string con 2 decimales (requerido por Factus). */
@@ -97,6 +98,56 @@ export class FactusInvoiceMapper {
     }
 
     return { payload, invoiceTotal: total };
+  }
+
+  /**
+   * Nota crédito de anulación total sobre la FE ya emitida (mismos ítems/total).
+   */
+  buildCreditNotePayload(
+    order: Order,
+    opts: { observation?: string; correctionConceptCode?: string },
+  ): FactusValidateCreditNoteRequest {
+    if (!order.electronicInvoiceNumber) {
+      throw new Error('La orden no tiene número de factura electrónica');
+    }
+
+    const allItems = [
+      ...this.mapItems(order),
+      ...this.deliveryAsExtra(order),
+      ...this.mapExtras(order),
+    ];
+    const total = this.sumItemsGross(allItems);
+    const paymentMethod =
+      (this.config.get<string>('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
+
+    const rangeRaw = this.config.get<string>('FACTUS_CREDIT_NOTE_RANGE_ID');
+    const numberingRangeId = rangeRaw ? parseInt(rangeRaw, 10) : undefined;
+
+    const payload: FactusValidateCreditNoteRequest = {
+      reference_code: `PPP-NC-${order.id}-${Date.now()}`,
+      correction_concept_code: (opts.correctionConceptCode || '2').trim(),
+      customization_id: '20',
+      bill_number: order.electronicInvoiceNumber,
+      observation: (
+        opts.observation ||
+        `Anulación FE ${order.electronicInvoiceNumber} — pedido #${order.dailyOrderNumber ?? order.id}`
+      ).slice(0, 250),
+      payment_details: [
+        {
+          payment_form: '1',
+          payment_method_code: paymentMethod,
+          reference_code: `nc-order-${order.id}`,
+          amount: factusMoney(total),
+        },
+      ],
+      items: allItems,
+    };
+
+    if (Number.isFinite(numberingRangeId) && numberingRangeId! > 0) {
+      payload.numbering_range_id = numberingRangeId;
+    }
+
+    return payload;
   }
 
   private mapItems(order: Order): FactusBillItem[] {

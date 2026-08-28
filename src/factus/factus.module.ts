@@ -6,9 +6,10 @@ import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
 import { FactusService } from './factus.service';
 import { FactusController } from './factus.controller';
+import { InvoiceCustomer } from './entities/invoice-customer.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order])],
+  imports: [TypeOrmModule.forFeature([Order, InvoiceCustomer])],
   controllers: [FactusController],
   providers: [FactusAuthService, FactusApiClient, FactusInvoiceMapper, FactusService],
   exports: [FactusService, FactusAuthService],
