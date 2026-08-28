@@ -78,6 +78,28 @@ export class User {
     @Column('simple-json', { nullable: true })
     roles: string[];
 
+    @ApiProperty({
+        description: 'Si el usuario tiene 2FA TOTP activo.',
+        example: false,
+        default: false,
+    })
+    @Column({ name: 'totp_enabled', type: 'boolean', default: false })
+    totpEnabled: boolean;
+
+    @ApiProperty({
+        description: 'Secreto TOTP (no se expone en respuestas).',
+        required: false,
+    })
+    @Column({ name: 'totp_secret', type: 'varchar', length: 64, nullable: true, select: false })
+    totpSecret: string | null;
+
+    @ApiProperty({
+        description: 'Códigos de recuperación hasheados (no se exponen).',
+        required: false,
+    })
+    @Column({ name: 'totp_recovery_codes', type: 'simple-json', nullable: true, select: false })
+    totpRecoveryCodes: string[] | null;
+
     @CreateDateColumn({
   name: 'created_at',
   type: 'timestamp',

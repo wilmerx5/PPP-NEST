@@ -24,6 +24,7 @@ import {
 } from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
 import { UpdateFactusInvoiceSettingsDto } from './dto/factus-invoice-settings.dto';
+import { UpdateInvoiceCustomerDto } from './dto/update-invoice-customer.dto';
 import { FactusService } from './factus.service';
 import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
 
@@ -95,6 +96,18 @@ export class FactusController {
       Number.isFinite(l) ? l : 50,
       search,
     );
+  }
+
+  @Patch('admin/factus/customers/:id')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Editar cliente fiscal guardado (admin)' })
+  @ApiParam({ name: 'id', type: Number })
+  updateCustomerAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInvoiceCustomerDto,
+  ) {
+    return this.factusService.updateCustomerAdmin(id, dto);
   }
 
   @Get('factus/customers/lookup')

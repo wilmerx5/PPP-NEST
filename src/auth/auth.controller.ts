@@ -26,8 +26,12 @@ import { RequestNewCodeDTO } from './dto/request-new-code.dto';
 import { ValidateTokenDTO } from './dto/validate-token.dto';
 import { RequestPasswordResetDTO } from './dto/request-password-reset.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
+import { Confirm2faDto } from './dto/confirm-2fa.dto';
+import { Disable2faDto } from './dto/disable-2fa.dto';
+import { VerifyLogin2faDto } from './dto/verify-login-2fa.dto';
 import { User } from './entities/user.entity';
 import { formatToBogotaISO } from '../common/utils/date.util';
+import { ValidRoles } from './interfaces/valid.roles.interface';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -56,13 +60,40 @@ export class AuthController {
   // LOGIN
   // -------------------------------------------------------------
   @Post('login')
-  @ApiOperation({ summary: 'Login user and set authentication cookies' })
+  @ApiOperation({ summary: 'Login user and set authentication cookies (or request 2FA)' })
   @ApiBody({ type: LogInUserDTO })
-  @ApiResponse({ status: 200, description: 'Logged in successfully' })
+  @ApiResponse({ status: 200, description: 'Logged in successfully or 2FA required' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or inactive user' })
   async login(@Body() loginDto: LogInUserDTO, @Res() res: Response) {
+    const result = await this.authService.login(loginDto);
+
+    if (result.requires2FA) {
+      return res.json({
+        requires2FA: true,
+        tempToken: result.tempToken,
+        message: 'Ingresa el código de tu app authenticator',
+        user: result.user,
+      });
+    }
+
+    this.cookieService.setAccessToken(res, result.accessToken);
+    this.cookieService.setRefreshToken(res, result.refreshToken);
+
+    return res.json({
+      requires2FA: false,
+      message: 'Logged in successfully',
+      user: result.user,
+    });
+  }
+
+  @Post('login/2fa')
+  @ApiOperation({ summary: 'Complete login with TOTP or recovery code' })
+  @ApiBody({ type: VerifyLogin2faDto })
+  @ApiResponse({ status: 200, description: 'Logged in successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid 2FA code or expired temp token' })
+  async login2fa(@Body() dto: VerifyLogin2faDto, @Res() res: Response) {
     const { accessToken, refreshToken, user } =
-      await this.authService.login(loginDto);
+      await this.authService.verifyLogin2fa(dto);
 
     this.cookieService.setAccessToken(res, accessToken);
     this.cookieService.setRefreshToken(res, refreshToken);
@@ -71,6 +102,60 @@ export class AuthController {
       message: 'Logged in successfully',
       user,
     });
+  }
+
+  @Get('2fa/status')
+  @Auth(
+    ValidRoles.admin,
+    ValidRoles.kitchenUser,
+    ValidRoles.tableUser,
+    ValidRoles.ordersUser,
+    ValidRoles.whatsappUser,
+  )
+  @ApiOperation({ summary: 'Estado de 2FA del usuario autenticado' })
+  get2faStatus(@Req() req: Request) {
+    return this.authService.get2faStatus(req.user as User);
+  }
+
+  @Post('2fa/setup')
+  @Auth(
+    ValidRoles.admin,
+    ValidRoles.kitchenUser,
+    ValidRoles.tableUser,
+    ValidRoles.ordersUser,
+    ValidRoles.whatsappUser,
+  )
+  @ApiOperation({ summary: 'Iniciar setup TOTP (QR + secreto)' })
+  setup2fa(@Req() req: Request) {
+    return this.authService.setup2fa((req.user as User).id);
+  }
+
+  @Post('2fa/confirm')
+  @Auth(
+    ValidRoles.admin,
+    ValidRoles.kitchenUser,
+    ValidRoles.tableUser,
+    ValidRoles.ordersUser,
+    ValidRoles.whatsappUser,
+  )
+  @ApiOperation({ summary: 'Confirmar setup TOTP y obtener códigos de recuperación' })
+  @ApiBody({ type: Confirm2faDto })
+  confirm2fa(@Req() req: Request, @Body() dto: Confirm2faDto) {
+    return this.authService.confirm2fa((req.user as User).id, dto);
+  }
+
+  @Post('2fa/disable')
+  @Auth(
+    ValidRoles.admin,
+    ValidRoles.kitchenUser,
+    ValidRoles.tableUser,
+    ValidRoles.ordersUser,
+    ValidRoles.whatsappUser,
+  )
+  @ApiOperation({ summary: 'Desactivar 2FA con código TOTP o de recuperación' })
+  @ApiBody({ type: Disable2faDto })
+  disable2fa(@Req() req: Request, @Body() dto: Disable2faDto) {
+    return this.authService.disable2fa((req.user as User).id, dto);
   }
 
   // -------------------------------------------------------------

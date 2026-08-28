@@ -20,6 +20,7 @@ import { UserAddressesService } from './user-addresses.service';
 import { UserPhonesController } from './user-phones.controller';
 import { UserPhonesService } from './user-phones.service';
 import { PointsService } from './services/points.service';
+import { TotpService } from './services/totp.service';
 import { PointsController } from './points.controller';
 import { AdminController } from './admin.controller';
 import { UserPoints } from './entities/user-points.entity';
@@ -34,6 +35,7 @@ import { BusinessModule } from '../business/business.module';
   controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController, AdminController],
   providers: [
     AuthService,
+    TotpService,
     JwtStrategy,
     RefreshTokenStrategy,
     GoogleStrategy,

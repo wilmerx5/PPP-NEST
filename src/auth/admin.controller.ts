@@ -93,6 +93,7 @@ export class AdminController {
         'user.roles',
         'user.createdAt',
         'user.provider',
+        'user.totpEnabled',
       ])
       .orderBy('user.fullName', 'ASC')
       .skip((pageNum - 1) * limitNum)
@@ -132,12 +133,28 @@ export class AdminController {
     return this.authService.updateStaffUser(id, dto);
   }
 
+  @Post('staff/:id/reset-2fa')
+  @ApiOperation({ summary: 'Reiniciar 2FA de un usuario staff (si perdió el authenticator)' })
+  resetStaff2fa(@Param('id') id: string) {
+    return this.authService.adminResetStaff2fa(id);
+  }
+
   @Get('staff/:id')
   @ApiOperation({ summary: 'Detalle de usuario staff' })
   async getStaffUser(@Param('id') id: string) {
     const user = await this.userRepo.findOne({
       where: { id },
-      select: ['id', 'email', 'fullName', 'phone', 'isActive', 'roles', 'createdAt', 'provider'],
+      select: [
+        'id',
+        'email',
+        'fullName',
+        'phone',
+        'isActive',
+        'roles',
+        'createdAt',
+        'provider',
+        'totpEnabled',
+      ],
     });
     if (!user || !userHasStaffRole(user.roles)) {
       throw new NotFoundException('Usuario de staff no encontrado');

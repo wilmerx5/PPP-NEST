@@ -26,7 +26,8 @@ export class CookieService {
         const refreshMaxAgeEnv = this.config.get<string>('REFRESH_TOKEN_MAXAGE');
         
         this.accessMaxAge = accessMaxAgeEnv ? parseInt(accessMaxAgeEnv, 10) : 900000;
-        this.refreshMaxAge = refreshMaxAgeEnv ? parseInt(refreshMaxAgeEnv, 10) : 604800000;
+        // Default 3h: sesión por inactividad (se renueva al usar la app / refresh)
+        this.refreshMaxAge = refreshMaxAgeEnv ? parseInt(refreshMaxAgeEnv, 10) : 10800000;
 
         // Si no hay COOKIE_DOMAIN configurado, usar undefined para que funcione en cualquier dominio
         // Si está configurado, usarlo (debe empezar con punto para subdominios, ej: .ppp.local)

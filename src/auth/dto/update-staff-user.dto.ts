@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -18,6 +19,11 @@ export class UpdateStaffUserDto {
   @IsString()
   @MinLength(2)
   fullName?: string;
+
+  @ApiPropertyOptional({ example: 'cocina@prontopolloportal.com' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @ApiPropertyOptional({ example: '3001234567' })
   @IsOptional()

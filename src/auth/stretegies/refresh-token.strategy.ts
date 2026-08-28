@@ -22,6 +22,9 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
     }
 
     async validate(payload: JwtPayload) {
+        if (payload?.purpose === '2fa') {
+            throw new UnauthorizedException('Completa la verificación 2FA');
+        }
         const { id } = payload;
         const user = await this.userRepository.findOneBy({ id });
         if (!user) throw new UnauthorizedException('Token inválido');

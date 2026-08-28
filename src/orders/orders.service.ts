@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, NotFoundException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { Between, IsNull, Not, Repository, DataSource, EntityManager, In } from 'typeorm';
@@ -18,9 +18,12 @@ import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker
 import { ProductsService, type InventoryInfo } from '../products/products.service';
 import { BusinessService } from '../business/business.service';
 import { WebDeliveryService } from '../delivery/web-delivery.service';
+import { FactusService } from '../factus/factus.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   /** Candado en memoria: dos POST idénticos concurrentes comparten una sola creación. */
   private readonly inflightCreates = new Map<string, Promise<{
     success: boolean;
@@ -67,6 +70,8 @@ export class OrdersService {
     private readonly mailService: MailService,
 
     private readonly circuitBreaker: CircuitBreakerService,
+
+    private readonly factusService: FactusService,
   ) {}
 
   private buildOrderContentFingerprint(dto: CreateOrderDto): string {
@@ -1038,6 +1043,27 @@ export class OrdersService {
   }
 
   /**
+   * Con FE aceptada (o pendiente) no se puede cambiar contenido de la orden:
+   * ítems, extras, precios, domicilio, datos del cliente, etc.
+   * Sí se permite: imprimir, avanzar estado cocina/completada, y cancelar (emite NC).
+   */
+  private assertOrderContentEditable(order: Order): void {
+    const status = order.electronicInvoiceStatus;
+    if (status === 'accepted') {
+      throw new BadRequestException(
+        `Esta orden tiene factura electrónica${
+          order.electronicInvoiceNumber ? ` ${order.electronicInvoiceNumber}` : ''
+        } aceptada. No se puede modificar. Anula la FE (nota crédito) o cancela la orden.`,
+      );
+    }
+    if (status === 'pending') {
+      throw new BadRequestException(
+        'Hay una factura electrónica en proceso. Espera el resultado o anúlala antes de modificar la orden.',
+      );
+    }
+  }
+
+  /**
    * Cancela una orden restaurando inventario, borrando ítems/extras,
    * limpiando vínculo de mesas e invalidando puntos. Emite deleted_order.
    * @param force - Si true, permite cancelar órdenes ya completadas (error operativo).
@@ -1050,6 +1076,7 @@ export class OrdersService {
     success: true;
     message: string;
     dailyOrderNumber?: number;
+    creditNoteNumber?: string;
   }> {
     const force = options?.force === true;
     const order = await this.orderRepo.findOne({
@@ -1073,6 +1100,47 @@ export class OrdersService {
     }
 
     const wasCompleted = order.orderStatus === 'completed';
+
+    // FE aceptada → nota crédito ANTES de borrar ítems (la NC necesita los mismos totales).
+    let creditNoteNumber: string | null = null;
+    if (
+      order.electronicInvoiceStatus === 'accepted' &&
+      order.electronicInvoiceNumber
+    ) {
+      this.logger.log(
+        `[cancel] orden=#${orderId} tiene FE ${order.electronicInvoiceNumber} — emitiendo NC`,
+      );
+      try {
+        const nc = await this.factusService.cancelInvoice(orderId, {
+          observation: `Anulación por cancelación de pedido #${order.dailyOrderNumber ?? orderId}`,
+          correctionConceptCode: '2',
+        });
+        if (!nc?.success) {
+          throw new BadRequestException(
+            nc?.message ||
+              `No se pudo anular la factura ${order.electronicInvoiceNumber}. La orden NO se canceló.`,
+          );
+        }
+        creditNoteNumber = nc.creditNoteNumber || null;
+        order.electronicInvoiceStatus = 'credit_noted';
+        order.electronicCreditNoteNumber = creditNoteNumber;
+      } catch (err) {
+        if (err instanceof ConflictException) {
+          // Ya tenía NC — seguir con cancelación de la orden
+          this.logger.warn(
+            `[cancel] orden=#${orderId} FE ya tenía NC; se continúa cancelando la orden`,
+          );
+        } else if (err instanceof BadRequestException) {
+          throw err;
+        } else {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.error(`[cancel] NC falló orden=#${orderId}: ${message}`);
+          throw new BadRequestException(
+            `No se pudo anular la factura electrónica (${order.electronicInvoiceNumber}): ${message}. La orden NO se canceló.`,
+          );
+        }
+      }
+    }
 
     order.items = this.deduplicateOrderItemsById(order.items);
     const oldProductIds = [
@@ -1170,9 +1238,14 @@ export class OrdersService {
     return {
       success: true,
       message: wasCompleted
-        ? `Orden #${order.dailyOrderNumber ?? orderId} completada anulada (force). Inventario restaurado.`
-        : `Orden #${order.dailyOrderNumber ?? orderId} cancelada`,
+        ? `Orden #${order.dailyOrderNumber ?? orderId} completada anulada (force). Inventario restaurado.${
+            creditNoteNumber ? ` FE anulada con NC ${creditNoteNumber}.` : ''
+          }`
+        : `Orden #${order.dailyOrderNumber ?? orderId} cancelada${
+            creditNoteNumber ? `. FE anulada con NC ${creditNoteNumber}` : ''
+          }`,
       dailyOrderNumber: order.dailyOrderNumber,
+      creditNoteNumber: creditNoteNumber || undefined,
     };
   }
 
@@ -1210,6 +1283,8 @@ export class OrdersService {
     });
 
     if (!order) throw new NotFoundException('No se encontró la orden');
+
+    this.assertOrderContentEditable(order);
 
     if (['completed', 'canceled'].includes(order.orderStatus)) {
       throw new BadRequestException(
@@ -1461,6 +1536,7 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
     if (!order) throw new NotFoundException('No se encontró la orden');
+    this.assertOrderContentEditable(order);
     if (['completed', 'canceled'].includes(order.orderStatus)) {
       throw new BadRequestException(
         'No se pueden modificar los ítems de una orden completada o cancelada',
@@ -1632,6 +1708,7 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
     if (!order) throw new NotFoundException('No se encontró la orden');
+    this.assertOrderContentEditable(order);
     if (['completed', 'canceled'].includes(order.orderStatus)) {
       throw new BadRequestException(
         'No se pueden modificar los ítems de una orden completada o cancelada',
@@ -1780,6 +1857,7 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes', 'extras'],
     });
     if (!order) throw new NotFoundException('No se encontró la orden');
+    this.assertOrderContentEditable(order);
     if (['completed', 'canceled'].includes(order.orderStatus)) {
       throw new BadRequestException('No se puede modificar el precio de una orden completada o cancelada');
     }
@@ -1815,6 +1893,7 @@ export class OrdersService {
       where: { id: orderId, orderStatus: Not('canceled') },
     });
     if (!order) throw new NotFoundException('Orden no encontrada o cancelada');
+    this.assertOrderContentEditable(order);
     if (order.orderStatus === 'completed') {
       throw new BadRequestException('No se pueden añadir adicionales a una orden completada');
     }
@@ -1846,6 +1925,7 @@ export class OrdersService {
       relations: ['order'],
     });
     if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+    this.assertOrderContentEditable(extra.order);
     if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
       throw new BadRequestException('No se pueden eliminar adicionales de una orden completada o cancelada');
     }
@@ -1870,6 +1950,7 @@ export class OrdersService {
       relations: ['order'],
     });
     if (!extra || extra.order?.id !== orderId) throw new NotFoundException('Adicional no encontrado o no pertenece a esta orden');
+    this.assertOrderContentEditable(extra.order);
     if (extra.order.orderStatus === 'completed' || extra.order.orderStatus === 'canceled') {
       throw new BadRequestException('No se pueden modificar adicionales de una orden completada o cancelada');
     }
@@ -1964,6 +2045,17 @@ export class OrdersService {
       return this.cancelOrderFully(orderId, { force: dto.forceCancel === true });
     }
 
+    // Con FE aceptada: solo impresión y avance de estado (cocina/completada). Nada de contenido.
+    const touchesContent =
+      dto.customerName !== undefined ||
+      dto.phone !== undefined ||
+      dto.address !== undefined ||
+      dto.orderType !== undefined ||
+      dto.deliveryFee !== undefined;
+    if (touchesContent) {
+      this.assertOrderContentEditable(order);
+    }
+
     // Órdenes completadas: no reabrir ni cambiar estado/tipo (evita restaurar stock luego)
     if (order.orderStatus === 'completed') {
       if (
@@ -2053,6 +2145,7 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes'],
     });
     if (!order) throw new NotFoundException(`No se encontró la orden #${orderId}`);
+    this.assertOrderContentEditable(order);
     if (order.orderType !== 'table') throw new BadRequestException('Solo se puede cambiar mesa en órdenes tipo mesa');
     if (order.orderStatus === 'completed' || order.orderStatus === 'canceled') {
       throw new BadRequestException('No se puede cambiar mesa en una orden completada o cancelada');
@@ -2548,6 +2641,7 @@ export class OrdersService {
     if (!order) {
       throw new BadRequestException('Orden no encontrada');
     }
+    this.assertOrderContentEditable(order);
 
     // Check if order already has a redemption code
     if (order.redemptionCode) {

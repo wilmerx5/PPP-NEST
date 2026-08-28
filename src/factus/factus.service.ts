@@ -21,6 +21,13 @@ import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
 import { FactusInvoiceSettingsService } from './factus-invoice-settings.service';
 import {
+  applyInvoiceCustomerSearchFilter,
+  escapeLikePattern,
+  invoiceCustomerTextSearchSql,
+  updateInvoiceCustomerRow,
+} from './factus-invoice-customer.util';
+import type { UpdateInvoiceCustomerDto } from './dto/update-invoice-customer.dto';
+import {
   invoiceCustomerDisplayName,
   resolveLegalOrganizationFromDocType,
 } from './factus-customer.utils';
@@ -90,16 +97,16 @@ export class FactusService {
   async searchCustomers(query: string, limit = 10) {
     const q = query.trim();
     if (q.length < 2) return [];
-    const pattern = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
+    const pattern = `%${escapeLikePattern(q)}%`;
     const idDigits = q.replace(/\D/g, '');
     const qb = this.customerRepo.createQueryBuilder('c');
     if (idDigits.length >= 3) {
       qb.where(
-        '(c.names ILIKE :pattern OR c.company ILIKE :pattern OR c.identification LIKE :idPattern)',
+        `(${invoiceCustomerTextSearchSql('c')} OR c.identification LIKE :idPattern)`,
         { pattern, idPattern: `%${idDigits}%` },
       );
     } else {
-      qb.where('(c.names ILIKE :pattern OR c.company ILIKE :pattern)', { pattern });
+      qb.where(invoiceCustomerTextSearchSql('c'), { pattern });
     }
     const rows = await qb
       .orderBy('c.times_used', 'DESC')
@@ -113,18 +120,8 @@ export class FactusService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const qb = this.customerRepo.createQueryBuilder('c');
-    const q = search?.trim();
-    if (q) {
-      const pattern = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
-      const idDigits = q.replace(/\D/g, '');
-      if (idDigits.length >= 3) {
-        qb.where(
-          '(c.names ILIKE :pattern OR c.company ILIKE :pattern OR c.identification LIKE :idPattern)',
-          { pattern, idPattern: `%${idDigits}%` },
-        );
-      } else {
-        qb.where('(c.names ILIKE :pattern OR c.company ILIKE :pattern)', { pattern });
-      }
+    if (search?.trim()) {
+      applyInvoiceCustomerSearchFilter(qb, search);
     }
     qb.orderBy('c.times_used', 'DESC').addOrderBy('c.updated_at', 'DESC');
     const [rows, total] = await qb
@@ -143,6 +140,17 @@ export class FactusService {
       page: safePage,
       limit: safeLimit,
       totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    };
+  }
+
+  async updateCustomerAdmin(id: number, dto: UpdateInvoiceCustomerDto) {
+    const row = await updateInvoiceCustomerRow(this.customerRepo, id, dto);
+    return {
+      id: row.id,
+      ...this.toInvoiceCustomerDto(row),
+      displayName: invoiceCustomerDisplayName(row),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   }
 
