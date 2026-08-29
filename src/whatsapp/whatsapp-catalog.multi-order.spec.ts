@@ -152,4 +152,43 @@ describe('multi-item order quantities', () => {
     expect(hit?.products.length).toBeGreaterThan(0);
     expect(hit!.products.every((p) => /jugo/i.test(p.name))).toBe(true);
   });
+
+  it('broaster en duda 1/4 → elige 1/4 Pollo Broaster, no el entero', () => {
+    const candidates = [
+      {
+        id: 6,
+        code: 6,
+        name: '1/4 Pollo Broaster',
+        price: 16000,
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 3,
+        code: 3,
+        name: '1/4 Pollo Frito',
+        price: 15000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 4,
+        code: 4,
+        name: '1 Pollo Broaster',
+        price: 46000,
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+      },
+    ];
+    // Solo los de la duda (sin el entero en la lista)
+    const ambiguousOnly = candidates.filter((c) => c.id === 6 || c.id === 3);
+    expect(catalog.pickFromCandidateList('broaster', ambiguousOnly)?.name).toBe(
+      '1/4 Pollo Broaster',
+    );
+    expect(catalog.pickFromCandidateList('frito', ambiguousOnly)?.name).toBe('1/4 Pollo Frito');
+    expect(catalog.pickFromCandidateList('1', ambiguousOnly)).toBeNull();
+  });
 });

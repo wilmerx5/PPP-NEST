@@ -3344,6 +3344,19 @@ export class WhatsappOrchestratorService {
     const lower = text.trim().toLowerCase();
     if (/^[1-9]\d*$/.test(lower) && pending.ambiguous.length) return false;
 
+    // "broaster" / "frito" resolviendo la duda del multi → no abandonar
+    if (pending.ambiguous.length) {
+      const group = pending.ambiguous[0];
+      if (
+        this.catalogService.pickFromCandidateList(
+          text,
+          group.candidates as MenuProduct[],
+        )
+      ) {
+        return false;
+      }
+    }
+
     for (const seg of [
       ...pending.unresolved,
       ...pending.ambiguous.map((a) => a.segment),
@@ -8413,11 +8426,22 @@ export class WhatsappOrchestratorService {
     const lower = text.trim().toLowerCase();
     const numPick = /^[1-9]\d*$/.test(lower) ? parseInt(lower, 10) : null;
 
-    if (numPick && pending.ambiguous.length) {
+    if (pending.ambiguous.length) {
       const group = pending.ambiguous[0];
-      if (numPick <= group.candidates.length) {
-        const chosen = group.candidates[numPick - 1];
-        const full = products.find((p) => p.id === chosen.id) || (chosen as MenuProduct);
+      const textChosen =
+        !numPick
+          ? this.catalogService.pickFromCandidateList(
+              text,
+              group.candidates as MenuProduct[],
+            )
+          : null;
+      const chosenFromNum =
+        numPick && numPick <= group.candidates.length
+          ? group.candidates[numPick - 1]
+          : null;
+      const chosenRaw = textChosen || chosenFromNum;
+      if (chosenRaw) {
+        const full = products.find((p) => p.id === chosenRaw.id) || (chosenRaw as MenuProduct);
         const nextAmb = pending.ambiguous.slice(1);
         const nextConfident = [
           ...pending.confident,

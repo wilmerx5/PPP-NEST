@@ -3663,6 +3663,53 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Respuesta corta a una lista dudosa: "broaster", "el frito", "1/4 Pollo Broaster".
+   * Prefiere estilo de cocina o nombre que distinga un único candidato.
+   */
+  pickFromCandidateList(
+    text: string,
+    candidates: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    if (!candidates.length) return null;
+    const q = normalizeText(text);
+    if (!q || q.length < 2) return null;
+
+    for (const p of candidates) {
+      const name = normalizeText(p.name);
+      if (q === name || (name.length >= 5 && (q.includes(name) || name.includes(q)))) {
+        return p;
+      }
+    }
+
+    const asFamily: ProductVariantFamily = {
+      baseLabel: '',
+      baseKey: '',
+      variants: candidates,
+    };
+    const byFamily = this.pickVariantFromFamilyText(text, asFamily);
+    if (byFamily && candidates.some((c) => c.id === byFamily.id)) return byFamily;
+
+    const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
+    if (styleAsked.length) {
+      const styled = candidates.filter((p) =>
+        styleAsked.some((st) => normalizeText(p.name).includes(st)),
+      );
+      if (styled.length === 1) return styled[0];
+    }
+
+    // Token distintivo único entre candidatos (ej. "broaster" vs "frito")
+    const hits = candidates.filter((p) => {
+      const toks = normalizeText(p.name)
+        .split(' ')
+        .filter((t) => t.length >= 4 && this.isDistinctiveProductToken(t));
+      return toks.some((t) => this.queryHasToken(q, t));
+    });
+    if (hits.length === 1) return hits[0];
+
+    return null;
+  }
+
+  /**
    * Explica solo vs combo (o presentaciones) con precios — sin agregar al carrito.
    */
   formatComboExplanation(family: ProductVariantFamily): string {
