@@ -52,6 +52,7 @@ import {
   buildPaymentOptionsPrompt,
   findPaymentMethodByText,
   getEnabledPaymentMethods,
+  isPaymentCapabilityQuestion,
   paymentMethodLabel,
   type WhatsappPaymentMethodConfig,
 } from './whatsapp-payment-methods';
@@ -1161,6 +1162,18 @@ export class WhatsappOrchestratorService {
       if (multiHandled) return;
     }
 
+    if (
+      await this.tryHandlePendingAddOffer(conv, msg.waId, session, text, products, cfg)
+    ) {
+      return;
+    }
+
+    if (
+      await this.tryHandlePaymentCapabilityQuestion(conv, msg.waId, session, text, cfg)
+    ) {
+      return;
+    }
+
     if (session.pendingCategoryBrowse?.categories?.length) {
       const qtyHere = this.catalogService.extractQuantityFromMessage(text);
       const looksLikeFoodOrder =
@@ -1455,8 +1468,19 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (/\b(contraentrega|efectivo|cash|transferencia|nequi|daviplata|llave|mercadopago|mercado\s*pago)\b/.test(lower) ||
-      findPaymentMethodByText(text, cfg.paymentMethods)) {
+    if (
+      await this.tryHandlePaymentCapabilityQuestion(conv, msg.waId, session, text, cfg)
+    ) {
+      return;
+    }
+
+    if (
+      !isPaymentCapabilityQuestion(text) &&
+      (/\b(contraentrega|efectivo|cash|transferencia|nequi|daviplata|llave|mercadopago|mercado\s*pago)\b/.test(
+        lower,
+      ) ||
+        findPaymentMethodByText(text, cfg.paymentMethods))
+    ) {
       const payPick = this.resolvePaymentChoice(text, cfg);
       if (payPick) {
         session.paymentMethod = payPick.id;
@@ -7576,6 +7600,7 @@ export class WhatsappOrchestratorService {
 
     if (embedded) {
       const qty = this.catalogService.extractQuantityFromMessage(text);
+      await this.savePendingAddOffer(conv, embedded, qty);
       await this.reply(
         conv,
         waId,
@@ -7596,6 +7621,7 @@ export class WhatsappOrchestratorService {
 
     if (scored.length === 1 || this.catalogService.isStrongProductMatch(scored)) {
       const qty = this.catalogService.extractQuantityFromMessage(text);
+      await this.savePendingAddOffer(conv, scored[0].p, qty);
       await this.reply(conv, waId, this.formatPriceInquiryReply(scored[0].p, qty));
       return true;
     }
@@ -7612,15 +7638,199 @@ export class WhatsappOrchestratorService {
     const qty = Math.max(1, quantity || 1);
     const base = this.catalogService.formatProductPriceReply(product);
     if (qty <= 1) {
-      return `${base}\n\n_Si lo quieres, dime el nombre del plato y te lo agrego._`;
+      return base;
     }
     const line = Math.round(product.price * qty);
     return (
       `${base}\n\n` +
       `Para *${qty}* unidades: *$${line.toLocaleString('es-CO')}* ` +
       `($${Math.round(product.price).toLocaleString('es-CO')} c/u).\n\n` +
-      `_Si las quieres, escribe p. ej. *${qty} ${product.name}* y te las agrego._`
+      `_Responde *sí* y te agrego las ${qty}._`
     );
+  }
+
+  private async savePendingAddOffer(
+    conv: WhatsappConversation,
+    product: MenuProduct,
+    quantity = 1,
+  ): Promise<void> {
+    const session = this.conversationService.getSession(conv);
+    const qty = Math.max(1, Math.min(30, quantity || 1));
+    await this.conversationService.saveSession(conv, {
+      ...session,
+      pendingAddOffer: {
+        productId: product.id,
+        name: product.name,
+        code: product.code,
+        price: product.price,
+        quantity: qty,
+      },
+      productFocus: {
+        productId: product.id,
+        name: product.name,
+      },
+    });
+  }
+
+  private async tryHandlePendingAddOffer(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const offer = session.pendingAddOffer;
+    if (!offer?.productId) return false;
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
+      return false;
+    }
+
+    if (this.isAddOfferDecline(text)) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingAddOffer: undefined,
+      });
+      await this.reply(
+        conv,
+        waId,
+        'Listo, no las agrego. Cuando quieras dime el plato o escribe *menú*.',
+      );
+      return true;
+    }
+
+    if (!this.isMultiOrderAffirmative(text) && !/^agrega(r|lo|los|las|me)?$/i.test(text.trim())) {
+      // Otro mensaje: soltar la oferta pendiente (no atrapar el chat)
+      if (
+        this.catalogService.isPriceInquiryIntent(text) ||
+        this.catalogService.isGenericProductInquiry(text) ||
+        looksLikeAddressOnlyMessage(text) ||
+        isPaymentCapabilityQuestion(text) ||
+        findPaymentMethodByText(text, cfg.paymentMethods) ||
+        this.catalogService.findProductEmbeddedInMessage(text, products)
+      ) {
+        session = { ...session, pendingAddOffer: undefined };
+        await this.conversationService.saveSession(conv, session);
+        return false;
+      }
+      return false;
+    }
+
+    const product =
+      this.catalogService.getProductById(offer.productId, products) ||
+      products.find((p) => p.id === offer.productId);
+    if (!product || product.availableNow === false) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingAddOffer: undefined,
+      });
+      await this.reply(
+        conv,
+        waId,
+        'Ese plato ya no está disponible. ¿Probamos con otro?',
+      );
+      return true;
+    }
+
+    if (product.hasAttributes && product.attributes?.length) {
+      session = { ...session, pendingAddOffer: undefined };
+      if (await this.handleProductWithVariants(conv, waId, session, product, text, cfg)) {
+        return true;
+      }
+    }
+
+    const qty = Math.max(1, offer.quantity || 1);
+    const added = this.tryAddProductToCart(session, product, qty, cfg, undefined, undefined, {
+      sourceText: `${qty} ${product.name}`,
+    });
+    if (added.blocked) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingAddOffer: undefined,
+      });
+      await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+      return true;
+    }
+
+    session = { ...added.session, pendingAddOffer: undefined };
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
+    await this.reply(
+      conv,
+      waId,
+      this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`),
+    );
+    return true;
+  }
+
+  private isAddOfferDecline(text: string): boolean {
+    return /^(no|nop|nope|nel|despues|después|luego|ahora\s+no|no\s+gracias|mejor\s+no|nah)[\s!.?]*$/i.test(
+      text.trim(),
+    );
+  }
+
+  private async tryHandlePaymentCapabilityQuestion(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!isPaymentCapabilityQuestion(text)) return false;
+
+    const enabled = getEnabledPaymentMethods(cfg.paymentMethods || []);
+    const hasMp = enabled.some((m) => m.id === 'mercadopago' || m.flow === 'mercadopago');
+    const asksCard = /\btarjeta|credito|crédito|d[eé]bito|datafono|dat[aá]fono\b/i.test(text);
+
+    const lines: string[] = [];
+    if (asksCard) {
+      if (hasMp) {
+        lines.push(
+          'Sí: con *Mercado Pago* te mandamos un *link* y puedes pagar con *tarjeta* (débito/crédito) desde el celular.',
+        );
+        lines.push('_No tenemos datáfono a domicilio; es pago por link._');
+      } else {
+        lines.push(
+          'Por WhatsApp *no* recibimos tarjeta/datáfono presencial.',
+        );
+      }
+    } else {
+      lines.push('Claro, te cuento cómo puedes pagar:');
+    }
+
+    if (enabled.length) {
+      lines.push('');
+      lines.push('*Métodos disponibles:*');
+      for (const m of enabled) {
+        lines.push(`• ${m.optionText || `*${m.label}*`}`);
+      }
+    }
+
+    if ((cfg.paymentInstructions || '').trim()) {
+      lines.push('');
+      lines.push(`_${cfg.paymentInstructions.trim()}_`);
+    }
+
+    if (session.cart.length > 0) {
+      lines.push('');
+      lines.push(
+        'Cuando confirmes el pedido (*listo*) te pido el método. Si quieres, escribe ya *nequi*, *contraentrega* o *mercado pago*.',
+      );
+    } else {
+      lines.push('');
+      lines.push('Cuando armes el carrito te pido el método al confirmar.');
+    }
+
+    // No mutar paymentMethod ni abrir checkout
+    if (session.pendingAddOffer) {
+      await this.conversationService.saveSession(conv, {
+        ...session,
+        pendingAddOffer: undefined,
+      });
+    }
+
+    await this.reply(conv, waId, lines.join('\n'));
+    return true;
   }
 
   private toPendingMultiProduct(p: MenuProduct) {

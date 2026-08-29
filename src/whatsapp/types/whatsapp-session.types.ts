@@ -110,6 +110,16 @@ export type WhatsappSessionData = {
   pendingCartRemoval?: {
     options: Array<{ cartIndex: number; label: string }>;
   };
+  /**
+   * Tras cotizar precio (“¿Te lo agrego?”): si responde *sí*, agregar este SKU.
+   */
+  pendingAddOffer?: {
+    productId: number;
+    name: string;
+    code: number;
+    price: number;
+    quantity: number;
+  };
   /** Ya eligió domicilio vs recojo en este pedido */
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */

@@ -54,6 +54,7 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
 
 const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }> = [
   { re: /\bensladas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
+  { re: /\bcr[eé]dit\b/gi, to: 'crédito' },
   { re: /\bquieor\b/gi, to: 'quiero' },
   { re: /\bquiiero\b/gi, to: 'quiero' },
   { re: /\bqiero\b/gi, to: 'quiero' },

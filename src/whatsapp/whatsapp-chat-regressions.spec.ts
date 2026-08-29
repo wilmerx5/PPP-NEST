@@ -20,6 +20,7 @@ import {
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { WhatsappPointsService } from './whatsapp-points.service';
+import { isPaymentCapabilityQuestion } from './whatsapp-payment-methods';
 
 const pppMenu: WhatsappCatalogProduct[] = [
   {
@@ -446,6 +447,19 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(note).toMatch(/sin ensalada/i);
       expect(note).toMatch(/más papa/i);
       expect(note?.toLowerCase().split('más papa').length).toBe(2);
+    });
+  });
+
+  describe('pago: capacidad vs elegir método', () => {
+    it('se puede pagar con tarjeta ≠ solo keyword tarjeta', () => {
+      expect(isPaymentCapabilityQuestion('se puede pagar con tarjeta de crédito')).toBe(
+        true,
+      );
+      expect(isPaymentCapabilityQuestion(applyLocalGlossary('se puede pagar con tarjeta de crédit'))).toBe(
+        true,
+      );
+      expect(isPaymentCapabilityQuestion('nequi')).toBe(false);
+      expect(isPaymentCapabilityQuestion('pago con transferencia')).toBe(false);
     });
   });
 

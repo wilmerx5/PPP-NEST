@@ -177,6 +177,37 @@ export function findPaymentMethodByText(
   return best && best.score >= 60 ? best.m : null;
 }
 
+/**
+ * “¿Se puede pagar con tarjeta?” / “aceptan Nequi?” —
+ * pregunta de capacidad, no elección de método para cerrar el pedido.
+ */
+export function isPaymentCapabilityQuestion(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 8) return false;
+  const t = normalizeKeyword(raw);
+
+  if (
+    /\b(se puede|puedo|pueden|podemos|aceptan|acepta|tienen|tiene|hay forma de|hay manera)\b/.test(
+      t,
+    ) &&
+    /\b(pagar|pago|tarjeta|datafono|credito|nequi|daviplata|transferencia|efectivo|mercadopago|mercado pago|llave)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /\b(tarjeta(\s+de)?\s+credito|tarjeta(\s+de)?\s+debito|pagar\s+con\s+tarjeta|pago\s+con\s+tarjeta|aceptan\s+tarjeta)\b/.test(
+      t,
+    ) &&
+    (/\?/.test(raw) ||
+      /\b(se puede|puedo|pueden|aceptan|acepta|tienen|tiene)\b/.test(t))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function buildPaymentOptionsPrompt(
   methods: WhatsappPaymentMethodConfig[],
   globalHint?: string | null,

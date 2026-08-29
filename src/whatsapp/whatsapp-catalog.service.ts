@@ -3225,7 +3225,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    msg += '\n\n_¿Te lo agrego al pedido?_';
+    msg += '\n\n_¿Te lo agrego al pedido? Responde *sí*._';
     return msg;
   }
 
