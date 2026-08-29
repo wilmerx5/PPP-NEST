@@ -28,6 +28,10 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bqiero\b/gi, to: 'quiero' },
   { re: /\bkiero\b/gi, to: 'quiero' },
   { re: /\bquero\b/gi, to: 'quiero' },
+  // Pegado sin espacios: "unpollofrito" / "unpollo"
+  { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
+  { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },
+  { re: /\bunpollo\b/gi, to: 'un pollo' },
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },

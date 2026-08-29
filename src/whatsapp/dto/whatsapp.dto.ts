@@ -184,6 +184,10 @@ export class UpdateWhatsappSettingsDto {
 
   @IsOptional()
   @IsString()
+  aiDisclaimerMessage?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(120)
   restaurantName?: string;
 

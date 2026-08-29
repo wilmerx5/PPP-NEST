@@ -3,6 +3,7 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
+import { isAddressChangeIntent } from './whatsapp-session-intents';
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 
@@ -18,6 +19,8 @@ export type MultiProductResolveResult = {
   ambiguous: Array<{ segment: string; candidates: WhatsappCatalogProduct[] }>;
   unresolved: string[];
   needsAttributes: MultiProductSegmentMatch[];
+  /** Segmentos que parecen nombre de persona (no plato) */
+  possibleCustomerNames?: string[];
 };
 
 export type ProductVariantFamily = {
@@ -1074,6 +1077,32 @@ export class WhatsappCatalogService {
       .replace(/\bde\s+con\b/gi, 'con')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /**
+   * Segmento corto tipo nombre de persona (no plato): "Natalia", "Juan Pérez".
+   * Evita tratar el nombre del cliente como ítem no encontrado del menú.
+   */
+  looksLikePersonNameSegment(segment: string): boolean {
+    const raw = (segment || '').trim();
+    if (!raw || raw.length > 40) return false;
+    let t = normalizeText(raw);
+    if (!t || /\d/.test(t)) return false;
+    // "Natalia seria" → queda el nombre (seria = querría / sería)
+    t = t.replace(/\bser[ií]a\b/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!t) return false;
+    if (
+      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?)\b/.test(
+        t,
+      )
+    ) {
+      return false;
+    }
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length < 1 || words.length > 3) return false;
+    if (words.some((w) => w.length < 2)) return false;
+    if (!/^[a-z]+(?:\s+[a-z]+){0,2}$/.test(t)) return false;
+    return true;
   }
 
   /** Tokens genéricos: no bastan solos para “encontrar” un producto en el mensaje. */
@@ -3147,7 +3176,15 @@ export class WhatsappCatalogService {
     ) {
       return true;
     }
-    if (/\b(dame(lo|melo)|demelo|pon(lo|me)|ponme|agrega(me)?|quiero)\s+(en\s+)?(combo|solo)\b/.test(q)) {
+    if (
+      /\b(dame(lo|melo)|demelo|pon(lo|me)|ponme|agrega(me)?|quiero|quieor|qiero|kiero)\s+(el\s+|un\s+|una\s+)?(pollo\s+)?(frito\s+|broaster\s+)?(en\s+)?(combo|solo)\b/.test(
+        q,
+      )
+    ) {
+      return true;
+    }
+    // "no quiero un solo pollo, quiero el pollo en combo"
+    if (/\b(no\s+quiero\s+(un\s+)?solo|no\s+quiero\s+solo)\b/.test(q) && /\bcombo\b/.test(q)) {
       return true;
     }
     if (/^(combo|solo)[\s!.?]*$/.test(q.trim())) return true;
@@ -3229,13 +3266,18 @@ export class WhatsappCatalogService {
     return parts.filter(Boolean).join('\n\n');
   }
 
-  /** Base del nombre sin sufijos solo/combo/gaseosa… */
+  /** Base del nombre sin sufijos solo/combo/gaseosa… ni porción (1 / 1/2 / medio). */
   getProductNameBase(name: string): string {
     return normalizeText(name)
       .replace(
         /\b(solo|sola|completo|completa|combo|con\s+gaseosa|con\s+bebida|sin\s+gaseosa|sin\s+bebida|mas\s+gaseosa|y\s+gaseosa)\b/g,
         ' ',
       )
+      .replace(/\s+/g, ' ')
+      .trim()
+      // "1 Pollo Frito" / "1/2 Pollo…" / "Combo De Pollo Frito" → "pollo frito"
+      .replace(/^(?:1\s*\/\s*[24]|1\/[24]|medio|media|cuarto|cuarta|entero|entera|1)\s+/i, '')
+      .replace(/^de\s+/i, '')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -3918,6 +3960,8 @@ export class WhatsappCatalogService {
     if (this.isPriceInquiryIntent(text)) return null;
     if (this.isMenuExploreIntent(text, products)) return null;
     if (this.isProductDescriptionInquiry(text)) return null;
+    // "Cambia la dirección a…" no es pedido multi
+    if (isAddressChangeIntent(text)) return null;
 
     let segments = this.splitMultiProductSegments(text);
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
@@ -4036,11 +4080,16 @@ export class WhatsappCatalogService {
     const confident: MultiProductSegmentMatch[] = [];
     const ambiguous: Array<{ segment: string; candidates: WhatsappCatalogProduct[] }> = [];
     const unresolved: string[] = [];
+    const possibleCustomerNames: string[] = [];
     const needsAttributes: MultiProductSegmentMatch[] = [];
     const usedProductIds = new Set<number>();
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
+      if (this.looksLikePersonNameSegment(segment)) {
+        possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
+        continue;
+      }
       const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (embedded) {
         // Evitar "Medio Pollo" cuando el segmento trae broaster
@@ -4089,7 +4138,16 @@ export class WhatsappCatalogService {
         }
       }
       if (!scored.length) {
-        unresolved.push(segment);
+        if (this.looksLikePersonNameSegment(segment)) {
+          possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
+        } else if (
+          ORDER_INTENT_ONLY.has(normalizeText(segment)) ||
+          /^(un|una|unos|unas|el|la|los|las)$/i.test(segment.trim())
+        ) {
+          // muletilla de pedido, no es plato faltante
+        } else {
+          unresolved.push(segment);
+        }
         continue;
       }
 
@@ -4190,7 +4248,7 @@ export class WhatsappCatalogService {
           } else {
             ambiguous.push({
               segment,
-              candidates: family.variants.slice(0, 4),
+              candidates: this.dedupeProductsById(family.variants).slice(0, 4),
             });
           }
           continue;
@@ -4207,7 +4265,10 @@ export class WhatsappCatalogService {
       }
 
       if (uniqueScored.length >= 2 && uniqueScored[0].score >= 35) {
-        ambiguous.push({ segment, candidates: uniqueScored.slice(0, 4).map((x) => x.p) });
+        ambiguous.push({
+          segment,
+          candidates: this.dedupeProductsById(uniqueScored.slice(0, 6).map((x) => x.p)).slice(0, 4),
+        });
       } else if (uniqueScored.length === 1 && uniqueScored[0].score >= 40) {
         const top = uniqueScored[0];
         if (usedProductIds.has(top.p.id)) continue;
@@ -4228,21 +4289,43 @@ export class WhatsappCatalogService {
           if (top.p.hasAttributes && top.p.attributes?.length) {
             needsAttributes.push(match);
           } else confident.push(match);
+        } else if (this.looksLikePersonNameSegment(segment)) {
+          possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else {
           unresolved.push(segment);
         }
+      } else if (this.looksLikePersonNameSegment(segment)) {
+        possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
       } else {
         unresolved.push(segment);
       }
     }
 
     const resolvedCount = confident.length + ambiguous.length + needsAttributes.length;
-    if (segments.length >= 2 && (resolvedCount >= 1 || unresolved.length > 0)) {
-      return { segments, confident, ambiguous, unresolved, needsAttributes };
+    const names =
+      possibleCustomerNames.length > 0
+        ? [...new Set(possibleCustomerNames.map((n) => n.replace(/\bser[ií]a\b/gi, '').replace(/\s+/g, ' ').trim()).filter(Boolean))]
+        : undefined;
+    if (segments.length >= 2 && (resolvedCount >= 1 || unresolved.length > 0 || (names?.length ?? 0) > 0)) {
+      return {
+        segments,
+        confident,
+        ambiguous,
+        unresolved,
+        needsAttributes,
+        possibleCustomerNames: names,
+      };
     }
     if (resolvedCount < 2) return null;
 
-    return { segments, confident, ambiguous, unresolved, needsAttributes };
+    return {
+      segments,
+      confident,
+      ambiguous,
+      unresolved,
+      needsAttributes,
+      possibleCustomerNames: names,
+    };
   }
 
   /** Formato COP consistente en todo el bot. */

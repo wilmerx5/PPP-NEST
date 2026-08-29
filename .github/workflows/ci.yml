@@ -29,5 +29,8 @@ jobs:
       - name: Typecheck
         run: yarn tsc --noEmit -p tsconfig.build.json
 
+      - name: WhatsApp regressions
+        run: yarn test:whatsapp --ci
+
       - name: Unit tests
         run: yarn test --passWithNoTests --ci

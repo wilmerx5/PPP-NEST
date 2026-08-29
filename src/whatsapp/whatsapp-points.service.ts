@@ -29,6 +29,11 @@ export class WhatsappPointsService {
     const raw = (text || '').trim();
     if (!raw) return null;
 
+    // Pedido pegado ("quiero unpollofrito") — nunca código de factura
+    if (ORDER_INTENT_WORD.test(raw) && !this.hasPointsKeywords(raw)) {
+      return null;
+    }
+
     const bare = raw.match(/^[A-Za-z0-9]{12}$/);
     if (bare) {
       const code = bare[0].toUpperCase();

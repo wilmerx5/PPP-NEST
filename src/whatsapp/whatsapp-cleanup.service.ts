@@ -134,9 +134,27 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // 5) Borrador de pedido (carrito / checkout) idle — sin humano
-      const drafts = await this.conversations.findIdleOrderDrafts(cfg.orderDraftIdleMinutes);
+      // 5) Borrador de pedido (carrito / checkout) idle — sin humano.
+      // Checkout tardío (nombre/dirección/pago) aguanta 2×: evita borrar carrito
+      // justo cuando el bot pide el nombre tras la dirección.
+      const draftIdle = cfg.orderDraftIdleMinutes;
+      const drafts = await this.conversations.findIdleOrderDrafts(draftIdle);
+      const lateCheckout = new Set([
+        'awaiting_name',
+        'awaiting_fulfillment',
+        'awaiting_address',
+        'awaiting_phone',
+        'awaiting_payment',
+        'awaiting_notes',
+        'awaiting_final_confirm',
+        'confirming',
+      ]);
       for (const conv of drafts) {
+        if (lateCheckout.has(conv.state) && draftIdle > 0) {
+          const last = conv.lastInboundAt || conv.lastMessageAt || conv.updatedAt;
+          const ageMin = last ? (Date.now() - new Date(last).getTime()) / 60000 : draftIdle;
+          if (ageMin < draftIdle * 2) continue;
+        }
         const session = this.conversations.getSession(conv);
         const hasDraft =
           session.cart.length > 0 ||
@@ -144,16 +162,7 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
           !!session.paymentMethod ||
           !!session.pendingMatch ||
           !!session.pendingAttribute ||
-          [
-            'awaiting_name',
-            'awaiting_fulfillment',
-            'awaiting_address',
-            'awaiting_phone',
-            'awaiting_payment',
-            'awaiting_notes',
-            'awaiting_final_confirm',
-            'confirming',
-          ].includes(conv.state);
+          lateCheckout.has(conv.state);
         if (!hasDraft) continue;
         await this.conversations.resetOrderSession(conv, 'building_cart', {
           ignorePriorHistory: true,

@@ -77,6 +77,10 @@ export class WhatsappSettings {
   @Column({ name: 'welcome_message', type: 'text', nullable: true })
   welcomeMessage: string | null;
 
+  /** Aviso IA / beta en el primer mensaje del cliente */
+  @Column({ name: 'ai_disclaimer_message', type: 'text', nullable: true })
+  aiDisclaimerMessage: string | null;
+
   /** Contexto del local para la IA */
   @Column({ name: 'restaurant_name', type: 'varchar', length: 120, nullable: true })
   restaurantName: string | null;

@@ -577,6 +577,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
       { name: 'restaurant_neighborhood', ddl: 'VARCHAR(120) NULL' },
       { name: 'maps_url', ddl: 'VARCHAR(500) NULL' },
       { name: 'public_phone', ddl: 'VARCHAR(40) NULL' },
+      { name: 'ai_disclaimer_message', ddl: 'TEXT NULL' },
       { name: 'landmarks', ddl: 'TEXT NULL' },
       { name: 'pickup_notes', ddl: 'TEXT NULL' },
       { name: 'delivery_notes', ddl: 'TEXT NULL' },

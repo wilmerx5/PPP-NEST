@@ -7,6 +7,7 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('hamburegsa')).toMatch(/hamburguesa/i);
     expect(applyLocalGlossary('par ale conjunto')).toMatch(/para el conjunto/i);
     expect(applyLocalGlossary('ajico')).toMatch(/ajiaco/i);
+    expect(applyLocalGlossary('quiero unpollofrito')).toMatch(/un pollo frito/i);
   });
 
   it('normaliza tamaño de sopa / ajiaco chico', () => {

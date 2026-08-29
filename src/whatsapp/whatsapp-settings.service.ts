@@ -19,6 +19,10 @@ import {
 const DEFAULT_WELCOME =
   '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
 
+const DEFAULT_AI_DISCLAIMER =
+  '⚠️ *Aviso:* este chat lo atiende una *inteligencia artificial* y todavía está en *fase de implementación*, así que puede cometer errores.\n\n' +
+  'Si algo no cuadra o prefieres una persona, escribe *asesor* y te pasamos con el equipo.';
+
 const DEFAULT_MENU_LINK =
   'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
 
@@ -164,6 +168,7 @@ export class WhatsappSettingsService {
     };
 
     const welcomeTpl = row.welcomeMessage?.trim() || DEFAULT_WELCOME;
+    const aiDisclaimerTpl = row.aiDisclaimerMessage?.trim() || DEFAULT_AI_DISCLAIMER;
     const systemTpl = row.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
     const menuLinkTpl = row.menuLinkMessage?.trim() || DEFAULT_MENU_LINK;
     const humanTpl = row.humanHandoffMessage?.trim() || DEFAULT_HUMAN_HANDOFF;
@@ -238,6 +243,7 @@ export class WhatsappSettingsService {
       aiTemperature: Number.isFinite(temp) ? Math.min(1.5, Math.max(0, temp)) : 0.2,
       systemPrompt: `${TONE_GUIDE}\n\n${this.applyTemplate(systemTpl, templateVars)}`,
       welcomeMessage: this.applyTemplate(welcomeTpl, templateVars),
+      aiDisclaimerMessage: this.applyTemplate(aiDisclaimerTpl, templateVars),
       menuLinkMessage: this.applyTemplate(menuLinkTpl, templateVars),
       humanHandoffMessage: this.applyTemplate(humanTpl, templateVars),
       orderSuccessMessage: this.applyTemplate(successTpl, templateVars),
@@ -395,6 +401,9 @@ export class WhatsappSettingsService {
         menuConceptGroups: dto.menuConceptGroups,
       }),
       ...(dto.welcomeMessage !== undefined && { welcomeMessage: strOrNull(dto.welcomeMessage) }),
+      ...(dto.aiDisclaimerMessage !== undefined && {
+        aiDisclaimerMessage: strOrNull(dto.aiDisclaimerMessage),
+      }),
       ...(dto.restaurantName !== undefined && { restaurantName: strOrNull(dto.restaurantName) }),
       ...(dto.restaurantAddress !== undefined && {
         restaurantAddress: strOrNull(dto.restaurantAddress),
@@ -554,6 +563,7 @@ export class WhatsappSettingsService {
       }),
       menuConceptGroups: resolveMenuConceptGroups(row.menuConceptGroups),
       welcomeMessage: row.welcomeMessage,
+      aiDisclaimerMessage: row.aiDisclaimerMessage,
       restaurantName: row.restaurantName,
       restaurantAddress: row.restaurantAddress,
       restaurantCity: row.restaurantCity,
