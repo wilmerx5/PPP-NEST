@@ -202,6 +202,108 @@ export class WhatsappMetaService {
     }
   }
 
+  /**
+   * Sube un archivo a Meta y devuelve el media id.
+   * @see https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media
+   */
+  async uploadMedia(params: {
+    buffer: Buffer;
+    mimeType: string;
+    filename: string;
+  }): Promise<{ mediaId: string }> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    if (!cfg.accessToken || !cfg.phoneNumberId) {
+      throw new Error('WhatsApp no configurado');
+    }
+
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', params.mimeType);
+    const blob = new Blob([new Uint8Array(params.buffer)], { type: params.mimeType });
+    form.append('file', blob, params.filename || 'file');
+
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${cfg.phoneNumberId}/media`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.accessToken}` },
+      body: form,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      this.logger.error(`Meta media upload failed (${res.status}): ${errText}`);
+      throw new Error(`WhatsApp media upload failed: ${res.status}`);
+    }
+
+    const data = (await res.json()) as { id?: string };
+    if (!data.id) throw new Error('Meta no devolvió media id');
+    return { mediaId: data.id };
+  }
+
+  async sendMediaMessage(params: {
+    toWaId: string;
+    mediaId: string;
+    kind: 'image' | 'document' | 'video' | 'audio';
+    caption?: string | null;
+    filename?: string | null;
+  }): Promise<void> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    if (!cfg.accessToken || !cfg.phoneNumberId) {
+      this.logger.warn('WhatsApp no configurado — no se envía media');
+      return;
+    }
+
+    const caption = (params.caption || '').trim().slice(0, 1024) || undefined;
+    let payload: Record<string, unknown>;
+
+    if (params.kind === 'image') {
+      payload = {
+        type: 'image',
+        image: { id: params.mediaId, ...(caption ? { caption } : {}) },
+      };
+    } else if (params.kind === 'video') {
+      payload = {
+        type: 'video',
+        video: { id: params.mediaId, ...(caption ? { caption } : {}) },
+      };
+    } else if (params.kind === 'audio') {
+      payload = {
+        type: 'audio',
+        audio: { id: params.mediaId },
+      };
+    } else {
+      payload = {
+        type: 'document',
+        document: {
+          id: params.mediaId,
+          ...(caption ? { caption } : {}),
+          ...(params.filename ? { filename: params.filename } : {}),
+        },
+      };
+    }
+
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${cfg.phoneNumberId}/messages`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cfg.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: params.toWaId.replace(/\D/g, ''),
+        ...payload,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      this.logger.error(`Meta send media failed (${res.status}): ${errText}`);
+      throw new Error(`WhatsApp send media failed: ${res.status}`);
+    }
+  }
+
   /** Descarga binario de media de Meta (audio/imagen/…). */
   async downloadMedia(mediaId: string): Promise<{ buffer: Buffer; mimeType: string }> {
     const cfg = await this.settingsService.getEffectiveConfig();

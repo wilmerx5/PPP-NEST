@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappMetaService, IncomingWhatsappMessage } from './whatsapp-meta.service';
@@ -71,6 +71,12 @@ import type {
   WhatsappPendingAttribute,
   WhatsappSessionData,
 } from './types/whatsapp-session.types';
+import { botResumeCustomerMessage } from './whatsapp-bot-resume';
+import {
+  classifyOutboundMedia,
+  outboundMediaBodyLabel,
+  type OutboundMediaKind,
+} from './whatsapp-outbound-media';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
 
@@ -4494,18 +4500,136 @@ export class WhatsappOrchestratorService {
     body: string,
     agent: { id: string; fullName: string },
   ) {
+    const text = (body || '').trim();
+    if (!text) {
+      throw new BadRequestException('Mensaje vacío');
+    }
+
     const conv = await this.conversationService.getConversation(conversationId);
     if (!conv.humanTakeover) {
       await this.conversationService.setHumanTakeover(conversationId, true, agent);
     }
-    await this.metaService.sendText(conv.waId, body);
-    await this.conversationService.logMessage({
-      conversationId: conv.id,
-      direction: 'out',
-      body,
-      sentBy: 'human',
+
+    // Meta primero: si esto ok, el cliente ya tiene el mensaje.
+    await this.metaService.sendText(conv.waId, text);
+
+    // Persistencia local: no tumbar la respuesta HTTP si falla después del envío.
+    try {
+      await this.conversationService.logMessage({
+        conversationId: conv.id,
+        direction: 'out',
+        body: text,
+        sentBy: 'human',
+      });
+      await this.conversationService.touchOutbound(conv, 'human');
+    } catch (err) {
+      this.logger.error(
+        `sendHumanReply: enviado a Meta pero falló log/touch conv=${conversationId}`,
+        err instanceof Error ? err.stack : err,
+      );
+    }
+  }
+
+  /** Asesor envía foto / documento / video / audio. */
+  async sendHumanMedia(
+    conversationId: number,
+    file: {
+      buffer: Buffer;
+      mimetype: string;
+      originalname: string;
+      size: number;
+    },
+    agent: { id: string; fullName: string },
+    caption?: string | null,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Archivo vacío');
+    }
+
+    const classified = classifyOutboundMedia(file.mimetype, file.size);
+    if ('error' in classified) {
+      throw new BadRequestException(classified.error);
+    }
+    const kind: OutboundMediaKind = classified.kind;
+    const filename = (file.originalname || 'archivo').slice(0, 180);
+    const cap = (caption || '').trim() || null;
+
+    const conv = await this.conversationService.getConversation(conversationId);
+    if (!conv.humanTakeover) {
+      await this.conversationService.setHumanTakeover(conversationId, true, agent);
+    }
+
+    const { mediaId } = await this.metaService.uploadMedia({
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      filename,
     });
-    await this.conversationService.touchOutbound(conv, 'human');
+
+    await this.metaService.sendMediaMessage({
+      toWaId: conv.waId,
+      mediaId,
+      kind,
+      caption: cap,
+      filename: kind === 'document' ? filename : null,
+    });
+
+    const body = outboundMediaBodyLabel({ kind, caption: cap, filename });
+    try {
+      await this.conversationService.logMessage({
+        conversationId: conv.id,
+        direction: 'out',
+        body,
+        sentBy: 'human',
+        messageType: kind,
+        mediaId,
+        mimeType: file.mimetype,
+        raw: { filename, caption: cap },
+      });
+      await this.conversationService.touchOutbound(conv, 'human');
+    } catch (err) {
+      this.logger.error(
+        `sendHumanMedia: enviado a Meta pero falló log conv=${conversationId}`,
+        err instanceof Error ? err.stack : err,
+      );
+    }
+
+    return { success: true, messageType: kind, mediaId };
+  }
+
+  /**
+   * Asesor devuelve el chat al bot (manual o idle).
+   * Avisa al cliente que la asistencia humana terminó.
+   */
+  async releaseToBot(
+    conversationId: number,
+    opts?: { reason?: 'manual' | 'agent_idle'; notify?: boolean },
+  ): Promise<{ released: boolean }> {
+    const reason = opts?.reason ?? 'manual';
+    const notify = opts?.notify !== false;
+    const conv = await this.conversationService.getConversation(conversationId);
+    if (!conv.humanTakeover) return { released: false };
+
+    await this.conversationService.releaseHumanTakeover(conversationId);
+
+    if (!notify) return { released: true };
+
+    const body = botResumeCustomerMessage(reason);
+    try {
+      const live = await this.conversationService.reloadConversation(conversationId);
+      await this.metaService.sendText(live.waId, body);
+      await this.conversationService.logMessage({
+        conversationId: live.id,
+        direction: 'out',
+        body,
+        sentBy: 'system',
+      });
+      await this.conversationService.touchOutbound(live, 'bot');
+    } catch (err) {
+      this.logger.warn(
+        `releaseToBot: liberado pero no se pudo avisar conv=${conversationId}: ${String(err)}`,
+      );
+    }
+    return { released: true };
   }
 
   private shortQuote(text: string, max = 160): string {

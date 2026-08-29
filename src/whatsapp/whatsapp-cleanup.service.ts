@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
+import { botResumeCustomerMessage } from './whatsapp-bot-resume';
 import type { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 
 const RETENTION_DAYS = 90;
@@ -72,10 +73,9 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         await this.conversations.releaseHumanTakeover(conv.id);
         this.logger.log(`Takeover liberado (agente idle) conv=#${conv.id}`);
         if (notify) {
-          await this.safeNotify(
-            conv,
-            'El equipo no pudo seguir ahora. Vuelve el asistente 🤖 — dime cómo te ayudo o escribe *ASESOR*.',
-          );
+          // Recargar: no notificar con snapshot que aún tiene humanTakeover=true
+          const live = await this.conversations.reloadConversation(conv.id);
+          await this.safeNotify(live, botResumeCustomerMessage('agent_idle'));
         }
       }
 
@@ -88,13 +88,15 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         const fresh = await this.conversations.reloadConversation(conv.id);
         if (!fresh.humanTakeover) continue;
         await this.conversations.releaseHumanTakeover(fresh.id);
-        await this.conversations.resetOrderSession(fresh, 'building_cart', {
+        const afterRelease = await this.conversations.reloadConversation(fresh.id);
+        await this.conversations.resetOrderSession(afterRelease, 'building_cart', {
           ignorePriorHistory: true,
         });
         this.logger.log(`Takeover + carrito limpios (cliente idle) conv=#${conv.id}`);
         if (notify) {
+          const live = await this.conversations.reloadConversation(fresh.id);
           await this.safeNotify(
-            fresh,
+            live,
             'Como no hubo respuesta, cerramos esta atención por ahora. Cuando quieras pedir, escríbenos de nuevo 👍',
           );
         }

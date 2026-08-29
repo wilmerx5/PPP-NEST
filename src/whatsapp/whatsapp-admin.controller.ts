@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,8 +11,12 @@ import {
   Req,
   Res,
   Sse,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 import { Request, Response } from 'express';
@@ -218,10 +223,14 @@ export class WhatsappAdminController {
   ) {
     const user = req.user as User;
     const takeover = body.takeover !== false;
-    await this.conversationService.setHumanTakeover(id, takeover, {
-      id: user.id,
-      fullName: user.fullName,
-    });
+    if (!takeover) {
+      await this.orchestrator.releaseToBot(id, { reason: 'manual' });
+    } else {
+      await this.conversationService.setHumanTakeover(id, takeover, {
+        id: user.id,
+        fullName: user.fullName,
+      });
+    }
     return { success: true, humanTakeover: takeover };
   }
 
@@ -244,5 +253,37 @@ export class WhatsappAdminController {
       fullName: user.fullName,
     });
     return { success: true };
+  }
+
+  @Post('conversations/:id/messages/media')
+  @ApiOperation({ summary: 'Enviar imagen, documento, video o audio' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024 },
+    }),
+  )
+  async sendMedia(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; originalname: string; size: number } | undefined,
+    @Body('caption') caption: string | undefined,
+    @Req() req: Request,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Adjunta un archivo (campo file)');
+    }
+    const user = req.user as User;
+    return this.orchestrator.sendHumanMedia(
+      id,
+      {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        originalname: file.originalname,
+        size: file.size,
+      },
+      { id: user.id, fullName: user.fullName },
+      caption,
+    );
   }
 }

@@ -46,11 +46,20 @@ export class WhatsappConversationService {
 
   async touchOutbound(conv: WhatsappConversation, kind: 'bot' | 'human' = 'bot') {
     const now = new Date();
+    // update parcial: no re-guardar la entidad completa (evita reactivar humanTakeover
+    // si el caller tiene un snapshot viejo tras releaseHumanTakeover).
+    const patch: { lastMessageAt: Date; lastHumanOutboundAt?: Date } = {
+      lastMessageAt: now,
+    };
+    if (kind === 'human') {
+      patch.lastHumanOutboundAt = now;
+    }
+    await this.convRepo.update({ id: conv.id }, patch);
     conv.lastMessageAt = now;
     if (kind === 'human') {
       conv.lastHumanOutboundAt = now;
     }
-    return this.convRepo.save(conv);
+    return conv;
   }
 
   async updateCustomerName(conv: WhatsappConversation, name: string) {
@@ -310,7 +319,9 @@ export class WhatsappConversationService {
       conv.humanTakeoverAt = null;
     }
     const saved = await this.convRepo.save(conv);
-    if (takeover && !wasTakeover) {
+    // Solo alertar cuando el *cliente* pide ASESOR (sin agente).
+    // Si un asesor toma el chat o escribe, no es alerta nueva.
+    if (takeover && !wasTakeover && !agent) {
       this.adminAlerts.notifyHumanNeeded({
         conversationId: saved.id,
         phoneE164: saved.phoneE164,
