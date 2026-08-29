@@ -9,6 +9,7 @@ import {
   extractDeliverySetupAddress,
   looksLikeDeliveryAddressFragment,
   isDeliveryLogisticsFluff,
+  isHumanHandoffRequest,
 } from './whatsapp-intent';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 
@@ -41,6 +42,20 @@ describe('classifyWhatsappCustomerIntent', () => {
     });
     expect(intent).toBe('order_product');
     expect(intentAllowsAddItems(intent)).toBe(true);
+  });
+
+  it("persona's / personas (rinde) no es handoff", () => {
+    expect(isHumanHandoffRequest("Para cuantas persona's alcanzas El arroz chino")).toBe(false);
+    expect(isHumanHandoffRequest('para cuantas personas alcanza el arroz chino')).toBe(false);
+    expect(isHumanHandoffRequest('quiero hablar con una persona')).toBe(true);
+    expect(isHumanHandoffRequest('asesor')).toBe(true);
+    expect(isHumanHandoffRequest('humano')).toBe(true);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: "Para cuantas persona's alcanzas El arroz chino",
+        cartLength: 0,
+      }),
+    ).not.toBe('human');
   });
 
   it('detecta consulta de precio', () => {

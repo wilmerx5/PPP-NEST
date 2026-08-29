@@ -133,6 +133,11 @@ describe('WhatsappCatalogService matching regressions', () => {
     );
     expect(
       catalog.isProductDescriptionInquiry(
+        "Para cuantas persona's alcanzas El arroz chino",
+      ),
+    ).toBe(true);
+    expect(
+      catalog.isProductDescriptionInquiry(
         'Quiero pedir Un arroz chino Para cuantas personas alcanzas?',
       ),
     ).toBe(true);

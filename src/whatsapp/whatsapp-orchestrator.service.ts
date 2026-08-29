@@ -27,6 +27,7 @@ import {
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
   isDeliveryLogisticsFluff,
+  isHumanHandoffRequest,
   PPP_ZONE_LANDMARK_RE,
   type WhatsappMessageIntent,
 } from './whatsapp-intent';
@@ -209,7 +210,7 @@ export class WhatsappOrchestratorService {
 
     const lower = text.toLowerCase();
 
-    if (/\b(humano|persona|agente|asesor|asesora|hablar\s+con\s+alguien)\b/.test(lower)) {
+    if (isHumanHandoffRequest(text)) {
       await this.conversationService.setHumanTakeover(conv.id, true);
       await this.reply(
         conv,
@@ -6282,7 +6283,7 @@ export class WhatsappOrchestratorService {
       isCategoryBrowse: this.catalogService.isCategoryBrowseQuestion(text),
       isGenericProductInquiry: this.catalogService.isGenericProductInquiry(text),
       isOffTopicChitchat: this.catalogService.isOffTopicChitchat(text),
-      isHumanRequest: /\b(humano|persona|agente|asesor|asesora)\b/i.test(text),
+      isHumanRequest: isHumanHandoffRequest(text),
       isPaymentMention: !!findPaymentMethodByText(text, cfg.paymentMethods),
       looksLikeAddressOnly: this.isAddressOnlyCustomerMessage(text, compound),
       compoundAddress: compound?.address,

@@ -85,7 +85,27 @@ export type WhatsappIntentHints = {
 };
 
 const HUMAN_RE =
-  /\b(humano|asesor|persona|operador|alguien\s+del\s+(?:local|restaurante)|hablar\s+con\s+(?:alguien|una\s+persona))\b/i;
+  /\b(humano|asesor|operador|alguien\s+del\s+(?:local|restaurante)|hablar\s+con\s+(?:alguien|una\s+persona)|agente|asesora)\b/i;
+
+/**
+ * Pedido de asesor humano.
+ * Ojo: "persona's" / "personas" (rinde el plato) NO es handoff — solo "persona" singular
+ * tipo "quiero una persona" / "pásame con una persona".
+ */
+export function isHumanHandoffRequest(text: string): boolean {
+  const raw = (text || '').trim();
+  if (!raw) return false;
+  // persona's / personas → plural de gente, no "hablar con una persona"
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bpersona'?s\b/g, 'personas');
+  if (HUMAN_RE.test(t)) return true;
+  // "persona" singular suelta (no dentro de "personas")
+  if (/\bpersona\b/.test(t) && !/\bpersonas\b/.test(t)) return true;
+  return false;
+}
 
 const PAYMENT_RE =
   /\b(contraentrega|efectivo|cash|transferencia|nequi|daviplata|llave|mercadopago|mercado\s*pago|pago\s+con)\b/i;
@@ -165,7 +185,7 @@ export function looksLikeNonAddressCommand(text: string): boolean {
     return true;
   }
   if (/\b(cancelar|cancela|anular|anula)\b/.test(t)) return true;
-  if (/\b(humano|asesor|persona|agente)\b/.test(t)) return true;
+  if (/\b(humano|asesor|agente)\b/.test(t) || isHumanHandoffRequest(text)) return true;
   if (PAYMENT_RE.test(text)) return true;
   if (
     /\b(quiero|dame|ponme|pedi|pido|agrega|agregar|ordenar|mandame|traeme)\b/.test(t) &&
@@ -404,7 +424,7 @@ export function classifyWhatsappCustomerIntent(
   const text = (hints.text || '').trim();
   if (!text) return 'other';
 
-  if (hints.isHumanRequest || HUMAN_RE.test(text)) return 'human';
+  if (hints.isHumanRequest || isHumanHandoffRequest(text)) return 'human';
 
   if (looksLikeClearCartMessage(text)) return 'clear_cart';
 
