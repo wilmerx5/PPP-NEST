@@ -30,5 +30,6 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('coca cola cero')).toMatch(/zero/i);
     expect(applyLocalGlossary('Q cuestan 2 sopas')).toMatch(/que cuestan/i);
     expect(applyLocalGlossary('sin enslada mas papa')).toMatch(/sin ensalada más papa/i);
+    expect(applyLocalGlossary('Dame tmb una botella de agua')).toMatch(/agua 600ml/i);
   });
 });

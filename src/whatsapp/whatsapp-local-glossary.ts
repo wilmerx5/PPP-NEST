@@ -50,6 +50,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bsin\s+salsas?,?\s+(?:mas|más)\s+miel\b/gi, to: 'sin salsas más miel' },
   { re: /\bsin\s+ensladas?\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
   { re: /\bsin\s+ensalada\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
+  { re: /\b(?:una?\s+)?botella(?:s)?\s+de\s+agua\b/gi, to: 'agua 600ml' },
+  { re: /\bagua\s+en\s+botella\b/gi, to: 'agua 600ml' },
 ];
 
 const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }> = [

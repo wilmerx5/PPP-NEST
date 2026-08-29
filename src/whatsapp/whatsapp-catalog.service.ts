@@ -3147,6 +3147,13 @@ export class WhatsappCatalogService {
           }
         }
 
+        // "agua" / "botella de agua" ≠ "Jugo Natural En Agua"
+        if (/\bagua\b/.test(q) && !/\bjugo\b/.test(q)) {
+          if (/\bjugo\b/.test(name) || /\ben\s+agua\b/.test(name)) score -= 100;
+          if (/^agua\b/.test(name) || /\bagua\s+\d/.test(name)) score += 40;
+          if (/\b600\b/.test(q) && /\b600\b/.test(name)) score += 50;
+        }
+
         return { p, score };
       })
       .filter((x) => x.score >= 18)
@@ -3242,6 +3249,12 @@ export class WhatsappCatalogService {
 
     if (mode === 'info') {
       const infoAttrs = remaining.filter((a) => !this.isComboOnlyAttribute(a));
+      // Bebida suelta (solo sabor/gas): pedir opciones en modo pedido, no el copy de combo
+      if (!infoAttrs.length && remaining.length > 0) {
+        return this.formatAttributeStepPrompt(product, remaining[0], alreadySelected, {
+          mode: 'order',
+        });
+      }
       if (!infoAttrs.length && (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))) {
         return (
           `${this.formatProductHeader(product.name, product.price, product.code)}\n\n` +

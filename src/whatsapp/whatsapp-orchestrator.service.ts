@@ -6474,7 +6474,16 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
-    if (/\b(domicilio|la casa|mi casa|mi direccion|mi dirección|direccion|dirección)\b/i.test(t)) {
+    if (/\b(la casa|mi casa|mi direccion|mi dirección)\b/i.test(t)) {
+      return true;
+    }
+    // "domicilio" solo cuenta si hay lugar concreto (no "pedir un domicilio porfa")
+    if (
+      /\bdomicilios?\b/i.test(t) &&
+      (PPP_ZONE_LANDMARK_RE.test(t) ||
+        /\b(calle|carrera|cra|apto|apartamento|torre|conjunto|hospital|barrio|terrazas)\b/i.test(t) ||
+        /\d/.test(t))
+    ) {
       return true;
     }
     if (this.looksLikeAddress(t)) return true;
@@ -7490,8 +7499,9 @@ export class WhatsappOrchestratorService {
     }
 
     const mode =
-      this.catalogService.isGenericProductInquiry(text) ||
-      this.catalogService.shouldShowVariantsOverview(text, product)
+      !/^(si|sí|\d{1,3}|opci[oó]n\s*\d+)$/i.test(text.trim()) &&
+      (this.catalogService.isGenericProductInquiry(text) ||
+        this.catalogService.shouldShowVariantsOverview(text, product))
         ? 'info'
         : 'order';
 
@@ -8910,6 +8920,12 @@ export class WhatsappOrchestratorService {
       this.extractDeliveryTail(source) ||
       this.extractDeliveryTail(probe);
 
+    // Nunca geocodificar muletillas ("pedir un domicilio porfa")
+    const safeAddr =
+      addr && !isDeliveryLogisticsFluff(addr) && this.isPlausibleDeliveryAddress(addr)
+        ? addr
+        : null;
+
     session = {
       ...session,
       orderType: 'delivery',
@@ -8919,8 +8935,8 @@ export class WhatsappOrchestratorService {
       session = { ...session, address: undefined, addressConfirmed: false };
     }
 
-    if (addr) {
-      session = this.withDeliveryAddress(session, addr);
+    if (safeAddr) {
+      session = this.withDeliveryAddress(session, safeAddr);
       const fee = await this.recalculateDeliveryFee(session, cfg);
       session = fee.session;
       await this.conversationService.saveSession(conv, session, 'building_cart');
@@ -8936,10 +8952,22 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        `Dale, domicilio a *${session.address?.trim() || addr}* ✅${feeLine}\n\n` +
+        `Dale, domicilio a *${session.address?.trim() || safeAddr}* ✅${feeLine}\n\n` +
           `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.`,
       );
       return true;
+    }
+
+    // Si había basura tipo "pedir un domicilio" pegada como dirección previa, limpiarla
+    if (session.address?.trim() && isDeliveryLogisticsFluff(session.address)) {
+      session = {
+        ...session,
+        address: undefined,
+        addressConfirmed: false,
+        deliveryFeeCalculated: undefined,
+        deliveryDistanceKm: undefined,
+        deliveryOutOfCoverage: false,
+      };
     }
 
     await this.conversationService.saveSession(conv, session, 'building_cart');

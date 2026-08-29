@@ -206,4 +206,12 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(isDeliveryLogisticsFluff('un domicilio por favor')).toBe(true);
     expect(isDeliveryLogisticsFluff('por favor')).toBe(true);
   });
+
+  it('NO geocodifica “Para pedir un domicilio porfa”', () => {
+    expect(isDeliveryLogisticsFluff('Para pedir un domicilio porfa')).toBe(true);
+    expect(isDeliveryLogisticsFluff('pedir un domicilio porfa')).toBe(true);
+    expect(isDeliverySetupWithoutFood('Para pedir un domicilio porfa')).toBe(true);
+    expect(extractDeliverySetupAddress('Para pedir un domicilio porfa')).toBeNull();
+    expect(looksLikeAddressOnlyMessage('Para pedir un domicilio porfa')).toBe(false);
+  });
 });

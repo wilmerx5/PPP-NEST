@@ -128,11 +128,27 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
   if (/^(un |una )?(domicilios?)( por favor| porfa)?$/.test(t)) return true;
   if (/^(por favor|porfa|gracias)$/.test(t)) return true;
   if (/^(buenas? (noches|tardes|dias)|hola|buenas)$/.test(t)) return true;
+  // "para pedir un domicilio porfa" / "quiero pedir domicilio" (sin dirección real)
+  if (
+    /\b(pedir|pido|pedi|quiero|necesito|vamos\s+a\s+pedir)\b/.test(t) &&
+    /\bdomicilios?\b/.test(t) &&
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas|hospital/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
   if (
     /^(para )?(un |una )?domicilio\b/.test(t) &&
     t.split(' ').length <= 5 &&
-    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio/.test(t)
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas/.test(
+      t,
+    )
   ) {
+    return true;
+  }
+  // Tras cortar el "para …": "pedir un domicilio porfa"
+  if (/^(pedir|pido|pedi)\s+(un\s+|una\s+)?domicilio\b/.test(t) && t.split(' ').length <= 6) {
     return true;
   }
   return false;
