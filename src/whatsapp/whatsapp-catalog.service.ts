@@ -4266,6 +4266,7 @@ export class WhatsappCatalogService {
     if (
       /\b(vendes|venden)\s+(un|una|unos|unas)\b/.test(q) &&
       !/\?/.test(raw) &&
+      !this.isLargerPackInquiry(raw) &&
       (this.extractVariantPreferenceHint(raw) || new RegExp(FOOD_ORDER_TOKEN, 'i').test(q))
     ) {
       return false;
@@ -4317,6 +4318,158 @@ export class WhatsappCatalogService {
       /\bmas\s+pequena\b/.test(q) ||
       /\bmenos\s+cantidad\b/.test(q);
     return sizeWord && portionWord;
+  }
+
+  /**
+   * "¿No vendes un combo más grande?" / "tienen algo más grande" —
+   * pide pack/tamaño mayor del plato en contexto, no un combo ajeno del menú.
+   */
+  isLargerPackInquiry(text: string): boolean {
+    const q = normalizeText(text);
+    if (!q || q.length < 8) return false;
+    const sizeUp =
+      /\b(mas\s+grande|mas\s+grandes|mas\s+grandecito|tamano\s+grande|combo\s+grande|pack\s+grande|paquete\s+grande|version\s+grande|otro\s+tamano|mas\s+tacos|mas\s+hamburguesas)\b/.test(
+        q,
+      );
+    if (!sizeUp) return false;
+    return (
+      /\b(vendes|venden|tienen|tiene|hay|manejan|quiero|dame|ponme|no|tienen|existe|habrá|habra)\b/.test(
+        q,
+      ) || /\b(combo|pack|duo|trio|paquete|promocion)\b/.test(q)
+    );
+  }
+
+  /** Solo “combo / más grande” sin nombrar plato → no buscar SKUs sueltos. */
+  isVaguePackSizeQuery(text: string): boolean {
+    if (!this.isLargerPackInquiry(text) && !/\bcombo\b/.test(normalizeText(text))) return false;
+    const q = normalizeText(this.extractProductSearchQuery(text));
+    const noise = new Set([
+      'no',
+      'me',
+      'un',
+      'una',
+      'unos',
+      'unas',
+      'el',
+      'la',
+      'los',
+      'las',
+      'de',
+      'del',
+      'mas',
+      'grande',
+      'grandes',
+      'grandecito',
+      'tamano',
+      'version',
+      'otro',
+      'algo',
+      'vendes',
+      'venden',
+      'tienen',
+      'tiene',
+      'hay',
+      'manejan',
+      'quiero',
+      'dame',
+      'ponme',
+      'existe',
+      'habra',
+      'combo',
+      'combos',
+      'pack',
+      'paquete',
+      'duo',
+      'trio',
+      'promocion',
+      'promo',
+    ]);
+    const foodTokens = q
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !noise.has(t) && !PACK_MULTIPLIER_TOKENS.has(t));
+    return foodTokens.length === 0;
+  }
+
+  /** Tokens distintivos del plato (taco, pastor…) sin pack/ruido. */
+  getCoreFoodTokens(name: string): string[] {
+    const weak = new Set([
+      ...this.WEAK_PRODUCT_TOKENS,
+      'de',
+      'del',
+      'la',
+      'el',
+      'los',
+      'las',
+      'con',
+      'y',
+      'al',
+      'un',
+      'una',
+      'para',
+    ]);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of normalizeText(name).split(/\s+/)) {
+      if (raw.length < 4) continue;
+      if (weak.has(raw) || PACK_MULTIPLIER_TOKENS.has(raw)) continue;
+      const sing = singularizeEsToken(raw);
+      if (seen.has(sing)) continue;
+      seen.add(sing);
+      out.push(sing);
+    }
+    return out;
+  }
+
+  productsShareCoreFoodTokens(
+    a: WhatsappCatalogProduct,
+    b: WhatsappCatalogProduct,
+  ): boolean {
+    const ta = new Set(this.getCoreFoodTokens(a.name));
+    if (!ta.size) return false;
+    return this.getCoreFoodTokens(b.name).some((t) => ta.has(t));
+  }
+
+  /** 1 = unitario, 2 = duo/combo, 3 = trío, 4 = familiar/pack. */
+  detectPackMultiplierRank(name: string): number {
+    const n = normalizeText(name);
+    if (/\b(familiar|pack|paquete|x4)\b/.test(n)) return 4;
+    if (/\b(trio|triple|x3)\b/.test(n)) return 3;
+    if (/\b(duo|doble|dupla|pareja|x2)\b/.test(n)) return 2;
+    if (/\bcombo\b/.test(n)) return 2;
+    return 1;
+  }
+
+  /**
+   * Packs/combos más grandes del mismo plato (Duo tacos → Trío tacos),
+   * no combos de otras familias (arroz chino, pollo…).
+   */
+  findRelatedLargerPackProducts(
+    focus: WhatsappCatalogProduct,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const focusRank = this.detectPackMultiplierRank(focus.name);
+    const focusTokens = this.getCoreFoodTokens(focus.name);
+    const available = products.filter((p) => p.availableNow !== false && p.id !== focus.id);
+
+    let related = available.filter((p) => this.productsShareCoreFoodTokens(focus, p));
+    if (!related.length && focusTokens.length === 0) {
+      const family = this.findProductVariantFamily(focus.name, products, [focus]);
+      related = (family?.variants || []).filter((p) => p.id !== focus.id);
+    }
+
+    return related
+      .filter((p) => {
+        const rank = this.detectPackMultiplierRank(p.name);
+        if (rank > focusRank) return true;
+        if (rank >= focusRank && p.price >= focus.price * 1.12) return true;
+        return false;
+      })
+      .sort(
+        (a, b) =>
+          this.detectPackMultiplierRank(b.name) - this.detectPackMultiplierRank(a.name) ||
+          b.price - a.price,
+      )
+      .slice(0, 6);
   }
 
   /** Consulta informativa: precio, qué hay, opciones — sin pedir porción concreta aún. */

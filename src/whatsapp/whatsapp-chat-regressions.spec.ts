@@ -224,6 +224,36 @@ const pppMenu: WhatsappCatalogProduct[] = [
     availableNow: true,
     categoryName: 'Arroces',
   },
+  {
+    id: 171,
+    code: 171,
+    name: 'Duo De Tacos Al pastor',
+    price: 32000,
+    hasAttributes: true,
+    attributes: [
+      {
+        attributeName: 'Bebida',
+        options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola', 'Ginger', 'Uva'],
+      },
+    ],
+    availableNow: true,
+    categoryName: 'Tacos',
+  },
+  {
+    id: 172,
+    code: 172,
+    name: 'Trio De Tacos Al pastor',
+    price: 45000,
+    hasAttributes: true,
+    attributes: [
+      {
+        attributeName: 'Bebida',
+        options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola'],
+      },
+    ],
+    availableNow: true,
+    categoryName: 'Tacos',
+  },
 ];
 
 describe('WhatsApp chat regressions (prod-hardening)', () => {
@@ -606,6 +636,37 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         pppMenu.find((p) => p.code === 1)!,
       ])!;
       expect(catalog.formatComboExplanation(family)).toMatch(/presentaciones|combo/i);
+    });
+  });
+
+  describe('Combo más grande respeta contexto (tacos)', () => {
+    const duo = () => pppMenu.find((p) => p.code === 171)!;
+    const trio = () => pppMenu.find((p) => p.code === 172)!;
+    const polloCombo = () => pppMenu.find((p) => p.code === 99)!;
+
+    it('“No vendes un combo más grande” es consulta de pack, no pedido suelto', () => {
+      const text = applyLocalGlossary('No vendes un combo más grande');
+      expect(catalog.isLargerPackInquiry(text)).toBe(true);
+      expect(catalog.isVaguePackSizeQuery(text)).toBe(true);
+      expect(catalog.isAvailabilityInquiry(text)).toBe(true);
+    });
+
+    it('desde Duo de Tacos → Trío, nunca Combo De Pollo', () => {
+      const text = applyLocalGlossary('No vendes un combo más grande');
+      const related = catalog.findRelatedLargerPackProducts(duo(), pppMenu);
+      expect(related.map((p) => p.code)).toEqual([172]);
+      expect(catalog.productsShareCoreFoodTokens(duo(), trio())).toBe(true);
+      expect(catalog.productsShareCoreFoodTokens(duo(), polloCombo())).toBe(false);
+
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      // El buscador global sigue sesgado a “combo”; el handler de pack no debe usarlo
+      expect(scored[0]?.p.name).toMatch(/combo/i);
+      expect(related.some((p) => /pollo|arroz/i.test(p.name))).toBe(false);
+    });
+
+    it('sin pack mayor: lista vacía (se re-pregunta el Duo)', () => {
+      const onlyDuo = pppMenu.filter((p) => p.code !== 172);
+      expect(catalog.findRelatedLargerPackProducts(duo(), onlyDuo)).toEqual([]);
     });
   });
 });

@@ -487,6 +487,11 @@ export class WhatsappOrchestratorService {
         return;
       }
       if (
+        await this.tryHandleLargerPackInquiry(conv, msg.waId, session, text, products, cfg)
+      ) {
+        return;
+      }
+      if (
         this.catalogService.isAvailabilityInquiry(text) ||
         this.catalogService.isProductDescriptionInquiry(text)
       ) {
@@ -1639,6 +1644,12 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (
+      (await this.tryHandleLargerPackInquiry(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     // Título embebido / pollo con tamaño / "arroz con pollo"
     let orderQty = this.resolveOrderQuantity(session, text);
     if (orderQty >= 2) {
@@ -1655,6 +1666,7 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isAvailabilityInquiry(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
       !this.catalogService.isServingSizeChangeIntent(text) &&
+      !this.catalogService.isLargerPackInquiry(text) &&
       !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
       !this.looksLikeStandaloneOrderNote(text) &&
@@ -1846,6 +1858,7 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isAvailabilityInquiry(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
       !this.catalogService.isServingSizeChangeIntent(text) &&
+      !this.catalogService.isLargerPackInquiry(text) &&
       !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
       !this.looksLikeStandaloneOrderNote(text) &&
@@ -4919,6 +4932,86 @@ export class WhatsappOrchestratorService {
       product,
       { fromPendingAttribute: false },
     );
+  }
+
+  /**
+   * "No vendes un combo más grande" con Duo de Tacos en foco:
+   * listar trío/packs del mismo plato — nunca saltar a Combo Arroz Chino.
+   */
+  private async tryHandleLargerPackInquiry(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isLargerPackInquiry(text)) return false;
+
+    const product = this.resolveDiscussedProduct(session, text, products);
+    if (!product) {
+      if (!this.catalogService.isVaguePackSizeQuery(text)) return false;
+      await this.reply(
+        conv,
+        waId,
+        '¿De cuál plato quieres un *combo/pack más grande*? Dime el nombre (ej. *tacos*).',
+      );
+      return true;
+    }
+
+    session = this.rememberProductFocus(session, product, products);
+    const larger = this.catalogService.findRelatedLargerPackProducts(product, products);
+
+    if (larger.length) {
+      const candidates = [product, ...larger.filter((p) => p.id !== product.id)];
+      session = {
+        ...session,
+        pendingMatch: {
+          query: this.catalogService.getCoreFoodTokens(product.name).join(' ') || product.name,
+          candidates,
+        },
+        pendingAttribute: undefined,
+      };
+      await this.conversationService.saveSession(conv, session);
+      const rows = candidates.map((p, i) => ({
+        index: i + 1,
+        label: p.name,
+        price: p.price,
+        code: p.code,
+      }));
+      await this.reply(
+        conv,
+        waId,
+        `Sobre *${product.name}*, estas son las versiones/packs que manejamos:\n\n` +
+          this.catalogService.formatOptionsList(rows) +
+          `\n\n_Dime el *número* del que quieras (el más grande suele ser el de mayor precio)._`,
+      );
+      return true;
+    }
+
+    const pa = session.pendingAttribute;
+    const keepPending =
+      pa &&
+      (pa.productId === product.id ||
+        this.catalogService.getProductById(pa.productId, products)?.id === product.id);
+
+    await this.conversationService.saveSession(
+      conv,
+      session,
+      keepPending ? 'awaiting_attribute' : undefined,
+    );
+
+    const suffix = keepPending
+      ? `\n\nSeguimos con *${product.name}*:\n\n` +
+        this.catalogService.formatProductOptionsPrompt(product, pa?.selected || [])
+      : `\n\nSi quieres, te dejo *${product.name}* o dime otro plato.`;
+
+    await this.reply(
+      conv,
+      waId,
+      `De *${product.name}* no tengo un combo/pack *más grande* en el menú 🙏` + suffix,
+    );
+    return true;
   }
 
   /**
@@ -9274,6 +9367,14 @@ export class WhatsappOrchestratorService {
     const candidate = this.findNewProductOrderCandidate(text, products, pendingProduct.id);
     if (!candidate) return false;
 
+    // "combo más grande" / solo "combo" sin plato: no saltar a Combo Arroz/Pollo ajenos
+    if (
+      this.catalogService.isLargerPackInquiry(text) ||
+      this.catalogService.isVaguePackSizeQuery(text)
+    ) {
+      return false;
+    }
+
     // Misma familia (1 Pollo Frito → Combo De Pollo Frito): cambiar, no bloquear
     const family = this.catalogService.findProductVariantFamily(pendingProduct.name, products, [
       pendingProduct,
@@ -9284,8 +9385,9 @@ export class WhatsappOrchestratorService {
       family.variants.some((v) => v.id === candidate.id) &&
       family.variants.some((v) => v.id === pendingProduct.id);
     const wantsComboSwitch =
-      this.catalogService.isVariantPreferenceIntent(text) ||
-      (/\bcombo\b/i.test(text) && /\bcombo\b/i.test(candidate.name));
+      this.catalogService.productsShareCoreFoodTokens(pendingProduct, candidate) &&
+      (this.catalogService.isVariantPreferenceIntent(text) ||
+        (/\bcombo\b/i.test(text) && /\bcombo\b/i.test(candidate.name)));
 
     if (sameFamily || wantsComboSwitch) {
       session = {
