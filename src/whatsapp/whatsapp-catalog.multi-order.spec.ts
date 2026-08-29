@@ -191,4 +191,47 @@ describe('multi-item order quantities', () => {
     expect(catalog.pickFromCandidateList('frito', ambiguousOnly)?.name).toBe('1/4 Pollo Frito');
     expect(catalog.pickFromCandidateList('1', ambiguousOnly)).toBeNull();
   });
+
+  it('asado sin SKU → multi con arroz claro + 1/4 ambiguo (broaster/frito)', () => {
+    const menu: WhatsappCatalogProduct[] = [
+      {
+        id: 23,
+        code: 23,
+        name: 'Arroz Con Pollo',
+        price: 32000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 6,
+        code: 6,
+        name: '1/4 Pollo Broaster',
+        price: 16000,
+        hasAttributes: true,
+        attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas'] }],
+        availableNow: true,
+      },
+      {
+        id: 3,
+        code: 3,
+        name: '1/4 Pollo Frito',
+        price: 15000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+    ];
+    const text = applyLocalGlossary(
+      'Me podrías dar 1 arroz con pollo y 1/4 de pollo asado porfa',
+    );
+    const multi = catalog.resolveMultiProductOrder(text, menu);
+    expect(multi).toBeTruthy();
+    expect(multi!.confident.map((c) => c.product.name)).toContain('Arroz Con Pollo');
+    expect(multi!.ambiguous.length).toBeGreaterThanOrEqual(1);
+    const names = multi!.ambiguous[0].candidates.map((c) => c.name).sort();
+    expect(names).toEqual(['1/4 Pollo Broaster', '1/4 Pollo Frito'].sort());
+    // "sí" no debe poder “cerrar” esto sin pick: la duda sigue abierta
+    expect(multi!.ambiguous.length > 0).toBe(true);
+  });
 });

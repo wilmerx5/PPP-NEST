@@ -7892,8 +7892,8 @@ export class WhatsappOrchestratorService {
       lines.push(`\n⚠️ No encontré en el menú: _${miss}_`);
     }
     lines.push(
-      '\n_Si está bien lo que marqué ✅, escribe *sí*._',
-      '_Si algo no cuadra, dime el plato correcto o el *número* de la opción dudosa._',
+      '\n_Si está bien lo que marqué ✅ y *no hay dudas*, escribe *sí*._',
+      '_Si hay opciones ❓, elige *número* o nombre (ej. *broaster*)._',
     );
     return lines.join('\n');
   }
@@ -8504,6 +8504,35 @@ export class WhatsappOrchestratorService {
     }
 
     if (this.isMultiOrderAffirmative(text) && pending.confident.length) {
+      // "sí" con opciones dudosas abiertas → no agregar aún (evita perder el 1/4)
+      if (pending.ambiguous.length) {
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(
+          conv,
+          waId,
+          `Todavía falta elegir lo dudoso 👇\n\n` +
+            this.formatMultiOrderProposal({
+              segments: [],
+              confident: pending.confident.map((c) => ({
+                segment: c.segment,
+                product: products.find((p) => p.id === c.productId)!,
+                score: 100,
+              })),
+              ambiguous: pending.ambiguous.map((a) => ({
+                segment: a.segment,
+                candidates: a.candidates as MenuProduct[],
+              })),
+              unresolved: pending.unresolved,
+              needsAttributes: pending.needsAttributes.map((c) => ({
+                segment: c.segment,
+                product: products.find((p) => p.id === c.productId)!,
+                score: 100,
+              })),
+            }),
+        );
+        return true;
+      }
+
       const addResult = await this.addPendingMultiConfidentToCart(
         conv,
         waId,
