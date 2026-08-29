@@ -16,7 +16,41 @@ import type {
 
 /** Formatea número a string con 2 decimales (requerido por Factus). */
 export function factusMoney(n: number): string {
-  return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
+  return factusRound2(n).toFixed(2);
+}
+
+/** Redondeo bancario a 2 decimales (como Factus/DIAN en líneas). */
+export function factusRound2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Total de factura alineado con Factus: por línea
+ * neto = round(qty * price, 2), impuesto = round(neto * rate/100, 2).
+ * Evita payment_details 49,999.99 vs total 50,000.00.
+ */
+export function factusInvoiceTotalFromItems(
+  items: Array<{
+    quantity: string;
+    price: string;
+    taxes?: Array<{ rate?: string; is_excluded?: boolean }>;
+  }>,
+): number {
+  let sum = 0;
+  for (const i of items) {
+    const qty = parseFloat(i.quantity) || 0;
+    const price = parseFloat(i.price) || 0;
+    const lineNet = factusRound2(qty * price);
+    let tax = 0;
+    for (const t of i.taxes || []) {
+      const rate = parseFloat(t.rate || '0') || 0;
+      if (!t.is_excluded && rate > 0) {
+        tax = factusRound2(tax + factusRound2(lineNet * (rate / 100)));
+      }
+    }
+    sum = factusRound2(sum + lineNet + tax);
+  }
+  return sum;
 }
 
 const FACTUS_TZ = 'America/Bogota';
@@ -66,7 +100,8 @@ export class FactusInvoiceMapper {
       ...this.deliveryAsExtra(order, taxConfig),
       ...this.mapExtras(order, taxConfig),
     ];
-    const total = this.sumItemsGross(allItems);
+    // Total como Factus (redondeo por línea) — payment_details debe coincidir exacto
+    const total = factusInvoiceTotalFromItems(allItems);
 
     const paymentMethod =
       (dto.paymentMethodCode || this.config.get<string>('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
@@ -162,7 +197,7 @@ export class FactusInvoiceMapper {
       ...this.deliveryAsExtra(order, opts.taxConfig),
       ...this.mapExtras(order, opts.taxConfig),
     ];
-    const total = this.sumItemsGross(allItems);
+    const total = factusInvoiceTotalFromItems(allItems);
     const paymentMethod =
       (this.config.get<string>('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
 
@@ -308,9 +343,23 @@ export class FactusInvoiceMapper {
   private netUnitPrice(grossUnit: number, taxConfig: ResolvedFactusTaxConfig): number {
     const totalRate = this.combinedTaxRatePercent(taxConfig);
     if (taxConfig.pricesIncludeTax && totalRate > 0) {
-      return grossUnit / (1 + totalRate / 100);
+      const gross = factusRound2(grossUnit);
+      // Neto a 2 decimales; si neto+IVA redondeado ≠ gross, ajustar 1 centavo
+      let net = factusRound2(gross / (1 + totalRate / 100));
+      let tax = factusRound2(net * (totalRate / 100));
+      let got = factusRound2(net + tax);
+      if (got !== gross) {
+        net = factusRound2(net + (gross - got));
+        tax = factusRound2(net * (totalRate / 100));
+        got = factusRound2(net + tax);
+        // Si aún no cierra (raro), dejar el neto estándar; payment usará total Factus
+        if (got !== gross) {
+          net = factusRound2(gross / (1 + totalRate / 100));
+        }
+      }
+      return net;
     }
-    return grossUnit;
+    return factusRound2(grossUnit);
   }
 
   private buildItemTaxes(taxConfig: ResolvedFactusTaxConfig): FactusItemTax[] {
@@ -414,19 +463,5 @@ export class FactusInvoiceMapper {
         taxConfig,
       ),
     ];
-  }
-
-  private sumItemsGross(items: FactusBillItem[]): number {
-    return items.reduce((sum, i) => {
-      const qty = parseFloat(i.quantity) || 0;
-      const price = parseFloat(i.price) || 0;
-      const line = qty * price;
-      let tax = 0;
-      for (const t of i.taxes || []) {
-        const rate = parseFloat(t.rate || '0') || 0;
-        if (!t.is_excluded && rate > 0) tax += line * (rate / 100);
-      }
-      return sum + line + tax;
-    }, 0);
   }
 }
