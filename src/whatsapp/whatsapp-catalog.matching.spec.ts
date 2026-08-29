@@ -126,6 +126,29 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.isPriceInquiryIntent('vale gracias')).toBe(false);
     expect(catalog.isPriceInquiryIntent('quiero 2 sopas de menudencias')).toBe(false);
   });
+
+  it('gramos / rinde personas / ¿tienes X? → info, no pedido', () => {
+    expect(catalog.isProductDescriptionInquiry('De cuantos gramos es el churrasco')).toBe(
+      true,
+    );
+    expect(
+      catalog.isProductDescriptionInquiry(
+        'Quiero pedir Un arroz chino Para cuantas personas alcanzas?',
+      ),
+    ).toBe(true);
+    expect(catalog.isAvailabilityInquiry('Tienes sopa De mondongo')).toBe(true);
+    expect(catalog.isAvailabilityInquiry('No tienes we mondongo')).toBe(true);
+    expect(catalog.isAvailabilityInquiry('quiero una sopa de mondongo')).toBe(false);
+    expect(
+      catalog.isServingSizeChangeIntent('Pero quiero una porcion Mas pequena'),
+    ).toBe(true);
+    expect(
+      catalog.isExternalMarketplaceOrderMessage(
+        'Hice Un pedido por rappi pero quiero cambiar El sabor de mi gaseosa',
+      ),
+    ).toBe(true);
+    expect(catalog.resolveMultiProductOrder('Tienes sopa De mondongo', soupMenu)).toBeNull();
+  });
 });
 
 const chickenMenu: WhatsappCatalogProduct[] = [

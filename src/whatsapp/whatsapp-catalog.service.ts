@@ -1070,6 +1070,14 @@ export class WhatsappCatalogService {
         /\b(?:me\s+)?(?:puedes\s+)?(?:decir|contar|explicar)\s+(?:qu[eé]|con\s+qu[eé])\s+(?:viene|va|trae|lleva)\s+(?:el|la)?\s*/gi,
         ' ',
       )
+      .replace(
+        /\b(?:de\s+)?cu[aá]ntos\s+gramos\s+(?:es|tiene|trae|pesa)?\s*(?:el|la|los|las|un|una)?\s*/gi,
+        ' ',
+      )
+      .replace(
+        /\b(?:para\s+)?cu[aá]nt[oa]s?\s+personas?\s+(?:alcanza|alcanzan|rinde|rinden|sirve|sirven|allcanza)?\s*/gi,
+        ' ',
+      )
       .replace(/\s+/g, ' ')
       .trim();
     // No reemplazar con normalizeText: destruye comas necesarias para multi-ítem
@@ -4011,16 +4019,31 @@ export class WhatsappCatalogService {
     return filtered || null;
   }
 
-  /** "Con qué viene", "qué lleva", ingredientes — consulta, no pedido. */
+  /** "Con qué viene", "qué lleva", gramos, rinde — consulta, no pedido. */
   isProductDescriptionInquiry(text: string): boolean {
     const raw = text.trim();
     if (!raw || raw.length < 5) return false;
-    if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
-      return false;
-    }
     if (this.isPriceInquiryIntent(text)) return false;
 
     const q = normalizeText(raw);
+
+    // Peso / rinde / porciones: incluso si dice "quiero pedir X, ¿para cuántas alcanza?"
+    const sizeOrYieldAsk =
+      /\b(de\s+)?cuantos\s+gramos\b/.test(q) ||
+      /\bcuanto\s+pesa\b/.test(q) ||
+      (/\b(peso|gramos?|kilogramos?|kg)\b/.test(q) &&
+        /\b(cuanto|cuantos|de\s+cuanto|tiene|trae|es|viene)\b/.test(q)) ||
+      /\bpara\s+cuant[oa]s?\s+personas?\b/.test(q) ||
+      /\bcuant[oa]s?\s+personas?\s+(alcanza|alcanzan|rinde|rinden|sirve|sirven|da|dan)\b/.test(q) ||
+      /\b(alcanza|alcanzan|rinde|rinden|sirve)\s+(?:para\s+)?(?:cuant[oa]s?\s+)?personas?\b/.test(q) ||
+      /\bcuanto\s+(rinde|alcanza|sirve)\b/.test(q);
+
+    if (sizeOrYieldAsk) return true;
+
+    if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
+      return false;
+    }
+
     const patterns = [
       /\bde que\b/,
       /\bde que es\b/,
@@ -4050,14 +4073,78 @@ export class WhatsappCatalogService {
     if (patterns.some((p) => p.test(q))) return true;
     return (
       /\?/.test(raw) &&
-      /\b(lleva|llava|trae|viene|va|incluye|contiene|ingredientes|descripcion|composicion)\b/.test(q)
+      /\b(lleva|llava|trae|viene|va|incluye|contiene|ingredientes|descripcion|composicion|gramos|rinde|alcanza)\b/.test(
+        q,
+      )
     );
+  }
+
+  /**
+   * "¿Tienes sopa de mondongo?" / "¿venden arroz chino?" — existencia, no pedido.
+   */
+  isAvailabilityInquiry(text: string): boolean {
+    const raw = text.trim();
+    if (!raw || raw.length < 6) return false;
+    if (this.isPriceInquiryIntent(text)) return false;
+    if (this.isProductDescriptionInquiry(text)) return false;
+    if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das)\s+(un|una|unos|unas|el|la)\b/i.test(raw)) {
+      return false;
+    }
+    const q = normalizeText(raw);
+    // Pedido dominante: "quiero que me tengas listo un pollo" no aplica
+    if (
+      /^(quiero|dame|ponme|agrega)\b/.test(q) &&
+      !/\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja)\b/.test(q)
+    ) {
+      return false;
+    }
+    const availVerb =
+      /\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen|conseguiste)\b/.test(q);
+    if (!availVerb) return false;
+    // "no tienes de mondongo" / "tienes sopa"
+    if (
+      /\b(no\s+)?(tienes|tiene|tienen|hay|venden|vendes)\s+(?:de\s+|we\s+|una?\s+|el\s+|la\s+)?/.test(
+        q,
+      )
+    ) {
+      return true;
+    }
+    return (
+      availVerb &&
+      new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)
+    );
+  }
+
+  /** Pedido en Rappi/Uber/etc. — no es carrito WhatsApp. */
+  isExternalMarketplaceOrderMessage(text: string): boolean {
+    const q = normalizeText(text);
+    if (!q) return false;
+    if (!/\b(rappi|uber\s*eats|didi\s*food|ifood|pedidos\s*ya)\b/.test(q)) return false;
+    return (
+      /\b(pedido|orden|cambiar|cambio|sabor|gaseosa|domicilio|entregaron|entregado)\b/.test(q) ||
+      /\bhice\b/.test(q) ||
+      /\bquiero\s+cambiar\b/.test(q)
+    );
+  }
+
+  /** "quiero una porción más pequeña" / "una taza más chica". */
+  isServingSizeChangeIntent(text: string): boolean {
+    const q = normalizeText(text);
+    if (!q || q.length < 8) return false;
+    const sizeWord =
+      /\b(pequena|pequenas|pequenita|chica|chicas|chiquita|menos|media\s+taza|taza)\b/.test(q);
+    const portionWord =
+      /\b(porcion|porciones|cantidad|tamano|tama[nñ]o|taza|sopa)\b/.test(q) ||
+      /\bmas\s+pequena\b/.test(q) ||
+      /\bmenos\s+cantidad\b/.test(q);
+    return sizeWord && portionWord;
   }
 
   /** Consulta informativa: precio, qué hay, opciones — sin pedir porción concreta aún. */
   isGenericProductInquiry(text: string): boolean {
     if (this.isPriceInquiryIntent(text)) return true;
     if (this.isProductDescriptionInquiry(text)) return true;
+    if (this.isAvailabilityInquiry(text)) return true;
     const raw = text.trim();
     const q = normalizeText(raw);
     return (
@@ -4259,6 +4346,8 @@ export class WhatsappCatalogService {
     if (this.isPriceInquiryIntent(text)) return null;
     if (this.isMenuExploreIntent(text, products)) return null;
     if (this.isProductDescriptionInquiry(text)) return null;
+    if (this.isAvailabilityInquiry(text)) return null;
+    if (this.isExternalMarketplaceOrderMessage(text)) return null;
     // "Cambia la dirección a…" no es pedido multi
     if (isAddressChangeIntent(text)) return null;
     // "Quiero un domicilio para Bosques…" no es multi-plato

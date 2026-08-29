@@ -35,8 +35,10 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\barroz\s+paisa\s+sencillo\b/gi, to: 'arroz paisa solo' },
   { re: /\ben\s+comboo\b/gi, to: 'en combo' },
   // Add-on tardío (corpus): "alcanzo a encargarte una ensalada"
+  // NO reescribir "para cuántas personas alcanza" → eso es consulta de rinde
   { re: /\b(?:me\s+)?alcanzo\s+a\s+(?:encargarte|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
-  { re: /\b(?:me\s+)?alcanzas?\s+(?:a\s+)?(?:encargar|pedir)?\s*/gi, to: 'quiero ' },
+  { re: /\b(?:me\s+)?alcanzas?\s+a\s+(?:encargar|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
+  { re: /\b(?:me\s+)?alcanzas?\s+(?:encargar|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
   // Add-ons con typo "plata" = plátano (no “plata” de dinero suelta)
   { re: /\b(?:adicionar|adicion|adici[oó]n)\s+(?:un\s+|de\s+)?plata\b/gi, to: 'adicionar un plátano' },
   { re: /\bun\s+plata\b/gi, to: 'un plátano' },

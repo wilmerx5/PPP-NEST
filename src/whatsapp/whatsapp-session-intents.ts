@@ -175,6 +175,8 @@ export function isAbandonPendingSelectionIntent(text: string): boolean {
   if (!t) return false;
   if (/^ya\s+no[\s!.?]*$/.test(t)) return true;
   if (/^(no|nop|nel)[\s!.?]*$/.test(t)) return true;
+  if (/\bya\s+no\s+(quiero|deseo|pido|me\s+interesa)\b/.test(t)) return true;
+  if (/\bno\s+eso\s+no\s+es\b/.test(t) || /\bno\s+esa\s+no\s+es\b/.test(t)) return true;
   if (
     /\b(no\s+lo\s+quiero|no\s+la\s+quiero|no\s+era\s+eso|no\s+es\s+eso|me\s+equivoqu[eé]|olvidalo|olvídalo|olvidate|olvídate|dejalo|d[eé]jalo|cancelalo|cancelala|canc[eé]lalo|quitalo|qu[ií]talo|sacalo|no\s+agregues|no\s+lo\s+agregues)\b/.test(
       t,
@@ -190,7 +192,7 @@ export function isAbandonPendingSelectionIntent(text: string): boolean {
     return true;
   }
   if (
-    /\b(no\s+quiero\s+(?:eso|este|esta|ese|esa|el\s+producto|el\s+pollo|pollo|continuar|seguir|eso\s+del\s+pollo))\b/.test(
+    /\b(no\s+quiero\s+(?:eso|este|esta|ese|esa|el\s+producto|el\s+pollo|pollo|continuar|seguir|eso\s+del\s+pollo|la\s+sopa\s+peque[nñ]a|sopa\s+peque[nñ]a))\b/.test(
       t,
     )
   ) {

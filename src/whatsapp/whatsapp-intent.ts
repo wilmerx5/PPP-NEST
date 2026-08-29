@@ -187,6 +187,16 @@ export function looksLikeNonAddressCommand(text: string): boolean {
     return true;
   }
   if (/\b(que|qué)\s+(hay|tienen|tienes|ofrecen)\b/.test(t)) return true;
+  // Tamaño / rinde — nunca dirección
+  if (
+    /\b(porci[oó]n|porciones|cantidad|taza|gramos|personas)\b/.test(t) &&
+    /\b(peque[nñ]a|chica|menos|alcanza|rinde|allcanza)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (/\b(tienes|tiene|tienen|hay|venden)\b/.test(t) && /\b(sopa|mondongo|ajiaco|pollo|arroz)\b/.test(t)) {
+    return true;
+  }
 
   return false;
 }

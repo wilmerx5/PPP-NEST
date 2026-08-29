@@ -447,6 +447,31 @@ export class WhatsappOrchestratorService {
       ) {
         return;
       }
+      if (
+        await this.tryHandleServingSizeChange(conv, msg.waId, session, text, products, cfg)
+      ) {
+        return;
+      }
+      if (
+        this.catalogService.isAvailabilityInquiry(text) ||
+        this.catalogService.isProductDescriptionInquiry(text)
+      ) {
+        if (
+          await this.tryHandleProductCompositionQuestion(
+            conv,
+            msg.waId,
+            text,
+            products,
+            cfg,
+            session,
+          )
+        ) {
+          return;
+        }
+        if (await this.tryHandleProductInfoInquiry(conv, msg.waId, text, products, cfg)) {
+          return;
+        }
+      }
       const pa = session.pendingAttribute;
       // Preferir catálogo vivo; si no está, usar snapshot de sesión (evita caer a "código 2")
       const product = pa
@@ -1049,6 +1074,17 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Pedido Rappi / Uber Eats: no se gestiona por este chat
+    if (this.catalogService.isExternalMarketplaceOrderMessage(text)) {
+      await this.reply(
+        conv,
+        msg.waId,
+        'Ese pedido por *Rappi/Uber* no lo podemos cambiar desde este WhatsApp 🙏\n' +
+          'Para cambios de sabor/gaseosa toca el chat del domicilio en la app, o escribe *ASESOR* y te ayudamos por aquí con un pedido nuevo.',
+      );
+      return;
+    }
+
     // Charla fuera del pedido (cuentos, programar, etc.) → no buscar platos
     if (this.catalogService.isOffTopicChitchat(text)) {
       await this.reply(
@@ -1554,6 +1590,14 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (
+      !session.pendingMatch &&
+      !session.pendingMultiOrder &&
+      (await this.tryHandleServingSizeChange(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     // Título embebido / pollo con tamaño / "arroz con pollo"
     let orderQty = this.resolveOrderQuantity(session, text);
     if (orderQty >= 2) {
@@ -1567,7 +1611,10 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isAvailabilityInquiry(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
+      !this.catalogService.isServingSizeChangeIntent(text) &&
+      !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
       !this.looksLikeStandaloneOrderNote(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
@@ -1755,7 +1802,10 @@ export class WhatsappOrchestratorService {
       resolvedMatches.length === 1 &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isAvailabilityInquiry(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
+      !this.catalogService.isServingSizeChangeIntent(text) &&
+      !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
       !this.looksLikeStandaloneOrderNote(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
@@ -4574,9 +4624,21 @@ export class WhatsappOrchestratorService {
     cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
   ): string {
     const allergens = (cfg.localContext?.allergensNote || '').trim();
+    const q = text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const yieldOrWeightAsk =
+      /\b(gramos?|peso|pesa|personas?|alcanza|allcanza|rinde|sirve)\b/.test(q);
 
     if (product) {
-      return this.catalogService.formatProductPriceReply(product);
+      let msg = this.catalogService.formatProductPriceReply(product);
+      if (yieldOrWeightAsk) {
+        msg +=
+          '\n\n_En la carta no tengo gramos ni para cuántas personas rinde exactamente._ ' +
+          '¿Para cuántas personas lo necesitas? Si prefieres, escribe *ASESOR* y te confirma alguien del equipo.';
+      }
+      return msg;
     }
 
     let msg =
@@ -4743,6 +4805,97 @@ export class WhatsappOrchestratorService {
       product,
       { fromPendingAttribute: false },
     );
+  }
+
+  /**
+   * "Quiero una porción más pequeña" con sopa/mondongo en foco:
+   * no es dirección; aclara si hay tamaño chico (ajiaco/menudencias, no mondongo).
+   */
+  private async tryHandleServingSizeChange(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isServingSizeChangeIntent(text)) return false;
+
+    // Dirección fantasma tipo "porción más pequeña"
+    if (session.address && this.looksLikeFoodNotAddress(session.address)) {
+      session = {
+        ...session,
+        address: undefined,
+        addressConfirmed: false,
+        deliveryFeeCalculated: null,
+        deliveryDistanceKm: null,
+        deliveryLat: null,
+        deliveryLng: null,
+        deliveryOutOfCoverage: false,
+      };
+    }
+
+    const product = this.resolveDiscussedProduct(session, text, products);
+    const smallSoup =
+      products.find(
+        (p) =>
+          p.availableNow !== false &&
+          /sopa\s+peque/i.test(p.name),
+      ) || null;
+
+    const talkingMondongo =
+      /\bmondongo\b/i.test(text) ||
+      (product ? /\bmondongo\b/i.test(product.name) : false) ||
+      session.cart.some((c) => /\bmondongo\b/i.test(c.name));
+
+    if (talkingMondongo && smallSoup) {
+      const smallHasMondongo = (smallSoup.attributes || []).some((a) =>
+        a.options.some((o) => /mondongo/i.test(o)),
+      );
+      if (!smallHasMondongo) {
+        session = {
+          ...session,
+          pendingAttribute: undefined,
+          pendingMatch: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        const cartLine = session.cart.length
+          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}`
+          : '';
+        await this.reply(
+          conv,
+          waId,
+          `La *Sopa de Mondongo* solo la manejamos en el tamaño normal` +
+            (product && /\bmondongo\b/i.test(product.name) ? ` (*${product.name}*)` : '') +
+            `.\n` +
+            `La *Sopa pequeña* es de *Ajiaco* o *Menudencias*, no de mondongo.\n\n` +
+            `_¿Dejamos la mondongo o la quitas?_` +
+            cartLine,
+        );
+        return true;
+      }
+    }
+
+    if (smallSoup && (talkingMondongo || /\bsopa\b/i.test(text) || (product && /\bsopa\b/i.test(product.name)))) {
+      session = {
+        ...session,
+        pendingAttribute: undefined,
+        pendingMatch: undefined,
+      };
+      if (await this.handleProductWithVariants(conv, waId, session, smallSoup, text, cfg)) {
+        return true;
+      }
+    }
+
+    const focusName = product?.name || 'ese plato';
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      `Para *${focusName}* no veo un tamaño más pequeño aparte en el menú. ` +
+        `Si buscas *sopa pequeña* (ajiaco/menudencias), dímelo. O escribe *ASESOR*.`,
+    );
+    return true;
   }
 
   private async tryApplyVariantPreferenceToProduct(
@@ -6597,6 +6750,18 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
+    // "porción más pequeña" / "menos cantidad" / "taza chica" ≠ dirección
+    if (
+      /\b(porci[oó]n|porciones|cantidad|taza|gramos|personas)\b/i.test(t) &&
+      /\b(peque[nñ]a|peque[nñ]as|chica|chicas|menos|m[aá]s\s+peque|allcanza|alcanza|rinde)\b/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    if (this.catalogService.isServingSizeChangeIntent(t)) return true;
+    if (this.catalogService.isProductDescriptionInquiry(t)) return true;
+    if (this.catalogService.isAvailabilityInquiry(t)) return true;
     // Pregunta de menú / categoría
     if (
       /\b(que|qué)\b/i.test(t) &&

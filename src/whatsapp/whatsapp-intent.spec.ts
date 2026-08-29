@@ -120,6 +120,8 @@ describe('classifyWhatsappCustomerIntent', () => {
     ).toBe('clear_cart');
     expect(looksLikeAddressOnlyMessage('borra el pedido y vacio el carrito')).toBe(false);
     expect(looksLikeNonAddressCommand('borra el pedido y vacio el carrito')).toBe(true);
+    expect(looksLikeNonAddressCommand('Pero quiero una porcion Mas pequena')).toBe(true);
+    expect(looksLikeNonAddressCommand('Tienes sopa De mondongo')).toBe(true);
   });
 
   it('detecta dirección estricta con landmark', () => {

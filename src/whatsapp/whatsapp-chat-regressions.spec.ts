@@ -311,6 +311,8 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(isAbandonPendingSelectionIntent('Cancela ese pollo')).toBe(true);
       expect(isAbandonPendingSelectionIntent('no quiero pollo')).toBe(true);
       expect(isAbandonPendingSelectionIntent('no quiero eso')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('Ya no quiero sopa pequeña')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('No eso no es')).toBe(true);
       expect(isAbandonPendingSelectionIntent('quiero una limonada')).toBe(false);
     });
 
