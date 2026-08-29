@@ -48,9 +48,12 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bmás\s+papitas?\b/gi, to: 'más papas' },
   { re: /\ben\s+vez\s+de\s+yuca\s+(?:mas|más)\s+papa\b/gi, to: 'sin yuca más papa' },
   { re: /\bsin\s+salsas?,?\s+(?:mas|más)\s+miel\b/gi, to: 'sin salsas más miel' },
+  { re: /\bsin\s+ensladas?\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
+  { re: /\bsin\s+ensalada\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
 ];
 
 const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }> = [
+  { re: /\bensladas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
   { re: /\bquieor\b/gi, to: 'quiero' },
   { re: /\bquiiero\b/gi, to: 'quiero' },
   { re: /\bqiero\b/gi, to: 'quiero' },

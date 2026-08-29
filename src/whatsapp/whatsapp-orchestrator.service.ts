@@ -7836,6 +7836,13 @@ export class WhatsappOrchestratorService {
     /** Texto completo del mensaje (antes de cortar "para …") */
     fullTextForDelivery?: string,
   ): Promise<boolean> {
+    const foodHits =
+      multi.confident.length +
+      multi.ambiguous.length +
+      multi.needsAttributes.length +
+      multi.unresolved.length;
+    if (foodHits === 0) return false;
+
     // Nombre detectado en el mismo mensaje que los platos (ej. "Natalia seria un arroz…")
     const inferredName = multi.possibleCustomerNames?.[0]?.trim();
     if (inferredName && !conv.customerName?.trim()) {

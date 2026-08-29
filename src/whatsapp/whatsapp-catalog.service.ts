@@ -6,6 +6,7 @@ import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { isAddressChangeIntent } from './whatsapp-session-intents';
 import {
   isDeliverySetupWithoutFood,
+  looksLikeAddressOnlyMessage,
   looksLikeDeliveryAddressFragment,
 } from './whatsapp-intent';
 
@@ -1550,6 +1551,20 @@ export class WhatsappCatalogService {
     }
     if (!chunks.length) return null;
 
+    // Evitar "sin ensalada más papa, más papa" (chunk corto contenido en otro)
+    const dedupedChunks = chunks.filter((c, i) => {
+      const n = normalizeText(c);
+      return !chunks.some((other, j) => {
+        if (i === j) return false;
+        const o = normalizeText(other);
+        return o !== n && o.includes(n);
+      });
+    });
+    const noteBody = (dedupedChunks.length ? dedupedChunks : chunks)
+      .map((c) => c.replace(/\bmas\b/gi, 'más'))
+      .join(', ')
+      .slice(0, 180);
+
     // Si solo hay preferencias de guarnición (+ mención a combo/plato ya en carrito) → nota
     const withoutMods = q
       .replace(
@@ -1557,7 +1572,7 @@ export class WhatsappCatalogService {
         ' ',
       )
       .replace(
-        /\b(quiero|dame|ponme|agrega|un|una|unos|unas|el|la|los|las|por|favor|para|del|en|sobre)\b/g,
+        /\b(quiero|dame|ponme|agrega|un|una|unos|unas|el|la|los|las|por|favor|para|del|en|sobre|se|puede|puedo|podria|podría)\b/g,
         ' ',
       )
       .replace(/\s+/g, ' ')
@@ -1568,16 +1583,16 @@ export class WhatsappCatalogService {
       .filter((t) => !this.SIDE_NOTE_TOKENS.has(t) && !this.SIDE_NOTE_TOKENS.has(singularizeEsToken(t)));
 
     // Solo guarniciones / "combo" de contexto → válida como nota
-    if (!mainTokens.length) return chunks.join(', ').slice(0, 180);
+    if (!mainTokens.length) return noteBody;
     if (mainTokens.length === 1 && /^(combo|combos|plato|pedido)$/.test(mainTokens[0])) {
-      return chunks.join(', ').slice(0, 180);
+      return noteBody;
     }
     // Hay un plato principal nombrado + mods → también nota (se asocia al plato)
     if (mainTokens.length >= 1 && mainTokens.length <= 4) {
-      return chunks.join(', ').slice(0, 180);
+      return noteBody;
     }
 
-    return chunks.join(', ').slice(0, 180);
+    return noteBody;
   }
 
   /**
@@ -4054,6 +4069,9 @@ export class WhatsappCatalogService {
 
     let q = this.extractProductSearchQuery(text);
     if (!q) return [];
+    // "…, por favor" no es separador de platos
+    q = q.replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim();
+    if (!q) return [];
     // No partir "sin yuca más papa" por el "más"
     q = q.replace(
       /\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi,
@@ -4094,6 +4112,14 @@ export class WhatsappCatalogService {
 
   private splitSegmentOnArticles(chunk: string): string[] {
     const fixed = fixCommonOrderTypos(chunk);
+    // "para el hermano jesus" = un destino, no partir por el/la
+    if (
+      /^para\s+(el|la|los|las)\s+/i.test(fixed) &&
+      !this.looksLikeClearlyMultiDishOrder(fixed) &&
+      !this.looksLikeFoodPlusDrinkOrder(fixed)
+    ) {
+      return [fixed.trim()].filter((s) => s.length >= 3);
+    }
     const parts = fixed
       .split(/\s+(?=(?:un|una|unos|unas|el|la|los|las)\s+)/i)
       .map((s) => s.trim())
@@ -4147,6 +4173,10 @@ export class WhatsappCatalogService {
     if (isAddressChangeIntent(text)) return null;
     // "Quiero un domicilio para Bosques…" no es multi-plato
     if (isDeliverySetupWithoutFood(text)) return null;
+    // "Para el hermano Jesús" / landmark / calle → dirección, no platos
+    if (looksLikeAddressOnlyMessage(text) || looksLikeDeliveryAddressFragment(text)) {
+      return null;
+    }
 
     let segments = this.splitMultiProductSegments(text);
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
@@ -4492,7 +4522,9 @@ export class WhatsappCatalogService {
       possibleCustomerNames.length > 0
         ? [...new Set(possibleCustomerNames.map((n) => n.replace(/\bser[ií]a\b/gi, '').replace(/\s+/g, ' ').trim()).filter(Boolean))]
         : undefined;
-    if (segments.length >= 2 && (resolvedCount >= 1 || unresolved.length > 0 || (names?.length ?? 0) > 0)) {
+    // Solo nombres / sin platos → no es multi (evita “Entendí varios platos” vacío)
+    if (resolvedCount === 0 && unresolved.length === 0) return null;
+    if (segments.length >= 2 && (resolvedCount >= 1 || unresolved.length > 0)) {
       return {
         segments,
         confident,

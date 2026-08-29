@@ -97,7 +97,7 @@ const ADDRESS_ONLY_RE =
   /^(?:para|direcci[oó]n|domicilio)\b.+/i;
 
 const LANDMARK_KEYWORD_RE =
-  /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i;
+  /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera|hermanos?|padre|santa|san\s+[a-záéíóúñ]+)\b/i;
 
 /** Conjuntos / urbanizaciones por nombre: "Bosques de Castilla", "Tierras del Sol". */
 const NAMED_COMPLEX_RE =
@@ -311,6 +311,19 @@ export function looksLikeAddressOnlyMessage(
 
   if (ADDRESS_ONLY_RE.test(raw)) {
     if (LANDMARK_KEYWORD_RE.test(raw) || STREET_ADDRESS_RE.test(raw)) return true;
+  }
+
+  // "para el hermano jesus" / "para la clínica del norte" — destino con artículo, sin keyword rígido
+  const softPlace = raw
+    .replace(/[,.]?\s*(por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '')
+    .trim();
+  if (
+    /^(?:para)\s+(?:el|la|los|las)\s+\S+/i.test(softPlace) &&
+    !isDeliveryLogisticsFluff(softPlace) &&
+    softPlace.split(/\s+/).length >= 3 &&
+    softPlace.split(/\s+/).length <= 14
+  ) {
+    return true;
   }
 
   if (STREET_ADDRESS_RE.test(raw) && /\d/.test(raw)) return true;

@@ -29,5 +29,6 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('medio broaster medio frito')).toMatch(/mixto/i);
     expect(applyLocalGlossary('coca cola cero')).toMatch(/zero/i);
     expect(applyLocalGlossary('Q cuestan 2 sopas')).toMatch(/que cuestan/i);
+    expect(applyLocalGlossary('sin enslada mas papa')).toMatch(/sin ensalada más papa/i);
   });
 });

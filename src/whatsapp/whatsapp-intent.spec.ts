@@ -132,6 +132,13 @@ describe('classifyWhatsappCustomerIntent', () => {
         cartLength: 2,
       }),
     ).toBe('address');
+    expect(looksLikeAddressOnlyMessage('Para el hermano jesus, por favor')).toBe(true);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'Para el hermano jesus, por favor',
+        cartLength: 1,
+      }),
+    ).toBe('address');
   });
 
   it('detecta conjunto/urbanización por nombre (Bosques de Castilla)', () => {

@@ -425,6 +425,30 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     });
   });
 
+  describe('dirección landmark / hermano Jesús ≠ multi vacío', () => {
+    it('Para el hermano jesus, por favor', () => {
+      const text = applyLocalGlossary('Para el hermano jesus, por favor');
+      expect(looksLikeAddressOnlyMessage(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({
+          text,
+          cartLength: 1,
+          looksLikeAddressOnly: true,
+        }),
+      ).toBe('address');
+      expect(catalog.resolveMultiProductOrder(text, pppMenu)).toBeNull();
+    });
+
+    it('nota sin ensalada más papa sin duplicar', () => {
+      const text = applyLocalGlossary('Se puede sin enslada mas papa?');
+      expect(catalog.looksLikeSideModificationNote(text)).toBe(true);
+      const note = catalog.extractProductModificationNote(text);
+      expect(note).toMatch(/sin ensalada/i);
+      expect(note).toMatch(/más papa/i);
+      expect(note?.toLowerCase().split('más papa').length).toBe(2);
+    });
+  });
+
   describe('C21 — domicilio + dirección ≠ varios platos', () => {
     it.each([
       'Para Un domicikio Para bosques De Castilla',
