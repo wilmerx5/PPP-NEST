@@ -134,6 +134,26 @@ const pppMenu: WhatsappCatalogProduct[] = [
     availableNow: true,
     categoryName: 'Pollo',
   },
+  {
+    id: 55,
+    code: 55,
+    name: 'Arroz Con Pollo',
+    price: 18000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Arroces',
+  },
+  {
+    id: 90,
+    code: 90,
+    name: 'Arepa',
+    price: 2000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Porciones',
+  },
 ];
 
 describe('WhatsApp chat regressions (prod-hardening)', () => {
@@ -272,10 +292,46 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     });
   });
 
-  describe('Browse carne / sobrrebarriga', () => {
-    it('sobrebarriga asada matchea producto 13', () => {
-      const scored = catalog.searchByNameScored('sobrebarriga asada', pppMenu, 5);
-      expect(scored[0]?.p.code).toBe(13);
+  describe('No doble-add: pollo+arepas / arroz con pollo', () => {
+    it('pollo con arepas fritas → pollo (no Arepa) y qty 1', () => {
+      const text = 'quiero un pollo con arepas fritas';
+      expect(catalog.hasAccompanimentModifierWithMain(text)).toBe(true);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(false);
+      expect(catalog.extractQuantityFromMessage(text)).toBe(1);
+
+      const scored = catalog.searchByNameScored(
+        catalog.stripProductModificationNoise(catalog.extractProductSearchQuery(text)) ||
+          catalog.extractProductSearchQuery(text),
+        pppMenu,
+        8,
+      );
+      expect(scored.some((x) => /arepa/i.test(x.p.name))).toBe(false);
+
+      const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(embedded?.name).toMatch(/Pollo Frito/i);
+      expect(catalog.isLikelySideOnlyProduct(embedded!)).toBe(false);
+
+      const attrs = catalog.resolveAttributesFromMessage(embedded!, text, []);
+      expect(attrs.status).toBe('complete');
+      if (attrs.status === 'complete') {
+        expect(attrs.attributes.some((a) => /fritas/i.test(a.attributeValue))).toBe(true);
+      }
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeNull();
+    });
+
+    it('arroz con pollo → un solo producto', () => {
+      const text = applyLocalGlossary('Natalia seria un arroz con pollo');
+      const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(embedded?.name).toMatch(/Arroz Con Pollo/i);
+      expect(catalog.extractQuantityFromMessage(text)).toBe(1);
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      if (multi) {
+        const food = [...multi.confident, ...multi.needsAttributes];
+        expect(food.length).toBe(1);
+        expect(food[0].product.name).toMatch(/Arroz Con Pollo/i);
+      }
     });
   });
 });

@@ -19,6 +19,35 @@ export function factusMoney(n: number): string {
   return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 }
 
+const FACTUS_TZ = 'America/Bogota';
+
+/** YYYY-MM-DD en zona Colombia (nunca usa UTC puro). */
+export function formatYmdInTimeZone(
+  date: Date,
+  timeZone: string = FACTUS_TZ,
+): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Fecha de pedido para Factus order_reference.issue_date.
+ * Clampa a "hoy" en Bogotá si por UTC el día ya avanzó.
+ */
+export function factusOrderIssueDateYmd(
+  d: Date | string | undefined,
+  now: Date = new Date(),
+): string {
+  const date = d ? new Date(d) : now;
+  const bogota = formatYmdInTimeZone(date, FACTUS_TZ);
+  const todayBogota = formatYmdInTimeZone(now, FACTUS_TZ);
+  return bogota > todayBogota ? todayBogota : bogota;
+}
+
 @Injectable()
 export class FactusInvoiceMapper {
   constructor(private readonly config: ConfigService) {}
@@ -96,7 +125,7 @@ export class FactusInvoiceMapper {
       items: allItems,
       order_reference: {
         reference_code: String(order.dailyOrderNumber ?? order.id),
-        issue_date: this.toYmd(order.createdAt),
+        issue_date: factusOrderIssueDateYmd(order.createdAt),
       },
     };
 
@@ -399,13 +428,5 @@ export class FactusInvoiceMapper {
       }
       return sum + line + tax;
     }, 0);
-  }
-
-  private toYmd(d: Date | string | undefined): string {
-    const date = d ? new Date(d) : new Date();
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
   }
 }

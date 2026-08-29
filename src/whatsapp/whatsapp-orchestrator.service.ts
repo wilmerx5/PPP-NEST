@@ -1452,14 +1452,17 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Título embebido en la frase ("… arroz con pollo para calle 10") — prioridad máxima
+    // Título embebido / pollo con tamaño / "arroz con pollo"
     let orderQty = this.resolveOrderQuantity(session, text);
     if (orderQty >= 2) {
       session = this.rememberQuantityHint(session, text, orderQty);
     }
-    const embeddedProduct = this.catalogService.findProductEmbeddedInMessage(text, products);
+    const embeddedProduct =
+      this.catalogService.findProductEmbeddedInMessage(text, products) ||
+      this.catalogService.resolveSizedChickenProduct(text, products);
     if (
       embeddedProduct &&
+      !this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&

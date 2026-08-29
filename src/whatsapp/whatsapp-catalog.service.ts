@@ -1256,8 +1256,8 @@ export class WhatsappCatalogService {
     if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q)) {
       return null;
     }
-    // No forzar si pide combo/bandeja/ejecutivo explícito
-    if (/\b(combo|bandeja|ejecutivo|alitas|arroz chino|taco|hamburguesa|menu)\b/.test(q)) {
+    // No forzar si pide combo/bandeja/ejecutivo/arroz (ej. "arroz con pollo")
+    if (/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa|menu)\b/.test(q)) {
       return null;
     }
 
@@ -1448,6 +1448,35 @@ export class WhatsappCatalogService {
     'verde',
   ]);
 
+  /** Arepa / porción de papa suelta (no el plato principal). */
+  isLikelySideOnlyProduct(product: WhatsappCatalogProduct): boolean {
+    const n = normalizeText(product.name);
+    if (!n) return false;
+    if (this.SIDE_NOTE_TOKENS.has(n) || this.SIDE_NOTE_TOKENS.has(singularizeEsToken(n))) {
+      return true;
+    }
+    if (/^(porci[oó]n|porciones)\s+(de\s+)?(papa|papas|yuca|arepa|arepas|maduro)\b/.test(n)) {
+      return true;
+    }
+    if (/^arepas?\b/.test(n) && n.split(/\s+/).length <= 3) return true;
+    return false;
+  }
+
+  /**
+   * "pollo con arepas fritas" / "sin yuca" → la arepa es atributo/nota, no segundo ítem.
+   */
+  hasAccompanimentModifierWithMain(text: string): boolean {
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
+    if (!q) return false;
+    const hasSide = /\b(con|sin)\s+(?:las?\s+|unos?\s+|una\s+)?(?:arepas?|papas?|yuca|ensalada|maduro)\b/.test(
+      q,
+    );
+    if (!hasSide) return false;
+    return /\b(pollos?|broaster|frito|asado|churrascos?|mojarras?|bandejas?|ejecutivos?|sobrebarriga|pechugas?|alitas?|arroz|sopas?|costillas?)\b/.test(
+      q,
+    );
+  }
+
   /**
    * "sin yuca más papa", "con ensalada", "sin cebolla", "no quiero arepas quiero más papas":
    * preferencias del plato, no ítems nuevos.
@@ -1563,7 +1592,7 @@ export class WhatsappCatalogService {
 
   /**
    * Varios platos en un mensaje: "3 churrascos, 2 mojarras, 1 plátano…".
-   * No confundir con un solo plato + "con queso / sin yuca".
+   * No confundir con un solo plato + "con queso / sin yuca / con arepas fritas".
    * Tampoco "quiero un pollo frito, por favor" (coma de cortesía + estilo ≠ 2 platos).
    */
   looksLikeClearlyMultiDishOrder(text: string): boolean {
@@ -1575,18 +1604,31 @@ export class WhatsappCatalogService {
     const withoutCourtesy = raw
       .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
       .trim();
-    if (!/\s*,\s*|\s+\by\b\s+/i.test(withoutCourtesy)) return false;
+    if (!/\s*,\s*|\s+\by\b\s+/i.test(withoutCourtesy)) {
+      // Sin coma/"y": solo multi si hay 2 cantidades; "pollo con arepas" NO es 2 platos
+      return false;
+    }
 
     let q = normalizeText(withoutCourtesy);
+    // Guarniciones con con/sin: "con arepas fritas", "sin papa" ≠ segundo plato
+    q = q
+      .replace(
+        /\b(con|sin)\s+(?:las?\s+|unos?\s+|una\s+)?(?:arepas?|papas?|yuca|ensalada|maduro|aguacate)(?:\s+\w+){0,2}\b/g,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
     // "pollo frito / asado / broaster" = UN plato, no dos tokens
     q = q
       .replace(/\bpollos?\s+(?:fritos?|asados?|broaster|apana(?:do|da)s?)\b/g, 'pollo')
       .replace(/\bmojarras?\s+(?:fritas?|asadas?|plancha)\b/g, 'mojarra')
-      .replace(/\bpechugas?\s+(?:fritas?|asadas?|plancha|broaster)\b/g, 'pechuga');
+      .replace(/\bpechugas?\s+(?:fritas?|asadas?|plancha|broaster)\b/g, 'pechuga')
+      .replace(/\barroz\s+con\s+pollo\b/g, 'arrozpollo');
 
     // NO incluir frito/asado solos: son estilos de cocción, no platos
+    // arepas solo cuentan si NO quedaron tras strip de "con/sin arepas"
     const dishRe =
-      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?)\b/g;
+      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?|arrozpollo)\b/g;
     const hits = new Set<string>();
     for (const m of q.matchAll(dishRe)) {
       hits.add(singularizeEsToken(m[1]));
@@ -1656,6 +1698,11 @@ export class WhatsappCatalogService {
     for (const p of available) {
       const name = normalizeText(p.name);
       if (name.length < 4) continue;
+
+      // "pollo con arepas fritas" → no embeber el SKU Arepa como segundo plato
+      if (this.hasAccompanimentModifierWithMain(raw) && this.isLikelySideOnlyProduct(p)) {
+        continue;
+      }
 
       // "pollo frito" ≠ "Bandeja / Menú ejecutivo con pollo frito"
       const nameHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) =>
@@ -2201,12 +2248,20 @@ export class WhatsappCatalogService {
     const sizedSoup = this.resolveSizedSoupProduct(text, products);
     if (sizedSoup) return sizedSoup;
 
+    const sizedChicken = this.resolveSizedChickenProduct(text, products);
+    if (sizedChicken) return sizedChicken;
+
     const embedded = this.findAllProductsEmbeddedInMessage(text, products);
     if (!embedded.length) return null;
-    if (embedded.length === 1) return embedded[0];
+    const withoutSides =
+      this.hasAccompanimentModifierWithMain(text)
+        ? embedded.filter((p) => !this.isLikelySideOnlyProduct(p))
+        : embedded;
+    const pool = withoutSides.length ? withoutSides : embedded;
+    if (pool.length === 1) return pool[0];
 
     const q = normalizeText(text);
-    const ranked = embedded
+    const ranked = pool
       .map((p) => {
         const name = normalizeText(p.name);
         const inSegment = q.includes(name);
@@ -2701,6 +2756,8 @@ export class WhatsappCatalogService {
     if (this.isRestaurantLocationInquiry(query)) return [];
     // Guarnición sobre combo ya pedido: no buscar "arepas" como plato nuevo
     if (this.looksLikeSideModificationNote(query)) return [];
+    // "pollo con arepas fritas" → no rankear Arepa por encima del pollo
+    const dropSides = this.hasAccompanimentModifierWithMain(query);
 
     // Pedidos del tipo "link del menú" no deben buscar productos
     if (
@@ -3027,6 +3084,7 @@ export class WhatsappCatalogService {
         return { p, score };
       })
       .filter((x) => x.score >= 18)
+      .filter((x) => !(dropSides && this.isLikelySideOnlyProduct(x.p)))
       // Empate: preferir nombre MÁS CORTO (plato simple > menú largo que lo contiene)
       .sort((a, b) => b.score - a.score || a.p.name.length - b.p.name.length)
       .slice(0, limit);
