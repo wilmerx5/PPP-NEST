@@ -329,6 +329,33 @@ export function looksLikeAddressOnlyMessage(
 }
 
 /**
+ * “Pon una nota en la sobrebarriga ‘WILMER - NO SACAR’” —
+ * instrucción explícita de cocina sobre un ítem ya en el carrito (no pedido nuevo).
+ */
+export function looksLikeExplicitCartItemNote(text: string): boolean {
+  const t = (text || '').trim();
+  if (t.length < 8 || t.length > 280) return false;
+
+  // "pon una nota…", "agrega nota…", "deja/escribe una nota…"
+  if (
+    /\b(pon(?:me|le)?|agrega(?:r|me|le)?|a[nñ]ade|deja|escribe)\s+(?:una?\s+)?notas?\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // "nota en/para la sobrebarriga …" / "nota: …"
+  if (/\bnotas?\s+(?:en|para|de|a)\s+(?:la|el|las|los|este|esta|esa|ese)?\s*\w+/i.test(t)) {
+    return true;
+  }
+  if (/^(nota|notas?)[:\s]/i.test(t)) return true;
+  // Cita con la palabra nota cerca
+  if (/\bnotas?\b/i.test(t) && /["“«][^"”»]{2,160}["”»]/.test(t)) return true;
+
+  return false;
+}
+
+/**
  * Prioridad: humano > vaciar carrito > pago > nota > dirección > precio > menú >
  * checkout > charla > pedido > other.
  */
@@ -344,6 +371,10 @@ export function classifyWhatsappCustomerIntent(
 
   if (hints.isPaymentMention || PAYMENT_RE.test(text)) return 'payment';
 
+  if (hints.cartLength > 0 && looksLikeExplicitCartItemNote(text)) {
+    return 'side_note';
+  }
+
   if (
     hints.cartLength > 0 &&
     (hints.looksLikeSideModificationNote ||
@@ -353,10 +384,12 @@ export function classifyWhatsappCustomerIntent(
   ) {
     if (
       !/\b(dame|ponme|agrega|agregar|pedi|pido|ordenar)\b/i.test(text) ||
-      /\bno\s+quiero\b/i.test(text)
+      /\bno\s+quiero\b/i.test(text) ||
+      looksLikeExplicitCartItemNote(text)
     ) {
       if (
         hints.looksLikeSideModificationNote ||
+        looksLikeExplicitCartItemNote(text) ||
         /\b(para\s+(?:el\s+)?combo|sin\s+|no\s+quiero|quiero\s+(?:mas|más))\b/i.test(text)
       ) {
         return 'side_note';

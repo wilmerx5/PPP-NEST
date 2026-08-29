@@ -13,6 +13,7 @@ import {
   classifyWhatsappCustomerIntent,
   looksLikeAddressOnlyMessage,
   looksLikeNonAddressCommand,
+  looksLikeExplicitCartItemNote,
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
 } from './whatsapp-intent';
@@ -404,6 +405,23 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(scored.some((x) => /costilla/i.test(x.p.name))).toBe(false);
       const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
       expect(embedded).toBeFalsy();
+    });
+  });
+
+  describe('nota explícita en ítem ≠ re-pedir atributos', () => {
+    it('Pon una nota en la sobrebarriga "WILMER - NO SACAR"', () => {
+      const text = 'Pon una nota en la sobrebarriga "WILMER - NO SACAR"';
+      expect(looksLikeExplicitCartItemNote(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({ text, cartLength: 1 }),
+      ).toBe('side_note');
+      // No debe tratar "1" posterior como nuevo add: la intención no es pedido
+      expect(
+        classifyWhatsappCustomerIntent({
+          text: 'quiero otra sobrebarriga',
+          cartLength: 1,
+        }),
+      ).toBe('order_product');
     });
   });
 

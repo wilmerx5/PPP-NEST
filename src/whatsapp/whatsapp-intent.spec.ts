@@ -3,6 +3,7 @@ import {
   intentAllowsAddItems,
   looksLikeAddressOnlyMessage,
   looksLikeClearCartMessage,
+  looksLikeExplicitCartItemNote,
   looksLikeNonAddressCommand,
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
@@ -17,6 +18,17 @@ describe('classifyWhatsappCustomerIntent', () => {
       text: 'para el combo no quiero arepas, quiero mas papas',
       cartLength: 1,
       looksLikeSideModificationNote: true,
+    });
+    expect(intent).toBe('side_note');
+    expect(intentAllowsAddItems(intent)).toBe(false);
+  });
+
+  it('detecta nota explícita en plato del carrito (no add)', () => {
+    const text = 'Pon una nota en la sobrebarriga "WILMER - NO SACAR"';
+    expect(looksLikeExplicitCartItemNote(text)).toBe(true);
+    const intent = classifyWhatsappCustomerIntent({
+      text,
+      cartLength: 1,
     });
     expect(intent).toBe('side_note');
     expect(intentAllowsAddItems(intent)).toBe(false);

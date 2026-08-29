@@ -22,6 +22,7 @@ import {
   intentAllowsAddItems,
   looksLikeAddressOnlyMessage,
   looksLikeClearCartMessage,
+  looksLikeExplicitCartItemNote,
   looksLikeNonAddressCommand,
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
@@ -1314,9 +1315,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          `Dale, lo dejamos en *domicilio* ✅\n\n` +
-            `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.\n` +
-            `_La dirección te la pido cuando confirmemos el pedido._`,
+          this.formatDeliverySetupEmptyCartReply(),
         );
         return;
       }
@@ -1326,7 +1325,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          `Dale, lo dejamos en *domicilio*.\n\n` +
+          `Con gusto, voy a tomar tu pedido a *domicilio*.\n\n` +
             this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)),
         );
         return;
@@ -1336,7 +1335,7 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, msg.waId, this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
         return;
       }
-      await this.reply(conv, msg.waId, 'Dale, lo dejamos en *domicilio*.');
+      await this.reply(conv, msg.waId, 'Con gusto, voy a tomar tu pedido a *domicilio*.');
       return;
     }
 
@@ -1444,9 +1443,10 @@ export class WhatsappOrchestratorService {
       !session.pendingAttribute &&
       this.looksLikeStandaloneOrderNote(text)
     ) {
-      session = this.applyInlineOrderNote(session, text);
+      const applied = this.applyInlineOrderNote(session, text);
+      session = applied.session;
       await this.conversationService.saveSession(conv, session);
-      const ack = this.formatInlineNoteAck(session);
+      const ack = this.formatInlineNoteAck(session, applied.notedItemIndex);
       await this.reply(
         conv,
         msg.waId,
@@ -1544,6 +1544,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
+      !looksLikeExplicitCartItemNote(text) &&
+      !this.looksLikeStandaloneOrderNote(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -1667,6 +1669,8 @@ export class WhatsappOrchestratorService {
       !session.pendingAttribute &&
       !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
+      !looksLikeExplicitCartItemNote(text) &&
+      !this.looksLikeStandaloneOrderNote(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products)
     ) {
@@ -1728,6 +1732,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isGenericProductInquiry(text) &&
+      !looksLikeExplicitCartItemNote(text) &&
+      !this.looksLikeStandaloneOrderNote(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -2002,9 +2008,10 @@ export class WhatsappOrchestratorService {
         delete guarded.actions.addItems;
       }
       // Si no pasó por el handler temprano (p.ej. pendingMatch), aplicar nota aquí
-      session = this.applyInlineOrderNote(session, text);
+      const applied = this.applyInlineOrderNote(session, text);
+      session = applied.session;
       await this.conversationService.saveSession(conv, session);
-      const ack = this.formatInlineNoteAck(session);
+      const ack = this.formatInlineNoteAck(session, applied.notedItemIndex);
       await this.reply(
         conv,
         msg.waId,
@@ -6110,9 +6117,10 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    session = this.applyInlineOrderNote(session, text);
+    const applied = this.applyInlineOrderNote(session, text);
+    session = applied.session;
     await this.conversationService.saveSession(conv, session);
-    const ack = this.formatInlineNoteAck(session);
+    const ack = this.formatInlineNoteAck(session, applied.notedItemIndex);
     await this.reply(
       conv,
       waId,
@@ -6863,6 +6871,14 @@ export class WhatsappOrchestratorService {
     return out.trim() || null;
   }
 
+  private formatDeliverySetupEmptyCartReply(): string {
+    return (
+      `Con gusto, voy a tomar tu pedido a *domicilio* ✅\n\n` +
+      `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.\n` +
+      `_La dirección te la pido cuando confirmemos el pedido._`
+    );
+  }
+
   private buildAskNotesMessage(
     cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
     session?: WhatsappSessionData,
@@ -6883,7 +6899,7 @@ export class WhatsappOrchestratorService {
   private looksLikeStandaloneOrderNote(text: string): boolean {
     const t = text.trim();
     const lower = t.toLowerCase();
-    if (t.length < 4 || t.length > 220) return false;
+    if (t.length < 4 || t.length > 280) return false;
 
     // Dirección completa (Castellón + torre + apto) ≠ nota de cocina
     if (
@@ -6895,10 +6911,13 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    // "Pon una nota en la sobrebarriga …" / "nota: …"
+    if (looksLikeExplicitCartItemNote(t)) return true;
+
     // Guarnición sobre combo/plato ya en carrito: "para el combo no quiero arepas, quiero más papas"
     if (this.catalogService.looksLikeSideModificationNote(t)) return true;
 
-    // Verbos de pedido nuevo (no aplica a "no quiero" / "quiero más papas" de guarnición)
+    // Verbos de pedido nuevo (no aplica a "no quiero" / "quiero más papas" / nota explícita)
     if (
       /\b(dame|ponme|agrega|agregar|pedir|ordenar|confirmar|men[uú]|c[oó]digo)\b/.test(lower)
     ) {
@@ -6924,34 +6943,140 @@ export class WhatsappOrchestratorService {
     return patterns.some((p) => p.test(t));
   }
 
+  /** Extrae texto limpio de nota + pista del plato (“en la sobrebarriga”). */
+  private extractCartItemNotePayload(text: string): {
+    note: string;
+    productHint: string | null;
+  } | null {
+    const t = text.trim();
+    if (!t) return null;
+
+    const quoted = t.match(/["“«]([^"”»]{2,160})["”»]/);
+    if (quoted?.[1]?.trim()) {
+      const before = t
+        .slice(0, quoted.index ?? 0)
+        .replace(
+          /\b(pon(?:me|le)?|agrega(?:r|me|le)?|a[nñ]ade|deja|escribe)\s+(?:una?\s+)?notas?\s*/i,
+          '',
+        )
+        .replace(/^(en|para|de|a)\s+/i, '')
+        .replace(/^(la|el|las|los|este|esta|esa|ese)\s+/i, '')
+        .replace(/[:\-–—]+\s*$/g, '')
+        .trim();
+      return {
+        note: quoted[1].trim(),
+        productHint: before.length >= 3 && before.length <= 48 ? before : null,
+      };
+    }
+
+    const labeled = t.match(
+      /\bnotas?\s+(?:en|para|de|a)\s+(?:la|el|las|los)?\s*([a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]{3,40}?)\s*[:\-–—]\s*(.+)$/i,
+    );
+    if (labeled?.[2]?.trim()) {
+      return {
+        note: labeled[2].trim().replace(/^["“«]|["”»]$/g, ''),
+        productHint: labeled[1].trim(),
+      };
+    }
+
+    const colon = t.match(
+      /^(?:pon(?:me|le)?|agrega(?:r|me|le)?|a[nñ]ade|deja|escribe)\s+(?:una?\s+)?notas?\s*[:\-–—]\s*(.+)$/i,
+    );
+    if (colon?.[1]?.trim()) {
+      return { note: colon[1].trim().replace(/^["“«]|["”»]$/g, ''), productHint: null };
+    }
+
+    if (/^(nota|notas?)[:\s]/i.test(t)) {
+      const rest = t.replace(/^(nota|notas?)[:\s]+/i, '').trim();
+      if (rest.length >= 2) return { note: rest.slice(0, 200), productHint: null };
+    }
+
+    return null;
+  }
+
+  private resolveCartNoteTargetIndex(
+    session: WhatsappSessionData,
+    text: string,
+    productHint?: string | null,
+  ): number {
+    if (!session.cart.length) return -1;
+    const q = `${productHint || ''} ${text}`
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    let best = session.cart.length - 1;
+    let bestScore = 0;
+    for (let i = 0; i < session.cart.length; i++) {
+      const name = (session.cart[i].name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!name) continue;
+      if (q.includes(name) && name.length > bestScore) {
+        best = i;
+        bestScore = name.length + 20;
+        continue;
+      }
+      const tokens = name.split(/\s+/).filter((tok) => tok.length >= 4);
+      const hits = tokens.filter((tok) => q.includes(tok)).length;
+      const score = hits * 12 + (hits ? tokens[0].length : 0);
+      if (score > bestScore) {
+        best = i;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
   /** Nota suelta en mitad del pedido (sin marcar notesCollected). */
-  private applyInlineOrderNote(session: WhatsappSessionData, text: string): WhatsappSessionData {
+  private applyInlineOrderNote(
+    session: WhatsappSessionData,
+    text: string,
+  ): { session: WhatsappSessionData; notedItemIndex: number | null } {
     const t = text.trim();
     const change = this.extractCashChangeFromText(t);
     let next = { ...session };
+    let notedItemIndex: number | null = null;
     if (change) {
       next.cashChangeFor = change;
     }
+
+    const explicit = looksLikeExplicitCartItemNote(t)
+      ? this.extractCartItemNotePayload(t)
+      : null;
+
     const rest = this.stripCashChangePhrases(t);
     const noteText =
+      explicit?.note ||
       this.catalogService.extractProductModificationNote(rest || t) ||
-      (rest && !/^(ninguno|ninguna|no|nada)$/i.test(rest) ? rest : null) ||
-      (!change ? t : null);
+      (rest && !/^(ninguno|ninguna|no|nada)$/i.test(rest) && !looksLikeExplicitCartItemNote(t)
+        ? rest
+        : null) ||
+      (!change && !looksLikeExplicitCartItemNote(t) ? t : null);
+
     if (noteText?.trim()) {
       const cleaned = noteText.trim().slice(0, 200);
-      // Pegar al último ítem del carrito (cocina lo ve en la línea)
       if (next.cart.length) {
         const cart = [...next.cart];
-        const lastIdx = cart.length - 1;
-        const last = { ...cart[lastIdx] };
-        const existing = last.note?.trim();
-        last.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
-        cart[lastIdx] = last;
+        const idx = this.resolveCartNoteTargetIndex(next, t, explicit?.productHint);
+        const targetIdx = idx >= 0 ? idx : cart.length - 1;
+        const item = { ...cart[targetIdx] };
+        const existing = item.note?.trim();
+        item.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
+        cart[targetIdx] = item;
         next = { ...next, cart };
+        notedItemIndex = targetIdx;
       }
       next = this.appendCustomerNote(next, cleaned);
     }
-    return next;
+    return { session: next, notedItemIndex };
   }
 
   private readonly CASH_CHANGE_AMOUNT = String.raw`[\d.,]+(?:\s*(?:mil|k))?`;
@@ -7007,14 +7132,22 @@ export class WhatsappOrchestratorService {
       .trim();
   }
 
-  private formatInlineNoteAck(session: WhatsappSessionData): string {
+  private formatInlineNoteAck(
+    session: WhatsappSessionData,
+    notedItemIndex?: number | null,
+  ): string {
     const parts: string[] = [];
     if (session.cashChangeFor?.trim()) {
       parts.push(`Anotado 💵 _${session.cashChangeFor.trim()}_`);
     }
-    const lastNote = session.cart[session.cart.length - 1]?.note?.trim();
-    if (lastNote) {
-      parts.push(`En *${session.cart[session.cart.length - 1].name}*: 📝 _${lastNote}_`);
+    const idx =
+      notedItemIndex != null && notedItemIndex >= 0
+        ? notedItemIndex
+        : session.cart.length - 1;
+    const notedItem = idx >= 0 ? session.cart[idx] : undefined;
+    const lastNote = notedItem?.note?.trim();
+    if (lastNote && notedItem) {
+      parts.push(`En *${notedItem.name}*: 📝 _${lastNote}_`);
     } else if (session.customerNotes?.trim()) {
       parts.push(`Anotado 📝 _${session.customerNotes.trim()}_`);
     }
@@ -8593,13 +8726,7 @@ export class WhatsappOrchestratorService {
     }
 
     await this.conversationService.saveSession(conv, session, 'building_cart');
-    await this.reply(
-      conv,
-      waId,
-      `Dale, lo dejamos en *domicilio* ✅\n\n` +
-        `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.\n` +
-        `_La dirección te la pido cuando confirmemos el pedido._`,
-    );
+    await this.reply(conv, waId, this.formatDeliverySetupEmptyCartReply());
     return true;
   }
 
