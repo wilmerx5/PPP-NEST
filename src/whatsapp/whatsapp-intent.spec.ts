@@ -4,7 +4,11 @@ import {
   looksLikeAddressOnlyMessage,
   looksLikeClearCartMessage,
   looksLikeNonAddressCommand,
+  isDeliverySetupWithoutFood,
+  extractDeliverySetupAddress,
+  looksLikeDeliveryAddressFragment,
 } from './whatsapp-intent';
+import { applyLocalGlossary } from './whatsapp-local-glossary';
 
 describe('classifyWhatsappCustomerIntent', () => {
   it('detecta nota de guarnición con carrito', () => {
@@ -144,5 +148,34 @@ describe('classifyWhatsappCustomerIntent', () => {
       }),
     ).toBe('side_note');
     expect(looksLikeAddressOnlyMessage('para el combo no quiero arepas')).toBe(false);
+  });
+});
+
+describe('delivery setup sin platos (anti multi-tonto)', () => {
+  it.each([
+    'Para Un domicikio Para bosques De Castilla',
+    'Quiero Un domicilio, Para bosques De Castilla',
+    'Quiero Un domicilio Para bosques De Castilla',
+    'para un domicilio',
+  ])('detecta setup: %s', (raw) => {
+    const text = applyLocalGlossary(raw);
+    expect(isDeliverySetupWithoutFood(text)).toBe(true);
+  });
+
+  it('no confunde con pedido de comida', () => {
+    expect(isDeliverySetupWithoutFood('quiero un pollo frito a domicilio')).toBe(false);
+    expect(isDeliverySetupWithoutFood('medio pollo para Tabaku')).toBe(false);
+  });
+
+  it('extrae Bosques de Castilla', () => {
+    const a = extractDeliverySetupAddress(
+      applyLocalGlossary('Para Un domicikio Para bosques De Castilla'),
+    );
+    const b = extractDeliverySetupAddress(
+      applyLocalGlossary('Quiero Un domicilio, Para bosques De Castilla'),
+    );
+    expect(a).toMatch(/bosques/i);
+    expect(b).toMatch(/bosques/i);
+    expect(looksLikeDeliveryAddressFragment('bosques De Castilla')).toBe(true);
   });
 });

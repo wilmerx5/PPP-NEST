@@ -1,3 +1,5 @@
+import { fixFuzzyDomicilioTypos } from './whatsapp-message-classify';
+
 /**
  * Glosario local PPP: typos, aliases y frases del restaurante.
  * Se aplica ANTES del matching para que la IA y el catálogo vean el mismo texto.
@@ -115,6 +117,11 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bpala\s+la\b/gi, to: 'para la' },
   { re: /\bpala\s+los\b/gi, to: 'para los' },
   { re: /\bpala\s+las\b/gi, to: 'para las' },
+  // Typos domicilio (prod: "domicikio" → multi-plato falso)
+  { re: /\bdomicikios?\b/gi, to: 'domicilio' },
+  { re: /\bdomiclios?\b/gi, to: 'domicilio' },
+  { re: /\bdomisilios?\b/gi, to: 'domicilio' },
+  { re: /\bdmicilios?\b/gi, to: 'domicilio' },
 ];
 
 /**
@@ -131,6 +138,9 @@ export function applyLocalGlossary(text: string): string {
   for (const { re, to } of WORD_REWRITES) {
     out = typeof to === 'function' ? out.replace(re, to) : out.replace(re, to);
   }
+
+  // Fuzzy: domickio / domicikio / etc. → domicilio (edit distance ≤ 2)
+  out = fixFuzzyDomicilioTypos(out);
 
   return out.replace(/\s+/g, ' ').trim();
 }

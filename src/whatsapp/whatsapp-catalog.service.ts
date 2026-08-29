@@ -4,6 +4,10 @@ import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { isAddressChangeIntent } from './whatsapp-session-intents';
+import {
+  isDeliverySetupWithoutFood,
+  looksLikeDeliveryAddressFragment,
+} from './whatsapp-intent';
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
 
@@ -2425,7 +2429,25 @@ export class WhatsappCatalogService {
     ) {
       return true;
     }
+    // Misma fuente que intent: Bosques de Castilla, Tabaku, Nuevo Sol…
+    if (looksLikeDeliveryAddressFragment(tail)) return true;
     return t.length >= 6 && /\d/.test(t);
+  }
+
+  /** Segmento que es logística (domicilio / dirección), no plato faltante. */
+  private isLogisticsOnlySegment(segment: string): boolean {
+    const raw = (segment || '').trim();
+    if (!raw) return true;
+    const n = normalizeText(raw);
+    if (
+      /^(un|una|unos|unas|el|la|los|las|para|por|favor|porfa)?\s*(domicilios?|delivery)\s*$/.test(
+        n,
+      )
+    ) {
+      return true;
+    }
+    if (/^(para\s+)?(un\s+|una\s+)?domicilios?$/.test(n)) return true;
+    return looksLikeDeliveryAddressFragment(raw);
   }
 
   dedupeProductsById(products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] {
@@ -4109,6 +4131,8 @@ export class WhatsappCatalogService {
     if (this.isProductDescriptionInquiry(text)) return null;
     // "Cambia la dirección a…" no es pedido multi
     if (isAddressChangeIntent(text)) return null;
+    // "Quiero un domicilio para Bosques…" no es multi-plato
+    if (isDeliverySetupWithoutFood(text)) return null;
 
     let segments = this.splitMultiProductSegments(text);
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
@@ -4289,9 +4313,10 @@ export class WhatsappCatalogService {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else if (
           ORDER_INTENT_ONLY.has(normalizeText(segment)) ||
-          /^(un|una|unos|unas|el|la|los|las)$/i.test(segment.trim())
+          /^(un|una|unos|unas|el|la|los|las)$/i.test(segment.trim()) ||
+          this.isLogisticsOnlySegment(segment)
         ) {
-          // muletilla de pedido, no es plato faltante
+          // muletilla de pedido / domicilio / dirección — no es plato faltante
         } else {
           unresolved.push(segment);
         }
@@ -4438,12 +4463,12 @@ export class WhatsappCatalogService {
           } else confident.push(match);
         } else if (this.looksLikePersonNameSegment(segment)) {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
-        } else {
+        } else if (!this.isLogisticsOnlySegment(segment)) {
           unresolved.push(segment);
         }
       } else if (this.looksLikePersonNameSegment(segment)) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
-      } else {
+      } else if (!this.isLogisticsOnlySegment(segment)) {
         unresolved.push(segment);
       }
     }

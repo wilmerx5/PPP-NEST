@@ -23,10 +23,16 @@ import {
   looksLikeAddressOnlyMessage,
   looksLikeClearCartMessage,
   looksLikeNonAddressCommand,
+  isDeliverySetupWithoutFood,
+  extractDeliverySetupAddress,
   PPP_ZONE_LANDMARK_RE,
   type WhatsappMessageIntent,
 } from './whatsapp-intent';
 import { applyLocalGlossary, buildLocalGlossaryPromptBlock } from './whatsapp-local-glossary';
+import {
+  needsAiMessageClassify,
+  type WhatsappClassifyResult,
+} from './whatsapp-message-classify';
 import {
   isAbandonPendingSelectionIntent,
   isAddressChangeIntent,
@@ -1252,6 +1258,40 @@ export class WhatsappOrchestratorService {
       }
       return;
     }
+
+    // "Quiero un domicilio / para Bosques de Castilla" (sin platos) — antes de multi/menú
+    if (
+      await this.tryHandleDeliverySetup(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        text,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
+    // IA barata: clasifica typos/logística ambiguos ANTES del multi (valida backend)
+    {
+      const classified = await this.tryApplyAiClassify(
+        conv,
+        msg.waId,
+        session,
+        text,
+        originalText,
+        cfg,
+      );
+      if (classified.handled) return;
+      if (classified.text && classified.text !== text) {
+        text = classified.text;
+      }
+      if (classified.session) {
+        session = classified.session;
+      }
+    }
+
     if (this.isDeliveryIntent(text) && !this.looksLikeAddress(text)) {
       session = {
         ...session,
@@ -8406,6 +8446,141 @@ export class WhatsappOrchestratorService {
    * C18 — “¿tienen domicilios para Cra 81A…?”: cotiza cobertura/fee sin
    * mutar el carrito ni confirmar dirección del pedido en curso.
    */
+  /**
+   * C21 — Arranque logístico sin platos: “para un domicilio para Bosques…”
+   * No debe caer en “Entendí varios platos”.
+   */
+  private async tryHandleDeliverySetup(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    originalText: string,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+    addressOverride?: string | null,
+  ): Promise<boolean> {
+    const source = (originalText || text || '').trim();
+    const probe = (text || source).trim();
+    const forced = (addressOverride || '').trim();
+    if (
+      !forced &&
+      !isDeliverySetupWithoutFood(probe) &&
+      !isDeliverySetupWithoutFood(source)
+    ) {
+      return false;
+    }
+
+    const addr =
+      forced ||
+      extractDeliverySetupAddress(probe) ||
+      extractDeliverySetupAddress(source) ||
+      this.extractDeliveryTail(source) ||
+      this.extractDeliveryTail(probe);
+
+    session = {
+      ...session,
+      orderType: 'delivery',
+      fulfillmentChosen: true,
+    };
+    if (/^recoge en el local/i.test(session.address || '')) {
+      session = { ...session, address: undefined, addressConfirmed: false };
+    }
+
+    if (addr) {
+      session = this.withDeliveryAddress(session, addr);
+      const fee = await this.recalculateDeliveryFee(session, cfg);
+      session = fee.session;
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      if (fee.blocked) {
+        await this.reply(
+          conv,
+          waId,
+          `${fee.blocked}\n\nSi tienes otra dirección más cerca, pégamela. Si no, dime qué quieres pedir.`,
+        );
+        return true;
+      }
+      const feeLine = fee.notice ? `\n${fee.notice}` : '';
+      await this.reply(
+        conv,
+        waId,
+        `Dale, domicilio a *${session.address?.trim() || addr}* ✅${feeLine}\n\n` +
+          `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.`,
+      );
+      return true;
+    }
+
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      `Dale, lo dejamos en *domicilio* ✅\n\n` +
+        `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.\n` +
+        `_La dirección te la pido cuando confirmemos el pedido._`,
+    );
+    return true;
+  }
+
+  /**
+   * Clasificador IA temprano (sin menú completo): typos + logística.
+   * Solo en mensajes ambiguos (`needsAiMessageClassify`). Backend valida.
+   */
+  private async tryApplyAiClassify(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    originalText: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<{ handled: boolean; text?: string; session?: WhatsappSessionData }> {
+    if (!needsAiMessageClassify(text) && !needsAiMessageClassify(originalText)) {
+      return { handled: false };
+    }
+
+    const recent = await this.conversationService.getRecentMessageTexts(conv.id, 4);
+    let result: WhatsappClassifyResult | null = null;
+    try {
+      result = await this.aiService.classifyMessage({
+        userMessage: text,
+        cartLength: session.cart.length,
+        recentMessages: recent,
+      });
+    } catch (err) {
+      this.logger.warn(`tryApplyAiClassify: ${err}`);
+      return { handled: false };
+    }
+    if (!result || result.confidence < 0.45) return { handled: false };
+
+    const nextText = applyLocalGlossary(result.normalizedText || text);
+
+    if (
+      (result.intent === 'delivery_setup' ||
+        (result.intent === 'address' && !result.hasFoodItems && result.address)) &&
+      !result.hasFoodItems
+    ) {
+      const ok = await this.tryHandleDeliverySetup(
+        conv,
+        waId,
+        session,
+        nextText,
+        nextText,
+        cfg,
+        result.address,
+      );
+      if (ok) return { handled: true };
+    }
+
+    let nextSession = session;
+    if (result.address && (result.intent === 'order' || result.hasFoodItems)) {
+      nextSession = this.withDeliveryAddress(nextSession, result.address);
+      await this.conversationService.saveSession(conv, nextSession);
+    }
+
+    if (nextText !== text) {
+      return { handled: false, text: nextText, session: nextSession };
+    }
+    return { handled: false, session: nextSession !== session ? nextSession : undefined };
+  }
+
   private async tryHandleCoverageInquiry(
     conv: WhatsappConversation,
     waId: string,

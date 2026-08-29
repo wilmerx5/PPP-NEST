@@ -38,6 +38,7 @@ Regla de equipo: chat malo en prod → fila aquí **y** caso en `whatsapp-chat-r
 | C18 | Cobertura por dirección | “¿domicilios para Cra 81A…?” | ✅ tryHandleCoverageInquiry (probe fee) |
 | C19 | Dirección guardada “acá” | staff propone dir previa | ✅ lastDeliveryAddress + sí/acá |
 | C20 | Add-on tardío | “alcanzo una ensalada?” | ✅ glosario alcanzo→quiero |
+| C21 | Domicilio + dirección (sin plato) | “para un domicikio para Bosques…” | ✅ delivery setup + fuzzy + classify IA |
 
 ## Glosario (ver `whatsapp-local-glossary.ts`)
 

@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import type { AiTurnResult } from './types/whatsapp-session.types';
 import { WHATSAPP_AI_JSON_SCHEMA } from './whatsapp-business-rules';
+import {
+  parseClassifyResult,
+  type WhatsappClassifyResult,
+} from './whatsapp-message-classify';
 
 export type WhatsappImageAnalysis = {
   kind: 'order' | 'payment_proof' | 'other' | 'unclear';
@@ -18,6 +22,86 @@ export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
 
   constructor(private readonly settingsService: WhatsappSettingsService) {}
+
+  /**
+   * Clasificador barato (sin menú completo): intención + typos + dirección.
+   * El orquestador valida y ejecuta; esto NO agrega productos.
+   */
+  async classifyMessage(input: {
+    userMessage: string;
+    cartLength: number;
+    recentMessages?: string[];
+  }): Promise<WhatsappClassifyResult | null> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    if (!cfg.openaiApiKey) return null;
+
+    const system = `Eres clasificador de mensajes WhatsApp de un restaurante (Bogotá).
+NO tomas pedidos ni inventas platos. Solo clasifica el ÚLTIMO mensaje del cliente.
+
+Intents:
+- delivery_setup: quiere DOMICILIO (entrega) y/o da dirección, SIN pedir plato concreto. Ej: "para un domickio para Bosques de Castilla", "quiero un domicilio".
+- address: solo dirección / conjunto / torre-apto (sin "quiero X plato").
+- order: pide comida/bebida (aunque también traiga dirección).
+- question: precio, menú, cobertura, puntos, horarios.
+- chitchat: saludo/gracias/charla.
+- other: resto.
+
+Corrige typos obvios en normalizedText (domickio/domicikio→domicilio, castlla→castilla).
+Si hay dirección (Bosques de Castilla, Tabaku, Calle…), llénala en address.
+hasFoodItems=true solo si nombra comida/bebida.
+
+Responde SOLO JSON:
+{
+  "intent": "delivery_setup"|"address"|"order"|"question"|"chitchat"|"other",
+  "normalizedText": "texto corregido",
+  "address": "dirección o null",
+  "hasFoodItems": false,
+  "confidence": 0.0
+}`;
+
+    const history = this.toChatMessages(input.recentMessages || []).slice(-4);
+    const model = cfg.openaiModel || 'gpt-4o-mini';
+    const body: Record<string, unknown> = {
+      model,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        ...history,
+        {
+          role: 'user',
+          content: `cartLength=${input.cartLength}\nmensaje: ${input.userMessage}`,
+        },
+      ],
+      max_tokens: 220,
+    };
+    if (!/^gpt-5/i.test(model)) {
+      body.temperature = 0;
+    }
+
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cfg.openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        this.logger.warn(`classifyMessage OpenAI ${res.status}: ${err.slice(0, 200)}`);
+        return null;
+      }
+      const data = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const content = data.choices?.[0]?.message?.content || '{}';
+      return parseClassifyResult(JSON.parse(content), input.userMessage);
+    } catch (err) {
+      this.logger.warn(`classifyMessage failed: ${err}`);
+      return null;
+    }
+  }
 
   async generateTurn(input: {
     userMessage: string;

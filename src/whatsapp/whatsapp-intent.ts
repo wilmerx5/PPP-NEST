@@ -144,6 +144,94 @@ export type AddressOnlyHints = {
 };
 
 /**
+ * Fragmento que parece dirección (landmark, calle, zona PPP).
+ * Usar al cortar colas "para …" y al filtrar segmentos multi falsos.
+ */
+export function looksLikeDeliveryAddressFragment(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 4) return false;
+  if (looksLikeNonAddressCommand(raw)) return false;
+
+  const stripped = raw
+    .replace(/^(?:para|direcci[oó]n|domicilio)\s*[:\-]?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const probe = stripped.length >= 4 ? stripped : raw;
+
+  if (looksLikeAddressOnlyMessage(raw) || looksLikeAddressOnlyMessage(probe)) return true;
+  if (NAMED_COMPLEX_RE.test(raw) || NAMED_COMPLEX_RE.test(probe)) return true;
+  if (PPP_ZONE_LANDMARK_RE.test(raw) || PPP_ZONE_LANDMARK_RE.test(probe)) return true;
+  if (STREET_ADDRESS_RE.test(raw) || STREET_ADDRESS_RE.test(probe)) return true;
+  if (LANDMARK_KEYWORD_RE.test(raw) && raw.length >= 6) return true;
+  return false;
+}
+
+/**
+ * “Quiero un domicilio” / “para un domicilio para Bosques de Castilla”
+ * sin platos → logística, no menú.
+ */
+export function isDeliverySetupWithoutFood(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 8) return false;
+
+  if (
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|chino|paisa|maduro)\b/i.test(
+      raw,
+    )
+  ) {
+    return false;
+  }
+
+  if (!/\b(domicilios?|delivery)\b/i.test(raw)) return false;
+
+  // Cobertura (“¿tienen domicilios para…?”) la maneja C18
+  if (
+    /\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
+    /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/** Extrae dirección de un mensaje de setup de domicilio (sin plato). */
+export function extractDeliverySetupAddress(text: string): string | null {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+
+  const patterns = [
+    /\b(?:domicilios?|delivery)\b[\s,]*(?:para|a|en)\s+(.+)$/i,
+    /\bpara\s+(?:un\s+|una\s+)?domicilio\b[\s,]*(?:para\s+)?(.+)$/i,
+    /\b(?:quiero|dame|necesito)\s+(?:un\s+|una\s+)?domicilio\b[\s,]*(?:para\s+)?(.+)$/i,
+  ];
+  for (const re of patterns) {
+    const m = raw.match(re);
+    if (!m?.[1]) continue;
+    let addr = m[1]
+      .replace(/^(?:para|a|en)\s+/i, '')
+      .replace(/\b(por\s+favor|porfa|gracias)\b/gi, '')
+      .replace(/[?!.]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (/^domicilios?$/i.test(addr)) continue;
+    if (addr.length >= 6 && looksLikeDeliveryAddressFragment(addr)) return addr;
+    if (addr.length >= 8) return addr;
+  }
+
+  const rest = raw
+    .replace(/\b(quiero|dame|necesito|pido|pedi|por\s+favor|porfa)\b/gi, ' ')
+    .replace(/\b(?:para\s+)?(?:un\s+|una\s+)?domicilios?\b/gi, ' ')
+    .replace(/\bdelivery\b/gi, ' ')
+    .replace(/\bpara\b/gi, ' ')
+    .replace(/[,;:]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (rest.length >= 6 && looksLikeDeliveryAddressFragment(rest)) return rest;
+  return null;
+}
+
+/**
  * ¿El mensaje es SOLO domicilio? Reglas estrictas: prefijo para/dirección,
  * landmark conocido o calle con número. NO acepta frases genéricas de 2–7 palabras.
  */

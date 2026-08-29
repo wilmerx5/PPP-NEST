@@ -404,6 +404,17 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     });
   });
 
+  describe('C21 — domicilio + dirección ≠ varios platos', () => {
+    it.each([
+      'Para Un domicikio Para bosques De Castilla',
+      'Quiero Un domicilio, Para bosques De Castilla',
+    ])('no entra a multi: %s', (raw) => {
+      const text = applyLocalGlossary(raw);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(false);
+      expect(catalog.resolveMultiProductOrder(text, pppMenu)).toBeNull();
+    });
+  });
+
   describe('C09 / C07 — arroz chino variantes + explicar combo', () => {
     it('arroz chino agrupa presentaciones (caja / medio pollo / costillas / combo)', () => {
       expect(catalog.getProductNameBase('Arroz Chino Caja Con Papa Francesa')).toBe(

@@ -8,6 +8,8 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('par ale conjunto')).toMatch(/para el conjunto/i);
     expect(applyLocalGlossary('ajico')).toMatch(/ajiaco/i);
     expect(applyLocalGlossary('quiero unpollofrito')).toMatch(/un pollo frito/i);
+    expect(applyLocalGlossary('domicikio')).toMatch(/^domicilio$/i);
+    expect(applyLocalGlossary('Para Un domicikio Para bosques')).toMatch(/domicilio/i);
   });
 
   it('normaliza tamaño de sopa / ajiaco chico', () => {
