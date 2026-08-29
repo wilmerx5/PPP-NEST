@@ -13,6 +13,8 @@ import {
   classifyWhatsappCustomerIntent,
   looksLikeAddressOnlyMessage,
   looksLikeNonAddressCommand,
+  isDeliverySetupWithoutFood,
+  extractDeliverySetupAddress,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
@@ -436,6 +438,25 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         ).toBe('menu_question');
       },
     );
+  });
+
+  describe('Castellón / domicilio por favor', () => {
+    it('Castellón + torre + apto es dirección', () => {
+      const text = 'Castellón de los condes torre 3 apto 112';
+      expect(looksLikeAddressOnlyMessage(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({ text, cartLength: 1 }),
+      ).toBe('address');
+    });
+
+    it('setup domicilio sin dirección inventada', () => {
+      expect(isDeliverySetupWithoutFood('Buenas noches para un domicilio por favor')).toBe(
+        true,
+      );
+      expect(
+        extractDeliverySetupAddress('Buenas noches para un domicilio por favor'),
+      ).toBeNull();
+    });
   });
 
   describe('C09 / C07 — arroz chino variantes + explicar combo', () => {

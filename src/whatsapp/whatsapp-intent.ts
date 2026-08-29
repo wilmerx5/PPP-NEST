@@ -113,6 +113,31 @@ export const PPP_ZONE_LANDMARK_RE =
 const STREET_ADDRESS_RE =
   /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|barrio|habitaci[oó]n|apto|apartamento|torre|porter[ií]a|int\.?|interior)\b/i;
 
+/**
+ * Cola falsa de “para un domicilio por favor” — no es dirección real.
+ */
+export function isDeliveryLogisticsFluff(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return true;
+  if (/^(un |una )?(domicilios?)( por favor| porfa)?$/.test(t)) return true;
+  if (/^(por favor|porfa|gracias)$/.test(t)) return true;
+  if (/^(buenas? (noches|tardes|dias)|hola|buenas)$/.test(t)) return true;
+  if (
+    /^(para )?(un |una )?domicilio\b/.test(t) &&
+    t.split(' ').length <= 5 &&
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
 export function looksLikeNonAddressCommand(text: string): boolean {
   if (looksLikeClearCartMessage(text)) return true;
@@ -163,6 +188,7 @@ export function looksLikeDeliveryAddressFragment(text: string): boolean {
   const raw = (text || '').trim();
   if (raw.length < 4) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
+  if (isDeliveryLogisticsFluff(raw)) return false;
 
   const stripped = raw
     .replace(/^(?:para|direcci[oó]n|domicilio)\s*[:\-]?\s*/i, '')
@@ -226,12 +252,14 @@ export function extractDeliverySetupAddress(text: string): string | null {
       .replace(/[?!.]+$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    if (/^domicilios?$/i.test(addr)) continue;
+    if (!addr || /^domicilios?$/i.test(addr) || isDeliveryLogisticsFluff(addr)) continue;
     if (addr.length >= 6 && looksLikeDeliveryAddressFragment(addr)) return addr;
-    if (addr.length >= 8) return addr;
+    // Solo aceptar colas largas si parecen dirección real (no "por favor")
+    if (addr.length >= 8 && looksLikeAddressOnlyMessage(addr)) return addr;
   }
 
   const rest = raw
+    .replace(/\b(buenas?\s*(noches|tardes|dias)?|hola)\b/gi, ' ')
     .replace(/\b(quiero|dame|necesito|pido|pedi|por\s+favor|porfa)\b/gi, ' ')
     .replace(/\b(?:para\s+)?(?:un\s+|una\s+)?domicilios?\b/gi, ' ')
     .replace(/\bdelivery\b/gi, ' ')
@@ -239,7 +267,13 @@ export function extractDeliverySetupAddress(text: string): string | null {
     .replace(/[,;:]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  if (rest.length >= 6 && looksLikeDeliveryAddressFragment(rest)) return rest;
+  if (
+    rest.length >= 6 &&
+    !isDeliveryLogisticsFluff(rest) &&
+    looksLikeDeliveryAddressFragment(rest)
+  ) {
+    return rest;
+  }
   return null;
 }
 

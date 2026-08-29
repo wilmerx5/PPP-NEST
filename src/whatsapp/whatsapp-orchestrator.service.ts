@@ -25,6 +25,7 @@ import {
   looksLikeNonAddressCommand,
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
+  isDeliveryLogisticsFluff,
   PPP_ZONE_LANDMARK_RE,
   type WhatsappMessageIntent,
 } from './whatsapp-intent';
@@ -6423,6 +6424,7 @@ export class WhatsappOrchestratorService {
     if (this.isConfirmKeyword(t) || this.isGreetingKeyword(t)) return false;
     if (this.isPickupIntent(t)) return false;
     if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
+    if (isDeliveryLogisticsFluff(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
     if (/\b(minutos?|mins?|horas?)\b/i.test(t) && !/\b(habitaci[oó]n|apto|apartamento|calle|carrera|barrio|torre|conjunto|hospital)\b/i.test(t)) {
       return false;
@@ -6558,6 +6560,18 @@ export class WhatsappOrchestratorService {
       .replace(/\bpala\s+la\b/gi, 'para la');
     if (!raw) return null;
 
+    // Mensaje completo ya es dirección (conjunto + torre/apto) → no cortar a "apto 112"
+    if (
+      looksLikeAddressOnlyMessage(raw) ||
+      (PPP_ZONE_LANDMARK_RE.test(raw) &&
+        /\b(torre|apto|apartamento|int\.?|interior|bloque)\b/i.test(raw))
+    ) {
+      const full = this.normalizeDeliveryAddress(raw);
+      if (full && !isDeliveryLogisticsFluff(full) && this.isPlausibleDeliveryAddress(full)) {
+        return full;
+      }
+    }
+
     const candidates: string[] = [];
 
     // Cláusulas típicas al final (audio/Whisper): ", para hospital de kennedy"
@@ -6598,6 +6612,9 @@ export class WhatsappOrchestratorService {
       if (m?.[0]) candidates.push(m[1] || m[0]);
     }
 
+    // Preferir candidatos más largos / con landmark (evitar quedarse solo con "apto 112")
+    candidates.sort((a, b) => b.trim().length - a.trim().length);
+
     const orderLike =
       this.catalogService.looksLikeMultiItemOrderMessage(raw) ||
       this.catalogService.looksLikeFoodPlusDrinkOrder(raw) ||
@@ -6607,6 +6624,7 @@ export class WhatsappOrchestratorService {
       const addr = this.normalizeDeliveryAddress(cand);
       if (!addr || addr.length < 3) continue;
       if (this.isPickupOnlyDeliveryClause(addr)) continue;
+      if (isDeliveryLogisticsFluff(addr)) continue;
       if (this.looksLikeFoodNotAddress(addr)) continue;
       // En pedido compuesto, aceptar landmarks / nombres sueltos aunque no tengan #
       if (orderLike) {
@@ -6632,6 +6650,7 @@ export class WhatsappOrchestratorService {
   /** "para llevar / para el local" no es dirección. */
   private isPickupOnlyDeliveryClause(text: string): boolean {
     const t = text.trim().toLowerCase();
+    if (isDeliveryLogisticsFluff(t)) return true;
     if (/^(llevar|recoger|el\s+local|el\s+restaurante|all[ií]|allá)\b/i.test(t)) return true;
     if (/^llevar\b.{0,20}$/i.test(t)) return true;
     return false;
@@ -6860,6 +6879,16 @@ export class WhatsappOrchestratorService {
     const lower = t.toLowerCase();
     if (t.length < 4 || t.length > 220) return false;
 
+    // Dirección completa (Castellón + torre + apto) ≠ nota de cocina
+    if (
+      looksLikeAddressOnlyMessage(t) ||
+      this.isAddressOnlyCustomerMessage(t) ||
+      (PPP_ZONE_LANDMARK_RE.test(t) &&
+        /\b(torre|apto|apartamento|int\.?|interior|bloque)\b/i.test(t))
+    ) {
+      return false;
+    }
+
     // Guarnición sobre combo/plato ya en carrito: "para el combo no quiero arepas, quiero más papas"
     if (this.catalogService.looksLikeSideModificationNote(t)) return true;
 
@@ -6879,7 +6908,8 @@ export class WhatsappOrchestratorService {
     const patterns = [
       /^(sin|no\s+quiero)\s+/i,
       /\b(platos?\s*y\s*cubiertos?|solo\s*cubiertos?|con\s*cubiertos?)\b/i,
-      /\b(timbre|apto|apartamento|torre|piso|intercomunicador|porter[ií]a|rejas?)\b/i,
+      // Solo nota corta de entrega (“portería”, “timbre”), no dirección con torre+apto+conjunto
+      /^(timbre|porter[ií]a|rejas?|intercomunicador)[\s!.]*$/i,
       /\b(cambio\s+de|billete|paga\s+con|vueltas?|devuelta|traer?\s+vueltas?|trae\s+vueltas?|traeme\s+vueltas?)\b/i,
       /\bsin\s+(cebolla|aj[ií]|sal|picante|huevo|queso|tomate|arepa|papas?|yuca)\b/i,
       /\b(mas|más)\s+(papas?|yuca|arepa|ensalada)\b/i,

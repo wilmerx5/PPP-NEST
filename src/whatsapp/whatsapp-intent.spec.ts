@@ -7,6 +7,7 @@ import {
   isDeliverySetupWithoutFood,
   extractDeliverySetupAddress,
   looksLikeDeliveryAddressFragment,
+  isDeliveryLogisticsFluff,
 } from './whatsapp-intent';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 
@@ -177,5 +178,13 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(a).toMatch(/bosques/i);
     expect(b).toMatch(/bosques/i);
     expect(looksLikeDeliveryAddressFragment('bosques De Castilla')).toBe(true);
+  });
+
+  it('NO trata “para un domicilio por favor” como dirección', () => {
+    expect(
+      extractDeliverySetupAddress('Buenas noches para un domicilio por favor'),
+    ).toBeNull();
+    expect(isDeliveryLogisticsFluff('un domicilio por favor')).toBe(true);
+    expect(isDeliveryLogisticsFluff('por favor')).toBe(true);
   });
 });
