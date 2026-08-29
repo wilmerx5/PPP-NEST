@@ -21,13 +21,13 @@ const DEFAULT_WELCOME =
 
 const DEFAULT_AI_DISCLAIMER =
   '⚠️ *Aviso:* este chat lo atiende una *inteligencia artificial* y todavía está en *fase de implementación*, así que puede cometer errores.\n\n' +
-  'Si algo no cuadra o prefieres una persona, escribe *asesor* y te pasamos con el equipo.';
+  'Si algo no cuadra o prefieres una persona, escribe *ASESOR* y te pasamos con el equipo.';
 
 const DEFAULT_MENU_LINK =
   'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
 
 const DEFAULT_HUMAN_HANDOFF =
-  'Listo 🙋 Ya te conecté con el equipo — en un momento alguien te escribe por aquí. Cuéntanos con calma qué necesitas.';
+  'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.';
 
 const DEFAULT_ORDER_SUCCESS =
   'Gracias por pedirnos 🍗 Te lo enviaremos lo más pronto posible.';

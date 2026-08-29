@@ -390,7 +390,7 @@ ${input.menuSummary.slice(0, 6000)}`;
     return (
       'Vi tu imagen 👀 pero no pude leer bien el plato o el código.\n\n' +
       '¿Me lo escribes por texto (nombre o código)?\n\n' +
-      'Si prefieres, escribe *asesor* o *humano* y una persona te atiende por aquí 😊'
+      'Si prefieres, escribe *ASESOR* y una persona te atiende por aquí 😊'
     );
   }
 

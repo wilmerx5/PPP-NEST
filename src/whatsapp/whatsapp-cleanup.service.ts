@@ -74,7 +74,7 @@ export class WhatsappCleanupService implements OnModuleInit, OnModuleDestroy {
         if (notify) {
           await this.safeNotify(
             conv,
-            'El equipo no pudo seguir ahora. Vuelve el asistente 🤖 — dime cómo te ayudo o escribe *humano*.',
+            'El equipo no pudo seguir ahora. Vuelve el asistente 🤖 — dime cómo te ayudo o escribe *ASESOR*.',
           );
         }
       }

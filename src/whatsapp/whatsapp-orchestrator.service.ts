@@ -82,6 +82,8 @@ type EffectiveWhatsappConfig = Awaited<
 @Injectable()
 export class WhatsappOrchestratorService {
   private readonly logger = new Logger(WhatsappOrchestratorService.name);
+  /** Serializa webhooks por waId para no pisar humanTakeover (ASESOR → gracias). */
+  private readonly inboundByWaId = new Map<string, Promise<void>>();
 
   constructor(
     private readonly settingsService: WhatsappSettingsService,
@@ -98,6 +100,23 @@ export class WhatsappOrchestratorService {
   ) {}
 
   async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
+    const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+    const prev = this.inboundByWaId.get(key) ?? Promise.resolve();
+    const run = prev.then(
+      () => this.handleIncomingUnlocked(msg),
+      () => this.handleIncomingUnlocked(msg),
+    );
+    this.inboundByWaId.set(
+      key,
+      run.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    await run;
+  }
+
+  private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
@@ -119,6 +138,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Releer: otro mensaje pudo activar ASESOR / takeover mientras este esperaba en cola
+    {
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+    }
     if (conv.humanTakeover) {
       return;
     }
@@ -213,10 +237,13 @@ export class WhatsappOrchestratorService {
 
     if (isHumanHandoffRequest(text)) {
       await this.conversationService.setHumanTakeover(conv.id, true);
+      const freshTakeover = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshTakeover);
       await this.reply(
         conv,
         msg.waId,
-        cfg.humanHandoffMessage,
+        cfg.humanHandoffMessage ||
+          'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.',
       );
       return;
     }
@@ -4497,7 +4524,7 @@ export class WhatsappOrchestratorService {
   }
 
   private humanHelpHint(): string {
-    return 'Si prefieres, escribe *asesor* o *humano* y una persona te atiende por aquí 😊';
+    return 'Si prefieres, escribe *ASESOR* y una persona te atiende por aquí 😊';
   }
 
   /**

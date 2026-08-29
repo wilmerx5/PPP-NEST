@@ -496,7 +496,7 @@ export class WhatsappCatalogService {
     return (
       `Jaja, por *${brand}* soy el asistente de *pedidos* 🍗\n\n` +
       `Si quieres ordenar, dime el *plato* o el *código*, o escribe *menú*.\n` +
-      `_Si prefieres hablar con alguien, escribe *asesor*._`
+      `_Si prefieres hablar con alguien, escribe *ASESOR*._`
     );
   }
 

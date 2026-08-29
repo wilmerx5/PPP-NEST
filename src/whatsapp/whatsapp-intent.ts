@@ -94,18 +94,33 @@ const HUMAN_RE =
 
 /**
  * Pedido de asesor humano.
- * Ojo: "persona's" / "personas" (rinde el plato) NO es handoff — solo "persona" singular
- * tipo "quiero una persona" / "pásame con una persona".
+ * Palabra canónica: *ASESOR* (sola o con puntuación).
+ * También: humano / frases “hablar con una persona”.
+ * Ojo: "persona's" / "personas" (rinde el plato) NO es handoff.
  */
 export function isHumanHandoffRequest(text: string): boolean {
   const raw = (text || '').trim();
   if (!raw) return false;
+  // Canónico: exactamente ASESOR (con o sin ! ? .)
+  if (/^asesor[!?.…]*$/i.test(raw)) return true;
+  if (/^asesora[!?.…]*$/i.test(raw)) return true;
+  if (/^humano[!?.…]*$/i.test(raw)) return true;
+
   // persona's / personas → plural de gente, no "hablar con una persona"
   const t = raw
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\bpersona'?s\b/g, 'personas');
+
+  // Frases cortas con la palabra canónica
+  if (
+    /^(quiero|necesito|pasame|pasenme|pasar)\s+(con\s+)?(un\s+|una\s+)?asesor[!?.…]*$/.test(t) ||
+    /^(quiero|necesito)\s+hablar\s+con\s+(un\s+|una\s+)?asesor[!?.…]*$/.test(t)
+  ) {
+    return true;
+  }
+
   if (HUMAN_RE.test(t)) return true;
   // "persona" singular suelta (no dentro de "personas")
   if (/\bpersona\b/.test(t) && !/\bpersonas\b/.test(t)) return true;

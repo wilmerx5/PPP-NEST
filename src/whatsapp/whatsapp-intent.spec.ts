@@ -48,8 +48,12 @@ describe('classifyWhatsappCustomerIntent', () => {
     expect(isHumanHandoffRequest("Para cuantas persona's alcanzas El arroz chino")).toBe(false);
     expect(isHumanHandoffRequest('para cuantas personas alcanza el arroz chino')).toBe(false);
     expect(isHumanHandoffRequest('quiero hablar con una persona')).toBe(true);
+    expect(isHumanHandoffRequest('ASESOR')).toBe(true);
+    expect(isHumanHandoffRequest('Asesor')).toBe(true);
     expect(isHumanHandoffRequest('asesor')).toBe(true);
+    expect(isHumanHandoffRequest('asesor!')).toBe(true);
     expect(isHumanHandoffRequest('humano')).toBe(true);
+    expect(isHumanHandoffRequest('3134659001')).toBe(false);
     expect(
       classifyWhatsappCustomerIntent({
         text: "Para cuantas persona's alcanzas El arroz chino",
