@@ -7816,9 +7816,10 @@ export class WhatsappOrchestratorService {
       }
     }
 
-    if ((cfg.paymentInstructions || '').trim()) {
+    const payHint = (cfg.paymentInstructions || '').trim();
+    if (payHint) {
       lines.push('');
-      lines.push(`_${cfg.paymentInstructions.trim()}_`);
+      lines.push(`_${payHint}_`);
     }
 
     if (session.cart.length > 0) {
