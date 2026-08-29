@@ -17,6 +17,13 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const req = context.switchToHttp().getRequest<{ url?: string; originalUrl?: string }>();
+    const url = `${req?.originalUrl || ''} ${req?.url || ''}`;
+    // SSE / streams largos: no aplicar timeout de 30s
+    if (url.includes('/whatsapp/alerts/stream')) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       timeout(this.timeoutMs),
       catchError((err) => {

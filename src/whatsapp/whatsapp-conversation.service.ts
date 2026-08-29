@@ -5,6 +5,7 @@ import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { WhatsappMessage } from './entities/whatsapp-message.entity';
 import { EMPTY_SESSION, type WhatsappSessionData } from './types/whatsapp-session.types';
 import { User } from '../auth/entities/user.entity';
+import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
 
 @Injectable()
 export class WhatsappConversationService {
@@ -15,6 +16,7 @@ export class WhatsappConversationService {
     private readonly msgRepo: Repository<WhatsappMessage>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly adminAlerts: WhatsappAdminAlertService,
   ) {}
 
   async findOrCreateConversation(waId: string, phoneE164: string): Promise<WhatsappConversation> {
@@ -294,6 +296,7 @@ export class WhatsappConversationService {
   ) {
     const conv = await this.convRepo.findOne({ where: { id } });
     if (!conv) throw new NotFoundException('Conversación no encontrada');
+    const wasTakeover = !!conv.humanTakeover;
     const now = new Date();
     conv.humanTakeover = takeover;
     conv.humanAgentId = takeover && agent ? agent.id : null;
@@ -306,7 +309,15 @@ export class WhatsappConversationService {
     } else {
       conv.humanTakeoverAt = null;
     }
-    return this.convRepo.save(conv);
+    const saved = await this.convRepo.save(conv);
+    if (takeover && !wasTakeover) {
+      this.adminAlerts.notifyHumanNeeded({
+        conversationId: saved.id,
+        phoneE164: saved.phoneE164,
+        customerName: saved.customerName,
+      });
+    }
+    return saved;
   }
 
   async closeConversation(id: number) {

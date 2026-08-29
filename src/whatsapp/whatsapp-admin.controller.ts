@@ -2,17 +2,20 @@ import {
   Body,
   Controller,
   Get,
+  MessageEvent,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Req,
   Res,
+  Sse,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid.roles.interface';
 import { Request, Response } from 'express';
+import { Observable } from 'rxjs';
 import { User } from '../auth/entities/user.entity';
 import {
   SendWhatsappMessageDto,
@@ -25,6 +28,7 @@ import { WhatsappConversationService } from './whatsapp-conversation.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
+import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 
 @ApiTags('Admin WhatsApp')
@@ -38,7 +42,16 @@ export class WhatsappAdminController {
     private readonly orchestrator: WhatsappOrchestratorService,
     private readonly metaService: WhatsappMetaService,
     private readonly deliveryRouting: WhatsappDeliveryRoutingService,
+    private readonly adminAlerts: WhatsappAdminAlertService,
   ) {}
+
+  @Sse('alerts/stream')
+  @ApiOperation({
+    summary: 'SSE: aviso inmediato cuando un chat pide ASESOR (pestaña en segundo plano)',
+  })
+  alertsStream(): Observable<MessageEvent> {
+    return this.adminAlerts.asSse();
+  }
 
   @Get('settings')
   @ApiOperation({ summary: 'Configuración del bot WhatsApp' })
