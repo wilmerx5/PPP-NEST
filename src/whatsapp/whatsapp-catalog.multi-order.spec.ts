@@ -38,6 +38,53 @@ const multiMenu: WhatsappCatalogProduct[] = [
     attributes: [],
     availableNow: true,
   },
+  {
+    id: 10,
+    code: 10,
+    name: 'Arroz Con Pollo',
+    price: 32000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+  {
+    id: 6,
+    code: 6,
+    name: '1/4 Pollo Asado',
+    price: 16000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas'] }],
+    availableNow: true,
+  },
+  {
+    id: 7,
+    code: 7,
+    name: '1/4 Pollo Frito',
+    price: 16000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+  },
+  {
+    id: 80,
+    code: 80,
+    name: 'Jugo Natural En Agua',
+    price: 6000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Lulo'] }],
+    availableNow: true,
+    categoryName: 'Bebidas',
+  },
+  {
+    id: 81,
+    code: 81,
+    name: 'Jugo Natural En Leche',
+    price: 7000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Lulo'] }],
+    availableNow: true,
+    categoryName: 'Bebidas',
+  },
 ];
 
 describe('multi-item order quantities', () => {
@@ -79,5 +126,30 @@ describe('multi-item order quantities', () => {
     expect(multi?.confident.map((c) => c.product.name).sort()).toEqual(
       ['Churrasco', 'Limonada Natural', 'Mojarra'].sort(),
     );
+  });
+
+  it('arroz con pollo + 1/4 pollo asado → ambos', () => {
+    const text = applyLocalGlossary(
+      'Me podrías dar 1 arroz con pollo y 1/4 de pollo asado porfa',
+    );
+    expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+    expect(catalog.splitMultiProductSegments(text).length).toBeGreaterThanOrEqual(2);
+    const multi = catalog.resolveMultiProductOrder(text, multiMenu);
+    expect(multi).toBeTruthy();
+    const names = [
+      ...(multi!.confident.map((c) => c.product.name) || []),
+      ...(multi!.needsAttributes.map((c) => c.product.name) || []),
+    ].sort();
+    expect(names).toContain('Arroz Con Pollo');
+    expect(names).toContain('1/4 Pollo Asado');
+  });
+
+  it('qué jugos naturales tienes → browse, no pedido', () => {
+    const text = 'Y que jugos naturales tienes?';
+    expect(catalog.isCategoryBrowseQuestion(text)).toBe(true);
+    expect(catalog.resolveMultiProductOrder(text, multiMenu)).toBeNull();
+    const hit = catalog.findCategoryBrowseHit(text, multiMenu);
+    expect(hit?.products.length).toBeGreaterThan(0);
+    expect(hit!.products.every((p) => /jugo/i.test(p.name))).toBe(true);
   });
 });

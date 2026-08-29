@@ -1085,7 +1085,7 @@ export class WhatsappOrchestratorService {
         cfg.menuConceptGroups,
       );
       const specificCue =
-        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo)\b/i.test(
+        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo)\b/i.test(
           text,
         );
       if (hit?.products.length && (specificCue || this.catalogService.isCategoryBrowseQuestion(text))) {
