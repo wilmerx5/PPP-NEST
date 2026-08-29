@@ -114,6 +114,11 @@ export type WhatsappSessionData = {
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */
   addressConfirmed?: boolean;
+  /**
+   * Última dirección de domicilio exitosa (sobrevive reset/reopen).
+   * Para ofrecer “¿Misma dirección? / acá” en el siguiente pedido.
+   */
+  lastDeliveryAddress?: string | null;
   /** Lat/lng del domicilio (geocode o pin de WhatsApp) */
   deliveryLat?: number | null;
   deliveryLng?: number | null;
@@ -161,6 +166,7 @@ export const EMPTY_SESSION: WhatsappSessionData = {
   addressConfirmed: false,
   phoneConfirmed: false,
   contactPhone: null,
+  lastDeliveryAddress: null,
 };
 
 export type AiOrderAction = {

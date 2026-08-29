@@ -103,14 +103,24 @@ export class WhatsappConversationService {
 
   /**
    * Limpia carrito y checkout por completo (post-pedido / reopen / reinicio).
-   * Conserva solo vínculo de usuario web.
+   * Conserva vínculo web y última dirección de domicilio.
    */
   async resetOrderSession(
     conv: WhatsappConversation,
     state: string,
-    opts?: { ignorePriorHistory?: boolean },
+    opts?: { ignorePriorHistory?: boolean; rememberDeliveryAddress?: boolean },
   ): Promise<WhatsappConversation> {
     const current = this.getSession(conv);
+    const currentAddr = (current.address || '').trim();
+    const isPickupPlaceholder = /^recoge en el local/i.test(currentAddr);
+    const remembered =
+      opts?.rememberDeliveryAddress &&
+      current.orderType === 'delivery' &&
+      currentAddr &&
+      !isPickupPlaceholder
+        ? currentAddr
+        : current.lastDeliveryAddress ?? null;
+
     const next: WhatsappSessionData = {
       cart: [],
       orderType: 'delivery',
@@ -121,6 +131,7 @@ export class WhatsappConversationService {
       addressConfirmed: false,
       phoneConfirmed: false,
       contactPhone: null,
+      lastDeliveryAddress: remembered,
     };
     // Asignación directa: no mergear con el carrito viejo
     conv.sessionData = next;

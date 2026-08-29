@@ -117,6 +117,19 @@ describe('classifyWhatsappCustomerIntent', () => {
     ).toBe('address');
   });
 
+  it('detecta conjunto/urbanización por nombre (Bosques de Castilla)', () => {
+    expect(looksLikeAddressOnlyMessage('Bosques de castilla')).toBe(true);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'Bosques de castilla',
+        cartLength: 1,
+      }),
+    ).toBe('address');
+    expect(looksLikeAddressOnlyMessage('Tierras del Sol')).toBe(true);
+    expect(looksLikeAddressOnlyMessage('Portería nuevo sol')).toBe(true);
+    expect(looksLikeAddressOnlyMessage('Tabaku central T4 1213')).toBe(true);
+  });
+
   it('no trata frases genéricas como dirección', () => {
     expect(looksLikeAddressOnlyMessage('borra el pedido y vacio el carrito')).toBe(false);
     expect(looksLikeAddressOnlyMessage('ya no quiero nada')).toBe(false);

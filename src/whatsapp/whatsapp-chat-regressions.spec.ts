@@ -9,6 +9,10 @@ import {
   isAddressChangeIntent,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
+import {
+  classifyWhatsappCustomerIntent,
+  looksLikeAddressOnlyMessage,
+} from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { WhatsappPointsService } from './whatsapp-points.service';
@@ -145,6 +149,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Arroces',
   },
   {
+    id: 25,
+    code: 25,
+    name: 'Costillas De Cerdo',
+    price: 30000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Carne',
+  },
+  {
     id: 90,
     code: 90,
     name: 'Arepa',
@@ -153,6 +167,46 @@ const pppMenu: WhatsappCatalogProduct[] = [
     attributes: [],
     availableNow: true,
     categoryName: 'Porciones',
+  },
+  {
+    id: 70,
+    code: 70,
+    name: 'Arroz Chino Caja Con Papa Francesa',
+    price: 38000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Arroces',
+  },
+  {
+    id: 71,
+    code: 71,
+    name: 'Arroz Chino Con Medio Pollo',
+    price: 48000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Arroces',
+  },
+  {
+    id: 72,
+    code: 72,
+    name: 'Arroz Chino Con Costillas De Cerdo',
+    price: 50000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Arroces',
+  },
+  {
+    id: 73,
+    code: 73,
+    name: 'Arroz Chino Combo',
+    price: 45000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Gaseosa', options: ['Colombiana', 'Manzana', 'Uva'] }],
+    availableNow: true,
+    categoryName: 'Arroces',
   },
 ];
 
@@ -332,6 +386,54 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect(food.length).toBe(1);
         expect(food[0].product.name).toMatch(/Arroz Con Pollo/i);
       }
+    });
+  });
+
+  describe('Barrio ≠ plato (Bosques de Castilla → no Costillas)', () => {
+    it('castilla no fuzzy-matchea costillas', () => {
+      const text = 'Bosques de castilla';
+      expect(looksLikeAddressOnlyMessage(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({ text, cartLength: 1 }),
+      ).toBe('address');
+
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      expect(scored.some((x) => /costilla/i.test(x.p.name))).toBe(false);
+      const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(embedded).toBeFalsy();
+    });
+  });
+
+  describe('C09 / C07 — arroz chino variantes + explicar combo', () => {
+    it('arroz chino agrupa presentaciones (caja / medio pollo / costillas / combo)', () => {
+      expect(catalog.getProductNameBase('Arroz Chino Caja Con Papa Francesa')).toBe(
+        catalog.getProductNameBase('Arroz Chino Con Medio Pollo'),
+      );
+      const family = catalog.findProductVariantFamily('arroz chino', pppMenu);
+      expect(family).toBeTruthy();
+      expect(family!.variants.length).toBeGreaterThanOrEqual(3);
+      expect(family!.variants.some((v) => /medio pollo/i.test(v.name))).toBe(true);
+      expect(family!.variants.some((v) => /costilla/i.test(v.name))).toBe(true);
+    });
+
+    it('pickVariant: con medio pollo / costillas / combo', () => {
+      const family = catalog.findProductVariantFamily('arroz chino', pppMenu)!;
+      expect(
+        catalog.pickVariantFromFamilyText('el que viene con medio pollo', family)?.code,
+      ).toBe(71);
+      expect(catalog.pickVariantFromFamilyText('con costillas', family)?.code).toBe(72);
+      expect(catalog.pickVariantFromFamilyText('en combo', family)?.code).toBe(73);
+    });
+
+    it('isComboMeaningInquiry', () => {
+      expect(catalog.isComboMeaningInquiry('Que significa a en combo y cuánto valdría ?')).toBe(
+        true,
+      );
+      expect(catalog.isComboMeaningInquiry('quiero un pollo frito')).toBe(false);
+      const family = catalog.findProductVariantFamily('pollo frito', pppMenu, [
+        pppMenu.find((p) => p.code === 1)!,
+      ])!;
+      expect(catalog.formatComboExplanation(family)).toMatch(/presentaciones|combo/i);
     });
   });
 });

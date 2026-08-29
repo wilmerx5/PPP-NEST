@@ -70,8 +70,11 @@ export class WhatsappPointsService {
       /\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio)|registrar)\b/.test(
         t,
       ) ||
-      /\b(c[oó]mo\s+(funcionan|gano|acumulo|registro|uso)\s+(los\s+)?puntos)\b/.test(t) ||
-      /\b(qu[eé]\s+(son|genera)\s+(los\s+)?puntos)\b/.test(t)
+      /\b(c[oó]mo\s+(funcionan|gano|acumulo|registro|uso|redimir|canjear)\s+(los\s+)?puntos)\b/.test(t) ||
+      /\b(qu[eé]\s+(son|genera)\s+(los\s+)?puntos)\b/.test(t) ||
+      /\b(procedimiento|proceso|pasos?)\s+(para\s+)?(redimir|canjear|registrar|acumular)\b/.test(t) ||
+      /\b(para\s+redimir|c[oó]mo\s+(puedo\s+)?redimir|quiero\s+redimir)\b/.test(t) ||
+      /\b(mira|aqu[ií]|te\s+paso|ah[ií]\s+va)\s+(el\s+)?c[oó]digo\b/.test(t)
     );
   }
 
@@ -88,7 +91,18 @@ export class WhatsappPointsService {
     const t = (text || '').toLowerCase();
     return (
       /\b(redimir|canjear\s+(mis\s+)?puntos|generar\s+premio|sacar\s+premio)\b/.test(t) ||
+      /\b(procedimiento|proceso|pasos?|c[oó]mo)\s+.+\bredimir\b/.test(t) ||
+      /\bpara\s+redimir\b/.test(t) ||
       t === 'redimir'
+    );
+  }
+
+  /** “Mira el código” sin pegar aún el código de 12 chars. */
+  isAwaitingPointCodePrompt(text: string): boolean {
+    const t = (text || '').trim();
+    if (this.extractPointCodeCandidate(t)) return false;
+    return /\b(mira|aqu[ií]|te\s+paso|ah[ií]\s+va|te\s+envio|te\s+env[ií]o)\s+(el\s+)?c[oó]digo\b/i.test(
+      t,
     );
   }
 

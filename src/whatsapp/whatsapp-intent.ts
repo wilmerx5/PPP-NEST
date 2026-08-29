@@ -88,7 +88,7 @@ const HUMAN_RE =
   /\b(humano|asesor|persona|operador|alguien\s+del\s+(?:local|restaurante)|hablar\s+con\s+(?:alguien|una\s+persona))\b/i;
 
 const PAYMENT_RE =
-  /\b(contraentrega|efectivo|cash|transferencia|nequi|daviplata|mercadopago|mercado\s*pago|pago\s+con)\b/i;
+  /\b(contraentrega|efectivo|cash|transferencia|nequi|daviplata|llave|mercadopago|mercado\s*pago|pago\s+con)\b/i;
 
 const CHECKOUT_DATA_RE =
   /\b(me\s+llamo|mi\s+nombre\s+es|soy\s+[a-záéíóúñ]|vivo\s+en|dirección|direccion|carrera|calle|diagonal|transversal|conjunto|urbanizaci[oó]n|apto|apartamento|torre)\b/i;
@@ -99,8 +99,19 @@ const ADDRESS_ONLY_RE =
 const LANDMARK_KEYWORD_RE =
   /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i;
 
+/** Conjuntos / urbanizaciones por nombre: "Bosques de Castilla", "Tierras del Sol". */
+const NAMED_COMPLEX_RE =
+  /\b(bosques?|tierras?|villas?|alamedas?|jardines?|prados?|rincones?|miradores?|portales?|ciudadelas?|parques?|brisas?|terrazas?|balcones?|agrupaci[oó]n)\s+(de|del|de\s+la|de\s+los|de\s+las)\b/i;
+
+/**
+ * Zona de cobertura frecuente PPP (chats reales): solo el nombre del conjunto
+ * ya cuenta como dirección ("Castilla reservado", "Nuevo Sol", "Tabaku").
+ */
+export const PPP_ZONE_LANDMARK_RE =
+  /\b(castilla|castell[oó]n?|tintal|tabaku|altavista|alta\s*vista|vizcaya|techo|nuevo\s+sol|terrazas|aralia|mandalay|toledo|natura|galante|plazuela|san\s+esteban|pio\s*xii|pi[oó]\s*12|senderos?|imperial)\b/i;
+
 const STREET_ADDRESS_RE =
-  /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|transversal|barrio|habitaci[oó]n|apto|apartamento|torre)\b/i;
+  /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|barrio|habitaci[oó]n|apto|apartamento|torre|porter[ií]a|int\.?|interior)\b/i;
 
 /** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
 export function looksLikeNonAddressCommand(text: string): boolean {
@@ -162,6 +173,15 @@ export function looksLikeAddressOnlyMessage(
 
   if (STREET_ADDRESS_RE.test(raw) && /\d/.test(raw)) return true;
   if (LANDMARK_KEYWORD_RE.test(raw) && raw.length >= 6) return true;
+  if (NAMED_COMPLEX_RE.test(raw) && raw.length >= 8) return true;
+  if (PPP_ZONE_LANDMARK_RE.test(raw) && raw.length >= 6) return true;
+  // Abreviado tipo "Tabaku central T4 1213" / "Aralia Torre 9 804"
+  if (
+    PPP_ZONE_LANDMARK_RE.test(raw) &&
+    /\b(t\d+|torre\s*\d+|apto\.?\s*\d+|apartamento\s*\d+|\d{3,4})\b/i.test(raw)
+  ) {
+    return true;
+  }
 
   return false;
 }

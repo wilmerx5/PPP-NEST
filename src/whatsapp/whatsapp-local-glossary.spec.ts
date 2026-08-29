@@ -19,4 +19,12 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('pollo a la broaster')).toMatch(/pollo broaster/i);
     expect(applyLocalGlossary('medio de pollo')).toMatch(/medio pollo/i);
   });
+
+  it('corpus: typos y aliases de chats reales', () => {
+    expect(applyLocalGlossary('Giger')).toMatch(/ginger/i);
+    expect(applyLocalGlossary('sobrebarriga a la placha')).toMatch(/plancha/i);
+    expect(applyLocalGlossary('Adicionar un plata')).toMatch(/plátano/i);
+    expect(applyLocalGlossary('medio broaster medio frito')).toMatch(/mixto/i);
+    expect(applyLocalGlossary('coca cola cero')).toMatch(/zero/i);
+  });
 });

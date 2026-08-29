@@ -215,8 +215,17 @@ function fuzzyTokenMatch(queryToken: string, candidateToken: string): boolean {
   // Typos solo en tokens largos (broaster/broster). "fritas"≠"alitas"
   if (q.length < 6 || c.length < 6) return false;
   if (q.slice(1) === c.slice(1)) return false;
+  const dist = tokenEditDistance(q, c);
   const maxDist = q.length <= 8 ? 1 : 2;
-  return tokenEditDistance(q, c) <= maxDist;
+  if (dist > maxDist) return false;
+  // Misma longitud + 1 vocal distinta → otra palabra (castilla≠costilla → Costillas)
+  if (q.length === c.length && dist === 1) {
+    const vowels = new Set(['a', 'e', 'i', 'o', 'u']);
+    for (let i = 0; i < q.length; i++) {
+      if (q[i] !== c[i] && vowels.has(q[i]) && vowels.has(c[i])) return false;
+    }
+  }
+  return true;
 }
 
 /** Estilo de cocina / acompañamiento: no sirven solos para “encontrar” un producto. */
@@ -1446,6 +1455,12 @@ export class WhatsappCatalogService {
     'queso',
     'maduro',
     'verde',
+    'cilantro',
+    'salsa',
+    'salsas',
+    'miel',
+    'bocadillo',
+    'francesa',
   ]);
 
   /** Arepa / porción de papa suelta (no el plato principal). */
@@ -1569,9 +1584,12 @@ export class WhatsappCatalogService {
     const hasSinConSide = new RegExp(
       `\\b(?:sin|con|mas|más)\\s+(?:de\\s+)?(?:${sideAlt})\\b`,
     ).test(q);
+    const hasSwapSide = new RegExp(
+      `\\ben\\s+vez\\s+de\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+)?(?:${sideAlt})\\b`,
+    ).test(q);
     const refsCombo = /\b(?:para|del|en|sobre|el|la)\s+(?:el\s+|la\s+)?combo\b/.test(q) || /\bcombo\b/.test(q);
 
-    if (!hasNegSide && !hasMoreSide && !hasSinConSide) return false;
+    if (!hasNegSide && !hasMoreSide && !hasSinConSide && !hasSwapSide) return false;
 
     // Si pide un plato principal nuevo (pollo, churrasco…) no es solo nota
     const mainDish =
@@ -3331,6 +3349,11 @@ export class WhatsappCatalogService {
         /\b(solo|sola|completo|completa|combo|con\s+gaseosa|con\s+bebida|sin\s+gaseosa|sin\s+bebida|mas\s+gaseosa|y\s+gaseosa)\b/g,
         ' ',
       )
+      // Presentaciones arroz chino / bandejas: misma familia
+      .replace(
+        /\b(con\s+(?:1\s*\/\s*2|medio|media)\s+pollo|con\s+costillas?(?:\s+de\s+cerdo)?|con\s+papa(?:s)?\s+(?:a\s+la\s+)?francesa|con\s+francesa|caja)\b/g,
+        ' ',
+      )
       .replace(/\s+/g, ' ')
       .trim()
       // "1 Pollo Frito" / "1/2 Pollo…" / "Combo De Pollo Frito" → "pollo frito"
@@ -3358,6 +3381,9 @@ export class WhatsappCatalogService {
     if (/\b(con\s+gaseosa|con\s+bebida|gaseosa|bebida)\b/.test(tail)) {
       return 'Con gaseosa / bebida';
     }
+    if (/\b(medio|1\s*\/\s*2|1\/2)\s+pollo\b/.test(n)) return 'Con medio pollo';
+    if (/\bcostillas?\b/.test(n)) return 'Con costillas';
+    if (/\b(francesa|caja)\b/.test(n)) return 'Caja / papa francesa';
     if (tail.length >= 3) return titleCaseWords(tail);
     return fullName;
   }
@@ -3377,9 +3403,20 @@ export class WhatsappCatalogService {
 
     const available = products.filter((p) => p.availableNow !== false);
     const scored = this.searchByNameScored(q, available, 12).filter((x) => x.score >= 38);
+    // Semilla extra: SKUs cuya base es la query (arroz chino → caja / medio pollo / costillas…)
+    const byBaseName = available.filter((p) => {
+      const base = this.getProductNameBase(p.name);
+      if (base.length < 4) return false;
+      return (
+        base === q ||
+        (q.length >= 5 && (base.startsWith(q) || q.startsWith(base))) ||
+        (q.split(/\s+/).length >= 2 && base === q)
+      );
+    });
     const seed = [
       ...hints,
       ...scored.map((x) => x.p),
+      ...byBaseName,
     ];
     if (!seed.length) return null;
 
@@ -3455,7 +3492,9 @@ export class WhatsappCatalogService {
     if (variants.length < 2) return null;
 
     const hasVariantCue = variants.some((p) =>
-      /\b(solo|sola|combo|completo|completa|gaseosa|bebida)\b/i.test(p.name),
+      /\b(solo|sola|combo|completo|completa|gaseosa|bebida|medio\s+pollo|costillas?|papa\s+francesa|caja)\b/i.test(
+        p.name,
+      ),
     );
     const hasStyleCue =
       useCookingStyleFamily ||
@@ -3524,7 +3563,57 @@ export class WhatsappCatalogService {
         ) || null
       );
     }
+    if (/\b(medio|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q) || /\bcon\s+medio\s+pollo\b/.test(q)) {
+      return (
+        family.variants.find((p) =>
+          /\b(medio|1\s*\/\s*2|1\/2)\s+pollo\b/.test(normalizeText(p.name)),
+        ) || null
+      );
+    }
+    if (/\bcostillas?\b/.test(q)) {
+      return family.variants.find((p) => /\bcostillas?\b/.test(normalizeText(p.name))) || null;
+    }
+    if (/\b(francesa|caja|sencillo)\b/.test(q)) {
+      return (
+        family.variants.find((p) =>
+          /\b(francesa|caja)\b/.test(normalizeText(p.name)),
+        ) ||
+        family.variants.find((p) => /\bsolo\b/.test(normalizeText(p.name))) ||
+        null
+      );
+    }
     return null;
+  }
+
+  /**
+   * Explica solo vs combo (o presentaciones) con precios — sin agregar al carrito.
+   */
+  formatComboExplanation(family: ProductVariantFamily): string {
+    const lines = family.variants.map((p) => {
+      const label = this.getVariantDisplayLabel(p.name, family.baseKey);
+      const price = Math.round(p.price).toLocaleString('es-CO');
+      return `• *${label}* — $${price} (cód. ${p.code})`;
+    });
+    return (
+      `Para *${family.baseLabel}* manejamos varias presentaciones:\n\n` +
+      `${lines.join('\n')}\n\n` +
+      `_El *combo* suele incluir gaseosa. Elige el *número* o el nombre si quieres pedir._`
+    );
+  }
+
+  /** “¿Qué significa en combo?” / “cuánto valdría el combo” */
+  isComboMeaningInquiry(text: string): boolean {
+    const t = (text || '').trim();
+    if (!t) return false;
+    return (
+      /\b(qu[eé]\s+(significa|es|trae|incluye|viene|valdr[ií]a)|c[oó]mo\s+(es|viene|funciona))\s+(el\s+|en\s+|a\s+)?combo\b/i.test(
+        t,
+      ) ||
+      /\bcombo\s+(qu[eé]|significa|incluye|trae|es|valdr[ií]a)\b/i.test(t) ||
+      /\ben\s+combo\b.*\bcu[aá]nto\b/i.test(t) ||
+      /\bcu[aá]nto\b.*\ben\s+combo\b/i.test(t) ||
+      /\b(significa|qu[eé]\s+es)\s+a?\s*en\s+combo\b/i.test(t)
+    );
   }
 
   formatVariantFamilyPrompt(family: ProductVariantFamily): string {

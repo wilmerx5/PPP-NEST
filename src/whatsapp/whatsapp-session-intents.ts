@@ -16,6 +16,133 @@ export function isAddressChangeIntent(text: string): boolean {
   );
 }
 
+/**
+ * Tras pedido completado: ETA / demora / “ya llegó” / cancelar en ruta.
+ * NO reabrir carrito ni buscar platos.
+ */
+export function isPostOrderFollowUpIntent(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 3) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Pedido nuevo claro → no es seguimiento
+  if (
+    /\b(quiero|dame|ponme|regala|pedi|pido|ordenar|me\s+envias|me\s+mandas)\b/.test(t) &&
+    /\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|hamburguesa|ajiaco|mondongo|gaseosa)\b/.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancelar?\s+(el\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+
+  if (/\bya\s+lleg[oó]\b/.test(t) && t.length <= 40) {
+    return true;
+  }
+
+  if (
+    /\b(trajo\s+(un|el|otro)|no\s+me\s+(regalaron|trajeron|enviaron)|falto|me\s+falta)\b/.test(t)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Confirmar dirección sugerida / última guardada: “sí”, “acá”, “la misma”.
+ */
+export function isReuseLastAddressIntent(text: string): boolean {
+  const t = (text || '').trim().toLowerCase();
+  if (!t || t.length > 40) return false;
+  if (
+    /^(si|sí|sep|ok|okay|dale|listo|correcto|exacto|esa|esa misma|confirmo)([\s!.?]*|(\s+por\s+fa(vor|fa)?[\s!.?]*))$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/^(aca|acá|ahi|ahí|alli|allí|aqui|aquí)([\s!.?]*|(\s+si[\s!.?]*))$/i.test(t)) {
+    return true;
+  }
+  if (
+    /^(la\s+misma(\s+direcci[oó]n)?|misma\s+direcci[oó]n|la\s+de\s+siempre|la\s+anterior)[\s!.?]*$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Solo pregunta de cobertura: “¿tienen domicilios para Cra 81A…?”
+ * (sin estar pidiendo platos).
+ */
+export function isDeliveryCoverageInquiry(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 12) return false;
+
+  const orderingFood =
+    /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar|un\s+pollo|una\s+sopa|combo\s+de|ejecutivo|arroz\s+con)\b/i.test(
+      raw,
+    );
+  if (orderingFood) return false;
+
+  if (/\b(domicilios?|entregas?)\s+(para|a|en|hasta)\b/i.test(raw)) return true;
+
+  if (
+    /\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
+    /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw) &&
+    /\b(para|a|en|hasta|por)\b/i.test(raw)
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(hacen|tienen)\s+(servicio\s+a\s+)?domicilio\b/i.test(raw) &&
+    /\b(para|a|en|hasta)\b/i.test(raw)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Extrae la dirección de una pregunta de cobertura. */
+export function extractCoverageAddressProbe(text: string): string | null {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+
+  const patterns = [
+    /\b(?:domicilios?|entregas?|env[ií]os?|servicio\s+a\s+domicilio)\s+(?:para|a|en|hasta)\s+(.+?)[\s?!.]*$/i,
+    /\b(?:para|a|en|hasta)\s+((?:calle|carrera|cra|cll|dg|diagonal|av\.?|avenida|conjunto|torre|barrio)\b.+?)[\s?!.]*$/i,
+    /\b(?:para|a|en|hasta)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9].{5,90})[\s?!.]*$/i,
+  ];
+  for (const re of patterns) {
+    const m = raw.match(re);
+    if (m?.[1]) {
+      const addr = m[1]
+        .replace(/\b(por\s+favor|porfa|gracias|ok|vale)\b/gi, '')
+        .replace(/[?!.]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (addr.length >= 6) return addr;
+    }
+  }
+  return null;
+}
+
 /** Salir de lista / atributos / multi sin cancelar todo el pedido. */
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();

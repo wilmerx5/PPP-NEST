@@ -33,8 +33,8 @@ export const DEFAULT_PAYMENT_METHODS: WhatsappPaymentMethodConfig[] = [
     id: 'transfer',
     enabled: true,
     label: 'Transferencia',
-    keywords: ['transferencia', 'transferir', 'nequi', 'daviplata', 'bancolombia', 'consignacion', 'consignación'],
-    optionText: '*transferencia* (Nequi / banco)',
+    keywords: ['transferencia', 'transferir', 'nequi', 'daviplata', 'llave', 'bancolombia', 'consignacion', 'consignación'],
+    optionText: '*transferencia* (Nequi / llave / banco)',
     confirmReply:
       'Perfecto, queda como *transferencia*.\n\n{transferInfo}\n\nCuando pagues puedes mandar el comprobante por aquí.',
     flow: 'immediate',
