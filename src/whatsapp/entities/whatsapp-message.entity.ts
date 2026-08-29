@@ -13,6 +13,7 @@ export class WhatsappMessage {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
+  /** FK explícita (queries / inserts). */
   @Column({ name: 'conversation_id', type: 'int' })
   conversationId: number;
 
@@ -43,7 +44,15 @@ export class WhatsappMessage {
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
-  @ManyToOne(() => WhatsappConversation, (c) => c.messages, { onDelete: 'CASCADE' })
+  /**
+   * Relación solo para joins. La FK la escribe `conversationId`
+   * (evitar que save() anule conversation_id si `conversation` viene undefined).
+   */
+  @ManyToOne(() => WhatsappConversation, (c) => c.messages, {
+    onDelete: 'CASCADE',
+    nullable: false,
+    createForeignKeyConstraints: true,
+  })
   @JoinColumn({ name: 'conversation_id' })
-  conversation: WhatsappConversation;
+  conversation?: WhatsappConversation;
 }

@@ -22,6 +22,7 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
     // SSE / streams / uploads de media: no aplicar timeout de 30s
     if (
       url.includes('/whatsapp/alerts/stream') ||
+      url.includes('/whatsapp-desk/alerts/stream') ||
       url.includes('/messages/media')
     ) {
       return next.handle();

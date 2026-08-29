@@ -190,9 +190,35 @@ export class WhatsappConversationService {
       const existing = await this.findByWaMessageId(params.waMessageId);
       if (existing) return existing;
     }
+
+    const cid = Number(params.conversationId);
+    if (!Number.isFinite(cid) || cid <= 0) {
+      throw new Error(`logMessage: conversationId inválido (${params.conversationId})`);
+    }
+
     try {
+      // insert() evita que TypeORM anule conversation_id por la relación ManyToOne
+      // (Column + JoinColumn sobre la misma FK → save() a veces manda NULL).
+      const result = await this.msgRepo.insert({
+        conversationId: cid,
+        direction: params.direction,
+        body: params.body,
+        waMessageId: params.waMessageId ?? null,
+        sentBy: params.sentBy ?? (params.direction === 'in' ? 'bot' : 'bot'),
+        rawPayload: (params.raw ?? null) as object | null,
+        messageType: params.messageType || 'text',
+        mediaId: params.mediaId ?? null,
+        mimeType: params.mimeType ?? null,
+      } as Parameters<typeof this.msgRepo.insert>[0]);
+      const insertedId = result.identifiers?.[0]?.id;
+      if (insertedId != null) {
+        const saved = await this.msgRepo.findOne({ where: { id: String(insertedId) } });
+        if (saved) return saved;
+      }
+      // Fallback si el driver no devolvió id
       const msg = this.msgRepo.create({
-        conversationId: params.conversationId,
+        conversationId: cid,
+        conversation: { id: cid } as WhatsappConversation,
         direction: params.direction,
         body: params.body,
         waMessageId: params.waMessageId ?? null,

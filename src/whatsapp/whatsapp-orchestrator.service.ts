@@ -4516,7 +4516,7 @@ export class WhatsappOrchestratorService {
     // Persistencia local: no tumbar la respuesta HTTP si falla después del envío.
     try {
       await this.conversationService.logMessage({
-        conversationId: conv.id,
+        conversationId, // id de la ruta, no confiar solo en conv.id
         direction: 'out',
         body: text,
         sentBy: 'human',
@@ -4576,7 +4576,7 @@ export class WhatsappOrchestratorService {
     const body = outboundMediaBodyLabel({ kind, caption: cap, filename });
     try {
       await this.conversationService.logMessage({
-        conversationId: conv.id,
+        conversationId,
         direction: 'out',
         body,
         sentBy: 'human',

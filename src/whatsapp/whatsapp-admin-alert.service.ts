@@ -11,9 +11,12 @@ export type WhatsappHumanAlertPayload = {
 };
 
 /**
- * Bus de alertas admin: cuando un cliente pide ASESOR,
+ * Bus de alertas admin/desk: cuando un cliente pide ASESOR,
  * el stream SSE avisa al panel aunque la pestaña esté en segundo plano
  * (el polling del browser se congela y no sirve).
+ *
+ * Nota: Subject en memoria → con varias réplicas Nest el evento solo llega
+ * a clientes conectados a la misma instancia. El front también hace polling.
  */
 @Injectable()
 export class WhatsappAdminAlertService {
@@ -38,20 +41,27 @@ export class WhatsappAdminAlertService {
     return new Observable<MessageEvent>((subscriber) => {
       subscriber.next({
         type: 'connected',
-        data: { type: 'connected', at: new Date().toISOString() },
+        data: JSON.stringify({ type: 'connected', at: new Date().toISOString() }),
       });
 
-      const sub = this.bus.pipe(map((p) => ({ type: 'human_needed', data: p }))).subscribe({
-        next: (ev) => subscriber.next(ev),
-        error: (err) => subscriber.error(err),
-      });
+      const sub = this.bus
+        .pipe(
+          map((p) => ({
+            type: 'human_needed',
+            data: JSON.stringify(p),
+          })),
+        )
+        .subscribe({
+          next: (ev) => subscriber.next(ev),
+          error: (err) => subscriber.error(err),
+        });
 
       const heartbeat = setInterval(() => {
         subscriber.next({
           type: 'ping',
-          data: { type: 'ping', at: new Date().toISOString() },
+          data: JSON.stringify({ type: 'ping', at: new Date().toISOString() }),
         });
-      }, 20000);
+      }, 15000);
 
       return () => {
         clearInterval(heartbeat);
