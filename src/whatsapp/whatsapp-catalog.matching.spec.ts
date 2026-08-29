@@ -1,4 +1,5 @@
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import { applyLocalGlossary } from './whatsapp-local-glossary';
 
 const soupMenu: WhatsappCatalogProduct[] = [
   {
@@ -103,6 +104,27 @@ describe('WhatsappCatalogService matching regressions', () => {
         soupMenu,
       ),
     ).toEqual([]);
+  });
+
+  it('q cuestan 2 sopas de menudencias → precio, no pedido', () => {
+    const text = applyLocalGlossary('Q cuestan 2 sopas de menudencias');
+    expect(catalog.isPriceInquiryIntent(text)).toBe(true);
+    expect(catalog.isGenericProductInquiry(text)).toBe(true);
+    const stripped = catalog.stripPriceInquiryNoise(text);
+    expect(catalog.findProductEmbeddedInMessage(stripped, soupMenu)?.id).toBe(20);
+    expect(catalog.extractQuantityFromMessage(text)).toBe(2);
+  });
+
+  it('cuestan / cuánto cuestan / q cuesta también son precio', () => {
+    expect(catalog.isPriceInquiryIntent('cuestan las sopas de menudencias')).toBe(true);
+    expect(catalog.isPriceInquiryIntent('cuánto cuestan 2 sopas de menudencias')).toBe(
+      true,
+    );
+    expect(catalog.isPriceInquiryIntent(applyLocalGlossary('q cuesta el pollo'))).toBe(
+      true,
+    );
+    expect(catalog.isPriceInquiryIntent('vale gracias')).toBe(false);
+    expect(catalog.isPriceInquiryIntent('quiero 2 sopas de menudencias')).toBe(false);
   });
 });
 

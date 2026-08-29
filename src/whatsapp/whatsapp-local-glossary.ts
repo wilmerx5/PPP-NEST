@@ -117,6 +117,8 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bpala\s+la\b/gi, to: 'para la' },
   { re: /\bpala\s+los\b/gi, to: 'para los' },
   { re: /\bpala\s+las\b/gi, to: 'para las' },
+  // WhatsApp: "q cuestan" / "q precio"
+  { re: /\bq\s+(cuestan|cuesta|valen|vale|precio|hay|tienen)\b/gi, to: 'que $1' },
   // Typos domicilio (prod: "domicikio" → multi-plato falso)
   { re: /\bdomicikios?\b/gi, to: 'domicilio' },
   { re: /\bdomiclios?\b/gi, to: 'domicilio' },

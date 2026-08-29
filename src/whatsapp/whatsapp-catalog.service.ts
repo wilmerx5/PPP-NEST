@@ -3153,24 +3153,26 @@ export class WhatsappCatalogService {
     return false;
   }
 
-  /** Pregunta por precio, no por pedir: "¿cuánto vale un pollo frito?" */
+  /** Pregunta por precio, no por pedir: "¿cuánto vale un pollo frito?" / "q cuestan 2 sopas" */
   isPriceInquiryIntent(text: string): boolean {
     const raw = text.trim();
     const q = normalizeText(raw);
     if (!q) return false;
 
     const hasPriceAsk =
-      /\b(cuanto vale|cuanto cuesta|cuanto sale|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|que precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale)\b/.test(
+      /\b(cuanto vale|cuanto valen|cuanto cuesta|cuanto cuestan|cuanto sale|cuanto salen|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|que precio|q precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale|que cuestan|q cuestan|que cuesta|q cuesta|que valen|q valen|que vale|q vale)\b/.test(
         q,
       ) ||
-      (/\b(cuanto|precio|valor|cuesta)\b/.test(q) && /\?/.test(raw));
+      /\b(cuesta|cuestan|valen)\b/.test(q) ||
+      (/\b(cuanto|precio|valor)\b/.test(q) &&
+        (/\?/.test(raw) || /\b(sopa|pollo|arroz|bandeja|combo|gaseosa|menudencia|ajiaco)\b/.test(q)));
 
     if (!hasPriceAsk) return false;
 
     const orderDominant =
       /^(quiero|dame|ponme|agrega|agregame|me das|me regalas|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)\s+/i.test(
         raw,
-      ) && !/\b(cuanto|precio|vale|cuesta|valor)\b/i.test(raw);
+      ) && !/\b(cuanto|precio|vale|valen|cuesta|cuestan|valor)\b/i.test(raw);
 
     return !orderDominant;
   }
@@ -3179,10 +3181,11 @@ export class WhatsappCatalogService {
   stripPriceInquiryNoise(text: string): string {
     return text
       .replace(
-        /\b(cu[aá]nto vale|cu[aá]nto cuesta|cu[aá]nto sale|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|qu[eé] precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a)\b/gi,
+        /\b(cu[aá]nto vale[n]?|cu[aá]nto cuesta[n]?|cu[aá]nto sale[n]?|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|qu[eé] precio|q precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a|qu[eé] cuesta[n]?|q cuesta[n]?|qu[eé] vale[n]?|q vale[n]?)\b/gi,
         ' ',
       )
-      .replace(/\b(cu[aá]nto|precio|valor|cuesta|cobran)\b/gi, ' ')
+      .replace(/\b(cu[aá]nto|precio|valor|cuesta[n]?|vale[n]?|cobran)\b/gi, ' ')
+      .replace(/^\s*q\s+/i, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }

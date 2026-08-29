@@ -1542,6 +1542,8 @@ export class WhatsappOrchestratorService {
       embeddedProduct &&
       !this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
+      !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isGenericProductInquiry(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -1663,6 +1665,8 @@ export class WhatsappOrchestratorService {
       orderQty >= 2 &&
       !session.pendingMatch &&
       !session.pendingAttribute &&
+      !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isGenericProductInquiry(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products)
     ) {
@@ -1722,6 +1726,8 @@ export class WhatsappOrchestratorService {
     if (
       resolvedMatches.length === 1 &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
+      !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isGenericProductInquiry(text) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -7436,7 +7442,12 @@ export class WhatsappOrchestratorService {
       this.catalogService.findProductEmbeddedInMessage(text, products);
 
     if (embedded) {
-      await this.reply(conv, waId, this.catalogService.formatProductPriceReply(embedded));
+      const qty = this.catalogService.extractQuantityFromMessage(text);
+      await this.reply(
+        conv,
+        waId,
+        this.formatPriceInquiryReply(embedded, qty),
+      );
       return true;
     }
 
@@ -7451,7 +7462,8 @@ export class WhatsappOrchestratorService {
     }
 
     if (scored.length === 1 || this.catalogService.isStrongProductMatch(scored)) {
-      await this.reply(conv, waId, this.catalogService.formatProductPriceReply(scored[0].p));
+      const qty = this.catalogService.extractQuantityFromMessage(text);
+      await this.reply(conv, waId, this.formatPriceInquiryReply(scored[0].p, qty));
       return true;
     }
 
@@ -7461,6 +7473,21 @@ export class WhatsappOrchestratorService {
       this.catalogService.formatPriceInquiryList(scored.slice(0, 5).map((x) => x.p)),
     );
     return true;
+  }
+
+  private formatPriceInquiryReply(product: MenuProduct, quantity = 1): string {
+    const qty = Math.max(1, quantity || 1);
+    const base = this.catalogService.formatProductPriceReply(product);
+    if (qty <= 1) {
+      return `${base}\n\n_Si lo quieres, dime el nombre del plato y te lo agrego._`;
+    }
+    const line = Math.round(product.price * qty);
+    return (
+      `${base}\n\n` +
+      `Para *${qty}* unidades: *$${line.toLocaleString('es-CO')}* ` +
+      `($${Math.round(product.price).toLocaleString('es-CO')} c/u).\n\n` +
+      `_Si las quieres, escribe p. ej. *${qty} ${product.name}* y te las agrego._`
+    );
   }
 
   private toPendingMultiProduct(p: MenuProduct) {
