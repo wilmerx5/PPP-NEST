@@ -120,6 +120,13 @@ export type WhatsappSessionData = {
     price: number;
     quantity: number;
   };
+  /**
+   * Preguntamos “¿de qué plato?” (acompañamiento/ingredientes) y esperamos el nombre.
+   * El siguiente plato nombrado → detalle, NO agregar al carrito.
+   */
+  pendingCompositionAsk?: {
+    originalText: string;
+  };
   /** Ya eligió domicilio vs recojo en este pedido */
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */

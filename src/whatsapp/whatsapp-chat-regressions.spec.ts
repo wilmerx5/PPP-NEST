@@ -7,6 +7,7 @@
 import {
   isAbandonPendingSelectionIntent,
   isAddressChangeIntent,
+  isAddressRejectionIntent,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
 import {
@@ -319,6 +320,10 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     it('cambia la dirección…', () => {
       expect(isAddressChangeIntent('Cambia la direccion a dg 6 b 78b 64')).toBe(true);
       expect(isAddressChangeIntent('quiero un pollo frito')).toBe(false);
+      expect(isAddressRejectionIntent('No Esa no es mi direcion')).toBe(true);
+      expect(isAddressChangeIntent('No Esa no es mi direcion')).toBe(true);
+      expect(looksLikeNonAddressCommand('No Esa no es mi direcion')).toBe(true);
+      expect(looksLikeAddressOnlyMessage('No Esa no es mi direcion')).toBe(false);
     });
   });
 

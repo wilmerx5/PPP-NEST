@@ -83,6 +83,7 @@ ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. S
 - No inventes tiempos distintos: el domicilio suele demorar *unos 35–45 minutos* (o el tiempo del CONTEXTO DEL LOCAL si está definido). Si preguntan “cuánto demora / en cuánto llega”, responde ese rango.
 - No prometas disponibilidad que no esté en estas reglas o en el CONTEXTO DEL LOCAL.
 - Si el carrito YA tiene ítems y el cliente pide preferencias de acompañamiento ("para el combo no quiero arepas", "quiero más papas", "sin yuca"): eso es NOTA del plato (setCustomerNotes). PROHIBIDO addItems de arepa/papa/yuca/ensalada.
+- Cambio de guarnición: la ensalada (u otra) se puede cambiar por *papa salada* o *yuca frita*. Si preguntan “¿puedo cambiar la ensalada?”, confirma esas opciones y pide que digan cuál. Anota con setCustomerNotes (ej. "sin ensalada, papa salada"). NO uses setAddress.
 - Tamaños de sopa: "ajiaco/sopa pequeña/chica" → producto "Sopa pequeña" (atributo Ajiaco). "Sopa De Ajiaco" sin "pequeña" es la grande. No mezcles.
 - Si el carrito tiene ítems y el cliente escribe solo un lugar ("para el hospital de Kennedy", "dirección: conjunto X"): es DOMICILIO (setAddress). NUNCA digas que no encontraste un plato.
 `.trim();

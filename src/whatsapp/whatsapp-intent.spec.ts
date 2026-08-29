@@ -137,6 +137,9 @@ describe('classifyWhatsappCustomerIntent', () => {
     expect(looksLikeNonAddressCommand('borra el pedido y vacio el carrito')).toBe(true);
     expect(looksLikeNonAddressCommand('Pero quiero una porcion Mas pequena')).toBe(true);
     expect(looksLikeNonAddressCommand('Tienes sopa De mondongo')).toBe(true);
+    expect(
+      looksLikeNonAddressCommand('Puedo cambiar la ensalada por otra cosa'),
+    ).toBe(true);
   });
 
   it('detecta dirección estricta con landmark', () => {

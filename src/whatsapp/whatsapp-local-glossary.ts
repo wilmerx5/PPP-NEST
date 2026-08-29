@@ -13,6 +13,9 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
   { re: /\bpar\s+pagarte\b/gi, to: 'para pagarte' },
   { re: /\bpap[aá]\s+a\s+la\s+francesa\b/gi, to: 'papa a la francesa' },
+  // Precio coloquial CO: "a como el arroz" = ¿a cómo / cuánto cuesta?
+  { re: /\ba\s+c[oó]mo\b/gi, to: 'a cuanto' },
+  { re: /\bdirecion\b/gi, to: 'dirección' },
   // Tamaño sopas
   { re: /\b(ajiaco|menudencias?)\s+(chico|chica|chiquito|chiquita|pequenito|pequenita)\b/gi, to: '$1 pequeña' },
   { re: /\bsopas?\s+(chicas?|chiquitas?|pequenitas?)\b/gi, to: 'sopa pequeña' },
@@ -52,6 +55,10 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bsin\s+salsas?,?\s+(?:mas|más)\s+miel\b/gi, to: 'sin salsas más miel' },
   { re: /\bsin\s+ensladas?\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
   { re: /\bsin\s+ensalada\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
+  { re: /\bcambiar\s+(?:la\s+)?ensalada\s+por\s+papa\s+salada\b/gi, to: 'sin ensalada papa salada' },
+  { re: /\bcambiar\s+(?:la\s+)?ensalada\s+por\s+yuca\s+frita\b/gi, to: 'sin ensalada yuca frita' },
+  { re: /\bensalada\s+por\s+papa\s+salada\b/gi, to: 'sin ensalada papa salada' },
+  { re: /\bensalada\s+por\s+yuca\s+frita\b/gi, to: 'sin ensalada yuca frita' },
   { re: /\b(?:una?\s+)?botella(?:s)?\s+de\s+agua\b/gi, to: 'agua 600ml' },
   { re: /\bagua\s+en\s+botella\b/gi, to: 'agua 600ml' },
 ];

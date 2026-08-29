@@ -4,6 +4,11 @@
  * solo aplica cuando la intención es pedido de producto.
  */
 
+import {
+  isAddressChangeIntent,
+  isAddressRejectionIntent,
+} from './whatsapp-session-intents';
+
 export type WhatsappMessageIntent =
   | 'order_product'
   | 'side_note'
@@ -217,6 +222,14 @@ export function looksLikeNonAddressCommand(text: string): boolean {
   if (/\b(tienes|tiene|tienen|hay|venden)\b/.test(t) && /\b(sopa|mondongo|ajiaco|pollo|arroz)\b/.test(t)) {
     return true;
   }
+  // Cambio de guarnición
+  if (
+    /\bcambiar\b/.test(t) &&
+    /\b(ensalada|papa|papas|yuca|arepa|aguacate|maduro|guarnicion|acompanamiento)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (isAddressRejectionIntent(text) || isAddressChangeIntent(text)) return true;
 
   return false;
 }

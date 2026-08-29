@@ -1475,6 +1475,7 @@ export class WhatsappCatalogService {
     'arroz',
     'ensalada',
     'ensaladas',
+    'salada',
     'aguacate',
     'huevo',
     'huevos',
@@ -1495,6 +1496,8 @@ export class WhatsappCatalogService {
     'miel',
     'bocadillo',
     'francesa',
+    'frita',
+    'fritas',
   ]);
 
   /** Arepa / porción de papa suelta (no el plato principal). */
@@ -1635,10 +1638,17 @@ export class WhatsappCatalogService {
     const hasSwapSide = new RegExp(
       `\\ben\\s+vez\\s+de\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+)?(?:${sideAlt})\\b`,
     ).test(q);
+    // "puedo cambiar la ensalada por otra cosa" / "cambiar papas por yuca"
+    const hasChangeSide = new RegExp(
+      `\\b(?:puedo|puedes|se\\s+puede|me\\s+(?:dejan|dejas)|dejame|d[eé]jame)?\\s*cambiar\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b` +
+        `|\\bcambiar\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+)?(?:${sideAlt})\\s+por\\b` +
+        `|\\b(?:${sideAlt})\\s+por\\s+(?:otra\\s+cosa|${sideAlt})\\b`,
+    ).test(q);
     const refsCombo = /\b(?:para|del|en|sobre|el|la)\s+(?:el\s+|la\s+)?combo\b/.test(q) || /\bcombo\b/.test(q);
 
-    if (!hasNegSide && !hasMoreSide && !hasSinConSide && !hasSwapSide) return false;
-
+    if (!hasNegSide && !hasMoreSide && !hasSinConSide && !hasSwapSide && !hasChangeSide) {
+      return false;
+    }
     // Si pide un plato principal nuevo (pollo, churrasco…) no es solo nota
     const mainDish =
       /\b(pollos?|churrascos?|mojarras?|hamburguesas?|bandejas?|sopas?|alitas?|pechugas?|costillas?|broaster|ejecutivo|sancocho|ajiaco)\b/.test(
@@ -3203,7 +3213,7 @@ export class WhatsappCatalogService {
     if (!q) return false;
 
     const hasPriceAsk =
-      /\b(cuanto vale|cuanto valen|cuanto cuesta|cuanto cuestan|cuanto sale|cuanto salen|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|que precio|q precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale|que cuestan|q cuestan|que cuesta|q cuesta|que valen|q valen|que vale|q vale)\b/.test(
+      /\b(cuanto vale|cuanto valen|cuanto cuesta|cuanto cuestan|cuanto sale|cuanto salen|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|a como|que precio|q precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale|que cuestan|q cuestan|que cuesta|q cuesta|que valen|q valen|que vale|q vale)\b/.test(
         q,
       ) ||
       /\b(cuesta|cuestan|valen)\b/.test(q) ||
@@ -3215,7 +3225,7 @@ export class WhatsappCatalogService {
     const orderDominant =
       /^(quiero|dame|ponme|agrega|agregame|me das|me regalas|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)\s+/i.test(
         raw,
-      ) && !/\b(cuanto|precio|vale|valen|cuesta|cuestan|valor)\b/i.test(raw);
+      ) && !/\b(cuanto|precio|vale|valen|cuesta|cuestan|valor|a\s+como|a\s+cuanto)\b/i.test(raw);
 
     return !orderDominant;
   }
@@ -3224,7 +3234,7 @@ export class WhatsappCatalogService {
   stripPriceInquiryNoise(text: string): string {
     return text
       .replace(
-        /\b(cu[aá]nto vale[n]?|cu[aá]nto cuesta[n]?|cu[aá]nto sale[n]?|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|qu[eé] precio|q precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a|qu[eé] cuesta[n]?|q cuesta[n]?|qu[eé] vale[n]?|q vale[n]?)\b/gi,
+        /\b(cu[aá]nto vale[n]?|cu[aá]nto cuesta[n]?|cu[aá]nto sale[n]?|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|a c[oó]mo|qu[eé] precio|q precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a|qu[eé] cuesta[n]?|q cuesta[n]?|qu[eé] vale[n]?|q vale[n]?)\b/gi,
         ' ',
       )
       .replace(/\b(cu[aá]nto|precio|valor|cuesta[n]?|vale[n]?|cobran)\b/gi, ' ')
@@ -4057,6 +4067,8 @@ export class WhatsappCatalogService {
       /\bcon que va\b/,
       /\bcon que trae\b/,
       /\bcon que acompana\b/,
+      /\bviene acompana/,
+      /\by\s+con\s+que\s+(viene|va|trae)\b/,
       /\bque incluye\b/,
       /\bque contiene\b/,
       /\bque ingredientes\b/,

@@ -125,6 +125,25 @@ describe('WhatsappCatalogService matching regressions', () => {
     );
     expect(catalog.isPriceInquiryIntent('vale gracias')).toBe(false);
     expect(catalog.isPriceInquiryIntent('quiero 2 sopas de menudencias')).toBe(false);
+    expect(catalog.isPriceInquiryIntent(applyLocalGlossary('A como El arroz Con pollo'))).toBe(
+      true,
+    );
+    expect(catalog.isPriceInquiryIntent('A como el churrasco')).toBe(true);
+    expect(
+      catalog.resolveMultiProductOrder(
+        applyLocalGlossary('A como El arroz Con pollo'),
+        soupMenu,
+      ),
+    ).toBeNull();
+    expect(catalog.isProductDescriptionInquiry('Y con que viene acompañado')).toBe(true);
+    expect(catalog.isProductDescriptionInquiry('con que viene acompañado')).toBe(true);
+  });
+
+  it('cambiar ensalada por otra cosa → nota de guarnición', () => {
+    expect(
+      catalog.looksLikeSideModificationNote('Puedo cambiar la ensalada por otra cosa'),
+    ).toBe(true);
+    expect(catalog.looksLikeSideModificationNote('cambiar papas por yuca')).toBe(true);
   });
 
   it('gramos / rinde personas / ¿tienes X? → info, no pedido', () => {

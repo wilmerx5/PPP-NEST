@@ -7,13 +7,55 @@
 export function isAddressChangeIntent(text: string): boolean {
   const t = (text || '').trim().toLowerCase();
   if (!t || t.length < 8) return false;
+  if (isAddressRejectionIntent(t)) return true;
   return (
-    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+)?(direcci[oó]n|domicilio|ubicaci[oó]n)\b/i.test(
+    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+)?(direcci[oó]n|direcion|domicilio|ubicaci[oó]n)\b/i.test(
       t,
     ) ||
-    /\b(la\s+)?(direcci[oó]n|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
+    /\b(la\s+)?(direcci[oó]n|direcion|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
     /\b(nueva\s+direcci[oó]n|otro\s+domicilio|cambiar\s+domicilio)\b/i.test(t)
   );
+}
+
+/**
+ * Rechazo de domicilio anotado: "no esa no es mi dirección", "dirección incorrecta".
+ * No trae la dirección nueva todavía.
+ */
+export function isAddressRejectionIntent(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bdirecion\b/g, 'direccion');
+  if (!t || t.length < 8) return false;
+  // Si ya trae calle/carrera/#, es cambio con destino, no solo rechazo
+  if (
+    /\b(calle|carrera|cra|cll|av\.?|avenida|diag|torre|apto|apartamento|conjunto)\b/.test(t) &&
+    /\d/.test(t)
+  ) {
+    return false;
+  }
+  if (
+    /\bno\s+(esa|eso|esta|este)\s+no\s+es\s+(mi\s+)?(direccion|domicilio|ubicacion)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (/\bno\s+es\s+(mi\s+)?(direccion|domicilio|ubicacion)\b/.test(t)) return true;
+  if (
+    /\b(esa|eso|esta|este)\s+no\s+es\s+(mi\s+)?(direccion|domicilio|ubicacion)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /\b(direccion|domicilio)\s+(incorrect[ao]|equivocad[ao]|mal|errada)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (/^no[,.]?\s+(esa|eso)\s+no\s+es\b/.test(t) && /\b(direccion|domicilio|direcion)\b/.test(t)) {
+    return true;
+  }
+  return false;
 }
 
 /**

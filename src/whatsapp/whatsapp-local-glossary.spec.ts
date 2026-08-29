@@ -29,6 +29,7 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('medio broaster medio frito')).toMatch(/mixto/i);
     expect(applyLocalGlossary('coca cola cero')).toMatch(/zero/i);
     expect(applyLocalGlossary('Q cuestan 2 sopas')).toMatch(/que cuestan/i);
+    expect(applyLocalGlossary('A como El arroz Con pollo')).toMatch(/a cuanto/i);
     expect(applyLocalGlossary('sin enslada mas papa')).toMatch(/sin ensalada más papa/i);
     expect(applyLocalGlossary('Dame tmb una botella de agua')).toMatch(/agua 600ml/i);
     // No convertir "cuántas personas alcanza" en pedido
