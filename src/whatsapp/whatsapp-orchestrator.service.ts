@@ -6247,6 +6247,15 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (raw.length < 4) return false;
 
+    // "qué bebidas hay" / explorar menú ≠ dirección
+    if (
+      this.catalogService.isMenuExploreIntent(raw, []) ||
+      this.catalogService.isCategoryBrowseQuestion(raw) ||
+      looksLikeNonAddressCommand(raw)
+    ) {
+      return false;
+    }
+
     if (
       this.catalogService.looksLikeClearlyMultiDishOrder(raw) ||
       this.catalogService.looksLikeFoodPlusDrinkOrder(raw) ||
@@ -6457,6 +6466,12 @@ export class WhatsappOrchestratorService {
     if (t.length < 4 || t.length > 90) return false;
     if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
+    if (
+      this.catalogService.isMenuExploreIntent(t, []) ||
+      this.catalogService.isCategoryBrowseQuestion(t)
+    ) {
+      return false;
+    }
     if (this.looksLikeExplicitLandmarkKeyword(t)) return true;
 
     if (!opts?.allowGenericPhrase) return false;
@@ -6467,9 +6482,10 @@ export class WhatsappOrchestratorService {
       words.length <= 7 &&
       !/\d/.test(t) &&
       /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'°-]+$/.test(t) &&
-      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme)\b/i.test(
+      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué)\b/i.test(
         t,
-      )
+      ) &&
+      !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?)\b/i.test(t)
     ) {
       return true;
     }
@@ -6510,12 +6526,19 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (
-      /\b(broaster|frito|asado|plancha|gaseosa|arepa|combo|mondongo|ajiaco|pechuga|costilla|pollo|arroz|sopa|bandeja|mojarra|churrasco|hamburguesa|alitas?|ejecutivo|sancocho|limonada)\b/i.test(
+      /\b(broaster|frito|asado|plancha|gaseosa|arepa|combo|mondongo|ajiaco|pechuga|costilla|pollo|arroz|sopa|bandeja|mojarra|churrasco|hamburguesa|alitas?|ejecutivo|sancocho|limonada|bebidas?)\b/i.test(
         t,
       ) &&
       !/\b(calle|carrera|cra|cll|av|avenida|barrio|habitaci[oó]n|apto|apartamento|torre|#)\b/i.test(
         t,
       )
+    ) {
+      return true;
+    }
+    // Pregunta de menú / categoría
+    if (
+      /\b(que|qué)\b/i.test(t) &&
+      /\b(hay|tienen|tiene|tienes|ofrecen)\b/i.test(t)
     ) {
       return true;
     }

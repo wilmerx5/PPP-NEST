@@ -135,6 +135,18 @@ export function looksLikeNonAddressCommand(text: string): boolean {
     return true;
   }
 
+  // Preguntas de menú / categoría — nunca dirección
+  if (
+    /\b(que|qué)\b/.test(t) &&
+    /\b(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden)\b/.test(t) &&
+    /\b(bebidas?|sopas?|pollos?|arroces?|bandejas?|porciones?|gaseosas?|carnes?|comida|comer|platos?|menu|menú|carta)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(que|qué)\s+(hay|tienen|tienes|ofrecen)\b/.test(t)) return true;
+
   return false;
 }
 
@@ -244,9 +256,17 @@ export function looksLikeAddressOnlyMessage(
   if (looksLikeNonAddressCommand(raw)) return false;
 
   if (
-    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/i.test(
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo|bebidas?)\b/i.test(
       raw,
     )
+  ) {
+    return false;
+  }
+
+  // "qué X hay / tienen" = menú, no dirección
+  if (
+    /\b(que|qué)\b/i.test(raw) &&
+    /\b(hay|tienen|tiene|tienes|ofrecen|ofreces)\b/i.test(raw)
   ) {
     return false;
   }

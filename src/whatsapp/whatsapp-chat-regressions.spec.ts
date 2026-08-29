@@ -12,6 +12,7 @@ import {
 import {
   classifyWhatsappCustomerIntent,
   looksLikeAddressOnlyMessage,
+  looksLikeNonAddressCommand,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
@@ -413,6 +414,28 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(false);
       expect(catalog.resolveMultiProductOrder(text, pppMenu)).toBeNull();
     });
+  });
+
+  describe('menú explore ≠ dirección (qué bebidas hay)', () => {
+    it.each(['Que bebidas hay', 'Qué bebidas hay', 'que sopas tienen'])(
+      'browse, no address: %s',
+      (text) => {
+        expect(catalog.isCategoryBrowseQuestion(text) || catalog.isMenuExploreIntent(text, [])).toBe(
+          true,
+        );
+        expect(looksLikeAddressOnlyMessage(text)).toBe(false);
+        expect(looksLikeNonAddressCommand(text)).toBe(true);
+        expect(
+          classifyWhatsappCustomerIntent({
+            text,
+            cartLength: 2,
+            looksLikeAddressOnly: false,
+            isCategoryBrowse: catalog.isCategoryBrowseQuestion(text),
+            isMenuExplore: catalog.isMenuExploreIntent(text, []),
+          }),
+        ).toBe('menu_question');
+      },
+    );
   });
 
   describe('C09 / C07 — arroz chino variantes + explicar combo', () => {

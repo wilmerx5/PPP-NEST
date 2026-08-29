@@ -530,6 +530,8 @@ export class WhatsappCatalogService {
       /\b(que|qué)\s+(me\s+)?(recomiend|sugier|aconsej)/,
       /\b(que|qué)\s+(de|para)\s+(almuerzo|comer|comida|cena|desayuno|merienda|hoy|la\s+casa)\b/,
       /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces)\s+(de\s+)?(comida|comer|almuerzo|cena|platos?|carne|carnes|pollo|sopas?|bebidas?)?\b/,
+      // "qué bebidas hay" / "que sopas tienen"
+      /\b(que|qué)\s+(?:unas?|los?|las?)?\s*(bebidas?|sopas?|pollos?|arroces?|bandejas?|porciones?|gaseosas?|carnes?|hamburguesas?|combos?|platos?)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces)\b/,
       /\b(que|qué)\s+(se\s+)?(puede|podemos|puedo)\s+(pedir|ordenar|comer)\b/,
       /\b(que|qué)\s+tienes\s+(de\s+)?(comer|comida|almuerzo|cena)?\b/,
       /\b(que|qué)\s+ofreces\b/,
@@ -572,8 +574,17 @@ export class WhatsappCatalogService {
     if (this.isRestaurantLocationInquiry(text)) return false;
     if (this.extractCodeFromMessage(text) != null) return false;
     if (/^(quiero|dame|ponme|agrega)\b/.test(q)) return false;
+    const catWord =
+      '(?:bebidas?|sopas?|pollos?|arroces?|bandejas?|porciones?|gaseosas?|carnes?|hamburguesas?|combos?|platos?|categorias?)';
     return (
       /\b(que|qué)\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden|ponen)\b/.test(q) ||
+      // "qué bebidas hay" / "que sopas tienen" (categoría en medio)
+      new RegExp(
+        `\\b(que|qué)\\s+(?:unas?\\s+|los?\\s+|las?\\s+)?${catWord}\\s+(hay|tienen|tiene|tienes|ofrecen|ofreces|sirven|venden|ponen)\\b`,
+      ).test(q) ||
+      new RegExp(
+        `\\b(que|qué)\\s+(hay|tienen|tiene|tienes)\\s+(?:de\\s+)?${catWord}\\b`,
+      ).test(q) ||
       /\b(muestrame|mostrame|ver)\s+(las?\s+)?(opciones|lista)?\b/.test(q) ||
       /\b(opciones|lista)\s+de\b/.test(q)
     );
