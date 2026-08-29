@@ -85,6 +85,32 @@ export function isReuseLastAddressIntent(text: string): boolean {
   return false;
 }
 
+/** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */
+export function isDeliveryEtaInquiry(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 6) return false;
+
+  // Pedido concreto → no solo ETA
+  if (
+    /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar)\b/i.test(raw) &&
+    /\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|hamburguesa)\b/i.test(raw)
+  ) {
+    return false;
+  }
+
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return (
+    /\b(se\s+demora|cuanto\s+(se\s+)?(demora|tarda|tardaria)|cuanto\s+tiempo|en\s+cuanto\s+(llega|llegaria|llegara|sale|salen)|cuando\s+(llega|llegaria)|tiempo\s+de\s+(domicilio|entrega|espera)|demora\s+(el\s+)?(domicilio|pedido|envio)|eta)\b/.test(
+      t,
+    ) ||
+    /\b(cuanto|cuanto\s+aprox)\b.+\b(minutos?|mins?|demora|lleg)\b/.test(t)
+  );
+}
+
 /**
  * Solo pregunta de cobertura: “¿tienen domicilios para Cra 81A…?”
  * (sin estar pidiendo platos).

@@ -1,6 +1,7 @@
 import {
   isDeliveryCoverageInquiry,
   extractCoverageAddressProbe,
+  isDeliveryEtaInquiry,
   isPostOrderFollowUpIntent,
   isAddressChangeIntent,
   isReuseLastAddressIntent,
@@ -101,6 +102,21 @@ describe('corpus C02 address-only sigue OK', () => {
 
   it('cambio de dirección sigue distinto', () => {
     expect(isAddressChangeIntent('Cambia la direccion a dg 6 b 78b 64')).toBe(true);
+  });
+});
+
+describe('isDeliveryEtaInquiry', () => {
+  it.each([
+    'Cuánto demora?',
+    'en cuanto llegaría?',
+    'Se demora el domicilio?',
+    'cuanto tiempo tarda la entrega',
+  ])('detecta ETA: %s', (text) => {
+    expect(isDeliveryEtaInquiry(text)).toBe(true);
+  });
+
+  it('no confunde con pedido', () => {
+    expect(isDeliveryEtaInquiry('quiero un pollo frito')).toBe(false);
   });
 });
 

@@ -29,7 +29,8 @@ const DEFAULT_MENU_LINK =
 const DEFAULT_HUMAN_HANDOFF =
   'Listo 🙋 Ya te conecté con el equipo — en un momento alguien te escribe por aquí. Cuéntanos con calma qué necesitas.';
 
-const DEFAULT_ORDER_SUCCESS = 'Gracias por pedirnos, te esperamos 🍗';
+const DEFAULT_ORDER_SUCCESS =
+  'Gracias por pedirnos 🍗 Te lo enviaremos lo más pronto posible.';
 
 const DEFAULT_CLOSED_MESSAGE =
   'Ahora estamos *cerrados*. Cuando abramos escríbenos de nuevo para pedir.';
@@ -315,7 +316,11 @@ export class WhatsappSettingsService {
     if (ctx.deliveryNotes) lines.push(`Notas de domicilio / zonas: ${ctx.deliveryNotes}`);
     if (ctx.serviceAreaNote) lines.push(`Cobertura / zonas de servicio: ${ctx.serviceAreaNote}`);
     if (ctx.prepTimeNote) lines.push(`Tiempo de preparación (orientativo): ${ctx.prepTimeNote}`);
-    if (ctx.deliveryTimeNote) lines.push(`Tiempo de domicilio (orientativo): ${ctx.deliveryTimeNote}`);
+    lines.push(
+      `Tiempo de domicilio (orientativo): ${
+        ctx.deliveryTimeNote?.trim() || 'unos 35–45 minutos'
+      }`,
+    );
     if (ctx.minOrderAmount > 0) {
       lines.push(`Pedido mínimo: $${ctx.minOrderAmount.toLocaleString('es-CO')} COP`);
     }
