@@ -8012,13 +8012,22 @@ export class WhatsappOrchestratorService {
       this.catalogService.findProductEmbeddedInMessage(query, products) ||
       this.catalogService.findProductEmbeddedInMessage(text, products);
 
-    if (embedded) {
+    const family =
+      this.catalogService.findProductVariantFamily(text, products, embedded ? [embedded] : undefined) ||
+      this.catalogService.findProductVariantFamily(query, products, embedded ? [embedded] : undefined);
+    const familyPick = family
+      ? this.catalogService.pickVariantFromFamilyText(text, family) ||
+        this.catalogService.pickVariantFromFamilyText(query, family)
+      : null;
+    const infoProduct = familyPick || embedded;
+
+    if (infoProduct) {
       const qty = this.catalogService.extractQuantityFromMessage(text);
-      await this.savePendingAddOffer(conv, embedded, qty);
+      await this.savePendingAddOffer(conv, infoProduct, qty);
       await this.reply(
         conv,
         waId,
-        this.formatPriceInquiryReply(embedded, qty),
+        this.formatPriceInquiryReply(infoProduct, qty),
       );
       return true;
     }
@@ -8469,8 +8478,14 @@ export class WhatsappOrchestratorService {
     if (foodHits === 0) return false;
 
     // Nombre detectado en el mismo mensaje que los platos (ej. "Natalia seria un arroz…")
+    // No usar platos del menú como nombre (ajiaco, mondongo…)
     const inferredName = multi.possibleCustomerNames?.[0]?.trim();
-    if (inferredName && !conv.customerName?.trim()) {
+    if (
+      inferredName &&
+      !conv.customerName?.trim() &&
+      !this.catalogService.findProductEmbeddedInMessage(inferredName, products) &&
+      this.catalogService.looksLikePersonNameSegment(inferredName)
+    ) {
       await this.conversationService.updateCustomerName(conv, inferredName);
       const freshName = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, freshName);

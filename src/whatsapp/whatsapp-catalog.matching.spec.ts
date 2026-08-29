@@ -163,6 +163,8 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.isAvailabilityInquiry('Tienes sopa De mondongo')).toBe(true);
     expect(catalog.isAvailabilityInquiry('No tienes we mondongo')).toBe(true);
     expect(catalog.isAvailabilityInquiry('quiero una sopa de mondongo')).toBe(false);
+    expect(catalog.isAvailabilityInquiry('y me vendes un combo de arroz chino')).toBe(false);
+    expect(catalog.isAvailabilityInquiry('¿venden arroz chino?')).toBe(true);
     expect(
       catalog.isServingSizeChangeIntent('Pero quiero una porcion Mas pequena'),
     ).toBe(true);

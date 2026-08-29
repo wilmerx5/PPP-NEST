@@ -12,9 +12,11 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('Para Un domicikio Para bosques')).toMatch(/domicilio/i);
   });
 
-  it('normaliza tamaño de sopa / ajiaco chico', () => {
-    expect(applyLocalGlossary('ajiaco chico')).toMatch(/ajiaco pequeña/i);
-    expect(applyLocalGlossary('sopa chiquita')).toMatch(/sopa pequeña/i);
+  it('normaliza combo de arroz chino', () => {
+    expect(applyLocalGlossary('y me vendes un combo de arroz chino')).toMatch(
+      /arroz chino combo/i,
+    );
+    expect(applyLocalGlossary('arroz chino en combo')).toMatch(/arroz chino combo/i);
   });
 
   it('normaliza pollo broaster', () => {

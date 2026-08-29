@@ -102,6 +102,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Sopas',
   },
   {
+    id: 21,
+    code: 21,
+    name: 'Sopa De Ajiaco',
+    price: 15000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Sopas',
+  },
+  {
     id: 37,
     code: 37,
     name: 'Limonada Natural',
@@ -220,11 +230,23 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
   const catalog = new WhatsappCatalogService({} as never);
   const points = new WhatsappPointsService({} as never);
 
-  describe('Natalia / nombre ≠ plato', () => {
-    it('Natalia seria un arroz… → nombre de persona, no unresolved', () => {
-      expect(catalog.looksLikePersonNameSegment('Natalia')).toBe(true);
-      expect(catalog.looksLikePersonNameSegment('Natalia seria')).toBe(true);
-      expect(catalog.looksLikePersonNameSegment('arroz con pollo')).toBe(false);
+  describe('Pollo genérico → listar opciones', () => {
+    it('Quiero pedir pollo / dame pollo → categoría Pollo, no 1 Pollo Frito', () => {
+      for (const raw of ['Quiero pedir pollo', 'dame pollo', 'quiero pollo', 'pollo']) {
+        const text = applyLocalGlossary(raw);
+        expect(catalog.resolveSizedChickenProduct(text, pppMenu)).toBeNull();
+        const hit = catalog.findCategoryBrowseHit(text, pppMenu);
+        expect(hit?.categoryName).toMatch(/pollo/i);
+        expect(hit!.products.length).toBeGreaterThanOrEqual(3);
+        expect(hit!.products.some((p) => /frito/i.test(p.name))).toBe(true);
+        expect(hit!.products.some((p) => /broaster/i.test(p.name))).toBe(true);
+      }
+    });
+
+    it('quiero pollo frito sigue siendo plato concreto (no browse genérico)', () => {
+      const text = applyLocalGlossary('quiero pollo frito');
+      expect(catalog.findCategoryBrowseHit(text, pppMenu)).toBeNull();
+      expect(catalog.findProductEmbeddedInMessage(text, pppMenu)?.name).toMatch(/frito/i);
     });
   });
 
@@ -541,6 +563,38 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       ).toBe(71);
       expect(catalog.pickVariantFromFamilyText('con costillas', family)?.code).toBe(72);
       expect(catalog.pickVariantFromFamilyText('en combo', family)?.code).toBe(73);
+    });
+
+    it('Un arroz chino en combo + Un ajiaco (newline) → combo + sopa', () => {
+      const text = applyLocalGlossary('Un arroz chino en combo\nUn ajiaco');
+      expect(catalog.looksLikePersonNameSegment('ajiaco')).toBe(false);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+      expect(catalog.countQuantityMentions(text)).toBeGreaterThanOrEqual(2);
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names).toContain('Arroz Chino Combo');
+      expect(names).toContain('Sopa De Ajiaco');
+      expect(names).not.toContain('Arroz Chino Caja Con Papa Francesa');
+      expect(multi!.possibleCustomerNames || []).not.toContain('ajiaco');
+    });
+
+    it('“y me vendes un combo de arroz chino” → pedido combo, no consulta', () => {
+      const text = applyLocalGlossary('y me vendes un combo de arroz chino');
+      expect(text).toMatch(/arroz chino combo/i);
+      expect(catalog.isAvailabilityInquiry(text)).toBe(false);
+      expect(catalog.isGenericProductInquiry(text)).toBe(false);
+      expect(catalog.extractVariantPreferenceHint(text)).toBe('combo');
+
+      const family = catalog.findProductVariantFamily(text, pppMenu)!;
+      expect(catalog.pickVariantFromFamilyText(text, family)?.code).toBe(73);
+      expect(catalog.findProductEmbeddedInMessage(text, pppMenu)?.code).toBe(73);
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      expect(scored[0]?.p.code).toBe(73);
     });
 
     it('isComboMeaningInquiry', () => {

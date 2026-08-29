@@ -35,6 +35,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\barroz\s+chuno\b/gi, to: 'arroz chino' },
   { re: /\barroz\s+chino\s+el\s+que\s+viene\s+con\s+medio\s+pollo\b/gi, to: 'arroz chino con medio pollo' },
   { re: /\barroz\s+chino\s+en\s+combo\b/gi, to: 'arroz chino combo' },
+  { re: /\bcombo\s+de\s+arroz\s+chino\b/gi, to: 'arroz chino combo' },
+  { re: /\bun\s+combo\s+de\s+arroz\s+chino\b/gi, to: 'un arroz chino combo' },
   { re: /\barroz\s+paisa\s+sencillo\b/gi, to: 'arroz paisa solo' },
   { re: /\ben\s+comboo\b/gi, to: 'en combo' },
   // Add-on tardío (corpus): "alcanzo a encargarte una ensalada"

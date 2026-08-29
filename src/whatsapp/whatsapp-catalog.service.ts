@@ -661,8 +661,9 @@ export class WhatsappCatalogService {
     const q = normalizeText(text || '');
     if (!q) return 0;
     let count = 0;
+    // Incluye un/una: "Un arroz chino\nUn ajiaco" → 2 (multi-ítem)
     const re =
-      /\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(?:de\s+)?([a-z0-9]{3,})/g;
+      /\b(\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(?:de\s+)?([a-z0-9]{3,})/g;
     for (const m of q.matchAll(re)) {
       const rawNum = m[1];
       const after = m[2];
@@ -1125,7 +1126,7 @@ export class WhatsappCatalogService {
     t = t.replace(/\bser[ií]a\b/g, ' ').replace(/\s+/g, ' ').trim();
     if (!t) return false;
     if (
-      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?)\b/.test(
+      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?)\b/.test(
         t,
       )
     ) {
@@ -1310,7 +1311,29 @@ export class WhatsappCatalogService {
           : null;
     if (!style && !/\bpollo\b/.test(q)) return null;
 
-    const portion = this.detectPortionHint(q) || 'entero';
+    // "quiero pollo" / "dame pollo" (solo categoría) → listar opciones, no asumir 1 entero
+    // "pollo con arepas fritas" / "pollo frito" sí deben resolver
+    const portionHint = this.detectPortionHint(q);
+    const explicitWhole =
+      /\b(entero|entera|unidad)\b/.test(q) || /\b1\s+pollo\b/.test(q);
+    const chickenCore = q
+      .replace(
+        /\b(quiero|dame|ponme|pedir|ordenar|agrega|agregame|necesito|gustaria|quisiera|me|por|favor|un|una|unos|unas|el|la|de|del)\b/g,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (
+      !style &&
+      !portionHint &&
+      !explicitWhole &&
+      !/\b(1\s*\/\s*[24]|1\/[24])\b/.test(q) &&
+      /^pollos?$/.test(chickenCore)
+    ) {
+      return null;
+    }
+
+    const portion = portionHint || 'entero';
     const available = products.filter((p) => p.availableNow !== false);
 
     const isChickenSku = (n: string) => {
@@ -1676,6 +1699,21 @@ export class WhatsappCatalogService {
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
 
+    // WhatsApp multi-línea: "Un arroz chino en combo\nUn ajiaco"
+    const lines = raw
+      .split(/\r?\n+/)
+      .map((l) => l.trim())
+      .filter((l) => l.length >= 3);
+    if (lines.length >= 2) {
+      const dishLine = (l: string) =>
+        /^(?:un|una|unos|unas|el|la|los|las|\d{1,2})\b/i.test(l) ||
+        new RegExp(FOOD_ORDER_TOKEN, 'i').test(l) ||
+        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa)\b/i.test(
+          l,
+        );
+      if (lines.filter(dishLine).length >= 2) return true;
+    }
+
     // Quitar cola de cortesía: "…, por favor" no es separador de platos
     const withoutCourtesy = raw
       .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
@@ -1699,12 +1737,13 @@ export class WhatsappCatalogService {
       .replace(/\bpollos?\s+(?:fritos?|asados?|broaster|apana(?:do|da)s?)\b/g, 'pollo')
       .replace(/\bmojarras?\s+(?:fritas?|asadas?|plancha)\b/g, 'mojarra')
       .replace(/\bpechugas?\s+(?:fritas?|asadas?|plancha|broaster)\b/g, 'pechuga')
-      .replace(/\barroz\s+con\s+pollo\b/g, 'arrozpollo');
+      .replace(/\barroz\s+con\s+pollo\b/g, 'arrozpollo')
+      .replace(/\barroz\s+chino\b/g, 'arrozchino');
 
     // NO incluir frito/asado solos: son estilos de cocción, no platos
     // arepas solo cuentan si NO quedaron tras strip de "con/sin arepas"
     const dishRe =
-      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?|arrozpollo)\b/g;
+      /\b(churrascos?|mojarras?|platanos?|pollos?|sopas?|bandejas?|costillas?|arepas?|pechugas?|mondongo|sobrebarriga|alitas?|ejecutivos?|sancocho|ajiaco|broaster|limonadas?|hamburguesas?|gaseosas?|arrozpollo|arrozchino)\b/g;
     const hits = new Set<string>();
     for (const m of q.matchAll(dishRe)) {
       hits.add(singularizeEsToken(m[1]));
@@ -1901,6 +1940,22 @@ export class WhatsappCatalogService {
       for (const h of hits) {
         if (/\bbroaster\b/.test(normalizeText(h.p.name))) h.priority += 50;
         if (/^medio\s+pollo$/.test(normalizeText(h.p.name))) h.priority -= 40;
+      }
+    }
+
+    // "arroz chino en combo" → preferir SKU *Combo*, no la caja / base
+    const variantHint = this.extractVariantPreferenceHint(raw);
+    if (variantHint === 'combo') {
+      for (const h of hits) {
+        const pn = normalizeText(h.p.name);
+        if (/\bcombo\b/.test(pn)) h.priority += 90;
+        else if (this.productImpliesCombo(h.p)) h.priority += 40;
+      }
+    } else if (variantHint === 'solo') {
+      for (const h of hits) {
+        const pn = normalizeText(h.p.name);
+        if (/\bsolo\b/.test(pn)) h.priority += 90;
+        else if (/\bcombo\b/.test(pn)) h.priority -= 50;
       }
     }
 
@@ -2300,7 +2355,12 @@ export class WhatsappCatalogService {
     const withoutCourtesy = (text || '')
       .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
       .trim();
-    if (!/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+/i.test(withoutCourtesy)) return false;
+    // Salto de línea = separador (mismo criterio que coma/"y")
+    if (
+      !/\s+\by\b\s+|\s*,\s*|\s+(?:mas|más|\+)\s+|\r?\n/i.test(withoutCourtesy)
+    ) {
+      return false;
+    }
     // "cuéntame un cuento" no es multi-ítem: exige señal de comida o bebida
     const q = normalizeText(text);
     if (
@@ -2600,10 +2660,13 @@ export class WhatsappCatalogService {
       return null;
     }
 
-    // "quiero hacer un pedido" no es categoría
+    // "quiero hacer un pedido" no es categoría; "quiero pedir pollo" sí
     if (
       /\b(hacer|realizar)\s+(un\s+)?(pedido|orden)\b/.test(q) ||
-      /\b(quiero|gustaria|quisiera)\s+(pedir|ordenar|hacer)\b/.test(q) ||
+      (/\b(quiero|gustaria|quisiera)\s+(pedir|ordenar|hacer)\b/.test(q) &&
+        !/\b(pollos?|sopas?|bebidas?|gaseosas?|arroces?|bandejas?|porciones?|carnes?|hamburguesas?|combos?|jugos?|limonadas?|alas?|alitas?)\b/.test(
+          q,
+        )) ||
       (/\b(pedido|orden)\b/.test(q) &&
         !/\b(pollo|sopa|bebida|porcion|porciones|combo|alas)\b/.test(q) &&
         q.split(' ').length >= 3)
@@ -2671,6 +2734,8 @@ export class WhatsappCatalogService {
         'gracias',
         'quiero',
         'necesito',
+        'pedir',
+        'ordenar',
       ]);
       if (significantTokens.length <= 4) {
         for (const t of significantTokens) {
@@ -2792,11 +2857,26 @@ export class WhatsappCatalogService {
     if (this.isRestaurantLocationInquiry(trimmed)) return null;
     // "5 pollos" es pedido con cantidad, no browse de categoría
     if (this.extractQuantityFromMessage(trimmed) >= 2) return null;
+    const orderNoise = new Set([
+      'quiero', 'dame', 'ponme', 'pedir', 'ordenar', 'agrega', 'agregame', 'necesito',
+      'gustaria', 'quisiera', 'una', 'uno', 'unos', 'unas', 'por', 'favor',
+    ]);
+    // "quiero pollo frito" = plato concreto; "quiero pedir pollo" / "dame pollo" = categoría
     if (
       /^(quiero|dame|ponme|agrega)[.!?,;:]*/i.test(trimmed) &&
       new RegExp(FOOD_ORDER_TOKEN, 'i').test(trimmed)
     ) {
-      return null;
+      const qNorm = normalizeText(this.extractProductSearchQuery(trimmed) || trimmed);
+      const significant = qNorm
+        .split(' ')
+        .filter((t) => t.length >= 3 && !orderNoise.has(t));
+      const hasStyleOrPortion =
+        [...COOKING_STYLE_TOKENS].some((st) => this.queryHasToken(qNorm, st)) ||
+        !!this.detectPortionHint(qNorm) ||
+        /\b(1\s*\/\s*[24]|1\/[24]|combo|solo)\b/.test(qNorm);
+      if (significant.length >= 2 || (significant.length === 1 && hasStyleOrPortion)) {
+        return null;
+      }
     }
     const extracted = this.extractProductSearchQuery(trimmed);
     const queries = extracted !== trimmed ? [extracted, trimmed] : [extracted];
@@ -2804,10 +2884,6 @@ export class WhatsappCatalogService {
     // "sopa de menudencias" → producto concreto, NO listar todas las sopas
     // "sopas" / "pollo" genérico → sí listar categoría
     // "qué jugos naturales tienes" = browse, aunque "jugo natural" embeba un SKU
-    const orderNoise = new Set([
-      'quiero', 'dame', 'ponme', 'pedir', 'ordenar', 'agrega', 'agregame', 'necesito',
-      'gustaria', 'quisiera', 'una', 'uno', 'unos', 'unas', 'por', 'favor',
-    ]);
     if (!this.isCategoryBrowseQuestion(trimmed) && !this.isMenuExploreIntent(trimmed, products)) {
       for (const q of queries) {
         const qNorm = normalizeText(q);
@@ -3093,6 +3169,15 @@ export class WhatsappCatalogService {
         // Pack/duo/doble no pedido: penalizar fuerte ("una hamburguesa" ≠ "Duo de hamburguesas")
         if (this.productNameHasPackMultiplier(name) && !this.queryAsksForPackMultiplier(q)) {
           score -= 90;
+        }
+        // "combo de arroz chino" → subir el SKU *Combo* sobre la base
+        const variantHint = this.extractVariantPreferenceHint(q);
+        if (variantHint === 'combo') {
+          if (/\bcombo\b/.test(name) || this.productImpliesCombo(p)) score += 80;
+          else if (!/\bcombo\b/.test(name) && !/\bsolo\b/.test(name)) score -= 25;
+        } else if (variantHint === 'solo') {
+          if (/\bsolo\b/.test(name)) score += 80;
+          else if (/\bcombo\b/.test(name)) score -= 50;
         }
 
         // "Menú ejecutivo con pollo frito" ≠ "pollo frito" — excluir, no solo penalizar
@@ -3504,6 +3589,7 @@ export class WhatsappCatalogService {
       if (base.length < 4) return false;
       return (
         base === q ||
+        q.includes(base) ||
         (q.length >= 5 && (base.startsWith(q) || q.startsWith(base))) ||
         (q.split(/\s+/).length >= 2 && base === q)
       );
@@ -3545,6 +3631,48 @@ export class WhatsappCatalogService {
       }
     }
 
+    // Preferir base nombrada en el query ("arroz chino combo" ≠ familia "combo de pollo")
+    const baseMentionedInQuery = (base: string): boolean => {
+      if (!base || base.length < 4) return false;
+      if (q.includes(base)) return true;
+      const parts = base
+        .split(/\s+/)
+        .filter(
+          (t) =>
+            t.length >= 4 &&
+            !COOKING_STYLE_TOKENS.has(t) &&
+            !this.WEAK_PRODUCT_TOKENS.has(t),
+        );
+      // "arroz chino" → ambos tokens; no bastar con "pollo" genérico
+      if (parts.length >= 2 && parts.every((t) => this.queryHasToken(q, t))) return true;
+      if (parts.length === 1 && this.queryHasToken(q, parts[0])) return true;
+      return false;
+    };
+    const mentionedBases = [...baseCounts.keys()].filter(baseMentionedInQuery);
+    if (mentionedBases.length === 1) {
+      bestBase = mentionedBases[0];
+      bestCount = baseCounts.get(bestBase) || bestCount;
+    } else if (mentionedBases.length > 1) {
+      let top = mentionedBases[0];
+      let topC = baseCounts.get(top) || 0;
+      for (const b of mentionedBases) {
+        const c = baseCounts.get(b) || 0;
+        if (c > topC || (c === topC && b.length > top.length)) {
+          top = b;
+          topC = c;
+        }
+      }
+      bestBase = top;
+      bestCount = topC;
+    } else if (scored[0]?.p) {
+      // Ganador claro del score aunque el conteo de semillas favorezca otra familia
+      const topBase = this.getProductNameBase(scored[0].p.name);
+      if (topBase.length >= 4 && (scored[0].score >= 80 || scored.length === 1)) {
+        bestBase = topBase;
+        bestCount = Math.max(bestCount, baseCounts.get(topBase) || 1);
+      }
+    }
+
     const styleSiblings = bestStyleBase
       ? available.filter(
           (p) => this.stripCookingStyleTokens(p.name) === bestStyleBase,
@@ -3558,8 +3686,13 @@ export class WhatsappCatalogService {
       const qHitsStyleBase =
         this.queryHasToken(q, bestStyleBase) ||
         q.includes(bestStyleBase) ||
-        bestStyleBase.includes(q.split(/\s+/).filter((t) => !COOKING_STYLE_TOKENS.has(t))[0] || '');
-      if (qHitsStyleBase || bestStyleCount >= 2) {
+        (bestStyleBase.split(/\s+/).filter((t) => t.length >= 4).every((t) => this.queryHasToken(q, t)) &&
+          bestStyleBase.split(/\s+/).filter((t) => t.length >= 4).length >= 2);
+      const otherNamedBase = mentionedBases.some(
+        (b) => b !== bestStyleBase && !bestStyleBase.includes(b) && !b.includes(bestStyleBase),
+      );
+      // Estilo (mojarra frita / 1/4 frito|broaster) OK; no pisar "arroz chino" con combos de pollo
+      if (qHitsStyleBase || (bestStyleCount >= 2 && !otherNamedBase)) {
         bestBase = bestStyleBase;
         useCookingStyleFamily = true;
       }
@@ -3652,11 +3785,30 @@ export class WhatsappCatalogService {
       return family.variants.find((p) => /\bsolo\b/.test(normalizeText(p.name))) || null;
     }
     if (/\b(combo|completo|completa|gaseosa|bebida)\b/.test(q)) {
-      return (
-        family.variants.find((p) =>
-          /\b(combo|completo|completa|gaseosa|bebida)\b/.test(normalizeText(p.name)),
-        ) || null
+      const combos = family.variants.filter((p) =>
+        /\b(combo|completo|completa|gaseosa|bebida)\b/.test(normalizeText(p.name)),
       );
+      if (combos.length === 1) return combos[0];
+      if (combos.length > 1) {
+        const withQueryTok = combos.filter((p) => {
+          const toks = normalizeText(p.name)
+            .split(/\s+/)
+            .filter(
+              (t) =>
+                t.length >= 4 &&
+                !/\b(combo|completo|completa|gaseosa|bebida)\b/.test(t) &&
+                !COOKING_STYLE_TOKENS.has(t),
+            );
+          return toks.some((t) => this.queryHasToken(q, t));
+        });
+        if (withQueryTok.length === 1) return withQueryTok[0];
+        if (withQueryTok.length > 1) {
+          return [...withQueryTok].sort(
+            (a, b) => normalizeText(b.name).length - normalizeText(a.name).length,
+          )[0];
+        }
+      }
+      return combos[0] || null;
     }
     if (/\b(medio|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q) || /\bcon\s+medio\s+pollo\b/.test(q)) {
       return (
@@ -4103,6 +4255,21 @@ export class WhatsappCatalogService {
       return false;
     }
     const q = normalizeText(raw);
+    // "y me vendes un combo de arroz chino" / "vendeme un pollo" = pedido, no “¿venden?”
+    if (
+      /\b(me\s+vendes|me\s+venden|vendeme|vendame|me\s+regalas|me\s+das)\s+(un|una|unos|unas)\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+    if (
+      /\b(vendes|venden)\s+(un|una|unos|unas)\b/.test(q) &&
+      !/\?/.test(raw) &&
+      (this.extractVariantPreferenceHint(raw) || new RegExp(FOOD_ORDER_TOKEN, 'i').test(q))
+    ) {
+      return false;
+    }
     // Pedido dominante: "quiero que me tengas listo un pollo" no aplica
     if (
       /^(quiero|dame|ponme|agrega)\b/.test(q) &&
@@ -4167,10 +4334,23 @@ export class WhatsappCatalogService {
     );
   }
 
-  /** Query corta tipo concepto: "pollo", "sopa", "carne". */
+  /** Query corta tipo concepto: "pollo", "sopa", "carne", "quiero pedir pollo". */
   isShortGenericFoodQuery(query: string): boolean {
     const q = normalizeText(this.extractProductSearchQuery(query));
-    const tokens = q.split(' ').filter((t) => t.length >= 3);
+    const noise = new Set([
+      'quiero',
+      'dame',
+      'ponme',
+      'pedir',
+      'ordenar',
+      'agrega',
+      'necesito',
+      'una',
+      'uno',
+      'unos',
+      'unas',
+    ]);
+    const tokens = q.split(' ').filter((t) => t.length >= 3 && !noise.has(t));
     return tokens.length === 1;
   }
 
@@ -4534,11 +4714,12 @@ export class WhatsappCatalogService {
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
-      if (this.looksLikePersonNameSegment(segment)) {
+      // Plato antes que nombre: "ajiaco" ≠ persona si está en el menú
+      const embedded = this.findProductEmbeddedInMessage(segment, products);
+      if (!embedded && this.looksLikePersonNameSegment(segment)) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         continue;
       }
-      const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (embedded) {
         // Evitar "Medio Pollo" cuando el segmento trae broaster
         const skipGenericMedio =
@@ -4678,11 +4859,20 @@ export class WhatsappCatalogService {
         if (usedProductIds.has(top.p.id)) continue;
         // Varias variantes del mismo plato (Mojarra / Mojarra Frita): no asumir
         const family = this.findProductVariantFamily(segment, products, uniqueScored.map((x) => x.p));
-        if (
-          family &&
-          family.variants.length >= 2 &&
-          !this.pickVariantFromFamilyText(segment, family)
-        ) {
+        if (family && family.variants.length >= 2) {
+          const pickedVariant = this.pickVariantFromFamilyText(segment, family);
+          if (pickedVariant) {
+            if (usedProductIds.has(pickedVariant.id)) continue;
+            usedProductIds.add(pickedVariant.id);
+            const match = { segment, product: pickedVariant, score: top.score };
+            if (pickedVariant.hasAttributes && pickedVariant.attributes?.length) {
+              const attrText = `${segment} ${text}`;
+              if (this.extractExplicitAttributeChoice(attrText, pickedVariant)) {
+                confident.push({ ...match, segment: attrText });
+              } else needsAttributes.push(match);
+            } else confident.push(match);
+            continue;
+          }
           const bare =
             family.variants.find((p) => normalizeText(p.name) === family.baseKey) || null;
           if (bare && !usedProductIds.has(bare.id)) {
