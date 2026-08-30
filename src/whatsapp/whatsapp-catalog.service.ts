@@ -142,6 +142,12 @@ const ORDER_INTENT_ONLY = new Set([
   'regalame',
   'necesito',
   'deseo',
+  'pedido',
+  'pedidos',
+  'orden',
+  'ordenar',
+  'pedir',
+  'hacer',
 ]);
 
 /** Palabras frecuentes de charla que NO son comida (evita "cuento" → plato). */
@@ -247,6 +253,8 @@ const COOKING_STYLE_TOKENS = new Set([
   'apanada',
   'broaster',
   'plancha',
+  'gratinada',
+  'gratinado',
   'horno',
   'sudado',
   'sudada',
@@ -994,8 +1002,19 @@ export class WhatsappCatalogService {
     if (/\b(?:en|para|dentro\s+de)\s+\d{1,3}\b/i.test(raw) && !/\b(?:codigo|código|code|#)\b/i.test(raw)) {
       return null;
     }
-    // Prefijo explícito: "código 12", "#5", "code 28"
-    const explicit = raw.match(/\b(?:codigo|código|code)\s*(\d{1,4})\b/i) || raw.match(/#\s*(\d{1,4})\b/);
+    // Calle/carrera con placa "#2-38" / "#80B-89" ≠ código de menú (chat real: CRA 80b #2-38 → #2)
+    const hasStreet =
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|tv)\b/i.test(raw);
+    const hasStreetPlate = /#\s*\d{1,4}[a-z]?\s*-\s*\d/i.test(raw);
+    if ((hasStreet && /#\s*\d/i.test(raw)) || hasStreetPlate) {
+      const onlyCodigo = raw.match(/\b(?:codigo|código|code)\s*#?\s*(\d{1,4})\b/i);
+      if (onlyCodigo?.[1]) return parseInt(onlyCodigo[1], 10);
+      return null;
+    }
+    // Prefijo explícito: "código 12", "#5", "code 28" — no "#5-20"
+    const explicit =
+      raw.match(/\b(?:codigo|código|code)\s*#?\s*(\d{1,4})\b/i) ||
+      raw.match(/#\s*(\d{1,4})\b(?!\s*-\s*\d)/);
     if (explicit?.[1]) return parseInt(explicit[1], 10);
     // Solo dígitos puros (el orquestador decide opción de lista vs código de menú)
     if (/^\d{1,4}$/.test(raw)) return parseInt(raw, 10);
@@ -1032,6 +1051,8 @@ export class WhatsappCatalogService {
 
     q = q
       .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
+      // "veci me puedes regalar una pechuga…" — veci/cortesía antes del pedido
+      .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
       .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
       .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme|regalarme)\s+)/i, '')
       .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
@@ -1103,14 +1124,55 @@ export class WhatsappCatalogService {
   /** Limpia ruido coloquial dentro de un segmento de pedido. */
   cleanOrderSegment(segment: string): string {
     return segment
+      .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
       .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
-      .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme)\s+)/i, '')
+      .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme|regalarme)\s+)/i, '')
       .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
+      .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
+      .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
       .replace(/^(?:pedi|pido|pedimos|quiero|dame|ponme)\s+/i, '')
       .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
+      // Cortesía suelta en medio: "…veci me puedes regalar una…"
+      .replace(
+        /\b(?:veci(?:no|na)?|amigo|amiga|parce)\s+(?:me\s+)?(?:puedes|podes|podrias)\s+(?:enviar|mandar|traer|dar|regalar|poner)\b/gi,
+        ' ',
+      )
+      .replace(
+        /\bme\s+(?:puedes|podes|podrias)\s+(?:enviar|mandar|traer|dar|regalar|poner)\b/gi,
+        ' ',
+      )
       .replace(/\bde\s+con\b/gi, 'con')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /**
+   * Segmento solo cortesía / pedido genérico sin comida:
+   * "veci me puedes regalar", "por favor", "me das".
+   */
+  isPolitenessOnlySegment(segment: string): boolean {
+    const raw = (segment || '').trim();
+    if (!raw) return true;
+    let n = normalizeText(raw);
+    if (!n) return true;
+    // No usar FOOD_ORDER_TOKEN suelto: "alas?" matchea dentro de "regalar"
+    if (
+      /\b(pollo|pechuga|mojarra|mojarras|arroz|sopa|bandeja|alitas?|alas?\b|churrasco|costilla|hamburguesa|limonada|gaseosa|ajiaco|broaster|plancha|frito|asado|platano|papa|papas|yuca|mondongo|sobrebarriga|ejecutivo|combo|codigo|menu)\b/.test(
+        n,
+      )
+    ) {
+      return false;
+    }
+    if (/\d/.test(n) && /\b(codigo|#)\b/.test(n)) return false;
+    n = n
+      .replace(
+        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|pf|gracias|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias)\b/g,
+        ' ',
+      )
+      .replace(/[!.?,;:]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return !n || n.length < 3 || ORDER_INTENT_ONLY.has(n);
   }
 
   /**
@@ -1126,10 +1188,13 @@ export class WhatsappCatalogService {
     t = t.replace(/\bser[ií]a\b/g, ' ').replace(/\s+/g, ' ').trim();
     if (!t) return false;
     if (
-      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?)\b/.test(
+      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?|plancha|gratinada|horno|apanad[oa])\b/.test(
         t,
       )
     ) {
+      return false;
+    }
+    if (COOKING_STYLE_TOKENS.has(t) || [...COOKING_STYLE_TOKENS].some((st) => t === st)) {
       return false;
     }
     const words = t.split(/\s+/).filter(Boolean);
@@ -1609,6 +1674,7 @@ export class WhatsappCatalogService {
       /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
       /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
       /\b((?:quiero\s+)?(?:mas|más)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,1})/gi,
+      /\b((?:cambia(?:r|me)?|cambiar)\s+(?:la\s+|el\s+)?(?:ensalada|papa|papas|yuca|arepa)(?:\s+por\s+[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})?)/gi,
     ];
     for (const re of patterns) {
       let m: RegExpExecArray | null;
@@ -1730,6 +1796,9 @@ export class WhatsappCatalogService {
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
 
+    // "arroz chino en combo con medio pollo broaster" = 2 platos (no el SKU combo arroz+pollo)
+    if (this.looksLikeArrozComboPlusSizedChicken(raw)) return true;
+
     // WhatsApp multi-línea / bullets: "Un arroz chino\nUn ajiaco" / "* Medio pollo\n* Porción de papas"
     const lineish = raw
       .split(/\r?\n+|(?=\s[*•\-–—]\s+)/)
@@ -1785,6 +1854,25 @@ export class WhatsappCatalogService {
       hits.add(singularizeEsToken(m[1]));
     }
     return hits.size >= 2;
+  }
+
+  /**
+   * "Arroz chino en combo con medio pollo a la broaster" → 2 ítems
+   * (Arroz Chino Combo + 1/2 Pollo Broaster), no el SKU "Arroz Chino Con Medio Pollo".
+   */
+  looksLikeArrozComboPlusSizedChicken(text: string): boolean {
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
+    if (!q) return false;
+    if (!/\barroz\b/.test(q)) return false;
+    if (!/\b(medio|media|cuarto|1\s*\/\s*2|1\/2|1\s*\/\s*4|1\/4)\b/.test(q)) return false;
+    if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q)) return false;
+    // "en combo" / "combo" junto a arroz, o estilo del pollo aparte → dos platos
+    const arrozCombo =
+      /\barroz(?:\s+chino)?\s+(?:en\s+)?combo\b/.test(q) ||
+      /\bcombo\s+(?:de\s+)?arroz\b/.test(q) ||
+      (/\ben\s+combo\b/.test(q) && /\barroz\b/.test(q));
+    const chickenStyle = /\b(broaster|frito|asado|a\s+la\s+broaster)\b/.test(q);
+    return arrozCombo || chickenStyle;
   }
 
   /** Quita “sin X / más Y / con Z / no quiero X” para buscar solo el plato principal. */
@@ -2589,6 +2677,7 @@ export class WhatsappCatalogService {
   private isLogisticsOnlySegment(segment: string): boolean {
     const raw = (segment || '').trim();
     if (!raw) return true;
+    if (this.isPolitenessOnlySegment(raw)) return true;
     const n = normalizeText(raw);
     if (
       /^(un|una|unos|unas|el|la|los|las|para|por|favor|porfa)?\s*(domicilios?|delivery)\s*$/.test(
@@ -3169,6 +3258,7 @@ export class WhatsappCatalogService {
         }
 
         // "mojarras fritas" → boost Mojarra Frita; NO boostear Alitas solo por "fritas"
+        // "pechuga a la plancha" ≠ "Pechuga Gratinada"
         if (styleInQuery.length && coreNameHits > 0) {
           let styleOnProduct = 0;
           for (const st of styleInQuery) {
@@ -3180,7 +3270,16 @@ export class WhatsappCatalogService {
               styleOnProduct += 1;
             }
           }
-          if (styleOnProduct === 0) score -= 15;
+          if (styleOnProduct === 0) {
+            score -= 15;
+            const otherStyles = [...COOKING_STYLE_TOKENS].filter(
+              (st) =>
+                !styleInQuery.includes(st) &&
+                (name.includes(st) ||
+                  nameTokens.some((nt) => singularizeEsToken(nt) === singularizeEsToken(st))),
+            );
+            if (otherStyles.length) score -= 55;
+          }
         } else if (styleInQuery.length && coreNameHits === 0 && coreTokens.length > 0) {
           // Solo pegó el estilo (fritas→Alitas Fritas) sin el plato pedido → descartar
           score = Math.min(score, 8);
@@ -3334,19 +3433,19 @@ export class WhatsappCatalogService {
     if (!q) return false;
 
     const hasPriceAsk =
-      /\b(cuanto vale|cuanto valen|cuanto cuesta|cuanto cuestan|cuanto sale|cuanto salen|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|a como|que precio|q precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale|que cuestan|q cuestan|que cuesta|q cuesta|que valen|q valen|que vale|q vale)\b/.test(
+      /\b(cuanto vale|cuanto valen|cuanto cuesta|cuanto cuestan|cuanto sale|cuanto salen|cuanto esta|cuanto cobran|cuanto seria|cuanto costaria|a cuanto|a como|que precio|q precio|precio de|precio del|precio tiene|precio por|valor de|me costaria|cuanto me sale|que cuestan|q cuestan|que cuesta|q cuesta|que valen|q valen|que vale|q vale|regala(?:s|me)? el costo|regala(?:s|me)? el precio|el costo por favor)\b/.test(
         q,
       ) ||
       /\b(cuesta|cuestan|valen)\b/.test(q) ||
-      (/\b(cuanto|precio|valor)\b/.test(q) &&
-        (/\?/.test(raw) || /\b(sopa|pollo|arroz|bandeja|combo|gaseosa|menudencia|ajiaco)\b/.test(q)));
+      (/\b(cuanto|precio|valor|costo)\b/.test(q) &&
+        (/\?/.test(raw) || /\b(sopa|pollo|arroz|bandeja|combo|gaseosa|menudencia|ajiaco|pechuga)\b/.test(q)));
 
     if (!hasPriceAsk) return false;
 
     const orderDominant =
       /^(quiero|dame|ponme|agrega|agregame|me das|me regalas|voy a pedir)\s+(un|una|unos|unas|el|la|los|las)\s+/i.test(
         raw,
-      ) && !/\b(cuanto|precio|vale|valen|cuesta|cuestan|valor|a\s+como|a\s+cuanto)\b/i.test(raw);
+      ) && !/\b(cuanto|precio|vale|valen|cuesta|cuestan|valor|costo|a\s+como|a\s+cuanto|regala(?:s|me)?\s+el\s+costo)\b/i.test(raw);
 
     return !orderDominant;
   }
@@ -3973,10 +4072,17 @@ export class WhatsappCatalogService {
     const attrs = product.attributes || [];
     const showComboOnly = this.shouldShowComboOnlyAttributes(product, alreadySelected, opts);
 
-    return attrs.filter((attr) => {
+    const remaining = attrs.filter((attr) => {
       if (alreadySelected.some((s) => s.attributeName === attr.attributeName)) return false;
       if (this.isDeferredDrinkAttribute(attr, product) && !showComboOnly) return false;
       return true;
+    });
+    // Comida (arepas…) antes que bebida: el prompt y el “2” deben ser el mismo paso
+    // (antes: info mode ocultaba Bebida pero remaining[0] era Bebida → “2”=Manzana).
+    return [...remaining].sort((a, b) => {
+      const aDrink = this.isComboOnlyAttribute(a) ? 1 : 0;
+      const bDrink = this.isComboOnlyAttribute(b) ? 1 : 0;
+      return aDrink - bDrink;
     });
   }
 
@@ -4631,6 +4737,18 @@ export class WhatsappCatalogService {
       }
     }
 
+    // "Arroz chino en combo con medio pollo broaster" → 2 segmentos
+    if (this.looksLikeArrozComboPlusSizedChicken(text)) {
+      const splitChicken = (text || '').match(
+        /^(.+?)\s+con\s+((?:un\s+|una\s+)?(?:medio|media|cuarto|1\s*\/\s*2|1\/2|1\s*\/\s*4|1\/4)\s+(?:de\s+)?(?:pollo|broaster).+)$/i,
+      );
+      if (splitChicken?.[1] && splitChicken?.[2]) {
+        const a = this.cleanOrderSegment(splitChicken[1].trim());
+        const b = this.cleanOrderSegment(splitChicken[2].trim());
+        if (a.length >= 3 && b.length >= 3) return [a, b];
+      }
+    }
+
     if (this.looksLikeFoodPlusDrinkOrder(text)) {
       // "3 pollos y 2 limonadas" → partir por y/coma (conserva cantidades en cada segmento)
       if (this.countQuantityMentions(text) < 2) {
@@ -4717,9 +4835,13 @@ export class WhatsappCatalogService {
     ) {
       return [fixed.trim()].filter((s) => s.length >= 3);
     }
-    const parts = fixed
+    // "pechuga a la plancha" / "mojarra al horno": "la"/"al" no son otro plato
+    const protectedStyle = fixed
+      .replace(/\ba\s+la\s+/gi, 'a__LA__')
+      .replace(/\bal\s+(?=horno|ajillo|vapor|grill|carbon|carb[oó]n)\b/gi, 'a__L__');
+    const parts = protectedStyle
       .split(/\s+(?=(?:un|una|unos|unas|el|la|los|las)\s+)/i)
-      .map((s) => s.trim())
+      .map((s) => s.replace(/a__LA__/g, 'a la ').replace(/a__L__/g, 'al ').trim())
       .filter((s) => s.length >= 3);
     const merged = parts.filter((s) => !ORDER_INTENT_ONLY.has(normalizeText(s)));
     const use = merged.length ? merged : parts;
@@ -4772,12 +4894,27 @@ export class WhatsappCatalogService {
     if (isAddressChangeIntent(text)) return null;
     // "Quiero un domicilio para Bosques…" no es multi-plato
     if (isDeliverySetupWithoutFood(text)) return null;
+    // "Quiero hacer un pedido" / sin comida → no multi con unresolved "pedido"
+    {
+      const q = normalizeText(this.extractProductSearchQuery(text) || text);
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const foodish = tokens.some(
+        (t) =>
+          !ORDER_INTENT_ONLY.has(t) &&
+          t.length > 2 &&
+          !/^(un|una|unos|unas|el|la|los|las|de|del|para|por|favor|hacer|realizar|con|sin|mas|mas)$/.test(
+            t,
+          ),
+      );
+      if (!foodish && /\b(pedido|orden|pedir|ordenar)\b/.test(q)) return null;
+    }
     // "Para el hermano Jesús" / landmark / calle → dirección, no platos
     if (looksLikeAddressOnlyMessage(text) || looksLikeDeliveryAddressFragment(text)) {
       return null;
     }
 
     let segments = this.splitMultiProductSegments(text);
+    segments = segments.filter((s) => !this.isPolitenessOnlySegment(s));
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
 
     const clearlyMulti =
@@ -4805,6 +4942,36 @@ export class WhatsappCatalogService {
           const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
           if (drinkCompanion) embeddedAll.push(drinkCompanion);
         }
+      }
+    }
+
+    // Arroz chino en combo + medio pollo: asegurar SKU Combo (no "Arroz Chino Con Medio Pollo")
+    if (this.looksLikeArrozComboPlusSizedChicken(text)) {
+      embeddedAll = embeddedAll.filter(
+        (p) => !/\barroz\b/i.test(p.name) || !/\bmedio\s+pollo\b/i.test(normalizeText(p.name)),
+      );
+      const arrozSeg =
+        segments.find((s) => /\barroz\b/i.test(s)) ||
+        text.replace(/\s+con\s+(?:un\s+|una\s+)?(?:medio|media|cuarto|1\s*\/\s*[24]|1\/[24]).+$/i, '');
+      const arrozFamily = this.findProductVariantFamily(arrozSeg, products);
+      const arrozCombo =
+        (arrozFamily
+          ? this.pickVariantFromFamilyText(arrozSeg, arrozFamily)
+          : null) ||
+        this.searchByNameScored(
+          /\bcombo\b/i.test(arrozSeg) ? arrozSeg : `${arrozSeg} combo`,
+          products,
+          5,
+        ).find((x) => /\barroz\b/i.test(x.p.name) && /\bcombo\b/i.test(normalizeText(x.p.name)))
+          ?.p ||
+        this.searchByNameScored(arrozSeg, products, 5).find((x) =>
+          /\barroz\b/i.test(x.p.name),
+        )?.p;
+      if (arrozCombo && !embeddedAll.some((p) => p.id === arrozCombo.id)) {
+        embeddedAll = [arrozCombo, ...embeddedAll];
+      }
+      if (sizedChicken && !embeddedAll.some((p) => p.id === sizedChicken.id)) {
+        embeddedAll = [sizedChicken, ...embeddedAll.filter((p) => p.id !== sizedChicken.id)];
       }
     }
 
@@ -5036,6 +5203,18 @@ export class WhatsappCatalogService {
           uniqueScored = uniqueScored.filter(
             (x) => !/^medio\s+pollo$/.test(normalizeText(x.p.name)),
           );
+        }
+      }
+
+      // Preferir plancha / gratinada / estilo de cocción dicho
+      for (const style of ['plancha', 'gratinada', 'gratinado', 'asado', 'asada', 'apanada', 'apanado'] as const) {
+        if (!new RegExp(`\\b${style}\\b`).test(segNorm)) continue;
+        const styleHits = uniqueScored.filter((x) =>
+          new RegExp(`\\b${style}\\b`).test(normalizeText(x.p.name)),
+        );
+        if (styleHits.length) {
+          uniqueScored = styleHits;
+          break;
         }
       }
 

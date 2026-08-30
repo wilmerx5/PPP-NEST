@@ -59,6 +59,26 @@ export function isAddressRejectionIntent(text: string): boolean {
 }
 
 /**
+ * Cliente aclara que el mensaje anterior SÍ era la dirección
+ * ("esa era mi dirección") — no un plato/código.
+ */
+export function isAddressClarificationIntent(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bdirecion\b/g, 'direccion');
+  if (!t || t.length < 10) return false;
+  if (isAddressRejectionIntent(t)) return false;
+  return (
+    /\b(esa|eso|esta|este)\s+(era|es|fue)\s+(mi\s+)?(direccion|domicilio|ubicacion)\b/.test(t) ||
+    /\b(era|es)\s+(mi\s+)?(direccion|domicilio)\b/.test(t) ||
+    /\bte\s+(pas[eé]|mand[eé]|envi[eé])\s+(la\s+)?(direccion|domicilio)\b/.test(t)
+  );
+}
+
+/**
  * Tras pedido completado: ETA / demora / “ya llegó” / cancelar en ruta.
  * NO reabrir carrito ni buscar platos.
  */

@@ -40,6 +40,7 @@ import { composeWhatsappOrderAddress } from './whatsapp-order-address';
 import {
   isAbandonPendingSelectionIntent,
   isAddressChangeIntent,
+  isAddressClarificationIntent,
   isAddressRejectionIntent,
   isDeliveryCoverageInquiry,
   extractCoverageAddressProbe,
@@ -48,7 +49,7 @@ import {
   isReuseLastAddressIntent,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
-import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
+import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
 import {
   applyPaymentReplyTemplate,
   buildPaymentOptionsPrompt,
@@ -329,16 +330,7 @@ export class WhatsappOrchestratorService {
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
     if (inboundCount <= 1) {
       // Audio/texto tipo “quiero pedir” sin producto → no inundar con menú completo
-      if (
-        this.isVagueOrderIntent(text) &&
-        this.catalogService.extractCodeFromMessage(text) == null &&
-        this.catalogService.findProductEmbeddedInMessage(text, products) == null &&
-        this.catalogService.searchByName(
-          this.catalogService.extractProductSearchQuery(text),
-          products,
-          5,
-        ).length === 0
-      ) {
+      if (this.isVagueOrderIntent(text)) {
         await this.replyFirstContactWelcome(conv, msg.waId, cfg);
         await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
         return;
@@ -398,6 +390,26 @@ export class WhatsappOrchestratorService {
 
     // "No esa no es mi dirección" → quitar domicilio malo y pedir el correcto
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) {
+      return;
+    }
+
+    // "esa era mi dirección" → recuperar placa previa mal leída como código (#2)
+    if (
+      await this.tryHandleAddressClarification(conv, msg.waId, session, originalText, cfg)
+    ) {
+      return;
+    }
+
+    // Referencia de acceso con dirección ya fija (portón verde…) — antes de tratarla como nueva calle
+    if (
+      await this.tryAppendDeliveryAccessReference(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        cfg,
+      )
+    ) {
       return;
     }
 
@@ -1101,17 +1113,10 @@ export class WhatsappOrchestratorService {
 
     // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos)
     if (this.isVagueOrderIntent(text)) {
-      const codeProbe = this.catalogService.extractCodeFromMessage(text);
-      const nameProbe = this.catalogService.searchByName(text, products, 5);
-      if (codeProbe == null && nameProbe.length === 0) {
-        await this.reply(
-          conv,
-          msg.waId,
-          this.buildAskWhatToOrderMessage(cfg),
-        );
-        return;
-      }
-      // Si además nombró algo del menú, seguimos el flujo normal abajo
+      // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
+      // (matcheaba basura y caía en “Entendí varios… _pedido_”).
+      await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
+      return;
     }
 
     // "Con qué viene…" / "qué lleva…" → descripción, NO agregar al carrito
@@ -1504,7 +1509,19 @@ export class WhatsappOrchestratorService {
       (!!session.pendingMatch?.candidates?.length &&
         listPick != null &&
         listPick > session.pendingMatch.candidates.length);
-    if (code != null && !pendingListIndex && allowCodeDespiteList && !qtyLooksLikeOrder) {
+    // "CRA 80b #2-38" / dirección suelta: nunca pedir 1/2 pollo por la placa
+    const codeLooksLikeStreetAddress =
+      looksLikeAddressOnlyMessage(text) ||
+      looksLikeAddressOnlyMessage(originalText) ||
+      this.isAddressOnlyCustomerMessage(originalText) ||
+      this.isAddressOnlyCustomerMessage(text);
+    if (
+      code != null &&
+      !pendingListIndex &&
+      allowCodeDespiteList &&
+      !qtyLooksLikeOrder &&
+      !codeLooksLikeStreetAddress
+    ) {
       const found = this.catalogService.findByCode(code, products);
       if (found) {
         session = this.applyDeliveryHintFromMessage(session, text);
@@ -2537,7 +2554,23 @@ export class WhatsappOrchestratorService {
         !this.isGreetingKeyword(addr) &&
         !looksLikeClearCartMessage(sourceText || addr)
       ) {
-        if (!this.isPickupIntent(addr)) {
+        // No pisar dirección fuerte con una referencia de acceso (portón verde…)
+        const accessRef =
+          this.looksLikeDeliveryAccessReference(addr) ||
+          this.looksLikeDeliveryAccessReference(sourceText || '');
+        if (
+          accessRef &&
+          next.addressConfirmed &&
+          next.address?.trim() &&
+          this.isStrongExplicitAddress(next.address)
+        ) {
+          const note = (sourceText || addr).trim().slice(0, 160);
+          next = this.appendCustomerNote(next, note);
+          if (!next.address.toLowerCase().includes(note.toLowerCase())) {
+            const base = next.address.replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '').trim();
+            next = { ...next, address: `${base} — ${note}`.slice(0, 240) };
+          }
+        } else if (!this.isPickupIntent(addr)) {
           next = this.withDeliveryAddress(next, addr);
         } else {
           next.address = addr;
@@ -6745,6 +6778,13 @@ export class WhatsappOrchestratorService {
     if (/\banuncie?\s+(al\s+)?apto\b/i.test(t) || /\bque\s+se\s+anuncie\b/i.test(t)) {
       bits.push('Que se anuncie al llegar');
     }
+    if (/\bport[oó]n\b/i.test(t)) {
+      const m = t.match(/\bport[oó]n\s+([^\n,.]{2,40})/i);
+      bits.push(m ? `Portón ${m[1].trim()}` : 'Portón');
+    }
+    if (/\bmitad\s+de\s+(?:la\s+)?cuadra\b/i.test(t)) {
+      bits.push('Mitad de cuadra');
+    }
     return bits.length ? bits.join('. ') : null;
   }
 
@@ -6838,6 +6878,93 @@ export class WhatsappOrchestratorService {
    * ("para el hospital de kennedy") en vez de "listo/confirmar".
    * No buscar platos ni decir "no encontré".
    */
+  /**
+   * "esa era mi dirección" — el mensaje anterior era domicilio (p.ej. CRA #2-38)
+   * y el bot lo tomó como código de menú.
+   */
+  private async tryHandleAddressClarification(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!isAddressClarificationIntent(text)) return false;
+    if (session.cart.length === 0) return false;
+
+    let addr: string | null = session.address?.trim() || null;
+    if (!addr || !this.isPlausibleDeliveryAddress(addr)) {
+      const recent = await this.conversationService.getRecentMessageTexts(conv.id, 12);
+      for (let i = recent.length - 1; i >= 0; i--) {
+        const line = recent[i];
+        if (!/^Cliente:\s*/i.test(line)) continue;
+        const body = line.replace(/^Cliente:\s*/i, '').trim();
+        if (!body || isAddressClarificationIntent(body)) continue;
+        if (
+          looksLikeAddressOnlyMessage(body) ||
+          this.isPlausibleDeliveryAddress(body)
+        ) {
+          addr = body;
+          break;
+        }
+      }
+    }
+
+    session = {
+      ...session,
+      pendingAttribute: undefined,
+      pendingMatch: undefined,
+      pendingMultiOrder: undefined,
+    };
+
+    if (!addr || !this.isPlausibleDeliveryAddress(addr)) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        'Perdón 🙏 Entendí mal. ¿Me vuelves a escribir la *dirección* del domicilio? ' +
+          '(ej. _CRA 80b #2-38_).',
+      );
+      return true;
+    }
+
+    session = this.withDeliveryAddress(
+      {
+        ...session,
+        fulfillmentChosen: true,
+        orderType: 'delivery',
+        addressConfirmed: true,
+        deliveryFeeCalculated: undefined,
+        deliveryDistanceKm: undefined,
+        deliveryOutOfCoverage: false,
+        deliveryLat: null,
+        deliveryLng: null,
+      },
+      addr,
+    );
+    const feeOk = await this.recalculateDeliveryFee(session, cfg);
+    session = feeOk.session;
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+
+    if (feeOk.blocked) {
+      await this.reply(
+        conv,
+        waId,
+        `Perfecto, ya registré la dirección _${session.address}_.\n\n${feeOk.blocked}`,
+      );
+      return true;
+    }
+    const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
+    await this.reply(
+      conv,
+      waId,
+      `Perfecto, ya registré la dirección _${session.address}_${feeLine}\n\n` +
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n` +
+        `¿Algo más o escribimos *listo* / *confirmar*?`,
+    );
+    return true;
+  }
+
   private async tryHandleAddressOnlyWhileBuildingCart(
     conv: WhatsappConversation,
     waId: string,
@@ -6847,10 +6974,32 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (session.cart.length === 0) return false;
-    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
+    // Dirección clara (CRA / calle #…) gana sobre attrs pendientes de un código mal leído
+    const clearStreetAddress =
+      this.isAddressOnlyCustomerMessage(originalText, compound) &&
+      this.isPlausibleDeliveryAddress(originalText.trim()) &&
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag|dg|transversal|#)\b/i.test(originalText);
+    if (
+      !clearStreetAddress &&
+      (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)
+    ) {
       return false;
     }
     if (looksLikeClearCartMessage(originalText)) return false;
+
+    // Ya hay dirección fuerte: "portón verde / mitad de cuadra" = referencia, no nueva dirección
+    if (
+      await this.tryAppendDeliveryAccessReference(
+        conv,
+        waId,
+        session,
+        originalText,
+        cfg,
+      )
+    ) {
+      return true;
+    }
+
     // “acá” / “la misma” con dirección guardada del pedido anterior
     if (
       isReuseLastAddressIntent(originalText) &&
@@ -6921,7 +7070,15 @@ export class WhatsappOrchestratorService {
     if (!addr || !this.isPlausibleDeliveryAddress(addr)) return false;
 
     session = this.withDeliveryAddress(
-      { ...session, fulfillmentChosen: true, orderType: 'delivery' },
+      {
+        ...session,
+        fulfillmentChosen: true,
+        orderType: 'delivery',
+        // Soltar selección errónea (ej. #2 de "CRA … #2-38" tratado como 1/2 pollo)
+        pendingAttribute: undefined,
+        pendingMatch: undefined,
+        pendingMultiOrder: undefined,
+      },
       addr,
     );
     session = {
@@ -6956,6 +7113,98 @@ export class WhatsappOrchestratorService {
         `¿Algo más o escribimos *listo* / *confirmar*?`,
     );
     return true;
+  }
+
+  /**
+   * Con dirección ya confirmada: "portón verde", "mitad de cuadra", "casa blanca"
+   * son referencias de acceso — se anexan, no reemplazan ni re-geocodifican.
+   */
+  private async tryAppendDeliveryAccessReference(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const raw = (text || '').trim();
+    if (!raw || raw.length < 4) return false;
+    if (!session.address?.trim() || !session.addressConfirmed) return false;
+    if (!this.isStrongExplicitAddress(session.address)) return false;
+    if (this.isStrongExplicitAddress(raw)) return false;
+    if (!this.looksLikeDeliveryAccessReference(raw)) return false;
+
+    const note = raw.replace(/\s+/g, ' ').trim().slice(0, 160);
+    const addrBase = session.address
+      .replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '')
+      .trim();
+    const alreadyInAddr = addrBase.toLowerCase().includes(note.toLowerCase());
+    const nextAddr = alreadyInAddr ? session.address : `${addrBase} — ${note}`.slice(0, 240);
+
+    session = this.appendCustomerNote(
+      {
+        ...session,
+        address: nextAddr,
+        // Mantener fee/coords de la dirección fuerte; no recalcular por la referencia
+      },
+      note,
+    );
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      `📝 Referencia anotada: _${note}_\n` +
+        `📍 Sigue valiendo: _${session.address}_\n\n` +
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n` +
+        `¿Algo más o escribimos *listo* / *confirmar*?`,
+    );
+    return true;
+  }
+
+  /**
+   * Indicaciones visuales / de acceso (no calle ni placa).
+   * Ej: "Portón verde grande a mitad de cuadra", "casa blanca", "timbre 302".
+   */
+  looksLikeDeliveryAccessReference(text: string): boolean {
+    const t = (text || '').trim();
+    if (!t || t.length < 4 || t.length > 120) return false;
+    if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
+    if (this.looksLikeFoodNotAddress(t)) return false;
+    // Si trae vía + número, es dirección real
+    if (
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|tv)\b/i.test(t) &&
+      /\d/.test(t)
+    ) {
+      return false;
+    }
+    if (/#\s*\d/i.test(t) && /\b(calle|carrera|cra|diag|dg|av)\b/i.test(t)) return false;
+
+    const n = t
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    if (
+      /\b(porton|puerta|reja|timbre|intercomunicador|porteria|recepcion)\b/.test(n)
+    ) {
+      return true;
+    }
+    if (
+      /\b(mitad\s+de\s+(?:la\s+)?cuadra|al\s+fondo|esquina|segundo\s+piso|tercer\s+piso|casa\s+(?:de\s+)?color|fachada|frente\s+a(?:l)?\s+(?:un\s+)?(?:parqueadero|parque|tienda|iglesia))\b/.test(
+        n,
+      )
+    ) {
+      return true;
+    }
+    // "verde grande", "casa blanca", "porton azul"
+    if (
+      /\b(verde|azul|rojo|roja|blanco|blanca|negro|negra|cafe|amarrillo|amarillo|gris)\b/.test(
+        n,
+      ) &&
+      /\b(porton|puerta|reja|casa|grande|pequeno|pequena|fachada|pintura)\b/.test(n)
+    ) {
+      return true;
+    }
+    return false;
   }
 
   /** ¿El mensaje es solo domicilio (sin platos nuevos)? */
@@ -7048,6 +7297,7 @@ export class WhatsappOrchestratorService {
       .trim();
     t = this.truncateAddressAfterContactClauses(t);
     t = this.stripDeliveryAddressPreface(t);
+    t = stripTrailingAddressFluff(t);
     // Cortesía / setup pegado: "Me colaboras con . Dirección Conjunto…"
     t = t
       .replace(
@@ -7209,6 +7459,7 @@ export class WhatsappOrchestratorService {
     if (t.length < 4 || t.length > 90) return false;
     if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
+    if (this.looksLikeDeliveryAccessReference(t)) return false;
     if (
       this.catalogService.isMenuExploreIntent(t, []) ||
       this.catalogService.isCategoryBrowseQuestion(t)
@@ -7388,10 +7639,12 @@ export class WhatsappOrchestratorService {
       /\b(habitaci[oó]n\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?)\b/i,
       /\b(?:apto?|apartamento|cuarto|suite|oficina)\s*(?:n[°o]?\.?\s*)?\d{1,4}[a-z]?\b/i,
       /\b(?:torre|bloque|piso|interior|local)\s+[a-z0-9#\-\s]{1,24}\d{1,4}[a-z]?\b/i,
+      // "Casa 11 terrazas de Castilla 3"
+      /\b(casa\s*\d{1,4}[a-z]?(?:\s+[^\n,]{0,60})?(?:terrazas?|bosques?|castilla|tabaku|tintal)[^\n,]{0,40})/i,
     ];
     for (const pattern of inlinePatterns) {
       const m = raw.match(pattern);
-      if (m?.[0]) candidates.push(m[1] || m[0]);
+      if (m?.[0]) candidates.push(stripTrailingAddressFluff(m[1] || m[0]));
     }
 
     // Preferir candidatos más largos / con landmark (evitar quedarse solo con "apto 112")
@@ -7708,6 +7961,8 @@ export class WhatsappOrchestratorService {
       /\b(platos?\s*y\s*cubiertos?|solo\s*cubiertos?|con\s*cubiertos?)\b/i,
       // Solo nota corta de entrega (“portería”, “timbre”), no dirección con torre+apto+conjunto
       /^(timbre|porter[ií]a|rejas?|intercomunicador)[\s!.]*$/i,
+      /\b(port[oó]n|puerta|reja)\s+(verde|azul|rojo|roja|blanco|blanca|negro|negra|caf[eé]|amarillo|gris|grande)/i,
+      /\bmitad\s+de\s+(?:la\s+)?cuadra\b/i,
       /\b(cambio\s+de|billete|paga\s+con|vueltas?|devuelta|traer?\s+vueltas?|trae\s+vueltas?|traeme\s+vueltas?)\b/i,
       /\bsin\s+(cebolla|aj[ií]|sal|picante|huevo|queso|tomate|arepa|papas?|yuca)\b/i,
       /\b(mas|más)\s+(papas?|yuca|arepa|ensalada)\b/i,
@@ -8246,6 +8501,7 @@ export class WhatsappOrchestratorService {
 
     const mode =
       !/^(si|sí|\d{1,3}|opci[oó]n\s*\d+)$/i.test(text.trim()) &&
+      !this.catalogService.productImpliesCombo(product) &&
       (this.catalogService.isGenericProductInquiry(text) ||
         this.catalogService.shouldShowVariantsOverview(text, product))
         ? 'info'
@@ -8259,8 +8515,14 @@ export class WhatsappOrchestratorService {
       pendingAttribute: this.toPendingAttribute(product, { sourceText: text }),
       pendingMatch: undefined,
     };
-    await this.conversationService.saveSession(conv, session, 'building_cart');
-    await this.reply(conv, waId, this.catalogService.formatProductVariantsOverview(product, mode));
+    await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+    await this.reply(
+      conv,
+      waId,
+      mode === 'order'
+        ? this.catalogService.formatProductOptionsPrompt(product, [], this.attributeFlowOpts(session.pendingAttribute))
+        : this.catalogService.formatProductVariantsOverview(product, mode),
+    );
     return true;
   }
 

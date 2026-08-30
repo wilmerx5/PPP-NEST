@@ -29,24 +29,34 @@ export function splitTrailingEmbeddedAddress(
   );
   if (esPara?.[1] && esPara[2] && esPara[2].trim().length >= 6) {
     const head = esPara[1].replace(/[.,;:\s]+$/g, '').trim();
-    const addr = esPara[2].trim();
+    const addr = stripTrailingAddressFluff(esPara[2].trim());
     if (head.length >= 3 && looksLikeEmbeddedAddress(addr)) {
       return { productText: head, address: addr };
     }
   }
 
-  // Última aparición de calle/carrera/… o landmark de zona
+  // Preferir "Casa 11 …" / "terrazas de Castilla" antes que cortar solo en "Castilla"
+  const casaIdx = lastMatchIndex(raw, /\bcasa\s*\d{1,4}[a-z]?\b/i);
+  const complexIdx = lastMatchIndex(
+    raw,
+    /\b(?:terrazas?|bosques?|tierras?|villas?|parques?|brisas?|alamedas?|jardines?|ciudadelas?|portales?)\s+(?:de|del|de\s+la)\b/i,
+  );
   const streetIdx = lastMatchIndex(raw, STREET_START_RE);
   const zoneIdx = lastMatchIndex(raw, PPP_ZONE_LANDMARK_RE);
 
   let cut = -1;
-  if (streetIdx >= 0 && zoneIdx >= 0) cut = Math.min(streetIdx, zoneIdx);
-  else cut = streetIdx >= 0 ? streetIdx : zoneIdx;
+  // Más a la izquierda entre casa/conjunto/calle (no usar solo el último "Castilla")
+  const addrStarts = [casaIdx, complexIdx, streetIdx].filter((i) => i >= 0);
+  if (addrStarts.length) {
+    cut = Math.min(...addrStarts);
+  } else if (zoneIdx >= 0) {
+    cut = zoneIdx;
+  }
 
   if (cut < 8) return null;
 
   const head = raw.slice(0, cut).replace(/[.,;:\s]+$/g, '').trim();
-  const addr = raw.slice(cut).trim();
+  const addr = stripTrailingAddressFluff(raw.slice(cut).trim());
   if (head.length < 3 || addr.length < 6) return null;
   if (!looksLikeEmbeddedAddress(addr)) return null;
   // Cabeza debe parecer pedido (no solo saludo)
@@ -55,6 +65,26 @@ export function splitTrailingEmbeddedAddress(
   }
 
   return { productText: head, address: addr };
+}
+
+/** Quita "si es tan gentil…", "me regala el costo", cortesía al final de la dirección. */
+export function stripTrailingAddressFluff(addr: string): string {
+  let t = (addr || '').trim();
+  if (!t) return t;
+  t = t
+    .replace(
+      /[,.]?\s*(?:si\s+es\s+tan\s+(?:gentil|amable|kind)|si\s+me\s+(?:haces|hace)\s+el\s+favor).*$/i,
+      '',
+    )
+    .replace(
+      /[,.]?\s*(?:y\s+)?(?:me\s+)?(?:regala(?:s|me)?|dice(?:s|me)?|pasa(?:s|me)?|confirma(?:s|me)?)\s+(?:el\s+)?(?:costo|precio|valor|total|domicilio).*$/i,
+      '',
+    )
+    .replace(/[,.]?\s*(?:por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '')
+    .replace(/[,.]?\s*(?:y\s+)?(?:me\s+regala(?:s|me)?\s+el\s+costo).*$/i, '')
+    .replace(/[,\s]+$/g, '')
+    .trim();
+  return t;
 }
 
 function lastMatchIndex(text: string, re: RegExp): number {

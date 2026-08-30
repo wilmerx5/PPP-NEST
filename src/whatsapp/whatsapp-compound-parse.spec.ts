@@ -90,6 +90,20 @@ describe('splitTrailingEmbeddedAddress (C02)', () => {
   it('no corta plato sin dirección', () => {
     expect(splitTrailingEmbeddedAddress('Me regalas un pollo frito por favor')).toBeNull();
   });
+
+  it('Casa 11 terrazas de Castilla (no cortar en Castilla sola + quitar costo)', () => {
+    const text =
+      'un arroz con pollo y una pechuga, Casa 11 terrazas de Castilla 3, si es tan gentil y me regala el costo';
+    const split = splitTrailingEmbeddedAddress(text);
+    expect(split).toBeTruthy();
+    expect(split!.address).toMatch(/casa\s*11/i);
+    expect(split!.address).toMatch(/terrazas/i);
+    expect(split!.address).toMatch(/castilla/i);
+    expect(split!.address).not.toMatch(/gentil|costo|regala/i);
+    expect(split!.productText).toMatch(/arroz/i);
+    expect(split!.productText).toMatch(/pechuga/i);
+    expect(split!.productText).not.toMatch(/castilla/i);
+  });
 });
 
 describe('corpus C02 address-only sigue OK', () => {

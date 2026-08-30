@@ -254,3 +254,14 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(addr).not.toMatch(/colaboras/i);
   });
 });
+
+describe('CRA with house number # (menu code trap)', () => {
+  it('CRA 80b #2-38 is address-only, not non-address', () => {
+    const t = 'CRA 80b #2-38';
+    expect(looksLikeAddressOnlyMessage(t)).toBe(true);
+    expect(looksLikeNonAddressCommand(t)).toBe(false);
+    expect(
+      classifyWhatsappCustomerIntent({ text: t, cartLength: 1, looksLikeAddressOnly: true }),
+    ).toBe('address');
+  });
+});

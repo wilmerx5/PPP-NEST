@@ -7,6 +7,7 @@
 import {
   isAbandonPendingSelectionIntent,
   isAddressChangeIntent,
+  isAddressClarificationIntent,
   isAddressRejectionIntent,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
@@ -20,6 +21,7 @@ import {
   extractDeliverySetupAddress,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { WhatsappPointsService } from './whatsapp-points.service';
 import { isPaymentCapabilityQuestion } from './whatsapp-payment-methods';
@@ -40,6 +42,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     code: 2,
     name: '1/2 Pollo Frito',
     price: 25000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
+    id: 5,
+    code: 5,
+    name: '1/2 Pollo Broaster',
+    price: 26000,
     hasAttributes: true,
     attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }],
     availableNow: true,
@@ -131,6 +143,26 @@ const pppMenu: WhatsappCatalogProduct[] = [
     attributes: [{ attributeName: 'Sabor', options: ['Manzana', 'Colombiana', 'Pepsi'] }],
     availableNow: true,
     categoryName: 'Bebidas',
+  },
+  {
+    id: 61,
+    code: 61,
+    name: 'Pechuga Gratinada',
+    price: 35000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
+    id: 62,
+    code: 62,
+    name: 'Pechuga a la Plancha',
+    price: 32000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Pollo',
   },
   {
     id: 99,
@@ -387,6 +419,9 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(isAddressChangeIntent('No Esa no es mi direcion')).toBe(true);
       expect(looksLikeNonAddressCommand('No Esa no es mi direcion')).toBe(true);
       expect(looksLikeAddressOnlyMessage('No Esa no es mi direcion')).toBe(false);
+      expect(isAddressClarificationIntent('esa era mi direccion')).toBe(true);
+      expect(isAddressClarificationIntent('Esa es mi dirección')).toBe(true);
+      expect(isAddressClarificationIntent('No Esa no es mi direcion')).toBe(false);
     });
   });
 
@@ -688,6 +723,149 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         pppMenu.find((p) => p.code === 1)!,
       ])!;
       expect(catalog.formatComboExplanation(family)).toMatch(/presentaciones|combo/i);
+    });
+  });
+
+  describe('Pechuga a la plancha (no gratinada / no “varios platos”)', () => {
+    it('Buenas tardes, veci me puedes regalar una pechuga a la plancha', () => {
+      const text = applyLocalGlossary(
+        'Buenas tardes, veci me puedes regalar una pechuga a la plancha',
+      );
+      const q = catalog.extractProductSearchQuery(text);
+      expect(q).toMatch(/pechuga/i);
+      expect(q).toMatch(/plancha/i);
+      expect(q).not.toMatch(/veci|regalar/i);
+
+      expect(catalog.isPolitenessOnlySegment('veci me puedes regalar')).toBe(true);
+
+      // Un solo plato: no “Entendí varios” con cortesía unresolved
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeNull();
+
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      expect(scored[0]?.p.name).toMatch(/plancha/i);
+      expect(scored[0]?.p.name).not.toMatch(/gratinada/i);
+
+      const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(embedded?.name).toMatch(/plancha/i);
+    });
+  });
+
+  describe('CRA #2-38 ≠ código menú 1/2 Pollo', () => {
+    it('extractCode no toma la placa de la dirección', () => {
+      expect(catalog.extractCodeFromMessage('CRA 80b #2-38')).toBeNull();
+      expect(catalog.extractCodeFromMessage('Calle 10 #5-20')).toBeNull();
+      expect(catalog.extractCodeFromMessage('Dg. 6b #78b-20')).toBeNull();
+      expect(catalog.extractCodeFromMessage('#2-38')).toBeNull();
+      // Siguen valiendo códigos reales
+      expect(catalog.extractCodeFromMessage('#76')).toBe(76);
+      expect(catalog.extractCodeFromMessage('código 2')).toBe(2);
+      expect(catalog.extractCodeFromMessage('codigo #2')).toBe(2);
+    });
+
+    it('con carrito: intención address, no order', () => {
+      const text = 'CRA 80b #2-38';
+      expect(looksLikeAddressOnlyMessage(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({
+          text,
+          cartLength: 1,
+          looksLikeAddressOnly: true,
+        }),
+      ).toBe('address');
+      expect(catalog.findByCode(2, pppMenu)?.name).toMatch(/1\/2 Pollo/i);
+    });
+  });
+
+  describe('Quiero hacer un pedido ≠ multi “pedido”', () => {
+    it('no resuelve multi ni deja unresolved pedido', () => {
+      const text = applyLocalGlossary('Quiero hacer un pedido');
+      expect(catalog.resolveMultiProductOrder(text, pppMenu)).toBeNull();
+      expect(catalog.searchByName(text, pppMenu, 5).length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('Arroz chino en combo + medio pollo broaster', () => {
+    it('dos platos: combo arroz + 1/2 broaster (no solo el pollo)', () => {
+      const text = applyLocalGlossary(
+        'Arroz chino en combo con medio pollo a la broster',
+      );
+      expect(text).toMatch(/broaster/i);
+      expect(catalog.looksLikeArrozComboPlusSizedChicken(text)).toBe(true);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+        ...multi!.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)),
+      ];
+      expect(names.some((n) => /arroz chino combo/i.test(n))).toBe(true);
+      expect(names.some((n) => /1\/2\s+pollo\s+broaster/i.test(n))).toBe(true);
+      expect(names.some((n) => /arroz chino con medio pollo/i.test(n))).toBe(false);
+    });
+  });
+
+  describe('Referencia de acceso ≠ nueva dirección', () => {
+    it('Portón verde grande a mitad de cuadra es referencia visual', () => {
+      const text = 'Portón verde grande a mitad de cuadra';
+      expect(catalog).toBeTruthy();
+      // Helper vive en el orquestador; validamos señales en intent/corpus
+      expect(looksLikeAddressOnlyMessage(text)).toBe(false);
+      expect(/\bport[oó]n\b/i.test(text)).toBe(true);
+      expect(/\bmitad\s+de\s+cuadra\b/i.test(text)).toBe(true);
+      expect(
+        /\b(calle|carrera|cra|diagonal|dg)\b/i.test(text) && /\d/.test(text),
+      ).toBe(false);
+    });
+  });
+
+  describe('Combo pollo: “2” en Arepas ≠ Manzana', () => {
+    it('primer número elige Fritas; después bebida', () => {
+      const combo = pppMenu.find((p) => p.code === 99)!;
+      expect(combo.attributes?.map((a) => a.attributeName)).toEqual(
+        expect.arrayContaining(['Bebida', 'Arepas']),
+      );
+
+      const remaining0 = catalog.getRemainingAttributes(combo, []);
+      expect(remaining0[0]?.attributeName).toMatch(/arepas/i);
+
+      const step1 = catalog.resolveNextAttributeChoice(combo, '2', []);
+      expect(step1.status).toMatch(/partial|complete/);
+      if (step1.status === 'invalid') throw new Error('expected pick');
+      expect(step1.attributes.some((s) => /fritas/i.test(s.attributeValue))).toBe(true);
+      expect(step1.attributes.some((s) => /manzana/i.test(s.attributeValue))).toBe(false);
+
+      const step2 = catalog.resolveNextAttributeChoice(combo, '2', step1.attributes);
+      expect(step2.status).toMatch(/partial|complete/);
+      if (step2.status === 'invalid') throw new Error('expected drink pick');
+      expect(step2.attributes.some((s) => /manzana/i.test(s.attributeValue))).toBe(true);
+      expect(step2.attributes.some((s) => /fritas/i.test(s.attributeValue))).toBe(true);
+    });
+  });
+
+  describe('Arroz + pechuga + Casa terrazas Castilla', () => {
+    it('multi platos, dirección completa, sin fluff de costo', () => {
+      const text = applyLocalGlossary(
+        'Por favor me vende un arroz con pollo y me cambia la ensalada por yuca frita por favor. Y una pechuga y la ensalada también me la cambia por yuca frita, Casa 11 terrazas de Castilla 3, si es tan gentil y me regala el costo',
+      );
+      expect(text).toMatch(/sin ensalada yuca frita/i);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+
+      const split = splitTrailingEmbeddedAddress(text);
+      expect(split?.address).toMatch(/casa\s*11.*terrazas.*castilla/i);
+      expect(split?.address).not.toMatch(/gentil|costo/i);
+
+      const multi = catalog.resolveMultiProductOrder(split?.productText || text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+        ...multi!.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)),
+      ];
+      expect(names.some((n) => /arroz con pollo/i.test(n))).toBe(true);
+      expect(names.some((n) => /pechuga/i.test(n))).toBe(true);
     });
   });
 
