@@ -38,7 +38,7 @@ export function looksLikeClearCartMessage(text: string): boolean {
   if (!t) return false;
 
   if (
-    /^(reiniciar|reinicia|reinciar|empezar\s+de\s+nuevo|empezar\s+otra\s+vez|nuevo\s+pedido|otro\s+pedido|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo|limpiar|limpia|vaciar|vacia)$/.test(
+    /^(reiniciar|reinicia|reinicio|reinciar|reset|resetear|resetea|empezar\s+de\s+nuevo|empezar\s+otra\s+vez|nuevo\s+pedido|otro\s+pedido|borrar\s+carrito|limpiar\s+carrito|vaciar\s+carrito|vaciar\s+pedido|borrar\s+pedido|borrar\s+todo|quitar\s+todo|limpiar\s+todo|vaciar\s+todo|limpiar|limpia|vaciar|vacia)$/.test(
       t,
     )
   ) {
@@ -46,7 +46,7 @@ export function looksLikeClearCartMessage(text: string): boolean {
   }
 
   const clearVerb =
-    '(?:limpiar|limpia|vaciar|vacia|vacio|borrar|borra|quitar|quita|eliminar|elimina|sacar|saca|resetear|resetea|reiniciar|reinicia|reinciar)';
+    '(?:limpiar|limpia|vaciar|vacia|vacio|borrar|borra|quitar|quita|eliminar|elimina|sacar|saca|resetear|resetea|reiniciar|reinicia|reinicio|reinciar)';
   const clearTarget =
     '(?:el\\s+|la\\s+|mi\\s+)?(?:carrito|pedido|todo|orden|lo\\s+que\\s+llevo|lo\\s+que\\s+pedi|de\\s+nuevo)';
 
@@ -223,10 +223,24 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
   return false;
 }
 
+/** “Así nada más” / “eso es todo” → cierre de pedido, no dirección. */
+export function isNothingElseOrderIntent(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t || t.length > 48) return false;
+  return (
+    /^(asi\s+)?nada\s+mas$/.test(t) ||
+    /^(asi\s+)?nomas$/.test(t) ||
+    /^(eso\s+es\s+todo|solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+mas|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
+      t,
+    )
+  );
+}
+
 /** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
 export function looksLikeNonAddressCommand(text: string): boolean {
   if (looksLikeClearCartMessage(text)) return true;
   if (isDeliveryLogisticsFluff(text) || isDeliverySetupWithoutFood(text)) return true;
+  if (isNothingElseOrderIntent(text)) return true;
 
   const t = normalizeIntentText(text);
   if (!t) return false;

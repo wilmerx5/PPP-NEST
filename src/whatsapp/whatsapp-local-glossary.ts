@@ -13,6 +13,10 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
   { re: /\bpar\s+pagarte\b/gi, to: 'para pagarte' },
   { re: /\bpap[aá]\s+a\s+la\s+francesa\b/gi, to: 'papa a la francesa' },
+  // En PPP “papa(s) frita(s)” = papa francesa (no yuca frita)
+  { re: /\bporci[oó]n(?:es)?\s+(?:de\s+)?papas?\s+fritas?\b/gi, to: 'porcion de papa francesa' },
+  { re: /\bunas?\s+papas?\s+fritas?\b/gi, to: 'papa francesa' },
+  { re: /\bpapas?\s+fritas?\b/gi, to: 'papa francesa' },
   // Precio coloquial CO: "a como el arroz" = ¿a cómo / cuánto cuesta?
   { re: /\ba\s+c[oó]mo\b/gi, to: 'a cuanto' },
   { re: /\bdirecion\b/gi, to: 'dirección' },
@@ -26,6 +30,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bun\s+medio\s+(?:de\s+)?pollo\b/gi, to: 'medio pollo' },
   { re: /\bpollo\s+a\s+la\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\bpollo\s+ala\s+broaster\b/gi, to: 'pollo broaster' },
+  { re: /\balmuerzo\s+ejecutivo\b/gi, to: 'ejecutivo' },
+  { re: /\b1\s+almuerzo\s+ejecutivo\b/gi, to: '1 ejecutivo' },
   { re: /\bmedio\s+broaster\s+medio\s+frito\b/gi, to: 'pollo mixto medio broaster medio frito' },
   { re: /\bmedio\s+broster\s+medio\s+frito\b/gi, to: 'pollo mixto medio broaster medio frito' },
   { re: /\bmedio\s+frito\s+medio\s+broaster\b/gi, to: 'pollo mixto medio frito medio broaster' },
@@ -41,6 +47,15 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bun\s+combo\s+de\s+arroz\s+chino\b/gi, to: 'un arroz chino combo' },
   { re: /\barroz\s+paisa\s+sencillo\b/gi, to: 'arroz paisa solo' },
   { re: /\ben\s+comboo\b/gi, to: 'en combo' },
+  // Gaseosa: "1 colombiana 1,5" / "colombiana 1.5" → litros explícitos
+  {
+    re: /\b(\d{1,2})\s+(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b/gi,
+    to: '$1 $2 $3.$4 litros',
+  },
+  {
+    re: /\b(colombiana|manzana|pepsi|coca\s*cola|gaseosa|sprite|postobon|uva)\s+(\d)\s*[.,]\s*(\d)\b/gi,
+    to: '$1 $2.$3 litros',
+  },
   // Add-on tardío (corpus): "alcanzo a encargarte una ensalada"
   // NO reescribir "para cuántas personas alcanza" → eso es consulta de rinde
   { re: /\b(?:me\s+)?alcanzo\s+a\s+(?:encargarte|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
@@ -188,6 +203,7 @@ GLOSARIO DEL LOCAL (interpreta así; no inventes otros significados):
 - "Arroz chino" tiene presentaciones (caja+francesa / medio pollo / costillas / combo gaseosa): pregunta cuál si no queda claro.
 - Preferencias "no quiero arepas, más papas, sin yuca, sin ensalada, sin cilantro, más miel" con carrito = NOTA del plato, no productos nuevos.
 - Typos frecuentes: broster→broaster, giger→ginger, placha→plancha, marcuya→maracuyá, menundencia→menudencias, plata(+add)→plátano, churrrasco→churrasco, par ale→para el.
+- "Papa(s) frita(s)" / "porción de papa frita" = papa francesa (NO yuca frita).
 - Zona típica de domicilio: Castilla (y variantes), Nuevo Sol, Tabaku, Altavista, Techo, Tintal — si el cliente solo nombra el conjunto/torre/apto, es dirección.
 `.trim();
 }

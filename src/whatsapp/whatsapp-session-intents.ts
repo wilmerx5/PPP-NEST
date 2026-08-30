@@ -243,6 +243,14 @@ export function isAbandonPendingSelectionIntent(text: string): boolean {
   ) {
     return true;
   }
+  // Reinicio / reset (también vacía vía clearCart; aquí suelta pending si llega antes)
+  if (/^(reinicio|reiniciar|reinicia|reset|resetear|resetea)[\s!.?]*$/i.test(t)) {
+    return true;
+  }
+  // "pollo no" / "no pollo" mientras pide arepas del #1
+  if (/^(pollo\s+no|no\s+(el\s+)?pollo|no\s+quiero\s+(el\s+)?pollo)[\s!.?]*$/i.test(t)) {
+    return true;
+  }
   if (/^ya\s+no[\s!.?]*$/.test(t)) return true;
   if (/^(no|nop|nel)[\s!.?]*$/.test(t)) return true;
   if (/\bya\s+no\s+(quiero|deseo|pido|me\s+interesa)\b/.test(t)) return true;

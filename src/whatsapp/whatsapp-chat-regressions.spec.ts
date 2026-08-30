@@ -16,9 +16,11 @@ import {
   looksLikeAddressOnlyMessage,
   looksLikeNonAddressCommand,
   looksLikeExplicitCartItemNote,
+  looksLikeClearCartMessage,
   isDeliverySetupWithoutFood,
   isDeliveryLogisticsFluff,
   extractDeliverySetupAddress,
+  isNothingElseOrderIntent,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
@@ -118,6 +120,19 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Ejecutivos',
   },
   {
+    id: 19,
+    code: 19,
+    name: 'Ejecutivo Con Pechuga',
+    price: 28000,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias', 'Mondongo'] },
+      { attributeName: 'Bebida', options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola'] },
+    ],
+    availableNow: true,
+    categoryName: 'Ejecutivos',
+  },
+  {
     id: 18,
     code: 18,
     name: 'Ejecutivo Con Pollo Broaster',
@@ -164,6 +179,21 @@ const pppMenu: WhatsappCatalogProduct[] = [
     price: 4000,
     hasAttributes: true,
     attributes: [{ attributeName: 'Sabor', options: ['Manzana', 'Colombiana', 'Pepsi'] }],
+    availableNow: true,
+    categoryName: 'Bebidas',
+  },
+  {
+    id: 29,
+    code: 29,
+    name: 'Gaseosa 1.5 litros',
+    price: 7000,
+    hasAttributes: true,
+    attributes: [
+      {
+        attributeName: 'Sabor',
+        options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola'],
+      },
+    ],
     availableNow: true,
     categoryName: 'Bebidas',
   },
@@ -245,6 +275,26 @@ const pppMenu: WhatsappCatalogProduct[] = [
     code: 91,
     name: 'Porción De Papas Fritas',
     price: 8000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Porciones',
+  },
+  {
+    id: 92,
+    code: 92,
+    name: 'Porcion De Papa Francesa',
+    price: 7500,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Porciones',
+  },
+  {
+    id: 93,
+    code: 93,
+    name: 'Porcion De Yuca Frita',
+    price: 7500,
     hasAttributes: false,
     attributes: [],
     availableNow: true,
@@ -675,7 +725,7 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         ...multi!.needsAttributes.map((c) => c.product.name),
       ];
       expect(names.some((n) => /1\/2\s*pollo\s*frito/i.test(n))).toBe(true);
-      expect(names.some((n) => /papas?\s*fritas/i.test(n))).toBe(true);
+      expect(names.some((n) => /papas?\s*fritas|papa francesa/i.test(n))).toBe(true);
 
       const chicken = pppMenu.find((p) => p.code === 2)!;
       const attrs = catalog.extractExplicitAttributeChoice(segs[0], chicken);
@@ -915,6 +965,125 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.isMixtoCompositionInquiry(text)).toBe(false);
       const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
       expect(hit?.name).toMatch(/mixto/i);
+    });
+  });
+
+  describe('Colombiana 1,5: 1 unidad 1.5L (no “¿dos?” / no pollo #1)', () => {
+    it('1 colombiana 1,5 → volumen 1500, qty 1, SKU 1.5L', () => {
+      const text = applyLocalGlossary('1 colombiana 1,5');
+      expect(text).toMatch(/1\.5\s*litros/i);
+      expect(catalog.extractRequestedDrinkVolumeMl(text)).toBe(1500);
+      expect(catalog.extractQuantityFromMessage(text)).toBe(1);
+      expect(catalog.countQuantityMentions(text)).toBe(1);
+
+      const drinks = pppMenu.filter((p) => catalog.isLikelyDrinkProduct(p));
+      const best = catalog.pickBestDrinkProduct(drinks, text);
+      expect(best?.name).toMatch(/1\.5|1,5/i);
+      expect(best?.name).not.toMatch(/400/i);
+    });
+
+    it('pollo no abandona pending', () => {
+      expect(isAbandonPendingSelectionIntent('pollo no')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('no pollo')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('no quiero pollo')).toBe(true);
+    });
+
+    it('reinicio vacía / suelta pending', () => {
+      expect(looksLikeClearCartMessage('reinicio')).toBe(true);
+      expect(looksLikeClearCartMessage('Reinicio')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('reinicio')).toBe(true);
+    });
+  });
+
+  describe('Papa frita ≠ yuca frita (PPP = papa francesa)', () => {
+    it('Una porción de papa frita → papa/francesa, no yuca', () => {
+      const text = applyLocalGlossary('Una porción de papa frita');
+      expect(text).toMatch(/papa francesa/i);
+      expect(text).not.toMatch(/yuca/i);
+
+      // Menú real típico: solo francesa + yuca (sin SKU “Papas Fritas”)
+      const menuSinPapasFritas = pppMenu.filter((p) => p.code !== 91);
+      const scored = catalog.searchByNameScored(text, menuSinPapasFritas, 5);
+      expect(scored[0]?.p.name).toMatch(/papa francesa/i);
+      expect(scored[0]?.p.name).not.toMatch(/yuca/i);
+      expect(catalog.findProductEmbeddedInMessage(text, menuSinPapasFritas)?.name).toMatch(
+        /papa francesa/i,
+      );
+    });
+
+    it('porción de yuca frita sigue siendo yuca', () => {
+      const text = applyLocalGlossary('Una porción de yuca frita');
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      expect(scored[0]?.p.name).toMatch(/yuca/i);
+    });
+  });
+
+  describe('“Así nada más” ≠ dirección', () => {
+    it('es cierre de pedido, no landmark genérico', () => {
+      for (const raw of [
+        'asi nada mas',
+        'Así nada más',
+        'nada mas',
+        'eso es todo',
+        'solo eso',
+        'nomas',
+      ]) {
+        expect(isNothingElseOrderIntent(raw)).toBe(true);
+        expect(looksLikeNonAddressCommand(raw)).toBe(true);
+        expect(looksLikeAddressOnlyMessage(raw)).toBe(false);
+      }
+      expect(isNothingElseOrderIntent('Calle 80 nada mas')).toBe(false);
+      expect(looksLikeAddressOnlyMessage('Bosques de Castilla')).toBe(true);
+    });
+  });
+
+  describe('Almuerzo ejecutivo con pechuga + ajiaco (no Sopa De Ajiaco suelta)', () => {
+    it('1 ejecutivo pechuga + sopa ajiaco + 1 costillas', () => {
+      const text = applyLocalGlossary(
+        '1 almuerzo ejecutivo con pechuga y sopa de ajiaco\n1 costillas',
+      );
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /ejecutivo/i.test(n) && /pechuga/i.test(n))).toBe(true);
+      expect(names.some((n) => /costillas/i.test(n))).toBe(true);
+      expect(names.some((n) => /^Sopa De Ajiaco$/i.test(n))).toBe(false);
+      expect(names.some((n) => /^Pechuga a la Plancha$/i.test(n))).toBe(false);
+    });
+
+    it('sin SKU pechuga → Ejecutivo pollo + presa pechuga (no sopa suelta)', () => {
+      const menuSinPechugaSku = pppMenu.filter((p) => p.code !== 19);
+      const text = applyLocalGlossary(
+        '1 almuerzo ejecutivo con pechuga y sopa de ajiaco\n1 costillas',
+      );
+      const multi = catalog.resolveMultiProductOrder(text, menuSinPechugaSku);
+      expect(multi).toBeTruthy();
+      const all = [...multi!.confident, ...multi!.needsAttributes];
+      expect(all.some((c) => /Sopa De Ajiaco/i.test(c.product.name))).toBe(false);
+      const ejec = all.find((c) => /ejecutivo/i.test(c.product.name));
+      expect(ejec?.product.name).toMatch(/Pollo Frito/i);
+      const attrs = catalog.resolveAttributesFromMessage(
+        ejec!.product,
+        '1 almuerzo ejecutivo con pechuga y sopa de ajiaco',
+        [],
+      );
+      expect(attrs.status === 'complete' || attrs.status === 'partial').toBe(true);
+      if (attrs.status === 'complete' || attrs.status === 'partial') {
+        expect(
+          attrs.attributes.some(
+            (a) => /presa/i.test(a.attributeName) && /pechuga/i.test(a.attributeValue),
+          ),
+        ).toBe(true);
+        expect(
+          attrs.attributes.some(
+            (a) => /sopa/i.test(a.attributeName) && /ajiaco/i.test(a.attributeValue),
+          ),
+        ).toBe(true);
+      }
     });
   });
 

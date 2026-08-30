@@ -10,6 +10,7 @@ import {
   looksLikeDeliveryAddressFragment,
   isDeliveryLogisticsFluff,
   isHumanHandoffRequest,
+  isNothingElseOrderIntent,
 } from './whatsapp-intent';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 
@@ -119,6 +120,7 @@ describe('classifyWhatsappCustomerIntent', () => {
       'limpia todo',
       'ya no quiero nada',
       'reiniciar',
+      'reinicio',
       'reiniciar pedido',
       'limpiar',
     ]) {
@@ -244,6 +246,14 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(isDeliveryLogisticsFluff('solicitar un domicilio')).toBe(true);
     expect(extractDeliverySetupAddress('Para solicitar un domicilio')).toBeNull();
     expect(looksLikeAddressOnlyMessage('Para solicitar un domicilio')).toBe(false);
+  });
+
+  it('“así nada más” / “eso es todo” no es dirección', () => {
+    for (const t of ['asi nada mas', 'Así nada más', 'nada mas', 'eso es todo', 'solo eso']) {
+      expect(isNothingElseOrderIntent(t)).toBe(true);
+      expect(looksLikeNonAddressCommand(t)).toBe(true);
+      expect(looksLikeAddressOnlyMessage(t)).toBe(false);
+    }
   });
 
   it('extrae Tabaku desde “Me colaboras… Dirección Conjunto…”', () => {
