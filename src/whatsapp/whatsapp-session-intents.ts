@@ -235,6 +235,14 @@ export function extractCoverageAddressProbe(text: string): string | null {
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();
   if (!t) return false;
+  // Saludo suelto mientras hay selección pendiente = salir del atrape
+  if (
+    /^(hola|buenas|buenos\s+dias|buenas\s+tardes|buenas\s+noches|hey|hi)[\s!.?]*$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
   if (/^ya\s+no[\s!.?]*$/.test(t)) return true;
   if (/^(no|nop|nel)[\s!.?]*$/.test(t)) return true;
   if (/\bya\s+no\s+(quiero|deseo|pido|me\s+interesa)\b/.test(t)) return true;

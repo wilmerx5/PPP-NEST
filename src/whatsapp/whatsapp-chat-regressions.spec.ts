@@ -58,6 +58,29 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Pollo',
   },
   {
+    id: 8,
+    code: 8,
+    name: '1/2 Pollo Mixto',
+    price: 26000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
+    id: 98,
+    code: 98,
+    name: 'Combo De Pollo Mixto',
+    price: 32000,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] },
+      { attributeName: 'Bebida', options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola'] },
+    ],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
     id: 6,
     code: 6,
     name: '1/4 Pollo Broaster',
@@ -866,6 +889,32 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       ];
       expect(names.some((n) => /arroz con pollo/i.test(n))).toBe(true);
       expect(names.some((n) => /pechuga/i.test(n))).toBe(true);
+    });
+  });
+
+  describe('Combo mixto = mitad broaster + mitad frito (no 1/2 Broaster)', () => {
+    it('pregunta de composición no resuelve a 1/2 Pollo Broaster', () => {
+      const raw = 'El combo mixto es medio broster medio frito?';
+      const text = applyLocalGlossary(raw);
+      expect(catalog.isMixtoCompositionInquiry(raw)).toBe(true);
+      expect(catalog.isMixtoCompositionInquiry(text)).toBe(true);
+      expect(catalog.resolveSizedChickenProduct(raw, pppMenu)).toBeNull();
+      expect(catalog.resolveSizedChickenProduct(text, pppMenu)).toBeNull();
+      expect(catalog.isComboMeaningInquiry(text)).toBe(true);
+    });
+
+    it('Hola suelto abandona pendingAttribute (atrape arepas)', () => {
+      expect(isAbandonPendingSelectionIntent('Hola')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('hola')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('Buenas tardes')).toBe(true);
+      expect(isAbandonPendingSelectionIntent('Hola quiero limonada')).toBe(false);
+    });
+
+    it('pedir mixto sí puede matchear SKU mixto', () => {
+      const text = applyLocalGlossary('quiero el combo mixto');
+      expect(catalog.isMixtoCompositionInquiry(text)).toBe(false);
+      const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(hit?.name).toMatch(/mixto/i);
     });
   });
 

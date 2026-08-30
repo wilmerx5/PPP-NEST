@@ -1355,6 +1355,10 @@ export class WhatsappCatalogService {
     if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q) && !/\basado\b/.test(q)) {
       return null;
     }
+    // Consulta “¿el mixto es medio broaster medio frito?” ≠ pedir 1/2 broaster
+    if (this.isMixtoCompositionInquiry(text) || this.isProductDescriptionInquiry(text)) {
+      return null;
+    }
     // No forzar si el mensaje es SOLO arroz/combo (ej. "arroz con pollo" sin porción aparte).
     // En multi ("arroz con pollo y 1/4 asado") sí resolvemos el pollo por segmento.
     if (
@@ -4034,10 +4038,11 @@ export class WhatsappCatalogService {
     );
   }
 
-  /** “¿Qué significa en combo?” / “cuánto valdría el combo” */
+  /** “¿Qué significa en combo?” / “cuánto valdría el combo” / “el combo mixto es…?” */
   isComboMeaningInquiry(text: string): boolean {
     const t = (text || '').trim();
     if (!t) return false;
+    if (this.isMixtoCompositionInquiry(t)) return true;
     return (
       /\b(qu[eé]\s+(significa|es|trae|incluye|viene|valdr[ií]a)|c[oó]mo\s+(es|viene|funciona))\s+(el\s+|en\s+|a\s+)?combo\b/i.test(
         t,
@@ -4047,6 +4052,27 @@ export class WhatsappCatalogService {
       /\bcu[aá]nto\b.*\ben\s+combo\b/i.test(t) ||
       /\b(significa|qu[eé]\s+es)\s+a?\s*en\s+combo\b/i.test(t)
     );
+  }
+
+  /**
+   * “El combo mixto es medio broaster medio frito?” — confirma composición, no pide 1/2 pollo.
+   */
+  isMixtoCompositionInquiry(text: string): boolean {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw || raw.length < 8) return false;
+    if (/^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme)\b/i.test(raw)) return false;
+    const q = normalizeText(raw);
+    const asksMixto = /\b(?:combo\s+)?(?:de\s+)?(?:pollo\s+)?mixto\b/.test(q);
+    const halfAndHalf =
+      /\b(?:medio|mitad)\s+(?:pollo\s+)?(?:broaster|frito|asado)\b/.test(q) &&
+      /\b(?:medio|mitad)\s+(?:pollo\s+)?(?:broaster|frito|asado)\b/.test(
+        q.replace(/\b(?:medio|mitad)\s+(?:pollo\s+)?(?:broaster|frito|asado)\b/, ' '),
+      );
+    if (asksMixto && (/\bes\b/.test(q) || /\?/.test(raw) || halfAndHalf)) return true;
+    if (halfAndHalf && (/\bes\b/.test(q) || /\?/.test(raw)) && !/\b(quiero|dame|ponme)\b/.test(q)) {
+      return true;
+    }
+    return false;
   }
 
   formatVariantFamilyPrompt(family: ProductVariantFamily): string {
@@ -4351,6 +4377,8 @@ export class WhatsappCatalogService {
     if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
       return false;
     }
+
+    if (this.isMixtoCompositionInquiry(raw)) return true;
 
     const patterns = [
       /\bde que\b/,

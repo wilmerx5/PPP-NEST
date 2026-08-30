@@ -499,6 +499,34 @@ export class WhatsappOrchestratorService {
       ) {
         return;
       }
+      // Pregunta de mixto / composición mientras está atrapado en arepas → soltar y responder
+      if (
+        this.catalogService.isMixtoCompositionInquiry(text) ||
+        this.catalogService.isProductDescriptionInquiry(text) ||
+        this.catalogService.isComboMeaningInquiry(text)
+      ) {
+        session = {
+          ...session,
+          pendingAttribute: undefined,
+          pendingMatch: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        if (await this.tryHandleMixtoCompositionInquiry(conv, msg.waId, session, text, products, cfg)) {
+          return;
+        }
+        if (
+          await this.tryHandleProductCompositionQuestion(
+            conv,
+            msg.waId,
+            text,
+            products,
+            cfg,
+            session,
+          )
+        ) {
+          return;
+        }
+      }
       if (
         await this.tryHandleServingSizeChange(conv, msg.waId, session, text, products, cfg)
       ) {
@@ -1116,6 +1144,11 @@ export class WhatsappOrchestratorService {
       // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
       // (matcheaba basura y caía en “Entendí varios… _pedido_”).
       await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
+      return;
+    }
+
+    // “¿El combo mixto es medio broaster medio frito?” → info, no 1/2 pollo
+    if (await this.tryHandleMixtoCompositionInquiry(conv, msg.waId, session, text, products, cfg)) {
       return;
     }
 
@@ -2558,16 +2591,18 @@ export class WhatsappOrchestratorService {
         const accessRef =
           this.looksLikeDeliveryAccessReference(addr) ||
           this.looksLikeDeliveryAccessReference(sourceText || '');
+        const existingAddr = (next.address || '').trim();
         if (
           accessRef &&
           next.addressConfirmed &&
-          next.address?.trim() &&
-          this.isStrongExplicitAddress(next.address)
+          existingAddr &&
+          this.isStrongExplicitAddress(existingAddr)
         ) {
           const note = (sourceText || addr).trim().slice(0, 160);
           next = this.appendCustomerNote(next, note);
-          if (!next.address.toLowerCase().includes(note.toLowerCase())) {
-            const base = next.address.replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '').trim();
+          const addrNow = (next.address || existingAddr).trim();
+          if (addrNow && !addrNow.toLowerCase().includes(note.toLowerCase())) {
+            const base = addrNow.replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '').trim();
             next = { ...next, address: `${base} — ${note}`.slice(0, 240) };
           }
         } else if (!this.isPickupIntent(addr)) {
@@ -8526,6 +8561,54 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  private async tryHandleMixtoCompositionInquiry(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isMixtoCompositionInquiry(text)) return false;
+
+    session = {
+      ...session,
+      pendingAttribute: undefined,
+      pendingMatch: undefined,
+      pendingMultiOrder: undefined,
+    };
+
+    const mixtoHits = products.filter(
+      (p) => p.availableNow !== false && /\bmixto\b/i.test(p.name),
+    );
+    let reply =
+      'Sí 👍 El *mixto* es *medio broaster* y *medio frito* (mitad y mitad), no un solo 1/2 pollo.\n';
+    if (mixtoHits.length === 1) {
+      const p = mixtoHits[0];
+      reply +=
+        `\nEn el menú: *${p.name}* · Cód. ${this.catalogService.formatProductCode(p.code)} · ${this.catalogService.formatMoney(p.price)}\n` +
+        `\n¿Te lo agrego? Responde *sí* o el *código*.`;
+      session = this.rememberProductFocus(session, p, products);
+      await this.savePendingAddOffer(conv, p, 1);
+    } else if (mixtoHits.length > 1) {
+      reply +=
+        `\n\n${this.catalogService.formatProductChoicePrompt('mixto', mixtoHits, {
+          intro: 'Estas son las opciones *mixtas* del menú:',
+        })}`;
+      session = {
+        ...session,
+        pendingMatch: { query: 'mixto', candidates: mixtoHits, intent: 'info' },
+      };
+    } else {
+      reply +=
+        `\nSi lo quieres pedir, escribe *mixto* o mira el menú: ${(cfg.menuUrl || '').trim() || '*menú*'}.`;
+    }
+
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(conv, waId, reply);
+    return true;
+  }
+
   private async tryHandleComboExplanation(
     conv: WhatsappConversation,
     waId: string,
@@ -8533,6 +8616,16 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
   ): Promise<boolean> {
+    if (this.catalogService.isMixtoCompositionInquiry(text)) {
+      return this.tryHandleMixtoCompositionInquiry(
+        conv,
+        waId,
+        session,
+        text,
+        products,
+        await this.settingsService.getEffectiveConfig(),
+      );
+    }
     // Contexto: último plato del carrito, focus, o mención en el texto
     const focusId = session.productFocus?.productId;
     const focus =
