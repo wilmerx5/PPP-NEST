@@ -9,6 +9,7 @@ import {
   isUpcomingAddressIntent,
   looksLikeAddressOnlyMessage,
   looksLikeDeliveryAddressFragment,
+  FOOD_ORDER_SIGNAL_RE,
 } from './whatsapp-intent';
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
@@ -88,7 +89,7 @@ const DRINK_ORDER_TOKEN =
   '(?:gaseosa|gaseosas|coca\\s*cola?|cola|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n|mr\\s*tea|cysco|colombiana|manzana|uva|ginger)';
 
 const FOOD_ORDER_TOKEN =
-  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas|hamburguesa|hamburguesas)';
+  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas|hamburguesa|hamburguesas|trucha|bagre|pescado)';
 
 /** Multiplicadores de pack en el nombre del SKU (no son el plato unitario). */
 const PACK_MULTIPLIER_TOKENS = new Set([
@@ -1166,7 +1167,7 @@ export class WhatsappCatalogService {
     if (!n) return true;
     // No usar FOOD_ORDER_TOKEN suelto: "alas?" matchea dentro de "regalar"
     if (
-      /\b(pollo|pechuga|mojarra|mojarras|arroz|sopa|bandeja|alitas?|alas?\b|churrasco|costilla|hamburguesa|limonada|gaseosa|ajiaco|broaster|plancha|frito|asado|platano|papa|papas|yuca|mondongo|sobrebarriga|ejecutivo|combo|codigo|menu)\b/.test(
+      /\b(pollo|pechuga|mojarra|mojarras|arroz|sopa|bandeja|alitas?|alas?\b|churrasco|costilla|hamburguesa|limonada|gaseosa|ajiaco|broaster|plancha|frito|asado|platano|papa|papas|yuca|mondongo|sobrebarriga|ejecutivo|combo|codigo|menu|trucha|bagre|pescado)\b/.test(
         n,
       )
     ) {
@@ -1175,7 +1176,7 @@ export class WhatsappCatalogService {
     if (/\d/.test(n) && /\b(codigo|#)\b/.test(n)) return false;
     n = n
       .replace(
-        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|pf|gracias|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias)\b/g,
+        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|pf|gracias|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias|ok|okay|entonces|listo|bueno)\b/g,
         ' ',
       )
       .replace(/[!.?,;:]+/g, ' ')
@@ -1723,6 +1724,15 @@ export class WhatsappCatalogService {
       return true;
     }
 
+    // "Regálame entonces 1 trucha…" / "me regalas 2 costillas"
+    if (
+      /\b(regala(?:me|s|nos)?|me\s+regalas?|enviame|mandame|traeme)\b/.test(q) &&
+      (FOOD_ORDER_SIGNAL_RE.test(raw) ||
+        /\b(\d{1,2}|un|una|dos|tres)\s+(?:de\s+)?[a-z]{3,}/.test(q))
+    ) {
+      return true;
+    }
+
     if (
       !/\b(adicionar|adiciona|adicioname|agregame|agregar|añadir|anadir|ponme|dame|traeme|traer)\b/.test(
         q,
@@ -1732,7 +1742,7 @@ export class WhatsappCatalogService {
     }
 
     return (
-      /\b(?:un|una|el|la|los|las)\s+(?:platano|plato|pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|mondongo|ajiaco|bebida|gaseosa|jugo|limonada|broaster|frito)\b/.test(
+      /\b(?:un|una|el|la|los|las)\s+(?:platano|plato|pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|mondongo|ajiaco|bebida|gaseosa|jugo|limonada|broaster|frito|trucha|bagre|pescado)\b/.test(
         q,
       ) || /\b(?:un|una)\s+plato\b/.test(q)
     );
@@ -5217,7 +5227,8 @@ export class WhatsappCatalogService {
       if (!foodish && /\b(pedido|orden|pedir|ordenar)\b/.test(q)) return null;
     }
     // "Para el hermano Jesús" / landmark / calle → dirección, no platos
-    if (looksLikeAddressOnlyMessage(text) || looksLikeDeliveryAddressFragment(text)) {
+    // Solo si el mensaje es SOLO dirección (pedido+calle al final sí es multi)
+    if (looksLikeAddressOnlyMessage(text)) {
       return null;
     }
     // "Te mando la dirección" / cortesía + anuncio de dirección ≠ multi
@@ -5235,6 +5246,13 @@ export class WhatsappCatalogService {
 
     let segments = this.splitMultiProductSegments(text);
     segments = segments.filter((s) => !this.isPolitenessOnlySegment(s));
+    // Cola de domicilio no es plato: "Para la Salsamentaria…", "Cll 6…"
+    segments = segments.filter(
+      (s) =>
+        !looksLikeAddressOnlyMessage(s) &&
+        !looksLikeDeliveryAddressFragment(s) &&
+        !/^(?:para\s+)?(?:la\s+|el\s+)?(?:direcci[oó]n|domicilio)\b/i.test(s.trim()),
+    );
     let embeddedAll = this.findAllProductsEmbeddedInMessage(text, products);
 
     const clearlyMulti =

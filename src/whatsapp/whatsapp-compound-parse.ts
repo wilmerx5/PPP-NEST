@@ -23,7 +23,7 @@ export function splitTrailingEmbeddedAddress(
   const raw = (text || '').replace(/\s+/g, ' ').trim();
   if (raw.length < 12) return null;
 
-  // "Es para …" / "Sería para …"
+  // "Es para …" / "Sería para …" / "Para la Salsamentaria …"
   const esPara = raw.match(
     /^(.{3,}?)\s+(?:es\s+para|seria\s+para|ser[ií]a\s+para|para\s+la\s+direcci[oó]n)\s+(.+)$/i,
   );
@@ -31,6 +31,24 @@ export function splitTrailingEmbeddedAddress(
     const head = esPara[1].replace(/[.,;:\s]+$/g, '').trim();
     const addr = stripTrailingAddressFluff(esPara[2].trim());
     if (head.length >= 3 && looksLikeEmbeddedAddress(addr)) {
+      return { productText: head, address: addr };
+    }
+  }
+
+  // "… Para la Salsamentaria El castillo Cll 6…" (destino con artículo, no "para llevar")
+  const paraPlace = raw.match(
+    /^(.{8,}?)\s+[Pp]ara\s+(?:la|el|los|las)\s+(?!llevar|recoger|el\s+local)(.+)$/,
+  );
+  if (paraPlace?.[1] && paraPlace[2] && paraPlace[2].trim().length >= 6) {
+    const head = paraPlace[1].replace(/[.,;:\s]+$/g, '').trim();
+    const addr = stripTrailingAddressFluff(paraPlace[2].trim());
+    if (
+      head.length >= 8 &&
+      looksLikeEmbeddedAddress(addr) &&
+      /\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|costilla|sobrebarriga|hamburguesa|ajiaco|mondongo|pechuga|alitas?|mojarra|gaseosa|jugo|maduro|arepa|domicilio|regala(?:me|s)?|envia(?:me)?|manda(?:me)?|quiero|dame|pedi|pido|vende|vendes|trucha|bagre|pescado)\b/i.test(
+        head,
+      )
+    ) {
       return { productText: head, address: addr };
     }
   }
@@ -60,7 +78,12 @@ export function splitTrailingEmbeddedAddress(
   if (head.length < 3 || addr.length < 6) return null;
   if (!looksLikeEmbeddedAddress(addr)) return null;
   // Cabeza debe parecer pedido (no solo saludo)
-  if (!/\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|costilla|sobrebarriga|hamburguesa|ajiaco|mondongo|pechuga|alitas?|mojarra|gaseosa|jugo|maduro|arepa|domicilio|regala|envia|manda|quiero|dame|pedi|pido|vende|vendes)\b/i.test(head)) {
+  // Cabeza debe parecer pedido (no solo saludo)
+  if (
+    !/\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|costilla|sobrebarriga|hamburguesa|ajiaco|mondongo|pechuga|alitas?|mojarra|gaseosa|jugo|maduro|arepa|domicilio|regala(?:me|s)?|envia(?:me)?|manda(?:me)?|quiero|dame|pedi|pido|vende|vendes|trucha|bagre|pescado)\b/i.test(
+      head,
+    )
+  ) {
     return null;
   }
 

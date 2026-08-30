@@ -107,6 +107,36 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Carne',
   },
   {
+    id: 12,
+    code: 12,
+    name: 'Trucha',
+    price: 32000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Seleccion', options: ['Frita', 'Apanada', 'Asada'] }],
+    availableNow: true,
+    categoryName: 'Pescados',
+  },
+  {
+    id: 14,
+    code: 14,
+    name: 'Bagre',
+    price: 30000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Seleccion', options: ['Frito', 'En Salsa', 'Apanado'] }],
+    availableNow: true,
+    categoryName: 'Pescados',
+  },
+  {
+    id: 15,
+    code: 15,
+    name: 'Costillas BBQ',
+    price: 28000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Carne',
+  },
+  {
     id: 22,
     code: 22,
     name: 'Ejecutivo Con Pollo Frito',
@@ -1095,6 +1125,62 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
           ),
         ).toBe(true);
       }
+    });
+  });
+
+  describe('Trucha + costillas + bagre + dirección (no solo trucha)', () => {
+    const orderRaw = `Ok 
+Regalame entonces 
+1 trucha frita con papa salada 
+2 costillas bbq 
+1 bagre en salsa 
+Para la Salsamentaria El castillo 
+Cll 6 b 78 c 33`;
+
+    it('no es solo-dirección ni fragmento puro', () => {
+      const text = applyLocalGlossary(orderRaw);
+      expect(looksLikeAddressOnlyMessage(text)).toBe(false);
+      expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+    });
+
+    it('resuelve trucha frita + costillas + bagre en salsa', () => {
+      const text = applyLocalGlossary(orderRaw);
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /trucha/i.test(n))).toBe(true);
+      expect(names.some((n) => /costillas/i.test(n))).toBe(true);
+      expect(names.some((n) => /bagre/i.test(n))).toBe(true);
+      expect(multi!.unresolved || []).toEqual([]);
+
+      const trucha = multi!.confident.find((c) => /trucha/i.test(c.product.name));
+      expect(
+        catalog.extractExplicitAttributeChoice(trucha?.segment || text, trucha!.product),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: expect.stringMatching(/frita/i) }),
+        ]),
+      );
+      const bagre = multi!.confident.find((c) => /bagre/i.test(c.product.name));
+      expect(
+        catalog.extractExplicitAttributeChoice(bagre?.segment || text, bagre!.product),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: expect.stringMatching(/salsa/i) }),
+        ]),
+      );
+    });
+
+    it('separa dirección (Cll / Salsamentaria) del pedido', () => {
+      const text = applyLocalGlossary(orderRaw);
+      const split = splitTrailingEmbeddedAddress(text);
+      expect(split?.address).toMatch(/cll|6/i);
+      expect(split?.productText).toMatch(/trucha/i);
+      expect(split?.productText).not.toMatch(/^ok\b.*cll/i);
     });
   });
 

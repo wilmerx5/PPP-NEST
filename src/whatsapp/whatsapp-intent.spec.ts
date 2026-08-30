@@ -148,6 +148,11 @@ describe('classifyWhatsappCustomerIntent', () => {
     ).toBe(true);
   });
 
+  it('no trata pedido con comida+calle como solo dirección', () => {
+    const order = `Ok Regalame entonces 1 trucha frita 2 costillas bbq 1 bagre en salsa Para la Salsamentaria El castillo Cll 6 b 78 c 33`;
+    expect(looksLikeAddressOnlyMessage(order)).toBe(false);
+  });
+
   it('detecta dirección estricta con landmark', () => {
     expect(
       looksLikeAddressOnlyMessage('para el hospital de kennedy'),

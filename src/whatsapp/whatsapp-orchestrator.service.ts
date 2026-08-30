@@ -9043,6 +9043,9 @@ export class WhatsappOrchestratorService {
         this.catalogService.isPriceInquiryIntent(text) ||
         this.catalogService.isGenericProductInquiry(text) ||
         this.catalogService.looksLikeExplicitAddProductRequest(text) ||
+        this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(text) ||
+        this.catalogService.countQuantityMentions(text) >= 2 ||
         looksLikeAddressOnlyMessage(text) ||
         isUpcomingAddressIntent(text) ||
         isPaymentCapabilityQuestion(text) ||

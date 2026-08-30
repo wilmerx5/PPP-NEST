@@ -153,6 +153,10 @@ export const PPP_ZONE_LANDMARK_RE =
 const STREET_ADDRESS_RE =
   /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|barrio|habitaci[oó]n|apto|apartamento|torre|porter[ií]a|int\.?|interior)\b/i;
 
+/** Señales de comida en un mensaje (no tratar como solo-dirección). */
+export const FOOD_ORDER_SIGNAL_RE =
+  /\b(pollo|pollos|sopa|sopas|bandeja|mojarra|mojarras|churrasco|churrascos|hamburguesa|hamburguesas|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|arepas|combo|ejecutivo|bebidas?|arroz|costilla|costillas|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado|tacos?|burritos?|salchipapa|patacon|patacones|yuca|papas?)\b/i;
+
 /**
  * Cola falsa de “para un domicilio por favor” — no es dirección real.
  */
@@ -321,6 +325,8 @@ export function looksLikeDeliveryAddressFragment(text: string): boolean {
   if (raw.length < 4) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
   if (isDeliveryLogisticsFluff(raw)) return false;
+  // Pedido con comida + calle al final ≠ “fragmento de dirección” puro
+  if (FOOD_ORDER_SIGNAL_RE.test(raw)) return false;
 
   const stripped = raw
     .replace(/^(?:para|direcci[oó]n|domicilio)\s*[:\-]?\s*/i, '')
@@ -345,7 +351,7 @@ export function isDeliverySetupWithoutFood(text: string): boolean {
   if (raw.length < 8) return false;
 
   if (
-    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|chino|paisa|maduro)\b/i.test(
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado)\b/i.test(
       raw,
     )
   ) {
@@ -449,10 +455,11 @@ export function looksLikeAddressOnlyMessage(
   if (raw.length < 4) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
 
+  // Pedido / comida → nunca “solo dirección” (aunque traiga calle al final)
+  if (FOOD_ORDER_SIGNAL_RE.test(raw)) return false;
   if (
-    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo|bebidas?)\b/i.test(
-      raw,
-    )
+    /\b(regala(?:me|s|nos)?|quiero|dame|ponme|pedi|pido|agrega|traer|mandame)\b/i.test(raw) &&
+    /\b(\d{1,2}|un|una|dos|tres|cuatro|cinco)\b/i.test(raw)
   ) {
     return false;
   }
