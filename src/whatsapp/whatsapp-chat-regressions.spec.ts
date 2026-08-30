@@ -186,6 +186,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Porciones',
   },
   {
+    id: 91,
+    code: 91,
+    name: 'Porción De Papas Fritas',
+    price: 8000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Porciones',
+  },
+  {
     id: 70,
     code: 70,
     name: 'Arroz Chino Caja Con Papa Francesa',
@@ -580,6 +590,39 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const text = applyLocalGlossary('Me podrías adicionar un plata con queso y bocadillo');
       expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
       expect(catalog.extractProductModificationNote(text)).toBeNull();
+    });
+
+    it('colaboras + Dirección Tabaku → solo el conjunto', () => {
+      const text =
+        'Me colaboras por favor con un domicilio. Dirección Conjunto Residencial Tabaku Central';
+      expect(isDeliverySetupWithoutFood(text)).toBe(true);
+      const addr = extractDeliverySetupAddress(text);
+      expect(addr).toMatch(/tabaku/i);
+      expect(addr).not.toMatch(/colaboras/i);
+      expect(addr).not.toMatch(/domicilio/i);
+    });
+
+    it('bullets medio pollo + porción papas → multi (no solo pollo/arepas fritas)', () => {
+      const text = '* Medio pollo frito\n* Porción de papas fritas';
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+      const segs = catalog.splitMultiProductSegments(text);
+      expect(segs.length).toBeGreaterThanOrEqual(2);
+      expect(segs.some((s) => /pollo/i.test(s))).toBe(true);
+      expect(segs.some((s) => /papa/i.test(s))).toBe(true);
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /1\/2\s*pollo\s*frito/i.test(n))).toBe(true);
+      expect(names.some((n) => /papas?\s*fritas/i.test(n))).toBe(true);
+
+      const chicken = pppMenu.find((p) => p.code === 2)!;
+      const attrs = catalog.extractExplicitAttributeChoice(segs[0], chicken);
+      // No tomar "fritas" de "papas fritas" como arepas
+      expect(attrs?.some((a) => /fritas/i.test(a.attributeValue))).toBeFalsy();
     });
   });
 

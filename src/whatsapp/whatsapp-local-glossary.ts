@@ -161,7 +161,12 @@ export function applyLocalGlossary(text: string): string {
   // Fuzzy: domickio / domicikio / etc. → domicilio (edit distance ≤ 2)
   out = fixFuzzyDomicilioTypos(out);
 
-  return out.replace(/\s+/g, ' ').trim();
+  // Colapsar espacios horizontales, pero conservar saltos de línea (listas WhatsApp)
+  return out
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\s+|\s+$/g, '')
+    .trim();
 }
 
 /** Bloque de glosario para el prompt de la IA (memoria del local). */

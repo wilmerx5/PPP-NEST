@@ -1381,6 +1381,33 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Solo celular (carrito vacío): anotar y pedir plato — NUNCA saltar a pago
+    if (
+      session.cart.length === 0 &&
+      this.isPhoneOnlyCustomerMessage(originalText) &&
+      !this.isConfirmKeyword(text)
+    ) {
+      const digits = (originalText || text).replace(/\D/g, '');
+      const normalized =
+        this.normalizeContactPhone(originalText || text, conv.phoneE164) ||
+        (digits.length >= 10 ? `+57${digits.slice(-10)}` : null);
+      if (normalized) {
+        session = {
+          ...session,
+          contactPhone: normalized,
+          phoneConfirmed: true,
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(
+          conv,
+          msg.waId,
+          `Listo, anoté el celular *${this.formatWaPhoneDisplay(normalized)}* ✅\n\n` +
+            `¿Qué se te antoja pedir? Puedes decir el *nombre* del plato o el *código*, o escribe *menú*.`,
+        );
+        return;
+      }
+    }
+
     // IA barata: clasifica typos/logística ambiguos ANTES del multi (valida backend)
     {
       const classified = await this.tryApplyAiClassify(
@@ -4057,6 +4084,24 @@ export class WhatsappOrchestratorService {
   private looksLikePhoneNumber(text: string): boolean {
     const digits = text.replace(/\D/g, '');
     return digits.length >= 7 && digits.length <= 15 && /[\d\s+()-]{7,}/.test(text.trim());
+  }
+
+  /** "Cel 321…" / "3214271130" sin platos ni dirección. */
+  private isPhoneOnlyCustomerMessage(text: string): boolean {
+    const raw = (text || '').trim();
+    if (!raw || raw.length > 40) return false;
+    if (!this.looksLikePhoneNumber(raw)) return false;
+    if (
+      /\b(pollo|sopa|bandeja|domicilio|calle|carrera|conjunto|quiero|dame|agrega|men[uú]|listo|confirmar)\b/i.test(
+        raw,
+      )
+    ) {
+      return false;
+    }
+    const withoutLabel = raw
+      .replace(/^(?:mi\s+)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*/i, '')
+      .trim();
+    return this.looksLikePhoneNumber(withoutLabel || raw);
   }
 
   private normalizeContactPhone(raw: string, fallbackE164: string): string | null {
@@ -7003,6 +7048,18 @@ export class WhatsappOrchestratorService {
       .trim();
     t = this.truncateAddressAfterContactClauses(t);
     t = this.stripDeliveryAddressPreface(t);
+    // Cortesía / setup pegado: "Me colaboras con . Dirección Conjunto…"
+    t = t
+      .replace(
+        /^(?:me\s+)?(?:colaboras|ayudas|colaborame|ayudame|puedes\s+ayudarme?)\b[\s\w.]*?(?=\bdirecci[oó]n\b|$)/i,
+        '',
+      )
+      .replace(/^(?:con\s+)?(?:un\s+|una\s+)?domicilio\b[\s.]*/i, '')
+      .replace(/^(?:por\s+favor|porfa)\b[\s.]*/i, '')
+      .replace(/^\.?\s*/g, '')
+      .replace(/\bdirecci[oó]n\s*[:\-]?\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     return t
       .replace(/^(?:a\s+)?(?:la|el|los|las|al)\s+/i, '')
       .replace(/^[\s,.-]+|[\s,.-]+$/g, '')

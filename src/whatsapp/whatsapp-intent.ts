@@ -197,6 +197,16 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
   ) {
     return true;
   }
+  // "me colaboras con un domicilio" / "me ayudas con un domicilio" (sin dirección)
+  if (
+    /\b(me\s+)?(colaboras|ayudas|colaborame|ayudame|puedes\s+ayudar)\b/.test(t) &&
+    /\bdomicilios?\b/.test(t) &&
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas|hospital|direccion/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
   if (
     /^(para )?(un |una )?domicilio\b/.test(t) &&
     t.split(' ').length <= 5 &&
@@ -332,6 +342,25 @@ export function extractDeliverySetupAddress(text: string): string | null {
   const raw = (text || '').trim();
   if (!raw) return null;
 
+  // Preferir cláusula explícita: "Dirección: Conjunto Tabaku…" / "Dirección Conjunto…"
+  const dirClause = raw.match(
+    /\bdirecci[oó]n\s*[:\-]?\s*(.+)$/is,
+  );
+  if (dirClause?.[1]) {
+    let addr = dirClause[1]
+      .replace(/\b(por\s+favor|porfa|gracias)\b/gi, '')
+      .replace(/[?!.]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (
+      addr.length >= 6 &&
+      !isDeliveryLogisticsFluff(addr) &&
+      (looksLikeDeliveryAddressFragment(addr) || looksLikeAddressOnlyMessage(addr))
+    ) {
+      return addr;
+    }
+  }
+
   const patterns = [
     /\b(?:domicilios?|delivery)\b[\s,]*(?:para|a|en)\s+(.+)$/i,
     /\bpara\s+(?:un\s+|una\s+)?domicilio\b[\s,]*(?:para\s+)?(.+)$/i,
@@ -342,11 +371,14 @@ export function extractDeliverySetupAddress(text: string): string | null {
     if (!m?.[1]) continue;
     let addr = m[1]
       .replace(/^(?:para|a|en)\s+/i, '')
+      .replace(/^(?:direcci[oó]n)\s*[:\-]?\s*/i, '')
       .replace(/\b(por\s+favor|porfa|gracias)\b/gi, '')
       .replace(/[?!.]+$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
     if (!addr || /^domicilios?$/i.test(addr) || isDeliveryLogisticsFluff(addr)) continue;
+    // Cola tras "domicilio" que es solo cortesía + dirección etiquetada
+    if (/^(me\s+)?(colaboras|ayudas|ayuda|colaborame|ayudame)\b/i.test(addr)) continue;
     if (addr.length >= 6 && looksLikeDeliveryAddressFragment(addr)) return addr;
     // Solo aceptar colas largas si parecen dirección real (no "por favor")
     if (addr.length >= 8 && looksLikeAddressOnlyMessage(addr)) return addr;
@@ -354,10 +386,16 @@ export function extractDeliverySetupAddress(text: string): string | null {
 
   const rest = raw
     .replace(/\b(buenas?\s*(noches|tardes|dias)?|hola)\b/gi, ' ')
-    .replace(/\b(quiero|dame|necesito|pido|pedi|por\s+favor|porfa)\b/gi, ' ')
+    .replace(
+      /\b(me\s+)?(colaboras|ayudas|colaborame|ayudame|puedes\s+ayudar|me\s+ayudas)\b/gi,
+      ' ',
+    )
+    .replace(/\b(quiero|dame|necesito|pido|pedi|solicitar|por\s+favor|porfa)\b/gi, ' ')
     .replace(/\b(?:para\s+)?(?:un\s+|una\s+)?domicilios?\b/gi, ' ')
     .replace(/\bdelivery\b/gi, ' ')
     .replace(/\bpara\b/gi, ' ')
+    .replace(/\bcon\b/gi, ' ')
+    .replace(/\bdirecci[oó]n\s*[:\-]?\s*/gi, ' ')
     .replace(/[,;:]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

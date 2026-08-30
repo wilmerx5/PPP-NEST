@@ -1730,19 +1730,24 @@ export class WhatsappCatalogService {
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
 
-    // WhatsApp multi-línea: "Un arroz chino en combo\nUn ajiaco"
-    const lines = raw
-      .split(/\r?\n+/)
-      .map((l) => l.trim())
+    // WhatsApp multi-línea / bullets: "Un arroz chino\nUn ajiaco" / "* Medio pollo\n* Porción de papas"
+    const lineish = raw
+      .split(/\r?\n+|(?=\s[*•\-–—]\s+)/)
+      .map((l) =>
+        l
+          .replace(/^[\s*•\-–—▪︎]+/, '')
+          .replace(/^[0-9]{1,2}[.)]\s*/, '')
+          .trim(),
+      )
       .filter((l) => l.length >= 3);
-    if (lines.length >= 2) {
+    if (lineish.length >= 2) {
       const dishLine = (l: string) =>
-        /^(?:un|una|unos|unas|el|la|los|las|\d{1,2})\b/i.test(l) ||
+        /^(?:un|una|unos|unas|el|la|los|las|medio|media|cuarto|porci[oó]n|\d{1,2})\b/i.test(l) ||
         new RegExp(FOOD_ORDER_TOKEN, 'i').test(l) ||
-        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa)\b/i.test(
+        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa|papas?|yuca)\b/i.test(
           l,
         );
-      if (lines.filter(dishLine).length >= 2) return true;
+      if (lineish.filter(dishLine).length >= 2) return true;
     }
 
     // Quitar cola de cortesía: "…, por favor" no es separador de platos
@@ -4583,6 +4588,7 @@ export class WhatsappCatalogService {
 
   /**
    * Parte un mensaje con varios platos: "sopa de mondongo, cuarto de pollo y costillas".
+   * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
@@ -4591,6 +4597,40 @@ export class WhatsappCatalogService {
       const main = this.stripProductModificationNoise(text);
       return main ? [main] : [];
     }
+
+    // Bullets / saltos de línea: cada ítem es un segmento
+    const bulletLines = (text || '')
+      .split(/\r?\n+|(?=\s[*•\-–—]\s+)/)
+      .map((l) =>
+        l
+          .replace(/^[\s*•\-–—▪︎]+/, '')
+          .replace(/^[0-9]{1,2}[.)]\s*/, '')
+          .trim(),
+      )
+      .filter((l) => l.length >= 3);
+    if (bulletLines.length >= 2) {
+      const dishish = (l: string) =>
+        /^(?:un|una|unos|unas|el|la|los|las|medio|media|cuarto|porci[oó]n|\d{1,2})\b/i.test(l) ||
+        new RegExp(FOOD_ORDER_TOKEN, 'i').test(l) ||
+        new RegExp(DRINK_ORDER_TOKEN, 'i').test(l) ||
+        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa|papas?|yuca|arepa)\b/i.test(
+          l,
+        );
+      if (bulletLines.filter(dishish).length >= 2) {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const line of bulletLines) {
+          const cleaned = this.cleanOrderSegment(line);
+          if (cleaned.length < 3) continue;
+          const key = normalizeText(cleaned);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(cleaned);
+        }
+        if (out.length >= 2) return out;
+      }
+    }
+
     if (this.looksLikeFoodPlusDrinkOrder(text)) {
       // "3 pollos y 2 limonadas" → partir por y/coma (conserva cantidades en cada segmento)
       if (this.countQuantityMentions(text) < 2) {
@@ -4862,8 +4902,11 @@ export class WhatsappCatalogService {
               .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t));
             return tokens.some((t) => sn.includes(t));
           }) || product.name;
-        // Usar el mensaje completo para atributos ("medio … y gaseosa")
-        const attrText = `${segment} ${text}`;
+        // Segmento propio: en multi-línea no mezclar "papas fritas" con arepas del pollo
+        const attrText =
+          this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+            ? segment
+            : `${segment} ${text}`;
         const match = { segment, product, score: 100 };
         if (product.hasAttributes && product.attributes?.length) {
           const explicit = this.extractExplicitAttributeChoice(attrText, product);
@@ -4918,7 +4961,10 @@ export class WhatsappCatalogService {
           usedProductIds.add(embedded.id);
           const match = { segment, product: embedded, score: 100 };
           if (embedded.hasAttributes && embedded.attributes?.length) {
-            const attrText = `${segment} ${text}`;
+            const attrText =
+              this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+                ? segment
+                : `${segment} ${text}`;
             if (this.extractExplicitAttributeChoice(attrText, embedded)) {
               confident.push({ ...match, segment: attrText });
             } else needsAttributes.push(match);
@@ -5309,8 +5355,20 @@ export class WhatsappCatalogService {
     text: string,
     attr: { attributeName: string; options: string[] },
   ): string | null {
-    const q = normalizeText(text);
+    // Quitar porciones sueltas pedidas aparte: no usar "papas fritas" como arepas Fritas
+    let cleaned = (text || '')
+      .replace(
+        /\bporci[oó]n(?:es)?\s+(?:de\s+)?(?:papas?|yuca|arepas?|maduro)(?:\s+\w+){0,3}\b/gi,
+        ' ',
+      )
+      .replace(/\bpapas?\s+fritas?\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const q = normalizeText(cleaned);
     if (!q) return null;
+
+    const attrName = normalizeText(attr.attributeName || '');
+    const isArepaAttr = /\barepas?\b/.test(attrName);
 
     if (this.isComboOnlyAttribute(attr)) {
       const conMatch = q.match(
@@ -5337,7 +5395,19 @@ export class WhatsappCatalogService {
 
     for (const opt of attr.options) {
       const o = normalizeText(opt);
-      if (o.length >= 3 && (q === o || q.includes(o))) return opt;
+      if (o.length < 3) continue;
+      if (!(q === o || q.includes(o))) continue;
+      // Arepas "Fritas"/"Blancas": exigir arepa cerca, o que digan "arepas fritas"
+      if (isArepaAttr && /^(fritas?|blancas?)$/.test(o)) {
+        if (
+          !/\barepas?\s+(?:fritas?|blancas?)\b/.test(q) &&
+          !/\b(?:fritas?|blancas?)\s+arepas?\b/.test(q) &&
+          !/\barepas?\b/.test(q)
+        ) {
+          continue;
+        }
+      }
+      return opt;
     }
 
     if (

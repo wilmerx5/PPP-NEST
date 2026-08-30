@@ -245,4 +245,12 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(extractDeliverySetupAddress('Para solicitar un domicilio')).toBeNull();
     expect(looksLikeAddressOnlyMessage('Para solicitar un domicilio')).toBe(false);
   });
+
+  it('extrae Tabaku desde “Me colaboras… Dirección Conjunto…”', () => {
+    const addr = extractDeliverySetupAddress(
+      'Me colaboras por favor con un domicilio. Dirección Conjunto Residencial Tabaku Central',
+    );
+    expect(addr).toMatch(/tabaku/i);
+    expect(addr).not.toMatch(/colaboras/i);
+  });
 });
