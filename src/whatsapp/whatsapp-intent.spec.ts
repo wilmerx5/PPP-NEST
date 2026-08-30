@@ -238,4 +238,11 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(extractDeliverySetupAddress('Para pedir un domicilio porfa')).toBeNull();
     expect(looksLikeAddressOnlyMessage('Para pedir un domicilio porfa')).toBe(false);
   });
+
+  it('NO geocodifica “Para solicitar un domicilio”', () => {
+    expect(isDeliveryLogisticsFluff('Para solicitar un domicilio')).toBe(true);
+    expect(isDeliveryLogisticsFluff('solicitar un domicilio')).toBe(true);
+    expect(extractDeliverySetupAddress('Para solicitar un domicilio')).toBeNull();
+    expect(looksLikeAddressOnlyMessage('Para solicitar un domicilio')).toBe(false);
+  });
 });

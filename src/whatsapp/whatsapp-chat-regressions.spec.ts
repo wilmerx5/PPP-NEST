@@ -16,6 +16,7 @@ import {
   looksLikeNonAddressCommand,
   looksLikeExplicitCartItemNote,
   isDeliverySetupWithoutFood,
+  isDeliveryLogisticsFluff,
   extractDeliverySetupAddress,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
@@ -571,6 +572,14 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(
         extractDeliverySetupAddress('Buenas noches para un domicilio por favor'),
       ).toBeNull();
+      expect(isDeliveryLogisticsFluff('Para solicitar un domicilio')).toBe(true);
+      expect(extractDeliverySetupAddress('Para solicitar un domicilio')).toBeNull();
+    });
+
+    it('adicionar plátano no es nota de carrito', () => {
+      const text = applyLocalGlossary('Me podrías adicionar un plata con queso y bocadillo');
+      expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
+      expect(catalog.extractProductModificationNote(text)).toBeNull();
     });
   });
 

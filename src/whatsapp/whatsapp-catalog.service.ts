@@ -1553,12 +1553,43 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * "Me podrías adicionar un plátano con queso" → pedido nuevo, no nota al último ítem.
+   */
+  looksLikeExplicitAddProductRequest(text: string): boolean {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw || raw.length < 8) return false;
+    const q = normalizeText(raw);
+
+    if (
+      /\bme\s+pod(?:r[ií]as|rias)\s+(?:adicionar|agregar|poner|añadir|anadir)\b/.test(q) ||
+      /\b(?:pod(?:r[ií]as|rias)|puedes)\s+(?:adicionar|agregar|poner|añadir|anadir)\b/.test(q)
+    ) {
+      return true;
+    }
+
+    if (
+      !/\b(adicionar|adiciona|adicioname|agregame|agregar|añadir|anadir|ponme|dame|traeme|traer)\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      /\b(?:un|una|el|la|los|las)\s+(?:platano|plato|pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|mondongo|ajiaco|bebida|gaseosa|jugo|limonada|broaster|frito)\b/.test(
+        q,
+      ) || /\b(?:un|una)\s+plato\b/.test(q)
+    );
+  }
+
+  /**
    * "sin yuca más papa", "con ensalada", "sin cebolla", "no quiero arepas quiero más papas":
    * preferencias del plato, no ítems nuevos.
    */
   extractProductModificationNote(text: string): string | null {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return null;
+    if (this.looksLikeExplicitAddProductRequest(raw)) return null;
     // Pedido multi-plato: "con queso" del plátano no convierte todo el mensaje en 1 plato + nota
     if (this.looksLikeClearlyMultiDishOrder(raw)) return null;
     const q = normalizeText(raw);
@@ -3328,9 +3359,11 @@ export class WhatsappCatalogService {
       .trim();
   }
 
-  /** Respuesta informativa de precio — NO inicia flujo de pedido ni pide elegir opción. */
   /** Respuesta informativa de precio/detalle — NO inicia flujo de pedido. */
-  formatProductPriceReply(product: WhatsappCatalogProduct): string {
+  formatProductPriceReply(
+    product: WhatsappCatalogProduct,
+    opts?: { offerAdd?: boolean },
+  ): string {
     let msg = this.formatProductHeader(product.name, product.price, product.code);
     if (product.description?.trim()) {
       msg += `\n\n${this.formatProductSubtitle(product.description.trim(), 280)}`;
@@ -3348,7 +3381,9 @@ export class WhatsappCatalogService {
       }
     }
 
-    msg += '\n\n_¿Te lo agrego al pedido? Responde *sí*._';
+    if (opts?.offerAdd !== false) {
+      msg += '\n\n_¿Te lo agrego al pedido? Responde *sí*._';
+    }
     return msg;
   }
 

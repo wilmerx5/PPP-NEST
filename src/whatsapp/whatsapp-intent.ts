@@ -170,8 +170,27 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
   if (/^(buenas? (noches|tardes|dias)|hola|buenas)$/.test(t)) return true;
   // "para pedir un domicilio porfa" / "quiero pedir domicilio" (sin dirección real)
   if (
-    /\b(pedir|pido|pedi|quiero|necesito|vamos\s+a\s+pedir)\b/.test(t) &&
+    /\b(pedir|pido|pedi|quiero|necesito|solicitar|tramitar|hacer|vamos\s+a\s+pedir)\b/.test(
+      t,
+    ) &&
     /\bdomicilios?\b/.test(t) &&
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas|hospital/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // "para solicitar un domicilio" / "solicitar un domicilio" (sin dirección real)
+  if (
+    /^(?:para\s+)?(?:solicitar|pedir|hacer|tramitar)\s+(?:un\s+|una\s+)?domicilio\b/.test(t) &&
+    !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas|hospital/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^solicitar\s+(?:un\s+|una\s+)?domicilio\b/.test(t) &&
     !/\d|torre|apto|apartamento|calle|carrera|castilla|castellon|tabaku|conjunto|barrio|terrazas|hospital/.test(
       t,
     )
@@ -197,6 +216,7 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
 /** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
 export function looksLikeNonAddressCommand(text: string): boolean {
   if (looksLikeClearCartMessage(text)) return true;
+  if (isDeliveryLogisticsFluff(text) || isDeliverySetupWithoutFood(text)) return true;
 
   const t = normalizeIntentText(text);
   if (!t) return false;

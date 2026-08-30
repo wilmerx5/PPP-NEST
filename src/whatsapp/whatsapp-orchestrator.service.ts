@@ -4856,6 +4856,7 @@ export class WhatsappOrchestratorService {
     text: string,
     product: MenuProduct | null,
     cfg: Awaited<ReturnType<WhatsappSettingsService['getEffectiveConfig']>>,
+    session?: WhatsappSessionData,
   ): string {
     const allergens = (cfg.localContext?.allergensNote || '').trim();
     const q = text
@@ -4866,7 +4867,13 @@ export class WhatsappOrchestratorService {
       /\b(gramos?|peso|pesa|personas?|alcanza|allcanza|rinde|sirve)\b/.test(q);
 
     if (product) {
-      let msg = this.catalogService.formatProductPriceReply(product);
+      const alreadyInCart = !!session?.cart.some((c) => c.productId === product.id);
+      let msg = this.catalogService.formatProductPriceReply(product, {
+        offerAdd: !alreadyInCart,
+      });
+      if (alreadyInCart) {
+        msg += '\n\n_Ya lo tienes en el carrito._';
+      }
       if (yieldOrWeightAsk) {
         msg +=
           '\n\n_En la carta no tengo gramos ni para cuántas personas rinde exactamente._ ' +
@@ -5619,6 +5626,10 @@ export class WhatsappOrchestratorService {
         pendingCompositionAsk: undefined,
       };
       await this.conversationService.saveSession(conv, session);
+      const alreadyInCart = session.cart.some((c) => c.productId === product.id);
+      if (!alreadyInCart) {
+        await this.savePendingAddOffer(conv, product, 1);
+      }
     } else {
       // Esperar nombre del plato: "Arroz con pollo" → detalle, no carrito
       session = {
@@ -5627,7 +5638,7 @@ export class WhatsappOrchestratorService {
       };
       await this.conversationService.saveSession(conv, session, 'building_cart');
     }
-    await this.reply(conv, waId, this.buildProductCompositionReply(text, product, cfg));
+    await this.reply(conv, waId, this.buildProductCompositionReply(text, product, cfg, session));
     return true;
   }
 
@@ -6741,6 +6752,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return false;
     }
+    if (this.catalogService.looksLikeExplicitAddProductRequest(text)) return false;
     if (intent !== 'side_note' && !this.looksLikeStandaloneOrderNote(text)) {
       return false;
     }
@@ -7150,13 +7162,31 @@ export class WhatsappOrchestratorService {
 
     if (!opts?.allowGenericPhrase) return false;
 
+    // "solicitar un domicilio" ≠ conjunto / barrio
+    if (
+      /\bdomicilios?\b/i.test(t) &&
+      !/\b(calle|carrera|cra|cll|av|avenida|torre|apto|apartamento|conjunto|barrio|hospital|cl[ií]nica|urbanizaci[oó]n)\b/i.test(
+        t,
+      ) &&
+      !/\d/.test(t)
+    ) {
+      return false;
+    }
+    if (
+      /\b(solicitar|pedir|hacer|tramitar)\b/i.test(t) &&
+      !/\b(calle|carrera|torre|apto|apartamento|conjunto|barrio|hospital)\b/i.test(t) &&
+      !/\d/.test(t)
+    ) {
+      return false;
+    }
+
     const words = t.split(/\s+/).filter(Boolean);
     if (
       words.length >= 2 &&
       words.length <= 7 &&
       !/\d/.test(t) &&
       /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'°-]+$/.test(t) &&
-      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué|puedo|puedes)\b/i.test(
+      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué|puedo|puedes|solicitar|pedir)\b/i.test(
         t,
       ) &&
       !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?|cambiar|ensalada|otra\s+cosa|guarnici[oó]n)\b/i.test(
@@ -7517,6 +7547,7 @@ export class WhatsappOrchestratorService {
   private looksLikeAddress(text: string): boolean {
     const t = text.trim().toLowerCase();
     if (t.length < 6) return false;
+    if (isDeliveryLogisticsFluff(text)) return false;
     if (this.isConfirmKeyword(t) || this.isGreetingKeyword(t)) return false;
     if (this.isPickupIntent(t)) return false;
     if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
@@ -7595,12 +7626,16 @@ export class WhatsappOrchestratorService {
     // "Pon una nota en la sobrebarriga …" / "nota: …"
     if (looksLikeExplicitCartItemNote(t)) return true;
 
+    if (this.catalogService.looksLikeExplicitAddProductRequest(t)) return false;
+
     // Guarnición sobre combo/plato ya en carrito: "para el combo no quiero arepas, quiero más papas"
     if (this.catalogService.looksLikeSideModificationNote(t)) return true;
 
     // Verbos de pedido nuevo (no aplica a "no quiero" / "quiero más papas" / nota explícita)
     if (
-      /\b(dame|ponme|agrega|agregar|pedir|ordenar|confirmar|men[uú]|c[oó]digo)\b/.test(lower)
+      /\b(dame|ponme|agrega|agregar|adicionar|adiciona|adicioname|pedir|ordenar|confirmar|men[uú]|c[oó]digo)\b/.test(
+        lower,
+      )
     ) {
       return false;
     }
@@ -7750,10 +7785,16 @@ export class WhatsappOrchestratorService {
         const targetIdx = idx >= 0 ? idx : cart.length - 1;
         const item = { ...cart[targetIdx] };
         const existing = item.note?.trim();
-        item.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
-        cart[targetIdx] = item;
-        next = { ...next, cart };
-        notedItemIndex = targetIdx;
+        const norm = cleaned.toLowerCase();
+        const parts = existing
+          ? existing.split(/;\s*/).map((p) => p.trim()).filter(Boolean)
+          : [];
+        if (!parts.some((p) => p.toLowerCase() === norm)) {
+          item.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
+          cart[targetIdx] = item;
+          next = { ...next, cart };
+          notedItemIndex = targetIdx;
+        }
       }
       next = this.appendCustomerNote(next, cleaned);
     }
@@ -8358,11 +8399,11 @@ export class WhatsappOrchestratorService {
         ...session,
         pendingAddOffer: undefined,
       });
-      await this.reply(
-        conv,
-        waId,
-        'Listo, no las agrego. Cuando quieras dime el plato o escribe *menú*.',
-      );
+      const suffix =
+        session.cart.length > 0
+          ? `\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt()}`
+          : '\n\nCuando quieras dime el plato o escribe *menú*.';
+      await this.reply(conv, waId, `Listo, no lo agrego 👍${suffix}`);
       return true;
     }
 
@@ -8371,6 +8412,7 @@ export class WhatsappOrchestratorService {
       if (
         this.catalogService.isPriceInquiryIntent(text) ||
         this.catalogService.isGenericProductInquiry(text) ||
+        this.catalogService.looksLikeExplicitAddProductRequest(text) ||
         looksLikeAddressOnlyMessage(text) ||
         isPaymentCapabilityQuestion(text) ||
         findPaymentMethodByText(text, cfg.paymentMethods) ||
