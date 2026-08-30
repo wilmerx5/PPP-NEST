@@ -119,6 +119,10 @@ export type WhatsappSessionData = {
     code: number;
     price: number;
     quantity: number;
+    /** Texto original de la consulta (attrs / multi al decir *sí*) */
+    sourceText?: string;
+    /** Varios SKUs cotizados juntos (sí → agregar todos) */
+    productIds?: number[];
   };
   /**
    * Preguntamos “¿de qué plato?” (acompañamiento/ingredientes) y esperamos el nombre.

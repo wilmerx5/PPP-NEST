@@ -38,6 +38,10 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bmedio\s+frito\s+medio\s+broster\b/gi, to: 'pollo mixto medio frito medio broaster' },
   { re: /\bcombo\s+(?:de\s+)?pollo\s+mixto\b/gi, to: 'combo pollo mixto' },
   { re: /\bsobre\s+barriga\b/gi, to: 'sobrebarriga' },
+  { re: /\bsopitas?\b/gi, to: 'sopa' },
+  // "y una menos de una sopita…" = y también una sopa… (evitar "y y una")
+  { re: /\by\s+una\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'y una ' },
+  { re: /\buna\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'una ' },
   { re: /\bsobrebarriga\s+a\s+la\s+placha\b/gi, to: 'sobrebarriga a la plancha' },
   { re: /\ba\s+la\s+placha\b/gi, to: 'a la plancha' },
   { re: /\barroz\s+chuno\b/gi, to: 'arroz chino' },

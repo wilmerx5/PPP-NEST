@@ -236,11 +236,25 @@ export function isNothingElseOrderIntent(text: string): boolean {
   );
 }
 
+/** Cliente avisa que va a mandar la dirección (aún no la escribió). */
+export function isUpcomingAddressIntent(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t) return false;
+  return (
+    /\b(te\s+mando|te\s+envio|te\s+envío|ahi\s+te\s+mando|ah[ií]\s+te\s+mando|ya\s+te\s+mando|le\s+mando)\s+(la\s+)?direcci/.test(
+      t,
+    ) ||
+    /\b(mando|envio|envío)\s+(la\s+)?direcci/.test(t) ||
+    /^(la\s+)?direcci[oó]n\s+(es|va|ahorita|ya)/.test(t)
+  );
+}
+
 /** Comandos de carrito/pedido/checkout: nunca tratarlos como dirección. */
 export function looksLikeNonAddressCommand(text: string): boolean {
   if (looksLikeClearCartMessage(text)) return true;
   if (isDeliveryLogisticsFluff(text) || isDeliverySetupWithoutFood(text)) return true;
   if (isNothingElseOrderIntent(text)) return true;
+  if (isUpcomingAddressIntent(text)) return true;
 
   const t = normalizeIntentText(text);
   if (!t) return false;

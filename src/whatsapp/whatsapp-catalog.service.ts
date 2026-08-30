@@ -6,6 +6,7 @@ import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { isAddressChangeIntent } from './whatsapp-session-intents';
 import {
   isDeliverySetupWithoutFood,
+  isUpcomingAddressIntent,
   looksLikeAddressOnlyMessage,
   looksLikeDeliveryAddressFragment,
 } from './whatsapp-intent';
@@ -3671,6 +3672,109 @@ export class WhatsappCatalogService {
     return msg;
   }
 
+  /** Cotización de varios platos en una sola consulta de precio. */
+  formatMultiProductPriceReply(products: WhatsappCatalogProduct[]): string {
+    if (!products.length) return '';
+    if (products.length === 1) return this.formatProductPriceReply(products[0]);
+
+    const lines: string[] = ['💰 *Cotización:*\n'];
+    let total = 0;
+    for (const p of products) {
+      total += Math.round(p.price || 0);
+      lines.push(this.formatProductHeader(p.name, p.price, p.code));
+      const hints: string[] = [];
+      if (p.hasAttributes && p.attributes?.length) {
+        for (const a of p.attributes.filter((x) => !this.isComboOnlyAttribute(x))) {
+          hints.push(`*${a.attributeName}:* ${a.options.slice(0, 4).join(' · ')}`);
+        }
+      }
+      if (hints.length) {
+        lines.push(`   _${hints.join(' · ')}_`);
+      }
+      lines.push('');
+    }
+    lines.push(`*Estimado (sin domicilio): $${total.toLocaleString('es-CO')}*`);
+    lines.push('\n_¿Te los agrego al pedido? Responde *sí*._');
+    return lines.join('\n');
+  }
+
+  /**
+   * Platos mencionados en una consulta de precio (puede ser más de uno).
+   * Ej: "sobrebarriga en salsa y sopa pequeña de menudencias cuánto sería".
+   */
+  resolvePriceInquiryProducts(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const stripped = this.stripPriceInquiryNoise(text);
+    const source = (stripped || text || '').trim();
+    if (!source) return [];
+
+    let hits = this.findAllProductsEmbeddedInMessage(source, products);
+    const sizedSoup = this.resolveSizedSoupProduct(source, products);
+    if (sizedSoup) {
+      hits = [sizedSoup, ...hits.filter((p) => p.id !== sizedSoup.id)];
+    }
+    hits = this.dedupeSoupHitsForInquiry(source, hits);
+
+    if (hits.length >= 2) {
+      return this.orderProductsByTextMention(source, hits);
+    }
+
+    const one =
+      this.findProductEmbeddedInMessage(source, products) ||
+      this.findProductEmbeddedInMessage(text, products) ||
+      hits[0];
+    return one ? [one] : [];
+  }
+
+  /** Si hay "Sopa pequeña", no cotizar también "Sopa De Menudencias/Ajiaco". */
+  private dedupeSoupHitsForInquiry(
+    text: string,
+    hits: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    if (hits.length < 2) return hits;
+    const q = normalizeText(text);
+    const hasSmallSku = hits.some((p) => {
+      const n = normalizeText(p.name);
+      return /^sopa\s+pequena\b/.test(n) || n === 'sopa pequena';
+    });
+    if (hasSmallSku || this.detectServingSizeHint(q) === 'pequena') {
+      return hits.filter((p) => {
+        const n = normalizeText(p.name);
+        if (/^sopa\s+de\s+(ajiaco|menudencias?|mondongo)\b/.test(n)) return false;
+        return true;
+      });
+    }
+    return hits;
+  }
+
+  private orderProductsByTextMention(
+    text: string,
+    hits: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const q = normalizeText(text);
+    return [...hits].sort((a, b) => {
+      const ia = this.firstMentionIndex(q, a);
+      const ib = this.firstMentionIndex(q, b);
+      return ia - ib || a.name.length - b.name.length;
+    });
+  }
+
+  private firstMentionIndex(q: string, product: WhatsappCatalogProduct): number {
+    const name = normalizeText(product.name);
+    let idx = name.length >= 4 ? q.indexOf(name) : -1;
+    if (idx >= 0) return idx;
+    const toks = name
+      .split(' ')
+      .filter((t) => t.length >= 5 && this.isDistinctiveProductToken(t));
+    for (const t of toks) {
+      const i = q.indexOf(t);
+      if (i >= 0) return i;
+    }
+    return 9999;
+  }
+
   /**
    * Muestra porciones/opciones — una sola pregunta, formato tabla.
    */
@@ -5115,6 +5219,18 @@ export class WhatsappCatalogService {
     // "Para el hermano Jesús" / landmark / calle → dirección, no platos
     if (looksLikeAddressOnlyMessage(text) || looksLikeDeliveryAddressFragment(text)) {
       return null;
+    }
+    // "Te mando la dirección" / cortesía + anuncio de dirección ≠ multi
+    if (isUpcomingAddressIntent(text)) return null;
+    {
+      const soft = normalizeText(text);
+      if (
+        /\b(gracias|no\s+senora|no\s+senor|no\s+gracias)\b/.test(soft) &&
+        /\bdirecci/.test(soft) &&
+        !new RegExp(FOOD_ORDER_TOKEN, 'i').test(soft)
+      ) {
+        return null;
+      }
     }
 
     let segments = this.splitMultiProductSegments(text);

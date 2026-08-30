@@ -21,6 +21,7 @@ import {
   isDeliveryLogisticsFluff,
   extractDeliverySetupAddress,
   isNothingElseOrderIntent,
+  isUpcomingAddressIntent,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
@@ -149,6 +150,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     price: 12000,
     hasAttributes: false,
     attributes: [],
+    availableNow: true,
+    categoryName: 'Sopas',
+  },
+  {
+    id: 40,
+    code: 40,
+    name: 'Sopa pequeña',
+    price: 8500,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias'] }],
     availableNow: true,
     categoryName: 'Sopas',
   },
@@ -1084,6 +1095,53 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
           ),
         ).toBe(true);
       }
+    });
+  });
+
+  describe('Sobrebarriga + sopa menudencias (precio) y te mando la dirección', () => {
+    const priceRaw =
+      'para una sobre barriga en salsa y una menos de una sopita pequeña de menudencia cuánto sería';
+
+    it('glossary: sobrebarriga + sopa pequeña menudencias', () => {
+      const text = applyLocalGlossary(priceRaw);
+      expect(text).toMatch(/sobrebarriga/i);
+      expect(text).toMatch(/sopa\s+peque/i);
+      expect(text).toMatch(/menudencias/i);
+      expect(text).not.toMatch(/\by\s+y\s+una\b/i);
+    });
+
+    it('cotiza Sobrebarriga + Sopa pequeña (no solo sopa)', () => {
+      const text = applyLocalGlossary(priceRaw);
+      expect(catalog.isPriceInquiryIntent(text)).toBe(true);
+      const hits = catalog.resolvePriceInquiryProducts(text, pppMenu);
+      expect(hits.map((p) => p.name)).toEqual(
+        expect.arrayContaining([expect.stringMatching(/sobrebarriga/i), expect.stringMatching(/sopa\s+peque/i)]),
+      );
+      expect(hits.some((p) => /^Sopa De Menudencias$/i.test(p.name))).toBe(false);
+      expect(hits.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('sí usa attrs del texto: En Salsa + Menudencias', () => {
+      const text = applyLocalGlossary(priceRaw);
+      const sb = pppMenu.find((p) => /sobrebarriga/i.test(p.name))!;
+      const sopa = pppMenu.find((p) => /sopa\s+peque/i.test(p.name))!;
+      expect(catalog.extractExplicitAttributeChoice(text, sb)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: expect.stringMatching(/salsa/i) }),
+        ]),
+      );
+      expect(catalog.extractExplicitAttributeChoice(text, sopa)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: expect.stringMatching(/menudencias/i) }),
+        ]),
+      );
+    });
+
+    it('No señora… te mando la dirección ≠ multi platos', () => {
+      const addr = 'No señora, gracias. Te mando la dirección.';
+      expect(isUpcomingAddressIntent(addr)).toBe(true);
+      expect(looksLikeNonAddressCommand(addr)).toBe(true);
+      expect(catalog.resolveMultiProductOrder(addr, pppMenu)).toBeNull();
     });
   });
 
