@@ -3,6 +3,7 @@ import type { AiOrderAction } from './types/whatsapp-session.types';
 import type { WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
 import { findPaymentMethodByText, getEnabledPaymentMethods } from './whatsapp-payment-methods';
+import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
 
 export type GuardResult = {
   actions: AiOrderAction | undefined;
@@ -47,8 +48,10 @@ export class WhatsappActionGuardService {
 
     if (params.actions.setCustomerName) {
       const name = params.actions.setCustomerName.trim().slice(0, 120);
-      if (name.length >= 2) out.setCustomerName = name;
-      else warnings.push('Nombre demasiado corto; pide nombre completo.');
+      if (isUsableWhatsappCustomerName(name)) out.setCustomerName = name;
+      else if (name.length >= 2) {
+        warnings.push('Nombre no usable (placeholder); pide nombre completo.');
+      } else warnings.push('Nombre demasiado corto; pide nombre completo.');
     }
 
     if (params.actions.setAddress) {

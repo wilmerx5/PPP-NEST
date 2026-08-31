@@ -28,8 +28,10 @@ import { PointRedemption } from '../auth/entities/point-redemption.entity';
     CommonModule,
     BusinessModule,
     DeliveryModule,
-    FactusModule,
+    forwardRef(() => FactusModule),
   ],
   exports: [OrdersService],
 })
 export class OrdersModule {}
+
+

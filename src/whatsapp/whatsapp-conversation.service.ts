@@ -6,6 +6,7 @@ import { WhatsappMessage } from './entities/whatsapp-message.entity';
 import { EMPTY_SESSION, type WhatsappSessionData } from './types/whatsapp-session.types';
 import { User } from '../auth/entities/user.entity';
 import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
+import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
 
 @Injectable()
 export class WhatsappConversationService {
@@ -24,6 +25,9 @@ export class WhatsappConversationService {
     if (conv) return conv;
 
     const linked = await this.findUserByPhone(phoneE164);
+    const linkedName = linked?.fullName?.trim() || null;
+    const usableLinkedName =
+      linkedName && isUsableWhatsappCustomerName(linkedName) ? linkedName : null;
     conv = this.convRepo.create({
       waId,
       phoneE164,
@@ -31,9 +35,9 @@ export class WhatsappConversationService {
       sessionData: {
         ...EMPTY_SESSION,
         linkedUserId: linked?.id ?? null,
-        linkedUserName: linked?.fullName ?? null,
+        linkedUserName: linkedName,
       },
-      customerName: linked?.fullName ?? null,
+      customerName: usableLinkedName,
     });
     return this.convRepo.save(conv);
   }
@@ -63,7 +67,8 @@ export class WhatsappConversationService {
   }
 
   async updateCustomerName(conv: WhatsappConversation, name: string) {
-    conv.customerName = name.trim();
+    const trimmed = (name || '').trim();
+    conv.customerName = trimmed || null;
     return this.convRepo.save(conv);
   }
 

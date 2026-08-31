@@ -5037,19 +5037,23 @@ export class WhatsappCatalogService {
         /^(?:un|una|unos|unas|el|la|los|las|medio|media|cuarto|porci[oó]n|\d{1,2})\b/i.test(l) ||
         new RegExp(FOOD_ORDER_TOKEN, 'i').test(l) ||
         new RegExp(DRINK_ORDER_TOKEN, 'i').test(l) ||
-        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa|papas?|yuca|arepa)\b/i.test(
+        /\b(ajiaco|mondongo|sancocho|menudencias?|churrasco|mojarra|sobrebarriga|ejecutivo|hamburguesa|limonada|gaseosa|papas?|yuca|arepa|trucha|bagre|costillas?|bbq)\b/i.test(
           l,
         );
       if (bulletLines.filter(dishish).length >= 2) {
         const seen = new Set<string>();
         const out: string[] = [];
         for (const line of bulletLines) {
-          const cleaned = this.cleanOrderSegment(line);
-          if (cleaned.length < 3) continue;
-          const key = normalizeText(cleaned);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          out.push(cleaned);
+          // "2 costillas bbq, un ajiaco, una mojarra" → 3 segmentos
+          // "1 bagre en salsa y una porcion de papa francesa" → 2
+          const subSegs = this.expandInlineMultiDishLine(line);
+          for (const cleaned of subSegs) {
+            if (cleaned.length < 3) continue;
+            const key = normalizeText(cleaned);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(cleaned);
+          }
         }
         if (out.length >= 2) return out;
       }
@@ -5141,6 +5145,84 @@ export class WhatsappCatalogService {
       out.push(cleaned);
     }
     return out;
+  }
+
+  /**
+   * Dentro de una línea de pedido: partir por coma / "y" / un|una|cantidades.
+   * Ej: "2 costillas bbq, un ajiaco, una mojarra"
+   * Ej: "1 bagre en salsa y una porcion de papa francesa"
+   */
+  private expandInlineMultiDishLine(line: string): string[] {
+    const raw = (line || '').trim();
+    if (!raw) return [];
+    const cleanedOnce = this.cleanOrderSegment(raw);
+    if (!cleanedOnce) return [];
+
+    // "ejecutivo con pechuga y sopa de ajiaco" = 1 plato (ajiaco es attr), no partir
+    if (this.isEjecutivoLunchOrderPhrase(cleanedOnce)) {
+      return [cleanedOnce];
+    }
+
+    // Una sola mención de plato → no partir (evita romper "trucha frita con papa salada")
+    const qtyMentions = this.countQuantityMentions(cleanedOnce);
+    const hasCommaOrY = /\s*,\s*|\s+\by\b\s+/i.test(cleanedOnce);
+    const hasArticleChain =
+      /\b(?:\d{1,2}|un|una|unos|unas)\s+\S+.+\b(?:un|una|unos|unas|\d{1,2})\s+\S+/i.test(
+        cleanedOnce,
+      );
+    if (qtyMentions < 2 && !hasCommaOrY && !hasArticleChain) {
+      return [cleanedOnce];
+    }
+
+    // No partir toppings: "con papa salada" / "con queso y bocadillo" sin otro plato
+    let q = cleanedOnce.replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim();
+    q = q.replace(
+      /\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi,
+      (m) => m.replace(/\s+(?:mas|más)\s+/i, ' con '),
+    );
+    // Proteger "con X y Y" de guarnición (sin cantidad/plato nuevo)
+    q = q.replace(
+      /\bcon\s+[^\s,]+(?:\s+[^\s,]+)?(?:\s+y\s+[^\s,]+)+/gi,
+      (m) => {
+        if (
+          /\by\s+(?:\d+(?:\s*\/\s*\d+)?|medio|media|cuarto|un|una|unos|unas|dos|tres|cuatro|cinco)\b/i.test(
+            m,
+          )
+        ) {
+          return m;
+        }
+        if (
+          /\by\s+(?:pollos?|mojarras?|sopas?|churrascos?|limonadas?|gaseosas?|arroces?|bandejas?|jugos?|costillas?|pechugas?|alitas?|hamburguesas?|platanos?|sobrebarriga|trucha|bagre|ajiaco|porci[oó]n)\b/i.test(
+            m,
+          )
+        ) {
+          return m;
+        }
+        return m.replace(/\s+y\s+/gi, ' __Y__ ');
+      },
+    );
+
+    const byCommaOrY = q
+      .split(/\s*,\s*|\s+\by\b\s+|\s+(?:mas|más|\+)\s+/i)
+      .map((s) => this.cleanOrderSegment(s.replace(/__Y__/g, ' y ').trim()))
+      .filter((s) => s.length >= 3);
+
+    const expanded: string[] = [];
+    for (const chunk of byCommaOrY.length ? byCommaOrY : [q.replace(/__Y__/g, ' y ')]) {
+      expanded.push(...this.splitSegmentOnArticles(chunk));
+    }
+
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const seg of expanded) {
+      const cleaned = this.cleanOrderSegment(seg);
+      if (cleaned.length < 3) continue;
+      const key = normalizeText(cleaned);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(cleaned);
+    }
+    return out.length ? out : [cleanedOnce];
   }
 
   private splitSegmentOnArticles(chunk: string): string[] {
@@ -5622,7 +5704,10 @@ export class WhatsappCatalogService {
             score: uniqueScored.find((x) => x.p.id === resolved.id)?.score ?? 80,
           };
           if (resolved.hasAttributes && resolved.attributes?.length) {
-            const attrText = `${segment} ${text}`;
+            const attrText =
+              this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+                ? segment
+                : `${segment} ${text}`;
             if (this.extractExplicitAttributeChoice(attrText, resolved)) {
               confident.push({ ...match, segment: attrText });
             } else needsAttributes.push(match);
@@ -5643,7 +5728,10 @@ export class WhatsappCatalogService {
             usedProductIds.add(pickedVariant.id);
             const match = { segment, product: pickedVariant, score: top.score };
             if (pickedVariant.hasAttributes && pickedVariant.attributes?.length) {
-              const attrText = `${segment} ${text}`;
+              const attrText =
+                this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+                  ? segment
+                  : `${segment} ${text}`;
               if (this.extractExplicitAttributeChoice(attrText, pickedVariant)) {
                 confident.push({ ...match, segment: attrText });
               } else needsAttributes.push(match);
@@ -5656,7 +5744,10 @@ export class WhatsappCatalogService {
             usedProductIds.add(bare.id);
             const match = { segment, product: bare, score: top.score };
             if (bare.hasAttributes && bare.attributes?.length) {
-              const attrText = `${segment} ${text}`;
+              const attrText =
+                this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+                  ? segment
+                  : `${segment} ${text}`;
               if (this.extractExplicitAttributeChoice(attrText, bare)) {
                 confident.push({ ...match, segment: attrText });
               } else needsAttributes.push(match);
@@ -5672,7 +5763,10 @@ export class WhatsappCatalogService {
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
         if (top.p.hasAttributes && top.p.attributes?.length) {
-          const attrText = `${segment} ${text}`;
+          const attrText =
+            this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+              ? segment
+              : `${segment} ${text}`;
           if (this.extractExplicitAttributeChoice(attrText, top.p)) {
             confident.push({ ...match, segment: attrText });
           } else needsAttributes.push(match);
@@ -5691,7 +5785,10 @@ export class WhatsappCatalogService {
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
         if (top.p.hasAttributes && top.p.attributes?.length) {
-          const attrText = `${segment} ${text}`;
+          const attrText =
+            this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
+              ? segment
+              : `${segment} ${text}`;
           if (this.extractExplicitAttributeChoice(attrText, top.p)) {
             confident.push({ ...match, segment: attrText });
           } else needsAttributes.push(match);

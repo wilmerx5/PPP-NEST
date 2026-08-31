@@ -5,6 +5,8 @@ import {
   isPostOrderFollowUpIntent,
   isAddressChangeIntent,
   isReuseLastAddressIntent,
+  isConfirmCurrentAddressIntent,
+  isUsableWhatsappCustomerName,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
@@ -57,6 +59,29 @@ describe('isReuseLastAddressIntent (C19)', () => {
       expect(isReuseLastAddressIntent(text)).toBe(false);
     },
   );
+});
+
+describe('isConfirmCurrentAddressIntent', () => {
+  it.each([
+    'A esta dirección plis',
+    'a esa direccion',
+    'para esta dirección por favor',
+    'mándame a esa dirección',
+    'envialo a esta direccion',
+    'esa dirección',
+    'a esa',
+  ])('confirma domicilio actual: %s', (text) => {
+    expect(isConfirmCurrentAddressIntent(text)).toBe(true);
+  });
+
+  it.each([
+    'Carrera 80 # 2 20',
+    'A esta dirección Carrera 80 #2-20',
+    'quiero un pollo',
+    'No esa no es mi dirección',
+  ])('NO es confirmación suelta: %s', (text) => {
+    expect(isConfirmCurrentAddressIntent(text)).toBe(false);
+  });
 });
 
 describe('splitTrailingEmbeddedAddress (C02)', () => {
@@ -184,4 +209,20 @@ describe('puntos / código (C17)', () => {
   it('código de 12 chars en contexto puntos', () => {
     expect(points.extractPointCodeCandidate('registrar A3F9K2M8PQ75')).toBe('A3F9K2M8PQ75');
   });
+});
+
+describe('isUsableWhatsappCustomerName', () => {
+  it.each(['Pedidos', 'Pedido', 'Cliente', 'Customer', 'WhatsApp', 'Pronto Pollo'])(
+    'rechaza placeholder: %s',
+    (name) => {
+      expect(isUsableWhatsappCustomerName(name)).toBe(false);
+    },
+  );
+
+  it.each(['Juan Pérez', 'María', 'Carlos Andrés', 'Ana'])(
+    'acepta nombre real: %s',
+    (name) => {
+      expect(isUsableWhatsappCustomerName(name)).toBe(true);
+    },
+  );
 });

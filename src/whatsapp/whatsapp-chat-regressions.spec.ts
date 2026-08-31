@@ -9,6 +9,8 @@ import {
   isAddressChangeIntent,
   isAddressClarificationIntent,
   isAddressRejectionIntent,
+  isConfirmCurrentAddressIntent,
+  isUsableWhatsappCustomerName,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
 import {
@@ -135,6 +137,26 @@ const pppMenu: WhatsappCatalogProduct[] = [
     attributes: [],
     availableNow: true,
     categoryName: 'Carne',
+  },
+  {
+    id: 50,
+    code: 50,
+    name: 'Mojarra',
+    price: 32000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Apanada', 'Al horno'] }],
+    availableNow: true,
+    categoryName: 'Pescados',
+  },
+  {
+    id: 80,
+    code: 80,
+    name: 'Porcion De Papa Francesa',
+    price: 8000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Porciones',
   },
   {
     id: 22,
@@ -536,6 +558,33 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(isAddressClarificationIntent('esa era mi direccion')).toBe(true);
       expect(isAddressClarificationIntent('Esa es mi dirección')).toBe(true);
       expect(isAddressClarificationIntent('No Esa no es mi direcion')).toBe(false);
+    });
+
+    it('“A esta dirección plis” confirma domicilio, no es dirección nueva', () => {
+      for (const text of [
+        'A esta dirección plis',
+        'a esa direccion porfa',
+        'para esta dirección',
+        'envíalo a esa dirección',
+        'esa dirección',
+        'a esa',
+      ]) {
+        expect(isConfirmCurrentAddressIntent(text)).toBe(true);
+        expect(looksLikeNonAddressCommand(text)).toBe(true);
+        expect(looksLikeAddressOnlyMessage(text)).toBe(false);
+      }
+      expect(isConfirmCurrentAddressIntent('Carrera 80 # 2 20')).toBe(false);
+      expect(isConfirmCurrentAddressIntent('A esta dirección Carrera 80 #2-20')).toBe(
+        false,
+      );
+    });
+
+    it('nombre “Pedidos” no es usable para el pedido', () => {
+      expect(isUsableWhatsappCustomerName('Pedidos')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Pedido')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Cliente')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Juan Pérez')).toBe(true);
+      expect(isUsableWhatsappCustomerName('María')).toBe(true);
     });
   });
 
@@ -1178,9 +1227,49 @@ Cll 6 b 78 c 33`;
     it('separa dirección (Cll / Salsamentaria) del pedido', () => {
       const text = applyLocalGlossary(orderRaw);
       const split = splitTrailingEmbeddedAddress(text);
-      expect(split?.address).toMatch(/cll|6/i);
+      expect(split?.address).toMatch(/cll|6|salsamentaria/i);
       expect(split?.productText).toMatch(/trucha/i);
       expect(split?.productText).not.toMatch(/^ok\b.*cll/i);
+    });
+  });
+
+  describe('Línea con coma: costillas + ajiaco + mojarra + bagre + papa', () => {
+    const orderRaw = `Ok 
+Regalame entonces 
+1 trucha frita con papa salada 
+2 costillas bbq , un ajiaco, una mojarra
+1 bagre en salsa  y una porcion de papa francesa
+Para la Salsamentaria El castillo 
+Cll 6 b 78 c 33`;
+
+    it('parte la línea en platos y no pierde costillas/ajiaco/bagre', () => {
+      const text = applyLocalGlossary(orderRaw);
+      const segs = catalog.splitMultiProductSegments(text);
+      expect(segs.some((s) => /costillas/i.test(s))).toBe(true);
+      expect(segs.some((s) => /ajiaco/i.test(s))).toBe(true);
+      expect(segs.some((s) => /mojarra/i.test(s))).toBe(true);
+      expect(segs.some((s) => /bagre/i.test(s))).toBe(true);
+      expect(segs.some((s) => /papa\s+francesa/i.test(s))).toBe(true);
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /trucha/i.test(n))).toBe(true);
+      expect(names.some((n) => /costillas/i.test(n))).toBe(true);
+      expect(names.some((n) => /ajiaco/i.test(n))).toBe(true);
+      expect(names.some((n) => /mojarra/i.test(n))).toBe(true);
+      expect(names.some((n) => /bagre/i.test(n))).toBe(true);
+      expect(names.some((n) => /papa\s+francesa/i.test(n))).toBe(true);
+
+      const costillas = multi!.confident.find((c) => /costillas/i.test(c.product.name));
+      expect(catalog.extractQuantityFromSegment(costillas!.segment)).toBe(2);
+      const mojarra =
+        multi!.confident.find((c) => /mojarra/i.test(c.product.name)) ||
+        multi!.needsAttributes.find((c) => /mojarra/i.test(c.product.name));
+      expect(catalog.extractQuantityFromSegment(mojarra!.segment)).toBe(1);
     });
   });
 

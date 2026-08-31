@@ -147,6 +147,106 @@ export function isReuseLastAddressIntent(text: string): boolean {
   return false;
 }
 
+/**
+ * Cliente confirma el domicilio YA anotado (“a esta dirección plis”),
+ * no está dando una dirección nueva.
+ */
+export function isConfirmCurrentAddressIntent(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bdirecion\b/g, 'direccion')
+    .replace(/[¡!?.]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length < 5 || t.length > 72) return false;
+  // Si trae calle/placa, es dirección real (o cambio), no solo confirmación
+  if (
+    /\b(calle|carrera|cra|cll|av\.?|avenida|diag|dg|transversal|torre|apto|apartamento|conjunto)\b/.test(
+      t,
+    ) &&
+    /\d/.test(t)
+  ) {
+    return false;
+  }
+  if (isAddressRejectionIntent(t) || isAddressChangeIntent(t)) return false;
+
+  const courtesy = String.raw`(?:\s+(?:plis|porfa|por\s+favor|please|gracias))?`;
+  return (
+    new RegExp(
+      String.raw`^(?:(?:si|sí|ok|dale|listo)\s+)?(?:a|para)\s+(?:esta|esa|la\s+misma)\s+(?:direccion|domicilio|ubicacion)${courtesy}$`,
+    ).test(t) ||
+    new RegExp(
+      String.raw`^(?:esta|esa|la\s+misma)\s+(?:direccion|domicilio|ubicacion)${courtesy}$`,
+    ).test(t) ||
+    new RegExp(
+      String.raw`^(?:envia(?:me|lo|nos)?|manda(?:me|lo|nos)?|lleva(?:me|lo|nos)?|trae(?:me|lo)?)\s+(?:a\s+)?(?:esta|esa)\s+(?:direccion|domicilio)${courtesy}$`,
+    ).test(t) ||
+    new RegExp(
+      String.raw`^(?:a|para)\s+(?:esa|esta|ahi|alla)${courtesy}$`,
+    ).test(t)
+  );
+}
+
+/**
+ * Nombre usable para cocina/FE (no placeholders tipo “Pedidos”, “Cliente”).
+ */
+export function isUsableWhatsappCustomerName(name: string): boolean {
+  const raw = (name || '').trim();
+  if (raw.length < 2 || raw.length > 80) return false;
+
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return false;
+  if (/\d{3,}/.test(t)) return false;
+  if (
+    /\b(calle|carrera|cra|cll|domicilio|direccion|whatsapp|telefono|celular)\b/.test(t)
+  ) {
+    return false;
+  }
+
+  const blockedExact = new Set([
+    'pedido',
+    'pedidos',
+    'cliente',
+    'clientes',
+    'customer',
+    'user',
+    'usuario',
+    'admin',
+    'test',
+    'prueba',
+    'whatsapp',
+    'ppp',
+    'pronto',
+    'pollo',
+    'portal',
+    'delivery',
+    'domicilio',
+    'nombre',
+    'sin nombre',
+    'n a',
+    'na',
+    'none',
+    'null',
+    'undefined',
+    'asd',
+    'qwerty',
+  ]);
+  if (blockedExact.has(t)) return false;
+  if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t)) return false;
+  if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2) return false;
+
+  return true;
+}
+
 /** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */
 export function isDeliveryEtaInquiry(text: string): boolean {
   const raw = (text || '').trim();

@@ -7,6 +7,7 @@
 import {
   isAddressChangeIntent,
   isAddressRejectionIntent,
+  isConfirmCurrentAddressIntent,
 } from './whatsapp-session-intents';
 
 export type WhatsappMessageIntent =
@@ -307,6 +308,7 @@ export function looksLikeNonAddressCommand(text: string): boolean {
     return true;
   }
   if (isAddressRejectionIntent(text) || isAddressChangeIntent(text)) return true;
+  if (isConfirmCurrentAddressIntent(text)) return true;
 
   return false;
 }

@@ -23,6 +23,10 @@ import {
   ResendElectronicInvoiceEmailDto,
 } from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
+import {
+  BulkElectronicInvoiceIssueDto,
+  BulkElectronicInvoicePreviewDto,
+} from './dto/bulk-electronic-invoice.dto';
 import { UpdateFactusInvoiceSettingsDto } from './dto/factus-invoice-settings.dto';
 import { UpdateInvoiceCustomerDto } from './dto/update-invoice-customer.dto';
 import { FactusService } from './factus.service';
@@ -108,6 +112,28 @@ export class FactusController {
     @Body() dto: UpdateInvoiceCustomerDto,
   ) {
     return this.factusService.updateCustomerAdmin(id, dto);
+  }
+
+  @Post('admin/factus/bulk-invoices/preview')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Preview lote FE desde catálogo (montos desiguales ≈ total)',
+    description:
+      'Reparte productos del menú en N facturas con totales distintos que suman el objetivo. No usa órdenes del día.',
+  })
+  previewBulkInvoices(@Body() dto: BulkElectronicInvoicePreviewDto) {
+    return this.factusService.previewBulkElectronicInvoices(dto);
+  }
+
+  @Post('admin/factus/bulk-invoices/issue')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Emitir lote FE: crea órdenes counter + Factus (consumidor final)',
+  })
+  issueBulkInvoices(@Body() dto: BulkElectronicInvoiceIssueDto) {
+    return this.factusService.issueBulkElectronicInvoices(dto);
   }
 
   @Get('factus/customers/lookup')

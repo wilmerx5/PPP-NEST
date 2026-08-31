@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,11 +12,17 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
+import { OrdersService } from '../orders/orders.service';
+import { ProductsService } from '../products/products.service';
 import {
   CancelElectronicInvoiceDto,
   ResendElectronicInvoiceEmailDto,
 } from './dto/factus-actions.dto';
 import { IssueElectronicInvoiceDto } from './dto/issue-electronic-invoice.dto';
+import {
+  BulkElectronicInvoiceIssueDto,
+  BulkElectronicInvoicePreviewDto,
+} from './dto/bulk-electronic-invoice.dto';
 import { InvoiceCustomer } from './entities/invoice-customer.entity';
 import { FactusApiClient } from './factus-api.client';
 import { FactusAuthService } from './factus-auth.service';
@@ -33,6 +41,20 @@ import {
 } from './factus-customer.utils';
 import { pickCreditNoteRangeId } from './factus-numbering.util';
 import type { FactusValidateCreditNoteRequest } from './types/factus.types';
+import {
+  planBulkInvoicesFromCatalog,
+  type BulkInvoiceLine,
+  type BulkInvoicePlan,
+} from './factus-bulk-select.util';
+
+/** Adquiriente genérico DIAN para emisión en lote. */
+const BULK_CONSUMIDOR_FINAL: IssueElectronicInvoiceDto = {
+  identificationDocumentCode: '13',
+  identification: '222222222222',
+  legalOrganizationCode: '2',
+  names: 'Consumidor final',
+  sendEmail: false,
+};
 
 type InvoiceCustomerRow = {
   identificationDocumentCode: string;
@@ -66,6 +88,9 @@ export class FactusService {
     private readonly api: FactusApiClient,
     private readonly mapper: FactusInvoiceMapper,
     private readonly invoiceSettings: FactusInvoiceSettingsService,
+    private readonly productsService: ProductsService,
+    @Inject(forwardRef(() => OrdersService))
+    private readonly ordersService: OrdersService,
   ) {}
 
   getStatus(): {
@@ -581,5 +606,171 @@ export class FactusService {
 
   private isDebug(): boolean {
     return (process.env.FACTUS_DEBUG || '').toLowerCase() === 'true';
+  }
+
+  /**
+   * Preview: reparte productos del catálogo en N facturas con montos desiguales
+   * que suman ≈ targetTotal (sin atarse a órdenes del día).
+   */
+  async previewBulkElectronicInvoices(dto: BulkElectronicInvoicePreviewDto) {
+    const catalog = await this.loadBulkCatalogProducts();
+    const plan = planBulkInvoicesFromCatalog(
+      Math.round(dto.targetTotal),
+      dto.quantity,
+      catalog,
+      dto.maxDeviationRatio ?? 0.08,
+    );
+    return {
+      ...plan,
+      catalogSize: catalog.length,
+    };
+  }
+
+  /**
+   * Crea órdenes internas counter por cada factura del plan y emite FE
+   * (consumidor final) en secuencia.
+   */
+  async issueBulkElectronicInvoices(dto: BulkElectronicInvoiceIssueDto) {
+    let invoices: BulkInvoicePlan[] = dto.invoices || [];
+
+    if (!invoices.length) {
+      if (dto.targetTotal == null || dto.quantity == null) {
+        throw new BadRequestException(
+          'Envía el plan (invoices) o targetTotal + quantity para regenerarlo',
+        );
+      }
+      const catalog = await this.loadBulkCatalogProducts();
+      const plan = planBulkInvoicesFromCatalog(
+        Math.round(dto.targetTotal),
+        dto.quantity,
+        catalog,
+        dto.maxDeviationRatio ?? 0.08,
+      );
+      invoices = plan.invoices;
+    }
+
+    if (!invoices.length) {
+      throw new BadRequestException('No hay facturas para emitir');
+    }
+    if (invoices.length > 40) {
+      throw new BadRequestException('Máximo 40 facturas por lote');
+    }
+    for (const inv of invoices) {
+      if (!inv.lines?.length) {
+        throw new BadRequestException(`La factura #${inv.index} no tiene productos`);
+      }
+    }
+
+    const issueDto: IssueElectronicInvoiceDto = {
+      ...BULK_CONSUMIDOR_FINAL,
+      sendEmail: dto.sendEmail === true,
+      paymentMethodCode: dto.paymentMethodCode,
+      observation: dto.observation?.slice(0, 250) || 'Lote FE admin (catálogo)',
+    };
+
+    const batchId = `fe-lote-${Date.now()}`;
+    const results: Array<{
+      index: number;
+      orderId?: number;
+      ok: boolean;
+      sum?: number;
+      number?: string | null;
+      cufe?: string | null;
+      publicUrl?: string | null;
+      error?: string;
+    }> = [];
+
+    for (const inv of invoices) {
+      try {
+        const created = await this.ordersService.create({
+          customerName: 'Consumidor final',
+          phone: '00',
+          address: '.',
+          orderType: 'counter',
+          orderSource: 'internal',
+          clientRequestId: `${batchId}-${inv.index}`.slice(0, 64),
+          items: this.expandLinesToOrderItems(inv.lines),
+        });
+        const orderId = Number(
+          (created as { orderId?: number })?.orderId ??
+            (created as { id?: number })?.id,
+        );
+        if (!orderId) {
+          throw new Error('No se obtuvo orderId al crear la orden del lote');
+        }
+
+        const issued = await this.issueForOrder(orderId, issueDto);
+        if (issued?.success) {
+          results.push({
+            index: inv.index,
+            orderId,
+            ok: true,
+            sum: inv.sum,
+            number: issued?.number ?? null,
+            cufe: issued?.cufe ?? null,
+            publicUrl: issued?.publicUrl ?? null,
+          });
+        } else {
+          results.push({
+            index: inv.index,
+            orderId,
+            ok: false,
+            sum: inv.sum,
+            number: issued?.number ?? null,
+            error: issued?.message || 'Factura no validada por DIAN',
+          });
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'object' && err && 'message' in err
+              ? String((err as { message: unknown }).message)
+              : 'Error al emitir';
+        this.logger.warn(`[FE bulk] factura #${inv.index} falló: ${message}`);
+        results.push({ index: inv.index, ok: false, sum: inv.sum, error: message });
+      }
+    }
+
+    const okCount = results.filter((r) => r.ok).length;
+    return {
+      total: results.length,
+      okCount,
+      failCount: results.length - okCount,
+      results,
+    };
+  }
+
+  private expandLinesToOrderItems(lines: BulkInvoiceLine[]) {
+    const items: Array<{ productId: number; unitPrice: number; note?: string }> = [];
+    for (const line of lines) {
+      const qty = Math.max(1, Math.min(40, Math.round(line.quantity || 1)));
+      for (let i = 0; i < qty; i++) {
+        items.push({
+          productId: line.productId,
+          unitPrice: Math.round(line.unitPrice),
+          note: 'Lote FE',
+        });
+      }
+    }
+    return items;
+  }
+
+  private async loadBulkCatalogProducts() {
+    const all = await this.productsService.findAll();
+    return (all || [])
+      .filter(
+        (p) =>
+          p?.isActive !== false &&
+          Number(p.price) > 0 &&
+          // Sin attrs obligatorios: evita pedidos incompletos en el lote
+          !p.hasAttributes,
+      )
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: Number(p.code),
+        price: Math.round(Number(p.price)),
+      }));
   }
 }
