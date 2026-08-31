@@ -6,7 +6,12 @@ services:
     image: ppp-nest-api
     container_name: ppp_nest_api
     restart: unless-stopped
+    working_dir: /app
     env_file:
       - .env
     ports:
       - "3000:3000"
+    # Prod: git pull trae dist/ compilado → montar repo en /app
+    volumes:
+      - .:/app
+    command: ["node", "--max-old-space-size=512", "dist/main.js"]
