@@ -1,8 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  forwardRef,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
-import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
 import {
   CancelElectronicInvoiceDto,
@@ -43,7 +40,6 @@ import { pickCreditNoteRangeId } from './factus-numbering.util';
 import type { FactusValidateCreditNoteRequest } from './types/factus.types';
 import {
   planBulkInvoicesFromCatalog,
-  type BulkInvoiceLine,
   type BulkInvoicePlan,
 } from './factus-bulk-select.util';
 
@@ -89,8 +85,6 @@ export class FactusService {
     private readonly mapper: FactusInvoiceMapper,
     private readonly invoiceSettings: FactusInvoiceSettingsService,
     private readonly productsService: ProductsService,
-    @Inject(forwardRef(() => OrdersService))
-    private readonly ordersService: OrdersService,
   ) {}
 
   getStatus(): {
@@ -627,10 +621,16 @@ export class FactusService {
   }
 
   /**
-   * Crea órdenes internas counter por cada factura del plan y emite FE
-   * (consumidor final) en secuencia.
+   * Emite N FE a Factus (consumidor final) desde el plan de catálogo.
+   * No crea órdenes PPP.
    */
   async issueBulkElectronicInvoices(dto: BulkElectronicInvoiceIssueDto) {
+    if (!this.auth.isConfigured()) {
+      throw new BadRequestException(
+        'Facturación electrónica no configurada. Pide a un admin cargar las credenciales Factus.',
+      );
+    }
+
     let invoices: BulkInvoicePlan[] = dto.invoices || [];
 
     if (!invoices.length) {
@@ -668,10 +668,10 @@ export class FactusService {
       observation: dto.observation?.slice(0, 250) || 'Lote FE admin (catálogo)',
     };
 
-    const batchId = `fe-lote-${Date.now()}`;
+    const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
+    const batchId = `lote-${Date.now()}`;
     const results: Array<{
       index: number;
-      orderId?: number;
       ok: boolean;
       sum?: number;
       number?: string | null;
@@ -682,42 +682,41 @@ export class FactusService {
 
     for (const inv of invoices) {
       try {
-        const created = await this.ordersService.create({
-          customerName: 'Consumidor final',
-          phone: '00',
-          address: '.',
-          orderType: 'counter',
-          orderSource: 'internal',
-          clientRequestId: `${batchId}-${inv.index}`.slice(0, 64),
-          items: this.expandLinesToOrderItems(inv.lines),
-        });
-        const orderId = Number(
-          (created as { orderId?: number })?.orderId ??
-            (created as { id?: number })?.id,
+        const referenceCode = `PPP-LOTE-${batchId}-${inv.index}`.slice(0, 100);
+        const { payload, invoiceTotal } = this.mapper.buildValidatePayloadFromCatalogLines(
+          inv.lines,
+          issueDto,
+          taxConfig,
+          {
+            referenceCode,
+            observation: issueDto.observation,
+          },
         );
-        if (!orderId) {
-          throw new Error('No se obtuvo orderId al crear la orden del lote');
-        }
+        this.logger.log(
+          `[FE bulk] #${inv.index} ref=${referenceCode} items=${payload.items.length} total≈${invoiceTotal}`,
+        );
 
-        const issued = await this.issueForOrder(orderId, issueDto);
-        if (issued?.success) {
+        const result = await this.api.validateBill(payload);
+        const data = result.data;
+        if (data?.is_validated) {
+          await this.upsertInvoiceCustomer(issueDto);
           results.push({
             index: inv.index,
-            orderId,
             ok: true,
             sum: inv.sum,
-            number: issued?.number ?? null,
-            cufe: issued?.cufe ?? null,
-            publicUrl: issued?.publicUrl ?? null,
+            number: data?.number ?? null,
+            cufe: data?.cufe ?? null,
+            publicUrl: data?.links?.public_url ?? null,
           });
         } else {
           results.push({
             index: inv.index,
-            orderId,
             ok: false,
             sum: inv.sum,
-            number: issued?.number ?? null,
-            error: issued?.message || 'Factura no validada por DIAN',
+            number: data?.number ?? null,
+            error:
+              result.message ||
+              JSON.stringify(data?.errors || 'Factura no validada por DIAN').slice(0, 400),
           });
         }
       } catch (err) {
@@ -739,34 +738,6 @@ export class FactusService {
       failCount: results.length - okCount,
       results,
     };
-  }
-
-  private expandLinesToOrderItems(lines: BulkInvoiceLine[]) {
-    const items: Array<{
-      productId: number;
-      unitPrice: number;
-      note?: string;
-      attributes?: Array<{ attributeName: string; attributeValue: string }>;
-    }> = [];
-    for (const line of lines) {
-      const qty = Math.max(1, Math.min(40, Math.round(line.quantity || 1)));
-      const attrs =
-        line.attributes
-          ?.filter((a) => a.attributeName?.trim() && a.attributeValue?.trim())
-          .map((a) => ({
-            attributeName: a.attributeName.trim(),
-            attributeValue: a.attributeValue.trim(),
-          })) || undefined;
-      for (let i = 0; i < qty; i++) {
-        items.push({
-          productId: line.productId,
-          unitPrice: Math.round(line.unitPrice),
-          note: 'Lote FE',
-          ...(attrs?.length ? { attributes: attrs } : {}),
-        });
-      }
-    }
-    return items;
   }
 
   private async loadBulkCatalogProducts() {

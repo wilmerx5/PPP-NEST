@@ -1101,43 +1101,57 @@ export class OrdersService {
 
     const wasCompleted = order.orderStatus === 'completed';
 
+    // TEMP: permitir cancelar/eliminar la orden sin emitir NC sobre la FE.
+    // Por defecto ON; para volver al comportamiento estricto:
+    // FACTUS_SKIP_NC_ON_ORDER_CANCEL=false
+    const skipNcOnOrderCancel =
+      (process.env.FACTUS_SKIP_NC_ON_ORDER_CANCEL ?? 'true').toLowerCase() !==
+      'false';
+
     // FE aceptada → nota crédito ANTES de borrar ítems (la NC necesita los mismos totales).
     let creditNoteNumber: string | null = null;
     if (
       order.electronicInvoiceStatus === 'accepted' &&
       order.electronicInvoiceNumber
     ) {
-      this.logger.log(
-        `[cancel] orden=#${orderId} tiene FE ${order.electronicInvoiceNumber} — emitiendo NC`,
-      );
-      try {
-        const nc = await this.factusService.cancelInvoice(orderId, {
-          observation: `Anulación por cancelación de pedido #${order.dailyOrderNumber ?? orderId}`,
-          correctionConceptCode: '2',
-        });
-        if (!nc?.success) {
-          throw new BadRequestException(
-            nc?.message ||
-              `No se pudo anular la factura ${order.electronicInvoiceNumber}. La orden NO se canceló.`,
-          );
-        }
-        creditNoteNumber = nc.creditNoteNumber || null;
-        order.electronicInvoiceStatus = 'credit_noted';
-        order.electronicCreditNoteNumber = creditNoteNumber;
-      } catch (err) {
-        if (err instanceof ConflictException) {
-          // Ya tenía NC — seguir con cancelación de la orden
-          this.logger.warn(
-            `[cancel] orden=#${orderId} FE ya tenía NC; se continúa cancelando la orden`,
-          );
-        } else if (err instanceof BadRequestException) {
-          throw err;
-        } else {
-          const message = err instanceof Error ? err.message : String(err);
-          this.logger.error(`[cancel] NC falló orden=#${orderId}: ${message}`);
-          throw new BadRequestException(
-            `No se pudo anular la factura electrónica (${order.electronicInvoiceNumber}): ${message}. La orden NO se canceló.`,
-          );
+      if (skipNcOnOrderCancel) {
+        this.logger.warn(
+          `[cancel] TEMP skip NC — orden=#${orderId} FE ${order.electronicInvoiceNumber} ` +
+            `queda en Factus; se cancela solo la orden PPP`,
+        );
+      } else {
+        this.logger.log(
+          `[cancel] orden=#${orderId} tiene FE ${order.electronicInvoiceNumber} — emitiendo NC`,
+        );
+        try {
+          const nc = await this.factusService.cancelInvoice(orderId, {
+            observation: `Anulación por cancelación de pedido #${order.dailyOrderNumber ?? orderId}`,
+            correctionConceptCode: '2',
+          });
+          if (!nc?.success) {
+            throw new BadRequestException(
+              nc?.message ||
+                `No se pudo anular la factura ${order.electronicInvoiceNumber}. La orden NO se canceló.`,
+            );
+          }
+          creditNoteNumber = nc.creditNoteNumber || null;
+          order.electronicInvoiceStatus = 'credit_noted';
+          order.electronicCreditNoteNumber = creditNoteNumber;
+        } catch (err) {
+          if (err instanceof ConflictException) {
+            // Ya tenía NC — seguir con cancelación de la orden
+            this.logger.warn(
+              `[cancel] orden=#${orderId} FE ya tenía NC; se continúa cancelando la orden`,
+            );
+          } else if (err instanceof BadRequestException) {
+            throw err;
+          } else {
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(`[cancel] NC falló orden=#${orderId}: ${message}`);
+            throw new BadRequestException(
+              `No se pudo anular la factura electrónica (${order.electronicInvoiceNumber}): ${message}. La orden NO se canceló.`,
+            );
+          }
         }
       }
     }
@@ -1239,10 +1253,18 @@ export class OrdersService {
       success: true,
       message: wasCompleted
         ? `Orden #${order.dailyOrderNumber ?? orderId} completada anulada (force). Inventario restaurado.${
-            creditNoteNumber ? ` FE anulada con NC ${creditNoteNumber}.` : ''
+            creditNoteNumber
+              ? ` FE anulada con NC ${creditNoteNumber}.`
+              : skipNcOnOrderCancel && order.electronicInvoiceNumber
+                ? ` FE ${order.electronicInvoiceNumber} se mantiene (sin NC).`
+                : ''
           }`
         : `Orden #${order.dailyOrderNumber ?? orderId} cancelada${
-            creditNoteNumber ? `. FE anulada con NC ${creditNoteNumber}` : ''
+            creditNoteNumber
+              ? `. FE anulada con NC ${creditNoteNumber}`
+              : skipNcOnOrderCancel && order.electronicInvoiceNumber
+                ? `. FE ${order.electronicInvoiceNumber} se mantiene (sin NC)`
+                : ''
           }`,
       dailyOrderNumber: order.dailyOrderNumber,
       creditNoteNumber: creditNoteNumber || undefined,

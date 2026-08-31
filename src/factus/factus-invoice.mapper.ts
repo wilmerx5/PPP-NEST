@@ -172,6 +172,106 @@ export class FactusInvoiceMapper {
   }
 
   /**
+   * Arma FE directa desde líneas de catálogo (lote admin) — sin orden PPP.
+   */
+  buildValidatePayloadFromCatalogLines(
+    lines: Array<{
+      productId: number;
+      name: string;
+      code: number;
+      unitPrice: number;
+      quantity: number;
+    }>,
+    dto: IssueElectronicInvoiceDto,
+    taxConfig: ResolvedFactusTaxConfig,
+    opts: { referenceCode: string; observation?: string },
+  ): { payload: FactusValidateBillRequest; invoiceTotal: number } {
+    if (!lines?.length) {
+      throw new BadRequestException('La factura no tiene productos');
+    }
+
+    const allItems = lines.map((line) =>
+      this.toFactusBillItem(
+        {
+          code_reference: String(line.code || line.productId),
+          name: line.name || `Producto ${line.productId}`,
+          quantity: Math.max(1, Math.round(line.quantity || 1)),
+          grossUnit: Math.round(Number(line.unitPrice) || 0),
+        },
+        taxConfig,
+      ),
+    );
+    const total = factusInvoiceTotalFromItems(allItems);
+
+    const paymentMethod =
+      (dto.paymentMethodCode || this.config.get<string>('FACTUS_DEFAULT_PAYMENT_METHOD') || '10').trim();
+
+    const rangeRaw = this.config.get<string>('FACTUS_NUMBERING_RANGE_ID');
+    const numberingRangeId = rangeRaw ? parseInt(rangeRaw, 10) : undefined;
+
+    const municipality =
+      (dto.municipalityCode ||
+        this.config.get<string>('FACTUS_DEFAULT_MUNICIPALITY_CODE') ||
+        '11001').trim();
+
+    const legalOrganizationCode =
+      dto.legalOrganizationCode ||
+      resolveLegalOrganizationFromDocType(dto.identificationDocumentCode);
+
+    const customerNames =
+      legalOrganizationCode === '2'
+        ? (dto.names || 'Consumidor final').trim()
+        : undefined;
+    const customerCompany =
+      legalOrganizationCode === '1'
+        ? (dto.company || 'Cliente').trim()
+        : undefined;
+
+    const payload: FactusValidateBillRequest = {
+      reference_code: opts.referenceCode.slice(0, 100),
+      document: '01',
+      operation_type: '10',
+      send_email: dto.sendEmail === true,
+      observation: (opts.observation || dto.observation || 'Lote FE admin').slice(0, 250),
+      cash_rounding_amount: '0.00',
+      payment_details: [
+        {
+          payment_form: '1',
+          payment_method_code: paymentMethod,
+          reference_code: opts.referenceCode.slice(0, 60),
+          amount: factusMoney(total),
+        },
+      ],
+      customer: {
+        identification_document_code: dto.identificationDocumentCode,
+        identification: dto.identification.replace(/\D/g, ''),
+        dv: dto.dv,
+        legal_organization_code: legalOrganizationCode,
+        tribute_code: 'ZZ',
+        responsibilities: ['R-99-PN'],
+        names: customerNames,
+        company: customerCompany,
+        address: dto.address?.trim() || undefined,
+        email: dto.email?.trim() || undefined,
+        phone: dto.phone?.replace(/\D/g, '').slice(-10) || undefined,
+        country_code: 'CO',
+        municipality_code: municipality,
+      },
+      items: allItems,
+      order_reference: {
+        reference_code: opts.referenceCode.slice(0, 50),
+        issue_date: factusOrderIssueDateYmd(new Date()),
+      },
+    };
+
+    if (Number.isFinite(numberingRangeId) && numberingRangeId! > 0) {
+      payload.numbering_range_id = numberingRangeId;
+    }
+
+    return { payload, invoiceTotal: total };
+  }
+
+  /**
    * Nota crédito de anulación total sobre la FE ya emitida (mismos ítems/total).
    */
   buildCreditNotePayload(

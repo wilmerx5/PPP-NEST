@@ -16,6 +16,7 @@ import { InvoiceCustomer } from './entities/invoice-customer.entity';
   imports: [
     TypeOrmModule.forFeature([Order, InvoiceCustomer, RestaurantSettings]),
     ProductsModule,
+    // OrdersModule sigue importado por ciclo (OrdersService → FactusService → Order repo)
     forwardRef(() => OrdersModule),
   ],
   controllers: [FactusController],
