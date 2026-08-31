@@ -150,6 +150,9 @@ describe('isDeliveryEtaInquiry', () => {
     'en cuanto llegaría?',
     'Se demora el domicilio?',
     'cuanto tiempo tarda la entrega',
+    'Masomenos cuanto se demora',
+    'Mas o menos cuanto se demora',
+    'aprox cuanto tarda',
   ])('detecta ETA: %s', (text) => {
     expect(isDeliveryEtaInquiry(text)).toBe(true);
   });

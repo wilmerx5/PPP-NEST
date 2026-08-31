@@ -238,6 +238,18 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     expect(isDeliveryLogisticsFluff('por favor')).toBe(true);
   });
 
+  it('NO trata “Masomenos cuanto se demora” como dirección', () => {
+    expect(looksLikeNonAddressCommand('Masomenos cuanto se demora')).toBe(true);
+    expect(looksLikeAddressOnlyMessage('Masomenos cuanto se demora')).toBe(false);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'Masomenos cuanto se demora',
+        cartLength: 1,
+        looksLikeAddressOnly: false,
+      }),
+    ).not.toBe('address');
+  });
+
   it('NO geocodifica “Para pedir un domicilio porfa”', () => {
     expect(isDeliveryLogisticsFluff('Para pedir un domicilio porfa')).toBe(true);
     expect(isDeliveryLogisticsFluff('pedir un domicilio porfa')).toBe(true);

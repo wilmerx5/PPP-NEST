@@ -364,6 +364,20 @@ export class WhatsappOrchestratorService {
       session = this.conversationService.getSession(conv);
     }
 
+    // ETA / “cuánto se demora” ANTES de geocodificar (no pisar dirección con la pregunta)
+    if (
+      await this.tryHandleDeliveryEtaInquiry(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        text,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
     // Reaplicar domicilio desde el texto ORIGINAL (el de productos ya no trae "para …")
     const customerIntent = this.resolveCustomerIntent(
       originalText,
@@ -378,6 +392,8 @@ export class WhatsappOrchestratorService {
       !looksLikeNonAddressCommand(originalText) &&
       !isNothingElseOrderIntent(originalText) &&
       !this.isConfirmKeyword(originalText) &&
+      !isDeliveryEtaInquiry(originalText) &&
+      !isDeliveryEtaInquiry(text) &&
       customerIntent === 'address'
     ) {
       session = this.applyDeliveryHintFromMessage(session, originalText);
@@ -486,10 +502,6 @@ export class WhatsappOrchestratorService {
     }
 
     if (await this.tryHandleCoverageInquiry(conv, msg.waId, session, originalText, cfg)) {
-      return;
-    }
-
-    if (await this.tryHandleDeliveryEtaInquiry(conv, msg.waId, originalText, text, cfg)) {
       return;
     }
 
@@ -5107,6 +5119,7 @@ export class WhatsappOrchestratorService {
   private async tryHandleDeliveryEtaInquiry(
     conv: WhatsappConversation,
     waId: string,
+    session: WhatsappSessionData,
     originalText: string,
     text: string,
     cfg: EffectiveWhatsappConfig,
@@ -5114,12 +5127,17 @@ export class WhatsappOrchestratorService {
     if (!isDeliveryEtaInquiry(originalText) && !isDeliveryEtaInquiry(text)) {
       return false;
     }
-    await this.reply(
-      conv,
-      waId,
+    let body =
       `${this.formatDeliveryEtaSentence(cfg)}\n` +
-        '_Es orientativo: cocina + camino. Cuando confirmemos el pedido te avisamos._',
-    );
+      '_Es orientativo: cocina + camino. Cuando confirmemos el pedido te avisamos._';
+    if (conv.state === 'awaiting_phone' && !session.phoneConfirmed) {
+      body +=
+        `\n\nCuando quieras, pásame un *número de contacto* para el domiciliario ` +
+        `(o escribe *este* si es el de WhatsApp).`;
+    } else if (session.address?.trim() && session.cart.length > 0) {
+      body += `\n\n📍 Seguimos con: _${session.address}_\n¿Algo más o escribimos *listo*?`;
+    }
+    await this.reply(conv, waId, body);
     return true;
   }
 
@@ -7594,6 +7612,7 @@ export class WhatsappOrchestratorService {
       this.catalogService.isMenuExploreIntent(raw, []) ||
       this.catalogService.isCategoryBrowseQuestion(raw) ||
       looksLikeNonAddressCommand(raw) ||
+      isDeliveryEtaInquiry(raw) ||
       this.looksLikeFoodNotAddress(raw) ||
       this.catalogService.looksLikeSideModificationNote(raw)
     ) {
@@ -7870,16 +7889,26 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    // Preguntas (ETA, precio, menú) ≠ nombre de conjunto/barrio
+    if (
+      isDeliveryEtaInquiry(t) ||
+      /\b(cuanto|cu[aá]nto|demora|tarda|tardaria|tiempo|minutos?|llega|llegaria|masomenos|mas\s+o\s+menos|aprox)\b/i.test(
+        t,
+      )
+    ) {
+      return false;
+    }
+
     const words = t.split(/\s+/).filter(Boolean);
     if (
       words.length >= 2 &&
       words.length <= 7 &&
       !/\d/.test(t) &&
       /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'°-]+$/.test(t) &&
-      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué|puedo|puedes|solicitar|pedir|asi|nada|eso|solo|solamente)\b/i.test(
+      !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué|cuanto|cuánto|puedo|puedes|solicitar|pedir|asi|nada|eso|solo|solamente|masomenos)\b/i.test(
         t,
       ) &&
-      !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?|cambiar|ensalada|otra\s+cosa|guarnici[oó]n|nada\s+m[aá]s|nomas|eso\s+es\s+todo)\b/i.test(
+      !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?|cambiar|ensalada|otra\s+cosa|guarnici[oó]n|nada\s+m[aá]s|nomas|eso\s+es\s+todo|demora|tarda|tiempo)\b/i.test(
         t,
       ) &&
       !isConfirmCurrentAddressIntent(t) &&

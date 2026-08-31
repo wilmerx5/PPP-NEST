@@ -8,6 +8,7 @@ import {
   isAddressChangeIntent,
   isAddressRejectionIntent,
   isConfirmCurrentAddressIntent,
+  isDeliveryEtaInquiry,
 } from './whatsapp-session-intents';
 
 export type WhatsappMessageIntent =
@@ -260,6 +261,8 @@ export function looksLikeNonAddressCommand(text: string): boolean {
   if (isDeliveryLogisticsFluff(text) || isDeliverySetupWithoutFood(text)) return true;
   if (isNothingElseOrderIntent(text)) return true;
   if (isUpcomingAddressIntent(text)) return true;
+  // "Masomenos cuanto se demora" ≠ dirección / barrio
+  if (isDeliveryEtaInquiry(text)) return true;
 
   const t = normalizeIntentText(text);
   if (!t) return false;
