@@ -30,6 +30,7 @@ import { Product } from '../products/entities/product.entity';
 import { OrdersModule } from '../orders/orders.module';
 import { ExpensesModule } from '../expenses/expenses.module';
 import { BusinessModule } from '../business/business.module';
+import { FactusModule } from '../factus/factus.module';
 
 @Module({
   controllers: [AuthController, UserAddressesController, UserPhonesController, PointsController, AdminController],
@@ -51,6 +52,7 @@ import { BusinessModule } from '../business/business.module';
     forwardRef(() => OrdersModule),
     ExpensesModule,
     BusinessModule,
+    forwardRef(() => FactusModule),
     TypeOrmModule.forFeature([User, VerificationToken, Address, Phone, UserPoints, PointRedemption, Product]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

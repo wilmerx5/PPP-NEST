@@ -11,10 +11,16 @@ import { FactusInvoiceSettingsService } from './factus-invoice-settings.service'
 import { FactusService } from './factus.service';
 import { FactusController } from './factus.controller';
 import { InvoiceCustomer } from './entities/invoice-customer.entity';
+import { FactusStandaloneInvoice } from './entities/factus-standalone-invoice.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, InvoiceCustomer, RestaurantSettings]),
+    TypeOrmModule.forFeature([
+      Order,
+      InvoiceCustomer,
+      RestaurantSettings,
+      FactusStandaloneInvoice,
+    ]),
     ProductsModule,
     // OrdersModule sigue importado por ciclo (OrdersService → FactusService → Order repo)
     forwardRef(() => OrdersModule),

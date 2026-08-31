@@ -7,6 +7,7 @@ import {
 import { FactusAuthService } from './factus-auth.service';
 import type {
   FactusBillDetail,
+  FactusBillsListResponse,
   FactusDownloadPdfResponse,
   FactusNumberingRange,
   FactusValidateBillRequest,
@@ -54,6 +55,25 @@ export class FactusApiClient {
       );
     }
     return data;
+  }
+
+  /** GET /v2/bills — listado paginado (más recientes primero). */
+  async listBills(params?: {
+    page?: number;
+    perPage?: number;
+    referenceCode?: string;
+    status?: 0 | 1;
+  }): Promise<FactusBillsListResponse> {
+    const q = new URLSearchParams();
+    if (params?.page != null) q.set('page', String(params.page));
+    if (params?.perPage != null) q.set('filter[per_page]', String(params.perPage));
+    if (params?.referenceCode) q.set('filter[reference_code]', params.referenceCode);
+    if (params?.status != null) q.set('filter[status]', String(params.status));
+    const qs = q.toString();
+    return this.requestJson<FactusBillsListResponse>(
+      'GET',
+      `/v2/bills${qs ? `?${qs}` : ''}`,
+    );
   }
 
   async listNumberingRanges(): Promise<FactusNumberingRange[]> {

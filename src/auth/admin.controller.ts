@@ -41,6 +41,7 @@ import {
 } from '../business/dto/business.dto';
 import { getBogotaDateRange } from '../common/utils/date.util';
 import { User } from './entities/user.entity';
+import { FactusService } from '../factus/factus.service';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -54,6 +55,7 @@ export class AdminController {
     private readonly productsService: ProductsService,
     private readonly expensesService: ExpensesService,
     private readonly businessService: BusinessService,
+    private readonly factusService: FactusService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
@@ -418,7 +420,7 @@ export class AdminController {
     if (!from || !to) {
       throw new BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
     }
-    return this.ordersService.findElectronicInvoices({
+    return this.factusService.findElectronicInvoicesForAdmin({
       from,
       to,
       status,
@@ -444,7 +446,7 @@ export class AdminController {
     if (!from || !to) {
       throw new BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
     }
-    const { filename, csv } = await this.ordersService.exportElectronicInvoicesCsv({
+    const { filename, csv } = await this.factusService.exportElectronicInvoicesCsv({
       from,
       to,
       status,

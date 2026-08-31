@@ -135,7 +135,43 @@ export type FactusBillDetailCustomer = {
 export type FactusBillDetail = {
   reference_code?: string;
   number?: string;
+  cufe?: string;
+  is_validated?: boolean;
+  validated_at?: string;
+  created_at?: string;
+  total?: string;
+  links?: {
+    qr?: string;
+    public_url?: string;
+  };
   customer?: FactusBillDetailCustomer;
+};
+
+/** Ítem resumido en GET /v2/bills (listado paginado). */
+export type FactusBillListItem = {
+  number?: string;
+  reference_code?: string;
+  total?: string;
+  is_validated?: boolean;
+  validated_at?: string;
+  created_at?: string;
+  cufe?: string;
+  links?: {
+    qr?: string;
+    public_url?: string;
+  };
+  customer?: FactusBillDetailCustomer;
+};
+
+export type FactusBillsListResponse = {
+  status?: string;
+  message?: string;
+  data?: {
+    data?: FactusBillListItem[];
+    current_page?: number;
+    last_page?: number;
+    total?: number;
+  };
 };
 
 export type FactusValidateCreditNoteResponse = {

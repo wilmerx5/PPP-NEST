@@ -1101,12 +1101,11 @@ export class OrdersService {
 
     const wasCompleted = order.orderStatus === 'completed';
 
-    // TEMP: permitir cancelar/eliminar la orden sin emitir NC sobre la FE.
-    // Por defecto ON; para volver al comportamiento estricto:
-    // FACTUS_SKIP_NC_ON_ORDER_CANCEL=false
+    // FE aceptada → nota crédito ANTES de borrar ítems (la NC necesita los mismos totales).
+    // Para omitir NC al cancelar (solo emergencias): FACTUS_SKIP_NC_ON_ORDER_CANCEL=true
     const skipNcOnOrderCancel =
-      (process.env.FACTUS_SKIP_NC_ON_ORDER_CANCEL ?? 'true').toLowerCase() !==
-      'false';
+      (process.env.FACTUS_SKIP_NC_ON_ORDER_CANCEL ?? 'false').toLowerCase() ===
+      'true';
 
     // FE aceptada → nota crédito ANTES de borrar ítems (la NC necesita los mismos totales).
     let creditNoteNumber: string | null = null;

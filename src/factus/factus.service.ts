@@ -21,6 +21,7 @@ import {
   BulkElectronicInvoicePreviewDto,
 } from './dto/bulk-electronic-invoice.dto';
 import { InvoiceCustomer } from './entities/invoice-customer.entity';
+import { FactusStandaloneInvoice } from './entities/factus-standalone-invoice.entity';
 import { FactusApiClient } from './factus-api.client';
 import { FactusAuthService } from './factus-auth.service';
 import { FactusInvoiceMapper } from './factus-invoice.mapper';
@@ -37,11 +38,19 @@ import {
   resolveLegalOrganizationFromDocType,
 } from './factus-customer.utils';
 import { pickCreditNoteRangeId } from './factus-numbering.util';
-import type { FactusValidateCreditNoteRequest } from './types/factus.types';
+import type {
+  FactusBillDetail,
+  FactusBillListItem,
+  FactusValidateCreditNoteRequest,
+} from './types/factus.types';
 import {
   planBulkInvoicesFromCatalog,
   type BulkInvoicePlan,
 } from './factus-bulk-select.util';
+import {
+  formatToBogotaISO,
+  getBogotaDateRange,
+} from '../common/utils/date.util';
 
 /** Adquiriente genérico DIAN para emisión en lote. */
 const BULK_CONSUMIDOR_FINAL: IssueElectronicInvoiceDto = {
@@ -79,6 +88,8 @@ export class FactusService {
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(InvoiceCustomer)
     private readonly customerRepo: Repository<InvoiceCustomer>,
+    @InjectRepository(FactusStandaloneInvoice)
+    private readonly standaloneInvoiceRepo: Repository<FactusStandaloneInvoice>,
     private readonly config: ConfigService,
     private readonly auth: FactusAuthService,
     private readonly api: FactusApiClient,
@@ -700,6 +711,23 @@ export class FactusService {
         const data = result.data;
         if (data?.is_validated) {
           await this.upsertInvoiceCustomer(issueDto);
+          await this.standaloneInvoiceRepo.save(
+            this.standaloneInvoiceRepo.create({
+              batchId,
+              batchIndex: inv.index,
+              referenceCode,
+              customerName: issueDto.names || 'Consumidor final',
+              invoiceStatus: 'accepted',
+              invoiceNumber: data?.number ?? null,
+              invoiceCufe: data?.cufe ?? null,
+              publicUrl: data?.links?.public_url ?? null,
+              qrUrl: (data?.links as { qr_url?: string } | undefined)?.qr_url ?? null,
+              issuedAt: new Date(),
+              plannedSum: inv.sum,
+              invoiceCustomerDocType: issueDto.identificationDocumentCode,
+              invoiceCustomerDocNumber: issueDto.identification,
+            }),
+          );
           results.push({
             index: inv.index,
             ok: true,
@@ -709,14 +737,29 @@ export class FactusService {
             publicUrl: data?.links?.public_url ?? null,
           });
         } else {
+          const errMsg =
+            result.message ||
+            JSON.stringify(data?.errors || 'Factura no validada por DIAN').slice(0, 400);
+          await this.standaloneInvoiceRepo.save(
+            this.standaloneInvoiceRepo.create({
+              batchId,
+              batchIndex: inv.index,
+              referenceCode,
+              customerName: issueDto.names || 'Consumidor final',
+              invoiceStatus: 'rejected',
+              invoiceNumber: data?.number ?? null,
+              invoiceError: errMsg,
+              plannedSum: inv.sum,
+              invoiceCustomerDocType: issueDto.identificationDocumentCode,
+              invoiceCustomerDocNumber: issueDto.identification,
+            }),
+          );
           results.push({
             index: inv.index,
             ok: false,
             sum: inv.sum,
             number: data?.number ?? null,
-            error:
-              result.message ||
-              JSON.stringify(data?.errors || 'Factura no validada por DIAN').slice(0, 400),
+            error: errMsg,
           });
         }
       } catch (err) {
@@ -727,6 +770,20 @@ export class FactusService {
               ? String((err as { message: unknown }).message)
               : 'Error al emitir';
         this.logger.warn(`[FE bulk] factura #${inv.index} falló: ${message}`);
+        const referenceCode = `PPP-LOTE-${batchId}-${inv.index}`.slice(0, 100);
+        await this.standaloneInvoiceRepo.save(
+          this.standaloneInvoiceRepo.create({
+            batchId,
+            batchIndex: inv.index,
+            referenceCode,
+            customerName: issueDto.names || 'Consumidor final',
+            invoiceStatus: 'error',
+            invoiceError: message.slice(0, 1000),
+            plannedSum: inv.sum,
+            invoiceCustomerDocType: issueDto.identificationDocumentCode,
+            invoiceCustomerDocNumber: issueDto.identification,
+          }),
+        );
         results.push({ index: inv.index, ok: false, sum: inv.sum, error: message });
       }
     }
@@ -738,6 +795,507 @@ export class FactusService {
       failCount: results.length - okCount,
       results,
     };
+  }
+
+  /**
+   * Listado admin: FE ligadas a órdenes + FE de lote (standalone).
+   */
+  async findElectronicInvoicesForAdmin(opts: {
+    from: string;
+    to: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    exportMode?: boolean;
+  }): Promise<{
+    from: string;
+    to: string;
+    page: number;
+    limit: number;
+    total: number;
+    summary: Record<string, number>;
+    items: Array<Record<string, unknown>>;
+  }> {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(opts.from) || !dateRegex.test(opts.to)) {
+      throw new BadRequestException('from/to deben ser YYYY-MM-DD');
+    }
+    if (opts.from > opts.to) {
+      throw new BadRequestException('from no puede ser mayor que to');
+    }
+
+    const { start } = getBogotaDateRange(opts.from);
+    const { end } = getBogotaDateRange(opts.to);
+    const page = Math.max(1, opts.page || 1);
+    const limit = opts.exportMode
+      ? Math.min(10_000, Math.max(1, opts.limit || 10_000))
+      : Math.min(100, Math.max(1, opts.limit || 25));
+    const status = (opts.status || 'all').trim().toLowerCase();
+    const search = opts.search?.trim() || '';
+
+    const orderBaseQb = () => {
+      const qb = this.orderRepo
+        .createQueryBuilder('o')
+        .where('o.electronicInvoiceStatus IS NOT NULL')
+        .andWhere("o.electronicInvoiceStatus != :none", { none: 'none' })
+        .andWhere(
+          `(
+            (o.electronicInvoiceIssuedAt IS NOT NULL AND o.electronicInvoiceIssuedAt BETWEEN :start AND :end)
+            OR (o.electronicInvoiceIssuedAt IS NULL AND o.createdAt BETWEEN :start AND :end)
+          )`,
+          { start, end },
+        );
+      if (status && status !== 'all') {
+        qb.andWhere('o.electronicInvoiceStatus = :status', { status });
+      }
+      if (search) {
+        const like = `%${search}%`;
+        qb.andWhere(
+          `(
+            o.electronicInvoiceNumber LIKE :like
+            OR o.electronicCreditNoteNumber LIKE :like
+            OR o.customerName LIKE :like
+            OR o.invoiceCustomerDocNumber LIKE :like
+            OR CAST(o.dailyOrderNumber AS CHAR) LIKE :like
+            OR CAST(o.id AS CHAR) LIKE :like
+          )`,
+          { like },
+        );
+      }
+      return qb;
+    };
+
+    const standaloneBaseQb = () => {
+      const qb = this.standaloneInvoiceRepo
+        .createQueryBuilder('s')
+        .where(
+          `(
+            (s.issuedAt IS NOT NULL AND s.issuedAt BETWEEN :start AND :end)
+            OR (s.issuedAt IS NULL AND s.createdAt BETWEEN :start AND :end)
+          )`,
+          { start, end },
+        );
+      if (status && status !== 'all') {
+        qb.andWhere('s.invoiceStatus = :status', { status });
+      }
+      if (search) {
+        const like = `%${search}%`;
+        qb.andWhere(
+          `(
+            s.invoiceNumber LIKE :like
+            OR s.referenceCode LIKE :like
+            OR s.customerName LIKE :like
+            OR s.invoiceCustomerDocNumber LIKE :like
+            OR CAST(s.batchIndex AS CHAR) LIKE :like
+            OR s.batchId LIKE :like
+          )`,
+          { like },
+        );
+      }
+      return qb;
+    };
+
+    const summary: Record<string, number> = {
+      accepted: 0,
+      credit_noted: 0,
+      rejected: 0,
+      error: 0,
+      pending: 0,
+      total: 0,
+    };
+
+    const orderSummaryRows: Array<{ status: string; c: string }> = await orderBaseQb()
+      .select('o.electronicInvoiceStatus', 'status')
+      .addSelect('COUNT(*)', 'c')
+      .groupBy('o.electronicInvoiceStatus')
+      .getRawMany();
+    for (const row of orderSummaryRows) {
+      const n = Number(row.c) || 0;
+      summary[row.status] = (summary[row.status] || 0) + n;
+      summary.total += n;
+    }
+
+    const standaloneSummaryRows: Array<{ status: string; c: string }> =
+      await standaloneBaseQb()
+        .select('s.invoiceStatus', 'status')
+        .addSelect('COUNT(*)', 'c')
+        .groupBy('s.invoiceStatus')
+        .getRawMany();
+    for (const row of standaloneSummaryRows) {
+      const n = Number(row.c) || 0;
+      summary[row.status] = (summary[row.status] || 0) + n;
+      summary.total += n;
+    }
+
+    const orders = await orderBaseQb()
+      .orderBy('COALESCE(o.electronic_invoice_issued_at, o.created_at)', 'DESC')
+      .getMany();
+    const standalones = await standaloneBaseQb()
+      .orderBy('COALESCE(s.issued_at, s.created_at)', 'DESC')
+      .getMany();
+
+    const orderItems = orders.map((o) => ({
+      source: 'order' as const,
+      orderId: o.id,
+      dailyOrderNumber: o.dailyOrderNumber,
+      customerName: o.customerName,
+      phone: o.phone,
+      orderType: o.orderType,
+      orderStatus: o.orderStatus,
+      createdAt: formatToBogotaISO(o.createdAt),
+      electronicInvoiceStatus: o.electronicInvoiceStatus ?? 'none',
+      electronicInvoiceNumber: o.electronicInvoiceNumber ?? null,
+      electronicInvoiceCufe: o.electronicInvoiceCufe ?? null,
+      electronicInvoicePublicUrl: o.electronicInvoicePublicUrl ?? null,
+      electronicInvoiceQrUrl: o.electronicInvoiceQrUrl ?? null,
+      electronicInvoiceIssuedAt: formatToBogotaISO(o.electronicInvoiceIssuedAt),
+      electronicInvoiceError: o.electronicInvoiceError ?? null,
+      electronicCreditNoteNumber: o.electronicCreditNoteNumber ?? null,
+      electronicCreditNoteCufe: o.electronicCreditNoteCufe ?? null,
+      electronicCreditNotePublicUrl: o.electronicCreditNotePublicUrl ?? null,
+      electronicCreditNoteIssuedAt: formatToBogotaISO(o.electronicCreditNoteIssuedAt),
+      invoiceCustomerDocType: o.invoiceCustomerDocType ?? null,
+      invoiceCustomerDocNumber: o.invoiceCustomerDocNumber ?? null,
+      invoiceCustomerDocDv: o.invoiceCustomerDocDv ?? null,
+      customerEmail: o.customerEmail ?? null,
+      _sortAt: o.electronicInvoiceIssuedAt ?? o.createdAt,
+    }));
+
+    const bulkItems = standalones.map((s) => ({
+      source: 'bulk' as const,
+      bulkInvoiceId: s.id,
+      batchId: s.batchId,
+      batchIndex: s.batchIndex,
+      orderId: null as number | null,
+      dailyOrderNumber: null as number | null,
+      customerName: s.customerName,
+      phone: null as string | null,
+      orderType: 'bulk',
+      orderStatus: '—',
+      createdAt: formatToBogotaISO(s.createdAt),
+      electronicInvoiceStatus: s.invoiceStatus,
+      electronicInvoiceNumber: s.invoiceNumber,
+      electronicInvoiceCufe: s.invoiceCufe,
+      electronicInvoicePublicUrl: s.publicUrl,
+      electronicInvoiceQrUrl: s.qrUrl,
+      electronicInvoiceIssuedAt: formatToBogotaISO(s.issuedAt),
+      electronicInvoiceError: s.invoiceError,
+      electronicCreditNoteNumber: null,
+      electronicCreditNoteCufe: null,
+      electronicCreditNotePublicUrl: null,
+      electronicCreditNoteIssuedAt: null,
+      invoiceCustomerDocType: s.invoiceCustomerDocType,
+      invoiceCustomerDocNumber: s.invoiceCustomerDocNumber,
+      invoiceCustomerDocDv: null,
+      customerEmail: null,
+      _sortAt: s.issuedAt ?? s.createdAt,
+    }));
+
+    const merged = [...orderItems, ...bulkItems].sort((a, b) => {
+      const ta = a._sortAt ? new Date(a._sortAt).getTime() : 0;
+      const tb = b._sortAt ? new Date(b._sortAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    const total = merged.length;
+    const pageItems = opts.exportMode
+      ? merged
+      : merged.slice((page - 1) * limit, page * limit);
+
+    const items = pageItems.map(({ _sortAt, ...row }) => row);
+
+    return {
+      from: opts.from,
+      to: opts.to,
+      page,
+      limit,
+      total,
+      summary,
+      items,
+    };
+  }
+
+  /** CSV admin: órdenes + FE de lote. */
+  async exportElectronicInvoicesCsv(opts: {
+    from: string;
+    to: string;
+    status?: string;
+    search?: string;
+  }): Promise<{ filename: string; csv: string }> {
+    const data = await this.findElectronicInvoicesForAdmin({
+      ...opts,
+      page: 1,
+      limit: 10_000,
+      exportMode: true,
+    });
+
+    const headers = [
+      'origen',
+      'pedido_diario',
+      'order_id',
+      'lote_id',
+      'cliente',
+      'telefono',
+      'email',
+      'tipo_doc',
+      'documento',
+      'dv',
+      'estado_fe',
+      'numero_fe',
+      'cufe',
+      'url_publica',
+      'emitida_at',
+      'numero_nc',
+      'cufe_nc',
+      'nc_at',
+      'error',
+      'tipo_orden',
+      'estado_orden',
+      'creada_at',
+    ];
+
+    const escape = (v: unknown): string => {
+      if (v == null || v === '') return '';
+      const s = String(v);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const lines = [headers.join(',')];
+    for (const row of data.items) {
+      lines.push(
+        [
+          row.source === 'bulk' ? 'lote' : 'pedido',
+          row.dailyOrderNumber ?? (row.batchIndex != null ? `Lote #${row.batchIndex}` : ''),
+          row.orderId ?? '',
+          row.batchId ?? '',
+          row.customerName,
+          row.phone,
+          row.customerEmail,
+          row.invoiceCustomerDocType,
+          row.invoiceCustomerDocNumber,
+          row.invoiceCustomerDocDv,
+          row.electronicInvoiceStatus,
+          row.electronicInvoiceNumber,
+          row.electronicInvoiceCufe,
+          row.electronicInvoicePublicUrl,
+          row.electronicInvoiceIssuedAt,
+          row.electronicCreditNoteNumber,
+          row.electronicCreditNoteCufe,
+          row.electronicCreditNoteIssuedAt,
+          row.electronicInvoiceError,
+          row.orderType,
+          row.orderStatus,
+          row.createdAt,
+        ]
+          .map(escape)
+          .join(','),
+      );
+    }
+
+    return {
+      filename: `facturas-fe_${opts.from}_${opts.to}.csv`,
+      csv: lines.join('\n'),
+    };
+  }
+
+  /**
+   * Trae las últimas N FE de lote (PPP-LOTE-*) desde Factus y las guarda en
+   * ppp_factus_standalone_invoices si aún no existen.
+   */
+  async backfillStandaloneInvoicesFromFactus(opts?: {
+    limit?: number;
+    /** Si true, incluye cualquier FE reciente (no solo lote). */
+    includeOrderInvoices?: boolean;
+  }): Promise<{
+    fetched: number;
+    candidates: number;
+    inserted: number;
+    skipped: number;
+    items: Array<{
+      number: string;
+      action: 'inserted' | 'skipped_exists' | 'skipped_not_lote' | 'skipped_order';
+      id?: number;
+      reason?: string;
+    }>;
+  }> {
+    if (!this.auth.isConfigured()) {
+      throw new BadRequestException('Factus no está configurado');
+    }
+
+    const limit = Math.min(50, Math.max(1, opts?.limit ?? 1));
+    const includeOrderInvoices = opts?.includeOrderInvoices === true;
+    const perPage = 20;
+    const maxPages = 10;
+
+    const lotePrefix = 'PPP-LOTE-';
+    const toProcess: FactusBillListItem[] = [];
+    let fetched = 0;
+
+    for (let page = 1; page <= maxPages && toProcess.length < limit; page += 1) {
+      const listRes = await this.api.listBills({ page, perPage });
+      const rows = listRes.data?.data ?? [];
+      if (!rows.length) break;
+      fetched += rows.length;
+
+      for (const row of rows) {
+        const ref = row.reference_code || '';
+        if (!ref || !row.number) continue;
+        if (!includeOrderInvoices && !ref.startsWith(lotePrefix)) continue;
+        toProcess.push(row);
+        if (toProcess.length >= limit) break;
+      }
+
+      const lastPage = listRes.data?.last_page ?? page;
+      if (page >= lastPage) break;
+    }
+
+    const result = {
+      fetched,
+      candidates: toProcess.length,
+      inserted: 0,
+      skipped: 0,
+      items: [] as Array<{
+        number: string;
+        action: 'inserted' | 'skipped_exists' | 'skipped_not_lote' | 'skipped_order';
+        id?: number;
+        reason?: string;
+      }>,
+    };
+
+    for (const summary of toProcess) {
+      const number = summary.number?.trim();
+      const ref = summary.reference_code?.trim() || '';
+      if (!number) continue;
+
+      if (!includeOrderInvoices && !ref.startsWith(lotePrefix)) {
+        result.skipped += 1;
+        result.items.push({
+          number,
+          action: 'skipped_not_lote',
+          reason: ref || 'sin reference_code',
+        });
+        continue;
+      }
+
+      const existingStandalone = await this.standaloneInvoiceRepo.findOne({
+        where: { invoiceNumber: number },
+      });
+      if (existingStandalone) {
+        result.skipped += 1;
+        result.items.push({
+          number,
+          action: 'skipped_exists',
+          id: existingStandalone.id,
+          reason: 'ya en ppp_factus_standalone_invoices',
+        });
+        continue;
+      }
+
+      const linkedOrder = await this.orderRepo.findOne({
+        where: { electronicInvoiceNumber: number },
+      });
+      if (linkedOrder) {
+        result.skipped += 1;
+        result.items.push({
+          number,
+          action: 'skipped_order',
+          reason: `orden PPP #${linkedOrder.id}`,
+        });
+        continue;
+      }
+
+      let detail: FactusBillDetail = summary;
+      if (!detail.cufe || !detail.links?.public_url) {
+        try {
+          detail = await this.api.getBill(number);
+        } catch (err) {
+          this.logger.warn(
+            `[FE backfill] getBill ${number} falló: ${err instanceof Error ? err.message : err}`,
+          );
+        }
+      }
+
+      const { batchId, batchIndex } = this.parseLoteReferenceCode(
+        detail.reference_code || ref,
+      );
+      const customer = detail.customer;
+      const customerName =
+        customer?.names ||
+        customer?.graphic_representation_name ||
+        customer?.company ||
+        'Consumidor final';
+      const plannedSum = Math.round(
+        Number.parseFloat(String(detail.total ?? summary.total ?? '0')) || 0,
+      );
+
+      const saved = await this.standaloneInvoiceRepo.save(
+        this.standaloneInvoiceRepo.create({
+          batchId,
+          batchIndex,
+          referenceCode: (detail.reference_code || ref).slice(0, 100),
+          customerName: customerName.slice(0, 100),
+          invoiceStatus: detail.is_validated === false ? 'rejected' : 'accepted',
+          invoiceNumber: number,
+          invoiceCufe: detail.cufe ?? null,
+          publicUrl: detail.links?.public_url ?? null,
+          qrUrl: detail.links?.qr ?? null,
+          issuedAt:
+            this.parseFactusDateTime(detail.validated_at) ||
+            this.parseFactusDateTime(detail.created_at) ||
+            new Date(),
+          plannedSum,
+          invoiceCustomerDocType:
+            customer?.identification_document?.code ?? null,
+          invoiceCustomerDocNumber: customer?.identification ?? null,
+        }),
+      );
+
+      result.inserted += 1;
+      result.items.push({ number, action: 'inserted', id: saved.id });
+      this.logger.log(
+        `[FE backfill] guardada ${number} → standalone id=${saved.id} batch=${batchId}#${batchIndex}`,
+      );
+    }
+
+    return result;
+  }
+
+  private parseLoteReferenceCode(referenceCode: string): {
+    batchId: string;
+    batchIndex: number;
+  } {
+    const ref = referenceCode.trim();
+    const m = ref.match(/^PPP-LOTE-(.+)-(\d+)$/);
+    if (m) {
+      return { batchId: m[1].slice(0, 64), batchIndex: parseInt(m[2], 10) || 1 };
+    }
+    return {
+      batchId: `backfill-${Date.now()}`.slice(0, 64),
+      batchIndex: 1,
+    };
+  }
+
+  /** Factus: "30-08-2026 10:08:12 PM" */
+  private parseFactusDateTime(value: string | undefined | null): Date | null {
+    if (!value) return null;
+    const m = value.match(
+      /^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)$/i,
+    );
+    if (!m) return null;
+    let hour = parseInt(m[4], 10);
+    const ampm = m[7].toUpperCase();
+    if (ampm === 'PM' && hour < 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+    return new Date(
+      parseInt(m[3], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[1], 10),
+      hour,
+      parseInt(m[5], 10),
+      parseInt(m[6], 10),
+    );
   }
 
   private async loadBulkCatalogProducts() {
