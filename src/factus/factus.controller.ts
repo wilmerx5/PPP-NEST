@@ -136,6 +136,32 @@ export class FactusController {
     return this.factusService.issueBulkElectronicInvoices(dto);
   }
 
+  @Post('admin/factus/backfill-standalone-invoices')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Importar FE de lote desde Factus → BD standalone (admin)',
+    description:
+      'Trae las últimas N facturas PPP-LOTE-* de Factus y las guarda en ppp_factus_standalone_invoices.',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 1 })
+  @ApiQuery({
+    name: 'includeOrderInvoices',
+    required: false,
+    description: 'Si true, incluye también FE de pedidos (PPP-ORD-*)',
+  })
+  backfillStandaloneInvoices(
+    @Query('limit') limit?: string,
+    @Query('includeOrderInvoices') includeOrderInvoices?: string,
+  ) {
+    const parsed = limit ? parseInt(limit, 10) : 1;
+    return this.factusService.backfillStandaloneInvoicesFromFactus({
+      limit: Number.isFinite(parsed) ? parsed : 1,
+      includeOrderInvoices:
+        includeOrderInvoices === 'true' || includeOrderInvoices === '1',
+    });
+  }
+
   @Get('factus/customers/lookup')
   @Auth(...OPS)
   @ApiBearerAuth()

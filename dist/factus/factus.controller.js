@@ -63,6 +63,13 @@ let FactusController = class FactusController {
     issueBulkInvoices(dto) {
         return this.factusService.issueBulkElectronicInvoices(dto);
     }
+    backfillStandaloneInvoices(limit, includeOrderInvoices) {
+        const parsed = limit ? parseInt(limit, 10) : 1;
+        return this.factusService.backfillStandaloneInvoicesFromFactus({
+            limit: Number.isFinite(parsed) ? parsed : 1,
+            includeOrderInvoices: includeOrderInvoices === 'true' || includeOrderInvoices === '1',
+        });
+    }
     lookupCustomer(identificationDocumentCode, identification) {
         return this.factusService.lookupCustomer(identificationDocumentCode, identification);
     }
@@ -173,6 +180,26 @@ __decorate([
     __metadata("design:paramtypes", [bulk_electronic_invoice_dto_1.BulkElectronicInvoiceIssueDto]),
     __metadata("design:returntype", void 0)
 ], FactusController.prototype, "issueBulkInvoices", null);
+__decorate([
+    (0, common_1.Post)('admin/factus/backfill-standalone-invoices'),
+    (0, auth_decorator_1.Auth)(valid_roles_interface_1.ValidRoles.admin),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Importar FE de lote desde Factus → BD standalone (admin)',
+        description: 'Trae las últimas N facturas PPP-LOTE-* de Factus y las guarda en ppp_factus_standalone_invoices.',
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 1 }),
+    (0, swagger_1.ApiQuery)({
+        name: 'includeOrderInvoices',
+        required: false,
+        description: 'Si true, incluye también FE de pedidos (PPP-ORD-*)',
+    }),
+    __param(0, (0, common_1.Query)('limit')),
+    __param(1, (0, common_1.Query)('includeOrderInvoices')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], FactusController.prototype, "backfillStandaloneInvoices", null);
 __decorate([
     (0, common_1.Get)('factus/customers/lookup'),
     (0, auth_decorator_1.Auth)(...OPS),

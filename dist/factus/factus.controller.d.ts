@@ -96,6 +96,18 @@ export declare class FactusController {
             error?: string;
         }[];
     }>;
+    backfillStandaloneInvoices(limit?: string, includeOrderInvoices?: string): Promise<{
+        fetched: number;
+        candidates: number;
+        inserted: number;
+        skipped: number;
+        items: Array<{
+            number: string;
+            action: "inserted" | "skipped_exists" | "skipped_not_lote" | "skipped_order";
+            id?: number;
+            reason?: string;
+        }>;
+    }>;
     lookupCustomer(identificationDocumentCode: string, identification: string): Promise<{
         identificationDocumentCode: string;
         identification: string;
