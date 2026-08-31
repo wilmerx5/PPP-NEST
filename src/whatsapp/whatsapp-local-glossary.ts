@@ -62,6 +62,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   },
   // Add-on tardío (corpus): "alcanzo a encargarte una ensalada"
   // NO reescribir "para cuántas personas alcanza" → eso es consulta de rinde
+  { re: /\bpara\s+pedirte\s+(?:por\s+fa|porfa|por\s+favor)\s+/gi, to: 'quiero ' },
+  { re: /\bpara\s+pedir\s+(?:por\s+fa|porfa|por\s+favor)\s+/gi, to: 'quiero ' },
   { re: /\b(?:me\s+)?alcanzo\s+a\s+(?:encargarte|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
   { re: /\b(?:me\s+)?alcanzas?\s+a\s+(?:encargar|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },
   { re: /\b(?:me\s+)?alcanzas?\s+(?:encargar|pedir|pedirte|agregar)\s+/gi, to: 'quiero ' },

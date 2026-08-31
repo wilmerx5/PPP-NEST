@@ -877,6 +877,19 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(scored[0]?.p.code).toBe(73);
     });
 
+    it('“Para pedirte por fa un arroz chino” → un plato, sin fluff en unresolved', () => {
+      const text = applyLocalGlossary('Para pedirte por fa un arroz chino');
+      expect(catalog.isPolitenessOnlySegment('Para pedirte por fa')).toBe(true);
+      expect(catalog.extractProductSearchQuery(text)).toMatch(/arroz chino/i);
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      if (multi) {
+        expect(multi.unresolved).toEqual([]);
+        expect(multi.confident.some((c) => /arroz chino/i.test(c.product.name))).toBe(true);
+      } else {
+        expect(catalog.findProductEmbeddedInMessage(text, pppMenu)?.name).toMatch(/arroz chino/i);
+      }
+    });
+
     it('isComboMeaningInquiry', () => {
       expect(catalog.isComboMeaningInquiry('Que significa a en combo y cuánto valdría ?')).toBe(
         true,

@@ -1073,7 +1073,11 @@ export class WhatsappCatalogService {
         /^(quieor|qiero|kiero|quiiero|quero|quiero|voy a pedir|pedi|pido|pedimos|pedire)[.!?,;:]*\s*(?:un|una|unos|unas|el|la|los|las)?\s*/i,
         '',
       )
-      .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '')
+      .replace(
+        /^(?:para\s+)?(?:pedirte|pedir|encargarte|encargar)\s+(?:por\s+fa|porfa|por\s+favor)?\s*/i,
+        '',
+      )
+      .replace(/\s+(por favor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '')
       .trim();
 
     q = this.cleanOrderSegment(q);
@@ -1140,6 +1144,7 @@ export class WhatsappCatalogService {
       .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
       .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
       .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
+      .replace(/^(?:para\s+)?(?:pedirte|pedir|encargarte|encargar)\s+(?:por\s+fa|porfa|por\s+favor)?\s*/i, '')
       .replace(/^(?:pedi|pido|pedimos|quiero|dame|ponme)\s+/i, '')
       .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
       // Cortesía suelta en medio: "…veci me puedes regalar una…"
@@ -1176,7 +1181,7 @@ export class WhatsappCatalogService {
     if (/\d/.test(n) && /\b(codigo|#)\b/.test(n)) return false;
     n = n
       .replace(
-        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|pf|gracias|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias|ok|okay|entonces|listo|bueno)\b/g,
+        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|por\s+fa|pf|gracias|pedirte|pedir|encargar|encargarte|para|fa|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias|ok|okay|entonces|listo|bueno)\b/g,
         ' ',
       )
       .replace(/[!.?,;:]+/g, ' ')
@@ -5090,7 +5095,7 @@ export class WhatsappCatalogService {
     let q = this.extractProductSearchQuery(text);
     if (!q) return [];
     // "…, por favor" no es separador de platos
-    q = q.replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim();
+    q = q.replace(/[,;]?\s*(por\s+favor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim();
     if (!q) return [];
     // No partir "sin yuca más papa" por el "más"
     q = q.replace(
@@ -5136,7 +5141,7 @@ export class WhatsappCatalogService {
     const out: string[] = [];
     for (const seg of expanded) {
       const cleaned = this.cleanOrderSegment(
-        seg.replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim(),
+        seg.replace(/\s+(por favor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim(),
       );
       if (cleaned.length < 3) continue;
       const key = normalizeText(cleaned);
@@ -5226,7 +5231,10 @@ export class WhatsappCatalogService {
   }
 
   private splitSegmentOnArticles(chunk: string): string[] {
-    const fixed = fixCommonOrderTypos(chunk);
+    let fixed = fixCommonOrderTypos(chunk);
+    fixed = fixed
+      .replace(/^(?:para\s+)?(?:pedirte|pedir|encargarte|encargar)\s+(?:por\s+fa|porfa|por\s+favor)?\s*/i, '')
+      .trim();
     // "para el hermano jesus" = un destino, no partir por el/la
     if (
       /^para\s+(el|la|los|las)\s+/i.test(fixed) &&
