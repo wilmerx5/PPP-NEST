@@ -47,6 +47,16 @@ export class BulkElectronicInvoicePreviewDto {
   maxDeviationRatio?: number;
 }
 
+export class BulkInvoiceAttrDto {
+  @IsString()
+  @MaxLength(80)
+  attributeName: string;
+
+  @IsString()
+  @MaxLength(120)
+  attributeValue: string;
+}
+
 export class BulkInvoiceLineDto {
   @Type(() => Number)
   @IsInt()
@@ -75,6 +85,12 @@ export class BulkInvoiceLineDto {
   @IsNumber()
   @Min(0)
   lineTotal: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkInvoiceAttrDto)
+  attributes?: BulkInvoiceAttrDto[];
 }
 
 export class BulkInvoicePlanDto {

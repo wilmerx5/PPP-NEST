@@ -1,8 +1,15 @@
+export type CatalogProductAttr = {
+  attributeName: string;
+  attributeValue: string;
+};
+
 export type CatalogProductRef = {
   id: number;
   name: string;
   code: number;
   price: number;
+  /** Valores por defecto (1ª opción) si el producto tiene attrs */
+  defaultAttributes?: CatalogProductAttr[];
 };
 
 export type BulkInvoiceLine = {
@@ -12,6 +19,7 @@ export type BulkInvoiceLine = {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  attributes?: CatalogProductAttr[];
 };
 
 export type BulkInvoicePlan = {
@@ -86,6 +94,9 @@ function addLine(
       unitPrice,
       quantity: 1,
       lineTotal: unitPrice,
+      ...(p.defaultAttributes?.length
+        ? { attributes: p.defaultAttributes.map((a) => ({ ...a })) }
+        : {}),
     });
   }
 }
@@ -104,6 +115,7 @@ export function fillInvoiceFromCatalog(
       name: p.name,
       code: p.code,
       price: Math.round(Number(p.price) || 0),
+      defaultAttributes: p.defaultAttributes,
     }))
     .filter((p) => p.price > 0);
 

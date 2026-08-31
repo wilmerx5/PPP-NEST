@@ -742,14 +742,27 @@ export class FactusService {
   }
 
   private expandLinesToOrderItems(lines: BulkInvoiceLine[]) {
-    const items: Array<{ productId: number; unitPrice: number; note?: string }> = [];
+    const items: Array<{
+      productId: number;
+      unitPrice: number;
+      note?: string;
+      attributes?: Array<{ attributeName: string; attributeValue: string }>;
+    }> = [];
     for (const line of lines) {
       const qty = Math.max(1, Math.min(40, Math.round(line.quantity || 1)));
+      const attrs =
+        line.attributes
+          ?.filter((a) => a.attributeName?.trim() && a.attributeValue?.trim())
+          .map((a) => ({
+            attributeName: a.attributeName.trim(),
+            attributeValue: a.attributeValue.trim(),
+          })) || undefined;
       for (let i = 0; i < qty; i++) {
         items.push({
           productId: line.productId,
           unitPrice: Math.round(line.unitPrice),
           note: 'Lote FE',
+          ...(attrs?.length ? { attributes: attrs } : {}),
         });
       }
     }
@@ -759,18 +772,42 @@ export class FactusService {
   private async loadBulkCatalogProducts() {
     const all = await this.productsService.findAll();
     return (all || [])
-      .filter(
-        (p) =>
-          p?.isActive !== false &&
-          Number(p.price) > 0 &&
-          // Sin attrs obligatorios: evita pedidos incompletos en el lote
-          !p.hasAttributes,
-      )
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        code: Number(p.code),
-        price: Math.round(Number(p.price)),
-      }));
+      .filter((p) => p?.isActive !== false && Number(p.price) > 0)
+      .map((p) => {
+        const defaultAttributes: Array<{
+          attributeName: string;
+          attributeValue: string;
+        }> = [];
+        if (p.hasAttributes && Array.isArray(p.attributes)) {
+          for (const attr of p.attributes) {
+            const name = String(attr?.attributeName || '').trim();
+            const options = Array.isArray(attr?.options)
+              ? attr.options
+              : typeof attr?.options === 'string'
+                ? (() => {
+                    try {
+                      return JSON.parse(attr.options);
+                    } catch {
+                      return [];
+                    }
+                  })()
+                : [];
+            const first = String(options?.[0] || '').trim();
+            if (name && first) {
+              defaultAttributes.push({
+                attributeName: name,
+                attributeValue: first,
+              });
+            }
+          }
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          code: Number(p.code),
+          price: Math.round(Number(p.price)),
+          ...(defaultAttributes.length ? { defaultAttributes } : {}),
+        };
+      });
   }
 }
