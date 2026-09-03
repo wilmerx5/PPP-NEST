@@ -997,6 +997,61 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     });
   });
 
+  describe('Torre/apto tras conjunto ≠ nueva dirección (Balcones)', () => {
+    it('glossary separa Torre 7apto901', () => {
+      expect(applyLocalGlossary('Torre 7apto901')).toMatch(/torre\s+7\s+apto\s+901/i);
+      expect(applyLocalGlossary('Balcones de la alameda Torre 7apto901')).toMatch(
+        /balcones.*torre\s+7\s+apto\s+901/i,
+      );
+    });
+
+    it('Torre 7apto901 / casa 115 son solo detalle de unidad', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: WhatsappCatalogService;
+        looksLikeUnitOrTowerDetailOnly: (t: string) => boolean;
+        looksLikeFoodNotAddress: (t: string) => boolean;
+      };
+      orch.catalogService = catalog;
+
+      for (const raw of [
+        'Torre 7apto901',
+        'Torre 7 apto 901',
+        applyLocalGlossary('Torre 7apto901'),
+        'casa 115',
+        'apto 304',
+        'int 2',
+      ]) {
+        expect(orch.looksLikeUnitOrTowerDetailOnly(raw)).toBe(true);
+      }
+
+      // Conjunto completo / calle → no es “solo unidad”
+      expect(orch.looksLikeUnitOrTowerDetailOnly('Balcones de la alameda')).toBe(false);
+      expect(orch.looksLikeUnitOrTowerDetailOnly('Cra. 81g #42b-27')).toBe(false);
+      expect(
+        orch.looksLikeUnitOrTowerDetailOnly('Balcones de la alameda Torre 7apto901'),
+      ).toBe(false);
+    });
+  });
+
+  describe('Respuestas compactas (menos scroll)', () => {
+    it('opciones de atributo van en una línea', () => {
+      const product = pppMenu.find((p) => p.code === 5)!;
+      const prompt = catalog.formatAttributeStepPrompt(
+        product,
+        product.attributes![0],
+        [],
+        { mode: 'info' },
+      );
+      expect(prompt).toMatch(/1️⃣ \*Blancas\* · \$/);
+      expect(prompt).toMatch(/_Escribe el número\._/);
+      expect(prompt).not.toMatch(/💰/);
+      expect(prompt.split('\n').length).toBeLessThan(12);
+      expect(prompt).not.toMatch(/Dime el número o solo/);
+      expect(prompt).not.toMatch(/solo.*combo/i);
+    });
+  });
+
   describe('Combo pollo: “2” en Arepas ≠ Manzana', () => {
     it('primer número elige Fritas; después bebida', () => {
       const combo = pppMenu.find((p) => p.code === 99)!;

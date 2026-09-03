@@ -17,26 +17,25 @@ import {
 } from './whatsapp-delivery-fee';
 
 const DEFAULT_WELCOME =
-  '¡Hola! 👋 Bienvenido a {brand}. Dime qué se te antoja y te ayudo con el pedido.';
+  '¡Hola! 👋 *{brand}*. ¿Qué se te antoja?\nMenú: {menuUrl}';
 
 const DEFAULT_AI_DISCLAIMER =
-  '⚠️ *Aviso:* este chat lo atiende una *inteligencia artificial* y todavía está en *fase de implementación*, así que puede cometer errores.\n\n' +
-  'Si algo no cuadra o prefieres una persona, escribe *ASESOR* y te pasamos con el equipo.';
+  '⚠️ Chat con *IA* (en prueba; puede fallar). Si prefieres persona: *ASESOR*.';
 
 const DEFAULT_MENU_LINK =
-  'Claro, aquí tienes el *menú*:\n{menuUrl}\n\nQuedo atento: cuando quieras me dices qué se te antoja (por nombre o código) y te ayudo con el pedido 👍';
+  'Menú 👇\n{menuUrl}\n\nDime qué quieres (nombre o código).';
 
 const DEFAULT_HUMAN_HANDOFF =
-  'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí; puedes seguir escribiendo.';
+  'Dale, te paso con el equipo 🙋. Sigue escribiendo aquí.';
 
 const DEFAULT_ORDER_SUCCESS =
-  'Gracias por pedirnos 🍗 Te lo enviaremos lo más pronto posible.';
+  'Gracias por pedirnos 🍗 Enseguida lo preparamos.';
 
 const DEFAULT_CLOSED_MESSAGE =
-  'Ahora estamos *cerrados*. Cuando abramos escríbenos de nuevo para pedir.';
+  'Estamos *cerrados*. Cuando abramos escríbenos de nuevo.';
 
 const DEFAULT_LARGE_ORDER_HANDOFF =
-  'Ese pedido es más grande de lo que manejamos por WhatsApp.\n\nTe paso con alguien del equipo para ayudarte con el pedido.';
+  'Ese pedido es grande para WhatsApp.\nTe paso con alguien del equipo.';
 
 const TONE_GUIDE = `
 TONO (obligatorio en cada reply):

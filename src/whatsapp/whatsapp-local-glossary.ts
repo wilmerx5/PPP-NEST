@@ -107,6 +107,11 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
   { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },
   { re: /\bunpollo\b/gi, to: 'un pollo' },
+  // "Torre 7apto901" → "Torre 7 apto 901"
+  { re: /\b(\d)\s*apto\.?\s*(\d{2,4})\b/gi, to: '$1 apto $2' },
+  { re: /\btorre\s*(\d+)\s*apto\.?\s*(\d{2,4})\b/gi, to: 'torre $1 apto $2' },
+  { re: /\btorre(\d+)\b/gi, to: 'torre $1' },
+  { re: /\bapto\.?\s*(\d{2,4})\b/gi, to: 'apto $1' },
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },
