@@ -11,6 +11,7 @@ import {
   isAddressRejectionIntent,
   isCartItemReplacementIntent,
   isConfirmCurrentAddressIntent,
+  isPendingAddOfferDecline,
   isUsableWhatsappCustomerName,
   parseCartItemReplacement,
   resolvePendingListOrMenuCode,
@@ -309,12 +310,15 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Pollo',
   },
   {
-    id: 98,
-    code: 98,
+    id: 97,
+    code: 97,
     name: 'Combo De Pollo Broaster',
     price: 55000,
     hasAttributes: true,
-    attributes: [],
+    attributes: [
+      { attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] },
+      { attributeName: 'Bebida', options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca cola'] },
+    ],
     availableNow: true,
     categoryName: 'Pollo',
   },
@@ -1268,6 +1272,34 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.isMixtoCompositionInquiry(text)).toBe(false);
       const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
       expect(hit?.name).toMatch(/mixto/i);
+    });
+
+    it('typo mixt → Combo Mixto (no Broaster)', () => {
+      for (const raw of [
+        'Me regalas un combo de pollo mixt',
+        'combo de pollo misto',
+        'un combo pollo mixt',
+      ]) {
+        const text = applyLocalGlossary(raw);
+        expect(text).toMatch(/\bmixto\b/i);
+        const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
+        expect(hit?.name).toMatch(/mixto/i);
+        expect(hit?.name).not.toMatch(/broaster/i);
+      }
+    });
+
+    it('No, solo el combo tras cotizar ≠ reabrir attrs', () => {
+      for (const raw of [
+        'No, solo el combo porfa',
+        'solo el combo',
+        'no agregues la sopa',
+        'no',
+        'no gracias',
+      ]) {
+        expect(isPendingAddOfferDecline(raw)).toBe(true);
+      }
+      expect(isPendingAddOfferDecline('quiero la sopa tambien')).toBe(false);
+      expect(isPendingAddOfferDecline('sí')).toBe(false);
     });
   });
 

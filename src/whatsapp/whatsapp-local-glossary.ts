@@ -46,6 +46,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bmedio\s+frito\s+medio\s+broaster\b/gi, to: 'pollo mixto medio frito medio broaster' },
   { re: /\bmedio\s+frito\s+medio\s+broster\b/gi, to: 'pollo mixto medio frito medio broaster' },
   { re: /\bcombo\s+(?:de\s+)?pollo\s+mixto\b/gi, to: 'combo pollo mixto' },
+  { re: /\bcombo\s+(?:de\s+)?pollo\s+mixt\b/gi, to: 'combo pollo mixto' },
+  { re: /\bcombo\s+(?:de\s+)?pollo\s+misto\b/gi, to: 'combo pollo mixto' },
   { re: /\bsobre\s+barriga\b/gi, to: 'sobrebarriga' },
   { re: /\bsopitas?\b/gi, to: 'sopa' },
   // "y una menos de una sopita…" = y también una sopa… (evitar "y y una")
@@ -120,6 +122,11 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   {
     re: /\b(meidos?|nedios?|meidios?|meddio)\b/gi,
     to: (m) => (/s$/i.test(m) ? 'medios' : 'medio'),
+  },
+  // "mixt" / "misto" (prod: combo de pollo mixt → Broaster por no ver mixto)
+  {
+    re: /\b(mixt|misto|mixtto|mixtos)\b/gi,
+    to: (m) => (/s$/i.test(m) ? 'mixtos' : 'mixto'),
   },
   // Pegado sin espacios: "unpollofrito" / "unpollo"
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },

@@ -49,6 +49,7 @@ import {
   isDeliveryCoverageInquiry,
   extractCoverageAddressProbe,
   isDeliveryEtaInquiry,
+  isPendingAddOfferDecline,
   isPostOrderFollowUpIntent,
   isReuseLastAddressIntent,
   isUsableWhatsappCustomerName,
@@ -9783,7 +9784,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    if (this.isAddOfferDecline(text)) {
+    if (isPendingAddOfferDecline(text)) {
       await this.conversationService.saveSession(conv, {
         ...session,
         pendingAddOffer: undefined,
@@ -9977,25 +9978,6 @@ export class WhatsappOrchestratorService {
       this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`),
     );
     return true;
-  }
-
-  private isAddOfferDecline(text: string): boolean {
-    const t = text.trim();
-    if (
-      /^(no|nop|nope|nel|despues|después|luego|ahora\s+no|no\s+gracias|mejor\s+no|nah)[\s!.?]*$/i.test(
-        t,
-      )
-    ) {
-      return true;
-    }
-    // "No señora, gracias" / "no señor gracias" (sin anunciar dirección)
-    if (
-      /^(no\s+se[nñ]or[a]?|no\s+gracias)([\s,!.?]+gracias)?[\s!.?]*$/i.test(t) &&
-      !/\bdirecci/i.test(t)
-    ) {
-      return true;
-    }
-    return false;
   }
 
   /** "Te mando la dirección" — no interpretar como platos; pedir la dirección. */

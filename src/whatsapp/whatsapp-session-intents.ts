@@ -357,6 +357,54 @@ export function isCartItemReplacementIntent(text: string): boolean {
   return !!parseCartItemReplacement(text);
 }
 
+/**
+ * Tras “¿Te lo agrego?”: el cliente rechaza (a veces nombrando lo que ya tiene).
+ * "No, solo el combo porfa" no debe reabrir atributos del combo.
+ */
+export function isPendingAddOfferDecline(text: string): boolean {
+  const t = (text || '').trim();
+  if (!t) return false;
+  if (
+    /^(no|nop|nope|nel|despues|después|luego|ahora\s+no|no\s+gracias|mejor\s+no|nah)[\s!.?]*$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(no\s+se[nñ]or[a]?|no\s+gracias)([\s,!.?]+gracias)?[\s!.?]*$/i.test(t) &&
+    !/\bdirecci/i.test(t)
+  ) {
+    return true;
+  }
+  const n = t
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (
+    /\bno\b/.test(n) &&
+    /\bsolo\b/.test(n) &&
+    !/\b(quiero|dame|agrega|ponme|pedi)\s+(un|una|unos|unas|otro|otra)\b/.test(n)
+  ) {
+    return true;
+  }
+  if (
+    /^(solo|solamente|unicamente)\b.{0,60}\b(combo|carrito|pedido|eso|ese|esa|lo\s+que\s+(ya\s+)?(hay|tengo|pedi))\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/\bno\s+(lo\s+|la\s+|el\s+)?(agregues|agregar|metas|añadas|sumes)\b/i.test(t)) {
+    return true;
+  }
+  if (/^no\b[,!.\s]+gracias\b/i.test(t) && t.length < 48 && !/\bdirecci/i.test(t)) {
+    return true;
+  }
+  return false;
+}
+
 /** Extrae la dirección de una pregunta de cobertura. */
 export function extractCoverageAddressProbe(text: string): string | null {
   const raw = (text || '').trim();

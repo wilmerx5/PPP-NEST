@@ -2757,6 +2757,17 @@ export class WhatsappCatalogService {
           if (this.productIsSmallServing(name)) score += 80;
           else if (/\bsopa\b/.test(name)) score -= 60;
         }
+        // Estilo explícito: "mixto" no debe caer en Broaster/Frito
+        if (/\bmixto\b/.test(q)) {
+          if (/\bmixto\b/.test(name)) score += 120;
+          else if (/\b(broaster|frito|asado)\b/.test(name)) score -= 50;
+        } else if (/\bbroaster\b/.test(q)) {
+          if (/\bbroaster\b/.test(name)) score += 120;
+          else if (/\b(frito|mixto|asado)\b/.test(name)) score -= 50;
+        } else if (/\bfrito\b/.test(q)) {
+          if (/\bfrito\b/.test(name)) score += 120;
+          else if (/\b(broaster|mixto|asado)\b/.test(name)) score -= 50;
+        }
         return { p, score };
       })
       .sort((a, b) => b.score - a.score);
