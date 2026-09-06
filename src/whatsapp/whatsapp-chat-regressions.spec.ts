@@ -86,6 +86,19 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Pollo',
   },
   {
+    id: 3,
+    code: 3,
+    name: '1/4 Pollo Frito',
+    price: 15000,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] },
+      { attributeName: 'Presa', options: ['Pierna Pernil', 'Ala pechuga'] },
+    ],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
     id: 6,
     code: 6,
     name: '1/4 Pollo Broaster',
@@ -1081,6 +1094,20 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const text = applyLocalGlossary('Quisiera un cuarto de pollo que vale');
       const hits = catalog.resolvePriceInquiryProducts(text, pppMenu);
       expect(hits[0]?.name).toMatch(/1\/4\s+pollo/i);
+    });
+
+    it('typo caurto de pollo frito → 1/4 Pollo Frito (no entero #1)', () => {
+      for (const raw of [
+        'Buen dia, me mandas un caurto de pollo frito',
+        'quiero un cuato de pollo frito',
+        'un cuarto de pollo frito',
+      ]) {
+        const text = applyLocalGlossary(raw);
+        expect(catalog.detectPortionHint(text)).toBe('cuarto');
+        const hit = catalog.resolveSizedChickenProduct(text, pppMenu);
+        expect(hit?.name).toMatch(/1\/4\s+pollo\s+frito/i);
+        expect(hit?.code).toBe(3);
+      }
     });
   });
 

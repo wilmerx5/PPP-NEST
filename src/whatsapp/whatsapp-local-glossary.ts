@@ -112,6 +112,15 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bquero\b/gi, to: 'quiero' },
   { re: /\buenas\b/gi, to: 'buenas' },
   { re: /\btmb\b/gi, to: 'también' },
+  // Porciones de pollo (prod: "caurto de pollo frito" → 1 entero por no ver "cuarto")
+  {
+    re: /\b(caurtos?|cuatos?|cuarttos?|cuertos?|kwartos?|cuartto)\b/gi,
+    to: (m) => (/s$/i.test(m) ? 'cuartos' : 'cuarto'),
+  },
+  {
+    re: /\b(meidos?|nedios?|meidios?|meddio)\b/gi,
+    to: (m) => (/s$/i.test(m) ? 'medios' : 'medio'),
+  },
   // Pegado sin espacios: "unpollofrito" / "unpollo"
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
   { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },

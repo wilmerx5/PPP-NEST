@@ -24,6 +24,13 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('medio de pollo')).toMatch(/medio pollo/i);
   });
 
+  it('corrige typos de porción (caurto/meido)', () => {
+    expect(applyLocalGlossary('me mandas un caurto de pollo frito')).toMatch(
+      /\bcuarto\b/i,
+    );
+    expect(applyLocalGlossary('un meido de pollo broaster')).toMatch(/\bmedio\b/i);
+  });
+
   it('corpus: typos y aliases de chats reales', () => {
     expect(applyLocalGlossary('Giger')).toMatch(/ginger/i);
     expect(applyLocalGlossary('sobrebarriga a la placha')).toMatch(/plancha/i);

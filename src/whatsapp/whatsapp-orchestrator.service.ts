@@ -11352,11 +11352,16 @@ export class WhatsappOrchestratorService {
   }
 
   private async reply(conv: WhatsappConversation, waId: string, body: string) {
-    await this.metaService.sendText(waId, body);
+    const trimmed = (body || '').trim();
+    if (!trimmed) {
+      this.logger.warn(`[WhatsApp] skip empty reply waId=${waId}`);
+      return;
+    }
+    await this.metaService.sendText(waId, trimmed);
     await this.conversationService.logMessage({
       conversationId: conv.id,
       direction: 'out',
-      body,
+      body: trimmed,
       sentBy: 'bot',
     });
     await this.conversationService.touchOutbound(conv, 'bot');

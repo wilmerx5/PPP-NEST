@@ -1317,7 +1317,8 @@ export class WhatsappCatalogService {
 
   /** Porción pedida en texto libre: medio / cuarto / entero. */
   detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null {
-    const q = normalizeText(text);
+    // Glosario primero: "caurto"/"meido" → cuarto/medio antes de matchear
+    const q = normalizeText(fixCommonOrderTypos(text));
     if (/\b(medio|media)\b/.test(q)) return 'medio';
     if (/\b(cuarto|cuarta)\b/.test(q)) return 'cuarto';
     if (/\b(entero|entera|unidad)\b/.test(q)) return 'entero';
