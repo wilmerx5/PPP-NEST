@@ -310,6 +310,53 @@ export function isDeliveryCoverageInquiry(text: string): boolean {
   return false;
 }
 
+const CART_SWAP_SIDE_ONLY =
+  /^(?:m[aá]s\s+)?(?:arepas?|papas?(?:\s+salada)?|yuca(?:\s+frita)?|ensalada|aguacate|maduro|patacones?|cebolla|tomate)$/i;
+
+const CART_SWAP_DISH_TOKEN =
+  /\b(?:combo|pollo|broaster|frito|asado|sopa|bandeja|costillas?|mojarras?|arroz|hamburguesa|pechuga|alitas?|churrascos?|ejecutivo|gaseosa|limonada|platano|pl[aá]tano|ajiaco|mondongo|sobrebarriga|tacos?|bagre|trucha)\b/i;
+
+/**
+ * "no quiero combo de broaster, quiero combo de frito" → quitar + agregar,
+ * no nota de cocina.
+ */
+export function parseCartItemReplacement(
+  text: string,
+): { removeQuery: string; addQuery: string } | null {
+  const raw = (text || '').trim();
+  if (!raw || raw.length < 12) return null;
+
+  const patterns = [
+    /^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?|mejor(?:\s+quiero)?)\s+(.+)$/i,
+    /^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i,
+    /^(?:en\s+vez\s+de)\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?)?\s*(.+)$/i,
+  ];
+
+  for (const re of patterns) {
+    const m = raw.match(re);
+    if (!m?.[1]?.trim() || !m?.[2]?.trim()) continue;
+    const removeQuery = m[1]
+      .replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const addQuery = m[2]
+      .replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (removeQuery.length < 3 || addQuery.length < 3) continue;
+    if (CART_SWAP_SIDE_ONLY.test(removeQuery) || CART_SWAP_SIDE_ONLY.test(addQuery)) {
+      continue;
+    }
+    if (!CART_SWAP_DISH_TOKEN.test(addQuery)) continue;
+    return { removeQuery, addQuery };
+  }
+  return null;
+}
+
+export function isCartItemReplacementIntent(text: string): boolean {
+  return !!parseCartItemReplacement(text);
+}
+
 /** Extrae la dirección de una pregunta de cobertura. */
 export function extractCoverageAddressProbe(text: string): string | null {
   const raw = (text || '').trim();

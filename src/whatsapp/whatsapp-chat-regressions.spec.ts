@@ -9,8 +9,10 @@ import {
   isAddressChangeIntent,
   isAddressClarificationIntent,
   isAddressRejectionIntent,
+  isCartItemReplacementIntent,
   isConfirmCurrentAddressIntent,
   isUsableWhatsappCustomerName,
+  parseCartItemReplacement,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
 import {
@@ -1559,6 +1561,60 @@ Cll 6 b 78 c 33`;
     it('sin pack mayor: lista vacía (se re-pregunta el Duo)', () => {
       const onlyDuo = pppMenu.filter((p) => p.code !== 172);
       expect(catalog.findRelatedLargerPackProducts(duo(), onlyDuo)).toEqual([]);
+    });
+  });
+
+  describe('swap de plato ≠ nota (combo broaster → frito)', () => {
+    it('parsea no quiero X, quiero Y', () => {
+      const parsed = parseCartItemReplacement(
+        'no quiero combo de broaster, quiero combo de frito',
+      );
+      expect(parsed).toEqual({
+        removeQuery: 'combo de broaster',
+        addQuery: 'combo de frito',
+      });
+      expect(
+        isCartItemReplacementIntent(
+          'no quiero combo de broaster, quiero combo de frito',
+        ),
+      ).toBe(true);
+    });
+
+    it('no confunde guarnición con swap', () => {
+      expect(
+        parseCartItemReplacement(
+          'para el combo no quiero arepas, quiero mas papas',
+        ),
+      ).toBeNull();
+      expect(catalog.looksLikeSideModificationNote(
+        'para el combo no quiero arepas, quiero mas papas',
+      )).toBe(true);
+    });
+
+    it('combo de pollo y medio → pregunta estilo (no asume broaster/frito)', () => {
+      const text = applyLocalGlossary('1 costillas\n1 combo de pollo y medio');
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+
+      const fixed = [
+        ...(multi?.confident || []).map((c) => c.product.name),
+        ...(multi?.needsAttributes || []).map((c) => c.product.name),
+      ];
+      expect(fixed.some((n) => /costilla/i.test(n))).toBe(true);
+      // No asumir Combo Broaster ni 1/2 Frito a ciegas
+      expect(fixed.some((n) => /Combo De Pollo/i.test(n))).toBe(false);
+      expect(fixed.some((n) => /^1\s*\/\s*2\s+Pollo/i.test(n))).toBe(false);
+
+      const amb = multi?.ambiguous || [];
+      expect(amb.length).toBeGreaterThanOrEqual(2);
+      expect(amb.some((a) => /combo/i.test(a.segment))).toBe(true);
+      expect(amb.some((a) => /medio/i.test(a.segment))).toBe(true);
+      const comboAmb = amb.find((a) => /combo/i.test(a.segment));
+      const medioAmb = amb.find((a) => /medio/i.test(a.segment));
+      expect(comboAmb!.candidates.some((p) => /frito/i.test(p.name))).toBe(true);
+      expect(comboAmb!.candidates.some((p) => /broaster/i.test(p.name))).toBe(true);
+      expect(medioAmb!.candidates.some((p) => /frito/i.test(p.name))).toBe(true);
+      expect(medioAmb!.candidates.some((p) => /broaster/i.test(p.name))).toBe(true);
     });
   });
 });

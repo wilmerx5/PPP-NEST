@@ -1889,6 +1889,18 @@ export class WhatsappCatalogService {
   looksLikeSideModificationNote(text: string): boolean {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw || raw.length < 6) return false;
+    // Swap de plato principal: "no quiero combo broaster, quiero combo frito"
+    if (
+      /^no\s+quiero\s+.+\b(?:quiero|dame|pon(?:me)?)\s+/i.test(raw) &&
+      /\b(combo|pollo|broaster|frito|asado|sopa|bandeja|costilla)\b/i.test(raw)
+    ) {
+      const sideAlt = [...this.SIDE_NOTE_TOKENS].join('|');
+      const onlySides = new RegExp(
+        `\\bno\\s+quiero\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b`,
+        'i',
+      ).test(raw);
+      if (!onlySides) return false;
+    }
     const q = normalizeText(raw);
 
     const sideAlt = [...this.SIDE_NOTE_TOKENS].join('|');
@@ -5328,6 +5340,53 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Combo / porción de pollo sin estilo (broaster/frito/mixto):
+   * devolver candidatos para preguntar, en vez de asumir uno.
+   */
+  chickenStyleChoicesForSegment(
+    segment: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] | null {
+    const q = normalizeText(fixCommonOrderTypos(segment || ''));
+    if (!q) return null;
+    if (/\b(broaster|frito|asado|mixto)\b/.test(q)) return null;
+
+    const available = products.filter((p) => p.availableNow !== false);
+
+    // "1 combo de pollo" / "combo de pollo"
+    if (/\bcombo\b/.test(q) && /\bpollo\b/.test(q) && !/\b(arroz|taco|chino)\b/.test(q)) {
+      const combos = available.filter((p) => {
+        const n = normalizeText(p.name);
+        return (
+          /\bcombo\b/.test(n) &&
+          /\bpollo\b/.test(n) &&
+          /\b(frito|broaster|mixto)\b/.test(n)
+        );
+      });
+      if (combos.length >= 2) return this.dedupeProductsById(combos).slice(0, 4);
+    }
+
+    // "medio" / "medio pollo" / "1/2 pollo" sin estilo
+    const portion = this.detectPortionHint(q);
+    const barePortion = this.isBareChickenPortionFollowUp(segment, q);
+    if (!portion && !barePortion) return null;
+    if (/\bcombo\b/.test(q)) return null;
+    if (!/\bpollo\b/.test(q) && !barePortion) return null;
+
+    const wantPortion = portion || 'medio';
+    const cands = available.filter((p) => {
+      const n = normalizeText(p.name);
+      if (/\b(combo|bandeja|ejecutivo|arroz|pechuga|alitas|taco|hamburguesa|menu)\b/.test(n)) {
+        return false;
+      }
+      if (!/\bpollo\b/.test(n)) return false;
+      return this.detectProductPortionSize(n) === wantPortion;
+    });
+    if (cands.length >= 2) return this.dedupeProductsById(cands).slice(0, 4);
+    return null;
+  }
+
+  /**
    * Resuelve varios productos nombrados en un solo mensaje.
    * Devuelve null si no parece un pedido multi-ítem.
    */
@@ -5396,22 +5455,32 @@ export class WhatsappCatalogService {
     // PPP: "medio pollo broaster" es el SKU "1/2 Pollo Broaster" (no atributo)
     const sizedChicken = this.resolveSizedChickenProduct(text, products);
     if (sizedChicken) {
-      if (clearlyMulti) {
-        // Multi: sumar el pollo porcionado SIN borrar el otro plato (arroz, etc.)
-        embeddedAll = [
-          sizedChicken,
-          ...embeddedAll.filter((p) => p.id !== sizedChicken.id),
-        ];
-      } else {
-        embeddedAll = [
-          sizedChicken,
-          ...embeddedAll.filter(
-            (p) => p.id !== sizedChicken.id && this.isLikelyDrinkProduct(p),
-          ),
-        ];
-        if (this.looksLikeFoodPlusDrinkOrder(text) && !embeddedAll.some((p) => this.isLikelyDrinkProduct(p))) {
-          const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
-          if (drinkCompanion) embeddedAll.push(drinkCompanion);
+      const qAll = normalizeText(fixCommonOrderTypos(text));
+      const styleSaid = /\b(broaster|frito|asado|mixto)\b/.test(qAll);
+      // "combo de pollo y medio" sin estilo: no inyectar 1/2 Frito a ciegas
+      const skipAssumedHalf =
+        clearlyMulti &&
+        /\bcombo\b/.test(qAll) &&
+        !!this.detectPortionHint(qAll) &&
+        !styleSaid;
+      if (!skipAssumedHalf) {
+        if (clearlyMulti) {
+          // Multi: sumar el pollo porcionado SIN borrar el otro plato (arroz, etc.)
+          embeddedAll = [
+            sizedChicken,
+            ...embeddedAll.filter((p) => p.id !== sizedChicken.id),
+          ];
+        } else {
+          embeddedAll = [
+            sizedChicken,
+            ...embeddedAll.filter(
+              (p) => p.id !== sizedChicken.id && this.isLikelyDrinkProduct(p),
+            ),
+          ];
+          if (this.looksLikeFoodPlusDrinkOrder(text) && !embeddedAll.some((p) => this.isLikelyDrinkProduct(p))) {
+            const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
+            if (drinkCompanion) embeddedAll.push(drinkCompanion);
+          }
         }
       }
     }
@@ -5449,6 +5518,8 @@ export class WhatsappCatalogService {
     // Por segmento: "… y 1/4 de pollo asado" (aunque el mensaje completo diga arroz)
     if (clearlyMulti) {
       for (const seg of segments) {
+        // Sin estilo → no auto-elegir; el loop de segmentos preguntará
+        if (this.chickenStyleChoicesForSegment(seg, products)?.length) continue;
         const sc = this.resolveSizedChickenProduct(seg, products);
         if (sc && !embeddedAll.some((p) => p.id === sc.id)) {
           embeddedAll.push(sc);
@@ -5601,6 +5672,17 @@ export class WhatsappCatalogService {
         }
         continue;
       }
+
+      // "combo de pollo" / "medio" sin broaster|frito → preguntar estilo, no asumir
+      const styleChoices = this.chickenStyleChoicesForSegment(segment, products);
+      if (styleChoices?.length) {
+        ambiguous.push({
+          segment,
+          candidates: styleChoices,
+        });
+        continue;
+      }
+
       const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (!embedded && this.looksLikePersonNameSegment(segment)) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());

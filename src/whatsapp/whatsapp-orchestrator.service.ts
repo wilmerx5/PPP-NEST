@@ -44,6 +44,7 @@ import {
   isAddressChangeIntent,
   isAddressClarificationIntent,
   isAddressRejectionIntent,
+  isCartItemReplacementIntent,
   isConfirmCurrentAddressIntent,
   isDeliveryCoverageInquiry,
   extractCoverageAddressProbe,
@@ -51,6 +52,7 @@ import {
   isPostOrderFollowUpIntent,
   isReuseLastAddressIntent,
   isUsableWhatsappCustomerName,
+  parseCartItemReplacement,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
@@ -590,6 +592,20 @@ export class WhatsappOrchestratorService {
           await this.conversationService.saveSession(conv, session);
         }
       }
+    }
+
+    // "no quiero combo de broaster, quiero combo de frito" → swap, no nota
+    if (
+      await this.tryHandleCartItemReplacement(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        products,
+        cfg,
+      )
+    ) {
+      return;
     }
 
     if (
@@ -6478,6 +6494,9 @@ export class WhatsappOrchestratorService {
         .replace(/\s+(por favor|porfa|gracias)[\s!.?]*$/i, '')
         .replace(/\s+(del carrito|en el carrito|de mi pedido|del pedido)$/i, '')
         .trim();
+      // "no quiero combo de broaster, quiero combo de frito" → solo la parte a quitar
+      q = q.split(/[,;]\s*(?:quiero|dame|pon(?:me)?|mejor)\b/i)[0].trim();
+      q = q.replace(/\s+(?:quiero|dame|pon(?:me)?|mejor)\s+.+$/i, '').trim();
       q = q.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '').trim();
       const qNorm = this.normalizeForMatch(q);
       if (qNorm.length < 3 || reject.has(qNorm)) continue;
@@ -6726,6 +6745,147 @@ export class WhatsappOrchestratorService {
         ? `\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`
         : '\n\n¿Qué te gustaría pedir?';
     await this.reply(conv, waId, `Listo, lo dejamos pasar 👍${suffix}`);
+    return true;
+  }
+
+  /**
+   * "no quiero combo de broaster, quiero combo de frito":
+   * quita el ítem rechazado y arranca el reemplazo (no anotar como nota).
+   */
+  private async tryHandleCartItemReplacement(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const parsed = parseCartItemReplacement(text);
+    if (!parsed || !session.cart.length) return false;
+
+    const match = this.matchCartItemsForRemoval(parsed.removeQuery, session, products);
+    if (match.kind === 'none') return false;
+
+    if (match.kind === 'ambiguous') {
+      session = {
+        ...session,
+        pendingCartRemoval: { options: match.options },
+        pendingAttribute: undefined,
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const opts = match.options.map((o, i) => `${i + 1}. ${o.label}`).join('\n');
+      await this.reply(
+        conv,
+        waId,
+        `Tienes varias opciones parecidas a *${parsed.removeQuery}*. ¿Cuál quitamos para poner *${parsed.addQuery}*?\n\n${opts}\n\nRespóndeme con el *número*.`,
+      );
+      return true;
+    }
+
+    session = this.removeCartLines(session, match.indices);
+
+    const addText = parsed.addQuery;
+    const replacement =
+      this.catalogService.findProductEmbeddedInMessage(addText, products) ||
+      (() => {
+        const scored = this.catalogService.searchByNameScored(addText, products, 5);
+        if (this.catalogService.isStrongProductMatch(scored)) return scored[0].p;
+        if (scored.length === 1 && scored[0].score >= 45) return scored[0].p;
+        // "combo de frito" → Combo De Pollo Frito
+        if (/\bcombo\b/i.test(addText)) {
+          const style = /\bbroaster\b/i.test(addText)
+            ? 'broaster'
+            : /\bfrito\b/i.test(addText)
+              ? 'frito'
+              : /\bmixto\b/i.test(addText)
+                ? 'mixto'
+                : null;
+          return (
+            products.find(
+              (p) =>
+                p.availableNow !== false &&
+                /\bcombo\b/i.test(p.name) &&
+                /\bpollo\b/i.test(p.name) &&
+                (!style || new RegExp(`\\b${style}\\b`, 'i').test(p.name)),
+            ) || null
+          );
+        }
+        return null;
+      })();
+
+    if (!replacement) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        `Listo, quité ${match.label}.\n` +
+          `No encontré *${parsed.addQuery}* en el menú para ponerlo en su lugar.\n\n` +
+          `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n` +
+          `Dime el plato (o código) que quieres.`,
+      );
+      return true;
+    }
+
+    const swappedNote = `Listo, quité ${match.label}. Vamos con *${replacement.name}* 👍\n\n`;
+    if (replacement.hasAttributes && replacement.attributes?.length) {
+      // Guardar carrito ya sin el ítem rechazado antes de pedir attrs del nuevo
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const before = session;
+      if (
+        await this.handleProductWithVariants(conv, waId, before, replacement, addText, cfg)
+      ) {
+        // Prefijo de swap: reescribir no es trivial; el flujo de attrs ya confirma el plato
+        return true;
+      }
+      session = before;
+    }
+
+    const added = this.tryAddProductToCart(
+      session,
+      replacement,
+      this.resolveAddQuantity(session, replacement, { sourceText: addText }),
+      cfg,
+      undefined,
+      undefined,
+      { sourceText: addText },
+    );
+    if (added.blocked) {
+      await this.conversationService.saveSession(conv, session);
+      await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+      return true;
+    }
+    if (added.missingAttributes) {
+      session = this.buildPendingAttributeSession(
+        session,
+        replacement,
+        added.missingAttributes,
+        { sourceText: addText },
+      );
+      await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+      await this.reply(
+        conv,
+        waId,
+        swappedNote +
+          this.catalogService.formatProductOptionsPrompt(
+            replacement,
+            added.missingAttributes,
+          ),
+      );
+      return true;
+    }
+
+    session = added.session;
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      swappedNote +
+        this.buildCartAddReply(
+          session,
+          this.deliveryFeeFor(session, cfg),
+          replacement.name,
+        ),
+    );
     return true;
   }
 
@@ -7389,6 +7549,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return false;
     }
+    if (isCartItemReplacementIntent(text)) return false;
     if (this.catalogService.looksLikeExplicitAddProductRequest(text)) return false;
     if (intent !== 'side_note' && !this.looksLikeStandaloneOrderNote(text)) {
       return false;
@@ -8739,6 +8900,9 @@ export class WhatsappOrchestratorService {
     const t = text.trim();
     const lower = t.toLowerCase();
     if (t.length < 4 || t.length > 280) return false;
+
+    // "no quiero X, quiero Y" es cambio de plato, no nota
+    if (isCartItemReplacementIntent(t)) return false;
 
     // Dirección completa (Castellón + torre + apto) ≠ nota de cocina
     if (
