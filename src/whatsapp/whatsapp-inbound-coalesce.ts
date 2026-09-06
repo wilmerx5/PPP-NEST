@@ -1,7 +1,13 @@
 import type { IncomingWhatsappMessage } from './whatsapp-meta.service';
 
-/** Espera de silencio antes de procesar textos seguidos del mismo waId. */
-export const WHATSAPP_INBOUND_COALESCE_MS = 1200;
+/**
+ * Espera de silencio antes de procesar textos del mismo waId.
+ * ~3s deja tiempo a burbujas seguidas (calle+apto, pollo+gaseosa, etc.).
+ */
+export const WHATSAPP_INBOUND_COALESCE_MS = 3000;
+
+/** confirm / número / reinicia: un poco más rápido para no sentir el bot “trabado”. */
+export const WHATSAPP_INBOUND_COALESCE_QUICK_MS = 900;
 
 /** Máximo de textos a fusionar en un solo turno (anti-abuso). */
 export const WHATSAPP_INBOUND_COALESCE_MAX = 8;
@@ -12,9 +18,29 @@ export function isCoalesceableInboundMessage(msg: IncomingWhatsappMessage): bool
   return Boolean((msg.text || '').trim());
 }
 
+/** Respuestas de una palabra / dígito: no hace falta esperar 3s. */
+export function isQuickCoalesceText(text: string): boolean {
+  const t = (text || '').trim();
+  if (!t) return false;
+  return /^(confirmar|confirma|confirm|listo|ok|okay|si|sí|no|reinicia|reiniciar|reinicio|reset|asesor|\d{1,2})$/i.test(
+    t,
+  );
+}
+
+export function coalesceDelayMsForText(text: string): number {
+  if (isQuickCoalesceText(text)) return WHATSAPP_INBOUND_COALESCE_QUICK_MS;
+  return WHATSAPP_INBOUND_COALESCE_MS;
+}
+
+/** Si el lote mezcla un “confirmar” con un texto largo, gana el delay largo. */
+export function coalesceDelayMsForBatch(messages: IncomingWhatsappMessage[]): number {
+  if (!messages.length) return WHATSAPP_INBOUND_COALESCE_MS;
+  return Math.max(...messages.map((m) => coalesceDelayMsForText(m.text || '')));
+}
+
 /**
  * Une varios textos rápidos en un solo inbound para una sola respuesta.
- * Ej.: calle + "Apartamento 505 Torre 2" → un mensaje multilínea.
+ * Ej.: calle + "Torre 9 502" → un mensaje multilínea.
  */
 export function mergeCoalescedInboundMessages(
   messages: IncomingWhatsappMessage[],

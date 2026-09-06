@@ -83,10 +83,10 @@ import {
   type OutboundMediaKind,
 } from './whatsapp-outbound-media';
 import {
+  coalesceDelayMsForBatch,
   isCoalesceableInboundMessage,
   mergeCoalescedInboundMessages,
   WHATSAPP_INBOUND_COALESCE_MAX,
-  WHATSAPP_INBOUND_COALESCE_MS,
 } from './whatsapp-inbound-coalesce';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
@@ -115,6 +115,11 @@ export class WhatsappOrchestratorService {
    * para una sola respuesta en lugar de dos turnos a medias.
    */
   private readonly inboundCoalesceByWaId = new Map<string, InboundCoalesceState>();
+  /**
+   * Durante un turno: acumula replies. Si llega otro texto a mitad de proceso
+   * (torre/apto), se descartan y el siguiente turno responde una sola vez.
+   */
+  private readonly outboundHoldByWaId = new Map<string, string[]>();
 
   constructor(
     private readonly settingsService: WhatsappSettingsService,
@@ -159,9 +164,60 @@ export class WhatsappOrchestratorService {
     const state = this.inboundCoalesceByWaId.get(key);
     if (!state || state.flushing) return;
     if (state.timer) clearTimeout(state.timer);
+    const delayMs = coalesceDelayMsForBatch(state.pending);
     state.timer = setTimeout(() => {
       void this.flushInboundCoalesce(key);
-    }, WHATSAPP_INBOUND_COALESCE_MS);
+    }, delayMs);
+  }
+
+  private hasInboundCoalescePending(key: string): boolean {
+    const state = this.inboundCoalesceByWaId.get(key);
+    return !!(state && state.pending.length > 0);
+  }
+
+  private beginOutboundHold(key: string): void {
+    this.outboundHoldByWaId.set(key, []);
+  }
+
+  private async flushOrDiscardOutboundHold(
+    key: string,
+    conv: WhatsappConversation,
+    waId: string,
+  ): Promise<void> {
+    const buffered = this.outboundHoldByWaId.get(key);
+    this.outboundHoldByWaId.delete(key);
+    if (!buffered?.length) return;
+
+    if (this.hasInboundCoalescePending(key)) {
+      this.logger.log(
+        `[WhatsApp coalesce] discard ${buffered.length} reply(ies); newer inbound pending waId=${key}`,
+      );
+      return;
+    }
+
+    for (const body of buffered) {
+      await this.sendReplyNow(conv, waId, body);
+    }
+  }
+
+  private async sendReplyNow(
+    conv: WhatsappConversation,
+    waId: string,
+    body: string,
+  ): Promise<void> {
+    const trimmed = (body || '').trim();
+    if (!trimmed) {
+      this.logger.warn(`[WhatsApp] skip empty reply waId=${waId}`);
+      return;
+    }
+    await this.metaService.sendText(waId, trimmed);
+    await this.conversationService.logMessage({
+      conversationId: conv.id,
+      direction: 'out',
+      body: trimmed,
+      sentBy: 'bot',
+    });
+    await this.conversationService.touchOutbound(conv, 'bot');
   }
 
   private async flushInboundCoalesce(key: string): Promise<void> {
@@ -220,8 +276,8 @@ export class WhatsappOrchestratorService {
   ): Promise<void> {
     const prev = this.inboundByWaId.get(key) ?? Promise.resolve();
     const run = prev.then(
-      () => this.handleIncomingUnlocked(msg),
-      () => this.handleIncomingUnlocked(msg),
+      () => this.runInboundUnlockedWithOutboundHold(key, msg),
+      () => this.runInboundUnlockedWithOutboundHold(key, msg),
     );
     this.inboundByWaId.set(
       key,
@@ -231,6 +287,22 @@ export class WhatsappOrchestratorService {
       ),
     );
     return run;
+  }
+
+  private async runInboundUnlockedWithOutboundHold(
+    key: string,
+    msg: IncomingWhatsappMessage,
+  ): Promise<void> {
+    this.beginOutboundHold(key);
+    try {
+      await this.handleIncomingUnlocked(msg);
+    } finally {
+      const conv = await this.conversationService.findOrCreateConversation(
+        msg.waId,
+        msg.phoneE164,
+      );
+      await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
+    }
   }
 
   private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
@@ -11357,13 +11429,12 @@ export class WhatsappOrchestratorService {
       this.logger.warn(`[WhatsApp] skip empty reply waId=${waId}`);
       return;
     }
-    await this.metaService.sendText(waId, trimmed);
-    await this.conversationService.logMessage({
-      conversationId: conv.id,
-      direction: 'out',
-      body: trimmed,
-      sentBy: 'bot',
-    });
-    await this.conversationService.touchOutbound(conv, 'bot');
+    const key = (waId || conv.waId || 'unknown').trim() || 'unknown';
+    const hold = this.outboundHoldByWaId.get(key);
+    if (hold) {
+      hold.push(trimmed);
+      return;
+    }
+    await this.sendReplyNow(conv, waId, trimmed);
   }
 }
