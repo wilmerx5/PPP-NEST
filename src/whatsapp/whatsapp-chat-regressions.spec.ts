@@ -423,6 +423,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Arroces',
   },
   {
+    id: 74,
+    code: 74,
+    name: 'Arroz Chino Con Pollo Entero',
+    price: 56000,
+    hasAttributes: false,
+    attributes: [],
+    availableNow: true,
+    categoryName: 'Arroces',
+  },
+  {
     id: 171,
     code: 171,
     name: 'Duo De Tacos Al pastor',
@@ -853,6 +863,25 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family!.variants.length).toBeGreaterThanOrEqual(3);
       expect(family!.variants.some((v) => /medio pollo/i.test(v.name))).toBe(true);
       expect(family!.variants.some((v) => /costilla/i.test(v.name))).toBe(true);
+    });
+
+    it('arroz chino de 56 mil → SKU a $56.000 (no la caja de 38)', () => {
+      const text = applyLocalGlossary('Un arroz chino de 56 mil');
+      expect(catalog.extractMentionedPriceCop(text)).toBe(56000);
+      const family = catalog.findProductVariantFamily(text, pppMenu)!;
+      expect(family).toBeTruthy();
+      const picked = catalog.pickVariantFromFamilyText(text, family);
+      expect(picked?.name).toMatch(/Pollo Entero/i);
+      expect(picked?.price).toBe(56000);
+      expect(picked?.name).not.toMatch(/Papa Francesa|Caja/i);
+    });
+
+    it('arroz chino de 50 mil → con costillas', () => {
+      const text = applyLocalGlossary('Un arroz chino de 50 mil');
+      const family = catalog.findProductVariantFamily(text, pppMenu)!;
+      const picked = catalog.pickVariantFromFamilyText(text, family);
+      expect(picked?.name).toMatch(/Costillas/i);
+      expect(picked?.price).toBe(50000);
     });
 
     it('pickVariant: con medio pollo / costillas / combo', () => {

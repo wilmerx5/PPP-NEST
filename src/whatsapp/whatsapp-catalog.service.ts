@@ -1116,7 +1116,7 @@ export class WhatsappCatalogService {
 
   /** Quita porción/bebida del texto para buscar el producto base. */
   stripProductSearchNoise(query: string): string {
-    return query
+    return this.stripMentionedPriceFromQuery(query)
       .replace(
         /\s+con\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?(?:manzana|coca\s*cola?|cola|sprite|pepsi|uva|postobon|postob[oó]n|litro\s*personal|personal|limonada|hit|mr\s*tea|cysco|agua|fresa|naranja|maracuya|maracuy[aá]|mango|poker|costena|coste[nñ]a)[\w\s]*/gi,
         '',
@@ -3722,6 +3722,74 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /**
+   * Precio dicho por el cliente: "de 56 mil", "56000", "$56.000".
+   * null si no hay monto de producto (no confundir con vueltas/billete suelto sin plato).
+   */
+  extractMentionedPriceCop(text: string): number | null {
+    const raw = (text || '').trim();
+    if (!raw) return null;
+
+    // "56 mil" / "56mil" / "de 56 mil" / "a 56 k"
+    let m = raw.match(
+      /\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*(\d{1,3})\s*(?:mil|k)\b/i,
+    );
+    if (m?.[1]) {
+      const n = parseInt(m[1], 10);
+      if (Number.isFinite(n) && n >= 5 && n <= 500) return n * 1000;
+    }
+
+    // "56.000" / "$56,000" / "de 56000"
+    m = raw.match(
+      /\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\b/,
+    );
+    if (m?.[1]) {
+      const n = parseInt(m[1].replace(/[.,]/g, ''), 10);
+      if (Number.isFinite(n) && n >= 3000 && n <= 500000) return n;
+    }
+
+    return null;
+  }
+
+  /** Elige el SKU cuyo precio coincide (o está muy cerca) del monto dicho. */
+  pickProductByMentionedPrice(
+    products: WhatsappCatalogProduct[],
+    priceCop: number,
+    tolerance = 1500,
+  ): WhatsappCatalogProduct | null {
+    if (!products.length || !Number.isFinite(priceCop) || priceCop <= 0) return null;
+    const hits = products
+      .filter((p) => p.availableNow !== false)
+      .map((p) => ({ p, diff: Math.abs(Math.round(Number(p.price) || 0) - priceCop) }))
+      .filter((x) => x.diff <= tolerance)
+      .sort((a, b) => a.diff - b.diff || a.p.name.length - b.p.name.length);
+    if (!hits.length) return null;
+    // Empate exacto en varios → no adivinar
+    const best = hits[0].diff;
+    const tied = hits.filter((x) => x.diff === best);
+    if (tied.length > 1) return null;
+    return tied[0].p;
+  }
+
+  /** Quita "de 56 mil" / "$56.000" del query de búsqueda de nombre. */
+  stripMentionedPriceFromQuery(text: string): string {
+    return (text || '')
+      .replace(
+        /\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{1,3}\s*(?:mil|k)\b/gi,
+        ' ',
+      )
+      .replace(
+        /\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{1,3}(?:[.,]\d{3})+\b/gi,
+        ' ',
+      )
+      .replace(
+        /\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{4,6}\b/gi,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   /** Respuesta informativa de precio/detalle — NO inicia flujo de pedido. */
   formatProductPriceReply(
     product: WhatsappCatalogProduct,
@@ -4263,6 +4331,12 @@ export class WhatsappCatalogService {
     family: ProductVariantFamily,
   ): WhatsappCatalogProduct | null {
     const q = normalizeText(text);
+    // "arroz chino de 56 mil" → SKU a ese precio
+    const mentionedPrice = this.extractMentionedPriceCop(text);
+    if (mentionedPrice != null) {
+      const byPrice = this.pickProductByMentionedPrice(family.variants, mentionedPrice);
+      if (byPrice) return byPrice;
+    }
     const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
     if (styleAsked.length) {
       const styled = family.variants.filter((p) =>

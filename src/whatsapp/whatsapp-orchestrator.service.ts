@@ -2117,9 +2117,25 @@ export class WhatsappOrchestratorService {
     if (orderQty >= 2) {
       session = this.rememberQuantityHint(session, text, orderQty);
     }
-    const embeddedProduct =
+    const embeddedProductRaw =
       this.catalogService.findProductEmbeddedInMessage(text, products) ||
       this.catalogService.resolveSizedChickenProduct(text, products);
+    // Si el plato tiene presentaciones (arroz chino caja/medio/costillas…),
+    // no agregar la base a ciegas: usar precio ("de 56 mil") o listar variantes.
+    let embeddedProduct = embeddedProductRaw;
+    if (embeddedProductRaw) {
+      const family = this.catalogService.findProductVariantFamily(text, products, [
+        embeddedProductRaw,
+      ]);
+      if (family && family.variants.length >= 2) {
+        const picked = this.catalogService.pickVariantFromFamilyText(text, family);
+        if (picked) {
+          embeddedProduct = picked;
+        } else {
+          embeddedProduct = null;
+        }
+      }
+    }
     if (
       embeddedProduct &&
       !this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
@@ -4085,10 +4101,16 @@ export class WhatsappOrchestratorService {
         : {}),
     };
     await this.conversationService.saveSession(conv, session);
+    const mentionedPrice = this.catalogService.extractMentionedPriceCop(text);
+    const priceMiss =
+      mentionedPrice != null
+        ? `No tengo exactamente $${mentionedPrice.toLocaleString('es-CO')}. Estas son las presentaciones:\n\n`
+        : '';
     await this.reply(
       conv,
       waId,
       (qty > 1 ? `Pediste *${qty}*. ` : '') +
+        priceMiss +
         this.catalogService.formatVariantFamilyPrompt(family),
     );
     return true;
