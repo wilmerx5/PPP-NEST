@@ -1325,6 +1325,36 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Follow-up genérico de porción de pollo sin nombrar otro plato.
+   * "y medio que vale", "y el cuarto?", "medio cuanto", "cuarto broaster".
+   */
+  isBareChickenPortionFollowUp(text: string, normalized?: string): boolean {
+    const q = normalized ?? normalizeText(fixCommonOrderTypos(text));
+    if (!this.detectPortionHint(q)) return false;
+    // Ya nombró pollo explícito → flujo normal de sized chicken
+    if (/\bpollo\b/.test(q)) return false;
+    if (
+      /\b(arroz|sopa|bandeja|costilla|pechuga|mojarra|taco|hamburguesa|ejecutivo|alitas?|chino|paisa)\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+    // "medio broaster" / "cuarto frito" sin decir pollo
+    if (/\b(broaster|frito|asado)\b/.test(q)) return true;
+    if (this.isPriceInquiryIntent(text)) return true;
+    if (
+      /^(?:y|tambien|también)?\s*(?:el|la|un|una)?\s*(medio|media|cuarto|cuarta|entero|entera)\b/.test(
+        q,
+      )
+    ) {
+      return true;
+    }
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return tokens.length <= 5;
+  }
+
+  /**
    * Tamaño de porción de sopa: pequeña / grande.
    * "dos sopas de ajiaco pequeñas" → pequena.
    */
@@ -1358,8 +1388,24 @@ export class WhatsappCatalogService {
   resolveSizedChickenProduct(
     text: string,
     products: WhatsappCatalogProduct[],
+    opts?: { preferStyleFromName?: string },
   ): WhatsappCatalogProduct | null {
-    const q = normalizeText(fixCommonOrderTypos(text));
+    let q = normalizeText(fixCommonOrderTypos(text));
+    // Follow-up de porción (medio/cuarto/entero) sin nombrar otro plato → pollo
+    // Ej: "y medio que vale", "y el cuarto?", "medio cuanto", tras cotizar un pollo
+    if (this.isBareChickenPortionFollowUp(text, q)) {
+      const portion = this.detectPortionHint(q)!;
+      const styleFromFocus = opts?.preferStyleFromName
+        ? /\bbroaster\b/.test(normalizeText(opts.preferStyleFromName))
+          ? 'broaster'
+          : /\bfrito\b/.test(normalizeText(opts.preferStyleFromName))
+            ? 'frito'
+            : /\basado\b/.test(normalizeText(opts.preferStyleFromName))
+              ? 'asado'
+              : ''
+        : '';
+      q = normalizeText(`${portion} pollo ${styleFromFocus}`.trim());
+    }
     if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q) && !/\basado\b/.test(q)) {
       return null;
     }
@@ -3713,10 +3759,17 @@ export class WhatsappCatalogService {
   resolvePriceInquiryProducts(
     text: string,
     products: WhatsappCatalogProduct[],
+    opts?: { preferStyleFromName?: string },
   ): WhatsappCatalogProduct[] {
     const stripped = this.stripPriceInquiryNoise(text);
     const source = (stripped || text || '').trim();
     if (!source) return [];
+
+    // Antes que "…Con Medio Pollo" (arroz): cotizar porción de pollo
+    const sizedChicken = this.resolveSizedChickenProduct(text, products, opts);
+    if (sizedChicken) {
+      return [sizedChicken];
+    }
 
     let hits = this.findAllProductsEmbeddedInMessage(source, products);
     const sizedSoup = this.resolveSizedSoupProduct(source, products);

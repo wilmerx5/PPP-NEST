@@ -28,6 +28,15 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   // Pollo / mixto
   { re: /\bmedio\s+de\s+pollo\b/gi, to: 'medio pollo' },
   { re: /\bun\s+medio\s+(?:de\s+)?pollo\b/gi, to: 'medio pollo' },
+  // "y medio que vale" / "cuarto que vale" (sin arroz) → pollo
+  {
+    re: /\b(?:y\s+)?(medio|media|cuarto|cuarta|entero|entera)\s+que\s+vale\b/gi,
+    to: '$1 pollo que vale',
+  },
+  {
+    re: /\b(?:y\s+)?(medio|media|cuarto|cuarta)\s+(?:a\s+)?(?:como|cuanto)\b/gi,
+    to: '$1 pollo a cuanto',
+  },
   { re: /\bpollo\s+a\s+la\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\bpollo\s+ala\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\balmuerzo\s+ejecutivo\b/gi, to: 'ejecutivo' },
@@ -107,10 +116,13 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
   { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },
   { re: /\bunpollo\b/gi, to: 'un pollo' },
-  // "Torre 7apto901" → "Torre 7 apto 901"
+  // "Torre 7apto901" / "T6 apt 321" → "Torre 6 apto 321"
+  { re: /\bt[\s\-]*(\d{1,2})\s*(?:apto|apt|ap)\.?\s*(\d{2,4})\b/gi, to: 'torre $1 apto $2' },
+  { re: /\bt[\s\-]*(\d{1,2})\b/gi, to: 'torre $1' },
   { re: /\b(\d)\s*apto\.?\s*(\d{2,4})\b/gi, to: '$1 apto $2' },
   { re: /\btorre\s*(\d+)\s*apto\.?\s*(\d{2,4})\b/gi, to: 'torre $1 apto $2' },
   { re: /\btorre(\d+)\b/gi, to: 'torre $1' },
+  { re: /\bapt\.?\s+(\d{2,4})\b/gi, to: 'apto $1' },
   { re: /\bapto\.?\s*(\d{2,4})\b/gi, to: 'apto $1' },
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },

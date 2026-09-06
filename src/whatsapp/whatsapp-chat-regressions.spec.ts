@@ -1018,6 +1018,8 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         'Torre 7apto901',
         'Torre 7 apto 901',
         applyLocalGlossary('Torre 7apto901'),
+        'T6 apt 321',
+        applyLocalGlossary('T6 apt 321'),
         'casa 115',
         'apto 304',
         'int 2',
@@ -1031,6 +1033,120 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(
         orch.looksLikeUnitOrTowerDetailOnly('Balcones de la alameda Torre 7apto901'),
       ).toBe(false);
+      expect(orch.looksLikeUnitOrTowerDetailOnly('Calle 48 sur 87 86')).toBe(false);
+    });
+  });
+
+  describe('Enlace Mercado Pago ≠ menú', () => {
+    it('envíame el enlace de Mercado Pago no es menú', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        isMenuLinkIntent: (t: string) => boolean;
+        isPaymentLinkRequest: (t: string) => boolean;
+      };
+      const pay = 'Enviame El enlace De Mercado Pago';
+      expect(orch.isPaymentLinkRequest(pay)).toBe(true);
+      expect(orch.isMenuLinkIntent(pay)).toBe(false);
+      expect(orch.isMenuLinkIntent('pásame el menú')).toBe(true);
+      expect(orch.isMenuLinkIntent('envíame el link del menú')).toBe(true);
+    });
+  });
+
+  describe('Y medio que vale ≠ Arroz Chino (tras cuarto de pollo)', () => {
+    it('glossary y resolve cotizan medio pollo', () => {
+      const text = applyLocalGlossary('Y medio que vale');
+      expect(text).toMatch(/medio\s+pollo/i);
+      expect(catalog.isPriceInquiryIntent(text)).toBe(true);
+      const hits = catalog.resolvePriceInquiryProducts(text, pppMenu, {
+        preferStyleFromName: '1/4 Pollo Frito',
+      });
+      expect(hits.length).toBe(1);
+      expect(hits[0].name).toMatch(/1\/2\s+pollo\s+frito/i);
+      expect(hits[0].name).not.toMatch(/arroz/i);
+    });
+
+    it('follow-up genérico de porción (no solo “que vale”)', () => {
+      for (const raw of ['y el cuarto', 'medio cuanto', 'y medio broaster', 'cuarto que vale']) {
+        const text = applyLocalGlossary(raw);
+        expect(catalog.isBareChickenPortionFollowUp(text) || /pollo/i.test(text)).toBe(true);
+        const hit = catalog.resolveSizedChickenProduct(text, pppMenu, {
+          preferStyleFromName: '1/4 Pollo Broaster',
+        });
+        expect(hit?.name).toMatch(/pollo/i);
+        expect(hit?.name).not.toMatch(/arroz/i);
+      }
+    });
+
+    it('cuarto de pollo que vale sigue siendo 1/4', () => {
+      const text = applyLocalGlossary('Quisiera un cuarto de pollo que vale');
+      const hits = catalog.resolvePriceInquiryProducts(text, pppMenu);
+      expect(hits[0]?.name).toMatch(/1\/4\s+pollo/i);
+    });
+  });
+
+  describe('Nota de unidad tras CUALQUIER dirección (patrón general)', () => {
+    it('T6/apto/casa/int no son dirección de reemplazo', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: WhatsappCatalogService;
+        looksLikeUnitOrTowerDetailOnly: (t: string) => boolean;
+        looksLikeAddressReplacement: (t: string) => boolean;
+        looksLikeDeliveryAccessReference: (t: string) => boolean;
+        looksLikeFoodNotAddress: (t: string) => boolean;
+        looksLikeLandmarkOrComplexName: (t: string) => boolean;
+      };
+      orch.catalogService = catalog;
+
+      for (const unit of [
+        'T6 apt 321',
+        'Torre 2 apto 110',
+        'Apartamento 505 Torre 2',
+        'casa 115',
+        'apto 304',
+        'int 2',
+        'Bloque 3 apto 12',
+        'Local 8',
+      ]) {
+        expect(orch.looksLikeUnitOrTowerDetailOnly(unit)).toBe(true);
+        expect(orch.looksLikeAddressReplacement(unit)).toBe(false);
+      }
+
+      for (const street of [
+        'Calle 48 sur 87 86',
+        'Cra 80 #2-38',
+        'Cra. 80b #6-94 Conjunto residencial Balcones de techo',
+        'Balcones de la alameda',
+        'Bosques de Castilla',
+      ]) {
+        expect(orch.looksLikeUnitOrTowerDetailOnly(street)).toBe(false);
+        expect(orch.looksLikeAddressReplacement(street)).toBe(true);
+      }
+    });
+
+    it('withDeliveryAddress anexa apto/torre y conserva fee', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as any;
+      orch.catalogService = catalog;
+
+      const base =
+        'Cra. 80b #6-94 Conjunto residencial Balcones de techo (ref. mapa: Cra. 80b #6-94, Bogotá, Colombia)';
+      const session = {
+        address: base,
+        addressConfirmed: true,
+        orderType: 'delivery' as const,
+        deliveryFeeCalculated: 2000,
+        deliveryDistanceKm: 1.1,
+        deliveryLat: 4.6,
+        deliveryLng: -74.1,
+        cart: [],
+      };
+      const next = orch.withDeliveryAddress(session, 'Apartamento 505 Torre 2');
+      expect(next.address).toMatch(/Cra\.?\s*80b/i);
+      expect(next.address).toMatch(/apto\s*505|Apartamento\s*505/i);
+      expect(next.address).toMatch(/Torre\s*2/i);
+      expect(next.deliveryFeeCalculated).toBe(2000);
+      expect(next.deliveryDistanceKm).toBe(1.1);
+      expect(next.addressConfirmed).toBe(true);
     });
   });
 

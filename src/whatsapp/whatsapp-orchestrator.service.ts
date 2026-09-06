@@ -82,6 +82,12 @@ import {
   outboundMediaBodyLabel,
   type OutboundMediaKind,
 } from './whatsapp-outbound-media';
+import {
+  isCoalesceableInboundMessage,
+  mergeCoalescedInboundMessages,
+  WHATSAPP_INBOUND_COALESCE_MAX,
+  WHATSAPP_INBOUND_COALESCE_MS,
+} from './whatsapp-inbound-coalesce';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
 import { CreateOrderDto } from '../orders/DTOS/orderDTO';
 
@@ -90,11 +96,25 @@ type EffectiveWhatsappConfig = Awaited<
   ReturnType<WhatsappSettingsService['getEffectiveConfig']>
 >;
 
+type InboundCoalesceState = {
+  pending: IncomingWhatsappMessage[];
+  waiters: Array<{ resolve: () => void; reject: (err: unknown) => void }>;
+  timer?: ReturnType<typeof setTimeout>;
+  flushing: boolean;
+  /** Evita que media/ubicación se meta delante de un flush de textos en curso. */
+  flushPromise?: Promise<void>;
+};
+
 @Injectable()
 export class WhatsappOrchestratorService {
   private readonly logger = new Logger(WhatsappOrchestratorService.name);
   /** Serializa webhooks por waId para no pisar humanTakeover (ASESOR → gracias). */
   private readonly inboundByWaId = new Map<string, Promise<void>>();
+  /**
+   * Junta textos rápidos del mismo waId (calle + apto) antes de responder,
+   * para una sola respuesta en lugar de dos turnos a medias.
+   */
+  private readonly inboundCoalesceByWaId = new Map<string, InboundCoalesceState>();
 
   constructor(
     private readonly settingsService: WhatsappSettingsService,
@@ -112,6 +132,92 @@ export class WhatsappOrchestratorService {
 
   async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+
+    // Media / ubicación: no fusionar (cada uno es un turno propio).
+    if (!isCoalesceableInboundMessage(msg)) {
+      await this.flushInboundCoalesce(key);
+      return this.enqueueInboundUnlocked(key, msg);
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      let state = this.inboundCoalesceByWaId.get(key);
+      if (!state) {
+        state = { pending: [], waiters: [], flushing: false };
+        this.inboundCoalesceByWaId.set(key, state);
+      }
+      state.pending.push(msg);
+      state.waiters.push({ resolve, reject });
+      if (state.pending.length >= WHATSAPP_INBOUND_COALESCE_MAX) {
+        void this.flushInboundCoalesce(key);
+        return;
+      }
+      this.scheduleInboundCoalesceFlush(key);
+    });
+  }
+
+  private scheduleInboundCoalesceFlush(key: string): void {
+    const state = this.inboundCoalesceByWaId.get(key);
+    if (!state || state.flushing) return;
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => {
+      void this.flushInboundCoalesce(key);
+    }, WHATSAPP_INBOUND_COALESCE_MS);
+  }
+
+  private async flushInboundCoalesce(key: string): Promise<void> {
+    const state = this.inboundCoalesceByWaId.get(key);
+    if (!state) return;
+    if (state.flushPromise) {
+      await state.flushPromise;
+    }
+    const current = this.inboundCoalesceByWaId.get(key);
+    if (!current || current.flushing) return;
+    if (current.timer) {
+      clearTimeout(current.timer);
+      current.timer = undefined;
+    }
+    if (current.pending.length === 0) {
+      if (current.waiters.length === 0) this.inboundCoalesceByWaId.delete(key);
+      return;
+    }
+
+    current.flushing = true;
+    const run = (async () => {
+      const batch = current.pending.splice(0, current.pending.length);
+      const waiters = current.waiters.splice(0, current.waiters.length);
+      const merged = mergeCoalescedInboundMessages(batch);
+      if (batch.length > 1) {
+        this.logger.log(
+          `[WhatsApp coalesce] waId=${key} fused ${batch.length} texts → one turn`,
+        );
+      }
+      try {
+        await this.enqueueInboundUnlocked(key, merged);
+        for (const w of waiters) w.resolve();
+      } catch (err) {
+        for (const w of waiters) w.reject(err);
+        throw err;
+      } finally {
+        current.flushing = false;
+        current.flushPromise = undefined;
+        if (current.pending.length > 0) {
+          this.scheduleInboundCoalesceFlush(key);
+        } else if (current.waiters.length === 0) {
+          this.inboundCoalesceByWaId.delete(key);
+        }
+      }
+    })();
+    current.flushPromise = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    await run;
+  }
+
+  private enqueueInboundUnlocked(
+    key: string,
+    msg: IncomingWhatsappMessage,
+  ): Promise<void> {
     const prev = this.inboundByWaId.get(key) ?? Promise.resolve();
     const run = prev.then(
       () => this.handleIncomingUnlocked(msg),
@@ -124,7 +230,7 @@ export class WhatsappOrchestratorService {
         () => undefined,
       ),
     );
-    await run;
+    return run;
   }
 
   private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
@@ -396,11 +502,14 @@ export class WhatsappOrchestratorService {
       !isDeliveryEtaInquiry(text) &&
       customerIntent === 'address'
     ) {
-      // Torre/apto/casa N con dirección ya fija → anexar, no reemplazar (lo hace tryAppend*)
-      const unitOnly =
-        this.looksLikeUnitOrTowerDetailOnly(originalText) ||
-        this.looksLikeUnitOrTowerDetailOnly(text);
-      if (!(unitOnly && session.address?.trim() && session.addressConfirmed)) {
+      // Regla general: con domicilio ya confirmado, NO reemplazar por notas
+      // (torre/apto/ref). Solo pisar si el mensaje es otra dirección completa.
+      const preserve =
+        !!session.address?.trim() &&
+        !!session.addressConfirmed &&
+        !this.looksLikeAddressReplacement(originalText) &&
+        !this.looksLikeAddressReplacement(text);
+      if (!preserve) {
         session = this.applyDeliveryHintFromMessage(session, originalText);
         if (!session.address?.trim() && compound.address) {
           session = this.withDeliveryAddress(session, compound.address);
@@ -1181,6 +1290,43 @@ export class WhatsappOrchestratorService {
       Object.assign(conv, fresh);
       session = this.conversationService.getSession(conv);
       await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
+
+    // "envíame el link de Mercado Pago" → generar/reenviar preferencia (no menú)
+    if (
+      this.isPaymentLinkRequest(originalText) ||
+      this.isPaymentLinkRequest(text)
+    ) {
+      if (session.cart.length > 0) {
+        const mp =
+          getEnabledPaymentMethods(cfg.paymentMethods).find(
+            (m) => m.id === 'mercadopago' || m.flow === 'mercadopago',
+          ) || findPaymentMethodByText('mercado pago', cfg.paymentMethods);
+        if (cfg.allowMercadoPago && mp) {
+          session = {
+            ...session,
+            paymentMethod: mp.id || 'mercadopago',
+            notesCollected: true,
+          };
+          await this.conversationService.saveSession(conv, session, 'confirming');
+          const freshMp = await this.conversationService.reloadConversation(conv.id);
+          Object.assign(conv, freshMp);
+          session = this.conversationService.getSession(conv);
+          await this.tryConfirmOrder(conv, msg.waId, session, {
+            preface: 'Listo, te mando el *link de Mercado Pago* 👇',
+            skipFinalConfirm: true,
+          });
+          return;
+        }
+      }
+      await this.reply(
+        conv,
+        msg.waId,
+        session.cart.length
+          ? 'Para el link de pago, primero escribe *confirmar* con el pedido listo.'
+          : 'Arma el pedido y al *confirmar* te mando el link de Mercado Pago.',
+      );
       return;
     }
 
@@ -6916,6 +7062,8 @@ export class WhatsappOrchestratorService {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
     if (!t) return false;
+    // "envíame el enlace de Mercado Pago" ≠ menú
+    if (this.isPaymentLinkRequest(text)) return false;
     if (
       /\b(link|enlace|url|pagina)\b.{0,40}\b(menu|carta)\b/i.test(t) ||
       /\b(menu|carta)\b.{0,40}\b(link|enlace|url|pagina)\b/i.test(t)
@@ -6930,14 +7078,35 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
+    // Solo "envíame el link/enlace" sin menú → menú SOLO si no habla de pago
     if (
-      /\b(pasame|dame|enviame|mandame|comparte)\b.{0,20}\b(link|enlace|url)\b/i.test(t)
+      /\b(pasame|dame|enviame|mandame|comparte)\b.{0,20}\b(link|enlace|url)\b/i.test(t) &&
+      !/\b(pago|pagar|tarjeta|mercado|nequi|daviplata|transferencia|mp)\b/i.test(t)
     ) {
       return true;
     }
     if (/^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?[\s!.?]*$/i.test(t)) return true;
     if (/^(link|enlace)\s+(del?\s+)?(menu|carta)[\s!.?]*$/i.test(t)) return true;
     return false;
+  }
+
+  /** Pedido explícito del link de pago (Mercado Pago / tarjeta). */
+  private isPaymentLinkRequest(text: string): boolean {
+    const t = (text || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (!t || t.length < 6) return false;
+    const asksLink =
+      /\b(link|enlace|url)\b/.test(t) ||
+      /\b(envia|enviame|manda|mandame|pasa|pasame|dame|comparte)\b/.test(t);
+    if (!asksLink) return false;
+    return (
+      /\b(mercado\s*pago|mercadopago|\bmp\b)\b/.test(t) ||
+      (/\b(pago|pagar|tarjeta|checkout)\b/.test(t) &&
+        !/\b(menu|carta)\b/.test(t))
+    );
   }
 
   private isPickupIntent(text: string): boolean {
@@ -7009,6 +7178,35 @@ export class WhatsappOrchestratorService {
     const addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
     const prev = (session.address || '').trim();
+
+    // Regla general: domicilio ya confirmado + nota de unidad/ref (apto, torre, portón…)
+    // → anexar sin pisar ni borrar fee/coords. Solo se reemplaza si es otra dirección completa.
+    if (prev && session.addressConfirmed && !this.looksLikeAddressReplacement(addr)) {
+      const isUnit = this.looksLikeUnitOrTowerDetailOnly(addr);
+      const isRef = this.looksLikeDeliveryAccessReference(addr);
+      if (isUnit || isRef) {
+        const detail = isUnit ? this.normalizeUnitDetailText(addr) || addr : addr;
+        const addrBase = prev.replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '').trim();
+        if (addrBase.toLowerCase().includes(detail.toLowerCase())) {
+          return session;
+        }
+        const refMatch = prev.match(/(\s*\(ref\.\s*[^)]*\))\s*$/i);
+        const refSuffix = refMatch?.[1] || '';
+        const joined = isUnit
+          ? `${addrBase}, ${detail}${refSuffix}`
+          : `${addrBase} — ${detail}${refSuffix}`;
+        return {
+          ...session,
+          address: joined.slice(0, 240),
+          orderType: 'delivery',
+          fulfillmentChosen: true,
+          addressConfirmed: true,
+        };
+      }
+      // No es dirección nueva → no pisar el domicilio confirmado en applies silenciosos
+      return session;
+    }
+
     const addressChanged = !prev || prev.toLowerCase() !== addr.toLowerCase();
     const strong =
       this.isStrongExplicitAddress(addr) ||
@@ -7363,6 +7561,15 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    // Domicilio confirmado + mensaje que NO es otra dirección completa → no geocodificar
+    if (
+      session.addressConfirmed &&
+      session.address?.trim() &&
+      !this.looksLikeAddressReplacement(originalText)
+    ) {
+      return false;
+    }
+
     // “acá” / “la misma” con dirección guardada del pedido anterior
     if (
       isReuseLastAddressIntent(originalText) &&
@@ -7533,34 +7740,27 @@ export class WhatsappOrchestratorService {
   }
 
   /**
-   * Solo torre/apto/casa/int + número — sin calle nueva ni otro conjunto.
-   * Ej: "Torre 7apto901", "casa 115", "apto 304", "int 2".
+   * Solo detalle de unidad/torre/apto/casa — sin calle ni conjunto nuevo.
+   * Regla general (cualquier domicilio previo), no un barrio concreto.
    */
   looksLikeUnitOrTowerDetailOnly(text: string): boolean {
     let t = (text || '').trim();
-    if (!t || t.length < 3 || t.length > 50) return false;
+    if (!t || t.length < 2 || t.length > 60) return false;
     if (looksLikeClearCartMessage(t) || looksLikeNonAddressCommand(t)) return false;
     if (this.looksLikeFoodNotAddress(t)) return false;
     if (isDeliveryEtaInquiry(t)) return false;
 
-    // Pegado: "7apto901" / "Torre7apto901"
-    t = t
-      .replace(/\b(\d)\s*apto\.?\s*(\d{2,4})\b/gi, '$1 apto $2')
-      .replace(/\btorre\s*(\d+)\s*apto\.?\s*(\d{2,4})\b/gi, 'torre $1 apto $2')
-      .replace(/\btorre(\d+)\b/gi, 'torre $1')
-      .replace(/\s+/g, ' ')
-      .trim();
+    t = this.normalizeUnitDetailText(t);
+    if (!t) return false;
 
-    // Calle/carrera con placa → dirección completa, no solo unidad
     if (
       /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal)\b/i.test(t) &&
       /\d/.test(t)
     ) {
       return false;
     }
-    // Nombre de conjunto/barrio nuevo → no es “solo unidad”
     if (
-      /\b(balcones|bosques|castilla|castell[oó]n|tabaku|altavista|nuevo\s+sol|terrazas|aralia|portal|conjunto|urbanizaci[oó]n|hospital|cl[ií]nica)\b/i.test(
+      /\b(balcones|bosques|castilla|castell[oó]n|tabaku|altavista|nuevo\s+sol|terrazas|aralia|portal|conjunto|urbanizaci[oó]n|hospital|cl[ií]nica|brisas|alameda)\b/i.test(
         t,
       )
     ) {
@@ -7573,35 +7773,74 @@ export class WhatsappOrchestratorService {
       .replace(/[\u0300-\u036f]/g, '');
 
     if (
-      /^(?:torre\s*)?\d{1,2}\s*(?:apto|apartamento|ap)\.?\s*\d{2,4}[a-z]?$/.test(n) ||
-      /^torre\s*\d{1,2}(?:\s*(?:apto|apartamento|ap)\.?\s*\d{2,4}[a-z]?)?$/.test(n) ||
-      /^(?:apto|apartamento|ap)\.?\s*\d{2,4}[a-z]?$/.test(n) ||
-      /^(?:casa|int\.?|interior|bloque|piso)\s*\d{1,4}[a-z]?$/.test(n) ||
-      /^t\s*\d{1,2}\s*(?:apto|ap)?\.?\s*\d{0,4}$/.test(n)
+      /^(?:torre\s*)?\d{1,2}\s*(?:apto|apartamento|apt|ap)\.?\s*\d{2,4}[a-z]?$/.test(n) ||
+      /^torre\s*\d{1,2}(?:\s*(?:apto|apartamento|apt|ap|int\.?|interior|casa)?\.?\s*\d{0,4}[a-z]?)?$/.test(
+        n,
+      ) ||
+      /^(?:apto|apartamento|apt|ap)\.?\s*\d{2,4}[a-z]?(?:\s*(?:torre|bloque)\s*\d{1,2})?$/.test(n) ||
+      /^(?:casa|int\.?|interior|bloque|piso|local|oficina|habitaci[oó]n)\s*\d{1,4}[a-z]?$/.test(n) ||
+      /^(?:torre|bloque)\s*\d{1,2}\s*(?:apto|apartamento|apt|ap|int\.?|interior)?\.?\s*\d{0,4}[a-z]?$/.test(
+        n,
+      )
     ) {
       return true;
     }
 
-    // "torre 7 apto 901" / "bloque 3 int 2"
     if (
-      /\b(torre|bloque|t)\s*\d{1,2}\b/.test(n) &&
-      /\b(apto|apartamento|ap|int\.?|interior|casa)?\.?\s*\d{1,4}\b/.test(n) &&
+      (/\b(torre|bloque)\s*\d{1,2}\b/.test(n) ||
+        /\b(apto|apartamento|apt|ap|int\.?|interior|casa|local|oficina)\.?\s*\d{1,4}\b/.test(n)) &&
       !/\b(calle|carrera|cra|av|avenida)\b/.test(n)
     ) {
       const words = n.split(/\s+/).filter(Boolean);
-      return words.length >= 2 && words.length <= 6;
+      return words.length >= 1 && words.length <= 6;
     }
 
     return false;
   }
 
+  /**
+   * ¿Mensaje = otra dirección completa que SÍ debe reemplazar el domicilio?
+   * Si no → con dirección confirmada se trata como nota (torre/apto/ref).
+   */
+  looksLikeAddressReplacement(text: string): boolean {
+    const raw = (text || '').trim();
+    if (!raw || raw.length < 5) return false;
+    if (this.looksLikeUnitOrTowerDetailOnly(raw)) return false;
+    if (this.looksLikeDeliveryAccessReference(raw)) return false;
+    if (looksLikeClearCartMessage(raw) || looksLikeNonAddressCommand(raw)) return false;
+    if (this.looksLikeFoodNotAddress(raw)) return false;
+
+    if (
+      /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|tv)\b/i.test(raw) &&
+      /\d/.test(raw)
+    ) {
+      return true;
+    }
+    if (this.looksLikeLandmarkOrComplexName(raw) && raw.length >= 8) {
+      return true;
+    }
+    if (
+      /#\s*\d{1,4}[a-z]?\s*-\s*\d/i.test(raw) &&
+      !/\b(apto|apartamento|apt|ap)\b/i.test(raw)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   private normalizeUnitDetailText(text: string): string {
     return (text || '')
+      .replace(/\bt[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
+      .replace(/\btorre[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
+      .replace(/\bbloque[\s\-]*(\d{1,2})\b/gi, 'Bloque $1')
+      .replace(/\bapt\.?(?=\s*\d)/gi, 'apto')
+      .replace(/\bapartamento\.?\s*/gi, 'apto ')
       .replace(/\b(\d)\s*apto\.?\s*(\d{2,4})\b/gi, '$1 apto $2')
       .replace(/\btorre\s*(\d+)\s*apto\.?\s*(\d{2,4})\b/gi, 'Torre $1 apto $2')
-      .replace(/\btorre(\d+)\b/gi, 'Torre $1')
       .replace(/\bapto\.?\s*(\d{2,4})\b/gi, 'apto $1')
       .replace(/\bcasa\s*(\d{1,4})\b/gi, 'Casa $1')
+      .replace(/\bint(?:erior)?\.?\s*(\d{1,4})\b/gi, 'int $1')
+      .replace(/\blocal\s*(\d{1,4})\b/gi, 'Local $1')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 80);
@@ -9153,6 +9392,11 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
     if (!this.catalogService.isGenericProductInquiry(text)) return false;
 
+    const session = this.conversationService.getSession(conv);
+    const focusName =
+      session.productFocus?.name ||
+      (session.pendingAddOffer?.name ?? undefined);
+
     const stripped = this.catalogService.stripPriceInquiryNoise(text);
     const query = this.catalogService.extractProductSearchQuery(stripped || text);
 
@@ -9161,7 +9405,6 @@ export class WhatsappOrchestratorService {
       this.catalogService.findCategoryBrowseHit(text, products, cfg.menuConceptGroups);
     if (browseHit?.products.length) {
       const list = browseHit.products.slice(0, 12);
-      const session = this.conversationService.getSession(conv);
       await this.conversationService.saveSession(conv, {
         ...session,
         pendingMatch: { query: browseHit.categoryName, candidates: list },
@@ -9174,7 +9417,9 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const priceProducts = this.catalogService.resolvePriceInquiryProducts(text, products);
+    const priceProducts = this.catalogService.resolvePriceInquiryProducts(text, products, {
+      preferStyleFromName: focusName,
+    });
     if (priceProducts.length >= 2) {
       const qty = this.catalogService.extractQuantityFromMessage(text);
       await this.savePendingAddOffer(conv, priceProducts[0], qty, {
@@ -9189,8 +9434,12 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    const sizedFollowUp = this.catalogService.resolveSizedChickenProduct(text, products, {
+      preferStyleFromName: focusName,
+    });
     const embedded =
       priceProducts[0] ||
+      sizedFollowUp ||
       this.catalogService.findProductEmbeddedInMessage(query, products) ||
       this.catalogService.findProductEmbeddedInMessage(text, products);
 
