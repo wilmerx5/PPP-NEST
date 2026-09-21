@@ -275,6 +275,6 @@ export class WhatsappPointsService {
       return msg;
     }
     if (err instanceof Error) return err.message;
-    return 'No pude procesar el código. Intenta de nuevo o escribe *humano*.';
+    return 'No pude procesar el código. Intenta de nuevo o contáctanos al *3118866823*.';
   }
 }

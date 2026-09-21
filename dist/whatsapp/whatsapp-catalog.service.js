@@ -184,6 +184,9 @@ function fuzzyTokenMatch(queryToken, candidateToken) {
         return false;
     if (q === c)
         return true;
+    if (whatsapp_intent_1.PPP_ZONE_LANDMARK_RE.test(q) || whatsapp_intent_1.PPP_ZONE_LANDMARK_RE.test(c)) {
+        return false;
+    }
     if (q.length >= 5 && c.length >= 5 && (c.includes(q) || q.includes(c))) {
         if (Math.min(q.length, c.length) / Math.max(q.length, c.length) >= 0.75)
             return true;
@@ -425,9 +428,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     }
     formatOffTopicRedirect(brandName) {
         const brand = (brandName || 'acá').trim();
-        return (`Jaja, por *${brand}* soy el asistente de *pedidos* 🍗\n\n` +
-            `Si quieres ordenar, dime el *plato* o el *código*, o escribe *menú*.\n` +
-            `_Si prefieres hablar con alguien, escribe *ASESOR*._`);
+        return `Por *${brand}* solo tomo pedidos 🍗 Escribe el *plato* o contáctanos al *3118866823*.`;
     }
     isMenuExploreIntent(text, products = []) {
         const q = normalizeText(text);
@@ -650,6 +651,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const raw = fixCommonOrderTypos((text || '').trim());
         if (!raw)
             return 1;
+        if (/^\d{1,2}$/.test(raw))
+            return 1;
+        if (/^(?:opci[oó]n|la|el|numero|n[uú]mero)\s*[1-9]\d{0,2}$/i.test(raw))
+            return 1;
         const q = normalizeText(raw);
         if (/\b(medio|media|cuarto|cuarta|1\/2|1\/4)\b/.test(q) && !/\b\d+\s*(pollo|sopas?|bandejas?)/.test(q)) {
             if (!/\b([2-9]|1[0-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(q)) {
@@ -751,7 +756,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             }
             lines.push('');
         });
-        lines.push('¿Qué categoría te provoca? Escríbeme el *número* o el *nombre* (ej. *pollo*).', 'Si ya sabes el plato, dime el *nombre* o *código* y te lo agrego.');
+        lines.push('Escribe el *número* de categoría o el *plato*.');
         return { text: lines.join('\n').replace(/\n{3,}/g, '\n\n'), categories };
     }
     buildMenuCategoryContextForAi(products) {
@@ -911,7 +916,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return cleaned;
     }
     stripProductSearchNoise(query) {
-        return query
+        return this.stripMentionedPriceFromQuery(query)
             .replace(/\s+con\s+(?:la\s+|el\s+|las?\s+|una\s+)?(?:gaseosa\s+(?:de\s+)?)?(?:manzana|coca\s*cola?|cola|sprite|pepsi|uva|postobon|postob[oó]n|litro\s*personal|personal|limonada|hit|mr\s*tea|cysco|agua|fresa|naranja|maracuya|maracuy[aá]|mango|poker|costena|coste[nñ]a)[\w\s]*/gi, '')
             .replace(/^combo\s+de\s+/i, '')
             .replace(/^combo\s+/i, '')
@@ -965,7 +970,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         t = t.replace(/\bser[ií]a\b/g, ' ').replace(/\s+/g, ' ').trim();
         if (!t)
             return false;
-        if (/\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?|plancha|gratinada|horno|apanad[oa])\b/.test(t)) {
+        if (/\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|necesito|pido|pedi|regalame|dame|ponme|pedido|orden|para|hacer|pedir|ordenar|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?|plancha|gratinada|horno|apanad[oa])\b/.test(t)) {
             return false;
         }
         if (COOKING_STYLE_TOKENS.has(t) || [...COOKING_STYLE_TOKENS].some((st) => t === st)) {
@@ -1074,7 +1079,7 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return hasFood && hasDrink;
     }
     detectPortionHint(text) {
-        const q = normalizeText(text);
+        const q = normalizeText(fixCommonOrderTypos(text));
         if (/\b(medio|media)\b/.test(q))
             return 'medio';
         if (/\b(cuarto|cuarta)\b/.test(q))
@@ -1082,6 +1087,25 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         if (/\b(entero|entera|unidad)\b/.test(q))
             return 'entero';
         return null;
+    }
+    isBareChickenPortionFollowUp(text, normalized) {
+        const q = normalized ?? normalizeText(fixCommonOrderTypos(text));
+        if (!this.detectPortionHint(q))
+            return false;
+        if (/\bpollo\b/.test(q))
+            return false;
+        if (/\b(arroz|sopa|bandeja|costilla|pechuga|mojarra|taco|hamburguesa|ejecutivo|alitas?|chino|paisa)\b/.test(q)) {
+            return false;
+        }
+        if (/\b(broaster|frito|asado)\b/.test(q))
+            return true;
+        if (this.isPriceInquiryIntent(text))
+            return true;
+        if (/^(?:y|tambien|también)?\s*(?:el|la|un|una)?\s*(medio|media|cuarto|cuarta|entero|entera)\b/.test(q)) {
+            return true;
+        }
+        const tokens = q.split(/\s+/).filter(Boolean);
+        return tokens.length <= 5;
     }
     detectServingSizeHint(text) {
         const q = normalizeText(text);
@@ -1105,8 +1129,21 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             return 'entero';
         return null;
     }
-    resolveSizedChickenProduct(text, products) {
-        const q = normalizeText(fixCommonOrderTypos(text));
+    resolveSizedChickenProduct(text, products, opts) {
+        let q = normalizeText(fixCommonOrderTypos(text));
+        if (this.isBareChickenPortionFollowUp(text, q)) {
+            const portion = this.detectPortionHint(q);
+            const styleFromFocus = opts?.preferStyleFromName
+                ? /\bbroaster\b/.test(normalizeText(opts.preferStyleFromName))
+                    ? 'broaster'
+                    : /\bfrito\b/.test(normalizeText(opts.preferStyleFromName))
+                        ? 'frito'
+                        : /\basado\b/.test(normalizeText(opts.preferStyleFromName))
+                            ? 'asado'
+                            : ''
+                : '';
+            q = normalizeText(`${portion} pollo ${styleFromFocus}`.trim());
+        }
         if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q) && !/\basado\b/.test(q)) {
             return null;
         }
@@ -1476,6 +1513,13 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         const raw = fixCommonOrderTypos((text || '').trim());
         if (!raw || raw.length < 6)
             return false;
+        if (/^no\s+quiero\s+.+\b(?:quiero|dame|pon(?:me)?)\s+/i.test(raw) &&
+            /\b(combo|pollo|broaster|frito|asado|sopa|bandeja|costilla)\b/i.test(raw)) {
+            const sideAlt = [...this.SIDE_NOTE_TOKENS].join('|');
+            const onlySides = new RegExp(`\\bno\\s+quiero\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b`, 'i').test(raw);
+            if (!onlySides)
+                return false;
+        }
         const q = normalizeText(raw);
         const sideAlt = [...this.SIDE_NOTE_TOKENS].join('|');
         const hasNegSide = new RegExp(`\\b(?:no\\s+quiero|no\\s+me\\s+(?:pongan?|pongas)|sin)\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b`).test(q);
@@ -1566,6 +1610,16 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             return false;
         if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q))
             return false;
+        if (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:un\s+|una\s+)?(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q)) {
+            if (/\b(a\s+la\s+broaster|pollo\s+broaster|medio\s+pollo\s+broaster|medio\s+pollo\s+frito)\b/.test(q) &&
+                !/\b(gaseosa|ginger|bebida|colombiana|manzana|pepsi|sprite|coca|7up|uva)\b/.test(q)) {
+                return true;
+            }
+            return false;
+        }
+        if (/\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:un\s+|una\s+)?(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q)) {
+            return false;
+        }
         const arrozCombo = /\barroz(?:\s+chino)?\s+(?:en\s+)?combo\b/.test(q) ||
             /\bcombo\s+(?:de\s+)?arroz\b/.test(q) ||
             (/\ben\s+combo\b/.test(q) && /\barroz\b/.test(q));
@@ -2165,6 +2219,24 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     score += 80;
                 else if (/\bsopa\b/.test(name))
                     score -= 60;
+            }
+            if (/\bmixto\b/.test(q)) {
+                if (/\bmixto\b/.test(name))
+                    score += 120;
+                else if (/\b(broaster|frito|asado)\b/.test(name))
+                    score -= 50;
+            }
+            else if (/\bbroaster\b/.test(q)) {
+                if (/\bbroaster\b/.test(name))
+                    score += 120;
+                else if (/\b(frito|mixto|asado)\b/.test(name))
+                    score -= 50;
+            }
+            else if (/\bfrito\b/.test(q)) {
+                if (/\bfrito\b/.test(name))
+                    score += 120;
+                else if (/\b(broaster|mixto|asado)\b/.test(name))
+                    score -= 50;
             }
             return { p, score };
         })
@@ -2949,8 +3021,52 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             .replace(/\s+/g, ' ')
             .trim();
     }
+    extractMentionedPriceCop(text) {
+        const raw = (text || '').trim();
+        if (!raw)
+            return null;
+        let m = raw.match(/\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*(\d{1,3})\s*(?:mil|k)\b/i);
+        if (m?.[1]) {
+            const n = parseInt(m[1], 10);
+            if (Number.isFinite(n) && n >= 5 && n <= 500)
+                return n * 1000;
+        }
+        m = raw.match(/\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\b/);
+        if (m?.[1]) {
+            const n = parseInt(m[1].replace(/[.,]/g, ''), 10);
+            if (Number.isFinite(n) && n >= 3000 && n <= 500000)
+                return n;
+        }
+        return null;
+    }
+    pickProductByMentionedPrice(products, priceCop, tolerance = 1500) {
+        if (!products.length || !Number.isFinite(priceCop) || priceCop <= 0)
+            return null;
+        const hits = products
+            .filter((p) => p.availableNow !== false)
+            .map((p) => ({ p, diff: Math.abs(Math.round(Number(p.price) || 0) - priceCop) }))
+            .filter((x) => x.diff <= tolerance)
+            .sort((a, b) => a.diff - b.diff || a.p.name.length - b.p.name.length);
+        if (!hits.length)
+            return null;
+        const best = hits[0].diff;
+        const tied = hits.filter((x) => x.diff === best);
+        if (tied.length > 1)
+            return null;
+        return tied[0].p;
+    }
+    stripMentionedPriceFromQuery(text) {
+        return (text || '')
+            .replace(/\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{1,3}\s*(?:mil|k)\b/gi, ' ')
+            .replace(/\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{1,3}(?:[.,]\d{3})+\b/gi, ' ')
+            .replace(/\b(?:de\s+|a\s+|por\s+|vale\s+|cuesta\s+|sale\s+)?\$?\s*\d{4,6}\b/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
     formatProductPriceReply(product, opts) {
-        let msg = this.formatProductHeader(product.name, product.price, product.code);
+        const schedule = (opts?.scheduleLead || '').trim() || this.formatProductScheduleNote(product) || '';
+        let msg = schedule ? `${schedule}\n\n` : '';
+        msg += this.formatProductHeader(product.name, product.price, product.code);
         if (product.description?.trim()) {
             msg += `\n\n${this.formatProductSubtitle(product.description.trim(), 280)}`;
         }
@@ -2970,6 +3086,23 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             msg += '\n\n_¿Te lo agrego al pedido? Responde *sí*._';
         }
         return msg;
+    }
+    formatProductScheduleNote(product) {
+        const blob = `${product.name || ''} ${product.description || ''}`;
+        const weekendOnly = /\bfines?\s+de\s+semana\b/i.test(blob) ||
+            /\bs[aá]bados?\s+y\s+domingos?\b/i.test(blob);
+        if (!weekendOnly)
+            return null;
+        if (product.availableNow === false) {
+            return '⏰ Es de *fines de semana* y *ahora no está* en horario.';
+        }
+        return '⏰ Es de *fines de semana* y *hoy sí lo tenemos* ✅';
+    }
+    isWeekendScheduleQuestion(text) {
+        const q = normalizeText(text);
+        if (!q)
+            return false;
+        return (/\b(solo\s+(el\s+)?fin(es)?\s+de\s+semana|fines?\s+de\s+semana|entre\s+semana|solo\s+los?\s+(sabados?|domingos?))\b/.test(q) || /\bo\s+solo\s+(el\s+)?fin/.test(q));
     }
     formatMultiProductPriceReply(products) {
         if (!products.length)
@@ -2996,11 +3129,15 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         lines.push('\n_¿Te los agrego al pedido? Responde *sí*._');
         return lines.join('\n');
     }
-    resolvePriceInquiryProducts(text, products) {
+    resolvePriceInquiryProducts(text, products, opts) {
         const stripped = this.stripPriceInquiryNoise(text);
         const source = (stripped || text || '').trim();
         if (!source)
             return [];
+        const sizedChicken = this.resolveSizedChickenProduct(text, products, opts);
+        if (sizedChicken) {
+            return [sizedChicken];
+        }
         let hits = this.findAllProductsEmbeddedInMessage(source, products);
         const sizedSoup = this.resolveSizedSoupProduct(source, products);
         if (sizedSoup) {
@@ -3067,9 +3204,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 });
             }
             if (!infoAttrs.length && (product.attributes || []).some((a) => this.isComboOnlyAttribute(a))) {
-                return (`${this.formatProductHeader(product.name, product.price, product.code)}\n\n` +
-                    `_Si pides *combo*, después eliges las gaseosas._\n\n` +
-                    `_Dime cuál porción te interesa o si quieres pedir._`);
+                return (`${this.formatProductHeader(product.name, product.price, product.code)}\n` +
+                    `_Combo: eliges gaseosa al pedir. Di porción o “pedir”._`);
             }
             if (infoAttrs.length === 1) {
                 return this.formatAttributeStepPrompt(product, infoAttrs[0], alreadySelected, {
@@ -3094,10 +3230,10 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     formatOptionsList(rows) {
         return rows
             .map((r) => {
-            const code = r.code != null ? `  ·  Cód. ${this.formatProductCode(r.code)}` : '';
-            return `${this.optionNumberEmoji(r.index)} *${r.label}*\n   💰 ${this.formatMoney(r.price)}${code}`;
+            const code = r.code != null ? ` · ${this.formatProductCode(r.code)}` : '';
+            return `${this.optionNumberEmoji(r.index)} *${r.label}* · ${this.formatMoney(r.price)}${code}`;
         })
-            .join('\n\n');
+            .join('\n');
     }
     formatOptionsTable(rows) {
         return this.formatOptionsList(rows);
@@ -3153,27 +3289,24 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             showComboOnly).length;
         const stepNum = Math.min(totalSteps, doneSteps + 1);
         if (!opts?.skipHeader) {
-            parts.push(`🍽️ *${product.name}*`);
-            parts.push(`Cód. ${this.formatProductCode(product.code)}`);
+            parts.push(`🍽️ *${product.name}* (${this.formatProductCode(product.code)})`);
         }
         if (alreadySelected.length) {
-            parts.push(`✅ Ya llevas: _${alreadySelected.map((s) => s.attributeValue).join(' · ')}_`);
+            parts.push(`✅ _${alreadySelected.map((s) => s.attributeValue).join(' · ')}_`);
         }
         if (totalSteps > 1 && opts?.mode !== 'info') {
-            parts.push(`*Paso ${stepNum} de ${totalSteps}*`);
+            parts.push(`*${stepNum}/${totalSteps}* · *${attr.attributeName}*`);
         }
-        const question = this.isComboOnlyAttribute(attr)
-            ? `¿Qué *${attr.attributeName}* quieres?`
-            : `Elige *${attr.attributeName}*:`;
-        parts.push(question);
+        const question = totalSteps > 1 && opts?.mode !== 'info'
+            ? null
+            : this.isComboOnlyAttribute(attr)
+                ? `¿Qué *${attr.attributeName}* quieres?`
+                : `Elige *${attr.attributeName}*:`;
+        if (question)
+            parts.push(question);
         parts.push(this.formatOptionsList(rows));
-        if (opts?.mode === 'info') {
-            parts.push('_Dime el número o solo / combo._');
-        }
-        else {
-            parts.push('_Número o nombre (ej. 2)._');
-        }
-        return parts.filter(Boolean).join('\n\n');
+        parts.push('_Escribe el número._');
+        return parts.filter(Boolean).join('\n');
     }
     getProductNameBase(name) {
         return normalizeText(name)
@@ -3377,6 +3510,12 @@ let WhatsappCatalogService = class WhatsappCatalogService {
     }
     pickVariantFromFamilyText(text, family) {
         const q = normalizeText(text);
+        const mentionedPrice = this.extractMentionedPriceCop(text);
+        if (mentionedPrice != null) {
+            const byPrice = this.pickProductByMentionedPrice(family.variants, mentionedPrice);
+            if (byPrice)
+                return byPrice;
+        }
         const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
         if (styleAsked.length) {
             const styled = family.variants.filter((p) => styleAsked.some((st) => normalizeText(p.name).includes(st)));
@@ -3739,6 +3878,13 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             return false;
         if (this.isProductDescriptionInquiry(text))
             return false;
+        {
+            const q = normalizeText(raw);
+            if (/\b(servicio|servicios|abierto|abiertos|abierta|abiertas|horario|horarios)\b/.test(q) &&
+                !new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)) {
+                return false;
+            }
+        }
         if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das)\s+(un|una|unos|unas|el|la)\b/i.test(raw)) {
             return false;
         }
@@ -4164,6 +4310,45 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             .filter((s) => s.length >= 3);
         return parts.length >= 2 ? parts : [fixed];
     }
+    chickenStyleChoicesForSegment(segment, products) {
+        const q = normalizeText(fixCommonOrderTypos(segment || ''));
+        if (!q)
+            return null;
+        if (/\b(broaster|frito|asado|mixto)\b/.test(q))
+            return null;
+        const available = products.filter((p) => p.availableNow !== false);
+        if (/\bcombo\b/.test(q) && /\bpollo\b/.test(q) && !/\b(arroz|taco|chino)\b/.test(q)) {
+            const combos = available.filter((p) => {
+                const n = normalizeText(p.name);
+                return (/\bcombo\b/.test(n) &&
+                    /\bpollo\b/.test(n) &&
+                    /\b(frito|broaster|mixto)\b/.test(n));
+            });
+            if (combos.length >= 2)
+                return this.dedupeProductsById(combos).slice(0, 4);
+        }
+        const portion = this.detectPortionHint(q);
+        const barePortion = this.isBareChickenPortionFollowUp(segment, q);
+        if (!portion && !barePortion)
+            return null;
+        if (/\bcombo\b/.test(q))
+            return null;
+        if (!/\bpollo\b/.test(q) && !barePortion)
+            return null;
+        const wantPortion = portion || 'medio';
+        const cands = available.filter((p) => {
+            const n = normalizeText(p.name);
+            if (/\b(combo|bandeja|ejecutivo|arroz|pechuga|alitas|taco|hamburguesa|menu)\b/.test(n)) {
+                return false;
+            }
+            if (!/\bpollo\b/.test(n))
+                return false;
+            return this.detectProductPortionSize(n) === wantPortion;
+        });
+        if (cands.length >= 2)
+            return this.dedupeProductsById(cands).slice(0, 4);
+        return null;
+    }
     resolveMultiProductOrder(text, products) {
         if (this.isOffTopicChitchat(text))
             return null;
@@ -4214,22 +4399,41 @@ let WhatsappCatalogService = class WhatsappCatalogService {
             segments.length >= 2;
         const sizedChicken = this.resolveSizedChickenProduct(text, products);
         if (sizedChicken) {
-            if (clearlyMulti) {
-                embeddedAll = [
-                    sizedChicken,
-                    ...embeddedAll.filter((p) => p.id !== sizedChicken.id),
-                ];
-            }
-            else {
-                embeddedAll = [
-                    sizedChicken,
-                    ...embeddedAll.filter((p) => p.id !== sizedChicken.id && this.isLikelyDrinkProduct(p)),
-                ];
-                if (this.looksLikeFoodPlusDrinkOrder(text) && !embeddedAll.some((p) => this.isLikelyDrinkProduct(p))) {
-                    const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
-                    if (drinkCompanion)
-                        embeddedAll.push(drinkCompanion);
+            const qAll = normalizeText(fixCommonOrderTypos(text));
+            const combinedArrozMedioSku = /\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qAll) ||
+                /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qAll);
+            const skipCombinedSkuHalf = combinedArrozMedioSku && !this.looksLikeArrozComboPlusSizedChicken(text);
+            const styleSaid = /\b(broaster|frito|asado|mixto)\b/.test(qAll);
+            const skipAssumedHalf = clearlyMulti &&
+                /\bcombo\b/.test(qAll) &&
+                !!this.detectPortionHint(qAll) &&
+                !styleSaid;
+            if (!skipCombinedSkuHalf && !skipAssumedHalf) {
+                if (clearlyMulti) {
+                    embeddedAll = [
+                        sizedChicken,
+                        ...embeddedAll.filter((p) => p.id !== sizedChicken.id),
+                    ];
                 }
+                else {
+                    embeddedAll = [
+                        sizedChicken,
+                        ...embeddedAll.filter((p) => p.id !== sizedChicken.id && this.isLikelyDrinkProduct(p)),
+                    ];
+                    if (this.looksLikeFoodPlusDrinkOrder(text) && !embeddedAll.some((p) => this.isLikelyDrinkProduct(p))) {
+                        const drinkCompanion = this.findFoodDrinkCompanionProduct(text, sizedChicken, products);
+                        if (drinkCompanion)
+                            embeddedAll.push(drinkCompanion);
+                    }
+                }
+            }
+        }
+        {
+            const qCombined = normalizeText(fixCommonOrderTypos(text));
+            if ((/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qCombined) ||
+                /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qCombined)) &&
+                !this.looksLikeArrozComboPlusSizedChicken(text)) {
+                embeddedAll = embeddedAll.filter((p) => !/^1\s*\/\s*2\s+pollo/i.test(p.name));
             }
         }
         if (this.looksLikeArrozComboPlusSizedChicken(text)) {
@@ -4250,11 +4454,19 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                 embeddedAll = [sizedChicken, ...embeddedAll.filter((p) => p.id !== sizedChicken.id)];
             }
         }
-        if (clearlyMulti) {
-            for (const seg of segments) {
-                const sc = this.resolveSizedChickenProduct(seg, products);
-                if (sc && !embeddedAll.some((p) => p.id === sc.id)) {
-                    embeddedAll.push(sc);
+        {
+            const qSkip = normalizeText(fixCommonOrderTypos(text));
+            const skipHalfForCombinedArroz = (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qSkip) ||
+                /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qSkip)) &&
+                !this.looksLikeArrozComboPlusSizedChicken(text);
+            if (clearlyMulti && !skipHalfForCombinedArroz) {
+                for (const seg of segments) {
+                    if (this.chickenStyleChoicesForSegment(seg, products)?.length)
+                        continue;
+                    const sc = this.resolveSizedChickenProduct(seg, products);
+                    if (sc && !embeddedAll.some((p) => p.id === sc.id)) {
+                        embeddedAll.push(sc);
+                    }
                 }
             }
         }
@@ -4391,6 +4603,14 @@ let WhatsappCatalogService = class WhatsappCatalogService {
                     else
                         confident.push(match);
                 }
+                continue;
+            }
+            const styleChoices = this.chickenStyleChoicesForSegment(segment, products);
+            if (styleChoices?.length) {
+                ambiguous.push({
+                    segment,
+                    candidates: styleChoices,
+                });
                 continue;
             }
             const embedded = this.findProductEmbeddedInMessage(segment, products);
@@ -4704,26 +4924,21 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         return lines.join('\n');
     }
     formatListChoiceHint() {
-        return '_Responde con el *número* o el *código* (#)._';
+        return '_Escribe el número._';
     }
     formatProductListItem(product, index) {
         const prefix = index != null ? `${this.optionNumberEmoji(index)} ` : '• ';
         const lines = [
-            `${prefix}*${product.name}*`,
-            `   ${this.formatProductMeta(product.price, product.code)}`,
+            `${prefix}*${product.name}* · ${this.formatMoney(product.price)} · ${this.formatProductCode(product.code)}`,
         ];
         if (product.description) {
-            lines.push(`   ${this.formatProductSubtitle(product.description)}`);
-        }
-        if (product.hasAttributes) {
-            lines.push(`   ↳ Elige opciones al pedir`);
+            lines.push(`   ${this.formatProductSubtitle(product.description, 80)}`);
         }
         return lines.join('\n');
     }
     formatCategoryList(categoryName, list) {
-        const body = list.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n\n');
-        return (`📋 *${categoryName}*\n` +
-            `_${list.length} ${list.length === 1 ? 'opción' : 'opciones'} en el menú_\n\n` +
+        const body = list.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n');
+        return (`📋 *${categoryName}* (_${list.length}_)\n` +
             `${body}\n\n` +
             this.formatListChoiceHint());
     }

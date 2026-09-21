@@ -7,10 +7,13 @@ import {
   isReuseLastAddressIntent,
   isConfirmCurrentAddressIntent,
   isUsableWhatsappCustomerName,
+  isSpecificOrderProgressInquiry,
+  extractDailyOrderNumberHint,
+  isInterruptedPhoneOrderInquiry,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
-import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
+import { looksLikeAddressOnlyMessage, isDeliverySetupWithoutFood } from './whatsapp-intent';
 import { WhatsappPointsService } from './whatsapp-points.service';
 
 describe('isPostOrderFollowUpIntent (C13)', () => {
@@ -34,6 +37,21 @@ describe('isPostOrderFollowUpIntent (C13)', () => {
     'Para un domicilio',
   ])('NO es seguimiento: %s', (text) => {
     expect(isPostOrderFollowUpIntent(text)).toBe(false);
+  });
+});
+
+describe('isInterruptedPhoneOrderInquiry', () => {
+  it('detecta llamada cortada / validar si tomaron el pedido', () => {
+    const text =
+      'Estaba pidiendo un domicilio y se cortó la llamada.... Me puedes validar si lo alcanzaron a tomar ?';
+    expect(isInterruptedPhoneOrderInquiry(text)).toBe(true);
+    expect(isDeliverySetupWithoutFood(text)).toBe(false);
+  });
+
+  it('no confunde pedido nuevo de comida', () => {
+    expect(isInterruptedPhoneOrderInquiry('quiero un pollo broaster a domicilio')).toBe(
+      false,
+    );
   });
 });
 
@@ -162,6 +180,36 @@ describe('isDeliveryEtaInquiry', () => {
   });
 });
 
+describe('isSpecificOrderProgressInquiry / extractDailyOrderNumberHint', () => {
+  it.each([
+    'Cuánto tarda mi pedido?',
+    'En qué va el pedido',
+    'Ya salió mi orden?',
+    'Dónde está el domiciliario',
+    'estado del pedido',
+    'Cuánto demora el pedido #15',
+  ])('es consulta de pedido concreto: %s', (text) => {
+    expect(isSpecificOrderProgressInquiry(text)).toBe(true);
+  });
+
+  it.each([
+    'Cuánto demora el domicilio?',
+    'tiempo de entrega',
+    'Masomenos cuanto se demora',
+  ])('ETA genérico (sin mi pedido): %s', (text) => {
+    expect(isDeliveryEtaInquiry(text)).toBe(true);
+    expect(isSpecificOrderProgressInquiry(text)).toBe(false);
+  });
+
+  it('extrae número de orden', () => {
+    expect(extractDailyOrderNumberHint('orden #15')).toBe(15);
+    expect(extractDailyOrderNumberHint('pedido 7')).toBe(7);
+    expect(extractDailyOrderNumberHint('#22')).toBe(22);
+    expect(extractDailyOrderNumberHint('15')).toBe(15);
+    expect(extractDailyOrderNumberHint('quiero pollo')).toBeNull();
+  });
+});
+
 describe('isDeliveryCoverageInquiry (C18)', () => {
   it.each([
     'Hola tienen domicilios para Cra 81A #6B-20?',
@@ -177,6 +225,9 @@ describe('isDeliveryCoverageInquiry (C18)', () => {
     'Me regalas un ejecutivo para Castilla',
     'Buenas noches',
     'para un domicilio',
+    'Ustedes tienen servicio a domicilio',
+    'tienen servicio a domicilio?',
+    'hacen domicilio?',
   ])('NO es solo cobertura: %s', (text) => {
     expect(isDeliveryCoverageInquiry(text)).toBe(false);
   });
@@ -188,6 +239,7 @@ describe('isDeliveryCoverageInquiry (C18)', () => {
     expect(
       extractCoverageAddressProbe('hacen domicilios a Tabaku Central?'),
     ).toMatch(/Tabaku/i);
+    expect(extractCoverageAddressProbe('Ustedes tienen servicio a domicilio')).toBeNull();
   });
 });
 
@@ -215,14 +267,28 @@ describe('puntos / código (C17)', () => {
 });
 
 describe('isUsableWhatsappCustomerName', () => {
-  it.each(['Pedidos', 'Pedido', 'Cliente', 'Customer', 'WhatsApp', 'Pronto Pollo'])(
+  it.each([
+    'Pedidos',
+    'Pedido',
+    'Cliente',
+    'Customer',
+    'WhatsApp',
+    'Pronto Pollo',
+    'Necesito',
+    'Quiero',
+    'Dame',
+    'Para hacer',
+    'Para',
+    'seria',
+    'Sería',
+  ])(
     'rechaza placeholder: %s',
     (name) => {
       expect(isUsableWhatsappCustomerName(name)).toBe(false);
     },
   );
 
-  it.each(['Juan Pérez', 'María', 'Carlos Andrés', 'Ana'])(
+  it.each(['Juan Pérez', 'María', 'Carlos Andrés', 'Ana', 'Josseph Arlet Pabón Arévalo', 'Josseph Pabon'])(
     'acepta nombre real: %s',
     (name) => {
       expect(isUsableWhatsappCustomerName(name)).toBe(true);

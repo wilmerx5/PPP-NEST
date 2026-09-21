@@ -119,8 +119,8 @@ Responde SOLO JSON:
     if (!cfg.openaiApiKey) {
       return {
         reply:
-          'El asistente aún no está configurado. Escribe *humano* para hablar con el restaurante.',
-        actions: { requestHuman: true },
+          'El asistente aún no está configurado. Por favor contáctanos al *3118866823*.',
+        actions: {},
       };
     }
 
@@ -180,7 +180,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         const err = await res.text();
         this.logger.error(`OpenAI error ${res.status}: ${err}`);
         return {
-          reply: 'Tuve un problema técnico. Escribe *humano* para hablar con el restaurante.',
+          reply: 'Tuve un problema técnico. Por favor contáctanos al *3118866823*.',
         };
       }
 
@@ -193,7 +193,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
       if (!parsed.reply || typeof parsed.reply !== 'string') {
         return {
           reply:
-            'Puedes pedir por *código* o *nombre* del producto. Ejemplo: "28" o "medio pollo". Escribe *humano* si necesitas ayuda.',
+            'Puedes pedir por *código* o *nombre* del producto. Ejemplo: "28" o "medio pollo". Si necesitas ayuda, contáctanos al *3118866823*.',
         };
       }
 
@@ -206,7 +206,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     } catch (err) {
       this.logger.error(`OpenAI call failed: ${err}`);
       return {
-        reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o escribe *humano*.',
+        reply: 'No pude procesar tu mensaje. Intenta con el código o nombre del producto, o contáctanos al *3118866823*.',
       };
     }
   }
@@ -390,7 +390,7 @@ ${input.menuSummary.slice(0, 6000)}`;
     return (
       'Vi tu imagen 👀 pero no pude leer bien el plato o el código.\n\n' +
       '¿Me lo escribes por texto (nombre o código)?\n\n' +
-      'Si prefieres, escribe *ASESOR* y una persona te atiende por aquí 😊'
+      'Si necesitas ayuda, contáctanos al *3118866823*.'
     );
   }
 

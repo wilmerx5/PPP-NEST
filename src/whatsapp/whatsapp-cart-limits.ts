@@ -111,7 +111,7 @@ export function buildOrderLimitsPromptBlock(cfg: WhatsappCartLimitsConfig): stri
   }
   if (cfg.maxOrderAmount > 0) {
     lines.push(
-      `Pedido máximo por WhatsApp: $${cfg.maxOrderAmount.toLocaleString('es-CO')} COP (incluye domicilio si aplica). Si el cliente quiere más → sugiere *humano*; no confirmes.`,
+      `Pedido máximo por WhatsApp: $${cfg.maxOrderAmount.toLocaleString('es-CO')} COP (incluye domicilio si aplica). Si el cliente quiere más → pide contactar al *3118866823*; no confirmes.`,
     );
   }
   if (cfg.maxUnitsPerItem > 0) {

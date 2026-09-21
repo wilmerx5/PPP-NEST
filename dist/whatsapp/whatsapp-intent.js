@@ -236,6 +236,9 @@ function isDeliverySetupWithoutFood(text) {
         /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw)) {
         return false;
     }
+    if (/\b(llamada|alcanzaron\s+a\s+tomar|alcanzo\s+a\s+tomar|lo\s+tomaron|estaba\s+pidiendo)\b/i.test(raw)) {
+        return false;
+    }
     return true;
 }
 function extractDeliverySetupAddress(text) {
@@ -439,9 +442,9 @@ function formatIntentHintForAi(intent) {
         case 'checkout_data':
             return 'INTENCIÓN: dato de checkout (nombre/dirección). Usa setCustomerName o setAddress. NO uses addItems.';
         case 'human':
-            return 'INTENCIÓN: pedir asesor humano. Usa requestHuman.';
+            return 'INTENCIÓN: pedir persona. NO ofrezcas asesor por chat. Di que contacten al *3118866823* y usa requestHuman.';
         case 'chitchat':
-            return 'INTENCIÓN: charla fuera de pedido. Redirige amable al menú o *asesor*. NO uses addItems.';
+            return 'INTENCIÓN: charla fuera de pedido. Redirige amable al menú o pide contactar al *3118866823*. NO uses addItems.';
         case 'order_product':
             return ('INTENCIÓN: pedido de producto. Solo addItems con productId del menú autorizado. ' +
                 'Si el carrito ya tiene un combo/plato y el mensaje es solo preferencia de acompañamiento, NO agregues arepas/papas como ítems.');

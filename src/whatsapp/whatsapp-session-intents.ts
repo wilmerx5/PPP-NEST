@@ -122,6 +122,54 @@ export function isPostOrderFollowUpIntent(text: string): boolean {
 }
 
 /**
+ * “Se cortó la llamada / ¿alcanzaron a tomar el pedido?” —
+ * validar orden existente, NO armar domicilio nuevo.
+ */
+export function isInterruptedPhoneOrderInquiry(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 12) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Pedido nuevo claro con plato → no es consulta de orden cortada
+  if (
+    /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar)\b/.test(t) &&
+    /\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|hamburguesa|ajiaco|mondongo|gaseosa)\b/.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+
+  const callCut =
+    /\b(se\s+corto|se\s+cortaron|cortaron|cayo\s+la\s+llamada|se\s+cayo)\b/.test(t) &&
+    /\b(llamada|llamado|telefono|celular)\b/.test(t);
+
+  const validateTaken =
+    /\b(alcanzaron\s+a\s+tomar|alcanzo\s+a\s+tomar|lo\s+tomaron|qued[oó]\s+(registrado|tomado|el\s+pedido)|validar?\s+(si\s+)?(el\s+)?pedido|si\s+(ya\s+)?(lo\s+)?(tomaron|registraron|anotaron))\b/.test(
+      t,
+    );
+
+  const wasOrdering =
+    /\b(estaba\s+pidiendo|estoy\s+pidiendo|pedi\s+por\s+(llamada|telefono)|pedido\s+por\s+(llamada|telefono))\b/.test(
+      t,
+    );
+
+  if (callCut && (/\b(pedido|domicilio|orden)\b/.test(t) || validateTaken || wasOrdering)) {
+    return true;
+  }
+  if (validateTaken && (/\b(llamada|telefono|pedido|domicilio|orden)\b/.test(t) || wasOrdering)) {
+    return true;
+  }
+  if (wasOrdering && (callCut || validateTaken || /\b(validar|confirmar|revisar)\b/.test(t))) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Confirmar dirección sugerida / última guardada: “sí”, “acá”, “la misma”.
  */
 export function isReuseLastAddressIntent(text: string): boolean {
@@ -239,8 +287,41 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'undefined',
     'asd',
     'qwerty',
+    // Verbos / muletillas que el parser a veces toma como nombre ("Necesito un domicilio")
+    'necesito',
+    'quiero',
+    'quería',
+    'queria',
+    'dame',
+    'ponme',
+    'pido',
+    'pedi',
+    'regalame',
+    'regáleme',
+    'hola',
+    'buenas',
+    'buenos',
+    'tardes',
+    'dias',
+    'días',
+    'seria',
+    'querria',
   ]);
   if (blockedExact.has(t)) return false;
+  if (
+    /^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|para|hacer|buenas|buenos|hola)\b/.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  // "Para hacer", "para pedir", "quiero domicilio", "seria un combo"…
+  if (
+    /\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz)\b/.test(t) &&
+    /^(para|quiero|necesito|voy|vengo|me|seria)\b/.test(t)
+  ) {
+    return false;
+  }
   if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t)) return false;
   if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2) return false;
 
@@ -277,8 +358,59 @@ export function isDeliveryEtaInquiry(text: string): boolean {
 }
 
 /**
+ * Pregunta por UN pedido concreto (estado / “mi orden”) vs tiempo genérico de domicilio.
+ * Sin contexto → pedir número de orden.
+ */
+export function isSpecificOrderProgressInquiry(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 4) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (extractDailyOrderNumberHint(raw) != null) return true;
+
+  if (
+    /\b(mi\s+pedido|el\s+pedido|mi\s+orden|la\s+orden|mi\s+compra|el\s+#\s*\d+)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /\b(en\s+que\s+(va|esta|andan)|donde\s+(va|esta|andan)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino)|estado\s+(del?\s+)?(pedido|orden)|ubicar\s+(al\s+)?domiciliario)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // ETA + referencia a pedido/orden
+  if (
+    isDeliveryEtaInquiry(raw) &&
+    /\b(pedido|orden|ordenes|domiciliario|repartidor|mi\s+comida)\b/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Extrae #15 / orden 15 / pedido 15 del texto (número diario). */
+export function extractDailyOrderNumberHint(text: string): number | null {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  const m =
+    raw.match(/\b(?:orden|pedido|order)\s*#?\s*(\d{1,4})\b/i) ||
+    raw.match(/#\s*(\d{1,4})\b/) ||
+    raw.match(/^(?:el\s+|la\s+)?(?:n[uú]mero\s+)?(\d{1,3})[\s!.?]*$/i);
+  if (!m?.[1]) return null;
+  const n = parseInt(m[1], 10);
+  if (!Number.isFinite(n) || n < 1 || n > 9999) return null;
+  return n;
+}
+
+/**
  * Solo pregunta de cobertura: “¿tienen domicilios para Cra 81A…?”
  * (sin estar pidiendo platos).
+ * NO: “¿tienen servicio a domicilio?” (FAQ general, sin zona).
  */
 export function isDeliveryCoverageInquiry(text: string): boolean {
   const raw = (text || '').trim();
@@ -290,19 +422,44 @@ export function isDeliveryCoverageInquiry(text: string): boolean {
     );
   if (orderingFood) return false;
 
-  if (/\b(domicilios?|entregas?)\s+(para|a|en|hasta)\b/i.test(raw)) return true;
+  // FAQ genérica: ¿hacen/tienen (servicio a) domicilio? — sin barrio/calle
+  if (
+    /\b(tienen|tiene|hacen|hace|hay)\s+(servicio\s+a\s+)?domicilios?\s*[?.!]*$/i.test(raw) ||
+    /\b(servicio\s+a\s+domicilio|domicilio\s+a\s+domicilio)\s*[?.!]*$/i.test(raw) ||
+    /\bustedes\s+tienen\s+(servicio\s+a\s+)?domicilio\b/i.test(raw)
+  ) {
+    // Si además hay zona explícita (“… domicilio para Castilla”), sí es cobertura
+    if (!/\b(para|en|hasta|por)\s+(?!domicilio\b)(\S)/i.test(raw)) {
+      return false;
+    }
+  }
+
+  if (/\b(domicilios?|entregas?)\s+(para|a|en|hasta)\b/i.test(raw)) {
+    // "domicilios a domicilio" no cuenta
+    if (/\bdomicilios?\s+a\s+domicilio\b/i.test(raw)) return false;
+    return true;
+  }
 
   if (
     /\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
     /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw) &&
-    /\b(para|a|en|hasta|por)\b/i.test(raw)
+    /\b(para|en|hasta|por)\s+(?!domicilio\b)/i.test(raw)
+  ) {
+    return true;
+  }
+
+  // "a" solo si no es el "a" de "servicio a domicilio" / "a domicilio"
+  if (
+    /\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
+    /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw) &&
+    /\b(?:para|en|hasta|por)\s+(?!domicilio\b)\S/i.test(raw)
   ) {
     return true;
   }
 
   if (
     /\b(hacen|tienen)\s+(servicio\s+a\s+)?domicilio\b/i.test(raw) &&
-    /\b(para|a|en|hasta)\b/i.test(raw)
+    /\b(para|en|hasta)\s+(?!domicilio\b)\S/i.test(raw)
   ) {
     return true;
   }
@@ -411,9 +568,10 @@ export function extractCoverageAddressProbe(text: string): string | null {
   if (!raw) return null;
 
   const patterns = [
-    /\b(?:domicilios?|entregas?|env[ií]os?|servicio\s+a\s+domicilio)\s+(?:para|a|en|hasta)\s+(.+?)[\s?!.]*$/i,
+    /\b(?:domicilios?|entregas?|env[ií]os?)\s+(?:para|a|en|hasta)\s+(?!domicilio\b)(.+?)[\s?!.]*$/i,
+    /\bservicio\s+a\s+domicilio\s+(?:para|en|hasta)\s+(.+?)[\s?!.]*$/i,
     /\b(?:para|a|en|hasta)\s+((?:calle|carrera|cra|cll|dg|diagonal|av\.?|avenida|conjunto|torre|barrio)\b.+?)[\s?!.]*$/i,
-    /\b(?:para|a|en|hasta)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9].{5,90})[\s?!.]*$/i,
+    /\b(?:para|en|hasta)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9].{5,90})[\s?!.]*$/i,
   ];
   for (const re of patterns) {
     const m = raw.match(re);
@@ -423,7 +581,10 @@ export function extractCoverageAddressProbe(text: string): string | null {
         .replace(/[?!.]+$/g, '')
         .replace(/\s+/g, ' ')
         .trim();
-      if (addr.length >= 6) return addr;
+      if (addr.length < 6) continue;
+      // Nunca geocodificar la palabra "domicilio" como zona
+      if (/^(domicilios?|entregas?|env[ií]os?|servicio)$/i.test(addr)) continue;
+      return addr;
     }
   }
   return null;

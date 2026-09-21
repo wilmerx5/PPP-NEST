@@ -151,7 +151,16 @@ export function resolvePaymentMethods(
 export function getEnabledPaymentMethods(
   methods: WhatsappPaymentMethodConfig[],
 ): WhatsappPaymentMethodConfig[] {
-  return methods.filter((m) => m.enabled);
+  return methods.filter((m) => {
+    if (!m.enabled) return false;
+    // Placeholders de admin (“método 4”, “opcion 3”) no deben salir al cliente
+    const label = `${m.label || ''} ${m.optionText || ''} ${m.id || ''}`;
+    if (/m[eé]todo\s*\d+|opci[oó]n\s*\d+/i.test(label)) return false;
+    if (/^custom_\d+$/i.test(m.id || '') && /m[eé]todo|opci[oó]n|placeholder/i.test(label)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export function findPaymentMethodByText(
@@ -214,7 +223,7 @@ export function buildPaymentOptionsPrompt(
 ): string {
   const enabled = getEnabledPaymentMethods(methods);
   if (!enabled.length) {
-    return 'Por ahora no hay métodos de pago configurados. Escribe *humano* y te ayudamos.';
+    return 'Por ahora no hay métodos de pago configurados. Por favor contáctanos al *3118866823*.';
   }
   const lines = enabled.map((m, i) => `${i + 1}. ${m.optionText || `*${m.keywords[0] || m.label}*`}`);
   let msg = `¿Cómo pagas?\n${lines.join('\n')}`;

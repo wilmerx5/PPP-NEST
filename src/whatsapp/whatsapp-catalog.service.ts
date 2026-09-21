@@ -10,6 +10,7 @@ import {
   looksLikeAddressOnlyMessage,
   looksLikeDeliveryAddressFragment,
   FOOD_ORDER_SIGNAL_RE,
+  PPP_ZONE_LANDMARK_RE,
 } from './whatsapp-intent';
 
 export type WhatsappCatalogProduct = WhatsappProductCandidate;
@@ -221,6 +222,10 @@ function fuzzyTokenMatch(queryToken: string, candidateToken: string): boolean {
   const c = normalizeText(candidateToken);
   if (!q || !c) return false;
   if (q === c) return true;
+  // Landmark de zona (natura, castilla…) ≠ token de comida (natural → limonada)
+  if (PPP_ZONE_LANDMARK_RE.test(q) || PPP_ZONE_LANDMARK_RE.test(c)) {
+    return false;
+  }
   // Inclusión solo si el token corto no es ruido de cocina (frita⊂fritas ok; no alitas⊂…)
   if (q.length >= 5 && c.length >= 5 && (c.includes(q) || q.includes(c))) {
     if (Math.min(q.length, c.length) / Math.max(q.length, c.length) >= 0.75) return true;
@@ -503,7 +508,7 @@ export class WhatsappCatalogService {
 
   formatOffTopicRedirect(brandName?: string): string {
     const brand = (brandName || 'acá').trim();
-    return `Por *${brand}* solo tomo pedidos 🍗 Escribe el *plato* o *ASESOR*.`;
+    return `Por *${brand}* solo tomo pedidos 🍗 Escribe el *plato* o contáctanos al *3118866823*.`;
   }
 
   /** Pregunta abierta sobre el menú (almuerzo, qué hay, recomiendan…). */
@@ -780,6 +785,9 @@ export class WhatsappCatalogService {
   extractQuantityFromSegment(text: string): number {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return 1;
+    // "3" / "12" sueltos = opción de lista / arepa / sabor — NO cantidad de pedido
+    if (/^\d{1,2}$/.test(raw)) return 1;
+    if (/^(?:opci[oó]n|la|el|numero|n[uú]mero)\s*[1-9]\d{0,2}$/i.test(raw)) return 1;
     const q = normalizeText(raw);
 
     // No confundir porciones con cantidad
@@ -1056,6 +1064,12 @@ export class WhatsappCatalogService {
       .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
       // "veci me puedes regalar una pechuga…" — veci/cortesía antes del pedido
       .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
+      // "Para un domicilio de un arroz con pollo" / "a domicilio un pollo"
+      .replace(
+        /^(?:para\s+)?(?:un\s+|una\s+)?domicilios?\s+(?:de\s+|con\s+|a\s+)?(?:un\s+|una\s+|unos\s+|unas\s+|el\s+|la\s+)?/i,
+        '',
+      )
+      .replace(/^(?:a\s+)?domicilio\s+(?:de\s+|con\s+)?(?:un\s+|una\s+|el\s+|la\s+)?/i, '')
       .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
       .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme|regalarme)\s+)/i, '')
       .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')
@@ -1196,7 +1210,7 @@ export class WhatsappCatalogService {
     t = t.replace(/\bser[ií]a\b/g, ' ').replace(/\s+/g, ' ').trim();
     if (!t) return false;
     if (
-      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|dame|ponme|pedido|orden|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?|plancha|gratinada|horno|apanad[oa])\b/.test(
+      /\b(pollo|arroz|sopa|bandeja|mojarras?|bebida|gaseosa|limonada|arepa|papa|combo|broaster|frito|asado|pechuga|alitas?|churrascos?|costilla|ajiaco|mondongo|sancocho|menudencias?|chino|sobrebarriga|ejecutivo|hamburguesa|costillas?|domicilio|calle|carrera|quiero|necesito|pido|pedi|regalame|dame|ponme|pedido|orden|para|hacer|pedir|ordenar|cambia|cambiar|direccion|dirección|tres|dos|cuatro|cinco|seis|siete|ocho|nueve|diez|unos?|unas?|plancha|gratinada|horno|apanad[oa])\b/.test(
         t,
       )
     ) {
@@ -2028,6 +2042,9 @@ export class WhatsappCatalogService {
   /**
    * "Arroz chino en combo con medio pollo a la broaster" → 2 ítems
    * (Arroz Chino Combo + 1/2 Pollo Broaster), no el SKU "Arroz Chino Con Medio Pollo".
+   *
+   * "combo de arroz chino con medio pollo frito y ginger" → 1 SKU (Con Medio Pollo).
+   * Ojo: el glossary colapsa "en combo" / "combo de" a "arroz chino combo".
    */
   looksLikeArrozComboPlusSizedChicken(text: string): boolean {
     const q = normalizeText(fixCommonOrderTypos(text || ''));
@@ -2035,6 +2052,31 @@ export class WhatsappCatalogService {
     if (!/\barroz\b/.test(q)) return false;
     if (!/\b(medio|media|cuarto|1\s*\/\s*2|1\/2|1\s*\/\s*4|1\/4)\b/.test(q)) return false;
     if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q)) return false;
+
+    // Tras glossary: "arroz chino combo con medio pollo …"
+    // (2ª pasada del glossary convierte "pollo a la broaster" → "pollo broaster")
+    if (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:un\s+|una\s+)?(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q)) {
+      // DOS platos: estilo broaster/frito del medio sin bebida del combo
+      // ("… a la broaster" o "… pollo broaster" tras glosario)
+      if (
+        /\b(a\s+la\s+broaster|pollo\s+broaster|medio\s+pollo\s+broaster|medio\s+pollo\s+frito)\b/.test(
+          q,
+        ) &&
+        !/\b(gaseosa|ginger|bebida|colombiana|manzana|pepsi|sprite|coca|7up|uva)\b/.test(q)
+      ) {
+        return true;
+      }
+      // Con bebida / SKU "Con Medio Pollo" → un solo ítem
+      return false;
+    }
+    if (
+      /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:un\s+|una\s+)?(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+
     // "en combo" / "combo" junto a arroz, o estilo del pollo aparte → dos platos
     const arrozCombo =
       /\barroz(?:\s+chino)?\s+(?:en\s+)?combo\b/.test(q) ||
@@ -3793,9 +3835,12 @@ export class WhatsappCatalogService {
   /** Respuesta informativa de precio/detalle — NO inicia flujo de pedido. */
   formatProductPriceReply(
     product: WhatsappCatalogProduct,
-    opts?: { offerAdd?: boolean },
+    opts?: { offerAdd?: boolean; scheduleLead?: string },
   ): string {
-    let msg = this.formatProductHeader(product.name, product.price, product.code);
+    const schedule =
+      (opts?.scheduleLead || '').trim() || this.formatProductScheduleNote(product) || '';
+    let msg = schedule ? `${schedule}\n\n` : '';
+    msg += this.formatProductHeader(product.name, product.price, product.code);
     if (product.description?.trim()) {
       msg += `\n\n${this.formatProductSubtitle(product.description.trim(), 280)}`;
     } else {
@@ -3816,6 +3861,33 @@ export class WhatsappCatalogService {
       msg += '\n\n_¿Te lo agrego al pedido? Responde *sí*._';
     }
     return msg;
+  }
+
+  /**
+   * Productos marcados “fines de semana” en nombre/descripción:
+   * deja claro si hoy aplica o no.
+   */
+  formatProductScheduleNote(product: WhatsappCatalogProduct): string | null {
+    const blob = `${product.name || ''} ${product.description || ''}`;
+    const weekendOnly =
+      /\bfines?\s+de\s+semana\b/i.test(blob) ||
+      /\bs[aá]bados?\s+y\s+domingos?\b/i.test(blob);
+    if (!weekendOnly) return null;
+    if (product.availableNow === false) {
+      return '⏰ Es de *fines de semana* y *ahora no está* en horario.';
+    }
+    return '⏰ Es de *fines de semana* y *hoy sí lo tenemos* ✅';
+  }
+
+  /** “¿… o solo el fin de semana?” / “solo fines de semana?” */
+  isWeekendScheduleQuestion(text: string): boolean {
+    const q = normalizeText(text);
+    if (!q) return false;
+    return (
+      /\b(solo\s+(el\s+)?fin(es)?\s+de\s+semana|fines?\s+de\s+semana|entre\s+semana|solo\s+los?\s+(sabados?|domingos?))\b/.test(
+        q,
+      ) || /\bo\s+solo\s+(el\s+)?fin/.test(q)
+    );
   }
 
   /** Cotización de varios platos en una sola consulta de precio. */
@@ -4860,6 +4932,16 @@ export class WhatsappCatalogService {
     if (!raw || raw.length < 6) return false;
     if (this.isPriceInquiryIntent(text)) return false;
     if (this.isProductDescriptionInquiry(text)) return false;
+    // "tienen servicio?" / "están abiertos?" → horario/cobertura, no plato
+    {
+      const q = normalizeText(raw);
+      if (
+        /\b(servicio|servicios|abierto|abiertos|abierta|abiertas|horario|horarios)\b/.test(q) &&
+        !new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)
+      ) {
+        return false;
+      }
+    }
     if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das)\s+(un|una|unos|unas|el|la)\b/i.test(raw)) {
       return false;
     }
@@ -5541,6 +5623,16 @@ export class WhatsappCatalogService {
     const sizedChicken = this.resolveSizedChickenProduct(text, products);
     if (sizedChicken) {
       const qAll = normalizeText(fixCommonOrderTypos(text));
+      // "combo de arroz … con medio pollo" = SKU único; no inyectar 1/2 aparte
+      const combinedArrozMedioSku =
+        /\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+          qAll,
+        ) ||
+        /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+          qAll,
+        );
+      const skipCombinedSkuHalf =
+        combinedArrozMedioSku && !this.looksLikeArrozComboPlusSizedChicken(text);
       const styleSaid = /\b(broaster|frito|asado|mixto)\b/.test(qAll);
       // "combo de pollo y medio" sin estilo: no inyectar 1/2 Frito a ciegas
       const skipAssumedHalf =
@@ -5548,7 +5640,7 @@ export class WhatsappCatalogService {
         /\bcombo\b/.test(qAll) &&
         !!this.detectPortionHint(qAll) &&
         !styleSaid;
-      if (!skipAssumedHalf) {
+      if (!skipCombinedSkuHalf && !skipAssumedHalf) {
         if (clearlyMulti) {
           // Multi: sumar el pollo porcionado SIN borrar el otro plato (arroz, etc.)
           embeddedAll = [
@@ -5567,6 +5659,24 @@ export class WhatsappCatalogService {
             if (drinkCompanion) embeddedAll.push(drinkCompanion);
           }
         }
+      }
+    }
+
+    // SKU "Arroz … Con Medio Pollo": nunca dejar 1/2 suelto en el multi
+    {
+      const qCombined = normalizeText(fixCommonOrderTypos(text));
+      if (
+        (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+          qCombined,
+        ) ||
+          /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+            qCombined,
+          )) &&
+        !this.looksLikeArrozComboPlusSizedChicken(text)
+      ) {
+        embeddedAll = embeddedAll.filter(
+          (p) => !/^1\s*\/\s*2\s+pollo/i.test(p.name),
+        );
       }
     }
 
@@ -5601,13 +5711,24 @@ export class WhatsappCatalogService {
     }
 
     // Por segmento: "… y 1/4 de pollo asado" (aunque el mensaje completo diga arroz)
-    if (clearlyMulti) {
-      for (const seg of segments) {
-        // Sin estilo → no auto-elegir; el loop de segmentos preguntará
-        if (this.chickenStyleChoicesForSegment(seg, products)?.length) continue;
-        const sc = this.resolveSizedChickenProduct(seg, products);
-        if (sc && !embeddedAll.some((p) => p.id === sc.id)) {
-          embeddedAll.push(sc);
+    {
+      const qSkip = normalizeText(fixCommonOrderTypos(text));
+      const skipHalfForCombinedArroz =
+        (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+          qSkip,
+        ) ||
+          /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+            qSkip,
+          )) &&
+        !this.looksLikeArrozComboPlusSizedChicken(text);
+      if (clearlyMulti && !skipHalfForCombinedArroz) {
+        for (const seg of segments) {
+          // Sin estilo → no auto-elegir; el loop de segmentos preguntará
+          if (this.chickenStyleChoicesForSegment(seg, products)?.length) continue;
+          const sc = this.resolveSizedChickenProduct(seg, products);
+          if (sc && !embeddedAll.some((p) => p.id === sc.id)) {
+            embeddedAll.push(sc);
+          }
         }
       }
     }

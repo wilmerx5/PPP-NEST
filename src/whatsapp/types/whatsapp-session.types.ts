@@ -131,6 +131,11 @@ export type WhatsappSessionData = {
   pendingCompositionAsk?: {
     originalText: string;
   };
+  /**
+   * Pedimos el # de orden (estado / demora sin contexto).
+   * El próximo mensaje con número resuelve el lookup.
+   */
+  pendingOrderStatusLookup?: boolean;
   /** Ya eligió domicilio vs recojo en este pedido */
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */

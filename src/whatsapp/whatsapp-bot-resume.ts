@@ -1,16 +1,17 @@
 /** Mensajes al cliente cuando el bot retoma tras atención humana. */
 
+import { WHATSAPP_HUMAN_CONTACT_PHONE } from './whatsapp-human-contact';
+
 export function botResumeCustomerMessage(reason: 'manual' | 'agent_idle'): string {
   if (reason === 'agent_idle') {
     return (
-      'El asesor concluyó la asistencia por inactividad.\n\n' +
-      'Vuelves a ser atendido por nuestro *asistente virtual* 🤖. ' +
-      'Si necesitas una persona otra vez, escribe *ASESOR*.'
+      'Qué pena: por ahora no hay alguien disponible en este chat.\n\n' +
+      `Puedo ayudarte yo con el pedido 🤖, o contáctanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.\n` +
+      'Dime qué se te antoja (plato o código).'
     );
   }
   return (
-    'El asesor concluyó su asistencia.\n\n' +
-    'Vuelves a ser atendido por nuestro *asistente virtual* 🤖. ' +
-    'Cuando quieras, dime qué necesitas; si prefieres una persona, escribe *ASESOR*.'
+    'Listo, vuelves con el *asistente virtual* 🤖.\n\n' +
+    `Cuando quieras, dime qué necesitas; si prefieres llamar: *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`
   );
 }

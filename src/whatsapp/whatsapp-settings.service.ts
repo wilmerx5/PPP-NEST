@@ -15,18 +15,22 @@ import {
   formatDeliveryFeeTiersForPrompt,
   normalizeDeliveryFeeTiers,
 } from './whatsapp-delivery-fee';
+import {
+  scrubAiDisclaimerCopy,
+  scrubAsesorHandoffCopy,
+  WHATSAPP_AI_DISCLAIMER_SAFE,
+  WHATSAPP_HUMAN_CONTACT_MESSAGE,
+} from './whatsapp-human-contact';
 
 const DEFAULT_WELCOME =
   '¡Hola! 👋 *{brand}*. ¿Qué se te antoja?\nMenú: {menuUrl}';
 
-const DEFAULT_AI_DISCLAIMER =
-  '⚠️ Chat con *IA* (en prueba; puede fallar). Si prefieres persona: *ASESOR*.';
+const DEFAULT_AI_DISCLAIMER = WHATSAPP_AI_DISCLAIMER_SAFE;
 
 const DEFAULT_MENU_LINK =
   'Menú 👇\n{menuUrl}\n\nDime qué quieres (nombre o código).';
 
-const DEFAULT_HUMAN_HANDOFF =
-  'Dale, te paso con el equipo 🙋. Sigue escribiendo aquí.';
+const DEFAULT_HUMAN_HANDOFF = WHATSAPP_HUMAN_CONTACT_MESSAGE;
 
 const DEFAULT_ORDER_SUCCESS =
   'Gracias por pedirnos 🍗 Enseguida lo preparamos.';
@@ -35,7 +39,7 @@ const DEFAULT_CLOSED_MESSAGE =
   'Estamos *cerrados*. Cuando abramos escríbenos de nuevo.';
 
 const DEFAULT_LARGE_ORDER_HANDOFF =
-  'Ese pedido es grande para WhatsApp.\nTe paso con alguien del equipo.';
+  `Ese pedido es grande para WhatsApp.\n${WHATSAPP_HUMAN_CONTACT_MESSAGE}`;
 
 const TONE_GUIDE = `
 TONO (obligatorio en cada reply):
@@ -62,7 +66,7 @@ El sistema (no tú) valida menú, precios, carrito, horarios y creación del ped
 - Nunca inventes productos, precios, promociones ni tiempos de entrega exactos.
 - Si el restaurante está CERRADO, solo informa; no uses addItems ni confirmes pedidos.
 - Para confirmar, el cliente debe escribir *confirmar* (tú no confirmas).
-- Temas fuera del pedido: redirige con amabilidad o sugiere escribir *humano*.
+- Temas fuera del pedido: redirige con amabilidad o pide contactar al *3118866823*.
 - Usa el CONTEXTO DEL LOCAL cuando pregunten dónde quedan o cómo llegar. No inventes ubicación.`;
 
 export type WhatsappLocalContext = {
@@ -209,7 +213,10 @@ export class WhatsappSettingsService {
       maxTotalUnits: Math.max(0, Number(row.maxTotalUnits) || 0),
       maxCartLines: Math.max(0, Number(row.maxCartLines) || 0),
       handoffWhenMaxExceeded: row.handoffWhenMaxExceeded !== false,
-      largeOrderHandoffMessage: this.applyTemplate(largeOrderTpl, templateVars),
+      largeOrderHandoffMessage: scrubAsesorHandoffCopy(
+        this.applyTemplate(largeOrderTpl, templateVars),
+        DEFAULT_LARGE_ORDER_HANDOFF,
+      ),
       askOrderNotes: row.askOrderNotes !== false,
       rateLimitPerMinute: Math.min(120, Math.max(5, Number(row.rateLimitPerMinute) || 25)),
       humanAgentIdleMinutes: Math.max(0, Number(row.humanAgentIdleMinutes ?? 30)),
@@ -243,9 +250,13 @@ export class WhatsappSettingsService {
       aiTemperature: Number.isFinite(temp) ? Math.min(1.5, Math.max(0, temp)) : 0.2,
       systemPrompt: `${TONE_GUIDE}\n\n${this.applyTemplate(systemTpl, templateVars)}`,
       welcomeMessage: this.applyTemplate(welcomeTpl, templateVars),
-      aiDisclaimerMessage: this.applyTemplate(aiDisclaimerTpl, templateVars),
+      aiDisclaimerMessage: scrubAiDisclaimerCopy(
+        this.applyTemplate(aiDisclaimerTpl, templateVars),
+      ),
       menuLinkMessage: this.applyTemplate(menuLinkTpl, templateVars),
-      humanHandoffMessage: this.applyTemplate(humanTpl, templateVars),
+      humanHandoffMessage: scrubAsesorHandoffCopy(
+        this.applyTemplate(humanTpl, templateVars),
+      ),
       orderSuccessMessage: this.applyTemplate(successTpl, templateVars),
       closedMessage: this.applyTemplate(closedTpl, templateVars),
       menuUrl,
@@ -326,7 +337,7 @@ export class WhatsappSettingsService {
     if (ctx.maxOrderAmount > 0) {
       lines.push(
         `Pedido máximo por WhatsApp: $${ctx.maxOrderAmount.toLocaleString('es-CO')} COP` +
-          (ctx.handoffWhenMaxExceeded ? ' (si piden más → humano)' : ''),
+          (ctx.handoffWhenMaxExceeded ? ' (si piden más → *3118866823*)' : ''),
       );
     }
     if (ctx.maxUnitsPerItem > 0) {

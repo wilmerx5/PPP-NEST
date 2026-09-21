@@ -4,11 +4,17 @@ exports.isAddressChangeIntent = isAddressChangeIntent;
 exports.isAddressRejectionIntent = isAddressRejectionIntent;
 exports.isAddressClarificationIntent = isAddressClarificationIntent;
 exports.isPostOrderFollowUpIntent = isPostOrderFollowUpIntent;
+exports.isInterruptedPhoneOrderInquiry = isInterruptedPhoneOrderInquiry;
 exports.isReuseLastAddressIntent = isReuseLastAddressIntent;
 exports.isConfirmCurrentAddressIntent = isConfirmCurrentAddressIntent;
 exports.isUsableWhatsappCustomerName = isUsableWhatsappCustomerName;
 exports.isDeliveryEtaInquiry = isDeliveryEtaInquiry;
+exports.isSpecificOrderProgressInquiry = isSpecificOrderProgressInquiry;
+exports.extractDailyOrderNumberHint = extractDailyOrderNumberHint;
 exports.isDeliveryCoverageInquiry = isDeliveryCoverageInquiry;
+exports.parseCartItemReplacement = parseCartItemReplacement;
+exports.isCartItemReplacementIntent = isCartItemReplacementIntent;
+exports.isPendingAddOfferDecline = isPendingAddOfferDecline;
 exports.extractCoverageAddressProbe = extractCoverageAddressProbe;
 exports.isAbandonPendingSelectionIntent = isAbandonPendingSelectionIntent;
 exports.resolvePendingListOrMenuCode = resolvePendingListOrMenuCode;
@@ -85,6 +91,33 @@ function isPostOrderFollowUpIntent(text) {
         return true;
     }
     if (/\b(trajo\s+(un|el|otro)|no\s+me\s+(regalaron|trajeron|enviaron)|falto|me\s+falta)\b/.test(t)) {
+        return true;
+    }
+    return false;
+}
+function isInterruptedPhoneOrderInquiry(text) {
+    const raw = (text || '').trim();
+    if (raw.length < 12)
+        return false;
+    const t = raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    if (/\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar)\b/.test(t) &&
+        /\b(pollo|arroz|sopa|combo|bandeja|ejecutivo|churrasco|hamburguesa|ajiaco|mondongo|gaseosa)\b/.test(t)) {
+        return false;
+    }
+    const callCut = /\b(se\s+corto|se\s+cortaron|cortaron|cayo\s+la\s+llamada|se\s+cayo)\b/.test(t) &&
+        /\b(llamada|llamado|telefono|celular)\b/.test(t);
+    const validateTaken = /\b(alcanzaron\s+a\s+tomar|alcanzo\s+a\s+tomar|lo\s+tomaron|qued[oó]\s+(registrado|tomado|el\s+pedido)|validar?\s+(si\s+)?(el\s+)?pedido|si\s+(ya\s+)?(lo\s+)?(tomaron|registraron|anotaron))\b/.test(t);
+    const wasOrdering = /\b(estaba\s+pidiendo|estoy\s+pidiendo|pedi\s+por\s+(llamada|telefono)|pedido\s+por\s+(llamada|telefono))\b/.test(t);
+    if (callCut && (/\b(pedido|domicilio|orden)\b/.test(t) || validateTaken || wasOrdering)) {
+        return true;
+    }
+    if (validateTaken && (/\b(llamada|telefono|pedido|domicilio|orden)\b/.test(t) || wasOrdering)) {
+        return true;
+    }
+    if (wasOrdering && (callCut || validateTaken || /\b(validar|confirmar|revisar)\b/.test(t))) {
         return true;
     }
     return false;
@@ -173,9 +206,34 @@ function isUsableWhatsappCustomerName(name) {
         'undefined',
         'asd',
         'qwerty',
+        'necesito',
+        'quiero',
+        'quería',
+        'queria',
+        'dame',
+        'ponme',
+        'pido',
+        'pedi',
+        'regalame',
+        'regáleme',
+        'hola',
+        'buenas',
+        'buenos',
+        'tardes',
+        'dias',
+        'días',
+        'seria',
+        'querria',
     ]);
     if (blockedExact.has(t))
         return false;
+    if (/^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|para|hacer|buenas|buenos|hola)\b/.test(t)) {
+        return false;
+    }
+    if (/\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz)\b/.test(t) &&
+        /^(para|quiero|necesito|voy|vengo|me|seria)\b/.test(t)) {
+        return false;
+    }
     if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t))
         return false;
     if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2)
@@ -198,6 +256,42 @@ function isDeliveryEtaInquiry(text) {
         /\b(cuanto|cuanto\s+aprox|mas\s*o?\s*menos|masomenos|aprox(?:imadamente)?)\b.+\b(minutos?|mins?|demora|tarda|lleg)\b/.test(t) ||
         /\b(mas\s*o?\s*menos|masomenos|aprox(?:imadamente)?)\s+cuanto\b/.test(t));
 }
+function isSpecificOrderProgressInquiry(text) {
+    const raw = (text || '').trim();
+    if (raw.length < 4)
+        return false;
+    const t = raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    if (extractDailyOrderNumberHint(raw) != null)
+        return true;
+    if (/\b(mi\s+pedido|el\s+pedido|mi\s+orden|la\s+orden|mi\s+compra|el\s+#\s*\d+)\b/.test(t)) {
+        return true;
+    }
+    if (/\b(en\s+que\s+(va|esta|andan)|donde\s+(va|esta|andan)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino)|estado\s+(del?\s+)?(pedido|orden)|ubicar\s+(al\s+)?domiciliario)\b/.test(t)) {
+        return true;
+    }
+    if (isDeliveryEtaInquiry(raw) &&
+        /\b(pedido|orden|ordenes|domiciliario|repartidor|mi\s+comida)\b/.test(t)) {
+        return true;
+    }
+    return false;
+}
+function extractDailyOrderNumberHint(text) {
+    const raw = (text || '').trim();
+    if (!raw)
+        return null;
+    const m = raw.match(/\b(?:orden|pedido|order)\s*#?\s*(\d{1,4})\b/i) ||
+        raw.match(/#\s*(\d{1,4})\b/) ||
+        raw.match(/^(?:el\s+|la\s+)?(?:n[uú]mero\s+)?(\d{1,3})[\s!.?]*$/i);
+    if (!m?.[1])
+        return null;
+    const n = parseInt(m[1], 10);
+    if (!Number.isFinite(n) || n < 1 || n > 9999)
+        return null;
+    return n;
+}
 function isDeliveryCoverageInquiry(text) {
     const raw = (text || '').trim();
     if (raw.length < 12)
@@ -205,15 +299,98 @@ function isDeliveryCoverageInquiry(text) {
     const orderingFood = /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar|un\s+pollo|una\s+sopa|combo\s+de|ejecutivo|arroz\s+con)\b/i.test(raw);
     if (orderingFood)
         return false;
-    if (/\b(domicilios?|entregas?)\s+(para|a|en|hasta)\b/i.test(raw))
+    if (/\b(tienen|tiene|hacen|hace|hay)\s+(servicio\s+a\s+)?domicilios?\s*[?.!]*$/i.test(raw) ||
+        /\b(servicio\s+a\s+domicilio|domicilio\s+a\s+domicilio)\s*[?.!]*$/i.test(raw) ||
+        /\bustedes\s+tienen\s+(servicio\s+a\s+)?domicilio\b/i.test(raw)) {
+        if (!/\b(para|en|hasta|por)\s+(?!domicilio\b)(\S)/i.test(raw)) {
+            return false;
+        }
+    }
+    if (/\b(domicilios?|entregas?)\s+(para|a|en|hasta)\b/i.test(raw)) {
+        if (/\bdomicilios?\s+a\s+domicilio\b/i.test(raw))
+            return false;
         return true;
+    }
     if (/\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
         /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw) &&
-        /\b(para|a|en|hasta|por)\b/i.test(raw)) {
+        /\b(para|en|hasta|por)\s+(?!domicilio\b)/i.test(raw)) {
+        return true;
+    }
+    if (/\b(tienen|hacen|hay|cubren|cubre|llegan|llega)\b/i.test(raw) &&
+        /\b(domicilios?|entregas?|env[ií]os?)\b/i.test(raw) &&
+        /\b(?:para|en|hasta|por)\s+(?!domicilio\b)\S/i.test(raw)) {
         return true;
     }
     if (/\b(hacen|tienen)\s+(servicio\s+a\s+)?domicilio\b/i.test(raw) &&
-        /\b(para|a|en|hasta)\b/i.test(raw)) {
+        /\b(para|en|hasta)\s+(?!domicilio\b)\S/i.test(raw)) {
+        return true;
+    }
+    return false;
+}
+const CART_SWAP_SIDE_ONLY = /^(?:m[aá]s\s+)?(?:arepas?|papas?(?:\s+salada)?|yuca(?:\s+frita)?|ensalada|aguacate|maduro|patacones?|cebolla|tomate)$/i;
+const CART_SWAP_DISH_TOKEN = /\b(?:combo|pollo|broaster|frito|asado|sopa|bandeja|costillas?|mojarras?|arroz|hamburguesa|pechuga|alitas?|churrascos?|ejecutivo|gaseosa|limonada|platano|pl[aá]tano|ajiaco|mondongo|sobrebarriga|tacos?|bagre|trucha)\b/i;
+function parseCartItemReplacement(text) {
+    const raw = (text || '').trim();
+    if (!raw || raw.length < 12)
+        return null;
+    const patterns = [
+        /^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?|mejor(?:\s+quiero)?)\s+(.+)$/i,
+        /^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i,
+        /^(?:en\s+vez\s+de)\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|pon(?:me)?)?\s*(.+)$/i,
+    ];
+    for (const re of patterns) {
+        const m = raw.match(re);
+        if (!m?.[1]?.trim() || !m?.[2]?.trim())
+            continue;
+        const removeQuery = m[1]
+            .replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const addQuery = m[2]
+            .replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (removeQuery.length < 3 || addQuery.length < 3)
+            continue;
+        if (CART_SWAP_SIDE_ONLY.test(removeQuery) || CART_SWAP_SIDE_ONLY.test(addQuery)) {
+            continue;
+        }
+        if (!CART_SWAP_DISH_TOKEN.test(addQuery))
+            continue;
+        return { removeQuery, addQuery };
+    }
+    return null;
+}
+function isCartItemReplacementIntent(text) {
+    return !!parseCartItemReplacement(text);
+}
+function isPendingAddOfferDecline(text) {
+    const t = (text || '').trim();
+    if (!t)
+        return false;
+    if (/^(no|nop|nope|nel|despues|después|luego|ahora\s+no|no\s+gracias|mejor\s+no|nah)[\s!.?]*$/i.test(t)) {
+        return true;
+    }
+    if (/^(no\s+se[nñ]or[a]?|no\s+gracias)([\s,!.?]+gracias)?[\s!.?]*$/i.test(t) &&
+        !/\bdirecci/i.test(t)) {
+        return true;
+    }
+    const n = t
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    if (/\bno\b/.test(n) &&
+        /\bsolo\b/.test(n) &&
+        !/\b(quiero|dame|agrega|ponme|pedi)\s+(un|una|unos|unas|otro|otra)\b/.test(n)) {
+        return true;
+    }
+    if (/^(solo|solamente|unicamente)\b.{0,60}\b(combo|carrito|pedido|eso|ese|esa|lo\s+que\s+(ya\s+)?(hay|tengo|pedi))\b/i.test(t)) {
+        return true;
+    }
+    if (/\bno\s+(lo\s+|la\s+|el\s+)?(agregues|agregar|metas|añadas|sumes)\b/i.test(t)) {
+        return true;
+    }
+    if (/^no\b[,!.\s]+gracias\b/i.test(t) && t.length < 48 && !/\bdirecci/i.test(t)) {
         return true;
     }
     return false;
@@ -223,9 +400,10 @@ function extractCoverageAddressProbe(text) {
     if (!raw)
         return null;
     const patterns = [
-        /\b(?:domicilios?|entregas?|env[ií]os?|servicio\s+a\s+domicilio)\s+(?:para|a|en|hasta)\s+(.+?)[\s?!.]*$/i,
+        /\b(?:domicilios?|entregas?|env[ií]os?)\s+(?:para|a|en|hasta)\s+(?!domicilio\b)(.+?)[\s?!.]*$/i,
+        /\bservicio\s+a\s+domicilio\s+(?:para|en|hasta)\s+(.+?)[\s?!.]*$/i,
         /\b(?:para|a|en|hasta)\s+((?:calle|carrera|cra|cll|dg|diagonal|av\.?|avenida|conjunto|torre|barrio)\b.+?)[\s?!.]*$/i,
-        /\b(?:para|a|en|hasta)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9].{5,90})[\s?!.]*$/i,
+        /\b(?:para|en|hasta)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9].{5,90})[\s?!.]*$/i,
     ];
     for (const re of patterns) {
         const m = raw.match(re);
@@ -235,8 +413,11 @@ function extractCoverageAddressProbe(text) {
                 .replace(/[?!.]+$/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
-            if (addr.length >= 6)
-                return addr;
+            if (addr.length < 6)
+                continue;
+            if (/^(domicilios?|entregas?|env[ií]os?|servicio)$/i.test(addr))
+                continue;
+            return addr;
         }
     }
     return null;

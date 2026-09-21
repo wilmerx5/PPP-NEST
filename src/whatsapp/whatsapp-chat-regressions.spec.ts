@@ -27,6 +27,7 @@ import {
   extractDeliverySetupAddress,
   isNothingElseOrderIntent,
   isUpcomingAddressIntent,
+  FOOD_ORDER_SIGNAL_RE,
 } from './whatsapp-intent';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
@@ -163,6 +164,26 @@ const pppMenu: WhatsappCatalogProduct[] = [
     attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Apanada', 'Al horno'] }],
     availableNow: true,
     categoryName: 'Pescados',
+  },
+  {
+    id: 40,
+    code: 40,
+    name: 'Bandeja Pronto',
+    price: 18000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Presa', options: ['Pierna Pernil', 'Ala pechuga', 'Mixto'] }],
+    availableNow: true,
+    categoryName: 'Bandejas',
+  },
+  {
+    id: 95,
+    code: 95,
+    name: 'Coca Cola 1.5L',
+    price: 8500,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Sabor', options: ['Original', 'Zero'] }],
+    availableNow: true,
+    categoryName: 'Bebidas',
   },
   {
     id: 80,
@@ -608,10 +629,13 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       );
     });
 
-    it('nombre “Pedidos” no es usable para el pedido', () => {
+    it('nombre “Pedidos” / “Necesito” / “Para hacer” no es usable', () => {
       expect(isUsableWhatsappCustomerName('Pedidos')).toBe(false);
       expect(isUsableWhatsappCustomerName('Pedido')).toBe(false);
       expect(isUsableWhatsappCustomerName('Cliente')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Necesito')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Quiero')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Para hacer')).toBe(false);
       expect(isUsableWhatsappCustomerName('Juan Pérez')).toBe(true);
       expect(isUsableWhatsappCustomerName('María')).toBe(true);
     });
@@ -645,6 +669,16 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const text = applyLocalGlossary('Cambia la direccion a dg 6 b 78b 64');
       expect(catalog.looksLikeMultiItemOrderMessage(text)).toBe(false);
       expect(catalog.resolveMultiProductOrder(text, pppMenu)).toBeNull();
+    });
+  });
+
+  describe('Número de lista ≠ cantidad', () => {
+    it('"3" / "2" sueltos no son qty (opción de variante/arepa)', () => {
+      expect(catalog.extractQuantityFromMessage('3')).toBe(1);
+      expect(catalog.extractQuantityFromMessage('2')).toBe(1);
+      expect(catalog.extractQuantityFromSegment('3')).toBe(1);
+      expect(catalog.extractQuantityFromMessage('3 pollos')).toBe(3);
+      expect(catalog.extractQuantityFromMessage('x3')).toBe(3);
     });
   });
 
@@ -1028,6 +1062,25 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(names.some((n) => /arroz chino combo/i.test(n))).toBe(true);
       expect(names.some((n) => /1\/2\s+pollo\s+broaster/i.test(n))).toBe(true);
       expect(names.some((n) => /arroz chino con medio pollo/i.test(n))).toBe(false);
+    });
+
+    it('combo de arroz chino con medio pollo frito = un solo SKU (no duplica 1/2)', () => {
+      const text = applyLocalGlossary(
+        'seria un combo de arroz chino con medio pollo frito y gaseosa ginger',
+      );
+      // No tratar como arroz-combo + medio pollo aparte
+      expect(catalog.looksLikeArrozComboPlusSizedChicken(text)).toBe(false);
+      expect(
+        catalog.searchByNameScored(text, pppMenu, 8).some((x) =>
+          /arroz chino con medio pollo/i.test(x.p.name),
+        ),
+      ).toBe(true);
+    });
+
+    it('NATURA conjunto ≠ Limonada Natural', () => {
+      const text = 'estoy ubicado en el conjunto NATURA 78';
+      const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(hit?.name || '').not.toMatch(/limonada/i);
     });
   });
 
@@ -1676,6 +1729,201 @@ Cll 6 b 78 c 33`;
       expect(comboAmb!.candidates.some((p) => /broaster/i.test(p.name))).toBe(true);
       expect(medioAmb!.candidates.some((p) => /frito/i.test(p.name))).toBe(true);
       expect(medioAmb!.candidates.some((p) => /broaster/i.test(p.name))).toBe(true);
+    });
+  });
+
+  describe('Chat mondongo / Josseph / comprobante Meta', () => {
+    it('nombre completo no se confunde con dirección (awaiting_name)', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: WhatsappCatalogService;
+        looksLikeAddress: (t: string) => boolean;
+        looksLikeAddressRejectingPersonName: (t: string) => boolean;
+        looksLikeLandmarkOrComplexName: (t: string, o?: { allowGenericPhrase?: boolean }) => boolean;
+        looksLikeExplicitLandmarkKeyword: (t: string) => boolean;
+        looksLikeFoodNotAddress: (t: string) => boolean;
+        looksLikeDeliveryAccessReference: (t: string) => boolean;
+        isConfirmKeyword: (t: string) => boolean;
+        isGreetingKeyword: (t: string) => boolean;
+        isPickupIntent: (t: string) => boolean;
+      };
+      orch.catalogService = catalog;
+      orch.isConfirmKeyword = () => false;
+      orch.isGreetingKeyword = () => false;
+      orch.isPickupIntent = () => false;
+      orch.looksLikeFoodNotAddress = () => false;
+      orch.looksLikeDeliveryAccessReference = () => false;
+      orch.looksLikeExplicitLandmarkKeyword =
+        WhatsappOrchestratorService.prototype['looksLikeExplicitLandmarkKeyword'].bind(orch);
+      orch.looksLikeLandmarkOrComplexName =
+        WhatsappOrchestratorService.prototype['looksLikeLandmarkOrComplexName'].bind(orch);
+      orch.looksLikeAddress =
+        WhatsappOrchestratorService.prototype['looksLikeAddress'].bind(orch);
+      orch.looksLikeAddressRejectingPersonName =
+        WhatsappOrchestratorService.prototype['looksLikeAddressRejectingPersonName'].bind(orch);
+
+      for (const name of [
+        'Josseph Arlet Pabón Arévalo',
+        'Josseph Pabon',
+        'María Fernanda López',
+      ]) {
+        // El heurístico genérico SÍ los marca (bug histórico)
+        expect(orch.looksLikeAddress(name)).toBe(true);
+        // En awaiting_name no deben rechazarse
+        expect(orch.looksLikeAddressRejectingPersonName(name)).toBe(false);
+        expect(isUsableWhatsappCustomerName(name)).toBe(true);
+      }
+
+      expect(
+        orch.looksLikeAddressRejectingPersonName(
+          'Calle 6d #79a-76 bosques de Castilla',
+        ),
+      ).toBe(true);
+      expect(orch.looksLikeAddressRejectingPersonName('Bosques de Castilla')).toBe(true);
+    });
+
+    it('pregunta mondongo fin de semana → disponibilidad clara', () => {
+      const text = applyLocalGlossary(
+        'Veci tiene mondongo o solo el fin de semana ?',
+      );
+      expect(catalog.isAvailabilityInquiry(text)).toBe(true);
+      expect(catalog.isWeekendScheduleQuestion(text)).toBe(true);
+
+      const product = {
+        id: 45,
+        name: 'Sopa De Mondongo (Fines de semana)',
+        code: 45,
+        price: 13000,
+        description: 'Acompañada con arroz',
+        availableNow: true,
+      };
+      const note = catalog.formatProductScheduleNote(product);
+      expect(note).toMatch(/fines de semana/i);
+      expect(note).toMatch(/hoy sí/i);
+
+      const reply = catalog.formatProductPriceReply(product, {
+        scheduleLead: note!.replace(/^⏰\s*/, 'Sí: '),
+      });
+      expect(reply).toMatch(/Sí:.*fines de semana/i);
+      expect(reply).toMatch(/13\.000|13000|\$13/);
+    });
+
+    it('aviso Meta expirado se detecta', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        looksLikeFailedMediaNotice: (t: string) => boolean;
+      };
+      orch.looksLikeFailedMediaNotice =
+        WhatsappOrchestratorService.prototype['looksLikeFailedMediaNotice'].bind(orch);
+      expect(
+        orch.looksLikeFailedMediaNotice(
+          'No se pudo cargar (puede haber expirado en Meta)',
+        ),
+      ).toBe(true);
+    });
+
+    it('domicilio + arroz con pollo no se queda en “¿qué se te antoja?”', () => {
+      const text = applyLocalGlossary(
+        'Para un domicilio de un Arroz con pollo por favor',
+      );
+      expect(isDeliverySetupWithoutFood(text)).toBe(false);
+      expect(FOOD_ORDER_SIGNAL_RE.test(text)).toBe(true);
+      const q = catalog.extractProductSearchQuery(text);
+      expect(q).toMatch(/arroz\s+con\s+pollo/i);
+      expect(q).not.toMatch(/domicilio/i);
+      const hit = catalog.findProductEmbeddedInMessage(q, pppMenu);
+      expect(hit?.name).toMatch(/Arroz Con Pollo/i);
+    });
+  });
+
+  describe('Chat Sandra — bandeja + Coca + Plazuelas (nombre Necesito)', () => {
+    it('Necesito un domicilio ≠ nombre usable', () => {
+      expect(isUsableWhatsappCustomerName('Necesito')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Necesito un domicilio')).toBe(false);
+      expect(isDeliverySetupWithoutFood('Necesito un domicilio')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Sandra Sánchez')).toBe(true);
+    });
+
+    it('Nombre: Sandra se parsea en compound', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as any;
+      orch.catalogService = catalog;
+      orch.looksLikeAddress = () => false;
+      orch.looksLikeAddressRejectingPersonName = () => false;
+      orch.splitProductAndDelivery = (t: string) => ({ productText: t, address: null });
+      const parsed = orch.parseCompoundOrderMessage('Nombre : Sandra Sánchez');
+      expect(parsed.customerName).toMatch(/Sandra/i);
+    });
+
+    it('Plazuelas de San Esteban es dirección, no plato', () => {
+      const text = 'Plazuelas de San Esteban 17-504';
+      expect(looksLikeAddressOnlyMessage(text)).toBe(true);
+      expect(
+        classifyWhatsappCustomerIntent({ text, cartLength: 2, looksLikeAddressOnly: true }),
+      ).toBe('address');
+    });
+
+    it('método 4 no aparece en opciones de pago', () => {
+      const {
+        buildPaymentOptionsPrompt,
+        getEnabledPaymentMethods,
+      } = require('./whatsapp-payment-methods');
+      const methods = [
+        {
+          id: 'cash',
+          enabled: true,
+          label: 'Contraentrega',
+          keywords: ['contraentrega'],
+          optionText: '*contraentrega*',
+          flow: 'immediate',
+        },
+        {
+          id: 'transfer',
+          enabled: true,
+          label: 'Transferencia',
+          keywords: ['transferencia'],
+          optionText: '*transferencia*',
+          flow: 'immediate',
+        },
+        {
+          id: 'mercadopago',
+          enabled: true,
+          label: 'Mercado Pago',
+          keywords: ['mercado pago'],
+          optionText: '*mercado pago*',
+          flow: 'mercadopago',
+        },
+        {
+          id: 'custom_4',
+          enabled: true,
+          label: 'método 4',
+          keywords: ['metodo 4'],
+          optionText: '*método 4*',
+          flow: 'immediate',
+        },
+      ];
+      expect(getEnabledPaymentMethods(methods).map((m: { id: string }) => m.id)).toEqual([
+        'cash',
+        'transfer',
+        'mercadopago',
+      ]);
+      const prompt = buildPaymentOptionsPrompt(methods);
+      expect(prompt).not.toMatch(/m[eé]todo\s*4/i);
+      expect(prompt).toMatch(/contraentrega/i);
+    });
+
+    it('bandeja + coca 1,5 resuelve multi con attrs', () => {
+      const text = applyLocalGlossary(
+        'Una bandeja pronto pollo con pierna pernil y una Coca-Cola 1,5',
+      );
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...(multi?.confident || []).map((c) => c.product.name),
+        ...(multi?.needsAttributes || []).map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /bandeja/i.test(n))).toBe(true);
+      expect(names.some((n) => /coca|cola/i.test(n))).toBe(true);
     });
   });
 });
