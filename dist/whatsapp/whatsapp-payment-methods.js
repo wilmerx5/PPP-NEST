@@ -118,7 +118,17 @@ function resolvePaymentMethods(stored, opts) {
     return list;
 }
 function getEnabledPaymentMethods(methods) {
-    return methods.filter((m) => m.enabled);
+    return methods.filter((m) => {
+        if (!m.enabled)
+            return false;
+        const label = `${m.label || ''} ${m.optionText || ''} ${m.id || ''}`;
+        if (/m[eé]todo\s*\d+|opci[oó]n\s*\d+/i.test(label))
+            return false;
+        if (/^custom_\d+$/i.test(m.id || '') && /m[eé]todo|opci[oó]n|placeholder/i.test(label)) {
+            return false;
+        }
+        return true;
+    });
 }
 function findPaymentMethodByText(text, methods) {
     const t = normalizeKeyword(text);

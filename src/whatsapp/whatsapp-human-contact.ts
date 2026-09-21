@@ -42,3 +42,33 @@ export function scrubAiDisclaimerCopy(text: string): string {
   }
   return t;
 }
+
+/**
+ * Cualquier reply saliente: no ofrecer ASESOR ni “te paso con el equipo”.
+ * Si el texto es solo handoff, deja el teléfono; si es mixto, limpia frases de asesor.
+ */
+export function scrubOutboundAsesorMentions(text: string): string {
+  const raw = (text || '').trim();
+  if (!raw) return raw;
+  if (
+    /te\s+paso\s+con\s+el\s+equipo|alguien\s+te\s+va\s+a\s+atender\s+por\s+aqu[ií]/i.test(
+      raw,
+    )
+  ) {
+    return WHATSAPP_HUMAN_CONTACT_MESSAGE;
+  }
+  if (!/\basesor\b/i.test(raw) && !/escribe\s+\*?asesor\*?/i.test(raw)) {
+    return raw;
+  }
+  let t = raw
+    .replace(/[^.!?\n]*\basesor\b[^.!?\n]*[.!?]?/gi, ' ')
+    .replace(/[^.!?\n]*escribe\s+\*?asesor\*?[^.!?\n]*[.!?]?/gi, ' ')
+    .replace(/[^.!?\n]*pase\s+con\s+un\s+[^.!?\n]*[.!?]?/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length < 12) return WHATSAPP_HUMAN_CONTACT_MESSAGE;
+  if (!t.includes(WHATSAPP_HUMAN_CONTACT_PHONE)) {
+    t = `${t}\n\n${WHATSAPP_HUMAN_CONTACT_MESSAGE}`;
+  }
+  return t;
+}

@@ -11,6 +11,8 @@ exports.isUsableWhatsappCustomerName = isUsableWhatsappCustomerName;
 exports.isDeliveryEtaInquiry = isDeliveryEtaInquiry;
 exports.isSpecificOrderProgressInquiry = isSpecificOrderProgressInquiry;
 exports.extractDailyOrderNumberHint = extractDailyOrderNumberHint;
+exports.isDeliveryAvailabilityFaq = isDeliveryAvailabilityFaq;
+exports.isUnansweredHumanComplaint = isUnansweredHumanComplaint;
 exports.isDeliveryCoverageInquiry = isDeliveryCoverageInquiry;
 exports.parseCartItemReplacement = parseCartItemReplacement;
 exports.isCartItemReplacementIntent = isCartItemReplacementIntent;
@@ -224,13 +226,18 @@ function isUsableWhatsappCustomerName(name) {
         'días',
         'seria',
         'querria',
+        'regalas',
+        'regala',
     ]);
     if (blockedExact.has(t))
         return false;
-    if (/^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|para|hacer|buenas|buenos|hola)\b/.test(t)) {
+    if (/^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|regalas|regala|para|hacer|buenas|buenos|hola)\b/.test(t)) {
         return false;
     }
-    if (/\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz)\b/.test(t) &&
+    if (/^me\s+(regalas?|das|pones|mandas|traes|puedes|colaboras|ayudas|envias|envías)\b/.test(t)) {
+        return false;
+    }
+    if (/\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz|regalas?)\b/.test(t) &&
         /^(para|quiero|necesito|voy|vengo|me|seria)\b/.test(t)) {
         return false;
     }
@@ -291,6 +298,36 @@ function extractDailyOrderNumberHint(text) {
     if (!Number.isFinite(n) || n < 1 || n > 9999)
         return null;
     return n;
+}
+function isDeliveryAvailabilityFaq(text) {
+    const raw = (text || '').trim();
+    if (raw.length < 6 || raw.length > 80)
+        return false;
+    if (/\b(para|en|hasta|por)\s+(?!domicilio\b)\S/i.test(raw) && /\d|#|calle|carrera|castilla|torre|apto/i.test(raw)) {
+        return false;
+    }
+    const t = raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    return (/\b(tienen|tiene|tienes|hacen|hace|hay)\s+(servicio\s+a\s+)?domicilios?\b/.test(t) ||
+        /\btienes\s+domicilio\b/.test(t) ||
+        /^domicilios?\s*[?¿]*$/.test(t));
+}
+function isUnansweredHumanComplaint(text) {
+    const raw = (text || '').trim();
+    if (!raw || raw.length > 120)
+        return false;
+    const t = raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    if (/^\?{1,6}[!¿?]*$/.test(raw.trim()))
+        return true;
+    return (/\bno\s+me\s+(han|has)\s+(escrito|contestado|respondido)\b/.test(t) ||
+        /\bnadie\s+(me\s+)?(responde|contesta|escribe)\b/.test(t) ||
+        /\by\s+el\s+asesor\b/.test(t) ||
+        /\bsiguen\s+sin\s+(responder|contestar)\b/.test(t));
 }
 function isDeliveryCoverageInquiry(text) {
     const raw = (text || '').trim();
@@ -463,9 +500,6 @@ function resolvePendingListOrMenuCode(opts) {
         return null;
     const codeHit = candidates.find((c) => Number(c.code) === bareNum);
     if (bareNum >= 1 && bareNum <= candidates.length) {
-        const row = candidates[bareNum - 1];
-        if (codeHit && row.id !== codeHit.id)
-            return 'menu_code';
         return 'list_index';
     }
     if (codeHit || bareNum > candidates.length)

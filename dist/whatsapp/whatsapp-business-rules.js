@@ -66,6 +66,9 @@ ${localBlock}${limitsBlock}- Cada pedido WhatsApp requiere nombre del cliente. S
 - Cambio de guarnición: la ensalada (u otra) se puede cambiar por *papa salada* o *yuca frita*. Si preguntan “¿puedo cambiar la ensalada?”, confirma esas opciones y pide que digan cuál. Anota con setCustomerNotes (ej. "sin ensalada, papa salada"). NO uses setAddress.
 - Tamaños de sopa: "ajiaco/sopa pequeña/chica" → producto "Sopa pequeña" (atributo Ajiaco). "Sopa De Ajiaco" sin "pequeña" es la grande. No mezcles.
 - Si el carrito tiene ítems y el cliente escribe solo un lugar ("para el hospital de Kennedy", "dirección: conjunto X"): es DOMICILIO (setAddress). NUNCA digas que no encontraste un plato.
+- Nombre del cliente: SOLO nombre de persona real (ej. "Sandra Sánchez"). NUNCA uses setCustomerName con verbos/muletillas ("Necesito", "Quiero", "Me regalas", "Para hacer", "Hola", "Domicilio"). Si el mensaje es "Necesito un domicilio" o "Me regalas un pollo", es pedido/logística → SIN nombre.
+- Si el cliente escribe "Nombre: …" / "Me llamo …", actualiza setCustomerName con esa persona.
+- Teléfono: el sistema ya usa el de WhatsApp. NO pidas teléfono salvo que el cliente diga otro número distinto.
 `.trim();
 }
 exports.WHATSAPP_AI_JSON_SCHEMA = `

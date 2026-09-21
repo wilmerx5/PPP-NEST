@@ -15,6 +15,8 @@ import {
   isUsableWhatsappCustomerName,
   parseCartItemReplacement,
   resolvePendingListOrMenuCode,
+  isDeliveryAvailabilityFaq,
+  isUnansweredHumanComplaint,
 } from './whatsapp-session-intents';
 import {
   classifyWhatsappCustomerIntent,
@@ -580,6 +582,21 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(resolvePendingListOrMenuCode({ bareNum: 6, candidates: drinks })).toBe('list_index');
     });
 
+    it('fila 1 = Combo aunque exista *#1* Pollo en la misma lista', () => {
+      // Bug real: "1" elegía código #1 (1 Pollo Frito) en vez de Combo en fila 1
+      const candidates = [
+        { id: 99, code: 99 }, // Combo
+        { id: 1, code: 1 }, // 1 Pollo Frito
+        { id: 2, code: 2 },
+        { id: 3, code: 3 },
+        { id: 15, code: 15 },
+        { id: 22, code: 22 },
+      ];
+      expect(resolvePendingListOrMenuCode({ bareNum: 1, candidates })).toBe('list_index');
+      expect(candidates[0].code).toBe(99);
+      expect(resolvePendingListOrMenuCode({ bareNum: 99, candidates })).toBe('menu_code');
+    });
+
     it('limonada resuelve a Limonada Natural (no código 6 broaster)', () => {
       const scored = catalog.searchByNameScored('limonada', pppMenu, 5);
       expect(scored[0]?.p.code).toBe(37);
@@ -629,13 +646,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       );
     });
 
-    it('nombre “Pedidos” / “Necesito” / “Para hacer” no es usable', () => {
+    it('nombre “Pedidos” / “Necesito” / “Me regalas” no es usable', () => {
       expect(isUsableWhatsappCustomerName('Pedidos')).toBe(false);
       expect(isUsableWhatsappCustomerName('Pedido')).toBe(false);
       expect(isUsableWhatsappCustomerName('Cliente')).toBe(false);
       expect(isUsableWhatsappCustomerName('Necesito')).toBe(false);
       expect(isUsableWhatsappCustomerName('Quiero')).toBe(false);
       expect(isUsableWhatsappCustomerName('Para hacer')).toBe(false);
+      expect(isUsableWhatsappCustomerName('Me regalas')).toBe(false);
+      expect(isUsableWhatsappCustomerName('me das')).toBe(false);
       expect(isUsableWhatsappCustomerName('Juan Pérez')).toBe(true);
       expect(isUsableWhatsappCustomerName('María')).toBe(true);
     });
@@ -1924,6 +1943,78 @@ Cll 6 b 78 c 33`;
       ];
       expect(names.some((n) => /bandeja/i.test(n))).toBe(true);
       expect(names.some((n) => /coca|cola/i.test(n))).toBe(true);
+    });
+  });
+
+  describe('ASESOR off + domicilio FAQ (chat idle)', () => {
+    it('Tienes domicilio? es FAQ, no setup vacío agresivo', () => {
+      expect(isDeliveryAvailabilityFaq('Tienes domicilio?')).toBe(true);
+      expect(isDeliveryAvailabilityFaq('tienen servicio a domicilio')).toBe(true);
+      expect(isDeliveryAvailabilityFaq('tienen domicilio para Castilla')).toBe(false);
+    });
+
+    it('??? / no me han escrito tras idle', () => {
+      expect(isUnansweredHumanComplaint('???')).toBe(true);
+      expect(isUnansweredHumanComplaint('Pues no me han escrito')).toBe(true);
+      expect(isUnansweredHumanComplaint('quiero un pollo')).toBe(false);
+    });
+  });
+
+  describe('Precio pollo + dos sopas / código 38 (chat coalesce)', () => {
+    it('parte precio y pedido en líneas', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: typeof catalog;
+        splitPriceAndOrderParts: (t: string) => { priceText: string; orderText: string } | null;
+      };
+      orch.catalogService = catalog;
+      orch.splitPriceAndOrderParts =
+        WhatsappOrchestratorService.prototype['splitPriceAndOrderParts'].bind(orch);
+
+      const split = orch.splitPriceAndOrderParts(
+        'Que precio tiene el pollo frito\nY dos sopas',
+      );
+      expect(split).toBeTruthy();
+      expect(split!.priceText).toMatch(/pollo frito/i);
+      expect(split!.orderText).toMatch(/dos sopas|2 sopas/i);
+      expect(catalog.isPriceInquiryIntent(split!.priceText)).toBe(true);
+    });
+
+    it('Código 38 + precio de pollo → precio aparte y pedido por código', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: typeof catalog;
+        splitPriceAndOrderParts: (t: string) => { priceText: string; orderText: string } | null;
+      };
+      orch.catalogService = catalog;
+      orch.splitPriceAndOrderParts =
+        WhatsappOrchestratorService.prototype['splitPriceAndOrderParts'].bind(orch);
+
+      const split = orch.splitPriceAndOrderParts(
+        'Código 38\nY un pollo frito que precio tiene',
+      );
+      expect(split).toBeTruthy();
+      expect(split!.priceText).toMatch(/pollo frito/i);
+      expect(split!.orderText).toMatch(/38|c[oó]digo/i);
+    });
+
+    it('Regáleme 3 sopas + código 38 + precio pollo', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: typeof catalog;
+        splitPriceAndOrderParts: (t: string) => { priceText: string; orderText: string } | null;
+      };
+      orch.catalogService = catalog;
+      orch.splitPriceAndOrderParts =
+        WhatsappOrchestratorService.prototype['splitPriceAndOrderParts'].bind(orch);
+
+      const split = orch.splitPriceAndOrderParts(
+        'Regáleme 3 sopas de ajiaco\nCódigo 38\nY un pollo frito que precio tiene',
+      );
+      expect(split).toBeTruthy();
+      expect(split!.priceText).toMatch(/pollo/i);
+      expect(split!.orderText).toMatch(/ajiaco|38/i);
+      expect(catalog.extractQuantityFromMessage(split!.orderText)).toBe(3);
     });
   });
 });

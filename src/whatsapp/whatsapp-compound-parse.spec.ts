@@ -281,6 +281,8 @@ describe('isUsableWhatsappCustomerName', () => {
     'Para',
     'seria',
     'Sería',
+    'Me regalas',
+    'me das',
   ])(
     'rechaza placeholder: %s',
     (name) => {

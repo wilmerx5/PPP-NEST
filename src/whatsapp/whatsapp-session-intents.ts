@@ -306,18 +306,26 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'días',
     'seria',
     'querria',
+    'regalas',
+    'regala',
   ]);
   if (blockedExact.has(t)) return false;
   if (
-    /^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|para|hacer|buenas|buenos|hola)\b/.test(
+    /^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|regalas|regala|para|hacer|buenas|buenos|hola)\b/.test(
       t,
     )
   ) {
     return false;
   }
+  // "Me regalas", "me das", "me puedes…" — cortesía, no nombre
+  if (
+    /^me\s+(regalas?|das|pones|mandas|traes|puedes|colaboras|ayudas|envias|envías)\b/.test(t)
+  ) {
+    return false;
+  }
   // "Para hacer", "para pedir", "quiero domicilio", "seria un combo"…
   if (
-    /\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz)\b/.test(t) &&
+    /\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz|regalas?)\b/.test(t) &&
     /^(para|quiero|necesito|voy|vengo|me|seria)\b/.test(t)
   ) {
     return false;
@@ -412,6 +420,40 @@ export function extractDailyOrderNumberHint(text: string): number | null {
  * (sin estar pidiendo platos).
  * NO: “¿tienen servicio a domicilio?” (FAQ general, sin zona).
  */
+export function isDeliveryAvailabilityFaq(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 6 || raw.length > 80) return false;
+  if (/\b(para|en|hasta|por)\s+(?!domicilio\b)\S/i.test(raw) && /\d|#|calle|carrera|castilla|torre|apto/i.test(raw)) {
+    return false;
+  }
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return (
+    /\b(tienen|tiene|tienes|hacen|hace|hay)\s+(servicio\s+a\s+)?domicilios?\b/.test(t) ||
+    /\btienes\s+domicilio\b/.test(t) ||
+    /^domicilios?\s*[?¿]*$/.test(t)
+  );
+}
+
+/** Tras idle de asesor: “???” / “no me han escrito”. */
+export function isUnansweredHumanComplaint(text: string): boolean {
+  const raw = (text || '').trim();
+  if (!raw || raw.length > 120) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (/^\?{1,6}[!¿?]*$/.test(raw.trim())) return true;
+  return (
+    /\bno\s+me\s+(han|has)\s+(escrito|contestado|respondido)\b/.test(t) ||
+    /\bnadie\s+(me\s+)?(responde|contesta|escribe)\b/.test(t) ||
+    /\by\s+el\s+asesor\b/.test(t) ||
+    /\bsiguen\s+sin\s+(responder|contestar)\b/.test(t)
+  );
+}
+
 export function isDeliveryCoverageInquiry(text: string): boolean {
   const raw = (text || '').trim();
   if (raw.length < 12) return false;
@@ -643,7 +685,8 @@ export function isAbandonPendingSelectionIntent(text: string): boolean {
 
 /**
  * Con lista pendiente: ¿el número es fila (1..N) o código de menú (ej. 99)?
- * Preferir código si coincide con un ítem y no es el mismo producto que la fila N.
+ * Tras “Responde con el *número*”, 1..N es SIEMPRE fila.
+ * Códigos de menú (99, 15…) solo si están fuera del rango de filas o no hay fila.
  */
 export function resolvePendingListOrMenuCode(opts: {
   bareNum: number | null;
@@ -652,10 +695,8 @@ export function resolvePendingListOrMenuCode(opts: {
   const { bareNum, candidates } = opts;
   if (bareNum == null || !candidates.length) return null;
   const codeHit = candidates.find((c) => Number(c.code) === bareNum);
+  // "1" con Combo en fila 1 y *#1* en otra fila → fila 1 (Combo), NO código #1
   if (bareNum >= 1 && bareNum <= candidates.length) {
-    const row = candidates[bareNum - 1];
-    // "99" con 9 filas donde la fila 9 ≠ cód. 99 → código de menú
-    if (codeHit && row.id !== codeHit.id) return 'menu_code';
     return 'list_index';
   }
   if (codeHit || bareNum > candidates.length) return 'menu_code';

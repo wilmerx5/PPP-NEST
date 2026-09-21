@@ -9,6 +9,8 @@ export declare function isUsableWhatsappCustomerName(name: string): boolean;
 export declare function isDeliveryEtaInquiry(text: string): boolean;
 export declare function isSpecificOrderProgressInquiry(text: string): boolean;
 export declare function extractDailyOrderNumberHint(text: string): number | null;
+export declare function isDeliveryAvailabilityFaq(text: string): boolean;
+export declare function isUnansweredHumanComplaint(text: string): boolean;
 export declare function isDeliveryCoverageInquiry(text: string): boolean;
 export declare function parseCartItemReplacement(text: string): {
     removeQuery: string;

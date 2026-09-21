@@ -1,12 +1,13 @@
 import {
   scrubAiDisclaimerCopy,
   scrubAsesorHandoffCopy,
+  scrubOutboundAsesorMentions,
   WHATSAPP_AI_DISCLAIMER_SAFE,
   WHATSAPP_HUMAN_CONTACT_MESSAGE,
 } from './whatsapp-human-contact';
 import { botResumeCustomerMessage } from './whatsapp-bot-resume';
 
-  describe('whatsapp-human-contact (ASESOR off)', () => {
+describe('whatsapp-human-contact (ASESOR off)', () => {
   it('limpia handoff viejo de BD', () => {
     expect(
       scrubAsesorHandoffCopy(
@@ -42,5 +43,18 @@ import { botResumeCustomerMessage } from './whatsapp-bot-resume';
     expect(manual).not.toMatch(/asesor/i);
     expect(idle).toMatch(/3118866823/);
     expect(manual).toMatch(/3118866823/);
+  });
+
+  it('limpia replies salientes que ofrecen ASESOR', () => {
+    expect(
+      scrubOutboundAsesorMentions(
+        'Dale, te paso con el equipo 🙋. Alguien te va a atender por aquí.',
+      ),
+    ).toBe(WHATSAPP_HUMAN_CONTACT_MESSAGE);
+    const mixed = scrubOutboundAsesorMentions(
+      'Perdona. ¿Quieres que te pase con un ASESOR otra vez o prefieres que yo te ayude? El 1/2 Broaster trae papa.',
+    );
+    expect(mixed).not.toMatch(/asesor/i);
+    expect(mixed).toMatch(/3118866823|Broaster|papa/i);
   });
 });

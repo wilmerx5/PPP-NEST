@@ -888,6 +888,8 @@ let WhatsappCatalogService = class WhatsappCatalogService {
         q = q
             .replace(/^(hola|buenas|buenos dias|buenas tardes|buenas noches)[\s,!.-]*/i, '')
             .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
+            .replace(/^(?:para\s+)?(?:un\s+|una\s+)?domicilios?\s+(?:de\s+|con\s+|a\s+)?(?:un\s+|una\s+|unos\s+|unas\s+|el\s+|la\s+)?/i, '')
+            .replace(/^(?:a\s+)?domicilio\s+(?:de\s+|con\s+)?(?:un\s+|una\s+|el\s+|la\s+)?/i, '')
             .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
             .replace(/^(puedes\s+(?:enviarme|mandarme|traerme|darme|regalarme)\s+)/i, '')
             .replace(/^(?:env[ií]ame|m[aá]ndame|tra[eé]me)\s+/i, '')

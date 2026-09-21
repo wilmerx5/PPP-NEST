@@ -79,6 +79,7 @@ export declare class WhatsappOrchestratorService {
     private formatCartOnly;
     private buildCartAddReply;
     private formatOrderSummary;
+    private displayCustomerName;
     private isReadyToConfirm;
     private formatWaPhoneDisplay;
     private looksLikePhoneNumber;
@@ -123,6 +124,7 @@ export declare class WhatsappOrchestratorService {
     private resolveAudioToText;
     private static readonly HUMAN_CONTACT_PHONE;
     private humanContactMessage;
+    private tryHandleExplicitCustomerNameLabel;
     private humanHelpHint;
     private handlePostOrderFollowUp;
     private getDeliveryEtaRangeText;

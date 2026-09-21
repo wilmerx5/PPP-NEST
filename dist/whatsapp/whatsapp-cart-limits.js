@@ -27,7 +27,7 @@ function evaluateCartLimits(cart, cfg, opts) {
             ok: false,
             handoff: true,
             kind: 'max_lines',
-            reason: `Por WhatsApp manejamos hasta ${cfg.maxCartLines} ítems. Si necesitas más, te paso con el equipo.`,
+            reason: `Por WhatsApp manejamos hasta ${cfg.maxCartLines} ítems. Si necesitas más, contáctanos al *3118866823*.`,
         };
     }
     if (cfg.maxTotalUnits > 0 && units > cfg.maxTotalUnits) {
@@ -35,7 +35,7 @@ function evaluateCartLimits(cart, cfg, opts) {
             ok: false,
             handoff: true,
             kind: 'max_total_units',
-            reason: `Por WhatsApp el tope es ${cfg.maxTotalUnits} unidades en total. Si es un pedido grande, te paso con alguien del local.`,
+            reason: `Por WhatsApp el tope es ${cfg.maxTotalUnits} unidades en total. Si es un pedido grande, contáctanos al *3118866823*.`,
         };
     }
     if (cfg.maxUnitsPerItem > 0) {
@@ -51,7 +51,7 @@ function evaluateCartLimits(cart, cfg, opts) {
                     ok: false,
                     handoff: true,
                     kind: 'max_units_item',
-                    reason: `Por WhatsApp el máximo de *${name}* es ${cfg.maxUnitsPerItem} unidades. Si necesitas más, te paso con el equipo.`,
+                    reason: `Por WhatsApp el máximo de *${name}* es ${cfg.maxUnitsPerItem} unidades. Si necesitas más, contáctanos al *3118866823*.`,
                 };
             }
         }
@@ -61,7 +61,7 @@ function evaluateCartLimits(cart, cfg, opts) {
             ok: false,
             handoff: true,
             kind: 'max_amount',
-            reason: `Por WhatsApp el pedido máximo es $${cfg.maxOrderAmount.toLocaleString('es-CO')} COP. Si es un pedido grande, te paso con alguien del local.`,
+            reason: `Por WhatsApp el pedido máximo es $${cfg.maxOrderAmount.toLocaleString('es-CO')} COP. Si es un pedido grande, contáctanos al *3118866823*.`,
         };
     }
     if (opts?.checkMin && cfg.minOrderAmount > 0 && subtotal < cfg.minOrderAmount) {
