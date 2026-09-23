@@ -76,6 +76,18 @@ export class FactusApiClient {
     );
   }
 
+  /**
+   * Elimina FE no validada por DIAN (libera bloqueos 409 / pendientes).
+   * DELETE /v2/bills/destroy/reference/:reference_code
+   */
+  async deleteBillByReference(referenceCode: string): Promise<{ message?: string }> {
+    const ref = encodeURIComponent(referenceCode.trim());
+    return this.requestJson<{ status?: string; message?: string }>(
+      'DELETE',
+      `/v2/bills/destroy/reference/${ref}`,
+    );
+  }
+
   async listNumberingRanges(): Promise<FactusNumberingRange[]> {
     const json = await this.requestJson<{
       data?: FactusNumberingRange[] | { data?: FactusNumberingRange[] };

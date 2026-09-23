@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Order } from '../orders/entities/order.entity';
 import { ProductsService } from '../products/products.service';
 import {
@@ -1318,8 +1318,9 @@ export class FactusService {
   }
 
   /**
-   * Consulta Factus por reference_code de una FE de lote con error/rechazo
-   * y actualiza la fila standalone si ya aparece validada (o aún en proceso).
+   * Consulta / refresca FE de lote en Factus.
+   * Según docs Factus: si DIAN tarda, reenviar POST /validate con el MISMO
+   * reference_code + mismos datos (no solo listar).
    */
   async syncStandaloneInvoiceFromFactus(bulkInvoiceId: number): Promise<{
     updated: boolean;
@@ -1348,6 +1349,98 @@ export class FactusService {
       };
     }
 
+    // 1) Refresh oficial Factus: re-POST validate con la misma referencia
+    if (row.linesJson?.trim()) {
+      try {
+        const lines = JSON.parse(row.linesJson) as BulkInvoicePlan['lines'];
+        if (Array.isArray(lines) && lines.length) {
+          const issueDto: IssueElectronicInvoiceDto = {
+            ...BULK_CONSUMIDOR_FINAL,
+            sendEmail: false,
+            observation: `Sync lote #${row.batchIndex}`.slice(0, 250),
+          };
+          const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
+          const { payload } = this.mapper.buildValidatePayloadFromCatalogLines(
+            lines,
+            issueDto,
+            taxConfig,
+            {
+              referenceCode: row.referenceCode,
+              observation: issueDto.observation,
+            },
+          );
+          this.logger.log(
+            `[FE sync] re-validate ref=${row.referenceCode} id=${row.id}`,
+          );
+          const result = await this.api.validateBill(payload);
+          const data = result.data;
+          const outcome = this.resolveFactusValidationOutcome({
+            isValidated: data?.is_validated,
+            number: data?.number,
+            message: result.message,
+            errors: data?.errors,
+          });
+          row.invoiceStatus = outcome.status;
+          row.invoiceNumber = data?.number ?? row.invoiceNumber;
+          row.invoiceCufe = data?.cufe ?? row.invoiceCufe;
+          row.publicUrl = data?.links?.public_url ?? row.publicUrl;
+          row.qrUrl =
+            (data?.links as { qr_url?: string; qr?: string } | undefined)?.qr_url ??
+            (data?.links as { qr?: string } | undefined)?.qr ??
+            row.qrUrl;
+          row.invoiceError = outcome.error ?? outcome.info;
+          if (outcome.status === 'accepted') {
+            row.invoiceError = null;
+            row.issuedAt = row.issuedAt || new Date();
+            await this.upsertInvoiceCustomer(issueDto);
+          } else if (outcome.status === 'pending' && row.invoiceNumber && !row.issuedAt) {
+            row.issuedAt = new Date();
+          }
+          await this.standaloneInvoiceRepo.save(row);
+          return {
+            updated: true,
+            status: outcome.status,
+            number: row.invoiceNumber,
+            message:
+              outcome.status === 'accepted'
+                ? `Validada: ${row.invoiceNumber}`
+                : outcome.status === 'pending'
+                  ? outcome.info ||
+                    'Factus/DIAN aún procesando. Se reconsultará automáticamente.'
+                  : outcome.error || 'Rechazada',
+            error: row.invoiceError,
+          };
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`[FE sync] re-validate falló id=${row.id}: ${msg}`);
+        // 409 pendiente atascada: eliminar ref en Factus y dejar listo para reintento
+        if (/pendiente|409|Conflict/i.test(msg)) {
+          try {
+            await this.api.deleteBillByReference(row.referenceCode);
+            row.invoiceStatus = 'error';
+            row.invoiceError = (
+              'Se eliminó en Factus una factura pendiente/bloqueada. Usa Reintentar para emitir de nuevo. ' +
+              `Ref: ${row.referenceCode}`
+            ).slice(0, 1000);
+            await this.standaloneInvoiceRepo.save(row);
+            return {
+              updated: true,
+              status: 'error',
+              number: row.invoiceNumber,
+              message: row.invoiceError,
+              error: row.invoiceError,
+            };
+          } catch (delErr) {
+            this.logger.warn(
+              `[FE sync] delete ref falló: ${delErr instanceof Error ? delErr.message : delErr}`,
+            );
+          }
+        }
+      }
+    }
+
+    // 2) Fallback: listar por reference_code
     const listRes = await this.api.listBills({
       referenceCode: row.referenceCode,
       perPage: 10,
@@ -1362,7 +1455,7 @@ export class FactusService {
     if (!matches.length) {
       const msg =
         'Factus aún no tiene una factura con esta referencia. ' +
-        'Si el error era “en proceso / pendiente”, espera unos minutos y vuelve a consultar. ' +
+        'Si el error era “en proceso / pendiente”, espera unos minutos (auto-consulta activa). ' +
         `Ref: ${row.referenceCode}`;
       row.invoiceError = msg.slice(0, 1000);
       await this.standaloneInvoiceRepo.save(row);
@@ -1410,7 +1503,7 @@ export class FactusService {
         message:
           outcome.status === 'pending'
             ? outcome.info ||
-              `Factura ${row.invoiceNumber || ''} en validación DIAN. Vuelve a consultar en unos minutos.`
+              `Factura ${row.invoiceNumber || ''} en validación DIAN. Auto-consulta activa.`
             : outcome.error || 'Rechazada por DIAN',
         error: row.invoiceError,
       };
@@ -1609,6 +1702,105 @@ export class FactusService {
         error: row.invoiceError,
       };
     }
+  }
+
+  /**
+   * Sincroniza en lote FE pendientes/error/rechazo (admin auto-poll).
+   */
+  async syncPendingElectronicInvoices(opts?: {
+    limit?: number;
+  }): Promise<{
+    checked: number;
+    accepted: number;
+    pending: number;
+    failed: number;
+    results: Array<{
+      source: 'bulk' | 'order';
+      id: number;
+      status: string;
+      message: string;
+    }>;
+  }> {
+    const limit = Math.min(25, Math.max(1, opts?.limit ?? 15));
+    const standalones = await this.standaloneInvoiceRepo.find({
+      where: { invoiceStatus: In(['pending', 'error', 'rejected']) },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+
+    const results: Array<{
+      source: 'bulk' | 'order';
+      id: number;
+      status: string;
+      message: string;
+    }> = [];
+    let accepted = 0;
+    let pending = 0;
+    let failed = 0;
+
+    for (const s of standalones) {
+      try {
+        const r = await this.syncStandaloneInvoiceFromFactus(s.id);
+        results.push({
+          source: 'bulk',
+          id: s.id,
+          status: r.status,
+          message: r.message,
+        });
+        if (r.status === 'accepted') accepted += 1;
+        else if (r.status === 'pending') pending += 1;
+        else failed += 1;
+      } catch (err) {
+        failed += 1;
+        results.push({
+          source: 'bulk',
+          id: s.id,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Error sync',
+        });
+      }
+    }
+
+    const remaining = limit - standalones.length;
+    if (remaining > 0) {
+      const orders = await this.orderRepo.find({
+        where: {
+          electronicInvoiceStatus: In(['pending', 'error', 'rejected']),
+        },
+        order: { createdAt: 'DESC' },
+        take: remaining,
+      });
+      for (const o of orders) {
+        try {
+          const r = await this.syncOrderInvoiceFromFactus(o.id);
+          results.push({
+            source: 'order',
+            id: o.id,
+            status: r.status,
+            message: r.message,
+          });
+          if (r.status === 'accepted') accepted += 1;
+          else if (r.status === 'pending') pending += 1;
+          else failed += 1;
+        } catch (err) {
+          failed += 1;
+          results.push({
+            source: 'order',
+            id: o.id,
+            status: 'error',
+            message: err instanceof Error ? err.message : 'Error sync',
+          });
+        }
+      }
+    }
+
+    return {
+      checked: results.length,
+      accepted,
+      pending,
+      failed,
+      results,
+    };
   }
 
   /**

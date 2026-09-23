@@ -188,6 +188,22 @@ export class FactusController {
     return this.factusService.retryStandaloneInvoice(id);
   }
 
+  @Post('admin/factus/electronic-invoices/sync-pending')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Auto-sync FE pendientes/error con Factus (lote + pedidos)',
+    description:
+      'Reenvía validate con la misma referencia (docs Factus) o consulta listado. Para polling del admin.',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 15 })
+  syncPendingElectronicInvoices(@Query('limit') limit?: string) {
+    const parsed = limit ? parseInt(limit, 10) : 15;
+    return this.factusService.syncPendingElectronicInvoices({
+      limit: Number.isFinite(parsed) ? parsed : 15,
+    });
+  }
+
   @Post('orders/:id/electronic-invoice/sync')
   @Auth(...OPS)
   @ApiBearerAuth()
