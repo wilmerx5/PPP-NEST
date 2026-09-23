@@ -162,6 +162,30 @@ export class FactusController {
     });
   }
 
+  @Post('admin/factus/standalone-invoices/:id/sync')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Consultar Factus y actualizar FE de lote con error/rechazo',
+    description:
+      'Útil cuando Factus respondió “en proceso” o “factura pendiente”: vuelve a buscar por reference_code.',
+  })
+  @ApiParam({ name: 'id', description: 'ID en ppp_factus_standalone_invoices' })
+  syncStandaloneInvoice(@Param('id', ParseIntPipe) id: number) {
+    return this.factusService.syncStandaloneInvoiceFromFactus(id);
+  }
+
+  @Post('orders/:id/electronic-invoice/sync')
+  @Auth(...OPS)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Consultar Factus y actualizar FE de un pedido con error/rechazo',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la orden PPP' })
+  syncOrderInvoice(@Param('id', ParseIntPipe) id: number) {
+    return this.factusService.syncOrderInvoiceFromFactus(id);
+  }
+
   @Get('factus/customers/lookup')
   @Auth(...OPS)
   @ApiBearerAuth()

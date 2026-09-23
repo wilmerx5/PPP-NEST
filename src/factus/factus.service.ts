@@ -737,9 +737,10 @@ export class FactusService {
             publicUrl: data?.links?.public_url ?? null,
           });
         } else {
-          const errMsg =
+          const errMsg = (
             result.message ||
-            JSON.stringify(data?.errors || 'Factura no validada por DIAN').slice(0, 400);
+            JSON.stringify(data?.errors || 'Factura no validada por DIAN')
+          ).slice(0, 1000);
           await this.standaloneInvoiceRepo.save(
             this.standaloneInvoiceRepo.create({
               batchId,
@@ -939,6 +940,7 @@ export class FactusService {
       source: 'order' as const,
       orderId: o.id,
       dailyOrderNumber: o.dailyOrderNumber,
+      referenceCode: o.electronicInvoiceReference ?? `PPP-ORD-${o.id}`,
       customerName: o.customerName,
       phone: o.phone,
       orderType: o.orderType,
@@ -967,6 +969,7 @@ export class FactusService {
       bulkInvoiceId: s.id,
       batchId: s.batchId,
       batchIndex: s.batchIndex,
+      referenceCode: s.referenceCode,
       orderId: null as number | null,
       dailyOrderNumber: null as number | null,
       customerName: s.customerName,
@@ -1260,6 +1263,224 @@ export class FactusService {
     }
 
     return result;
+  }
+
+  /**
+   * Consulta Factus por reference_code de una FE de lote con error/rechazo
+   * y actualiza la fila standalone si ya aparece validada (o aún en proceso).
+   */
+  async syncStandaloneInvoiceFromFactus(bulkInvoiceId: number): Promise<{
+    updated: boolean;
+    status: string;
+    number: string | null;
+    message: string;
+    error?: string | null;
+  }> {
+    if (!this.auth.isConfigured()) {
+      throw new BadRequestException('Factus no está configurado');
+    }
+
+    const row = await this.standaloneInvoiceRepo.findOne({
+      where: { id: bulkInvoiceId },
+    });
+    if (!row) {
+      throw new NotFoundException(`FE de lote #${bulkInvoiceId} no encontrada`);
+    }
+
+    if (row.invoiceStatus === 'accepted') {
+      return {
+        updated: false,
+        status: row.invoiceStatus,
+        number: row.invoiceNumber,
+        message: `Ya está aceptada${row.invoiceNumber ? ` (${row.invoiceNumber})` : ''}`,
+      };
+    }
+
+    const listRes = await this.api.listBills({
+      referenceCode: row.referenceCode,
+      perPage: 10,
+      page: 1,
+    });
+    const matches = (listRes.data?.data ?? []).filter(
+      (b) =>
+        (b.reference_code || '').trim() === row.referenceCode.trim() ||
+        (!!row.invoiceNumber && b.number === row.invoiceNumber),
+    );
+
+    if (!matches.length) {
+      const msg =
+        'Factus aún no tiene una factura con esta referencia. ' +
+        'Si el error era “en proceso / pendiente”, espera unos minutos y vuelve a consultar. ' +
+        `Ref: ${row.referenceCode}`;
+      row.invoiceError = msg.slice(0, 1000);
+      await this.standaloneInvoiceRepo.save(row);
+      return {
+        updated: false,
+        status: row.invoiceStatus,
+        number: row.invoiceNumber,
+        message: msg,
+        error: row.invoiceError,
+      };
+    }
+
+    let detail: FactusBillDetail = matches[0];
+    const number = detail.number?.trim();
+    if (number && (!detail.cufe || !detail.links?.public_url)) {
+      try {
+        detail = await this.api.getBill(number);
+      } catch (err) {
+        this.logger.warn(
+          `[FE sync] getBill ${number} falló: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    if (detail.is_validated === false) {
+      const errMsg = (
+        listRes.message ||
+        'Factura encontrada en Factus pero no validada por DIAN'
+      ).slice(0, 1000);
+      row.invoiceStatus = 'rejected';
+      row.invoiceNumber = detail.number ?? row.invoiceNumber;
+      row.invoiceError = errMsg;
+      await this.standaloneInvoiceRepo.save(row);
+      return {
+        updated: true,
+        status: 'rejected',
+        number: row.invoiceNumber,
+        message: errMsg,
+        error: errMsg,
+      };
+    }
+
+    row.invoiceStatus = 'accepted';
+    row.invoiceNumber = detail.number ?? row.invoiceNumber;
+    row.invoiceCufe = detail.cufe ?? row.invoiceCufe;
+    row.publicUrl = detail.links?.public_url ?? row.publicUrl;
+    row.qrUrl = detail.links?.qr ?? row.qrUrl;
+    row.issuedAt =
+      this.parseFactusDateTime(detail.validated_at) ||
+      this.parseFactusDateTime(detail.created_at) ||
+      row.issuedAt ||
+      new Date();
+    row.invoiceError = null;
+    await this.standaloneInvoiceRepo.save(row);
+
+    return {
+      updated: true,
+      status: 'accepted',
+      number: row.invoiceNumber,
+      message: `Actualizada: ${row.invoiceNumber || 'aceptada en Factus'}`,
+      error: null,
+    };
+  }
+
+  /**
+   * Consulta Factus por PPP-ORD-{id} cuando la FE de un pedido quedó en error/rechazo.
+   */
+  async syncOrderInvoiceFromFactus(orderId: number): Promise<{
+    updated: boolean;
+    status: string;
+    number: string | null;
+    message: string;
+    error?: string | null;
+  }> {
+    if (!this.auth.isConfigured()) {
+      throw new BadRequestException('Factus no está configurado');
+    }
+
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+
+    if (order.electronicInvoiceStatus === 'accepted') {
+      return {
+        updated: false,
+        status: order.electronicInvoiceStatus,
+        number: order.electronicInvoiceNumber,
+        message: `Ya está aceptada${order.electronicInvoiceNumber ? ` (${order.electronicInvoiceNumber})` : ''}`,
+      };
+    }
+
+    const referenceCode =
+      order.electronicInvoiceReference?.trim() || `PPP-ORD-${order.id}`;
+
+    const listRes = await this.api.listBills({
+      referenceCode,
+      perPage: 10,
+      page: 1,
+    });
+    const matches = (listRes.data?.data ?? []).filter(
+      (b) => (b.reference_code || '').trim() === referenceCode,
+    );
+
+    if (!matches.length) {
+      const msg =
+        'Factus aún no tiene factura para este pedido. ' +
+        'Si dice “en proceso / pendiente”, espera y consulta de nuevo. ' +
+        `Ref: ${referenceCode}`;
+      order.electronicInvoiceError = msg.slice(0, 1000);
+      await this.orderRepo.save(order);
+      return {
+        updated: false,
+        status: order.electronicInvoiceStatus || 'error',
+        number: order.electronicInvoiceNumber,
+        message: msg,
+        error: order.electronicInvoiceError,
+      };
+    }
+
+    let detail: FactusBillDetail = matches[0];
+    const number = detail.number?.trim();
+    if (number && (!detail.cufe || !detail.links?.public_url)) {
+      try {
+        detail = await this.api.getBill(number);
+      } catch (err) {
+        this.logger.warn(
+          `[FE sync order] getBill ${number} falló: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    if (detail.is_validated === false) {
+      const errMsg = (
+        listRes.message ||
+        'Factura encontrada en Factus pero no validada por DIAN'
+      ).slice(0, 1000);
+      order.electronicInvoiceStatus = 'rejected';
+      order.electronicInvoiceNumber = detail.number ?? order.electronicInvoiceNumber;
+      order.electronicInvoiceError = errMsg;
+      await this.orderRepo.save(order);
+      return {
+        updated: true,
+        status: 'rejected',
+        number: order.electronicInvoiceNumber,
+        message: errMsg,
+        error: errMsg,
+      };
+    }
+
+    order.electronicInvoiceStatus = 'accepted';
+    order.electronicInvoiceNumber = detail.number ?? order.electronicInvoiceNumber;
+    order.electronicInvoiceCufe = detail.cufe ?? order.electronicInvoiceCufe;
+    order.electronicInvoicePublicUrl =
+      detail.links?.public_url ?? order.electronicInvoicePublicUrl;
+    order.electronicInvoiceQrUrl =
+      detail.links?.qr ?? order.electronicInvoiceQrUrl;
+    order.electronicInvoiceIssuedAt =
+      this.parseFactusDateTime(detail.validated_at) ||
+      this.parseFactusDateTime(detail.created_at) ||
+      order.electronicInvoiceIssuedAt ||
+      new Date();
+    order.electronicInvoiceError = null;
+    await this.orderRepo.save(order);
+
+    return {
+      updated: true,
+      status: 'accepted',
+      number: order.electronicInvoiceNumber,
+      message: `Actualizada: ${order.electronicInvoiceNumber || 'aceptada en Factus'}`,
+      error: null,
+    };
   }
 
   private parseLoteReferenceCode(referenceCode: string): {
