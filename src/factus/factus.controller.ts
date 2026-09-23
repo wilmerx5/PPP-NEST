@@ -175,6 +175,19 @@ export class FactusController {
     return this.factusService.syncStandaloneInvoiceFromFactus(id);
   }
 
+  @Post('admin/factus/standalone-invoices/:id/retry')
+  @Auth(ValidRoles.admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reintentar emisión de FE de lote fallida',
+    description:
+      'Requiere lines_json guardado. No reintenta si ya está en validación DIAN (usar sync).',
+  })
+  @ApiParam({ name: 'id', description: 'ID en ppp_factus_standalone_invoices' })
+  retryStandaloneInvoice(@Param('id', ParseIntPipe) id: number) {
+    return this.factusService.retryStandaloneInvoice(id);
+  }
+
   @Post('orders/:id/electronic-invoice/sync')
   @Auth(...OPS)
   @ApiBearerAuth()

@@ -61,6 +61,13 @@ const BULK_CONSUMIDOR_FINAL: IssueElectronicInvoiceDto = {
   sendEmail: false,
 };
 
+type FactusValidationOutcome = {
+  status: 'accepted' | 'pending' | 'rejected';
+  /** Solo mensaje de fallo real; null si aceptada o en proceso OK. */
+  error: string | null;
+  info: string | null;
+};
+
 type InvoiceCustomerRow = {
   identificationDocumentCode: string;
   identification: string;
@@ -282,16 +289,20 @@ export class FactusService {
     try {
       const result = await this.api.validateBill(payload);
       const data = result.data;
+      const outcome = this.resolveFactusValidationOutcome({
+        isValidated: data?.is_validated,
+        number: data?.number,
+        message: result.message,
+        errors: data?.errors,
+      });
 
-      order.electronicInvoiceStatus = data?.is_validated ? 'accepted' : 'rejected';
+      order.electronicInvoiceStatus = outcome.status;
       order.electronicInvoiceNumber = data?.number || null;
       order.electronicInvoiceCufe = data?.cufe || null;
       order.electronicInvoicePublicUrl = data?.links?.public_url || null;
       order.electronicInvoiceQrUrl = data?.links?.qr || null;
       order.electronicInvoiceIssuedAt = new Date();
-      order.electronicInvoiceError = data?.is_validated
-        ? null
-        : JSON.stringify(data?.errors || result.message || 'No validada').slice(0, 1000);
+      order.electronicInvoiceError = outcome.error ?? outcome.info;
 
       order.invoiceCustomerDocType = dto.identificationDocumentCode;
       order.invoiceCustomerDocNumber = dto.identification.replace(/\D/g, '');
@@ -300,16 +311,20 @@ export class FactusService {
 
       await this.orderRepo.save(order);
 
-      if (data?.is_validated) {
+      if (outcome.status === 'accepted') {
         await this.upsertInvoiceCustomer(dto);
         this.logger.log(
           `[FE] OK orden=#${order.id} number=${order.electronicInvoiceNumber} ` +
             `cufe=${(order.electronicInvoiceCufe || '').slice(0, 24)}… ` +
             `url=${order.electronicInvoicePublicUrl || '-'}`,
         );
+      } else if (outcome.status === 'pending') {
+        this.logger.log(
+          `[FE] PENDIENTE DIAN orden=#${order.id} number=${order.electronicInvoiceNumber} msg=${result.message}`,
+        );
       } else {
         this.logger.warn(
-          `[FE] RECHAZADA/sin validar orden=#${order.id} number=${order.electronicInvoiceNumber} ` +
+          `[FE] RECHAZADA orden=#${order.id} number=${order.electronicInvoiceNumber} ` +
             `msg=${result.message} errors=${JSON.stringify(data?.errors || {})}`,
         );
       }
@@ -319,7 +334,7 @@ export class FactusService {
       }
 
       return {
-        success: !!data?.is_validated,
+        success: outcome.status === 'accepted',
         orderId: order.id,
         status: order.electronicInvoiceStatus,
         number: order.electronicInvoiceNumber,
@@ -709,7 +724,15 @@ export class FactusService {
 
         const result = await this.api.validateBill(payload);
         const data = result.data;
-        if (data?.is_validated) {
+        const outcome = this.resolveFactusValidationOutcome({
+          isValidated: data?.is_validated,
+          number: data?.number,
+          message: result.message,
+          errors: data?.errors,
+        });
+        const linesJson = JSON.stringify(inv.lines);
+
+        if (outcome.status === 'accepted') {
           await this.upsertInvoiceCustomer(issueDto);
           await this.standaloneInvoiceRepo.save(
             this.standaloneInvoiceRepo.create({
@@ -724,6 +747,7 @@ export class FactusService {
               qrUrl: (data?.links as { qr_url?: string } | undefined)?.qr_url ?? null,
               issuedAt: new Date(),
               plannedSum: inv.sum,
+              linesJson,
               invoiceCustomerDocType: issueDto.identificationDocumentCode,
               invoiceCustomerDocNumber: issueDto.identification,
             }),
@@ -736,21 +760,22 @@ export class FactusService {
             cufe: data?.cufe ?? null,
             publicUrl: data?.links?.public_url ?? null,
           });
-        } else {
-          const errMsg = (
-            result.message ||
-            JSON.stringify(data?.errors || 'Factura no validada por DIAN')
-          ).slice(0, 1000);
+        } else if (outcome.status === 'pending') {
           await this.standaloneInvoiceRepo.save(
             this.standaloneInvoiceRepo.create({
               batchId,
               batchIndex: inv.index,
               referenceCode,
               customerName: issueDto.names || 'Consumidor final',
-              invoiceStatus: 'rejected',
+              invoiceStatus: 'pending',
               invoiceNumber: data?.number ?? null,
-              invoiceError: errMsg,
+              invoiceCufe: data?.cufe ?? null,
+              publicUrl: data?.links?.public_url ?? null,
+              qrUrl: (data?.links as { qr_url?: string } | undefined)?.qr_url ?? null,
+              issuedAt: data?.number ? new Date() : null,
+              invoiceError: outcome.info,
               plannedSum: inv.sum,
+              linesJson,
               invoiceCustomerDocType: issueDto.identificationDocumentCode,
               invoiceCustomerDocNumber: issueDto.identification,
             }),
@@ -760,7 +785,30 @@ export class FactusService {
             ok: false,
             sum: inv.sum,
             number: data?.number ?? null,
-            error: errMsg,
+            error: outcome.info || 'En validación DIAN',
+          });
+        } else {
+          await this.standaloneInvoiceRepo.save(
+            this.standaloneInvoiceRepo.create({
+              batchId,
+              batchIndex: inv.index,
+              referenceCode,
+              customerName: issueDto.names || 'Consumidor final',
+              invoiceStatus: 'rejected',
+              invoiceNumber: data?.number ?? null,
+              invoiceError: outcome.error,
+              plannedSum: inv.sum,
+              linesJson,
+              invoiceCustomerDocType: issueDto.identificationDocumentCode,
+              invoiceCustomerDocNumber: issueDto.identification,
+            }),
+          );
+          results.push({
+            index: inv.index,
+            ok: false,
+            sum: inv.sum,
+            number: data?.number ?? null,
+            error: outcome.error || 'Rechazada',
           });
         }
       } catch (err) {
@@ -781,6 +829,7 @@ export class FactusService {
             invoiceStatus: 'error',
             invoiceError: message.slice(0, 1000),
             plannedSum: inv.sum,
+            linesJson: JSON.stringify(inv.lines),
             invoiceCustomerDocType: issueDto.identificationDocumentCode,
             invoiceCustomerDocNumber: issueDto.identification,
           }),
@@ -992,6 +1041,9 @@ export class FactusService {
       invoiceCustomerDocNumber: s.invoiceCustomerDocNumber,
       invoiceCustomerDocDv: null,
       customerEmail: null,
+      canRetry:
+        !!s.linesJson &&
+        (s.invoiceStatus === 'error' || s.invoiceStatus === 'rejected'),
       _sortAt: s.issuedAt ?? s.createdAt,
     }));
 
@@ -1336,43 +1388,227 @@ export class FactusService {
     }
 
     if (detail.is_validated === false) {
-      const errMsg = (
-        listRes.message ||
-        'Factura encontrada en Factus pero no validada por DIAN'
-      ).slice(0, 1000);
-      row.invoiceStatus = 'rejected';
+      const outcome = this.resolveFactusValidationOutcome({
+        isValidated: false,
+        number: detail.number,
+        message: listRes.message,
+      });
+      row.invoiceStatus = outcome.status;
       row.invoiceNumber = detail.number ?? row.invoiceNumber;
-      row.invoiceError = errMsg;
+      row.invoiceCufe = detail.cufe ?? row.invoiceCufe;
+      row.publicUrl = detail.links?.public_url ?? row.publicUrl;
+      row.qrUrl = detail.links?.qr ?? row.qrUrl;
+      row.invoiceError = outcome.error ?? outcome.info;
+      if (outcome.status === 'pending' && !row.issuedAt && row.invoiceNumber) {
+        row.issuedAt = new Date();
+      }
       await this.standaloneInvoiceRepo.save(row);
       return {
         updated: true,
-        status: 'rejected',
+        status: outcome.status,
         number: row.invoiceNumber,
-        message: errMsg,
-        error: errMsg,
+        message:
+          outcome.status === 'pending'
+            ? outcome.info ||
+              `Factura ${row.invoiceNumber || ''} en validación DIAN. Vuelve a consultar en unos minutos.`
+            : outcome.error || 'Rechazada por DIAN',
+        error: row.invoiceError,
       };
     }
 
-    row.invoiceStatus = 'accepted';
-    row.invoiceNumber = detail.number ?? row.invoiceNumber;
-    row.invoiceCufe = detail.cufe ?? row.invoiceCufe;
-    row.publicUrl = detail.links?.public_url ?? row.publicUrl;
-    row.qrUrl = detail.links?.qr ?? row.qrUrl;
-    row.issuedAt =
-      this.parseFactusDateTime(detail.validated_at) ||
-      this.parseFactusDateTime(detail.created_at) ||
-      row.issuedAt ||
-      new Date();
-    row.invoiceError = null;
-    await this.standaloneInvoiceRepo.save(row);
+    // is_validated true o con CUFE → aceptar
+    if (detail.is_validated === true || (detail.number && detail.cufe)) {
+      row.invoiceStatus = 'accepted';
+      row.invoiceNumber = detail.number ?? row.invoiceNumber;
+      row.invoiceCufe = detail.cufe ?? row.invoiceCufe;
+      row.publicUrl = detail.links?.public_url ?? row.publicUrl;
+      row.qrUrl = detail.links?.qr ?? row.qrUrl;
+      row.issuedAt =
+        this.parseFactusDateTime(detail.validated_at) ||
+        this.parseFactusDateTime(detail.created_at) ||
+        row.issuedAt ||
+        new Date();
+      row.invoiceError = null;
+      await this.standaloneInvoiceRepo.save(row);
 
+      return {
+        updated: true,
+        status: 'accepted',
+        number: row.invoiceNumber,
+        message: `Actualizada: ${row.invoiceNumber || 'aceptada en Factus'}`,
+        error: null,
+      };
+    }
+
+    const outcome = this.resolveFactusValidationOutcome({
+      isValidated: detail.is_validated,
+      number: detail.number,
+      message: listRes.message,
+    });
+    row.invoiceStatus = outcome.status;
+    row.invoiceNumber = detail.number ?? row.invoiceNumber;
+    row.invoiceError = outcome.error ?? outcome.info;
+    await this.standaloneInvoiceRepo.save(row);
     return {
       updated: true,
-      status: 'accepted',
+      status: outcome.status,
       number: row.invoiceNumber,
-      message: `Actualizada: ${row.invoiceNumber || 'aceptada en Factus'}`,
-      error: null,
+      message: outcome.info || outcome.error || 'Estado actualizado',
+      error: row.invoiceError,
     };
+  }
+
+  /**
+   * Reemite una FE de lote fallida usando las líneas guardadas.
+   * No aplica si ya está accepted o solo pendiente de DIAN (usar sync).
+   */
+  async retryStandaloneInvoice(bulkInvoiceId: number): Promise<{
+    ok: boolean;
+    status: string;
+    number: string | null;
+    message: string;
+    error?: string | null;
+  }> {
+    if (!this.auth.isConfigured()) {
+      throw new BadRequestException('Factus no está configurado');
+    }
+
+    const row = await this.standaloneInvoiceRepo.findOne({
+      where: { id: bulkInvoiceId },
+    });
+    if (!row) {
+      throw new NotFoundException(`FE de lote #${bulkInvoiceId} no encontrada`);
+    }
+
+    if (row.invoiceStatus === 'accepted') {
+      return {
+        ok: true,
+        status: 'accepted',
+        number: row.invoiceNumber,
+        message: `Ya está aceptada (${row.invoiceNumber || 'sin número'})`,
+      };
+    }
+
+    if (row.invoiceStatus === 'pending' && row.invoiceNumber) {
+      throw new BadRequestException(
+        `La factura ${row.invoiceNumber} ya fue enviada y está en validación DIAN. Usa “Consultar Factus”, no reintentar.`,
+      );
+    }
+
+    if (!row.linesJson?.trim()) {
+      throw new BadRequestException(
+        'Esta factura de lote no tiene productos guardados para reintentar (se emitió antes del fix). ' +
+          'Emite un lote nuevo desde Facturas → Lote.',
+      );
+    }
+
+    let lines: BulkInvoicePlan['lines'];
+    try {
+      lines = JSON.parse(row.linesJson);
+    } catch {
+      throw new BadRequestException('No se pudieron leer las líneas guardadas para reintentar');
+    }
+    if (!Array.isArray(lines) || !lines.length) {
+      throw new BadRequestException('No hay líneas válidas para reintentar');
+    }
+
+    // Si Factus ya tiene la ref, sincronizar en vez de duplicar
+    try {
+      const sync = await this.syncStandaloneInvoiceFromFactus(bulkInvoiceId);
+      if (sync.status === 'accepted' || sync.status === 'pending') {
+        return {
+          ok: sync.status === 'accepted',
+          status: sync.status,
+          number: sync.number,
+          message:
+            sync.status === 'accepted'
+              ? sync.message
+              : 'Ya existe en Factus en validación. No se reemitió para evitar duplicado.',
+          error: sync.error,
+        };
+      }
+    } catch (err) {
+      this.logger.warn(
+        `[FE retry] sync previo falló id=${bulkInvoiceId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    const issueDto: IssueElectronicInvoiceDto = {
+      ...BULK_CONSUMIDOR_FINAL,
+      sendEmail: false,
+      observation: `Reintento lote #${row.batchIndex}`.slice(0, 250),
+    };
+    const taxConfig = await this.invoiceSettings.getResolvedTaxConfig();
+    const referenceCode =
+      `PPP-LOTE-${row.batchId}-R${Date.now().toString(36)}-${row.batchIndex}`.slice(0, 100);
+
+    try {
+      const { payload, invoiceTotal } = this.mapper.buildValidatePayloadFromCatalogLines(
+        lines,
+        issueDto,
+        taxConfig,
+        { referenceCode, observation: issueDto.observation },
+      );
+      this.logger.log(
+        `[FE retry] id=${row.id} ref=${referenceCode} items=${payload.items.length} total≈${invoiceTotal}`,
+      );
+
+      const result = await this.api.validateBill(payload);
+      const data = result.data;
+      const outcome = this.resolveFactusValidationOutcome({
+        isValidated: data?.is_validated,
+        number: data?.number,
+        message: result.message,
+        errors: data?.errors,
+      });
+
+      row.referenceCode = referenceCode;
+      row.invoiceStatus = outcome.status;
+      row.invoiceNumber = data?.number ?? null;
+      row.invoiceCufe = data?.cufe ?? null;
+      row.publicUrl = data?.links?.public_url ?? null;
+      row.qrUrl = (data?.links as { qr_url?: string } | undefined)?.qr_url ?? null;
+      row.invoiceError = outcome.error ?? outcome.info;
+      if (outcome.status === 'accepted' || (outcome.status === 'pending' && data?.number)) {
+        row.issuedAt = new Date();
+      }
+      if (outcome.status === 'accepted') {
+        row.invoiceError = null;
+        await this.upsertInvoiceCustomer(issueDto);
+      }
+      await this.standaloneInvoiceRepo.save(row);
+
+      return {
+        ok: outcome.status === 'accepted',
+        status: outcome.status,
+        number: row.invoiceNumber,
+        message:
+          outcome.status === 'accepted'
+            ? `Reintento OK: ${row.invoiceNumber}`
+            : outcome.status === 'pending'
+              ? outcome.info || `Enviada (${row.invoiceNumber}). En validación DIAN.`
+              : outcome.error || 'Rechazada al reintentar',
+        error: row.invoiceError,
+      };
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Error al reintentar';
+      row.invoiceStatus = 'error';
+      row.invoiceError = message.slice(0, 1000);
+      row.referenceCode = referenceCode;
+      await this.standaloneInvoiceRepo.save(row);
+      return {
+        ok: false,
+        status: 'error',
+        number: row.invoiceNumber,
+        message,
+        error: row.invoiceError,
+      };
+    }
   }
 
   /**
@@ -1442,20 +1678,30 @@ export class FactusService {
     }
 
     if (detail.is_validated === false) {
-      const errMsg = (
-        listRes.message ||
-        'Factura encontrada en Factus pero no validada por DIAN'
-      ).slice(0, 1000);
-      order.electronicInvoiceStatus = 'rejected';
-      order.electronicInvoiceNumber = detail.number ?? order.electronicInvoiceNumber;
-      order.electronicInvoiceError = errMsg;
+      const outcome = this.resolveFactusValidationOutcome({
+        isValidated: false,
+        number: detail.number,
+        message: listRes.message,
+      });
+      order.electronicInvoiceStatus = outcome.status;
+      order.electronicInvoiceNumber =
+        detail.number ?? order.electronicInvoiceNumber;
+      order.electronicInvoiceCufe = detail.cufe ?? order.electronicInvoiceCufe;
+      order.electronicInvoicePublicUrl =
+        detail.links?.public_url ?? order.electronicInvoicePublicUrl;
+      order.electronicInvoiceQrUrl =
+        detail.links?.qr ?? order.electronicInvoiceQrUrl;
+      order.electronicInvoiceError = outcome.error ?? outcome.info;
       await this.orderRepo.save(order);
       return {
         updated: true,
-        status: 'rejected',
+        status: outcome.status,
         number: order.electronicInvoiceNumber,
-        message: errMsg,
-        error: errMsg,
+        message:
+          outcome.status === 'pending'
+            ? outcome.info || 'En validación DIAN'
+            : outcome.error || 'Rechazada por DIAN',
+        error: order.electronicInvoiceError,
       };
     }
 
@@ -1480,6 +1726,74 @@ export class FactusService {
       number: order.electronicInvoiceNumber,
       message: `Actualizada: ${order.electronicInvoiceNumber || 'aceptada en Factus'}`,
       error: null,
+    };
+  }
+
+  /**
+   * Interpreta respuesta Factus: "Solicitud exitosa" + is_validated=false
+   * suele ser pendiente DIAN, no rechazo.
+   */
+  private resolveFactusValidationOutcome(opts: {
+    isValidated?: boolean;
+    number?: string | null;
+    message?: string | null;
+    errors?: unknown;
+  }): FactusValidationOutcome {
+    if (opts.isValidated === true) {
+      return { status: 'accepted', error: null, info: null };
+    }
+
+    const msg = (opts.message || '').trim();
+    const hasErrors =
+      !!opts.errors &&
+      (typeof opts.errors === 'object'
+        ? Object.keys(opts.errors as object).length > 0
+        : true);
+    const looksSoftPending =
+      /solicitud exitosa/i.test(msg) ||
+      /en proceso/i.test(msg) ||
+      /pendiente por valid/i.test(msg) ||
+      (/exitos/i.test(msg) && !/no exitos|fall/i.test(msg));
+    const looksHardReject =
+      /rechaz/i.test(msg) ||
+      /invalid/i.test(msg) ||
+      /no se pudo/i.test(msg) ||
+      /error/i.test(msg);
+
+    if (opts.isValidated === false) {
+      if (opts.number && (looksSoftPending || !hasErrors) && !looksHardReject) {
+        return {
+          status: 'pending',
+          error: null,
+          info: (
+            opts.number
+              ? `Factura ${opts.number} enviada. En validación DIAN — usa “Consultar Factus” en unos minutos.`
+              : 'Enviada a DIAN. En validación — consulta Factus en unos minutos.'
+          ).slice(0, 1000),
+        };
+      }
+      return {
+        status: 'rejected',
+        error: (
+          msg ||
+          (hasErrors ? JSON.stringify(opts.errors) : 'Factura no validada por DIAN')
+        ).slice(0, 1000),
+        info: null,
+      };
+    }
+
+    if (opts.number && looksSoftPending) {
+      return {
+        status: 'pending',
+        error: null,
+        info: `Factura ${opts.number} en validación DIAN.`.slice(0, 1000),
+      };
+    }
+
+    return {
+      status: 'pending',
+      error: null,
+      info: (msg || 'Pendiente de validación DIAN').slice(0, 1000),
     };
   }
 

@@ -50,6 +50,10 @@ export class FactusStandaloneInvoice {
   @Column({ name: 'planned_sum', type: 'int', default: 0 })
   plannedSum: number;
 
+  /** JSON de líneas del plan (para reintentar emisión si falló). */
+  @Column({ name: 'lines_json', type: 'longtext', nullable: true })
+  linesJson: string | null;
+
   @Column({ name: 'invoice_customer_doc_type', type: 'varchar', length: 5, nullable: true })
   invoiceCustomerDocType: string | null;
 
