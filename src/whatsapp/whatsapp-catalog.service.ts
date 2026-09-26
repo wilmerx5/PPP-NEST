@@ -72,7 +72,12 @@ function stemLoose(s: string): string {
   }
   // quita plural simple (sopas→sopa, bebidas→bebida)
   if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
-  if (n.length > 4 && n.endsWith('es')) return n.slice(0, -2);
+  // "carnes"→"carne" (no "carn")
+  if (n.length > 4 && n.endsWith('es')) {
+    const minusS = n.slice(0, -1);
+    if (/(ne|re|le|de|se|te|pe)$/.test(minusS)) return minusS;
+    return n.slice(0, -2);
+  }
   return n;
 }
 

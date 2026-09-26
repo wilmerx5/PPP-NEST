@@ -100,6 +100,12 @@ export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
     productKeywords: ['arroz', 'chino', 'paisa', 'cantones'],
   },
   {
+    id: 'pescado',
+    label: 'Pescado',
+    triggers: ['pescado', 'pescados', 'marisco', 'mariscos', 'mojarra', 'trucha', 'bagre'],
+    productKeywords: ['mojarra', 'trucha', 'bagre', 'pescado', 'filete', 'tilapia'],
+  },
+  {
     id: 'bebida',
     label: 'Bebidas',
     triggers: [
@@ -157,8 +163,15 @@ function stemLoose(s: string): string {
     }
     return n;
   }
+  // Plural simple: sopas→sopa, pollos→pollo
   if (n.length > 3 && n.endsWith('s') && !n.endsWith('es')) return n.slice(0, -1);
-  if (n.length > 4 && n.endsWith('es')) return n.slice(0, -2);
+  // "carnes"→"carne", "flores"→"flor": preferir -s cuando queda vocal+consonante típica
+  // (evitar "carnes"→"carn" que rompe match con "carne")
+  if (n.length > 4 && n.endsWith('es')) {
+    const minusS = n.slice(0, -1);
+    if (/(ne|re|le|de|se|te|pe)$/.test(minusS)) return minusS;
+    return n.slice(0, -2);
+  }
   return n;
 }
 
@@ -249,7 +262,7 @@ export function resolveMenuConceptGroups(stored: unknown): MenuConceptGroup[] {
     )
       .map((t) => normalizeText(String(t)))
       .filter(Boolean);
-    if (!triggers.length || !productKeywords.length) continue;
+    if (!triggers.length) continue;
     out.push({
       id,
       label,
@@ -273,8 +286,73 @@ function queryMatchesConcept(q: string, concept: MenuConceptGroup): boolean {
   return false;
 }
 
+/** Nombres de categoría del menú que cuentan para cada concepto (sin listar cada corte). */
+const CATEGORY_ALIASES: Record<string, string[]> = {
+  carne: ['carne', 'carnes', 'res', 'cerdo', 'parrilla', 'asados', 'asado', 'grill', 'cortes'],
+  pollo: ['pollo', 'pollos', 'aves', 'broaster'],
+  sopa: ['sopa', 'sopas', 'caldo', 'caldos', 'sopitas'],
+  arroz: ['arroz', 'arroces', 'chinos'],
+  pescado: ['pescado', 'pescados', 'mariscos', 'pescaderia'],
+  bebida: ['bebida', 'bebidas', 'gaseosa', 'gaseosas', 'jugo', 'jugos', 'refresco', 'refrescos'],
+};
+
+/** Categorías genéricas mezcladas (carta / especiales) — el LLM debe filtrar. */
+const GENERIC_CATEGORY_RE =
+  /\b(carta|especial(?:es)?|platos?(?:\s+fuertes?)?|fuertes?|menu|almuerzo|comida|recomend\w*|del\s*dia|principales?|ejecutivos?)\b/i;
+
+const SIDE_OR_DRINK_CATEGORY_RE =
+  /\b(bebida|bebidas|gaseosa|jugos?|limonada|extra|adiciones?|guarnici\w*|acompan\w*|arepas?\s+suelt)/i;
+
+const SEMANTIC_FILTER_HINTS: Record<string, string> = {
+  carne:
+    'Filtra SEMÁNTICAMENTE entre candidates: solo carne de res/cerdo/ternera ' +
+    '(churrasco, sobrebarriga, solomillo, punta de anca, bistec, lomo, posta, costilla de res…). ' +
+    'EXCLUYE pollo, pescado/mojarra/trucha/bagre, sopas, arroz, bebidas y acompañamientos. ' +
+    'Ofrece 2–4 en tono natural. NUNCA digas "no encontré". Si ninguno encaja, dilo breve y ofrece menú.',
+  pollo:
+    'Filtra SEMÁNTICAMENTE: solo platos de pollo (frito, broaster, pechuga, alitas, combos de pollo). ' +
+    'EXCLUYE carne de res, pescado, sopas sueltas y bebidas. Ofrece 2–4 natural. NO digas "no encontré".',
+  sopa:
+    'Filtra SEMÁNTICAMENTE: solo sopas/caldos (ajiaco, mondongo, menudencias, sancocho…). ' +
+    'EXCLUYE platos secos, carnes a la plancha, pollo entero y bebidas. Ofrece 2–4 natural.',
+  arroz:
+    'Filtra SEMÁNTICAMENTE: arroces (chino, paisa, etc.). EXCLUYE pollo suelto, carnes y bebidas.',
+  pescado:
+    'Filtra SEMÁNTICAMENTE: pescados/mariscos (mojarra, trucha, bagre…). EXCLUYE carne de res, pollo y bebidas.',
+  bebida:
+    'Filtra SEMÁNTICAMENTE: solo bebidas (gaseosa, jugo, limonada…). EXCLUYE comida.',
+};
+
+function categoryMatchesConcept(
+  categoryName: string | null | undefined,
+  concept: MenuConceptGroup,
+): boolean {
+  const cat = normalizeText(categoryName || '');
+  if (!cat || cat.length < 3) return false;
+  const catStem = stemLoose(cat);
+  const needles = [
+    concept.label,
+    concept.id,
+    ...concept.triggers,
+    ...(CATEGORY_ALIASES[concept.id] || []),
+  ];
+  for (const raw of needles) {
+    const n = normalizeText(raw);
+    if (!n || n.length < 3) continue;
+    if (cat === n || catStem === stemLoose(n)) return true;
+    if (hasWholeWordOrStem(cat, n)) return true;
+    // "Carnes a la parrilla" contiene alias
+    if (cat.includes(n) || cat.includes(stemLoose(n))) return true;
+  }
+  return false;
+}
+
 function productMatchesConcept(p: WhatsappProductCandidate, concept: MenuConceptGroup): boolean {
-  const hay = normalizeText(`${p.name} ${p.description || ''} ${p.categoryName || ''}`);
+  // 1) Categoría del menú (punta de anca / solomillo en "Carnes" sin listar cortes)
+  if (categoryMatchesConcept(p.categoryName, concept)) return true;
+
+  // 2) Keywords solo en nombre/descripcion (respaldo si el plato está mal categorizado)
+  const hay = normalizeText(`${p.name} ${p.description || ''}`);
   for (const kw of concept.productKeywords) {
     const k = normalizeText(kw);
     if (k.length >= 3 && hasWholeWordOrStem(hay, k)) return true;
@@ -283,8 +361,9 @@ function productMatchesConcept(p: WhatsappProductCandidate, concept: MenuConcept
 }
 
 /**
- * Agrupa productos por concepto del menú cuando NO hay categoría con ese nombre.
- * Ej: "carne" → churrasco, sobrebarriga (aunque estén en otra categoría).
+ * Agrupa productos por concepto del menú.
+ * Prioridad: categoría del menú (Carnes → todos los cortes) + keywords de respaldo.
+ * No hace falta listar "punta de anca", "solomillo", etc. a mano.
  */
 export function findByMenuConcept(
   query: string,
@@ -320,6 +399,10 @@ export function findByMenuConcept(
       const stop = new Set([
         'con', 'de', 'del', 'la', 'el', 'los', 'las', 'una', 'un', 'unos', 'unas',
         'quiero', 'dame', 'ponme', 'para', 'por',
+        // Disponibilidad / cortesía: "tienes carne?" no filtra por "tienes"
+        'tiene', 'tienen', 'tienes', 'hay', 'ofrecen', 'ofreces', 'venden', 'vendes',
+        'manejan', 'manejas', 'disponible', 'disponibles', 'hola', 'buenas', 'buenos',
+        'favor', 'porfa', 'gracias',
       ]);
       const broadNeedles = new Set(
         [...matchedTriggers, ...(BROAD_CONCEPT_TRIGGERS[concept.id] || []), concept.label]
@@ -367,12 +450,122 @@ export function findByMenuConcept(
 export function buildMenuConceptsPromptBlock(groups?: MenuConceptGroup[]): string {
   const concepts = resolveMenuConceptGroups(groups).filter((c) => c.enabled !== false);
   if (!concepts.length) return '';
-  const lines = concepts.map(
-    (c) =>
-      `  • "${c.label}": si piden ${c.triggers.slice(0, 4).join(', ')}… busca productos como ${c.productKeywords.slice(0, 4).join(', ')}`,
-  );
+  const lines = concepts.map((c) => {
+    const catHint = (CATEGORY_ALIASES[c.id] || [c.label]).slice(0, 3).join('/');
+    const kw = c.productKeywords.slice(0, 3).join(', ');
+    return (
+      `  • "${c.label}": si piden ${c.triggers.slice(0, 4).join(', ')}… ` +
+      `lista productos de categorías tipo ${catHint}` +
+      (kw ? ` (también nombres con ${kw}…)` : '') +
+      `; si el menú mezcla todo en "carta/especiales", search_menu te da candidates y TÚ filtras por significado`
+    );
+  });
   return (
-    `CONCEPTOS DEL MENÚ (no siempre = nombre de categoría; usa esto para orientar):\n` +
+    `CONCEPTOS DEL MENÚ (categoría limpia O filtro semántico del agente):\n` +
     lines.join('\n')
   );
+}
+
+export type ConceptBrowseForAgent = {
+  /** category_clean = menú ordenado; semantic_filter = carta mezclada → el LLM filtra */
+  mode: 'category_clean' | 'semantic_filter';
+  conceptId: string;
+  conceptLabel: string;
+  products: WhatsappProductCandidate[];
+  hint: string;
+};
+
+function isGenericMenuCategory(categoryName: string | null | undefined): boolean {
+  const cat = (categoryName || '').trim();
+  if (!cat) return true; // sin categoría = menú desordenado
+  if (SIDE_OR_DRINK_CATEGORY_RE.test(cat)) return false;
+  return GENERIC_CATEGORY_RE.test(cat);
+}
+
+function keywordMatchesProduct(
+  p: WhatsappProductCandidate,
+  concept: MenuConceptGroup,
+): boolean {
+  const hay = normalizeText(`${p.name} ${p.description || ''}`);
+  for (const kw of concept.productKeywords) {
+    const k = normalizeText(kw);
+    if (k.length >= 3 && hasWholeWordOrStem(hay, k)) return true;
+  }
+  return false;
+}
+
+/**
+ * Búsqueda por concepto lista para el agente:
+ * 1) Categoría clara (Carnes) → resultados directos
+ * 2) Menú mezclado (carta/especiales) → pool amplio + hint para filtro semántico del LLM
+ */
+export function resolveConceptBrowseForAgent(
+  query: string,
+  products: WhatsappProductCandidate[],
+  groups?: MenuConceptGroup[],
+): ConceptBrowseForAgent | null {
+  const q = normalizeText(query);
+  if (!q || q.length < 3) return null;
+
+  const concepts = resolveMenuConceptGroups(groups).filter((c) => c.enabled !== false);
+  const concept = concepts.find((c) => queryMatchesConcept(q, c));
+  if (!concept) return null;
+
+  const available = products.filter((p) => p.availableNow !== false);
+  const fromSpecificCategory = available.filter((p) => categoryMatchesConcept(p.categoryName, concept));
+  const fromKeywords = available.filter((p) => keywordMatchesProduct(p, concept));
+  const fromGenericCategories = available.filter(
+    (p) =>
+      isGenericMenuCategory(p.categoryName) &&
+      !SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || ''),
+  );
+
+  const specificIsClean =
+    fromSpecificCategory.length >= 1 &&
+    fromSpecificCategory.every((p) => !isGenericMenuCategory(p.categoryName));
+
+  // Mundo perfecto: categoría Carnes/Pollos bien armada
+  if (specificIsClean && fromSpecificCategory.length >= 1) {
+    const merged = new Map<number, WhatsappProductCandidate>();
+    for (const p of [...fromSpecificCategory, ...fromKeywords]) merged.set(p.id, p);
+    return {
+      mode: 'category_clean',
+      conceptId: concept.id,
+      conceptLabel: concept.label,
+      products: [...merged.values()].slice(0, 12),
+      hint:
+        `Categoría clara "${concept.label}". Ofrece 2–4 opciones en tono natural. ` +
+        `NUNCA digas "no encontré".`,
+    };
+  }
+
+  // Menú desordenado / vacío de categoría: pool para que el LLM filtre
+  const pool = new Map<number, WhatsappProductCandidate>();
+  for (const p of [...fromSpecificCategory, ...fromKeywords, ...fromGenericCategories]) {
+    pool.set(p.id, p);
+  }
+  // Si sigue muy vacío, meter platos no-bebida (último recurso)
+  if (pool.size < 3) {
+    for (const p of available) {
+      if (SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || '')) continue;
+      if (concept.id === 'bebida') continue;
+      pool.set(p.id, p);
+      if (pool.size >= 28) break;
+    }
+  }
+
+  if (!pool.size) return null;
+
+  const hint =
+    SEMANTIC_FILTER_HINTS[concept.id] ||
+    `Filtra SEMÁNTICAMENTE candidates que encajen con "${concept.label}". ` +
+      `Ofrece 2–4 natural. NUNCA digas "no encontré".`;
+
+  return {
+    mode: 'semantic_filter',
+    conceptId: concept.id,
+    conceptLabel: concept.label,
+    products: [...pool.values()].slice(0, 35),
+    hint,
+  };
 }

@@ -6,6 +6,8 @@ import {
 } from './whatsapp-catalog.service';
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
+import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
+import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 
 export type AgentV1TurnInput = {
   userMessage: string;
@@ -16,6 +18,7 @@ export type AgentV1TurnInput = {
   products: WhatsappCatalogProduct[];
   menuUrl?: string | null;
   humanPhone?: string | null;
+  menuConceptGroups?: MenuConceptGroup[];
 };
 
 export type AgentV1TurnResult = {
@@ -192,6 +195,8 @@ Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
 Reglas:
 - Siempre search_menu antes de add_item si no tienes el productId.
+- Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
+- Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - Preguntas ("podría ser broaster?") → responde y usa set_notes; no agregues Broaster suelto.
@@ -302,6 +307,7 @@ Contacto humano: *${phone || '3118866823'}*
             products: input.products,
             byId,
             actions,
+            menuConceptGroups: input.menuConceptGroups,
             setNeedsAttr: (id) => {
               needsAttributeProductId = id;
             },
@@ -341,6 +347,7 @@ Contacto humano: *${phone || '3118866823'}*
       products: WhatsappCatalogProduct[];
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
+      menuConceptGroups?: MenuConceptGroup[];
       setNeedsAttr: (id: number) => void;
     },
   ): string {
@@ -358,6 +365,28 @@ Contacto humano: *${phone || '3118866823'}*
             });
           }
         }
+
+        // Concepto ("carne", "pescado"…): categoría limpia O pool para filtro semántico del LLM
+        const conceptBrowse = resolveConceptBrowseForAgent(
+          query,
+          ctx.products,
+          ctx.menuConceptGroups,
+        );
+        if (conceptBrowse?.products?.length) {
+          const max = conceptBrowse.mode === 'semantic_filter' ? 35 : 12;
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: conceptBrowse.mode,
+            concept: conceptBrowse.conceptLabel,
+            conceptId: conceptBrowse.conceptId,
+            candidates: conceptBrowse.products.slice(0, max).map((p) => this.productCard(p)),
+            // Alias para prompts viejos
+            results: conceptBrowse.products.slice(0, max).map((p) => this.productCard(p)),
+            hint: conceptBrowse.hint,
+          });
+        }
+
         const scored = this.catalogService.searchByNameScored(query, ctx.products, 6);
         const embedded = this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
         const results = scored.map((x) => this.productCard(x.p));

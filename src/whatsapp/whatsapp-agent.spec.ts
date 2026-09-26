@@ -238,4 +238,62 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(parsed.ok).toBe(true);
     expect(actions.addItems?.[0]?.productId).toBe(1);
   });
+
+  it('search_menu resuelve concepto carne → platos', () => {
+    const productsWithMeat: WhatsappCatalogProduct[] = [
+      ...products,
+      {
+        id: 40,
+        code: 40,
+        name: 'Churrasco',
+        price: 28000,
+        availableNow: true,
+        categoryName: 'Carnes',
+      },
+      {
+        id: 41,
+        code: 41,
+        name: 'Sobrebarriga',
+        price: 26000,
+        availableNow: true,
+        categoryName: 'Carnes',
+      },
+    ];
+    const agent = new WhatsappAgentService(
+      settingsStub as never,
+      catalogStub as never,
+    );
+    const exec = (
+      agent as unknown as {
+        executeTool: (
+          name: string,
+          args: Record<string, unknown>,
+          ctx: Record<string, unknown>,
+        ) => string;
+      }
+    ).executeTool.bind(agent);
+    const byId = new Map(productsWithMeat.map((p) => [p.id, p]));
+    const raw = exec(
+      'search_menu',
+      { query: 'tienes carne?' },
+      {
+        products: productsWithMeat,
+        byId,
+        actions: {},
+        setNeedsAttr: () => undefined,
+      },
+    );
+    const parsed = JSON.parse(raw) as {
+      ok: boolean;
+      mode?: string;
+      concept?: string;
+      results: { name: string }[];
+      hint?: string;
+    };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.mode).toBe('category_clean');
+    expect(parsed.concept).toBe('Carne');
+    expect(parsed.results.some((r) => /churrasco/i.test(r.name))).toBe(true);
+    expect(parsed.hint).toMatch(/natural|NO|NUNCA/i);
+  });
 });

@@ -573,25 +573,29 @@ export class WhatsappOrchestratorService {
 
     // Primer mensaje de la conversación — aviso IA + bienvenida
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
-    if (inboundCount <= 1) {
+    const isFirstInbound = inboundCount <= 1;
+    if (isFirstInbound) {
       // Audio/texto tipo “quiero pedir” sin producto → no inundar con menú completo
       if (this.isVagueOrderIntent(text)) {
         await this.replyFirstContactWelcome(conv, msg.waId, cfg);
         await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
         return;
       }
-      await this.replyFirstContactWelcome(conv, msg.waId, cfg);
-      if (this.isGreetingKeyword(text) || text.length < 2) return;
-      // Saludo + pedido en el mismo mensaje: quitamos el saludo y seguimos
-      const withoutGreeting = this.stripLeadingGreeting(text);
-      if (withoutGreeting !== text && withoutGreeting.length >= 2) {
-        // Tras quitar "hola veci", si solo queda otro saludo → no seguir a la IA
-        if (this.isGreetingKeyword(withoutGreeting)) return;
-        text = withoutGreeting;
-      } else if (withoutGreeting !== text && withoutGreeting.length < 2) {
+      // Solo saludo → bienvenida y listo (un mensaje)
+      if (this.isGreetingKeyword(text) || text.length < 2) {
+        await this.replyFirstContactWelcome(conv, msg.waId, cfg);
         return;
       }
-      // Si ya pidió algo en el primer mensaje, seguimos procesando abajo
+      // Saludo + pregunta/pedido: NO mandar bienvenida aparte (evita 2 burbujas).
+      // El aviso IA va pegado a la única respuesta de contenido más abajo.
+      const withoutGreeting = this.stripLeadingGreeting(text);
+      if (withoutGreeting !== text && withoutGreeting.length >= 2) {
+        if (this.isGreetingKeyword(withoutGreeting)) {
+          await this.replyFirstContactWelcome(conv, msg.waId, cfg);
+          return;
+        }
+        text = withoutGreeting;
+      }
     }
 
     // Releer sesión: pendingAttribute / carrito deben venir de DB
@@ -1585,8 +1589,9 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "Hola, para un domicilio" / "buenas quiero pedir" → saludar y seguir con el resto.
-    // "Veci el arroz…" es vocativo: quitar "veci" sin reenviar la bienvenida.
+    // "Hola, para un domicilio" / "buenas quiero pedir" → quitar saludo y seguir
+    // (sin reenviar bienvenida: una sola burbuja con la respuesta de contenido).
+    // "Veci el arroz…" es vocativo: quitar "veci" sin bienvenida.
     {
       const withoutGreeting = this.stripLeadingGreeting(text);
       if (
@@ -1594,12 +1599,7 @@ export class WhatsappOrchestratorService {
         withoutGreeting.length >= 2 &&
         !this.isGreetingKeyword(text)
       ) {
-        const leadsWithSalutation = /^(hola|hey|hi|buenas|buenos)\b/i.test(text.trim());
-        if (leadsWithSalutation) {
-          await this.reply(conv, msg.waId, this.buildWelcomeMessage(cfg));
-        }
         text = withoutGreeting;
-        // Recalcular flags con el texto sin saludo
         // (isConfirm / intents más abajo usan `text`)
       }
     }
@@ -1655,6 +1655,7 @@ export class WhatsappOrchestratorService {
         cfg,
         status,
         businessOpenForBot,
+        prependFirstContactDisclaimer: isFirstInbound,
       }))
     ) {
       return;
@@ -10560,6 +10561,8 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig;
     status: Awaited<ReturnType<BusinessService['getStatus']>>;
     businessOpenForBot: boolean;
+    /** Primer inbound con contenido: pegar aviso IA a la única reply */
+    prependFirstContactDisclaimer?: boolean;
   }): Promise<boolean> {
     const { conv, msg, text, originalText, products, cfg, status, businessOpenForBot } =
       params;
@@ -10612,6 +10615,7 @@ export class WhatsappOrchestratorService {
       products,
       menuUrl: cfg.menuUrl,
       humanPhone: cfg.localContext?.publicPhone || WHATSAPP_HUMAN_CONTACT_PHONE,
+      menuConceptGroups: cfg.menuConceptGroups,
     });
 
     if (agent.error === 'no_openai_key' || agent.error === 'openai_401') {
@@ -10680,10 +10684,18 @@ export class WhatsappOrchestratorService {
     }
 
     let reply = (agent.reply || '').trim();
+    const withFirstContactDisclaimer = (body: string): string => {
+      if (!params.prependFirstContactDisclaimer) return body;
+      const d = this.buildAiDisclaimerMessage(cfg).trim();
+      if (!d) return body;
+      // Evitar duplicar si el modelo ya lo metió
+      if (body.includes('IA') && body.includes('3118866823')) return body;
+      return `${d}\n\n${body}`;
+    };
     if (guarded.actions?.requestHuman) {
       reply = this.humanContactMessage();
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, msg.waId, reply);
+      await this.reply(conv, msg.waId, withFirstContactDisclaimer(reply));
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'handoff',
@@ -10708,7 +10720,7 @@ export class WhatsappOrchestratorService {
         reply = reply
           ? `${reply}\n\n${attrPrompt}`
           : `Para *${product.name}* elige opciones:\n\n${attrPrompt}`;
-        await this.reply(conv, msg.waId, reply);
+        await this.reply(conv, msg.waId, withFirstContactDisclaimer(reply));
         this.turnTelemetry.record({
           path: 'agent_v1',
           outcome: 'order_progress',
@@ -10744,6 +10756,7 @@ export class WhatsappOrchestratorService {
       reply = '¿Qué se te antoja? Dime el plato o el código, o escribe *menú*.';
     }
 
+    reply = withFirstContactDisclaimer(reply);
     await this.conversationService.saveSession(conv, session, 'building_cart');
     await this.reply(conv, msg.waId, reply);
 
