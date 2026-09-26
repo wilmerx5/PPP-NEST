@@ -73,6 +73,10 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\buna\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'una ' },
   { re: /\bsobrebarriga\s+a\s+la\s+placha\b/gi, to: 'sobrebarriga a la plancha' },
   { re: /\ba\s+la\s+placha\b/gi, to: 'a la plancha' },
+  // En carta: pechuga/carne "asada" = a la plancha (no gratinada)
+  { re: /\bpechugas?\s+asad[oa]s?\b/gi, to: 'pechuga a la plancha' },
+  { re: /\bsobrebarrigas?\s+asad[oa]s?\b/gi, to: 'sobrebarriga a la plancha' },
+  { re: /\bcarne\s+asad[oa]\b/gi, to: 'carne a la plancha' },
   { re: /\barroz\s+chuno\b/gi, to: 'arroz chino' },
   { re: /\barroz\s+chino\s+el\s+que\s+viene\s+con\s+medio\s+pollo\b/gi, to: 'arroz chino con medio pollo' },
   { re: /\barroz\s+chino\s+en\s+combo\b/gi, to: 'arroz chino combo' },

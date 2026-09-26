@@ -264,6 +264,61 @@ const COOKING_STYLE_TOKENS = new Set([
   'verdes',
 ]);
 
+/**
+ * Sinónimos de estilo en carta vs habla del cliente.
+ * "pechuga asada" ↔ Pechuga a la Plancha (no Gratinada).
+ */
+const COOKING_STYLE_SYNONYM_GROUPS: string[][] = [
+  ['asado', 'asada', 'asados', 'asadas', 'plancha'],
+  ['frito', 'frita', 'fritos', 'fritas'],
+  ['gratinada', 'gratinado'],
+  ['apanado', 'apanada'],
+  ['broaster'],
+  ['horno'],
+  ['sudado', 'sudada'],
+  ['guisado', 'guisada'],
+];
+
+function cookingStyleGroup(style: string): string[] {
+  const s = singularizeEsToken(normalizeText(style));
+  for (const g of COOKING_STYLE_SYNONYM_GROUPS) {
+    if (g.some((x) => singularizeEsToken(x) === s || x === style || x === s)) {
+      return g;
+    }
+  }
+  return [s || style];
+}
+
+/** ¿El nombre del producto trae este estilo o un sinónimo (asado↔plancha)? */
+function productNameHasCookingStyle(productName: string, style: string): boolean {
+  const name = normalizeText(productName);
+  if (!name || !style) return false;
+  const group = cookingStyleGroup(style);
+  return group.some(
+    (st) =>
+      name.includes(st) ||
+      name.split(/\s+/).some((nt) => singularizeEsToken(nt) === singularizeEsToken(st)),
+  );
+}
+
+/** Estilos del producto que no cuadran con lo pedido (gratinada vs asada). */
+function productHasConflictingCookingStyle(
+  productName: string,
+  queryStyles: string[],
+): boolean {
+  if (!queryStyles.length) return false;
+  const name = normalizeText(productName);
+  const nameStyles = [...COOKING_STYLE_TOKENS].filter(
+    (st) =>
+      name.includes(st) ||
+      name.split(/\s+/).some((nt) => singularizeEsToken(nt) === singularizeEsToken(st)),
+  );
+  if (!nameStyles.length) return false;
+  return nameStyles.every(
+    (ns) => !queryStyles.some((qs) => productNameHasCookingStyle(ns, qs) || productNameHasCookingStyle(qs, ns)),
+  );
+}
+
 function singularizeEsToken(token: string): string {
   const t = normalizeText(token);
   if (t.length < 4) return t;
@@ -2474,12 +2529,13 @@ export class WhatsappCatalogService {
     const styleInQuery = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
 
     // "mojarras fritas" → preferir "Mojarra Frita" sobre "Mojarra"
+    // "pechuga asada" → plancha (sinónimo), no gratinada
     for (const h of hits) {
       const pname = normalizeText(h.p.name);
-      const styleHits = styleInQuery.filter((st) => pname.includes(st)).length;
+      const styleHits = styleInQuery.filter((st) => productNameHasCookingStyle(pname, st)).length;
       if (styleHits > 0) h.priority += 40 * styleHits;
-      else if (styleInQuery.length && [...COOKING_STYLE_TOKENS].some((st) => pname.includes(st))) {
-        // Pidió otro estilo (asado) → no priorizar este SKU frito
+      else if (styleInQuery.length && productHasConflictingCookingStyle(pname, styleInQuery)) {
+        // Pidió otro estilo (asado) → no priorizar este SKU gratinado/frito
         h.priority -= 30;
       }
       // Sin estilo en el mensaje: preferir el nombre base ("Mojarra") sobre "Mojarra Frita"
@@ -3697,27 +3753,20 @@ export class WhatsappCatalogService {
         }
 
         // "mojarras fritas" → boost Mojarra Frita; NO boostear Alitas solo por "fritas"
-        // "pechuga a la plancha" ≠ "Pechuga Gratinada"
+        // "pechuga asada" → Pechuga a la Plancha (asado↔plancha); ≠ Gratinada
         if (styleInQuery.length && coreNameHits > 0) {
           let styleOnProduct = 0;
           for (const st of styleInQuery) {
-            if (
-              name.includes(st) ||
-              nameTokens.some((nt) => singularizeEsToken(nt) === singularizeEsToken(st))
-            ) {
+            if (productNameHasCookingStyle(name, st)) {
               score += 45;
               styleOnProduct += 1;
             }
           }
           if (styleOnProduct === 0) {
             score -= 15;
-            const otherStyles = [...COOKING_STYLE_TOKENS].filter(
-              (st) =>
-                !styleInQuery.includes(st) &&
-                (name.includes(st) ||
-                  nameTokens.some((nt) => singularizeEsToken(nt) === singularizeEsToken(st))),
-            );
-            if (otherStyles.length) score -= 55;
+            if (productHasConflictingCookingStyle(name, styleInQuery)) {
+              score -= 55;
+            }
           }
         } else if (styleInQuery.length && coreNameHits === 0 && coreTokens.length > 0) {
           // Solo pegó el estilo (fritas→Alitas Fritas) sin el plato pedido → descartar
@@ -6292,11 +6341,11 @@ export class WhatsappCatalogService {
         }
       }
 
-      // Preferir plancha / gratinada / estilo de cocción dicho
+      // Preferir plancha / gratinada / estilo de cocción dicho (asado ↔ plancha)
       for (const style of ['plancha', 'gratinada', 'gratinado', 'asado', 'asada', 'apanada', 'apanado'] as const) {
         if (!new RegExp(`\\b${style}\\b`).test(segNorm)) continue;
         const styleHits = uniqueScored.filter((x) =>
-          new RegExp(`\\b${style}\\b`).test(normalizeText(x.p.name)),
+          productNameHasCookingStyle(normalizeText(x.p.name), style),
         );
         if (styleHits.length) {
           uniqueScored = styleHits;

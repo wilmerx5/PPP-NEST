@@ -43,6 +43,7 @@ describe('applyLocalGlossary', () => {
   it('corpus: typos y aliases de chats reales', () => {
     expect(applyLocalGlossary('Giger')).toMatch(/ginger/i);
     expect(applyLocalGlossary('sobrebarriga a la placha')).toMatch(/plancha/i);
+    expect(applyLocalGlossary('quiero una pechuga asada')).toMatch(/pechuga a la plancha/i);
     expect(applyLocalGlossary('Adicionar un plata')).toMatch(/plátano/i);
     expect(applyLocalGlossary('medio broaster medio frito')).toMatch(/mixto/i);
     expect(applyLocalGlossary('Me regalas un combo de pollo mixt')).toMatch(/\bmixto\b/i);

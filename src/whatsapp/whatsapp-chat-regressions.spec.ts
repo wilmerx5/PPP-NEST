@@ -1047,6 +1047,20 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
       expect(embedded?.name).toMatch(/plancha/i);
     });
+
+    it('quiero una pechuga asada → plancha, no solo gratinada', () => {
+      const text = applyLocalGlossary('quiero una pechuga asada');
+      expect(text.toLowerCase()).toMatch(/plancha/);
+      const scored = catalog.searchByNameScored(text, pppMenu, 5);
+      expect(scored[0]?.p.name).toMatch(/plancha/i);
+      expect(scored[0]?.p.name).not.toMatch(/gratinada/i);
+      const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(embedded?.name).toMatch(/plancha/i);
+      // Ambas pechugas deben aparecer en el top si se listan variantes
+      const pechugas = scored.filter((x) => /pechuga/i.test(x.p.name));
+      expect(pechugas.length).toBeGreaterThanOrEqual(1);
+      expect(pechugas[0].p.name).toMatch(/plancha/i);
+    });
   });
 
   describe('CRA #2-38 ≠ código menú 1/2 Pollo', () => {
