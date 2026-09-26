@@ -6232,7 +6232,18 @@ export class WhatsappOrchestratorService {
 
     let msg =
       '¿De qué plato? Escribe el *nombre*.';
-    if (allergens && /\b(alergeno|alérgeno|gluten|lacteo|lácteo|celiaco)\b/i.test(text)) {
+    // "con qué viene la mazorcada" sin match → soft-miss si hay nombre
+    const hint = this.catalogService
+      .stripAvailabilityInquiryNoise(
+        this.catalogService.stripProductDescriptionInquiryNoise(
+          this.catalogService.extractProductSearchQuery(text),
+        ),
+      )
+      .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
+      .trim();
+    if (hint.length >= 3 && !/^(plato|producto|comida|algo|eso|esto)$/i.test(hint)) {
+      msg = this.catalogService.formatNotOnMenuReply(hint, cfg.menuUrl);
+    } else if (allergens && /\b(alergeno|alérgeno|gluten|lacteo|lácteo|celiaco)\b/i.test(text)) {
       msg += `\n\nLo que sí tenemos registrado sobre alérgenos:\n_${allergens}_`;
     }
     return msg;
@@ -11258,8 +11269,13 @@ export class WhatsappOrchestratorService {
       session.productFocus?.name ||
       (session.pendingAddOffer?.name ?? undefined);
 
-    const stripped = this.catalogService.stripPriceInquiryNoise(text);
+    const stripped = this.catalogService.stripAvailabilityInquiryNoise(
+      this.catalogService.stripPriceInquiryNoise(text),
+    );
     const query = this.catalogService.extractProductSearchQuery(stripped || text);
+    const dishHint = (stripped || query || '')
+      .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
+      .trim();
 
     const browseHit =
       this.catalogService.findCategoryBrowseHit(query, products, cfg.menuConceptGroups) ||
@@ -11302,6 +11318,7 @@ export class WhatsappOrchestratorService {
       priceProducts[0] ||
       sizedFollowUp ||
       this.catalogService.findProductEmbeddedInMessage(query, products) ||
+      this.catalogService.findProductEmbeddedInMessage(dishHint, products) ||
       this.catalogService.findProductEmbeddedInMessage(text, products);
 
     const family =
@@ -11324,8 +11341,20 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const scored = this.catalogService.searchByNameScored(query, products, 6);
+    let scored = this.catalogService.searchByNameScored(query, products, 6);
+    if (!scored.length && dishHint && dishHint !== query) {
+      scored = this.catalogService.searchByNameScored(dishHint, products, 6);
+    }
     if (!scored.length) {
+      // "tienes mazorcada?" con nombre concreto → soft-miss, no "¿de qué plato?"
+      if (dishHint.length >= 3 && !/^(plato|producto|comida|algo|eso|esto)$/i.test(dishHint)) {
+        await this.reply(
+          conv,
+          waId,
+          this.catalogService.formatNotOnMenuReply(dishHint, cfg.menuUrl),
+        );
+        return true;
+      }
       await this.reply(
         conv,
         waId,

@@ -3940,6 +3940,39 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /** "tienes mazorcada?" → "mazorcada" (para buscar / soft-miss). */
+  stripAvailabilityInquiryNoise(text: string): string {
+    return (text || '')
+      .replace(/[¿?¡!]+/g, ' ')
+      .replace(
+        /^(?:y\s+)?(?:no\s+)?(?:me\s+)?(?:tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen)\s+(?:de\s+|we\s+|unas?\s+|unos?\s+|el\s+|la\s+|los\s+|las\s+)?/i,
+        '',
+      )
+      .replace(
+        /\b(?:por\s+favor|porfa|por\s+fa|pf|gracias|ahora|hoy|alla|allá)\b/gi,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /** Respuesta cálida cuando preguntan por algo que no está en carta. */
+  formatNotOnMenuReply(dishLabel: string, menuUrl?: string | null): string {
+    const label = (dishLabel || '')
+      .replace(/[¿?¡!.]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const nice = label || 'eso';
+    const menu = (menuUrl || '').trim();
+    return (
+      `Por ahora no manejamos *${nice}* 🙏\n` +
+      (menu
+        ? `Si quieres mira el menú: ${menu}`
+        : 'Si quieres escribe *menú* y te oriento con lo que sí tenemos.') +
+      `\n\n¿Qué se te antoja?`
+    );
+  }
+
   /**
    * Precio dicho por el cliente: "de 56 mil", "56000", "$56.000".
    * null si no hay monto de producto (no confundir con vueltas/billete suelto sin plato).

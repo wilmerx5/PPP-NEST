@@ -172,6 +172,12 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.isAvailabilityInquiry('quiero una sopa de mondongo')).toBe(false);
     expect(catalog.isAvailabilityInquiry('y me vendes un combo de arroz chino')).toBe(false);
     expect(catalog.isAvailabilityInquiry('¿venden arroz chino?')).toBe(true);
+    expect(catalog.isAvailabilityInquiry('tienes mazorcada?')).toBe(true);
+    expect(catalog.stripAvailabilityInquiryNoise('tienes mazorcada?')).toMatch(/^mazorcada$/i);
+    expect(catalog.formatNotOnMenuReply('mazorcada', 'https://menu.example')).toMatch(
+      /no manejamos \*mazorcada\*/i,
+    );
+    expect(catalog.searchByNameScored('mazorcada', soupMenu, 5)).toEqual([]);
     expect(
       catalog.isServingSizeChangeIntent('Pero quiero una porcion Mas pequena'),
     ).toBe(true);
