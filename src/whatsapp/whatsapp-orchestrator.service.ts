@@ -5481,8 +5481,17 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, session);
     }
 
-    // 7) Resumen + confirmar (o crear ya si venimos del pago)
-    const canSkipFinal = !!opts?.skipFinalConfirm && this.isReadyToConfirm(session, conv);
+    // 7) Resumen + confirmar (o crear ya si venimos del pago / MP ya elegido)
+    const payMethodEarly =
+      getEnabledPaymentMethods(cfg.paymentMethods).find(
+        (m) => m.id === session.paymentMethod,
+      ) || findPaymentMethodByText(session.paymentMethod || '', cfg.paymentMethods);
+    const paymentIsMercadoPago =
+      payMethodEarly?.flow === 'mercadopago' || session.paymentMethod === 'mercadopago';
+    // MP: no pedir "confirmar" otra vez — (re)generar link con el carrito actual
+    const canSkipFinal =
+      this.isReadyToConfirm(session, conv) &&
+      (!!opts?.skipFinalConfirm || paymentIsMercadoPago);
     if (conv.state !== 'awaiting_final_confirm' && !canSkipFinal) {
       if (
         session.pendingRedemptionCode &&
@@ -5556,6 +5565,7 @@ export class WhatsappOrchestratorService {
           quantity: Math.max(1, c.quantity || 1),
           unit_price: c.unitPrice,
         }));
+        const hadPriorLink = !!session.mpPreferenceId;
         const pref = await this.paymentsService.createPreference(
           orderDto,
           mpItems,
@@ -5574,9 +5584,12 @@ export class WhatsappOrchestratorService {
         );
         session.mpPreferenceId = pref.preferenceId;
         await this.conversationService.saveSession(conv, session, 'awaiting_mp_payment');
+        const linkLead = hadPriorLink
+          ? `🛒 El carrito cambió — *nuevo* link de pago (el anterior ya no aplica):\n${pref.initPoint}`
+          : `Link de pago Mercado Pago:\n${pref.initPoint}`;
         await say(
           `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n` +
-            `Link de pago Mercado Pago:\n${pref.initPoint}\n\nCuando el pago se confirme, te avisamos aquí y armamos el pedido.`,
+            `${linkLead}\n\nCuando el pago se confirme, te avisamos aquí y armamos el pedido.`,
         );
         return;
       }
