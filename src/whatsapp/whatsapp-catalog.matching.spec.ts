@@ -75,6 +75,13 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(p?.id).toBe(41);
   });
 
+  it('bare "una pequeñas" es tamaño, no dirección', () => {
+    expect(catalog.isBareServingSizeReply('Una pequeñas por favor')).toBe(true);
+    expect(catalog.isBareServingSizeReply('una pequeña')).toBe(true);
+    expect(catalog.isBareServingSizeReply('Bosques de Castilla')).toBe(false);
+    expect(catalog.detectServingSizeHint('Una pequeñas por favor')).toBe('pequena');
+  });
+
   it('ajiaco sin tamaño → no forzar (matching normal)', () => {
     expect(catalog.resolveSizedSoupProduct('sopa de ajiaco', soupMenu)).toBeNull();
   });

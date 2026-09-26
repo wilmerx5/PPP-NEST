@@ -4906,35 +4906,60 @@ export class WhatsappOrchestratorService {
     );
   }
 
-  /** Confirmación corta al agregar: qué entró + total + ¿algo más? (sin pedir nombre). */
+  /**
+   * Confirmación corta al agregar: *producto* ×cant (sin precios ni attrs).
+   * El carrito completo va en domicilio / confirmación.
+   */
   private buildCartAddReply(
     session: WhatsappSessionData,
     deliveryFee: number,
     added: string | string[],
-    opts?: { extraLine?: string; suffix?: string },
+    opts?: { extraLine?: string; suffix?: string; showCartSummary?: boolean },
   ): string {
-    const names = (Array.isArray(added) ? added : [added]).filter(Boolean);
+    const rawNames = (Array.isArray(added) ? added : [added]).filter(Boolean);
+    const names = rawNames.map((n) => this.compactAddedProductLabel(session, n));
+
     let head =
       names.length === 1
         ? `Listo ✅ *${names[0]}*`
         : `Listo ✅ ${names.map((n) => `*${n}*`).join(', ')}`;
-
-    // Attrs del último ítem agregado (ej. Arepas: Blancas) — nombre + valor
-    const last = session.cart[session.cart.length - 1];
-    const attrBit =
-      last?.attributes?.length && names.length === 1
-        ? ` · _${last.attributes
-            .map((a) =>
-              a.attributeName?.trim()
-                ? `${a.attributeName}: ${a.attributeValue}`
-                : a.attributeValue,
-            )
-            .join(' · ')}_`
-        : '';
     if (opts?.extraLine) head += `\n${opts.extraLine}`;
 
-    const prompt = opts?.suffix ?? this.formatContinueShoppingPrompt(session);
-    return `${head}${attrBit}\n${this.formatCartTiny(session, deliveryFee)}\n\n${prompt}`;
+    const prompt = opts?.suffix !== undefined ? opts.suffix : this.formatContinueShoppingPrompt(session);
+    const body = head.trim();
+    if (opts?.showCartSummary) {
+      const summary = this.formatCartTiny(session, deliveryFee);
+      return prompt ? `${body}\n${summary}\n\n${prompt}` : `${body}\n${summary}`;
+    }
+    return prompt ? `${body}\n\n${prompt}` : body;
+  }
+
+  /** "Mojarra (Frita)" + qty 3 en carrito → "Mojarra ×3" (sin attrs ni precio). */
+  private compactAddedProductLabel(session: WhatsappSessionData, label: string): string {
+    const raw = (label || '').trim();
+    if (!raw) return raw;
+
+    const explicitQty = raw.match(/×\s*(\d+)/i)?.[1] || raw.match(/_\(x(\d+)\)_/i)?.[1];
+    const base = raw
+      .replace(/_\(x\d+\)_/gi, '')
+      .replace(/×\s*\d+/gi, '')
+      .replace(/\s*[·(].*$/, '')
+      .trim();
+    if (!base) return raw.replace(/_\(x(\d+)\)_/i, '×$1');
+
+    let qty = explicitQty ? Math.max(1, parseInt(explicitQty, 10) || 1) : 0;
+    if (qty <= 1) {
+      const baseNorm = this.normalizeForMatch(base);
+      const cart = this.consolidateCart(session.cart);
+      const hit = cart.find((c) => this.normalizeForMatch(c.name) === baseNorm);
+      qty = Math.max(1, hit?.quantity || 0);
+    }
+    return qty > 1 ? `${base} ×${qty}` : base;
+  }
+
+  private formatAddedProductLabel(name: string, quantity = 1): string {
+    const qty = Math.max(1, quantity || 1);
+    return qty > 1 ? `${name} ×${qty}` : name;
   }
 
   private formatOrderSummary(
@@ -9500,6 +9525,8 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
+    // "una pequeña(s) por favor" = tamaño de sopa, no barrio
+    if (this.catalogService.isBareServingSizeReply(t)) return true;
     if (this.catalogService.isServingSizeChangeIntent(t)) return true;
     if (this.catalogService.isProductDescriptionInquiry(t)) return true;
     if (this.catalogService.isAvailabilityInquiry(t)) return true;
@@ -10891,7 +10918,11 @@ export class WhatsappOrchestratorService {
     const fee = this.deliveryFeeFor(session, cfg);
     if (session.cart.length > 0 && guarded.actions?.addItems?.length) {
       const addedNames = (guarded.actions.addItems || [])
-        .map((a) => products.find((p) => p.id === a.productId)?.name)
+        .map((a) => {
+          const name = products.find((p) => p.id === a.productId)?.name;
+          if (!name) return null;
+          return this.formatAddedProductLabel(name, Number(a.quantity) || 1);
+        })
         .filter(Boolean) as string[];
       // Una sola burbuja del sistema (evita "añadí… ¿pasamos a tu nombre?" del LLM)
       reply = this.buildCartAddReply(
@@ -11341,7 +11372,15 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    if (!this.isMultiOrderAffirmative(text) && !/^agrega(r|lo|los|las|me)?$/i.test(text.trim())) {
+    const bareSize = this.catalogService.isBareServingSizeReply(text);
+    const sizeHint = this.catalogService.detectServingSizeHint(text);
+    const acceptsOffer =
+      this.isMultiOrderAffirmative(text) ||
+      /^agrega(r|lo|los|las|me)?$/i.test(text.trim()) ||
+      bareSize ||
+      (!!sizeHint && text.trim().split(/\s+/).filter(Boolean).length <= 5);
+
+    if (!acceptsOffer) {
       // Otro mensaje: soltar la oferta pendiente (no atrapar el chat)
       if (
         this.catalogService.isPriceInquiryIntent(text) ||
@@ -11364,6 +11403,10 @@ export class WhatsappOrchestratorService {
     }
 
     const sourceText = (offer.sourceText || text || '').trim();
+    const sizeSource =
+      sizeHint || bareSize
+        ? `${sourceText} ${text}`.trim()
+        : sourceText;
     const multiIds =
       offer.productIds?.length && offer.productIds.length > 1
         ? offer.productIds
@@ -11385,9 +11428,13 @@ export class WhatsappOrchestratorService {
       const confident: MultiProductSegmentMatch[] = [];
       const needsAttributes: MultiProductSegmentMatch[] = [];
       for (const product of offerProducts) {
-        const match = { segment: sourceText, product, score: 100 };
-        if (product.hasAttributes && product.attributes?.length) {
-          if (this.catalogService.extractExplicitAttributeChoice(sourceText, product)) {
+        const sized =
+          (sizeHint === 'pequena' || bareSize
+            ? this.catalogService.resolveSizedSoupProduct(`${product.name} pequeña`, products)
+            : null) || product;
+        const match = { segment: sizeSource, product: sized, score: 100 };
+        if (sized.hasAttributes && sized.attributes?.length) {
+          if (this.catalogService.extractExplicitAttributeChoice(sizeSource, sized)) {
             confident.push(match);
           } else {
             needsAttributes.push(match);
@@ -11401,7 +11448,7 @@ export class WhatsappOrchestratorService {
         ...session,
         pendingAddOffer: undefined,
         pendingMultiOrder: this.sessionFromMultiResolve({
-          segments: [sourceText],
+          segments: [sizeSource],
           confident,
           needsAttributes,
           ambiguous: [],
@@ -11415,7 +11462,7 @@ export class WhatsappOrchestratorService {
         session,
         cfg,
         products,
-        sourceText,
+        sizeSource,
       );
       session = { ...added.session };
       if (added.blocked) {
@@ -11476,10 +11523,10 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const product =
+    const productBase =
       this.catalogService.getProductById(offer.productId, products) ||
       products.find((p) => p.id === offer.productId);
-    if (!product || product.availableNow === false) {
+    if (!productBase || productBase.availableNow === false) {
       await this.conversationService.saveSession(conv, {
         ...session,
         pendingAddOffer: undefined,
@@ -11492,17 +11539,32 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    const product =
+      (sizeHint === 'pequena' || bareSize
+        ? this.catalogService.resolveSizedSoupProduct(
+            `${productBase.name} pequeña`,
+            products,
+          )
+        : null) ||
+      (sizeHint === 'grande'
+        ? this.catalogService.resolveSizedSoupProduct(
+            `${productBase.name} grande`,
+            products,
+          )
+        : null) ||
+      productBase;
+
     if (product.hasAttributes && product.attributes?.length) {
       session = { ...session, pendingAddOffer: undefined };
       // Usar el texto de la cotización (menudencias / en salsa), no el "sí"
-      if (await this.handleProductWithVariants(conv, waId, session, product, sourceText, cfg)) {
+      if (await this.handleProductWithVariants(conv, waId, session, product, sizeSource, cfg)) {
         return true;
       }
     }
 
     const qty = Math.max(1, offer.quantity || 1);
     const added = this.tryAddProductToCart(session, product, qty, cfg, undefined, undefined, {
-      sourceText: sourceText || `${qty} ${product.name}`,
+      sourceText: sizeSource || `${qty} ${product.name}`,
     });
     if (added.blocked) {
       await this.conversationService.saveSession(conv, {
@@ -11515,7 +11577,7 @@ export class WhatsappOrchestratorService {
 
     session = { ...added.session, pendingAddOffer: undefined };
     await this.conversationService.saveSession(conv, session, 'building_cart');
-    const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
+    const qtyNote = qty > 1 ? ` ×${qty}` : '';
     await this.reply(
       conv,
       waId,
@@ -11765,7 +11827,7 @@ export class WhatsappOrchestratorService {
       const label = attrs?.length
         ? `${product.name} (${attrs.map((a) => a.attributeValue).join(', ')})`
         : product.name;
-      addedNames.push(label);
+      addedNames.push(this.formatAddedProductLabel(label, qty));
     }
     return { session: next, addedNames };
   }

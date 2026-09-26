@@ -27,6 +27,9 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bsopas?\s+(chicas?|chiquitas?|pequenitas?)\b/gi, to: 'sopa pequeña' },
   { re: /\bsopa\s+de\s+ajiaco\s+(chica|chiquita|pequenita)\b/gi, to: 'sopa de ajiaco pequeña' },
   { re: /\bsopa\s+ajiaco\s+(pequena|pequeña|chica)\b/gi, to: 'sopa de ajiaco pequeña' },
+  // "una pequeñas" / "unas pequeña" (typo de género/número) → una pequeña
+  { re: /\bunas?\s+peque[nñ]as?\b/gi, to: 'una pequeña' },
+  { re: /\bunas?\s+chicas?\b/gi, to: 'una pequeña' },
   // Pollo / mixto
   { re: /\bmedio\s+de\s+pollo\b/gi, to: 'medio pollo' },
   { re: /\bun\s+medio\s+(?:de\s+)?pollo\b/gi, to: 'medio pollo' },

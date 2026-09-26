@@ -15,6 +15,7 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('Quiero Un menu ejecutivo con Pollo frito')).toMatch(
       /ejecutivo.*pollo frito/i,
     );
+    expect(applyLocalGlossary('Una pequeñas por favor')).toMatch(/una pequeña/i);
     expect(applyLocalGlossary('Regalame pollo y medio porfavor')).toMatch(
       /1 pollo y medio pollo/i,
     );

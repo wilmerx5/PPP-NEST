@@ -1415,6 +1415,30 @@ export class WhatsappCatalogService {
     return null;
   }
 
+  /**
+   * "una pequeña" / "unas pequeñas porfa" / "el chico" — solo tamaño,
+   * no dirección ni plato nuevo completo.
+   */
+  isBareServingSizeReply(text: string): boolean {
+    const raw = (text || '').trim();
+    if (!raw || raw.length > 48) return false;
+    const q = normalizeText(raw);
+    if (!q) return false;
+    if (/\b(calle|carrera|cra|apto|torre|conjunto|barrio|domicilio|direccion)\b/.test(q)) {
+      return false;
+    }
+    if (/\d/.test(q)) return false;
+    // Quitar cortesía / artículos; debe quedar solo el tamaño
+    const core = q
+      .replace(
+        /\b(por\s+favor|porfavor|porfa|pf|gracias|me|regala(?:s|me)?|dame|quiero|ponme|una?|unos?|unas?|el|la|los|las|de|del)\b/g,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+    return /^(pequenas?|pequenitas?|chicas?|chiquitas?|grandes?|grandotas?)$/.test(core);
+  }
+
   /** El SKU del menú es versión pequeña (nombre o "Sopa pequeña"). */
   productIsSmallServing(name: string): boolean {
     const n = normalizeText(name);
