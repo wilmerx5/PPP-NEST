@@ -2265,6 +2265,8 @@ Cll 6 b 78 c 33`;
         'recogo en el local',
         'yo paso por ella al local',
         'paso por el local',
+        'paso a recogerla',
+        'paso a recoger',
         applyLocalGlossary('no\nrecogo en el local'),
       ]) {
         expect(orch.isPickupIntent(raw)).toBe(true);

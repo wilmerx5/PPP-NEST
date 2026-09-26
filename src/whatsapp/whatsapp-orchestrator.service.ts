@@ -5589,11 +5589,16 @@ export class WhatsappOrchestratorService {
           (s, c) => s + c.unitPrice * Math.max(1, c.quantity || 1),
           0,
         );
-        const total = subtotal + (orderDto.deliveryFee ?? 0);
+        const deliveryFeeMp =
+          session.orderType === 'delivery'
+            ? Math.max(0, Math.round(Number(this.deliveryFeeFor(session, cfg)) || 0))
+            : 0;
+        orderDto.deliveryFee = deliveryFeeMp || undefined;
+        const total = Math.round(subtotal) + deliveryFeeMp;
         const mpItems = session.cart.map((c) => ({
           title: c.name,
           quantity: Math.max(1, c.quantity || 1),
-          unit_price: c.unitPrice,
+          unit_price: Math.round(Number(c.unitPrice) || 0),
         }));
         const hadPriorLink = !!session.mpPreferenceId;
         const pref = await this.paymentsService.createPreference(
@@ -5652,6 +5657,7 @@ export class WhatsappOrchestratorService {
     conversationId: number;
     waId: string;
     orderId: number;
+    dailyOrderNumber?: number | null;
   }): Promise<void> {
     try {
       const conv = await this.conversationService.getConversation(params.conversationId);
@@ -5662,15 +5668,29 @@ export class WhatsappOrchestratorService {
         ignorePriorHistory: true,
         rememberDeliveryAddress: true,
       });
+      let daily =
+        params.dailyOrderNumber != null && Number(params.dailyOrderNumber) > 0
+          ? Number(params.dailyOrderNumber)
+          : null;
+      if (daily == null && params.orderId) {
+        try {
+          const brief = await this.ordersService.getOrdersBrief([params.orderId]);
+          const n = brief[0]?.dailyOrderNumber;
+          if (n != null && Number(n) > 0) daily = Number(n);
+        } catch {
+          /* seguir con fallback */
+        }
+      }
       const success =
         this.formatOrderSuccessMessage(
           conv,
           snapshot,
-          { orderId: params.orderId },
+          { orderId: params.orderId, dailyOrderNumber: daily ?? undefined },
           this.deliveryFeeFor(snapshot, cfg),
           cfg.orderSuccessMessage,
           cfg.paymentMethods,
-        ) || `Pago recibido ✅ Pedido #${params.orderId} creado. ${cfg.orderSuccessMessage}`;
+        ) ||
+        `Pago recibido ✅ Pedido #${daily ?? params.orderId} creado. ${cfg.orderSuccessMessage}`;
       await this.reply(conv, params.waId || conv.waId, success);
     } catch (err) {
       this.logger.error(
@@ -8407,8 +8427,9 @@ export class WhatsappOrchestratorService {
       /\byo\s+paso(\s+por)?\b/i.test(t) ||
       /\bya\s+paso\b/i.test(t) ||
       /\bal[ií]st(a|e|o)(lo|la)?\b.{0,40}\bpaso\b/i.test(t) ||
+      /\b(paso|pasar[eé])\s+(a\s+)?(recoger|buscar)(la|lo|las|los)?\b/i.test(t) ||
       /\b(lo\s+)?paso\s+a\s+(buscar|recoger)\b/i.test(t) ||
-      /\bpasa(r[eé])?\s+a\s+(buscar|recoger)\b/i.test(t) ||
+      /\bpasa(r[eé])?\s+a\s+(buscar|recoger)(la|lo|las|los)?\b/i.test(t) ||
       /\bvoy\s+(pasando|para\s+all[aá]|para\s+el\s+local)\b/i.test(t) ||
       // "no / recogo en el local" coalescido
       /\bno\b.{0,40}\b(recojo|recogo|recoger)\s+en\s+(el\s+)?local\b/i.test(t) ||
@@ -10582,7 +10603,15 @@ export class WhatsappOrchestratorService {
       dateStyle: 'medium',
       timeStyle: 'short',
     });
-    const num = String(order.dailyOrderNumber ?? order.orderId ?? '').padStart(2, '0');
+    const numRaw =
+      order.dailyOrderNumber != null && Number(order.dailyOrderNumber) > 0
+        ? Number(order.dailyOrderNumber)
+        : null;
+    // Nunca mostrar el id interno (p.ej. 54487) como # de orden al cliente
+    const num =
+      numRaw != null
+        ? String(numRaw).padStart(2, '0')
+        : '—';
     const cart = this.consolidateCart(session.cart);
     const items = cart
       .map((c, i) => {

@@ -217,12 +217,42 @@ export class PaymentsService {
       throw new BadRequestException(`back_urls incompleto. success: "${backUrlsObj.success}", failure: "${backUrlsObj.failure}", pending: "${backUrlsObj.pending}"`);
     }
 
+    // Monto MP = suma de items. Incluir domicilio si viene en orderData
+    // (WhatsApp/online a veces solo mandan productos y el total queda corto).
+    const deliveryFee = Math.max(0, Number(orderData.deliveryFee) || 0);
+    const mappedItems = items.map((item) => ({
+      title: String(item.title || 'Producto').slice(0, 120),
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      unit_price: Math.round(Number(item.unit_price) || 0),
+    }));
+    const itemsSubtotal = mappedItems.reduce(
+      (s, i) => s + i.unit_price * i.quantity,
+      0,
+    );
+    const alreadyHasDelivery = mappedItems.some((i) =>
+      /\b(domicilio|delivery|envio|env[ií]o)\b/i.test(i.title),
+    );
+    if (deliveryFee > 0 && !alreadyHasDelivery) {
+      mappedItems.push({
+        title: 'Domicilio',
+        quantity: 1,
+        unit_price: Math.round(deliveryFee),
+      });
+    } else if (
+      deliveryFee <= 0 &&
+      Number(totalAmount) > 0 &&
+      itemsSubtotal + 0.5 < Number(totalAmount)
+    ) {
+      // Fallback: totalAmount trae algo extra (domicilio) pero orderData no lo desglosó
+      mappedItems.push({
+        title: 'Domicilio',
+        quantity: 1,
+        unit_price: Math.round(Number(totalAmount) - itemsSubtotal),
+      });
+    }
+
     const preferenceData: any = {
-      items: items.map(item => ({
-        title: item.title,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-      })),
+      items: mappedItems,
       payer: payerData,
       // Construir back_urls de forma explícita asegurando que sea un objeto plano válido
       back_urls: backUrlsObj,
@@ -579,6 +609,7 @@ export class PaymentsService {
                 conversationId,
                 waId,
                 orderId: orderResponse.orderId,
+                dailyOrderNumber: orderResponse.dailyOrderNumber,
               });
             } else {
               this.logger.warn(
@@ -800,6 +831,7 @@ export class PaymentsService {
     conversationId: number;
     waId: string;
     orderId: number;
+    dailyOrderNumber?: number | null;
   }) {
     try {
       const { WhatsappOrchestratorService } = await import(

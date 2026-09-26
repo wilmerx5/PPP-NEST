@@ -317,6 +317,7 @@ export function looksLikeNonAddressCommand(text: string): boolean {
     /\b(paso|pasar[eé])\s+por\s+(?:(?:el|ella|la|el)\s+)?(?:al\s+)?(local|restaurante)\b/.test(
       t,
     ) ||
+    /\b(paso|pasar[eé])\s+(a\s+)?(recoger|buscar)(la|lo|las|los)?\b/.test(t) ||
     /\byo\s+paso(\s+por)?\b/.test(t) ||
     /\bno\b.{0,40}\b(recogo|recojo|recoger)\s+en\s+(el\s+)?local\b/.test(t) ||
     /\b(para\s+llevar|sin\s+domicilio|no\s+(quiero\s+)?domicilio|pickup)\b/.test(t)
