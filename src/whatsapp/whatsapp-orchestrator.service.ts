@@ -3394,11 +3394,15 @@ export class WhatsappOrchestratorService {
 
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
-      // Agente a veces toma "Las mojarras fritas" como domicilio
+      // Agente a veces toma "Las mojarras fritas" / "es todo" como domicilio
       if (
         this.looksLikeFoodNotAddress(addr) ||
         this.looksLikeFoodNotAddress(sourceText || '') ||
-        FOOD_ORDER_SIGNAL_RE.test(addr)
+        FOOD_ORDER_SIGNAL_RE.test(addr) ||
+        isNothingElseOrderIntent(addr) ||
+        isNothingElseOrderIntent(sourceText || '') ||
+        isFinishCheckoutIntent(addr) ||
+        isFinishCheckoutIntent(sourceText || '')
       ) {
         delete actions.setAddress;
       }
@@ -9355,6 +9359,7 @@ export class WhatsappOrchestratorService {
     const t = text.trim();
     if (!t || t.length < 3) return false;
     if (this.isConfirmKeyword(t) || this.isGreetingKeyword(t)) return false;
+    if (isNothingElseOrderIntent(t) || isFinishCheckoutIntent(t)) return false;
     if (this.isPickupIntent(t)) return false;
     if (isConfirmCurrentAddressIntent(t)) return false;
     if (/^(contraentrega|efectivo|mercado\s*pago|humano)$/i.test(t)) return false;
@@ -10838,7 +10843,11 @@ export class WhatsappOrchestratorService {
       (this.looksLikeFoodNotAddress(guarded.actions.setAddress) ||
         this.looksLikeFoodNotAddress(originalText || text) ||
         FOOD_ORDER_SIGNAL_RE.test(guarded.actions.setAddress) ||
-        FOOD_ORDER_SIGNAL_RE.test(originalText || text))
+        FOOD_ORDER_SIGNAL_RE.test(originalText || text) ||
+        isNothingElseOrderIntent(originalText || text) ||
+        isFinishCheckoutIntent(originalText || text) ||
+        isNothingElseOrderIntent(guarded.actions.setAddress) ||
+        isFinishCheckoutIntent(guarded.actions.setAddress))
     ) {
       delete guarded.actions.setAddress;
     }

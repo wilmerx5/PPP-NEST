@@ -385,7 +385,8 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     /\b(quiero|vamos\s+a|deseo|necesito)\s+(terminar|cerrar|finalizar|completar|confirmar)\b/.test(
       t,
     ) ||
-    /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
+    /^(ya\s+)?(eso\s+)?es\s+todo$/.test(t) ||
+    /^(eso\s+todo|listo\s+es\s+todo|ya\s+todo)$/.test(t) ||
     /^(asi\s+)?nada\s+mas$/.test(t) ||
     /^(eso\s+es\s+todo|solo\s+eso)$/.test(t)
   ) {

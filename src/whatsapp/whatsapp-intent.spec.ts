@@ -273,6 +273,8 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
       'Así nada más',
       'nada mas',
       'eso es todo',
+      'es todo',
+      'ya es todo',
       'solo eso',
       'no mas',
       'No, no mas',

@@ -1608,6 +1608,8 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         'Así nada más',
         'nada mas',
         'eso es todo',
+        'es todo',
+        'ya es todo',
         'solo eso',
         'nomas',
         'No, no mas',
