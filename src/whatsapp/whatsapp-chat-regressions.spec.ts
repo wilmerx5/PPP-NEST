@@ -1904,6 +1904,25 @@ Cll 6 b 78 c 33`;
       expect(medioAmb!.candidates.some((p) => /frito/i.test(p.name))).toBe(true);
       expect(medioAmb!.candidates.some((p) => /broaster/i.test(p.name))).toBe(true);
     });
+
+    it('un pollo / medio pollo / combo sin estilo → choices (no asume frito)', () => {
+      for (const raw of [
+        'y me da un pollo',
+        'y quiero medio pollo',
+        applyLocalGlossary('me da un como de pollo'),
+        'un combo de pollo',
+      ]) {
+        const choices = catalog.chickenStyleChoicesForSegment(raw, pppMenu);
+        expect(choices?.length).toBeGreaterThanOrEqual(2);
+        expect(choices!.some((p) => /frito/i.test(p.name))).toBe(true);
+        expect(choices!.some((p) => /broaster/i.test(p.name))).toBe(true);
+      }
+      expect(catalog.resolveSizedChickenProduct('medio pollo broaster', pppMenu)?.name).toMatch(
+        /broaster/i,
+      );
+      expect(catalog.resolveSizedChickenProduct('y quiero medio pollo', pppMenu)).toBeNull();
+      expect(catalog.resolveSizedChickenProduct('un pollo', pppMenu)).toBeNull();
+    });
   });
 
   describe('Chat mondongo / Josseph / comprobante Meta', () => {

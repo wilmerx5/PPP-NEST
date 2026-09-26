@@ -1858,6 +1858,21 @@ export class WhatsappCatalogService {
 
     if (candidates.length === 1) return candidates[0];
     if (candidates.length > 1) {
+      if (!style) {
+        // Varios estilos (frito/broaster/asado) sin especificar → preguntar, no asumir frito
+        const styleKeys = new Set(
+          candidates.map((p) => {
+            const n = normalizeText(p.name);
+            if (/\bmixto\b/.test(n)) return 'mixto';
+            if (/\bbroaster\b/.test(n)) return 'broaster';
+            if (/\bfrito\b/.test(n)) return 'frito';
+            if (/\basado\b/.test(n)) return 'asado';
+            return 'other';
+          }),
+        );
+        const real = [...styleKeys].filter((s) => s !== 'other');
+        if (real.length >= 2) return null;
+      }
       // Preferir el nombre más corto: "Pollo Frito" / "1/2 Pollo Broaster" vs menús largos
       return [...candidates].sort((a, b) => a.name.length - b.name.length)[0];
     }
@@ -6103,7 +6118,7 @@ export class WhatsappCatalogService {
 
     const available = products.filter((p) => p.availableNow !== false);
 
-    // "1 combo de pollo" / "combo de pollo"
+    // "1 combo de pollo" / "combo de pollo" / typo "como de pollo"
     if (/\bcombo\b/.test(q) && /\bpollo\b/.test(q) && !/\b(arroz|taco|chino)\b/.test(q)) {
       const combos = available.filter((p) => {
         const n = normalizeText(p.name);
@@ -6116,21 +6131,38 @@ export class WhatsappCatalogService {
       if (combos.length >= 2) return this.dedupeProductsById(combos).slice(0, 4);
     }
 
-    // "medio" / "medio pollo" / "1/2 pollo" sin estilo
     const portion = this.detectPortionHint(q);
     const barePortion = this.isBareChickenPortionFollowUp(segment, q);
-    if (!portion && !barePortion) return null;
-    if (/\bcombo\b/.test(q)) return null;
+    const wantsEntero =
+      portion === 'entero' ||
+      (!portion &&
+        !barePortion &&
+        /\bpollo\b/.test(q) &&
+        !/\bcombo\b/.test(q) &&
+        (/\b(un|una|el|la|1)\s+pollo\b/.test(q) ||
+          /^(dame|ponme|quiero|me\s+da|regalame|y\s+)?\s*(un\s+)?pollos?$/.test(q) ||
+          /\by\s+(me\s+da|quiero|dame)?\s*(un\s+)?pollo\b/.test(q)));
+
+    const wantPortion =
+      portion || (barePortion ? 'medio' : wantsEntero ? 'entero' : null);
+    if (!wantPortion) return null;
+    if (/\bcombo\b/.test(q) && wantPortion !== 'entero') return null;
     if (!/\bpollo\b/.test(q) && !barePortion) return null;
 
-    const wantPortion = portion || 'medio';
     const cands = available.filter((p) => {
       const n = normalizeText(p.name);
       if (/\b(combo|bandeja|ejecutivo|arroz|pechuga|alitas|taco|hamburguesa|menu)\b/.test(n)) {
         return false;
       }
       if (!/\bpollo\b/.test(n)) return false;
-      return this.detectProductPortionSize(n) === wantPortion;
+      const pPortion = this.detectProductPortionSize(n);
+      if (wantPortion === 'entero') {
+        return (
+          pPortion === 'entero' ||
+          (!pPortion && /^pollo\s+(frito|broaster|asado|mixto)\b/.test(n))
+        );
+      }
+      return pPortion === wantPortion;
     });
     if (cands.length >= 2) return this.dedupeProductsById(cands).slice(0, 4);
     return null;

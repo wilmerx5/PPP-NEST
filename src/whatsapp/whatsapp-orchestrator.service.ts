@@ -1747,6 +1747,16 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // Pollo sin estilo ANTES del agente (evita que asuma Frito)
+    if (
+      !session.pendingMatch &&
+      !session.pendingAttribute &&
+      !session.pendingMultiOrder &&
+      (await this.tryHandleChickenStyleAmbiguity(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     // Agent V1 (feature flag): LLM + tools. Pendings numéricos / checkout ya se resolvieron arriba.
     if (
       cfg.agentV1Enabled &&
@@ -2567,6 +2577,16 @@ export class WhatsappOrchestratorService {
 
     if (
       (await this.tryHandleLargerPackInquiry(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
+    // "un pollo" / "medio pollo" / "combo de pollo" sin frito|broaster → preguntar estilo
+    if (
+      !session.pendingMatch &&
+      !session.pendingAttribute &&
+      !session.pendingMultiOrder &&
+      (await this.tryHandleChickenStyleAmbiguity(conv, msg.waId, session, text, products, cfg))
     ) {
       return;
     }
@@ -4616,6 +4636,57 @@ export class WhatsappOrchestratorService {
       (qty > 1 ? `Pediste *${qty}*. ` : '') +
         priceMiss +
         this.catalogService.formatVariantFamilyPrompt(family),
+    );
+    return true;
+  }
+
+  /**
+   * Pollo sin estilo (frito/broaster): listar opciones en vez de asumir Frito.
+   */
+  private async tryHandleChickenStyleAmbiguity(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (this.catalogService.isPriceInquiryIntent(text)) return false;
+    if (this.catalogService.isAvailabilityInquiry(text)) return false;
+    if (this.catalogService.isMenuExploreIntent(text, products)) return false;
+    const choices = this.catalogService.chickenStyleChoicesForSegment(text, products);
+    if (!choices || choices.length < 2) return false;
+
+    const qty = this.resolveOrderQuantity(session, text);
+    session = {
+      ...session,
+      pendingMatch: {
+        query: text,
+        candidates: choices,
+        quantity: qty > 1 ? qty : undefined,
+      },
+      ...(qty > 1
+        ? {
+            pendingQuantityHint: {
+              quantity: qty,
+              query: this.catalogService.extractProductSearchQuery(text) || text,
+            },
+          }
+        : {}),
+    };
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    const label = /\bcombo\b/i.test(text)
+      ? 'combo de pollo'
+      : /\b(medio|1\s*\/\s*2|1\/2)\b/i.test(text)
+        ? 'medio pollo'
+        : /\b(cuarto|1\s*\/\s*4|1\/4)\b/i.test(text)
+          ? 'cuarto de pollo'
+          : 'pollo';
+    await this.reply(
+      conv,
+      waId,
+      `¿Cómo lo quieres el *${label}*?\n\n` +
+        this.catalogService.formatCategoryList(label, choices),
     );
     return true;
   }
