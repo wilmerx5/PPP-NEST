@@ -300,6 +300,18 @@ export function looksLikeNonAddressCommand(text: string): boolean {
   if (/\b(cancelar|cancela|anular|anula)\b/.test(t)) return true;
   if (/\b(humano|asesor|agente)\b/.test(t) || isHumanHandoffRequest(text)) return true;
   if (PAYMENT_RE.test(text)) return true;
+  // Recojo en local — nunca geocodificar como domicilio
+  if (
+    /\b(recogo|recojo|recoger)\s+en\s+(el\s+)?(local|restaurante)\b/.test(t) ||
+    /\b(paso|pasar[eé])\s+por\s+(?:(?:el|ella|la|el)\s+)?(?:al\s+)?(local|restaurante)\b/.test(
+      t,
+    ) ||
+    /\byo\s+paso(\s+por)?\b/.test(t) ||
+    /\bno\b.{0,40}\b(recogo|recojo|recoger)\s+en\s+(el\s+)?local\b/.test(t) ||
+    /\b(para\s+llevar|sin\s+domicilio|no\s+(quiero\s+)?domicilio|pickup)\b/.test(t)
+  ) {
+    return true;
+  }
   if (
     /\b(quiero|dame|ponme|pedi|pido|agrega|agregar|ordenar|mandame|traeme)\b/.test(t) &&
     /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/.test(

@@ -2240,4 +2240,39 @@ Cll 6 b 78 c 33`;
       );
     });
   });
+
+  describe('Pickup “recogo / paso por el local” ≠ domicilio', () => {
+    it('detecta pickup con salto de línea y typos', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        isPickupIntent: (t: string) => boolean;
+        applyPickupIntent: (
+          s: { orderType?: string; address?: string },
+          t: string,
+        ) => { orderType: string; address: string; addressConfirmed: boolean };
+      };
+      orch.isPickupIntent =
+        WhatsappOrchestratorService.prototype['isPickupIntent'].bind(orch);
+      orch.applyPickupIntent =
+        WhatsappOrchestratorService.prototype['applyPickupIntent'].bind(orch);
+
+      for (const raw of [
+        'no\nrecogo en el local',
+        'no recogo en el local',
+        'recogo en el local',
+        'yo paso por ella al local',
+        'paso por el local',
+        applyLocalGlossary('no\nrecogo en el local'),
+      ]) {
+        expect(orch.isPickupIntent(raw)).toBe(true);
+      }
+
+      expect(orch.isPickupIntent('Calle 80 #12-34 bosques de castilla')).toBe(false);
+
+      const applied = orch.applyPickupIntent({ orderType: 'delivery' }, 'recogo en el local');
+      expect(applied.orderType).toBe('pickup');
+      expect(applied.addressConfirmed).toBe(true);
+      expect(applied.address).toMatch(/recoge en el local/i);
+    });
+  });
 });

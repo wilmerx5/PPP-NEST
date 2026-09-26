@@ -148,6 +148,9 @@ describe('classifyWhatsappCustomerIntent', () => {
     expect(
       looksLikeNonAddressCommand('Puedo cambiar la ensalada por otra cosa'),
     ).toBe(true);
+    expect(looksLikeNonAddressCommand('no\nrecogo en el local')).toBe(true);
+    expect(looksLikeNonAddressCommand('yo paso por ella al local')).toBe(true);
+    expect(looksLikeAddressOnlyMessage('no\nrecogo en el local')).toBe(false);
   });
 
   it('no trata pedido con comida+calle como solo dirección', () => {

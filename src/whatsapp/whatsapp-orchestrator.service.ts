@@ -681,6 +681,8 @@ export class WhatsappOrchestratorService {
       !this.isConfirmKeyword(originalText) &&
       !isDeliveryEtaInquiry(originalText) &&
       !isDeliveryEtaInquiry(text) &&
+      !this.isPickupIntent(originalText) &&
+      !this.isPickupIntent(text) &&
       customerIntent === 'address'
     ) {
       // Regla general: con domicilio ya confirmado, NO reemplazar por notas
@@ -791,7 +793,10 @@ export class WhatsappOrchestratorService {
     }
 
     // Con carrito: dirección suelta o “acá” / misma dirección guardada
+    // (nunca si es recojo / “paso por el local”)
     if (
+      !this.isPickupIntent(originalText) &&
+      !this.isPickupIntent(text) &&
       (customerIntent === 'address' ||
         isReuseLastAddressIntent(originalText) ||
         (session.cart.length > 0 &&
@@ -808,6 +813,25 @@ export class WhatsappOrchestratorService {
         cfg,
       ))
     ) {
+      return;
+    }
+
+    // Pickup explícito temprano (antes del agente): "recogo en el local" / "paso por ella"
+    if (
+      session.cart.length > 0 &&
+      (this.isPickupIntent(originalText) || this.isPickupIntent(text))
+    ) {
+      session = this.applyPickupIntent(session, text || originalText);
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        msg.waId,
+        `Listo, queda como *recoger en el local* (sin domicilio).\n_${session.address}_`,
+      );
+      const freshPu = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshPu);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
       return;
     }
 
@@ -3442,10 +3466,10 @@ export class WhatsappOrchestratorService {
             const base = addrNow.replace(/\s*\(ref\.\s*[^)]*\)\s*$/i, '').trim();
             next = { ...next, address: `${base} — ${note}`.slice(0, 240) };
           }
-        } else if (!this.isPickupIntent(addr)) {
+        } else if (!this.isPickupIntent(addr) && !this.isPickupIntent(sourceText || '')) {
           next = this.withDeliveryAddress(next, addr);
         } else {
-          next.address = addr;
+          next = this.applyPickupIntent(next, addr || sourceText || 'pickup');
         }
       }
     }
@@ -8349,28 +8373,40 @@ export class WhatsappOrchestratorService {
   }
 
   private isPickupIntent(text: string): boolean {
-    const t = text.trim().toLowerCase();
+    // WhatsApp a menudo manda "no\nrecogo en el local" — colapsar saltos
+    const t = text
+      .trim()
+      .toLowerCase()
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ');
     if (t.length < 4) return false;
     if (/\b(codigo|código|code)\s*\d+/i.test(t)) return false;
     return (
       /\b(para\s+llevar|pickup|recogida|pasar[eé]\s+a\s+recoger|lo\s+recojo|voy\s+por\s+(é|e)l|paso\s+yo|sin\s+domicilio|no\s+(quiero\s+)?domicilio)\b/i.test(
         t,
       ) ||
-      /\b(paso|pasar[eé]|pasar|voy|recojo|recoger|llegar[eé]|llego)\b.{0,50}\b(minutos?|mins?|horas?|hrs?|rato|momento)\b/i.test(
+      /\b(paso|pasar[eé]|pasar|voy|recojo|recogo|recoger|llegar[eé]|llego)\b.{0,50}\b(minutos?|mins?|horas?|hrs?|rato|momento)\b/i.test(
         t,
       ) ||
-      /\b(en|para)\s+\d{1,3}\s*(-|a|o|\/)?\s*\d{0,3}\s*(minutos?|mins?)\b.{0,30}\b(paso|recojo|voy|pasar)/i.test(
+      /\b(en|para)\s+\d{1,3}\s*(-|a|o|\/)?\s*\d{0,3}\s*(minutos?|mins?)\b.{0,30}\b(paso|recojo|recogo|voy|pasar)/i.test(
         t,
       ) ||
       /\bpaso\s+en\s+\d/i.test(t) ||
+      /\brecogo\s+(en|por|a|yo)\b/i.test(t) ||
       /\brecojo\s+(en|por|a|yo)\b/i.test(t) ||
-      /\b(paso|pasar[eé])\s+por\s+(el\s+)?(local|restaurante|all[ií]|allá|él|el)\b/i.test(t) ||
+      /\brecoger\s+en\s+(el\s+)?(local|restaurante)\b/i.test(t) ||
+      /\b(paso|pasar[eé])\s+por\s+(?:(?:el|ella|la|él)\s+)?(?:al\s+)?(local|restaurante|all[ií]|allá|él|el)\b/i.test(
+        t,
+      ) ||
       /\byo\s+paso(\s+por)?\b/i.test(t) ||
       /\bya\s+paso\b/i.test(t) ||
       /\bal[ií]st(a|e|o)(lo|la)?\b.{0,40}\bpaso\b/i.test(t) ||
       /\b(lo\s+)?paso\s+a\s+(buscar|recoger)\b/i.test(t) ||
       /\bpasa(r[eé])?\s+a\s+(buscar|recoger)\b/i.test(t) ||
-      /\bvoy\s+(pasando|para\s+all[aá]|para\s+el\s+local)\b/i.test(t)
+      /\bvoy\s+(pasando|para\s+all[aá]|para\s+el\s+local)\b/i.test(t) ||
+      // "no / recogo en el local" coalescido
+      /\bno\b.{0,40}\b(recojo|recogo|recoger)\s+en\s+(el\s+)?local\b/i.test(t) ||
+      /\b(recojo|recogo|recoger)\s+en\s+(el\s+)?local\b/i.test(t)
     );
   }
 
@@ -8892,6 +8928,7 @@ export class WhatsappOrchestratorService {
         ? originalText.trim()
         : null);
     if (!addr || !this.isPlausibleDeliveryAddress(addr)) return false;
+    if (this.isPickupIntent(originalText) || this.isPickupIntent(addr)) return false;
 
     session = this.withDeliveryAddress(
       {
@@ -10921,8 +10958,16 @@ export class WhatsappOrchestratorService {
         isNothingElseOrderIntent(originalText || text) ||
         isFinishCheckoutIntent(originalText || text) ||
         isNothingElseOrderIntent(guarded.actions.setAddress) ||
-        isFinishCheckoutIntent(guarded.actions.setAddress))
+        isFinishCheckoutIntent(guarded.actions.setAddress) ||
+        this.isPickupIntent(guarded.actions.setAddress) ||
+        this.isPickupIntent(originalText || text))
     ) {
+      if (
+        this.isPickupIntent(guarded.actions.setAddress) ||
+        this.isPickupIntent(originalText || text)
+      ) {
+        guarded.actions.setOrderType = 'pickup';
+      }
       delete guarded.actions.setAddress;
     }
 
@@ -11017,6 +11062,62 @@ export class WhatsappOrchestratorService {
         latencyMs: Date.now() - started,
         userTextPreview: text,
         warnings: guarded.warnings,
+      });
+      return true;
+    }
+
+    // Agente eligió Mercado Pago (u otro pago) con carrito → Nest manda link / sigue checkout
+    // (no dejar que el LLM diga "escribe confirmar" sin generar el link)
+    {
+      const payFromText =
+        !isPaymentCapabilityQuestion(originalText || text)
+          ? this.resolvePaymentChoice(originalText || text, cfg)
+          : null;
+      if (
+        session.cart.length > 0 &&
+        (guarded.actions?.setPaymentMethod || payFromText)
+      ) {
+        if (payFromText && !session.paymentMethod) {
+          session = { ...session, paymentMethod: payFromText.id };
+        }
+        const payIsMp =
+          session.paymentMethod === 'mercadopago' ||
+          getEnabledPaymentMethods(cfg.paymentMethods).find((m) => m.id === session.paymentMethod)
+            ?.flow === 'mercadopago';
+        await this.conversationService.saveSession(conv, session, 'confirming');
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          skipFinalConfirm: !!payIsMp,
+        });
+        this.turnTelemetry.record({
+          path: 'agent_v1',
+          outcome: 'order_progress',
+          waId: msg.waId,
+          conversationId: conv.id,
+          toolCalls: agent.toolCalls,
+          latencyMs: Date.now() - started,
+          warnings: [...(guarded.warnings || []), 'agent_payment_to_confirm'],
+        });
+        return true;
+      }
+    }
+
+    // Agente marcó pickup y el cliente ya cerró ("nada más" / "no") → seguir checkout
+    if (
+      session.cart.length > 0 &&
+      guarded.actions?.setOrderType === 'pickup' &&
+      (isNothingElseOrderIntent(originalText || text) ||
+        /^(no|nop|nel)[\s!.?]*$/i.test((originalText || text).trim()))
+    ) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'order_progress',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        warnings: [...(guarded.warnings || []), 'agent_pickup_to_confirm'],
       });
       return true;
     }

@@ -190,6 +190,12 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },
   { re: /\b(?:roaster|broster|brouster)\b/gi, to: 'broaster' },
   { re: /\bplacha\b/gi, to: 'plancha' },
+  { re: /\brecogo\b/gi, to: 'recojo' },
+  { re: /\brecoger\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
+  { re: /\brecojo\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
+  { re: /\bpaso\s+por\s+(?:ella|el|él|la)\s+(?:al\s+)?local\b/gi, to: 'paso por el local' },
+  { re: /\byo\s+paso\s+por\s+(?:ella|el|él|la)\s+(?:al\s+)?local\b/gi, to: 'yo paso por el local' },
+
   { re: /\bgiger\b/gi, to: 'ginger' },
   { re: /\bginguer\b/gi, to: 'ginger' },
   { re: /\bmarcuya\b/gi, to: 'maracuya' },

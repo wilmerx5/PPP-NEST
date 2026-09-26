@@ -55,6 +55,8 @@ describe('applyLocalGlossary', () => {
       applyLocalGlossary('sin ensalada, a cambio papa salada'),
     ).toMatch(/sin ensalada papa salada/i);
     expect(applyLocalGlossary('Dame tmb una botella de agua')).toMatch(/agua 600ml/i);
+    expect(applyLocalGlossary('recogo en el local')).toMatch(/recojo en el local/i);
+    expect(applyLocalGlossary('yo paso por ella al local')).toMatch(/yo paso por el local/i);
     // No convertir "cuántas personas alcanza" en pedido
     expect(applyLocalGlossary('Para cuantas personas alcanzas')).not.toMatch(/^quiero/i);
     expect(applyLocalGlossary('me alcanzas a pedir una ensalada')).toMatch(/quiero/i);
