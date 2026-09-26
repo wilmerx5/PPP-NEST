@@ -1501,8 +1501,11 @@ export class WhatsappOrchestratorService {
         await this.conversationService.saveSession(conv, session, 'confirming');
         const confirmExtra = this.buildPaymentConfirmReply(payPick, cfg);
         session = this.conversationService.getSession(conv);
+        const skipFinal =
+          payPick.flow === 'mercadopago' || payPick.id === 'mercadopago';
         await this.tryConfirmOrder(conv, msg.waId, session, {
           preface: confirmExtra || undefined,
+          skipFinalConfirm: skipFinal,
         });
         return;
       }
@@ -2410,7 +2413,11 @@ export class WhatsappOrchestratorService {
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
-        await this.tryConfirmOrder(conv, msg.waId, session);
+        const skipFinal =
+          payPick.flow === 'mercadopago' || payPick.id === 'mercadopago';
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          skipFinalConfirm: skipFinal,
+        });
         return;
       }
     }
@@ -4930,8 +4937,8 @@ export class WhatsappOrchestratorService {
   }
 
   /**
-   * Confirmación corta al agregar: *producto* ×cant (sin precios ni attrs).
-   * El carrito completo va en domicilio / confirmación.
+   * Confirmación corta al agregar: *producto* ×cant (+ attrs si hay, ej. Sabor: Con gas).
+   * Sin precios; el carrito completo va en domicilio / confirmación.
    */
   private buildCartAddReply(
     session: WhatsappSessionData,
@@ -4946,6 +4953,26 @@ export class WhatsappOrchestratorService {
       names.length === 1
         ? `Listo ✅ *${names[0]}*`
         : `Listo ✅ ${names.map((n) => `*${n}*`).join(', ')}`;
+
+    // Attrs del ítem (auto o elegidos): "Sabor: Con gas" — sin decir "por defecto"
+    if (names.length === 1) {
+      const baseNorm = this.normalizeForMatch(names[0].replace(/\s*×\s*\d+\s*$/, '').trim());
+      const cart = this.consolidateCart(session.cart);
+      const hit =
+        cart.find((c) => this.normalizeForMatch(c.name) === baseNorm) ||
+        session.cart[session.cart.length - 1];
+      if (hit?.attributes?.length) {
+        const attrLine = hit.attributes
+          .map((a) =>
+            a.attributeName?.trim()
+              ? `${a.attributeName}: ${a.attributeValue}`
+              : a.attributeValue,
+          )
+          .filter(Boolean)
+          .join(' · ');
+        if (attrLine) head += `\n_${attrLine}_`;
+      }
+    }
     if (opts?.extraLine) head += `\n${opts.extraLine}`;
 
     const prompt = opts?.suffix !== undefined ? opts.suffix : this.formatContinueShoppingPrompt(session);
