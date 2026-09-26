@@ -2282,20 +2282,29 @@ Cll 6 b 78 c 33`;
   });
 
   describe('Browse por estilo de preparación (sudado / frito)', () => {
-    it('“Que tienes que sea sudado” no es dump de categorías', () => {
+    it('“Que tienes que sea sudado” ofrece productos En Salsa', () => {
       const text = applyLocalGlossary('Que tienes que sea sudado');
       expect(catalog.isMenuExploreIntent(text, pppMenu)).toBe(true);
       const style = catalog.extractCookingStyleBrowseIntent(text);
       expect(style).toMatch(/sudado/i);
       const hits = catalog.findProductsByCookingStyle(style!, pppMenu);
-      expect(hits.length).toBe(0);
+      // Sobrebarriga / Bagre tienen opción "En Salsa"
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits.some((p) => /sobrebarriga|bagre/i.test(p.name))).toBe(true);
       const reply = catalog.formatCookingStyleBrowseReply(style!, hits, {
         availableStyles: catalog.listAvailableCookingStyles(pppMenu),
         menuUrl: 'https://example.com/menu',
       });
-      expect(reply).toMatch(/no manejamos.*sudado/i);
+      expect(reply).toMatch(/en salsa/i);
+      expect(reply).toMatch(/sudado/i);
+      expect(reply).not.toMatch(/no manejamos/i);
       expect(reply).not.toMatch(/1\.\s*\*Pollo\*/i);
-      expect(reply).toMatch(/frito|asado|plancha|broaster|apanad|horno/i);
+    });
+
+    it('“Tiens algo sudado” tipado → mismo browse', () => {
+      const text = applyLocalGlossary('Tiens algo sudado¡');
+      expect(text.toLowerCase()).toMatch(/tienes/);
+      expect(catalog.extractCookingStyleBrowseIntent(text)).toMatch(/sudado/i);
     });
 
     it('“qué tienes frito” lista platos fritos del menú', () => {

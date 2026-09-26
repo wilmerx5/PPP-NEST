@@ -185,6 +185,8 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\btorre(\d+)\b/gi, to: 'torre $1' },
   { re: /\bapt\.?\s+(\d{2,4})\b/gi, to: 'apto $1' },
   { re: /\bapto\.?\s*(\d{2,4})\b/gi, to: 'apto $1' },
+  { re: /\btiens\b/gi, to: 'tienes' },
+  { re: /\bteneis\b/gi, to: 'tienen' },
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },

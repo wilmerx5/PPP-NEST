@@ -258,6 +258,7 @@ const COOKING_STYLE_TOKENS = new Set([
   'sudada',
   'guisado',
   'guisada',
+  'salsa',
   'maduro',
   'maduros',
   'verde',
@@ -267,6 +268,7 @@ const COOKING_STYLE_TOKENS = new Set([
 /**
  * Sinónimos de estilo en carta vs habla del cliente.
  * "pechuga asada" ↔ Pechuga a la Plancha (no Gratinada).
+ * "sudado" ↔ opción de carta "En Salsa".
  */
 const COOKING_STYLE_SYNONYM_GROUPS: string[][] = [
   ['asado', 'asada', 'asados', 'asadas', 'plancha'],
@@ -274,31 +276,44 @@ const COOKING_STYLE_SYNONYM_GROUPS: string[][] = [
   ['gratinada', 'gratinado'],
   ['apanado', 'apanada'],
   ['broaster'],
-  ['horno'],
-  ['sudado', 'sudada'],
-  ['guisado', 'guisada'],
+  ['horno', 'al horno'],
+  ['sudado', 'sudada', 'en salsa', 'salsa', 'guisado', 'guisada'],
 ];
 
 function cookingStyleGroup(style: string): string[] {
   const s = singularizeEsToken(normalizeText(style));
+  const full = normalizeText(style);
   for (const g of COOKING_STYLE_SYNONYM_GROUPS) {
-    if (g.some((x) => singularizeEsToken(x) === s || x === style || x === s)) {
+    if (
+      g.some(
+        (x) =>
+          singularizeEsToken(x) === s ||
+          normalizeText(x) === full ||
+          normalizeText(x) === s ||
+          (full.length >= 4 && normalizeText(x).includes(full)) ||
+          (s.length >= 4 && normalizeText(x).includes(s)),
+      )
+    ) {
       return g;
     }
   }
   return [s || style];
 }
 
-/** ¿El nombre del producto trae este estilo o un sinónimo (asado↔plancha)? */
+/** ¿El nombre/opción trae este estilo o un sinónimo (asado↔plancha, sudado↔en salsa)? */
 function productNameHasCookingStyle(productName: string, style: string): boolean {
   const name = normalizeText(productName);
   if (!name || !style) return false;
   const group = cookingStyleGroup(style);
-  return group.some(
-    (st) =>
-      name.includes(st) ||
-      name.split(/\s+/).some((nt) => singularizeEsToken(nt) === singularizeEsToken(st)),
-  );
+  return group.some((st) => {
+    const needle = normalizeText(st);
+    if (!needle) return false;
+    if (needle.includes(' ')) return name.includes(needle);
+    return (
+      name.includes(needle) ||
+      name.split(/\s+/).some((nt) => singularizeEsToken(nt) === singularizeEsToken(needle))
+    );
+  });
 }
 
 /** Estilos del producto que no cuadran con lo pedido (gratinada vs asada). */
@@ -718,9 +733,6 @@ export class WhatsappCatalogService {
   ): WhatsappCatalogProduct[] {
     const st = singularizeEsToken(normalizeText(style));
     if (!st) return [];
-    const nonPrepAttr =
-      /\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i;
-    const prepAttr = /\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i;
     const hits: WhatsappCatalogProduct[] = [];
     for (const p of products) {
       if (p.availableNow === false) continue;
@@ -728,17 +740,9 @@ export class WhatsappCatalogService {
         hits.push(p);
         continue;
       }
-      const attrs = p.attributes || [];
-      const attrHit = attrs.some((a) => {
-        const an = String(a.attributeName || '');
-        if (nonPrepAttr.test(an)) return false;
-        if (!prepAttr.test(an) && an.trim().length > 0) {
-          // Atributos raros: solo si el nombre parece preparación
-          if (!/prep|estilo|selec|cocin|modo|tipo/i.test(an)) return false;
-        }
-        return (a.options || []).some((opt) => productNameHasCookingStyle(String(opt), st));
-      });
-      if (attrHit) hits.push(p);
+      if (this.findPrepOptionMatchingStyle(p, st)) {
+        hits.push(p);
+      }
     }
     return hits
       .sort((a, b) => {
@@ -749,32 +753,88 @@ export class WhatsappCatalogService {
       .slice(0, limit);
   }
 
+  private isPrepAttributeName(attributeName: string): boolean {
+    const an = String(attributeName || '');
+    if (/\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i.test(an)) {
+      return false;
+    }
+    if (/\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i.test(an)) {
+      return true;
+    }
+    return /prep|estilo|selec|cocin|modo|tipo/i.test(an);
+  }
+
+  /** Opción de attr de preparación que matchea el estilo (ej. "En Salsa" ↔ sudado). */
+  private findPrepOptionMatchingStyle(
+    product: WhatsappCatalogProduct,
+    style: string,
+  ): string | null {
+    for (const a of product.attributes || []) {
+      if (!this.isPrepAttributeName(a.attributeName)) continue;
+      for (const opt of a.options || []) {
+        const raw = String(opt || '').trim();
+        if (raw && productNameHasCookingStyle(raw, style)) return raw;
+      }
+    }
+    return null;
+  }
+
+  /** Etiqueta de carta para mostrar (sudado → "en salsa" si así está en attrs). */
+  resolveCookingStyleMenuLabel(
+    style: string,
+    hits: WhatsappCatalogProduct[],
+  ): string {
+    const asked = normalizeText(style);
+    const counts = new Map<string, number>();
+    for (const p of hits) {
+      const opt = this.findPrepOptionMatchingStyle(p, style);
+      if (opt) {
+        const key = normalizeText(opt);
+        counts.set(key, (counts.get(key) || 0) + 1);
+        continue;
+      }
+      if (productNameHasCookingStyle(p.name, style)) {
+        // Preferir el token del nombre que pertenece al grupo
+        const group = cookingStyleGroup(style);
+        const name = normalizeText(p.name);
+        const fromName =
+          group.find((g) => g.includes(' ') && name.includes(normalizeText(g))) ||
+          group.find((g) => !g.includes(' ') && name.split(/\s+/).includes(normalizeText(g))) ||
+          asked;
+        counts.set(normalizeText(fromName), (counts.get(normalizeText(fromName)) || 0) + 1);
+      }
+    }
+    if (!counts.size) return asked;
+    const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    return best;
+  }
+
   /** Estilos que sí aparecen en la carta (nombre o attrs de preparación). */
   listAvailableCookingStyles(products: WhatsappCatalogProduct[]): string[] {
     const found = new Set<string>();
-    const nonPrepAttr =
-      /\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i;
-    const prepAttr = /\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i;
     for (const p of products) {
       if (p.availableNow === false) continue;
       const name = normalizeText(p.name);
       for (const st of COOKING_STYLE_TOKENS) {
-        if (productNameHasCookingStyle(name, st)) {
+        if (st === 'salsa' || st === 'sudado' || st === 'sudada') continue;
+        if (productNameHasCookingStyle(name, st) && name.includes(singularizeEsToken(st))) {
           found.add(singularizeEsToken(st));
         }
       }
       for (const a of p.attributes || []) {
-        const an = String(a.attributeName || '');
-        if (nonPrepAttr.test(an)) continue;
-        if (an.trim() && !prepAttr.test(an) && !/prep|estilo|selec|cocin|modo|tipo/i.test(an)) {
-          continue;
-        }
+        if (!this.isPrepAttributeName(a.attributeName)) continue;
         for (const opt of a.options || []) {
-          const o = normalizeText(String(opt));
-          for (const st of COOKING_STYLE_TOKENS) {
-            if (productNameHasCookingStyle(o, st)) {
-              found.add(singularizeEsToken(st));
-            }
+          const raw = String(opt || '').trim();
+          const o = normalizeText(raw);
+          if (!o) continue;
+          // Etiqueta real de carta ("en salsa", "frita", "al horno")
+          if (
+            [...COOKING_STYLE_SYNONYM_GROUPS].some((g) =>
+              g.some((x) => productNameHasCookingStyle(o, x) || o.includes(normalizeText(x))),
+            ) ||
+            [...COOKING_STYLE_TOKENS].some((st) => productNameHasCookingStyle(o, st))
+          ) {
+            found.add(o);
           }
         }
       }
@@ -787,22 +847,30 @@ export class WhatsappCatalogService {
     hits: WhatsappCatalogProduct[],
     opts?: { menuUrl?: string | null; availableStyles?: string[] },
   ): string {
-    const label = style.trim().toLowerCase();
+    const asked = style.trim().toLowerCase();
     if (hits.length) {
-      return (
-        `Sí 👍 Esto lo manejamos *${label}*:\n\n` +
-        this.formatCategoryList(label, hits)
-      );
+      const menuLabel = this.resolveCookingStyleMenuLabel(style, hits);
+      const shown = menuLabel || asked;
+      const synonym =
+        normalizeText(shown) !== normalizeText(asked) &&
+        !normalizeText(shown).includes(normalizeText(asked));
+      const header = synonym
+        ? `Sí 👍 Lo más cercano a *${asked}* es *${shown}*. Te ofrezco:\n\n`
+        : `Sí 👍 Esto lo manejamos *${shown}*:\n\n`;
+      return header + this.formatCategoryList(shown, hits);
     }
     const alts = (opts?.availableStyles || [])
-      .filter((s) => s && s !== singularizeEsToken(label))
+      .filter((s) => {
+        const n = normalizeText(s);
+        return n && n !== normalizeText(asked) && !cookingStyleGroup(asked).includes(n);
+      })
       .slice(0, 6);
     const altLine = alts.length
       ? `\nEn carta sí tenemos: *${alts.join('*, *')}*.`
       : '';
     const link = (opts?.menuUrl || '').trim();
     return (
-      `Por ahora no manejamos preparación *${label}* en la carta.${altLine}\n` +
+      `Por ahora no manejamos preparación *${asked}* en la carta.${altLine}\n` +
       (link ? `\nPuedes ver todo aquí:\n${link}\n` : '') +
       `\n¿Qué otra preparación o plato te antoja?`
     );
