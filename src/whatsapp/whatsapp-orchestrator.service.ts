@@ -31,6 +31,7 @@ import {
   isDeliveryLogisticsFluff,
   isHumanHandoffRequest,
   isNothingElseOrderIntent,
+  isFinishCheckoutIntent,
   isUpcomingAddressIntent,
   PPP_ZONE_LANDMARK_RE,
   FOOD_ORDER_SIGNAL_RE,
@@ -617,6 +618,24 @@ export class WhatsappOrchestratorService {
         cfg,
       )
     ) {
+      return;
+    }
+
+    // "No, no más" / "terminar mi pedido" → checkout ANTES de ETA / agente / dirección
+    // (no interrumpir attrs / lista pendiente)
+    if (
+      session.cart.length > 0 &&
+      !session.pendingAttribute &&
+      !session.pendingMatch?.candidates?.length &&
+      !session.pendingMultiOrder &&
+      (this.isConfirmKeyword(originalText) ||
+        isNothingElseOrderIntent(originalText) ||
+        isFinishCheckoutIntent(originalText))
+    ) {
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
       return;
     }
 
@@ -8023,12 +8042,12 @@ export class WhatsappOrchestratorService {
     if (!t) return false;
 
     // Frases claras de cierre
-    if (isNothingElseOrderIntent(raw)) return true;
+    if (isNothingElseOrderIntent(raw) || isFinishCheckoutIntent(raw)) return true;
     if (
       /^(ya esta|ya esta todo|ya quedo|todo bien|asi esta|asi quedo|de una|mande(lo)?|envia(lo|me)?|hagalo|hagale|proceda|vamos|dale pues)$/.test(
         t,
       ) ||
-      /\b((confirmar?|confirmo|confirmado|aprobar|apruebo|aprobado|finalizar|listo)\s+(el\s+)?pedido|pedido\s+(listo|confirmado|aprobado)|listo\s+pedido)\b/.test(
+      /\b((confirmar?|confirmo|confirmado|aprobar|apruebo|aprobado|finalizar|terminar|cerrar|listo)\s+(el\s+|mi\s+)?pedido|pedido\s+(listo|confirmado|aprobado)|listo\s+pedido)\b/.test(
         t,
       )
     ) {
@@ -8038,11 +8057,12 @@ export class WhatsappOrchestratorService {
     const tokens = t.split(' ').filter(Boolean);
     if (!tokens.length || tokens.length > 6) return false;
 
-    // No confundir con pedido nuevo
+    // No confundir con pedido nuevo (salvo "quiero terminar/confirmar…")
     if (
       /\b(quiero|dame|ponme|agrega|agregame|pedir|ordenar|codigo|#\d+|gaseosa|pollo|medio|cuarto|domicilio\s+a)\b/.test(
         t,
-      )
+      ) &&
+      !/\b(terminar|cerrar|finalizar|completar|confirmar)\b/.test(t)
     ) {
       return false;
     }
@@ -10136,15 +10156,56 @@ export class WhatsappOrchestratorService {
           ? existing.split(/;\s*/).map((p) => p.trim()).filter(Boolean)
           : [];
         if (!parts.some((p) => p.toLowerCase() === norm)) {
-          item.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
-          cart[targetIdx] = item;
-          next = { ...next, cart };
-          notedItemIndex = targetIdx;
+          const noteQty = this.extractPartialCartNoteQuantity(t, item.quantity || 1);
+          const lineQty = Math.max(1, item.quantity || 1);
+          // "Una de las mojarras…" → separar 1 unidad con la nota del resto
+          if (noteQty > 0 && noteQty < lineQty && !existing) {
+            cart[targetIdx] = { ...item, quantity: lineQty - noteQty };
+            cart.push({
+              ...item,
+              quantity: noteQty,
+              note: cleaned,
+            });
+            notedItemIndex = cart.length - 1;
+            next = { ...next, cart };
+          } else {
+            item.note = existing ? `${existing}; ${cleaned}`.slice(0, 200) : cleaned;
+            cart[targetIdx] = item;
+            next = { ...next, cart };
+            notedItemIndex = targetIdx;
+          }
         }
       }
       next = this.appendCustomerNote(next, cleaned);
     }
     return { session: next, notedItemIndex };
+  }
+
+  /**
+   * "Una de las mojarras…" / "solo una" → cuántas unidades llevan la nota.
+   * 0 = aplicar a toda la línea.
+   */
+  private extractPartialCartNoteQuantity(text: string, maxQty: number): number {
+    const q = (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!q || maxQty <= 1) return 0;
+
+    const unaDe =
+      /\b(una?|1)\s+de\s+(las?\s+|los?\s+|ellas?\s+|ellos?\s+)?/.test(q) ||
+      /\bsolo\s+(una?|1)\b/.test(q) ||
+      /\b(una?\s+sola)\b/.test(q);
+    if (unaDe) return 1;
+
+    const m = q.match(/\b(\d{1,2})\s+de\s+(las?\s+|los?\s+)?/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 1 && n < maxQty) return n;
+    }
+    return 0;
   }
 
   private readonly CASH_CHANGE_AMOUNT = String.raw`[\d.,]+(?:\s*(?:mil|k))?`;
@@ -10690,6 +10751,9 @@ export class WhatsappOrchestratorService {
       return false;
     }
     if (this.isConfirmKeyword(text) || this.isGreetingKeyword(text)) {
+      return false;
+    }
+    if (isNothingElseOrderIntent(text) || isFinishCheckoutIntent(text)) {
       return false;
     }
     if (this.isVagueOrderIntent(text)) {

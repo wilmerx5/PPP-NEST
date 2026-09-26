@@ -377,6 +377,21 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+  // "Quiero terminar mi pedido" = checkout del carrito, no estado de orden ya hecha
+  if (
+    /\b(terminar|cerrar|finalizar|completar|confirmar)\s+(el\s+|mi\s+|este\s+)?pedido\b/.test(
+      t,
+    ) ||
+    /\b(quiero|vamos\s+a|deseo|necesito)\s+(terminar|cerrar|finalizar|completar|confirmar)\b/.test(
+      t,
+    ) ||
+    /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
+    /^(asi\s+)?nada\s+mas$/.test(t) ||
+    /^(eso\s+es\s+todo|solo\s+eso)$/.test(t)
+  ) {
+    return false;
+  }
+
   if (extractDailyOrderNumberHint(raw) != null) return true;
 
   if (

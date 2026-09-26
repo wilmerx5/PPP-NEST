@@ -1958,7 +1958,7 @@ export class WhatsappCatalogService {
 
     // Exigir al menos un marcador de preferencia / sustitución de guarnición
     if (
-      !/\b(sin|con|mas|más|en\s+vez\s+de|envez\s+de|pero\s+sin|pero\s+con|no\s+quiero|no\s+me\s+(?:pongan?|pongas)|quiero\s+(?:mas|más))\b/.test(
+      !/\b(sin|con|mas|más|en\s+vez\s+de|envez\s+de|a\s+cambio|pero\s+sin|pero\s+con|no\s+quiero|no\s+me\s+(?:pongan?|pongas)|quiero\s+(?:mas|más)|papa\s+salada|yuca\s+frita)\b/.test(
         q,
       )
     ) {
@@ -1972,6 +1972,10 @@ export class WhatsappCatalogService {
       /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
       /\b((?:quiero\s+)?(?:mas|más)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,1})/gi,
       /\b((?:cambia(?:r|me)?|cambiar)\s+(?:la\s+|el\s+)?(?:ensalada|papa|papas|yuca|arepa)(?:\s+por\s+[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})?)/gi,
+      // "a cambio papa salada" / "a cambio de yuca frita"
+      /\b((?:a\s+cambio(?:\s+de)?)\s+(?:la\s+|el\s+|unas?\s+|unos?\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
+      // Tras glossary: "papa salada" / "yuca frita" sueltos junto a "sin ensalada"
+      /\b(papa\s+salada|yuca\s+frita|papas?\s+saladas?)\b/gi,
     ];
     for (const re of patterns) {
       let m: RegExpExecArray | null;
@@ -1999,7 +2003,13 @@ export class WhatsappCatalogService {
       });
     });
     const noteBody = (dedupedChunks.length ? dedupedChunks : chunks)
-      .map((c) => c.replace(/\bmas\b/gi, 'más'))
+      .map((c) =>
+        c
+          .replace(/\bmas\b/gi, 'más')
+          .replace(/^a\s+cambio(?:\s+de)?\s+/i, '')
+          .trim(),
+      )
+      .filter(Boolean)
       .join(', ')
       .slice(0, 180);
 
@@ -2067,6 +2077,9 @@ export class WhatsappCatalogService {
     const hasSwapSide = new RegExp(
       `\\ben\\s+vez\\s+de\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+)?(?:${sideAlt})\\b`,
     ).test(q);
+    const hasACambioSide = new RegExp(
+      `\\ba\\s+cambio(?:\\s+de)?\\s+(?:la\\s+|el\\s+)?(?:${sideAlt}|papa\\s+salada|yuca\\s+frita)\\b`,
+    ).test(q);
     // "puedo cambiar la ensalada por otra cosa" / "cambiar papas por yuca"
     const hasChangeSide = new RegExp(
       `\\b(?:puedo|puedes|se\\s+puede|me\\s+(?:dejan|dejas)|dejame|d[eé]jame)?\\s*cambiar\\s+(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b` +
@@ -2074,8 +2087,20 @@ export class WhatsappCatalogService {
         `|\\b(?:${sideAlt})\\s+por\\s+(?:otra\\s+cosa|${sideAlt})\\b`,
     ).test(q);
     const refsCombo = /\b(?:para|del|en|sobre|el|la)\s+(?:el\s+|la\s+)?combo\b/.test(q) || /\bcombo\b/.test(q);
+    // "una de las mojarras… sin ensalada" → nota sobre plato ya pedido, no pedido nuevo
+    const refsExistingDishUnit =
+      /\b(?:una?\s+de\s+(?:las?\s+|los?\s+)?|para\s+(?:la\s+|el\s+|las?\s+|los?\s+)|de\s+la\s+|de\s+el\s+)\b/.test(
+        q,
+      );
 
-    if (!hasNegSide && !hasMoreSide && !hasSinConSide && !hasSwapSide && !hasChangeSide) {
+    if (
+      !hasNegSide &&
+      !hasMoreSide &&
+      !hasSinConSide &&
+      !hasSwapSide &&
+      !hasChangeSide &&
+      !hasACambioSide
+    ) {
       return false;
     }
     // Si pide un plato principal nuevo (pollo, churrasco…) no es solo nota
@@ -2083,7 +2108,7 @@ export class WhatsappCatalogService {
       /\b(pollos?|churrascos?|mojarras?|hamburguesas?|bandejas?|sopas?|alitas?|pechugas?|costillas?|broaster|ejecutivo|sancocho|ajiaco)\b/.test(
         q,
       );
-    if (mainDish && !refsCombo) return false;
+    if (mainDish && !refsCombo && !refsExistingDishUnit) return false;
 
     return true;
   }

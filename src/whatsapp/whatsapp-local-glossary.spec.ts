@@ -50,6 +50,9 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('Q cuestan 2 sopas')).toMatch(/que cuestan/i);
     expect(applyLocalGlossary('A como El arroz Con pollo')).toMatch(/a cuanto/i);
     expect(applyLocalGlossary('sin enslada mas papa')).toMatch(/sin ensalada más papa/i);
+    expect(
+      applyLocalGlossary('sin ensalada, a cambio papa salada'),
+    ).toMatch(/sin ensalada papa salada/i);
     expect(applyLocalGlossary('Dame tmb una botella de agua')).toMatch(/agua 600ml/i);
     // No convertir "cuántas personas alcanza" en pedido
     expect(applyLocalGlossary('Para cuantas personas alcanzas')).not.toMatch(/^quiero/i);

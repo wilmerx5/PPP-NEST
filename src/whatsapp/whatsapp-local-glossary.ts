@@ -109,6 +109,23 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bsin\s+salsas?,?\s+(?:mas|más)\s+miel\b/gi, to: 'sin salsas más miel' },
   { re: /\bsin\s+ensladas?\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
   { re: /\bsin\s+ensalada\s+(?:mas|más)\s+papas?\b/gi, to: 'sin ensalada más papa' },
+  // "sin ensalada, a cambio papa salada" / "a cambio de yuca frita"
+  {
+    re: /\bsin\s+ensalada,?\s+a\s+cambio(?:\s+de)?\s+(?:la\s+|el\s+)?papa(?:s)?(?:\s+salada)?\b/gi,
+    to: 'sin ensalada papa salada',
+  },
+  {
+    re: /\bsin\s+ensalada,?\s+a\s+cambio(?:\s+de)?\s+(?:la\s+|el\s+)?yuca(?:\s+frita)?\b/gi,
+    to: 'sin ensalada yuca frita',
+  },
+  {
+    re: /\ba\s+cambio(?:\s+de)?\s+(?:la\s+|el\s+)?papa(?:s)?(?:\s+salada)?\b/gi,
+    to: 'papa salada',
+  },
+  {
+    re: /\ba\s+cambio(?:\s+de)?\s+(?:la\s+|el\s+)?yuca(?:\s+frita)?\b/gi,
+    to: 'yuca frita',
+  },
   { re: /\bcambiar\s+(?:la\s+)?ensalada\s+por\s+papa\s+salada\b/gi, to: 'sin ensalada papa salada' },
   { re: /\bcambiar\s+(?:la\s+)?ensalada\s+por\s+yuca\s+frita\b/gi, to: 'sin ensalada yuca frita' },
   { re: /\bcambia(?:me|r)?\s+(?:la\s+)?ensalada\s+por\s+papa\s+salada\b/gi, to: 'sin ensalada papa salada' },

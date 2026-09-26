@@ -236,9 +236,32 @@ export function isNothingElseOrderIntent(text: string): boolean {
   return (
     /^(asi\s+)?nada\s+mas$/.test(t) ||
     /^(asi\s+)?nomas$/.test(t) ||
-    /^(eso\s+es\s+todo|solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+mas|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
+    // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
+    /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
+    /^(no\s+gracias|gracias\s+no)$/.test(t) ||
+    /^(eso\s+es\s+todo|solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
       t,
     )
+  );
+}
+
+/**
+ * Quiere cerrar el carrito actual (checkout), no consultar un pedido ya hecho.
+ * Ej: "Quiero terminar mi pedido", "finalizar el pedido".
+ */
+export function isFinishCheckoutIntent(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t || t.length > 80) return false;
+  if (isNothingElseOrderIntent(text)) return true;
+  return (
+    /\b(terminar|cerrar|finalizar|completar|confirmar)\s+(el\s+|mi\s+|este\s+)?pedido\b/.test(
+      t,
+    ) ||
+    /\b(quiero|vamos\s+a|deseo|necesito)\s+(terminar|cerrar|finalizar|completar|confirmar)(\s+(el\s+|mi\s+|este\s+)?pedido)?\b/.test(
+      t,
+    ) ||
+    /\bpedido\s+(listo|confirmado|aprobado|completo)\b/.test(t) ||
+    /\blisto\s+(para\s+)?(pagar|confirmar|mandar|enviar)\b/.test(t)
   );
 }
 
@@ -260,6 +283,7 @@ export function looksLikeNonAddressCommand(text: string): boolean {
   if (looksLikeClearCartMessage(text)) return true;
   if (isDeliveryLogisticsFluff(text) || isDeliverySetupWithoutFood(text)) return true;
   if (isNothingElseOrderIntent(text)) return true;
+  if (isFinishCheckoutIntent(text)) return true;
   if (isUpcomingAddressIntent(text)) return true;
   // "Masomenos cuanto se demora" ≠ dirección / barrio
   if (isDeliveryEtaInquiry(text)) return true;

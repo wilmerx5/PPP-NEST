@@ -808,6 +808,17 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(note).toMatch(/más papa/i);
       expect(note?.toLowerCase().split('más papa').length).toBe(2);
     });
+
+    it('a cambio papa salada captura sustitución completa', () => {
+      const text = applyLocalGlossary(
+        'Una De las mojarras la quiero sin ensalada, a cambio papa salada',
+      );
+      expect(text.toLowerCase()).toMatch(/papa\s+salada/);
+      const note = catalog.extractProductModificationNote(text);
+      expect(note).toMatch(/sin ensalada/i);
+      expect(note).toMatch(/papa\s+salada/i);
+      expect(catalog.looksLikeSideModificationNote(text)).toBe(true);
+    });
   });
 
   describe('pago: capacidad vs elegir método', () => {
@@ -1585,6 +1596,9 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         'eso es todo',
         'solo eso',
         'nomas',
+        'No, no mas',
+        'no no más',
+        'ya no mas',
       ]) {
         expect(isNothingElseOrderIntent(raw)).toBe(true);
         expect(looksLikeNonAddressCommand(raw)).toBe(true);

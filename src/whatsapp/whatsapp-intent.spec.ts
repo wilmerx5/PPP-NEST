@@ -11,7 +11,9 @@ import {
   isDeliveryLogisticsFluff,
   isHumanHandoffRequest,
   isNothingElseOrderIntent,
+  isFinishCheckoutIntent,
 } from './whatsapp-intent';
+import { isSpecificOrderProgressInquiry } from './whatsapp-session-intents';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 
 describe('classifyWhatsappCustomerIntent', () => {
@@ -266,11 +268,35 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
   });
 
   it('“así nada más” / “eso es todo” no es dirección', () => {
-    for (const t of ['asi nada mas', 'Así nada más', 'nada mas', 'eso es todo', 'solo eso']) {
+    for (const t of [
+      'asi nada mas',
+      'Así nada más',
+      'nada mas',
+      'eso es todo',
+      'solo eso',
+      'no mas',
+      'No, no mas',
+      'no no más',
+      'ya no mas',
+    ]) {
       expect(isNothingElseOrderIntent(t)).toBe(true);
       expect(looksLikeNonAddressCommand(t)).toBe(true);
       expect(looksLikeAddressOnlyMessage(t)).toBe(false);
     }
+  });
+
+  it('terminar mi pedido es cierre, no tracking', () => {
+    for (const t of [
+      'Quiero terminar mi pedido',
+      'terminar el pedido',
+      'finalizar mi pedido',
+      'quiero confirmar el pedido',
+    ]) {
+      expect(isFinishCheckoutIntent(t)).toBe(true);
+      expect(isSpecificOrderProgressInquiry(t)).toBe(false);
+    }
+    expect(isSpecificOrderProgressInquiry('cómo va mi pedido')).toBe(true);
+    expect(isSpecificOrderProgressInquiry('donde esta mi orden')).toBe(true);
   });
 
   it('extrae Tabaku desde “Me colaboras… Dirección Conjunto…”', () => {
