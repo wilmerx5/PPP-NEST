@@ -1642,6 +1642,30 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Multi-pedido claro ANTES del agente (evita que el LLM tape el flujo que ya funcionaba)
+    if (
+      !session.pendingMatch &&
+      !session.pendingAttribute &&
+      !session.pendingMultiOrder &&
+      (this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(originalText || text))
+    ) {
+      const multi = this.catalogService.resolveMultiProductOrder(originalText || text, products);
+      if (multi) {
+        const handled = await this.tryHandleMultiProductOrder(
+          conv,
+          msg.waId,
+          session,
+          multi,
+          cfg,
+          text,
+          products,
+          originalText,
+        );
+        if (handled) return;
+      }
+    }
+
     // Agent V1 (feature flag): LLM + tools. Pendings numéricos / checkout ya se resolvieron arriba.
     if (
       cfg.agentV1Enabled &&
@@ -1702,11 +1726,22 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Explorar menú / "qué ofreces de carne" → listar, NUNCA agregar ni pedir "sí"
+    // Explorar menú / "qué ofreces de carne" / categoría suelta ("Pollo") → listar
     const browseAsk =
       this.catalogService.isMenuExploreIntent(text, products) ||
       this.catalogService.isCategoryBrowseQuestion(text);
-    if (browseAsk) {
+    const hit = this.catalogService.findCategoryBrowseHit(
+      text,
+      products,
+      cfg.menuConceptGroups,
+    );
+    const bareConceptOrCategory =
+      !!hit?.products?.length &&
+      (text || '').trim().split(/\s+/).filter(Boolean).length <= 3 &&
+      this.catalogService.extractQuantityFromMessage(text) < 2 &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
+      !/\b(quiero|dame|ponme|agrega|regala)\b/i.test(text);
+    if (browseAsk || bareConceptOrCategory) {
       // Cambió de tema: soltar atributos/multi pendientes del plato anterior
       session = {
         ...session,
@@ -1714,16 +1749,16 @@ export class WhatsappOrchestratorService {
         pendingMultiOrder: undefined,
         pendingAttribute: undefined,
       };
-      const hit = this.catalogService.findCategoryBrowseHit(
-        text,
-        products,
-        cfg.menuConceptGroups,
-      );
       const specificCue =
         /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo)\b/i.test(
           text,
         );
-      if (hit?.products.length && (specificCue || this.catalogService.isCategoryBrowseQuestion(text))) {
+      if (
+        hit?.products.length &&
+        (bareConceptOrCategory ||
+          specificCue ||
+          this.catalogService.isCategoryBrowseQuestion(text))
+      ) {
         session = {
           ...session,
           pendingCategoryBrowse: undefined,
@@ -10618,7 +10653,11 @@ export class WhatsappOrchestratorService {
       menuConceptGroups: cfg.menuConceptGroups,
     });
 
-    if (agent.error === 'no_openai_key' || agent.error === 'openai_401') {
+    if (
+      agent.error === 'no_openai_key' ||
+      agent.error === 'openai_401' ||
+      agent.error === 'empty_reply'
+    ) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',
@@ -10655,6 +10694,54 @@ export class WhatsappOrchestratorService {
         FOOD_ORDER_SIGNAL_RE.test(originalText || text))
     ) {
       delete guarded.actions.setAddress;
+    }
+
+    const hasProductiveActions = !!(
+      guarded.actions?.addItems?.length ||
+      guarded.actions?.removeProductIds?.length ||
+      guarded.actions?.clearCart ||
+      guarded.actions?.setAddress ||
+      guarded.actions?.setOrderType ||
+      guarded.actions?.setCustomerNotes ||
+      guarded.actions?.setPaymentMethod ||
+      guarded.actions?.requestHuman ||
+      agent.needsAttributeProductId
+    );
+    const agentReply = (agent.reply || '').trim();
+    const replyIsVagueAsk =
+      !agentReply ||
+      /\bqu[eé]\s+se\s+te\s+antoja\b/i.test(agentReply) ||
+      /\bdime el plato o el c[oó]digo\b/i.test(agentReply) ||
+      /\bescribe\s+\*?men[uú]\*?\b/i.test(agentReply);
+
+    // Agente sin tools + reply vacío/genérico → siempre reglas
+    // (multi-pedido, "Pollo", browse, etc.). Evita eco del historial.
+    if (!hasProductiveActions && replyIsVagueAsk) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['agent_vague_no_actions'],
+      });
+      return false;
+    }
+
+    if (agent.error === 'max_iterations' && !hasProductiveActions) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['max_iterations_no_actions'],
+      });
+      return false;
     }
 
     const applied = await this.applyActions(

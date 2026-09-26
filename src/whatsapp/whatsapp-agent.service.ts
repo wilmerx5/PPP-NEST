@@ -48,7 +48,7 @@ const AGENT_TOOLS = [
     function: {
       name: 'search_menu',
       description:
-        'Busca platos en el menú autorizado por nombre, código o estilo (frito, broaster, medio…). Úsala ANTES de add_item.',
+        'Busca platos en el menú autorizado por nombre, código, estilo (frito, broaster…) o concepto (carne, pescado, sopas). En pedidos con varios platos, llámala una vez por plato. Úsala ANTES de add_item.',
       parameters: {
         type: 'object',
         properties: {
@@ -162,7 +162,7 @@ const AGENT_TOOLS = [
 @Injectable()
 export class WhatsappAgentService {
   private readonly logger = new Logger(WhatsappAgentService.name);
-  private readonly maxIterations = 5;
+  private readonly maxIterations = 6;
 
   constructor(
     private readonly settingsService: WhatsappSettingsService,
@@ -195,6 +195,11 @@ Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
 Reglas:
 - Siempre search_menu antes de add_item si no tienes el productId.
+- Pedido con VARIOS platos ("3 mojarras, 2 costillas y 3 pollos fritos"):
+  1) search_menu por cada plato (puedes llamar varias tools en paralelo),
+  2) add_item por cada uno con su quantity y estilo si aplica,
+  3) un reply corto confirmando lo agregado.
+  No respondas solo "¿qué se te antoja?" si el cliente ya listó platos.
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
@@ -284,13 +289,13 @@ Contacto humano: *${phone || '3118866823'}*
         const calls = msg.tool_calls || [];
         if (!calls.length) {
           const reply = (msg.content || '').trim().slice(0, 3500);
+          // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
           return {
-            reply:
-              reply ||
-              '¿Qué se te antoja? Dime el plato o el código, o escribe *menú*.',
+            reply,
             actions,
             toolCalls,
             needsAttributeProductId,
+            error: reply ? undefined : 'empty_reply',
           };
         }
 
