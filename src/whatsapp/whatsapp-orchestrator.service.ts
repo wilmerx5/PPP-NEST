@@ -8781,6 +8781,7 @@ export class WhatsappOrchestratorService {
       session.lastDeliveryAddress?.trim() &&
       !session.addressConfirmed
     ) {
+      const wasAwaitingAddress = conv.state === 'awaiting_address';
       const addr = session.lastDeliveryAddress.trim();
       session = this.withDeliveryAddress(
         {
@@ -8808,6 +8809,13 @@ export class WhatsappOrchestratorService {
         return true;
       }
       const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
+      // Tras “¿Misma dirección?” (awaiting_address) → seguir checkout, no ¿algo más?
+      if (wasAwaitingAddress) {
+        await this.tryConfirmOrder(conv, waId, session, {
+          preface: `📍 Misma dirección ✅ _${session.address}_${feeLine}`,
+        });
+        return true;
+      }
       await this.reply(
         conv,
         waId,
@@ -8836,6 +8844,7 @@ export class WhatsappOrchestratorService {
 
     if (!this.isAddressOnlyCustomerMessage(originalText, compound)) return false;
 
+    const wasAwaitingAddress = conv.state === 'awaiting_address';
     const addr =
       compound.address ||
       this.extractDeliveryTail(originalText) ||
@@ -8880,6 +8889,13 @@ export class WhatsappOrchestratorService {
     }
 
     const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
+    // Dirección nueva mientras pedimos domicilio → seguir checkout (pago/confirmar)
+    if (wasAwaitingAddress) {
+      await this.tryConfirmOrder(conv, waId, session, {
+        preface: `📍 Domicilio anotado: _${session.address}_${feeLine}`,
+      });
+      return true;
+    }
     await this.reply(
       conv,
       waId,
@@ -9211,6 +9227,24 @@ export class WhatsappOrchestratorService {
         .trim();
       if (next === t) break;
       t = next;
+    }
+    // "para la calle 39 sur…" / "para el hospital…" → quitar muletilla de destino
+    const withoutPara = t
+      .replace(/^(?:para)\s+(?:la\s+|el\s+|los\s+|las\s+)?/i, '')
+      .trim();
+    if (
+      withoutPara.length >= 4 &&
+      withoutPara !== t &&
+      (/\b(calle|carrera|cra|cll|av\.?|avenida|diag|dg\.?|transversal|autopista|km)\b/i.test(
+        withoutPara,
+      ) ||
+        /#|\d/.test(withoutPara) ||
+        PPP_ZONE_LANDMARK_RE.test(withoutPara) ||
+        /\b(hospital|cl[ií]nica|conjunto|torre|centro|plaza|bosques?|castilla)\b/i.test(
+          withoutPara,
+        ))
+    ) {
+      t = withoutPara;
     }
     return t;
   }

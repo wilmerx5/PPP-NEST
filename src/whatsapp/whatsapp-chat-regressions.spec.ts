@@ -2232,6 +2232,12 @@ Cll 6 b 78 c 33`;
       // Direcciones reales siguen pasando
       expect(orch.isAddressOnlyCustomerMessage('Bosques de Castilla')).toBe(true);
       expect(orch.isPlausibleDeliveryAddress('Cra 81g #42b-27')).toBe(true);
+      expect(orch.normalizeDeliveryAddress('para la calle 39 sur 38 a 56')).toMatch(
+        /^calle 39 sur/i,
+      );
+      expect(orch.normalizeDeliveryAddress('para la calle 39 sur 38 a 56')).not.toMatch(
+        /^para la/i,
+      );
     });
   });
 });
