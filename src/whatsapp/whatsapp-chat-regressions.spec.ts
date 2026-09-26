@@ -430,8 +430,10 @@ const pppMenu: WhatsappCatalogProduct[] = [
     code: 71,
     name: 'Arroz Chino Con Medio Pollo',
     price: 48000,
-    hasAttributes: false,
-    attributes: [],
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Pollo', options: ['Frito', 'Broaster'] },
+    ],
     availableNow: true,
     categoryName: 'Arroces',
   },
@@ -1502,6 +1504,39 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family?.variants.some((p) => /broaster/i.test(p.name))).toBe(false);
     });
 
+    it('se puede con pollo broaster? (sin nombrar plato) → swap de estilo', () => {
+      expect(catalog.isDishStyleSubstitutionInquiry('se puede  con pollo broaster?')).toBe(
+        true,
+      );
+      expect(catalog.isDishStyleSubstitutionInquiry('puede ser broaster?')).toBe(true);
+      expect(catalog.extractRequestedProteinStyle('se puede con pollo broaster?')).toBe(
+        'broaster',
+      );
+      // "broaster" suelto = respuesta a attr, no swap inquiry
+      expect(catalog.isDishStyleSubstitutionInquiry('broaster')).toBe(false);
+      expect(catalog.isDishStyleSubstitutionInquiry('frito')).toBe(false);
+    });
+
+    it('Arroz Chino Con Medio Pollo: aplicar Broaster al attr Pollo', () => {
+      const arroz = pppMenu.find((p) => /arroz chino con medio pollo/i.test(p.name))!;
+      expect(arroz.hasAttributes).toBe(true);
+      const hit = catalog.resolveCookingStyleAttributeOption(arroz, 'broaster');
+      expect(hit).toEqual({ attributeName: 'Pollo', attributeValue: 'Broaster' });
+      const applied = catalog.applyCookingStyleToAttributes(
+        arroz,
+        [{ attributeName: 'Pollo', attributeValue: 'Frito' }],
+        'broaster',
+      );
+      expect(applied?.attributeValue).toBe('Broaster');
+      expect(applied?.attributes).toEqual([
+        { attributeName: 'Pollo', attributeValue: 'Broaster' },
+      ]);
+      // No auto-elegir Frito/Broaster al agregar
+      const filled = catalog.fillDefaultAttributes(arroz, []);
+      expect(filled.some((a) => /^pollo$/i.test(a.attributeName))).toBe(false);
+      expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(false);
+    });
+
     it('pedir broaster sí sigue siendo pedido', () => {
       expect(catalog.isDishStyleSubstitutionInquiry('quiero un pollo broaster')).toBe(
         false,
@@ -2339,7 +2374,7 @@ Cll 6 b 78 c 33`;
             /frit/i.test(p.name) ||
             (p.attributes || []).some(
               (a) =>
-                /seleccion|preparacion/i.test(a.attributeName) &&
+                /seleccion|preparacion|pollo|estilo|coccion/i.test(a.attributeName) &&
                 (a.options || []).some((o) => /frit/i.test(o)),
             ),
         ),

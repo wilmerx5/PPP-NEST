@@ -1691,7 +1691,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // “¿El arroz chino podría ser pollo broaster?” → nota en el plato, no pedir Broaster
+    // “¿Se puede con pollo broaster?” → cambia attr Pollo del carrito (no Broaster suelto)
     if (await this.tryHandleDishStyleSubstitutionInquiry(conv, msg.waId, session, text, products, cfg)) {
       return;
     }
@@ -11394,8 +11394,8 @@ export class WhatsappOrchestratorService {
   }
 
   /**
-   * “¿El arroz chino con pollo podría ser broaster?” → responder y ofrecer el plato base,
-   * sin abrir el menú de *Pollo Broaster*.
+   * “¿Se puede con pollo broaster?” → cambiar attr Pollo del ítem del carrito
+   * (no nota genérica ni abrir menú de Pollo Broaster suelto).
    */
   private async tryHandleDishStyleSubstitutionInquiry(
     conv: WhatsappConversation,
@@ -11407,12 +11407,31 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!this.catalogService.isDishStyleSubstitutionInquiry(text)) return false;
 
-    const style = this.catalogService.extractRequestedProteinStyle(text) || 'esa preparación';
-    const baseQuery = this.catalogService.extractBaseDishQueryForStyleSwap(text);
-    const family =
-      this.catalogService.findProductVariantFamily(baseQuery, products) ||
-      this.catalogService.findProductVariantFamily(text, products);
+    const style = this.catalogService.extractRequestedProteinStyle(text);
+    if (!style) return false;
 
+    const baseQuery = this.catalogService.extractBaseDishQueryForStyleSwap(text);
+    const applied = this.tryApplyCookingStyleToCartItem(session, products, style, baseQuery);
+
+    if (applied) {
+      session = {
+        ...applied.session,
+        pendingAttribute: undefined,
+        pendingMatch: undefined,
+        pendingMultiOrder: undefined,
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      const styleLabel =
+        applied.attributeValue.charAt(0).toUpperCase() + applied.attributeValue.slice(1);
+      await this.reply(
+        conv,
+        waId,
+        `Listo ✅ *${applied.itemName}* queda con *${applied.attributeName}: ${styleLabel}*.\n\n¿*Algo más*?`,
+      );
+      return true;
+    }
+
+    // Sin attr de estilo en el carrito: nota en el plato (no agregar Broaster suelto)
     const styleNote = `pollo ${style}`;
     session = {
       ...session,
@@ -11421,6 +11440,12 @@ export class WhatsappOrchestratorService {
       pendingMultiOrder: undefined,
       customerNotes: [session.customerNotes?.trim(), styleNote].filter(Boolean).join(' · ').slice(0, 400),
     };
+
+    const family =
+      (baseQuery
+        ? this.catalogService.findProductVariantFamily(baseQuery, products)
+        : null) ||
+      this.catalogService.findProductVariantFamily(text, products);
 
     if (family && family.variants.length >= 2) {
       const rows = family.variants.map((p, i) => ({
@@ -11448,7 +11473,9 @@ export class WhatsappOrchestratorService {
     }
 
     const hit =
-      this.catalogService.findProductEmbeddedInMessage(baseQuery, products) ||
+      (baseQuery
+        ? this.catalogService.findProductEmbeddedInMessage(baseQuery, products)
+        : null) ||
       family?.variants?.[0] ||
       null;
     let reply = `Sí 👍 Lo podemos dejar en *nota* del pedido: *${styleNote}*.\n`;
@@ -11458,6 +11485,9 @@ export class WhatsappOrchestratorService {
         `\n¿Te lo agrego con esa nota? Escribe *sí*.`;
       session = this.rememberProductFocus(session, hit, products);
       await this.savePendingAddOffer(conv, hit, 1);
+    } else if (session.cart.length) {
+      reply =
+        `Sí 👍 Dejo la nota *${styleNote}* para cocina.\n\n¿*Algo más*?`;
     } else {
       reply +=
         `\nDime el plato (ej. *arroz chino*) y te muestro las opciones` +
@@ -11467,6 +11497,81 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv, session, 'building_cart');
     await this.reply(conv, waId, reply);
     return true;
+  }
+
+  /**
+   * Cambia Pollo/Selección/… del ítem del carrito al estilo pedido (broaster, frito…).
+   */
+  private tryApplyCookingStyleToCartItem(
+    session: WhatsappSessionData,
+    products: MenuProduct[],
+    style: string,
+    baseQuery: string,
+  ): {
+    session: WhatsappSessionData;
+    itemName: string;
+    attributeName: string;
+    attributeValue: string;
+  } | null {
+    if (!session.cart.length) return null;
+
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const baseNorm = this.normalizeForMatch(baseQuery || '');
+
+    const scoreIndex = (i: number): number => {
+      const item = session.cart[i];
+      const product = byId.get(item.productId);
+      if (!product) return -1;
+      if (!this.catalogService.resolveCookingStyleAttributeOption(product, style)) return -1;
+      let score = 10;
+      if (session.productFocus?.productId === item.productId) score += 50;
+      if (i === session.cart.length - 1) score += 20;
+      const nameNorm = this.normalizeForMatch(item.name);
+      if (baseNorm && (nameNorm.includes(baseNorm) || baseNorm.includes(nameNorm))) {
+        score += 40;
+      }
+      if (baseNorm && /\barroz\b/.test(baseNorm) && /\barroz\b/.test(nameNorm)) score += 30;
+      return score;
+    };
+
+    let bestIdx = -1;
+    let bestScore = 0;
+    for (let i = 0; i < session.cart.length; i++) {
+      const s = scoreIndex(i);
+      if (s > bestScore) {
+        bestScore = s;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx < 0) return null;
+
+    const item = session.cart[bestIdx];
+    const product = byId.get(item.productId)!;
+    const applied = this.catalogService.applyCookingStyleToAttributes(
+      product,
+      item.attributes || [],
+      style,
+    );
+    if (!applied) return null;
+
+    const cart = session.cart.map((c, i) =>
+      i === bestIdx ? { ...c, attributes: applied.attributes } : c,
+    );
+    return {
+      session: {
+        ...session,
+        cart,
+        productFocus: {
+          productId: item.productId,
+          name: item.name,
+          variantBaseKey:
+            this.catalogService.getProductNameBase(item.name) || undefined,
+        },
+      },
+      itemName: item.name,
+      attributeName: applied.attributeName,
+      attributeValue: applied.attributeValue,
+    };
   }
 
   private async tryHandleComboExplanation(

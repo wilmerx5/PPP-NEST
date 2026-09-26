@@ -758,7 +758,10 @@ export class WhatsappCatalogService {
     if (/\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i.test(an)) {
       return false;
     }
-    if (/\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i.test(an)) {
+    if (
+      /^(pollo)$/i.test(an.trim()) ||
+      /\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i.test(an)
+    ) {
       return true;
     }
     return /prep|estilo|selec|cocin|modo|tipo/i.test(an);
@@ -1729,6 +1732,10 @@ export class WhatsappCatalogService {
   /** Porción que representa el SKU del menú (1/2 → medio, 1/4 → cuarto, 1 Pollo → entero). */
   detectProductPortionSize(name: string): 'medio' | 'cuarto' | 'entero' | null {
     const n = normalizeText(name);
+    // "Arroz Chino Con Medio Pollo" / bandeja/ejecutivo: no es porción suelta de pollo
+    if (/\b(arroz|bandeja|ejecutivo|menu|taco|hamburguesa)\b/.test(n)) {
+      return null;
+    }
     if (/\bmedio\b/.test(n) || /\b1\s*2\b/.test(n)) return 'medio';
     if (/\bcuarto\b/.test(n) || /\b1\s*4\b/.test(n)) return 'cuarto';
     // "1 Pollo Broaster" / "1 Pollo Frito" (entero), no combos ni 1.5L
@@ -1753,7 +1760,7 @@ export class WhatsappCatalogService {
       const styleFromFocus = opts?.preferStyleFromName
         ? /\bbroaster\b/.test(normalizeText(opts.preferStyleFromName))
           ? 'broaster'
-          : /\bfrito\b/.test(normalizeText(opts.preferStyleFromName))
+          : /\bfrit[oa]s?\b/.test(normalizeText(opts.preferStyleFromName))
             ? 'frito'
             : /\basado\b/.test(normalizeText(opts.preferStyleFromName))
               ? 'asado'
@@ -1761,7 +1768,8 @@ export class WhatsappCatalogService {
         : '';
       q = normalizeText(`${portion} pollo ${styleFromFocus}`.trim());
     }
-    if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q) && !/\bfrito\b/.test(q) && !/\basado\b/.test(q)) {
+    // Requiere pollo/broaster (o follow-up de porción ya expandido). "trucha frita" ≠ pollo.
+    if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q)) {
       return null;
     }
     // Consulta “¿el mixto es medio broaster medio frito?” ≠ pedir 1/2 broaster
@@ -1794,13 +1802,20 @@ export class WhatsappCatalogService {
       return null;
     }
 
-    const style = /\bbroaster\b/.test(q)
+    let style = /\bbroaster\b/.test(q)
       ? 'broaster'
-      : /\bfrito\b/.test(q)
+      : /\bfrit[oa]s?\b/.test(q)
         ? 'frito'
         : /\basado\b/.test(q)
           ? 'asado'
           : null;
+    // Tras cotizar un pollo: "y medio que vale" / glossary → "medio pollo…" sin estilo
+    if (!style && opts?.preferStyleFromName) {
+      const focus = normalizeText(opts.preferStyleFromName);
+      if (/\bbroaster\b/.test(focus)) style = 'broaster';
+      else if (/\bfrit[oa]s?\b/.test(focus)) style = 'frito';
+      else if (/\basado\b/.test(focus)) style = 'asado';
+    }
     if (!style && !/\bpollo\b/.test(q)) return null;
 
     // "quiero pollo" / "dame pollo" (solo categoría) → listar opciones, no asumir 1 entero
@@ -4091,11 +4106,19 @@ export class WhatsappCatalogService {
         }
 
         // "medio pollo broaster" → 1/2 Pollo Broaster (no el entero ni el combo)
+        // "arroz … con medio pollo" → boost al SKU compuesto (no es porción suelta)
         const qPortion = this.detectPortionHint(q);
         const pPortion = this.detectProductPortionSize(name);
         if (qPortion && pPortion) {
           if (qPortion === pPortion) score += 90;
           else score -= 55;
+        } else if (
+          qPortion === 'medio' &&
+          /\barroz\b/.test(q) &&
+          /\barroz\b/.test(name) &&
+          /\bmedio\b/.test(name)
+        ) {
+          score += 90;
         } else if (qPortion === 'medio' && /^1\s+pollo\b/.test(name)) {
           score -= 50; // "1 Pollo Broaster" no es "medio"
         }
@@ -4434,6 +4457,12 @@ export class WhatsappCatalogService {
       return [sizedChicken];
     }
 
+    // "cuarto de pollo que vale" sin frito/broaster → ambas porciones (no arroz)
+    const portionChicken = this.listSizedChickenProductsForInquiry(source, products, opts);
+    if (portionChicken.length) {
+      return portionChicken;
+    }
+
     let hits = this.findAllProductsEmbeddedInMessage(source, products);
     const sizedSoup = this.resolveSizedSoupProduct(source, products);
     if (sizedSoup) {
@@ -4450,6 +4479,51 @@ export class WhatsappCatalogService {
       this.findProductEmbeddedInMessage(text, products) ||
       hits[0];
     return one ? [one] : [];
+  }
+
+  /**
+   * Cotización de porción de pollo sin estilo (o con preferStyle):
+   * 1/4 y 1/2 frito+broaster, nunca "Arroz … Con Medio Pollo".
+   */
+  private listSizedChickenProductsForInquiry(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    opts?: { preferStyleFromName?: string },
+  ): WhatsappCatalogProduct[] {
+    const q = normalizeText(fixCommonOrderTypos(text));
+    if (!/\bpollo\b/.test(q) && !this.isBareChickenPortionFollowUp(text, q)) return [];
+    if (/\b(arroz|bandeja|ejecutivo|taco|hamburguesa)\b/.test(q)) return [];
+    const portion = this.detectPortionHint(q);
+    if (!portion) return [];
+
+    let style: string | null = /\bbroaster\b/.test(q)
+      ? 'broaster'
+      : /\bfrit[oa]s?\b/.test(q)
+        ? 'frito'
+        : /\basado\b/.test(q)
+          ? 'asado'
+          : null;
+    if (!style && opts?.preferStyleFromName) {
+      const focus = normalizeText(opts.preferStyleFromName);
+      if (/\bbroaster\b/.test(focus)) style = 'broaster';
+      else if (/\bfrit[oa]s?\b/.test(focus)) style = 'frito';
+      else if (/\basado\b/.test(focus)) style = 'asado';
+    }
+
+    const available = products.filter((p) => p.availableNow !== false);
+    const cands = available.filter((p) => {
+      const n = normalizeText(p.name);
+      if (/\b(combo|bandeja|ejecutivo|alitas|arroz|taco|hamburguesa|pechuga|menu)\b/.test(n)) {
+        return false;
+      }
+      if (!/\bpollo\b/.test(n)) return false;
+      if (this.detectProductPortionSize(n) !== portion) return false;
+      if (style === 'broaster' && !/\bbroaster\b/.test(n)) return false;
+      if (style === 'frito' && !/\bfrito\b/.test(n)) return false;
+      if (style === 'asado' && !/\basado\b/.test(n)) return false;
+      return true;
+    });
+    return this.dedupeProductsById(cands).sort((a, b) => a.name.length - b.name.length);
   }
 
   /** Si hay "Sopa pequeña", no cotizar también "Sopa De Menudencias/Ajiaco". */
@@ -5087,32 +5161,41 @@ export class WhatsappCatalogService {
    */
   isDishStyleSubstitutionInquiry(text: string): boolean {
     const raw = fixCommonOrderTypos((text || '').trim());
-    if (!raw || raw.length < 12) return false;
+    if (!raw || raw.length < 8) return false;
     if (/^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme|pedi|pido)\b/i.test(raw)) {
       return false;
     }
     const q = normalizeText(raw);
     if (this.isMixtoCompositionInquiry(raw)) return false;
 
+    const hasStyle = /\b(broaster|frito|asado|apanad[oa]|en\s+salsa|plancha|sudado)\b/.test(q);
+    if (!hasStyle) return false;
+
     const hasBaseDish =
       /\barroz(\s+chino)?\b/.test(q) ||
       /\b(bandeja|ejecutivo|sopa|ajiaco|mondongo|mojarra|churrasco|costilla|hamburguesa|tacos?|alitas?)\b/.test(
         q,
       );
-    if (!hasBaseDish) return false;
-
-    const hasStyle = /\b(broaster|frito|asado|apanad[oa]|en\s+salsa)\b/.test(q);
-    if (!hasStyle) return false;
 
     const asksSwap =
-      /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+ser\b/.test(q) ||
+      /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+(ser|con)\b/.test(q) ||
+      /\b(se\s+puede|puede\s+ser|podr[ií]a\s+ser)\b/.test(q) ||
       /\b(en\s+vez\s+de|en\s+lugar\s+de)\b/.test(q) ||
-      /\b(cambiar(?:lo|la)?|hacerlo|hacerla)\s+(a|por|con)\b/.test(q) ||
+      /\b(cambiar(?:lo|la)?|hacerlo|hacerla|dejalo|d[eé]jalo|mejor)\s+(a|por|con|en)?\b/.test(q) ||
       (/\?/.test(raw) &&
-        /\b(podr[ií]a|puede|posible|opci[oó]n|ser[ií]a)\b/.test(q) &&
+        /\b(podr[ií]a|puede|posible|ser[ií]a|se\s+puede)\b/.test(q) &&
         /\b(broaster|frito|asado)\b/.test(q));
 
-    return asksSwap;
+    // "se puede con pollo broaster?" / "puede ser broaster?" (contexto = carrito)
+    // No matchear "broaster"/"frito" sueltos: eso es respuesta a pendingAttribute.
+    const shortStyleSwap =
+      /\bse\s+puede\s+(con\s+)?(pollo\s+)?(broaster|frito|asado|plancha)\b/.test(q) ||
+      /\bpuede\s+ser\s+(pollo\s+)?(broaster|frito|asado)\b/.test(q) ||
+      /\bmejor\s+(con\s+)?(pollo\s+)?(broaster|frito|asado)\b/.test(q);
+
+    if (asksSwap && hasBaseDish) return true;
+    if (asksSwap || shortStyleSwap) return true;
+    return false;
   }
 
   /** Estilo pedido en la nota (“broaster”, “frito”…) para anotar en el plato base. */
@@ -5136,16 +5219,66 @@ export class WhatsappCatalogService {
     let q = normalizeText(fixCommonOrderTypos((text || '').trim()));
     q = q
       .replace(
-        /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+ser\b.*$/i,
+        /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+(ser|con)\b.*$/i,
         ' ',
       )
+      .replace(/\b(se\s+puede|puede\s+ser)\s+(con\s+)?(pollo\s+)?(broaster|frito|asado|plancha)\b.*$/i, ' ')
       .replace(/\b(en\s+vez\s+de|en\s+lugar\s+de)\b.*$/i, ' ')
-      .replace(/\b(cambiar(?:lo|la)?|hacerlo|hacerla)\s+(a|por|con)\b.*$/i, ' ')
+      .replace(/\b(cambiar(?:lo|la)?|hacerlo|hacerla|dejalo|d[eé]jalo|mejor)\s+(a|por|con|en)?\b.*$/i, ' ')
+      .replace(/\b(pollo\s+)?(broaster|frito|asado|plancha)\b/gi, ' ')
       .replace(/\b(veci(?:no|na|o)?|parce|compadre|amigo|amiga)\b/gi, ' ')
       .replace(/\b(el|la|los|las|un|una|unos|unas)\b/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    return q || normalizeText(text || '');
+    return q;
+  }
+
+  /**
+   * Opción de attr de estilo (Pollo / Selección / …) que matchea broaster|frito|…
+   */
+  resolveCookingStyleAttributeOption(
+    product: WhatsappCatalogProduct,
+    style: string,
+  ): { attributeName: string; attributeValue: string } | null {
+    if (!product?.attributes?.length || !style) return null;
+    for (const a of product.attributes) {
+      if (!this.isCookingStyleAttribute(a.attributeName)) continue;
+      for (const opt of a.options || []) {
+        const raw = String(opt || '').trim();
+        if (raw && productNameHasCookingStyle(raw, style)) {
+          return { attributeName: a.attributeName, attributeValue: raw };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Aplica estilo a attrs ya elegidos (o añade el attr si falta). */
+  applyCookingStyleToAttributes(
+    product: WhatsappCatalogProduct,
+    selected: { attributeName: string; attributeValue: string }[],
+    style: string,
+  ): {
+    attributes: { attributeName: string; attributeValue: string }[];
+    attributeName: string;
+    attributeValue: string;
+  } | null {
+    const hit = this.resolveCookingStyleAttributeOption(product, style);
+    if (!hit) return null;
+    const attrs = [...(selected || [])];
+    const idx = attrs.findIndex(
+      (a) => normalizeText(a.attributeName) === normalizeText(hit.attributeName),
+    );
+    if (idx >= 0) {
+      attrs[idx] = { ...attrs[idx], attributeValue: hit.attributeValue };
+    } else {
+      attrs.push(hit);
+    }
+    return {
+      attributes: attrs,
+      attributeName: hit.attributeName,
+      attributeValue: hit.attributeValue,
+    };
   }
 
   formatVariantFamilyPrompt(family: ProductVariantFamily): string {
@@ -5197,7 +5330,7 @@ export class WhatsappCatalogService {
 
   /**
    * Completa attrs faltantes con la *primera* opción de cada atributo pendiente.
-   * Reduce ida y vuelta (arepas/sabor); el cliente puede cambiar después.
+   * NO auto-elige estilo de preparación (Pollo frito/broaster, Selección…) — eso se pregunta.
    */
   fillDefaultAttributes(
     product: WhatsappCatalogProduct,
@@ -5212,14 +5345,46 @@ export class WhatsappCatalogService {
       if (this.isAttributeSelectionComplete(product, selected, opts)) break;
       const remaining = this.getRemainingAttributes(product, selected, opts);
       const next = remaining[0];
-      const first = next?.options?.[0];
-      if (!next || !first) break;
+      if (!next?.options?.length) break;
+      // Estilo de cocina: no asumir frito/broaster/asado
+      if (
+        this.isCookingStyleAttribute(next.attributeName) &&
+        next.options.length >= 2
+      ) {
+        const skipRest = remaining.filter(
+          (a) =>
+            !(
+              this.isCookingStyleAttribute(a.attributeName) &&
+              (a.options?.length || 0) >= 2
+            ),
+        );
+        if (!skipRest.length) break;
+        const other = skipRest[0];
+        const firstOther = other.options?.[0];
+        if (!firstOther) break;
+        selected = [
+          ...selected,
+          { attributeName: other.attributeName, attributeValue: firstOther },
+        ];
+        continue;
+      }
+      const first = next.options[0];
       selected = [
         ...selected,
         { attributeName: next.attributeName, attributeValue: first },
       ];
     }
     return selected;
+  }
+
+  /** Attr de preparación / proteína (Pollo: Frito|Broaster, Selección, etc.). */
+  isCookingStyleAttribute(attributeName: string): boolean {
+    const an = String(attributeName || '').trim();
+    if (!an) return false;
+    if (/^(pollo|seleccion|selección|preparacion|preparación|estilo|coccion|cocción)$/i.test(an)) {
+      return true;
+    }
+    return this.isPrepAttributeName(an) && !/\b(arepas?|bebida|sabor|presa|sopa)\b/i.test(an);
   }
 
   /**
