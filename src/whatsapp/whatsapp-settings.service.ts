@@ -248,11 +248,7 @@ export class WhatsappSettingsService {
         null,
       openaiModel: row.openaiModel || 'gpt-4o-mini',
       aiTemperature: Number.isFinite(temp) ? Math.min(1.5, Math.max(0, temp)) : 0.2,
-      agentV1Enabled:
-        row.agentV1Enabled === true ||
-        ['1', 'true', 'yes', 'on'].includes(
-          (this.config.get<string>('WHATSAPP_AGENT_V1') || '').trim().toLowerCase(),
-        ),
+      agentV1Enabled: this.resolveAgentV1Enabled(row),
       systemPrompt: `${TONE_GUIDE}\n\n${this.applyTemplate(systemTpl, templateVars)}`,
       welcomeMessage: this.applyTemplate(welcomeTpl, templateVars),
       aiDisclaimerMessage: scrubAiDisclaimerCopy(
@@ -274,6 +270,27 @@ export class WhatsappSettingsService {
       menuConceptGroups,
       allowMercadoPago,
     };
+  }
+
+  /**
+   * Agent V1 ON si hay OpenAI key, salvo WHATSAPP_AGENT_V1=false o agentV1Enabled=false en DB
+   * con env vacío y… En la práctica:
+   * - env off → off
+   * - env on → on
+   * - sin env: ON si hay API key (probar en PPP); OFF solo si DB false Y sin key
+   */
+  private resolveAgentV1Enabled(row: WhatsappSettings): boolean {
+    const envRaw = (this.config.get<string>('WHATSAPP_AGENT_V1') || '').trim().toLowerCase();
+    if (['0', 'false', 'no', 'off'].includes(envRaw)) return false;
+    if (['1', 'true', 'yes', 'on'].includes(envRaw)) return true;
+
+    const hasKey = !!(
+      (row.openaiApiKey || '').trim() ||
+      (this.config.get<string>('OPENAI_API_KEY') || '').trim()
+    );
+    // Con key configurada en admin → Agent V1 activo por defecto
+    if (hasKey) return true;
+    return row.agentV1Enabled === true;
   }
 
   extractLocalContext(row: WhatsappSettings, menuUrl: string): WhatsappLocalContext {

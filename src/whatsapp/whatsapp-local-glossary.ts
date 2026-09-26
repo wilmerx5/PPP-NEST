@@ -142,6 +142,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
   { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },
   { re: /\bunpollo\b/gi, to: 'un pollo' },
+  // Typos frecuentes: pillos / pilos / pojlos → pollos
+  { re: /\b(pillos|pilos|pojlos|polllos)\b/gi, to: 'pollos' },
+  { re: /\b(pillo|pilo|pojlo)\b/gi, to: 'pollo' },
   // "Torre 7apto901" / "T6 apt 321" → "Torre 6 apto 321"
   { re: /\bt[\s\-]*(\d{1,2})\s*(?:apto|apt|ap)\.?\s*(\d{2,4})\b/gi, to: 'torre $1 apto $2' },
   { re: /\bt[\s\-]*(\d{1,2})\b/gi, to: 'torre $1' },

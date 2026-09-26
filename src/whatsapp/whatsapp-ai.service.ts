@@ -6,6 +6,7 @@ import {
   parseClassifyResult,
   type WhatsappClassifyResult,
 } from './whatsapp-message-classify';
+import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 
 export type WhatsappImageAnalysis = {
   kind: 'order' | 'payment_proof' | 'other' | 'unclear';
@@ -61,22 +62,21 @@ Responde SOLO JSON:
 
     const history = this.toChatMessages(input.recentMessages || []).slice(-4);
     const model = cfg.openaiModel || 'gpt-4o-mini';
-    const body: Record<string, unknown> = {
-      model,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: system },
-        ...history,
-        {
-          role: 'user',
-          content: `cartLength=${input.cartLength}\nmensaje: ${input.userMessage}`,
-        },
-      ],
-      max_tokens: 220,
-    };
-    if (!/^gpt-5/i.test(model)) {
-      body.temperature = 0;
-    }
+    const body = applyOpenAiChatCompat(
+      {
+        model,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          ...history,
+          {
+            role: 'user',
+            content: `cartLength=${input.cartLength}\nmensaje: ${input.userMessage}`,
+          },
+        ],
+      },
+      { model, maxOutputTokens: 220, temperature: 0 },
+    );
 
     try {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -155,17 +155,17 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
 
     try {
       const model = cfg.openaiModel || 'gpt-4o-mini';
-      const body: Record<string, unknown> = {
-        model,
-        response_format: { type: 'json_object' },
-        messages,
-      };
-      // gpt-5* suele rechazar temperature personalizada
-      if (!/^gpt-5/i.test(model)) {
-        body.temperature = input.conversational
-          ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
-          : cfg.aiTemperature ?? 0.2;
-      }
+      const temp = input.conversational
+        ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
+        : cfg.aiTemperature ?? 0.2;
+      const body = applyOpenAiChatCompat(
+        {
+          model,
+          response_format: { type: 'json_object' },
+          messages,
+        },
+        { model, maxOutputTokens: 1200, temperature: temp },
+      );
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -311,29 +311,26 @@ ${input.menuSummary.slice(0, 6000)}`;
 
     try {
       const model = cfg.openaiModel || 'gpt-4o-mini';
-      const body: Record<string, unknown> = {
-        model,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userText },
-              {
-                type: 'image_url',
-                image_url: { url: dataUrl, detail: input.ocrRetry ? 'high' : 'high' },
-              },
-            ],
-          },
-        ],
-      };
-      if (/^gpt-5/i.test(model)) {
-        body.max_completion_tokens = 700;
-      } else {
-        body.temperature = 0.1;
-        body.max_tokens = 700;
-      }
+      const body = applyOpenAiChatCompat(
+        {
+          model,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: system },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: userText },
+                {
+                  type: 'image_url',
+                  image_url: { url: dataUrl, detail: input.ocrRetry ? 'high' : 'high' },
+                },
+              ],
+            },
+          ],
+        },
+        { model, maxOutputTokens: 700, temperature: 0.1 },
+      );
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',

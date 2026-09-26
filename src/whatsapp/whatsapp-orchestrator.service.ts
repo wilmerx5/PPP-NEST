@@ -3310,6 +3310,17 @@ export class WhatsappOrchestratorService {
 
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
+      // Agente a veces toma "Las mojarras fritas" como domicilio
+      if (
+        this.looksLikeFoodNotAddress(addr) ||
+        this.looksLikeFoodNotAddress(sourceText || '') ||
+        FOOD_ORDER_SIGNAL_RE.test(addr)
+      ) {
+        delete actions.setAddress;
+      }
+    }
+    if (actions.setAddress) {
+      const addr = actions.setAddress.trim();
       if (
         addr.length >= 5 &&
         !this.isConfirmKeyword(addr) &&
@@ -8551,12 +8562,14 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (session.cart.length === 0) return false;
-    // Dirección clara (CRA / calle #… / conjunto NATURA) gana sobre attrs pendientes
+    // Solo calle/#/landmark conocido gana sobre attrs pendientes.
+    // NUNCA frases genéricas (ej. "Las mojarras fritas" ≠ dirección).
     const clearStreetAddress =
       this.isAddressOnlyCustomerMessage(originalText, compound) &&
       this.isPlausibleDeliveryAddress(originalText.trim()) &&
+      !this.looksLikeFoodNotAddress(originalText) &&
       (/\b(calle|carrera|cra|cll|av\.?|avenida|diag|dg|transversal|#)\b/i.test(originalText) ||
-        this.looksLikeLandmarkOrComplexName(originalText, { allowGenericPhrase: true }) ||
+        this.looksLikeLandmarkOrComplexName(originalText) ||
         PPP_ZONE_LANDMARK_RE.test(originalText));
     if (
       !clearStreetAddress &&
@@ -8976,12 +8989,14 @@ export class WhatsappOrchestratorService {
     if (raw.length < 4) return false;
 
     // "qué bebidas hay" / explorar menú ≠ dirección
+    // Comida / estilo ("Las mojarras fritas") nunca es solo domicilio
     if (
       this.catalogService.isMenuExploreIntent(raw, []) ||
       this.catalogService.isCategoryBrowseQuestion(raw) ||
       looksLikeNonAddressCommand(raw) ||
       isDeliveryEtaInquiry(raw) ||
       this.looksLikeFoodNotAddress(raw) ||
+      FOOD_ORDER_SIGNAL_RE.test(raw) ||
       this.catalogService.looksLikeSideModificationNote(raw)
     ) {
       return false;
@@ -9331,20 +9346,39 @@ export class WhatsappOrchestratorService {
   /** Evita tomar "a la broaster / frito / plancha" / platos como dirección. */
   private looksLikeFoodNotAddress(text: string): boolean {
     const t = text.trim().toLowerCase();
+    if (!t) return false;
+
+    const hasStreetCue =
+      /\b(calle|carrera|cra|cll|av|avenida|barrio|habitaci[oó]n|apto|apartamento|torre|#)\b/i.test(
+        t,
+      );
+
+    // "Las mojarras fritas" / "pillos fritos" / plurales (FOOD_ORDER ya trae mojarras)
+    if (FOOD_ORDER_SIGNAL_RE.test(t) && !hasStreetCue) {
+      return true;
+    }
+
+    // Respuesta de estilo: "las fritas", "fritas", "asadas", "las mojarras fritas"
     if (
-      /^(?:la\s+|el\s+)?(broaster|frito|frita|asado|asada|plancha|apanad[oa]|francesa|salada|yuca|arepa|gaseosa|combo|solo|medio|cuarto)s?\b/i.test(
+      /^(?:las?\s+|los?\s+|el\s+)?(?:mojarras?|truchas?|bagres?|pollos?|pillos?|costillas?|pechugas?)?\s*(?:broasters?|frit[oa]s?|asad[oa]s?|plancha|apanad[oa]s?|mixt[oa]s?)\s*$/i.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+
+    if (
+      /^(?:la\s+|el\s+|las\s+|los\s+)?(broaster|frito|frita|asado|asada|plancha|apanad[oa]|francesa|salada|yuca|arepa|gaseosa|combo|solo|medio|cuarto)s?\b/i.test(
         t,
       )
     ) {
       return true;
     }
     if (
-      /\b(broaster|frito|asado|plancha|gaseosa|arepa|combo|mondongo|ajiaco|pechuga|costilla|pollo|arroz|sopa|bandeja|mojarra|churrasco|hamburguesa|alitas?|ejecutivo|sancocho|limonada|bebidas?|ensalada|papas?|yuca|aguacate|maduro)\b/i.test(
+      /\b(broasters?|frit[oa]s?|asad[oa]s?|plancha|gaseosas?|arepas?|combos?|mondongos?|ajiacos?|pechugas?|costillas?|pollos?|pillos?|arroz|sopas?|bandejas?|mojarras?|churrascos?|hamburguesas?|alitas?|ejecutivos?|sancochos?|limonadas?|bebidas?|ensaladas?|papas?|yuca|aguacate|maduro)\b/i.test(
         t,
       ) &&
-      !/\b(calle|carrera|cra|cll|av|avenida|barrio|habitaci[oó]n|apto|apartamento|torre|#)\b/i.test(
-        t,
-      )
+      !hasStreetCue
     ) {
       return true;
     }
@@ -10585,6 +10619,17 @@ export class WhatsappOrchestratorService {
     if (looksLikeClearCartMessage(originalText || text) && guarded.actions) {
       guarded.actions.clearCart = true;
       delete guarded.actions.addItems;
+      delete guarded.actions.setAddress;
+    }
+
+    // Nunca geocodificar comida / estilo ("Las mojarras fritas") vía set_address
+    if (
+      guarded.actions?.setAddress &&
+      (this.looksLikeFoodNotAddress(guarded.actions.setAddress) ||
+        this.looksLikeFoodNotAddress(originalText || text) ||
+        FOOD_ORDER_SIGNAL_RE.test(guarded.actions.setAddress) ||
+        FOOD_ORDER_SIGNAL_RE.test(originalText || text))
+    ) {
       delete guarded.actions.setAddress;
     }
 

@@ -2115,4 +2115,69 @@ Cll 6 b 78 c 33`;
       expect(catalog.extractQuantityFromMessage(split!.orderText)).toBe(3);
     });
   });
+
+  describe('Estilo plato ≠ dirección (mojarras fritas / Agent V1)', () => {
+    it('Las mojarras fritas no es domicilio ni landmark genérico', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype) as {
+        catalogService: WhatsappCatalogService;
+        looksLikeFoodNotAddress: (t: string) => boolean;
+        isAddressOnlyCustomerMessage: (
+          t: string,
+          c?: { productText: string; address: string | null },
+        ) => boolean;
+        isPlausibleDeliveryAddress: (t: string) => boolean;
+        looksLikeLandmarkOrComplexName: (t: string, o?: { allowGenericPhrase?: boolean }) => boolean;
+        looksLikeDeliveryAccessReference: (t: string) => boolean;
+        looksLikeExplicitLandmarkKeyword: (t: string) => boolean;
+        looksLikeAddress: (t: string) => boolean;
+        isConfirmKeyword: (t: string) => boolean;
+        isGreetingKeyword: (t: string) => boolean;
+        isPickupIntent: (t: string) => boolean;
+        extractDeliveryTail: (t: string) => string | null;
+        normalizeDeliveryAddress: (t: string) => string;
+        stripDeliveryAddressPreface: (t: string) => string;
+        truncateAddressAfterContactClauses: (t: string) => string;
+      };
+      orch.catalogService = catalog;
+      orch.isConfirmKeyword = () => false;
+      orch.isGreetingKeyword = () => false;
+      orch.isPickupIntent = () => false;
+      for (const m of [
+        'looksLikeFoodNotAddress',
+        'isAddressOnlyCustomerMessage',
+        'isPlausibleDeliveryAddress',
+        'looksLikeLandmarkOrComplexName',
+        'looksLikeDeliveryAccessReference',
+        'looksLikeExplicitLandmarkKeyword',
+        'looksLikeAddress',
+        'extractDeliveryTail',
+        'normalizeDeliveryAddress',
+        'stripDeliveryAddressPreface',
+        'truncateAddressAfterContactClauses',
+      ] as const) {
+        orch[m] = WhatsappOrchestratorService.prototype[m].bind(orch);
+      }
+
+      for (const raw of [
+        'Las mojarras fritas',
+        'las mojarras fritas',
+        'mojarras fritas',
+        'fritas',
+        'asadas',
+        'las fritas',
+      ]) {
+        expect(orch.looksLikeFoodNotAddress(raw)).toBe(true);
+        expect(orch.isAddressOnlyCustomerMessage(raw)).toBe(false);
+        expect(orch.isPlausibleDeliveryAddress(raw)).toBe(false);
+        expect(
+          orch.looksLikeLandmarkOrComplexName(raw, { allowGenericPhrase: true }),
+        ).toBe(false);
+      }
+
+      // Direcciones reales siguen pasando
+      expect(orch.isAddressOnlyCustomerMessage('Bosques de Castilla')).toBe(true);
+      expect(orch.isPlausibleDeliveryAddress('Cra 81g #42b-27')).toBe(true);
+    });
+  });
 });

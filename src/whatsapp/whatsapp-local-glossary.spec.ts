@@ -10,6 +10,10 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('quiero unpollofrito')).toMatch(/un pollo frito/i);
     expect(applyLocalGlossary('domicikio')).toMatch(/^domicilio$/i);
     expect(applyLocalGlossary('Para Un domicikio Para bosques')).toMatch(/domicilio/i);
+    expect(applyLocalGlossary('Tres pillos fritos')).toMatch(/tres pollos fritos/i);
+    expect(applyLocalGlossary('Regalame pollo y medio porfavor')).toMatch(
+      /1 pollo y medio pollo/i,
+    );
   });
 
   it('normaliza combo de arroz chino', () => {

@@ -5,6 +5,7 @@ import {
   type WhatsappCatalogProduct,
 } from './whatsapp-catalog.service';
 import type { AiOrderAction } from './types/whatsapp-session.types';
+import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 
 export type AgentV1TurnInput = {
   userMessage: string;
@@ -98,7 +99,8 @@ const AGENT_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'set_address',
-      description: 'Guarda dirección de domicilio del cliente.',
+      description:
+        'Guarda dirección de domicilio (calle/carrera/conjunto/barrio). NUNCA uses para platos, estilos (fritas/asadas) ni cantidades.',
       parameters: {
         type: 'object',
         properties: { address: { type: 'string' } },
@@ -217,15 +219,19 @@ Contacto humano: *${phone || '3118866823'}*
 
     try {
       for (let i = 0; i < this.maxIterations; i++) {
-        const body: Record<string, unknown> = {
-          model,
-          messages,
-          tools: AGENT_TOOLS,
-          tool_choice: 'auto',
-        };
-        if (!/^gpt-5/i.test(model)) {
-          body.temperature = Math.min(0.4, cfg.aiTemperature ?? 0.2);
-        }
+        const body = applyOpenAiChatCompat(
+          {
+            model,
+            messages,
+            tools: AGENT_TOOLS,
+            tool_choice: 'auto',
+          },
+          {
+            model,
+            maxOutputTokens: 900,
+            temperature: Math.min(0.4, cfg.aiTemperature ?? 0.2),
+          },
+        );
 
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
