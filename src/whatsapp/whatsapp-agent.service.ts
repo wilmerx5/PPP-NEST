@@ -197,7 +197,8 @@ Reglas:
 - Preguntas ("podría ser broaster?") → responde y usa set_notes; no agregues Broaster suelto.
 - La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).
 - Si no entiendes: una pregunta corta o request_human.
-- Responde en español colombiano, breve, sin emojis excesivos.
+- Español colombiano o neutro (tú/te). PROHIBIDO voseo argentino (vos, tenés, querés, respondé, mirá).
+- Mensajes CORTOS (1–3 frases). No listes attrs 1/2/3: el sistema pone la primera opción; el cliente puede cambiar después.
 
 ${input.businessRulesBlock}
 
@@ -384,16 +385,18 @@ Contacto humano: *${phone || '3118866823'}*
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         const note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
-        const attributes = Array.isArray(args.attributes)
+        let attributes = Array.isArray(args.attributes)
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
 
         if (product.hasAttributes && product.attributes?.length) {
-          const required = product.attributes;
-          const hasAll =
-            attributes?.length &&
-            required.every((def) =>
-              attributes.some(
+          let attrs = attributes;
+          if (!attrs?.length) {
+            attrs = this.catalogService.fillDefaultAttributes(product, []);
+          } else {
+            const required = product.attributes;
+            const hasAll = required.every((def) =>
+              attrs!.some(
                 (a) =>
                   a.attributeName?.toLowerCase() === def.attributeName.toLowerCase() &&
                   def.options.some(
@@ -401,20 +404,11 @@ Contacto humano: *${phone || '3118866823'}*
                   ),
               ),
             );
-          if (!hasAll) {
-            ctx.setNeedsAttr(product.id);
-            return JSON.stringify({
-              ok: false,
-              needsAttributes: true,
-              productId: product.id,
-              name: product.name,
-              options: required.map((a) => ({
-                attributeName: a.attributeName,
-                choices: a.options,
-              })),
-              hint: 'Pide al cliente que elija opciones (número o nombre). No inventes attrs.',
-            });
+            if (!hasAll) {
+              attrs = this.catalogService.fillDefaultAttributes(product, attrs);
+            }
           }
+          attributes = attrs;
         }
 
         if (!ctx.actions.addItems) ctx.actions.addItems = [];
@@ -429,6 +423,10 @@ Contacto humano: *${phone || '3118866823'}*
           added: this.productCard(product),
           quantity,
           note: note || null,
+          attributes: attributes || null,
+          hint: attributes?.length
+            ? 'Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas).'
+            : null,
         });
       }
       case 'remove_item': {

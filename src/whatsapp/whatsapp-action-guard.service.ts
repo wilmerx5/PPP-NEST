@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AiOrderAction } from './types/whatsapp-session.types';
-import type { WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import {
+  WhatsappCatalogService,
+  type WhatsappCatalogProduct,
+} from './whatsapp-catalog.service';
 import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
 import { findPaymentMethodByText, getEnabledPaymentMethods } from './whatsapp-payment-methods';
 import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
@@ -14,6 +17,8 @@ export type GuardResult = {
 @Injectable()
 export class WhatsappActionGuardService {
   private readonly logger = new Logger(WhatsappActionGuardService.name);
+
+  constructor(private readonly catalogService: WhatsappCatalogService) {}
 
   sanitize(params: {
     actions: AiOrderAction | undefined;
@@ -113,8 +118,12 @@ export class WhatsappActionGuardService {
           continue;
         }
         const qty = Math.min(Math.max(1, item.quantity ?? 1), 10);
-        const attrs = this.normalizeAttributes(product, item.attributes, warnings);
-        if (product.hasAttributes && !attrs?.length) {
+        let attrs = this.normalizeAttributes(product, item.attributes, warnings);
+        // Sin attrs válidos: primera opción por defecto (menos ida y vuelta)
+        if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
+          attrs = this.catalogService.fillDefaultAttributes(product, []);
+        }
+        if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
           warnings.push(`"${product.name}" requiere elegir opciones antes de agregarlo.`);
           continue;
         }

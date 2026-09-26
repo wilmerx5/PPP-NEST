@@ -3684,7 +3684,27 @@ export class WhatsappOrchestratorService {
     /** Ya estaba en carrito y el cliente aclaró "solo X" */
     alreadyHad?: boolean;
   } {
-    const selected = attributes || [];
+    let selected = attributes ? [...attributes] : [];
+    // Si el mensaje ya nombra opciones (frita, blancas…), respétalas
+    if (attrOpts?.sourceText && product.hasAttributes && product.attributes?.length) {
+      const fromMsg = this.catalogService.resolveAttributesFromMessage(
+        product,
+        attrOpts.sourceText,
+        selected,
+        attrOpts,
+      );
+      if (fromMsg.status === 'complete' || fromMsg.status === 'partial') {
+        selected = fromMsg.attributes;
+      }
+    }
+    if (
+      product.hasAttributes &&
+      product.attributes?.length &&
+      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOpts)
+    ) {
+      // Primera opción por defecto (arepas Blancas, etc.) — el cliente puede cambiar después
+      selected = this.catalogService.fillDefaultAttributes(product, selected, attrOpts);
+    }
     if (
       product.hasAttributes &&
       product.attributes?.length &&
@@ -3696,14 +3716,14 @@ export class WhatsappOrchestratorService {
     const incomingKey = this.cartLineKey({
       productId: product.id,
       note,
-      attributes,
+      attributes: selected,
     });
     const alreadyInCart = session.cart.some((c) => this.cartLineKey(c) === incomingKey);
     if (alreadyInCart && this.isOnlyThisProductCorrection(attrOpts?.sourceText || '')) {
       return { session, alreadyHad: true };
     }
 
-    const projected = this.addProductToCart(session, product, quantity, note, attributes);
+    const projected = this.addProductToCart(session, product, quantity, note, selected);
     const check = evaluateCartLimits(projected.cart, this.toCartLimitsConfig(cfg, session), {
       orderType: projected.orderType,
     });

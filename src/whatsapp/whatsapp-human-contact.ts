@@ -2,7 +2,10 @@
 
 export const WHATSAPP_HUMAN_CONTACT_PHONE = '3118866823';
 
-export const WHATSAPP_HUMAN_CONTACT_MESSAGE = `Por favor contáctanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
+/** Fallback suave: no entendió / meta / handoff sin asesorar por chat. */
+export const WHATSAPP_HUMAN_CONTACT_MESSAGE =
+  `No entendí bien tu mensaje 🙏 ¿Me lo aclaras?\n` +
+  `Si prefieres, llámanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
 
 export const WHATSAPP_AI_DISCLAIMER_SAFE =
   '⚠️ Chat con *IA* (en prueba; puede fallar). Si necesitas ayuda: contáctanos al *3118866823*.';

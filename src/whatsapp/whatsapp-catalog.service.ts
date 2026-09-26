@@ -4748,6 +4748,33 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Completa attrs faltantes con la *primera* opción de cada atributo pendiente.
+   * Reduce ida y vuelta (arepas/sabor); el cliente puede cambiar después.
+   */
+  fillDefaultAttributes(
+    product: WhatsappCatalogProduct,
+    alreadySelected: { attributeName: string; attributeValue: string }[] = [],
+    opts?: { variantIntent?: 'combo' | 'solo' },
+  ): { attributeName: string; attributeValue: string }[] {
+    if (!product.hasAttributes || !product.attributes?.length) {
+      return [...alreadySelected];
+    }
+    let selected = [...alreadySelected];
+    for (let i = 0; i < 12; i++) {
+      if (this.isAttributeSelectionComplete(product, selected, opts)) break;
+      const remaining = this.getRemainingAttributes(product, selected, opts);
+      const next = remaining[0];
+      const first = next?.options?.[0];
+      if (!next || !first) break;
+      selected = [
+        ...selected,
+        { attributeName: next.attributeName, attributeValue: first },
+      ];
+    }
+    return selected;
+  }
+
+  /**
    * Si un step dice "complete" pero aún faltan attrs, lo degrada a partial.
    * Úsalo en cualquier flujo (combo o no).
    */

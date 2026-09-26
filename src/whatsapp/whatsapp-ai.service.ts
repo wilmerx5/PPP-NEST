@@ -119,7 +119,8 @@ Responde SOLO JSON:
     if (!cfg.openaiApiKey) {
       return {
         reply:
-          'El asistente aún no está configurado. Por favor contáctanos al *3118866823*.',
+          'El asistente aún no está configurado.\n' +
+            'Si prefieres, llámanos al *3118866823*.',
         actions: {},
       };
     }
@@ -141,8 +142,9 @@ ${input.sessionSummary}
 Menú autorizado (SOLO estos productos; ids y precios exactos):
 ${input.menuDetailedText}
 
-Estilo: tutea, sé cálido y atento como un colombiano del local (sin empalagar). Responde primero la duda del cliente; no te portes como un menú rígido.
-Si exploran qué pedir: orienta por categorías y ejemplos breves; no enumeres todo el catálogo con códigos.
+Estilo: español colombiano/neutro (tú/te). PROHIBIDO vos/tenés/querés/respondé/mirá.
+Sé cálido, breve (1–3 frases) y atento (sin empalagar). Responde primero la duda; no te portes como menú rígido.
+Si exploran qué pedir: categorías + 1–2 ejemplos; no enumeres todo el catálogo.
 
 ${WHATSAPP_AI_JSON_SCHEMA}`;
 
@@ -180,7 +182,9 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         const err = await res.text();
         this.logger.error(`OpenAI error ${res.status}: ${err}`);
         return {
-          reply: 'Tuve un problema técnico. Por favor contáctanos al *3118866823*.',
+          reply:
+            'Tuve un problema técnico 🙏 ¿Me lo repites?\n' +
+            'Si prefieres, llámanos al *3118866823*.',
         };
       }
 

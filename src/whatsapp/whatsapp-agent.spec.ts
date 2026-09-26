@@ -75,6 +75,19 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     findProductEmbeddedInMessage: (q: string, list: WhatsappCatalogProduct[]) =>
       list.find((p) => q.toLowerCase().includes('broaster') && /broaster/i.test(p.name)) ||
       null,
+    fillDefaultAttributes: (
+      product: WhatsappCatalogProduct,
+      already: { attributeName: string; attributeValue: string }[] = [],
+    ) => {
+      const selected = [...already];
+      for (const a of product.attributes || []) {
+        if (selected.some((s) => s.attributeName === a.attributeName)) continue;
+        if (a.options?.[0]) {
+          selected.push({ attributeName: a.attributeName, attributeValue: a.options[0] });
+        }
+      }
+      return selected;
+    },
   };
 
   const settingsStub = {
@@ -142,7 +155,7 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(needsAttr).toBeUndefined();
   });
 
-  it('add_item sin attrs marca needsAttributes', () => {
+  it('add_item sin attrs usa primera opción por defecto', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
       catalogStub as never,
@@ -173,11 +186,16 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
         needsAttr = id;
       },
     });
-    const parsed = JSON.parse(raw) as { ok: boolean; needsAttributes?: boolean };
-    expect(parsed.ok).toBe(false);
-    expect(parsed.needsAttributes).toBe(true);
-    expect(needsAttr).toBe(1);
-    expect(actions.addItems).toBeUndefined();
+    const parsed = JSON.parse(raw) as {
+      ok: boolean;
+      needsAttributes?: boolean;
+      attributes?: { attributeName: string; attributeValue: string }[];
+    };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.needsAttributes).toBeUndefined();
+    expect(needsAttr).toBeUndefined();
+    expect(parsed.attributes?.[0]?.attributeValue).toBe('Blancas');
+    expect(actions.addItems).toHaveLength(1);
   });
 
   it('add_item con attrs completa la acción', () => {

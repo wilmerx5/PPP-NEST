@@ -223,7 +223,7 @@ export function buildPaymentOptionsPrompt(
 ): string {
   const enabled = getEnabledPaymentMethods(methods);
   if (!enabled.length) {
-    return 'Por ahora no hay métodos de pago configurados. Por favor contáctanos al *3118866823*.';
+    return 'Por ahora no hay métodos de pago configurados. Si prefieres, llámanos al *3118866823*.';
   }
   const lines = enabled.map((m, i) => `${i + 1}. ${m.optionText || `*${m.keywords[0] || m.label}*`}`);
   let msg = `¿Cómo pagas?\n${lines.join('\n')}`;
