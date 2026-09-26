@@ -61,6 +61,25 @@ const AGENT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'resolve_multi_order',
+      description:
+        'Resuelve un mensaje con VARIOS platos contra el menú (ej. "arroz chino con medio pollo y sopa de ajiaco"). ' +
+        'Devuelve productIds listos para add_item y dudas (ambiguous). Preferir esta tool en multi-pedido; no inventes platos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: {
+            type: 'string',
+            description: 'Mensaje completo del cliente con varios platos',
+          },
+        },
+        required: ['text'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'add_item',
       description:
         'Agrega un producto al carrito por id del menú. Si requiere opciones (arepas/bebida), pásalas en attributes o el sistema pedirá al cliente.',
@@ -195,13 +214,18 @@ Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
 Reglas:
 - Siempre search_menu antes de add_item si no tienes el productId.
-- Pedido con VARIOS platos ("3 mojarras, 2 costillas y 3 pollos fritos"):
-  1) search_menu por cada plato (puedes llamar varias tools en paralelo),
-  2) add_item por cada uno con su quantity y estilo si aplica,
-  3) un reply corto confirmando lo agregado.
+- Pedido con VARIOS platos ("3 mojarras, 2 costillas y 3 pollos fritos" / "arroz chino con medio pollo y ajiaco"):
+  Preferir resolve_multi_order con el mensaje completo; luego add_item por cada confident.
+  Si no hay multi claro: search_menu por cada plato (puedes llamar varias tools en paralelo) y add_item.
+  Reply muy corto o vacío: el sistema muestra el carrito y pregunta ¿algo más?
   No respondas solo "¿qué se te antoja?" si el cliente ya listó platos.
+  Tras add_item: NO pidas nombre, dirección ni pago.
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
+- Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
+  PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
+- "Menú" / "carta" / "pásame el menú" SIN calificativo → link de la carta (NO add_item).
+- "Menú ejecutivo|especial|de la casa|del día|…" o "bandeja con…" → plato del catálogo si search_menu lo trae; NUNCA lo confundas con el link ni con el pollo suelto.
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - Preguntas ("podría ser broaster?") → responde y usa set_notes; no agregues Broaster suelto.
@@ -371,6 +395,49 @@ Contacto humano: *${phone || '3118866823'}*
           }
         }
 
+        // Menú nombrado (ejecutivo / especial / de la casa / bandeja…) ≠ pollo suelto ni link de carta
+        const namedMenuHit = this.catalogService.resolveNamedMenuDishProduct(
+          query,
+          ctx.products,
+        );
+        if (namedMenuHit) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'product_match',
+            results: [this.productCard(namedMenuHit)],
+            hint:
+              'Es un *plato del catálogo* tipo menú/envoltorio (ejecutivo, especial, de la casa, bandeja…), ' +
+              'NO el link de la carta. Usa este productId en add_item. No ofrezcas el pollo/sopa sueltos aparte.',
+          });
+        }
+
+        // SKU concreto primero ("jugo en leche", "churrasco") antes del browse de concepto
+        const scoredEarly = this.catalogService.searchByNameScored(query, ctx.products, 6);
+        if (
+          scoredEarly.length >= 1 &&
+          this.catalogService.isStrongProductMatch(scoredEarly) &&
+          scoredEarly[0].score >= 70
+        ) {
+          const embeddedEarly = this.catalogService.findProductEmbeddedInMessage(
+            query,
+            ctx.products,
+          );
+          const results = scoredEarly.map((x) => this.productCard(x.p));
+          if (embeddedEarly && !results.some((r) => r.id === embeddedEarly.id)) {
+            results.unshift(this.productCard(embeddedEarly));
+          }
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'product_match',
+            results: results.slice(0, 6),
+            hint:
+              'Hay coincidencia fuerte de producto. Confirma nombre+precio; si preguntan "¿tienen?", di que sí y ofrece agregarlo. ' +
+              'No digas que no hay ese producto si está en results.',
+          });
+        }
+
         // Concepto ("carne", "pescado"…): categoría limpia O pool para filtro semántico del LLM
         const conceptBrowse = resolveConceptBrowseForAgent(
           query,
@@ -392,7 +459,9 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
 
-        const scored = this.catalogService.searchByNameScored(query, ctx.products, 6);
+        const scored = scoredEarly.length
+          ? scoredEarly
+          : this.catalogService.searchByNameScored(query, ctx.products, 6);
         const embedded = this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
         const results = scored.map((x) => this.productCard(x.p));
         if (embedded && !results.some((r) => r.id === embedded.id)) {
@@ -404,8 +473,43 @@ Contacto humano: *${phone || '3118866823'}*
           results: results.slice(0, 6),
           hint:
             results.length === 0
-              ? 'Sin coincidencias. Pide nombre/código o menú.'
+              ? 'Sin coincidencias en el menú. Reply cálido: "Por ahora no manejamos X. Si quieres mira el menú: {link}". PROHIBIDO "No veo" / "No encontré".'
               : 'Elige productId de results para add_item.',
+        });
+      }
+      case 'resolve_multi_order': {
+        const raw = String(args.text || '').trim();
+        if (!raw) return JSON.stringify({ ok: false, error: 'text vacío' });
+        const multi = this.catalogService.resolveMultiProductOrder(raw, ctx.products);
+        if (!multi) {
+          return JSON.stringify({
+            ok: false,
+            error: 'no_multi',
+            hint: 'No parece multi-pedido. Usa search_menu por plato.',
+          });
+        }
+        const card = (p: WhatsappCatalogProduct) => this.productCard(p);
+        return JSON.stringify({
+          ok: true,
+          confident: multi.confident.map((c) => ({
+            segment: c.segment,
+            ...card(c.product),
+            score: c.score,
+          })),
+          needsAttributes: multi.needsAttributes.map((c) => ({
+            segment: c.segment,
+            ...card(c.product),
+          })),
+          ambiguous: multi.ambiguous.map((a) => ({
+            segment: a.segment,
+            candidates: a.candidates.map(card),
+          })),
+          unresolved: multi.unresolved,
+          hint:
+            multi.ambiguous.length || multi.unresolved.length
+              ? 'Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas "sí" a la vez. ' +
+                'add_item solo de confident/needsAttributes con productId.'
+              : 'Multi claro. add_item por cada confident (y needsAttributes con defaults del sistema). Reply corto o vacío.',
         });
       }
       case 'add_item': {

@@ -11,6 +11,10 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('domicikio')).toMatch(/^domicilio$/i);
     expect(applyLocalGlossary('Para Un domicikio Para bosques')).toMatch(/domicilio/i);
     expect(applyLocalGlossary('Tres pillos fritos')).toMatch(/tres pollos fritos/i);
+    expect(applyLocalGlossary('Tienes juegos?')).toMatch(/jugos/i);
+    expect(applyLocalGlossary('Quiero Un menu ejecutivo con Pollo frito')).toMatch(
+      /ejecutivo.*pollo frito/i,
+    );
     expect(applyLocalGlossary('Regalame pollo y medio porfavor')).toMatch(
       /1 pollo y medio pollo/i,
     );

@@ -81,6 +81,7 @@ import {
   type WhatsappCartLimitsConfig,
 } from './whatsapp-cart-limits';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
+import { isNamedMenuDishOrderPhrase } from './whatsapp-named-menu-dish';
 import type {
   AiOrderAction,
   WhatsappCartItem,
@@ -524,6 +525,7 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    let aiClassifyDone = false;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
@@ -1642,21 +1644,48 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Multi-pedido claro ANTES del agente (evita que el LLM tape el flujo que ya funcionaba)
+    // Typo/logística IA barata ANTES de multi y Agent V1 (menú sigue validando)
+    {
+      const classified = await this.tryApplyAiClassify(
+        conv,
+        msg.waId,
+        session,
+        text,
+        originalText,
+        cfg,
+      );
+      aiClassifyDone = true;
+      if (classified.handled) return;
+      if (classified.text && classified.text !== text) {
+        text = classified.text;
+      }
+      if (classified.session) {
+        session = classified.session;
+      }
+    }
+
+    // Multi limpio ANTES del agente. Si hay ❓/sin match → deja interpretar al Agent V1
     if (
       !session.pendingMatch &&
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
-      (this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) ||
-        this.catalogService.looksLikeMultiItemOrderMessage(originalText || text))
+      (this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(text) ||
+        this.catalogService.looksLikeClearlyMultiDishOrder(originalText) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(originalText))
     ) {
-      const multi = this.catalogService.resolveMultiProductOrder(originalText || text, products);
-      if (multi) {
+      const multi = this.catalogService.resolveMultiProductOrder(text, products);
+      const multiClean =
+        !!multi &&
+        multi.ambiguous.length === 0 &&
+        multi.unresolved.length === 0 &&
+        multi.confident.length + multi.needsAttributes.length >= 1;
+      if (multiClean) {
         const handled = await this.tryHandleMultiProductOrder(
           conv,
           msg.waId,
           session,
-          multi,
+          multi!,
           cfg,
           text,
           products,
@@ -2028,8 +2057,8 @@ export class WhatsappOrchestratorService {
       }
     }
 
-    // IA barata: clasifica typos/logística ambiguos ANTES del multi (valida backend)
-    {
+    // IA barata: ya corrió antes de multi/agente; solo reintentar si no
+    if (!aiClassifyDone) {
       const classified = await this.tryApplyAiClassify(
         conv,
         msg.waId,
@@ -4786,12 +4815,9 @@ export class WhatsappOrchestratorService {
     return reply;
   }
 
-  private formatContinueShoppingPrompt(session?: WhatsappSessionData): string {
-    // Copy corto: solo “confirmar” en el mensaje; listo/ok/etc. siguen detectándose.
-    if (session?.cart.length && !session.address?.trim()) {
-      return `¿Algo más? Si no, manda la *dirección* o escribe *confirmar*.`;
-    }
-    return `¿Algo más? Si no, escribe *confirmar*.`;
+  private formatContinueShoppingPrompt(_session?: WhatsappSessionData): string {
+    // Una sola pregunta clara; nombre/dirección/pago los pide el checkout al confirmar
+    return '¿*Algo más*?';
   }
 
   private formatCartTiny(session: WhatsappSessionData, deliveryFee: number): string {
@@ -4837,7 +4863,13 @@ export class WhatsappOrchestratorService {
           ? ` ×${qty} · $${Math.round(c.unitPrice).toLocaleString('es-CO')} c/u →`
           : ' ·';
       const attrs = c.attributes?.length
-        ? `\n   _${c.attributes.map((a) => a.attributeValue).join(' · ')}_`
+        ? `\n   _${c.attributes
+            .map((a) =>
+              a.attributeName?.trim()
+                ? `${a.attributeName}: ${a.attributeValue}`
+                : a.attributeValue,
+            )
+            .join(' · ')}_`
         : '';
       const note = c.note?.trim() ? `\n   📝 _${c.note.trim()}_` : '';
       return (
@@ -4874,7 +4906,7 @@ export class WhatsappOrchestratorService {
     );
   }
 
-  /** Confirmación de ítem + carrito actual + invitación a seguir pidiendo. */
+  /** Confirmación corta al agregar: qué entró + total + ¿algo más? (sin pedir nombre). */
   private buildCartAddReply(
     session: WhatsappSessionData,
     deliveryFee: number,
@@ -4885,13 +4917,24 @@ export class WhatsappOrchestratorService {
     let head =
       names.length === 1
         ? `Listo ✅ *${names[0]}*`
-        : `Listo ✅\n${names.map((n) => `• *${n}*`).join('\n')}`;
+        : `Listo ✅ ${names.map((n) => `*${n}*`).join(', ')}`;
+
+    // Attrs del último ítem agregado (ej. Arepas: Blancas) — nombre + valor
+    const last = session.cart[session.cart.length - 1];
+    const attrBit =
+      last?.attributes?.length && names.length === 1
+        ? ` · _${last.attributes
+            .map((a) =>
+              a.attributeName?.trim()
+                ? `${a.attributeName}: ${a.attributeValue}`
+                : a.attributeValue,
+            )
+            .join(' · ')}_`
+        : '';
     if (opts?.extraLine) head += `\n${opts.extraLine}`;
 
-    return (
-      `${head}\n\n${this.formatCartOnly(session, deliveryFee)}\n` +
-      (opts?.suffix ?? this.formatContinueShoppingPrompt(session))
-    );
+    const prompt = opts?.suffix ?? this.formatContinueShoppingPrompt(session);
+    return `${head}${attrBit}\n${this.formatCartTiny(session, deliveryFee)}\n\n${prompt}`;
   }
 
   private formatOrderSummary(
@@ -8158,6 +8201,8 @@ export class WhatsappOrchestratorService {
     if (!t) return false;
     // "envíame el enlace de Mercado Pago" ≠ menú
     if (this.isPaymentLinkRequest(text)) return false;
+    // "quiero el menú especial / ejecutivo / de la casa" = plato, no link
+    if (isNamedMenuDishOrderPhrase(text)) return false;
     if (
       /\b(link|enlace|url|pagina)\b.{0,40}\b(menu|carta)\b/i.test(t) ||
       /\b(menu|carta)\b.{0,40}\b(link|enlace|url|pagina)\b/i.test(t)
@@ -10713,6 +10758,13 @@ export class WhatsappOrchestratorService {
       /\bqu[eé]\s+se\s+te\s+antoja\b/i.test(agentReply) ||
       /\bdime el plato o el c[oó]digo\b/i.test(agentReply) ||
       /\bescribe\s+\*?men[uú]\*?\b/i.test(agentReply);
+    const replyIsMenuSoftMiss =
+      /\bpor ahora no manejamos\b/i.test(agentReply) ||
+      /\bno lo tenemos en la carta\b/i.test(agentReply) ||
+      /\bno manejamos\b.{0,40}\ben (el|nuestro|la)\b/i.test(agentReply);
+    const searchedMenu = (agent.toolCalls || []).some((t) =>
+      /search_menu/i.test(String(t)),
+    );
 
     // Agente sin tools + reply vacío/genérico → siempre reglas
     // (multi-pedido, "Pollo", browse, etc.). Evita eco del historial.
@@ -10730,6 +10782,20 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    // “No manejamos X” sin add_item → Nest puede recuperar (embedded / late multi)
+    if (!hasProductiveActions && replyIsMenuSoftMiss && searchedMenu) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['agent_menu_soft_miss'],
+      });
+      return false;
+    }
     if (agent.error === 'max_iterations' && !hasProductiveActions) {
       this.turnTelemetry.record({
         path: 'agent_v1',
@@ -10827,14 +10893,12 @@ export class WhatsappOrchestratorService {
       const addedNames = (guarded.actions.addItems || [])
         .map((a) => products.find((p) => p.id === a.productId)?.name)
         .filter(Boolean) as string[];
-      const cartBlock = this.buildCartAddReply(
+      // Una sola burbuja del sistema (evita "añadí… ¿pasamos a tu nombre?" del LLM)
+      reply = this.buildCartAddReply(
         session,
         fee,
         addedNames.length ? addedNames : 'ítems',
-        { suffix: '' },
       );
-      if (reply) reply = `${reply}\n\n${cartBlock}`;
-      else reply = cartBlock;
     } else if (guarded.warnings?.length && !reply) {
       reply = guarded.warnings[0];
     }
@@ -11593,12 +11657,19 @@ export class WhatsappOrchestratorService {
       );
     }
     for (const miss of multi.unresolved) {
-      lines.push(`\n⚠️ No encontré en el menú: _${miss}_`);
+      lines.push(`\n⚠️ Por ahora no manejamos: _${miss}_`);
     }
-    lines.push(
-      '\n_Si está bien lo que marqué ✅ y *no hay dudas*, escribe *sí*._',
-      '_Si hay opciones ❓, elige *número* o nombre (ej. *broaster*)._',
-    );
+    // Una sola CTA: si hay dudas ❓, solo elegir; si todo ✅, solo confirmar
+    if (multi.ambiguous.length > 0) {
+      lines.push('\n_Elige *número* o nombre (ej. *broaster*)._');
+      if (multi.confident.length > 0) {
+        lines.push('_Lo marcado ✅ queda listo cuando resuelvas la duda._');
+      }
+    } else if (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) {
+      lines.push('\n_Cuando puedas, aclara lo pendiente o escribe *sí* para lo ✅._');
+    } else {
+      lines.push('\n_Si está bien, escribe *sí*._');
+    }
     return lines.join('\n');
   }
 

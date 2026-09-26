@@ -68,10 +68,51 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     },
     findByCode: (code: number, list: WhatsappCatalogProduct[]) =>
       list.find((p) => p.code === code) || null,
+    resolveNamedMenuDishProduct: (q: string, list: WhatsappCatalogProduct[]) => {
+      if (!/\b(ejecutivo|menu\s+especial|de\s+la\s+casa)\b/i.test(q)) return null;
+      return (
+        list.find((p) => /\bejecutivo\b/i.test(p.name) && /\bfrito\b/i.test(q) && /\bfrito\b/i.test(p.name)) ||
+        list.find((p) => /\bejecutivo\b/i.test(p.name)) ||
+        list.find((p) => /\bespecial\b/i.test(p.name) && /\bespecial\b/i.test(q)) ||
+        list.find((p) => /\bcasa\b/i.test(p.name) && /\bcasa\b/i.test(q)) ||
+        null
+      );
+    },
+    resolveMultiProductOrder: (q: string, list: WhatsappCatalogProduct[]) => {
+      if (!/\by\b/i.test(q)) return null;
+      const hits = list.filter((p) =>
+        q.toLowerCase().split(/\s+y\s+/i).some((seg) =>
+          p.name.toLowerCase().includes(seg.trim().slice(0, 8)),
+        ),
+      );
+      if (hits.length < 2) return null;
+      return {
+        segments: hits.map((p) => p.name),
+        confident: hits.map((p) => ({ segment: p.name, product: p, score: 80 })),
+        ambiguous: [],
+        unresolved: [],
+        needsAttributes: [],
+      };
+    },
+    resolveEjecutivoOrderProduct: (q: string, list: WhatsappCatalogProduct[]) => {
+      if (!/\bejecutivo\b/i.test(q)) return null;
+      return (
+        list.find((p) => /\bejecutivo\b/i.test(p.name) && /\bfrito\b/i.test(q) && /\bfrito\b/i.test(p.name)) ||
+        list.find((p) => /\bejecutivo\b/i.test(p.name)) ||
+        null
+      );
+    },
     searchByNameScored: (q: string, list: WhatsappCatalogProduct[]) =>
       list
         .filter((p) => p.name.toLowerCase().includes(q.toLowerCase().slice(0, 8)))
         .map((p) => ({ p, score: 50 })),
+    isStrongProductMatch: (scored: Array<{ p: WhatsappCatalogProduct; score: number }>) => {
+      if (!scored.length) return false;
+      const top = scored[0].score;
+      if (top >= 80) return true;
+      if (scored.length === 1 && top >= 50) return true;
+      return false;
+    },
     findProductEmbeddedInMessage: (q: string, list: WhatsappCatalogProduct[]) =>
       list.find((p) => q.toLowerCase().includes('broaster') && /broaster/i.test(p.name)) ||
       null,
@@ -295,5 +336,38 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(parsed.concept).toBe('Carne');
     expect(parsed.results.some((r) => /churrasco/i.test(r.name))).toBe(true);
     expect(parsed.hint).toMatch(/natural|NO|NUNCA/i);
+  });
+
+  it('resolve_multi_order usa el parser del catálogo', () => {
+    const agent = new WhatsappAgentService(
+      settingsStub as never,
+      catalogStub as never,
+    );
+    const exec = (
+      agent as unknown as {
+        executeTool: (
+          name: string,
+          args: Record<string, unknown>,
+          ctx: Record<string, unknown>,
+        ) => string;
+      }
+    ).executeTool.bind(agent);
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const raw = exec(
+      'resolve_multi_order',
+      { text: '1 Pollo Frito y Gaseosa 400ml' },
+      {
+        products,
+        byId,
+        actions: {},
+        setNeedsAttr: () => undefined,
+      },
+    );
+    const parsed = JSON.parse(raw) as {
+      ok: boolean;
+      confident: { id: number; name: string }[];
+    };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.confident.length).toBeGreaterThanOrEqual(2);
   });
 });

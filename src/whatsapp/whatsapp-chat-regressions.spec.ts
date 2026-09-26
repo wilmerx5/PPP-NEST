@@ -1093,6 +1093,30 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(names.some((n) => /arroz chino con medio pollo/i.test(n))).toBe(false);
     });
 
+    it('arroz chino con medio pollo + ajiaco → SKU arroz (no 1/2 suelto)', () => {
+      const text = applyLocalGlossary(
+        'Quieres in arroz chino con medio Pollo y una sopa De ajiaco',
+      );
+      expect(text).toMatch(/quiero un/i);
+      expect(catalog.looksLikeArrozComboPlusSizedChicken(text)).toBe(false);
+      expect(
+        catalog.chickenStyleChoicesForSegment('arroz chino con medio Pollo', pppMenu),
+      ).toBeNull();
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /arroz chino con medio pollo/i.test(n))).toBe(true);
+      expect(names.some((n) => /ajiaco/i.test(n))).toBe(true);
+      expect(multi!.ambiguous.length).toBe(0);
+      expect(
+        multi!.ambiguous.flatMap((a) => a.candidates).some((c) => /^1\/2\s+pollo/i.test(c.name)),
+      ).toBe(false);
+    });
+
     it('combo de arroz chino con medio pollo frito = un solo SKU (no duplica 1/2)', () => {
       const text = applyLocalGlossary(
         'seria un combo de arroz chino con medio pollo frito y gaseosa ginger',

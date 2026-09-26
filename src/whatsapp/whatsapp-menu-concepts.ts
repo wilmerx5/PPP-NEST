@@ -1,4 +1,5 @@
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
+import { isNamedMenuDishOrderPhrase } from './whatsapp-named-menu-dish';
 
 export type MenuConceptGroup = {
   id: string;
@@ -507,6 +508,11 @@ export function resolveConceptBrowseForAgent(
   const q = normalizeText(query);
   if (!q || q.length < 3) return null;
 
+  // "menú ejecutivo/especial/de la casa…" ≠ browse de pollo/carne/sopa
+  if (isNamedMenuDishOrderPhrase(query)) {
+    return null;
+  }
+
   const concepts = resolveMenuConceptGroups(groups).filter((c) => c.enabled !== false);
   const concept = concepts.find((c) => queryMatchesConcept(q, c));
   if (!concept) return null;
@@ -519,38 +525,139 @@ export function resolveConceptBrowseForAgent(
       isGenericMenuCategory(p.categoryName) &&
       !SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || ''),
   );
+  const fromDrinkCategories = available.filter((p) =>
+    SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || ''),
+  );
+
+  const wantsJuiceOnly = /\b(jugos?|limonadas?|zumos?)\b/.test(q);
+  const juiceLike = (p: WhatsappProductCandidate) => {
+    const hay = normalizeText(`${p.name} ${p.description || ''} ${p.categoryName || ''}`);
+    return /\b(jugo|jugos|limonada|limonadas|zumo|natural|hit|maracuya|lulo|mora|mango|naranja|fresa)\b/.test(
+      hay,
+    );
+  };
+
+  // "jugos" / "limonadas": priorizar esos productos (no gaseosas)
+  if (concept.id === 'bebida' && wantsJuiceOnly) {
+    const juices = available.filter(juiceLike);
+    let pool = juices.length
+      ? juices
+      : [...fromSpecificCategory, ...fromKeywords, ...fromDrinkCategories];
+
+    // "jugo en leche" / "jugo en agua": no listar todos los jugos — estrechar por tokens extra
+    const juiceStop = new Set([
+      'con', 'de', 'del', 'la', 'el', 'los', 'las', 'una', 'un', 'unos', 'unas', 'en', 'y',
+      'no', 'si', 'que', 'qué', 'tambien', 'también',
+      'quiero', 'dame', 'ponme', 'para', 'por',
+      'tiene', 'tienen', 'tienes', 'hay', 'ofrecen', 'ofreces', 'venden', 'vendes',
+      'manejan', 'manejas', 'disponible', 'disponibles', 'hola', 'buenas', 'buenos',
+      'favor', 'porfa', 'gracias',
+    ]);
+    const juiceBroad = new Set(
+      [
+        'jugo', 'jugos', 'limonada', 'limonadas', 'zumo', 'zumos',
+        'bebida', 'bebidas', 'natural', 'naturales',
+        concept.label,
+        ...(BROAD_CONCEPT_TRIGGERS.bebida || []),
+      ].map((t) => stemLoose(normalizeText(t))),
+    );
+    const juiceExtra = q
+      .split(' ')
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 3 && !juiceStop.has(t) && !juiceBroad.has(stemLoose(t)));
+
+    if (juiceExtra.length && pool.length) {
+      const narrowed = pool.filter((p) => {
+        const hay = normalizeText(`${p.name} ${p.description || ''}`);
+        return juiceExtra.every(
+          (tok) => hay.includes(tok) || hay.includes(stemLoose(tok)),
+        );
+      });
+      if (narrowed.length >= 1) {
+        pool = narrowed;
+        const label =
+          narrowed.length === 1
+            ? narrowed[0].name
+            : `Jugos (${juiceExtra.slice(0, 2).join(' ')})`;
+        return {
+          mode: 'semantic_filter',
+          conceptId: concept.id,
+          conceptLabel: label,
+          products: [...new Map(pool.map((p) => [p.id, p])).values()].slice(0, 12),
+          hint:
+            narrowed.length === 1
+              ? `El cliente pregunta por esa variante concreta (${juiceExtra.join(' ')}). ` +
+                `Confirma *${narrowed[0].name}* con precio de candidates. Si preguntan "¿tienen?", di que sí y ofrece agregarlo. ` +
+                `No listes otros jugos ni gaseosas a menos que pregunten.`
+              : `El cliente pide jugo con detalle (${juiceExtra.join(', ')}). ` +
+                `Ofrece solo candidates con precio. EXCLUYE gaseosas y comida.`,
+        };
+      }
+      // Variante pedida no está en el pool de jugos → dejar que search_menu busque por nombre
+      return null;
+    }
+
+    if (pool.length) {
+      return {
+        mode: 'semantic_filter',
+        conceptId: concept.id,
+        conceptLabel: 'Jugos',
+        products: [...new Map(pool.map((p) => [p.id, p])).values()].slice(0, 20),
+        hint:
+          'El cliente pidió *jugos* (o limonadas). Lista 2–4 jugos/limonadas de candidates con precio. ' +
+          'Incluye variantes en agua y en leche si están. EXCLUYE gaseosas, comida y combos. ' +
+          'NUNCA digas "no encontré". No ofrezcas pollo/pescado.',
+      };
+    }
+  }
 
   const specificIsClean =
     fromSpecificCategory.length >= 1 &&
     fromSpecificCategory.every((p) => !isGenericMenuCategory(p.categoryName));
 
-  // Mundo perfecto: categoría Carnes/Pollos bien armada
+  // Mundo perfecto: categoría Carnes/Pollos/Bebidas bien armada
   if (specificIsClean && fromSpecificCategory.length >= 1) {
     const merged = new Map<number, WhatsappProductCandidate>();
     for (const p of [...fromSpecificCategory, ...fromKeywords]) merged.set(p.id, p);
     return {
-      mode: 'category_clean',
+      mode: concept.id === 'bebida' ? 'semantic_filter' : 'category_clean',
       conceptId: concept.id,
       conceptLabel: concept.label,
       products: [...merged.values()].slice(0, 12),
       hint:
-        `Categoría clara "${concept.label}". Ofrece 2–4 opciones en tono natural. ` +
-        `NUNCA digas "no encontré".`,
+        concept.id === 'bebida'
+          ? SEMANTIC_FILTER_HINTS.bebida
+          : `Categoría clara "${concept.label}". Ofrece 2–4 opciones en tono natural. ` +
+            `NUNCA digas "no encontré".`,
     };
   }
 
   // Menú desordenado / vacío de categoría: pool para que el LLM filtre
   const pool = new Map<number, WhatsappProductCandidate>();
-  for (const p of [...fromSpecificCategory, ...fromKeywords, ...fromGenericCategories]) {
-    pool.set(p.id, p);
-  }
-  // Si sigue muy vacío, meter platos no-bebida (último recurso)
-  if (pool.size < 3) {
-    for (const p of available) {
-      if (SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || '')) continue;
-      if (concept.id === 'bebida') continue;
+  if (concept.id === 'bebida') {
+    for (const p of [...fromSpecificCategory, ...fromKeywords, ...fromDrinkCategories]) {
       pool.set(p.id, p);
-      if (pool.size >= 28) break;
+    }
+    if (pool.size < 3) {
+      for (const p of available) {
+        if (!SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || '') && !keywordMatchesProduct(p, concept)) {
+          continue;
+        }
+        pool.set(p.id, p);
+        if (pool.size >= 28) break;
+      }
+    }
+  } else {
+    for (const p of [...fromSpecificCategory, ...fromKeywords, ...fromGenericCategories]) {
+      pool.set(p.id, p);
+    }
+    // Si sigue muy vacío, meter platos no-bebida (último recurso)
+    if (pool.size < 3) {
+      for (const p of available) {
+        if (SIDE_OR_DRINK_CATEGORY_RE.test(p.categoryName || '')) continue;
+        pool.set(p.id, p);
+        if (pool.size >= 28) break;
+      }
     }
   }
 

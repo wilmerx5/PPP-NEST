@@ -118,4 +118,113 @@ describe('resolveConceptBrowseForAgent (menú ordenado vs carta mezclada)', () =
     expect(names).not.toEqual(expect.arrayContaining(['Gaseosa']));
     expect(hit!.hint).toMatch(/SEMÁNTICAMENTE|EXCLUYE/i);
   });
+
+  it('jugos → pool de jugos (no ofrece pollo)', () => {
+    const menu = [
+      {
+        id: 1,
+        code: 1,
+        name: 'Jugo de lulo',
+        price: 6000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 2,
+        code: 2,
+        name: 'Limonada natural',
+        price: 5000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 3,
+        code: 3,
+        name: 'Gaseosa 400ml',
+        price: 4000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 4,
+        code: 4,
+        name: '1 Pollo Frito',
+        price: 44000,
+        categoryName: 'Pollo',
+        availableNow: true,
+      },
+    ];
+    const hit = resolveConceptBrowseForAgent('tienes jugos?', menu);
+    expect(hit).toBeTruthy();
+    expect(hit!.conceptLabel).toMatch(/jugo/i);
+    const names = hit!.products.map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining(['Jugo de lulo', 'Limonada natural']));
+    expect(names).not.toEqual(expect.arrayContaining(['1 Pollo Frito']));
+    expect(hit!.hint).toMatch(/jugo/i);
+  });
+
+  it('jugo en leche → solo la variante en leche', () => {
+    const menu = [
+      {
+        id: 80,
+        code: 80,
+        name: 'Jugo Natural En Agua',
+        price: 6000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 81,
+        code: 81,
+        name: 'Jugo Natural En Leche',
+        price: 7000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 82,
+        code: 82,
+        name: 'Limonada Natural',
+        price: 5000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+      {
+        id: 83,
+        code: 83,
+        name: 'Gaseosa 400ml',
+        price: 3000,
+        categoryName: 'Bebidas',
+        availableNow: true,
+      },
+    ];
+    const hit = resolveConceptBrowseForAgent('Y no tienes jugo en Leche?', menu);
+    expect(hit).toBeTruthy();
+    expect(hit!.products.map((p) => p.name)).toEqual(['Jugo Natural En Leche']);
+    expect(hit!.hint).toMatch(/leche|variante|Confirma/i);
+  });
+
+  it('menú ejecutivo con pollo → no browse de pollo', () => {
+    const menu = [
+      {
+        id: 1,
+        code: 1,
+        name: '1 Pollo Frito',
+        price: 44000,
+        categoryName: 'Pollo',
+        availableNow: true,
+      },
+      {
+        id: 22,
+        code: 22,
+        name: 'Menú ejecutivo con pollo frito',
+        price: 16000,
+        categoryName: 'Ejecutivos',
+        availableNow: true,
+      },
+    ];
+    expect(
+      resolveConceptBrowseForAgent('Quiero Un menu ejecutivo con Pollo frito', menu),
+    ).toBeNull();
+  });
 });

@@ -253,4 +253,14 @@ describe('pollo frito vs bandeja/menú', () => {
     );
     expect(p?.name).toMatch(/bandeja/i);
   });
+
+  it('menú ejecutivo con pollo frito → ejecutivo, no Pollo Frito suelto', () => {
+    const text = 'Quiero Un menu ejecutivo con Pollo frito';
+    const p = catalog.findProductEmbeddedInMessage(text, chickenMenu);
+    expect(p?.name).toMatch(/ejecutivo/i);
+    expect(p?.name.toLowerCase()).not.toMatch(/^(1\s+)?pollo frito$/);
+
+    const scored = catalog.searchByNameScored(text, chickenMenu, 5);
+    expect(scored[0]?.p.name).toMatch(/ejecutivo/i);
+  });
 });

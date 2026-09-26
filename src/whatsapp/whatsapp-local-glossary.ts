@@ -11,6 +11,8 @@ import { fixFuzzyDomicilioTypos } from './whatsapp-message-classify';
 const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   // Saludos rotos / typos de arranque
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
+  { re: /\bquieres\s+in\b/gi, to: 'quiero un' },
+  { re: /\bquiero\s+in\b/gi, to: 'quiero un' },
   { re: /\bpar\s+pagarte\b/gi, to: 'para pagarte' },
   { re: /\bpap[aá]\s+a\s+la\s+francesa\b/gi, to: 'papa a la francesa' },
   // En PPP “papa(s) frita(s)” = papa francesa (no yuca frita)
@@ -51,6 +53,9 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bpollo\s+ala\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\balmuerzo\s+ejecutivo\b/gi, to: 'ejecutivo' },
   { re: /\b1\s+almuerzo\s+ejecutivo\b/gi, to: '1 ejecutivo' },
+  { re: /\bmen[uú]\s+ejecutivo\b/gi, to: 'ejecutivo' },
+  { re: /\b1\s+men[uú]\s+ejecutivo\b/gi, to: '1 ejecutivo' },
+  { re: /\bun\s+men[uú]\s+ejecutivo\b/gi, to: 'un ejecutivo' },
   { re: /\bmedio\s+broaster\s+medio\s+frito\b/gi, to: 'pollo mixto medio broaster medio frito' },
   { re: /\bmedio\s+broster\s+medio\s+frito\b/gi, to: 'pollo mixto medio broaster medio frito' },
   { re: /\bmedio\s+frito\s+medio\s+broaster\b/gi, to: 'pollo mixto medio frito medio broaster' },
@@ -145,6 +150,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   // Typos frecuentes: pillos / pilos / pojlos → pollos
   { re: /\b(pillos|pilos|pojlos|polllos)\b/gi, to: 'pollos' },
   { re: /\b(pillo|pilo|pojlo)\b/gi, to: 'pollo' },
+  // "tienes juegos?" → jugos (typo muy común en WhatsApp)
+  { re: /\bjuegos\b/gi, to: 'jugos' },
+  { re: /\bjuego\b/gi, to: 'jugo' },
   // "Torre 7apto901" / "T6 apt 321" → "Torre 6 apto 321"
   { re: /\bt[\s\-]*(\d{1,2})\s*(?:apto|apt|ap)\.?\s*(\d{2,4})\b/gi, to: 'torre $1 apto $2' },
   { re: /\bt[\s\-]*(\d{1,2})\b/gi, to: 'torre $1' },

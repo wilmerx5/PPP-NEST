@@ -3,6 +3,11 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
+import {
+  isNamedMenuDishOrderPhrase,
+  MENU_WRAPPER_TOKENS,
+  productLooksLikeNamedMenuDish,
+} from './whatsapp-named-menu-dish';
 import { isAddressChangeIntent } from './whatsapp-session-intents';
 import {
   isDeliverySetupWithoutFood,
@@ -114,25 +119,6 @@ const PACK_MULTIPLIER_TOKENS = new Set([
   'x2',
   'x3',
   'x4',
-]);
-
-/**
- * Envoltorios de menú: "Menú ejecutivo con pollo frito" no es "pollo frito".
- * Solo deben ganar si el cliente dijo menu/ejecutivo/bandeja…
- */
-const MENU_WRAPPER_TOKENS = new Set([
-  'menu',
-  'ejecutivo',
-  'almuerzo',
-  'almuerzos',
-  'bandeja',
-  'bandejas',
-  'especial',
-  'especiales',
-  'promocion',
-  'promo',
-  'combo',
-  'combos',
 ]);
 
 const ORDER_INTENT_ONLY = new Set([
@@ -521,6 +507,8 @@ export class WhatsappCatalogService {
     const q = normalizeText(text);
     if (!q || q.length < 5) return false;
     if (this.isRestaurantLocationInquiry(text)) return false;
+    // "quiero el menú especial" = plato, no explorar la carta
+    if (isNamedMenuDishOrderPhrase(text)) return false;
 
     if (
       /\b(link|enlace|url)\b/.test(q) ||
@@ -1480,6 +1468,15 @@ export class WhatsappCatalogService {
     ) {
       return null;
     }
+    // "arroz chino con medio pollo" = SKU de arroz, no 1/2 Pollo suelto
+    // (salvo "arroz en combo + medio broaster" → 2 platos)
+    if (
+      /\barroz\b/.test(q) &&
+      /\bcon\s+(?:un\s+|una\s+)?(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(q) &&
+      !this.looksLikeArrozComboPlusSizedChicken(text)
+    ) {
+      return null;
+    }
     // No forzar si el mensaje es SOLO arroz/combo (ej. "arroz con pollo" sin porción aparte).
     // En multi ("arroz con pollo y 1/4 asado") sí resolvemos el pollo por segmento.
     if (
@@ -1599,6 +1596,70 @@ export class WhatsappCatalogService {
         q,
       )
     );
+  }
+
+  /**
+   * Plato catalogado tipo menú/envoltorio (ejecutivo, especial, de la casa, bandeja…),
+   * no el link de la carta. Escala a cualquier restaurante sin parches por nombre.
+   */
+  resolveNamedMenuDishProduct(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    if (!isNamedMenuDishOrderPhrase(text)) return null;
+
+    const ejecutivo = this.resolveEjecutivoOrderProduct(text, products);
+    if (ejecutivo) return ejecutivo;
+
+    const q = normalizeText(fixCommonOrderTypos(text));
+    const available = products.filter((p) => p.availableNow !== false);
+    let pool = available.filter((p) => productLooksLikeNamedMenuDish(p.name));
+    if (!pool.length) return null;
+
+    // "menú especial" / "de la casa" / "del día": estrechar por calificativos del pedido
+    const wantCasa = /\bde\s+la\s+casa\b/.test(q) || (/\bcasa\b/.test(q) && /\bmenu\b/.test(q));
+    const wantDia = /\bdel\s+dia\b/.test(q);
+    const wantEspecial = /\bespecial(?:es)?\b/.test(q);
+    const wantInfantil = /\binfantil\b/.test(q);
+    const wantFamiliar = /\bfamiliar\b/.test(q);
+    const wantGourmet = /\bgourmet\b/.test(q);
+    const wantBandeja = /\bbandeja\b/.test(q) && !/\bmenu\b/.test(q);
+
+    const narrowed = pool.filter((p) => {
+      const n = normalizeText(p.name);
+      if (wantCasa && !/\bcasa\b/.test(n)) return false;
+      if (wantDia && !/\bdia\b/.test(n)) return false;
+      if (wantEspecial && !/\bespecial\b/.test(n)) return false;
+      if (wantInfantil && !/\binfantil\b/.test(n)) return false;
+      if (wantFamiliar && !/\bfamiliar\b/.test(n)) return false;
+      if (wantGourmet && !/\bgourmet\b/.test(n)) return false;
+      if (wantBandeja && !/\bbandeja\b/.test(n)) return false;
+      return true;
+    });
+    if (narrowed.length) pool = narrowed;
+
+    const proteinHints: Array<{ re: RegExp; nameRe: RegExp }> = [
+      { re: /\bpechuga\b/, nameRe: /\bpechuga\b/ },
+      { re: /\bbroaster\b/, nameRe: /\bbroaster\b/ },
+      { re: /\bchurrasco\b/, nameRe: /\bchurrasco\b/ },
+      { re: /\bcostilla/, nameRe: /\bcostilla/ },
+      { re: /\bsobrebarriga\b/, nameRe: /\bsobrebarriga\b/ },
+      { re: /\bfrito\b/, nameRe: /\bfrito\b/ },
+      { re: /\basado\b/, nameRe: /\basado\b/ },
+      { re: /\bpaisa\b/, nameRe: /\bpaisa\b/ },
+      { re: /\bpollo\b/, nameRe: /\bpollo\b/ },
+    ];
+    for (const hint of proteinHints) {
+      if (!hint.re.test(q)) continue;
+      const hit = pool.find((p) => hint.nameRe.test(normalizeText(p.name)));
+      if (hit) return hit;
+    }
+
+    if (pool.length === 1) return pool[0];
+
+    const scored = this.searchByNameScored(text, pool, 5);
+    if (scored[0] && scored[0].score >= 40) return scored[0].p;
+    return pool[0] || null;
   }
 
   resolveEjecutivoOrderProduct(
@@ -2820,8 +2881,8 @@ export class WhatsappCatalogService {
       return this.findProductEmbeddedInMessage(baseQ, products);
     }
 
-    const ejecutivo = this.resolveEjecutivoOrderProduct(text, products);
-    if (ejecutivo) return ejecutivo;
+    const namedMenu = this.resolveNamedMenuDishProduct(text, products);
+    if (namedMenu) return namedMenu;
 
     const sizedSoup = this.resolveSizedSoupProduct(text, products);
     if (sizedSoup && !this.looksLikeClearlyMultiDishOrder(text)) return sizedSoup;
@@ -3649,6 +3710,13 @@ export class WhatsappCatalogService {
         const queryHasMenuWrapper = [...MENU_WRAPPER_TOKENS].some((t) => this.queryHasToken(q, t));
         if (nameHasMenuWrapper && !queryHasMenuWrapper) {
           return { p, score: 0 };
+        }
+        // Cliente pidió envoltorio (menú/ejecutivo/bandeja): priorizar esos SKU
+        if (queryHasMenuWrapper) {
+          if (nameHasMenuWrapper) score += 110;
+          else if (/\b(pollo|broaster|frito|asado|pechuga)\b/.test(name) && !nameHasMenuWrapper) {
+            score -= 90;
+          }
         }
 
         // Contención: si el pedido es solo una parte del nombre largo, penalizar
@@ -5535,8 +5603,11 @@ export class WhatsappCatalogService {
     const cleanedOnce = this.cleanOrderSegment(raw);
     if (!cleanedOnce) return [];
 
-    // "ejecutivo con pechuga y sopa de ajiaco" = 1 plato (ajiaco es attr), no partir
-    if (this.isEjecutivoLunchOrderPhrase(cleanedOnce)) {
+    // "ejecutivo / menú especial / menú de la casa con…" = 1 plato, no partir
+    if (
+      this.isEjecutivoLunchOrderPhrase(cleanedOnce) ||
+      isNamedMenuDishOrderPhrase(cleanedOnce)
+    ) {
       return [cleanedOnce];
     }
 
@@ -5667,6 +5738,8 @@ export class WhatsappCatalogService {
     const q = normalizeText(fixCommonOrderTypos(segment || ''));
     if (!q) return null;
     if (/\b(broaster|frito|asado|mixto)\b/.test(q)) return null;
+    // "arroz chino con medio pollo" / bandeja/ejecutivo = plato compuesto, no 1/2 suelto
+    if (/\b(arroz|bandeja|ejecutivo|menu)\b/.test(q)) return null;
 
     const available = products.filter((p) => p.availableNow !== false);
 
@@ -5816,17 +5889,20 @@ export class WhatsappCatalogService {
     // SKU "Arroz … Con Medio Pollo": nunca dejar 1/2 suelto en el multi
     {
       const qCombined = normalizeText(fixCommonOrderTypos(text));
-      if (
+      const combinedArrozMedio =
         (/\barroz(?:\s+chino)?\s+combo\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
           qCombined,
         ) ||
           /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
             qCombined,
+          ) ||
+          /\barroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
+            qCombined,
           )) &&
-        !this.looksLikeArrozComboPlusSizedChicken(text)
-      ) {
+        !this.looksLikeArrozComboPlusSizedChicken(text);
+      if (combinedArrozMedio) {
         embeddedAll = embeddedAll.filter(
-          (p) => !/^1\s*\/\s*2\s+pollo/i.test(p.name),
+          (p) => !/^1\s*\/\s*2\s+pollo/i.test(p.name) && !/^medio\s+pollo$/i.test(normalizeText(p.name)),
         );
       }
     }
@@ -5861,7 +5937,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    // Por segmento: "… y 1/4 de pollo asado" (aunque el mensaje completo diga arroz)
+      // Por segmento: "… y 1/4 de pollo asado" (aunque el mensaje completo diga arroz)
     {
       const qSkip = normalizeText(fixCommonOrderTypos(text));
       const skipHalfForCombinedArroz =
@@ -5870,7 +5946,8 @@ export class WhatsappCatalogService {
         ) ||
           /\bcombo\s+(?:de\s+)?arroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(
             qSkip,
-          )) &&
+          ) ||
+          /\barroz(?:\s+chino)?\s+con\s+(?:medio|media|1\s*\/\s*2|1\/2)\s+pollo\b/.test(qSkip)) &&
         !this.looksLikeArrozComboPlusSizedChicken(text);
       if (clearlyMulti && !skipHalfForCombinedArroz) {
         for (const seg of segments) {
@@ -6011,18 +6088,18 @@ export class WhatsappCatalogService {
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
-      // Plato antes que nombre: "ajiaco" ≠ persona si está en el menú
-      const ejecutivoHit = this.resolveEjecutivoOrderProduct(segment, products);
-      if (ejecutivoHit) {
-        if (!usedProductIds.has(ejecutivoHit.id)) {
-          usedProductIds.add(ejecutivoHit.id);
-          const match = { segment, product: ejecutivoHit, score: 100 };
-          if (ejecutivoHit.hasAttributes && ejecutivoHit.attributes?.length) {
+      // Plato envoltorio (ejecutivo / menú especial / de la casa…) antes que nombre
+      const namedMenuHit = this.resolveNamedMenuDishProduct(segment, products);
+      if (namedMenuHit) {
+        if (!usedProductIds.has(namedMenuHit.id)) {
+          usedProductIds.add(namedMenuHit.id);
+          const match = { segment, product: namedMenuHit, score: 100 };
+          if (namedMenuHit.hasAttributes && namedMenuHit.attributes?.length) {
             const attrText =
               this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
                 ? segment
                 : `${segment} ${text}`;
-            if (this.extractExplicitAttributeChoice(attrText, ejecutivoHit)) {
+            if (this.extractExplicitAttributeChoice(attrText, namedMenuHit)) {
               confident.push({ ...match, segment: attrText });
             } else needsAttributes.push(match);
           } else confident.push(match);
@@ -6170,20 +6247,24 @@ export class WhatsappCatalogService {
         }
       }
 
-      // Segmentos tipo "ejecutivo con pierna/pechuga..." → SKU ejecutivo (no sopa suelta)
-      if (/\bejecutivo\b/.test(segNorm) || /\balmuerzo\b/.test(segNorm)) {
+      // Segmentos tipo "ejecutivo / menú especial con…" → SKU envoltorio (no sopa/pollo suelto)
+      if (
+        /\bejecutivo\b/.test(segNorm) ||
+        /\balmuerzo\b/.test(segNorm) ||
+        isNamedMenuDishOrderPhrase(segment)
+      ) {
         const resolved =
-          this.resolveEjecutivoOrderProduct(segment, products) ||
+          this.resolveNamedMenuDishProduct(segment, products) ||
           (() => {
-            const ejecutivoHits = uniqueScored.filter((x) =>
-              normalizeText(x.p.name).includes('ejecutivo'),
+            const wrapperHits = uniqueScored.filter((x) =>
+              productLooksLikeNamedMenuDish(x.p.name),
             );
-            if (!ejecutivoHits.length) return null;
+            if (!wrapperHits.length) return null;
             return (
-              this.resolveEjecutivoOrderProduct(
+              this.resolveNamedMenuDishProduct(
                 segment,
-                ejecutivoHits.map((x) => x.p),
-              ) || ejecutivoHits[0].p
+                wrapperHits.map((x) => x.p),
+              ) || wrapperHits[0].p
             );
           })();
         if (resolved && !usedProductIds.has(resolved.id)) {
