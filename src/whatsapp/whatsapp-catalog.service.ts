@@ -788,7 +788,20 @@ export class WhatsappCatalogService {
     // "3" / "12" sueltos = opción de lista / arepa / sabor — NO cantidad de pedido
     if (/^\d{1,2}$/.test(raw)) return 1;
     if (/^(?:opci[oó]n|la|el|numero|n[uú]mero)\s*[1-9]\d{0,2}$/i.test(raw)) return 1;
-    const q = normalizeText(raw);
+    let q = normalizeText(raw);
+
+    // "medio pollo broaster 2" — el "2" final es elección de arepas/lista, no ×2
+    if (/\s\d{1,2}$/.test(q) && /\b(pollo|broaster|frito|asado|sopa|mojarra|arepa)\b/.test(q)) {
+      const withoutTrail = q.replace(/\s+\d{1,2}$/, '').trim();
+      if (
+        withoutTrail &&
+        !/\b([2-9]|1[0-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/.test(
+          withoutTrail,
+        )
+      ) {
+        q = withoutTrail;
+      }
+    }
 
     // No confundir porciones con cantidad
     if (/\b(medio|media|cuarto|cuarta|1\/2|1\/4)\b/.test(q) && !/\b\d+\s*(pollo|sopas?|bandejas?)/.test(q)) {
@@ -1164,6 +1177,7 @@ export class WhatsappCatalogService {
         ' ',
       )
       .replace(/\bde\s+con\b/gi, 'con')
+      .replace(/\s+(por\s+favor|porfavor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -1329,6 +1343,34 @@ export class WhatsappCatalogService {
     return hasFood && hasDrink;
   }
 
+  /**
+   * “Con gaseosa” / “y una limonada” sin plato nuevo — acompañamiento,
+   * no reemplaza un pending de estilo (frito/broaster).
+   */
+  isDrinkOnlyAccompanimentMessage(text: string): boolean {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw || raw.length < 3) return false;
+    const q = normalizeText(raw);
+    const hasDrink =
+      /\b(gaseosa|gaseosas|bebida|bebidas|coca|cola|sprite|pepsi|jugo|jugos|limonada|limonadas|malta|cerveza|agua|hit|postobon|postob[oó]n|colombiana|manzana)\b/.test(
+        q,
+      );
+    if (!hasDrink) return false;
+    // Si nombra plato principal + bebida, es food+drink (otro flujo)
+    if (
+      /\b(pollo|pollos|broaster|frito|asado|pechuga|ejecutivo|bandeja|costilla|churrasco|sobrebarriga|mondongo|sopa|arroz|mojarra|alitas?|hamburguesa|combo)\b/.test(
+        q,
+      )
+    ) {
+      return false;
+    }
+    return (
+      /^(con|y|una?|la|el)\b/.test(q) ||
+      /^(gaseosa|bebida|limonada|jugo)\b/.test(q) ||
+      q.split(/\s+/).length <= 5
+    );
+  }
+
   /** Porción pedida en texto libre: medio / cuarto / entero. */
   detectPortionHint(text: string): 'medio' | 'cuarto' | 'entero' | null {
     // Glosario primero: "caurto"/"meido" → cuarto/medio antes de matchear
@@ -1425,7 +1467,12 @@ export class WhatsappCatalogService {
       return null;
     }
     // Consulta “¿el mixto es medio broaster medio frito?” ≠ pedir 1/2 broaster
-    if (this.isMixtoCompositionInquiry(text) || this.isProductDescriptionInquiry(text)) {
+    // “¿arroz chino podría ser broaster?” ≠ pedir Broaster suelto
+    if (
+      this.isMixtoCompositionInquiry(text) ||
+      this.isProductDescriptionInquiry(text) ||
+      this.isDishStyleSubstitutionInquiry(text)
+    ) {
       return null;
     }
     // No forzar si el mensaje es SOLO arroz/combo (ej. "arroz con pollo" sin porción aparte).
@@ -1993,7 +2040,7 @@ export class WhatsappCatalogService {
 
     // Quitar cola de cortesía: "…, por favor" no es separador de platos
     const withoutCourtesy = raw
-      .replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
+      .replace(/[,;]?\s*(por\s+favor|porfavor|porfa|pf|gracias|porfis)[\s!.?]*$/i, '')
       .trim();
     if (!/\s*,\s*|\s+\by\b\s+/i.test(withoutCourtesy)) {
       // Sin coma/"y": solo multi si hay 2 cantidades; "pollo con arepas" NO es 2 platos
@@ -2761,6 +2808,13 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
+    // “¿arroz chino podría ser broaster?” → buscar el plato base, no Broaster suelto
+    if (this.isDishStyleSubstitutionInquiry(text)) {
+      const baseQ = this.extractBaseDishQueryForStyleSwap(text);
+      if (!baseQ || this.isDishStyleSubstitutionInquiry(baseQ)) return null;
+      return this.findProductEmbeddedInMessage(baseQ, products);
+    }
+
     const ejecutivo = this.resolveEjecutivoOrderProduct(text, products);
     if (ejecutivo) return ejecutivo;
 
@@ -4582,6 +4636,70 @@ export class WhatsappCatalogService {
     return false;
   }
 
+  /**
+   * “El arroz chino con pollo podría ser pollo broaster?” —
+   * pregunta si se puede cambiar el estilo del pollo del plato, NO pedir Broaster suelto.
+   */
+  isDishStyleSubstitutionInquiry(text: string): boolean {
+    const raw = fixCommonOrderTypos((text || '').trim());
+    if (!raw || raw.length < 12) return false;
+    if (/^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme|pedi|pido)\b/i.test(raw)) {
+      return false;
+    }
+    const q = normalizeText(raw);
+    if (this.isMixtoCompositionInquiry(raw)) return false;
+
+    const hasBaseDish =
+      /\barroz(\s+chino)?\b/.test(q) ||
+      /\b(bandeja|ejecutivo|sopa|ajiaco|mondongo|mojarra|churrasco|costilla|hamburguesa|tacos?|alitas?)\b/.test(
+        q,
+      );
+    if (!hasBaseDish) return false;
+
+    const hasStyle = /\b(broaster|frito|asado|apanad[oa]|en\s+salsa)\b/.test(q);
+    if (!hasStyle) return false;
+
+    const asksSwap =
+      /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+ser\b/.test(q) ||
+      /\b(en\s+vez\s+de|en\s+lugar\s+de)\b/.test(q) ||
+      /\b(cambiar(?:lo|la)?|hacerlo|hacerla)\s+(a|por|con)\b/.test(q) ||
+      (/\?/.test(raw) &&
+        /\b(podr[ií]a|puede|posible|opci[oó]n|ser[ií]a)\b/.test(q) &&
+        /\b(broaster|frito|asado)\b/.test(q));
+
+    return asksSwap;
+  }
+
+  /** Estilo pedido en la nota (“broaster”, “frito”…) para anotar en el plato base. */
+  extractRequestedProteinStyle(text: string): string | null {
+    const q = normalizeText(text || '');
+    if (/\bbroaster\b/.test(q)) return 'broaster';
+    if (/\bfrito\b/.test(q)) return 'frito';
+    if (/\basado\b/.test(q)) return 'asado';
+    if (/\bapanad[oa]\b/.test(q)) return 'apanado';
+    return null;
+  }
+
+  /**
+   * Texto de búsqueda del plato base, sin la coletilla “podría ser broaster”.
+   * Ej: "el arroz chino con pollo podría ser pollo broaster" → "arroz chino con pollo"
+   */
+  extractBaseDishQueryForStyleSwap(text: string): string {
+    let q = normalizeText(fixCommonOrderTypos((text || '').trim()));
+    q = q
+      .replace(
+        /\b(podr[ií]a|puede|pudiera|se\s+puede|se\s+podr[ií]a)\s+ser\b.*$/i,
+        ' ',
+      )
+      .replace(/\b(en\s+vez\s+de|en\s+lugar\s+de)\b.*$/i, ' ')
+      .replace(/\b(cambiar(?:lo|la)?|hacerlo|hacerla)\s+(a|por|con)\b.*$/i, ' ')
+      .replace(/\b(veci(?:no|na|o)?|parce|compadre|amigo|amiga)\b/gi, ' ')
+      .replace(/\b(el|la|los|las|un|una|unos|unas)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return q || normalizeText(text || '');
+  }
+
   formatVariantFamilyPrompt(family: ProductVariantFamily): string {
     const rows = family.variants.map((p, i) => ({
       index: i + 1,
@@ -5317,7 +5435,7 @@ export class WhatsappCatalogService {
     let q = this.extractProductSearchQuery(text);
     if (!q) return [];
     // "…, por favor" no es separador de platos
-    q = q.replace(/[,;]?\s*(por\s+favor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim();
+    q = q.replace(/[,;]?\s*(por\s+favor|porfavor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim();
     if (!q) return [];
     // No partir "sin yuca más papa" por el "más"
     q = q.replace(
@@ -5363,7 +5481,7 @@ export class WhatsappCatalogService {
     const out: string[] = [];
     for (const seg of expanded) {
       const cleaned = this.cleanOrderSegment(
-        seg.replace(/\s+(por favor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim(),
+        seg.replace(/\s+(por\s+favor|porfavor|porfa|por\s+fa|pf|gracias)[\s!.?]*$/i, '').trim(),
       );
       if (cleaned.length < 3) continue;
       const key = normalizeText(cleaned);
@@ -5402,7 +5520,7 @@ export class WhatsappCatalogService {
     }
 
     // No partir toppings: "con papa salada" / "con queso y bocadillo" sin otro plato
-    let q = cleanedOnce.replace(/[,;]?\s*(por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '').trim();
+    let q = cleanedOnce.replace(/[,;]?\s*(por\s+favor|porfavor|porfa|pf|gracias)[\s!.?]*$/i, '').trim();
     q = q.replace(
       /\bsin\s+[^\s,]+(?:\s+[^\s,]+)?\s+(?:mas|más)\s+[^\s,]+(?:\s+[^\s,]+)?/gi,
       (m) => m.replace(/\s+(?:mas|más)\s+/i, ' con '),
@@ -5566,6 +5684,7 @@ export class WhatsappCatalogService {
     if (this.isMenuExploreIntent(text, products)) return null;
     if (this.isProductDescriptionInquiry(text)) return null;
     if (this.isAvailabilityInquiry(text)) return null;
+    if (this.isDishStyleSubstitutionInquiry(text)) return null;
     if (this.isExternalMarketplaceOrderMessage(text)) return null;
     // "Cambia la dirección a…" no es pedido multi
     if (isAddressChangeIntent(text)) return null;

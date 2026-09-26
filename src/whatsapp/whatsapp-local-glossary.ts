@@ -28,6 +28,16 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   // Pollo / mixto
   { re: /\bmedio\s+de\s+pollo\b/gi, to: 'medio pollo' },
   { re: /\bun\s+medio\s+(?:de\s+)?pollo\b/gi, to: 'medio pollo' },
+  // "pollo y medio" = 1 entero + 1/2 (no partir en "pollo" + "medio" huérfano).
+  // Proteger "combo de pollo y medio" (flujo aparte).
+  { re: /\bcombo\s+(?:de\s+)?pollo\s+y\s+medio\b/gi, to: '__COMBO_POLLO_Y_MEDIO__' },
+  {
+    re: /\b(?:un\s+|el\s+|unos?\s+)?pollos?\s+y\s+medio\b/gi,
+    to: '1 pollo y medio pollo',
+  },
+  { re: /__COMBO_POLLO_Y_MEDIO__/gi, to: 'combo de pollo y medio' },
+  // "porfavor" pegado (sin espacio)
+  { re: /\bporfavor\b/gi, to: 'por favor' },
   // "y medio que vale" / "cuarto que vale" (sin arroz) → pollo
   {
     re: /\b(?:y\s+)?(medio|media|cuarto|cuarta|entero|entera)\s+que\s+vale\b/gi,

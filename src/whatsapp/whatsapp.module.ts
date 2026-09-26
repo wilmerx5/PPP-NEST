@@ -14,6 +14,8 @@ import { WhatsappCleanupService } from './whatsapp-cleanup.service';
 import { WhatsappRateLimitService } from './whatsapp-rate-limit.service';
 import { WhatsappPointsService } from './whatsapp-points.service';
 import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
+import { WhatsappAgentService } from './whatsapp-agent.service';
+import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappAdminController } from './whatsapp-admin.controller';
@@ -41,6 +43,8 @@ import { User } from '../auth/entities/user.entity';
     WhatsappMetaService,
     WhatsappCatalogService,
     WhatsappAiService,
+    WhatsappAgentService,
+    WhatsappTurnTelemetryService,
     WhatsappConversationService,
     WhatsappOrchestratorService,
     WhatsappActionGuardService,

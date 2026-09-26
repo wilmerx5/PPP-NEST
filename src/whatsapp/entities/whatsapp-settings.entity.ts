@@ -241,6 +241,13 @@ export class WhatsappSettings {
   })
   aiTemperature: number | null;
 
+  /**
+   * Agent V1: LLM + tools (comprensión) en lugar del parser eterno.
+   * Probar en PPP antes de multi-tenant SaaS.
+   */
+  @Column({ name: 'agent_v1_enabled', type: 'boolean', default: false })
+  agentV1Enabled: boolean;
+
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt: Date;
 }

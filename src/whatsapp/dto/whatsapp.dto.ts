@@ -186,6 +186,11 @@ export class UpdateWhatsappSettingsDto {
   @IsString()
   aiDisclaimerMessage?: string;
 
+  /** Agent V1: LLM + tools (probar en PPP) */
+  @IsOptional()
+  @IsBoolean()
+  agentV1Enabled?: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)

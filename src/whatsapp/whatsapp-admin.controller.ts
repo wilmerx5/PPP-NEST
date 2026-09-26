@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   Sse,
@@ -34,6 +35,7 @@ import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappMetaService } from './whatsapp-meta.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
 import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
+import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 
 @ApiTags('Admin WhatsApp')
@@ -48,6 +50,7 @@ export class WhatsappAdminController {
     private readonly metaService: WhatsappMetaService,
     private readonly deliveryRouting: WhatsappDeliveryRoutingService,
     private readonly adminAlerts: WhatsappAdminAlertService,
+    private readonly turnTelemetry: WhatsappTurnTelemetryService,
   ) {}
 
   @Sse('alerts/stream')
@@ -70,6 +73,15 @@ export class WhatsappAdminController {
   async updateSettings(@Body() dto: UpdateWhatsappSettingsDto) {
     const row = await this.settingsService.updateSettings(dto);
     return this.settingsService.maskSettings(row);
+  }
+
+  @Get('telemetry/turns')
+  @ApiOperation({
+    summary: 'Últimos turnos WhatsApp (Agent V1 / paths) — ring buffer en memoria',
+  })
+  getTurnTelemetry(@Query('limit') limit?: string) {
+    const n = Math.min(100, Math.max(1, parseInt(limit || '30', 10) || 30));
+    return { turns: this.turnTelemetry.getRecent(n) };
   }
 
   @Post('delivery/quote-test')

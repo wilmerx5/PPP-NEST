@@ -248,6 +248,11 @@ export class WhatsappSettingsService {
         null,
       openaiModel: row.openaiModel || 'gpt-4o-mini',
       aiTemperature: Number.isFinite(temp) ? Math.min(1.5, Math.max(0, temp)) : 0.2,
+      agentV1Enabled:
+        row.agentV1Enabled === true ||
+        ['1', 'true', 'yes', 'on'].includes(
+          (this.config.get<string>('WHATSAPP_AGENT_V1') || '').trim().toLowerCase(),
+        ),
       systemPrompt: `${TONE_GUIDE}\n\n${this.applyTemplate(systemTpl, templateVars)}`,
       welcomeMessage: this.applyTemplate(welcomeTpl, templateVars),
       aiDisclaimerMessage: scrubAiDisclaimerCopy(
@@ -419,6 +424,7 @@ export class WhatsappSettingsService {
       ...(dto.aiDisclaimerMessage !== undefined && {
         aiDisclaimerMessage: strOrNull(dto.aiDisclaimerMessage),
       }),
+      ...(dto.agentV1Enabled !== undefined && { agentV1Enabled: !!dto.agentV1Enabled }),
       ...(dto.restaurantName !== undefined && { restaurantName: strOrNull(dto.restaurantName) }),
       ...(dto.restaurantAddress !== undefined && {
         restaurantAddress: strOrNull(dto.restaurantAddress),
@@ -579,6 +585,7 @@ export class WhatsappSettingsService {
       menuConceptGroups: resolveMenuConceptGroups(row.menuConceptGroups),
       welcomeMessage: row.welcomeMessage,
       aiDisclaimerMessage: row.aiDisclaimerMessage,
+      agentV1Enabled: !!row.agentV1Enabled,
       restaurantName: row.restaurantName,
       restaurantAddress: row.restaurantAddress,
       restaurantCity: row.restaurantCity,

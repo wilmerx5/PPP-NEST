@@ -49,6 +49,16 @@ const pppMenu: WhatsappCatalogProduct[] = [
     categoryName: 'Pollo',
   },
   {
+    id: 4,
+    code: 4,
+    name: '1 Pollo Broaster',
+    price: 46000,
+    hasAttributes: true,
+    attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }],
+    availableNow: true,
+    categoryName: 'Pollo',
+  },
+  {
     id: 2,
     code: 2,
     name: '1/2 Pollo Frito',
@@ -1350,6 +1360,67 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
     });
   });
 
+  describe('Chat pollo y medio + gaseosa + qty×2 arepas', () => {
+    it('Regalame pollo y medio → 1 pollo + medio pollo (no “medio porfavor” huérfano)', () => {
+      const text = applyLocalGlossary('Regalame pollo y medio porfavor');
+      expect(text).toMatch(/1\s+pollo/i);
+      expect(text).toMatch(/medio\s+pollo/i);
+      expect(text).not.toMatch(/medio porfavor/i);
+
+      const segs = catalog.splitMultiProductSegments(text);
+      expect(segs.some((s) => /medio\s+pollo/i.test(s))).toBe(true);
+      expect(segs.every((s) => !/porfavor/i.test(s))).toBe(true);
+
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      expect(multi!.unresolved.some((u) => /^pollo$/i.test(u.trim()))).toBe(false);
+
+      const names = [
+        ...(multi!.confident || []).map((c) => c.product.name),
+        ...(multi!.needsAttributes || []).map((c) => c.product.name),
+        ...(multi!.ambiguous || []).flatMap((a) => a.candidates.map((c) => c.name)),
+      ];
+      // Debe cubrir entero + medio (estilo puede quedar ambigua o en attrs)
+      expect(names.some((n) => /1\s+pollo|pollo\s+frito|pollo\s+broaster/i.test(n) && !/1\/2|medio/i.test(n))).toBe(
+        true,
+      );
+      expect(
+        names.some((n) => /1\/2\s+pollo|medio/i.test(n)) ||
+          (multi!.ambiguous || []).some((a) => /medio/i.test(a.segment)),
+      ).toBe(true);
+    });
+
+    it('con gaseosa es solo bebida (no plato nuevo)', () => {
+      expect(catalog.isDrinkOnlyAccompanimentMessage('Con gaseosa')).toBe(true);
+      expect(catalog.isDrinkOnlyAccompanimentMessage('y una limonada')).toBe(true);
+      expect(catalog.isDrinkOnlyAccompanimentMessage('pollo frito con gaseosa')).toBe(
+        false,
+      );
+    });
+
+    it('Un pollo frito y medio broaster: cada uno qty 1 (no ×2 por elección arepas)', () => {
+      const text = applyLocalGlossary(
+        'Un pollo frito\nY medio pollo broaster',
+      );
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...(multi?.confident || []).map((c) => c.product.name),
+        ...(multi?.needsAttributes || []).map((c) => c.product.name),
+      ];
+      expect(names.some((n) => /1\s+pollo\s+frito/i.test(n))).toBe(true);
+      expect(names.some((n) => /1\/2\s+pollo\s+broaster/i.test(n))).toBe(true);
+
+      // Simula sourceText corrupto del bug: segmento + "2" (arepas)
+      expect(
+        catalog.extractQuantityFromSegment('medio pollo broaster 2'),
+      ).toBeGreaterThanOrEqual(1);
+      // Con sourceText limpio (solo segmento) → 1
+      expect(catalog.extractQuantityFromSegment('medio pollo broaster')).toBe(1);
+      expect(catalog.extractQuantityFromSegment('Un pollo frito')).toBe(1);
+    });
+  });
+
   describe('Combo mixto = mitad broaster + mitad frito (no 1/2 Broaster)', () => {
     it('pregunta de composición no resuelve a 1/2 Pollo Broaster', () => {
       const raw = 'El combo mixto es medio broster medio frito?';
@@ -1359,6 +1430,33 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.resolveSizedChickenProduct(raw, pppMenu)).toBeNull();
       expect(catalog.resolveSizedChickenProduct(text, pppMenu)).toBeNull();
       expect(catalog.isComboMeaningInquiry(text)).toBe(true);
+    });
+
+    it('arroz chino podría ser broaster → consulta de estilo, no Pollo Broaster', () => {
+      const raw = 'Veci el arroz Chino con pollo podría ser pollo broaster ??';
+      expect(catalog.isDishStyleSubstitutionInquiry(raw)).toBe(true);
+      expect(catalog.extractRequestedProteinStyle(raw)).toBe('broaster');
+      expect(catalog.extractBaseDishQueryForStyleSwap(raw)).toMatch(/arroz chino/i);
+      expect(catalog.resolveSizedChickenProduct(raw, pppMenu)).toBeNull();
+      const hit = catalog.findProductEmbeddedInMessage(raw, pppMenu);
+      expect(hit?.name).toMatch(/arroz chino/i);
+      expect(hit?.name).not.toMatch(/^1(\/|\\)?\s*pollo\s+broaster/i);
+      expect(hit?.name).not.toMatch(/^combo de pollo broaster/i);
+      const family = catalog.findProductVariantFamily(
+        catalog.extractBaseDishQueryForStyleSwap(raw),
+        pppMenu,
+      );
+      expect(family?.baseLabel).toMatch(/arroz chino/i);
+      expect(family?.variants.some((p) => /broaster/i.test(p.name))).toBe(false);
+    });
+
+    it('pedir broaster sí sigue siendo pedido', () => {
+      expect(catalog.isDishStyleSubstitutionInquiry('quiero un pollo broaster')).toBe(
+        false,
+      );
+      expect(
+        catalog.isDishStyleSubstitutionInquiry('Veci me regalas un medio broaster'),
+      ).toBe(false);
     });
 
     it('Hola suelto abandona pendingAttribute (atrape arepas)', () => {

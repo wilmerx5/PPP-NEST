@@ -1,0 +1,501 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { WhatsappSettingsService } from './whatsapp-settings.service';
+import {
+  WhatsappCatalogService,
+  type WhatsappCatalogProduct,
+} from './whatsapp-catalog.service';
+import type { AiOrderAction } from './types/whatsapp-session.types';
+
+export type AgentV1TurnInput = {
+  userMessage: string;
+  sessionSummary: string;
+  recentMessages: string[];
+  businessRulesBlock: string;
+  brandName: string;
+  products: WhatsappCatalogProduct[];
+  menuUrl?: string | null;
+  humanPhone?: string | null;
+};
+
+export type AgentV1TurnResult = {
+  reply: string;
+  actions: AiOrderAction;
+  /** Producto que necesita attrs: el orquestador abre pendingAttribute */
+  needsAttributeProductId?: number;
+  toolCalls: string[];
+  error?: string;
+};
+
+type ChatMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+  name?: string;
+};
+
+const AGENT_TOOLS = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'search_menu',
+      description:
+        'Busca platos en el menú autorizado por nombre, código o estilo (frito, broaster, medio…). Úsala ANTES de add_item.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Texto de búsqueda del cliente' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'add_item',
+      description:
+        'Agrega un producto al carrito por id del menú. Si requiere opciones (arepas/bebida), pásalas en attributes o el sistema pedirá al cliente.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'number' },
+          quantity: { type: 'number', minimum: 1, maximum: 10 },
+          note: { type: 'string', description: 'Nota de cocina (ej. pollo broaster)' },
+          attributes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                attributeName: { type: 'string' },
+                attributeValue: { type: 'string' },
+              },
+              required: ['attributeName', 'attributeValue'],
+            },
+          },
+        },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'remove_item',
+      description: 'Quita un producto del carrito por productId.',
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'number' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_address',
+      description: 'Guarda dirección de domicilio del cliente.',
+      parameters: {
+        type: 'object',
+        properties: { address: { type: 'string' } },
+        required: ['address'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_order_type',
+      description: 'delivery = domicilio, pickup = recojo en local.',
+      parameters: {
+        type: 'object',
+        properties: {
+          orderType: { type: 'string', enum: ['delivery', 'pickup'] },
+        },
+        required: ['orderType'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_notes',
+      description: 'Notas del pedido / preferencias de cocina.',
+      parameters: {
+        type: 'object',
+        properties: { notes: { type: 'string' } },
+        required: ['notes'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'clear_cart',
+      description: 'Vacía el carrito si el cliente lo pide explícitamente.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'request_human',
+      description: 'Deriva a atención humana cuando no puedes resolver.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+];
+
+/**
+ * Agent V1: LLM con tool-calling.
+ * El orquestador aplica ActionGuard + carrito; este servicio solo propone.
+ */
+@Injectable()
+export class WhatsappAgentService {
+  private readonly logger = new Logger(WhatsappAgentService.name);
+  private readonly maxIterations = 5;
+
+  constructor(
+    private readonly settingsService: WhatsappSettingsService,
+    private readonly catalogService: WhatsappCatalogService,
+  ) {}
+
+  async runTurn(input: AgentV1TurnInput): Promise<AgentV1TurnResult> {
+    const cfg = await this.settingsService.getEffectiveConfig();
+    const phone = (input.humanPhone || cfg.localContext?.publicPhone || '3118866823').replace(
+      /\D/g,
+      '',
+    );
+    if (!cfg.openaiApiKey) {
+      return {
+        reply: `El asistente aún no está configurado. Contáctanos al *${phone || '3118866823'}*.`,
+        actions: {},
+        toolCalls: [],
+        error: 'no_openai_key',
+      };
+    }
+
+    const byId = new Map(input.products.map((p) => [p.id, p]));
+    const actions: AiOrderAction = {};
+    const toolCalls: string[] = [];
+    let needsAttributeProductId: number | undefined;
+
+    const system = `${cfg.systemPrompt}
+
+Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
+NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
+Reglas:
+- Siempre search_menu antes de add_item si no tienes el productId.
+- Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
+- "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
+- Preguntas ("podría ser broaster?") → responde y usa set_notes; no agregues Broaster suelto.
+- La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).
+- Si no entiendes: una pregunta corta o request_human.
+- Responde en español colombiano, breve, sin emojis excesivos.
+
+${input.businessRulesBlock}
+
+Sesión (carrito y estado — fuente de verdad):
+${input.sessionSummary}
+
+Menú: usa search_menu. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
+Contacto humano: *${phone || '3118866823'}*
+`;
+
+    const history = this.toChatMessages(input.recentMessages).slice(-10);
+    const messages: ChatMessage[] = [
+      { role: 'system', content: system },
+      ...history,
+      { role: 'user', content: input.userMessage },
+    ];
+
+    const model = cfg.openaiModel || 'gpt-4o-mini';
+
+    try {
+      for (let i = 0; i < this.maxIterations; i++) {
+        const body: Record<string, unknown> = {
+          model,
+          messages,
+          tools: AGENT_TOOLS,
+          tool_choice: 'auto',
+        };
+        if (!/^gpt-5/i.test(model)) {
+          body.temperature = Math.min(0.4, cfg.aiTemperature ?? 0.2);
+        }
+
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          this.logger.error(`AgentV1 OpenAI ${res.status}: ${err.slice(0, 300)}`);
+          return {
+            reply: `Tuve un problema técnico. Contáctanos al *${phone || '3118866823'}*.`,
+            actions,
+            toolCalls,
+            error: `openai_${res.status}`,
+          };
+        }
+
+        const data = (await res.json()) as {
+          choices?: {
+            message?: ChatMessage;
+            finish_reason?: string;
+          }[];
+        };
+        const msg = data.choices?.[0]?.message;
+        if (!msg) {
+          return {
+            reply: 'No pude procesar tu mensaje. ¿Me lo repites con el plato o código?',
+            actions,
+            toolCalls,
+            error: 'empty_message',
+          };
+        }
+
+        messages.push({
+          role: 'assistant',
+          content: msg.content ?? null,
+          tool_calls: msg.tool_calls,
+        });
+
+        const calls = msg.tool_calls || [];
+        if (!calls.length) {
+          const reply = (msg.content || '').trim().slice(0, 3500);
+          return {
+            reply:
+              reply ||
+              '¿Qué se te antoja? Dime el plato o el código, o escribe *menú*.',
+            actions,
+            toolCalls,
+            needsAttributeProductId,
+          };
+        }
+
+        for (const call of calls) {
+          const name = call.function?.name || '';
+          toolCalls.push(name);
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(call.function?.arguments || '{}') as Record<string, unknown>;
+          } catch {
+            args = {};
+          }
+          const toolResult = this.executeTool(name, args, {
+            products: input.products,
+            byId,
+            actions,
+            setNeedsAttr: (id) => {
+              needsAttributeProductId = id;
+            },
+          });
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            name,
+            content: toolResult,
+          });
+        }
+      }
+
+      return {
+        reply:
+          'Estoy armando tu pedido. ¿Me confirmas el plato (nombre o código) o escribes *menú*?',
+        actions,
+        toolCalls,
+        needsAttributeProductId,
+        error: 'max_iterations',
+      };
+    } catch (err) {
+      this.logger.error(`AgentV1 failed: ${err}`);
+      return {
+        reply: `No pude procesar tu mensaje. Contáctanos al *${phone || '3118866823'}*.`,
+        actions,
+        toolCalls,
+        error: 'exception',
+      };
+    }
+  }
+
+  private executeTool(
+    name: string,
+    args: Record<string, unknown>,
+    ctx: {
+      products: WhatsappCatalogProduct[];
+      byId: Map<number, WhatsappCatalogProduct>;
+      actions: AiOrderAction;
+      setNeedsAttr: (id: number) => void;
+    },
+  ): string {
+    switch (name) {
+      case 'search_menu': {
+        const query = String(args.query || '').trim();
+        if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
+        const byCode = this.catalogService.extractCodeFromMessage(query);
+        if (byCode != null) {
+          const found = this.catalogService.findByCode(byCode, ctx.products);
+          if (found) {
+            return JSON.stringify({
+              ok: true,
+              results: [this.productCard(found)],
+            });
+          }
+        }
+        const scored = this.catalogService.searchByNameScored(query, ctx.products, 6);
+        const embedded = this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
+        const results = scored.map((x) => this.productCard(x.p));
+        if (embedded && !results.some((r) => r.id === embedded.id)) {
+          results.unshift(this.productCard(embedded));
+        }
+        return JSON.stringify({
+          ok: true,
+          query,
+          results: results.slice(0, 6),
+          hint:
+            results.length === 0
+              ? 'Sin coincidencias. Pide nombre/código o menú.'
+              : 'Elige productId de results para add_item.',
+        });
+      }
+      case 'add_item': {
+        const productId = Number(args.productId);
+        const product = ctx.byId.get(productId);
+        if (!product) {
+          return JSON.stringify({ ok: false, error: `productId ${productId} no existe` });
+        }
+        if (product.availableNow === false) {
+          return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
+        }
+        const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
+        const note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
+        const attributes = Array.isArray(args.attributes)
+          ? (args.attributes as { attributeName: string; attributeValue: string }[])
+          : undefined;
+
+        if (product.hasAttributes && product.attributes?.length) {
+          const required = product.attributes;
+          const hasAll =
+            attributes?.length &&
+            required.every((def) =>
+              attributes.some(
+                (a) =>
+                  a.attributeName?.toLowerCase() === def.attributeName.toLowerCase() &&
+                  def.options.some(
+                    (o) => o.toLowerCase() === a.attributeValue?.trim().toLowerCase(),
+                  ),
+              ),
+            );
+          if (!hasAll) {
+            ctx.setNeedsAttr(product.id);
+            return JSON.stringify({
+              ok: false,
+              needsAttributes: true,
+              productId: product.id,
+              name: product.name,
+              options: required.map((a) => ({
+                attributeName: a.attributeName,
+                choices: a.options,
+              })),
+              hint: 'Pide al cliente que elija opciones (número o nombre). No inventes attrs.',
+            });
+          }
+        }
+
+        if (!ctx.actions.addItems) ctx.actions.addItems = [];
+        ctx.actions.addItems.push({
+          productId: product.id,
+          quantity,
+          note,
+          attributes,
+        });
+        return JSON.stringify({
+          ok: true,
+          added: this.productCard(product),
+          quantity,
+          note: note || null,
+        });
+      }
+      case 'remove_item': {
+        const productId = Number(args.productId);
+        if (!ctx.actions.removeProductIds) ctx.actions.removeProductIds = [];
+        if (!ctx.actions.removeProductIds.includes(productId)) {
+          ctx.actions.removeProductIds.push(productId);
+        }
+        return JSON.stringify({ ok: true, removedProductId: productId });
+      }
+      case 'set_address': {
+        const address = String(args.address || '').trim();
+        if (address.length < 8) {
+          return JSON.stringify({ ok: false, error: 'dirección muy corta' });
+        }
+        ctx.actions.setAddress = address.slice(0, 500);
+        ctx.actions.setOrderType = 'delivery';
+        return JSON.stringify({ ok: true, address: ctx.actions.setAddress });
+      }
+      case 'set_order_type': {
+        const orderType = args.orderType === 'pickup' ? 'pickup' : 'delivery';
+        ctx.actions.setOrderType = orderType;
+        return JSON.stringify({ ok: true, orderType });
+      }
+      case 'set_notes': {
+        const notes = String(args.notes || '').trim().slice(0, 400);
+        if (!notes) return JSON.stringify({ ok: false, error: 'notes vacío' });
+        ctx.actions.setCustomerNotes = notes;
+        return JSON.stringify({ ok: true, notes });
+      }
+      case 'clear_cart': {
+        ctx.actions.clearCart = true;
+        return JSON.stringify({ ok: true });
+      }
+      case 'request_human': {
+        ctx.actions.requestHuman = true;
+        return JSON.stringify({ ok: true });
+      }
+      default:
+        return JSON.stringify({ ok: false, error: `tool desconocida: ${name}` });
+    }
+  }
+
+  private productCard(p: WhatsappCatalogProduct) {
+    return {
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      price: p.price,
+      category: p.categoryName || null,
+      hasAttributes: !!p.hasAttributes,
+      attributes: (p.attributes || []).map((a) => ({
+        attributeName: a.attributeName,
+        options: a.options,
+      })),
+    };
+  }
+
+  private toChatMessages(
+    recent: string[],
+  ): Array<{ role: 'user' | 'assistant'; content: string }> {
+    const out: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    for (const line of recent) {
+      const trimmed = (line || '').trim();
+      if (!trimmed) continue;
+      if (/^Cliente:\s*/i.test(trimmed)) {
+        out.push({ role: 'user', content: trimmed.replace(/^Cliente:\s*/i, '').trim() });
+      } else if (/^Bot:\s*/i.test(trimmed)) {
+        out.push({ role: 'assistant', content: trimmed.replace(/^Bot:\s*/i, '').trim() });
+      } else {
+        out.push({ role: 'user', content: trimmed });
+      }
+    }
+    return out.filter((m) => m.content.length > 0);
+  }
+}
