@@ -1808,6 +1808,34 @@ export class WhatsappOrchestratorService {
     }
 
     // Explorar menú / "qué ofreces de carne" / categoría suelta ("Pollo") → listar
+    // Antes: “qué tienes sudado/frito” → lista por estilo (no dump de categorías)
+    {
+      const styleBrowse = this.catalogService.extractCookingStyleBrowseIntent(text);
+      if (styleBrowse) {
+        const styleHits = this.catalogService.findProductsByCookingStyle(
+          styleBrowse,
+          products,
+          12,
+        );
+        const reply = this.catalogService.formatCookingStyleBrowseReply(styleBrowse, styleHits, {
+          menuUrl: cfg.menuUrl,
+          availableStyles: this.catalogService.listAvailableCookingStyles(products),
+        });
+        session = {
+          ...session,
+          pendingMatch: styleHits.length
+            ? { query: styleBrowse, candidates: styleHits }
+            : undefined,
+          pendingCategoryBrowse: undefined,
+          pendingAttribute: undefined,
+          pendingMultiOrder: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(conv, msg.waId, reply);
+        return;
+      }
+    }
+
     const browseAsk =
       this.catalogService.isMenuExploreIntent(text, products) ||
       this.catalogService.isCategoryBrowseQuestion(text);

@@ -222,6 +222,7 @@ Reglas:
   Tras add_item: NO pidas nombre, dirección ni pago.
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
+- Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista 2–4 de results o di que no manejamos ese estilo + availableStyles. PROHIBIDO dump de todas las categorías.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
 - "Menú" / "carta" / "pásame el menú" SIN calificativo → link de la carta (NO add_item).
@@ -456,6 +457,29 @@ Contacto humano: *${phone || '3118866823'}*
             // Alias para prompts viejos
             results: conceptBrowse.products.slice(0, max).map((p) => this.productCard(p)),
             hint: conceptBrowse.hint,
+          });
+        }
+
+        // Estilo de preparación (“sudado”, “frito”, “asado”…)
+        const styleBrowse =
+          this.catalogService.extractCookingStyleBrowseIntent(query) ||
+          this.catalogService.extractCookingStyleBrowseIntent(`qué tienes ${query}`);
+        if (styleBrowse) {
+          const styleHits = this.catalogService.findProductsByCookingStyle(
+            styleBrowse,
+            ctx.products,
+            12,
+          );
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'cooking_style_browse',
+            style: styleBrowse,
+            results: styleHits.map((p) => this.productCard(p)),
+            availableStyles: this.catalogService.listAvailableCookingStyles(ctx.products),
+            hint: styleHits.length
+              ? `Hay platos/attrs con preparación "${styleBrowse}". Ofrece 2–4 de results (nombre+precio). No dumps de categorías.`
+              : `No hay "${styleBrowse}" en carta. Di "Por ahora no manejamos ${styleBrowse}" y menciona 2–3 de availableStyles. PROHIBIDO listar todas las categorías.`,
           });
         }
 

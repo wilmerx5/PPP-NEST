@@ -2280,4 +2280,57 @@ Cll 6 b 78 c 33`;
       expect(applied.address).toMatch(/recoge en el local/i);
     });
   });
+
+  describe('Browse por estilo de preparación (sudado / frito)', () => {
+    it('“Que tienes que sea sudado” no es dump de categorías', () => {
+      const text = applyLocalGlossary('Que tienes que sea sudado');
+      expect(catalog.isMenuExploreIntent(text, pppMenu)).toBe(true);
+      const style = catalog.extractCookingStyleBrowseIntent(text);
+      expect(style).toMatch(/sudado/i);
+      const hits = catalog.findProductsByCookingStyle(style!, pppMenu);
+      expect(hits.length).toBe(0);
+      const reply = catalog.formatCookingStyleBrowseReply(style!, hits, {
+        availableStyles: catalog.listAvailableCookingStyles(pppMenu),
+        menuUrl: 'https://example.com/menu',
+      });
+      expect(reply).toMatch(/no manejamos.*sudado/i);
+      expect(reply).not.toMatch(/1\.\s*\*Pollo\*/i);
+      expect(reply).toMatch(/frito|asado|plancha|broaster|apanad|horno/i);
+    });
+
+    it('“qué tienes frito” lista platos fritos del menú', () => {
+      const text = applyLocalGlossary('qué tienes frito');
+      const style = catalog.extractCookingStyleBrowseIntent(text);
+      expect(style).toMatch(/frito/i);
+      const hits = catalog.findProductsByCookingStyle(style!, pppMenu);
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits.some((p) => /pollo\s+frito/i.test(p.name))).toBe(true);
+      expect(
+        hits.every(
+          (p) =>
+            /frit/i.test(p.name) ||
+            (p.attributes || []).some(
+              (a) =>
+                /seleccion|preparacion/i.test(a.attributeName) &&
+                (a.options || []).some((o) => /frit/i.test(o)),
+            ),
+        ),
+      ).toBe(true);
+      expect(catalog.extractCookingStyleBrowseIntent('quiero pollo frito')).toBeNull();
+    });
+
+    it('overview de menú es corto (solo categorías, sin precios)', () => {
+      const { text } = catalog.formatMenuCategoryOverview(pppMenu, {
+        intro: 'Para almorzar tenemos varias cosas ricas.',
+        menuUrl: 'https://example.com/menu',
+      });
+      expect(text).toMatch(/Categorías:/i);
+      expect(text).toMatch(/\*1\.\*/);
+      expect(text).not.toMatch(/\$\d/);
+      expect(text).not.toMatch(/…y \d+ más/);
+      expect(text).not.toMatch(/Un resumen por categorías/i);
+      // No más de ~1 línea por categoría + intro/link/cta
+      expect(text.split('\n').length).toBeLessThan(25);
+    });
+  });
 });

@@ -651,6 +651,164 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * “¿Qué tienes que sea sudado?” / “algo frito” / “tienes asado?” —
+   * browse por estilo de preparación (no dump de categorías).
+   */
+  extractCookingStyleBrowseIntent(text: string): string | null {
+    const raw = (text || '').trim();
+    if (!raw || raw.length < 4) return null;
+    if (this.extractCodeFromMessage(raw) != null) return null;
+    // Pedido concreto con plato+estilo ("quiero mojarra frita") → no browse
+    if (
+      /^(quiero|dame|ponme|agrega|regalame|me\s+regalas)\b/i.test(raw) &&
+      new RegExp(FOOD_ORDER_TOKEN, 'i').test(normalizeText(raw))
+    ) {
+      const qCheck = normalizeText(raw);
+      const foodHits = (qCheck.match(new RegExp(FOOD_ORDER_TOKEN, 'gi')) || []).length;
+      const styleHits = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(qCheck, st));
+      if (foodHits >= 1 && styleHits.length >= 1) {
+        // "quiero pollo frito" es plato, no "qué hay frito"
+        if (!/\b(que|qué|tienes|tienen|hay|ofreces|ofrecen|algo)\b/.test(qCheck)) {
+          return null;
+        }
+      }
+    }
+
+    const q = normalizeText(fixCommonOrderTypos(raw));
+    const stylesInMsg = [...COOKING_STYLE_TOKENS]
+      .filter((st) => this.queryHasToken(q, st))
+      .sort((a, b) => b.length - a.length);
+    if (!stylesInMsg.length) return null;
+
+    const style = stylesInMsg[0];
+    const asksBrowse =
+      /\b(que|qué)\s+(tienes|tiene|tienen|hay|ofreces|ofrecen|sirven|venden|manejan)\b/.test(q) ||
+      /\b(que|qué)\s+sea\b/.test(q) ||
+      /\balgo\s+\w*(sudad|frit|asad|apanad|broaster|plancha|guisad|horno)/.test(q) ||
+      /\b(tienes|tiene|tienen|hay|ofreces|ofrecen|manejan)\b.{0,40}\b/.test(q) ||
+      /\bpreparaci[oó]n\b/.test(q) ||
+      // "sudado?" / "frito?" solo
+      new RegExp(`^(el\\s+|la\\s+|en\\s+)?${style}\\??$`).test(q);
+
+    if (!asksBrowse) return null;
+
+    // Si nombran un plato concreto + estilo → dejar searchByName
+    const withoutStyle = q
+      .replace(new RegExp(`\\b${style}\\b`, 'g'), ' ')
+      .replace(/\b(que|qué|sea|algo|tienes|tiene|tienen|hay|ofreces|ofrecen|sirven|venden|manejan|de|del|la|el|los|las|unas?|unos?|preparacion|preparación|estilo|forma)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const leftoverFood = withoutStyle
+      .split(' ')
+      .filter((t) => t.length >= 4 && !COOKING_STYLE_TOKENS.has(t) && !ORDER_INTENT_ONLY.has(t));
+    if (leftoverFood.some((t) => new RegExp(FOOD_ORDER_TOKEN, 'i').test(t) && t !== style)) {
+      // "mojarra sudada" / "pollo frito" con más núcleo → no browse genérico
+      if (leftoverFood.length >= 1 && /^(quiero|dame|ponme)/.test(q)) return null;
+      if (leftoverFood.length >= 1 && !/\b(que|qué|algo|tienes|hay)\b/.test(q)) return null;
+    }
+
+    return singularizeEsToken(style) || style;
+  }
+
+  /** Productos cuyo nombre o atributo de *preparación* trae el estilo. */
+  findProductsByCookingStyle(
+    style: string,
+    products: WhatsappCatalogProduct[],
+    limit = 12,
+  ): WhatsappCatalogProduct[] {
+    const st = singularizeEsToken(normalizeText(style));
+    if (!st) return [];
+    const nonPrepAttr =
+      /\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i;
+    const prepAttr = /\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i;
+    const hits: WhatsappCatalogProduct[] = [];
+    for (const p of products) {
+      if (p.availableNow === false) continue;
+      if (productNameHasCookingStyle(p.name, st)) {
+        hits.push(p);
+        continue;
+      }
+      const attrs = p.attributes || [];
+      const attrHit = attrs.some((a) => {
+        const an = String(a.attributeName || '');
+        if (nonPrepAttr.test(an)) return false;
+        if (!prepAttr.test(an) && an.trim().length > 0) {
+          // Atributos raros: solo si el nombre parece preparación
+          if (!/prep|estilo|selec|cocin|modo|tipo/i.test(an)) return false;
+        }
+        return (a.options || []).some((opt) => productNameHasCookingStyle(String(opt), st));
+      });
+      if (attrHit) hits.push(p);
+    }
+    return hits
+      .sort((a, b) => {
+        const an = productNameHasCookingStyle(a.name, st) ? 0 : 1;
+        const bn = productNameHasCookingStyle(b.name, st) ? 0 : 1;
+        return an - bn || a.price - b.price;
+      })
+      .slice(0, limit);
+  }
+
+  /** Estilos que sí aparecen en la carta (nombre o attrs de preparación). */
+  listAvailableCookingStyles(products: WhatsappCatalogProduct[]): string[] {
+    const found = new Set<string>();
+    const nonPrepAttr =
+      /\b(arepas?|bebida|bebidas|sabor|sabores|presa|sopas?|guarnicion|acompanamiento|tama[nñ]o)\b/i;
+    const prepAttr = /\b(seleccion|selección|preparacion|preparación|estilo|coccion|cocción|tipo|modo|opcion|opción)\b/i;
+    for (const p of products) {
+      if (p.availableNow === false) continue;
+      const name = normalizeText(p.name);
+      for (const st of COOKING_STYLE_TOKENS) {
+        if (productNameHasCookingStyle(name, st)) {
+          found.add(singularizeEsToken(st));
+        }
+      }
+      for (const a of p.attributes || []) {
+        const an = String(a.attributeName || '');
+        if (nonPrepAttr.test(an)) continue;
+        if (an.trim() && !prepAttr.test(an) && !/prep|estilo|selec|cocin|modo|tipo/i.test(an)) {
+          continue;
+        }
+        for (const opt of a.options || []) {
+          const o = normalizeText(String(opt));
+          for (const st of COOKING_STYLE_TOKENS) {
+            if (productNameHasCookingStyle(o, st)) {
+              found.add(singularizeEsToken(st));
+            }
+          }
+        }
+      }
+    }
+    return [...found].filter(Boolean).sort();
+  }
+
+  formatCookingStyleBrowseReply(
+    style: string,
+    hits: WhatsappCatalogProduct[],
+    opts?: { menuUrl?: string | null; availableStyles?: string[] },
+  ): string {
+    const label = style.trim().toLowerCase();
+    if (hits.length) {
+      return (
+        `Sí 👍 Esto lo manejamos *${label}*:\n\n` +
+        this.formatCategoryList(label, hits)
+      );
+    }
+    const alts = (opts?.availableStyles || [])
+      .filter((s) => s && s !== singularizeEsToken(label))
+      .slice(0, 6);
+    const altLine = alts.length
+      ? `\nEn carta sí tenemos: *${alts.join('*, *')}*.`
+      : '';
+    const link = (opts?.menuUrl || '').trim();
+    return (
+      `Por ahora no manejamos preparación *${label}* en la carta.${altLine}\n` +
+      (link ? `\nPuedes ver todo aquí:\n${link}\n` : '') +
+      `\n¿Qué otra preparación o plato te antoja?`
+    );
+  }
+
+  /**
    * "dónde queda el restaurante", "cómo llego", "dirección del local".
    * No es pedido ni browse de productos.
    */
@@ -944,7 +1102,8 @@ export class WhatsappCatalogService {
     products: WhatsappCatalogProduct[],
     opts?: { intro?: string; examplesPerCategory?: number; menuUrl?: string | null },
   ): { text: string; categories: string[] } {
-    const examplesPerCategory = opts?.examplesPerCategory ?? 2;
+    // Por defecto: solo nombres de categoría (el dump con precios era ilegible en WA)
+    const examplesPerCategory = opts?.examplesPerCategory ?? 0;
     const byCat = this.groupProductsByCategory(products);
     const categories = [...byCat.keys()];
     const lines: string[] = [];
@@ -955,39 +1114,38 @@ export class WhatsappCatalogService {
     }
 
     if (menuUrl) {
-      lines.push(
-        '',
-        `Puedes conocer *todos nuestros productos* aquí:\n${menuUrl}`,
-        '',
-        'O si prefieres, te oriento por acá. Un resumen por categorías:',
-      );
-    } else if (opts?.intro) {
-      lines.push('', 'Te dejo un resumen por categorías:');
+      lines.push('', `Menú completo:\n${menuUrl}`);
     }
 
-    lines.push('');
+    if (categories.length) {
+      lines.push('', 'Categorías:');
+      categories.forEach((cat, idx) => {
+        const list = byCat.get(cat)!;
+        if (examplesPerCategory <= 0) {
+          lines.push(`*${idx + 1}.* ${cat}`);
+          return;
+        }
+        lines.push(
+          `*${idx + 1}. ${cat}* (${list.length} ${list.length === 1 ? 'opción' : 'opciones'})`,
+        );
+        for (const p of list.slice(0, examplesPerCategory)) {
+          lines.push(`   • *${p.name}* — ${this.formatMoney(p.price)}`);
+        }
+        if (list.length > examplesPerCategory) {
+          lines.push(`   _…y ${list.length - examplesPerCategory} más_`);
+        }
+      });
+    }
 
-    categories.forEach((cat, idx) => {
-      const list = byCat.get(cat)!;
-      lines.push(`*${idx + 1}. ${cat}* (${list.length} ${list.length === 1 ? 'opción' : 'opciones'})`);
-      for (const p of list.slice(0, examplesPerCategory)) {
-        lines.push(`   • *${p.name}* — ${this.formatMoney(p.price)}`);
-      }
-      if (list.length > examplesPerCategory) {
-        lines.push(`   _…y ${list.length - examplesPerCategory} más_`);
-      }
-      lines.push('');
-    });
-
-    lines.push('Escribe el *número* de categoría o el *plato*.');
+    lines.push('', 'Escribe el *número* de categoría o el *plato*.');
 
     return { text: lines.join('\n').replace(/\n{3,}/g, '\n\n'), categories };
   }
 
   buildMenuCategoryContextForAi(products: WhatsappCatalogProduct[]): string {
     const { text } = this.formatMenuCategoryOverview(products, {
-      intro: 'Resumen por categorías (orienta al cliente; NO vuelques todo el menú ni códigos en bloque):',
-      examplesPerCategory: 2,
+      intro: 'Categorías (orienta; NO vuelques precios ni todo el menú al cliente):',
+      examplesPerCategory: 0,
     });
     return text;
   }
@@ -4880,7 +5038,10 @@ export class WhatsappCatalogService {
     if (/\bbroaster\b/.test(q)) return 'broaster';
     if (/\bfrito\b/.test(q)) return 'frito';
     if (/\basado\b/.test(q)) return 'asado';
+    if (/\bsudad[oa]\b/.test(q)) return 'sudado';
+    if (/\bplancha\b/.test(q)) return 'plancha';
     if (/\bapanad[oa]\b/.test(q)) return 'apanado';
+    if (/\bguisad[oa]\b/.test(q)) return 'guisado';
     return null;
   }
 
