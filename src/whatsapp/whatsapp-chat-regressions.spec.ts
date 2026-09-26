@@ -667,6 +667,9 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(isUsableWhatsappCustomerName('me das')).toBe(false);
       expect(isUsableWhatsappCustomerName('Juan Pérez')).toBe(true);
       expect(isUsableWhatsappCustomerName('María')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Wilmer')).toBe(true);
+      expect(isUsableWhatsappCustomerName('no')).toBe(false);
+      expect(isUsableWhatsappCustomerName('ok')).toBe(false);
     });
   });
 

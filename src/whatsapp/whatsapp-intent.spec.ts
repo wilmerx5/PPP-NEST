@@ -290,6 +290,15 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
     }
   });
 
+  it('“no” corto tras ¿Algo más? cierra carrito', () => {
+    const { isDeclineMoreItemsIntent } = require('./whatsapp-intent');
+    for (const t of ['no', 'nop', 'nel', 'No!', 'nope']) {
+      expect(isDeclineMoreItemsIntent(t)).toBe(true);
+    }
+    expect(isDeclineMoreItemsIntent('no esa no es mi direccion')).toBe(false);
+    expect(isDeclineMoreItemsIntent('Calle 80')).toBe(false);
+  });
+
   it('terminar mi pedido es cierre, no tracking', () => {
     for (const t of [
       'Quiero terminar mi pedido',

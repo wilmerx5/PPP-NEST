@@ -249,6 +249,17 @@ export function isNothingElseOrderIntent(text: string): boolean {
 }
 
 /**
+ * Respuesta corta a “¿Algo más?” → cerrar carrito.
+ * No usar en awaiting_address (un “no” puede rechazar domicilio sugerido).
+ */
+export function isDeclineMoreItemsIntent(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t || t.length > 12) return false;
+  if (isNothingElseOrderIntent(text)) return true;
+  return /^(no|nop|nel|nope|no\s+mas|nomas)$/.test(t);
+}
+
+/**
  * Quiere cerrar el carrito actual (checkout), no consultar un pedido ya hecho.
  * Ej: "Quiero terminar mi pedido", "finalizar el pedido".
  */

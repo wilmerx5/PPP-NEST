@@ -287,6 +287,11 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'undefined',
     'asd',
     'qwerty',
+    'no',
+    'si',
+    'sí',
+    'ok',
+    'listo',
     // Verbos / muletillas que el parser a veces toma como nombre ("Necesito un domicilio")
     'necesito',
     'quiero',

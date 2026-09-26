@@ -31,6 +31,7 @@ import {
   isDeliveryLogisticsFluff,
   isHumanHandoffRequest,
   isNothingElseOrderIntent,
+  isDeclineMoreItemsIntent,
   isFinishCheckoutIntent,
   isUpcomingAddressIntent,
   PPP_ZONE_LANDMARK_RE,
@@ -621,8 +622,8 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "No, no más" / "terminar mi pedido" → checkout ANTES de ETA / agente / dirección
-    // (no interrumpir attrs / lista pendiente)
+    // "No, no más" / "terminar mi pedido" / "no" tras ¿Algo más? → checkout ANTES de ETA / agente / dirección
+    // (no interrumpir attrs / lista pendiente; bare "no" solo en building_cart)
     if (
       session.cart.length > 0 &&
       !session.pendingAttribute &&
@@ -630,7 +631,9 @@ export class WhatsappOrchestratorService {
       !session.pendingMultiOrder &&
       (this.isConfirmKeyword(originalText) ||
         isNothingElseOrderIntent(originalText) ||
-        isFinishCheckoutIntent(originalText))
+        isFinishCheckoutIntent(originalText) ||
+        (isDeclineMoreItemsIntent(originalText) &&
+          (conv.state === 'building_cart' || !conv.state)))
     ) {
       const fresh = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, fresh);
@@ -730,9 +733,12 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "así nada más" / listo → checkout ANTES de tratar el texto como dirección
+    // "así nada más" / "no" / listo → checkout ANTES de tratar el texto como dirección
     if (
-      (this.isConfirmKeyword(originalText) || isNothingElseOrderIntent(originalText)) &&
+      (this.isConfirmKeyword(originalText) ||
+        isNothingElseOrderIntent(originalText) ||
+        (isDeclineMoreItemsIntent(originalText) &&
+          (conv.state === 'building_cart' || !conv.state))) &&
       session.cart.length > 0
     ) {
       const fresh = await this.conversationService.reloadConversation(conv.id);
@@ -10883,6 +10889,9 @@ export class WhatsappOrchestratorService {
     if (isNothingElseOrderIntent(text) || isFinishCheckoutIntent(text)) {
       return false;
     }
+    if (isDeclineMoreItemsIntent(text) && session.cart.length > 0) {
+      return false;
+    }
     if (this.isVagueOrderIntent(text)) {
       return false;
     }
@@ -11064,6 +11073,47 @@ export class WhatsappOrchestratorService {
         warnings: guarded.warnings,
       });
       return true;
+    }
+
+    // Nombre del cliente vía agente → Nest guarda y sigue checkout (no cortar en “nombre registrado”)
+    {
+      const nameFromAction =
+        guarded.actions?.setCustomerName &&
+        isUsableWhatsappCustomerName(guarded.actions.setCustomerName)
+          ? guarded.actions.setCustomerName.trim()
+          : null;
+      const nameFromText =
+        !nameFromAction &&
+        session.cart.length > 0 &&
+        !isUsableWhatsappCustomerName(conv.customerName || '') &&
+        isUsableWhatsappCustomerName(originalText || text) &&
+        !this.looksLikeAddressRejectingPersonName(originalText || text) &&
+        !this.looksLikePayment(originalText || text, cfg.paymentMethods) &&
+        !this.isPickupIntent(originalText || text) &&
+        !FOOD_ORDER_SIGNAL_RE.test(originalText || text)
+          ? (originalText || text).trim()
+          : null;
+      const nameToSet = nameFromAction || nameFromText;
+      if (nameToSet && session.cart.length > 0) {
+        await this.conversationService.updateCustomerName(conv, nameToSet);
+        const fresh = await this.conversationService.reloadConversation(conv.id);
+        Object.assign(conv, fresh);
+        session = this.conversationService.getSession(conv);
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.tryConfirmOrder(conv, msg.waId, session, {
+          preface: `Con gusto, *${nameToSet}* ✅`,
+        });
+        this.turnTelemetry.record({
+          path: 'agent_v1',
+          outcome: 'order_progress',
+          waId: msg.waId,
+          conversationId: conv.id,
+          toolCalls: agent.toolCalls,
+          latencyMs: Date.now() - started,
+          warnings: [...(guarded.warnings || []), 'agent_name_to_confirm'],
+        });
+        return true;
+      }
     }
 
     // Agente eligió Mercado Pago (u otro pago) con carrito → Nest manda link / sigue checkout
