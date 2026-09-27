@@ -1976,6 +1976,10 @@ export class WhatsappOrchestratorService {
       return false;
     };
 
+    if (await this.tryHandleDailyPromoInquiry(conv, msg.waId, text, cfg)) {
+      return;
+    }
+
     if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
       return;
     }
@@ -6830,6 +6834,9 @@ export class WhatsappOrchestratorService {
       return [focusedEarly];
     }
 
+    const named = this.catalogService.specificNamedDish(stripped || text, products);
+    if (named) return [named];
+
     const family = this.catalogService.findProductVariantFamily(query || text, products);
     if (family && family.variants.length >= 2) {
       return family.variants;
@@ -6938,8 +6945,6 @@ export class WhatsappOrchestratorService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
-    const yieldOrWeightAsk =
-      /\b(gramos?|peso|pesa|personas?|alcanza|allcanza|rinde|sirve)\b/.test(q);
 
     if (product) {
       const alreadyInCart = !!session?.cart.some((c) => c.productId === product.id);
@@ -6949,9 +6954,8 @@ export class WhatsappOrchestratorService {
       if (alreadyInCart) {
         msg += '\n\n_Ya lo tienes en el carrito._';
       }
-      if (yieldOrWeightAsk) {
-        msg +=
-          '\n_Sin gramos en carta._ ¿Para cuántas personas? O ' + this.humanContactMessage();
+      if (/\bporcion\b/.test(q)) {
+        msg = `Sí. Esa es la porción de la carta.\n\n${msg}`;
       }
       return msg;
     }
@@ -7680,6 +7684,24 @@ export class WhatsappOrchestratorService {
    * "¿Tienes arroz chino?" → lista la familia (caja, con pollo, costillas)
    * y deja el foco para "cómo es con pollo" / "con qué viene".
    */
+  private async tryHandleDailyPromoInquiry(
+    conv: WhatsappConversation,
+    waId: string,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isDailyPromoInquiry(text)) return false;
+    const menu = (cfg.menuUrl || '').trim();
+    await this.reply(
+      conv,
+      waId,
+      `No hay *promoción del día* en la carta.\n` +
+        `Dime el plato y te digo la porción y el precio.` +
+        (menu ? `\nMenú: ${menu}` : ''),
+    );
+    return true;
+  }
+
   private async tryHandleProductAvailabilityQuestion(
     conv: WhatsappConversation,
     waId: string,

@@ -1714,6 +1714,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family?.variants.some((p) => /broaster/i.test(p.name))).toBe(false);
     });
 
+    it('arroz con pollo en porción personal es ese plato, no toda la familia', () => {
+      const text = 'El arroz con pollo viene en porción personal?';
+      expect(catalog.isProductDescriptionInquiry(text)).toBe(true);
+      expect(catalog.isDailyPromoInquiry('No hay promoción del dia?')).toBe(true);
+      expect(catalog.isDailyPromoInquiry(text)).toBe(false);
+      expect(catalog.specificNamedDish(text, pppMenu)?.name).toBe('Arroz Con Pollo');
+      expect(catalog.specificNamedDish('como es con pollo', pppMenu)).toBeNull();
+    });
+
     it('como es con pollo → variantes de arroz chino, no el pollo del carrito', () => {
       expect(catalog.isProductDescriptionInquiry('como es con pollo')).toBe(true);
       expect(catalog.isProductDescriptionInquiry('con que viene')).toBe(true);

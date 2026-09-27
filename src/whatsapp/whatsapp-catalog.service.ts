@@ -6478,6 +6478,33 @@ export class WhatsappCatalogService {
     return filtered || null;
   }
 
+  /** “No hay promoción del día?” — no es un plato. */
+  isDailyPromoInquiry(text: string): boolean {
+    const q = normalizeText(text || '');
+    if (!q) return false;
+    return /\b(promocion|promo|oferta)\b/.test(q) && /\b(dia|hoy)\b/.test(q);
+  }
+
+  /**
+   * El mensaje nombra un plato completo (“arroz con pollo”), no la familia (“arroz chino”).
+   * Sirve para no listar todas las presentaciones en una pregunta de porción.
+   */
+  specificNamedDish(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = normalizeText(text || '');
+    if (q.length < 4) return null;
+    const hits = products.filter((p) => {
+      if (p.availableNow === false) return false;
+      const name = normalizeText(p.name);
+      return name.length >= 8 && q.includes(name);
+    });
+    if (!hits.length) return null;
+    hits.sort((a, b) => normalizeText(b.name).length - normalizeText(a.name).length);
+    return hits[0];
+  }
+
   /** "Con qué viene", "qué lleva", gramos, rinde — consulta, no pedido. */
   isProductDescriptionInquiry(text: string): boolean {
     const raw = text.trim();
