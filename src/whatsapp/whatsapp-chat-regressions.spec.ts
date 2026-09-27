@@ -1560,6 +1560,30 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(false);
     });
 
+    it('menú ejecutivo sin estilo lista frito y broaster', () => {
+      const text = 'Hola veci, quiero pedir un menu ejecutivo';
+      const family = catalog.findProductVariantFamily(text, pppMenu);
+      expect(family?.variants.map((p) => p.name)).toEqual(
+        expect.arrayContaining([
+          'Ejecutivo Con Pollo Frito',
+          'Ejecutivo Con Pollo Broaster',
+        ]),
+      );
+      expect(catalog.pickVariantFromFamilyText(text, family!)).toBeNull();
+      const frito = pppMenu.find((p) => p.name === 'Ejecutivo Con Pollo Frito')!;
+      expect(catalog.findCookingStyleSibling(frito, pppMenu, 'broaster')?.name).toBe(
+        'Ejecutivo Con Pollo Broaster',
+      );
+      expect(catalog.isDishStyleSubstitutionInquiry('lo quiero con pollo broaster')).toBe(
+        true,
+      );
+      const named = 'quiero un menu ejecutivo con pollo frito';
+      const namedFamily = catalog.findProductVariantFamily(named, pppMenu);
+      if (namedFamily) {
+        expect(catalog.pickVariantFromFamilyText(named, namedFamily)?.name).toMatch(/frito/i);
+      }
+    });
+
     it('pedir broaster sí sigue siendo pedido', () => {
       expect(catalog.isDishStyleSubstitutionInquiry('quiero un pollo broaster')).toBe(
         false,

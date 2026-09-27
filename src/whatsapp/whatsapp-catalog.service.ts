@@ -5061,6 +5061,33 @@ export class WhatsappCatalogService {
       }
     }
 
+    // "menú ejecutivo" sin frito/broaster: los dos SKUs son la misma base
+    // ("ejecutivo con pollo"), no asumir el primero del ranking.
+    if (!useCookingStyleFamily && styleSiblings.length >= 2) {
+      const queryNamesStyle = [...COOKING_STYLE_TOKENS].some((st) => this.queryHasToken(q, st));
+      const distinctive = bestStyleBase
+        .split(/\s+/)
+        .filter((t) => this.isDistinctiveProductToken(t));
+      const queryHitsDish =
+        distinctive.length > 0 && distinctive.every((t) => this.queryHasToken(q, t));
+      const stripStyleWords = (base: string) =>
+        base
+          .split(/\s+/)
+          .filter((t) => t && !COOKING_STYLE_TOKENS.has(t))
+          .join(' ');
+      const styleCore = stripStyleWords(bestStyleBase);
+      const conflictingOther = mentionedBases.some((b) => {
+        const core = stripStyleWords(b);
+        if (!core || core.length < 4) return false;
+        if (core === styleCore || styleCore.includes(core) || core.includes(styleCore)) return false;
+        return true;
+      });
+      if (!queryNamesStyle && queryHitsDish && !conflictingOther) {
+        bestBase = bestStyleBase;
+        useCookingStyleFamily = true;
+      }
+    }
+
     if (!bestBase) return null;
 
     const queryHitsBase =
@@ -5308,10 +5335,20 @@ export class WhatsappCatalogService {
   isDishStyleSubstitutionInquiry(text: string): boolean {
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw || raw.length < 8) return false;
-    if (/^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme|pedi|pido)\b/i.test(raw)) {
+    const q = normalizeText(raw);
+    const cartStyleChange =
+      /\b(lo|la|los|las)\s+quiero\s+con\b/.test(q) ||
+      /\b(lo|la)\s+prefiero\s+con\b/.test(q) ||
+      /^(quiero|prefiero)\s+(con\s+)?(el\s+|la\s+|lo\s+)?(pollo\s+)?(broaster|frito|asado|plancha)\b/.test(
+        q,
+      ) ||
+      /^(quiero|prefiero)\s+(el|la|lo)\s+(de\s+)?(pollo\s+)?(broaster|frito|asado)\b/.test(q);
+    if (
+      /^(quiero|dame|ponme|agrega|me\s+regalas|me\s+das|vendeme|pedi|pido)\b/i.test(raw) &&
+      !cartStyleChange
+    ) {
       return false;
     }
-    const q = normalizeText(raw);
     if (this.isMixtoCompositionInquiry(raw)) return false;
 
     const hasStyle = /\b(broaster|frito|asado|apanad[oa]|en\s+salsa|plancha|sudado)\b/.test(q);
@@ -5337,7 +5374,9 @@ export class WhatsappCatalogService {
     const shortStyleSwap =
       /\bse\s+puede\s+(con\s+)?(pollo\s+)?(broaster|frito|asado|plancha)\b/.test(q) ||
       /\bpuede\s+ser\s+(pollo\s+)?(broaster|frito|asado)\b/.test(q) ||
-      /\bmejor\s+(con\s+)?(pollo\s+)?(broaster|frito|asado)\b/.test(q);
+      /\bmejor\s+(con\s+)?(pollo\s+)?(broaster|frito|asado)\b/.test(q) ||
+      /\b(lo|la|los|las)\s+quiero\s+con\s+(pollo\s+)?(broaster|frito|asado|plancha)\b/.test(q) ||
+      /\bquiero\s+con\s+(pollo\s+)?(broaster|frito|asado|plancha)\b/.test(q);
 
     if (asksSwap && hasBaseDish) return true;
     if (asksSwap || shortStyleSwap) return true;
@@ -5521,6 +5560,25 @@ export class WhatsappCatalogService {
       ];
     }
     return selected;
+  }
+
+  /**
+   * Otro SKU de la misma base que solo cambia el estilo
+   * (Ejecutivo Con Pollo Frito → Ejecutivo Con Pollo Broaster).
+   */
+  findCookingStyleSibling(
+    product: WhatsappCatalogProduct,
+    products: WhatsappCatalogProduct[],
+    style: string,
+  ): WhatsappCatalogProduct | null {
+    const base = this.stripCookingStyleTokens(product?.name || '');
+    if (!base || base.length < 4 || !style) return null;
+    const hits = products.filter((p) => {
+      if (p.availableNow === false) return false;
+      if (this.stripCookingStyleTokens(p.name) !== base) return false;
+      return productNameHasCookingStyle(p.name, style);
+    });
+    return hits.length === 1 ? hits[0] : null;
   }
 
   /** Attr de preparación / proteína (Pollo: Frito|Broaster, Selección, etc.). */

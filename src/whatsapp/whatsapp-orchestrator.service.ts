@@ -1757,6 +1757,28 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "menú ejecutivo" sin frito/broaster → listar esos SKUs, no asumir Frito
+    if (
+      await this.tryHandleUnspecifiedCookingStyleFamily(
+        conv,
+        msg.waId,
+        session,
+        text,
+        products,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
+    // Número o "broaster" sobre una lista ya mostrada, antes del agente
+    if (
+      session.pendingMatch?.candidates?.length &&
+      (await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     // Categoría / estilo / "hamburguesas o salchipapas" ANTES del agente
     // (si no, el LLM resume "comida rápida" como pollos o agrega una sola hamburguesa).
     if (
@@ -4584,6 +4606,77 @@ export class WhatsappOrchestratorService {
       (qty > 1 ? `Pediste *${qty}*. ` : '') +
         priceMiss +
         this.catalogService.formatVariantFamilyPrompt(family),
+    );
+    return true;
+  }
+
+  /**
+   * Pedido de un plato que existe en frito y en broaster (u otro estilo)
+   * como SKUs distintos, sin que el cliente haya dicho cuál.
+   */
+  private async tryHandleUnspecifiedCookingStyleFamily(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    _cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return false;
+    if (this.catalogService.isPriceInquiryIntent(text)) return false;
+    if (this.catalogService.isAvailabilityInquiry(text)) return false;
+    if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    if (this.catalogService.isDishStyleSubstitutionInquiry(text)) return false;
+    if (this.catalogService.isMenuExploreIntent(text, products)) return false;
+    if (this.catalogService.isCategoryBrowseQuestion(text)) return false;
+
+    const family = this.catalogService.findProductVariantFamily(text, products);
+    if (!family || family.variants.length < 2) return false;
+    if (this.catalogService.pickVariantFromFamilyText(text, family)) return false;
+
+    const styled = family.variants.filter((p) => {
+      const n = this.normalizeForMatch(p.name);
+      return /\b(broaster|frito|asado|plancha|sudado|apanado)\b/.test(n);
+    });
+    const styles = new Set(
+      styled.map((p) => {
+        const n = this.normalizeForMatch(p.name);
+        if (/\bbroaster\b/.test(n)) return 'broaster';
+        if (/\bfrito\b/.test(n)) return 'frito';
+        if (/\basado\b/.test(n)) return 'asado';
+        if (/\bplancha\b/.test(n)) return 'plancha';
+        if (/\bsudado\b/.test(n)) return 'sudado';
+        return 'apanado';
+      }),
+    );
+    if (styled.length < 2 || styles.size < 2) return false;
+
+    const qty = this.resolveOrderQuantity(session, text);
+    session = {
+      ...session,
+      pendingMatch: {
+        query: text,
+        candidates: styled,
+        quantity: qty > 1 ? qty : undefined,
+      },
+      ...(qty > 1
+        ? {
+            pendingQuantityHint: {
+              quantity: qty,
+              query: this.catalogService.extractProductSearchQuery(text) || text,
+            },
+          }
+        : {}),
+    };
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      (qty > 1 ? `Pediste *${qty}*. ` : '') +
+        this.catalogService.formatVariantFamilyPrompt({
+          ...family,
+          variants: styled,
+        }),
     );
     return true;
   }
@@ -11690,6 +11783,56 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    const swapped = this.trySwapCartLineToCookingStyleSku(session, products, style, baseQuery);
+    if (swapped) {
+      const remaining = this.catalogService.getRemainingAttributes(
+        swapped.product,
+        swapped.keptAttributes,
+      );
+      if (remaining.length) {
+        session = {
+          ...swapped.session,
+          cart: swapped.session.cart.filter((_, i) => i !== swapped.cartIndex),
+          pendingAttribute: {
+            productId: swapped.product.id,
+            name: swapped.product.name,
+            code: swapped.product.code,
+            price: swapped.product.price,
+            attributes: swapped.product.attributes || [],
+            selected: swapped.keptAttributes,
+          },
+          pendingMatch: undefined,
+          pendingMultiOrder: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+        await this.reply(
+          conv,
+          waId,
+          `Listo, *${swapped.product.name}* en vez de *${swapped.previousName}*.\n\n` +
+            this.catalogService.formatProductOptionsPrompt(
+              swapped.product,
+              swapped.keptAttributes,
+            ),
+        );
+        return true;
+      }
+      session = {
+        ...swapped.session,
+        pendingAttribute: undefined,
+        pendingMatch: undefined,
+        pendingMultiOrder: undefined,
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        `Listo ✅ lo cambié a *${swapped.product.name}*.\n\n¿*Algo más*?`,
+      );
+      return true;
+    }
+
+    if (session.pendingMatch?.candidates?.length) return false;
+
     // Sin attr de estilo en el carrito: nota en el plato (no agregar Broaster suelto)
     const styleNote = `pollo ${style}`;
     session = {
@@ -11830,6 +11973,89 @@ export class WhatsappOrchestratorService {
       itemName: item.name,
       attributeName: applied.attributeName,
       attributeValue: applied.attributeValue,
+    };
+  }
+
+  /**
+   * Frito y broaster son SKUs distintos (ejecutivo, no un atributo Pollo).
+   * "lo quiero con pollo broaster" reemplaza esa línea, no agrega otro pollo.
+   */
+  private trySwapCartLineToCookingStyleSku(
+    session: WhatsappSessionData,
+    products: MenuProduct[],
+    style: string,
+    baseQuery: string,
+  ): {
+    session: WhatsappSessionData;
+    product: MenuProduct;
+    previousName: string;
+    cartIndex: number;
+    keptAttributes: { attributeName: string; attributeValue: string }[];
+  } | null {
+    if (!session.cart.length) return null;
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const baseNorm = this.normalizeForMatch(baseQuery || '');
+    let bestIdx = -1;
+    let bestSibling: MenuProduct | null = null;
+    let bestScore = 0;
+
+    for (let i = 0; i < session.cart.length; i++) {
+      const item = session.cart[i];
+      const product = byId.get(item.productId);
+      if (!product) continue;
+      const sibling = this.catalogService.findCookingStyleSibling(product, products, style);
+      if (!sibling || sibling.id === product.id) continue;
+      let score = 10;
+      if (i === session.cart.length - 1) score += 20;
+      if (session.productFocus?.productId === item.productId) score += 40;
+      const nameNorm = this.normalizeForMatch(this.catalogService.stripCookingStyleTokens(item.name));
+      if (baseNorm && nameNorm && (nameNorm.includes(baseNorm) || baseNorm.includes(nameNorm))) {
+        score += 30;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = i;
+        bestSibling = sibling;
+      }
+    }
+    if (bestIdx < 0 || !bestSibling) return null;
+
+    const item = session.cart[bestIdx];
+    const keptAttributes = (item.attributes || []).filter((a) => {
+      const attr = (bestSibling!.attributes || []).find(
+        (x) => this.normalizeForMatch(x.attributeName) === this.normalizeForMatch(a.attributeName),
+      );
+      if (!attr?.options?.length) return false;
+      return attr.options.some(
+        (o) => this.normalizeForMatch(o) === this.normalizeForMatch(a.attributeValue),
+      );
+    });
+    const cart = session.cart.map((c, i) =>
+      i === bestIdx
+        ? {
+            ...c,
+            productId: bestSibling!.id,
+            name: bestSibling!.name,
+            code: bestSibling!.code,
+            unitPrice: bestSibling!.price,
+            attributes: keptAttributes,
+          }
+        : c,
+    );
+    return {
+      session: {
+        ...session,
+        cart,
+        productFocus: {
+          productId: bestSibling.id,
+          name: bestSibling.name,
+          variantBaseKey: this.catalogService.stripCookingStyleTokens(bestSibling.name) || undefined,
+        },
+      },
+      product: bestSibling,
+      previousName: item.name,
+      cartIndex: bestIdx,
+      keptAttributes,
     };
   }
 
