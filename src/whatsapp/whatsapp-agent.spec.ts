@@ -68,6 +68,8 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     },
     findByCode: (code: number, list: WhatsappCatalogProduct[]) =>
       list.find((p) => p.code === code) || null,
+    uncoveredDishWords: () => [],
+    uncoveredWordsAnchoredByProduct: () => [],
     resolveNamedMenuDishProduct: (q: string, list: WhatsappCatalogProduct[]) => {
       if (!/\b(ejecutivo|menu\s+especial|de\s+la\s+casa)\b/i.test(q)) return null;
       return (

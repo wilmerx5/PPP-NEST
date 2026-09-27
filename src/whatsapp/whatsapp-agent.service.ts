@@ -223,6 +223,7 @@ Reglas:
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista 2–4 de results o di que no manejamos ese estilo + availableStyles. PROHIBIDO dump de todas las categorías.
+- Si search_menu devuelve mode="not_on_menu": el cliente nombró un plato que no está (frijoles, carne, plátano, paisa o cualquier otra palabra). NO agregues el parecido. Di "Por ahora no manejamos X" con sus palabras y el link del menú.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
 - "Menú" / "carta" / "pásame el menú" SIN calificativo → link de la carta (NO add_item).
@@ -342,6 +343,7 @@ Contacto humano: *${phone || '3118866823'}*
             products: input.products,
             byId,
             actions,
+            userMessage: input.userMessage,
             menuConceptGroups: input.menuConceptGroups,
             setNeedsAttr: (id) => {
               needsAttributeProductId = id;
@@ -382,6 +384,7 @@ Contacto humano: *${phone || '3118866823'}*
       products: WhatsappCatalogProduct[];
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
+      userMessage?: string;
       menuConceptGroups?: MenuConceptGroup[];
       setNeedsAttr: (id: number) => void;
     },
@@ -390,6 +393,22 @@ Contacto humano: *${phone || '3118866823'}*
       case 'search_menu': {
         const query = String(args.query || '').trim();
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
+
+        const uncovered = this.catalogService.uncoveredDishWords(query, ctx.products);
+        if (uncovered.length) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'not_on_menu',
+            uncoveredWords: uncovered,
+            results: [],
+            hint:
+              `Ningún plato del menú cubre: ${uncovered.join(', ')}. ` +
+              'NO uses add_item con un plato parecido. ' +
+              `Di "Por ahora no manejamos ${query}" y ofrece el link del menú.`,
+          });
+        }
+
         const byCode = this.catalogService.extractCodeFromMessage(query);
         if (byCode != null) {
           const found = this.catalogService.findByCode(byCode, ctx.products);
@@ -549,6 +568,20 @@ Contacto humano: *${phone || '3118866823'}*
         }
         if (product.availableNow === false) {
           return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
+        }
+        const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
+          ctx.userMessage || '',
+          product,
+        );
+        if (uncovered.length) {
+          return JSON.stringify({
+            ok: false,
+            error: 'dish_not_on_menu',
+            uncoveredWords: uncovered,
+            hint:
+              `No agregues "${product.name}": el cliente dijo ${uncovered.join(', ')} y ese plato no lo incluye. ` +
+              'Responde que por ahora no lo manejamos, con las palabras del cliente, y el link del menú.',
+          });
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         const note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;

@@ -760,20 +760,69 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
           categoryName: 'Bandejas',
           description: 'Acompañado con papa francesa, ensalada y arroz',
         },
+        {
+          id: 17,
+          code: 17,
+          name: 'Bandeja Con Pollo Frito',
+          price: 21000,
+          hasAttributes: true,
+          attributes: [{ attributeName: 'Presa', options: ['Pierna Pernil', 'Ala pechuga'] }],
+          availableNow: true,
+          categoryName: 'Bandejas',
+          description: 'Acompañado con papa francesa, ensalada y arroz',
+        },
       ];
       const bandejas = menu.filter((p) => /bandeja/i.test(p.name));
       expect(catalog.missingDishQualifiers('tienes bandeja paisa', bandejas)).toEqual(['paisa']);
       expect(catalog.missingDishQualifiers('tienes bandeja', bandejas)).toEqual([]);
-      expect(catalog.missingDishQualifiers('y bandeja paisa con frijolitos', menu)).toEqual([
-        'paisa',
-      ]);
-      expect(catalog.resolveNamedMenuDishProduct('tienes bandeja paisa', menu)).toBeNull();
+      expect(catalog.uncoveredDishWords('y bandeja paisa con frijolitos', menu)).toEqual(
+        expect.arrayContaining(['paisa', 'frijolitos']),
+      );
+      expect(
+        catalog.uncoveredDishWords('bandeja con carne', [
+          ...menu,
+          {
+            id: 99,
+            code: 99,
+            name: 'Churrasco De Carne',
+            price: 28000,
+            hasAttributes: false,
+            availableNow: true,
+            categoryName: 'Carnes',
+            description: 'Carne a la parrilla',
+          },
+        ]),
+      ).toEqual(expect.arrayContaining(['carne']));
+      expect(catalog.uncoveredDishWords('bandeja con platano', menu)).toEqual(
+        expect.arrayContaining(['platano']),
+      );
+      expect(catalog.uncoveredDishWords('bandeja con pollo', menu)).toEqual([]);
+      expect(catalog.uncoveredDishWords('Tienes bandeja De morcilla?', menu)).toEqual(
+        expect.arrayContaining(['morcilla']),
+      );
+      const bandejaFamily = catalog.findProductVariantFamily('Tienes bandeja De morcilla?', menu);
+      expect(bandejaFamily?.variants.length).toBeGreaterThan(0);
+      expect(
+        catalog.uncoveredDishWords('Tienes bandeja De morcilla?', bandejaFamily!.variants),
+      ).toEqual(expect.arrayContaining(['morcilla']));
+      expect(
+        catalog.uncoveredDishWords('Natalia seria un arroz con pollo', menu),
+      ).toEqual([]);
+      expect(catalog.resolveNamedMenuDishProduct('bandeja con frijolitos', menu)).toBeNull();
       expect(catalog.resolveNamedMenuDishProduct('bandeja con pollo', menu)?.name).toMatch(
         /Pollo/i,
       );
       expect(catalog.findProductEmbeddedInMessage('tienes bandeja paisa', menu)?.name || '').not.toMatch(
         /Bandeja/i,
       );
+      expect(
+        catalog.findProductEmbeddedInMessage('y bandeja paisa con frijolitos', menu)?.name || '',
+      ).not.toMatch(/Bandeja/i);
+      expect(
+        catalog.uncoveredWordsAnchoredByProduct('bandeja con pollo y una limonada', menu.find((p) =>
+          /Bandeja Con Pollo/i.test(p.name),
+        )!),
+      ).toEqual([]);
     });
 
     it('pregunta si el pollo lleva arepas no abre la porción de arepas', () => {

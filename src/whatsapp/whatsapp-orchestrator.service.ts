@@ -2544,7 +2544,7 @@ export class WhatsappOrchestratorService {
         !this.catalogService.isAvailabilityInquiry(text) &&
         !this.catalogService.isProductDescriptionInquiry(text) &&
         !this.catalogService.isPriceInquiryIntent(text) &&
-        this.catalogService.missingDishQualifiers(dishQuery, products).length
+        this.catalogService.uncoveredDishWords(dishQuery, products).length
       ) {
         await this.reply(
           conv,
@@ -7291,8 +7291,8 @@ export class WhatsappOrchestratorService {
     }
     if (!variants.length) return false;
 
-    // "tienes bandeja paisa" no confirma otra bandeja si falta "paisa" en el nombre
-    if (this.catalogService.missingDishQualifiers(query, variants).length) {
+    // "tienes bandeja paisa con frijolitos" no confirma otra bandeja
+    if (this.catalogService.uncoveredDishWords(query, variants).length) {
       await this.reply(
         conv,
         waId,

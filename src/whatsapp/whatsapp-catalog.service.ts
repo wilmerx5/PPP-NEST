@@ -3,6 +3,7 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
+import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import {
   isNamedMenuDishOrderPhrase,
   MENU_WRAPPER_TOKENS,
@@ -1617,6 +1618,124 @@ export class WhatsappCatalogService {
     );
   }
 
+  /**
+   * Palabras del cliente que ningún plato cubre como tal.
+   * No es una lista de comidas: "frijolitos", "carne" o "plátano" salen igual
+   * si no están en el nombre (o en un atributo) del plato que sí coincide.
+   * Lo que va antes del plato ("Natalia, sería un arroz…") no cuenta.
+   * Cada parte separada por coma o "y" se mira sola, para no trabar un pedido de varios platos.
+   */
+  uncoveredDishWords(query: string, products: WhatsappCatalogProduct[]): string[] {
+    if (!products.length) return [];
+    const leftover: string[] = [];
+    const unknown: string[] = [];
+    let anchored = false;
+    for (const tokens of this.dishClauses(query)) {
+      const best = this.bestClauseCoverage(tokens, products);
+      if (!best) unknown.push(...tokens);
+      else {
+        anchored = true;
+        leftover.push(...best.leftover);
+      }
+    }
+    // Sin ancla ("mazorcada", "comida mexicana") no es un plato parecido: lo sigue el browse.
+    // Con ancla, cualquier palabra que ese plato no trae sí lo es.
+    if (!anchored) return [];
+    return [...new Set([...leftover, ...unknown])];
+  }
+
+  /**
+   * Sobras solo en la parte del mensaje que este plato sí ancla.
+   * "bandeja y una limonada" no impide agregar la bandeja.
+   * "bandeja con frijolitos" sí: frijolitos va en la misma parte y la bandeja no lo trae.
+   */
+  uncoveredWordsAnchoredByProduct(query: string, product: WhatsappCatalogProduct): string[] {
+    const out: string[] = [];
+    for (const tokens of this.dishClauses(query)) {
+      const best = this.bestClauseCoverage(tokens, [product]);
+      if (best) out.push(...best.leftover);
+    }
+    return [...new Set(out)];
+  }
+
+  private dishClauses(query: string): string[][] {
+    const raw = this.stripAvailabilityInquiryNoise(
+      this.extractProductSearchQuery(query) || query,
+    );
+    const withoutAddress = splitTrailingEmbeddedAddress(raw)?.productText || raw;
+    const stripped = normalizeText(withoutAddress);
+    const clauses = stripped
+      .split(/\s*,\s*|\s+y\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return (clauses.length ? clauses : [stripped])
+      .map((clause) => this.dishContentTokens(clause))
+      .filter((tokens) => tokens.length > 0);
+  }
+
+  private dishContentTokens(clause: string): string[] {
+    const skip = new Set([
+      'con',
+      'de',
+      'del',
+      'las',
+      'los',
+      'una',
+      'uno',
+      'unos',
+      'unas',
+      'por',
+      'para',
+      'favor',
+      'mas',
+      'que',
+      'sus',
+      'tambien',
+      'medio',
+      'media',
+      'cuarto',
+      'cuarta',
+      'entero',
+      'entera',
+    ]);
+    const cleaned = clause.replace(/\bsin\s+[a-z0-9]{3,}\b/g, ' ');
+    return [
+      ...new Set(cleaned.split(/\s+/).filter((t) => t.length >= 3 && !skip.has(t))),
+    ];
+  }
+
+  private bestClauseCoverage(
+    tokens: string[],
+    products: WhatsappCatalogProduct[],
+  ): { leftover: string[] } | null {
+    let best: { coveredCount: number; first: number; leftover: string[] } | null = null;
+    for (const product of products) {
+      const covered = tokens.map((t) => this.productTextCoversToken(product, t));
+      const first = covered.findIndex(Boolean);
+      if (first < 0) continue;
+      const coveredCount = covered.filter(Boolean).length;
+      const leftover = tokens.filter((t, i) => i > first && !covered[i]);
+      const better =
+        best == null ||
+        coveredCount > best.coveredCount ||
+        (coveredCount === best.coveredCount && first < best.first) ||
+        (coveredCount === best.coveredCount &&
+          first === best.first &&
+          leftover.length < best.leftover.length);
+      if (better) best = { coveredCount, first, leftover };
+    }
+    return best;
+  }
+
+  private productTextCoversToken(product: WhatsappCatalogProduct, token: string): boolean {
+    const parts = [product.name];
+    for (const attr of product.attributes || []) {
+      parts.push(attr.attributeName);
+      parts.push(...(attr.options || []));
+    }
+    return this.queryHasToken(normalizeText(parts.join(' ')), token);
+  }
+
   /** ¿El nombre del producto es un pack/duo/doble/combo? */
   private productNameHasPackMultiplier(name: string): boolean {
     const n = normalizeText(name);
@@ -2042,8 +2161,8 @@ export class WhatsappCatalogService {
     });
     if (narrowed.length) pool = narrowed;
 
-    // "bandeja paisa" no se sustituye por la única bandeja que sí hay
-    if (this.missingDishQualifiers(q, pool).length) return null;
+    // "bandeja paisa con frijolitos" no es la bandeja que sí hay
+    if (this.uncoveredDishWords(q, pool).length) return null;
 
     const proteinHints: Array<{ re: RegExp; nameRe: RegExp }> = [
       { re: /\bpechuga\b/, nameRe: /\bpechuga\b/ },
@@ -3337,10 +3456,11 @@ export class WhatsappCatalogService {
     // "el pollo lleva arepas?" nombra el plato; la porción de arepas no es la respuesta
     if (accompaniment && !withoutSides.length) return null;
     const pool = withoutSides.length ? withoutSides : embedded;
-    const uncovered = (list: WhatsappCatalogProduct[]) =>
-      this.missingDishQualifiers(text, list).length > 0;
+    const leavesWordsOut = (p: WhatsappCatalogProduct) =>
+      this.missingDishQualifiers(text, [p]).length > 0 ||
+      this.uncoveredWordsAnchoredByProduct(text, p).length > 0;
     if (pool.length === 1) {
-      if (uncovered(pool)) return null;
+      if (leavesWordsOut(pool[0])) return null;
       return pool[0];
     }
 
@@ -3381,7 +3501,7 @@ export class WhatsappCatalogService {
       return null;
     }
     const best = ranked[0]?.p ?? null;
-    if (best && this.missingDishQualifiers(text, [best]).length) return null;
+    if (best && leavesWordsOut(best)) return null;
     return best;
   }
 
