@@ -230,6 +230,8 @@ Reglas:
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - "qué hay de comida rápida" / "hamburguesas o salchipapas" → el sistema lista esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
+- "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
+- Solo cambia un atributo si el cliente lo pide ("cambia la bebida a colombiana") y ese valor está en las opciones de ESE producto.
 - Preguntas de estilo sobre un plato ya en carrito ("se puede con pollo broaster?") → el sistema cambia el atributo Pollo/Selección; NO uses set_notes ni agregues Broaster suelto.
 - Solo set_notes si el plato NO tiene atributo de estilo en carta.
 - La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).

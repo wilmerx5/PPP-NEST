@@ -1504,6 +1504,29 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family?.variants.some((p) => /broaster/i.test(p.name))).toBe(false);
     });
 
+    it('como es con pollo → variantes de arroz chino, no el pollo del carrito', () => {
+      expect(catalog.isProductDescriptionInquiry('como es con pollo')).toBe(true);
+      expect(catalog.isProductDescriptionInquiry('con que viene')).toBe(true);
+      expect(catalog.extractHowItIsQualifier('como es con pollo')).toBe('pollo');
+      expect(catalog.extractHowItIsQualifier('con que viene')).toBeNull();
+      const focus = pppMenu.find((p) => p.id === 70)!;
+      const matched = catalog.variantsMatchingQualifier(focus, 'pollo', pppMenu);
+      const names = matched.map((p) => p.name);
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'Arroz Chino Con Medio Pollo',
+          'Arroz Chino Con Pollo Entero',
+        ]),
+      );
+      expect(names.some((n) => /costilla/i.test(n))).toBe(false);
+      expect(names.some((n) => /^combo de pollo/i.test(n))).toBe(false);
+      expect(names.some((n) => /^1 pollo/i.test(n))).toBe(false);
+      const family = catalog.findProductVariantFamily('arroz chino', pppMenu);
+      expect(family?.variants.some((p) => p.name === 'Arroz Chino Con Pollo Entero')).toBe(
+        true,
+      );
+    });
+
     it('se puede con pollo broaster? (sin nombrar plato) → swap de estilo', () => {
       expect(catalog.isDishStyleSubstitutionInquiry('se puede  con pollo broaster?')).toBe(
         true,
@@ -2478,6 +2501,48 @@ Cll 6 b 78 c 33`;
       expect(catalog.findCategoryBrowseHit('Que hay de comida rapida', menu)?.products.length).toBe(
         menu.filter((p) => /rápid|rapid/i.test(p.categoryName || '')).length,
       );
+    });
+  });
+
+  describe('qué jugos tienes ≠ cambiar la gaseosa del combo', () => {
+    const menu: WhatsappCatalogProduct[] = [
+      {
+        id: 99,
+        code: 99,
+        name: 'Combo De Pollo Frito',
+        price: 53000,
+        hasAttributes: true,
+        attributes: [
+          {
+            attributeName: 'Bebida',
+            options: ['Colombiana', 'Manzana', 'Pepsi', 'Ginger', 'Uva', 'Sprite', '7up', 'Coca cola'],
+          },
+        ],
+        availableNow: true,
+        categoryName: 'Pollo',
+      },
+      {
+        id: 80,
+        code: 80,
+        name: 'Jugo de lulo',
+        price: 6000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Bebidas',
+      },
+    ];
+
+    it('lista el jugo de la carta, no Manzana/Uva del combo', () => {
+      const hit = catalog.resolveCatalogQuestion('que jugos tienes', menu);
+      expect(hit?.label).toBe('Jugos');
+      expect(hit?.products.map((p) => p.name)).toEqual(['Jugo de lulo']);
+    });
+
+    it('sin SKU de jugo no inventa sabores de gaseosa', () => {
+      const hit = catalog.resolveCatalogQuestion('que jugos tienes', [menu[0]]);
+      expect(hit?.products).toEqual([]);
+      expect(catalog.resolveCatalogQuestion('cambia la bebida a colombiana', menu)).toBeNull();
     });
   });
 });

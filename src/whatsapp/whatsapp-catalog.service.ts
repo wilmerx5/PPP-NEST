@@ -1422,6 +1422,42 @@ export class WhatsappCatalogService {
     return cleaned;
   }
 
+  /**
+   * "como es con pollo" → "pollo", para filtrar variantes del plato en contexto
+   * (arroz chino con pollo), no un pollo suelto.
+   */
+  extractHowItIsQualifier(text: string): string | null {
+    const q = normalizeText(text || '');
+    const m = q.match(/\bcomo es(?:\s+con)?\s+(.+)$/);
+    if (!m?.[1]) return null;
+    const qual = m[1]
+      .replace(/\b(el|la|los|las|un|una|de|del)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!qual || qual.length < 3) return null;
+    return qual;
+  }
+
+  /**
+   * Variantes del plato en foco que traen el calificativo ("pollo", "costilla").
+   */
+  variantsMatchingQualifier(
+    focus: WhatsappCatalogProduct,
+    qualifier: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const family = this.findProductVariantFamily(focus.name, products, [focus]);
+    const pool = family?.variants?.length ? family.variants : [focus];
+    const q = normalizeText(qualifier);
+    const tokens = q.split(' ').filter((t) => t.length >= 4);
+    const matched = pool.filter((p) => {
+      const name = normalizeText(p.name);
+      if (q && name.includes(q)) return true;
+      return tokens.length > 0 && tokens.every((t) => name.includes(t));
+    });
+    return matched;
+  }
+
   /** Quita porción/bebida del texto para buscar el producto base. */
   stripProductSearchNoise(query: string): string {
     return this.stripMentionedPriceFromQuery(query)
@@ -3782,6 +3818,64 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * "qué jugos tienes?" = productos de la carta, no un sabor de gaseosa del combo.
+   * Devuelve lista vacía si la pregunta es de ese tipo y no hay SKU (no inventar Manzana/Uva).
+   */
+  resolveCatalogQuestion(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): { label: string; products: WhatsappCatalogProduct[] } | null {
+    const q = normalizeText(fixCommonOrderTypos((text || '').trim()));
+    if (!q || q.length < 5) return null;
+    if (this.isPriceInquiryIntent(text)) return null;
+    if (/^(quiero|dame|ponme|agrega|me\s+regalas|cambia|cambie|cambialo)\b/.test(q)) return null;
+    if (/\b(cambia|cambiar|cambie|en\s+vez|en\s+lugar)\b/.test(q)) return null;
+    if (!/\b(que|tienes|tienen|tiene|hay|manejan|venden|ofreces|ofrecen)\b/.test(q)) return null;
+
+    let kind: 'jugo' | 'limonada' | 'gaseosa' | 'sopa' | null = null;
+    if (/\bjugos?\b/.test(q)) kind = 'jugo';
+    else if (/\blimonadas?\b/.test(q)) kind = 'limonada';
+    else if (/\bgaseosas?\b/.test(q)) kind = 'gaseosa';
+    else if (/\bsopas?\b/.test(q)) kind = 'sopa';
+    if (!kind) return null;
+
+    const label =
+      kind === 'jugo'
+        ? 'Jugos'
+        : kind === 'limonada'
+          ? 'Limonadas'
+          : kind === 'gaseosa'
+            ? 'Gaseosas'
+            : 'Sopas';
+    const hits = products.filter(
+      (p) => p.availableNow !== false && this.productMatchesCatalogKind(p, kind!),
+    );
+    return { label, products: this.dedupeProductsById(hits).slice(0, 16) };
+  }
+
+  /** SKU suelto de ese tipo. Opciones de atributo (Manzana del combo) no cuentan. */
+  private productMatchesCatalogKind(
+    product: WhatsappCatalogProduct,
+    kind: 'jugo' | 'limonada' | 'gaseosa' | 'sopa',
+  ): boolean {
+    const name = normalizeText(product.name);
+    const cat = normalizeText(product.categoryName || '');
+    const hay = `${name} ${cat}`;
+    if (/\b(combo|pollo|hamburguesa|arroz|bandeja|taco|alitas|ejecutivo)\b/.test(name)) {
+      return false;
+    }
+    if (kind === 'jugo') {
+      if (/\b(gaseosa|gaseosas|coca|pepsi|sprite|colombiana|postobon|7up)\b/.test(name) && !/\bjugo\b/.test(name)) {
+        return false;
+      }
+      return /\b(jugos?|limonadas?|zumos?)\b/.test(hay);
+    }
+    if (kind === 'limonada') return /\blimonadas?\b/.test(hay);
+    if (kind === 'gaseosa') return /\b(gaseosas?|coca|pepsi|sprite|colombiana|postobon)\b/.test(name);
+    return /\bsopas?\b/.test(hay) || /\b(ajiaco|mondongo|sancocho)\b/.test(name);
+  }
+
+  /**
    * "quiero hamburguesas o salchipapas" → las dos opciones, no un solo SKU.
    * No aplica a estilos sueltos ("frito o broaster").
    */
@@ -4800,7 +4894,7 @@ export class WhatsappCatalogService {
       )
       // Presentaciones arroz chino / bandejas: misma familia
       .replace(
-        /\b(con\s+(?:1\s*\/\s*2|medio|media)\s+pollo|con\s+costillas?(?:\s+de\s+cerdo)?|con\s+papa(?:s)?\s+(?:a\s+la\s+)?francesa|con\s+francesa|caja)\b/g,
+        /\b(con\s+(?:1\s*\/\s*2|medio|media)\s+pollo|con\s+pollo(?:\s+entero)?|con\s+costillas?(?:\s+de\s+cerdo)?|con\s+papa(?:s)?\s+(?:a\s+la\s+)?francesa|con\s+francesa|caja)\b/g,
         ' ',
       )
       .replace(/\s+/g, ' ')
@@ -5722,6 +5816,8 @@ export class WhatsappCatalogService {
       /\b(composicion|preparacion|descripcion|descrpcion)\b/,
       /\bcomo es el\b/,
       /\bcomo es la\b/,
+      /\bcomo es con\b/,
+      /\bcomo es\b/,
       /\bcomo viene\b/,
       /\bcomo va\b/,
     ];

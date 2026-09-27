@@ -1772,6 +1772,30 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // "tienes arroz chino?" → lista variantes y deja el foco para "cómo es / con qué viene"
+    if (
+      await this.tryHandleProductAvailabilityQuestion(
+        conv,
+        msg.waId,
+        session,
+        text,
+        products,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
+    // "cómo es con pollo" / "con qué viene" → descripción del menú, no el agente
+    if (await this.tryHandleProductCompositionQuestion(conv, msg.waId, text, products, cfg, session)) {
+      return;
+    }
+    if (
+      await this.tryResolvePendingCompositionAsk(conv, msg.waId, session, text, products, cfg)
+    ) {
+      return;
+    }
+
     // Agent V1 (feature flag): LLM + tools. Pendings numéricos / checkout ya se resolvieron arriba.
     if (
       cfg.agentV1Enabled &&
@@ -1787,18 +1811,6 @@ export class WhatsappOrchestratorService {
         businessOpenForBot,
         prependFirstContactDisclaimer: isFirstInbound,
       }))
-    ) {
-      return;
-    }
-
-    // "Con qué viene…" / "qué lleva…" → descripción, NO agregar al carrito
-    if (await this.tryHandleProductCompositionQuestion(conv, msg.waId, text, products, cfg, session)) {
-      return;
-    }
-
-    // Respuesta a “¿de qué plato?” → detalle del plato nombrado (no agregar)
-    if (
-      await this.tryResolvePendingCompositionAsk(conv, msg.waId, session, text, products, cfg)
     ) {
       return;
     }
@@ -4589,6 +4601,7 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (this.catalogService.isPriceInquiryIntent(text)) return false;
     if (this.catalogService.isAvailabilityInquiry(text)) return false;
+    if (this.catalogService.isProductDescriptionInquiry(text)) return false;
     if (this.catalogService.isMenuExploreIntent(text, products)) return false;
     const choices = this.catalogService.chickenStyleChoicesForSegment(text, products);
     if (!choices || choices.length < 2) return false;
@@ -6232,9 +6245,20 @@ export class WhatsappOrchestratorService {
     const stripped = this.catalogService.stripProductDescriptionInquiryNoise(text);
     const query = this.catalogService.extractProductSearchQuery(stripped || text);
 
+    const qual = this.catalogService.extractHowItIsQualifier(text);
+    const focus =
+      this.resolveDiscussedProduct(session, stripped || text, products) || null;
+    if (qual && focus) {
+      const matched = this.catalogService.variantsMatchingQualifier(focus, qual, products);
+      if (matched.length) return matched;
+    }
+
     // Follow-up sin nombrar plato: "y con qué viene acompañado" → usar foco / multi / carrito
-    const focusedEarly = this.resolveDiscussedProduct(session, stripped || text, products);
+    const focusedEarly = focus;
     if (focusedEarly && this.isCompositionFollowUpWithoutProductName(text, query)) {
+      if (session.pendingMatch?.intent === 'info' && session.pendingMatch.candidates?.length) {
+        return session.pendingMatch.candidates as MenuProduct[];
+      }
       return [focusedEarly];
     }
 
@@ -6392,6 +6416,21 @@ export class WhatsappOrchestratorService {
         variantBaseKey: family?.baseKey,
       },
     };
+  }
+
+  /** Último plato mencionado en el chat (p. ej. el bot acaba de hablar de arroz chino). */
+  private async discussedProductFromRecent(
+    conversationId: number,
+    products: MenuProduct[],
+  ): Promise<MenuProduct | null> {
+    const recent = await this.conversationService.getRecentMessageTexts(conversationId, 8);
+    for (const line of [...recent].reverse()) {
+      const body = line.replace(/^(Cliente|Bot):\s*/i, '').trim();
+      if (!body) continue;
+      const hit = this.catalogService.findProductEmbeddedInMessage(body, products);
+      if (hit && !this.catalogService.isLikelyDrinkProduct(hit)) return hit;
+    }
+    return null;
   }
 
   private resolveDiscussedProduct(
@@ -7058,6 +7097,82 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /**
+   * "¿Tienes arroz chino?" → lista la familia (caja, con pollo, costillas)
+   * y deja el foco para "cómo es con pollo" / "con qué viene".
+   */
+  private async tryHandleProductAvailabilityQuestion(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    _cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!this.catalogService.isAvailabilityInquiry(text)) return false;
+    if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    const q = this.normalizeForMatch(text);
+    if (
+      /\b(domicilio|servicio|horario|abiertos?|direccion|pedido|demora|propina)\b/.test(q) &&
+      !/\b(arroz|pollo|sopa|bandeja|costilla|hamburguesa|taco|jugo|mojarra|churrasco)\b/.test(q)
+    ) {
+      return false;
+    }
+
+    const stripped = this.catalogService.stripAvailabilityInquiryNoise(text);
+    const query = this.catalogService.extractProductSearchQuery(stripped || text);
+    if (!query || query.length < 3) return false;
+
+    const family = this.catalogService.findProductVariantFamily(query, products);
+    let variants = family?.variants?.length ? family.variants : [];
+    if (!variants.length) {
+      const embedded = this.catalogService.findProductEmbeddedInMessage(query, products);
+      if (embedded) variants = [embedded];
+    }
+    if (!variants.length) return false;
+
+    const anchor = variants[0];
+    session = {
+      ...this.rememberProductFocus(session, anchor, products),
+      ...(variants.length > 1
+        ? {
+            pendingMatch: {
+              query,
+              candidates: variants,
+              intent: 'info' as const,
+            },
+          }
+        : {}),
+    };
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+
+    if (variants.length === 1) {
+      await this.reply(conv, waId, this.catalogService.formatProductPriceReply(variants[0]));
+      return true;
+    }
+
+    const baseKey = family?.baseKey || '';
+    const baseLabel = family?.baseLabel || query;
+    const rows = variants.map((p, i) => {
+      const desc = (p.description || '').trim();
+      const short = desc.length > 140 ? `${desc.slice(0, 139)}…` : desc;
+      const label = baseKey
+        ? this.catalogService.getVariantDisplayLabel(p.name, baseKey)
+        : p.name;
+      return (
+        `${this.catalogService.optionNumberEmoji(i + 1)} *${label}* · ${this.catalogService.formatMoney(p.price)}` +
+        (short ? `\n   _${short}_` : '')
+      );
+    });
+    await this.reply(
+      conv,
+      waId,
+      `Sí, *${baseLabel}*:\n\n${rows.join('\n\n')}\n\n` +
+        `_Dime el *número* si quieres agregarlo, o pregunta cómo es._`,
+    );
+    return true;
+  }
+
   private async tryHandleProductCompositionQuestion(
     conv: WhatsappConversation,
     waId: string,
@@ -7067,42 +7182,59 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
   ): Promise<boolean> {
     if (!this.isProductCompositionQuestion(text)) return false;
+    if (/\b(domicilio|horario|direccion|pedido|demora)\b/i.test(text) && !/\b(pollo|arroz|sopa|bandeja|costilla)\b/i.test(text)) {
+      return false;
+    }
+
+    const fromRecent = await this.discussedProductFromRecent(conv.id, products);
+    if (fromRecent) {
+      const current = session.productFocus?.productId
+        ? this.catalogService.getProductById(session.productFocus.productId, products)
+        : null;
+      const sameFamily =
+        !!current &&
+        this.catalogService.getProductNameBase(current.name) ===
+          this.catalogService.getProductNameBase(fromRecent.name);
+      if (!sameFamily) {
+        session = this.rememberProductFocus(session, fromRecent, products);
+      }
+    }
 
     const candidates = this.findProductsForCompositionQuestion(text, products, session);
 
-    // Varias variantes (ej. mojarra solo / combo): pedir cuál, luego mostrar detalle
+    // Varias variantes: mostrar nombre, precio y descripción (no solo “¿cuál?”)
     if (candidates.length > 1) {
       const family = this.catalogService.findProductVariantFamily(
-        text,
+        candidates[0].name,
         products,
         candidates,
       );
+      const baseKey = family?.baseKey || '';
+      const baseLabel = family?.baseLabel || candidates[0].name;
       session = {
         ...session,
         pendingMatch: {
           query: text,
-          candidates: family?.variants?.length ? family.variants : candidates,
+          candidates,
           intent: 'info',
         },
       };
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      let prompt: string;
-      if (family?.variants?.length) {
-        const rows = family.variants.map((p, i) => ({
-          index: i + 1,
-          label: this.catalogService.getVariantDisplayLabel(p.name, family.baseKey),
-          price: p.price,
-          code: p.code,
-        }));
-        prompt =
-          `Para contarte *con qué va ${family.baseLabel}*, ¿cuál variante?\n\n` +
-          `${this.catalogService.formatOptionsList(rows)}\n\n` +
-          `_Responde con el *número* y te muestro el detalle._`;
-      } else {
-        prompt = this.catalogService.formatProductChoicePrompt(text, candidates, {
-          intro: 'Hay *varias opciones*. ¿De cuál quieres el detalle?',
-        });
-      }
+      const rows = candidates.map((p, i) => {
+        const desc = (p.description || '').trim();
+        const short = desc.length > 140 ? `${desc.slice(0, 139)}…` : desc;
+        const label = baseKey
+          ? this.catalogService.getVariantDisplayLabel(p.name, baseKey)
+          : p.name;
+        return (
+          `${this.catalogService.optionNumberEmoji(i + 1)} *${label}* · ${this.catalogService.formatMoney(p.price)}` +
+          (short ? `\n   _${short}_` : '\n   _Sin descripción de ingredientes en el menú._')
+        );
+      });
+      const prompt =
+        `*${baseLabel}*:\n\n` +
+        `${rows.join('\n\n')}\n\n` +
+        `_Dime el *número* si quieres agregarlo._`;
       await this.reply(conv, waId, prompt);
       return true;
     }
@@ -11340,6 +11472,53 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    const catalogAsk = this.catalogService.resolveCatalogQuestion(text, products);
+    if (catalogAsk) {
+      session = {
+        ...session,
+        pendingAttribute: undefined,
+        pendingMultiOrder: undefined,
+        pendingCategoryBrowse: undefined,
+      };
+      if (!catalogAsk.products.length) {
+        session = { ...session, pendingMatch: undefined };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        const menuUrl = (cfg.menuUrl || '').trim();
+        await this.reply(
+          conv,
+          waId,
+          `Por ahora no manejamos *${catalogAsk.label.toLowerCase()}* en la carta.` +
+            (menuUrl ? `\nMenú: ${menuUrl}` : '') +
+            `\n\n¿*Algo más*?`,
+        );
+        return true;
+      }
+      session = {
+        ...session,
+        pendingMatch: {
+          query: catalogAsk.label,
+          candidates: catalogAsk.products,
+        },
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatCategoryList(catalogAsk.label, catalogAsk.products),
+      );
+      return true;
+    }
+
+    // "¿Tienes arroz chino?" es un plato (familia), no un dump de categoría.
+    if (this.catalogService.isAvailabilityInquiry(text)) {
+      const stripped = this.catalogService.stripAvailabilityInquiryNoise(text);
+      const query = this.catalogService.extractProductSearchQuery(stripped || text);
+      const family = query
+        ? this.catalogService.findProductVariantFamily(query, products)
+        : null;
+      if (family?.variants?.length) return false;
+    }
+
     const alternative = this.catalogService.findAlternativeMenuList(
       text,
       products,
