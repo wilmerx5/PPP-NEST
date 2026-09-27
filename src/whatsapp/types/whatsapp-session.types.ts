@@ -203,6 +203,11 @@ export type AiOrderAction = {
     attributes?: { attributeName: string; attributeValue: string }[];
   }>;
   removeProductIds?: number[];
+  updateAttributes?: Array<{
+    productId: number;
+    attributeName: string;
+    attributeValue: string;
+  }>;
   setCustomerName?: string;
   setAddress?: string;
   setOrderType?: 'delivery' | 'pickup';

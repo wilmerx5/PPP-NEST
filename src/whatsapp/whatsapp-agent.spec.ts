@@ -69,6 +69,9 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     findByCode: (code: number, list: WhatsappCatalogProduct[]) =>
       list.find((p) => p.code === code) || null,
     uncoveredDishWords: () => [],
+    listCartAttributeOptionsNamedInText: () => [],
+    matchAttributeOptionValue: (value: string, options: string[]) =>
+      options.find((o) => o.toLowerCase() === String(value).toLowerCase()) || null,
     uncoveredWordsAnchoredByProduct: () => [],
     productsAnchoringDish: () => [],
     isCategoryBrowseQuestion: () => false,

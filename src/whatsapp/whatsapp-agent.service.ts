@@ -8,6 +8,7 @@ import type { AiOrderAction } from './types/whatsapp-session.types';
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
+import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
 
 export type AgentV1TurnInput = {
   userMessage: string;
@@ -19,6 +20,11 @@ export type AgentV1TurnInput = {
   menuUrl?: string | null;
   humanPhone?: string | null;
   menuConceptGroups?: MenuConceptGroup[];
+  cart?: Array<{
+    productId: number;
+    name: string;
+    attributes?: { attributeName: string; attributeValue: string }[];
+  }>;
 };
 
 export type AgentV1TurnResult = {
@@ -120,9 +126,27 @@ const AGENT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'set_attribute',
+      description:
+        'Cambia una opción YA elegida en un producto del carrito (bebida, pollo, arepa, presa, sabor). ' +
+        'attributeValue tiene que ser una opción de ESE producto. No agrega un plato nuevo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'number' },
+          attributeName: { type: 'string' },
+          attributeValue: { type: 'string' },
+        },
+        required: ['productId', 'attributeName', 'attributeValue'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'set_address',
       description:
-        'Guarda dirección de domicilio (calle/carrera/conjunto/barrio). NUNCA uses para platos, estilos (fritas/asadas) ni cantidades.',
+        'Guarda dirección de domicilio (calle/carrera/conjunto/barrio). NUNCA uses para platos, quejas, saludos ni frases que no sean un lugar.',
       parameters: {
         type: 'object',
         properties: { address: { type: 'string' } },
@@ -236,8 +260,9 @@ Reglas:
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - "qué hay de comida rápida" / "hamburguesas o salchipapas" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
-- Solo cambia un atributo si el cliente lo pide ("cambia la bebida a colombiana") y ese valor está en las opciones de ESE producto.
-- Preguntas de estilo sobre un plato ya en carrito ("se puede con pollo broaster?", "lo quiero con pollo broaster") → el sistema cambia el atributo o el SKU (Ejecutivo Con Pollo Frito ↔ Broaster). NO uses set_notes ni agregues otro pollo.
+- Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
+- Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
+- set_address solo con un lugar (calle, carrera, barrio, conjunto). Si responde ok:false, contesta al cliente en una frase y no hables de domicilio.
 - Si piden un plato que existe en frito y en broaster y no dijeron cuál, el sistema lista las dos. No asumas frito.
 - Solo set_notes si el plato NO tiene atributo de estilo ni otro SKU con ese estilo.
 - La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).
@@ -348,6 +373,7 @@ Contacto humano: *${phone || '3118866823'}*
             byId,
             actions,
             userMessage: input.userMessage,
+            cart: input.cart,
             menuConceptGroups: input.menuConceptGroups,
             setNeedsAttr: (id) => {
               needsAttributeProductId = id;
@@ -389,6 +415,7 @@ Contacto humano: *${phone || '3118866823'}*
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
       userMessage?: string;
+      cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
       setNeedsAttr: (id: number) => void;
     },
@@ -400,6 +427,31 @@ Contacto humano: *${phone || '3118866823'}*
 
         const uncovered = this.catalogService.uncoveredDishWords(query, ctx.products);
         if (uncovered.length) {
+          const named = this.catalogService.listCartAttributeOptionsNamedInText(
+            query,
+            ctx.cart || [],
+            ctx.products,
+          );
+          const namedInUser =
+            named.length || !ctx.userMessage
+              ? named
+              : this.catalogService.listCartAttributeOptionsNamedInText(
+                  ctx.userMessage,
+                  ctx.cart || [],
+                  ctx.products,
+                );
+          if (namedInUser.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'cart_attribute',
+              candidates: namedInUser,
+              hint:
+                'El cliente nombró una opción que YA está en un producto del carrito. ' +
+                'Llama set_attribute con productId, attributeName y attributeValue de candidates. ' +
+                'No digas que no lo manejamos. No add_item. No set_address.',
+            });
+          }
           const closest = this.catalogService.productsAnchoringDish(query, ctx.products);
           return JSON.stringify({
             ok: true,
@@ -592,7 +644,9 @@ Contacto humano: *${phone || '3118866823'}*
           results: results.slice(0, 6),
           hint:
             results.length === 0
-              ? 'Sin coincidencias en el menú. Reply cálido: "Por ahora no manejamos X. Si quieres mira el menú: {link}". PROHIBIDO "No veo" / "No encontré".'
+              ? 'Sin coincidencias. Si pidió un plato, di que por ahora no lo manejamos y ofrece el link del menú. ' +
+                'Si no es un pedido (queja, saludo, pregunta), respóndelo en una frase. ' +
+                'NO set_address si no es un lugar. NO trates la frase completa como nombre de plato.'
               : 'Elige productId de results para add_item.',
         });
       }
@@ -720,10 +774,65 @@ Contacto humano: *${phone || '3118866823'}*
         }
         return JSON.stringify({ ok: true, removedProductId: productId });
       }
+      case 'set_attribute': {
+        const productId = Number(args.productId);
+        const attributeName = String(args.attributeName || '').trim();
+        const attributeValue = String(args.attributeValue || '').trim();
+        const product = ctx.byId.get(productId);
+        if (!product) {
+          return JSON.stringify({ ok: false, error: `productId ${productId} no existe` });
+        }
+        const attr = (product.attributes || []).find(
+          (a) => a.attributeName.toLowerCase() === attributeName.toLowerCase(),
+        );
+        if (!attr) {
+          return JSON.stringify({
+            ok: false,
+            error: 'ese producto no tiene ese atributo',
+            attributes: (product.attributes || []).map((a) => ({
+              attributeName: a.attributeName,
+              options: a.options,
+            })),
+          });
+        }
+        const matched = this.catalogService.matchAttributeOptionValue(
+          attributeValue,
+          attr.options,
+        );
+        if (!matched) {
+          return JSON.stringify({
+            ok: false,
+            error: 'opción no existe en ese atributo',
+            options: attr.options,
+          });
+        }
+        const line = [...(ctx.cart || [])].reverse().find((c) => c.productId === productId);
+        if (!line) {
+          return JSON.stringify({ ok: false, error: 'ese producto no está en el carrito' });
+        }
+        if (!ctx.actions.updateAttributes) ctx.actions.updateAttributes = [];
+        ctx.actions.updateAttributes.push({
+          productId,
+          attributeName: attr.attributeName,
+          attributeValue: matched,
+        });
+        return JSON.stringify({
+          ok: true,
+          productId,
+          itemName: line.name,
+          attributeName: attr.attributeName,
+          attributeValue: matched,
+          hint: 'Cambio aceptado. Confírmalo en una frase. No agregues otro plato.',
+        });
+      }
       case 'set_address': {
         const address = String(args.address || '').trim();
-        if (address.length < 8) {
-          return JSON.stringify({ ok: false, error: 'dirección muy corta' });
+        if (address.length < 8 || !looksLikeAddressOnlyMessage(address)) {
+          return JSON.stringify({
+            ok: false,
+            error: 'not_a_place',
+            hint: 'Eso no es un lugar. Responde al cliente. No guardes domicilio.',
+          });
         }
         ctx.actions.setAddress = address.slice(0, 500);
         ctx.actions.setOrderType = 'delivery';

@@ -87,6 +87,25 @@ function stemLoose(s: string): string {
   return n;
 }
 
+function boundedEditDistance(a: string, b: string, max: number): number | null {
+  if (Math.abs(a.length - b.length) > max) return null;
+  const prev = new Array<number>(b.length + 1);
+  const curr = new Array<number>(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > max) return null;
+    for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
+  }
+  return prev[b.length] <= max ? prev[b.length] : null;
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -7538,6 +7557,152 @@ export class WhatsappCatalogService {
       return { status: 'partial', attributes: selected };
     }
     return { status: 'invalid' };
+  }
+
+  /**
+   * El cliente nombra una opción que ya está en un atributo del carrito
+   * ("la gaseosa puede ser coca cola"). No es un plato nuevo.
+   */
+  findCartAttributeOptionChange(
+    text: string,
+    cart: {
+      productId: number;
+      name: string;
+      attributes?: { attributeName: string; attributeValue: string }[];
+    }[],
+    products: WhatsappCatalogProduct[],
+  ): {
+    cartIndex: number;
+    itemName: string;
+    attributeName: string;
+    attributeValue: string;
+  } | null {
+    const q = normalizeText(text || '');
+    if (!q || !cart.length) return null;
+    const wantsChange =
+      /\b(puede ser|se puede|cambiar|en vez|en lugar|que sea|dejalo|dejala|cambialo|cambiala)\b/.test(
+        q,
+      );
+    if (!wantsChange) return null;
+
+    const hits: {
+      cartIndex: number;
+      itemName: string;
+      attributeName: string;
+      attributeValue: string;
+      drink: boolean;
+    }[] = [];
+    for (let i = cart.length - 1; i >= 0; i--) {
+      const line = cart[i];
+      const product = products.find((p) => p.id === line.productId);
+      if (!product?.attributes?.length) continue;
+      for (const attr of product.attributes) {
+        const picked = this.pickAttributeOptionFromText(text, attr);
+        if (!picked) continue;
+        const current = (line.attributes || []).find(
+          (a) => normalizeText(a.attributeName) === normalizeText(attr.attributeName),
+        );
+        if (current && normalizeText(current.attributeValue) === normalizeText(picked)) continue;
+        hits.push({
+          cartIndex: i,
+          itemName: line.name,
+          attributeName: attr.attributeName,
+          attributeValue: picked,
+          drink: this.isComboOnlyAttribute(attr),
+        });
+      }
+    }
+    if (!hits.length) return null;
+    const mentionsDrink = /\b(gaseosa|bebida|sabor)\b/.test(q);
+    const hit = (mentionsDrink ? hits.find((h) => h.drink) : null) || hits[0];
+    return {
+      cartIndex: hit.cartIndex,
+      itemName: hit.itemName,
+      attributeName: hit.attributeName,
+      attributeValue: hit.attributeValue,
+    };
+  }
+
+  /**
+   * Opciones del carrito cuyo texto aparece en el mensaje (sin lista de frases).
+   * Sirve para que el agente cambie esa opción en vez de buscar un plato nuevo.
+   */
+  listCartAttributeOptionsNamedInText(
+    text: string,
+    cart: {
+      productId: number;
+      name: string;
+      attributes?: { attributeName: string; attributeValue: string }[];
+    }[],
+    products: WhatsappCatalogProduct[],
+  ): {
+    cartIndex: number;
+    productId: number;
+    itemName: string;
+    attributeName: string;
+    attributeValue: string;
+  }[] {
+    const q = normalizeText(text || '');
+    if (!q || !cart.length) return [];
+    const hits: {
+      cartIndex: number;
+      productId: number;
+      itemName: string;
+      attributeName: string;
+      attributeValue: string;
+    }[] = [];
+    for (let i = cart.length - 1; i >= 0; i--) {
+      const line = cart[i];
+      const product = products.find((p) => p.id === line.productId);
+      if (!product?.attributes?.length) continue;
+      for (const attr of product.attributes) {
+        const named = attr.options
+          .filter((opt) => {
+            const o = normalizeText(opt);
+            if (o.length < 3) return false;
+            if (o.includes(' ')) return q.includes(o);
+            return new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(q);
+          })
+          .sort((a, b) => normalizeText(b).length - normalizeText(a).length)[0];
+        if (!named) continue;
+        const current = (line.attributes || []).find(
+          (a) => normalizeText(a.attributeName) === normalizeText(attr.attributeName),
+        );
+        if (current && normalizeText(current.attributeValue) === normalizeText(named)) continue;
+        hits.push({
+          cartIndex: i,
+          productId: line.productId,
+          itemName: line.name,
+          attributeName: attr.attributeName,
+          attributeValue: named,
+        });
+      }
+    }
+    return hits;
+  }
+
+  /** Iguala un valor libre a una opción real del atributo, incluido un typo corto. */
+  matchAttributeOptionValue(value: string, options: string[]): string | null {
+    const q = normalizeText(value || '');
+    if (!q || !options.length) return null;
+    const exact = options.find((o) => normalizeText(o) === q);
+    if (exact) return exact;
+    const contained = options
+      .filter((o) => {
+        const n = normalizeText(o);
+        return n.length >= 3 && q.includes(n);
+      })
+      .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
+    if (contained[0]) return contained[0];
+    let best: { opt: string; distance: number } | null = null;
+    for (const opt of options) {
+      const n = normalizeText(opt);
+      if (n.length < 4 || q.length < 4) continue;
+      const distance = boundedEditDistance(n, q, 2);
+      if (distance == null) continue;
+      if (!best || distance < best.distance) best = { opt, distance };
+    }
+    return best?.opt || null;
   }
 
   /** Encuentra una opción de atributo mencionada en texto libre. */

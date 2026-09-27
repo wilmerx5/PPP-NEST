@@ -2160,6 +2160,93 @@ Cll 6 b 78 c 33`;
           expect.objectContaining({ attributeName: 'Arepas', attributeValue: 'Blancas' }),
         ]),
       );
+      const combo = {
+        id: 97,
+        code: 97,
+        name: 'Combo Arroz Chino Con Medio Pollo',
+        price: 54000,
+        hasAttributes: true,
+        attributes: [
+          { attributeName: 'Pollo', options: ['Frito', 'Broaster'] },
+          {
+            attributeName: 'Bebida',
+            options: ['Colombiana', 'Manzana', 'Pepsi'],
+          },
+        ],
+        availableNow: true,
+        categoryName: 'Arroces',
+      };
+      const defaults = catalog.fillDefaultAttributes(combo, []);
+      expect(defaults).toEqual([
+        expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Colombiana' }),
+      ]);
+      expect(catalog.isAttributeSelectionComplete(combo, defaults)).toBe(false);
+      const afterStyle = catalog.fillDefaultAttributes(combo, [
+        { attributeName: 'Pollo', attributeValue: 'Frito' },
+      ]);
+      expect(catalog.isAttributeSelectionComplete(combo, afterStyle)).toBe(true);
+      const withCola = {
+        ...combo,
+        attributes: [
+          { attributeName: 'Pollo', options: ['Frito', 'Broaster'] },
+          {
+            attributeName: 'Bebida',
+            options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca cola', 'Coca cola Zero'],
+          },
+        ],
+      };
+      const cart = [
+        {
+          productId: 10,
+          name: '1/2 Pollo Frito',
+          attributes: [{ attributeName: 'Arepas', attributeValue: 'Blancas' }],
+        },
+        {
+          productId: 97,
+          name: 'Combo Arroz Chino Con Medio Pollo',
+          attributes: [
+            { attributeName: 'Pollo', attributeValue: 'Broaster' },
+            { attributeName: 'Bebida', attributeValue: 'Colombiana' },
+          ],
+        },
+      ];
+      const change = catalog.findCartAttributeOptionChange(
+        'Y gaseosa puede ser coca cola ?',
+        cart,
+        [half, withCola],
+      );
+      expect(change).toEqual({
+        cartIndex: 1,
+        itemName: 'Combo Arroz Chino Con Medio Pollo',
+        attributeName: 'Bebida',
+        attributeValue: 'Coca cola',
+      });
+      expect(
+        catalog.findCartAttributeOptionChange('Me estoy frustrando contigo', cart, [withCola]),
+      ).toBeNull();
+      expect(
+        catalog.listCartAttributeOptionsNamedInText(
+          'Y gaseosa puede ser coca cola ?',
+          cart,
+          [half, withCola],
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          productId: 97,
+          attributeName: 'Bebida',
+          attributeValue: 'Coca cola',
+        }),
+      ]);
+      expect(catalog.matchAttributeOptionValue('roaster', ['Frito', 'Broaster'])).toBe('Broaster');
+      expect(catalog.matchAttributeOptionValue('coca cola', ['Coca cola', 'Coca cola Zero'])).toBe(
+        'Coca cola',
+      );
+      expect(afterStyle).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Pollo', attributeValue: 'Frito' }),
+          expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Colombiana' }),
+        ]),
+      );
     });
   });
 
@@ -2198,9 +2285,7 @@ Cll 6 b 78 c 33`;
         'Josseph Pabon',
         'María Fernanda López',
       ]) {
-        // El heurístico genérico SÍ los marca (bug histórico)
-        expect(orch.looksLikeAddress(name)).toBe(true);
-        // En awaiting_name no deben rechazarse
+        expect(orch.looksLikeAddress(name)).toBe(false);
         expect(orch.looksLikeAddressRejectingPersonName(name)).toBe(false);
         expect(isUsableWhatsappCustomerName(name)).toBe(true);
       }
@@ -2500,8 +2585,14 @@ Cll 6 b 78 c 33`;
         ).toBe(false);
       }
 
-      // Direcciones reales siguen pasando
+      // Direcciones reales siguen pasando. Una frase sin “de/del” no es barrio.
       expect(orch.isAddressOnlyCustomerMessage('Bosques de Castilla')).toBe(true);
+      expect(orch.isAddressOnlyCustomerMessage('Me estoy frustrando contigo')).toBe(false);
+      expect(
+        orch.looksLikeLandmarkOrComplexName('Me estoy frustrando contigo', {
+          allowGenericPhrase: true,
+        }),
+      ).toBe(false);
       expect(orch.isPlausibleDeliveryAddress('Cra 81g #42b-27')).toBe(true);
       expect(orch.normalizeDeliveryAddress('para la calle 39 sur 38 a 56')).toMatch(
         /^calle 39 sur/i,

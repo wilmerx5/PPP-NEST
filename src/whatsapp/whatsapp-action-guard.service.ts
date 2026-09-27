@@ -7,6 +7,7 @@ import {
 import type { WhatsappPaymentMethodConfig } from './whatsapp-payment-methods';
 import { findPaymentMethodByText, getEnabledPaymentMethods } from './whatsapp-payment-methods';
 import { isUsableWhatsappCustomerName } from './whatsapp-session-intents';
+import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
 
 export type GuardResult = {
   actions: AiOrderAction | undefined;
@@ -61,8 +62,33 @@ export class WhatsappActionGuardService {
 
     if (params.actions.setAddress) {
       const addr = params.actions.setAddress.trim().slice(0, 500);
-      if (addr.length >= 8) out.setAddress = addr;
-      else warnings.push('Dirección demasiado corta; pide dirección completa.');
+      if (addr.length >= 8 && looksLikeAddressOnlyMessage(addr)) out.setAddress = addr;
+      else warnings.push('Eso no es una dirección; no se guardó domicilio.');
+    }
+
+    if (params.actions.updateAttributes?.length) {
+      out.updateAttributes = [];
+      for (const upd of params.actions.updateAttributes) {
+        const product = byId.get(upd.productId);
+        const attr = product?.attributes?.find(
+          (a) => a.attributeName.toLowerCase() === upd.attributeName.trim().toLowerCase(),
+        );
+        const matched = attr
+          ? this.catalogService.matchAttributeOptionValue(upd.attributeValue, attr.options)
+          : null;
+        if (!product || !attr || !matched) {
+          warnings.push(
+            `No se cambió ${upd.attributeName || 'la opción'}: no está en ese producto.`,
+          );
+          continue;
+        }
+        out.updateAttributes.push({
+          productId: product.id,
+          attributeName: attr.attributeName,
+          attributeValue: matched,
+        });
+      }
+      if (!out.updateAttributes.length) delete out.updateAttributes;
     }
 
     if (params.actions.setOrderType === 'delivery' || params.actions.setOrderType === 'pickup') {
