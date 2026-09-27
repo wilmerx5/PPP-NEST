@@ -223,14 +223,17 @@ Reglas:
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista 2–4 de results o di que no manejamos ese estilo + availableStyles. PROHIBIDO dump de todas las categorías.
-- Si search_menu devuelve mode="not_on_menu": el cliente nombró un plato que no está (frijoles, carne, plátano, paisa o cualquier otra palabra). NO agregues el parecido. Di "Por ahora no manejamos X" con sus palabras y el link del menú.
+- El menú que devuelve search_menu es la única fuente de verdad. Tú analizas, comparas y respondes. No inventes platos, precios ni ingredientes.
+- Pregunta (¿tienes?, ¿qué hay?, ¿qué bandejas hay?, ¿cómo es?, ¿con qué viene?): responde con results (nombre, precio, descripción). NO add_item. add_item solo si el cliente está pidiendo el plato.
+- Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae lo más cercano, menciónalo como lo que sí hay.
+- Si mode="category_browse" o mode="availability": lista esos results. No resumas otra categoría ni agregues uno solo.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
 - "Menú" / "carta" / "pásame el menú" SIN calificativo → link de la carta (NO add_item).
 - "Menú ejecutivo|especial|de la casa|del día|…" o "bandeja con…" → plato del catálogo si search_menu lo trae; NUNCA lo confundas con el link ni con el pollo suelto.
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
-- "qué hay de comida rápida" / "hamburguesas o salchipapas" → el sistema lista esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
+- "qué hay de comida rápida" / "hamburguesas o salchipapas" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
 - Solo cambia un atributo si el cliente lo pide ("cambia la bebida a colombiana") y ese valor está en las opciones de ESE producto.
 - Preguntas de estilo sobre un plato ya en carrito ("se puede con pollo broaster?", "lo quiero con pollo broaster") → el sistema cambia el atributo o el SKU (Ejecutivo Con Pollo Frito ↔ Broaster). NO uses set_notes ni agregues otro pollo.
@@ -396,17 +399,40 @@ Contacto humano: *${phone || '3118866823'}*
 
         const uncovered = this.catalogService.uncoveredDishWords(query, ctx.products);
         if (uncovered.length) {
+          const closest = this.catalogService.productsAnchoringDish(query, ctx.products);
           return JSON.stringify({
             ok: true,
             query,
             mode: 'not_on_menu',
             uncoveredWords: uncovered,
-            results: [],
+            results: closest.map((p) => this.productCard(p)),
             hint:
-              `Ningún plato del menú cubre: ${uncovered.join(', ')}. ` +
-              'NO uses add_item con un plato parecido. ' +
-              `Di "Por ahora no manejamos ${query}" y ofrece el link del menú.`,
+              `El menú no cubre: ${uncovered.join(', ')}. NO add_item. ` +
+              'Responde tú: esas palabras no las manejamos. ' +
+              'Si results trae platos, son lo más cercano: menciónalos (nombre y precio) como lo que sí hay, sin decir que son el plato pedido.',
           });
+        }
+
+        if (
+          this.catalogService.isCategoryBrowseQuestion(query) ||
+          this.catalogService.isMenuExploreIntent(query, ctx.products)
+        ) {
+          const hit = this.catalogService.findCategoryBrowseHit(
+            query,
+            ctx.products,
+            ctx.menuConceptGroups,
+          );
+          if (hit?.products.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'category_browse',
+              category: hit.categoryName,
+              results: hit.products.slice(0, 12).map((p) => this.productCard(p)),
+              hint:
+                'Pregunta qué hay en esa parte del menú. Lista estos platos (nombre y precio). NO add_item.',
+            });
+          }
         }
 
         const byCode = this.catalogService.extractCodeFromMessage(query);
@@ -416,6 +442,23 @@ Contacto humano: *${phone || '3118866823'}*
             return JSON.stringify({
               ok: true,
               results: [this.productCard(found)],
+            });
+          }
+        }
+
+        if (this.catalogService.isAvailabilityInquiry(query)) {
+          const family = this.catalogService.findProductVariantFamily(query, ctx.products);
+          const variants = family?.variants?.length
+            ? family.variants
+            : [];
+          if (variants.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'availability',
+              results: variants.slice(0, 8).map((p) => this.productCard(p)),
+              hint:
+                'Pregunta si lo tenemos. Responde con estos platos (nombre, precio y descripción). NO add_item hasta que pida agregarlo.',
             });
           }
         }
@@ -569,6 +612,18 @@ Contacto humano: *${phone || '3118866823'}*
         if (product.availableNow === false) {
           return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
         }
+        const asked =
+          this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
+          this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
+        if (asked) {
+          return JSON.stringify({
+            ok: false,
+            error: 'question_not_order',
+            hint:
+              'Es una pregunta sobre el menú. Responde con lo que devolvió search_menu. No agregues al carrito.',
+          });
+        }
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
           ctx.userMessage || '',
           product,
@@ -677,6 +732,7 @@ Contacto humano: *${phone || '3118866823'}*
       name: p.name,
       price: p.price,
       category: p.categoryName || null,
+      description: (p.description || '').trim().slice(0, 180) || null,
       hasAttributes: !!p.hasAttributes,
       attributes: (p.attributes || []).map((a) => ({
         attributeName: a.attributeName,

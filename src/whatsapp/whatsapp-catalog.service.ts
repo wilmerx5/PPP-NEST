@@ -1697,6 +1697,17 @@ export class WhatsappCatalogService {
       'cuarta',
       'entero',
       'entera',
+      'hay',
+      'tienes',
+      'tiene',
+      'tienen',
+      'venden',
+      'vendes',
+      'manejan',
+      'maneja',
+      'consiguen',
+      'cual',
+      'cuales',
     ]);
     const cleaned = clause.replace(/\bsin\s+[a-z0-9]{3,}\b/g, ' ');
     return [
@@ -1704,11 +1715,38 @@ export class WhatsappCatalogService {
     ];
   }
 
+  /**
+   * Platos reales que más se acercan a lo que dijo el cliente, aunque sobre una palabra.
+   * "bandeja con pargo" ancla las bandejas; pargo no las convierte en ese plato.
+   */
+  productsAnchoringDish(
+    query: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const out: WhatsappCatalogProduct[] = [];
+    const seen = new Set<number>();
+    for (const tokens of this.dishClauses(query)) {
+      const best = this.bestClauseCoverage(tokens, products);
+      for (const product of best?.products || []) {
+        if (seen.has(product.id)) continue;
+        seen.add(product.id);
+        out.push(product);
+        if (out.length >= 8) return out;
+      }
+    }
+    return out;
+  }
+
   private bestClauseCoverage(
     tokens: string[],
     products: WhatsappCatalogProduct[],
-  ): { leftover: string[] } | null {
-    let best: { coveredCount: number; first: number; leftover: string[] } | null = null;
+  ): { leftover: string[]; products: WhatsappCatalogProduct[] } | null {
+    let best: {
+      coveredCount: number;
+      first: number;
+      leftover: string[];
+      products: WhatsappCatalogProduct[];
+    } | null = null;
     for (const product of products) {
       const covered = tokens.map((t) => this.productTextCoversToken(product, t));
       const first = covered.findIndex(Boolean);
@@ -1722,9 +1760,15 @@ export class WhatsappCatalogService {
         (coveredCount === best.coveredCount &&
           first === best.first &&
           leftover.length < best.leftover.length);
-      if (better) best = { coveredCount, first, leftover };
+      const same =
+        !!best &&
+        coveredCount === best.coveredCount &&
+        first === best.first &&
+        leftover.length === best.leftover.length;
+      if (better) best = { coveredCount, first, leftover, products: [product] };
+      else if (same && best) best.products.push(product);
     }
-    return best;
+    return best ? { leftover: best.leftover, products: best.products } : null;
   }
 
   private productTextCoversToken(product: WhatsappCatalogProduct, token: string): boolean {
@@ -3729,8 +3773,14 @@ export class WhatsappCatalogService {
     const q = normalizeText(query);
     if (!q || q.length < 3) return null;
 
-    // "… arroz con pollo para calle 10" → producto concreto, no categoría Pollo
-    if (this.findProductEmbeddedInMessage(query, products)) return null;
+    // "… arroz con pollo para calle 10" → producto concreto, no categoría Pollo.
+    // "qué bandejas hay" sí es la categoría, aunque una bandeja coincida por el nombre.
+    if (
+      !this.isCategoryBrowseQuestion(query) &&
+      this.findProductEmbeddedInMessage(query, products)
+    ) {
+      return null;
+    }
 
     // Pedir el link/carta del menú ≠ pedir una categoría
     if (

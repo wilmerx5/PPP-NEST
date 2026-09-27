@@ -70,6 +70,13 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
       list.find((p) => p.code === code) || null,
     uncoveredDishWords: () => [],
     uncoveredWordsAnchoredByProduct: () => [],
+    productsAnchoringDish: () => [],
+    isCategoryBrowseQuestion: () => false,
+    isMenuExploreIntent: () => false,
+    isAvailabilityInquiry: () => false,
+    isProductDescriptionInquiry: () => false,
+    findCategoryBrowseHit: () => null,
+    findProductVariantFamily: () => null,
     resolveNamedMenuDishProduct: (q: string, list: WhatsappCatalogProduct[]) => {
       if (!/\b(ejecutivo|menu\s+especial|de\s+la\s+casa)\b/i.test(q)) return null;
       return (

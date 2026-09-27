@@ -805,6 +805,22 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(
         catalog.uncoveredDishWords('Tienes bandeja De morcilla?', bandejaFamily!.variants),
       ).toEqual(expect.arrayContaining(['morcilla']));
+      expect(catalog.isCategoryBrowseQuestion('que bandejas hay')).toBe(true);
+      expect(catalog.uncoveredDishWords('que bandejas hay', menu)).toEqual([]);
+      const bandejasHit = catalog.findCategoryBrowseHit('que bandejas hay', menu);
+      expect(bandejasHit?.categoryName).toMatch(/bandeja/i);
+      const bandejaNames = (bandejasHit?.products || []).map((p) => p.name);
+      expect(bandejaNames.some((n) => /Bandeja Con Pollo/i.test(n))).toBe(true);
+      expect(bandejaNames.some((n) => /Bandeja Pronto/i.test(n))).toBe(true);
+      expect(bandejaNames.some((n) => /pollo frito$/i.test(n) && !/bandeja/i.test(n))).toBe(
+        false,
+      );
+      const pargo = catalog.productsAnchoringDish('tienes bandeja con pargo?', menu);
+      expect(pargo.length).toBeGreaterThan(0);
+      expect(pargo.every((p) => /bandeja/i.test(p.name))).toBe(true);
+      expect(catalog.uncoveredDishWords('tienes bandeja con pargo?', menu)).toEqual(
+        expect.arrayContaining(['pargo']),
+      );
       expect(
         catalog.uncoveredDishWords('Natalia seria un arroz con pollo', menu),
       ).toEqual([]);

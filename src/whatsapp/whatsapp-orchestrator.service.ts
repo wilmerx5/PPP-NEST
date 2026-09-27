@@ -1799,42 +1799,54 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // Categoría / estilo / "hamburguesas o salchipapas" ANTES del agente
-    // (si no, el LLM resume "comida rápida" como pollos o agrega una sola hamburguesa).
-    if (
-      await this.tryHandleDeterministicMenuBrowse(
-        conv,
-        msg.waId,
-        session,
-        text,
-        products,
-        cfg,
-      )
-    ) {
-      return;
-    }
+    // Categoría, "¿tienes X?" y "¿cómo es?" las responde el agente comparando el menú.
+    // Si el agente está apagado o no contesta, Nest sigue con la misma carta.
+    const answerMenuWithNest = async () => {
+      if (
+        await this.tryHandleDeterministicMenuBrowse(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+        )
+      ) {
+        return true;
+      }
+      if (
+        await this.tryHandleProductAvailabilityQuestion(
+          conv,
+          msg.waId,
+          session,
+          text,
+          products,
+          cfg,
+        )
+      ) {
+        return true;
+      }
+      if (
+        await this.tryHandleProductCompositionQuestion(
+          conv,
+          msg.waId,
+          text,
+          products,
+          cfg,
+          session,
+        )
+      ) {
+        return true;
+      }
+      if (
+        await this.tryResolvePendingCompositionAsk(conv, msg.waId, session, text, products, cfg)
+      ) {
+        return true;
+      }
+      return false;
+    };
 
-    // "tienes arroz chino?" → lista variantes y deja el foco para "cómo es / con qué viene"
-    if (
-      await this.tryHandleProductAvailabilityQuestion(
-        conv,
-        msg.waId,
-        session,
-        text,
-        products,
-        cfg,
-      )
-    ) {
-      return;
-    }
-
-    // "cómo es con pollo" / "con qué viene" → descripción del menú, no el agente
-    if (await this.tryHandleProductCompositionQuestion(conv, msg.waId, text, products, cfg, session)) {
-      return;
-    }
-    if (
-      await this.tryResolvePendingCompositionAsk(conv, msg.waId, session, text, products, cfg)
-    ) {
+    if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
       return;
     }
 
@@ -1854,6 +1866,10 @@ export class WhatsappOrchestratorService {
         prependFirstContactDisclaimer: isFirstInbound,
       }))
     ) {
+      return;
+    }
+
+    if (cfg.agentV1Enabled && (await answerMenuWithNest())) {
       return;
     }
 
@@ -11812,7 +11828,11 @@ export class WhatsappOrchestratorService {
     }
 
     // "¿Tienes arroz chino?" es un plato (familia), no un dump de categoría.
-    if (this.catalogService.isAvailabilityInquiry(text)) {
+    // "qué bandejas hay" sí es la categoría, aunque exista una familia de bandeja.
+    if (
+      this.catalogService.isAvailabilityInquiry(text) &&
+      !this.catalogService.isCategoryBrowseQuestion(text)
+    ) {
       const stripped = this.catalogService.stripAvailabilityInquiryNoise(text);
       const query = this.catalogService.extractProductSearchQuery(stripped || text);
       const family = query
