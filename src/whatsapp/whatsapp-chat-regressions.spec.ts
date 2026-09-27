@@ -16,6 +16,7 @@ import {
   parseCartItemReplacement,
   resolvePendingListOrMenuCode,
   isDeliveryAvailabilityFaq,
+  isDeliveryRangeQuestion,
   isUnansweredHumanComplaint,
 } from './whatsapp-session-intents';
 import {
@@ -743,6 +744,35 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
 
       const multi = catalog.resolveMultiProductOrder(text, pppMenu);
       expect(multi).toBeNull();
+    });
+
+    it('pregunta si el pollo lleva arepas no abre la porción de arepas', () => {
+      const menu = [
+        ...pppMenu,
+        {
+          id: 11,
+          code: 11,
+          name: 'Porcion De Arepas',
+          price: 4000,
+          hasAttributes: true,
+          attributes: [
+            { attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] },
+          ],
+          availableNow: true,
+          categoryName: 'Acompañamientos',
+        },
+      ];
+      const text = 'Que si el pollo va solo con arepas no lleva papa?';
+      expect(catalog.hasAccompanimentModifierWithMain(text)).toBe(true);
+      const embedded = catalog.findProductEmbeddedInMessage(text, menu);
+      expect(embedded?.name || '').not.toMatch(/Porcion De Arepas/i);
+      const half = menu.find((p) => p.name === '1/2 Pollo Broaster')!;
+      const attr = half.attributes![0];
+      expect(catalog.pickAttributeOptionFromText('que no quiero arepas', attr)).toBeNull();
+      expect(catalog.pickAttributeOptionFromText('sin arepas', attr)).toMatch(/sin arepas/i);
+      expect(
+        catalog.resolveNextAttributeChoice(half, 'que no quiero arepas', []).status,
+      ).toBe('invalid');
     });
 
     it('arroz con pollo → un solo producto', () => {
@@ -1577,6 +1607,13 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.isDishStyleSubstitutionInquiry('lo quiero con pollo broaster')).toBe(
         true,
       );
+      const broasterFamily = catalog.findProductVariantFamily(
+        'lo quiero con pollo broaster',
+        pppMenu,
+      );
+      const broasterNames = broasterFamily?.variants.map((p) => p.name) || [];
+      expect(broasterNames.some((n) => /ejecutivo/i.test(n))).toBe(false);
+      expect(broasterNames.some((n) => /bandeja/i.test(n))).toBe(false);
       const named = 'quiero un menu ejecutivo con pollo frito';
       const namedFamily = catalog.findProductVariantFamily(named, pppMenu);
       if (namedFamily) {
@@ -1700,6 +1737,8 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         'No, no mas',
         'no no más',
         'ya no mas',
+        'no solo eso',
+        'No, solo eso',
       ]) {
         expect(isNothingElseOrderIntent(raw)).toBe(true);
         expect(looksLikeNonAddressCommand(raw)).toBe(true);
@@ -2203,6 +2242,15 @@ Cll 6 b 78 c 33`;
   });
 
   describe('ASESOR off + domicilio FAQ (chat idle)', () => {
+    it('qué tan lejos llevas domicilios es radio, no armar pedido', () => {
+      const text = 'que tan lejos llevas   domicilios';
+      expect(isDeliveryRangeQuestion(text)).toBe(true);
+      expect(isDeliverySetupWithoutFood(text)).toBe(false);
+      expect(isDeliveryAvailabilityFaq(text)).toBe(false);
+      expect(isDeliveryRangeQuestion('quiero un domicilio')).toBe(false);
+      expect(isDeliveryRangeQuestion('tienen domicilios para Cra 81A #6B-20')).toBe(false);
+    });
+
     it('Tienes domicilio? es FAQ, no setup vacío agresivo', () => {
       expect(isDeliveryAvailabilityFaq('Tienes domicilio?')).toBe(true);
       expect(isDeliveryAvailabilityFaq('tienen servicio a domicilio')).toBe(true);
@@ -2211,6 +2259,8 @@ Cll 6 b 78 c 33`;
 
     it('??? / no me han escrito tras idle', () => {
       expect(isUnansweredHumanComplaint('???')).toBe(true);
+      expect(isUnansweredHumanComplaint('??')).toBe(true);
+      expect(isUnansweredHumanComplaint('?')).toBe(false);
       expect(isUnansweredHumanComplaint('Pues no me han escrito')).toBe(true);
       expect(isUnansweredHumanComplaint('quiero un pollo')).toBe(false);
     });

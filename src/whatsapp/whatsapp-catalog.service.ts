@@ -2247,9 +2247,13 @@ export class WhatsappCatalogService {
   hasAccompanimentModifierWithMain(text: string): boolean {
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q) return false;
-    const hasSide = /\b(con|sin)\s+(?:las?\s+|unos?\s+|una\s+)?(?:arepas?|papas?|yuca|ensalada|maduro)\b/.test(
-      q,
-    );
+    const hasSide =
+      /\b(con|sin)\s+(?:las?\s+|unos?\s+|una\s+)?(?:arepas?|papas?|yuca|ensalada|maduro|cebolla)\b/.test(
+        q,
+      ) ||
+      /\b(?:no\s+)?(?:lleva|viene|vienen|trae|traen)\s+(?:solo\s+)?(?:con\s+)?(?:las?\s+|una\s+)?(?:arepas?|papas?|papa|yuca|ensalada)\b/.test(
+        q,
+      );
     if (!hasSide) return false;
     return /\b(pollos?|broaster|frito|asado|churrascos?|mojarras?|bandejas?|ejecutivos?|sobrebarriga|pechugas?|alitas?|arroz|sopas?|costillas?)\b/.test(
       q,
@@ -3294,10 +3298,12 @@ export class WhatsappCatalogService {
 
     const embedded = this.findAllProductsEmbeddedInMessage(text, products);
     if (!embedded.length) return null;
-    const withoutSides =
-      this.hasAccompanimentModifierWithMain(text)
-        ? embedded.filter((p) => !this.isLikelySideOnlyProduct(p))
-        : embedded;
+    const accompaniment = this.hasAccompanimentModifierWithMain(text);
+    const withoutSides = accompaniment
+      ? embedded.filter((p) => !this.isLikelySideOnlyProduct(p))
+      : embedded;
+    // "el pollo lleva arepas?" nombra el plato; la porción de arepas no es la respuesta
+    if (accompaniment && !withoutSides.length) return null;
     const pool = withoutSides.length ? withoutSides : embedded;
     if (pool.length === 1) return pool[0];
 
@@ -5104,7 +5110,13 @@ export class WhatsappCatalogService {
       }
       const base = this.getProductNameBase(p.name);
       const name = normalizeText(p.name);
-      return base === bestBase || (name.includes(bestBase) && base.length >= 4);
+      if (base === bestBase) return true;
+      if (!(name.includes(bestBase) && base.length >= 4)) return false;
+      // "pollo broaster" no se traga ejecutivo, bandeja ni arroz: son otros platos
+      const wrappers = ['ejecutivo', 'bandeja', 'arroz', 'hamburguesa', 'taco', 'almuerzo'];
+      const baseHasWrapper = wrappers.some((w) => bestBase.includes(w));
+      if (!baseHasWrapper && wrappers.some((w) => name.includes(w))) return false;
+      return true;
     });
 
     if (variants.length < 2) return null;
@@ -7336,6 +7348,10 @@ export class WhatsappCatalogService {
     const q = normalizeText(cleaned);
     if (!q) return null;
 
+    const rejectsOption =
+      /\b(no quiero|ya no|que no|no era|no es eso)\b/.test(q) &&
+      !/\bsin\s+arepas?\b/.test(q);
+
     const attrName = normalizeText(attr.attributeName || '');
     const isArepaAttr = /\barepas?\b/.test(attrName);
 
@@ -7366,6 +7382,7 @@ export class WhatsappCatalogService {
       const o = normalizeText(opt);
       if (o.length < 3) continue;
       if (!(q === o || q.includes(o))) continue;
+      if (rejectsOption) continue;
       // Arepas "Fritas"/"Blancas": exigir arepa cerca, o que digan "arepas fritas"
       if (isArepaAttr && /^(fritas?|blancas?)$/.test(o)) {
         if (
@@ -7429,20 +7446,27 @@ export class WhatsappCatalogService {
       { re: /\b(entero|entera|unidad)\b/, needle: 'entero' },
       { re: /\b(uno|una)\b/, needle: 'uno' },
     ];
-    for (const hint of portionHints) {
-      if (!hint.re.test(q)) continue;
-      const hit = attr.options.find((o) => normalizeText(o).includes(hint.needle));
-      if (hit) return hit;
+    if (!rejectsOption) {
+      for (const hint of portionHints) {
+        if (!hint.re.test(q)) continue;
+        const hit = attr.options.find((o) => normalizeText(o).includes(hint.needle));
+        if (hit) return hit;
+      }
     }
 
-    for (const opt of attr.options) {
-      const o = normalizeText(opt);
-      for (const token of o.split(' ').filter((t) => t.length >= 3)) {
-        if (['pollo', 'frito', 'broaster', 'pechuga', 'gaseosa', 'combo'].includes(token)) {
-          continue;
+    // "que no quiero arepas" no elige "Sin arepas" solo porque comparte la palabra
+    if (!rejectsOption) {
+      for (const opt of attr.options) {
+        const o = normalizeText(opt);
+        for (const token of o.split(' ').filter((t) => t.length >= 3)) {
+          if (
+            ['pollo', 'frito', 'broaster', 'pechuga', 'gaseosa', 'combo', 'sin'].includes(token)
+          ) {
+            continue;
+          }
+          const re = new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`);
+          if (re.test(q)) return opt;
         }
-        const re = new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`);
-        if (re.test(q)) return opt;
       }
     }
 

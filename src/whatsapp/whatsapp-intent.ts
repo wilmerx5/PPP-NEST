@@ -9,6 +9,7 @@ import {
   isAddressRejectionIntent,
   isConfirmCurrentAddressIntent,
   isDeliveryEtaInquiry,
+  isDeliveryRangeQuestion,
 } from './whatsapp-session-intents';
 
 export type WhatsappMessageIntent =
@@ -244,7 +245,9 @@ export function isNothingElseOrderIntent(text: string): boolean {
     /^(eso\s+todo|listo\s+es\s+todo|ya\s+todo)$/.test(t) ||
     /^(solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
       t,
-    )
+    ) ||
+    // "no solo eso" / "no, solo eso" tras ¿Algo más? = eso es todo, no un barrio
+    /^no\s+(solo|solamente|unicamente)\s+eso$/.test(t)
   );
 }
 
@@ -415,6 +418,8 @@ export function isDeliverySetupWithoutFood(text: string): boolean {
   }
 
   if (!/\b(domicilios?|delivery)\b/i.test(raw)) return false;
+
+  if (isDeliveryRangeQuestion(raw)) return false;
 
   // Cobertura (“¿tienen domicilios para…?”) la maneja C18
   if (

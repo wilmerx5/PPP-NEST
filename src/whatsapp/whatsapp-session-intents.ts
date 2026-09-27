@@ -458,6 +458,33 @@ export function isDeliveryAvailabilityFaq(text: string): boolean {
   );
 }
 
+/**
+ * “¿Qué tan lejos llevas domicilios?” / “¿hasta dónde llegan?”
+ * Pregunta de radio, no arranque de pedido.
+ */
+export function isDeliveryRangeQuestion(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 8 || raw.length > 140) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (
+    /\b(pollo|sopa|arroz|combo|ejecutivo|bandeja|hamburguesa|mojarra)\b/.test(t)
+  ) {
+    return false;
+  }
+  if (/\d{2,}|#|\b(calle|carrera|cra|cll|diagonal|transversal)\b/.test(t)) return false;
+  const asksHowFar =
+    /\b(que\s+tan\s+lejos|tan\s+lejos|hasta\s+donde|hasta\s+que\s+(zona|barrio|parte)|que\s+distancia|cuantos?\s+(km|kilometros)|que\s+radio|radio\s+de|zona\s+de\s+cobertura)\b/.test(
+      t,
+    );
+  if (!asksHowFar) return false;
+  return /\b(domicilios?|delivery|llevan|llevas|llega|llegan|cubren|cubre|reparten|reparto)\b/.test(
+    t,
+  );
+}
+
 /** Tras idle de asesor: “???” / “no me han escrito”. */
 export function isUnansweredHumanComplaint(text: string): boolean {
   const raw = (text || '').trim();
@@ -466,7 +493,7 @@ export function isUnansweredHumanComplaint(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-  if (/^\?{1,6}[!¿?]*$/.test(raw.trim())) return true;
+  if (/^\?{2,6}[!¿?]*$/.test(raw.trim())) return true;
   return (
     /\bno\s+me\s+(han|has)\s+(escrito|contestado|respondido)\b/.test(t) ||
     /\bnadie\s+(me\s+)?(responde|contesta|escribe)\b/.test(t) ||
