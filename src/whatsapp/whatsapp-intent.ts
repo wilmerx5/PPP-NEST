@@ -140,7 +140,7 @@ const ADDRESS_ONLY_RE =
   /^(?:para|direcci[oó]n|domicilio)\b.+/i;
 
 const LANDMARK_KEYWORD_RE =
-  /\b(hospital|cl[ií]nica|ips|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera|hermanos?|padre|santa|san\s+[a-záéíóúñ]+)\b/i;
+  /\b(hospital|cl[ií]nica|ips|hotel|hostal|motel|conjunto|conj\.?|urbanizaci[oó]n|urb\.?|residencial|edificio|torres?|supermercado|exito|éxito|jumbo|ol[ií]mpica|centro\s+comercial|\bcc\b|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera|hermanos?|padre|santa|san\s+[a-záéíóúñ]+)\b/i;
 
 /** Conjuntos / urbanizaciones por nombre: "Bosques de Castilla", "Tierras del Sol". */
 const NAMED_COMPLEX_RE =

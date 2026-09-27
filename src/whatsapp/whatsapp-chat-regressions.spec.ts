@@ -680,6 +680,8 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(findPaymentMethodByText('Walter Campos Arévalo', DEFAULT_PAYMENT_METHODS)).toBeNull();
       expect(findPaymentMethodByText('Walter Campos', DEFAULT_PAYMENT_METHODS)).toBeNull();
       expect(isDeliverySetupWithoutFood('Buenos días para pedir un domicilio')).toBe(true);
+      expect(isDeliverySetupWithoutFood('Hola para pedirte un domicilio')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Hola para pedirte un domicilio')).toBe(false);
       expect(findPaymentMethodByText('mp', DEFAULT_PAYMENT_METHODS)?.id).toBe('mercadopago');
       expect(findPaymentMethodByText('pago con efectivo', DEFAULT_PAYMENT_METHODS)?.id).toBe(
         'cash',
@@ -913,6 +915,13 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(embedded).toBeFalsy();
     });
 
+    it('Para hotel el conejo es dirección, no la anterior', () => {
+      expect(looksLikeAddressOnlyMessage('Para hotel el conejo')).toBe(true);
+      expect(looksLikeAddressOnlyMessage('hotel el conejo')).toBe(true);
+      expect(looksLikeAddressOnlyMessage('el conejo')).toBe(false);
+      expect(looksLikeNonAddressCommand('Para hotel el conejo')).toBe(false);
+    });
+
     it('mojorra es Mojarra y pide preparación, no una ficha muda', () => {
       const hit = catalog.findProductEmbeddedInMessage('Una mojorra', pppMenu);
       expect(hit?.name).toBe('Mojarra');
@@ -923,6 +932,23 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(prompt).toMatch(/Frita/);
       expect(prompt).toMatch(/Escribe el número/);
       expect(prompt).not.toBe(catalog.formatProductHeader(hit!.name, hit!.price, hit!.code));
+    });
+
+    it('sobrebariga sudada es Sobrebarriga En Salsa', () => {
+      const text = 'Para pedirte por favor una sobrebariga sudada';
+      const query = catalog.extractProductSearchQuery(text);
+      expect(query).toBe('sobrebariga sudada');
+      expect(catalog.uncoveredDishWords(text, pppMenu)).toEqual([]);
+      const hit = catalog.findProductEmbeddedInMessage(text, pppMenu);
+      expect(hit?.name).toBe('Sobrebarriga');
+      expect(catalog.searchByName('sobrebariga sudada', pppMenu, 3)[0]?.name).toBe(
+        'Sobrebarriga',
+      );
+      expect(catalog.extractExplicitAttributeChoice(text, hit!)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: 'En Salsa' }),
+        ]),
+      );
     });
   });
 
@@ -1042,6 +1068,26 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       ).toBeNull();
       expect(isDeliveryLogisticsFluff('Para solicitar un domicilio')).toBe(true);
       expect(extractDeliverySetupAddress('Para solicitar un domicilio')).toBeNull();
+    });
+
+    it('un platano maduro es el plato, no una respuesta de pago', () => {
+      const menu = [
+        ...pppMenu,
+        {
+          id: 77,
+          code: 77,
+          name: 'Platano Maduro',
+          price: 4000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Acompañamientos',
+        },
+      ];
+      const text = 'un platano maduro';
+      expect(catalog.findProductEmbeddedInMessage(text, menu)?.name).toBe('Platano Maduro');
+      expect(catalog.uncoveredDishWords(text, menu)).toEqual([]);
+      expect(catalog.extractQuantityFromSegment(text)).toBe(1);
     });
 
     it('adicionar plátano no es nota de carrito', () => {
@@ -1808,6 +1854,115 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
   });
 
   describe('Colombiana 1,5: 1 unidad 1.5L (no “¿dos?” / no pollo #1)', () => {
+    it('Una Coca-Cola 400 es la gaseosa de 400 con sabor Coca Cola', () => {
+      const text = 'Una Coca-Cola 400';
+      const menu = pppMenu.map((p) =>
+        p.code === 28
+          ? {
+              ...p,
+              attributes: [
+                {
+                  attributeName: 'Sabor',
+                  options: ['Manzana', 'Colombiana', 'Pepsi', 'Coca Cola'],
+                },
+              ],
+            }
+          : p,
+      );
+      expect(catalog.extractRequestedDrinkVolumeMl(text)).toBe(400);
+      expect(catalog.uncoveredDishWords(text, menu)).toEqual([]);
+      const drink = catalog.resolveStandaloneDrinkOrder(text, menu);
+      expect(drink?.product.name).toMatch(/400/);
+      expect(drink?.product.name).not.toMatch(/1\.5|1,5/);
+      expect(drink?.attributes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeValue: expect.stringMatching(/coca cola/i) }),
+        ]),
+      );
+      expect(catalog.resolveStandaloneDrinkOrder('Para pedir un Pollo frito en combo y gaseosa cocacola', menu)).toBeNull();
+    });
+
+    it('combo de pollo frito gaseosa manzana y dos sopas no suelta la gaseosa', () => {
+      const soup = {
+        id: 80,
+        code: 80,
+        name: 'Sopa De Mondongo',
+        price: 15000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Sopas',
+      };
+      const menu = [...pppMenu, soup];
+      const text = 'Me regala un combo de pollo frito gaseosa manzana y dos sopas de mondongo';
+      const multi = catalog.resolveMultiProductOrder(text, menu);
+      expect(multi?.ambiguous).toEqual([]);
+      expect(multi?.unresolved).toEqual([]);
+      const names = [
+        ...(multi?.confident.map((c) => `${c.product.name} [${c.segment}]`) || []),
+        ...(multi?.needsAttributes.map((c) => `attr:${c.product.name} [${c.segment}]`) || []),
+        ...(multi?.unresolved.map((u) => `miss:${u}`) || []),
+        ...(multi?.ambiguous.map((a) => `amb:${a.segment}`) || []),
+      ];
+      expect(names.join(' | ')).toMatch(/Combo De Pollo Frito/i);
+      expect(names.join(' | ')).toMatch(/Sopa De Mondongo/i);
+      expect(names.join(' | ')).not.toMatch(/Gaseosa 400/i);
+      const combo = menu.find((p) => p.name === 'Combo De Pollo Frito')!;
+      const resolved = catalog.applyDefaultAttributeStep(
+        combo,
+        catalog.coerceAttributeStep(
+          combo,
+          catalog.resolveAttributesFromMessage(combo, text, []),
+        ),
+      );
+      expect(resolved.status).toBe('complete');
+      if (resolved.status !== 'complete') return;
+      expect(resolved.attributes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Manzana' }),
+        ]),
+      );
+      expect(catalog.extractQuantityFromSegment('dos sopas de mondongo')).toBe(2);
+      const hosted = catalog.hostedMenuDrink(text, menu);
+      expect(hosted?.product.name).toMatch(/Combo De Pollo Frito/i);
+      expect(hosted?.attributes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Manzana' }),
+        ]),
+      );
+      expect(catalog.resolveStandaloneDrinkOrder(text, menu)).toBeNull();
+    });
+
+    it('medio pollo asado lista frito y broaster de esa porción', () => {
+      const text = 'me regalas medio pollo asado';
+      const alts = catalog.missingStyleAlternatives(text, pppMenu);
+      expect(alts?.map((p) => p.name)).toEqual(
+        expect.arrayContaining(['1/2 Pollo Frito', '1/2 Pollo Broaster']),
+      );
+      expect(alts?.some((p) => /combo|broaster$/i.test(p.name) && /1 pollo/i.test(p.name))).toBe(
+        false,
+      );
+      expect(alts?.every((p) => /1\/2/i.test(p.name))).toBe(true);
+      const offer = catalog.formatMissingStyleOffer(text, pppMenu);
+      expect(offer).toMatch(/No tenemos \*medio pollo asado\*/);
+      expect(offer).toMatch(/1\/2 Pollo Frito/);
+      expect(offer).toMatch(/1\/2 Pollo Broaster/);
+      expect(catalog.missingStyleAlternatives('me regalas medio pollo frito', pppMenu)).toBeNull();
+      expect(catalog.missingStyleAlternatives('Me regala una mojarra', pppMenu)).toBeNull();
+    });
+
+    it('coca cola que no está en la carta lista las bebidas del menú', () => {
+      const text = 'Una Coca-Cola 400';
+      expect(catalog.resolveStandaloneDrinkOrder(text, pppMenu)).toBeNull();
+      expect(catalog.shouldOfferMenuDrinks(text, pppMenu)).toBe(true);
+      expect(catalog.shouldOfferMenuDrinks('Me regala una mojarra', pppMenu)).toBe(false);
+      const offer = catalog.formatMenuDrinksOffer(text, pppMenu);
+      expect(offer).toMatch(/No tenemos \*Coca-Cola 400\*/);
+      expect(offer).toMatch(/Gaseosa 400ml/);
+      expect(offer).toMatch(/Gaseosa 1\.5/);
+      expect(offer).toMatch(/Coca Cola/);
+    });
+
     it('1 colombiana 1,5 → volumen 1500, qty 1, SKU 1.5L', () => {
       const text = applyLocalGlossary('1 colombiana 1,5');
       expect(text).toMatch(/1\.5\s*litros/i);

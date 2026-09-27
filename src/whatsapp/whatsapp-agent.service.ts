@@ -251,7 +251,12 @@ Reglas:
 - Pregunta (¿tienes?, ¿qué hay?, ¿qué bandejas hay?, ¿cómo es?, ¿con qué viene?): responde con results (nombre, precio, descripción). NO add_item. add_item solo si el cliente está pidiendo el plato.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
 - "sí", "si por favor", "dale" y "ok" confirman. No son el nombre del cliente.
-- Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae lo más cercano, menciónalo como lo que sí hay.
+- "para un domicilio" / "para pedirte un domicilio" sin plato y con carrito vacío: no pidas el nombre. Pregunta qué se le antoja. El nombre va cuando ya hay pedido.
+- Si mode="hosted_drink": la bebida es opción del plato (combo). add_item de ese productId con attributes. NO agregues la gaseosa suelta.
+- Si mode="drink_order": es una bebida de la carta. add_item con ese productId y attributes. No digas que no la tenemos.
+- Si mode="menu_drinks": esa bebida no está. Di que no la tenemos (las palabras del cliente) y lista drinks: nombre, precio y sabores. NO add_item. No inventes marcas.
+- Si mode="style_alternatives": ese estilo no está en el plato. Di que no lo tenemos (las palabras del cliente) y lista results (nombre y precio). NO add_item.
+- Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae platos, menciónalos (nombre y precio) como lo que sí hay.
 - Si mode="category_browse" o mode="availability": lista cada result (nombre, precio y descripción). No dejes por fuera presentaciones de la misma familia y no agregues uno solo.
 - Si mode="composition": qué lleva sale de description y attributes. Si preguntan si incluye algo y otro result de esa familia sí lo trae, di que este no y ese sí. NO add_item.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
@@ -426,6 +431,66 @@ Contacto humano: *${phone || '3118866823'}*
       case 'search_menu': {
         const query = String(args.query || '').trim();
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
+
+        const hosted = this.catalogService.hostedMenuDrink(
+          ctx.userMessage || query,
+          ctx.products,
+        );
+        if (hosted && this.catalogService.drinkTextMatchesAttribute(hosted.product, query)) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'hosted_drink',
+            product: this.productCard(hosted.product),
+            attributes: hosted.attributes,
+            hint:
+              'Esa bebida es una opción del plato, no un producto suelto. ' +
+              'add_item con ese productId y estos attributes. No agregues la gaseosa aparte.',
+          });
+        }
+
+        const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(
+          query,
+          ctx.products,
+        );
+        if (drinkOrder) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'drink_order',
+            product: this.productCard(drinkOrder.product),
+            attributes: drinkOrder.attributes,
+            hint:
+              'Es una bebida que sí está en la carta. add_item con ese productId y estos attributes. ' +
+              'No digas que no la manejamos.',
+          });
+        }
+        if (this.catalogService.shouldOfferMenuDrinks(query, ctx.products)) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'menu_drinks',
+            drinks: this.catalogService.menuDrinkProducts(ctx.products).slice(0, 8).map((p) =>
+              this.productCard(p),
+            ),
+            hint:
+              'Esa bebida no está en la carta. Di que no la tenemos, con las palabras del cliente, ' +
+              'y lista drinks (nombre, precio y opciones). NO add_item. No inventes otras marcas.',
+          });
+        }
+
+        const styleAlts = this.catalogService.missingStyleAlternatives(query, ctx.products);
+        if (styleAlts?.length) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'style_alternatives',
+            results: styleAlts.map((p) => this.productCard(p)),
+            hint:
+              'Ese estilo no está en el plato o la porción. Di que no lo tenemos, con las palabras del cliente, ' +
+              'y lista results (nombre y precio). NO add_item. No inventes otro estilo.',
+          });
+        }
 
         const uncovered = this.catalogService.uncoveredDishWords(query, ctx.products);
         if (uncovered.length) {
