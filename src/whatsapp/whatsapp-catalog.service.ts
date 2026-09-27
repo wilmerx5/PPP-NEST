@@ -1588,6 +1588,35 @@ export class WhatsappCatalogService {
     return true;
   }
 
+  /**
+   * Palabras del pedido que ningún nombre cubre.
+   * "bandeja paisa" no es "Bandeja con pollo": paisa queda sin cubrir.
+   */
+  missingDishQualifiers(query: string, products: WhatsappCatalogProduct[]): string[] {
+    const stripped = this.stripAvailabilityInquiryNoise(
+      this.extractProductSearchQuery(query) || query,
+    );
+    const q = normalizeText(stripped);
+    const foodToken = new RegExp(`^${FOOD_ORDER_TOKEN}$`, 'i');
+    const tokens = [
+      ...new Set(
+        q
+          .split(/\s+/)
+          .filter(
+            (t) =>
+              foodToken.test(t) &&
+              this.isDistinctiveProductToken(t) &&
+              !this.SIDE_NOTE_TOKENS.has(t) &&
+              !this.SIDE_NOTE_TOKENS.has(singularizeEsToken(t)),
+          ),
+      ),
+    ];
+    if (!tokens.length || !products.length) return [];
+    return tokens.filter(
+      (t) => !products.some((p) => this.queryHasToken(normalizeText(p.name), t)),
+    );
+  }
+
   /** ¿El nombre del producto es un pack/duo/doble/combo? */
   private productNameHasPackMultiplier(name: string): boolean {
     const n = normalizeText(name);
@@ -2012,6 +2041,9 @@ export class WhatsappCatalogService {
       return true;
     });
     if (narrowed.length) pool = narrowed;
+
+    // "bandeja paisa" no se sustituye por la única bandeja que sí hay
+    if (this.missingDishQualifiers(q, pool).length) return null;
 
     const proteinHints: Array<{ re: RegExp; nameRe: RegExp }> = [
       { re: /\bpechuga\b/, nameRe: /\bpechuga\b/ },
@@ -3305,7 +3337,12 @@ export class WhatsappCatalogService {
     // "el pollo lleva arepas?" nombra el plato; la porción de arepas no es la respuesta
     if (accompaniment && !withoutSides.length) return null;
     const pool = withoutSides.length ? withoutSides : embedded;
-    if (pool.length === 1) return pool[0];
+    const uncovered = (list: WhatsappCatalogProduct[]) =>
+      this.missingDishQualifiers(text, list).length > 0;
+    if (pool.length === 1) {
+      if (uncovered(pool)) return null;
+      return pool[0];
+    }
 
     const q = normalizeText(text);
     const ranked = pool
@@ -3343,7 +3380,9 @@ export class WhatsappCatalogService {
     if (ranked.length >= 2 && ranked[0].score === ranked[1].score && ranked[0].score === 0) {
       return null;
     }
-    return ranked[0]?.p ?? null;
+    const best = ranked[0]?.p ?? null;
+    if (best && this.missingDishQualifiers(text, [best]).length) return null;
+    return best;
   }
 
   /**

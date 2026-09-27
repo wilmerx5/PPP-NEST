@@ -746,6 +746,36 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(multi).toBeNull();
     });
 
+    it('tienes bandeja paisa no es la bandeja de pollo', () => {
+      const menu = [
+        ...pppMenu,
+        {
+          id: 16,
+          code: 16,
+          name: 'Bandeja Con Pollo Broaster',
+          price: 22000,
+          hasAttributes: true,
+          attributes: [{ attributeName: 'Presa', options: ['Pierna Pernil', 'Ala pechuga'] }],
+          availableNow: true,
+          categoryName: 'Bandejas',
+          description: 'Acompañado con papa francesa, ensalada y arroz',
+        },
+      ];
+      const bandejas = menu.filter((p) => /bandeja/i.test(p.name));
+      expect(catalog.missingDishQualifiers('tienes bandeja paisa', bandejas)).toEqual(['paisa']);
+      expect(catalog.missingDishQualifiers('tienes bandeja', bandejas)).toEqual([]);
+      expect(catalog.missingDishQualifiers('y bandeja paisa con frijolitos', menu)).toEqual([
+        'paisa',
+      ]);
+      expect(catalog.resolveNamedMenuDishProduct('tienes bandeja paisa', menu)).toBeNull();
+      expect(catalog.resolveNamedMenuDishProduct('bandeja con pollo', menu)?.name).toMatch(
+        /Pollo/i,
+      );
+      expect(catalog.findProductEmbeddedInMessage('tienes bandeja paisa', menu)?.name || '').not.toMatch(
+        /Bandeja/i,
+      );
+    });
+
     it('pregunta si el pollo lleva arepas no abre la porción de arepas', () => {
       const menu = [
         ...pppMenu,

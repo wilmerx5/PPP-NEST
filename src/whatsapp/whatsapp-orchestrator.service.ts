@@ -2533,6 +2533,27 @@ export class WhatsappOrchestratorService {
 
     // Varios platos en un mensaje ("sopa de mondongo, cuarto de pollo y costillas")
     if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const dishQuery = (
+        this.catalogService.extractProductSearchQuery(originalText || text) ||
+        text
+      )
+        .replace(/^(?:y|tambien|también)\s+/i, '')
+        .trim();
+      if (
+        dishQuery &&
+        !this.catalogService.isAvailabilityInquiry(text) &&
+        !this.catalogService.isProductDescriptionInquiry(text) &&
+        !this.catalogService.isPriceInquiryIntent(text) &&
+        this.catalogService.missingDishQualifiers(dishQuery, products).length
+      ) {
+        await this.reply(
+          conv,
+          msg.waId,
+          this.catalogService.formatNotOnMenuReply(dishQuery, cfg.menuUrl),
+        );
+        return;
+      }
+
       const multi = this.catalogService.resolveMultiProductOrder(originalText || text, products);
       if (multi) {
         const handled = await this.tryHandleMultiProductOrder(
@@ -7246,7 +7267,7 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     text: string,
     products: MenuProduct[],
-    _cfg: EffectiveWhatsappConfig,
+    cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!this.catalogService.isAvailabilityInquiry(text)) return false;
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
@@ -7269,6 +7290,16 @@ export class WhatsappOrchestratorService {
       if (embedded) variants = [embedded];
     }
     if (!variants.length) return false;
+
+    // "tienes bandeja paisa" no confirma otra bandeja si falta "paisa" en el nombre
+    if (this.catalogService.missingDishQualifiers(query, variants).length) {
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl),
+      );
+      return true;
+    }
 
     const anchor = variants[0];
     session = {
