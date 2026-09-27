@@ -1067,6 +1067,18 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family!.variants.length).toBeGreaterThanOrEqual(3);
       expect(family!.variants.some((v) => /medio pollo/i.test(v.name))).toBe(true);
       expect(family!.variants.some((v) => /costilla/i.test(v.name))).toBe(true);
+      expect(family!.variants.some((v) => /combo/i.test(v.name))).toBe(true);
+      const asked = catalog.findProductVariantFamily('Hay arroz chino?', pppMenu);
+      expect(asked?.variants.some((v) => /costilla/i.test(v.name))).toBe(true);
+      expect(asked?.variants.some((v) => /combo/i.test(v.name))).toBe(true);
+      expect(asked?.variants.some((v) => /medio pollo/i.test(v.name))).toBe(true);
+      const lleva = catalog.findProductVariantFamily(
+        'que lleva el arroz chino con medio pollo',
+        pppMenu,
+      );
+      expect(lleva?.variants.some((v) => /combo/i.test(v.name))).toBe(true);
+      expect(catalog.isProductDescriptionInquiry('Y no viene con gaseosa?')).toBe(true);
+      expect(catalog.isProductDescriptionInquiry('Que lleva El De medio pollo')).toBe(true);
     });
 
     it('arroz chino de 56 mil → SKU a $56.000 (no la caja de 38)', () => {
@@ -2138,6 +2150,16 @@ Cll 6 b 78 c 33`;
       );
       expect(catalog.resolveSizedChickenProduct('y quiero medio pollo', pppMenu)).toBeNull();
       expect(catalog.resolveSizedChickenProduct('un pollo', pppMenu)).toBeNull();
+      const half = pppMenu.find((p) => p.name === '1/2 Pollo Frito')!;
+      const named = catalog.resolveAttributesFromMessage(half, half.name, []);
+      expect(named.status).not.toBe('complete');
+      const filled = catalog.fillDefaultAttributes(half, []);
+      expect(catalog.isAttributeSelectionComplete(half, filled)).toBe(true);
+      expect(filled).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Arepas', attributeValue: 'Blancas' }),
+        ]),
+      );
     });
   });
 

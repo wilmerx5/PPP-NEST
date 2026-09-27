@@ -11169,7 +11169,19 @@ export class WhatsappOrchestratorService {
       this.catalogService.extractVariantPreferenceHint(text) ||
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     const attrOpts = variantIntent ? { variantIntent } : undefined;
-    const step = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
+    const stepRaw = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
+    // Arepas, sabor, presa: primera opción y al carrito. El estilo (frito/broaster) sí se pregunta.
+    const prefilled =
+      stepRaw.status === 'complete'
+        ? stepRaw.attributes
+        : this.catalogService.fillDefaultAttributes(
+            product,
+            stepRaw.status === 'partial' ? stepRaw.attributes : [],
+            attrOpts,
+          );
+    const step = this.catalogService.isAttributeSelectionComplete(product, prefilled, attrOpts)
+      ? { status: 'complete' as const, attributes: prefilled }
+      : stepRaw;
     const deliveryHint = this.extractDeliveryTail(text);
 
     // Tras "complete", revalidar: combos suelen tener arepa + sabor gaseosa

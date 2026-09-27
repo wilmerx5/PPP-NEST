@@ -226,12 +226,13 @@ Reglas:
 - El menú que devuelve search_menu es la única fuente de verdad. Tú analizas, comparas y respondes. No inventes platos, precios ni ingredientes.
 - Pregunta (¿tienes?, ¿qué hay?, ¿qué bandejas hay?, ¿cómo es?, ¿con qué viene?): responde con results (nombre, precio, descripción). NO add_item. add_item solo si el cliente está pidiendo el plato.
 - Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae lo más cercano, menciónalo como lo que sí hay.
-- Si mode="category_browse" o mode="availability": lista esos results. No resumas otra categoría ni agregues uno solo.
+- Si mode="category_browse" o mode="availability": lista cada result (nombre, precio y descripción). No dejes por fuera presentaciones de la misma familia y no agregues uno solo.
+- Si mode="composition": qué lleva sale de description y attributes. Si preguntan si incluye algo y otro result de esa familia sí lo trae, di que este no y ese sí. NO add_item.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
 - "Menú" / "carta" / "pásame el menú" SIN calificativo → link de la carta (NO add_item).
 - "Menú ejecutivo|especial|de la casa|del día|…" o "bandeja con…" → plato del catálogo si search_menu lo trae; NUNCA lo confundas con el link ni con el pollo suelto.
-- Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
+- Si hay varias presentaciones del mismo plato (combo, costillas, medio, caja, frito/broaster), menciónalas todas. No te quedes en dos.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - "qué hay de comida rápida" / "hamburguesas o salchipapas" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
@@ -456,9 +457,36 @@ Contacto humano: *${phone || '3118866823'}*
               ok: true,
               query,
               mode: 'availability',
-              results: variants.slice(0, 8).map((p) => this.productCard(p)),
+              results: variants.slice(0, 12).map((p) => this.productCard(p)),
               hint:
-                'Pregunta si lo tenemos. Responde con estos platos (nombre, precio y descripción). NO add_item hasta que pida agregarlo.',
+                'Pregunta si lo tenemos. Lista TODOS los results, uno por uno: nombre, precio y descripción. ' +
+                'No resumas en “el básico y otra versión”. La descripción dice qué incluye aunque el nombre no lo diga. NO add_item.',
+            });
+          }
+        }
+
+        const compositionAsk =
+          this.catalogService.isProductDescriptionInquiry(query) ||
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
+        if (compositionAsk) {
+          const family =
+            this.catalogService.findProductVariantFamily(query, ctx.products) ||
+            this.catalogService.findProductVariantFamily(ctx.userMessage || '', ctx.products);
+          const focus = family
+            ? this.catalogService.pickVariantFromFamilyText(query, family) ||
+              this.catalogService.pickVariantFromFamilyText(ctx.userMessage || '', family)
+            : this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
+          const variants = family?.variants?.length ? family.variants : focus ? [focus] : [];
+          if (variants.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'composition',
+              focusId: focus?.id ?? null,
+              results: variants.slice(0, 12).map((p) => this.productCard(p)),
+              hint:
+                'Qué lleva se responde con description y attributes, no con el título. ' +
+                'Si preguntan si incluye algo, mira TODOS los results: di si el plato (focusId) lo trae y, si otro de la familia sí lo trae en la descripción o en un atributo, menciónalo. NO add_item.',
             });
           }
         }
@@ -732,7 +760,7 @@ Contacto humano: *${phone || '3118866823'}*
       name: p.name,
       price: p.price,
       category: p.categoryName || null,
-      description: (p.description || '').trim().slice(0, 180) || null,
+      description: (p.description || '').trim().slice(0, 280) || null,
       hasAttributes: !!p.hasAttributes,
       attributes: (p.attributes || []).map((a) => ({
         attributeName: a.attributeName,
