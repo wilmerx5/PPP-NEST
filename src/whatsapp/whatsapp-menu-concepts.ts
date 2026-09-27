@@ -107,6 +107,12 @@ export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
     productKeywords: ['mojarra', 'trucha', 'bagre', 'pescado', 'filete', 'tilapia'],
   },
   {
+    id: 'mexicana',
+    label: 'Comida mexicana',
+    triggers: ['mexicana', 'mexicano', 'mexicanos', 'mexicanas', 'taco', 'tacos'],
+    productKeywords: ['taco', 'tacos', 'burrito', 'quesadilla', 'nacho', 'mexicana', 'mexicano'],
+  },
+  {
     id: 'comida_rapida',
     label: 'Comida rápida',
     triggers: [
@@ -220,6 +226,7 @@ const BROAD_CONCEPT_TRIGGERS: Record<string, string[]> = {
     'rapida',
     'rápida',
   ],
+  mexicana: ['mexicana', 'mexicano', 'mexicanos', 'mexicanas', 'taco', 'tacos'],
 };
 
 function isBroadConceptTrigger(concept: MenuConceptGroup, trigger: string): boolean {
@@ -332,6 +339,7 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
     'salchipapa',
     'salchipapas',
   ],
+  mexicana: ['taco', 'tacos', 'mexicana', 'mexicano', 'mexicanos', 'burritos'],
   bebida: ['bebida', 'bebidas', 'gaseosa', 'gaseosas', 'jugo', 'jugos', 'refresco', 'refrescos'],
 };
 
@@ -361,6 +369,9 @@ const SEMANTIC_FILTER_HINTS: Record<string, string> = {
   comida_rapida:
     'Filtra SEMÁNTICAMENTE: comida rápida (hamburguesa, salchipapa, perro caliente, nuggets). ' +
     'EXCLUYE pollo entero/combo, arroz chino, sopas y bebidas sueltas. Lista los platos de esa categoría, no un resumen.',
+  mexicana:
+    'Filtra SEMÁNTICAMENTE: comida mexicana (tacos, burritos, quesadillas). ' +
+    'EXCLUYE hamburguesas, alitas, pollo, arroz y bebidas. Lista esos platos; si no hay, dilo breve.',
   bebida:
     'Filtra SEMÁNTICAMENTE: solo bebidas (gaseosa, jugo, limonada…). EXCLUYE comida.',
 };
@@ -445,6 +456,7 @@ export function findByMenuConcept(
         'tiene', 'tienen', 'tienes', 'hay', 'ofrecen', 'ofreces', 'venden', 'vendes',
         'manejan', 'manejas', 'disponible', 'disponibles', 'hola', 'buenas', 'buenos',
         'favor', 'porfa', 'gracias',
+        'comida', 'comidas', 'plato', 'platos', 'hola', 'vecino', 'vecina', 'veci',
       ]);
       const broadNeedles = new Set(
         [...matchedTriggers, ...(BROAD_CONCEPT_TRIGGERS[concept.id] || []), concept.label]

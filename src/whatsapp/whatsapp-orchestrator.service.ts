@@ -11401,6 +11401,19 @@ export class WhatsappOrchestratorService {
       products,
       cfg.menuConceptGroups,
     );
+    if (
+      /\bmexican[oa]s?\b/i.test(text) &&
+      !hit?.products?.length
+    ) {
+      const menuUrl = (cfg.menuUrl || '').trim();
+      await this.reply(
+        conv,
+        waId,
+        `Por ahora no manejamos *comida mexicana*.` +
+          (menuUrl ? `\nMenú: ${menuUrl}` : ''),
+      );
+      return true;
+    }
     const bareConceptOrCategory =
       !!hit?.products?.length &&
       (text || '').trim().split(/\s+/).filter(Boolean).length <= 3 &&
@@ -11415,7 +11428,7 @@ export class WhatsappOrchestratorService {
         pendingAttribute: undefined,
       };
       const specificCue =
-        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo|hamburguesa|salchipapa|comida\s+rapid)\b/i.test(
+        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo|hamburguesa|salchipapa|comida\s+rapid|mexicana|mexicano|tacos?)\b/i.test(
           text,
         );
       if (

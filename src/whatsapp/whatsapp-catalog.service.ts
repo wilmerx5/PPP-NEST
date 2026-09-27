@@ -661,7 +661,11 @@ export class WhatsappCatalogService {
         `\\b(que|qué)\\s+(hay|tienen|tiene|tienes)\\s+(?:de\\s+)?${catWord}\\b`,
       ).test(q) ||
       /\b(muestrame|mostrame|ver)\s+(las?\s+)?(opciones|lista)?\b/.test(q) ||
-      /\b(opciones|lista)\s+de\b/.test(q)
+      /\b(opciones|lista)\s+de\b/.test(q) ||
+      // "tiene comida mexicana?" / "tienen tacos?"
+      /\b(tiene|tienen|tienes|hay|manejan|venden)\b.{0,30}\b(mexicana|mexicano|mexicanos|tacos?|comida\s+rapid)/.test(
+        q,
+      )
     );
   }
 
@@ -3566,68 +3570,10 @@ export class WhatsappCatalogService {
     let best: { categoryName: string; score: number } | null = null;
 
     for (const cat of categoryNames) {
-      const c = normalizeText(cat);
-      const cs = stemLoose(cat);
-      let score = 0;
-
-      if (q === c || q === cs) {
-        score = 100;
-      } else if (isShortCategoryQuery && (q.includes(c) || c.includes(q) || q.includes(cs))) {
-        score = 85;
-      } else if (isBrowseIntent) {
-        if (q.includes(c) || q.includes(cs) || c.includes(q)) score = 80;
-        else {
-          for (const t of significantTokens) {
-            const ts = stemLoose(t);
-            if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
-              score = Math.max(score, 70);
-            }
-          }
-        }
-      }
-
-      // "ahora pollo", "pregunto por carne" (sin ver/lista explícito)
-      const SKIP = new Set([
-        'por',
-        'que',
-        'un',
-        'una',
-        'el',
-        'la',
-        'los',
-        'las',
-        'de',
-        'del',
-        'y',
-        'o',
-        'ahora',
-        'tambien',
-        'pregunto',
-        'interesa',
-        'ver',
-        'dame',
-        'favor',
-        'gracias',
-        'quiero',
-        'necesito',
-        'pedir',
-        'ordenar',
-      ]);
-      if (significantTokens.length <= 4) {
-        for (const t of significantTokens) {
-          if (SKIP.has(t)) continue;
-          const ts = stemLoose(t);
-          if (c === t || cs === ts || (t.length >= 4 && (c.includes(t) || t.includes(c)))) {
-            score = Math.max(score, 72);
-          }
-        }
-      }
-
-      // Frase larga de pedido sin intención de “ver categoría”: no matchear
-      // solo porque incluye la palabra de la categoría (pollo dentro de “arroz con pollo”).
-
-      if (score >= 70 && isBrowseIntent) score += 10;
-
+      const score = this.scoreCategoryNameMatch(q, cat, {
+        isBrowseIntent,
+        isShortCategoryQuery,
+      });
       if (score >= 70 && (!best || score > best.score)) {
         best = { categoryName: cat, score };
       }
@@ -3637,7 +3583,53 @@ export class WhatsappCatalogService {
 
     const list = available.filter((p) => p.categoryName === best!.categoryName);
     if (!list.length) return null;
-    return this.refineCategoryListByQuery(q, best.categoryName, list);
+    const refined = this.refineCategoryListByQuery(q, best.categoryName, list);
+    if (!refined.products.length) return null;
+    return refined;
+  }
+
+  /**
+   * "comida mexicana" no es la categoría "Comidas Rápidas":
+   * en nombres de varias palabras hace falta la palabra distintiva (rápida), no solo "comida".
+   */
+  private scoreCategoryNameMatch(
+    q: string,
+    categoryName: string,
+    opts: { isBrowseIntent: boolean; isShortCategoryQuery: boolean },
+  ): number {
+    const c = normalizeText(categoryName);
+    const cs = stemLoose(categoryName);
+    if (!c) return 0;
+    if (q === c || q === cs) return 100;
+
+    const skip = new Set([
+      'por', 'que', 'un', 'una', 'el', 'la', 'los', 'las', 'de', 'del', 'y', 'o',
+      'ahora', 'tambien', 'pregunto', 'interesa', 'ver', 'dame', 'favor', 'gracias',
+      'quiero', 'necesito', 'pedir', 'ordenar', 'tiene', 'tienen', 'tienes', 'hay',
+      'hola', 'vecino', 'vecina', 'veci', 'buenas',
+    ]);
+    const generic = new Set(['comida', 'comidas', 'plato', 'platos', 'menu', 'carta', 'algo']);
+    const qTokens = q.split(' ').filter((t) => t.length >= 3 && !skip.has(t));
+    const cWords = c.split(' ').filter((w) => w.length >= 3);
+    const wordHit = (w: string) => {
+      const ws = stemLoose(w);
+      return qTokens.some((tok) => tok === w || stemLoose(tok) === ws);
+    };
+
+    if (cWords.length >= 2) {
+      const distinctive = cWords.filter((w) => !generic.has(w) && !generic.has(stemLoose(w)));
+      const needed = distinctive.length ? distinctive : cWords;
+      if (!needed.every(wordHit)) return 0;
+      return opts.isBrowseIntent ? 90 : 82;
+    }
+
+    const only = cWords[0] || c;
+    if (!wordHit(only) && !(opts.isShortCategoryQuery && (q.includes(c) || c.includes(q)))) {
+      return 0;
+    }
+    let score = opts.isShortCategoryQuery ? 85 : 72;
+    if (opts.isBrowseIntent) score += 10;
+    return score;
   }
 
   /**

@@ -270,4 +270,47 @@ describe('resolveConceptBrowseForAgent (menú ordenado vs carta mezclada)', () =
     expect(names).toEqual(expect.arrayContaining(['Hamburguesa Clasica', 'Salchipapa']));
     expect(names.some((n) => /pollo|arroz/i.test(n))).toBe(false);
   });
+
+  it('tiene comida mexicana lista tacos, no hamburguesas ni alitas', () => {
+    const menu = [
+      {
+        id: 70,
+        code: 70,
+        name: 'Taco Al Pastor',
+        price: 17000,
+        categoryName: 'Comidas Rapidas',
+        availableNow: true,
+      },
+      {
+        id: 71,
+        code: 71,
+        name: 'Duo De Tacos Al pastor',
+        price: 32000,
+        categoryName: 'Comidas Rapidas',
+        availableNow: true,
+      },
+      {
+        id: 76,
+        code: 76,
+        name: 'Hamburguesa Clasica',
+        price: 22000,
+        categoryName: 'Comidas Rapidas',
+        availableNow: true,
+      },
+      {
+        id: 75,
+        code: 75,
+        name: 'Alitas Broaster',
+        price: 22000,
+        categoryName: 'Comidas Rapidas',
+        availableNow: true,
+      },
+    ];
+    const hit = findByMenuConcept('tiene comida mexicana', menu);
+    expect(hit).toBeTruthy();
+    expect(hit!.conceptId).toBe('mexicana');
+    const names = hit!.products.map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining(['Taco Al Pastor', 'Duo De Tacos Al pastor']));
+    expect(names.some((n) => /hamburguesa|alitas/i.test(n))).toBe(false);
+  });
 });

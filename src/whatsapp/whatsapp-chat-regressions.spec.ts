@@ -2445,5 +2445,39 @@ Cll 6 b 78 c 33`;
       const names = (hit?.products || []).map((p) => p.name).sort();
       expect(names).toEqual(['Hamburguesa Clasica', 'Salchipapa']);
     });
+
+    it('tiene comida mexicana no lista toda Comidas Rápidas', () => {
+      const menu: WhatsappCatalogProduct[] = [
+        ...fastMenu,
+        {
+          id: 70,
+          code: 70,
+          name: 'Taco Al Pastor',
+          price: 17000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Comidas Rápidas',
+        },
+        {
+          id: 75,
+          code: 75,
+          name: 'Alitas Broaster',
+          price: 22000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Comidas Rápidas',
+        },
+      ];
+      expect(catalog.isCategoryBrowseQuestion('tiene comida mexicana?')).toBe(true);
+      const hit = catalog.findCategoryBrowseHit('Hola Vecino, tiene comida mexicana?', menu);
+      const names = (hit?.products || []).map((p) => p.name);
+      expect(names).toEqual(expect.arrayContaining(['Taco Al Pastor']));
+      expect(names.some((n) => /hamburguesa|alitas|salchipapa/i.test(n))).toBe(false);
+      expect(catalog.findCategoryBrowseHit('Que hay de comida rapida', menu)?.products.length).toBe(
+        menu.filter((p) => /rápid|rapid/i.test(p.categoryName || '')).length,
+      );
+    });
   });
 });
