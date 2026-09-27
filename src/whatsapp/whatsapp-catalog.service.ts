@@ -3789,6 +3789,66 @@ export class WhatsappCatalogService {
     return null;
   }
 
+  /**
+   * "quiero hamburguesas o salchipapas" → las dos opciones, no un solo SKU.
+   * No aplica a estilos sueltos ("frito o broaster").
+   */
+  findAlternativeMenuList(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    menuConceptGroups?: MenuConceptGroup[],
+  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
+    if (!q || !/\s+o\s+/.test(q)) return null;
+    if (this.extractQuantityFromMessage(text) >= 2) return null;
+    if (/\b(o\s+no|o\s+que|o\s+algo|o\s+sea|horario|direccion)\b/.test(q)) return null;
+
+    const parts = q
+      .split(/\s+o\s+/)
+      .map((part) =>
+        part
+          .replace(
+            /^(quiero|dame|ponme|agrega|regalame|me\s+regalas|unas?|unos?|las?|los?|el|la|de|del)\s+/g,
+            '',
+          )
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
+      .filter((part) => part.length >= 4);
+    if (parts.length !== 2) return null;
+
+    const styleOnly = /^(broaster|frit[oa]s?|asad[oa]s?|plancha|sudad[oa]s?|apanad[oa]s?)$/;
+    if (parts.every((part) => styleOnly.test(part))) return null;
+
+    const labels: string[] = [];
+    const collected: WhatsappCatalogProduct[] = [];
+    for (const part of parts) {
+      if (styleOnly.test(part)) return null;
+      const byCat = this.findByCategory(part, products);
+      const byConcept = findByMenuConcept(part, products, menuConceptGroups);
+      let hits = byCat?.products?.length
+        ? byCat.products
+        : byConcept?.products?.length
+          ? (byConcept.products as WhatsappCatalogProduct[])
+          : [];
+      if (!hits.length) {
+        const stem = stemLoose(part.split(' ').filter((t) => t.length >= 4).pop() || part);
+        hits = this.searchByName(part, products, 8).filter((p) => {
+          const n = normalizeText(p.name);
+          return n.includes(stem) || stemLoose(n).includes(stem);
+        });
+      }
+      if (!hits.length) return null;
+      labels.push(byCat?.categoryName || byConcept?.categoryName || titleCaseWords(part));
+      collected.push(...hits);
+    }
+
+    const deduped = this.dedupeProductsById(collected).slice(0, 16);
+    if (deduped.length < 2) return null;
+    const categoryName = [...new Set(labels)].slice(0, 2).join(' / ');
+    return { categoryName, products: deduped };
+  }
+
   searchByName(query: string, products: WhatsappCatalogProduct[], limit = 8): WhatsappCatalogProduct[] {
     return this.searchByNameScored(query, products, limit).map((x) => x.p);
   }

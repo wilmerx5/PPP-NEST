@@ -227,4 +227,47 @@ describe('resolveConceptBrowseForAgent (menú ordenado vs carta mezclada)', () =
       resolveConceptBrowseForAgent('Quiero Un menu ejecutivo con Pollo frito', menu),
     ).toBeNull();
   });
+
+  it('qué hay de comida rápida lista hamburguesas y salchipapas, no pollo', () => {
+    const menu = [
+      {
+        id: 1,
+        code: 1,
+        name: 'Hamburguesa Clasica',
+        price: 22000,
+        categoryName: 'Comidas Rápidas',
+        availableNow: true,
+      },
+      {
+        id: 2,
+        code: 2,
+        name: 'Salchipapa',
+        price: 18000,
+        categoryName: 'Comidas Rápidas',
+        availableNow: true,
+      },
+      {
+        id: 3,
+        code: 3,
+        name: '1 Pollo Frito',
+        price: 44000,
+        categoryName: 'Pollo',
+        availableNow: true,
+      },
+      {
+        id: 4,
+        code: 4,
+        name: 'Arroz Chino Con Medio Pollo',
+        price: 48000,
+        categoryName: 'Arroces',
+        availableNow: true,
+      },
+    ];
+    const hit = findByMenuConcept('Que hay de comida rapida', menu);
+    expect(hit).toBeTruthy();
+    expect(hit!.conceptId).toBe('comida_rapida');
+    const names = hit!.products.map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining(['Hamburguesa Clasica', 'Salchipapa']));
+    expect(names.some((n) => /pollo|arroz/i.test(n))).toBe(false);
+  });
 });

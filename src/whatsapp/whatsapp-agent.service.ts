@@ -229,6 +229,7 @@ Reglas:
 - "Menú ejecutivo|especial|de la casa|del día|…" o "bandeja con…" → plato del catálogo si search_menu lo trae; NUNCA lo confundas con el link ni con el pollo suelto.
 - Si hay varias variantes (frito/broaster, combo/solo), pregunta o usa search_menu y ofrece 2–4 opciones.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
+- "qué hay de comida rápida" / "hamburguesas o salchipapas" → el sistema lista esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
 - Preguntas de estilo sobre un plato ya en carrito ("se puede con pollo broaster?") → el sistema cambia el atributo Pollo/Selección; NO uses set_notes ni agregues Broaster suelto.
 - Solo set_notes si el plato NO tiene atributo de estilo en carta.
 - La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).

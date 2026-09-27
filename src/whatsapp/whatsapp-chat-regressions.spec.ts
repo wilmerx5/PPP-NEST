@@ -2396,4 +2396,54 @@ Cll 6 b 78 c 33`;
       expect(text.split('\n').length).toBeLessThan(25);
     });
   });
+
+  describe('Comida rápida (categoría, no un solo plato)', () => {
+    const fastMenu: WhatsappCatalogProduct[] = [
+      {
+        id: 76,
+        code: 76,
+        name: 'Hamburguesa Clasica',
+        price: 22000,
+        hasAttributes: true,
+        attributes: [{ attributeName: 'Bebida', options: ['Manzana', 'Colombiana'] }],
+        availableNow: true,
+        categoryName: 'Comidas Rápidas',
+      },
+      {
+        id: 77,
+        code: 77,
+        name: 'Salchipapa',
+        price: 18000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Comidas Rápidas',
+      },
+      {
+        id: 1,
+        code: 1,
+        name: '1 Pollo Frito',
+        price: 44000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Pollo',
+      },
+    ];
+
+    it('qué hay de comida rápida lista la categoría', () => {
+      expect(catalog.isCategoryBrowseQuestion('Que hay de comida rapida')).toBe(true);
+      const hit = catalog.findCategoryBrowseHit('Que hay de comida rapida', fastMenu);
+      expect(hit?.categoryName).toMatch(/rápid|rapid/i);
+      const names = (hit?.products || []).map((p) => p.name);
+      expect(names).toEqual(expect.arrayContaining(['Hamburguesa Clasica', 'Salchipapa']));
+      expect(names.some((n) => /pollo/i.test(n))).toBe(false);
+    });
+
+    it('quiero hamburguesas o salchipapas lista ambas, no una sola', () => {
+      const hit = catalog.findAlternativeMenuList('Quiero hamburguesas o salchipapas', fastMenu);
+      const names = (hit?.products || []).map((p) => p.name).sort();
+      expect(names).toEqual(['Hamburguesa Clasica', 'Salchipapa']);
+    });
+  });
 });

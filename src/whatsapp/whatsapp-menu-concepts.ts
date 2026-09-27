@@ -107,6 +107,28 @@ export const DEFAULT_MENU_CONCEPTS: MenuConceptGroup[] = [
     productKeywords: ['mojarra', 'trucha', 'bagre', 'pescado', 'filete', 'tilapia'],
   },
   {
+    id: 'comida_rapida',
+    label: 'Comida rápida',
+    triggers: [
+      'comida rapida',
+      'comidas rapidas',
+      'hamburguesa',
+      'hamburguesas',
+      'salchipapa',
+      'salchipapas',
+      'perro caliente',
+      'perros calientes',
+    ],
+    productKeywords: [
+      'hamburguesa',
+      'salchipapa',
+      'perro',
+      'hot dog',
+      'nugget',
+      'nuggets',
+    ],
+  },
+  {
     id: 'bebida',
     label: 'Bebidas',
     triggers: [
@@ -191,6 +213,13 @@ const BROAD_CONCEPT_TRIGGERS: Record<string, string[]> = {
   sopa: ['sopa', 'sopas', 'caldo', 'caldos'],
   carne: ['carne', 'carnes'],
   arroz: ['arroz'],
+  comida_rapida: [
+    'comida rapida',
+    'comidas rapidas',
+    'comida rápida',
+    'rapida',
+    'rápida',
+  ],
 };
 
 function isBroadConceptTrigger(concept: MenuConceptGroup, trigger: string): boolean {
@@ -294,6 +323,15 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
   sopa: ['sopa', 'sopas', 'caldo', 'caldos', 'sopitas'],
   arroz: ['arroz', 'arroces', 'chinos'],
   pescado: ['pescado', 'pescados', 'mariscos', 'pescaderia'],
+  comida_rapida: [
+    'comida rapida',
+    'comidas rapidas',
+    'comida rápida',
+    'hamburguesa',
+    'hamburguesas',
+    'salchipapa',
+    'salchipapas',
+  ],
   bebida: ['bebida', 'bebidas', 'gaseosa', 'gaseosas', 'jugo', 'jugos', 'refresco', 'refrescos'],
 };
 
@@ -320,6 +358,9 @@ const SEMANTIC_FILTER_HINTS: Record<string, string> = {
     'Filtra SEMÁNTICAMENTE: arroces (chino, paisa, etc.). EXCLUYE pollo suelto, carnes y bebidas.',
   pescado:
     'Filtra SEMÁNTICAMENTE: pescados/mariscos (mojarra, trucha, bagre…). EXCLUYE carne de res, pollo y bebidas.',
+  comida_rapida:
+    'Filtra SEMÁNTICAMENTE: comida rápida (hamburguesa, salchipapa, perro caliente, nuggets). ' +
+    'EXCLUYE pollo entero/combo, arroz chino, sopas y bebidas sueltas. Lista los platos de esa categoría, no un resumen.',
   bebida:
     'Filtra SEMÁNTICAMENTE: solo bebidas (gaseosa, jugo, limonada…). EXCLUYE comida.',
 };
@@ -410,10 +451,26 @@ export function findByMenuConcept(
           .map((t) => stemLoose(normalizeText(t)))
           .filter((t) => t.length >= 3),
       );
+      const broadPhrases = [
+        ...matchedTriggers,
+        ...(BROAD_CONCEPT_TRIGGERS[concept.id] || []),
+        concept.label,
+      ].map((t) => normalizeText(t));
       const extraTokens = q
         .split(' ')
         .map((t) => t.trim())
-        .filter((t) => t.length >= 4 && !stop.has(t) && !broadNeedles.has(stemLoose(t)));
+        .filter((t) => {
+          if (t.length < 4 || stop.has(t) || broadNeedles.has(stemLoose(t))) return false;
+          // "comida" / "rapida" ya van dentro del trigger "comida rapida"
+          if (
+            broadPhrases.some((phrase) =>
+              phrase.split(' ').some((w) => w === t || stemLoose(w) === stemLoose(t)),
+            )
+          ) {
+            return false;
+          }
+          return true;
+        });
       if (extraTokens.length) {
         const filtered = matched.filter((p) => {
           const hay = normalizeText(`${p.name} ${p.description || ''}`);
@@ -480,6 +537,8 @@ function isGenericMenuCategory(categoryName: string | null | undefined): boolean
   const cat = (categoryName || '').trim();
   if (!cat) return true; // sin categoría = menú desordenado
   if (SIDE_OR_DRINK_CATEGORY_RE.test(cat)) return false;
+  // "Comida rápida" es categoría real (hamburguesas, salchipapas), no carta mezclada
+  if (/\brapid/i.test(cat)) return false;
   return GENERIC_CATEGORY_RE.test(cat);
 }
 

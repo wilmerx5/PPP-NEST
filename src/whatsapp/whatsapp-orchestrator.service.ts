@@ -1757,6 +1757,21 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Categoría / estilo / "hamburguesas o salchipapas" ANTES del agente
+    // (si no, el LLM resume "comida rápida" como pollos o agrega una sola hamburguesa).
+    if (
+      await this.tryHandleDeterministicMenuBrowse(
+        conv,
+        msg.waId,
+        session,
+        text,
+        products,
+        cfg,
+      )
+    ) {
+      return;
+    }
+
     // Agent V1 (feature flag): LLM + tools. Pendings numéricos / checkout ya se resolvieron arriba.
     if (
       cfg.agentV1Enabled &&
@@ -1818,97 +1833,18 @@ export class WhatsappOrchestratorService {
     }
 
     // Explorar menú / "qué ofreces de carne" / categoría suelta ("Pollo") → listar
-    // Antes: “qué tienes sudado/frito” → lista por estilo (no dump de categorías)
-    {
-      const styleBrowse = this.catalogService.extractCookingStyleBrowseIntent(text);
-      if (styleBrowse) {
-        const styleHits = this.catalogService.findProductsByCookingStyle(
-          styleBrowse,
-          products,
-          12,
-        );
-        const reply = this.catalogService.formatCookingStyleBrowseReply(styleBrowse, styleHits, {
-          menuUrl: cfg.menuUrl,
-          availableStyles: this.catalogService.listAvailableCookingStyles(products),
-        });
-        session = {
-          ...session,
-          pendingMatch: styleHits.length
-            ? { query: styleBrowse, candidates: styleHits }
-            : undefined,
-          pendingCategoryBrowse: undefined,
-          pendingAttribute: undefined,
-          pendingMultiOrder: undefined,
-        };
-        await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(conv, msg.waId, reply);
-        return;
-      }
-    }
-
-    const browseAsk =
-      this.catalogService.isMenuExploreIntent(text, products) ||
-      this.catalogService.isCategoryBrowseQuestion(text);
-    const hit = this.catalogService.findCategoryBrowseHit(
-      text,
-      products,
-      cfg.menuConceptGroups,
-    );
-    const bareConceptOrCategory =
-      !!hit?.products?.length &&
-      (text || '').trim().split(/\s+/).filter(Boolean).length <= 3 &&
-      this.catalogService.extractQuantityFromMessage(text) < 2 &&
-      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
-      !/\b(quiero|dame|ponme|agrega|regala)\b/i.test(text);
-    if (browseAsk || bareConceptOrCategory) {
-      // Cambió de tema: soltar atributos/multi pendientes del plato anterior
-      session = {
-        ...session,
-        pendingMatch: undefined,
-        pendingMultiOrder: undefined,
-        pendingAttribute: undefined,
-      };
-      const specificCue =
-        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo)\b/i.test(
-          text,
-        );
-      if (
-        hit?.products.length &&
-        (bareConceptOrCategory ||
-          specificCue ||
-          this.catalogService.isCategoryBrowseQuestion(text))
-      ) {
-        session = {
-          ...session,
-          pendingCategoryBrowse: undefined,
-          pendingMatch: {
-            query: hit.categoryName,
-            candidates: hit.products,
-          },
-        };
-        await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(
-          conv,
-          msg.waId,
-          this.catalogService.formatCategoryList(hit.categoryName, hit.products),
-        );
-        return;
-      }
-      if (this.catalogService.isMenuExploreIntent(text, products)) {
-        const intro = this.catalogService.buildMenuExploreIntro(text);
-        const overview = this.catalogService.formatMenuCategoryOverview(products, {
-          intro,
-          menuUrl: cfg.menuUrl,
-        });
-        session = {
-          ...session,
-          pendingCategoryBrowse: { categories: overview.categories },
-          pendingMatch: undefined,
-        };
-        await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(conv, msg.waId, overview.text);
-        return;
-      }
+    // (también corre antes del agente; aquí queda si el agente no tomó el turno)
+    if (
+      await this.tryHandleDeterministicMenuBrowse(
+        conv,
+        msg.waId,
+        session,
+        text,
+        products,
+        cfg,
+      )
+    ) {
+      return;
     }
 
     const pendingPickHandled = await this.tryResolvePendingMatchPick(
@@ -11391,6 +11327,137 @@ export class WhatsappOrchestratorService {
       warnings: guarded.warnings,
     });
     return true;
+  }
+
+  /**
+   * Lista categoría, estilo de preparación o “X o Y” sin pasar por el agente.
+   */
+  private async tryHandleDeterministicMenuBrowse(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const alternative = this.catalogService.findAlternativeMenuList(
+      text,
+      products,
+      cfg.menuConceptGroups,
+    );
+    if (alternative?.products.length) {
+      session = {
+        ...session,
+        pendingAttribute: undefined,
+        pendingMultiOrder: undefined,
+        pendingCategoryBrowse: undefined,
+        pendingMatch: {
+          query: alternative.categoryName,
+          candidates: alternative.products,
+        },
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        this.catalogService.formatCategoryList(
+          alternative.categoryName,
+          alternative.products,
+        ),
+      );
+      return true;
+    }
+
+    const styleBrowse = this.catalogService.extractCookingStyleBrowseIntent(text);
+    if (styleBrowse) {
+      const styleHits = this.catalogService.findProductsByCookingStyle(
+        styleBrowse,
+        products,
+        12,
+      );
+      const reply = this.catalogService.formatCookingStyleBrowseReply(styleBrowse, styleHits, {
+        menuUrl: cfg.menuUrl,
+        availableStyles: this.catalogService.listAvailableCookingStyles(products),
+      });
+      session = {
+        ...session,
+        pendingMatch: styleHits.length
+          ? { query: styleBrowse, candidates: styleHits }
+          : undefined,
+        pendingCategoryBrowse: undefined,
+        pendingAttribute: undefined,
+        pendingMultiOrder: undefined,
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(conv, waId, reply);
+      return true;
+    }
+
+    const browseAsk =
+      this.catalogService.isMenuExploreIntent(text, products) ||
+      this.catalogService.isCategoryBrowseQuestion(text);
+    const hit = this.catalogService.findCategoryBrowseHit(
+      text,
+      products,
+      cfg.menuConceptGroups,
+    );
+    const bareConceptOrCategory =
+      !!hit?.products?.length &&
+      (text || '').trim().split(/\s+/).filter(Boolean).length <= 3 &&
+      this.catalogService.extractQuantityFromMessage(text) < 2 &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
+      !/\b(quiero|dame|ponme|agrega|regala)\b/i.test(text);
+    if (browseAsk || bareConceptOrCategory) {
+      session = {
+        ...session,
+        pendingMatch: undefined,
+        pendingMultiOrder: undefined,
+        pendingAttribute: undefined,
+      };
+      const specificCue =
+        /\b(carne|carnes|pollo|pollos|sopa|sopas|bebida|bebidas|gaseosa|jugo|jugos|limonada|arroz|bandeja|pescado|mojarra|frito|broaster|ejecutivo|hamburguesa|salchipapa|comida\s+rapid)\b/i.test(
+          text,
+        );
+      if (
+        hit?.products.length &&
+        (bareConceptOrCategory ||
+          specificCue ||
+          this.catalogService.isCategoryBrowseQuestion(text) ||
+          this.catalogService.isMenuExploreIntent(text, products))
+      ) {
+        session = {
+          ...session,
+          pendingCategoryBrowse: undefined,
+          pendingMatch: {
+            query: hit.categoryName,
+            candidates: hit.products,
+          },
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(
+          conv,
+          waId,
+          this.catalogService.formatCategoryList(hit.categoryName, hit.products),
+        );
+        return true;
+      }
+      if (this.catalogService.isMenuExploreIntent(text, products)) {
+        const intro = this.catalogService.buildMenuExploreIntro(text);
+        const overview = this.catalogService.formatMenuCategoryOverview(products, {
+          intro,
+          menuUrl: cfg.menuUrl,
+        });
+        session = {
+          ...session,
+          pendingCategoryBrowse: { categories: overview.categories },
+          pendingMatch: undefined,
+        };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(conv, waId, overview.text);
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
