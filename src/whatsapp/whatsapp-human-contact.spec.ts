@@ -34,6 +34,13 @@ describe('whatsapp-human-contact (ASESOR off)', () => {
           'Si algo no cuadra o prefieres una persona, escribe *asesor* y te pasamos con el equipo.',
       ),
     ).toBe(WHATSAPP_AI_DISCLAIMER_SAFE);
+    expect(
+      scrubAiDisclaimerCopy(
+        '⚠️ Chat con *IA* (en prueba; puede fallar). Si necesitas ayuda: contáctanos al *3118866823*.',
+      ),
+    ).toBe(WHATSAPP_AI_DISCLAIMER_SAFE);
+    expect(WHATSAPP_AI_DISCLAIMER_SAFE).toMatch(/con gusto te atiendo/i);
+    expect(WHATSAPP_AI_DISCLAIMER_SAFE).not.toMatch(/puede fallar|en prueba/i);
   });
 
   it('resume idle no menciona ASESOR', () => {

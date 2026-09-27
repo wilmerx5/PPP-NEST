@@ -87,6 +87,10 @@ function stemLoose(s: string): string {
   return n;
 }
 
+function compactAlphaNum(s: string): string {
+  return normalizeText(s).replace(/\s+/g, '');
+}
+
 function boundedEditDistance(a: string, b: string, max: number): number | null {
   if (Math.abs(a.length - b.length) > max) return null;
   const prev = new Array<number>(b.length + 1);
@@ -247,11 +251,12 @@ function fuzzyTokenMatch(queryToken: string, candidateToken: string): boolean {
   const dist = tokenEditDistance(q, c);
   const maxDist = q.length <= 8 ? 1 : 2;
   if (dist > maxDist) return false;
-  // Misma longitud + 1 vocal distinta → otra palabra (castilla≠costilla → Costillas)
+  // 1 vocal distinta al inicio es otra palabra (castilla≠costilla).
+  // Más adentro es typo (mojorra→mojarra).
   if (q.length === c.length && dist === 1) {
     const vowels = new Set(['a', 'e', 'i', 'o', 'u']);
     for (let i = 0; i < q.length; i++) {
-      if (q[i] !== c[i] && vowels.has(q[i]) && vowels.has(c[i])) return false;
+      if (q[i] !== c[i] && vowels.has(q[i]) && vowels.has(c[i]) && i < 3) return false;
     }
   }
   return true;
@@ -1796,7 +1801,9 @@ export class WhatsappCatalogService {
       parts.push(attr.attributeName);
       parts.push(...(attr.options || []));
     }
-    return this.queryHasToken(normalizeText(parts.join(' ')), token);
+    const blob = normalizeText(parts.join(' '));
+    if (this.queryHasToken(blob, token)) return true;
+    return blob.split(/\s+/).some((w) => w.length >= 6 && fuzzyTokenMatch(token, w));
   }
 
   /** ¿El nombre del producto es un pack/duo/doble/combo? */
@@ -1869,6 +1876,84 @@ export class WhatsappCatalogService {
         q,
       );
     return hasFood && hasDrink;
+  }
+
+  /** “una gaseosa aparte” sí es otro producto. “combo y gaseosa coca cola” no. */
+  wantsSeparateDrink(text: string): boolean {
+    return /\b(aparte|adicional(?:mente)?|por separado|suelt[ao]s?)\b/i.test(
+      normalizeText(text || ''),
+    );
+  }
+
+  /**
+   * La bebida nombrada es una opción del producto (combo), no un SKU suelto.
+   * “cocacola” cubre la opción “Coca cola”.
+   */
+  drinkTextMatchesAttribute(
+    product: WhatsappCatalogProduct,
+    drinkText: string,
+  ): { attributeName: string; attributeValue: string } | null {
+    if (!drinkText?.trim() || this.wantsSeparateDrink(drinkText)) return null;
+    const attrs = product.attributes || [];
+    const hostsDrink =
+      attrs.some((a) => this.isComboOnlyAttribute(a)) &&
+      (attrs.some((a) => !this.isComboOnlyAttribute(a)) || /\bcombo\b/i.test(product.name));
+    if (!hostsDrink) return null;
+    for (const attr of attrs) {
+      if (!this.isComboOnlyAttribute(attr)) continue;
+      const picked = this.pickAttributeOptionFromText(drinkText, attr);
+      if (picked) return { attributeName: attr.attributeName, attributeValue: picked };
+    }
+    return null;
+  }
+
+  /**
+   * “El combo con gaseosa cocacola” corrige la bebida del combo que ya está en el carrito.
+   */
+  cartDrinkClarification(
+    text: string,
+    cart: {
+      productId: number;
+      name: string;
+      attributes?: { attributeName: string; attributeValue: string }[];
+    }[],
+    products: WhatsappCatalogProduct[],
+  ): {
+    cartIndex: number;
+    itemName: string;
+    attributeName: string;
+    attributeValue: string;
+  } | null {
+    const q = normalizeText(text || '');
+    if (!q || !cart.length || this.wantsSeparateDrink(text)) return null;
+    for (let i = cart.length - 1; i >= 0; i--) {
+      const line = cart[i];
+      const product = products.find((p) => p.id === line.productId);
+      if (!product) continue;
+      const hit = this.drinkTextMatchesAttribute(product, text);
+      if (!hit) continue;
+      const lineName = normalizeText(line.name);
+      const refersToLine =
+        (/\bcombo\b/.test(q) && /\bcombo\b/.test(lineName)) ||
+        lineName
+          .split(' ')
+          .filter((t) => t.length >= 5 && !this.WEAK_PRODUCT_TOKENS.has(t))
+          .some((t) => q.includes(t));
+      if (!refersToLine) continue;
+      const current = (line.attributes || []).find(
+        (a) => normalizeText(a.attributeName) === normalizeText(hit.attributeName),
+      );
+      if (current && normalizeText(current.attributeValue) === normalizeText(hit.attributeValue)) {
+        continue;
+      }
+      return {
+        cartIndex: i,
+        itemName: line.name,
+        attributeName: hit.attributeName,
+        attributeValue: hit.attributeValue,
+      };
+    }
+    return null;
   }
 
   /**
@@ -3658,6 +3743,7 @@ export class WhatsappCatalogService {
     if (!drinkMatch) return null;
     const pair = this.splitFoodPlusDrinkSegments(text);
     const drinkQuery = pair[1] || drinkMatch[0];
+    if (this.drinkTextMatchesAttribute(known, drinkQuery || text)) return null;
     // Buscar con el segmento completo ("gaseosa 1.5 litros") + mensaje (por si el tamaño quedó afuera)
     const scored = this.searchByNameScored(`${drinkQuery} ${text}`, products, 10).filter((x) =>
       this.isLikelyDrinkProduct(x.p),
@@ -5854,6 +5940,30 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Arepas, bebida y sabor: primera opción y listo.
+   * Solo queda pendiente un estilo de cocina (frito/broaster).
+   */
+  applyDefaultAttributeStep(
+    product: WhatsappCatalogProduct,
+    step:
+      | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+      | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+      | { status: 'invalid' },
+    opts?: { variantIntent?: 'combo' | 'solo' },
+  ):
+    | { status: 'complete'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'partial'; attributes: { attributeName: string; attributeValue: string }[] }
+    | { status: 'invalid' } {
+    const base = step.status === 'invalid' ? [] : step.attributes;
+    const filled = this.fillDefaultAttributes(product, base, opts);
+    if (this.isAttributeSelectionComplete(product, filled, opts)) {
+      return { status: 'complete', attributes: filled };
+    }
+    if (!filled.length && step.status === 'invalid') return step;
+    return { status: 'partial', attributes: filled };
+  }
+
+  /**
    * Bebida/sabor del combo: se pide después (o nunca si es "solo").
    * En producto que SOLO tiene sabor/gaseosa, no se difiere.
    */
@@ -7034,6 +7144,18 @@ export class WhatsappCatalogService {
       }
     }
 
+    if (!this.wantsSeparateDrink(text) && embeddedAll.length >= 2) {
+      const drinkSeg = this.splitFoodPlusDrinkSegments(text)[1] || '';
+      const hosts = embeddedAll.filter((p) => this.drinkTextMatchesAttribute(p, drinkSeg || text));
+      if (drinkSeg && hosts.length) {
+        const hostIds = new Set(hosts.map((p) => p.id));
+        embeddedAll = embeddedAll.filter((p) => {
+          if (hostIds.has(p.id)) return true;
+          return !this.isLikelyDrinkProduct(p);
+        });
+      }
+    }
+
     if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text)) {
       const confident: MultiProductSegmentMatch[] = [];
       const needsAttributes: MultiProductSegmentMatch[] = [];
@@ -7091,6 +7213,15 @@ export class WhatsappCatalogService {
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
+      if (!this.wantsSeparateDrink(text)) {
+        const host = [...confident, ...needsAttributes].find((m) =>
+          this.drinkTextMatchesAttribute(m.product, segment),
+        );
+        if (host) {
+          host.segment = `${host.segment} ${segment}`.trim();
+          continue;
+        }
+      }
       // Plato envoltorio (ejecutivo / menú especial / de la casa…) antes que nombre
       const namedMenuHit = this.resolveNamedMenuDishProduct(segment, products);
       if (namedMenuHit) {
@@ -7694,6 +7825,14 @@ export class WhatsappCatalogService {
       })
       .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
     if (contained[0]) return contained[0];
+    const qCompact = compactAlphaNum(value);
+    const compactHits = options
+      .filter((o) => {
+        const n = compactAlphaNum(o);
+        return n.length >= 4 && qCompact.includes(n);
+      })
+      .sort((a, b) => compactAlphaNum(b).length - compactAlphaNum(a).length);
+    if (compactHits[0]) return compactHits[0];
     let best: { opt: string; distance: number } | null = null;
     for (const opt of options) {
       const n = normalizeText(opt);
@@ -7768,6 +7907,13 @@ export class WhatsappCatalogService {
         }
       }
       return opt;
+    }
+
+    const compactPick = this.matchAttributeOptionValue(cleaned, attr.options);
+    if (compactPick && !rejectsOption) {
+      const o = normalizeText(compactPick);
+      const arepaBare = isArepaAttr && /^(fritas?|blancas?)$/.test(o) && !/\barepas?\b/.test(q);
+      if (!arepaBare) return compactPick;
     }
 
     // Presa: "con pechuga" → "Ala pechuga" (aunque el token pechuga esté en la lista de skip)

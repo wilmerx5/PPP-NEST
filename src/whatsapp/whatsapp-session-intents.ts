@@ -337,8 +337,25 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   }
   if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t)) return false;
   if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2) return false;
+  if (isCourtesyAffirmation(t)) return false;
 
   return true;
+}
+
+/** “sí” / “si por favor” / “dale” confirman; no son un nombre. */
+export function isCourtesyAffirmation(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!?.…,;:"'`´]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 40) return false;
+  return /^(si|sep|ok|okay|dale|listo|claro|va|vale|bueno|perfecto|correcto|exacto|confirmo|agrega|agregalo|agregalos|asi)(\s+que\s+si)?(\s+(por favor|porfa|porfis|gracias|pls|please|agregalo|agregamelo))?$/.test(
+    t,
+  );
 }
 
 /** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */

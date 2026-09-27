@@ -5,6 +5,10 @@
  * ANTES (o junto) al fix. `yarn test:whatsapp` debe pasar antes de deploy.
  */
 import {
+  DEFAULT_PAYMENT_METHODS,
+  findPaymentMethodByText,
+} from './whatsapp-payment-methods';
+import {
   isAbandonPendingSelectionIntent,
   isAddressChangeIntent,
   isAddressClarificationIntent,
@@ -669,6 +673,17 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(isUsableWhatsappCustomerName('Me regalas')).toBe(false);
       expect(isUsableWhatsappCustomerName('me das')).toBe(false);
       expect(isUsableWhatsappCustomerName('Juan Pérez')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Walter Campos Arévalo')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Walter Campos')).toBe(true);
+      expect(isUsableWhatsappCustomerName('Si por favor')).toBe(false);
+      expect(isUsableWhatsappCustomerName('sí')).toBe(false);
+      expect(findPaymentMethodByText('Walter Campos Arévalo', DEFAULT_PAYMENT_METHODS)).toBeNull();
+      expect(findPaymentMethodByText('Walter Campos', DEFAULT_PAYMENT_METHODS)).toBeNull();
+      expect(isDeliverySetupWithoutFood('Buenos días para pedir un domicilio')).toBe(true);
+      expect(findPaymentMethodByText('mp', DEFAULT_PAYMENT_METHODS)?.id).toBe('mercadopago');
+      expect(findPaymentMethodByText('pago con efectivo', DEFAULT_PAYMENT_METHODS)?.id).toBe(
+        'cash',
+      );
       expect(isUsableWhatsappCustomerName('María')).toBe(true);
       expect(isUsableWhatsappCustomerName('Wilmer')).toBe(true);
       expect(isUsableWhatsappCustomerName('no')).toBe(false);
@@ -896,6 +911,18 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(scored.some((x) => /costilla/i.test(x.p.name))).toBe(false);
       const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
       expect(embedded).toBeFalsy();
+    });
+
+    it('mojorra es Mojarra y pide preparación, no una ficha muda', () => {
+      const hit = catalog.findProductEmbeddedInMessage('Una mojorra', pppMenu);
+      expect(hit?.name).toBe('Mojarra');
+      expect(catalog.uncoveredDishWords('Una mojorra', pppMenu)).toEqual([]);
+      const filled = catalog.fillDefaultAttributes(hit!, []);
+      expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(false);
+      const prompt = catalog.formatProductOptionsPrompt(hit!, filled);
+      expect(prompt).toMatch(/Frita/);
+      expect(prompt).toMatch(/Escribe el número/);
+      expect(prompt).not.toBe(catalog.formatProductHeader(hit!.name, hit!.price, hit!.code));
     });
   });
 
@@ -2246,6 +2273,67 @@ Cll 6 b 78 c 33`;
           expect.objectContaining({ attributeName: 'Pollo', attributeValue: 'Frito' }),
           expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Colombiana' }),
         ]),
+      );
+    });
+  });
+
+  describe('Combo con gaseosa no es otra gaseosa', () => {
+    it('pollo frito en combo y gaseosa cocacola queda en la bebida del combo', () => {
+      const soda = {
+        id: 34,
+        code: 34,
+        name: 'Gaseosa Coca Cola 400ml',
+        price: 4500,
+        hasAttributes: true,
+        attributes: [{ attributeName: 'Sabor', options: ['Coca Cola', 'Quatro'] }],
+        availableNow: true,
+        categoryName: 'Bebidas',
+      };
+      const menu = [...pppMenu, soda];
+      const text = 'Para pedir un Pollo frito en combo y gaseosa cocacola';
+      const multi = catalog.resolveMultiProductOrder(text, menu);
+      const names = [
+        ...(multi?.confident.map((c) => c.product.name) || []),
+        ...(multi?.needsAttributes.map((c) => c.product.name) || []),
+      ];
+      expect(names.join(' | ')).toMatch(/Combo De Pollo Frito/i);
+      expect(names.join(' | ')).not.toMatch(/Gaseosa Coca Cola/i);
+      const combo = pppMenu.find((p) => p.name === 'Combo De Pollo Frito')!;
+      expect(catalog.drinkTextMatchesAttribute(combo, 'gaseosa cocacola')?.attributeValue).toMatch(
+        /coca cola/i,
+      );
+      const resolved = catalog.applyDefaultAttributeStep(
+        combo,
+        catalog.coerceAttributeStep(combo, catalog.resolveAttributesFromMessage(combo, text, [])),
+      );
+      expect(resolved.status).toBe('complete');
+      if (resolved.status !== 'complete') return;
+      expect(resolved.attributes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Coca cola' }),
+          expect.objectContaining({ attributeName: 'Arepas', attributeValue: 'Blancas' }),
+        ]),
+      );
+      expect(
+        catalog.cartDrinkClarification(
+          'El combo con gaseosa cocacola',
+          [
+            {
+              productId: combo.id,
+              name: combo.name,
+              attributes: [
+                { attributeName: 'Arepas', attributeValue: 'Fritas' },
+                { attributeName: 'Bebida', attributeValue: 'Colombiana' },
+              ],
+            },
+          ],
+          menu,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          attributeName: 'Bebida',
+          attributeValue: 'Coca cola',
+        }),
       );
     });
   });

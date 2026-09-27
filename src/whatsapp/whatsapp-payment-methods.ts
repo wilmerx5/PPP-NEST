@@ -60,6 +60,12 @@ function slugifyId(raw: string): string {
     .slice(0, 40);
 }
 
+/** “mp” no puede coincidir dentro de “Campos”. */
+function keywordAppearsAsWord(text: string, keyword: string): boolean {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(text);
+}
+
 function normalizeKeyword(s: string): string {
   return s
     .toLowerCase()
@@ -178,8 +184,8 @@ export function findPaymentMethodByText(
       if (!k) continue;
       let score = 0;
       if (t === k) score = 100;
-      else if (t.includes(k)) score = 80 + Math.min(15, k.length);
-      else if (k.includes(t) && t.length >= 4) score = 60;
+      else if (keywordAppearsAsWord(t, k)) score = 80 + Math.min(15, k.length);
+      else if (k.includes(t) && t.length >= 4 && keywordAppearsAsWord(k, t)) score = 60;
       if (score > 0 && (!best || score > best.score)) best = { m, score };
     }
   }

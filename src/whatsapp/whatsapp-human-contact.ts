@@ -8,7 +8,8 @@ export const WHATSAPP_HUMAN_CONTACT_MESSAGE =
   `Si prefieres, llámanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
 
 export const WHATSAPP_AI_DISCLAIMER_SAFE =
-  '⚠️ Chat con *IA* (en prueba; puede fallar). Si necesitas ayuda: contáctanos al *3118866823*.';
+  `Con gusto te atiendo. Aún estoy aprendiendo y a veces cometo errores. ` +
+  `Si quieres, también puedes llamarnos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`;
 
 /**
  * Plantillas viejas en BD (“ASESOR”, “te paso con el equipo”) no deben
@@ -39,7 +40,9 @@ export function scrubAiDisclaimerCopy(text: string): string {
     /\basesor\b/i.test(t) ||
     /prefieres\s+(?:una\s+)?persona/i.test(t) ||
     /te\s+pasamos\s+con\s+el\s+equipo/i.test(t) ||
-    /pasamos\s+con\s+el\s+equipo/i.test(t)
+    /pasamos\s+con\s+el\s+equipo/i.test(t) ||
+    /puede fallar/i.test(t) ||
+    /en prueba/i.test(t)
   ) {
     return WHATSAPP_AI_DISCLAIMER_SAFE;
   }
