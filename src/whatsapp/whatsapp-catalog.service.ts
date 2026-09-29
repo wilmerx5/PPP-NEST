@@ -1752,6 +1752,44 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * Lo que el cliente pidió y el plato ofrecido no trae
+   * (nombre, atributos y descripción).
+   */
+  uncoveredWordsAgainstOffers(
+    query: string,
+    products: WhatsappCatalogProduct[],
+  ): string[] {
+    if (!products.length) return [];
+    const leftover: string[] = [];
+    const unknown: string[] = [];
+    let anchored = false;
+    for (const tokens of this.dishClauses(query)) {
+      const best = this.bestClauseCoverage(tokens, products, { includeDescription: true });
+      if (!best) unknown.push(...tokens);
+      else {
+        anchored = true;
+        leftover.push(...best.leftover);
+      }
+    }
+    if (!anchored) return [];
+    return [...new Set([...leftover, ...unknown])];
+  }
+
+  /** "No te ofrecemos X en el momento" + la ficha o la lista que sí hay. */
+  formatWeDontOfferPreface(askedLabel: string, alternativeCount: number): string {
+    const label =
+      (askedLabel || '')
+        .replace(/[¿?¡!.]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim() || 'eso';
+    const offer =
+      alternativeCount > 1
+        ? 'Te ofrecemos estas alternativas:'
+        : 'Te ofrecemos esta alternativa:';
+    return `No te ofrecemos *${label}* en el momento.\n${offer}\n\n`;
+  }
+
+  /**
    * Sobras solo en la parte del mensaje que este plato sí ancla.
    * "bandeja y una limonada" no impide agregar la bandeja.
    * "bandeja con frijolitos" sí: frijolitos va en la misma parte y la bandeja no lo trae.
@@ -1847,7 +1885,7 @@ export class WhatsappCatalogService {
   private bestClauseCoverage(
     tokens: string[],
     products: WhatsappCatalogProduct[],
-    opts?: { ignoreDrinkOptions?: boolean },
+    opts?: { ignoreDrinkOptions?: boolean; includeDescription?: boolean },
   ): { leftover: string[]; products: WhatsappCatalogProduct[] } | null {
     let best: {
       coveredCount: number;
@@ -1884,9 +1922,10 @@ export class WhatsappCatalogService {
   private productTextCoversToken(
     product: WhatsappCatalogProduct,
     token: string,
-    opts?: { ignoreDrinkOptions?: boolean },
+    opts?: { ignoreDrinkOptions?: boolean; includeDescription?: boolean },
   ): boolean {
     const parts = [product.name];
+    if (opts?.includeDescription && product.description) parts.push(product.description);
     for (const attr of product.attributes || []) {
       if (
         opts?.ignoreDrinkOptions &&
@@ -4433,7 +4472,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
     menuConceptGroups?: MenuConceptGroup[],
-  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+  ): { categoryName: string; products: WhatsappCatalogProduct[]; askedButMissing?: string } | null {
     const trimmed = text.trim();
     if (!trimmed) return null;
     if (this.isRestaurantLocationInquiry(trimmed)) return null;
@@ -4488,7 +4527,11 @@ export class WhatsappCatalogService {
     for (const q of queries) {
       const byConcept = findByMenuConcept(q, products, menuConceptGroups);
       if (byConcept) {
-        return { categoryName: byConcept.categoryName, products: byConcept.products };
+        return {
+          categoryName: byConcept.categoryName,
+          products: byConcept.products,
+          askedButMissing: byConcept.askedButMissing,
+        };
       }
     }
 
@@ -7923,6 +7966,34 @@ export class WhatsappCatalogService {
       `${body}\n\n` +
       this.formatListChoiceHint()
     );
+  }
+
+  /** El plato pedido no está; la lista es la categoría donde sí hay opciones. */
+  formatCategoryAlternatives(
+    missingLabel: string,
+    categoryName: string,
+    list: WhatsappCatalogProduct[],
+  ): string {
+    return (
+      `No tenemos *${missingLabel}*.\n` +
+      `Te ofrecemos estas alternativas:\n\n` +
+      this.formatCategoryList(categoryName, list)
+    );
+  }
+
+  formatCategoryBrowseReply(hit: {
+    categoryName: string;
+    products: WhatsappCatalogProduct[];
+    askedButMissing?: string;
+  }): string {
+    if (hit.askedButMissing) {
+      return this.formatCategoryAlternatives(
+        hit.askedButMissing,
+        hit.categoryName,
+        hit.products,
+      );
+    }
+    return this.formatCategoryList(hit.categoryName, hit.products);
   }
 
   /** Texto para pedir atributos — una pregunta, formato tabla. */

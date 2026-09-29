@@ -422,7 +422,13 @@ export function findByMenuConcept(
   query: string,
   products: WhatsappProductCandidate[],
   groups?: MenuConceptGroup[],
-): { categoryName: string; products: WhatsappProductCandidate[]; conceptId: string } | null {
+): {
+  categoryName: string;
+  products: WhatsappProductCandidate[];
+  conceptId: string;
+  /** El cliente nombró un plato del concepto que no está en la carta. */
+  askedButMissing?: string;
+} | null {
   const q = normalizeText(query);
   if (!q || q.length < 3) return null;
 
@@ -432,6 +438,7 @@ export function findByMenuConcept(
     products: WhatsappProductCandidate[];
     score: number;
     narrowTriggers: string[];
+    askedButMissing?: string;
   } | null = null;
 
   for (const concept of concepts) {
@@ -444,9 +451,14 @@ export function findByMenuConcept(
 
     const matchedTriggers = getMatchedConceptTriggers(q, concept);
     const narrowTriggers = matchedTriggers.filter((t) => !isBroadConceptTrigger(concept, t));
+    let askedButMissing: string | undefined;
     if (narrowTriggers.length) {
       const filtered = filterProductsByConceptTriggers(matched, narrowTriggers);
-      if (filtered.length) matched = filtered;
+      if (filtered.length) {
+        matched = filtered;
+      } else {
+        askedButMissing = [...narrowTriggers].sort((a, b) => b.length - a.length)[0];
+      }
     } else {
       // "sopa de menudencias": no listar todas las sopas si hay detalle específico
       const stop = new Set([
@@ -505,15 +517,20 @@ export function findByMenuConcept(
     if (narrowTriggers.length) score += 8;
 
     if (!best || score > best.score || (score === best.score && matched.length > best.products.length)) {
-      best = { concept, products: matched, score, narrowTriggers };
+      best = { concept, products: matched, score, narrowTriggers, askedButMissing };
     }
   }
 
   if (!best) return null;
   return {
-    categoryName: buildConceptListLabel(best.concept, best.narrowTriggers),
+    categoryName: best.askedButMissing
+      ? best.concept.label
+      : buildConceptListLabel(best.concept, best.narrowTriggers),
     products: best.products,
     conceptId: best.concept.id,
+    askedButMissing: best.askedButMissing
+      ? titleCaseWords(best.askedButMissing)
+      : undefined,
   };
 }
 

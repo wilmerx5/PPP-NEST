@@ -3100,6 +3100,40 @@ Cll 6 b 78 c 33`;
       expect(names).toEqual(['Hamburguesa Clasica', 'Salchipapa']);
     });
 
+    it('pechuga con champiñones ofrece la parecida y dice que esa no', () => {
+      const gratinada = pppMenu.find((p) => p.name === 'Pechuga Gratinada')!;
+      const plancha = pppMenu.find((p) => p.name === 'Pechuga a la Plancha')!;
+      const asked = 'tienes pechuga con chanpiniones';
+      const missing = catalog.uncoveredWordsAgainstOffers(asked, [gratinada, plancha]);
+      expect(missing.some((w) => /chanpinion/.test(w))).toBe(true);
+      const exact = catalog.uncoveredWordsAgainstOffers('tienes pechuga gratinada', [gratinada]);
+      expect(exact).toEqual([]);
+      const withMushrooms = {
+        ...gratinada,
+        description: 'Pechuga con champiñones, papa y arroz',
+      };
+      expect(
+        catalog.uncoveredWordsAgainstOffers('tienes pechuga con champiñones', [withMushrooms]),
+      ).toEqual([]);
+      const preface = catalog.formatWeDontOfferPreface('pechuga con chanpiniones', 1);
+      expect(preface).toMatch(/No te ofrecemos \*pechuga con chanpiniones\* en el momento/);
+      expect(preface).toMatch(/Te ofrecemos esta alternativa/);
+    });
+
+    it('tienes salchipapas y no hay: lo dice y ofrece la categoría', () => {
+      const without = fastMenu.filter((p) => !/salchipapa/i.test(p.name));
+      const hit = catalog.findCategoryBrowseHit('tienes salchipapas', without);
+      expect(hit?.askedButMissing).toMatch(/salchipapa/i);
+      expect(hit?.categoryName).toMatch(/rápida|rapida/i);
+      const names = (hit?.products || []).map((p) => p.name);
+      expect(names).toContain('Hamburguesa Clasica');
+      expect(names.some((n) => /salchipapa/i.test(n))).toBe(false);
+      const reply = catalog.formatCategoryBrowseReply(hit!);
+      expect(reply).toMatch(/No tenemos \*Salchipapas\*/);
+      expect(reply).toMatch(/Te ofrecemos estas alternativas/);
+      expect(reply).toMatch(/Hamburguesa Clasica/);
+    });
+
     it('tiene comida mexicana no lista toda Comidas Rápidas', () => {
       const menu: WhatsappCatalogProduct[] = [
         ...fastMenu,

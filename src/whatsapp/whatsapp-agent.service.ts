@@ -259,7 +259,8 @@ Reglas:
 - Si mode="menu_drinks": esa bebida no está. Di que no la tenemos (las palabras del cliente) y lista drinks: nombre, precio y sabores. NO add_item. No inventes marcas.
 - Si mode="style_alternatives": ese estilo no está en el plato. Di que no lo tenemos (las palabras del cliente) y lista results (nombre y precio). NO add_item.
 - Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae platos, menciónalos (nombre y precio) como lo que sí hay.
-- Si mode="category_browse" o mode="availability": lista cada result (nombre, precio y descripción). No dejes por fuera presentaciones de la misma familia y no agregues uno solo.
+- Si mode="category_browse" trae missing: primero di que no tenemos ese plato (el valor de missing) y después lista results como alternativas. Si no trae missing, lista cada result (nombre, precio y descripción). No agregues uno solo.
+- Si mode="availability" o un product_match: lista cada result (nombre, precio y descripción). Si el cliente nombró algo que ese plato no trae (nombre, descripción o atributos), dilo primero: no lo ofrecemos en el momento, y results es la alternativa. No lo confirmes como si fuera el plato pedido.
 - Si mode="composition": qué lleva sale de description y attributes. Si preguntan si incluye algo y otro result de esa familia sí lo trae, di que este no y ese sí. NO add_item.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
@@ -267,7 +268,7 @@ Reglas:
 - "Menú ejecutivo|especial|de la casa|del día|…" o "bandeja con…" → plato del catálogo si search_menu lo trae; NUNCA lo confundas con el link ni con el pollo suelto.
 - Si hay varias presentaciones del mismo plato (combo, costillas, medio, caja, frito/broaster), menciónalas todas. No te quedes en dos.
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
-- "qué hay de comida rápida" / "hamburguesas o salchipapas" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. NO resumas con pollos ni agregues una sola hamburguesa.
+- "qué hay de comida rápida" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. Si piden un plato que no está y search_menu trae missing, dilo y ofrece esa categoría como alternativas. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
 - Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
 - Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
@@ -550,9 +551,13 @@ Contacto humano: *${phone || '3118866823'}*
               query,
               mode: 'category_browse',
               category: hit.categoryName,
+              missing: hit.askedButMissing || null,
               results: hit.products.slice(0, 12).map((p) => this.productCard(p)),
-              hint:
-                'Pregunta qué hay en esa parte del menú. Lista estos platos (nombre y precio). NO add_item.',
+              hint: hit.askedButMissing
+                ? `No tenemos "${hit.askedButMissing}". Dilo primero, con esas palabras. ` +
+                  'Después lista results (nombre y precio) como alternativas. ' +
+                  'NO add_item. No presentes la lista como si ese plato existiera.'
+                : 'Pregunta qué hay en esa parte del menú. Lista estos platos (nombre y precio). NO add_item.',
             });
           }
         }

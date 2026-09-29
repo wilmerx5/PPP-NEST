@@ -4342,7 +4342,7 @@ export class WhatsappOrchestratorService {
     await this.reply(
       conv,
       waId,
-      this.catalogService.formatCategoryList(hit.categoryName, hit.products),
+      this.catalogService.formatCategoryBrowseReply(hit),
     );
     return null;
   }
@@ -7418,16 +7418,7 @@ export class WhatsappOrchestratorService {
     }
     if (!variants.length) return false;
 
-    // "tienes bandeja paisa con frijolitos" no confirma otra bandeja
-    if (this.catalogService.uncoveredDishWords(query, variants).length) {
-      await this.reply(
-        conv,
-        waId,
-        this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl),
-      );
-      return true;
-    }
-
+    const missing = this.catalogService.uncoveredWordsAgainstOffers(text, variants);
     const anchor = variants[0];
     session = {
       ...this.rememberProductFocus(session, anchor, products),
@@ -7444,7 +7435,16 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv, session, 'building_cart');
 
     if (variants.length === 1) {
-      await this.reply(conv, waId, this.catalogService.formatProductPriceReply(variants[0]));
+      const qty = this.catalogService.extractQuantityFromMessage(text);
+      await this.savePendingAddOffer(conv, variants[0], qty, { sourceText: text });
+      const card = this.catalogService.formatProductPriceReply(variants[0]);
+      await this.reply(
+        conv,
+        waId,
+        missing.length
+          ? this.catalogService.formatWeDontOfferPreface(query, 1) + card
+          : card,
+      );
       return true;
     }
 
@@ -7461,11 +7461,15 @@ export class WhatsappOrchestratorService {
         (short ? `\n   _${short}_` : '')
       );
     });
+    const listBody =
+      `${rows.join('\n\n')}\n\n` +
+      `_Dime el *número* si quieres agregarlo, o pregunta cómo es._`;
     await this.reply(
       conv,
       waId,
-      `Sí, *${baseLabel}*:\n\n${rows.join('\n\n')}\n\n` +
-        `_Dime el *número* si quieres agregarlo, o pregunta cómo es._`,
+      missing.length
+        ? this.catalogService.formatWeDontOfferPreface(query, variants.length) + listBody
+        : `Sí, *${baseLabel}*:\n\n${listBody}`,
     );
     return true;
   }
@@ -12253,7 +12257,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           waId,
-          this.catalogService.formatCategoryList(hit.categoryName, hit.products),
+          this.catalogService.formatCategoryBrowseReply(hit),
         );
         return true;
       }
@@ -12817,7 +12821,11 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        this.catalogService.formatCategoryList(browseHit.categoryName, list),
+        this.catalogService.formatCategoryBrowseReply({
+          categoryName: browseHit.categoryName,
+          products: list,
+          askedButMissing: browseHit.askedButMissing,
+        }),
       );
       return true;
     }
@@ -12864,7 +12872,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        this.formatPriceInquiryReply(infoProduct, qty, text),
+        this.formatOfferedProductReply(infoProduct, qty, text, dishHint || query),
       );
       return true;
     }
@@ -12894,7 +12902,11 @@ export class WhatsappOrchestratorService {
     if (scored.length === 1 || this.catalogService.isStrongProductMatch(scored)) {
       const qty = this.catalogService.extractQuantityFromMessage(text);
       await this.savePendingAddOffer(conv, scored[0].p, qty, { sourceText: text });
-      await this.reply(conv, waId, this.formatPriceInquiryReply(scored[0].p, qty, text));
+      await this.reply(
+        conv,
+        waId,
+        this.formatOfferedProductReply(scored[0].p, qty, text, dishHint || query),
+      );
       return true;
     }
 
@@ -12904,6 +12916,18 @@ export class WhatsappOrchestratorService {
       this.catalogService.formatPriceInquiryList(scored.slice(0, 5).map((x) => x.p)),
     );
     return true;
+  }
+
+  private formatOfferedProductReply(
+    product: MenuProduct,
+    quantity: number,
+    sourceText: string,
+    askedLabel: string,
+  ): string {
+    const card = this.formatPriceInquiryReply(product, quantity, sourceText);
+    const missing = this.catalogService.uncoveredWordsAgainstOffers(sourceText, [product]);
+    if (!missing.length) return card;
+    return this.catalogService.formatWeDontOfferPreface(askedLabel || sourceText, 1) + card;
   }
 
   private formatPriceInquiryReply(
