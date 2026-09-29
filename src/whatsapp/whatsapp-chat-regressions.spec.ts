@@ -1780,6 +1780,24 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         /churrasco/i.test(c.product.name),
       );
       expect(catalog.extractQuantityFromSegment(churrasco?.segment || '')).toBe(2);
+
+      const styled = applyLocalGlossary(
+        'quiero una milanesa, dos churrascos y pollo y medio frito',
+      );
+      expect(styled).toMatch(/1 pollo frito y medio pollo frito/i);
+      const styledMulti = catalog.resolveMultiProductOrder(styled, menu);
+      expect(styledMulti?.ambiguous || []).toEqual([]);
+      expect(styledMulti?.needsAttributes || []).toEqual([]);
+      expect(styledMulti?.unresolved || []).toEqual([]);
+      const styledNames = (styledMulti?.confident || []).map((c) => c.product.name);
+      expect(styledNames).toEqual(
+        expect.arrayContaining(['Milanesa De Pollo', 'Churrasco', '1 Pollo Frito', '1/2 Pollo Frito']),
+      );
+
+      const withoutMilanesa = menu.filter((p) => !/milanesa/i.test(p.name));
+      const missed = catalog.resolveMultiProductOrder(styled, withoutMilanesa);
+      expect(missed?.unresolved.join(' ') || '').toMatch(/milanesa/i);
+      expect(missed?.ambiguous || []).toEqual([]);
     });
 
     it('arroz paisa y medio pollo y gaseosa no pierde el medio pollo', () => {

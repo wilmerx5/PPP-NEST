@@ -7544,6 +7544,7 @@ export class WhatsappCatalogService {
           confident.push(match);
         }
       }
+      this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
       const resolvedCount = confident.length + needsAttributes.length;
       if (resolvedCount >= 2) {
         return {
@@ -7615,7 +7616,8 @@ export class WhatsappCatalogService {
       if (
         !embedded &&
         this.looksLikePersonNameSegment(segment) &&
-        !this.spokenDishOnMenu(segment, products)
+        !this.spokenDishOnMenu(segment, products) &&
+        !this.looksLikeClearlyMultiDishOrder(text)
       ) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         continue;
@@ -7670,7 +7672,11 @@ export class WhatsappCatalogService {
         }
       }
       if (!scored.length) {
-        if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
+        if (
+          this.looksLikePersonNameSegment(segment) &&
+          !this.spokenDishOnMenu(segment, products) &&
+          !this.looksLikeClearlyMultiDishOrder(text)
+        ) {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else if (
           ORDER_INTENT_ONLY.has(normalizeText(segment)) ||
@@ -7871,18 +7877,27 @@ export class WhatsappCatalogService {
           if (top.p.hasAttributes && top.p.attributes?.length) {
             needsAttributes.push(match);
           } else confident.push(match);
-        } else if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
+        } else if (
+          this.looksLikePersonNameSegment(segment) &&
+          !this.spokenDishOnMenu(segment, products) &&
+          !this.looksLikeClearlyMultiDishOrder(text)
+        ) {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else if (!this.isLogisticsOnlySegment(segment)) {
           unresolved.push(segment);
         }
-      } else if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
+      } else if (
+        this.looksLikePersonNameSegment(segment) &&
+        !this.spokenDishOnMenu(segment, products) &&
+        !this.looksLikeClearlyMultiDishOrder(text)
+      ) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
       } else if (!this.isLogisticsOnlySegment(segment)) {
         unresolved.push(segment);
       }
     }
 
+    this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
     const resolvedCount = confident.length + ambiguous.length + needsAttributes.length;
     const names =
       possibleCustomerNames.length > 0
@@ -7910,6 +7925,25 @@ export class WhatsappCatalogService {
       needsAttributes,
       possibleCustomerNames: names,
     };
+  }
+
+  /**
+   * Arepas, bebida, sabor y presa salen con la primera opción.
+   * Si falta el estilo de cocina, el ítem sigue pendiente.
+   */
+  private keepOnlyOpenAttributeChoices(
+    confident: MultiProductSegmentMatch[],
+    needsAttributes: MultiProductSegmentMatch[],
+  ): void {
+    const pending: MultiProductSegmentMatch[] = [];
+    for (const item of needsAttributes) {
+      const explicit = this.extractExplicitAttributeChoice(item.segment, item.product) || [];
+      const filled = this.fillDefaultAttributes(item.product, explicit);
+      if (this.isAttributeSelectionComplete(item.product, filled)) confident.push(item);
+      else pending.push(item);
+    }
+    needsAttributes.length = 0;
+    needsAttributes.push(...pending);
   }
 
   /** Formato COP consistente en todo el bot. */

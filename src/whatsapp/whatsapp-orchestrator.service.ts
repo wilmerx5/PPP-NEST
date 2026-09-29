@@ -11555,7 +11555,11 @@ export class WhatsappOrchestratorService {
     });
   }
 
-  /** El multi de Nest ya tiene el plato y el agente no lo agregó (se quedó con la gaseosa). */
+  /**
+   * Nest ya armó el pedido completo (sin dudas ni platos faltantes) y el agente
+   * no agregó uno de esos platos. Una duda de Nest, o un nombre que no está,
+   * no alcanza para tirar la respuesta del agente.
+   */
   private agentDroppedResolvedDish(
     text: string,
     products: MenuProduct[],
@@ -11563,14 +11567,8 @@ export class WhatsappOrchestratorService {
   ): boolean {
     const multi = this.catalogService.resolveMultiProductOrder(text, products);
     if (!multi) return false;
+    if (multi.ambiguous.length > 0 || multi.unresolved.length > 0) return false;
     const added = new Set((actions?.addItems || []).map((a) => a.productId));
-    if (multi.unresolved.length > 0) return true;
-    if (
-      multi.ambiguous.length > 0 &&
-      !multi.ambiguous.every((g) => g.candidates.some((c) => added.has(c.id)))
-    ) {
-      return true;
-    }
     const expected = [...multi.confident, ...multi.needsAttributes].filter(
       (c) => !this.catalogService.isLikelyDrinkProduct(c.product),
     );
@@ -11791,8 +11789,16 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    // “No manejamos X” sin acción → Nest puede cambiar una opción del carrito o recuperar el plato
-    if (!hasProductiveActions && replyIsMenuSoftMiss) {
+    // “No manejamos X” sin acción, y es un solo plato: Nest puede recuperarlo.
+    // En un pedido de varios, la frase del agente se queda.
+    if (
+      !hasProductiveActions &&
+      replyIsMenuSoftMiss &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
+      !this.catalogService.looksLikeMultiItemOrderMessage(text) &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(originalText) &&
+      !this.catalogService.looksLikeMultiItemOrderMessage(originalText)
+    ) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',
@@ -11820,8 +11826,9 @@ export class WhatsappOrchestratorService {
     }
 
     this.stripHostedDrinkAdds(text, products, guarded.actions);
-    // El agente agregó la sopa y una gaseosa suelta, y se dejó el combo.
-    // Nest ya resolvió el pedido completo: no se aplica este carrito a medias.
+    // Solo si Nest resolvió el pedido completo y el agente se dejó un plato
+    // (combo + sopas, y agregó la gaseosa suelta). Si Nest duda o no encuentra
+    // un nombre, se queda la lectura del agente: no la reemplaza la lista vieja.
     if (this.agentDroppedResolvedDish(text, products, guarded.actions)) {
       this.turnTelemetry.record({
         path: 'agent_v1',
@@ -12038,12 +12045,18 @@ export class WhatsappOrchestratorService {
           return this.formatAddedProductLabel(name, Number(a.quantity) || 1);
         })
         .filter(Boolean) as string[];
-      // Una sola burbuja del sistema (evita "añadí… ¿pasamos a tu nombre?" del LLM)
-      reply = this.buildCartAddReply(
+      // Una sola burbuja del sistema (evita "añadí… ¿pasamos a tu nombre?" del LLM).
+      // Si el agente dijo que un plato no está, esa frase se queda.
+      const cartReply = this.buildCartAddReply(
         session,
         fee,
         addedNames.length ? addedNames : 'ítems',
       );
+      const missLine = agentReply
+        .split('\n')
+        .map((line) => line.trim())
+        .find((line) => /no (?:te ofrecemos|tenemos|manejamos)\b/i.test(line));
+      reply = missLine ? `${missLine}\n\n${cartReply}` : cartReply;
     } else if (guarded.actions?.updateAttributes?.length) {
       reply =
         guarded.actions.updateAttributes
@@ -13378,8 +13391,10 @@ export class WhatsappOrchestratorService {
       if (multi.confident.length > 0) {
         lines.push('_Lo marcado ✅ queda listo cuando resuelvas la duda._');
       }
-    } else if (multi.needsAttributes.length > 0 || multi.unresolved.length > 0) {
+    } else if (multi.needsAttributes.length > 0) {
       lines.push('\n_Cuando puedas, aclara lo pendiente o escribe *sí* para lo ✅._');
+    } else if (multi.unresolved.length > 0) {
+      lines.push('\n_El resto, si está bien, escribe *sí*._');
     } else {
       lines.push('\n_Si está bien, escribe *sí*._');
     }
@@ -13433,11 +13448,20 @@ export class WhatsappOrchestratorService {
       if (!product) continue;
       const attrSource = [item.segment, sourceText].filter(Boolean).join(' ');
       const qty = this.quantityForMultiSegment(item.segment, product.name, sourceText);
-      const attrs =
+      const explicit =
         product.hasAttributes && product.attributes?.length
-          ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || undefined
-          : undefined;
-      if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
+          ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || []
+          : [];
+      const filled =
+        product.hasAttributes && product.attributes?.length
+          ? this.catalogService.fillDefaultAttributes(product, explicit)
+          : explicit;
+      const attrs = filled.length ? filled : undefined;
+      if (
+        product.hasAttributes &&
+        product.attributes?.length &&
+        !this.catalogService.isAttributeSelectionComplete(product, filled)
+      ) {
         // No agregar sin opciones: pasar a cola de atributos
         next = {
           ...next,

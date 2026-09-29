@@ -8,7 +8,10 @@ import { fixFuzzyDomicilioTypos } from './whatsapp-message-classify';
  */
 
 /** Reescrituras de frase (orden importa: más específicas primero). */
-const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
+const PHRASE_REWRITES: Array<{
+  re: RegExp;
+  to: string | ((match: string, ...groups: string[]) => string);
+}> = [
   // Saludos rotos / typos de arranque
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
   { re: /\bquieres\s+in\b/gi, to: 'quiero un' },
@@ -38,8 +41,15 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bcombo\s+(?:de\s+)?pollo\s+y\s+medio\b/gi, to: '__COMBO_POLLO_Y_MEDIO__' },
   {
     // No reescribir de nuevo "1 pollo y medio" (el glosario corre dos veces).
-    re: /(?<!\d\s)(?:\b(?:un|el|unos?)\s+)?\bpollos?\s+y\s+medio\b/gi,
-    to: '1 pollo y medio pollo',
+    // "pollo y medio frito" = el entero y el medio, los dos fritos.
+    re: /(?<!\d\s)(?:\b(?:un|el|unos?)\s+)?\bpollos?\s+y\s+medio(?:\s+(frit[oa]|broaster|broster|asad[oa]|mixto))?\b/gi,
+    to: (_match: string, style?: string) => {
+      const raw = (style || '').toLowerCase();
+      const word =
+        raw === 'broster' ? 'broaster' : raw === 'frita' ? 'frito' : raw === 'asada' ? 'asado' : raw;
+      const suffix = word ? ` ${word}` : '';
+      return `1 pollo${suffix} y medio pollo${suffix}`;
+    },
   },
   { re: /__COMBO_POLLO_Y_MEDIO__/gi, to: 'combo de pollo y medio' },
   // "porfavor" pegado (sin espacio)
@@ -271,7 +281,7 @@ export function applyLocalGlossary(text: string): string {
   if (!out) return out;
 
   for (const { re, to } of PHRASE_REWRITES) {
-    out = out.replace(re, to);
+    out = out.replace(re, to as (match: string, ...groups: string[]) => string);
   }
   for (const { re, to } of WORD_REWRITES) {
     out = typeof to === 'function' ? out.replace(re, to) : out.replace(re, to);
