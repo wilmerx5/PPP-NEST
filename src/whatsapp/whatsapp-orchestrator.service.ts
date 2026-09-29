@@ -2896,11 +2896,17 @@ export class WhatsappOrchestratorService {
         );
         return;
       }
+      const multiSentence =
+        this.catalogService.looksLikeClearlyMultiDishOrder(originalText || text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(originalText || text) ||
+        this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(text);
       const styleMiss = this.catalogService.formatMissingStyleOffer(
         originalText || text,
         products,
       );
       if (
+        !multiSentence &&
         styleMiss &&
         !this.catalogService.isAvailabilityInquiry(text) &&
         !this.catalogService.isProductDescriptionInquiry(text) &&
@@ -2910,6 +2916,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       if (
+        !multiSentence &&
         dishQuery &&
         !this.catalogService.isAvailabilityInquiry(text) &&
         !this.catalogService.isProductDescriptionInquiry(text) &&
@@ -11790,16 +11797,11 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    // “No manejamos X” sin acción, y es un solo plato: Nest puede recuperarlo.
-    // En un pedido de varios, la frase del agente se queda.
-    if (
-      !hasProductiveActions &&
-      replyIsMenuSoftMiss &&
-      !this.catalogService.looksLikeClearlyMultiDishOrder(text) &&
-      !this.catalogService.looksLikeMultiItemOrderMessage(text) &&
-      !this.catalogService.looksLikeClearlyMultiDishOrder(originalText) &&
-      !this.catalogService.looksLikeMultiItemOrderMessage(originalText)
-    ) {
+    // “No manejamos X” sin decir qué sí hay: Nest arma el pedido.
+    // Si el agente ya contestó desde la carta (nombró precios), esa respuesta se queda.
+    const agentQuotedMenu =
+      /\$\s?\d{1,3}(?:\.\d{3})+/.test(agentReply) || /\b\d{2}\.\d{3}\b/.test(agentReply);
+    if (!hasProductiveActions && replyIsMenuSoftMiss && !agentQuotedMenu) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',

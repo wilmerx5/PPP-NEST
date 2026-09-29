@@ -1794,10 +1794,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect.arrayContaining(['Milanesa De Pollo', 'Churrasco', '1 Pollo Frito', '1/2 Pollo Frito']),
       );
 
+      const order = 'quiero una milanesa, dos churrascos y pollo y medio frito';
+      expect(catalog.looksLikeClearlyMultiDishOrder(order)).toBe(true);
       const withoutMilanesa = menu.filter((p) => !/milanesa/i.test(p.name));
       const missed = catalog.resolveMultiProductOrder(styled, withoutMilanesa);
       expect(missed?.unresolved.join(' ') || '').toMatch(/milanesa/i);
       expect(missed?.ambiguous || []).toEqual([]);
+      expect((missed?.confident || []).map((c) => c.product.name)).toEqual(
+        expect.arrayContaining(['Churrasco', '1 Pollo Frito', '1/2 Pollo Frito']),
+      );
 
       const claim = 'vi milanea en le menu';
       expect(catalog.followUpDishClaim(claim, missed?.unresolved || [])).toMatch(/milanesa/i);
