@@ -1798,6 +1798,50 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const missed = catalog.resolveMultiProductOrder(styled, withoutMilanesa);
       expect(missed?.unresolved.join(' ') || '').toMatch(/milanesa/i);
       expect(missed?.ambiguous || []).toEqual([]);
+
+      const claim = 'vi milanea en le menu';
+      expect(catalog.followUpDishClaim(claim, missed?.unresolved || [])).toMatch(/milanesa/i);
+      expect(catalog.resolveSpokenDish('milanea', menu)?.name).toBe('Milanesa De Pollo');
+      expect(catalog.resolveSpokenDish('milanea', withoutMilanesa)).toBeNull();
+      const bandejas = [
+        ...withoutMilanesa,
+        {
+          id: 15,
+          code: 15,
+          name: 'Bandeja Con Pollo Frito',
+          price: 21000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Bandejas',
+        },
+        {
+          id: 16,
+          code: 16,
+          name: 'Bandeja Con Pollo Broaster',
+          price: 22000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Bandejas',
+        },
+      ];
+      expect(catalog.findProductVariantFamily(claim, bandejas)).toBeNull();
+      expect(
+        catalog.productByDishMention('milanea', [
+          {
+            id: 881,
+            code: 881,
+            name: 'Filete Empanizado',
+            price: 28000,
+            hasAttributes: false,
+            attributes: [],
+            availableNow: true,
+            categoryName: 'Pollo',
+            description: 'Milanesa de pollo apanada',
+          },
+        ])?.name,
+      ).toBe('Filete Empanizado');
     });
 
     it('arroz paisa y medio pollo y gaseosa no pierde el medio pollo', () => {

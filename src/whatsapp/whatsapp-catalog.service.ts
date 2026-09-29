@@ -1620,6 +1620,63 @@ export class WhatsappCatalogService {
     return best?.p || null;
   }
 
+  /**
+   * "vi la milanesa en el menú": el cliente insiste en un plato del pedido abierto.
+   * Devuelve el nombre que hay que buscar, no un plato nuevo.
+   */
+  followUpDishClaim(text: string, unresolved: string[] = []): string | null {
+    const q = normalizeText(text || '');
+    if (!q || q.length < 5) return null;
+    const stop = new Set([
+      'menu', 'carta', 'tiene', 'tienen', 'tienes', 'tengo', 'esta', 'estan',
+      'visto', 'vimos', 'donde', 'porque', 'estaba', 'dice', 'sale', 'salió',
+      'seguro', 'claro', 'bueno',
+    ]);
+    const tokens = q.split(' ').filter((t) => t.length >= 5 && !stop.has(t));
+    if (!tokens.length) return null;
+    for (const miss of unresolved) {
+      const missTokens = normalizeText(miss).split(' ').filter((t) => t.length >= 4);
+      const hit = missTokens.some((mt) =>
+        tokens.some(
+          (tok) =>
+            fuzzyTokenMatch(tok, mt) ||
+            fuzzyTokenMatch(tok, singularizeEsToken(mt)) ||
+            (tok.length >= 5 && mt.length >= 5 && (tok.includes(mt) || mt.includes(tok))),
+        ),
+      );
+      if (hit) return miss.trim();
+    }
+    return null;
+  }
+
+  /** Nombre o descripción de un solo plato. Si hay varios, no elige. */
+  productByDishMention(
+    claim: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const spoken = this.resolveSpokenDish(claim, products);
+    if (spoken) return spoken;
+    const tokens = normalizeText(claim)
+      .split(' ')
+      .filter((t) => t.length >= 5);
+    if (!tokens.length) return null;
+    const hits = products.filter((p) => {
+      if (p.availableNow === false) return false;
+      const words = normalizeText(`${p.name} ${p.description || ''}`)
+        .split(' ')
+        .filter((w) => w.length >= 5);
+      return tokens.every((tok) =>
+        words.some(
+          (w) =>
+            fuzzyTokenMatch(tok, w) ||
+            fuzzyTokenMatch(tok, singularizeEsToken(w)) ||
+            (tok.length >= 5 && w.length >= 5 && (w.includes(tok) || tok.includes(w))),
+        ),
+      );
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+
   menuNameMatchesDishQuery(productName: string, dish: string): boolean {
     const pn = normalizeText(productName);
     const q = normalizeText(dish);
@@ -5811,6 +5868,18 @@ export class WhatsappCatalogService {
       q.split(' ').filter((t) => t.length >= 4 && !COOKING_STYLE_TOKENS.has(t)).every((t) => bestBase.includes(t));
 
     if (!queryHitsBase && bestCount < 2 && !useCookingStyleFamily) return null;
+
+    const queryTokens = q.split(' ').filter((t) => t.length >= 4 && t !== 'menu' && t !== 'carta');
+    const baseTokens = bestBase.split(' ').filter((t) => t.length >= 4);
+    const namesThisFamily = baseTokens.some((bt) =>
+      queryTokens.some(
+        (qt) =>
+          this.queryHasToken(qt, bt) ||
+          fuzzyTokenMatch(qt, bt) ||
+          (qt.length >= 5 && bt.length >= 5 && (qt.includes(bt) || bt.includes(qt))),
+      ),
+    );
+    if (queryTokens.length && baseTokens.length && !namesThisFamily && !queryHitsBase) return null;
 
     const variants = available.filter((p) => {
       if (useCookingStyleFamily) {

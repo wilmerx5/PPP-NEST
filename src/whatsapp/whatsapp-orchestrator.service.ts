@@ -4466,6 +4466,7 @@ export class WhatsappOrchestratorService {
       if (segNorm.length >= 4 && this.normalizeForMatch(text).includes(segNorm)) return false;
     }
 
+    if (this.catalogService.followUpDishClaim(text, pending.unresolved)) return false;
     if (this.looksLikeFreshOrderIntent(text)) return true;
     // “Con gaseosa” mientras falta frito/broaster → no soltar el multi
     if (
@@ -14114,6 +14115,91 @@ export class WhatsappOrchestratorService {
     if (!pending) return false;
 
     if (await this.tryAmendPendingMultiFromCorrection(conv, waId, session, text, products)) {
+      return true;
+    }
+
+    const dishClaim = this.catalogService.followUpDishClaim(text, pending.unresolved);
+    if (dishClaim) {
+      const product = this.catalogService.productByDishMention(dishClaim, products);
+      if (product) {
+        const claimNorm = this.normalizeForMatch(dishClaim);
+        const nextUnresolved = pending.unresolved.filter(
+          (u) => this.normalizeForMatch(u) !== claimNorm,
+        );
+        const entry = { segment: dishClaim, ...this.toPendingMultiProduct(product) };
+        const filled = this.catalogService.fillDefaultAttributes(product, []);
+        const stillOpen = !this.catalogService.isAttributeSelectionComplete(product, filled);
+        const nextPending: NonNullable<WhatsappSessionData['pendingMultiOrder']> = {
+          ...pending,
+          unresolved: nextUnresolved,
+          confident: stillOpen ? pending.confident : [...pending.confident, entry],
+          needsAttributes: stillOpen
+            ? [...pending.needsAttributes, entry]
+            : pending.needsAttributes,
+        };
+        session = { ...session, pendingMultiOrder: nextPending };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+        await this.reply(
+          conv,
+          waId,
+          `Sí, *${product.name}* sí está. La dejo en el pedido.\n\n` +
+            this.formatMultiOrderProposal({
+              segments: [],
+              confident: nextPending.confident.map((c) => ({
+                segment: c.segment,
+                product: products.find((p) => p.id === c.productId) || product,
+                score: 100,
+              })),
+              ambiguous: nextPending.ambiguous.map((a) => ({
+                segment: a.segment,
+                candidates: a.candidates as MenuProduct[],
+              })),
+              unresolved: nextPending.unresolved,
+              needsAttributes: nextPending.needsAttributes.map((c) => ({
+                segment: c.segment,
+                product: products.find((p) => p.id === c.productId) || product,
+                score: 100,
+              })),
+            }),
+        );
+        return true;
+      }
+      const menuUrl = (cfg.menuUrl || '').trim();
+      await this.reply(
+        conv,
+        waId,
+        `Lo siento, no tenemos *${dishClaim}* en la carta.` +
+          (menuUrl ? `\nMenú: ${menuUrl}` : '') +
+          `\n\nSeguimos con lo demás. Si está bien, escribe *sí*.\n\n` +
+          this.formatMultiOrderProposal({
+            segments: [],
+            confident: pending.confident.map((c) => ({
+              segment: c.segment,
+              product: products.find((p) => p.id === c.productId) || {
+                id: c.productId,
+                code: c.code,
+                name: c.name,
+                price: c.price,
+              },
+              score: 100,
+            })),
+            ambiguous: pending.ambiguous.map((a) => ({
+              segment: a.segment,
+              candidates: a.candidates as MenuProduct[],
+            })),
+            unresolved: pending.unresolved,
+            needsAttributes: pending.needsAttributes.map((c) => ({
+              segment: c.segment,
+              product: products.find((p) => p.id === c.productId) || {
+                id: c.productId,
+                code: c.code,
+                name: c.name,
+                price: c.price,
+              },
+              score: 100,
+            })),
+          }),
+      );
       return true;
     }
 
