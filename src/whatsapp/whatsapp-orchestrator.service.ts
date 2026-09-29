@@ -1171,7 +1171,13 @@ export class WhatsappOrchestratorService {
           }
           if (added.blocked) {
             await this.conversationService.saveSession(conv, session);
-            await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
+            const qtyNote = addQty > 1 ? ` ×${addQty}` : '';
+            await this.reply(
+              conv,
+              msg.waId,
+              `${added.blocked.reason || 'Ese pedido se sale del tope por WhatsApp.'}\n\n` +
+                `No agregué *${product.name}*${qtyNote}. El resto del pedido sigue igual.`,
+            );
             return;
           }
           session = added.session;
@@ -4052,7 +4058,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        `${blocked.reason || 'Ese pedido se sale del tope por WhatsApp.'}\n\n${this.humanContactMessage()}`,
+        blocked.reason || 'Ese pedido se sale del tope por WhatsApp.',
       );
       return;
     }
@@ -7898,6 +7904,9 @@ export class WhatsappOrchestratorService {
       q = q.split(/[,;]\s*(?:quiero|dame|pon(?:me)?|mejor)\b/i)[0].trim();
       q = q.replace(/\s+(?:quiero|dame|pon(?:me)?|mejor)\s+.+$/i, '').trim();
       q = q.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '').trim();
+      q = q
+        .replace(/^(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+/i, '')
+        .trim();
       const qNorm = this.normalizeForMatch(q);
       if (qNorm.length < 3 || reject.has(qNorm)) continue;
       if (/^(producto|plato|item|item)$/i.test(qNorm)) continue;
@@ -7924,7 +7933,7 @@ export class WhatsappOrchestratorService {
     | { kind: 'none' }
     | { kind: 'single'; indices: number[]; label: string }
     | { kind: 'ambiguous'; options: Array<{ cartIndex: number; label: string }> } {
-    const q = this.normalizeForMatch(query);
+    const q = this.normalizeForMatch(query).replace(/(.)\1{2,}/g, '$1$1');
     const cart = session.cart;
     if (!cart.length || !q) return { kind: 'none' };
 
@@ -8792,8 +8801,17 @@ export class WhatsappOrchestratorService {
       'correcto',
     ];
 
-    return tokens.some((tok) =>
-      confirmWords.some((w) => this.confirmTokenMatches(tok, w)),
+    // Solo si TODO el mensaje es cierre ("listo", "listo por favor").
+    // Si sobra otra intención, la lee el agente.
+    const fillers = new Set([
+      'el', 'la', 'los', 'las', 'mi', 'un', 'una', 'pedido',
+      'por', 'favor', 'porfa', 'porfis', 'gracias', 'ya', 'que', 'y', 'entonces',
+    ]);
+    return (
+      tokens.some((tok) => confirmWords.some((w) => this.confirmTokenMatches(tok, w))) &&
+      tokens.every(
+        (tok) => fillers.has(tok) || confirmWords.some((w) => this.confirmTokenMatches(tok, w)),
+      )
     );
   }
 
