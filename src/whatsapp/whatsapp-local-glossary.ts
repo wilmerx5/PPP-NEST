@@ -19,8 +19,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   { re: /\bporci[oó]n(?:es)?\s+(?:de\s+)?papas?\s+fritas?\b/gi, to: 'porcion de papa francesa' },
   { re: /\bunas?\s+papas?\s+fritas?\b/gi, to: 'papa francesa' },
   { re: /\bpapas?\s+fritas?\b/gi, to: 'papa francesa' },
-  // Precio coloquial CO: "a como el arroz" = ¿a cómo / cuánto cuesta?
-  { re: /\ba\s+c[oó]mo\b/gi, to: 'a cuanto' },
+  // Precio coloquial CO: "a como" / "acomo el pollo" = ¿a cómo / cuánto cuesta?
+  { re: /\ba\s*c[oó]mo\b/gi, to: 'a cuanto' },
   { re: /\bdirecion\b/gi, to: 'dirección' },
   // Tamaño sopas
   { re: /\b(ajiaco|menudencias?)\s+(chico|chica|chiquito|chiquita|pequenito|pequenita)\b/gi, to: '$1 pequeña' },
@@ -37,7 +37,8 @@ const PHRASE_REWRITES: Array<{ re: RegExp; to: string }> = [
   // Proteger "combo de pollo y medio" (flujo aparte).
   { re: /\bcombo\s+(?:de\s+)?pollo\s+y\s+medio\b/gi, to: '__COMBO_POLLO_Y_MEDIO__' },
   {
-    re: /\b(?:un\s+|el\s+|unos?\s+)?pollos?\s+y\s+medio\b/gi,
+    // No reescribir de nuevo "1 pollo y medio" (el glosario corre dos veces).
+    re: /(?<!\d\s)(?:\b(?:un|el|unos?)\s+)?\bpollos?\s+y\s+medio\b/gi,
     to: '1 pollo y medio pollo',
   },
   { re: /__COMBO_POLLO_Y_MEDIO__/gi, to: 'combo de pollo y medio' },
@@ -169,6 +170,7 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   },
   // Pegado sin espacios: "unpollofrito" / "unpollo"
   { re: /\bunpollofrito\b/gi, to: 'un pollo frito' },
+  { re: /\bpollofrito\b/gi, to: 'pollo frito' },
   { re: /\bunpollobroaster\b/gi, to: 'un pollo broaster' },
   { re: /\bunpollo\b/gi, to: 'un pollo' },
   // Typos frecuentes: pillos / pilos / pojlos → pollos
@@ -284,21 +286,4 @@ export function applyLocalGlossary(text: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .replace(/^\s+|\s+$/g, '')
     .trim();
-}
-
-/** Bloque de glosario para el prompt de la IA (memoria del local). */
-export function buildLocalGlossaryPromptBlock(): string {
-  return `
-GLOSARIO DEL LOCAL (interpreta así; no inventes otros significados):
-- "Sopa pequeña" / "ajiaco pequeño/chico" = SKU "Sopa pequeña" + atributo Ajiaco (NO "Sopa De Ajiaco", que es la grande).
-- "Mondongo pequeña" = SKU "Sopa De Mondongo Pequeña".
-- "Sopa De Ajiaco" / "ajiaco" sin "pequeña" = la grande.
-- "Duo / doble / pack de X" solo si el cliente dice duo/doble/pack; si dice "una hamburguesa" → Hamburguesa unitaria.
-- "Pollo mixto" / "medio broaster medio frito" = combo/variante mixta, no dos pollos sueltos.
-- "Arroz chino" tiene presentaciones (caja+francesa / medio pollo / costillas / combo gaseosa): pregunta cuál si no queda claro.
-- Preferencias "no quiero arepas, más papas, sin yuca, sin ensalada, sin cilantro, más miel" con carrito = NOTA del plato, no productos nuevos.
-- Typos frecuentes: broster→broaster, giger→ginger, placha→plancha, marcuya→maracuyá, menundencia→menudencias, plata(+add)→plátano, churrrasco→churrasco, par ale→para el.
-- "Papa(s) frita(s)" / "porción de papa frita" = papa francesa (NO yuca frita).
-- Zona típica de domicilio: Castilla (y variantes), Nuevo Sol, Tabaku, Altavista, Techo, Tintal — si el cliente solo nombra el conjunto/torre/apto, es dirección.
-`.trim();
 }

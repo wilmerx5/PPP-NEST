@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   feeFromDistanceKm,
-  normalizeDeliveryFeeTiers,
   type DeliveryFeeTier,
 } from './whatsapp-delivery-fee';
 
@@ -154,18 +153,6 @@ export class WhatsappDeliveryRoutingService {
       source: 'google_directions',
       geocodedAddress: formatted,
       customer,
-    };
-  }
-
-  /** Fallback local si no hay API: no inventa ruta; el orquestador usa fee fijo. */
-  fixedFeeQuote(fallbackFee: number): DeliveryRouteQuote {
-    return {
-      ok: true,
-      distanceKm: 0,
-      durationMinutes: null,
-      fee: Math.max(0, Math.round(fallbackFee)),
-      source: 'fallback_fixed',
-      customer: { lat: 0, lng: 0 },
     };
   }
 
@@ -344,7 +331,4 @@ export class WhatsappDeliveryRoutingService {
     }
   }
 
-  normalizeTiers(raw: unknown): DeliveryFeeTier[] {
-    return normalizeDeliveryFeeTiers(raw);
-  }
 }

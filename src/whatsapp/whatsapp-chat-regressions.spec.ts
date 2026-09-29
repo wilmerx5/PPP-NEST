@@ -1714,6 +1714,103 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(family?.variants.some((p) => /broaster/i.test(p.name))).toBe(false);
     });
 
+    it('con aji y pepsi cambia la bebida del combo y deja el ají aparte', () => {
+      const combo = pppMenu.find((p) => p.name === 'Combo De Pollo Broaster')!;
+      const hits = catalog.listCartAttributeOptionsNamedInText(
+        'con aji y pepsi',
+        [
+          {
+            productId: combo.id,
+            name: combo.name,
+            attributes: [
+              { attributeName: 'Arepas', attributeValue: 'Blancas' },
+              { attributeName: 'Bebida', attributeValue: 'Colombiana' },
+            ],
+          },
+        ],
+        pppMenu,
+      );
+      expect(hits.map((h) => `${h.attributeName}:${h.attributeValue}`)).toEqual(['Bebida:Pepsi']);
+    });
+
+    it('me faltó la milanesa corrige el pedido, no es un plato llamado así', () => {
+      const text = 'me falto la milanmea y eran dos churrascos';
+      expect(catalog.isPendingOrderCorrection(text)).toBe(true);
+      const clauses = catalog.orderCorrectionClauses(text);
+      expect(clauses.map((c) => c.dish).join(' ')).toMatch(/milanmea/);
+      expect(clauses.some((c) => c.quantity === 2 && /churrasco/.test(c.dish))).toBe(true);
+      const menu = [
+        ...pppMenu,
+        {
+          id: 17,
+          code: 17,
+          name: 'Churrasco',
+          price: 42000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Carnes',
+        },
+        {
+          id: 880,
+          code: 880,
+          name: 'Milanesa De Pollo',
+          price: 28000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+          categoryName: 'Pollo',
+        },
+      ];
+      expect(catalog.resolveSpokenDish('milanmea', menu)?.name).toBe('Milanesa De Pollo');
+      expect(catalog.looksLikePersonNameSegment('Natalia')).toBe(true);
+      const multi = catalog.resolveMultiProductOrder(
+        'quiero una milanesa, dos churrascos y pollo y medio frito',
+        menu,
+      );
+      const names = [
+        ...(multi?.confident.map((c) => c.product.name) || []),
+        ...(multi?.needsAttributes.map((c) => c.product.name) || []),
+        ...(multi?.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)) || []),
+        ...(multi?.unresolved || []),
+      ].join(' | ');
+      expect(names).toMatch(/Milanesa/);
+      expect(names).toMatch(/Churrasco/);
+      const churrasco = [...(multi?.confident || []), ...(multi?.needsAttributes || [])].find((c) =>
+        /churrasco/i.test(c.product.name),
+      );
+      expect(catalog.extractQuantityFromSegment(churrasco?.segment || '')).toBe(2);
+    });
+
+    it('arroz paisa y medio pollo y gaseosa no pierde el medio pollo', () => {
+      const paisa = {
+        id: 81,
+        code: 81,
+        name: 'Arroz Paisa',
+        price: 28000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Arroces',
+      };
+      const menu = [...pppMenu, paisa];
+      const text = 'un arroz paisa y medio pollo y gaseosa';
+      const segments = catalog.splitMultiProductSegments(text).join(' | ');
+      expect(segments).toMatch(/arroz paisa/i);
+      expect(segments).toMatch(/medio pollo/i);
+      expect(segments).toMatch(/gaseosa/i);
+      const multi = catalog.resolveMultiProductOrder(text, menu);
+      const names = [
+        ...(multi?.confident.map((c) => c.product.name) || []),
+        ...(multi?.needsAttributes.map((c) => c.product.name) || []),
+        ...(multi?.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)) || []),
+      ].join(' | ');
+      expect(names).toMatch(/Arroz Paisa/);
+      expect(names).toMatch(/1\/2 Pollo/);
+      expect(names).toMatch(/Gaseosa/);
+      expect(multi?.ambiguous.some((a) => /medio pollo/i.test(a.segment))).toBe(true);
+    });
+
     it('arroz con pollo en porción personal es ese plato, no toda la familia', () => {
       const text = 'El arroz con pollo viene en porción personal?';
       expect(catalog.isProductDescriptionInquiry(text)).toBe(true);

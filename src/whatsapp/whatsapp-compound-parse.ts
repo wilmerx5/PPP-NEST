@@ -103,6 +103,10 @@ export function stripTrailingAddressFluff(addr: string): string {
       /[,.]?\s*(?:y\s+)?(?:me\s+)?(?:regala(?:s|me)?|dice(?:s|me)?|pasa(?:s|me)?|confirma(?:s|me)?)\s+(?:el\s+)?(?:costo|precio|valor|total|domicilio).*$/i,
       '',
     )
+    .replace(
+      /\s+(?:a|para|en)\s+(?:esta|esa|la(?:\s+misma)?)\s+direcci[oó]n\b.*$/i,
+      '',
+    )
     .replace(/[,.]?\s*(?:por\s+favor|porfa|pf|gracias)[\s!.?]*$/i, '')
     .replace(/[,.]?\s*(?:y\s+)?(?:me\s+regala(?:s|me)?\s+el\s+costo).*$/i, '')
     .replace(/[,\s]+$/g, '')

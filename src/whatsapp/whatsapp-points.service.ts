@@ -59,11 +59,6 @@ export class WhatsappPointsService {
     return code;
   }
 
-  /** @deprecated use extractPointCodeCandidate */
-  extractTwelveCharCode(text: string): string | null {
-    return this.extractPointCodeCandidate(text);
-  }
-
   private hasPointsKeywords(text: string): boolean {
     const t = (text || '').toLowerCase();
     return (

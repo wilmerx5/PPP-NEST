@@ -398,7 +398,6 @@ export class WhatsappCatalogService {
     at: number;
     products: WhatsappCatalogProduct[];
     categories: string[];
-    compact: string;
     detailed: string;
   } | null = null;
   private readonly TTL_MS = 60_000;
@@ -441,15 +440,6 @@ export class WhatsappCatalogService {
 
     const available = products.filter((p) => p.availableNow !== false);
 
-    const compact = available
-      .map(
-        (p) =>
-          `[id=${p.id}] código ${p.code} — ${p.name} — $${Math.round(p.price).toLocaleString('es-CO')}` +
-          (p.categoryName ? ` [${p.categoryName}]` : '') +
-          (p.hasAttributes ? ' (requiere opciones)' : ''),
-      )
-      .join('\n');
-
     // Menú para IA: agrupado por categoría + descripción + atributos
     const byCat = new Map<string, WhatsappCatalogProduct[]>();
     for (const p of available) {
@@ -477,25 +467,14 @@ export class WhatsappCatalogService {
       at: Date.now(),
       products,
       categories: [...new Set(categories)],
-      compact,
       detailed: detailedParts.join('\n\n'),
     };
     return products;
   }
 
-  async getMenuCompactText(): Promise<string> {
-    await this.getMenuProducts();
-    return this.menuCache?.compact || '';
-  }
-
   async getMenuDetailedText(): Promise<string> {
     await this.getMenuProducts();
     return this.menuCache?.detailed || '';
-  }
-
-  async getCategoryNames(): Promise<string[]> {
-    await this.getMenuProducts();
-    return this.menuCache?.categories || [];
   }
 
   groupProductsByCategory(
@@ -1264,14 +1243,6 @@ export class WhatsappCatalogService {
     return { text: lines.join('\n').replace(/\n{3,}/g, '\n\n'), categories };
   }
 
-  buildMenuCategoryContextForAi(products: WhatsappCatalogProduct[]): string {
-    const { text } = this.formatMenuCategoryOverview(products, {
-      intro: 'Categorías (orienta; NO vuelques precios ni todo el menú al cliente):',
-      examplesPerCategory: 0,
-    });
-    return text;
-  }
-
   resolveCategoryBrowsePick(text: string, categories: string[]): string | null {
     const raw = text.trim();
     const lower = normalizeText(raw);
@@ -1579,6 +1550,96 @@ export class WhatsappCatalogService {
    * Segmento corto tipo nombre de persona (no plato): "Natalia", "Juan Pérez".
    * Evita tratar el nombre del cliente como ítem no encontrado del menú.
    */
+  /**
+   * "me faltó la milanesa" / "eran dos churrascos" corrige el pedido abierto.
+   * No es un plato llamado así.
+   */
+  isPendingOrderCorrection(text: string): boolean {
+    const q = normalizeText(text || '');
+    if (!q) return false;
+    if (/\b(me\s+falto|te\s+falto|se\s+te\s+olvido|faltaron|falto)\b/.test(q)) return true;
+    return /\b(eran|son|era)\s+(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(
+      q,
+    );
+  }
+
+  /** Partes de una corrección: plato a sumar y cantidad a corregir. */
+  orderCorrectionClauses(text: string): { quantity: number; dish: string }[] {
+    if (!this.isPendingOrderCorrection(text)) return [];
+    const parts = normalizeText(text)
+      .split(/\s+\by\b\s+/)
+      .map((p) =>
+        p
+          .replace(/^(?:me\s+falto|te\s+falto|se\s+te\s+olvido|faltaron|falto)\s+/, '')
+          .replace(/^(?:la|el|los|las|un|una|unos|unas)\s+/, '')
+          .trim(),
+      )
+      .filter((p) => p.length >= 3);
+    return parts.map((p) => {
+      const dish = this.stripQuantityFromSearchQuery(p)
+        .replace(/^(?:eran|son|era)\s+/, '')
+        .replace(/^(?:la|el|los|las|un|una)\s+/, '')
+        .trim();
+      return {
+        quantity: Math.max(1, this.extractQuantityFromSegment(p)),
+        dish: dish || p,
+      };
+    });
+  }
+
+  /** El segmento nombra un plato de la carta (aunque suene a nombre de persona). */
+  spokenDishOnMenu(segment: string, products: WhatsappCatalogProduct[]): boolean {
+    return !!this.resolveSpokenDish(segment, products);
+  }
+
+  resolveSpokenDish(
+    segment: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = normalizeText(segment || '');
+    if (!q || q.length < 4) return null;
+    const scored = this.searchByNameScored(q, products, 3);
+    if (scored[0] && scored[0].score >= 18) return scored[0].p;
+    const qTokens = q.split(/\s+/).filter((t) => t.length >= 6);
+    if (!qTokens.length) return null;
+    let best: { p: WhatsappCatalogProduct; dist: number } | null = null;
+    for (const p of products) {
+      if (p.availableNow === false) continue;
+      for (const raw of normalizeText(p.name).split(/\s+/)) {
+        const nameTok = singularizeEsToken(raw);
+        if (nameTok.length < 6) continue;
+        for (const qt of qTokens) {
+          const queryTok = singularizeEsToken(qt);
+          if (queryTok.slice(0, 4) !== nameTok.slice(0, 4)) continue;
+          const dist = tokenEditDistance(queryTok, nameTok);
+          if (dist > 2) continue;
+          if (!best || dist < best.dist) best = { p, dist };
+        }
+      }
+    }
+    return best?.p || null;
+  }
+
+  menuNameMatchesDishQuery(productName: string, dish: string): boolean {
+    const pn = normalizeText(productName);
+    const q = normalizeText(dish);
+    if (!pn || !q) return false;
+    if (pn.includes(q) || q.includes(singularizeEsToken(pn)) || pn.includes(singularizeEsToken(q))) {
+      return true;
+    }
+    const qTokens = q.split(/\s+/).filter((t) => t.length >= 4);
+    const pTokens = pn.split(/\s+/).filter((t) => t.length >= 4);
+    return qTokens.some((qt) =>
+      pTokens.some(
+        (pt) =>
+          fuzzyTokenMatch(qt, pt) ||
+          fuzzyTokenMatch(singularizeEsToken(qt), singularizeEsToken(pt)) ||
+          (qt.slice(0, 4) === pt.slice(0, 4) &&
+            tokenEditDistance(singularizeEsToken(qt), singularizeEsToken(pt)) <= 2),
+      ),
+    );
+  }
+
   looksLikePersonNameSegment(segment: string): boolean {
     const raw = (segment || '').trim();
     if (!raw || raw.length > 40) return false;
@@ -1860,28 +1921,6 @@ export class WhatsappCatalogService {
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q) return false;
     return [...PACK_MULTIPLIER_TOKENS].some((t) => this.queryHasToken(q, t));
-  }
-
-  /**
-   * Tokens “extra” del nombre del producto que el cliente no mencionó
-   * (ej. "duo" en "Duo de hamburguesas" cuando pidió "una hamburguesa").
-   */
-  private unrequestedNameTokens(productName: string, query: string): string[] {
-    const q = normalizeText(fixCommonOrderTypos(query || ''));
-    const name = normalizeText(productName);
-    const weak = new Set([
-      ...this.WEAK_PRODUCT_TOKENS,
-      'de',
-      'del',
-      'la',
-      'el',
-      'con',
-      'y',
-    ]);
-    return name
-      .split(/\s+/)
-      .filter((t) => t.length >= 3 && !weak.has(t))
-      .filter((t) => !this.queryHasToken(q, t) && !q.includes(singularizeEsToken(t)));
   }
 
   private queryHasToken(q: string, token: string): boolean {
@@ -3959,6 +3998,19 @@ export class WhatsappCatalogService {
     return best;
   }
 
+  /** "arroz paisa y medio pollo" sigue teniendo otro plato; no se junta con la gaseosa. */
+  private foodSideHasAnotherDish(food: string): boolean {
+    const parts = (food || '')
+      .split(/\s+\by\b\s+/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3);
+    if (parts.length < 2) return false;
+    const foodRe = new RegExp(FOOD_ORDER_TOKEN, 'i');
+    const onlyPortion =
+      /^(?:un|una|el|la|\d+)?\s*(medio|media|cuarto|cuarta|entero|entera)$/i;
+    return parts.every((p) => foodRe.test(p) && !onlyPortion.test(p.trim()));
+  }
+
   /**
    * Parte comida + bebida en el texto crudo (sin stripProductSearchNoise),
    * para que "medio broaster con gaseosa de manzana" no pierda la bebida.
@@ -5406,13 +5458,6 @@ export class WhatsappCatalogService {
       .join('\n');
   }
 
-  /** Tabla compacta (variantes de producto distinto). */
-  formatOptionsTable(
-    rows: Array<{ index: number; label: string; price: number; code?: number }>,
-  ): string {
-    return this.formatOptionsList(rows);
-  }
-
   /** ¿Quiere cambiar solo ↔ combo sobre el plato en contexto? */
   isVariantPreferenceIntent(text: string): boolean {
     const q = normalizeText(text);
@@ -6452,32 +6497,6 @@ export class WhatsappCatalogService {
     return false;
   }
 
-  /** Oculta notas de combo/gaseosas hasta que aplique ese paso. */
-  formatDescriptionForAttributeStep(
-    description: string | null | undefined,
-    alreadySelected: { attributeName: string; attributeValue: string }[],
-    nextAttr?: { attributeName: string },
-  ): string | null {
-    if (!description?.trim()) return null;
-
-    const showComboNotes =
-      this.hasComboPortionSelected(alreadySelected) ||
-      (nextAttr != null && this.isComboOnlyAttribute(nextAttr));
-
-    if (showComboNotes) return description.trim();
-
-    const filtered = description
-      .split(/(?<=[.!?])\s+/)
-      .filter((sentence) => {
-        const n = normalizeText(sentence);
-        return !/\b(combo|gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
-      })
-      .join(' ')
-      .trim();
-
-    return filtered || null;
-  }
-
   /** “No hay promoción del día?” — no es un plato. */
   isDailyPromoInquiry(text: string): boolean {
     const q = normalizeText(text || '');
@@ -6825,26 +6844,6 @@ export class WhatsappCatalogService {
     );
   }
 
-  /** Query corta tipo concepto: "pollo", "sopa", "carne", "quiero pedir pollo". */
-  isShortGenericFoodQuery(query: string): boolean {
-    const q = normalizeText(this.extractProductSearchQuery(query));
-    const noise = new Set([
-      'quiero',
-      'dame',
-      'ponme',
-      'pedir',
-      'ordenar',
-      'agrega',
-      'necesito',
-      'una',
-      'uno',
-      'unos',
-      'unas',
-    ]);
-    const tokens = q.split(' ').filter((t) => t.length >= 3 && !noise.has(t));
-    return tokens.length === 1;
-  }
-
   /** ¿El cliente ya nombró variante(s) en el mensaje (medio, combo, manzana…)? */
   extractExplicitAttributeChoice(
     text: string,
@@ -6858,22 +6857,6 @@ export class WhatsappCatalogService {
     );
     if (step.status === 'complete') return step.attributes;
     return null;
-  }
-
-  /** Producto con variantes pero el cliente no dijo cuál → mostrar todas, no asumir "medio". */
-  shouldShowVariantsOverview(text: string, product: WhatsappCatalogProduct): boolean {
-    if (!product.hasAttributes || !product.attributes?.length) return false;
-    if (this.extractExplicitAttributeChoice(text, product)) return false;
-    if (this.isGenericProductInquiry(text)) return true;
-
-    const q = normalizeText(this.stripPriceInquiryNoise(this.extractProductSearchQuery(text)));
-    for (const attr of product.attributes) {
-      for (const opt of attr.options) {
-        const o = normalizeText(opt);
-        if (o.length >= 4 && q.includes(o)) return false;
-      }
-    }
-    return true;
   }
 
   formatPriceInquiryList(products: WhatsappCatalogProduct[]): string {
@@ -6947,9 +6930,10 @@ export class WhatsappCatalogService {
 
     if (this.looksLikeFoodPlusDrinkOrder(text)) {
       // "3 pollos y 2 limonadas" → partir por y/coma (conserva cantidades en cada segmento)
+      // "arroz paisa y medio pollo y gaseosa" no cabe en 2 partes: el medio pollo se caía.
       if (this.countQuantityMentions(text) < 2) {
         const foodDrink = this.splitFoodPlusDrinkSegments(text);
-        if (foodDrink.length >= 2) {
+        if (foodDrink.length >= 2 && !this.foodSideHasAnotherDish(foodDrink[0])) {
           const seen = new Set<string>();
           return foodDrink.filter((seg) => {
             const key = normalizeText(seg);
@@ -7585,7 +7569,11 @@ export class WhatsappCatalogService {
       }
 
       const embedded = this.findProductEmbeddedInMessage(segment, products);
-      if (!embedded && this.looksLikePersonNameSegment(segment)) {
+      if (
+        !embedded &&
+        this.looksLikePersonNameSegment(segment) &&
+        !this.spokenDishOnMenu(segment, products)
+      ) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         continue;
       }
@@ -7639,7 +7627,7 @@ export class WhatsappCatalogService {
         }
       }
       if (!scored.length) {
-        if (this.looksLikePersonNameSegment(segment)) {
+        if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else if (
           ORDER_INTENT_ONLY.has(normalizeText(segment)) ||
@@ -7840,12 +7828,12 @@ export class WhatsappCatalogService {
           if (top.p.hasAttributes && top.p.attributes?.length) {
             needsAttributes.push(match);
           } else confident.push(match);
-        } else if (this.looksLikePersonNameSegment(segment)) {
+        } else if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
           possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
         } else if (!this.isLogisticsOnlySegment(segment)) {
           unresolved.push(segment);
         }
-      } else if (this.looksLikePersonNameSegment(segment)) {
+      } else if (this.looksLikePersonNameSegment(segment) && !this.spokenDishOnMenu(segment, products)) {
         possibleCustomerNames.push(segment.replace(/\s+/g, ' ').trim());
       } else if (!this.isLogisticsOnlySegment(segment)) {
         unresolved.push(segment);

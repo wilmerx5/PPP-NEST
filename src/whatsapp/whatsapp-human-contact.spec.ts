@@ -62,6 +62,15 @@ describe('whatsapp-human-contact (ASESOR off)', () => {
       'Perdona. ¿Quieres que te pase con un ASESOR otra vez o prefieres que yo te ayude? El 1/2 Broaster trae papa.',
     );
     expect(mixed).not.toMatch(/asesor/i);
-    expect(mixed).toMatch(/3118866823|Broaster|papa/i);
+    expect(mixed).toMatch(/Broaster|papa/i);
+    expect(mixed).not.toMatch(/no entend[ií]/i);
+
+    const range = scrubOutboundAsesorMentions(
+      'Llevamos domicilio hasta *8.5 km* por ruta.\n\nTarifas de domicilio por ruta (hasta 8.5 km):\n  • 0–2.5 km → $2.000\n\nSi estás fuera, escribe *asesor*.\n\nSi me pasas la dirección te confirmo si llegamos y cuánto sale.',
+    );
+    expect(range).toMatch(/8\.5 km/);
+    expect(range).toMatch(/Si me pasas la dirección/);
+    expect(range).not.toMatch(/asesor/i);
+    expect(range).not.toMatch(/no entend[ií]|aclara/i);
   });
 });

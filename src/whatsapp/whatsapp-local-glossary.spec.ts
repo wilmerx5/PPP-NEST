@@ -19,6 +19,9 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('Regalame pollo y medio porfavor')).toMatch(
       /1 pollo y medio pollo/i,
     );
+    const polloYMedio = applyLocalGlossary('quiero una milanesa, dos churrascos y pollo y medio frito');
+    expect(polloYMedio).toMatch(/1 pollo y medio pollo frito/i);
+    expect(applyLocalGlossary(polloYMedio)).not.toMatch(/1 1 pollo/);
   });
 
   it('normaliza combo de arroz chino', () => {

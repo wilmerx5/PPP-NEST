@@ -67,14 +67,12 @@ export function scrubOutboundAsesorMentions(text: string): string {
     return raw;
   }
   let t = raw
-    .replace(/[^.!?\n]*\basesor\b[^.!?\n]*[.!?]?/gi, ' ')
-    .replace(/[^.!?\n]*escribe\s+\*?asesor\*?[^.!?\n]*[.!?]?/gi, ' ')
-    .replace(/[^.!?\n]*pase\s+con\s+un\s+[^.!?\n]*[.!?]?/gi, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^.!?\n]*\basesor\b[^.!?\n]*[.!?]?/gi, '')
+    .replace(/[^.!?\n]*escribe\s+\*?asesor\*?[^.!?\n]*[.!?]?/gi, '')
+    .replace(/[^.!?\n]*pase\s+con\s+un\s+[^.!?\n]*[.!?]?/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
   if (!t || t.length < 12) return WHATSAPP_HUMAN_CONTACT_MESSAGE;
-  if (!t.includes(WHATSAPP_HUMAN_CONTACT_PHONE)) {
-    t = `${t}\n\n${WHATSAPP_HUMAN_CONTACT_MESSAGE}`;
-  }
   return t;
 }

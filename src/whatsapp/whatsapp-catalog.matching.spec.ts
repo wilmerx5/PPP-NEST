@@ -135,6 +135,8 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.isPriceInquiryIntent(applyLocalGlossary('A como El arroz Con pollo'))).toBe(
       true,
     );
+    expect(catalog.isPriceInquiryIntent(applyLocalGlossary('acomo el pollofrito'))).toBe(true);
+    expect(applyLocalGlossary('acomo el pollofrito')).toMatch(/a cuanto el pollo frito/i);
     expect(catalog.isPriceInquiryIntent('A como el churrasco')).toBe(true);
     expect(
       catalog.resolveMultiProductOrder(

@@ -11,7 +11,7 @@ import {
   extractDailyOrderNumberHint,
   isInterruptedPhoneOrderInquiry,
 } from './whatsapp-session-intents';
-import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
+import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 import { looksLikeAddressOnlyMessage, isDeliverySetupWithoutFood } from './whatsapp-intent';
 import { WhatsappPointsService } from './whatsapp-points.service';
@@ -99,6 +99,14 @@ describe('isConfirmCurrentAddressIntent', () => {
     'No esa no es mi dirección',
   ])('NO es confirmación suelta: %s', (text) => {
     expect(isConfirmCurrentAddressIntent(text)).toBe(false);
+  });
+});
+
+describe('stripTrailingAddressFluff', () => {
+  it('quita "a esta dirección" del final del domicilio', () => {
+    expect(
+      stripTrailingAddressFluff('prados de techo 2 torre 9 apto 103 a esta direccion'),
+    ).toBe('prados de techo 2 torre 9 apto 103');
   });
 });
 
