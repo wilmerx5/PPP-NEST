@@ -11566,6 +11566,94 @@ export class WhatsappOrchestratorService {
    * Pedido de un solo plato que Nest puede agregar (no pregunta, no familia sin elegir).
    * Si el agente solo conversa, el flujo de carrito sigue.
    */
+  /**
+   * El agente propone; Nest no agrega un plato que la frase no nombró
+   * ni lo que el cliente pidió cambiar por otra cosa.
+   */
+  private reconcileAgentAddsWithUtterance(
+    text: string,
+    products: MenuProduct[],
+    actions?: {
+      addItems?: {
+        productId: number;
+        quantity?: number;
+        note?: string;
+        attributes?: { attributeName: string; attributeValue: string }[];
+      }[];
+    },
+  ): string[] {
+    if (!actions) return [];
+    const misses: string[] = [];
+    const swap = this.catalogService.swapIntent(text);
+    const kept = (actions.addItems || []).filter((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product) return false;
+      if (
+        swap &&
+        this.catalogService.productIsSwapRemoval(product, swap.removed, swap.added)
+      ) {
+        return false;
+      }
+      if (!this.catalogService.productNameFitsUtterance(product, text)) return false;
+      return true;
+    });
+    const ids = new Set(kept.map((item) => item.productId));
+    const swapBlob = this.normalizeForMatch(`${swap?.removed || ''} ${swap?.added || ''}`);
+    for (const seg of this.catalogService.splitMultiProductSegments(text)) {
+      const spoken = this.catalogService.resolveSpokenDish(seg, products);
+      const shortClause = seg.trim().split(/\s+/).length <= 6;
+      const uncovered = spoken
+        ? this.catalogService
+            .leftoverFoodWords(seg, spoken)
+            .filter((t) => !swapBlob.includes(this.normalizeForMatch(t)))
+        : [];
+      if (spoken && shortClause && uncovered.length) {
+        misses.push(`No tenemos *${seg.trim()}* en la carta.`);
+        continue;
+      }
+      if (!spoken) {
+        if (
+          shortClause &&
+          !products.some((p) => this.catalogService.productNameFitsUtterance(p, seg))
+        ) {
+          misses.push(`No tenemos *${seg.trim()}* en la carta.`);
+        }
+        continue;
+      }
+      if (ids.has(spoken.id)) continue;
+      if (swap && this.catalogService.productIsSwapRemoval(spoken, swap.removed, swap.added)) {
+        continue;
+      }
+      const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(seg));
+      kept.push({ productId: spoken.id, quantity: qty });
+      ids.add(spoken.id);
+    }
+    if (swap) {
+      const replacement = this.catalogService.resolveSpokenDish(swap.added, products);
+      if (
+        replacement &&
+        !ids.has(replacement.id) &&
+        !this.catalogService.productIsSwapRemoval(replacement, swap.removed, swap.added)
+      ) {
+        const extra = this.catalogService.leftoverFoodWords(swap.added, replacement);
+        if (!extra.length) {
+          const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(swap.added));
+          kept.push({ productId: replacement.id, quantity: qty });
+          ids.add(replacement.id);
+        }
+      }
+      const host = kept.find((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return !!product && !this.catalogService.isLikelyDrinkProduct(product) && /\bcombo\b/i.test(product.name);
+      });
+      if (host && !host.note) {
+        host.note = `Sin ${swap.removed}; cambio por ${swap.added}`.slice(0, 200);
+      }
+    }
+    actions.addItems = kept.length ? kept : undefined;
+    return [...new Set(misses)];
+  }
+
   /** Quita la gaseosa suelta cuando esa bebida ya es opción del combo nombrado. */
   private stripHostedDrinkAdds(
     text: string,
@@ -11864,6 +11952,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
     const applied = await this.applyActions(
       conv,
       session,
@@ -12077,7 +12166,8 @@ export class WhatsappOrchestratorService {
         .split('\n')
         .map((line) => line.trim())
         .find((line) => /no (?:te ofrecemos|tenemos|manejamos)\b/i.test(line));
-      reply = missLine ? `${missLine}\n\n${cartReply}` : cartReply;
+      const misses = [missLine, ...intentMisses].filter(Boolean);
+      reply = misses.length ? `${misses.join('\n')}\n\n${cartReply}` : cartReply;
     } else if (guarded.actions?.updateAttributes?.length) {
       reply =
         guarded.actions.updateAttributes

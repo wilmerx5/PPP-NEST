@@ -1832,6 +1832,100 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         },
       ];
       expect(catalog.findProductVariantFamily(claim, bandejas)).toBeNull();
+
+      const hard =
+        'Dame 2 milnaesas, una sopa De ajiaco, Un como De Pollo frito pero cambiame la gaseosa por una porcion De papa Francesca, y una Bandeja paisa';
+      expect(catalog.swapIntent(hard)?.removed).toMatch(/gaseosa/);
+      expect(catalog.swapIntent(hard)?.added).toMatch(/papa/);
+      const milanesa = menu.find((p) => /milanesa/i.test(p.name))!;
+      const broaster = menu.find((p) => /1 pollo broaster/i.test(p.name)) || {
+        id: 6,
+        code: 6,
+        name: '1 Pollo Broaster',
+        price: 44000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Pollo',
+      };
+      const bandejaPronto = {
+        id: 40,
+        code: 40,
+        name: 'Bandeja Pronto',
+        price: 18000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Bandejas',
+      };
+      const gaseosa = menu.find((p) => /gaseosa/i.test(p.name)) || {
+        id: 50,
+        code: 50,
+        name: 'Gaseosa 400ml',
+        price: 4000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Bebidas',
+      };
+      expect(catalog.resolveSpokenDish('2 milnaesas', [milanesa, broaster])?.name).toMatch(
+        /milanesa/i,
+      );
+      expect(catalog.productNameFitsUtterance(broaster, hard)).toBe(false);
+      expect(catalog.productNameFitsUtterance(bandejaPronto, hard)).toBe(false);
+      expect(catalog.productNameFitsUtterance(milanesa, hard)).toBe(true);
+      expect(catalog.productIsSwapRemoval(gaseosa, 'la gaseosa', 'una porcion de papa francesa')).toBe(
+        true,
+      );
+      const papa = {
+        id: 70,
+        code: 70,
+        name: 'Porcion De Papa Francesa',
+        price: 8000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Acompañamientos',
+      };
+      const sopa = {
+        id: 12,
+        code: 12,
+        name: 'Sopa De Ajiaco',
+        price: 12000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Sopas',
+      };
+      const combo = menu.find((p) => /combo de pollo frito/i.test(p.name)) || {
+        id: 3,
+        code: 3,
+        name: 'Combo De Pollo Frito',
+        price: 20000,
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+        categoryName: 'Pollo',
+      };
+      const hardMenu = [milanesa, broaster, bandejaPronto, gaseosa, papa, sopa, combo];
+      expect(catalog.productNameFitsUtterance(papa, hard)).toBe(true);
+      expect(catalog.productNameFitsUtterance(combo, hard)).toBe(true);
+      expect(catalog.productNameFitsUtterance(sopa, hard)).toBe(true);
+      const milanesaSeg = catalog
+        .splitMultiProductSegments(hard)
+        .find((s) => /milnaesa/i.test(s));
+      expect(milanesaSeg).toBeTruthy();
+      expect(catalog.extractQuantityFromSegment(milanesaSeg || '')).toBe(2);
+      expect(catalog.resolveSpokenDish(milanesaSeg || '', hardMenu)?.name).toMatch(/milanesa/i);
+      const paisaSeg = catalog.splitMultiProductSegments(hard).find((s) => /paisa/i.test(s));
+      expect(paisaSeg).toBeTruthy();
+      expect(catalog.resolveSpokenDish(paisaSeg || '', hardMenu)).toBeNull();
+      expect(catalog.leftoverFoodWords(paisaSeg || '', bandejaPronto).join(' ')).toMatch(/paisa/);
+      const papaSeg = catalog
+        .splitMultiProductSegments(hard)
+        .find((s) => /francesc/i.test(s));
+      expect(catalog.resolveSpokenDish(papaSeg || '', hardMenu)?.name).toMatch(/papa francesa/i);
+      expect(catalog.resolveSpokenDish('sopa De ajiaco', hardMenu)?.name).toMatch(/ajiaco/i);
       expect(
         catalog.productByDishMention('milanea', [
           {

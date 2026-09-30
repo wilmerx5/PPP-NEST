@@ -222,6 +222,16 @@ const CHITCHAT_NOISE_TOKENS = new Set([
   'adivinanza',
 ]);
 
+function isAdjacentTransposition(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length < 5) return false;
+  const diffs: number[] = [];
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) diffs.push(i);
+  }
+  if (diffs.length !== 2 || diffs[1] !== diffs[0] + 1) return false;
+  return a[diffs[0]] === b[diffs[1]] && a[diffs[1]] === b[diffs[0]];
+}
+
 function tokenEditDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (!a.length) return b.length;
@@ -256,6 +266,7 @@ function fuzzyTokenMatch(queryToken: string, candidateToken: string): boolean {
   // Typos solo en tokens largos (broaster/broster). "fritas"≠"alitas"
   if (q.length < 6 || c.length < 6) return false;
   if (q.slice(1) === c.slice(1)) return false;
+  if (q.slice(0, 3) === c.slice(0, 3) && isAdjacentTransposition(q, c)) return true;
   const dist = tokenEditDistance(q, c);
   const maxDist = q.length <= 8 ? 1 : 2;
   if (dist > maxDist) return false;
@@ -268,6 +279,17 @@ function fuzzyTokenMatch(queryToken: string, candidateToken: string): boolean {
     }
   }
   return true;
+}
+
+/** Typo de plato: transposición, una letra (“como”/“combo”) o dos si arrancan igual (“milanmea”). */
+function nearDishToken(word: string, tok: string): boolean {
+  const w = singularizeEsToken(word);
+  const t = singularizeEsToken(tok);
+  if (fuzzyTokenMatch(w, t) || fuzzyTokenMatch(word, tok)) return true;
+  if (w.length >= 4 && t.length >= 4 && w.slice(0, 3) === t.slice(0, 3) && tokenEditDistance(w, t) <= 1) {
+    return true;
+  }
+  return w.length >= 6 && t.length >= 6 && w.slice(0, 4) === t.slice(0, 4) && tokenEditDistance(w, t) <= 2;
 }
 
 /** Estilo de cocina / acompañamiento: no sirven solos para “encontrar” un producto. */
@@ -1599,7 +1621,8 @@ export class WhatsappCatalogService {
     const q = normalizeText(segment || '');
     if (!q || q.length < 4) return null;
     const scored = this.searchByNameScored(q, products, 3);
-    if (scored[0] && scored[0].score >= 18) return scored[0].p;
+    const aligned = scored.find((s) => this.spokenCandidateCoversClause(s.p, q));
+    if (aligned) return aligned.p;
     const qTokens = q.split(/\s+/).filter((t) => t.length >= 6);
     if (!qTokens.length) return null;
     let best: { p: WhatsappCatalogProduct; dist: number } | null = null;
@@ -1610,9 +1633,13 @@ export class WhatsappCatalogService {
         if (nameTok.length < 6) continue;
         for (const qt of qTokens) {
           const queryTok = singularizeEsToken(qt);
-          if (queryTok.slice(0, 4) !== nameTok.slice(0, 4)) continue;
+          const transposed =
+            queryTok.slice(0, 3) === nameTok.slice(0, 3) &&
+            isAdjacentTransposition(queryTok, nameTok);
+          if (queryTok.slice(0, 4) !== nameTok.slice(0, 4) && !transposed) continue;
           const dist = tokenEditDistance(queryTok, nameTok);
           if (dist > 2) continue;
+          if (!this.spokenCandidateCoversClause(p, q)) continue;
           if (!best || dist < best.dist) best = { p, dist };
         }
       }
@@ -1832,6 +1859,41 @@ export class WhatsappCatalogService {
     return [...new Set([...leftover, ...unknown])];
   }
 
+  /**
+   * Palabras de comida que el plato no cubre.
+   * “pero cambiame” no es un plato; “paisa” sí, si el nombre no lo trae.
+   */
+  leftoverFoodWords(query: string, product: WhatsappCatalogProduct): string[] {
+    const discourse = new Set([
+      'pero',
+      'cambia',
+      'cambiar',
+      'cambiame',
+      'cambiale',
+      'cambialo',
+      'cambiala',
+      'entonces',
+      'quiero',
+      'porque',
+      'favor',
+      'porfa',
+    ]);
+    return this.uncoveredWordsAgainstOffers(query, [product])
+      .map((t) => normalizeText(t))
+      .filter((t) => t.length >= 5 && !discourse.has(t));
+  }
+
+  /** El candidato es ese plato: su nombre cabe en la frase y no sobra otra comida. */
+  private spokenCandidateCoversClause(
+    product: WhatsappCatalogProduct,
+    query: string,
+  ): boolean {
+    return (
+      this.productNameFitsUtterance(product, query) &&
+      this.leftoverFoodWords(query, product).length === 0
+    );
+  }
+
   /** "No te ofrecemos X en el momento" + la ficha o la lista que sí hay. */
   formatWeDontOfferPreface(askedLabel: string, alternativeCount: number): string {
     const label =
@@ -1996,7 +2058,7 @@ export class WhatsappCatalogService {
     }
     const blob = normalizeText(parts.join(' '));
     if (this.queryHasToken(blob, token)) return true;
-    if (blob.split(/\s+/).some((w) => w.length >= 6 && fuzzyTokenMatch(token, w))) return true;
+    if (blob.split(/\s+/).some((w) => nearDishToken(token, w))) return true;
     const style = singularizeEsToken(token);
     if (COOKING_STYLE_TOKENS.has(style) || COOKING_STYLE_TOKENS.has(normalizeText(token))) {
       return productOffersCookingStyle(product, token);
@@ -2052,6 +2114,54 @@ export class WhatsappCatalogService {
         q,
       );
     return hasFood && hasDrink;
+  }
+
+  /**
+   * “cambiame la gaseosa por una papa” → no agregues la gaseosa; agrega la papa.
+   * El corte es la estructura cambia…por, no una lista de platos.
+   */
+  swapIntent(text: string): { removed: string; added: string } | null {
+    const q = normalizeText(text || '');
+    const m = q.match(
+      /\bcambia(?:r|me|le|les|melo|melas)?\s+(.+?)\s+\bpor\b\s+(.+)/,
+    );
+    if (!m?.[1] || !m?.[2]) return null;
+    const added = m[2].split(/\s*,\s*|\s+\by\b\s+/)[0].trim();
+    const removed = m[1].trim();
+    if (removed.length < 3 || added.length < 3) return null;
+    return { removed, added };
+  }
+
+  /** El nombre del plato está en la frase (typo incluido). “Pronto” no está en “bandeja paisa”. */
+  productNameFitsUtterance(product: WhatsappCatalogProduct, text: string): boolean {
+    const utter = normalizeText(text || '');
+    const words = utter.split(/\s+/).filter((w) => w.length >= 4);
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const nameTokens = normalizeText(product.name)
+      .split(/\s+/)
+      .filter((t) => t.length >= 4 && !/\d/.test(t) && !generic.has(t));
+    if (!nameTokens.length) return true;
+    return nameTokens.every((tok) => words.some((w) => nearDishToken(w, tok)));
+  }
+
+  /** La gaseosa (u otro producto) es justo lo que pidió cambiar, no lo que pidió agregar. */
+  productIsSwapRemoval(
+    product: WhatsappCatalogProduct,
+    removed: string,
+    added: string,
+  ): boolean {
+    if (
+      this.isLikelyDrinkProduct(product) &&
+      /\b(gaseosa|bebida|refresco)\b/.test(normalizeText(removed))
+    ) {
+      return true;
+    }
+    if (this.productNameFitsUtterance(product, added) && normalizeText(added).length >= 5) {
+      const addedTokens = normalizeText(added).split(/\s+/).filter((t) => t.length >= 5);
+      const name = normalizeText(product.name);
+      if (addedTokens.some((t) => name.includes(t) || fuzzyTokenMatch(t, name))) return false;
+    }
+    return this.productNameFitsUtterance(product, removed) && !this.productNameFitsUtterance(product, added);
   }
 
   /** “una gaseosa aparte” sí es otro producto. “combo y gaseosa coca cola” no. */
