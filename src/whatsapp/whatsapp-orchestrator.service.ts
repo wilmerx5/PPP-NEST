@@ -579,7 +579,7 @@ export class WhatsappOrchestratorService {
     const isFirstInbound = inboundCount <= 1;
     if (isFirstInbound) {
       // Audio/texto tipo “quiero pedir” sin producto → no inundar con menú completo
-      if (this.isVagueOrderIntent(text)) {
+      if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
         await this.replyFirstContactWelcome(conv, msg.waId, cfg);
         await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
         return;
@@ -641,30 +641,32 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // ETA / estado de pedido / “cuánto se demora” ANTES de geocodificar
-    if (
-      await this.tryHandleDeliveryEtaInquiry(
-        conv,
-        msg.waId,
-        session,
-        originalText,
-        text,
-        cfg,
-      )
-    ) {
-      return;
-    }
+    // Con el agente encendido, él lee primero si preguntan por un pedido ya hecho
+    // o por el tiempo de domicilio. Si no lo resuelve, el mismo respaldo corre después.
+    if (!cfg.agentV1Enabled) {
+      if (
+        await this.tryHandleDeliveryEtaInquiry(
+          conv,
+          msg.waId,
+          session,
+          originalText,
+          text,
+          cfg,
+        )
+      ) {
+        return;
+      }
 
-    // “Se cortó la llamada / ¿lo alcanzaron a tomar?” → buscar orden, no armar domicilio
-    if (
-      await this.tryHandleInterruptedPhoneOrderInquiry(
-        conv,
-        msg.waId,
-        originalText,
-        cfg,
-      )
-    ) {
-      return;
+      if (
+        await this.tryHandleInterruptedPhoneOrderInquiry(
+          conv,
+          msg.waId,
+          originalText,
+          cfg,
+        )
+      ) {
+        return;
+      }
     }
 
     // Reaplicar domicilio desde el texto ORIGINAL (el de productos ya no trae "para …")
@@ -1359,7 +1361,7 @@ export class WhatsappOrchestratorService {
       }
     }
 
-    if (!status.isOpen && !cfg.ignoreBusinessHours) {
+    if (!cfg.agentV1Enabled && !status.isOpen && !cfg.ignoreBusinessHours) {
       await this.reply(
         conv,
         msg.waId,
@@ -1381,6 +1383,33 @@ export class WhatsappOrchestratorService {
           msg.waId,
           `Pedido anterior listo. ¿Qué se te antoja? Escribe el *plato* o el *código*.`,
         );
+        return;
+      }
+    }
+
+    // En checkout, una frase la lee el agente antes de tomarla como nombre, dirección o pago.
+    // Si es un pedido que ya hizo, Nest consulta el estado y no sigue el paso abierto.
+    if (
+      cfg.agentV1Enabled &&
+      this.looksLikeHumanIntentSentence(originalText || text) &&
+      conv.state !== 'building_cart' &&
+      conv.state !== 'awaiting_attribute'
+    ) {
+      if (
+        await this.tryHandleAgentV1({
+          conv,
+          msg,
+          session,
+          text,
+          originalText,
+          products,
+          cfg,
+          status,
+          businessOpenForBot,
+          prependFirstContactDisclaimer: isFirstInbound,
+          placedOrderOnly: true,
+        })
+      ) {
         return;
       }
     }
@@ -1857,8 +1886,9 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos)
-    if (this.isVagueOrderIntent(text)) {
+    // "Hola, quiero hacer un pedido" → preguntar qué ordenar (no listar porciones/productos).
+    // Con el agente encendido, él lee esa intención primero.
+    if (!cfg.agentV1Enabled && this.isVagueOrderIntent(text)) {
       // isVagueOrderIntent ya excluye frases con comida; no usar searchByName
       // (matcheaba basura y caía en “Entendí varios… _pedido_”).
       await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
@@ -2037,6 +2067,48 @@ export class WhatsappOrchestratorService {
       }))
     ) {
       return;
+    }
+
+    if (cfg.agentV1Enabled) {
+      if (
+        await this.tryHandleDeliveryEtaInquiry(
+          conv,
+          msg.waId,
+          session,
+          originalText,
+          text,
+          cfg,
+        )
+      ) {
+        return;
+      }
+      if (
+        await this.tryHandleInterruptedPhoneOrderInquiry(
+          conv,
+          msg.waId,
+          originalText,
+          cfg,
+        )
+      ) {
+        return;
+      }
+      if (!status.isOpen && !cfg.ignoreBusinessHours) {
+        await this.reply(
+          conv,
+          msg.waId,
+          cfg.closedMessage ||
+            `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`,
+        );
+        return;
+      }
+      if (
+        this.isVagueOrderIntent(text) ||
+        (session.cart.length === 0 &&
+          (isDeliverySetupWithoutFood(text) || isDeliverySetupWithoutFood(originalText)))
+      ) {
+        await this.reply(conv, msg.waId, this.buildAskWhatToOrderMessage(cfg));
+        return;
+      }
     }
 
     if (cfg.agentV1Enabled && (await answerMenuWithNest())) {
@@ -6358,12 +6430,16 @@ export class WhatsappOrchestratorService {
     originalText: string,
     text: string,
     cfg: EffectiveWhatsappConfig,
+    opts?: { forceGeneric?: boolean },
   ): Promise<boolean> {
     const probe = originalText || text;
     const specific =
-      isSpecificOrderProgressInquiry(probe) || isSpecificOrderProgressInquiry(text);
+      !opts?.forceGeneric &&
+      (isSpecificOrderProgressInquiry(probe) || isSpecificOrderProgressInquiry(text));
     const genericEta =
-      isDeliveryEtaInquiry(originalText) || isDeliveryEtaInquiry(text);
+      !!opts?.forceGeneric ||
+      isDeliveryEtaInquiry(originalText) ||
+      isDeliveryEtaInquiry(text);
 
     if (!specific && !genericEta) return false;
 
@@ -11739,46 +11815,42 @@ export class WhatsappOrchestratorService {
     businessOpenForBot: boolean;
     /** Primer inbound con contenido: pegar aviso IA a la única reply */
     prependFirstContactDisclaimer?: boolean;
+    /**
+     * Checkout (nombre, dirección, pago): el agente lee la frase y Nest solo
+     * ejecuta la consulta de un pedido ya hecho. El resto lo sigue el paso abierto.
+     */
+    placedOrderOnly?: boolean;
   }): Promise<boolean> {
     const { conv, msg, text, originalText, products, cfg, status, businessOpenForBot } =
       params;
     let session = params.session;
 
-    if (conv.state !== 'building_cart' && conv.state !== 'awaiting_attribute') {
-      return false;
-    }
-    // Un número o una sola opción se resolvió arriba. Una frase ("era el otro",
-    // "no, yo quería eso") sí entra, aunque haya lista o atributo abierto.
-    const choiceStillOpen = !!(
-      session.pendingAttribute ||
-      session.pendingMatch?.candidates?.length ||
-      session.pendingMultiOrder ||
-      session.pendingCartRemoval ||
-      session.pendingCategoryBrowse?.categories?.length ||
-      session.pendingAddOffer
-    );
-    if (choiceStillOpen && !this.looksLikeHumanIntentSentence(originalText || text)) {
-      return false;
-    }
-    if (this.isConfirmKeyword(text) || this.isGreetingKeyword(text)) {
-      return false;
-    }
-    // "Hola para pedirte un domicilio" no trae plato. Nest pregunta qué se antoja;
-    // el nombre va después, cuando ya hay carrito.
-    if (
-      session.cart.length === 0 &&
-      (isDeliverySetupWithoutFood(text) || isDeliverySetupWithoutFood(originalText))
-    ) {
-      return false;
-    }
-    if (isNothingElseOrderIntent(text) || isFinishCheckoutIntent(text)) {
-      return false;
-    }
-    if (isDeclineMoreItemsIntent(text) && session.cart.length > 0) {
-      return false;
-    }
-    if (this.isVagueOrderIntent(text)) {
-      return false;
+    if (!params.placedOrderOnly) {
+      if (conv.state !== 'building_cart' && conv.state !== 'awaiting_attribute') {
+        return false;
+      }
+      // Un número o una sola opción se resolvió arriba. Una frase ("era el otro",
+      // "no, yo quería eso") sí entra, aunque haya lista o atributo abierto.
+      const choiceStillOpen = !!(
+        session.pendingAttribute ||
+        session.pendingMatch?.candidates?.length ||
+        session.pendingMultiOrder ||
+        session.pendingCartRemoval ||
+        session.pendingCategoryBrowse?.categories?.length ||
+        session.pendingAddOffer
+      );
+      if (choiceStillOpen && !this.looksLikeHumanIntentSentence(originalText || text)) {
+        return false;
+      }
+      if (this.isConfirmKeyword(text) || this.isGreetingKeyword(text)) {
+        return false;
+      }
+      if (isNothingElseOrderIntent(text) || isFinishCheckoutIntent(text)) {
+        return false;
+      }
+      if (isDeclineMoreItemsIntent(text) && session.cart.length > 0) {
+        return false;
+      }
     }
     if ((text || '').trim().length < 2) {
       return false;
@@ -11820,6 +11892,52 @@ export class WhatsappOrchestratorService {
       menuConceptGroups: cfg.menuConceptGroups,
     });
 
+    if (agent.lookupPlacedOrder) {
+      await this.replyOrderProgressOrAskNumber(conv, msg.waId, originalText || text, cfg, {
+        forceNumber: agent.lookupPlacedOrder.orderNumber,
+      });
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'replied',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+      });
+      return true;
+    }
+
+    if (agent.lookupDeliveryTime) {
+      await this.tryHandleDeliveryEtaInquiry(conv, msg.waId, session, originalText || text, text, cfg, {
+        forceGeneric: true,
+      });
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'replied',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+      });
+      return true;
+    }
+
+    if (params.placedOrderOnly) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+        warnings: ['placed_order_only'],
+      });
+      return false;
+    }
+
     if (
       agent.error === 'no_openai_key' ||
       agent.error === 'openai_401' ||
@@ -11845,6 +11963,26 @@ export class WhatsappOrchestratorService {
       allowMercadoPago: !!cfg.allowMercadoPago,
       paymentMethods: cfg.paymentMethods,
     });
+
+    if (guarded.blockedClosed) {
+      await this.reply(
+        conv,
+        msg.waId,
+        cfg.closedMessage ||
+          `Ahora estamos *cerrados*. ${status.message}. ${status.subMessage ?? ''}\n\nHorario hoy: ${status.openTime}–${status.closeTime}. Cuando abramos escríbenos de nuevo para pedir.`,
+      );
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'replied',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+        warnings: ['closed'],
+      });
+      return true;
+    }
 
     if (looksLikeClearCartMessage(originalText || text) && guarded.actions) {
       guarded.actions.clearCart = true;

@@ -32,6 +32,10 @@ export type AgentV1TurnResult = {
   actions: AiOrderAction;
   /** Producto que necesita attrs: el orquestador abre pendingAttribute */
   needsAttributeProductId?: number;
+  /** El cliente pregunta por un pedido ya hecho. Nest consulta el estado real. */
+  lookupPlacedOrder?: { orderNumber?: number };
+  /** Pregunta cuánto tarda un domicilio en general. Nest usa el tiempo de la config. */
+  lookupDeliveryTime?: boolean;
   toolCalls: string[];
   error?: string;
 };
@@ -196,6 +200,32 @@ const AGENT_TOOLS = [
       parameters: { type: 'object', properties: {} },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'order_status',
+      description:
+        'La intención es saber cómo va un pedido que el cliente YA hizo. ' +
+        'No es el carrito que se está armando ni un plato nuevo. Nest responde con el estado real. ' +
+        'orderNumber solo si el cliente dijo el número de orden.',
+      parameters: {
+        type: 'object',
+        properties: {
+          orderNumber: { type: 'number', description: 'Número de orden del día, si lo dijo' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'delivery_time',
+      description:
+        'La intención es saber cuánto tarda un domicilio en general. ' +
+        'No es un pedido que ya hizo ni un plato. Nest responde con el tiempo configurado. No inventes minutos.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
 ];
 
 /**
@@ -231,6 +261,8 @@ export class WhatsappAgentService {
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     let needsAttributeProductId: number | undefined;
+    let lookupPlacedOrder: { orderNumber?: number } | undefined;
+    let lookupDeliveryTime = false;
 
     const system = `${cfg.systemPrompt}
 
@@ -248,7 +280,9 @@ Reglas:
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista cada result (nombre y precio): pollo, pescado, porciones y bandeja si están. No te quedes en dos porciones del mismo plato. Si no hay ese estilo, dilo y menciona availableStyles. PROHIBIDO dump de todas las categorías.
 - El menú que devuelve search_menu es la única fuente de verdad. Tú analizas, comparas y respondes. No inventes platos, precios ni ingredientes.
-- En cada mensaje, primero entiende la intención: preguntar si hay algo, pedir, corregir, saber el precio, saber qué incluye, cambiar lo que ya dijo, domicilio, pago, o seguir con lo que está abierto. Un typo no cambia la intención. Luego search_menu y contesta o actúa solo con lo que la carta permite.
+- En cada mensaje, primero entiende la intención, también si Nest está pidiendo nombre, dirección o pago. Puede ser: preguntar si hay algo, pedir, corregir, saber el precio, saber qué incluye, cambiar lo que ya dijo, domicilio, pago, cómo va un pedido que ya hizo, cuánto tarda un domicilio, o seguir con lo que está abierto. Un typo no cambia la intención. Luego actúa solo con lo que la carta y las tools permiten.
+- Si la intención es el estado de un pedido que ya hizo, llama order_status. No es el carrito abierto. No agregues platos y no reenvíes el carrito. Nest dice el estado real.
+- Si la intención es cuánto tarda un domicilio en general, llama delivery_time. No inventes minutos.
 - "¿Tienes X?" / "¿qué tienes de X?" / "¿cómo es X?" vale para cualquier cosa. Lista lo que search_menu sí trae (nombre, precio, qué incluye y preparaciones si las hay) y pregunta cuál quiere. NO add_item. add_item solo si está pidiendo ese plato.
 - "¿Tienes algo de X?" (también "tines", "hay algo de", "te pregunté que si tienes"): pregunta si hay X. Si search_menu no lo trae, di "No tenemos productos de X". X es el producto, sin "algo de", sin "tienes" y sin repetir la frase. No reenvíes el carrito.
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
@@ -372,6 +406,8 @@ Contacto humano: *${phone || '3118866823'}*
             actions,
             toolCalls,
             needsAttributeProductId,
+            lookupPlacedOrder,
+            lookupDeliveryTime,
             error: reply ? undefined : 'empty_reply',
           };
         }
@@ -395,6 +431,12 @@ Contacto humano: *${phone || '3118866823'}*
             setNeedsAttr: (id) => {
               needsAttributeProductId = id;
             },
+            setLookupOrder: (orderNumber?: number) => {
+              lookupPlacedOrder = { orderNumber };
+            },
+            setLookupDeliveryTime: () => {
+              lookupDeliveryTime = true;
+            },
           });
           messages.push({
             role: 'tool',
@@ -411,6 +453,8 @@ Contacto humano: *${phone || '3118866823'}*
         actions,
         toolCalls,
         needsAttributeProductId,
+        lookupPlacedOrder,
+        lookupDeliveryTime,
         error: 'max_iterations',
       };
     } catch (err) {
@@ -435,6 +479,8 @@ Contacto humano: *${phone || '3118866823'}*
       cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
       setNeedsAttr: (id: number) => void;
+      setLookupOrder?: (orderNumber?: number) => void;
+      setLookupDeliveryTime?: () => void;
     },
   ): string {
     switch (name) {
@@ -937,6 +983,22 @@ Contacto humano: *${phone || '3118866823'}*
       case 'request_human': {
         ctx.actions.requestHuman = true;
         return JSON.stringify({ ok: true });
+      }
+      case 'order_status': {
+        const raw = Number(args.orderNumber);
+        const orderNumber = Number.isFinite(raw) && raw >= 1 && raw <= 9999 ? raw : undefined;
+        ctx.setLookupOrder?.(orderNumber);
+        return JSON.stringify({
+          ok: true,
+          hint: 'Nest responde con el estado real de la orden. No inventes el estado y no reenvíes el carrito.',
+        });
+      }
+      case 'delivery_time': {
+        ctx.setLookupDeliveryTime?.();
+        return JSON.stringify({
+          ok: true,
+          hint: 'Nest responde con el tiempo de domicilio configurado. No inventes minutos.',
+        });
       }
       default:
         return JSON.stringify({ ok: false, error: `tool desconocida: ${name}` });

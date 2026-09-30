@@ -382,4 +382,36 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.confident.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('order_status marca la consulta del pedido ya hecho', () => {
+    const agent = new WhatsappAgentService(
+      settingsStub as never,
+      catalogStub as never,
+    );
+    const exec = (
+      agent as unknown as {
+        executeTool: (
+          name: string,
+          args: Record<string, unknown>,
+          ctx: Record<string, unknown>,
+        ) => string;
+      }
+    ).executeTool.bind(agent);
+    let lookedUp: number | undefined = -1;
+    const raw = exec(
+      'order_status',
+      {},
+      {
+        products,
+        byId: new Map(),
+        actions: {},
+        setNeedsAttr: () => undefined,
+        setLookupOrder: (n?: number) => {
+          lookedUp = n;
+        },
+      },
+    );
+    expect(JSON.parse(raw).ok).toBe(true);
+    expect(lookedUp).toBeUndefined();
+  });
 });

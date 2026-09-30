@@ -209,6 +209,11 @@ describe('isSpecificOrderProgressInquiry / extractDailyOrderNumberHint', () => {
     expect(isSpecificOrderProgressInquiry(text)).toBe(false);
   });
 
+  it('viene con gaseosa no es el estado del pedido', () => {
+    expect(isSpecificOrderProgressInquiry('el combo ya viene con gaseosa?')).toBe(false);
+    expect(isSpecificOrderProgressInquiry('quiero un pollo frito')).toBe(false);
+  });
+
   it('extrae número de orden', () => {
     expect(extractDailyOrderNumberHint('orden #15')).toBe(15);
     expect(extractDailyOrderNumberHint('pedido 7')).toBe(7);
