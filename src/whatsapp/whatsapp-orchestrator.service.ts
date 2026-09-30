@@ -5268,6 +5268,14 @@ export class WhatsappOrchestratorService {
           .join(' · ');
         if (attrLine) head += `\n_${attrLine}_`;
       }
+      if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
+    } else {
+      const cart = this.consolidateCart(session.cart);
+      for (const name of names) {
+        const baseNorm = this.normalizeForMatch(name.replace(/\s*×\s*\d+\s*$/, '').trim());
+        const hit = cart.find((c) => this.normalizeForMatch(c.name) === baseNorm);
+        if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
+      }
     }
     if (opts?.extraLine) head += `\n${opts.extraLine}`;
 
