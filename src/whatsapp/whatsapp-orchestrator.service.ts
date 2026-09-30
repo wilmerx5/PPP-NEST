@@ -3906,15 +3906,15 @@ export class WhatsappOrchestratorService {
     const textSwap = attrOpts?.sourceText
       ? this.catalogService.swapIntent(attrOpts.sourceText)
       : null;
-    const omitSwappedDrink =
-      !!attrOpts?.omitSwappedDrink ||
-      (!!textSwap &&
-        !!attrOpts?.sourceText &&
-        this.catalogService.swapRemovesDrink(attrOpts.sourceText) &&
-        this.catalogService.productCarriesMention(product, textSwap.removed));
-    const attrOptsForFill = omitSwappedDrink
-      ? { ...attrOpts, omitSwappedDrink: true as const }
-      : attrOpts;
+    // La bebida del combo sigue (es obligatoria). El cambio va en la nota de la línea.
+    if (
+      textSwap &&
+      this.catalogService.productCarriesMention(product, textSwap.removed) &&
+      !note?.trim()
+    ) {
+      note = this.catalogService.swapChangeNote(textSwap.removed, textSwap.added);
+    }
+    const attrOptsForFill = attrOpts;
     // Si el mensaje ya nombra opciones (frita, blancas…), respétalas
     if (attrOpts?.sourceText && product.hasAttributes && product.attributes?.length) {
       const fromMsg = this.catalogService.resolveAttributesFromMessage(
@@ -3926,12 +3926,6 @@ export class WhatsappOrchestratorService {
       if (fromMsg.status === 'complete' || fromMsg.status === 'partial') {
         selected = fromMsg.attributes;
       }
-    }
-    if (omitSwappedDrink && product.attributes?.length) {
-      selected = selected.filter((s) => {
-        const attr = product.attributes?.find((a) => a.attributeName === s.attributeName);
-        return !attr || !this.catalogService.isComboOnlyAttribute(attr);
-      });
     }
     if (
       product.hasAttributes &&
@@ -11507,13 +11501,11 @@ export class WhatsappOrchestratorService {
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     const swap = this.catalogService.swapIntent(text);
     const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
-    const omitSwappedDrink = carriesSwap && this.catalogService.swapRemovesDrink(text);
     const lineNote =
       carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) : undefined;
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
       sourceText: text,
-      ...(omitSwappedDrink ? { omitSwappedDrink: true as const } : {}),
     };
     const stepRaw = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
     // Arepas, sabor, presa: primera opción y al carrito. El estilo (frito/broaster) sí se pregunta.
@@ -13844,28 +13836,19 @@ export class WhatsappOrchestratorService {
       const qty = this.quantityForMultiSegment(item.segment, product.name, sourceText);
       const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
       const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
-      const omitSwappedDrink =
-        carriesSwap && !!sourceText && this.catalogService.swapRemovesDrink(sourceText);
-      const attrOpts = omitSwappedDrink ? { omitSwappedDrink: true as const } : undefined;
-      const explicitRaw =
+      const explicit =
         product.hasAttributes && product.attributes?.length
           ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || []
           : [];
-      const explicit = omitSwappedDrink
-        ? explicitRaw.filter((s) => {
-            const attr = product.attributes?.find((a) => a.attributeName === s.attributeName);
-            return !attr || !this.catalogService.isComboOnlyAttribute(attr);
-          })
-        : explicitRaw;
       const filled =
         product.hasAttributes && product.attributes?.length
-          ? this.catalogService.fillDefaultAttributes(product, explicit, attrOpts)
+          ? this.catalogService.fillDefaultAttributes(product, explicit)
           : explicit;
       const attrs = filled.length ? filled : undefined;
       if (
         product.hasAttributes &&
         product.attributes?.length &&
-        !this.catalogService.isAttributeSelectionComplete(product, filled, attrOpts)
+        !this.catalogService.isAttributeSelectionComplete(product, filled)
       ) {
         // No agregar sin opciones: pasar a cola de atributos
         next = {
@@ -13890,7 +13873,6 @@ export class WhatsappOrchestratorService {
           : undefined);
       const attempt = this.tryAddProductToCart(next, product, qty, cfg, lineNote, attrs, {
         sourceText,
-        omitSwappedDrink,
       });
       if (attempt.missingAttributes) {
         next = {
