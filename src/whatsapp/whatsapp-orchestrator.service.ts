@@ -9257,7 +9257,7 @@ export class WhatsappOrchestratorService {
       orderType: 'delivery',
       address: addr,
       fulfillmentChosen: true,
-      addressConfirmed: strong || (!addressChanged && !!session.addressConfirmed),
+      addressConfirmed: !!session.addressConfirmed || strong,
       ...(addressChanged
         ? {
             deliveryFeeCalculated: undefined,
@@ -11505,7 +11505,16 @@ export class WhatsappOrchestratorService {
     const variantIntent =
       this.catalogService.extractVariantPreferenceHint(text) ||
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
-    const attrOpts = variantIntent ? { variantIntent } : undefined;
+    const swap = this.catalogService.swapIntent(text);
+    const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
+    const omitSwappedDrink = carriesSwap && this.catalogService.swapRemovesDrink(text);
+    const lineNote =
+      carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) : undefined;
+    const attrOpts = {
+      ...(variantIntent ? { variantIntent } : {}),
+      sourceText: text,
+      ...(omitSwappedDrink ? { omitSwappedDrink: true as const } : {}),
+    };
     const stepRaw = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
     // Arepas, sabor, presa: primera opción y al carrito. El estilo (frito/broaster) sí se pregunta.
     const prefilled =
@@ -11569,7 +11578,7 @@ export class WhatsappOrchestratorService {
         product,
         this.resolveAddQuantity(session, product, { sourceText: text }),
         cfg,
-        undefined,
+        lineNote,
         step.attributes,
         attrOpts,
       );

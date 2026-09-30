@@ -67,6 +67,9 @@ describe('isReuseLastAddressIntent (C19)', () => {
     'la de siempre',
     'dale',
     'ok',
+    'esta bien',
+    'Está bien',
+    'todo bien',
   ])('reusa dirección: %s', (text) => {
     expect(isReuseLastAddressIntent(text)).toBe(true);
   });

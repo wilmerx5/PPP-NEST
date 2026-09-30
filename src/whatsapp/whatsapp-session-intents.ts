@@ -173,10 +173,14 @@ export function isInterruptedPhoneOrderInquiry(text: string): boolean {
  * Confirmar dirección sugerida / última guardada: “sí”, “acá”, “la misma”.
  */
 export function isReuseLastAddressIntent(text: string): boolean {
-  const t = (text || '').trim().toLowerCase();
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   if (!t || t.length > 40) return false;
   if (
-    /^(si|sí|sep|ok|okay|dale|listo|correcto|exacto|esa|esa misma|confirmo)([\s!.?]*|(\s+por\s+fa(vor|fa)?[\s!.?]*))$/i.test(
+    /^(si|sep|ok|okay|dale|listo|correcto|exacto|esa|esa misma|confirmo|esta bien|estan bien|todo bien|asi esta bien|de acuerdo)([\s!.?]*|(\s+por\s+fa(vor|fa)?[\s!.?]*))$/i.test(
       t,
     )
   ) {
