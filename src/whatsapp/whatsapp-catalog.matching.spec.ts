@@ -311,3 +311,47 @@ describe('pollo frito vs bandeja/menú', () => {
     expect(scored[0]?.p.name).toMatch(/ejecutivo/i);
   });
 });
+
+describe('palabra dentro del nombre no es el plato', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+  const menu: WhatsappCatalogProduct[] = [
+    {
+      id: 7,
+      code: 7,
+      name: 'Jugo Natural En Leche',
+      price: 8000,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Fresa'] }],
+      availableNow: true,
+      description: 'Mango',
+    },
+    {
+      id: 8,
+      code: 8,
+      name: 'Milanesa De Pollo',
+      price: 35000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+  ];
+
+  it('leche no agrega el jugo; lo ofrece', () => {
+    expect(catalog.findProductEmbeddedInMessage('Quiero una Leche por favor', menu)).toBeNull();
+    expect(catalog.resolveStandaloneDrinkOrder('Quiero una Leche por favor', menu)).toBeNull();
+    const similar = catalog.similarNamedProducts('Quiero una Leche por favor', menu);
+    expect(similar.map((p) => p.name)).toEqual(['Jugo Natural En Leche']);
+    const reply = catalog.formatSimilarOfferReply('Quiero una Leche por favor', similar);
+    expect(reply).toMatch(/No te ofrecemos \*leche\*/i);
+    expect(reply).toMatch(/Jugo Natural En Leche/);
+    expect(reply).toMatch(/¿Te lo agrego/);
+    expect(reply).not.toMatch(/Listo/);
+  });
+
+  it('milanesa sí es la milanesa', () => {
+    expect(catalog.similarNamedProducts('quiero una milanesa', menu)).toEqual([]);
+    expect(catalog.findProductEmbeddedInMessage('quiero una milanesa', menu)?.name).toMatch(
+      /milanesa/i,
+    );
+  });
+});

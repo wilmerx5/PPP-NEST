@@ -2170,6 +2170,67 @@ export class WhatsappCatalogService {
     return nameTokens.every((tok) => words.some((w) => nearDishToken(w, tok)));
   }
 
+  /**
+   * El cliente dijo una palabra que está dentro de un nombre más largo
+   * ("leche" en "Jugo Natural En Leche") y no nombró ese plato.
+   * No es un pedido: es lo más parecido.
+   */
+  similarNamedProducts(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const asked = normalizeText(this.extractProductSearchQuery(text) || text);
+    if (!asked) return [];
+    if (
+      products.some(
+        (p) => p.availableNow !== false && this.productNameFitsUtterance(p, asked),
+      )
+    ) {
+      return [];
+    }
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const tokens = this.dishContentTokens(asked).filter((t) => t.length >= 4 && !generic.has(t));
+    if (!tokens.length) return [];
+    const hits: WhatsappCatalogProduct[] = [];
+    for (const product of products) {
+      if (product.availableNow === false) continue;
+      const nameWords = normalizeText(product.name).split(/\s+/).filter(Boolean);
+      const head = nameWords.find(
+        (w) =>
+          w.length >= 4 &&
+          !generic.has(w) &&
+          !COOKING_STYLE_TOKENS.has(w) &&
+          !/\d/.test(w),
+      );
+      if (!head) continue;
+      const saidHead = tokens.some((t) => t === head || nearDishToken(t, head));
+      if (saidHead) continue;
+      const sharesOtherWord = tokens.some((t) =>
+        nameWords.some((w) => w !== head && w.length >= 4 && (w === t || nearDishToken(t, w))),
+      );
+      if (!sharesOtherWord) continue;
+      hits.push(product);
+      if (hits.length >= 4) break;
+    }
+    return hits;
+  }
+
+  formatSimilarOfferReply(text: string, products: WhatsappCatalogProduct[]): string {
+    const asked = (this.extractProductSearchQuery(text) || text)
+      .replace(/[¿?¡!.]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const preface = this.formatWeDontOfferPreface(asked || 'eso', products.length);
+    if (products.length === 1) {
+      return preface + this.formatProductPriceReply(products[0]);
+    }
+    const rows = products
+      .map((p) => `• *${p.name}* · ${this.formatMoney(p.price)}`)
+      .join('\n');
+    return `${preface}${rows}\n\n_Dime cuál quieres._`;
+  }
+
   /** La gaseosa (u otro producto) es justo lo que pidió cambiar, no lo que pidió agregar. */
   productIsSwapRemoval(
     product: WhatsappCatalogProduct,
@@ -3950,6 +4011,8 @@ export class WhatsappCatalogService {
       (a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b),
     )[0];
     if (!product) return null;
+    // "leche" cabe en "Jugo Natural En Leche" y no es ese plato.
+    if (!this.productNameFitsUtterance(product, raw)) return null;
 
     const fromMsg = this.resolveAttributesFromMessage(product, raw, []);
     const selected =
@@ -4184,8 +4247,9 @@ export class WhatsappCatalogService {
     const leavesWordsOut = (p: WhatsappCatalogProduct) =>
       this.missingDishQualifiers(text, [p]).length > 0 ||
       this.uncoveredWordsAnchoredByProduct(text, p).length > 0;
+    const namedEnough = (p: WhatsappCatalogProduct) => this.productNameFitsUtterance(p, text);
     if (pool.length === 1) {
-      if (leavesWordsOut(pool[0])) return null;
+      if (leavesWordsOut(pool[0]) || !namedEnough(pool[0])) return null;
       return pool[0];
     }
 
@@ -4226,7 +4290,7 @@ export class WhatsappCatalogService {
       return null;
     }
     const best = ranked[0]?.p ?? null;
-    if (best && leavesWordsOut(best)) return null;
+    if (best && (leavesWordsOut(best) || !namedEnough(best))) return null;
     return best;
   }
 

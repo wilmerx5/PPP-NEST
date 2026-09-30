@@ -3048,6 +3048,12 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (
+      await this.tryReplySimilarNamedOffer(conv, msg.waId, text, products)
+    ) {
+      return;
+    }
+
     // "un pollo" / "medio pollo" / "combo de pollo" sin frito|broaster → preguntar estilo
     if (
       !session.pendingMatch &&
@@ -12101,6 +12107,22 @@ export class WhatsappOrchestratorService {
     }
 
     const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
+    if (
+      !guarded.actions?.addItems?.length &&
+      (await this.tryReplySimilarNamedOffer(conv, msg.waId, originalText || text, products))
+    ) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'replied',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+        warnings: ['similar_offer'],
+      });
+      return true;
+    }
     const applied = await this.applyActions(
       conv,
       session,
@@ -13235,6 +13257,29 @@ export class WhatsappOrchestratorService {
       `($${Math.round(product.price).toLocaleString('es-CO')} c/u).\n\n` +
       `_Escribe *sí* y te agrego las ${qty}._`
     );
+  }
+
+  /**
+   * "Quiero una leche": no es el jugo. Se ofrece lo parecido y no se agrega.
+   */
+  private async tryReplySimilarNamedOffer(
+    conv: WhatsappConversation,
+    waId: string,
+    text: string,
+    products: MenuProduct[],
+  ): Promise<boolean> {
+    if (this.catalogService.isAvailabilityInquiry(text)) return false;
+    if (this.catalogService.isPriceInquiryIntent(text)) return false;
+    if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    if (this.catalogService.isCategoryBrowseQuestion(text)) return false;
+    if (this.catalogService.isGenericProductInquiry(text)) return false;
+    const similars = this.catalogService.similarNamedProducts(text, products);
+    if (!similars.length) return false;
+    if (similars.length === 1) {
+      await this.savePendingAddOffer(conv, similars[0], 1, { sourceText: text });
+    }
+    await this.reply(conv, waId, this.catalogService.formatSimilarOfferReply(text, similars));
+    return true;
   }
 
   private async savePendingAddOffer(

@@ -505,6 +505,20 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
 
+        const similars = this.catalogService.similarNamedProducts(query, ctx.products);
+        if (similars.length) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'similar_offer',
+            results: similars.map((p) => this.productCard(p)),
+            hint:
+              'El cliente no nombró ese plato: solo una palabra que aparece dentro del nombre. ' +
+              'Di que no lo ofrecemos, con la palabra que él dijo, y lista results (nombre y precio) como alternativa. ' +
+              'NO add_item.',
+          });
+        }
+
         const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(
           query,
           ctx.products,
