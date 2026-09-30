@@ -246,7 +246,7 @@ Reglas:
   Tras add_item: NO pidas nombre, dirección ni pago.
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
-- Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista 2–4 de results o di que no manejamos ese estilo + availableStyles. PROHIBIDO dump de todas las categorías.
+- Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista cada result (nombre y precio): pollo, pescado, porciones y bandeja si están. No te quedes en dos porciones del mismo plato. Si no hay ese estilo, dilo y menciona availableStyles. PROHIBIDO dump de todas las categorías.
 - El menú que devuelve search_menu es la única fuente de verdad. Tú analizas, comparas y respondes. No inventes platos, precios ni ingredientes.
 - En cada mensaje, primero entiende la intención: preguntar si hay algo, pedir, corregir, saber el precio, saber qué incluye, cambiar lo que ya dijo, domicilio, pago, o seguir con lo que está abierto. Un typo no cambia la intención. Luego search_menu y contesta o actúa solo con lo que la carta permite.
 - "¿Tienes X?" / "¿qué tienes de X?" / "¿cómo es X?" vale para cualquier cosa. Lista lo que search_menu sí trae (nombre, precio, qué incluye y preparaciones si las hay) y pregunta cuál quiere. NO add_item. add_item solo si está pidiendo ese plato.
@@ -706,7 +706,7 @@ Contacto humano: *${phone || '3118866823'}*
             results: styleHits.map((p) => this.productCard(p)),
             availableStyles: this.catalogService.listAvailableCookingStyles(ctx.products),
             hint: styleHits.length
-              ? `Hay platos/attrs con preparación "${styleBrowse}". Ofrece 2–4 de results (nombre+precio). No dumps de categorías.`
+              ? `Hay platos con preparación "${styleBrowse}". Lista CADA result (nombre y precio): incluye pescado, porciones y bandeja, no solo varias porciones de pollo. NO add_item.`
               : `No hay "${styleBrowse}" en carta. Di "Por ahora no manejamos ${styleBrowse}" y menciona 2–3 de availableStyles. PROHIBIDO listar todas las categorías.`,
           });
         }

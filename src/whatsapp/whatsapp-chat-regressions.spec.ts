@@ -3183,6 +3183,10 @@ Cll 6 b 78 c 33`;
       const hits = catalog.findProductsByCookingStyle(style!, pppMenu);
       expect(hits.length).toBeGreaterThan(0);
       expect(hits.some((p) => /pollo\s+frito/i.test(p.name))).toBe(true);
+      expect(hits.some((p) => /mojarra|trucha|bagre/i.test(p.name))).toBe(true);
+      const firstFamilies = hits.slice(0, 8).map((p) => p.name).join(' ');
+      expect(firstFamilies).toMatch(/mojarra|trucha|bagre/i);
+      expect(firstFamilies).toMatch(/yuca|papa/i);
       expect(
         hits.every(
           (p) =>

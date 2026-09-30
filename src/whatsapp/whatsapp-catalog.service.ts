@@ -796,13 +796,39 @@ export class WhatsappCatalogService {
         hits.push(p);
       }
     }
-    return hits
-      .sort((a, b) => {
-        const an = productNameHasCookingStyle(a.name, st) ? 0 : 1;
-        const bn = productNameHasCookingStyle(b.name, st) ? 0 : 1;
-        return an - bn || a.price - b.price;
-      })
-      .slice(0, limit);
+    return this.spreadCookingStyleHits(hits, st).slice(0, limit);
+  }
+
+  /**
+   * Un plato de cada familia primero (pollo, mojarra, yuca…),
+   * y después las otras porciones del mismo plato.
+   */
+  private spreadCookingStyleHits(
+    hits: WhatsappCatalogProduct[],
+    style: string,
+  ): WhatsappCatalogProduct[] {
+    const groups = new Map<string, WhatsappCatalogProduct[]>();
+    for (const product of hits) {
+      const base = this.getProductNameBase(product.name) || normalizeText(product.name);
+      const key = this.stripCookingStyleTokens(base) || base;
+      const list = groups.get(key) || [];
+      list.push(product);
+      groups.set(key, list);
+    }
+    const rank = (product: WhatsappCatalogProduct) =>
+      productNameHasCookingStyle(product.name, style) ? 0 : 1;
+    for (const list of groups.values()) {
+      list.sort((a, b) => rank(a) - rank(b) || a.price - b.price);
+    }
+    const families = [...groups.values()].sort(
+      (a, b) => rank(a[0]) - rank(b[0]) || a[0].price - b[0].price,
+    );
+    const out: WhatsappCatalogProduct[] = [];
+    for (const list of families) out.push(list[0]);
+    for (const list of families) {
+      for (const product of list.slice(1)) out.push(product);
+    }
+    return out;
   }
 
   private isPrepAttributeName(attributeName: string): boolean {
