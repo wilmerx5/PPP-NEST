@@ -2993,7 +2993,9 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, msg.waId, styleMiss);
         return;
       }
+      const swapChange = this.catalogService.swapIntent(originalText || text);
       if (
+        !swapChange &&
         !multiSentence &&
         dishQuery &&
         !this.catalogService.isAvailabilityInquiry(text) &&
