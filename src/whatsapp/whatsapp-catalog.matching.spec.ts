@@ -419,3 +419,149 @@ describe('bandeja con sopa no es la categoría Sopas', () => {
     expect(offer?.reply).not.toMatch(/Sopa De Ajiaco/);
   });
 });
+
+describe('cambiar la gaseosa del combo por papas', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+  const text = 'Quiero Un combo De Pollo frito pero cambiame la gaseosa por papas';
+  const menu: WhatsappCatalogProduct[] = [
+    {
+      id: 1,
+      code: 1,
+      name: '1 Pollo Frito',
+      price: 44000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+    {
+      id: 2,
+      code: 2,
+      name: 'Combo De Pollo Frito',
+      price: 53000,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Manzana', 'Uva'] }],
+      availableNow: true,
+    },
+    {
+      id: 3,
+      code: 3,
+      name: 'Gaseosa 400ml',
+      price: 4000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+    {
+      id: 4,
+      code: 4,
+      name: 'Porcion De Papa Francesa',
+      price: 8000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+  ];
+
+  it('no es un pedido de pollo suelto más gaseosa', () => {
+    expect(catalog.looksLikeFoodPlusDrinkOrder(text)).toBe(false);
+    expect(catalog.swapIntent(text)?.removed).toMatch(/gaseosa/);
+    expect(catalog.swapIntent(text)?.added).toMatch(/papas/);
+    expect(catalog.hostedMenuDrink(text, menu)).toBeNull();
+    const host = catalog.mostSpecificNamedProduct(catalog.dishTextBeforeSwap(text), menu);
+    expect(host?.name).toBe('Combo De Pollo Frito');
+    expect(catalog.productCarriesMention(host!, 'la gaseosa')).toBe(true);
+    expect(catalog.productCarriesMention(menu[0], 'la gaseosa')).toBe(false);
+    const multi = catalog.resolveMultiProductOrder(text, menu);
+    const lines = [...(multi?.confident || []), ...(multi?.needsAttributes || [])];
+    const names = lines.map((m) => m.product.name);
+    expect(names).toContain('Combo De Pollo Frito');
+    expect(names).not.toContain('Porcion De Papa Francesa');
+    expect(names).not.toContain('1 Pollo Frito');
+    expect(names).not.toContain('Gaseosa 400ml');
+    expect(lines.find((m) => m.product.name === 'Combo De Pollo Frito')?.note).toMatch(
+      /sin gaseosa; cambio por papas/i,
+    );
+    expect(multi?.needsAttributes || []).toHaveLength(0);
+  });
+
+  it('si el plato no trae eso, no inventa la nota', () => {
+    const plain = menu.map((p) =>
+      p.id === 2 ? { ...p, hasAttributes: false, attributes: [], description: 'Arroz y papa' } : p,
+    );
+    const host = catalog.mostSpecificNamedProduct(catalog.dishTextBeforeSwap(text), plain);
+    expect(catalog.productCarriesMention(host!, 'la gaseosa')).toBe(false);
+    const multi = catalog.resolveMultiProductOrder(text, plain);
+    const lines = [...(multi?.confident || []), ...(multi?.needsAttributes || [])];
+    expect(lines.find((m) => /combo/i.test(m.product.name))?.note).toBeUndefined();
+  });
+
+  it('la descripción también cuenta', () => {
+    const described = menu.map((p) =>
+      p.id === 2
+        ? { ...p, hasAttributes: false, attributes: [], description: 'Incluye arroz y gaseosa' }
+        : p,
+    );
+    expect(catalog.productCarriesMention(described[1], 'gaseosa')).toBe(true);
+    const multi = catalog.resolveMultiProductOrder(text, described);
+    const combo = [...(multi?.confident || []), ...(multi?.needsAttributes || [])].find((m) =>
+      /combo/i.test(m.product.name),
+    );
+    expect(combo?.note).toMatch(/cambio por papas/i);
+    expect(
+      [...(multi?.confident || []), ...(multi?.needsAttributes || [])].some((m) =>
+        /papa francesa/i.test(m.product.name),
+      ),
+    ).toBe(false);
+  });
+
+  it('el cambio no borra los otros platos del mismo mensaje', () => {
+    const hard =
+      'Dame 2 milnaesas, una sopa De ajiaco, Un como De Pollo frito pero cambiame la gaseosa por una porcion De papa Francesca, y una Bandeja paisa';
+    const extra: WhatsappCatalogProduct[] = [
+      {
+        id: 5,
+        code: 5,
+        name: 'Milanesa De Pollo',
+        price: 35000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 6,
+        code: 6,
+        name: 'Sopa De Ajiaco',
+        price: 12000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 7,
+        code: 7,
+        name: 'Bandeja Pronto',
+        price: 18000,
+        hasAttributes: false,
+        attributes: [],
+        availableNow: true,
+      },
+    ];
+    const multi = catalog.resolveMultiProductOrder(hard, [...menu, ...extra]);
+    const names = [
+      ...(multi?.confident || []),
+      ...(multi?.needsAttributes || []),
+    ].map((m) => m.product.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['Milanesa De Pollo', 'Sopa De Ajiaco', 'Combo De Pollo Frito']),
+    );
+    expect(names).not.toContain('Porcion De Papa Francesa');
+    const combo = [...(multi?.confident || []), ...(multi?.needsAttributes || [])].find((m) =>
+      /combo/i.test(m.product.name),
+    );
+    expect(combo?.note).toMatch(/cambio por porcion de papa francesc/i);
+    expect(names).not.toContain('1 Pollo Frito');
+    expect(names).not.toContain('Gaseosa 400ml');
+    expect(names).not.toContain('Bandeja Pronto');
+    expect((multi?.unresolved || []).join(' ')).toMatch(/paisa/i);
+  });
+});

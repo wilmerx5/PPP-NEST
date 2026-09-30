@@ -488,6 +488,38 @@ Contacto humano: *${phone || '3118866823'}*
         const query = String(args.query || '').trim();
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
 
+        const swapSource = ctx.userMessage || query;
+        const swap = this.catalogService.swapIntent(swapSource);
+        const queryNorm = query
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const queryIsThisSwap =
+          !!this.catalogService.swapIntent(query) ||
+          (queryNorm.split(/\s+/).length <= 8 &&
+            /\b(combo|gaseosa|bebida|papas?|frito)\b/.test(queryNorm));
+        if (swap && queryIsThisSwap) {
+          const dish = this.catalogService.dishTextBeforeSwap(swapSource);
+          const host = this.catalogService.mostSpecificNamedProduct(dish, ctx.products);
+          const carries = !!host && this.catalogService.productCarriesMention(host, swap.removed);
+          if (host && carries) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'swap',
+              host: this.productCard(host),
+              removed: swap.removed,
+              note: this.catalogService.swapChangeNote(swap.removed, swap.added),
+              hint:
+                'El plato ya trae lo que quieren cambiar (atributo o descripción). ' +
+                'add_item solo del host, con esa nota. ' +
+                'NO agregues otro producto por el cambio. ' +
+                'NO agregues lo que pidieron quitar. ' +
+                'NO agregues un plato más corto: si dijo combo, no el pollo suelto.',
+            });
+          }
+        }
+
         const hosted = this.catalogService.hostedMenuDrink(
           ctx.userMessage || query,
           ctx.products,

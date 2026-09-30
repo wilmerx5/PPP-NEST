@@ -73,6 +73,7 @@ export type WhatsappSessionData = {
       name: string;
       code: number;
       price: number;
+      note?: string;
     }>;
     ambiguous: Array<{
       segment: string;
@@ -84,6 +85,7 @@ export type WhatsappSessionData = {
       name: string;
       code: number;
       price: number;
+      note?: string;
     }>;
     unresolved: string[];
   };

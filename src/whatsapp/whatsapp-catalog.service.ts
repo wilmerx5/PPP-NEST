@@ -25,6 +25,8 @@ export type MultiProductSegmentMatch = {
   segment: string;
   product: WhatsappCatalogProduct;
   score: number;
+  /** Cambio pedido sobre algo que el plato ya trae (atributo o descripción). */
+  note?: string;
 };
 
 export type MultiProductResolveResult = {
@@ -2127,8 +2129,101 @@ export class WhatsappCatalogService {
     return false;
   }
 
+  /** Lo que va antes de “cambiame … por …”. La última parte es el plato de ese cambio. */
+  dishTextBeforeSwap(text: string): string {
+    const raw = (text || '').trim();
+    const cut = raw.split(/\b(?:pero\s+)?cambia/i)[0]?.trim() || raw;
+    const parts = cut
+      .split(/\s*,\s*|\s+\by\b\s+/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3);
+    return parts[parts.length - 1] || cut;
+  }
+
+  /**
+   * El plato ya trae lo que quieren cambiar: está en un atributo o en la descripción.
+   * “gaseosa” también cuenta si el atributo es la bebida del combo.
+   */
+  productCarriesMention(product: WhatsappCatalogProduct, phrase: string): boolean {
+    const skip = new Set(['para', 'por', 'una', 'uno', 'unas', 'unos', 'con', 'del']);
+    const tokens = normalizeText(phrase)
+      .split(/\s+/)
+      .map((t) => singularizeEsToken(t))
+      .filter((t) => t.length >= 4 && !skip.has(t));
+    if (!tokens.length) return false;
+    const parts = [product.description || ''];
+    for (const attr of product.attributes || []) {
+      parts.push(attr.attributeName || '');
+      parts.push(...(attr.options || []));
+    }
+    const blob = normalizeText(parts.join(' '));
+    const words = blob.split(/\s+/).filter(Boolean);
+    const mentioned = tokens.every(
+      (t) => this.queryHasToken(blob, t) || words.some((w) => nearDishToken(t, w) || nearDishToken(w, t)),
+    );
+    if (mentioned) return true;
+    const asksDrink = tokens.some((t) => /^(gaseosa|bebida|refresco|jugo|limonada)$/.test(t));
+    return asksDrink && (product.attributes || []).some((a) => this.isComboOnlyAttribute(a));
+  }
+
+  /** Nota de cocina: lo que pidieron quitar y por qué lo cambian. */
+  swapChangeNote(removed: string, added: string): string {
+    const trimLead = (s: string) =>
+      s.replace(/^(?:la|el|las|los|una|un|unas|unos|de)\s+/i, '').trim();
+    return `Sin ${trimLead(removed)}; cambio por ${trimLead(added)}`.slice(0, 200);
+  }
+
+  /** “papas” → las porciones cuyo nombre trae papa. “papa francesa” solo la que también dice francesa. */
+  productsForSwapAddition(
+    added: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const skip = new Set(['porcion', 'porciones', 'una', 'uno']);
+    const tokens = normalizeText(added)
+      .split(/\s+/)
+      .map((t) => singularizeEsToken(t))
+      .filter((t) => t.length >= 4 && !skip.has(t));
+    if (!tokens.length) return [];
+    return products.filter((p) => {
+      if (p.availableNow === false) return false;
+      const words = normalizeText(p.name)
+        .split(/\s+/)
+        .map((w) => singularizeEsToken(w));
+      return tokens.every((t) => words.some((w) => w === t || nearDishToken(t, w)));
+    });
+  }
+
+  /**
+   * Si dijeron combo y también cabe el pollo suelto, el plato es el combo.
+   * Gana el nombre con más palabras del pedido.
+   */
+  mostSpecificNamedProduct(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = (text || '').trim();
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const weight = (p: WhatsappCatalogProduct) =>
+      normalizeText(p.name)
+        .split(/\s+/)
+        .filter((t) => t.length >= 4 && !generic.has(t) && !/\d/.test(t)).length;
+    const fits = products.filter(
+      (p) => p.availableNow !== false && this.spokenCandidateCoversClause(p, q),
+    );
+    if (!fits.length) return this.resolveSpokenDish(q, products);
+    return [...fits].sort((a, b) => weight(b) - weight(a) || b.name.length - a.name.length)[0];
+  }
+
+  /** El cambio saca la bebida del plato; no es un pedido de esa bebida. */
+  swapRemovesDrink(text: string): boolean {
+    const swap = this.swapIntent(text);
+    if (!swap) return false;
+    return /\b(gaseosa|bebida|refresco|jugo|limonada)\b/.test(normalizeText(swap.removed));
+  }
+
   /** ¿El mensaje nombra comida principal + bebida suelta (ej. medio broaster y una gaseosa)? */
   looksLikeFoodPlusDrinkOrder(text: string): boolean {
+    if (this.swapRemovesDrink(text)) return false;
     const q = normalizeText(fixCommonOrderTypos(text));
     if (!q || q.length < 8) return false;
     const hasFood =
@@ -2292,7 +2387,7 @@ export class WhatsappCatalogService {
     attributes: { attributeName: string; attributeValue: string }[];
   } | null {
     const raw = (text || '').trim();
-    if (!raw || this.wantsSeparateDrink(raw)) return null;
+    if (!raw || this.wantsSeparateDrink(raw) || this.swapRemovesDrink(raw)) return null;
     const hosts = this.findAllProductsEmbeddedInMessage(raw, products).filter(
       (p) => !this.isLikelyDrinkProduct(p) && this.drinkTextMatchesAttribute(p, raw),
     );
@@ -6574,13 +6669,14 @@ export class WhatsappCatalogService {
   getRemainingAttributes(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
-    opts?: { variantIntent?: 'combo' | 'solo' },
+    opts?: { variantIntent?: 'combo' | 'solo'; omitSwappedDrink?: boolean },
   ): NonNullable<WhatsappCatalogProduct['attributes']> {
     const attrs = product.attributes || [];
     const showComboOnly = this.shouldShowComboOnlyAttributes(product, alreadySelected, opts);
 
     const remaining = attrs.filter((attr) => {
       if (alreadySelected.some((s) => s.attributeName === attr.attributeName)) return false;
+      if (opts?.omitSwappedDrink && this.isComboOnlyAttribute(attr)) return false;
       if (this.isDeferredDrinkAttribute(attr, product) && !showComboOnly) return false;
       return true;
     });
@@ -6597,7 +6693,7 @@ export class WhatsappCatalogService {
   isAttributeSelectionComplete(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
-    opts?: { variantIntent?: 'combo' | 'solo' },
+    opts?: { variantIntent?: 'combo' | 'solo'; omitSwappedDrink?: boolean },
   ): boolean {
     if (!product.hasAttributes || !product.attributes?.length) return true;
     return this.getRemainingAttributes(product, alreadySelected, opts).length === 0;
@@ -6610,7 +6706,7 @@ export class WhatsappCatalogService {
   fillDefaultAttributes(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
-    opts?: { variantIntent?: 'combo' | 'solo' },
+    opts?: { variantIntent?: 'combo' | 'solo'; omitSwappedDrink?: boolean },
   ): { attributeName: string; attributeValue: string }[] {
     if (!product.hasAttributes || !product.attributes?.length) {
       return [...alreadySelected];
@@ -7672,6 +7768,7 @@ export class WhatsappCatalogService {
       }
     }
 
+    const swap = this.swapIntent(text);
     let segments = this.splitMultiProductSegments(text);
     segments = segments.filter((s) => !this.isPolitenessOnlySegment(s));
     // Cola de domicilio no es plato: "Para la Salsamentaria…", "Cll 6…"
@@ -7876,6 +7973,67 @@ export class WhatsappCatalogService {
       }
     }
 
+    let swapNotedHostId: number | null = null;
+    if (swap) {
+      embeddedAll = embeddedAll.filter(
+        (p) => !this.productIsSwapRemoval(p, swap.removed, swap.added),
+      );
+      const dish = this.dishTextBeforeSwap(text);
+      const host = this.mostSpecificNamedProduct(dish, products);
+      const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+      const weight = (p: WhatsappCatalogProduct) =>
+        normalizeText(p.name)
+          .split(/\s+/)
+          .filter((t) => t.length >= 4 && !generic.has(t) && !/\d/.test(t)).length;
+      if (host) {
+        const hostWeight = weight(host);
+        embeddedAll = embeddedAll.filter((p) => {
+          if (p.id === host.id) return true;
+          return !(
+            this.productNameFitsUtterance(p, dish) && weight(p) < hostWeight
+          );
+        });
+        if (!embeddedAll.some((p) => p.id === host.id)) embeddedAll.unshift(host);
+        if (this.productCarriesMention(host, swap.removed)) {
+          swapNotedHostId = host.id;
+          const extraIds = new Set(
+            this.productsForSwapAddition(swap.added, products)
+              .filter((p) => p.id !== host.id)
+              .map((p) => p.id),
+          );
+          embeddedAll = embeddedAll.filter((p) => !extraIds.has(p.id));
+        }
+      }
+      const removed = normalizeText(swap.removed);
+      segments = segments.filter((s) => {
+        const seg = normalizeText(s);
+        if (!seg || seg.split(/\s+/).length > 4) return true;
+        return !(seg === removed || removed.includes(seg));
+      });
+    }
+
+    if (swap && swapNotedHostId != null && !this.looksLikeClearlyMultiDishOrder(text)) {
+      const host = products.find((p) => p.id === swapNotedHostId);
+      if (host) {
+        const match: MultiProductSegmentMatch = {
+          segment: this.dishTextBeforeSwap(text),
+          product: host,
+          score: 100,
+          note: this.swapChangeNote(swap.removed, swap.added),
+        };
+        const stillMissing = this.getRemainingAttributes(host, [], {
+          omitSwappedDrink: this.swapRemovesDrink(text),
+        });
+        return {
+          segments: [match.segment],
+          confident: stillMissing.length ? [] : [match],
+          ambiguous: [],
+          unresolved: [],
+          needsAttributes: stillMissing.length ? [match] : [],
+        };
+      }
+    }
+
     if (!this.wantsSeparateDrink(text) && embeddedAll.length >= 2) {
       const drinkSeg = this.splitFoodPlusDrinkSegments(text)[1] || '';
       const hosts = embeddedAll.filter((p) => this.drinkTextMatchesAttribute(p, drinkSeg || text));
@@ -7907,11 +8065,27 @@ export class WhatsappCatalogService {
           this.looksLikeClearlyMultiDishOrder(text) || segments.length >= 2
             ? segment
             : `${segment} ${text}`;
-        const match = { segment, product, score: 100 };
+        const match: MultiProductSegmentMatch = { segment, product, score: 100 };
+        const textSwap = this.swapIntent(text);
+        if (
+          textSwap &&
+          product.id === swapNotedHostId &&
+          this.productCarriesMention(product, textSwap.removed)
+        ) {
+          match.note = this.swapChangeNote(textSwap.removed, textSwap.added);
+        }
         if (product.hasAttributes && product.attributes?.length) {
-          const explicit = this.extractExplicitAttributeChoice(attrText, product);
-          if (explicit) confident.push({ ...match, segment: attrText });
-          else needsAttributes.push(match);
+          const drinkSwapped = !!match.note && this.swapRemovesDrink(text);
+          const stillMissing = this.getRemainingAttributes(product, [], {
+            omitSwappedDrink: drinkSwapped,
+          });
+          if (drinkSwapped && !stillMissing.length) {
+            confident.push(match);
+          } else {
+            const explicit = this.extractExplicitAttributeChoice(attrText, product);
+            if (explicit) confident.push({ ...match, segment: attrText });
+            else needsAttributes.push(match);
+          }
         } else {
           confident.push(match);
         }
@@ -7934,7 +8108,7 @@ export class WhatsappCatalogService {
         const forced = this.splitFoodPlusDrinkSegments(text);
         if (forced.length >= 2) segments = forced;
       }
-      if (segments.length < 2 && embeddedAll.length < 2) return null;
+      if (segments.length < 2 && embeddedAll.length < 2 && swapNotedHostId == null) return null;
     }
 
     const confident: MultiProductSegmentMatch[] = [];
@@ -7944,8 +8118,71 @@ export class WhatsappCatalogService {
     const needsAttributes: MultiProductSegmentMatch[] = [];
     const usedProductIds = new Set<number>();
 
+    if (swap && swapNotedHostId != null && this.looksLikeClearlyMultiDishOrder(text)) {
+      const host = products.find((p) => p.id === swapNotedHostId);
+      if (host) {
+        usedProductIds.add(host.id);
+        const match: MultiProductSegmentMatch = {
+          segment: this.dishTextBeforeSwap(text),
+          product: host,
+          score: 100,
+          note: this.swapChangeNote(swap.removed, swap.added),
+        };
+        const stillMissing = this.getRemainingAttributes(host, [], {
+          omitSwappedDrink: this.swapRemovesDrink(text),
+        });
+        if (stillMissing.length) needsAttributes.push(match);
+        else confident.push(match);
+      }
+    }
+
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
+      if (swap && swapNotedHostId != null) {
+        const segN = normalizeText(segment);
+        const removedTokens = normalizeText(swap.removed)
+          .split(/\s+/)
+          .filter((t) => t.length >= 5);
+        const addedTokens = normalizeText(swap.added)
+          .split(/\s+/)
+          .map((t) => singularizeEsToken(t))
+          .filter((t) => t.length >= 4);
+        const touchesChange =
+          removedTokens.some((t) => segN.includes(t)) &&
+          (/\bpor\b/.test(segN) || addedTokens.some((t) => segN.includes(t)));
+        const segWords = segN
+          .split(/\s+/)
+          .map((t) => singularizeEsToken(t))
+          .filter((t) => t.length >= 4);
+        const onlyTheChange =
+          segWords.length > 0 &&
+          segWords.every((w) => addedTokens.some((t) => w === t || nearDishToken(w, t)));
+        if (/\bcambia/.test(segN) || touchesChange || onlyTheChange) continue;
+      }
+      const segSwap = this.swapIntent(segment);
+      if (segSwap) {
+        const dish = this.dishTextBeforeSwap(segment);
+        const host = this.mostSpecificNamedProduct(dish, products);
+        const carries = !!host && this.productCarriesMention(host, segSwap.removed);
+        if (host && !usedProductIds.has(host.id)) {
+          usedProductIds.add(host.id);
+          const match: MultiProductSegmentMatch = {
+            segment: dish || segment,
+            product: host,
+            score: 100,
+            note: carries ? this.swapChangeNote(segSwap.removed, segSwap.added) : undefined,
+          };
+          const stillMissing = this.getRemainingAttributes(host, [], {
+            omitSwappedDrink: carries && this.swapRemovesDrink(segment),
+          });
+          if (host.hasAttributes && host.attributes?.length && stillMissing.length) {
+            needsAttributes.push(match);
+          } else {
+            confident.push(match);
+          }
+        }
+        continue;
+      }
       if (!this.wantsSeparateDrink(text)) {
         const host = [...confident, ...needsAttributes].find((m) =>
           this.drinkTextMatchesAttribute(m.product, segment),
@@ -8144,6 +8381,13 @@ export class WhatsappCatalogService {
             );
           })();
         if (resolved && !usedProductIds.has(resolved.id)) {
+          if (
+            !this.productNameFitsUtterance(resolved, segment) &&
+            this.leftoverFoodWords(segment, resolved).length
+          ) {
+            unresolved.push(segment);
+            continue;
+          }
           usedProductIds.add(resolved.id);
           const match = {
             segment,
@@ -8165,6 +8409,13 @@ export class WhatsappCatalogService {
 
       if (this.isStrongProductMatch(uniqueScored)) {
         const top = uniqueScored[0];
+        if (
+          !this.productNameFitsUtterance(top.p, segment) &&
+          this.leftoverFoodWords(segment, top.p).length
+        ) {
+          unresolved.push(segment);
+          continue;
+        }
         if (usedProductIds.has(top.p.id)) continue;
         // Varias variantes del mismo plato (Mojarra / Mojarra Frita): no asumir
         const family = this.findProductVariantFamily(segment, products, uniqueScored.map((x) => x.p));
@@ -8228,6 +8479,13 @@ export class WhatsappCatalogService {
         });
       } else if (uniqueScored.length === 1 && uniqueScored[0].score >= 40) {
         const top = uniqueScored[0];
+        if (
+          !this.productNameFitsUtterance(top.p, segment) &&
+          this.leftoverFoodWords(segment, top.p).length
+        ) {
+          unresolved.push(segment);
+          continue;
+        }
         if (usedProductIds.has(top.p.id)) continue;
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
@@ -8243,6 +8501,13 @@ export class WhatsappCatalogService {
       } else if (uniqueScored.length >= 1 && uniqueScored[0].score >= 30) {
         // Umbral más bajo para comida+bebida (audio Whisper)
         const top = uniqueScored[0];
+        if (
+          !this.productNameFitsUtterance(top.p, segment) &&
+          this.leftoverFoodWords(segment, top.p).length
+        ) {
+          unresolved.push(segment);
+          continue;
+        }
         if (!usedProductIds.has(top.p.id) && !this.isLikelyDrinkProduct(top.p)) {
           usedProductIds.add(top.p.id);
           const match = { segment, product: top.p, score: top.score };
@@ -8287,7 +8552,7 @@ export class WhatsappCatalogService {
         possibleCustomerNames: names,
       };
     }
-    if (resolvedCount < 2) return null;
+    if (resolvedCount < 2 && swapNotedHostId == null) return null;
 
     return {
       segments,

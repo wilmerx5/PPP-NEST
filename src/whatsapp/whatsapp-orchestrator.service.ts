@@ -3638,6 +3638,7 @@ export class WhatsappOrchestratorService {
           cfg,
           itemNote,
           fromText || item.attributes,
+          { sourceText },
         );
         if (attempt.missingAttributes) {
           deferredNeedsAttrs.push({
@@ -3886,7 +3887,11 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
     note?: string,
     attributes?: { attributeName: string; attributeValue: string }[],
-    attrOpts?: { variantIntent?: 'combo' | 'solo'; sourceText?: string },
+    attrOpts?: {
+      variantIntent?: 'combo' | 'solo';
+      sourceText?: string;
+      omitSwappedDrink?: boolean;
+    },
   ): {
     session: WhatsappSessionData;
     blocked?: CartLimitCheck;
@@ -3896,6 +3901,18 @@ export class WhatsappOrchestratorService {
     alreadyHad?: boolean;
   } {
     let selected = attributes ? [...attributes] : [];
+    const textSwap = attrOpts?.sourceText
+      ? this.catalogService.swapIntent(attrOpts.sourceText)
+      : null;
+    const omitSwappedDrink =
+      !!attrOpts?.omitSwappedDrink ||
+      (!!textSwap &&
+        !!attrOpts?.sourceText &&
+        this.catalogService.swapRemovesDrink(attrOpts.sourceText) &&
+        this.catalogService.productCarriesMention(product, textSwap.removed));
+    const attrOptsForFill = omitSwappedDrink
+      ? { ...attrOpts, omitSwappedDrink: true as const }
+      : attrOpts;
     // Si el mensaje ya nombra opciones (frita, blancas…), respétalas
     if (attrOpts?.sourceText && product.hasAttributes && product.attributes?.length) {
       const fromMsg = this.catalogService.resolveAttributesFromMessage(
@@ -3908,18 +3925,24 @@ export class WhatsappOrchestratorService {
         selected = fromMsg.attributes;
       }
     }
-    if (
-      product.hasAttributes &&
-      product.attributes?.length &&
-      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOpts)
-    ) {
-      // Primera opción por defecto (arepas Blancas, etc.) — el cliente puede cambiar después
-      selected = this.catalogService.fillDefaultAttributes(product, selected, attrOpts);
+    if (omitSwappedDrink && product.attributes?.length) {
+      selected = selected.filter((s) => {
+        const attr = product.attributes?.find((a) => a.attributeName === s.attributeName);
+        return !attr || !this.catalogService.isComboOnlyAttribute(attr);
+      });
     }
     if (
       product.hasAttributes &&
       product.attributes?.length &&
-      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOpts)
+      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOptsForFill)
+    ) {
+      // Primera opción por defecto (arepas Blancas, etc.) — el cliente puede cambiar después
+      selected = this.catalogService.fillDefaultAttributes(product, selected, attrOptsForFill);
+    }
+    if (
+      product.hasAttributes &&
+      product.attributes?.length &&
+      !this.catalogService.isAttributeSelectionComplete(product, selected, attrOptsForFill)
     ) {
       return { session, missingAttributes: selected };
     }
@@ -11721,26 +11744,44 @@ export class WhatsappOrchestratorService {
       ids.add(spoken.id);
     }
     if (swap) {
-      const replacement = this.catalogService.resolveSpokenDish(swap.added, products);
-      if (
-        replacement &&
-        !ids.has(replacement.id) &&
-        !this.catalogService.productIsSwapRemoval(replacement, swap.removed, swap.added)
-      ) {
-        const extra = this.catalogService.leftoverFoodWords(swap.added, replacement);
-        if (!extra.length) {
-          const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(swap.added));
-          kept.push({ productId: replacement.id, quantity: qty });
-          ids.add(replacement.id);
+      const dish = this.catalogService.dishTextBeforeSwap(text);
+      const host = this.catalogService.mostSpecificNamedProduct(dish, products);
+      if (host) {
+        const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+        const weight = (p: MenuProduct) =>
+          this.normalizeForMatch(p.name)
+            .split(/\s+/)
+            .filter((t) => t.length >= 4 && !generic.has(t) && !/\d/.test(t)).length;
+        const hostWeight = weight(host);
+        for (let i = kept.length - 1; i >= 0; i--) {
+          const product = products.find((p) => p.id === kept[i].productId);
+          if (!product || product.id === host.id) continue;
+          if (
+            this.catalogService.productNameFitsUtterance(product, dish) &&
+            weight(product) < hostWeight
+          ) {
+            kept.splice(i, 1);
+          }
+        }
+        if (!kept.some((item) => item.productId === host.id)) {
+          kept.unshift({ productId: host.id, quantity: 1 });
         }
       }
-      const host = kept.find((item) => {
-        const product = products.find((p) => p.id === item.productId);
-        return !!product && !this.catalogService.isLikelyDrinkProduct(product) && /\bcombo\b/i.test(product.name);
-      });
-      if (host && !host.note) {
-        host.note = `Sin ${swap.removed}; cambio por ${swap.added}`.slice(0, 200);
+      if (host && this.catalogService.productCarriesMention(host, swap.removed)) {
+        const note = this.catalogService.swapChangeNote(swap.removed, swap.added);
+        const line = kept.find((item) => item.productId === host.id);
+        if (line && !line.note) line.note = note;
+        const extraIds = new Set(
+          this.catalogService
+            .productsForSwapAddition(swap.added, products)
+            .filter((p) => p.id !== host.id)
+            .map((p) => p.id),
+        );
+        for (let i = kept.length - 1; i >= 0; i--) {
+          if (extraIds.has(kept[i].productId)) kept.splice(i, 1);
+        }
       }
+      if (host) ids.add(host.id);
     }
     actions.addItems = kept.length ? kept : undefined;
     return [...new Set(misses)];
@@ -13694,6 +13735,7 @@ export class WhatsappOrchestratorService {
       const qtyLabel = qty >= 2 ? ` ×${qty}` : '';
       lines.push(`${this.catalogService.optionNumberEmoji(idx)} ✅ *${c.product.name}${qtyLabel}*`);
       lines.push(`   ${this.catalogService.formatProductMeta(c.product.price, c.product.code)}`);
+      if (c.note) lines.push(`   _${c.note}_`);
       idx++;
     }
     for (const group of multi.ambiguous) {
@@ -13737,6 +13779,7 @@ export class WhatsappOrchestratorService {
     return {
       confident: multi.confident.map((c) => ({
         segment: c.segment,
+        note: c.note,
         ...this.toPendingMultiProduct(c.product),
       })),
       ambiguous: multi.ambiguous.map((a) => ({
@@ -13780,19 +13823,30 @@ export class WhatsappOrchestratorService {
       if (!product) continue;
       const attrSource = [item.segment, sourceText].filter(Boolean).join(' ');
       const qty = this.quantityForMultiSegment(item.segment, product.name, sourceText);
-      const explicit =
+      const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
+      const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
+      const omitSwappedDrink =
+        carriesSwap && !!sourceText && this.catalogService.swapRemovesDrink(sourceText);
+      const attrOpts = omitSwappedDrink ? { omitSwappedDrink: true as const } : undefined;
+      const explicitRaw =
         product.hasAttributes && product.attributes?.length
           ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || []
           : [];
+      const explicit = omitSwappedDrink
+        ? explicitRaw.filter((s) => {
+            const attr = product.attributes?.find((a) => a.attributeName === s.attributeName);
+            return !attr || !this.catalogService.isComboOnlyAttribute(attr);
+          })
+        : explicitRaw;
       const filled =
         product.hasAttributes && product.attributes?.length
-          ? this.catalogService.fillDefaultAttributes(product, explicit)
+          ? this.catalogService.fillDefaultAttributes(product, explicit, attrOpts)
           : explicit;
       const attrs = filled.length ? filled : undefined;
       if (
         product.hasAttributes &&
         product.attributes?.length &&
-        !this.catalogService.isAttributeSelectionComplete(product, filled)
+        !this.catalogService.isAttributeSelectionComplete(product, filled, attrOpts)
       ) {
         // No agregar sin opciones: pasar a cola de atributos
         next = {
@@ -13810,7 +13864,15 @@ export class WhatsappOrchestratorService {
         };
         continue;
       }
-      const attempt = this.tryAddProductToCart(next, product, qty, cfg, undefined, attrs);
+      const lineNote =
+        item.note ||
+        (carriesSwap && swap
+          ? this.catalogService.swapChangeNote(swap.removed, swap.added)
+          : undefined);
+      const attempt = this.tryAddProductToCart(next, product, qty, cfg, lineNote, attrs, {
+        sourceText,
+        omitSwappedDrink,
+      });
       if (attempt.missingAttributes) {
         next = {
           ...next,
