@@ -603,6 +603,22 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
 
+        const comesWith = this.catalogService.comesWithOffer(
+          ctx.userMessage || query,
+          ctx.products,
+        );
+        if (comesWith) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'comes_with',
+            reply: comesWith.reply,
+            hint:
+              'Pregunta si un plato trae otra cosa. Responde con reply tal cual. ' +
+              'NO add_item. No listes otra categoría.',
+          });
+        }
+
         if (
           this.catalogService.isCategoryBrowseQuestion(query) ||
           this.catalogService.isMenuExploreIntent(query, ctx.products)

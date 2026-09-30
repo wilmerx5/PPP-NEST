@@ -4702,7 +4702,8 @@ export class WhatsappCatalogService {
     );
 
     if (!relevant.length) {
-      return { categoryName, products: list };
+      // "bandeja con sopa" no es la categoría Sopas: la otra palabra no está en esos platos.
+      return { categoryName, products: [] };
     }
 
     const filtered = list.filter((p) => {
@@ -8384,6 +8385,69 @@ export class WhatsappCatalogService {
       `Te ofrecemos estas alternativas:\n\n` +
       this.formatCategoryList(categoryName, list)
     );
+  }
+
+  /**
+   * "tiene alguna bandeja con sopa?" / "bandejas con sopa hay?":
+   * el plato es la bandeja; sopa es lo que preguntan si trae.
+   * El nombre y la descripción mandan. Si ninguna lo trae, no se listan las sopas.
+   */
+  comesWithOffer(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): { reply: string } | null {
+    const q = normalizeText(text || '');
+    if (!q || !/\bcon\b/.test(q)) return null;
+    if (this.looksLikeSideModificationNote(text)) return null;
+    const noise = new Set([
+      'tiene', 'tienen', 'tienes', 'hay', 'alguna', 'algun', 'alguno', 'algo',
+      'unas', 'unos', 'una', 'uno', 'por', 'favor', 'porfa',
+    ]);
+    const cleaned = q
+      .split(' ')
+      .filter((t) => t && !noise.has(t))
+      .join(' ');
+    const match = cleaned.match(/\b([a-z]{4,})\s+con\s+([a-z]{3,})\b/);
+    if (!match?.[1] || !match?.[2]) return null;
+    const head = singularizeEsToken(match[1]);
+    const inclusion = singularizeEsToken(match[2]);
+    if (!head || !inclusion || head === inclusion) return null;
+    if (
+      products.some(
+        (p) => p.availableNow !== false && this.productNameFitsUtterance(p, cleaned),
+      )
+    ) {
+      return null;
+    }
+    const blobOf = (p: WhatsappCatalogProduct) => {
+      const attrs = (p.attributes || [])
+        .flatMap((a) => [a.attributeName, ...(a.options || [])])
+        .join(' ');
+      return normalizeText(`${p.name} ${p.description || ''} ${attrs}`);
+    };
+    const wordIn = (blob: string, token: string) =>
+      blob.split(/\s+/).some((w) => w === token || singularizeEsToken(w) === token);
+    const headProducts = products.filter((p) => {
+      if (p.availableNow === false) return false;
+      return wordIn(normalizeText(p.name), head);
+    });
+    if (!headProducts.length) return null;
+    const matching = headProducts.filter((p) => wordIn(blobOf(p), inclusion));
+    const label = `${head} con ${inclusion}`;
+    if (matching.length) {
+      return {
+        reply:
+          `Sí, estas *${head}* traen *${inclusion}*:\n\n` +
+          this.formatCategoryList(titleCaseWords(head), matching.slice(0, 8)),
+      };
+    }
+    return {
+      reply: this.formatCategoryAlternatives(
+        label,
+        titleCaseWords(head),
+        headProducts.slice(0, 8),
+      ),
+    };
   }
 
   formatCategoryBrowseReply(hit: {

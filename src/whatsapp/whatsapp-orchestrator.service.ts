@@ -11914,6 +11914,22 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    const comesWith = this.catalogService.comesWithOffer(originalText || text, products);
+    if (comesWith) {
+      await this.reply(conv, msg.waId, comesWith.reply);
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'replied',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: originalText || text,
+        warnings: ['comes_with'],
+      });
+      return true;
+    }
+
     if (agent.lookupDeliveryTime) {
       await this.tryHandleDeliveryEtaInquiry(conv, msg.waId, session, originalText || text, text, cfg, {
         forceGeneric: true,
@@ -12384,6 +12400,13 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    const comesWith = this.catalogService.comesWithOffer(text, products);
+    if (comesWith) {
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(conv, waId, comesWith.reply);
+      return true;
+    }
+
     const catalogAsk = this.catalogService.resolveCatalogQuestion(text, products);
     if (catalogAsk) {
       session = {

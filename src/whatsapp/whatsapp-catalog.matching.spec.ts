@@ -355,3 +355,67 @@ describe('palabra dentro del nombre no es el plato', () => {
     );
   });
 });
+
+describe('bandeja con sopa no es la categoría Sopas', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+  const menu: WhatsappCatalogProduct[] = [
+    {
+      id: 38,
+      code: 38,
+      name: 'Sopa De Ajiaco',
+      price: 12000,
+      categoryName: 'Sopas',
+      description: 'Acompañada con arroz',
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+    {
+      id: 15,
+      code: 15,
+      name: 'Bandeja Con Pollo Frito',
+      price: 21000,
+      categoryName: 'Bandejas',
+      description: 'Arroz, ensalada y maduro',
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+    {
+      id: 18,
+      code: 18,
+      name: 'Bandeja Pronto',
+      price: 18000,
+      categoryName: 'Bandejas',
+      description: 'Arroz y papa',
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+    },
+  ];
+
+  it('pregunta si la bandeja trae sopa y ofrece las bandejas', () => {
+    expect(catalog.findCategoryBrowseHit('Tiene alguna bandeja con sopa?', menu)?.categoryName).not.toBe(
+      'Sopas',
+    );
+    const offer = catalog.comesWithOffer('Tiene alguna bandeja con sopa?', menu);
+    expect(offer?.reply).toMatch(/No tenemos \*bandeja con sopa\*/i);
+    expect(offer?.reply).toMatch(/Bandeja Con Pollo Frito/);
+    expect(offer?.reply).toMatch(/Bandeja Pronto/);
+    expect(offer?.reply).not.toMatch(/Sopa De Ajiaco/);
+    const again = catalog.comesWithOffer('Bandejas con sopa hay?', menu);
+    expect(again?.reply).toMatch(/bandeja con sopa/i);
+    expect(again?.reply).not.toMatch(/Sopa De Ajiaco/);
+  });
+
+  it('si la descripción trae sopa, lista esa bandeja', () => {
+    const withSoup = menu.map((p) =>
+      p.id === 15 ? { ...p, description: 'Incluye sopa, arroz y ensalada' } : p,
+    );
+    const offer = catalog.comesWithOffer('Tiene alguna bandeja con sopa?', withSoup);
+    expect(offer?.reply).toMatch(/traen \*sopa\*/i);
+    expect(offer?.reply).toMatch(/Bandeja Con Pollo Frito/);
+    expect(offer?.reply).not.toMatch(/Bandeja Pronto/);
+    expect(offer?.reply).not.toMatch(/Sopa De Ajiaco/);
+  });
+});
