@@ -179,6 +179,38 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.formatNotOnMenuReply('mazorcada', 'https://menu.example')).toMatch(
       /no manejamos \*mazorcada\*/i,
     );
+    expect(catalog.availabilitySubject('Tienes algo De chocolate?')).toBe('chocolate');
+    expect(catalog.availabilitySubject('Tines algo De arequipe?')).toBe('arequipe');
+    expect(catalog.availabilitySubject('Te pregunte que Si tienes algo De arequipe')).toBe(
+      'arequipe',
+    );
+    expect(catalog.availabilitySubject('qué tienes de comida rápida')).toBeNull();
+    expect(catalog.availabilitySubject('quiero una milanesa')).toBeNull();
+    expect(catalog.isAvailabilityInquiry('Tines algo De arequipe?')).toBe(true);
+    const miss = catalog.unavailableAskReply(
+      'Tienes algo De chocolate?',
+      soupMenu,
+      'https://www.prontopolloportal.com/menu',
+    );
+    expect(miss).toMatch(/No tenemos productos de chocolate/);
+    expect(miss).not.toMatch(/algo de chocolate/i);
+    expect(miss).toMatch(/prontopolloportal\.com\/menu/);
+    expect(
+      catalog.unavailableAskReply('Tienes sopa De mondongo', soupMenu, 'https://menu.example'),
+    ).toBeNull();
+    expect(
+      catalog.menuMentionsSubject('arequipe', [
+        {
+          id: 1,
+          code: 1,
+          name: 'Arepa',
+          price: 2000,
+          hasAttributes: false,
+          attributes: [],
+          availableNow: true,
+        },
+      ]),
+    ).toBe(false);
     expect(catalog.searchByNameScored('mazorcada', soupMenu, 5)).toEqual([]);
     expect(
       catalog.isServingSizeChangeIntent('Pero quiero una porcion Mas pequena'),

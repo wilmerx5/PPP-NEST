@@ -3360,6 +3360,16 @@ export class WhatsappOrchestratorService {
       await this.conversationService.saveSession(conv, session);
     }
 
+    const unavailableAsk = this.catalogService.unavailableAskReply(
+      originalText || text,
+      products,
+      cfg.menuUrl,
+    );
+    if (unavailableAsk) {
+      await this.reply(conv, msg.waId, unavailableAsk);
+      return;
+    }
+
     const nudge = session.cart.length
       ? `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`
       : this.buildAskWhatToOrderMessage(cfg);
@@ -12918,6 +12928,11 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    const unavailable = this.catalogService.unavailableAskReply(text, products, cfg.menuUrl);
+    if (unavailable) {
+      await this.reply(conv, waId, unavailable);
+      return true;
+    }
     if (!this.catalogService.isGenericProductInquiry(text)) return false;
 
     const session = this.conversationService.getSession(conv);

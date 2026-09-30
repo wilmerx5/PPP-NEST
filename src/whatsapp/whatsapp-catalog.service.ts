@@ -5303,6 +5303,106 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /**
+   * “¿Tienes algo de chocolate?” / “tines algo de arequipe” / “te pregunté que si tienes…”
+   * → el producto preguntado, sin el relleno. Null si no es esa pregunta.
+   */
+  availabilitySubject(text: string): string | null {
+    let q = normalizeText(text || '');
+    if (!q || q.length < 6) return null;
+    if (/^(?:que|cual|cuales|como)\b/.test(q)) return null;
+    q = q
+      .replace(
+        /^(?:te|le)\s+(?:pregunte|pregunto|dije|digo|estoy\s+preguntando|volvi\s+a\s+preguntar)\s+(?:que\s+)?(?:si\s+)?/,
+        '',
+      )
+      .trim();
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const idx = tokens.findIndex((t) => this.isAvailabilityVerbToken(t));
+    if (idx < 0) return null;
+    const lead = new Set([
+      'algo',
+      'alguna',
+      'algun',
+      'alguno',
+      'algunas',
+      'algunos',
+      'un',
+      'una',
+      'unos',
+      'unas',
+      'de',
+      'del',
+      'el',
+      'la',
+      'los',
+      'las',
+      'me',
+      'por',
+      'favor',
+      'we',
+    ]);
+    const rest = tokens.slice(idx + 1);
+    while (rest.length && lead.has(rest[0])) rest.shift();
+    const subject = rest.join(' ').replace(/[?.!]+$/g, '').trim();
+    if (subject.length < 3) return null;
+    if (/^(domicilio|horario|servicio|abierto|abiertos|pedido)$/.test(subject)) return null;
+    return subject;
+  }
+
+  /** “tines” es “tienes”: una letra de diferencia y las dos primeras iguales. */
+  private isAvailabilityVerbToken(token: string): boolean {
+    const t = normalizeText(token);
+    if (t === 'hay') return true;
+    const verbs = [
+      'tienes',
+      'tiene',
+      'tienen',
+      'venden',
+      'vendes',
+      'manejan',
+      'maneja',
+      'consiguen',
+      'conseguiste',
+    ];
+    if (verbs.includes(t)) return true;
+    if (t.length < 4) return false;
+    return verbs.some(
+      (v) => t.slice(0, 2) === v.slice(0, 2) && tokenEditDistance(t, v) <= 1,
+    );
+  }
+
+  /** El producto preguntado está en nombre, descripción o categoría. */
+  menuMentionsSubject(subject: string, products: WhatsappCatalogProduct[]): boolean {
+    const words = normalizeText(subject)
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+    if (!words.length) return false;
+    return products.some((p) => {
+      if (p.availableNow === false) return false;
+      const blobWords = normalizeText(
+        `${p.name} ${p.description || ''} ${p.categoryName || ''}`,
+      ).split(/\s+/);
+      return words.every((w) => blobWords.some((b) => b === w || nearDishToken(w, b)));
+    });
+  }
+
+  /** Pregunta de si hay algo, y ese algo no está en la carta. */
+  unavailableAskReply(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    menuUrl?: string | null,
+  ): string | null {
+    const subject = this.availabilitySubject(text);
+    if (!subject || this.menuMentionsSubject(subject, products)) return null;
+    const menu = (menuUrl || '').trim();
+    return (
+      `No tenemos productos de ${subject}.` +
+      (menu ? `\n\nSi quieres mira el menú: ${menu}` : '') +
+      `\n\n¿Qué se te antoja?`
+    );
+  }
+
   /** Respuesta cálida cuando preguntan por algo que no está en carta. */
   formatNotOnMenuReply(dishLabel: string, menuUrl?: string | null): string {
     const label = (dishLabel || '')
@@ -6858,7 +6958,8 @@ export class WhatsappCatalogService {
       return false;
     }
     const availVerb =
-      /\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen|conseguiste)\b/.test(q);
+      /\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen|conseguiste)\b/.test(q) ||
+      !!this.availabilitySubject(raw);
     if (!availVerb) return false;
     // "no tienes de mondongo" / "tienes sopa"
     if (
@@ -6868,6 +6969,7 @@ export class WhatsappCatalogService {
     ) {
       return true;
     }
+    if (this.availabilitySubject(raw)) return true;
     return (
       availVerb &&
       new RegExp(FOOD_ORDER_TOKEN, 'i').test(q)
