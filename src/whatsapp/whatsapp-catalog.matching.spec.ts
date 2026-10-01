@@ -484,6 +484,96 @@ describe('cambiar la gaseosa del combo por papas', () => {
     expect(multi?.needsAttributes || []).toHaveLength(0);
   });
 
+  it('quiero un combo de pollo frito no agrega el pollo suelto', () => {
+    const ask = 'quiero un combo de pollo frito';
+    expect(catalog.isLooserSameDish(menu[0], menu[1])).toBe(true);
+    expect(catalog.isLooserSameDish(menu[1], menu[0])).toBe(false);
+    expect(catalog.nameMentionedInText('Combo De Pollo Frito', 'solo te pedi un combo')).toBe(
+      true,
+    );
+    expect(catalog.nameMentionedInText('1 Pollo Frito', 'solo te pedi un combo')).toBe(false);
+    const host = catalog.mostSpecificNamedProduct(ask, menu);
+    expect(host?.name).toBe('Combo De Pollo Frito');
+    const multi = catalog.resolveMultiProductOrder(ask, menu);
+    const names = [
+      ...(multi?.confident || []),
+      ...(multi?.needsAttributes || []),
+    ].map((m) => m.product.name);
+    if (names.length) {
+      expect(names).toContain('Combo De Pollo Frito');
+      expect(names).not.toContain('1 Pollo Frito');
+    }
+  });
+
+  it('cuarto de la lista broaster con presa y cambio de yuca', () => {
+    const ask =
+      'Quiero un cuarto de pollo pierna pernil pero quiero cambiar la yuca por papa a la francesa';
+    const family: WhatsappCatalogProduct[] = [
+      {
+        id: 98,
+        code: 98,
+        name: 'Combo De Pollo Broaster',
+        price: 55000,
+        description: 'Acompañado con papa fracesa, yuca frita, arepa y bebida 1.5L',
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 4,
+        code: 4,
+        name: '1 Pollo Broaster',
+        price: 46000,
+        description: 'Acompañado con papa francesa y arepa',
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 5,
+        code: 5,
+        name: '1/2 Pollo Broaster',
+        price: 26000,
+        description: 'Acompañado con papa francesa y arepa',
+        hasAttributes: true,
+        attributes: [],
+        availableNow: true,
+      },
+      {
+        id: 6,
+        code: 6,
+        name: '1/4 Pollo Broaster',
+        price: 16000,
+        description: 'Acompañado con yuca frita y arepa',
+        hasAttributes: true,
+        attributes: [
+          { attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'sin arepas'] },
+          { attributeName: 'Presa', options: ['Pierna Pernil', 'Ala pechuga'] },
+        ],
+        availableNow: true,
+      },
+    ];
+    const picked = catalog.pickFromCandidateList(ask, family);
+    expect(picked?.name).toBe('1/4 Pollo Broaster');
+    expect(catalog.swapIntent(ask)?.removed).toMatch(/yuca/);
+    expect(catalog.swapIntent(ask)?.added).toMatch(/papa a la francesa/);
+    expect(catalog.productCarriesMention(picked!, 'la yuca')).toBe(true);
+    expect(catalog.swapChangeNote('la yuca', 'papa a la francesa')).toMatch(
+      /sin yuca; cambio por papa a la francesa/i,
+    );
+    const attrs = catalog.resolveAttributesFromMessage(picked!, ask, []);
+    expect(attrs.status).not.toBe('invalid');
+    if (attrs.status === 'invalid') return;
+    expect(attrs.attributes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ attributeName: 'Presa', attributeValue: 'Pierna Pernil' }),
+      ]),
+    );
+    expect(
+      attrs.attributes.some((a) => a.attributeName === 'Arepas' && a.attributeValue === 'Fritas'),
+    ).toBe(false);
+  });
+
   it('si el plato no trae eso, no inventa la nota', () => {
     const plain = menu.map((p) =>
       p.id === 2 ? { ...p, hasAttributes: false, attributes: [], description: 'Arroz y papa' } : p,

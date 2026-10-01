@@ -2253,6 +2253,37 @@ export class WhatsappCatalogService {
     return { removed, added };
   }
 
+  /** Palabras del nombre que distinguen el plato. “Pollo” solo no distingue combo de porción. */
+  dishSpecificTokens(name: string): string[] {
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    return normalizeText(name)
+      .split(/\s+/)
+      .filter((t) => t.length >= 4 && !generic.has(t) && !/\d/.test(t));
+  }
+
+  /**
+   * “1 Pollo Frito” cabe dentro de “Combo De Pollo Frito”: mismas palabras y menos.
+   * No es otro plato.
+   */
+  isLooserSameDish(
+    looser: WhatsappCatalogProduct,
+    host: WhatsappCatalogProduct,
+  ): boolean {
+    if (looser.id === host.id) return false;
+    const a = this.dishSpecificTokens(looser.name);
+    const b = this.dishSpecificTokens(host.name);
+    if (!a.length || a.length >= b.length) return false;
+    return a.every((t) => b.some((h) => h === t || nearDishToken(t, h)));
+  }
+
+  /** “combo” en la frase nombra el combo, aunque no repitan “frito”. */
+  nameMentionedInText(name: string, text: string): boolean {
+    const words = normalizeText(text).split(/\s+/).filter(Boolean);
+    return this.dishSpecificTokens(name).some((t) =>
+      words.some((w) => w === t || nearDishToken(w, t)),
+    );
+  }
+
   /** El nombre del plato está en la frase (typo incluido). “Pronto” no está en “bandeja paisa”. */
   productNameFitsUtterance(product: WhatsappCatalogProduct, text: string): boolean {
     const utter = normalizeText(text || '');
@@ -6430,6 +6461,12 @@ export class WhatsappCatalogService {
       if (q === name || (name.length >= 5 && (q.includes(name) || name.includes(q)))) {
         return p;
       }
+    }
+
+    const portion = this.detectPortionHint(text);
+    if (portion) {
+      const sized = candidates.filter((p) => this.detectProductPortionSize(p.name) === portion);
+      if (sized.length === 1) return sized[0];
     }
 
     const asFamily: ProductVariantFamily = {

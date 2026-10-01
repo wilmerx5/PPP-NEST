@@ -3450,6 +3450,13 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (
+      session.pendingMatch?.candidates?.length &&
+      (await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg))
+    ) {
+      return;
+    }
+
     const nudge = session.cart.length
       ? `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`
       : this.buildAskWhatToOrderMessage(cfg);
@@ -4960,10 +4967,19 @@ export class WhatsappOrchestratorService {
     const attrSourceText = usedAsListIndex ? chosen.name : text;
     session = this.rememberProductFocus(session, chosen, products);
 
-    // Lista informativa sin número: mostrar detalle. Si eligieron fila, sí agregan
-    // (el prompt dice “dime el número si quieres agregarlo”). Un “sí” posterior
-    // no debe confirmar una oferta de otro plato.
-    if (infoIntent && !usedAsListIndex && bareNum == null && code == null) {
+    // Lista informativa sin número: mostrar detalle. Si ya están pidiendo
+    // (“quiero el cuarto…”, “cambiar la yuca…”), se agrega esa opción.
+    const orderingFromList =
+      /\b(quiero|dame|ponme|regalame|regalas|pideme|cambia)\b/.test(
+        this.normalizeForMatch(text),
+      ) || !!this.catalogService.swapIntent(text);
+    if (
+      infoIntent &&
+      !orderingFromList &&
+      !usedAsListIndex &&
+      bareNum == null &&
+      code == null
+    ) {
       await this.conversationService.saveSession(conv, session, 'building_cart');
       await this.reply(conv, waId, this.catalogService.formatProductPriceReply(chosen, { offerAdd: false }));
       return true;
@@ -8470,7 +8486,9 @@ export class WhatsappOrchestratorService {
       /\b(como me vas a dar|como vas a dar|por que me (?:das|diste|pusiste|agregaste))\b/.test(
         t,
       ) ||
-      /\b(solo\s+(?:el|la|ese|esa|eso)|es\s+solo|unicamente|únicamente|nada\s+mas\s+que)\b/.test(t);
+      /\b(solo\s+(?:el|la|ese|esa|eso)|es\s+solo|unicamente|únicamente|nada\s+mas\s+que)\b/.test(t) ||
+      !!this.youAddedClause(raw) ||
+      this.cartHasUnaskedExtra(raw, session);
 
     if (!isComplaint) return false;
 
@@ -8555,6 +8573,44 @@ export class WhatsappOrchestratorService {
 
     let next = { ...session, cart: [...session.cart] };
     let changed = false;
+    const removedNames: string[] = [];
+
+    const extraClause = this.youAddedClause(raw);
+    if (extraClause) {
+      const victims = next.cart.filter((line) => {
+        const product = products.find((p) => p.id === line.productId);
+        if (!product) return false;
+        const name = this.normalizeForMatch(product.name);
+        const mentioned = this.normalizeForMatch(extraClause)
+          .split(/\s+/)
+          .filter((w) => w.length >= 4);
+        const sharesWord = mentioned.some((w) => name.includes(w));
+        if (!sharesWord) return false;
+        return next.cart.some((other) => {
+          if (other.productId === line.productId) return false;
+          const host = products.find((p) => p.id === other.productId);
+          return !!host && this.catalogService.isLooserSameDish(product, host);
+        });
+      });
+      if (victims.length && victims.length < next.cart.length) {
+        const drop = new Set(victims.map((v) => v.productId));
+        removedNames.push(...victims.map((v) => v.name));
+        next = { ...next, cart: next.cart.filter((c) => !drop.has(c.productId)) };
+        changed = true;
+      }
+    }
+
+    if (!changed && this.cartHasUnaskedExtra(raw, session)) {
+      const named = next.cart.filter((c) =>
+        this.catalogService.nameMentionedInText(c.name, raw),
+      );
+      if (named.length && named.length < next.cart.length) {
+        const keep = new Set(named.map((c) => c.productId));
+        removedNames.push(...next.cart.filter((c) => !keep.has(c.productId)).map((c) => c.name));
+        next = { ...next, cart: next.cart.filter((c) => keep.has(c.productId)) };
+        changed = true;
+      }
+    }
 
     if (keepOnlyCombo) {
       const keep = next.cart.filter((c) =>
@@ -8602,12 +8658,90 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, 'Listo, corregí el carrito (quedó vacío). ¿Qué te gustaría pedir?');
       return true;
     }
+    const gone = removedNames.length
+      ? `Listo, quité ${removedNames.map((n) => `*${n}*`).join(', ')} ✅`
+      : 'Listo, corregí el pedido ✅';
+    if (
+      conv.state === 'awaiting_payment' ||
+      conv.state === 'awaiting_address' ||
+      conv.state === 'awaiting_name' ||
+      conv.state === 'confirming'
+    ) {
+      const fresh = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, fresh);
+      await this.tryConfirmOrder(conv, waId, this.conversationService.getSession(conv), {
+        preface: gone,
+      });
+      return true;
+    }
     await this.reply(
       conv,
       waId,
-      `Listo, corregí el pedido ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n` +
+      `${gone}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n` +
         this.formatContinueShoppingPrompt(next),
     );
+    return true;
+  }
+
+  /** “añadiste / agregaste …” aunque venga con typo (añladiste). */
+  private youAddedClause(text: string): string | null {
+    const q = this.normalizeForMatch(text);
+    const m = q.match(
+      /\b(?:a[nñ][a-z]{0,2}ad(?:iste|ieron)|agreg(?:aste|aron)|pus(?:iste|ieron)|met(?:iste|ieron)|coloc(?:aste|aron))\s+(.+)/,
+    );
+    const clause = m?.[1]?.trim();
+    return clause && clause.length >= 3 ? clause : null;
+  }
+
+  /** “solo te pedí un combo” y en el carrito hay otro plato que no nombró. */
+  private cartHasUnaskedExtra(text: string, session: WhatsappSessionData): boolean {
+    const t = this.normalizeForMatch(text);
+    if (!/\b(solo|solamente|unicamente|nada mas)\b/.test(t)) return false;
+    if (session.cart.length < 2) return false;
+    const named = session.cart.filter((c) =>
+      this.catalogService.nameMentionedInText(c.name, text),
+    );
+    return named.length > 0 && named.length < session.cart.length;
+  }
+
+  /**
+   * En el pago, si el agente quitó un plato, se aplica y se sigue el cobro.
+   * No quita el plato que el cliente acaba de decir que sí pidió.
+   */
+  private async applyCheckoutCartCorrection(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    _products: MenuProduct[],
+    _cfg: EffectiveWhatsappConfig,
+    agentRemoveIds?: number[],
+  ): Promise<boolean> {
+    if (!session.cart.length || !agentRemoveIds?.length) return false;
+    const named = new Set(
+      session.cart
+        .filter((c) => this.catalogService.nameMentionedInText(c.name, text))
+        .map((c) => c.productId),
+    );
+    const dropIds = agentRemoveIds.filter(
+      (id) =>
+        session.cart.some((c) => c.productId === id) &&
+        !(named.has(id) && named.size < session.cart.length),
+    );
+    if (!dropIds.length || dropIds.length >= session.cart.length) return false;
+    const removedNames = session.cart
+      .filter((c) => dropIds.includes(c.productId))
+      .map((c) => c.name);
+    const next = {
+      ...session,
+      cart: session.cart.filter((c) => !dropIds.includes(c.productId)),
+    };
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    const fresh = await this.conversationService.reloadConversation(conv.id);
+    Object.assign(conv, fresh);
+    await this.tryConfirmOrder(conv, waId, this.conversationService.getSession(conv), {
+      preface: `Listo, quité ${removedNames.map((n) => `*${n}*`).join(', ')} ✅`,
+    });
     return true;
   }
 
@@ -11693,6 +11827,34 @@ export class WhatsappOrchestratorService {
    * Si el agente solo conversa, el flujo de carrito sigue.
    */
   /**
+   * Un solo plato: “combo de pollo frito” no lleva también “1 pollo frito”.
+   * En un pedido de varios platos distintos, cada uno se queda.
+   */
+  private dropLooserSameDishAdds(
+    text: string,
+    products: MenuProduct[],
+    kept: { productId: number; quantity?: number; note?: string }[],
+  ): void {
+    if (this.catalogService.looksLikeClearlyMultiDishOrder(text)) return;
+    const swap = this.catalogService.swapIntent(text);
+    const dish = swap ? this.catalogService.dishTextBeforeSwap(text) : text;
+    const host = this.catalogService.mostSpecificNamedProduct(dish, products);
+    if (!host) return;
+    let dropped = false;
+    for (let i = kept.length - 1; i >= 0; i--) {
+      const product = products.find((p) => p.id === kept[i].productId);
+      if (!product || product.id === host.id) continue;
+      if (this.catalogService.isLooserSameDish(product, host)) {
+        kept.splice(i, 1);
+        dropped = true;
+      }
+    }
+    if (dropped && !kept.some((item) => item.productId === host.id)) {
+      kept.unshift({ productId: host.id, quantity: 1 });
+    }
+  }
+
+  /**
    * El agente propone; Nest no agrega un plato que la frase no nombró
    * ni lo que el cliente pidió cambiar por otra cosa.
    */
@@ -11794,6 +11956,7 @@ export class WhatsappOrchestratorService {
       }
       if (host) ids.add(host.id);
     }
+    this.dropLooserSameDishAdds(text, products, kept);
     actions.addItems = kept.length ? kept : undefined;
     return [...new Set(misses)];
   }
@@ -11999,17 +12162,26 @@ export class WhatsappOrchestratorService {
     }
 
     if (params.placedOrderOnly) {
+      const removed = await this.applyCheckoutCartCorrection(
+        conv,
+        msg.waId,
+        session,
+        originalText || text,
+        products,
+        cfg,
+        agent.actions?.removeProductIds,
+      );
       this.turnTelemetry.record({
         path: 'agent_v1',
-        outcome: 'fallback_rules',
+        outcome: removed ? 'order_progress' : 'fallback_rules',
         waId: msg.waId,
         conversationId: conv.id,
         toolCalls: agent.toolCalls,
         latencyMs: Date.now() - started,
         userTextPreview: originalText || text,
-        warnings: ['placed_order_only'],
+        warnings: removed ? ['checkout_cart_correction'] : ['placed_order_only'],
       });
-      return false;
+      return removed;
     }
 
     if (
