@@ -51,6 +51,7 @@ import {
   formatToBogotaISO,
   getBogotaDateRange,
 } from '../common/utils/date.util';
+import { formatYmdInTimeZone } from './factus-invoice.mapper';
 
 /** Adquiriente genérico DIAN para emisión en lote. */
 const BULK_CONSUMIDOR_FINAL: IssueElectronicInvoiceDto = {
@@ -844,6 +845,172 @@ export class FactusService {
       okCount,
       failCount: results.length - okCount,
       results,
+    };
+  }
+
+  /**
+   * Total facturado electrónicamente (aceptadas) por día, mes o año.
+   * Las anuladas con nota crédito se muestran aparte y no entran en el facturado.
+   */
+  async electronicInvoiceTotals(opts: {
+    from: string;
+    to: string;
+    groupBy?: string;
+  }): Promise<{
+    from: string;
+    to: string;
+    groupBy: 'day' | 'month' | 'year';
+    totals: {
+      invoicedAmount: number;
+      invoicedCount: number;
+      voidedAmount: number;
+      voidedCount: number;
+      netAmount: number;
+      orderAmount: number;
+      bulkAmount: number;
+    };
+    buckets: Array<{
+      key: string;
+      invoicedAmount: number;
+      invoicedCount: number;
+      voidedAmount: number;
+      voidedCount: number;
+      netAmount: number;
+    }>;
+  }> {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(opts.from) || !dateRegex.test(opts.to)) {
+      throw new BadRequestException('from/to deben ser YYYY-MM-DD');
+    }
+    if (opts.from > opts.to) {
+      throw new BadRequestException('from no puede ser mayor que to');
+    }
+    const groupBy: 'day' | 'month' | 'year' =
+      opts.groupBy === 'month' || opts.groupBy === 'year' ? opts.groupBy : 'day';
+
+    const { start } = getBogotaDateRange(opts.from);
+    const { end } = getBogotaDateRange(opts.to);
+
+    const orderRows: Array<{ status: string; issuedAt: Date | string; amount: string | number }> =
+      await this.orderRepo.query(
+        `
+        SELECT
+          o.electronic_invoice_status AS status,
+          COALESCE(o.electronic_invoice_issued_at, o.created_at) AS issuedAt,
+          (
+            COALESCE((
+              SELECT SUM(COALESCE(oi.unit_price, p.price, 0))
+              FROM ppp_order_items oi
+              LEFT JOIN ppp_products p ON p.id = oi.product_id
+              WHERE oi.order_id = o.id
+            ), 0)
+            + COALESCE((
+              SELECT SUM(e.amount * COALESCE(e.quantity, 1))
+              FROM ppp_order_extras e
+              WHERE e.order_id = o.id
+            ), 0)
+            + CASE WHEN o.order_type = 'delivery' THEN COALESCE(o.delivery_fee, 0) ELSE 0 END
+          ) AS amount
+        FROM ppp_orders o
+        WHERE o.electronic_invoice_status IN ('accepted', 'credit_noted')
+          AND (
+            (o.electronic_invoice_issued_at IS NOT NULL AND o.electronic_invoice_issued_at BETWEEN ? AND ?)
+            OR (o.electronic_invoice_issued_at IS NULL AND o.created_at BETWEEN ? AND ?)
+          )
+        `,
+        [start, end, start, end],
+      );
+
+    const bulkRows: Array<{ status: string; issuedAt: Date | string; amount: string | number }> =
+      await this.standaloneInvoiceRepo.query(
+        `
+        SELECT
+          s.invoice_status AS status,
+          COALESCE(s.issued_at, s.created_at) AS issuedAt,
+          COALESCE(s.planned_sum, 0) AS amount
+        FROM ppp_factus_standalone_invoices s
+        WHERE s.invoice_status IN ('accepted', 'credit_noted')
+          AND (
+            (s.issued_at IS NOT NULL AND s.issued_at BETWEEN ? AND ?)
+            OR (s.issued_at IS NULL AND s.created_at BETWEEN ? AND ?)
+          )
+        `,
+        [start, end, start, end],
+      );
+
+    const bucketKey = (at: Date | string) => {
+      const ymd = formatYmdInTimeZone(new Date(at));
+      if (groupBy === 'year') return ymd.slice(0, 4);
+      if (groupBy === 'month') return ymd.slice(0, 7);
+      return ymd;
+    };
+
+    const map = new Map<
+      string,
+      {
+        invoicedAmount: number;
+        invoicedCount: number;
+        voidedAmount: number;
+        voidedCount: number;
+      }
+    >();
+    const ensure = (key: string) => {
+      let row = map.get(key);
+      if (!row) {
+        row = { invoicedAmount: 0, invoicedCount: 0, voidedAmount: 0, voidedCount: 0 };
+        map.set(key, row);
+      }
+      return row;
+    };
+
+    let orderAmount = 0;
+    let bulkAmount = 0;
+    const addRow = (
+      row: { status: string; issuedAt: Date | string; amount: string | number },
+      source: 'order' | 'bulk',
+    ) => {
+      const amount = Math.round(Number(row.amount) || 0);
+      const bucket = ensure(bucketKey(row.issuedAt));
+      if (row.status === 'credit_noted') {
+        bucket.voidedAmount += amount;
+        bucket.voidedCount += 1;
+        return;
+      }
+      bucket.invoicedAmount += amount;
+      bucket.invoicedCount += 1;
+      if (source === 'order') orderAmount += amount;
+      else bulkAmount += amount;
+    };
+    for (const row of orderRows) addRow(row, 'order');
+    for (const row of bulkRows) addRow(row, 'bulk');
+
+    const buckets = [...map.entries()]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, row]) => ({
+        key,
+        ...row,
+        netAmount: row.invoicedAmount - row.voidedAmount,
+      }));
+
+    const invoicedAmount = buckets.reduce((s, b) => s + b.invoicedAmount, 0);
+    const invoicedCount = buckets.reduce((s, b) => s + b.invoicedCount, 0);
+    const voidedAmount = buckets.reduce((s, b) => s + b.voidedAmount, 0);
+    const voidedCount = buckets.reduce((s, b) => s + b.voidedCount, 0);
+
+    return {
+      from: opts.from,
+      to: opts.to,
+      groupBy,
+      totals: {
+        invoicedAmount,
+        invoicedCount,
+        voidedAmount,
+        voidedCount,
+        netAmount: invoicedAmount - voidedAmount,
+        orderAmount,
+        bulkAmount,
+      },
+      buckets,
     };
   }
 

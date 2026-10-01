@@ -397,6 +397,24 @@ export class AdminController {
     return orders;
   }
 
+  @Get('orders/electronic-invoices/totals')
+  @ApiOperation({
+    summary: 'Totales de facturación electrónica por día, mes o año (admin)',
+  })
+  @ApiQuery({ name: 'from', required: true, example: '2026-10-01' })
+  @ApiQuery({ name: 'to', required: true, example: '2026-10-01' })
+  @ApiQuery({ name: 'groupBy', required: false, example: 'day' })
+  async getElectronicInvoiceTotals(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('groupBy') groupBy?: string,
+  ) {
+    if (!from || !to) {
+      throw new BadRequestException('Parámetros from y to son obligatorios (YYYY-MM-DD)');
+    }
+    return this.factusService.electronicInvoiceTotals({ from, to, groupBy });
+  }
+
   @Get('orders/electronic-invoices')
   @ApiOperation({
     summary: 'Listar facturas electrónicas (admin)',
