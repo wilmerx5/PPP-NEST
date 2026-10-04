@@ -319,6 +319,11 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'regala',
   ]);
   if (blockedExact.has(t)) return false;
+  // "Este", "eso" señalan el plato; no son el nombre.
+  if (/^(este|esta|esto|ese|esa|eso|aquel|aquella)$/.test(t)) return false;
+  // "Por qué 5?" / "cuánto es" preguntan por el pedido.
+  if (/[?¿]/.test(raw)) return false;
+  if (/^(por\s*que|porque|cuanto|cuantos|cuantas)\b/.test(t)) return false;
   if (
     /^(necesito|quiero|queria|seria|dame|ponme|pido|pedi|regalame|regalas|regala|para|hacer|buenas|buenos|hola)\b/.test(
       t,

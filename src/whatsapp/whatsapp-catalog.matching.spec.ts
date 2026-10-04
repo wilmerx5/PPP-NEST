@@ -655,3 +655,24 @@ describe('cambiar la gaseosa del combo por papas', () => {
     expect((multi?.unresolved || []).join(' ')).toMatch(/paisa/i);
   });
 });
+
+describe('los dos en combo', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+  const menu: WhatsappCatalogProduct[] = [
+    { id: 1, code: 1, name: '1 Pollo Frito', price: 44000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 4, code: 4, name: '1 Pollo Broaster', price: 46000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 99, code: 99, name: 'Combo De Pollo Frito', price: 53000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 98, code: 98, name: 'Combo De Pollo Broaster', price: 55000, hasAttributes: false, attributes: [], availableNow: true },
+  ];
+
+  it('deja un combo de cada estilo y quita el pollo suelto', () => {
+    const text = 'un pollo frito y uno broaster los dos en combo';
+    const kept = catalog.keepCombosWhenBothRequested(text, menu, [
+      { productId: 1, quantity: 1 },
+      { productId: 4, quantity: 1 },
+      { productId: 98, quantity: 2 },
+    ]);
+    expect(kept.map((item) => item.productId).sort()).toEqual([98, 99]);
+    expect(kept.every((item) => item.quantity === 1)).toBe(true);
+  });
+});

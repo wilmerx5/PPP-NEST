@@ -1987,12 +1987,15 @@ export class WhatsappOrchestratorService {
 
     // Número o "broaster" sobre una lista ya mostrada, antes del agente.
     // Una frase ("no, yo quería el otro") no elige sola: la lee el agente.
-    if (
-      session.pendingMatch?.candidates?.length &&
-      !this.looksLikeHumanIntentSentence(text) &&
-      (await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg))
-    ) {
-      return;
+    if (session.pendingMatch?.candidates?.length) {
+      if (
+        !this.looksLikeHumanIntentSentence(text) &&
+        (await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg))
+      ) {
+        return;
+      }
+      session = { ...session, pendingMatch: undefined };
+      await this.conversationService.saveSession(conv, session);
     }
 
     // Categoría, "¿tienes X?" y "¿cómo es?" las responde el agente comparando el menú.
@@ -5002,6 +5005,12 @@ export class WhatsappOrchestratorService {
       return true;
     }
     session = this.clearQuantityHint(added.session);
+    // "4" y luego "2" siguen siendo filas de la misma lista.
+    const keepList =
+      usedAsListIndex && bareNum != null && trimmed === String(bareNum);
+    if (keepList) {
+      session = { ...session, pendingMatch: pending };
+    }
     await this.conversationService.saveSession(conv, session, 'building_cart');
     const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
     await this.reply(
@@ -8745,6 +8754,50 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** "con las arepas fritas" cambia la opción de lo que ya está en el carrito. */
+  private applySideChoiceToCart(
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): WhatsappSessionData | null {
+    if (!session.cart.length) return null;
+    if (!this.catalogService.looksLikeSideModificationNote(text)) return null;
+    if (this.catalogService.looksLikeClearlyMultiDishOrder(text)) return null;
+    let changed = false;
+    const cart = session.cart.map((line) => {
+      const product = products.find((p) => p.id === line.productId);
+      if (!product?.attributes?.length) return line;
+      const explicit = this.catalogService.extractExplicitAttributeChoice(text, product);
+      if (!explicit?.length) return line;
+      const attrs = [...(line.attributes || [])];
+      let lineChanged = false;
+      for (const choice of explicit) {
+        const idx = attrs.findIndex(
+          (a) =>
+            this.normalizeForMatch(a.attributeName) ===
+            this.normalizeForMatch(choice.attributeName),
+        );
+        if (idx >= 0) {
+          if (
+            this.normalizeForMatch(attrs[idx].attributeValue) !==
+            this.normalizeForMatch(choice.attributeValue)
+          ) {
+            attrs[idx] = choice;
+            lineChanged = true;
+          }
+        } else {
+          attrs.push(choice);
+          lineChanged = true;
+        }
+      }
+      if (!lineChanged) return line;
+      changed = true;
+      return { ...line, attributes: attrs };
+    });
+    if (!changed) return null;
+    return { ...session, cart };
+  }
+
   private async tryHandleCartModification(
     conv: WhatsappConversation,
     waId: string,
@@ -8784,6 +8837,17 @@ export class WhatsappOrchestratorService {
     if (
       await this.tryAbandonPendingSelection(conv, waId, session, text, cfg)
     ) {
+      return true;
+    }
+
+    const withSide = this.applySideChoiceToCart(session, probe, products);
+    if (withSide) {
+      await this.conversationService.saveSession(conv, withSide, 'building_cart');
+      await this.reply(
+        conv,
+        waId,
+        `Listo, quedó con esa opción ✅\n\n${this.formatCartOnly(withSide, this.deliveryFeeFor(withSide, cfg))}\n\n${this.formatContinueShoppingPrompt(withSide)}`,
+      );
       return true;
     }
 
@@ -11957,6 +12021,8 @@ export class WhatsappOrchestratorService {
       if (host) ids.add(host.id);
     }
     this.dropLooserSameDishAdds(text, products, kept);
+    const asCombos = this.catalogService.keepCombosWhenBothRequested(text, products, kept);
+    kept.splice(0, kept.length, ...asCombos);
     actions.addItems = kept.length ? kept : undefined;
     return [...new Set(misses)];
   }
@@ -13999,13 +14065,43 @@ export class WhatsappOrchestratorService {
     if (!pending?.confident.length) {
       return { session, addedNames: [] };
     }
+    if (sourceText && this.catalogService.askedForOneComboEach(sourceText)) {
+      const collapsed = this.catalogService.keepCombosWhenBothRequested(
+        sourceText,
+        products,
+        pending.confident.map((item) => ({
+          productId: item.productId,
+          quantity: 1,
+        })),
+      );
+      pending.confident = collapsed.flatMap((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        if (!product) return [];
+        const prev = pending.confident.find((c) => c.productId === item.productId);
+        return [
+          {
+            segment: prev?.segment || sourceText,
+            note: prev?.note,
+            productId: product.id,
+            name: product.name,
+            code: product.code,
+            price: product.price,
+          },
+        ];
+      });
+    }
     let next = { ...session };
     const addedNames: string[] = [];
     for (const item of pending.confident) {
       const product = products.find((p) => p.id === item.productId);
       if (!product) continue;
       const attrSource = [item.segment, sourceText].filter(Boolean).join(' ');
-      const qty = this.quantityForMultiSegment(item.segment, product.name, sourceText);
+      const qty =
+        sourceText &&
+        this.catalogService.askedForOneComboEach(sourceText) &&
+        /\bcombo\b/i.test(product.name)
+          ? 1
+          : this.quantityForMultiSegment(item.segment, product.name, sourceText);
       const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
       const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
       const explicit =

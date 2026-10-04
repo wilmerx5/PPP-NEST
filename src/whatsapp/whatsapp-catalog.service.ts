@@ -2276,6 +2276,65 @@ export class WhatsappCatalogService {
     return a.every((t) => b.some((h) => h === t || nearDishToken(t, h)));
   }
 
+  /**
+   * "un pollo frito y uno broaster, los dos en combo" → un combo de cada estilo.
+   * Quita el pollo suelto y no deja el mismo combo repetido.
+   */
+  askedForOneComboEach(text: string): boolean {
+    const q = normalizeText(text || '');
+    const styles = ['frito', 'broaster'].filter((style) =>
+      new RegExp(`\\b${style}\\b`).test(q),
+    );
+    return /\b(los dos|ambas|ambos)\b/.test(q) && /\bcombo\b/.test(q) && styles.length >= 2;
+  }
+
+  keepCombosWhenBothRequested<T extends { productId: number; quantity?: number }>(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    kept: T[],
+  ): T[] {
+    if (!this.askedForOneComboEach(text)) return kept;
+    const q = normalizeText(text || '');
+    const styles = ['frito', 'broaster'].filter((style) =>
+      new RegExp(`\\b${style}\\b`).test(q),
+    );
+
+    const next = kept.map((item) => ({ ...item }));
+    const drop = new Set<number>();
+    for (const style of styles) {
+      const combo = products.find((p) => {
+        const name = normalizeText(p.name);
+        return (
+          p.availableNow !== false &&
+          /\bcombo\b/.test(name) &&
+          new RegExp(`\\b${style}\\b`).test(name) &&
+          !/\b(ejecutivo|bandeja)\b/.test(name)
+        );
+      });
+      if (!combo) continue;
+      const loose: number[] = [];
+      const comboIdx: number[] = [];
+      next.forEach((item, i) => {
+        if (drop.has(i)) return;
+        const product = products.find((p) => p.id === item.productId);
+        if (!product) return;
+        if (product.id === combo.id) comboIdx.push(i);
+        else if (this.isLooserSameDish(product, combo)) loose.push(i);
+      });
+      if (comboIdx.length) {
+        next[comboIdx[0]] = { ...next[comboIdx[0]], quantity: 1 };
+        for (const i of comboIdx.slice(1)) drop.add(i);
+        for (const i of loose) drop.add(i);
+      } else if (loose.length) {
+        next[loose[0]] = { ...next[loose[0]], productId: combo.id, quantity: 1 };
+        for (const i of loose.slice(1)) drop.add(i);
+      } else {
+        next.push({ productId: combo.id, quantity: 1 } as T);
+      }
+    }
+    return next.filter((_, i) => !drop.has(i));
+  }
+
   /** “combo” en la frase nombra el combo, aunque no repitan “frito”. */
   nameMentionedInText(name: string, text: string): boolean {
     const words = normalizeText(text).split(/\s+/).filter(Boolean);
