@@ -70,6 +70,7 @@ import {
   isCartChargeQuestion,
   looksLikeKitchenSendRequest,
   productNamesMentionedInOffer,
+  pickProductNamedInLastOffer,
   resolvePendingListOrMenuCode,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
@@ -2047,6 +2048,20 @@ export class WhatsappOrchestratorService {
       }
       session = { ...session, pendingMatch: undefined };
       await this.conversationService.saveSession(conv, session);
+    }
+
+    // "costillas der cerdo" responde la pregunta anterior, no es un plato nuevo.
+    if (
+      await this.tryHandlePriorOfferPick(
+        conv,
+        msg.waId,
+        session,
+        originalText || text,
+        products,
+        cfg,
+      )
+    ) {
+      return;
     }
 
     // Categoría, "¿tienes X?" y "¿cómo es?" las responde el agente comparando el menú.
@@ -10100,6 +10115,74 @@ export class WhatsappOrchestratorService {
       this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), labels.join(', ')),
     );
     return true;
+  }
+
+  /**
+   * El bot preguntó entre platos y el cliente nombró uno, con typo o sin él.
+   * Se queda ese plato y lo demás que ya había pedido en el mensaje anterior.
+   */
+  private async tryHandlePriorOfferPick(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const raw = (text || '').trim();
+    if (raw.length < 3 || raw.length > 80 || /[?¿]/.test(raw)) return false;
+    if (session.pendingAttribute || session.pendingMultiOrder) return false;
+    if (conv.state !== 'building_cart' && conv.state !== 'awaiting_attribute') return false;
+    if (
+      this.catalogService.looksLikeClearlyMultiDishOrder(raw) ||
+      this.catalogService.looksLikeMultiItemOrderMessage(raw) ||
+      this.catalogService.isAvailabilityInquiry(raw)
+    ) {
+      return false;
+    }
+    const last = await this.conversationService.getLastOutboundBody(conv.id);
+    if (!last) return false;
+    const picked = pickProductNamedInLastOffer(raw, last, products);
+    if (!picked) return false;
+    const product = products.find((p) => p.id === picked.id && p.availableNow !== false);
+    if (!product) return false;
+
+    const recent = await this.conversationService.getRecentMessageTexts(conv.id, 8);
+    const customerLines = recent
+      .filter((line) => line.startsWith('Cliente:'))
+      .map((line) => line.slice('Cliente:'.length).trim());
+    const prev = customerLines.length >= 2 ? customerLines[customerLines.length - 2] : '';
+    const items: Array<{ product: MenuProduct; segment: string }> = [];
+    if (
+      prev &&
+      (this.catalogService.looksLikeClearlyMultiDishOrder(prev) ||
+        this.catalogService.looksLikeMultiItemOrderMessage(prev))
+    ) {
+      const multi = this.catalogService.resolveMultiProductOrder(prev, products);
+      const group = multi?.ambiguous.find((row) =>
+        row.candidates.some((c) => c.id === product.id),
+      );
+      const known = [...(multi?.confident || []), ...(multi?.needsAttributes || [])].find(
+        (row) => row.product.id === product.id,
+      );
+      if (group || known) {
+        items.push({ product, segment: group?.segment || known?.segment || raw });
+        for (const row of [...(multi?.confident || []), ...(multi?.needsAttributes || [])]) {
+          if (row.product.id === product.id) continue;
+          if (group?.candidates.some((c) => c.id === row.product.id)) continue;
+          items.push({ product: row.product, segment: row.segment });
+        }
+      }
+    }
+    if (!items.length) items.push({ product, segment: raw });
+
+    return this.addResolvedDishesToCart(
+      conv,
+      waId,
+      { ...session, pendingMatch: undefined, pendingMultiOrder: undefined },
+      items,
+      cfg,
+    );
   }
 
   /** "2 de cada una" agrega esa cantidad de cada plato nombrado en el último mensaje del bot. */

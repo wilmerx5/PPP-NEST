@@ -866,6 +866,114 @@ export function isAbandonPendingSelectionIntent(text: string): boolean {
   return false;
 }
 
+const OFFER_GLUE = new Set([
+  'de',
+  'del',
+  'der',
+  'da',
+  'la',
+  'el',
+  'las',
+  'los',
+  'un',
+  'una',
+  'con',
+  'por',
+  'para',
+  'que',
+  'quiero',
+  'quieres',
+]);
+
+function offerNorm(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function offerEditDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] =
+        a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+/** "der" es "de": no es un ingrediente. */
+function isOfferGlueToken(token: string): boolean {
+  if (OFFER_GLUE.has(token)) return true;
+  if (token.length > 4) return false;
+  return ['de', 'del', 'la', 'el', 'las', 'los', 'una', 'con'].some(
+    (base) => base !== token && offerEditDistance(token, base) <= 1,
+  );
+}
+
+function offerContentTokens(text: string): string[] {
+  return [
+    ...new Set(offerNorm(text).split(' ').filter((t) => t.length >= 3 && !isOfferGlueToken(t))),
+  ];
+}
+
+/**
+ * El bot acaba de nombrar platos ("¿Costillas De Cerdo o Arroz Chino con Costillas?").
+ * La respuesta elige uno, aunque traiga un typo ("costillas der cerdo").
+ * Si el nombre corto cabe dentro del largo, gana el que el cliente sí dijo.
+ */
+export function pickProductNamedInLastOffer(
+  userText: string,
+  offerText: string,
+  products: Array<{ id: number; name: string }>,
+): { id: number; name: string } | null {
+  const rawOffer = offerNorm(offerText);
+  const asked =
+    /[?¿]/.test(offerText || '') ||
+    rawOffer.includes('quieres') ||
+    rawOffer.includes('cual');
+  if (!rawOffer || !asked) return null;
+  const offer = rawOffer;
+  const offered = products.filter((p) => {
+    const name = offerNorm(p.name);
+    return name.length >= 8 && offer.includes(name);
+  });
+  if (offered.length < 2) return null;
+  const said = offerContentTokens(userText);
+  if (!said.length || !said.some((t) => t.length >= 5)) return null;
+
+  const scored = offered
+    .map((product) => {
+      const nameTokens = offerContentTokens(product.name);
+      const covered = said.filter((t) =>
+        nameTokens.some((n) => n === t || (t.length >= 5 && n.length >= 5 && offerEditDistance(t, n) <= 1)),
+      );
+      const extra = nameTokens.filter(
+        (n) => !said.some((t) => t === n || (t.length >= 5 && n.length >= 5 && offerEditDistance(t, n) <= 1)),
+      );
+      return {
+        product,
+        covered: covered.length,
+        extra: extra.length,
+      };
+    })
+    .filter((row) => row.covered === said.length);
+  if (!scored.length) return null;
+  scored.sort((a, b) => a.extra - b.extra || b.covered - a.covered);
+  if (scored.length > 1 && scored[0].extra === scored[1].extra) return null;
+  return { id: scored[0].product.id, name: scored[0].product.name };
+}
+
 /**
  * Con lista pendiente: ¿el número es fila (1..N) o código de menú (ej. 99)?
  * Tras “Responde con el *número*”, 1..N es SIEMPRE fila.

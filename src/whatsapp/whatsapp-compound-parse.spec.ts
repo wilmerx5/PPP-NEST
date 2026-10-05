@@ -15,6 +15,7 @@ import {
   isCartChargeQuestion,
   looksLikeKitchenSendRequest,
   productNamesMentionedInOffer,
+  pickProductNamedInLastOffer,
   isInterruptedPhoneOrderInquiry,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
@@ -370,4 +371,30 @@ describe('isUsableWhatsappCustomerName', () => {
       expect(isUsableWhatsappCustomerName(name)).toBe(true);
     },
   );
+});
+
+describe('pickProductNamedInLastOffer', () => {
+  const products = [
+    { id: 25, name: 'Costillas De Cerdo' },
+    { id: 72, name: 'Arroz Chino Con Costillas De Cerdo' },
+    { id: 50, name: 'Mojarra' },
+  ];
+  const offer =
+    '¿Quieres Costillas De Cerdo ($30.000) o Arroz Chino con Costillas De Cerdo ($50.000)?';
+
+  it('elige la costilla suelta aunque escriba der', () => {
+    expect(pickProductNamedInLastOffer('costillas der cerdo', offer, products)?.name).toBe(
+      'Costillas De Cerdo',
+    );
+  });
+
+  it('elige el arroz si lo nombra', () => {
+    expect(pickProductNamedInLastOffer('el arroz chino', offer, products)?.name).toBe(
+      'Arroz Chino Con Costillas De Cerdo',
+    );
+  });
+
+  it('no elige si el mensaje es otro plato', () => {
+    expect(pickProductNamedInLastOffer('una limonada', offer, products)).toBeNull();
+  });
 });

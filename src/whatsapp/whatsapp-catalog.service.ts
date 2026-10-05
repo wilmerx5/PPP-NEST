@@ -2002,9 +2002,22 @@ export class WhatsappCatalogService {
       'cuales',
     ]);
     const cleaned = clause.replace(/\bsin\s+[a-z0-9]{3,}\b/g, ' ');
+    const glueBases = ['de', 'del', 'la', 'el', 'las', 'los', 'una', 'con'];
     return [
-      ...new Set(cleaned.split(/\s+/).filter((t) => t.length >= 3 && !skip.has(t))),
-    ].filter((t) => !isBottleSizeToken(t));
+      ...new Set(
+        cleaned.split(/\s+/).filter((t) => {
+          if (t.length < 3 || skip.has(t) || isBottleSizeToken(t)) return false;
+          // "der" es "de", no un plato que falte en la carta.
+          if (
+            t.length <= 4 &&
+            glueBases.some((base) => base !== t && tokenEditDistance(t, base) <= 1)
+          ) {
+            return false;
+          }
+          return true;
+        }),
+      ),
+    ];
   }
 
   /**
