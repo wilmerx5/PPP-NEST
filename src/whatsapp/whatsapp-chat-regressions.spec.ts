@@ -2411,6 +2411,61 @@ Cll 6 b 78 c 33`;
     });
   });
 
+  describe('medio pollo y sopa de mondongo', () => {
+    const soup = {
+      id: 80,
+      code: 45,
+      name: 'Sopa De Mondongo (Fines de semana)',
+      price: 13000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+      categoryName: 'Sopas',
+    };
+
+    it('parte el medio pollo y la sopa, y no se queda solo con el pollo', () => {
+      const text = 'quiero medio pollo y una sopa de mondongo';
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+      const segs = catalog.splitMultiProductSegments(text);
+      expect(segs.some((s) => /pollo/i.test(s))).toBe(true);
+      expect(segs.some((s) => /mondongo/i.test(s))).toBe(true);
+      const multi = catalog.resolveMultiProductOrder(text, [...pppMenu, soup]);
+      expect(multi).toBeTruthy();
+      expect(multi!.unresolved).toEqual([]);
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+        ...multi!.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)),
+      ];
+      expect(names.some((n) => /1\/2 Pollo/i.test(n))).toBe(true);
+      expect(names.some((n) => /mondongo/i.test(n))).toBe(true);
+      expect(multi!.ambiguous.some((a) => /pollo/i.test(a.segment))).toBe(true);
+      expect(
+        multi!.confident.some((c) => /mondongo/i.test(c.product.name)) ||
+          multi!.needsAttributes.some((c) => /mondongo/i.test(c.product.name)),
+      ).toBe(true);
+    });
+  });
+
+  describe('Me vendes 2 costillas y 1 mojarra', () => {
+    const text = 'Me vendes 2 costillas\n1 mojarra';
+
+    it('es un pedido de dos platos, no una pregunta de si hay mojarra', () => {
+      expect(catalog.isAvailabilityInquiry(text)).toBe(false);
+      expect(catalog.looksLikeClearlyMultiDishOrder(text)).toBe(true);
+      const multi = catalog.resolveMultiProductOrder(text, pppMenu);
+      expect(multi).toBeTruthy();
+      const names = [
+        ...multi!.confident.map((c) => c.product.name),
+        ...multi!.needsAttributes.map((c) => c.product.name),
+        ...multi!.ambiguous.flatMap((a) => a.candidates.map((c) => c.name)),
+      ];
+      expect(names.some((n) => /costillas/i.test(n))).toBe(true);
+      expect(names.some((n) => /mojarra/i.test(n))).toBe(true);
+      expect(multi!.unresolved).toEqual([]);
+    });
+  });
+
   describe('Línea con coma: costillas + ajiaco + mojarra + bagre + papa', () => {
     const orderRaw = `Ok 
 Regalame entonces 

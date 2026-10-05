@@ -7217,16 +7217,20 @@ export class WhatsappCatalogService {
       return false;
     }
     const q = normalizeText(raw);
-    // "y me vendes un combo de arroz chino" / "vendeme un pollo" = pedido, no “¿venden?”
+    // "2 costillas y 1 mojarra" es pedido, aunque empiece con "me vendes".
+    if (this.countQuantityMentions(raw) >= 2) return false;
+    // "y me vendes un combo" / "me vendes 2 costillas" / "vendeme un pollo" = pedido
+    const orderQty =
+      '(?:\\d{1,2}|un|una|uno|unos|unas|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
     if (
-      /\b(me\s+vendes|me\s+venden|vendeme|vendame|me\s+regalas|me\s+das)\s+(un|una|unos|unas)\b/.test(
-        q,
-      )
+      new RegExp(
+        `\\b(me\\s+vendes|me\\s+venden|vendeme|vendame|me\\s+regalas|me\\s+das)\\s+${orderQty}\\b`,
+      ).test(q)
     ) {
       return false;
     }
     if (
-      /\b(vendes|venden)\s+(un|una|unos|unas)\b/.test(q) &&
+      new RegExp(`\\b(vendes|venden)\\s+${orderQty}\\b`).test(q) &&
       !/\?/.test(raw) &&
       !this.isLargerPackInquiry(raw) &&
       (this.extractVariantPreferenceHint(raw) || new RegExp(FOOD_ORDER_TOKEN, 'i').test(q))

@@ -9,6 +9,12 @@ import {
   isUsableWhatsappCustomerName,
   isSpecificOrderProgressInquiry,
   extractDailyOrderNumberHint,
+  parseEachOfQuantity,
+  parseQtyMenuCodeLines,
+  parseQtyDishCorrection,
+  isCartChargeQuestion,
+  looksLikeKitchenSendRequest,
+  productNamesMentionedInOffer,
   isInterruptedPhoneOrderInquiry,
 } from './whatsapp-session-intents';
 import { splitTrailingEmbeddedAddress, stripTrailingAddressFluff } from './whatsapp-compound-parse';
@@ -223,6 +229,55 @@ describe('isSpecificOrderProgressInquiry / extractDailyOrderNumberHint', () => {
     expect(extractDailyOrderNumberHint('#22')).toBe(22);
     expect(extractDailyOrderNumberHint('15')).toBe(15);
     expect(extractDailyOrderNumberHint('quiero pollo')).toBeNull();
+    expect(extractDailyOrderNumberHint('2 #20')).toBeNull();
+    expect(extractDailyOrderNumberHint('2 #20\n2 #38')).toBeNull();
+    expect(isSpecificOrderProgressInquiry('2 #20\n2 #38')).toBe(false);
+  });
+});
+
+describe('pedido de sopas (2 de cada una)', () => {
+  const offer =
+    'Sí, tenemos sopas: Sopa de Ajiaco $12.000 (acompañada con arroz), Sopa de Menudencias $12.000 (acompañada con arroz) y Sopa pequeña $8.500 (elige Ajiaco o Menudencias).';
+
+  it('pide N de cada plato que el bot acaba de nombrar', () => {
+    expect(parseEachOfQuantity('Por favor me das 2 de cada una')).toBe(2);
+    expect(
+      productNamesMentionedInOffer(offer, [
+        'Sopa de Ajiaco',
+        'Sopa de Menudencias',
+        'Sopa pequeña',
+        'Ejecutivo Con Pollo Broaster',
+        'Sopa',
+      ]),
+    ).toEqual(['Sopa de Menudencias', 'Sopa de Ajiaco', 'Sopa pequeña']);
+  });
+
+  it('2 #20 y 2 #38 son códigos del menú', () => {
+    expect(parseQtyMenuCodeLines('2 #20\n2 #38')).toEqual([
+      { qty: 2, code: 20 },
+      { qty: 2, code: 38 },
+    ]);
+    expect(parseQtyMenuCodeLines('orden #15')).toBeNull();
+  });
+
+  it('la corrección reemplaza por 2 ajiaco y 2 menudencias', () => {
+    expect(parseQtyDishCorrection('No, son 4 sopas 2 de ajiaco y 2 de menudencias')).toEqual([
+      { qty: 2, dish: 'ajiaco' },
+      { qty: 2, dish: 'menudencias' },
+    ]);
+    expect(parseQtyDishCorrection('Esta mal eso')).toBeNull();
+  });
+
+  it('cuánto están cobrando pregunta por el carrito', () => {
+    expect(isCartChargeQuestion('Pero cuanto me están cobrando por 4 sopas???')).toBe(true);
+    expect(isCartChargeQuestion('Son solo 4 sopas, que estan cobrando??')).toBe(true);
+    expect(isCartChargeQuestion('cuanto vale la sopa')).toBe(false);
+  });
+
+  it('enviar mucho ají es nota, no nombre', () => {
+    expect(looksLikeKitchenSendRequest('Y envias mucho aji, por favor')).toBe(true);
+    expect(isUsableWhatsappCustomerName('Y envias mucho aji, por favor')).toBe(false);
+    expect(isUsableWhatsappCustomerName('Ana Gómez')).toBe(true);
   });
 });
 

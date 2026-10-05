@@ -500,6 +500,15 @@ export class WhatsappConversationService {
     return this.resetOrderSession(conv, 'building_cart', { ignorePriorHistory: true });
   }
 
+  async getLastOutboundBody(conversationId: number): Promise<string | null> {
+    const row = await this.msgRepo.findOne({
+      where: { conversationId, direction: 'out' },
+      order: { id: 'DESC' },
+    });
+    const body = row?.body?.trim();
+    return body || null;
+  }
+
   async getRecentMessageTexts(conversationId: number, limit = 10): Promise<string[]> {
     const rows = await this.msgRepo.find({
       where: { conversationId },

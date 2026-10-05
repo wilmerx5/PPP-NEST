@@ -337,6 +337,13 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   ) {
     return false;
   }
+  // "Y envias mucho aji, por favor" es nota de cocina, no el nombre.
+  if (/\bpor favor\b/.test(t) && /\b(envia|envias|enviar|enviame|manda|mandas|mandame|ponle)\b/.test(t)) {
+    return false;
+  }
+  if (/^(y\s+)?(envia|envias|enviar|enviame|manda|mandas|mandame|ponle)\b/.test(t)) {
+    return false;
+  }
   // "Para hacer", "para pedir", "quiero domicilio", "seria un combo"…
   if (
     /\b(hacer|pedir|ordenar|domicilio|pedido|orden|combo|pollo|arroz|regalas?)\b/.test(t) &&
@@ -448,13 +455,13 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
   return false;
 }
 
-/** Extrae #15 / orden 15 / pedido 15 del texto (número diario). */
+/** Extrae #15 / orden 15 / pedido 15 del texto (número diario). "2 #20" es código de menú. */
 export function extractDailyOrderNumberHint(text: string): number | null {
   const raw = (text || '').trim();
   if (!raw) return null;
   const m =
     raw.match(/\b(?:orden|pedido|order)\s*#?\s*(\d{1,4})\b/i) ||
-    raw.match(/#\s*(\d{1,4})\b/) ||
+    raw.match(/(?<!\d\s*)#\s*(\d{1,4})\b/) ||
     raw.match(/^(?:el\s+|la\s+)?(?:n[uú]mero\s+)?(\d{1,3})[\s!.?]*$/i);
   if (!m?.[1]) return null;
   const n = parseInt(m[1], 10);
@@ -628,6 +635,108 @@ export function parseCartItemReplacement(
 
 export function isCartItemReplacementIntent(text: string): boolean {
   return !!parseCartItemReplacement(text);
+}
+
+/** "2 de cada una" después de una lista de platos. */
+export function parseEachOfQuantity(text: string): number | null {
+  const m = (text || '').match(/\b(\d{1,2})\s+de\s+cada\s+(una|uno)\b/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (n < 1 || n > 20) return null;
+  return n;
+}
+
+/** "2 #20" / "2 #38" en líneas: cantidad y código de menú, no número de orden. */
+export function parseQtyMenuCodeLines(text: string): { qty: number; code: number }[] | null {
+  const lines = (text || '')
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+  const out: { qty: number; code: number }[] = [];
+  for (const line of lines) {
+    const m = line.match(/^(\d{1,2})\s*#\s*(\d{1,4})$/);
+    if (!m) return null;
+    const qty = parseInt(m[1], 10);
+    const code = parseInt(m[2], 10);
+    if (qty < 1 || qty > 30 || code < 1) return null;
+    out.push({ qty, code });
+  }
+  return out;
+}
+
+/**
+ * "No, son 4 sopas, 2 de ajiaco y 2 de menudencias" reemplaza el carrito.
+ * Hace falta la corrección y al menos dos "N de plato".
+ */
+export function parseQtyDishCorrection(text: string): { qty: number; dish: string }[] | null {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (!/\b(no|esta mal|estan mal|son solo|solo son)\b/.test(t)) return null;
+  const parts = [
+    ...raw.matchAll(/(\d{1,2})\s+de\s+([a-záéíóúñü]+(?:\s+(?!y\b|e\b)[a-záéíóúñü]+)*)/gi),
+  ];
+  const lines = parts
+    .map((m) => ({ qty: parseInt(m[1], 10), dish: m[2].trim() }))
+    .filter((l) => l.qty >= 1 && l.qty <= 20 && !/^(cada|esas|esos|ellas|ellos)$/i.test(l.dish));
+  if (lines.length < 2) return null;
+  return lines;
+}
+
+/** "¿cuánto me están cobrando?" pregunta por el carrito, no por la carta. */
+export function isCartChargeQuestion(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return /\b(cobrando|me cobran)\b/.test(t);
+}
+
+/** "Y envias mucho aji, por favor" — nota, no pedido ni nombre. */
+export function looksLikeKitchenSendRequest(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 8 || raw.length > 120) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (/\d/.test(t)) return false;
+  if (
+    /\b(sopa|pollo|combo|ajiaco|menudencia|gaseosa|pedido|menu|nequi|link|pago|direccion)\b/.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  return /^(y\s+)?(envia|envias|enviame|enviar|manda|mandas|mandame|ponle)\b/.test(t);
+}
+
+/** Nombres de carta que aparecen completos en el último mensaje del bot. */
+export function productNamesMentionedInOffer(offerText: string, productNames: string[]): string[] {
+  const blob = (offerText || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const ranked = productNames
+    .map((raw) => ({
+      raw,
+      norm: raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, ''),
+    }))
+    .filter((n) => n.norm.length >= 10 && blob.includes(n.norm))
+    .sort((a, b) => b.norm.length - a.norm.length);
+  const kept: { raw: string; norm: string }[] = [];
+  for (const n of ranked) {
+    if (kept.some((k) => k.norm.includes(n.norm))) continue;
+    kept.push(n);
+  }
+  return kept.map((n) => n.raw);
 }
 
 /**
