@@ -5175,10 +5175,18 @@ export class WhatsappOrchestratorService {
         : /\b(cuarto|1\s*\/\s*4|1\/4)\b/i.test(segment)
           ? 'cuarto de pollo'
           : 'pollo';
+    const kept = others.map((item) => {
+      const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(item.segment) || 1);
+      return qty > 1 ? `*${item.product.name}* ×${qty}` : `*${item.product.name}*`;
+    });
+    const keptLine =
+      kept.length === 1
+        ? `${kept[0]} queda en el pedido.`
+        : `${kept.join(', ')} quedan en el pedido.`;
     await this.reply(
       conv,
       waId,
-      `¿Cómo lo quieres el *${label}*?\n\n` +
+      `${keptLine}\n\n¿Cómo lo quieres el *${label}*?\n\n` +
         this.catalogService.formatCategoryList(label, group.candidates),
     );
     return true;
@@ -5229,10 +5237,13 @@ export class WhatsappOrchestratorService {
       labels.push(this.formatAddedProductLabel(item.product.name, qty));
     }
     await this.conversationService.saveSession(conv, next, 'building_cart');
+    const fee = this.deliveryFeeFor(next, cfg);
     await this.reply(
       conv,
       waId,
-      this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), labels),
+      `${this.buildCartAddReply(next, fee, labels, { suffix: '' })}\n\n` +
+        `${this.formatCartOnly(next, fee)}\n\n` +
+        this.formatContinueShoppingPrompt(next),
     );
     return true;
   }
