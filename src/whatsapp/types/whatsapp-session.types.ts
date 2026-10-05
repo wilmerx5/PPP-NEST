@@ -64,6 +64,8 @@ export type WhatsappSessionData = {
     intent?: 'info' | 'order';
     /** Cantidad pedida al elegir de la lista (ej. 5 pollos) */
     quantity?: number;
+    /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
+    alsoAdd?: Array<{ productId: number; segment: string }>;
   };
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   pendingMultiOrder?: {

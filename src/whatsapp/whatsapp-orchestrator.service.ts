@@ -1955,6 +1955,18 @@ export class WhatsappOrchestratorService {
         multi.unresolved.length === 0 &&
         multi.ambiguous.length > 0 &&
         multi.confident.length + multi.needsAttributes.length >= 1;
+      if (
+        multiAskStyle &&
+        (await this.tryAskChickenStyleKeepingOthers(
+          conv,
+          msg.waId,
+          session,
+          multi!,
+          text,
+        ))
+      ) {
+        return;
+      }
       if (multiClean || multiAskStyle) {
         const handled = await this.tryHandleMultiProductOrder(
           conv,
@@ -5097,45 +5109,132 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    const siblings = (pending.alsoAdd || [])
+      .map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return product ? { product, segment: item.segment } : null;
+      })
+      .filter((item): item is { product: MenuProduct; segment: string } => !!item);
     const stored = (pending.query || '').trim();
-    if (!stored) return false;
-    if (
-      !this.catalogService.looksLikeClearlyMultiDishOrder(stored) &&
-      !this.catalogService.looksLikeMultiItemOrderMessage(stored)
-    ) {
-      return false;
-    }
-    const multi = this.catalogService.resolveMultiProductOrder(stored, products);
-    if (!multi) return false;
-    const others =
-      multi.confident.length + multi.needsAttributes.length + multi.unresolved.length;
-    if (!others) return false;
+    const multi =
+      siblings.length || !stored
+        ? null
+        : this.catalogService.resolveMultiProductOrder(stored, products);
+    const fromResolve = [
+      ...(multi?.confident || []),
+      ...(multi?.needsAttributes || []),
+    ].filter((row) => row.product.id !== chosen.id);
+    const others = siblings.length
+      ? siblings
+      : fromResolve.map((row) => ({ product: row.product, segment: row.segment }));
+    if (!others.length) return false;
+    return this.addResolvedDishesToCart(conv, waId, session, [
+      { product: chosen, segment: chosen.name },
+      ...others,
+    ], cfg);
+  }
 
-    const dropChosen = <T extends { product: { id: number } }>(rows: T[]) =>
-      rows.filter((row) => row.product.id !== chosen.id);
-    const chosenMatch = { segment: chosen.name, product: chosen, score: 100 };
-    const next = {
-      ...multi,
-      ambiguous: multi.ambiguous.filter(
-        (group) => !group.candidates.some((c) => c.id === chosen.id),
-      ),
-      confident: chosen.hasAttributes
-        ? dropChosen(multi.confident)
-        : [...dropChosen(multi.confident), chosenMatch],
-      needsAttributes: chosen.hasAttributes
-        ? [...dropChosen(multi.needsAttributes), chosenMatch]
-        : dropChosen(multi.needsAttributes),
+  /**
+   * Solo falta frito/broaster. Los otros platos del mensaje se agregan al elegir el número,
+   * sin el resumen "entendí varios platos".
+   */
+  private async tryAskChickenStyleKeepingOthers(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    multi: MultiProductResolveResult,
+    text: string,
+  ): Promise<boolean> {
+    if (multi.ambiguous.length !== 1 || multi.unresolved.length) return false;
+    const group = multi.ambiguous[0];
+    const others = [...multi.confident, ...multi.needsAttributes];
+    if (!others.length || group.candidates.length < 2) return false;
+    const styleChoice = group.candidates.every((c) =>
+      /\b(frito|broaster|asado|mixto)\b/i.test(c.name),
+    );
+    if (!styleChoice) return false;
+
+    const segment = group.segment || text;
+    session = {
+      ...session,
+      pendingMultiOrder: undefined,
+      pendingMatch: {
+        query: text,
+        candidates: group.candidates,
+        alsoAdd: others.map((item) => ({
+          productId: item.product.id,
+          segment: item.segment,
+        })),
+      },
     };
-    return this.tryHandleMultiProductOrder(
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    const label = /\bcombo\b/i.test(segment)
+      ? 'combo de pollo'
+      : /\b(medio|1\s*\/\s*2|1\/2)\b/i.test(segment)
+        ? 'medio pollo'
+        : /\b(cuarto|1\s*\/\s*4|1\/4)\b/i.test(segment)
+          ? 'cuarto de pollo'
+          : 'pollo';
+    await this.reply(
       conv,
       waId,
-      session,
-      next,
-      cfg,
-      stored,
-      products,
-      stored,
+      `¿Cómo lo quieres el *${label}*?\n\n` +
+        this.catalogService.formatCategoryList(label, group.candidates),
     );
+    return true;
+  }
+
+  /** Agrega los platos ya resueltos. La primera opción de arepa/sabor/bebida queda sola. */
+  private async addResolvedDishesToCart(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    items: Array<{ product: MenuProduct; segment: string; note?: string }>,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    let next: WhatsappSessionData = {
+      ...session,
+      pendingMatch: undefined,
+      pendingMultiOrder: undefined,
+      pendingAttribute: undefined,
+    };
+    const labels: string[] = [];
+    for (const item of items) {
+      const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(item.segment) || 1);
+      const added = this.tryAddProductToCart(next, item.product, qty, cfg, item.note, undefined, {
+        sourceText: item.segment,
+      });
+      if (added.blocked) {
+        await this.conversationService.saveSession(conv, next);
+        await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+        return true;
+      }
+      if (added.missingAttributes) {
+        next = this.buildPendingAttributeSession(next, item.product, added.missingAttributes, {
+          sourceText: item.segment,
+        });
+        await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+        const prefix = labels.length
+          ? `${this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), labels, { suffix: '' })}\n\n`
+          : '';
+        await this.reply(
+          conv,
+          waId,
+          `${prefix}Para *${item.product.name}* elige:\n\n` +
+            this.catalogService.formatProductOptionsPrompt(item.product, added.missingAttributes),
+        );
+        return true;
+      }
+      next = added.session;
+      labels.push(this.formatAddedProductLabel(item.product.name, qty));
+    }
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(
+      conv,
+      waId,
+      this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), labels),
+    );
+    return true;
   }
 
   /**
@@ -15289,6 +15388,29 @@ export class WhatsappOrchestratorService {
       if (chosenRaw) {
         const full = products.find((p) => p.id === chosenRaw.id) || (chosenRaw as MenuProduct);
         const nextAmb = pending.ambiguous.slice(1);
+        if (!nextAmb.length && !pending.unresolved.length) {
+          const extras = [...pending.confident, ...pending.needsAttributes].filter(
+            (item) => item.productId !== full.id,
+          );
+          const items = [
+            { product: full, segment: group.segment || full.name, note: undefined as string | undefined },
+            ...extras.map((item) => {
+              const product =
+                products.find((p) => p.id === item.productId) ||
+                ({
+                  id: item.productId,
+                  code: item.code,
+                  name: item.name,
+                  price: item.price,
+                  hasAttributes: false,
+                  attributes: [],
+                  availableNow: true,
+                } as MenuProduct);
+              return { product, segment: item.segment, note: item.note };
+            }),
+          ];
+          return this.addResolvedDishesToCart(conv, waId, session, items, cfg);
+        }
         const nextConfident = [
           ...pending.confident,
           { segment: group.segment, ...this.toPendingMultiProduct(full) },
