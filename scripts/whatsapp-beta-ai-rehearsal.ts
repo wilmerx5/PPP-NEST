@@ -75,7 +75,19 @@ for (const scenario of cases.slice(0, maxCases)) {
     history.push('Cliente: '+message, 'Bot: '+result.reply);
     if (result.error) break;
   }
-  results.push({ scenario: scenario.id, expectation: scenario.expectation, turns });
+  // Guardarraíles de aceptación: ejecución correcta de OpenAI no basta.
+  // Si el carrito final contiene productos ajenos, la prueba debe fallar.
+  const finalCart = [...cart.values()];
+  let accepted: boolean | null = null;
+  if (scenario.id === 'sopas-correccion') {
+    accepted = finalCart.length === 2 &&
+      finalCart.some((p) => p.productId === 20 && p.quantity === 2) &&
+      finalCart.some((p) => p.productId === 21 && p.quantity === 2);
+  } else if (scenario.id === 'arroz-pechuga-yuca') {
+    accepted = finalCart.some((p) => p.productId === 60) &&
+      !finalCart.some((p) => p.productId === 1 || p.productId === 4);
+  }
+  results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
 const report = { kind: 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
   caveat: 'Agent suggestions only. Not the full orchestrator, not WhatsApp Meta, no DB/order write.',
@@ -84,7 +96,10 @@ mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ scenarios: results.length, model,
   report: 'tmp/whatsapp-beta-ai-report.json',
-  errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)) },null,2));
+  errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)),
+  accepted: results.filter(x => x.accepted === true).length,
+  rejected: results.filter(x => x.accepted === false).map(x => x.scenario) },null,2));
+if (results.some(x => x.accepted === false)) process.exitCode = 1;
 }
 void runRehearsal().catch((err: unknown) => {
   console.error('Beta rehearsal failed:', err instanceof Error ? err.message : 'unknown');
