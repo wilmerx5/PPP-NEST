@@ -183,6 +183,24 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.actions).toEqual({});
   });
 
+  it('no llama a OpenAI ni agrega SKUs ante un ambiguo "2 de cada una"', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Por favor me das 2 de cada una',
+      sessionSummary: 'carrito vacío',
+      recentMessages: ['Bot: Sopa de Ajiaco, Sopa de Menudencias y Sopa pequeña'],
+      businessRulesBlock: 'solo productos válidos',
+      brandName: 'PPP',
+      products,
+    });
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+    expect(result.reply).toMatch(/cu[aá]les platos/i);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
