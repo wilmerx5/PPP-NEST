@@ -358,17 +358,21 @@ export class WhatsappOrchestratorService {
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
 
-    const logged = await this.conversationService.logMessage({
+    const logged = await this.conversationService.claimInboundMessage({
       conversationId: conv.id,
-      direction: 'in',
       body: msg.text,
       waMessageId: msg.messageId,
-      sentBy: 'bot',
       raw: msg.raw,
       messageType: msg.messageType,
       mediaId: msg.mediaId,
       mimeType: msg.mimeType,
     });
+    // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
+    // No tocar sesión ni crear pedidos a partir del webhook duplicado.
+    if (!logged) {
+      this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
+      return;
+    }
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
