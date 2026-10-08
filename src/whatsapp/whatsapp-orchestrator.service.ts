@@ -358,15 +358,47 @@ export class WhatsappOrchestratorService {
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
 
-    const logged = await this.conversationService.claimInboundMessage({
-      conversationId: conv.id,
-      body: msg.text,
-      waMessageId: msg.messageId,
-      raw: msg.raw,
-      messageType: msg.messageType,
-      mediaId: msg.mediaId,
-      mimeType: msg.mimeType,
-    });
+    // Cada burbuja del lote tiene su propio ID de Meta. Reclamar todos,
+    // conservando únicamente los fragmentos nuevos para este turno.
+    const batch = Array.isArray(msg.raw?.coalescedMessages)
+      ? (msg.raw.coalescedMessages as Array<{
+          messageId: string;
+          text: string;
+          timestamp?: number;
+          raw?: Record<string, unknown>;
+        }>)
+      : null;
+    const freshTexts: string[] = [];
+    let logged: Awaited<ReturnType<WhatsappConversationService['claimInboundMessage']>> = null;
+    if (batch?.length) {
+      for (const part of batch) {
+        const claimed = await this.conversationService.claimInboundMessage({
+          conversationId: conv.id,
+          body: part.text,
+          waMessageId: part.messageId,
+          raw: part.raw,
+          messageType: 'text',
+        });
+        if (!claimed) continue;
+        if (!logged) logged = claimed;
+        // Evitar repetir la misma línea si el cliente envía un texto idéntico
+        // en dos burbujas consecutivas (comportamiento previo del coalescer).
+        if (freshTexts[freshTexts.length - 1] !== part.text.trim()) {
+          freshTexts.push(part.text.trim());
+        }
+      }
+      if (logged) msg = { ...msg, text: freshTexts.join('\n') };
+    } else {
+      logged = await this.conversationService.claimInboundMessage({
+        conversationId: conv.id,
+        body: msg.text,
+        waMessageId: msg.messageId,
+        raw: msg.raw,
+        messageType: msg.messageType,
+        mediaId: msg.mediaId,
+        mimeType: msg.mimeType,
+      });
+    }
     // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
     // No tocar sesión ni crear pedidos a partir del webhook duplicado.
     if (!logged) {
