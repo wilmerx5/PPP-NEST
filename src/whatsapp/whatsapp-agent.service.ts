@@ -9,6 +9,7 @@ import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
+import { parseEachOfQuantity } from './whatsapp-session-intents';
 
 export type AgentV1TurnInput = {
   userMessage: string;
@@ -254,6 +255,17 @@ export class WhatsappAgentService {
         actions: {},
         toolCalls: [],
         error: 'no_openai_key',
+      };
+    }
+
+    // "2 de cada una" no identifica SKU por sí mismo; una lista previa puede
+    // contener presentaciones solapadas (ej. sopa pequeña y sopas de sabor).
+    // Detener tool-calling antes de que el LLM invente productos.
+    if (parseEachOfQuantity(input.userMessage)) {
+      return {
+        reply: 'Claro, ¿me confirmas de cuáles platos exactamente y cuántas unidades de cada uno? Así no te agrego algo que no pediste.',
+        actions: {},
+        toolCalls: [],
       };
     }
 
