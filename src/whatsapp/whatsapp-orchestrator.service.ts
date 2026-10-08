@@ -137,6 +137,8 @@ export class WhatsappOrchestratorService {
   private readonly logger = new Logger(WhatsappOrchestratorService.name);
   /** Serializa webhooks por waId para no pisar humanTakeover (ASESOR → gracias). */
   private readonly inboundByWaId = new Map<string, Promise<void>>();
+  /** IDs reclamados por el turno activo, para auditar su resultado sin reejecutarlo. */
+  private readonly claimedInboundIdsByWaId = new Map<string, string[]>();
   /**
    * Junta textos rápidos del mismo waId (calle + apto) antes de responder,
    * para una sola respuesta en lugar de dos turnos a medias.
@@ -342,14 +344,27 @@ export class WhatsappOrchestratorService {
     msg: IncomingWhatsappMessage,
   ): Promise<void> {
     this.beginOutboundHold(key);
+    let succeeded = false;
     try {
       await this.handleIncomingUnlocked(msg);
+      succeeded = true;
     } finally {
-      const conv = await this.conversationService.findOrCreateConversation(
-        msg.waId,
-        msg.phoneE164,
-      );
-      await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
+      const claimedIds = this.claimedInboundIdsByWaId.get(key) || [];
+      this.claimedInboundIdsByWaId.delete(key);
+      try {
+        if (claimedIds.length) {
+          await this.conversationService.setInboundProcessingOutcome(
+            claimedIds,
+            succeeded ? 'completed' : 'failed',
+          );
+        }
+      } finally {
+        const conv = await this.conversationService.findOrCreateConversation(
+          msg.waId,
+          msg.phoneE164,
+        );
+        await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
+      }
     }
   }
 
@@ -405,6 +420,12 @@ export class WhatsappOrchestratorService {
       this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
       return;
     }
+    const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+    const claimedIds = batch?.length
+      ? batch.map((p) => p.messageId).filter(Boolean)
+      : [msg.messageId].filter(Boolean);
+    // Solo marcar como completados los IDs recién reclamados (no reintentos).
+    this.claimedInboundIdsByWaId.set(key, batch?.length ? claimedIds : claimedIds);
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
