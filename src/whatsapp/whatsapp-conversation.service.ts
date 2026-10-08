@@ -249,6 +249,9 @@ export class WhatsappConversationService {
         direction: 'in',
         body: params.body,
         waMessageId,
+        processingStatus: 'processing',
+        processedAt: null,
+        processingError: null,
         sentBy: 'bot',
         rawPayload: (params.raw ?? null) as object | null,
         messageType: params.messageType || 'text',
@@ -280,6 +283,27 @@ export class WhatsappConversationService {
       }
       throw err;
     }
+  }
+
+  /** Audita la conclusión del turno sin reabrirlo ni tocar el carrito. */
+  async setInboundProcessingOutcome(
+    messageIds: string[],
+    status: 'completed' | 'failed',
+  ): Promise<void> {
+    const ids = [...new Set(messageIds.map((id) => (id || '').trim()).filter(Boolean))];
+    if (!ids.length) return;
+    await this.msgRepo
+      .createQueryBuilder()
+      .update()
+      .set({
+        processingStatus: status,
+        processedAt: status === 'completed' ? new Date() : null,
+        processingError: status === 'failed' ? 'turn_failed_requires_review' : null,
+      })
+      .where('wa_message_id IN (:...ids)', { ids })
+      .andWhere('direction = :direction', { direction: 'in' })
+      .andWhere('processing_status = :previous', { previous: 'processing' })
+      .execute();
   }
 
   async logMessage(params: {
