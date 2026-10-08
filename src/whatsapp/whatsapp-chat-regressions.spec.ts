@@ -1223,7 +1223,10 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect(multi.unresolved).toEqual([]);
         expect(multi.confident.some((c) => /arroz chino/i.test(c.product.name))).toBe(true);
       } else {
-        expect(catalog.findProductEmbeddedInMessage(text, pppMenu)?.name).toMatch(/arroz chino/i);
+        const family = catalog.findProductVariantFamily(text, pppMenu);
+        expect(family?.baseLabel).toMatch(/arroz chino/i);
+        expect(family?.variants.length).toBeGreaterThan(1);
+        expect(catalog.pickVariantFromFamilyText(text, family!)).toBeNull();
       }
     });
 
@@ -1702,10 +1705,9 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.extractRequestedProteinStyle(raw)).toBe('broaster');
       expect(catalog.extractBaseDishQueryForStyleSwap(raw)).toMatch(/arroz chino/i);
       expect(catalog.resolveSizedChickenProduct(raw, pppMenu)).toBeNull();
+      // Es una consulta sobre una familia de platos; no hay autorización para elegir un SKU.
       const hit = catalog.findProductEmbeddedInMessage(raw, pppMenu);
-      expect(hit?.name).toMatch(/arroz chino/i);
-      expect(hit?.name).not.toMatch(/^1(\/|\\)?\s*pollo\s+broaster/i);
-      expect(hit?.name).not.toMatch(/^combo de pollo broaster/i);
+      expect(hit).toBeNull();
       const family = catalog.findProductVariantFamily(
         catalog.extractBaseDishQueryForStyleSwap(raw),
         pppMenu,
