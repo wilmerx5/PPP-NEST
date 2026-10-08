@@ -5,7 +5,7 @@
  *
  * OPENAI_API_KEY=<secret> WHATSAPP_BETA_LIVE=1 yarn beta:whatsapp:ai
  */
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
@@ -79,7 +79,6 @@ for (const scenario of cases.slice(0, maxCases)) {
 const report = { kind: 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
   caveat: 'Agent suggestions only. Not the full orchestrator, not WhatsApp Meta, no DB/order write.',
   scenarios: results };
-const { writeFileSync, mkdirSync } = await import('fs');
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ scenarios: results.length, model,
