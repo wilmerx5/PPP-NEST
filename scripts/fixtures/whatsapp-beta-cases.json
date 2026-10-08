@@ -1,0 +1,53 @@
+[
+  {
+    "id": "sopas-correccion",
+    "context": [
+      "Bot: Tenemos sopa de ajiaco, sopa de menudencias y sopa pequeña (elige el sabor)."
+    ],
+    "messages": [
+      "Por favor me das 2 de cada una",
+      "No, son 4 sopas, 2 de ajiaco y 2 de menudencias"
+    ],
+    "expectation": "Corregir a dos ajiacos y dos menudencias, no añadir sopa pequeña ni productos ajenos."
+  },
+  {
+    "id": "arroz-pechuga-yuca",
+    "messages": [
+      "Un arroz con pollo sin ensalada, cambia por yuca frita. Y una pechuga, la ensalada también por yuca frita.",
+      "Es para Casa 11 terrazas de Castilla 3"
+    ],
+    "expectation": "Conservar ambos platos y las notas por separado. Preguntar presentación de pechuga cuando sea ambiguo."
+  },
+  {
+    "id": "arroz-chino-familia",
+    "messages": [
+      "Para pedirte por fa un arroz chino",
+      "Veci, ¿el arroz chino con pollo podría ser con pollo broaster?"
+    ],
+    "expectation": "Aclarar presentación del arroz chino; pregunta de sustitución no significa agregar pollo broaster suelto."
+  },
+  {
+    "id": "ejecutivo-estilo",
+    "messages": [
+      "Quiero un menú ejecutivo con pollo frito"
+    ],
+    "expectation": "Identificar específicamente ejecutivo con pollo frito y pedir atributos faltantes sin agregar pollo frito suelto."
+  },
+  {
+    "id": "nota-aji",
+    "context": [
+      "Bot: ¿Qué más te agrego?"
+    ],
+    "messages": [
+      "Y envías mucho ají"
+    ],
+    "expectation": "Tratar como nota del pedido, nunca como nombre del cliente."
+  },
+  {
+    "id": "sopas-por-codigos",
+    "messages": [
+      "2 #20 y 2 #21"
+    ],
+    "expectation": "Agregar 2 menudencias y 2 ajiacos, sin interpretar códigos como número de pedido."
+  }
+]
