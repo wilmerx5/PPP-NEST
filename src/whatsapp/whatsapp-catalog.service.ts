@@ -8344,6 +8344,22 @@ export class WhatsappCatalogService {
         continue;
       }
 
+      // "una pechuga" no especifica cuál de las presentaciones del menú.
+      // Registrar las variantes como opciones, no añadir una arbitrariamente.
+      if (/^(?:un(?:a)?\s+|la\s+)?pechugas?$/.test(normalizeText(segment))) {
+        const pechugaVariants = this.dedupeProductsById(
+          products.filter(
+            (p) =>
+              p.availableNow !== false &&
+              /^pechuga(?:\s|$)/.test(normalizeText(p.name)),
+          ),
+        );
+        if (pechugaVariants.length >= 2) {
+          ambiguous.push({ segment, candidates: pechugaVariants.slice(0, 6) });
+          continue;
+        }
+      }
+
       const embedded = this.findProductEmbeddedInMessage(segment, products);
       if (
         !embedded &&
