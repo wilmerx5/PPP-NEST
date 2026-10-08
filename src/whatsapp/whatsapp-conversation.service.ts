@@ -181,6 +181,37 @@ export class WhatsappConversationService {
   }
 
   /**
+   * El índice debe ser UNIQUE sobre wa_message_id solamente: un índice
+   * compuesto UNIQUE no garantiza unicidad de un messageId en toda la tabla.
+   * Verificación al primer claim; si falta, fallar cerrado y reintentar en
+   * el próximo mensaje (el migrador podría arreglarlo posteriormente).
+   */
+  private inboundUniqueClaimIndexVerified = false;
+
+  private async assertInboundUniqueClaimIndex(): Promise<void> {
+    if (this.inboundUniqueClaimIndexVerified) return;
+
+    const rows: Array<{ total: number | string }> = await this.msgRepo.query(`
+      SELECT COUNT(*) AS total
+      FROM (
+        SELECT INDEX_NAME
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'ppp_whatsapp_messages'
+          AND NON_UNIQUE = 0
+        GROUP BY INDEX_NAME
+        HAVING COUNT(*) = 1 AND MAX(COLUMN_NAME) = 'wa_message_id'
+      ) AS unique_message_indexes
+    `);
+    if (Number(rows?.[0]?.total) < 1) {
+      throw new Error(
+        'WhatsApp inbound bloqueado: falta un índice UNIQUE sobre ppp_whatsapp_messages.wa_message_id. Corrige la migración antes de procesar mensajes.',
+      );
+    }
+    this.inboundUniqueClaimIndexVerified = true;
+  }
+
+  /**
    * Reclama un inbound por messageId mediante INSERT atómico.
    * El índice UNIQUE wa_message_id decide el ganador entre instancias.
    * null significa que otro worker ya reclamó ese mismo mensaje: no procesarlo.
@@ -209,6 +240,8 @@ export class WhatsappConversationService {
     if (!Number.isFinite(cid) || cid <= 0) {
       throw new Error(`claimInboundMessage: conversationId inválido (${params.conversationId})`);
     }
+    // No aceptar mensajes nuevos si la base no puede impedir el doble claim.
+    await this.assertInboundUniqueClaimIndex();
 
     try {
       const result = await this.msgRepo.insert({
