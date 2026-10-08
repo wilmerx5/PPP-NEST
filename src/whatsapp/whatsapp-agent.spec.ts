@@ -65,6 +65,15 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     swapIntent: (_text: string) => null,
     hostedMenuDrink: () => null,
     similarNamedProducts: () => [],
+    resolveStandaloneDrinkOrder: () => null,
+    shouldOfferMenuDrinks: () => false,
+    menuDrinkProducts: () => [],
+    missingStyleAlternatives: () => [],
+    comesWithOffer: () => null,
+    extractCookingStyleBrowseIntent: () => null,
+    findProductsByCookingStyle: () => [],
+    listAvailableCookingStyles: () => [],
+
     extractCodeFromMessage: (t: string) => {
       const m = t.match(/\b(\d{1,4})\b/);
       return m ? parseInt(m[1], 10) : null;
