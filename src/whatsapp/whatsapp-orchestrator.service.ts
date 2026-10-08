@@ -10274,6 +10274,20 @@ export class WhatsappOrchestratorService {
     }
     if (dishes.length < 2) return false;
 
+    // "2 de cada una" puede referirse a variantes listadas junto a una
+    // categoría genérica ("sopa pequeña", que exige elegir sabor).
+    // No modificar el carrito hasta que el cliente precise qué presentaciones.
+    if (dishes.some((dish) => dish.hasAttributes && dish.attributes?.length)) {
+      await this.reply(
+        conv,
+        waId,
+        `Para no equivocarme, ¿cuáles quieres exactamente? Te mencioné ${dishes
+          .map((dish) => dish.name)
+          .join(', ')}. Dime los nombres y las cantidades antes de agregarlas.`,
+      );
+      return true;
+    }
+
     let next = session;
     const labels: string[] = [];
     for (const dish of dishes) {
