@@ -7,6 +7,8 @@ on:
       - fix/whatsapp-regression-baseline
     paths:
       - .github/workflows/whatsapp-beta-ai.yml
+      - scripts/whatsapp-beta-ai-rehearsal.ts
+      - src/whatsapp/whatsapp-agent.service.ts
   workflow_dispatch:
 
 permissions:
