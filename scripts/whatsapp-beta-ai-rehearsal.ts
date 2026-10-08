@@ -41,6 +41,7 @@ const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService(settings as never, catalog);
 const maxCases = Math.max(1, Math.min(cases.length, Number(process.env.WHATSAPP_BETA_CASE_LIMIT || cases.length)));
 const results: Array<Record<string, unknown>> = [];
+async function runRehearsal(): Promise<void> {
 for (const scenario of cases.slice(0, maxCases)) {
   const history = [...(scenario.context || [])];
   const cart = new Map<number, { productId: number; name: string; quantity: number }>();
@@ -84,3 +85,8 @@ writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stri
 console.log(JSON.stringify({ scenarios: results.length, model,
   report: 'tmp/whatsapp-beta-ai-report.json',
   errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)) },null,2));
+}
+void runRehearsal().catch((err: unknown) => {
+  console.error('Beta rehearsal failed:', err instanceof Error ? err.message : 'unknown');
+  process.exitCode = 1;
+});
