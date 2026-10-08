@@ -5,3 +5,6 @@ DB.txt
 .env.*
 !.env.example
 node_modules/
+
+# Local-only AI beta simulation transcripts
+tmp/
