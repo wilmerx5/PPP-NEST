@@ -41,6 +41,19 @@ export class WhatsappMessage {
   @Column({ name: 'raw_payload', type: 'json', nullable: true })
   rawPayload: Record<string, unknown> | null;
 
+  /**
+   * "completed" como default protege el historial previo a esta migración:
+   * no volver a ejecutar accidentalmente mensajes antiguos.
+   */
+  @Column({ name: 'processing_status', type: 'varchar', length: 16, default: 'completed' })
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+
+  @Column({ name: 'processed_at', type: 'timestamp', nullable: true })
+  processedAt: Date | null;
+
+  @Column({ name: 'processing_error', type: 'varchar', length: 80, nullable: true })
+  processingError: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
