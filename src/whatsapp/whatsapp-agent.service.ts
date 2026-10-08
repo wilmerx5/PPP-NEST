@@ -9,7 +9,7 @@ import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
-import { parseEachOfQuantity } from './whatsapp-session-intents';
+import { parseEachOfQuantity, parseQtyDishCorrection } from './whatsapp-session-intents';
 
 export type AgentV1TurnInput = {
   userMessage: string;
@@ -256,6 +256,37 @@ export class WhatsappAgentService {
         toolCalls: [],
         error: 'no_openai_key',
       };
+    }
+
+    // Corrección de sopas explícita: resolver por variante única y reemplazar,
+    // no sumar al carrito anterior. Si faltan SKUs/variantes, decidir por LLM
+    // con el flujo normal y nunca inventar IDs.
+    const correctedDishes = parseQtyDishCorrection(input.userMessage);
+    if (correctedDishes?.length && /\\bsopas?\\b/i.test(input.userMessage)) {
+      const normalize = (value: string) =>
+        value.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim();
+      const soupProducts = input.products.filter((p) =>
+        p.availableNow !== false &&
+        (/sopas?/i.test(p.categoryName || '') || /\\bsopa\\b/i.test(p.name)) &&
+        !p.hasAttributes,
+      );
+      const selected = correctedDishes.map(({ qty, dish }) => {
+        const candidates = soupProducts.filter((p) =>
+          normalize(p.name).includes(normalize(dish)) &&
+          normalize(dish).length >= 4,
+        );
+        return candidates.length === 1 ? { productId: candidates[0].id, quantity: qty } : null;
+      });
+      if (selected.every((p) => p !== null)) {
+        return {
+          reply: 'Entendido, corrijo el pedido con esas cantidades. ¿Algo más?',
+          actions: {
+            clearCart: true,
+            addItems: selected as Array<{ productId: number; quantity: number }>,
+          },
+          toolCalls: [],
+        };
+      }
     }
 
     // "2 de cada una" no identifica SKU por sí mismo; una lista previa puede
