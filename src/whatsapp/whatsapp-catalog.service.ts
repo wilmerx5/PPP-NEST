@@ -6215,6 +6215,16 @@ export class WhatsappCatalogService {
     if (q.length < 4) return null;
 
     const available = products.filter((p) => p.availableNow !== false);
+    // Un menú ejecutivo es una familia propia: nunca mezclarlo con pollo suelto.
+    // Mantener variantes para elegir por preparación explícita o preguntar si falta.
+    if (/\b(?:menu\s+)?ejecutivo\b/.test(q)) {
+      const executiveVariants = available.filter((p) =>
+        /\bejecutivo\b/.test(normalizeText(p.name)),
+      );
+      if (executiveVariants.length >= 2) {
+        return { baseKey: 'ejecutivo', baseLabel: 'Ejecutivo', variants: executiveVariants };
+      }
+    }
     const scored = this.searchByNameScored(q, available, 12).filter((x) => x.score >= 38);
     // Semilla extra: SKUs cuya base es la query (arroz chino → caja / medio pollo / costillas…)
     const byBaseName = available.filter((p) => {
