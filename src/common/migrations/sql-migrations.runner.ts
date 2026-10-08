@@ -681,6 +681,9 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     const cols: Array<{ name: string; ddl: string }> = [
       { name: 'media_id', ddl: 'VARCHAR(128) NULL' },
       { name: 'mime_type', ddl: 'VARCHAR(120) NULL' },
+      { name: 'processing_status', ddl: "VARCHAR(16) NOT NULL DEFAULT 'completed'" },
+      { name: 'processed_at', ddl: 'TIMESTAMP NULL' },
+      { name: 'processing_error', ddl: 'VARCHAR(80) NULL' },
     ];
     for (const col of cols) {
       const exists: { c: number }[] = await this.dataSource.query(
