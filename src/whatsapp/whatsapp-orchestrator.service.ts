@@ -384,6 +384,7 @@ export class WhatsappOrchestratorService {
         }>)
       : null;
     const freshTexts: string[] = [];
+    const newlyClaimedIds: string[] = [];
     let logged: Awaited<ReturnType<WhatsappConversationService['claimInboundMessage']>> = null;
     if (batch?.length) {
       for (const part of batch) {
@@ -395,6 +396,7 @@ export class WhatsappOrchestratorService {
           messageType: 'text',
         });
         if (!claimed) continue;
+        if (part.messageId) newlyClaimedIds.push(part.messageId);
         if (!logged) logged = claimed;
         // Evitar repetir la misma línea si el cliente envía un texto idéntico
         // en dos burbujas consecutivas (comportamiento previo del coalescer).
@@ -413,6 +415,7 @@ export class WhatsappOrchestratorService {
         mediaId: msg.mediaId,
         mimeType: msg.mimeType,
       });
+      if (logged && msg.messageId) newlyClaimedIds.push(msg.messageId);
     }
     // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
     // No tocar sesión ni crear pedidos a partir del webhook duplicado.
@@ -421,11 +424,8 @@ export class WhatsappOrchestratorService {
       return;
     }
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
-    const claimedIds = batch?.length
-      ? batch.map((p) => p.messageId).filter(Boolean)
-      : [msg.messageId].filter(Boolean);
-    // Solo marcar como completados los IDs recién reclamados (no reintentos).
-    this.claimedInboundIdsByWaId.set(key, batch?.length ? claimedIds : claimedIds);
+    // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
+    this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
