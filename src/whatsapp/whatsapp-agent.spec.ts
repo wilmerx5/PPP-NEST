@@ -62,6 +62,7 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
   ];
 
   const catalogStub = {
+    swapIntent: () => null,
     extractCodeFromMessage: (t: string) => {
       const m = t.match(/\b(\d{1,4})\b/);
       return m ? parseInt(m[1], 10) : null;
