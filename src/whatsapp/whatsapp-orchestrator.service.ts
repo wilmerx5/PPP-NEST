@@ -347,23 +347,27 @@ export class WhatsappOrchestratorService {
     let succeeded = false;
     try {
       await this.handleIncomingUnlocked(msg);
+      const conv = await this.conversationService.findOrCreateConversation(
+        msg.waId,
+        msg.phoneE164,
+      );
+      // Un turno no está completado hasta finalizar también sus respuestas.
+      // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
+      // ciegamente las mutaciones del carrito o la creación de la orden.
+      await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
       succeeded = true;
     } finally {
+      if (!succeeded) {
+        // No enviar respuestas parciales de un turno que falló.
+        this.outboundHoldByWaId.delete(key);
+      }
       const claimedIds = this.claimedInboundIdsByWaId.get(key) || [];
       this.claimedInboundIdsByWaId.delete(key);
-      try {
-        if (claimedIds.length) {
-          await this.conversationService.setInboundProcessingOutcome(
-            claimedIds,
-            succeeded ? 'completed' : 'failed',
-          );
-        }
-      } finally {
-        const conv = await this.conversationService.findOrCreateConversation(
-          msg.waId,
-          msg.phoneE164,
+      if (claimedIds.length) {
+        await this.conversationService.setInboundProcessingOutcome(
+          claimedIds,
+          succeeded ? 'completed' : 'failed',
         );
-        await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
       }
     }
   }
