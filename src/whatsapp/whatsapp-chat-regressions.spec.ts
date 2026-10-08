@@ -1616,6 +1616,16 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(split?.address).not.toMatch(/gentil|costo/i);
 
       const multi = catalog.resolveMultiProductOrder(split?.productText || text, pppMenu);
+      console.error('__PPP_DIAG__', JSON.stringify({
+        text: split?.productText || text,
+        segments: catalog.splitMultiProductSegments(split?.productText || text),
+        swap: catalog.swapIntent(split?.productText || text),
+        embedded: catalog.findAllProductsEmbeddedInMessage(split?.productText || text, pppMenu).map((p) => p.name),
+        confident: multi?.confident.map((m) => m.product.name),
+        ambiguous: multi?.ambiguous.map((m) => ({ segment: m.segment, candidates: m.candidates.map((p) => p.name) })),
+        unresolved: multi?.unresolved,
+        needsAttributes: multi?.needsAttributes.map((m) => m.product.name)
+      }));
       expect(multi).toBeTruthy();
       const names = [
         ...multi!.confident.map((c) => c.product.name),
