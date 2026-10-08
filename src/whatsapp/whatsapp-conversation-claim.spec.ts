@@ -1,0 +1,78 @@
+import { WhatsappConversationService } from './whatsapp-conversation.service';
+
+describe('WhatsApp inbound claim (multi-instance idempotency)', () => {
+  const makeService = () => {
+    const msgRepo = {
+      insert: jest.fn(),
+      findOne: jest.fn(),
+    };
+    const service = new WhatsappConversationService(
+      {} as never,
+      msgRepo as never,
+      {} as never,
+      {} as never,
+    );
+    return { service, msgRepo };
+  };
+
+  it('reclama un mensaje nuevo mediante insert atómico y devuelve el registro creado', async () => {
+    const { service, msgRepo } = makeService();
+    const created = { id: '12', waMessageId: 'wamid.abc', direction: 'in' };
+    msgRepo.insert.mockResolvedValue({ identifiers: [{ id: '12' }] });
+    msgRepo.findOne.mockResolvedValue(created);
+
+    const result = await service.claimInboundMessage({
+      conversationId: 3,
+      waMessageId: 'wamid.abc',
+      body: 'dos ajiacos',
+    });
+
+    expect(result).toBe(created);
+    expect(msgRepo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 3,
+        waMessageId: 'wamid.abc',
+        direction: 'in',
+        body: 'dos ajiacos',
+      }),
+    );
+  });
+
+  it('ignora la colisión de índice único: solo un worker procesa el webhook', async () => {
+    const { service, msgRepo } = makeService();
+    msgRepo.insert.mockRejectedValue(
+      Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY', errno: 1062 }),
+    );
+
+    await expect(
+      service.claimInboundMessage({
+        conversationId: 3,
+        waMessageId: 'wamid.retried',
+        body: 'confirmar',
+      }),
+    ).resolves.toBeNull();
+    expect(msgRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('reconoce la colisión dentro de driverError de TypeORM', async () => {
+    const { service, msgRepo } = makeService();
+    msgRepo.insert.mockRejectedValue(
+      Object.assign(new Error('duplicate'), {
+        driverError: { code: 'ER_DUP_ENTRY' },
+      }),
+    );
+    await expect(
+      service.claimInboundMessage({ conversationId: 3, waMessageId: 'x', body: 'hola' }),
+    ).resolves.toBeNull();
+  });
+
+  it('no convierte errores reales de base de datos en duplicados silenciosos', async () => {
+    const { service, msgRepo } = makeService();
+    msgRepo.insert.mockRejectedValue(
+      Object.assign(new Error('connection lost'), { code: 'PROTOCOL_CONNECTION_LOST' }),
+    );
+    await expect(
+      service.claimInboundMessage({ conversationId: 3, waMessageId: 'x', body: 'hola' }),
+    ).rejects.toThrow('connection lost');
+  });
+});
