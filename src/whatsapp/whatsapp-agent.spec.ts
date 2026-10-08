@@ -201,6 +201,34 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.reply).toMatch(/cu[aá]les platos/i);
   });
 
+  it('corrige exactamente dos tipos de sopa sin inventar productos ni sumar al error', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const soups: WhatsappCatalogProduct[] = [
+      { id: 20, code: 20, name: 'Sopa De Menudencias', categoryName: 'Sopas', price: 12000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 21, code: 21, name: 'Sopa De Ajiaco', categoryName: 'Sopas', price: 15000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 40, code: 40, name: 'Sopa pequeña', categoryName: 'Sopas', price: 8500, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias'] }] },
+      { id: 1, code: 1, name: 'Pollo Frito', categoryName: 'Pollo', price: 44000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'No, son 4 sopas, 2 de ajiaco y 2 de menudencias',
+      sessionSummary: 'carrito contiene pollo por error',
+      recentMessages: [],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products: soups,
+      cart: [{ productId: 1, name: 'Pollo Frito' }],
+    });
+    expect(result.actions.clearCart).toBe(true);
+    expect(result.actions.addItems).toEqual([
+      { productId: 21, quantity: 2 },
+      { productId: 20, quantity: 2 },
+    ]);
+    expect(result.toolCalls).toEqual([]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
