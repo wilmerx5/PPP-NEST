@@ -5,6 +5,7 @@ describe('WhatsApp inbound claim (multi-instance idempotency)', () => {
     const msgRepo = {
       insert: jest.fn(),
       findOne: jest.fn(),
+      query: jest.fn().mockResolvedValue([{ total: 1 }]),
     };
     const service = new WhatsappConversationService(
       {} as never,
@@ -14,6 +15,24 @@ describe('WhatsApp inbound claim (multi-instance idempotency)', () => {
     );
     return { service, msgRepo };
   };
+
+  it('rechaza el procesamiento si falta UNIQUE sobre wa_message_id', async () => {
+    const { service, msgRepo } = makeService();
+    msgRepo.query.mockResolvedValue([{ total: 0 }]);
+    await expect(
+      service.claimInboundMessage({ conversationId: 3, waMessageId: 'wamid.fail', body: 'hola' }),
+    ).rejects.toThrow(/falta un índice UNIQUE/);
+    expect(msgRepo.insert).not.toHaveBeenCalled();
+  });
+
+  it('una consulta SQL fallida no se interpreta como duplicado', async () => {
+    const { service, msgRepo } = makeService();
+    msgRepo.query.mockRejectedValue(new Error('database unavailable'));
+    await expect(
+      service.claimInboundMessage({ conversationId: 3, waMessageId: 'wamid.db', body: 'hola' }),
+    ).rejects.toThrow('database unavailable');
+    expect(msgRepo.insert).not.toHaveBeenCalled();
+  });
 
   it('reclama un mensaje nuevo mediante insert atómico y devuelve el registro creado', async () => {
     const { service, msgRepo } = makeService();
