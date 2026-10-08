@@ -2,9 +2,10 @@ name: Nest CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [Main, main, master, develop]
   pull_request:
-    branches: [main, master, develop]
+    branches: [Main, main, master, develop]
+  workflow_dispatch:
 
 jobs:
   build-test:
