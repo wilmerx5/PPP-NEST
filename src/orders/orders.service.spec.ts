@@ -14,6 +14,8 @@ import { ProductsService } from 'src/products/products.service';
 import { MailService } from 'src/common/mail/mail.service';
 import { CircuitBreakerService } from 'src/common/circuit-breaker/circuit-breaker.service';
 import { BusinessService } from 'src/business/business.service';
+import { WebDeliveryService } from '../delivery/web-delivery.service';
+import { FactusService } from '../factus/factus.service';
 
 const repoMock = () => ({
   find: jest.fn(),
@@ -43,6 +45,8 @@ describe('OrdersService', () => {
         { provide: MailService, useValue: { sendMail: jest.fn() } },
         { provide: CircuitBreakerService, useValue: { execute: jest.fn(), getState: jest.fn() } },
         { provide: BusinessService, useValue: { assertAcceptingOnlineOrders: jest.fn() } },
+        { provide: WebDeliveryService, useValue: { quote: jest.fn(), getConfig: jest.fn() } },
+        { provide: FactusService, useValue: {} },
       ],
     }).compile();
 
