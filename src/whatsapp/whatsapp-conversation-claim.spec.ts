@@ -6,6 +6,7 @@ describe('WhatsApp inbound claim (multi-instance idempotency)', () => {
       insert: jest.fn(),
       findOne: jest.fn(),
       query: jest.fn().mockResolvedValue([{ total: 1 }]),
+      createQueryBuilder: jest.fn(),
     };
     const service = new WhatsappConversationService(
       {} as never,
@@ -15,6 +16,42 @@ describe('WhatsApp inbound claim (multi-instance idempotency)', () => {
     );
     return { service, msgRepo };
   };
+
+  it('marca como completed solo mensajes entrantes en processing', async () => {
+    const { service, msgRepo } = makeService();
+    const execute = jest.fn().mockResolvedValue({ affected: 2 });
+    const andWhere = jest.fn().mockReturnThis();
+    const where = jest.fn().mockReturnThis();
+    const set = jest.fn().mockReturnThis();
+    const update = jest.fn().mockReturnThis();
+    msgRepo.createQueryBuilder = jest.fn().mockReturnValue({ update, set, where, andWhere, execute });
+    await service.setInboundProcessingOutcome(['a', 'b', 'a'], 'completed');
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({
+      processingStatus: 'completed',
+      processingError: null,
+      processedAt: expect.any(Date),
+    }));
+    expect(where).toHaveBeenCalledWith('wa_message_id IN (:...ids)', { ids: ['a', 'b'] });
+    expect(andWhere).toHaveBeenCalledWith('processing_status = :previous', { previous: 'processing' });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('marca los turnos fallidos para revisión, sin reintentarlos automáticamente', async () => {
+    const { service, msgRepo } = makeService();
+    const execute = jest.fn().mockResolvedValue({ affected: 1 });
+    const chain: any = { execute };
+    chain.update = jest.fn().mockReturnValue(chain);
+    chain.set = jest.fn().mockReturnValue(chain);
+    chain.where = jest.fn().mockReturnValue(chain);
+    chain.andWhere = jest.fn().mockReturnValue(chain);
+    msgRepo.createQueryBuilder = jest.fn().mockReturnValue(chain);
+    await service.setInboundProcessingOutcome(['wamid.failed'], 'failed');
+    expect(chain.set).toHaveBeenCalledWith(expect.objectContaining({
+      processingStatus: 'failed',
+      processedAt: null,
+      processingError: 'turn_failed_requires_review',
+    }));
+  });
 
   it('rechaza el procesamiento si falta UNIQUE sobre wa_message_id', async () => {
     const { service, msgRepo } = makeService();
