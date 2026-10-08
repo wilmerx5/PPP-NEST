@@ -30,6 +30,16 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Verify test secret is available (without exposing it)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY unavailable in Actions secrets"
+            exit 1
+          fi
+
       - name: Run AI simulations
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
