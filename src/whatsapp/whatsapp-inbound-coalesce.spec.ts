@@ -87,6 +87,17 @@ describe('whatsapp-inbound-coalesce', () => {
     ]);
   });
 
+  it('conserva la relación entre cada ID y su texto para deduplicación parcial', () => {
+    const merged = mergeCoalescedInboundMessages([
+      textMsg({ messageId: 'wamid.a', text: 'un ajiaco', timestamp: 1 }),
+      textMsg({ messageId: 'wamid.b', text: 'y una pechuga', timestamp: 2 }),
+    ]);
+    expect((merged.raw as any).coalescedMessages).toEqual([
+      expect.objectContaining({ messageId: 'wamid.a', text: 'un ajiaco', timestamp: 1 }),
+      expect.objectContaining({ messageId: 'wamid.b', text: 'y una pechuga', timestamp: 2 }),
+    ]);
+  });
+
   it('solo coalesces textos sin media', () => {
     expect(isCoalesceableInboundMessage(textMsg({ text: 'hola' }))).toBe(true);
     expect(
