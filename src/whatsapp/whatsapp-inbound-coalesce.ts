@@ -82,6 +82,14 @@ export function mergeCoalescedInboundMessages(
       ...first.raw,
       coalescedFrom: uniqueMessages.map((m) => m.messageId).filter(Boolean),
       coalescedCount: uniqueMessages.length,
+      // ID + texto de cada burbuja: permite reclamar individualmente y
+      // reconstruir solo los fragmentos nuevos tras un reenvío parcial de Meta.
+      coalescedMessages: uniqueMessages.map((m) => ({
+        messageId: m.messageId,
+        text: (m.text || '').trim(),
+        timestamp: m.timestamp,
+        raw: m.raw,
+      })),
     },
   };
 }
