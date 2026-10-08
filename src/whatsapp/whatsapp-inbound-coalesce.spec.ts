@@ -66,7 +66,7 @@ describe('whatsapp-inbound-coalesce', () => {
       textMsg({ messageId: 'wamid.b', text: 'la dirección es calle 10', timestamp: 2 }),
       textMsg({ messageId: 'wamid.a', text: 'dos ajiacos', timestamp: 3 }),
     ]);
-    expect(merged.text).toBe('dos ajiacos\\nla dirección es calle 10');
+    expect(merged.text).toBe('dos ajiacos\nla dirección es calle 10');
     expect(merged.timestamp).toBe(2);
     expect((merged.raw as { coalescedCount?: number }).coalescedCount).toBe(2);
     expect((merged.raw as { coalescedFrom?: string[] }).coalescedFrom).toEqual([
