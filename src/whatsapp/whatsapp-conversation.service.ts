@@ -180,6 +180,75 @@ export class WhatsappConversationService {
     return this.msgRepo.findOne({ where: { waMessageId: id } });
   }
 
+  /**
+   * Reclama un inbound por messageId mediante INSERT atómico.
+   * El índice UNIQUE wa_message_id decide el ganador entre instancias.
+   * null significa que otro worker ya reclamó ese mismo mensaje: no procesarlo.
+   *
+   * Los mensajes sin ID no pueden deduplicarse aquí y siguen el log normal.
+   */
+  async claimInboundMessage(params: {
+    conversationId: number;
+    body: string;
+    waMessageId?: string;
+    raw?: Record<string, unknown>;
+    messageType?: string;
+    mediaId?: string;
+    mimeType?: string;
+  }): Promise<WhatsappMessage | null> {
+    const waMessageId = (params.waMessageId || '').trim();
+    if (!waMessageId) {
+      return this.logMessage({
+        ...params,
+        direction: 'in',
+        sentBy: 'bot',
+      });
+    }
+
+    const cid = Number(params.conversationId);
+    if (!Number.isFinite(cid) || cid <= 0) {
+      throw new Error(`claimInboundMessage: conversationId inválido (${params.conversationId})`);
+    }
+
+    try {
+      const result = await this.msgRepo.insert({
+        conversationId: cid,
+        direction: 'in',
+        body: params.body,
+        waMessageId,
+        sentBy: 'bot',
+        rawPayload: (params.raw ?? null) as object | null,
+        messageType: params.messageType || 'text',
+        mediaId: params.mediaId ?? null,
+        mimeType: params.mimeType ?? null,
+      } as Parameters<typeof this.msgRepo.insert>[0]);
+
+      const insertedId = result.identifiers?.[0]?.id;
+      const saved = insertedId != null
+        ? await this.msgRepo.findOne({ where: { id: String(insertedId) } })
+        : await this.findByWaMessageId(waMessageId);
+      if (!saved) {
+        throw new Error(`claimInboundMessage: inbound insertado pero no recuperable (${waMessageId})`);
+      }
+      return saved;
+    } catch (err: unknown) {
+      const db = err as {
+        code?: string;
+        errno?: number;
+        driverError?: { code?: string; errno?: number };
+      };
+      if (
+        db?.code === 'ER_DUP_ENTRY' ||
+        db?.errno === 1062 ||
+        db?.driverError?.code === 'ER_DUP_ENTRY' ||
+        db?.driverError?.errno === 1062
+      ) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
   async logMessage(params: {
     conversationId: number;
     direction: 'in' | 'out';
