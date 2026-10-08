@@ -1,0 +1,204 @@
+[
+  {
+    "id": 1,
+    "code": 1,
+    "name": "1 Pollo Frito",
+    "price": 44000,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Arepas",
+        "options": [
+          "Blancas",
+          "Fritas",
+          "Sin arepas"
+        ]
+      }
+    ],
+    "categoryName": "Pollo",
+    "availableNow": true
+  },
+  {
+    "id": 4,
+    "code": 4,
+    "name": "1 Pollo Broaster",
+    "price": 46000,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Arepas",
+        "options": [
+          "Blancas",
+          "Fritas",
+          "Sin arepas"
+        ]
+      }
+    ],
+    "categoryName": "Pollo",
+    "availableNow": true
+  },
+  {
+    "id": 18,
+    "code": 18,
+    "name": "Ejecutivo Con Pollo Broaster",
+    "price": 26000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Ejecutivos",
+    "availableNow": true
+  },
+  {
+    "id": 22,
+    "code": 22,
+    "name": "Ejecutivo Con Pollo Frito",
+    "price": 25000,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Presa",
+        "options": [
+          "Pierna pernil",
+          "Ala pechuga"
+        ]
+      },
+      {
+        "attributeName": "Sopa",
+        "options": [
+          "Ajiaco",
+          "Menudencias",
+          "Mondongo"
+        ]
+      }
+    ],
+    "categoryName": "Ejecutivos",
+    "availableNow": true
+  },
+  {
+    "id": 19,
+    "code": 19,
+    "name": "Ejecutivo Con Pechuga",
+    "price": 28000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Ejecutivos",
+    "availableNow": true
+  },
+  {
+    "id": 20,
+    "code": 20,
+    "name": "Sopa De Menudencias",
+    "price": 12000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Sopas",
+    "availableNow": true
+  },
+  {
+    "id": 21,
+    "code": 21,
+    "name": "Sopa De Ajiaco",
+    "price": 15000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Sopas",
+    "availableNow": true
+  },
+  {
+    "id": 40,
+    "code": 40,
+    "name": "Sopa pequeña",
+    "price": 8500,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Sopa",
+        "options": [
+          "Ajiaco",
+          "Menudencias"
+        ]
+      }
+    ],
+    "categoryName": "Sopas",
+    "availableNow": true
+  },
+  {
+    "id": 60,
+    "code": 60,
+    "name": "Arroz Con Pollo",
+    "price": 25000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 70,
+    "code": 70,
+    "name": "Arroz Chino Caja Con Papa Francesa",
+    "price": 27000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 71,
+    "code": 71,
+    "name": "Arroz Chino Con Medio Pollo",
+    "price": 44000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 72,
+    "code": 72,
+    "name": "Arroz Chino Con Pollo Frito",
+    "price": 38000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 73,
+    "code": 73,
+    "name": "Arroz Chino Con Pollo Broaster",
+    "price": 40000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 74,
+    "code": 74,
+    "name": "Arroz Chino Especial",
+    "price": 30000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Arroces",
+    "availableNow": true
+  },
+  {
+    "id": 77,
+    "code": 77,
+    "name": "Pechuga A La Plancha",
+    "price": 28000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Pollo",
+    "availableNow": true
+  },
+  {
+    "id": 78,
+    "code": 78,
+    "name": "Pechuga Gratinada",
+    "price": 32000,
+    "hasAttributes": false,
+    "attributes": [],
+    "categoryName": "Pollo",
+    "availableNow": true
+  }
+]
