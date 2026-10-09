@@ -21,7 +21,8 @@ permissions:
 jobs:
   audit:
     # One controlled run from the reviewed revision, plus the existing opt-in.
-    if: vars.PPP_STAGING_DB_AUDIT == 'true' || (github.event_name == 'push' && github.event.before == '048e8480a6a0251df3c3d9029b26b739f6e73677' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline')
+    if: vars.PPP_STAGING_DB_AUDIT == 'true' || (github.event_name == 'push' && github.event.before == 'ef039b46b768c095966573310cc16dcaa3cc6a78' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline')
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
