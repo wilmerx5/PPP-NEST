@@ -1,0 +1,451 @@
+[
+  {
+    "id": "almuerzo-abierto",
+    "group": "almuerzos",
+    "message": "Hola veci, qué tienen hoy para almorzar?",
+    "any": [
+      "ejecutivo",
+      "bandeja",
+      "arroz",
+      "churrasco",
+      "pollo"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "almuerzo-casero",
+    "group": "almuerzos",
+    "message": "Ando buscando un almuerzo bien completo, qué me recomiendas?",
+    "any": [
+      "ejecutivo",
+      "bandeja",
+      "pollo",
+      "sobrebarriga",
+      "churrasco"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "ejecutivos",
+    "group": "almuerzos",
+    "message": "¿Tienen menús ejecutivos?",
+    "all": [
+      "ejecutivo"
+    ],
+    "any": [
+      "frito",
+      "broaster"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "ejecutivo-incluye",
+    "group": "almuerzos",
+    "message": "¿Qué trae el ejecutivo con pollo frito?",
+    "all": [
+      "sopa"
+    ],
+    "any": [
+      "ensalada",
+      "papa",
+      "arroz",
+      "bebida"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "almuerzo-presupuesto",
+    "group": "almuerzos",
+    "message": "Voy a almorzar, qué plato tienen de menos de 25 mil?",
+    "any": [
+      "bandeja",
+      "pollo",
+      "taco",
+      "ejecutivo",
+      "sopa"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "carne-general",
+    "group": "carnes",
+    "message": "Hola ¿tienen carne?",
+    "any": [
+      "churrasco",
+      "sobrebarriga",
+      "costilla"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "carne-res",
+    "group": "carnes",
+    "message": "¿Qué me ofrecen de carne de res, que no sea pollo?",
+    "any": [
+      "churrasco",
+      "sobrebarriga"
+    ],
+    "forbid": [
+      "mojarra",
+      "trucha",
+      "bagre"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "carne-variante",
+    "group": "carnes",
+    "message": "Tienes sobrebarriga asada o en salsa?",
+    "all": [
+      "sobrebarriga"
+    ],
+    "any": [
+      "asada",
+      "salsa"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "carne-filete",
+    "group": "carnes",
+    "message": "¿Tienen filete de res? Si no, qué otra carne tienen?",
+    "any": [
+      "churrasco",
+      "sobrebarriga",
+      "costilla"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "cerdo",
+    "group": "carnes",
+    "message": "¿Hay algo de cerdo?",
+    "any": [
+      "costilla",
+      "cerdo"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "carne-typo",
+    "group": "carnes",
+    "message": "veci tines algo de carne?",
+    "any": [
+      "churrasco",
+      "sobrebarriga",
+      "costilla"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "bebidas-general",
+    "group": "bebidas",
+    "message": "¿Qué bebidas manejan?",
+    "any": [
+      "gaseosa",
+      "limonada",
+      "jugo",
+      "agua",
+      "coca",
+      "mr tea"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "bebidas-sin-gas",
+    "group": "bebidas",
+    "message": "¿Tienen algo de tomar que no sea gaseosa?",
+    "any": [
+      "jugo",
+      "agua",
+      "limonada",
+      "té",
+      "tea"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "bebidas-naturales",
+    "group": "bebidas",
+    "message": "Qué jugos naturales tienes y cuánto valen?",
+    "any": [
+      "jugo",
+      "mango",
+      "lulo",
+      "guanabana"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "bebidas-en-leche",
+    "group": "bebidas",
+    "message": "¿Se puede pedir un jugo en leche?",
+    "any": [
+      "leche",
+      "jugo"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "bebidas-coca-zero",
+    "group": "bebidas",
+    "message": "¿Manejan Coca Cola Zero?",
+    "any": [
+      "coca",
+      "zero"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "bebidas-typo",
+    "group": "bebidas",
+    "message": "q bebidas tinen x ahi? algo fresquito",
+    "any": [
+      "gaseosa",
+      "jugo",
+      "agua",
+      "limonada",
+      "coca"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "dulce-antojo",
+    "group": "dulces",
+    "message": "Tengo ganas de algo dulce, qué me recomiendas?",
+    "any": [
+      "plátano",
+      "platano",
+      "bocadillo",
+      "queso",
+      "no tenemos",
+      "no manejamos",
+      "bebida"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "dulce-postre",
+    "group": "dulces",
+    "message": "¿Tienen postres? como brownies o torta",
+    "any": [
+      "no tenemos",
+      "no manejamos",
+      "no ofrecemos",
+      "plátano",
+      "platano",
+      "bocadillo",
+      "postres"
+    ],
+    "forbid": [
+      "tenemos brownie",
+      "tenemos torta"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "dulce-helado",
+    "group": "dulces",
+    "message": "Veci, ¿venden helados?",
+    "any": [
+      "no",
+      "helado",
+      "plátano",
+      "platano"
+    ],
+    "forbid": [
+      "tenemos helados",
+      "sí, helados",
+      "si, helados"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "pescados",
+    "group": "variantes",
+    "message": "No quiero pollo hoy, qué pescados tienen?",
+    "any": [
+      "mojarra",
+      "trucha",
+      "bagre"
+    ],
+    "minMenu": 1
+  },
+  {
+    "id": "vegetariano",
+    "group": "variantes",
+    "message": "¿Hay opciones vegetarianas sin carne?",
+    "any": [
+      "ensalada",
+      "arroz",
+      "yuca",
+      "papa",
+      "vegetariana",
+      "vegetariano",
+      "confirmar"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "alergias",
+    "group": "variantes",
+    "message": "Soy alérgico a los lácteos, ¿me garantizas un plato sin leche?",
+    "any": [
+      "no puedo garantizar",
+      "confirmar",
+      "verificar",
+      "alérgen",
+      "alergen",
+      "cocina"
+    ],
+    "forbid": [
+      "garantizo que",
+      "100% libre"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "solo-menu",
+    "group": "información",
+    "message": "¿Me pasas la carta por favor?",
+    "any": [
+      "menú",
+      "menu",
+      "carta",
+      "http"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "ubicacion-fact",
+    "group": "información",
+    "message": "¿Dónde queda el restaurante? ¿Cómo llego?",
+    "facts": "configured",
+    "any": [
+      "calle beta",
+      "123",
+      "maps",
+      "mapa"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "horario-fact",
+    "group": "información",
+    "message": "¿Hasta qué hora tienen servicio hoy?",
+    "facts": "configured",
+    "any": [
+      "21:00",
+      "9:00",
+      "9 pm",
+      "nueve"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "horario-sin-fuente",
+    "group": "información",
+    "message": "¿A qué hora cierran?",
+    "facts": "missing",
+    "any": [
+      "confirmar",
+      "no tengo",
+      "verificar",
+      "horario",
+      "información",
+      "consultar"
+    ],
+    "forbid": [
+      "cerramos a las 9",
+      "hasta las 10",
+      "hasta las 9",
+      "21:00"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "domicilios-zona",
+    "group": "información",
+    "message": "¿Hacen domicilios? estoy por Castilla",
+    "facts": "configured",
+    "any": [
+      "domicilio",
+      "castilla",
+      "zona",
+      "cobertura"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "domicilio-tiempo",
+    "group": "información",
+    "message": "¿Cuánto se demora el domicilio?",
+    "facts": "configured",
+    "any": [
+      "tiempo",
+      "minuto",
+      "domicilio",
+      "aproximado"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "abiertos-ahora",
+    "group": "información",
+    "message": "¿Están abiertos en este momento?",
+    "facts": "missing",
+    "any": [
+      "horario",
+      "confirmar",
+      "verificar",
+      "no puedo",
+      "contactar",
+      "consultar"
+    ],
+    "forbid": [
+      "sí, estamos abiertos",
+      "abiertos ahora mismo"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "resumen-carne",
+    "group": "conversaciones",
+    "messages": [
+      "Buenas, estoy pensando pedir carne. Qué hay?",
+      "¿La sobrebarriga la pueden hacer en salsa?"
+    ],
+    "any": [
+      "sobrebarriga",
+      "salsa"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "conversacion-almuerzo",
+    "group": "conversaciones",
+    "messages": [
+      "Hola tienen almuerzos?",
+      "¿Cuál viene con sopa y bebida?"
+    ],
+    "any": [
+      "ejecutivo",
+      "sopa",
+      "bebida"
+    ],
+    "minMenu": 0
+  },
+  {
+    "id": "saludo-no-compra",
+    "group": "conversaciones",
+    "message": "Hola buenos días",
+    "any": [
+      "hola",
+      "buenos",
+      "ayud",
+      "bienven",
+      "antoja"
+    ],
+    "minMenu": 0
+  }
+]
