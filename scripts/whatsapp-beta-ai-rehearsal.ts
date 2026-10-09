@@ -115,7 +115,10 @@ const maxCases = Math.max(1, Math.min(
   Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (hardMode ? 10 : humanMode ? 12 : cases.length)),
 ));
 const offset = Math.max(0, Number(process.env.WHATSAPP_BETA_CASE_OFFSET || 0));
-const repeats = Math.max(1, Math.min(3, Number(process.env.WHATSAPP_BETA_REPEATS || 1)));
+const repeats = Number(process.env.WHATSAPP_BETA_REPEATS || 1);
+if (!Number.isInteger(repeats) || repeats<1 || repeats>10) {
+  throw new Error('WHATSAPP_BETA_REPEATS must be an integer between 1 and 10');
+}
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
 if (hardMode) {
@@ -376,7 +379,7 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
 }
-const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
+const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, repetitions:hardMode ? repeats : 1, date: new Date().toISOString(),
   caveat: 'Hard cases use AgentV1, ActionGuard and real orchestrator applyActions. Not the full inbound router, Meta, DB, or order creation.',
   apiUsage: apiUsage.summary(model), scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });

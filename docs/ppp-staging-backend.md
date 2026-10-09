@@ -29,7 +29,7 @@ No entregar contraseñas ni llaves privadas por el chat o Git. Completar los sec
    chmod 600 .env.staging
    ```
 
-   Completar `DB_*`, ambos `STAGING_EXPECTED_DB_*`, `JWT_SECRET` exclusivo y las variables necesarias para los módulos que se vayan a usar, incluida la configuración del cliente Google OAuth si está habilitado. Mantener credenciales reales de Meta, mail y pagos fuera de este entorno; usar las correspondientes de pruebas. La plantilla no es una configuración de arranque completa hasta rellenarla.
+   Completar `DB_*`, ambos `STAGING_EXPECTED_DB_*`, `JWT_SECRET` exclusivo y las variables necesarias para los módulos que se vayan a usar. El backend actual siempre carga la estrategia Google: exige `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` para arrancar, además del callback de staging para probar ese login. Mantener credenciales reales de Meta, mail y pagos fuera de este entorno; usar las correspondientes de pruebas. La plantilla no es una configuración de arranque completa hasta rellenarla.
 
 3. Revisar settings persistidos de WhatsApp. `WHATSAPP_ENABLED=false` no anula `enabled=true` guardado en la DB; `WHATSAPP_AGENT_V1=false` sí desactiva el agente. Mantener el bot apagado mientras se configura y no reutilizar conversaciones de clientes. Las credenciales guardadas en DB tienen prioridad sobre las variables de entorno: comprobar el canal efectivo desde el administrador de staging.
 4. Validar la configuración sin mostrar valores de secretos:

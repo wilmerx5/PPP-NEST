@@ -381,7 +381,10 @@ jobs:
 
   quality-candidate-gpt41:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
+    concurrency:
+      group: whatsapp-inference-gpt-4.1-2025-04-14
+      cancel-in-progress: false
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       WHATSAPP_BETA_LIVE: '1'

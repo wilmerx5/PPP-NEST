@@ -512,6 +512,7 @@ export class WhatsappAgentService {
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     let retriedUnappliedOrder = false;
+    let retriedIncompleteOrder = false;
     let retriedConciseReply = false;
     let needsAttributeProductId: number | undefined;
     let lookupPlacedOrder: { orderNumber?: number } | undefined;
@@ -670,6 +671,33 @@ Contacto humano: *${phone || '3118866823'}*
         const calls = msg.tool_calls || [];
         if (!calls.length) {
           const reply = (msg.content || '').trim().slice(0, 3500);
+          const editsCart = actions.clearCart || actions.removeProductIds?.length || actions.removeCartLines?.length ||
+            actions.updateCartLines?.length || actions.updateAttributes?.length || actions.setCustomerNotes || actions.requestHuman;
+          const multi = actions.addItems?.length && !editsCart && !this.catalogService.swapIntent(input.userMessage)
+            ? this.catalogService.resolveMultiProductOrder?.(input.userMessage,input.products) : null;
+          const addedIds = new Set((actions.addItems || []).map(item=>item.productId));
+          // A composed dish may be more specific than the multi resolver's
+          // component matches. Included options must also never become adds.
+          const missing = multi && !multi.ambiguous.length && !multi.unresolved.length && multi.confident.length>=2 &&
+            [...addedIds].every(id=>multi.confident.some(item=>item.product.id===id))
+            ? multi.confident.filter(item=>!addedIds.has(item.product.id)).filter(item=> {
+              const probe = JSON.parse(this.executeTool('add_item',{productId:item.product.id},{
+                products:input.products,byId,actions:{},cart:input.cart,userMessage:input.userMessage,
+                menuConceptGroups:input.menuConceptGroups,setNeedsAttr:()=>undefined,
+              }));
+              return probe.ok===true;
+            }) : [];
+          if (missing.length) {
+            if (!retriedIncompleteOrder && i < this.maxIterations-2) {
+              retriedIncompleteOrder = true;
+              messages.push({role:'system',content:'El pedido múltiple sigue incompleto. Estos platos solicitados y resueltos NO se agregaron: '+
+                JSON.stringify(missing.map(item=>({segment:item.segment,...this.productCard(item.product)})))+
+                '. Conserva las acciones exitosas; ejecuta add_item solo para los faltantes. No repitas los ya agregados ni afirmes que están todos sin herramientas exitosas.'});
+              continue;
+            }
+            return {reply:'Falta revisar '+missing.map(item=>item.product.name).join(', ')+'. Te ayudo a completar el pedido.',
+              actions,toolCalls,error:'incomplete_multi_order'};
+          }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)\b/i.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
             toolCalls.some(name => name === 'search_menu' || name === 'resolve_multi_order') &&
@@ -1365,9 +1393,15 @@ Contacto humano: *${phone || '3118866823'}*
           this.catalogService.productNameFitsUtterance?.({...product,name:bareName},ctx.userMessage || '');
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
           !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
+          const multi = this.catalogService.resolveMultiProductOrder?.(ctx.userMessage || '',ctx.products);
+          const namedProducts = multi ? [...multi.confident,...multi.needsAttributes].map(item=>item.product) : [];
+          const alreadyAdded = new Set((ctx.actions.addItems || []).map(item=>item.productId));
+          const missingProducts = namedProducts.filter(item=>!alreadyAdded.has(item.id));
           return JSON.stringify({ok:false,error:'different_dish_not_requested',
-            requestedProduct: requested ? this.productCard(requested) : null,
-            hint:'Ese SKU tiene una presentación distinta. Usa search_menu para buscar el producto nuevo nombrado; no inventes IDs ni cambies otro plato del carrito.'});
+            requestedProduct:this.productCard(missingProducts[0] || requested),
+            requestedProducts:namedProducts.map(item=>this.productCard(item)),
+            pendingRequestedProducts:missingProducts.map(item=>this.productCard(item)),
+            hint:'Ese SKU no corresponde al plato nombrado. Revisa pendingRequestedProducts y busca cada plato faltante; conserva lo ya agregado. No inventes IDs ni afirmes cambios rechazados.'});
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';

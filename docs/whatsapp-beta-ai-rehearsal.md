@@ -19,6 +19,8 @@ WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_OFFSET=59 WHATS
 
 Modelo predeterminado: `gpt-4o-mini`; `WHATSAPP_BETA_MODEL` permite especificar otro. Dos repeticiones ayudan a detectar variación; no garantizan robustez general.
 
+`WHATSAPP_BETA_REPEATS` acepta enteros de 1 a 10 para las conversaciones hard; rechaza configuraciones inválidas y registra las repeticiones efectivas en el informe. El workflow `WhatsApp Premium Endurance` exige diez repeticiones y comprueba el número real de escenarios: seis pedidos que han fallado durante las rondas y los ocho patrones de chats reales, 140 ejecuciones por modelo (Mini y GPT-4.1). GPT-4.1 comparte grupo de concurrencia con su comparación completa para que no haya dos jobs consumiendo su límite TPM a la vez. No cambia las expectativas del carrito ni reemplaza la comparación completa de modelos. La primera ejecución de este workflow en `b595f5dd` hizo solo 39/39 porque el ejecutor anterior limitaba silenciosamente a tres; esa ejecución no acredita diez repeticiones. La ampliación del límite y el control de conteos se revalidan juntos.
+
 ## Comprobaciones
 
 - IDs y cantidades finales; exclusión de productos ajenos; no duplicar artículos al recibir notas/dirección.

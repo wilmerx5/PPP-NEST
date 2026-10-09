@@ -18,6 +18,56 @@ async function apply(text: string, actions: any, cart: any[] = []) {
   return (await service.applyActions({}, {cart,orderType:'pickup'}, guarded.actions, products, {}, text)).session;
 }
 describe('Observed live AI regressions', () => {
+  const longOrder='Me regalas una sopa de mondongo por favor un cuarto de pollo broaster pierna pernil y unas costillas';
+  it('points a rejected soup SKU to the missing soup rather than an unrelated chicken',()=> {
+    const actions:any={addItems:[{productId:6},{productId:60}]};
+    const result=JSON.parse((agent as any).executeTool('add_item',{productId:40},{products,
+      byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],userMessage:longOrder,setNeedsAttr:()=>undefined}));
+    expect(result.error).toBe('different_dish_not_requested');
+    expect(result.requestedProduct.id).toBe(45);
+    expect(result.pendingRequestedProducts.map(p=>p.id)).toEqual([45]);
+    expect(actions.addItems.map(p=>p.productId)).toEqual([6,60]);
+  });
+  it.each([true,false])('checks a partially applied multi-order before confirming it (model recovers: %s)',async recovers=> {
+    const response=(message:any)=>({ok:true,json:async()=>({choices:[{message}]})}) as Response;
+    const calls=(ids:number[])=>({role:'assistant',content:null,tool_calls:ids.map(id=>({
+      id:'test-'+id,type:'function',function:{name:'add_item',arguments:JSON.stringify({productId:id})},
+    }))});
+    const fetchMock=jest.spyOn(global,'fetch')
+      .mockResolvedValueOnce(response(calls([40,6,60])))
+      .mockResolvedValueOnce(response({role:'assistant',content:'He agregado mondongo, pollo y costillas.'}));
+    if(recovers)fetchMock.mockResolvedValueOnce(response(calls([45])))
+      .mockResolvedValueOnce(response({role:'assistant',content:'Listo, sopa de mondongo, cuarto broaster y costillas.'}));
+    else fetchMock.mockResolvedValueOnce(response({role:'assistant',content:'Listo, están todos agregados.'}));
+    try {
+      const result=await agent.runTurn({userMessage:longOrder,products,cart:[],brandName:'PPP',
+        recentMessages:[],sessionSummary:'',businessRulesBlock:''});
+      const correction=JSON.parse(fetchMock.mock.calls[2][1]!.body as string).messages;
+      expect(correction.at(-1).content).toContain('Sopa De Mondongo');
+      expect(correction.at(-1).content).toContain('NO se agregaron');
+      expect(result.actions.addItems?.map(p=>p.productId).sort((a,b)=>a-b)).toEqual(recovers?[6,45,60]:[6,60]);
+      expect(result.error).toBe(recovers?undefined:'incomplete_multi_order');
+      expect(result.actions.addItems?.filter(p=>p.productId===6)).toHaveLength(1);
+      if(!recovers)expect(result.reply).not.toMatch(/están todos|he agregado/i);
+    } finally {fetchMock.mockRestore();}
+  });
+  it.each(['cuarto-presa-arepas','arroz-medio-broaster','ejecutivo-elecciones','ejecutivo-no-sku-extra',
+    'ejecutivo-eleccion-parcial-y-nota','arepas-aparte-no-porcion-extra','chat-real-combo-atributo-y-empaque'])
+  ('does not treat included choices or composed-dish components as missing purchases: %s',async id=> {
+    const cases=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-beta-hard-conversations.json'),'utf8'));
+    const scenario=cases.find(c=>c.id===id);const productId=Number(Object.keys(scenario.items)[0]);
+    const response=(message:any)=>({ok:true,json:async()=>({choices:[{message}]})}) as Response;
+    const fetchMock=jest.spyOn(global,'fetch').mockResolvedValueOnce(response({role:'assistant',content:null,tool_calls:[{
+      id:'test-add',type:'function',function:{name:'add_item',arguments:JSON.stringify({productId})},
+    }]})).mockResolvedValueOnce(response({role:'assistant',content:'Listo, agregado.'}));
+    try {
+      const result=await agent.runTurn({userMessage:scenario.messages[0],products,cart:[],brandName:'PPP',
+        recentMessages:[],sessionSummary:'',businessRulesBlock:''});
+      expect(result.error).toBeUndefined();
+      expect(result.actions.addItems?.map(p=>p.productId)).toEqual([productId]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {fetchMock.mockRestore();}
+  });
   it('changes two options without dropping the combo, quantity or note', async () => {
     const text = 'Mejor el pollo broaster y la bebida Pepsi';
     const result = await agent.runTurn({userMessage:text,cart:[combo],products,brandName:'PPP',sessionSummary:'',recentMessages:[],businessRulesBlock:''});
