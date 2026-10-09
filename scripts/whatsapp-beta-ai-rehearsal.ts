@@ -52,6 +52,15 @@ const settings = {
 };
 const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService(settings as never, catalog);
+// Capture only synthetic rehearsal tool traffic; never log credentials/config.
+const tracedAgent = agent as unknown as { executeTool: (...args: any[]) => string };
+const executeTool = tracedAgent.executeTool.bind(agent);
+let toolTrace: Array<{ name: string; args: unknown; result: unknown }> = [];
+tracedAgent.executeTool = (name, args, ctx) => {
+  const output = executeTool(name, args, ctx);
+  toolTrace.push({ name, args, result: JSON.parse(output) });
+  return output;
+};
 const humanMode = process.env.WHATSAPP_BETA_SUITE === 'human';
 const hardMode = process.env.WHATSAPP_BETA_SUITE === 'hard';
 const hardScenarios = JSON.parse(readFileSync(
@@ -81,6 +90,7 @@ if (hardMode) {
     const turns: Array<Record<string,unknown>> = [];
     let customerNotes = '';
     for (const message of scenario.messages) {
+      toolTrace = [];
       const result = await agent.runTurn({
         userMessage:message,sessionSummary:JSON.stringify({cart:[...cart.values()],customerNotes}),
         recentMessages:history,
@@ -107,14 +117,14 @@ if (hardMode) {
         line.attributes.push({attributeName:attr.attributeName,attributeValue:attr.attributeValue});
       }
       if(actions.setCustomerNotes)customerNotes=actions.setCustomerNotes;
-      const turn={user:message,reply:result.reply,actions,toolCalls:result.toolCalls,
+      const turn={user:message,reply:result.reply,actions,toolCalls:result.toolCalls,toolTrace,
         error:result.error || null,cart:[...cart.values()]};
       turns.push(turn);
       history.push('Cliente: '+message,'Bot: '+result.reply);
       if(result.error)break;
     }
     const finalCart=[...cart.values()];
-    const norm=(v:string)=>v.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+    const norm=(v:string)=>v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const expected=Object.entries(scenario.items);
     const problems:string[]=[];
     if(turns.length!==scenario.messages.length)problems.push('turn_count');
@@ -287,6 +297,9 @@ console.log(JSON.stringify({ scenarios: results.length, model,
   errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)),
   accepted: results.filter(x => x.accepted === true).length,
   rejected: results.filter(x => x.accepted === false).map(x => x.scenario) },null,2));
+for (const rejected of results.filter(x => x.accepted === false)) {
+  console.log('REJECTED_SCENARIO ' + JSON.stringify(rejected));
+}
 if (results.some(x => x.accepted === false)) process.exitCode = 1;
 }
 void runRehearsal().catch((err: unknown) => {
