@@ -295,8 +295,15 @@ export class WhatsappAgentService {
         normalizedProductName(p.name) === 'arroz chino con pollo broaster');
       if (variant) {
         return {
-          reply: 'Sí, tenemos ' + variant.name +
-            ' por 
+          reply: 'Sí, tenemos la presentación ' + variant.name +
+            '. ¿Quieres que la agregue?',
+          actions: {},
+          toolCalls: [],
+        };
+      }
+    }
+
+    // Un pedido con sustitución explícita sigue siendo un pedido: la nota
     // no debe hacer desaparecer el plato base. Si hay dos presentaciones de
     // pechuga, pedir la variante, nunca elegir plancha/gratinada por defecto.
     const normalizedOrder = input.userMessage.toLowerCase().normalize('NFD')
