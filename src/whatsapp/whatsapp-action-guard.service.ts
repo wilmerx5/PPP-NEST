@@ -194,6 +194,11 @@ export class WhatsappActionGuardService {
     // modality. An executive/always-combo has no modality attribute and its
     // explicitly selected beverage must not be replaced by defaults.
     if (!this.catalogService.isAttributeSelectionComplete(product, normalized)) {
+      // Keep valid partial choices and default only the options the customer omitted.
+      const completed = this.catalogService.fillDefaultAttributes(product, normalized);
+      if (normalized.length && this.catalogService.isAttributeSelectionComplete(product, completed)) {
+        return completed;
+      }
       warnings.push(
         `Opciones inválidas para "${product.name}". Elige: ${this.formatAttributeOptions(product)}.`,
       );

@@ -19,6 +19,50 @@ function add(text: string, id: number, attributes?: Array<{attributeName: string
 }
 
 describe('Agent language boundaries with PPP menu', () => {
+  it('rejects a second model call for a single executive order with omitted options', () => {
+    const actions:AiOrderAction={};
+    const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,userMessage:'Bueno, regálame dos ejecutivos con pollo frito',cart:[],setNeedsAttr:()=>{}};
+    expect(JSON.parse((agent as any).executeTool('add_item',{productId:22,quantity:2},ctx)).ok).toBe(true);
+    expect(JSON.parse((agent as any).executeTool('add_item',{productId:22,quantity:1},ctx)).error).toBe('item_already_added_this_turn');
+    expect(actions.addItems).toHaveLength(1);
+    expect(actions.addItems?.[0].quantity).toBe(2);
+  });
+  it('answers a preparation availability question without adding the fish', () => {
+    expect(catalog.isAvailabilityInquiry('La trucha la pueden hacer asada?')).toBe(true);
+    const {actions,result}=add('La trucha la pueden hacer asada?',12);
+    expect(result.error).toBe('question_not_order');
+    expect(actions.addItems).toBeUndefined();
+  });
+  it('requires a cooking style for half a chicken even if the model picks frito', () => {
+    const {actions,result}=add('quiero medio pollo',2);
+    expect(result.error).toBe('missing_cooking_style');
+    expect(actions.addItems).toBeUndefined();
+  });
+  it('keeps an explicit beverage when executive food choices are omitted', () => {
+    const {actions,result}=add('Un ejecutivo broaster con Pepsi, sin cilantro por favor',18);
+    expect(result.ok).toBe(true);
+    expect(actions.addItems?.[0].attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Pepsi'});
+    expect(actions.addItems?.[0].attributes).toContainEqual({attributeName:'Sopa',attributeValue:'Ajiaco'});
+  });
+  it('keeps each combo beverage with its own dish', () => {
+    const text='Un combo de pollo broaster sin arepas con Pepsi y un combo de arroz chino con medio pollo frito con Manzana';
+    expect(add(text,98).actions.addItems?.[0].attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Pepsi'});
+    expect(add(text,97).actions.addItems?.[0].attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
+  });
+  it('packs included arepas separately without deleting them', () => {
+    const {actions,result}=add('Un pollo frito, las arepas aparte por favor',1,[{attributeName:'Arepas',attributeValue:'Sin arepas'}]);
+    expect(result.ok).toBe(true);
+    expect(actions.addItems?.[0].attributes).toEqual([{attributeName:'Arepas',attributeValue:'Blancas'}]);
+    expect(actions.addItems?.[0].note).toMatch(/arepas aparte/i);
+  });
+  it('recognizes total quantity as order language rather than a missing ingredient', () => {
+    const {result}=add('Que sean tres arroces con pollo en total, no tres más',23);
+    expect(result.ok).toBe(true);
+  });
+  it('does not apply a rejected soup quantity to an unrelated rice', () => {
+    expect(catalog.extractCorrectedQuantityForProduct('No son 3 ajiacos, son 2','Arroz Con Pollo')).toBeNull();
+    expect(catalog.extractCorrectedQuantityForProduct('No son 3 arroces con pollo y ajiacos, son 2','Arroz Con Pollo')).toBeNull();
+  });
   it.each([
     ['Una sobrebarriga en salsa para llevar', 13],
     ['Regálame una sobrebarriga en salsa, paso a recoger', 13],

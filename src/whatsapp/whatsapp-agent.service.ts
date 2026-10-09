@@ -487,6 +487,8 @@ Reglas:
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
 - También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
 - Para el mismo SKU con sabores, preparaciones o notas distintas, llama add_item por cada grupo con su cantidad y atributos/nota. No combines dos sabores ni notes diferentes en una línea.
+- Confirma únicamente las cantidades y opciones retornadas por add_item. No inventes otra línea ni opciones distintas para un pedido con opciones omitidas.
+- "Tres en total, no tres más" reemplaza la cantidad existente con remove_item y add_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
 - Solo afirma que agregaste productos después de add_item exitoso. Una búsqueda no modifica el carrito. Ejecuta lo pedido antes de contestar.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
@@ -1112,6 +1114,7 @@ Contacto humano: *${phone || '3118866823'}*
         }
         const asked =
           this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
+          this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
           this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
           this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
         if (asked) {
@@ -1121,6 +1124,13 @@ Contacto humano: *${phone || '3118866823'}*
             hint:
               'Es una pregunta sobre el menú. Responde con lo que devolvió search_menu. No agregues al carrito.',
           });
+        }
+        const styleChoices = this.catalogService.chickenStyleChoicesForSegment?.(ctx.userMessage || '', ctx.products);
+        if (styleChoices?.some(candidate => candidate.id === product.id) &&
+          this.catalogService.extractCodeFromMessage(ctx.userMessage || '') !== product.code) {
+          return JSON.stringify({ok:false,error:'missing_cooking_style',
+            options:styleChoices.map(candidate => ({id:candidate.id,name:candidate.name})),
+            hint:'Pregunta si quiere frito o broaster; no elijas una preparación por tu cuenta.'});
         }
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
           ctx.userMessage || '',
@@ -1181,6 +1191,14 @@ Contacto humano: *${phone || '3118866823'}*
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         let note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
+        const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        if (product.attributes?.some(attr => /arepas?/i.test(attr.attributeName)) &&
+          !/porci[oó]n/i.test(product.name) && /\barepas?\s+aparte\b/i.test(source)) {
+          note = [note, 'Arepas aparte'].filter(Boolean).join('. ').slice(0, 200);
+        }
+        if (/\ben\s+total\b/i.test(source) && ctx.cart?.some(line => line.productId === product.id)) {
+          ctx.actions.removeProductIds = [...new Set([...(ctx.actions.removeProductIds || []),product.id])];
+        }
         let attributes = Array.isArray(args.attributes)
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
@@ -1267,6 +1285,11 @@ Contacto humano: *${phone || '3118866823'}*
           attributes = attrs;
         }
 
+        if (!this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
+          ctx.actions.addItems?.some(item => item.productId === product.id)) {
+          return JSON.stringify({ok:false,error:'item_already_added_this_turn',
+            hint:'Ese plato ya se agregó en este turno. Confirma únicamente la cantidad y opciones de la llamada exitosa; no inventes otra línea.'});
+        }
         if (!ctx.actions.addItems) ctx.actions.addItems = [];
         ctx.actions.addItems.push({
           productId: product.id,

@@ -1060,6 +1060,8 @@ export class WhatsappCatalogService {
   extractQuantityNearProduct(fullText: string, productName: string): number | null {
     const raw = fixCommonOrderTypos((fullText || '').trim());
     if (!raw || !productName) return null;
+    const corrected = this.extractCorrectedQuantityForProduct(raw, productName);
+    if (corrected != null) return corrected;
 
     const segments = this.splitMultiProductSegments(raw);
     const pn = normalizeText(productName);
@@ -1138,6 +1140,19 @@ export class WhatsappCatalogService {
       }
     }
     return null;
+  }
+
+  /** "No son 3 arroces con pollo, son 2": the first quantity is explicitly rejected. */
+  extractCorrectedQuantityForProduct(text: string, productName: string): number | null {
+    const quantity = '\\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce';
+    const match = normalizeText(text).match(new RegExp(`\\bno\\s+(?:son|eran)\\s+(?:${quantity})\\s+(.+?)\\s+(?:son|sino)\\s+(${quantity})\\b`));
+    if (!match || /\b(?:y|o)\b/.test(match[1])) return null;
+    const anchors = normalizeText(productName).split(' ').filter(token =>
+      token.length >= 4 && !['porcion', 'pequena', 'grande', 'natural'].includes(token));
+    const spoken = match[1].split(' ');
+    if (!anchors.length || !anchors.every(anchor => spoken.some(word => nearDishToken(word, anchor)))) return null;
+    const value = this.QTY_WORD_MAP[match[2]] ?? Number(match[2]);
+    return Number.isFinite(value) && value >= 1 && value <= 30 ? value : null;
   }
 
   /** Extrae cantidad de UN segmento/ítem ("3 pollos", "2 limonadas"). Sin regla multi-ítem global. */
@@ -1977,9 +1992,17 @@ export class WhatsappCatalogService {
   /** Scope choices to their own dish when a multi-order has a unique owner. */
   orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
     // Preserve modifiers; the general matcher may strip them before splitting.
-    const explicitSegments = text.split(/(?:\s+y\s+|,\s*)(?=(?:otr[oa]s?|un[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i);
+    const explicitSegments = text.split(/(?:\s+y\s+|,\s*)(?=(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i);
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
+    // The general search splitter removes modifiers and may separate an included
+    // beverage from its executive. Preserve the complete original order then.
+    if (explicitSegments.length === 1 && segments.slice(1).every(segment =>
+      !/\b(extra|adicional|porcion)\b/i.test(segment) &&
+      (product.attributes?.some(attr => this.pickAttributeOptionFromText(segment, attr)) ||
+        /^arepas?\s+aparte\b/.test(normalizeText(segment))))) return text;
+    const named = segments.filter(segment => this.productNameFitsUtterance(product, segment));
+    if (named.length === 1) return named[0];
     const owned = segments.filter(segment => {
       const tokens = this.dishContentTokens(normalizeText(segment));
       const anchor = this.bestClauseCoverage(tokens, products);
@@ -1989,8 +2012,10 @@ export class WhatsappCatalogService {
     if (owned.length > 1 && selected?.length) {
       const matching = owned.filter(segment => {
         const parsed = this.resolveAttributesFromMessage(product, segment, []);
-        return parsed.status !== 'invalid' && selected.every(choice =>
-          parsed.attributes.some(a => normalizeText(a.attributeName) === normalizeText(choice.attributeName) &&
+        // Defaults may exist on the action even though the segment only mentions
+        // one choice. Compare choices actually spoken in this segment.
+        return parsed.status !== 'invalid' && parsed.attributes.length > 0 && parsed.attributes.every(a =>
+          selected.some(choice => normalizeText(a.attributeName) === normalizeText(choice.attributeName) &&
             normalizeText(a.attributeValue) === normalizeText(choice.attributeValue)));
       });
       if (matching.length === 1) return matching[0];
@@ -2052,6 +2077,11 @@ export class WhatsappCatalogService {
       'consiguen',
       'cual',
       'cuales',
+      'pueden',
+      'hacer',
+      'total',
+      'sean',
+      'son',
     ]);
     const cleaned = clause.replace(/\bsin\s+[a-z0-9]{3,}\b/g, ' ');
     const glueBases = ['de', 'del', 'la', 'el', 'las', 'los', 'una', 'con'];
@@ -3436,7 +3466,8 @@ export class WhatsappCatalogService {
    * Tampoco "quiero un pollo frito, por favor" (coma de cortesía + estilo ≠ 2 platos).
    */
   looksLikeClearlyMultiDishOrder(text: string): boolean {
-    const raw = fixCommonOrderTypos((text || '').trim());
+    const raw = fixCommonOrderTypos((text || '').trim())
+      .replace(/^(?:bueno|listo|hola|buenas|dale|ok)\s*[,!:]\s*/i, '');
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
 
@@ -7312,6 +7343,7 @@ export class WhatsappCatalogService {
     }
     const availVerb =
       /\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen|conseguiste)\b/.test(q) ||
+      /\b(?:pueden|puede|podrian)\s+(?:hacer|preparar|cocinar)\b/.test(q) ||
       !!this.availabilitySubject(raw);
     if (!availVerb) return false;
     // "no tienes de mondongo" / "tienes sopa"
@@ -8953,6 +8985,14 @@ export class WhatsappCatalogService {
     let selected = [...alreadySelected];
     let progress = true;
 
+    // Explicit drink choices still apply while earlier food choices are omitted.
+    // Prompt ordering must not hide a choice already written by the customer.
+    for (const attr of product.attributes) {
+      if (selected.some(choice => choice.attributeName === attr.attributeName)) continue;
+      const picked = this.pickAttributeOptionFromText(text, attr);
+      if (picked) selected.push({attributeName: attr.attributeName, attributeValue: picked});
+    }
+
     // Comida + gaseosa aparte → forzar modalidad "solo" si existe
     if (opts?.variantIntent === 'solo' || opts?.variantIntent === 'combo') {
       const remaining = this.getRemainingAttributes(product, selected, opts);
@@ -9308,6 +9348,7 @@ export class WhatsappCatalogService {
     if (!rejectsOption) {
       for (const opt of attr.options) {
         const o = normalizeText(opt);
+        if (isArepaAttr && /\bsin\b/.test(o) && !/\bsin\s+arepas?\b/.test(q)) continue;
         for (const token of o.split(' ').filter((t) => t.length >= 3)) {
           if (
             ['pollo', 'frito', 'broaster', 'pechuga', 'gaseosa', 'combo', 'sin'].includes(token)

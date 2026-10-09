@@ -4211,8 +4211,10 @@ export class WhatsappOrchestratorService {
     forcedQty: number;
   }): number {
     const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
+    const correctedQty = this.catalogService.extractCorrectedQuantityForProduct(opts.sourceText || '', opts.product.name);
+    if (correctedQty != null) return correctedQty;
     if (opts.sourceText && opts.product.code != null) {
-      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*#\s*(\d{1,4})\b/gi)]
+      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*(?:#|(?:del?\s+)?c[oó]digo\s*)\s*(\d{1,4})\b/gi)]
         .filter(match => Number(match[2]) === opts.product.code);
       if (codeMentions.length === 1) {
         return this.catalogService.extractQuantityFromSegment(`${codeMentions[0][1]} platos`);

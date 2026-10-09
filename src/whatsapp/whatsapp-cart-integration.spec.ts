@@ -19,6 +19,19 @@ async function apply(text: string, actions: AiOrderAction, initial: WhatsappSess
   return (await service.applyActions({},session,guarded.actions,products,{},text)).session as WhatsappSessionData;
 }
 describe('Agent actions applied by the real orchestrator (no DB or transports)',()=> {
+  it('ignores the number of diners while honoring quantities beside written menu codes',async()=> {
+    const session=await apply('Somos 3. Dame 2 del código 23 y 1 del código 60',{
+      addItems:[{productId:23,quantity:2},{productId:60,quantity:1}],
+    });
+    expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[23,2],[60,1]]);
+  });
+  it('does not double a single dish order after a courtesy comma and repeated model calls',async()=> {
+    const session=await apply('Bueno, regálame dos ejecutivos con pollo frito',{
+      addItems:[{productId:22,quantity:2},{productId:22,quantity:1}],
+    });
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0].quantity).toBe(2);
+  });
   it('does not treat the total four soups as four ajiacos',async()=> {
     const session=await apply('No son pollos, son 4 sopas: 2 ajiaco y 2 de menudencias',{
       clearCart:true,addItems:[{productId:38,quantity:2},{productId:20,quantity:2}],
@@ -103,5 +116,57 @@ describe('Agent actions applied by the real orchestrator (no DB or transports)',
     });
     expect(session.cart).toHaveLength(1);
     expect(session.cart[0].quantity).toBe(2);
+  });
+  it('reduces a soup order without interpreting the discarded units as the desired quantity',async()=> {
+    const session=await apply('Deja solo un ajiaco, los otros dos no',{
+      removeProductIds:[38],addItems:[{productId:38,quantity:1}],
+    },[line(38,3)]);
+    expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[38,1]]);
+  });
+  it('replaces with the requested total rather than adding the total again',async()=> {
+    const session=await apply('Que sean tres arroces con pollo en total, no tres más',{
+      removeProductIds:[23],addItems:[{productId:23,quantity:3}],
+    },[line(23)]);
+    expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[23,3]]);
+  });
+  it('takes the corrected quantity after rejecting an earlier quantity',async()=> {
+    const session=await apply('No son 3 arroces con pollo, son 2',{
+      removeProductIds:[23],addItems:[{productId:23,quantity:2}],
+    },[line(23,3)]);
+    expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[23,2]]);
+  });
+  it('does not multiply each dish by the number of people',async()=> {
+    const session=await apply('Somos dos: un arroz con pollo y una sobrebarriga en salsa',{
+      addItems:[{productId:23,quantity:1},{productId:13,quantity:1,attributes:[{attributeName:'Seleccion',attributeValue:'En Salsa'}]}],
+    });
+    expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[13,1],[23,1]]);
+  });
+  it('keeps different executive soups on independent lines',async()=> {
+    const session=await apply('Un ejecutivo frito con ajiaco y otro ejecutivo frito con menudencias',{
+      addItems:[{productId:22,quantity:1,attributes:[{attributeName:'Sopa',attributeValue:'Ajiaco'}]},
+        {productId:22,quantity:1,attributes:[{attributeName:'Sopa',attributeValue:'Menudencias'}]}],
+    });
+    expect(session.cart).toHaveLength(2);
+    expect(session.cart.map(c=>c.quantity)).toEqual([1,1]);
+    expect(session.cart.map(c=>c.attributes?.find(a=>a.attributeName==='Sopa')?.attributeValue).sort()).toEqual(['Ajiaco','Menudencias']);
+  });
+  it('keeps juice flavors and their unequal quantities independent',async()=> {
+    const session=await apply('Dos jugos en agua de mango y un jugo en agua de lulo',{
+      addItems:[{productId:50,quantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]},
+        {productId:50,quantity:1,attributes:[{attributeName:'Sabor',attributeValue:'Lulo'}]}],
+    });
+    expect(session.cart.map(c=>[c.attributes?.[0].attributeValue,c.quantity])).toEqual([['Mango',2],['Lulo',1]]);
+  });
+  it('does not read cash denomination as ordered units',async()=> {
+    const session=await apply('Un arroz con pollo, pago con un billete de 50 mil',{
+      addItems:[{productId:23,quantity:50}],
+    });
+    expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[23,1]]);
+  });
+  it('replaces a main dish while retaining its separately requested drink',async()=> {
+    const session=await apply('En vez del arroz con pollo pon una pechuga a la plancha; deja la limonada',{
+      removeProductIds:[23],addItems:[{productId:25,quantity:1}],
+    },[line(23),line(37)]);
+    expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[25,1],[37,1]]);
   });
 });
