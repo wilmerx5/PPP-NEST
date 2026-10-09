@@ -6836,28 +6836,9 @@ export class WhatsappCatalogService {
       const remaining = this.getRemainingAttributes(product, selected, opts);
       const next = remaining[0];
       if (!next?.options?.length) break;
-      // Estilo de cocina: no asumir frito/broaster/asado
-      if (
-        this.isCookingStyleAttribute(next.attributeName) &&
-        next.options.length >= 2
-      ) {
-        const skipRest = remaining.filter(
-          (a) =>
-            !(
-              this.isCookingStyleAttribute(a.attributeName) &&
-              (a.options?.length || 0) >= 2
-            ),
-        );
-        if (!skipRest.length) break;
-        const other = skipRest[0];
-        const firstOther = other.options?.[0];
-        if (!firstOther) break;
-        selected = [
-          ...selected,
-          { attributeName: other.attributeName, attributeValue: firstOther },
-        ];
-        continue;
-      }
+      // La opción 1 se aplica a atributos faltantes, incluso al estilo.
+      // Las elecciones explícitas del cliente ya están en selected y NO se pisan.
+      // Mostrar la opción aplicada en el resumen para facilitar cambios.
       const first = next.options[0];
       selected = [
         ...selected,
