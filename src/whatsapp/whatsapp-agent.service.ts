@@ -258,20 +258,36 @@ export class WhatsappAgentService {
       };
     }
 
-    // Consultar precio o cobertura es informativo: no agregar artículos ni
-    // convertir el barrio mencionado en una dirección ya confirmada.
+    // Los mensajes informativos no deben crear lineas en el carrito.
     const broadQuery = input.userMessage.toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
-    const budget = broadQuery.match(/\b(?:menos de|por debajo de|hasta)\s*\$?\s*(\d{1,3})(?:[.,]?000|\s*mil)\b/);
+    const budget = broadQuery.match(/\b(?:menos de|por debajo de|hasta)\s*(\d{1,3})(?:[.,]?000|\s*mil)\b/);
     if (budget && /\b(almorzar|almuerzo|plato|comida|menu|tienen|recomienda)\b/.test(broadQuery)) {
       const limit = Number(budget[1]) * 1000;
-      const candidates = input.products.filter((p) => p.availableNow !== false &&
-        p.price < limit && !/\b(gaseosa|jugo|bebida|porci[oó]n|agua|coca cola|cerveza|mr tea|sopa)\b/i.test(p.name));
-      const selections = candidates.slice(0, 4);
+      const choices = input.products.filter((p) => p.availableNow !== false &&
+        p.price < limit &&
+        !/\b(gaseosa|jugo|bebida|porcion|agua|coca cola|cerveza|mr tea|sopa)\b/i.test(p.name)
+      ).slice(0, 4);
       return {
-        reply: selections.length
-          ? 'Por menos de  agregar la nota, no repetir
-    // el último plato mencionado ni rellenar el nombre con "Mucho ají".
+        reply: choices.length
+          ? 'Por ese presupuesto tenemos: ' +
+            choices.map((p) => p.name + ' (' + p.price + ' pesos)').join(', ') +
+            '. Cual prefieres?'
+          : 'No tengo un plato principal confirmado para ese presupuesto. Te muestro otras opciones?',
+        actions: {},
+        toolCalls: [],
+      };
+    }
+    if (/\b(hacen|hace|tienen|hay|manejan|cubren|cobertura)\b/.test(broadQuery) &&
+      /\b(domicilios?|entregas?|envios?)\b/.test(broadQuery)) {
+      return {
+        reply: 'Si manejamos pedidos a domicilio. Dime la direccion completa para confirmar cobertura y tarifa.',
+        actions: {},
+        toolCalls: [],
+      };
+    }
+
+    // Observacion de cocina con carrito existente.
     if (input.cart?.length && looksLikeKitchenSendRequest(input.userMessage)) {
       const note = input.userMessage.replace(/^(?:y\s+)/i, '').trim();
       return {
