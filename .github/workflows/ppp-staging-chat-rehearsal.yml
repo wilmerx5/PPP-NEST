@@ -5,6 +5,12 @@ on:
     branches: [fix/whatsapp-regression-baseline]
     paths: [.github/workflows/ppp-staging-chat-rehearsal.yml]
   workflow_dispatch:
+    inputs:
+      execute:
+        description: Execute bounded conversations on the single authorized test recipient
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: read
@@ -19,22 +25,22 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '35b9f262807f2841f4834b78d89f975a0ca3d92e'))
+       (github.event_name == 'push' && github.event.before == '28a1c0be0a62becef5c1361c832e817cf885eec0'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 35b9f262807f2841f4834b78d89f975a0ca3d92e
+          ref: 28a1c0be0a62becef5c1361c832e817cf885eec0
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Check runner isolation with synthetic secrets and no network
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
-      - name: Verify staging without sending conversation messages
+      - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: 'false'
+          STAGING_CHAT_EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute && 'true' || 'false' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
