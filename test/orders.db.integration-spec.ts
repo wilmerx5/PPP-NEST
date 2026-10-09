@@ -271,4 +271,22 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     expect(r.success).toBe(true);
     expect((await db.getRepository(ProductVariantStock).findOneByOrFail({productId:2})).stock).toBe(0);
   });
+  it('still rejects reopening a canceled order',async()=>{
+    const r=await orders.create(dto());
+    await orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    await expect(otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'pending'})).rejects.toThrow(/orden cancelada/);
+    expect((await saved(r.orderId)).orderStatus).toBe('canceled');expect(await productStock()).toBe(10);
+  });
+  it('rechecks a concurrently completed order under the cancellation lock',async()=>{
+    const r=await orders.create(dto());
+    const read=inventory.getInventoryByProductIds.bind(inventory);
+    jest.spyOn(inventory,'getInventoryByProductIds').mockImplementationOnce(async(...args)=>{
+      const result=await read(...args);
+      await otherDb.getRepository(Order).update(r.orderId,{orderStatus:'completed'});
+      return result;
+    });
+    await expect(orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'})).rejects.toThrow(/force=true/);
+    expect((await saved(r.orderId)).orderStatus).toBe('completed');expect(await productStock()).toBe(9);
+    expect(await db.getRepository(OrderItem).count()).toBe(1);
+  });
 });

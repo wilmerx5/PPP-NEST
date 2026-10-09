@@ -2085,7 +2085,7 @@ export class OrdersService {
     }
 
     // Check if order is being canceled → ruta completa (inventario + ítems + extras + grupo)
-    if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
+    if (dto.orderStatus === 'canceled') {
       return this.cancelOrderFully(orderId, { force: dto.forceCancel === true });
     }
 
