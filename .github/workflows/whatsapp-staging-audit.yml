@@ -1,6 +1,9 @@
 name: PPP Staging Read-only DB Audit
 
 on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/whatsapp-staging-audit.yml]
   pull_request:
     paths:
       - src/whatsapp/**
@@ -17,12 +20,14 @@ permissions:
 
 jobs:
   audit:
-    # Opt-in only: a skipped job is NOT evidence that staging has been validated.
-    if: vars.PPP_STAGING_DB_AUDIT == 'true'
+    # One controlled run from the reviewed revision, plus the existing opt-in.
+    if: vars.PPP_STAGING_DB_AUDIT == 'true' || (github.event_name == 'push' && github.event.before == '31a28323b4fd03140bf2a2665500de2ca1bbabef' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 31a28323b4fd03140bf2a2665500de2ca1bbabef
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
