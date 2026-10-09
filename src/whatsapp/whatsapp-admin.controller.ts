@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   MessageEvent,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -37,6 +38,8 @@ import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.serv
 import { WhatsappAdminAlertService } from './whatsapp-admin-alert.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
+import { StagingWhatsappTestTargetDto } from './dto/staging-whatsapp-test-target.dto';
+import { stagingTestTargetStatus } from './whatsapp-staging-test-target';
 
 @ApiTags('Admin WhatsApp')
 @Controller('admin/whatsapp')
@@ -66,6 +69,13 @@ export class WhatsappAdminController {
   async getSettings() {
     const row = await this.settingsService.getSettings();
     return this.settingsService.maskSettings(row);
+  }
+
+  @Post('staging/test-target')
+  @ApiOperation({ summary: 'Staging: verificar destino autorizado de pruebas (solo lectura)' })
+  async verifyStagingTestTarget(@Body() dto: StagingWhatsappTestTargetDto) {
+    if (process.env.PPP_STAGING !== 'true') throw new NotFoundException();
+    return stagingTestTargetStatus(await this.settingsService.getEffectiveConfig(), dto);
   }
 
   @Patch('settings')
