@@ -222,13 +222,13 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Follow-up conversations (28 scenarios, two repetitions)
+      - name: Follow-up conversations (29 scenarios, two repetitions)
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WHATSAPP_BETA_LIVE: '1'
           WHATSAPP_BETA_SUITE: 'hard'
-          WHATSAPP_BETA_CASE_LIMIT: '28'
+          WHATSAPP_BETA_CASE_LIMIT: '29'
           WHATSAPP_BETA_CASE_OFFSET: '30'
           WHATSAPP_BETA_REPEATS: '2'
           WHATSAPP_BETA_MODEL: 'gpt-4o-mini'

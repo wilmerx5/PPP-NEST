@@ -137,6 +137,37 @@ describe('Agent language boundaries with PPP menu', () => {
     expect(catalog.searchByNameScored('dos arroces con pollo',products,2)[0].p.id).toBe(23);
     expect(catalog.extractQuantityFromSegment('dos arroces con pollo')).toBe(2);
   });
+  it('resolves four explicit dish families without inventing ambiguity from a plural', () => {
+    const resolved=catalog.resolveMultiProductOrder('Necesito 2 sopas de ajiaco, 3 sopas de menudencias, una costilla de cerdo y dos arroces con pollo',products);
+    expect(resolved?.ambiguous).toEqual([]);
+    expect(resolved?.confident.map(m=>m.product.id).sort((a,b)=>a-b)).toEqual([20,23,38,60]);
+  });
+  it.each(['mango','lulo'])('keeps each juice search scoped to its requested flavor: %s', flavor => {
+    const result=JSON.parse((agent as any).executeTool('search_menu',{query:`jugo en agua de ${flavor}`},{
+      products,userMessage:'Un jugo en agua de mango y otro jugo en agua de lulo',actions:{},cart:[],
+    }));
+    expect(result.mode).toBe('drink_order');
+    expect(result.attributes[0].attributeValue.toLowerCase()).toBe(flavor);
+  });
+  it('retries a model claim that a search added products until an actual add action exists',async()=> {
+    const response=(message:any)=>({ok:true,json:async()=>({choices:[{message}]})}) as Response;
+    const call=(name:string,args:unknown)=>({role:'assistant',content:null,tool_calls:[{
+      id:'test-'+name,type:'function',function:{name,arguments:JSON.stringify(args)},
+    }]});
+    const fetchMock=jest.spyOn(global,'fetch')
+      .mockResolvedValueOnce(response(call('search_menu',{query:'arroz con pollo'})))
+      .mockResolvedValueOnce(response({role:'assistant',content:'He agregado un arroz con pollo.'}))
+      .mockResolvedValueOnce(response(call('add_item',{productId:23,quantity:1})))
+      .mockResolvedValueOnce(response({role:'assistant',content:'Listo, un arroz con pollo.'}));
+    try {
+      const configured=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test',localContext:{}})} as never,catalog);
+      const result=await configured.runTurn({userMessage:'Quiero un arroz con pollo',products,cart:[],recentMessages:[],
+        sessionSummary:'test',businessRulesBlock:'test',brandName:'test'});
+      expect(result.actions.addItems).toEqual([{productId:23,quantity:1,note:undefined,attributes:undefined}]);
+      expect(result.error).toBeUndefined();
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+    } finally {fetchMock.mockRestore();}
+  });
 
   it('parses a correction with and without de, excluding the total', () => {
     expect(parseQtyDishCorrection('No son pollos, son 4 sopas: 2 ajiaco y 2 de menudencias')).toEqual([

@@ -457,6 +457,7 @@ export class WhatsappAgentService {
     const byId = new Map(input.products.map((p) => [p.id, p]));
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
+    let retriedUnappliedOrder = false;
     let needsAttributeProductId: number | undefined;
     let lookupPlacedOrder: { orderNumber?: number } | undefined;
     let lookupDeliveryTime = false;
@@ -485,6 +486,8 @@ Reglas:
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
 - También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
+- Para el mismo SKU con sabores, preparaciones o notas distintas, llama add_item por cada grupo con su cantidad y atributos/nota. No combines dos sabores ni notes diferentes en una línea.
+- Solo afirma que agregaste productos después de add_item exitoso. Una búsqueda no modifica el carrito. Ejecuta lo pedido antes de contestar.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
 - Corrección en lenguaje normal: es cambiar lo que está abierto o en el carrito. Mira la LISTA ABIERTA o la ELECCIÓN PENDIENTE y la carta. Corrige con set_attribute, remove_item o add_item. No digas que no entendiste. No uses request_human por una corrección.
@@ -601,6 +604,16 @@ Contacto humano: *${phone || '3118866823'}*
         const calls = msg.tool_calls || [];
         if (!calls.length) {
           const reply = (msg.content || '').trim().slice(0, 3500);
+          const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)\b/i.test(reply);
+          if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
+            toolCalls.some(name => name === 'search_menu' || name === 'resolve_multi_order') &&
+            !this.catalogService.isAvailabilityInquiry(input.userMessage) &&
+            !this.catalogService.isPriceInquiryIntent(input.userMessage) &&
+            !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {
+            retriedUnappliedOrder = true;
+            messages.push({role:'system',content:'Tu respuesta dice que agregaste productos pero no ejecutaste add_item. Una búsqueda no modifica el carrito. Ejecuta add_item para los productos solicitados y resueltos por las tools antes de responder. Si queda una ambigüedad real, pregunta solo por ella y no afirmes cambios que no ejecutaste.'});
+            continue;
+          }
           // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
           return {
             reply,
@@ -752,11 +765,12 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
 
-        const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(
-          /\bjugos?\b/i.test(query) && /\b(?:agua|leche)\b/i.test(ctx.userMessage || '')
-            ? ctx.userMessage || query : query,
-          ctx.products,
-        );
+        let drinkSource = query;
+        if (/\bjugos?\b/i.test(query) && !/\b(?:agua|leche)\b/i.test(query)) {
+          const media = [...new Set((ctx.userMessage || '').toLowerCase().match(/\b(?:agua|leche)\b/g) || [])];
+          if (media.length === 1) drinkSource += ` en ${media[0]}`;
+        }
+        const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(drinkSource, ctx.products);
         if (drinkOrder) {
           return JSON.stringify({
             ok: true,
@@ -1151,7 +1165,10 @@ Contacto humano: *${phone || '3118866823'}*
             hint: 'Ya es un atributo o acompañamiento incluido del plato principal. No agregues otra línea sin solicitud explícita.',
           });
         }
-        const requested = this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products);
+        const requested = this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products) ||
+          this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '')
+            .map(segment => this.catalogService.findProductEmbeddedInMessage(segment, ctx.products))
+            .find(candidate => candidate != null && candidate.id !== product.id);
         const explicitCode = this.catalogService.extractCodeFromMessage(ctx.userMessage || '');
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
           !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {

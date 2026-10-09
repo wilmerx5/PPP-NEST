@@ -77,4 +77,31 @@ describe('Agent actions applied by the real orchestrator (no DB or transports)',
     expect(session.cart.find(c=>c.productId===14)?.note).toBe('sin ensalada');
     expect(session.cart.find(c=>c.productId===23)?.note).toBe('sin cilantro');
   });
+  it('keeps independent quantities when the same SKU has two preparations',async()=> {
+    const session=await apply('Dos pollos fritos con arepas blancas y un pollo frito con arepas fritas',{
+      addItems:[{productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+        {productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Fritas'}]}],
+    });
+    expect(session.cart.find(c=>c.attributes?.[0].attributeValue==='Blancas')?.quantity).toBe(2);
+    expect(session.cart.find(c=>c.attributes?.[0].attributeValue==='Fritas')?.quantity).toBe(1);
+  });
+  it('uses quantities written beside each menu code',async()=> {
+    const session=await apply('2 #20, 2 #38 y 1 #23 porfa',{
+      addItems:[{productId:20,quantity:2},{productId:38,quantity:2},{productId:23,quantity:1}],
+    });
+    expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[20,2],[23,1],[38,2]]);
+  });
+  it('uses word quantities for plural soup and rice names',async()=> {
+    const session=await apply('Dos ajiacos y tres arroces con pollo',{
+      addItems:[{productId:38,quantity:2},{productId:23,quantity:3}],
+    });
+    expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[23,3],[38,2]]);
+  });
+  it('does not multiply a single requested quantity by repeated identical model calls',async()=> {
+    const session=await apply('2 arroces con pollo',{
+      addItems:[{productId:23,quantity:1},{productId:23,quantity:1}],
+    });
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0].quantity).toBe(2);
+  });
 });

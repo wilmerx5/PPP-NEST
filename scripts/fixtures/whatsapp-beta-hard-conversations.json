@@ -1213,5 +1213,38 @@
     },
     "group": "variantes-por-linea",
     "maxReply": 420
+  },
+  {
+    "id": "mismo-pollo-cantidades-distintas",
+    "group": "seguimiento",
+    "messages": [
+      "Dos pollos fritos con arepas blancas y un pollo frito con arepas fritas"
+    ],
+    "items": {
+      "1": 3
+    },
+    "expectedLines": [
+      {
+        "id": 1,
+        "quantity": 2,
+        "attrs": [
+          {
+            "key": "Arepas",
+            "value": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Arepas",
+            "value": "Fritas"
+          }
+        ]
+      }
+    ],
+    "maxReply": 420
   }
 ]

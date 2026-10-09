@@ -3728,6 +3728,19 @@ export class WhatsappOrchestratorService {
         : null;
       // Un plato + nota: no dejar que la IA meta acompañamientos (yuca/papa)
       let items = actions.addItems;
+      // The model may split "2 arroces" into two identical add_item calls.
+      // Resolve the customer's single quantity once for each identical line.
+      if (sourceText && !this.catalogService.looksLikeClearlyMultiDishOrder(sourceText)) {
+        const grouped = new Map<string, typeof items[number]>();
+        for (const item of items) {
+          const attrs = (item.attributes || []).map(a =>
+            `${a.attributeName.toLowerCase()}:${a.attributeValue.toLowerCase()}`).sort();
+          const key = JSON.stringify([item.productId, attrs, (item.note || '').trim().toLowerCase()]);
+          const previous = grouped.get(key);
+          grouped.set(key, previous ? {...previous,quantity:(previous.quantity || 1)+(item.quantity || 1)} : item);
+        }
+        items = [...grouped.values()];
+      }
       if (modNote && items.length > 1) {
         items = items.filter((item) => {
           const product = products.find((p) => p.id === item.productId);
@@ -3769,6 +3782,7 @@ export class WhatsappOrchestratorService {
           product,
           aiQuantity: item.quantity,
           sourceText,
+          quantitySource: itemSource,
           multiQtyOrder,
           forcedQty,
         });
@@ -4180,20 +4194,28 @@ export class WhatsappOrchestratorService {
    * En pedidos multi-ítem nunca reutilizar el primer número del mensaje para todos.
    */
   private resolveAddItemQuantity(opts: {
-    product: { name: string };
+    product: { name: string; code?: number };
     aiQuantity?: number;
     sourceText?: string;
+    quantitySource?: string;
     multiQtyOrder: boolean;
     forcedQty: number;
   }): number {
     const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
+    if (opts.sourceText && opts.product.code != null) {
+      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*#\s*(\d{1,4})\b/gi)]
+        .filter(match => Number(match[2]) === opts.product.code);
+      if (codeMentions.length === 1) {
+        return this.catalogService.extractQuantityFromSegment(`${codeMentions[0][1]} platos`);
+      }
+    }
     const correction = opts.sourceText ? parseQtyDishCorrection(opts.sourceText) : null;
     const correctedLine = correction?.filter(line =>
       this.normalizeForMatch(opts.product.name).includes(this.normalizeForMatch(line.dish)));
     if (correctedLine?.length === 1) return correctedLine[0].qty;
     if (opts.multiQtyOrder && opts.sourceText) {
       const near = this.catalogService.extractQuantityNearProduct(
-        opts.sourceText,
+        opts.quantitySource || opts.sourceText,
         opts.product.name,
       );
       if (near != null) return Math.max(1, Math.min(30, near));
