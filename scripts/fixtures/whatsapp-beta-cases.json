@@ -41,7 +41,13 @@
     "messages": [
       "Y envías mucho ají"
     ],
-    "expectation": "Tratar como nota del pedido, nunca como nombre del cliente."
+    "expectation": "Tratar como nota del pedido, nunca como nombre del cliente.",
+    "initialCart": [
+      {
+        "productId": 60,
+        "quantity": 1
+      }
+    ]
   },
   {
     "id": "sopas-por-codigos",
