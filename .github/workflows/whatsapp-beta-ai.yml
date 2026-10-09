@@ -149,6 +149,7 @@ jobs:
           code=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/hard-attributes.json
+          echo "$code" > tmp/hard-attributes-exit.txt
           exit "$code"
 
       - name: Archive hard attributes
@@ -175,6 +176,7 @@ jobs:
           code=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/hard-notes-multi.json
+          echo "$code" > tmp/hard-notes-multi-exit.txt
           exit "$code"
 
       - name: Archive hard notes-multi
@@ -201,6 +203,7 @@ jobs:
           code=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/hard-ambiguity.json
+          echo "$code" > tmp/hard-ambiguity-exit.txt
           exit "$code"
 
       - name: Archive hard ambiguity
@@ -211,6 +214,20 @@ jobs:
           path: tmp/hard-ambiguity.json
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Final hard-case acceptance gate
+        if: always()
+        run: |
+          for result in tmp/hard-*-exit.txt; do
+            if [ ! -f "$result" ]; then
+              echo "::error::Missing hard-suite status"
+              exit 1
+            fi
+            if [ "$(cat "$result")" != "0" ]; then
+              echo "::error::One or more hard order scenarios failed; inspect uploaded artifacts."
+              exit 1
+            fi
+          done
 
       - name: Save test report
         if: always()
