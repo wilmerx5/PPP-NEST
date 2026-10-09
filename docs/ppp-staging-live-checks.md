@@ -37,3 +37,17 @@ El [preflight selectivo final](https://github.com/wilmerx5/PPP-NEST/actions/runs
 Antes de activar mensajes se requiere una comprobación del entorno del contenedor que emita solo indicadores: `PPP_STAGING`, presencia de claves, coincidencia de canal Meta de prueba, cantidad de destinatarios y estado de los interruptores. El entorno del VPS no es legible desde la API administrativa. Los secretos de GitHub no se copian automáticamente al contenedor. Mantener cocina/avisos de prueba aislados antes del primer pedido.
 
 Para cerrar el circuito desplegado todavía se necesita: verificar el canal efectivo y su destinatario de prueba, cocina/avisos aislados y sandbox de los pagos que se habiliten. Comprobar el SHA ejecutado, modelo efectivo, carrito por unidad, pedido único, payload/evento de cocina, cambios/notas, stock, domicilio, takeover y recuperación. El health no acredita esos circuitos. Ver [aceptación](whatsapp-beta-acceptance.md) y [criterios del piloto](ppp-pilot-readiness.md).
+
+## Diagnóstico de recepción Meta después de renovar el token
+
+El operador comprobó en el contenedor que OpenAI y Meta están presentes, el canal del entorno coincide con el declarado de staging, hay un destinatario y los tres interruptores están habilitados. La primera consulta de solo lectura del número devolvió HTTP 401 / Meta 190 / subcódigo 463. Tras renovar el token y recrear la API, la misma consulta devolvió HTTP 200 y coincidencia del ID, sin imprimir credenciales o identificadores. Esto acredita acceso al número, no permiso efectivo de envío ni entrega del webhook.
+
+El operador envió nuevamente una consulta de menú y no recibió respuesta; los logs que observó mostraban solo arranque. El controlador no registra cada payload válido: ausencia de logs no prueba ausencia de solicitudes.
+
+Se añadió observación administrativa de solo lectura, restringida a un único destinatario declarado en GitHub. Lee las 80 conversaciones recientes y únicamente el detalle de la que coincida exactamente, si existe; registra cantidades, fechas y takeover, sin teléfonos, nombres, textos o IDs privados. Rechaza contextos no autorizados, múltiples destinatarios, cambios de configuración simultáneos, ambigüedad, IDs de ruta inválidos y detalles de otra persona. Veinte pruebas offline pasaron.
+
+La [lectura desplegada](https://github.com/wilmerx5/PPP-NEST/actions/runs/37985163350/job/114005800070), a las 15:11 de Bogotá, pasó 6/6. No encontró al destinatario de GitHub entre las 80 conversaciones recientes; no afirma que nunca haya existido un chat ni que coincida con el destinatario del entorno, pues este último todavía no se compara por valor. No repitió suites OpenAI, no envió mensajes ni creó pedidos. Login/DB/configuración/logout funcionaron y el modelo aprobado sigue seleccionado.
+
+En el primer intento de esa lectura, las lecturas pasaron y logout devolvió HTTP 502. Se comprobó health y se repitió una sola vez la sesión diagnóstica: logout devolvió 201 y borró las cookies. No se conoce la causa del 502; conservarlo como incidencia observada, sin declarar estabilidad completa.
+
+Siguiente evidencia necesaria: configuración real del callback de la app Meta publicada, campo `messages` suscrito y asociación de la app con la cuenta WhatsApp de pruebas. Si no aparece la conversación objetivo, revisar también coincidencia del destinatario del contenedor con el secreto de GitHub. Publicar la app y acceder al número por API no acreditan esas suscripciones.
