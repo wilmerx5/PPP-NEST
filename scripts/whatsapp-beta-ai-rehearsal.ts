@@ -84,8 +84,17 @@ for (const scenario of cases.slice(0, maxCases)) {
       finalCart.some((p) => p.productId === 20 && p.quantity === 2) &&
       finalCart.some((p) => p.productId === 21 && p.quantity === 2);
   } else if (scenario.id === 'arroz-pechuga-yuca') {
-    accepted = finalCart.some((p) => p.productId === 60) &&
-      !finalCart.some((p) => p.productId === 1 || p.productId === 4);
+    const first = turns[0]?.actions as { addItems?: Array<{ productId: number }>; setCustomerNotes?: string } | undefined;
+    const address = turns[1]?.actions as { addItems?: Array<{ productId: number }>; setAddress?: string } | undefined;
+    // Un pedido no se debe "recuperar" artificialmente cuando el cliente
+    // solo informa la dirección, y "pechuga" no elige plancha/gratinada.
+    accepted = !!first?.addItems?.some((item) => item.productId === 60) &&
+      !!first.setCustomerNotes?.match(/yuca/i) &&
+      !first.addItems.some((item) => item.productId === 77 || item.productId === 78) &&
+      !!address?.setAddress &&
+      !(address.addItems?.length) &&
+      finalCart.some((p) => p.productId === 60) &&
+      !finalCart.some((p) => p.productId === 77 || p.productId === 78);
   }
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
