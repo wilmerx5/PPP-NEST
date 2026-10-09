@@ -13,6 +13,7 @@ import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
 import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
+import { BetaApiUsage } from './whatsapp-beta-api-usage';
 
 type HardScenario = {
  id:string;group:string;messages:string[];context?:string[];
@@ -48,6 +49,20 @@ const catalogPath = join(process.cwd(), 'scripts/fixtures/whatsapp-beta-menu.jso
 const cases = JSON.parse(readFileSync(scenarioPath, 'utf8')) as Scenario[];
 const products = JSON.parse(readFileSync(catalogPath, 'utf8')) as WhatsappCatalogProduct[];
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
+const apiUsage = new BetaApiUsage();
+const originalFetch = globalThis.fetch;
+// Only this isolated process: observe cloned responses without changing AgentV1.
+globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
+  const tracked = args[0] === 'https://api.openai.com/v1/chat/completions';
+  if (tracked) apiUsage.requests++;
+  const response = await originalFetch(...args);
+  if (tracked) {
+    let payload: unknown;
+    try { payload = await response.clone().json(); } catch { /* Preserve the real response. */ }
+    apiUsage.record(response.status,payload);
+  }
+  return response;
+};
 const settings = {
   getEffectiveConfig: async () => ({
     openaiApiKey: token,
@@ -351,7 +366,7 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
 }
 const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
   caveat: 'Hard cases use AgentV1, ActionGuard and real orchestrator applyActions. Not the full inbound router, Meta, DB, or order creation.',
-  scenarios: results };
+  apiUsage: apiUsage.summary(model), scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ scenarios: results.length, model,
@@ -359,6 +374,7 @@ console.log(JSON.stringify({ scenarios: results.length, model,
   errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)),
   accepted: results.filter(x => x.accepted === true).length,
   rejected: results.filter(x => x.accepted === false).map(x => x.scenario) },null,2));
+console.log('API_USAGE_SUMMARY '+JSON.stringify(apiUsage.summary(model)));
 for (const rejected of results.filter(x => x.accepted === false)) {
   console.log('REJECTED_SCENARIO ' + JSON.stringify(rejected));
 }
@@ -367,4 +383,4 @@ if (!results.length || results.some(x => x.accepted === false)) process.exitCode
 void runRehearsal().catch((err: unknown) => {
   console.error('Beta rehearsal failed:', err instanceof Error ? err.message : 'unknown');
   process.exitCode = 1;
-});
+}).finally(()=>{globalThis.fetch=originalFetch;});

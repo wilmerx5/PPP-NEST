@@ -9,6 +9,7 @@ on:
       - .github/workflows/whatsapp-beta-ai.yml
       - scripts/whatsapp-beta-ai-rehearsal.ts
       - scripts/whatsapp-beta-cart-assertions.ts
+      - scripts/whatsapp-beta-api-usage.ts
       - src/whatsapp/whatsapp-agent.service.ts
       - src/whatsapp/whatsapp-catalog.service.ts
       - src/whatsapp/whatsapp-agent.spec.ts

@@ -31,6 +31,12 @@ Modelo predeterminado: `gpt-4o-mini`; `WHATSAPP_BETA_MODEL` permite especificar 
 
 Informes sintéticos: `tmp/whatsapp-beta-ai-report.json`, artefactos separados por grupo y detalles de los rechazos en los logs. No subir al repositorio informes con chats reales, datos personales o credenciales.
 
+Cada invocación registra `apiUsage` en el informe y una línea `API_USAGE_SUMMARY` en los logs: solicitudes API, respuestas con uso disponible, tokens de entrada, entrada en caché, salida y errores HTTP. El contador observa copias de las respuestas únicamente en el proceso de ensayo; no cambia AgentV1 ni registra claves.
+
+Para `gpt-4o-mini` y su snapshot de julio de 2024 estima costo de los tokens reportados con precios estándar verificados el 9 de octubre de 2026: USD 0.15/1M entrada sin caché, USD 0.075/1M entrada en caché y USD 0.60/1M salida ([fuente oficial](https://developers.openai.com/api/docs/models/gpt-4o-mini)). No aplica esos precios a otros modelos. El estimado no es una factura; no incluye impuestos, otros servicios ni ajustes de la cuenta. `usageComplete=false` indica respuestas exitosas sin uso válido; no interpretarlas como costo cero.
+
+Sumar las líneas de los cinco jobs y de todas las invocaciones dentro de `beta-tests` para medir una ronda completa; no sumar de nuevo artefactos que contienen esos mismos datos. Un ensayo puede tener varios mensajes y cada turno hasta seis llamadas de modelo. Los 303 ensayos configurados no equivalen a 303 llamadas API ni a 303 pedidos comerciales. Los costos de las suites locales y MariaDB no usan la API OpenAI.
+
 ## Límites del ensayo
 
 La suite `hard` cubre interpretación, sanitización y aplicación real de acciones al carrito **en memoria**. No ejecuta `handleIncoming`, el enrutamiento completo, persistencia, concurrencia distribuida, inventario, cobertura/tarifa real, cocina, pagos ni creación/confirmación de órdenes. Los seis casos básicos y los 33 informativos siguen aislados en AgentV1. Validar el recorrido completo en staging con BD y transportes aislados antes de desplegar.
