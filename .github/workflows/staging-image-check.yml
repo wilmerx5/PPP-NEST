@@ -2,10 +2,17 @@ name: PPP Staging Image Check
 on:
   push:
     branches: [fix/whatsapp-regression-baseline]
-    paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, package.json, package-lock.json, src/**, migrations/**, scripts/ppp-runtime-smoke.*, .github/workflows/staging-image-check.yml]
+    paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, config/nginx/**, package.json, package-lock.json, src/**, migrations/**, scripts/ppp-runtime-smoke.*, .github/workflows/staging-image-check.yml]
 permissions:
   contents: read
 jobs:
+  nginx-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate the staging Nginx virtual host
+        run: docker run --rm -v "$PWD/config/nginx/ppp-dev.conf:/etc/nginx/conf.d/default.conf:ro" nginx:stable nginx -t
   build-image:
     runs-on: ubuntu-latest
     timeout-minutes: 15
