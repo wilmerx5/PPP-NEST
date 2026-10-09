@@ -88,4 +88,4 @@ Ver también [aceptación beta](whatsapp-beta-acceptance.md), [pruebas MariaDB](
 
 ## Backend de staging
 
-El responsable confirmó que solo está preparada la DB. Se prepara [un backend aislado](ppp-staging-backend.md), con TLS/destino DB comprobados, puerto privado y envíos Meta limitados explícitamente al canal y destinatarios de pruebas. Sigue faltando el servidor/URL y la aceptación desplegada; la imagen construida no equivale a un backend desplegado.
+El responsable arrancó [el backend aislado](ppp-staging-backend.md) en `dev.prontopolloportal.com`; HTTPS y health con DB conectada están comprobados. La [auditoría HTTP desplegada](ppp-staging-live-checks.md) detectó que faltaba el rechazo del webhook cuando no había App Secret efectivo. Se corrige y debe actualizarse el VPS antes de habilitar el canal de pruebas. Los envíos Meta permanecen limitados explícitamente al canal y destinatarios de prueba. Sigue pendiente la aceptación del circuito de pedidos desplegado.
