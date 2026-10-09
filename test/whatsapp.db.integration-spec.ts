@@ -206,5 +206,16 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     await post(payload('wamid.http.failed')).expect(200);
     expect((await other.findByWaMessageId('wamid.http.failed'))?.processingStatus).toBe('failed');
     expect(await primary.getRepository(WhatsappMessage).count({where:{direction:'out'}})).toBe(0);
+    send.mockResolvedValue(undefined);
+    await post(payload('wamid.http.recovered')).expect(200);
+    expect((await other.findByWaMessageId('wamid.http.recovered'))?.processingStatus).toBe('completed');
+    expect((await other.findByWaMessageId('wamid.http.failed'))?.processingStatus).toBe('failed');
+  });
+  it('handles a failed immediate eight-message batch without an unhandled rejection',async()=> {
+    send.mockRejectedValue(new Error('synthetic batch transport unavailable'));
+    await Promise.all(Array.from({length:8},(_,i)=>post(payload('wamid.batch.failed.'+i)).expect(200)));
+    const messages=await primary.getRepository(WhatsappMessage).find({where:{direction:'in'}});
+    expect(messages).toHaveLength(8);expect(messages.every(m=>m.processingStatus==='failed')).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

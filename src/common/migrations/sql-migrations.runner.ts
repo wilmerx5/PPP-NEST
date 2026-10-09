@@ -571,6 +571,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   /** Columnas de contexto del local para la IA (idempotente). */
   private async ensureWhatsappSettingsColumns() {
     const cols: Array<{ name: string; ddl: string }> = [
+      { name: 'agent_v1_enabled', ddl: 'TINYINT(1) NOT NULL DEFAULT 0' },
       { name: 'restaurant_name', ddl: 'VARCHAR(120) NULL' },
       { name: 'restaurant_address', ddl: 'VARCHAR(500) NULL' },
       { name: 'restaurant_city', ddl: 'VARCHAR(120) NULL' },

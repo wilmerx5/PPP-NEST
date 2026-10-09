@@ -186,7 +186,7 @@ export class WhatsappOrchestratorService {
       state.pending.push(msg);
       state.waiters.push({ resolve, reject });
       if (state.pending.length >= WHATSAPP_INBOUND_COALESCE_MAX) {
-        void this.flushInboundCoalesce(key);
+        this.flushInboundCoalesceInBackground(key);
         return;
       }
       this.scheduleInboundCoalesceFlush(key);
@@ -199,8 +199,17 @@ export class WhatsappOrchestratorService {
     if (state.timer) clearTimeout(state.timer);
     const delayMs = coalesceDelayMsForBatch(state.pending);
     state.timer = setTimeout(() => {
-      void this.flushInboundCoalesce(key);
+      this.flushInboundCoalesceInBackground(key);
     }, delayMs);
+  }
+
+  private flushInboundCoalesceInBackground(key: string): void {
+    // flushInboundCoalesce forwards errors to every awaiting handleIncoming caller.
+    // Its background promise also needs a handler so provider failures cannot
+    // become unhandled rejections and terminate the Node process.
+    void this.flushInboundCoalesce(key).catch((err: unknown) => {
+      this.logger.error('WhatsApp background inbound flush failed', err);
+    });
   }
 
   private hasInboundCoalescePending(key: string): boolean {

@@ -39,7 +39,23 @@ export class WhatsappConversationService {
       },
       customerName: usableLinkedName,
     });
-    return this.convRepo.save(conv);
+    try {
+      return await this.convRepo.save(conv);
+    } catch (err: unknown) {
+      const db = err as {
+        code?: string;
+        errno?: number;
+        driverError?: { code?: string; errno?: number };
+      };
+      const duplicate = db?.code === 'ER_DUP_ENTRY' || db?.errno === 1062 ||
+        db?.driverError?.code === 'ER_DUP_ENTRY' || db?.driverError?.errno === 1062;
+      if (!duplicate) throw err;
+      // Another worker may have created this phone after our initial lookup.
+      // Reuse its persisted session instead of dropping the inbound message.
+      const winner = await this.convRepo.findOne({ where: { waId } });
+      if (!winner) throw err;
+      return winner;
+    }
   }
 
   async touchInbound(conv: WhatsappConversation) {
