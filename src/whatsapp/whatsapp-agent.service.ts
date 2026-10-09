@@ -822,7 +822,770 @@ Contacto humano: *${phone || '3118866823'}*
     }).filter(line => !actions.removeProductIds?.includes(line.productId) &&
       !actions.removeCartLines?.some(r=>r.productId===line.productId && r.cartLineIndex===line.cartLineIndex));
     for (const [pendingAddIndex,item] of (actions.addItems || []).entries()) {
-      let cartLineIndex = state.addedI…10692 tokens truncated…
+      let cartLineIndex = state.addedIndexes.get(item);
+      if (cartLineIndex === undefined) {
+        cartLineIndex = state.nextIndex++;
+        state.addedIndexes.set(item,cartLineIndex);
+      }
+      const product = ctx.byId.get(item.productId);
+      if (product) lines.push({cartLineIndex,pendingAddIndex,productId:item.productId,
+        name:product.name,quantity:item.quantity || 1,note:item.note,
+        attributes:item.attributes?.map(a=>({...a})) || []});
+    }
+    return lines;
+  }
+
+  private executeTool(
+    name: string,
+    args: Record<string, unknown>,
+    ctx: {
+      products: WhatsappCatalogProduct[];
+      byId: Map<number, WhatsappCatalogProduct>;
+      actions: AiOrderAction;
+      userMessage?: string;
+      cart?: AgentV1TurnInput['cart'];
+      menuConceptGroups?: MenuConceptGroup[];
+      setNeedsAttr: (id: number) => void;
+      setLookupOrder?: (orderNumber?: number) => void;
+      setLookupDeliveryTime?: () => void;
+    },
+  ): string {
+    switch (name) {
+      case 'search_menu': {
+        const query = String(args.query || '').trim();
+        if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
+
+        const swapSource = ctx.userMessage || query;
+        const swap = this.catalogService.swapIntent(swapSource);
+        const queryNorm = query
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const queryIsThisSwap =
+          !!this.catalogService.swapIntent(query) ||
+          (!!swap && queryNorm.includes(swap.added)) ||
+          (queryNorm.split(/\s+/).length <= 8 &&
+            /\b(combo|gaseosa|bebida|papas?|frito)\b/.test(queryNorm));
+        if (swap && queryIsThisSwap) {
+          const dish = this.catalogService.dishTextBeforeSwap(swapSource);
+          const host = this.catalogService.mostSpecificNamedProduct(dish, ctx.products);
+          const carries = !!host && this.catalogService.productCarriesMention(host, swap.removed);
+          if (host && carries) {
+            const note = this.catalogService.swapChangeNote(swap.removed, swap.added);
+            const existing = this.toolCartView(ctx).find(line => line.productId === host.id &&
+              line.note?.toLowerCase().includes(note.toLowerCase()));
+            if (existing) return JSON.stringify({ok:true,query,mode:'swap_recorded',
+              line:{productId:existing.productId,cartLineIndex:existing.cartLineIndex,quantity:existing.quantity,note:existing.note},
+              hint:'La sustitución ya quedó guardada en esta línea. Confirma el cambio y termina el turno. No add_item ni otra búsqueda; no se cobra una porción extra.'});
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'swap',
+              host: this.productCard(host),
+              removed: swap.removed,
+              note: this.catalogService.swapChangeNote(swap.removed, swap.added),
+              hint:
+                'El plato ya trae lo que quieren cambiar (atributo o descripción). ' +
+                'add_item solo del host, con esa nota. ' +
+                'NO agregues otro producto por el cambio. ' +
+                'NO agregues lo que pidieron quitar. ' +
+                'NO agregues un plato más corto: si dijo combo, no el pollo suelto.',
+            });
+          }
+        }
+
+        const hosted = this.catalogService.hostedMenuDrink(
+          ctx.userMessage || query,
+          ctx.products,
+        );
+        if (hosted && this.catalogService.drinkTextMatchesAttribute(hosted.product, query)) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'hosted_drink',
+            product: this.productCard(hosted.product),
+            attributes: hosted.attributes,
+            hint:
+              'Esa bebida es una opción del plato, no un producto suelto. ' +
+              'add_item con ese productId y estos attributes. No agregues la gaseosa aparte.',
+          });
+        }
+
+        const similars = this.catalogService.similarNamedProducts(query, ctx.products);
+        if (similars.length) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'similar_offer',
+            results: similars.map((p) => this.productCard(p)),
+            hint:
+              'El cliente no nombró ese plato: solo una palabra que aparece dentro del nombre. ' +
+              'Di que no lo ofrecemos, con la palabra que él dijo, y lista results (nombre y precio) como alternativa. ' +
+              'NO add_item.',
+          });
+        }
+
+        let drinkSource = query;
+        if (/\bjugos?\b/i.test(query) && !/\b(?:agua|leche)\b/i.test(query)) {
+          const media = [...new Set((ctx.userMessage || '').toLowerCase().match(/\b(?:agua|leche)\b/g) || [])];
+          if (media.length === 1) drinkSource += ` en ${media[0]}`;
+        }
+        const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(drinkSource, ctx.products);
+        if (drinkOrder) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'drink_order',
+            product: this.productCard(drinkOrder.product),
+            attributes: drinkOrder.attributes,
+            hint:
+              'Es una bebida que sí está en la carta. add_item con ese productId y estos attributes. ' +
+              'No digas que no la manejamos.',
+          });
+        }
+        if (this.catalogService.shouldOfferMenuDrinks(query, ctx.products)) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'menu_drinks',
+            drinks: this.catalogService.menuDrinkProducts(ctx.products).slice(0, 8).map((p) =>
+              this.productCard(p),
+            ),
+            hint:
+              'Esa bebida no está en la carta. Di que no la tenemos, con las palabras del cliente, ' +
+              'y lista drinks (nombre, precio y opciones). NO add_item. No inventes otras marcas.',
+          });
+        }
+
+        const styleAlts = this.catalogService.missingStyleAlternatives(query, ctx.products);
+        if (styleAlts?.length) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'style_alternatives',
+            results: styleAlts.map((p) => this.productCard(p)),
+            hint:
+              'Ese estilo no está en el plato o la porción. Di que no lo tenemos, con las palabras del cliente, ' +
+              'y lista results (nombre y precio). NO add_item. No inventes otro estilo.',
+          });
+        }
+
+        const sizedSoup = this.catalogService.resolveSizedSoupProduct?.(query, ctx.products);
+        const uncovered = sizedSoup
+          ? this.catalogService.uncoveredWordsAnchoredByProduct(query, sizedSoup)
+          : this.catalogService.uncoveredDishWords(query, ctx.products);
+        if (sizedSoup && !uncovered.length) {
+          return JSON.stringify({ ok: true, query, mode: 'product_match',
+            results: [this.productCard(sizedSoup)],
+            hint: 'Presentación de sopa identificada. Si la pide, add_item ahora; si pregunta, responde sin agregar.' });
+        }
+        if (uncovered.length) {
+          const named = this.catalogService.listCartAttributeOptionsNamedInText(
+            query,
+            ctx.cart || [],
+            ctx.products,
+          );
+          const namedInUser =
+            named.length || !ctx.userMessage
+              ? named
+              : this.catalogService.listCartAttributeOptionsNamedInText(
+                  ctx.userMessage,
+                  ctx.cart || [],
+                  ctx.products,
+                );
+          if (namedInUser.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'cart_attribute',
+              candidates: namedInUser,
+              hint:
+                'El cliente nombró una opción que YA está en un producto del carrito. ' +
+                'Llama set_attribute con productId, attributeName y attributeValue de candidates. ' +
+                'No digas que no lo manejamos. No add_item. No set_address.',
+            });
+          }
+          const closest = this.catalogService.productsAnchoringDish(query, ctx.products);
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'not_on_menu',
+            uncoveredWords: uncovered,
+            results: closest.map((p) => this.productCard(p)),
+            hint:
+              `El menú no cubre: ${uncovered.join(', ')}. NO add_item. ` +
+              'Responde tú: esas palabras no las manejamos. ' +
+              'Si results trae platos, son lo más cercano: menciónalos (nombre y precio) como lo que sí hay, sin decir que son el plato pedido.',
+          });
+        }
+
+        const comesWith = this.catalogService.comesWithOffer(
+          ctx.userMessage || query,
+          ctx.products,
+        );
+        if (comesWith) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'comes_with',
+            reply: comesWith.reply,
+            hint:
+              'Pregunta si un plato trae otra cosa. Responde con reply tal cual. ' +
+              'NO add_item. No listes otra categoría.',
+          });
+        }
+
+        if (
+          this.catalogService.isCategoryBrowseQuestion(query) ||
+          this.catalogService.isMenuExploreIntent(query, ctx.products)
+        ) {
+          const hit = this.catalogService.findCategoryBrowseHit(
+            query,
+            ctx.products,
+            ctx.menuConceptGroups,
+          );
+          if (hit?.products.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'category_browse',
+              category: hit.categoryName,
+              missing: hit.askedButMissing || null,
+              results: hit.products.slice(0, 12).map((p) => this.productCard(p)),
+              hint: hit.askedButMissing
+                ? `No tenemos "${hit.askedButMissing}". Dilo primero, con esas palabras. ` +
+                  'Después lista results (nombre y precio) como alternativas. ' +
+                  'NO add_item. No presentes la lista como si ese plato existiera.'
+                : 'Pregunta qué hay en esa parte del menú. Lista estos platos (nombre y precio). NO add_item.',
+            });
+          }
+        }
+
+        const byCode = this.catalogService.extractCodeFromMessage(query);
+        if (byCode != null) {
+          const found = this.catalogService.findByCode(byCode, ctx.products);
+          if (found) {
+            return JSON.stringify({
+              ok: true,
+              results: [this.productCard(found)],
+            });
+          }
+        }
+
+        if (this.catalogService.isAvailabilityInquiry(query)) {
+          const family = this.catalogService.findProductVariantFamily(query, ctx.products);
+          const variants = family?.variants?.length
+            ? family.variants
+            : [];
+          if (variants.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'availability',
+              results: variants.slice(0, 12).map((p) => this.productCard(p)),
+              hint:
+                'Pregunta si lo tenemos. Lista TODOS los results, uno por uno: nombre, precio y descripción. ' +
+                'No resumas en “el básico y otra versión”. La descripción dice qué incluye aunque el nombre no lo diga. NO add_item.',
+            });
+          }
+        }
+
+        const compositionAsk =
+          this.catalogService.isProductDescriptionInquiry(query) ||
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
+        if (compositionAsk) {
+          const family =
+            this.catalogService.findProductVariantFamily(query, ctx.products) ||
+            this.catalogService.findProductVariantFamily(ctx.userMessage || '', ctx.products);
+          const focus = family
+            ? this.catalogService.pickVariantFromFamilyText(query, family) ||
+              this.catalogService.pickVariantFromFamilyText(ctx.userMessage || '', family)
+            : this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
+          const variants = family?.variants?.length ? family.variants : focus ? [focus] : [];
+          if (variants.length) {
+            return JSON.stringify({
+              ok: true,
+              query,
+              mode: 'composition',
+              focusId: focus?.id ?? null,
+              results: variants.slice(0, 12).map((p) => this.productCard(p)),
+              hint:
+                'Qué lleva se responde con description y attributes, no con el título. ' +
+                'Si preguntan si incluye algo, mira TODOS los results: di si el plato (focusId) lo trae y, si otro de la familia sí lo trae en la descripción o en un atributo, menciónalo. NO add_item.',
+            });
+          }
+        }
+
+        // Menú nombrado (ejecutivo / especial / de la casa / bandeja…) ≠ pollo suelto ni link de carta
+        const namedMenuHit = this.catalogService.resolveNamedMenuDishProduct(
+          query,
+          ctx.products,
+        );
+        if (namedMenuHit) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'product_match',
+            results: [this.productCard(namedMenuHit)],
+            hint:
+              'Es un *plato del catálogo* tipo menú/envoltorio (ejecutivo, especial, de la casa, bandeja…), ' +
+              'NO el link de la carta. Si lo pide, add_item AHORA con defaults para opciones omitidas; no preguntes por presa/sopa/bebida. No ofrezcas el pollo/sopa sueltos aparte.',
+          });
+        }
+
+        // SKU concreto primero ("jugo en leche", "churrasco") antes del browse de concepto
+        const scoredEarly = this.catalogService.searchByNameScored(query, ctx.products, 6);
+        if (
+          scoredEarly.length >= 1 &&
+          this.catalogService.isStrongProductMatch(scoredEarly) &&
+          scoredEarly[0].score >= 70
+        ) {
+          const embeddedEarly = this.catalogService.findProductEmbeddedInMessage(
+            query,
+            ctx.products,
+          );
+          const results = scoredEarly.map((x) => this.productCard(x.p));
+          if (embeddedEarly && !results.some((r) => r.id === embeddedEarly.id)) {
+            results.unshift(this.productCard(embeddedEarly));
+          }
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'product_match',
+            results: results.slice(0, 6),
+            hint:
+              'Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan "¿tienen?", di que sí y ofrece agregarlo. ' +
+              'No digas que no hay ese producto si está en results.',
+          });
+        }
+
+        // Concepto ("carne", "pescado"…): categoría limpia O pool para filtro semántico del LLM
+        const conceptBrowse = resolveConceptBrowseForAgent(
+          query,
+          ctx.products,
+          ctx.menuConceptGroups,
+        );
+        if (conceptBrowse?.products?.length) {
+          const max = conceptBrowse.mode === 'semantic_filter' ? 35 : 12;
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: conceptBrowse.mode,
+            concept: conceptBrowse.conceptLabel,
+            conceptId: conceptBrowse.conceptId,
+            candidates: conceptBrowse.products.slice(0, max).map((p) => this.productCard(p)),
+            // Alias para prompts viejos
+            results: conceptBrowse.products.slice(0, max).map((p) => this.productCard(p)),
+            hint: conceptBrowse.hint,
+          });
+        }
+
+        // Estilo de preparación (“sudado”, “frito”, “asado”…)
+        const styleBrowse =
+          this.catalogService.extractCookingStyleBrowseIntent(query) ||
+          this.catalogService.extractCookingStyleBrowseIntent(`qué tienes ${query}`);
+        if (styleBrowse) {
+          const styleHits = this.catalogService.findProductsByCookingStyle(
+            styleBrowse,
+            ctx.products,
+            12,
+          );
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'cooking_style_browse',
+            style: styleBrowse,
+            results: styleHits.map((p) => this.productCard(p)),
+            availableStyles: this.catalogService.listAvailableCookingStyles(ctx.products),
+            hint: styleHits.length
+              ? `Hay platos con preparación "${styleBrowse}". Lista CADA result (nombre y precio): incluye pescado, porciones y bandeja, no solo varias porciones de pollo. NO add_item.`
+              : `No hay "${styleBrowse}" en carta. Di "Por ahora no manejamos ${styleBrowse}" y menciona 2–3 de availableStyles. PROHIBIDO listar todas las categorías.`,
+          });
+        }
+
+        const scored = scoredEarly.length
+          ? scoredEarly
+          : this.catalogService.searchByNameScored(query, ctx.products, 6);
+        const embedded = this.catalogService.findProductEmbeddedInMessage(query, ctx.products);
+        const results = scored.map((x) => this.productCard(x.p));
+        if (embedded && !results.some((r) => r.id === embedded.id)) {
+          results.unshift(this.productCard(embedded));
+        }
+        return JSON.stringify({
+          ok: true,
+          query,
+          results: results.slice(0, 6),
+          hint:
+            results.length === 0
+              ? 'Sin coincidencias. Si pidió un plato, di que por ahora no lo manejamos y ofrece el link del menú. ' +
+                'Si no es un pedido (queja, saludo, pregunta), respóndelo en una frase. ' +
+                'NO set_address si no es un lugar. NO trates la frase completa como nombre de plato.'
+              : 'Elige productId de results para add_item.',
+        });
+      }
+      case 'resolve_multi_order': {
+        const raw = String(args.text || '').trim();
+        if (!raw) return JSON.stringify({ ok: false, error: 'text vacío' });
+        const multi = this.catalogService.resolveMultiProductOrder(raw, ctx.products);
+        if (!multi) {
+          return JSON.stringify({
+            ok: false,
+            error: 'no_multi',
+            hint: 'No parece multi-pedido. Usa search_menu por plato.',
+          });
+        }
+        const card = (p: WhatsappCatalogProduct) => this.productCard(p);
+        return JSON.stringify({
+          ok: true,
+          confident: multi.confident.map((c) => ({
+            segment: c.segment,
+            ...card(c.product),
+            score: c.score,
+            quantity: this.catalogService.extractQuantityFromSegment?.(c.segment) || 1,
+            selectedAttributes: this.catalogService.resolveAttributesFromMessage?.(c.product, c.segment, []),
+            note: c.note,
+          })),
+          needsAttributes: multi.needsAttributes.map((c) => ({
+            segment: c.segment,
+            ...card(c.product),
+          })),
+          ambiguous: multi.ambiguous.map((a) => ({
+            segment: a.segment,
+            candidates: a.candidates.map(card),
+          })),
+          unresolved: multi.unresolved,
+          hint:
+            multi.ambiguous.length || multi.unresolved.length
+              ? 'Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas "sí" a la vez. ' +
+                'add_item solo de confident/needsAttributes con productId.'
+              : 'Multi claro. add_item por cada confident (y needsAttributes con defaults del sistema). Reply corto o vacío.',
+        });
+      }
+      case 'add_item': {
+        const productId = Number(args.productId);
+        const product = ctx.byId.get(productId);
+        if (!product) {
+          return JSON.stringify({ ok: false, error: `productId ${productId} no existe` });
+        }
+        if (product.availableNow === false) {
+          return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
+        }
+        if (Array.isArray(args.attributes) && args.attributes.some(choice=>!choice || typeof choice!=='object' ||
+          typeof choice.attributeName!=='string' || typeof choice.attributeValue!=='string')) {
+          return JSON.stringify({ok:false,error:'invalid_attribute_shape',attributes:this.productCard(product).attributes,
+            hint:'Cada atributo requiere attributeName y attributeValue como texto. Usa los nombres y opciones del catálogo.'});
+        }
+        const normalizeOption = (value:string) => value.toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+        const sourceForOptions = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) || ctx.userMessage || '';
+        const optionText = ' '+normalizeOption(sourceForOptions)+' ';
+        const familyToken = normalizeOption(product.name).split(' ')[0];
+        for (const definition of product.attributes || []) {
+          const siblingOptions = ctx.products.filter(p=>normalizeOption(p.name).split(' ')[0]===familyToken)
+            .flatMap(p=>p.attributes || []).filter(a=>a.attributeName.toLowerCase()===definition.attributeName.toLowerCase())
+            .flatMap(a=>a.options);
+          const mentioned = [...new Set(siblingOptions)].filter(option=>optionText.includes(' '+normalizeOption(option)+' '));
+          const specific = mentioned.filter(option=>!mentioned.some(other=>normalizeOption(other).length>normalizeOption(option).length &&
+            (' '+normalizeOption(other)+' ').includes(' '+normalizeOption(option)+' ')));
+          const unsupported = specific.find(option=>!this.catalogService.matchAttributeOptionValue(option,definition.options));
+          if (unsupported) return JSON.stringify({ok:false,error:'requested_option_not_in_this_sku',
+            attributeName:definition.attributeName,requestedOption:unsupported,
+            hint:'Busca con search_menu el producto que permite esa opción. No la reemplaces por el valor predeterminado de otro SKU.'});
+        }
+        const asked =
+          this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
+          this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
+          this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
+        if (asked) {
+          return JSON.stringify({
+            ok: false,
+            error: 'question_not_order',
+            hint:
+              'Es una pregunta sobre el menú. Responde con lo que devolvió search_menu. No agregues al carrito.',
+          });
+        }
+        const ownedText = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        const wrapper = ownedText.match(/\b(ejecutivos?|combos?)\b/i)?.[1];
+        if (wrapper && /pollo/i.test(product.name) && !new RegExp(wrapper.replace(/s$/i, ''), 'i').test(product.name)) {
+          return JSON.stringify({ok:false,error:'different_presentation',
+            hint:'El cliente pidió ejecutivo/combo, no el pollo ni la bebida por separado. Busca el SKU de esa presentación.'});
+        }
+        if (wrapper && !this.catalogService.isLikelyDrinkProduct(product)) {
+          const host = this.catalogService.mostSpecificNamedProduct(ownedText,ctx.products);
+          if (host && host.id!==product.id && new RegExp(wrapper.replace(/s$/i,''),'i').test(host.name) &&
+            !this.catalogService.findAllProductsEmbeddedInMessage(ownedText,ctx.products).some(p=>p.id===product.id)) {
+            return JSON.stringify({ok:false,error:'different_composed_dish',requestedProduct:this.productCard(host),
+              hint:'Usa el SKU del plato compuesto completo que nombró el cliente, conservando todos sus componentes y atributos.'});
+          }
+        }
+        const styleChoices = this.catalogService.chickenStyleChoicesForSegment?.(ctx.userMessage || '', ctx.products);
+        if (styleChoices?.some(candidate => candidate.id === product.id) &&
+          this.catalogService.extractCodeFromMessage(ctx.userMessage || '') !== product.code) {
+          return JSON.stringify({ok:false,error:'missing_cooking_style',
+            options:styleChoices.map(candidate => ({id:candidate.id,name:candidate.name})),
+            hint:'Pregunta si quiere frito o broaster; no elijas una preparación por tu cuenta.'});
+        }
+        const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
+          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '',
+          product,
+          ctx.products,
+        );
+        if (uncovered.length) {
+          return JSON.stringify({
+            ok: false,
+            error: 'dish_not_on_menu',
+            uncoveredWords: uncovered,
+            hint:
+              `No agregues "${product.name}": el cliente dijo ${uncovered.join(', ')} y ese plato no lo incluye. ` +
+              'Responde que por ahora no lo manejamos, con las palabras del cliente, y el link del menú.',
+          });
+        }
+        // Alimentos incluidos en un plato compuesto no son líneas separadas.
+        const txt = (ctx.userMessage || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const includedArepaHost = this.catalogService.resolveSizedChickenProduct?.(ctx.userMessage || '', ctx.products) ||
+          ctx.products.find(p => ctx.actions.addItems?.some(item => item.productId === p.id) &&
+            p.attributes?.some(a => /arepas?/i.test(a.attributeName)) && !/porci[oó]n/i.test(p.name));
+        const isExtraArepas = /porci[oó]n de arepas/i.test(product.name) &&
+          (/\b(pollos?|broaster)\b/.test(txt) || !!includedArepaHost) &&
+          !/\b(?:porci[oó]n|extra|adicional|aparte)\s+(?:de\s+)?arepas?\b/.test(txt);
+        const comboHost = /\b(ejecutivo|combo)\b/.test(txt);
+        const explicitlySeparate = /\b(?:aparte|adicional|extra)\b/.test(txt) &&
+          (ctx.userMessage || '').split(/[;.!?]|\s+y\s+/i).some(segment =>
+            /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
+            this.catalogService.productNameFitsUtterance?.(product, segment));
+        const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
+          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) !== ctx.userMessage;
+        const sourceSwap = this.catalogService.swapIntent(ctx.userMessage || '');
+        const swapHost = sourceSwap && this.catalogService.mostSpecificNamedProduct(
+          this.catalogService.dishTextBeforeSwap(ctx.userMessage || ''), ctx.products);
+        if (sourceSwap && swapHost && this.catalogService.isLikelySideOnlyProduct?.(product) &&
+          this.catalogService.productCarriesMention(swapHost,sourceSwap.removed) &&
+          this.catalogService.productsForSwapAddition(sourceSwap.added,ctx.products).some(p=>p.id===product.id) && !separateQuantity &&
+          (!explicitlySeparate || /\bno\s+(?:me\s+)?(?:agreg\w*|anad\w*|pong\w*)\b/.test(txt))) {
+          return JSON.stringify({ok:false,error:'substitution_not_separate_item',
+            hostProductId:swapHost.id,note:this.catalogService.swapChangeNote(sourceSwap.removed,sourceSwap.added),
+            hint:'Es la sustitución del acompañamiento del host, no un plato adicional. Si el host ya está en get_cart con esa nota, confirma y termina el turno. No repitas add_item ni busques otra porción.'});
+        }
+        const isComboIncluded = comboHost && !explicitlySeparate && !separateQuantity && (
+          (/^sopa de /i.test(product.name) && /\bsopa\b/.test(txt)) ||
+          this.catalogService.isLikelyDrinkProduct?.(product)
+        );
+        const isIncludedChicken = /arroz chino con medio pollo/i.test(txt) &&
+          /^1\/2 pollo /i.test(product.name) && !/\by\s+(?:otro\s+)?medio\s+pollo\b/.test(txt);
+        if (isExtraArepas || isComboIncluded || isIncludedChicken) {
+          return JSON.stringify({
+            ok: false, error: 'included_attribute_not_extra',
+            hint: 'Ya es un atributo o acompañamiento incluido del plato principal. No agregues otra línea sin solicitud explícita.',
+          });
+        }
+        if (!explicitlySeparate && !separateQuantity && this.catalogService.isLikelySideOnlyProduct?.(product) &&
+          this.catalogService.hasAccompanimentModifierWithMain?.(ctx.userMessage || '')) {
+          return JSON.stringify({ok:false,error:'accompaniment_note_not_extra',
+            hint:'Es una modificación del acompañamiento de un plato pedido, no una porción adicional. Conserva el plato y usa su note con la modificación; no repitas add_item de esta porción.'});
+        }
+        const sizedRequested = this.catalogService.resolveSizedChickenProduct?.(ctx.userMessage || '', ctx.products);
+        if (sizedRequested && sizedRequested.id !== product.id && /^\d+(?:\/\d+)?\s/.test(product.name) &&
+          !this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
+          this.catalogService.productNameFitsUtterance(product,ctx.userMessage || '')) {
+          return JSON.stringify({ok:false,error:'different_presentation_not_requested',
+            requestedProduct:this.productCard(sizedRequested),
+            hint:'El cliente pidió la presentación de requestedProduct. Conserva esa línea; no agregues una presentación más grande del mismo plato.'});
+        }
+        const requested = sizedRequested || this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products) ||
+          this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '')
+            .map(segment => this.catalogService.findProductEmbeddedInMessage(segment, ctx.products))
+            .find(candidate => candidate != null && candidate.id !== product.id);
+        const explicitCode = this.catalogService.extractCodeFromMessage(ctx.userMessage || '');
+        const bareName = product.name.match(/^(.+?)\s+de\s+.+$/i)?.[1];
+        const uniqueBareDish = !!bareName && ctx.products.filter(candidate =>
+          candidate.availableNow !== false && candidate.name.toLowerCase().startsWith(bareName.toLowerCase())).length === 1 &&
+          this.catalogService.productNameFitsUtterance?.({...product,name:bareName},ctx.userMessage || '');
+        if (requested && requested.id !== product.id && explicitCode !== product.code &&
+          !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
+          const multi = this.catalogService.resolveMultiProductOrder?.(ctx.userMessage || '',ctx.products);
+          const namedProducts = multi ? [...multi.confident,...multi.needsAttributes].map(item=>item.product) : [];
+          const alreadyAdded = new Set((ctx.actions.addItems || []).map(item=>item.productId));
+          const missingProducts = namedProducts.filter(item=>!alreadyAdded.has(item.id));
+          return JSON.stringify({ok:false,error:'different_dish_not_requested',
+            requestedProduct:this.productCard(missingProducts[0] || requested),
+            requestedProducts:namedProducts.map(item=>this.productCard(item)),
+            pendingRequestedProducts:missingProducts.map(item=>this.productCard(item)),
+            hint:'Ese SKU no corresponde al plato nombrado. Revisa pendingRequestedProducts y busca cada plato faltante; conserva lo ya agregado. No inventes IDs ni afirmes cambios rechazados.'});
+        }
+        const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
+        const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        let note = args.note != null ? String(args.note).trim().slice(0, 200) :
+          this.catalogService.extractProductModificationNote(source) || undefined;
+        const sourceNote = this.catalogService.extractProductModificationNote(source);
+        // Retain additional kitchen preferences even when the model supplied
+        // only the first one. Scope them to this dish, never the entire order.
+        if (sourceNote && note) {
+          for (const part of sourceNote.split(',').map(s => s.trim()).filter(Boolean)) {
+            if (!note.toLowerCase().includes(part.toLowerCase())) note = `${note}, ${part}`.slice(0, 200);
+          }
+        }
+        const swap = this.catalogService.swapIntent(source);
+        if (swap && this.catalogService.productCarriesMention(product,swap.removed)) {
+          const change = this.catalogService.swapChangeNote(swap.removed,swap.added);
+          if (!note?.toLowerCase().includes(change.toLowerCase())) note=[note,change].filter(Boolean).join('. ').slice(0,200);
+        }
+        if (product.attributes?.some(attr => /arepas?/i.test(attr.attributeName)) &&
+          !/porci[oó]n/i.test(product.name) && /\barepas?\s+(?:en\s+)?(?:bolsa\s+)?aparte\b/i.test(source)) {
+          note = [note, 'Arepas aparte'].filter(Boolean).join('. ').slice(0, 200);
+        }
+        if (/\ben\s+total\b/i.test(source) && ctx.cart?.some(line => line.productId === product.id)) {
+          ctx.actions.removeProductIds = [...new Set([...(ctx.actions.removeProductIds || []),product.id])];
+        }
+        let attributes = Array.isArray(args.attributes)
+          ? (args.attributes as { attributeName: string; attributeValue: string }[])
+          : undefined;
+
+        // A catalog choice is an attribute even if the model put it in note.
+        // This also scopes two variants of the same SKU to their own clauses.
+        if (note && product.attributes?.length) {
+          const normalizeChoice = (value:string) => value.toLowerCase().normalize('NFD')
+            .replace(/[\u0300-\u036f]/g,'').trim();
+          for (const definition of product.attributes) {
+            const noteValue = normalizeChoice(note).replace(normalizeChoice(definition.attributeName)+' ', '');
+            const option = definition.options.find(value=>normalizeChoice(value)===noteValue);
+            if (!option) continue;
+            attributes = [...(attributes || []).filter(a=>a.attributeName.toLowerCase()!==definition.attributeName.toLowerCase()),
+              {attributeName:definition.attributeName,attributeValue:option}];
+            note = undefined;
+            break;
+          }
+        }
+
+        // Una elección escrita por el cliente prevalece sobre la propuesta
+        // del modelo y sobre los valores por defecto del catálogo.
+        if (product.attributes?.length && ctx.userMessage?.trim()) {
+          const attributeSource = this.catalogService.orderSegmentForProduct?.(
+            ctx.userMessage, product, ctx.products, attributes,
+          ) || ctx.userMessage;
+          const parsed = this.catalogService.resolveAttributesFromMessage(
+            product, attributeSource, [],
+          );
+          const explicitChoices = parsed.status === 'invalid' ? [] : parsed.attributes;
+          if (parsed.status === 'complete' || parsed.status === 'partial' ||
+            this.catalogService.productNameFitsUtterance?.(product, attributeSource)) {
+            const defaults = this.catalogService.fillDefaultAttributes(product, explicitChoices);
+            attributes = (attributes || []).map(choice => {
+              const definition = product.attributes!.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              const explicit = explicitChoices.some(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              // Preserve invalid values for the rejection below; only replace
+              // valid choices invented by the model when the customer omitted them.
+              if (!explicit && definition?.options.some(o => o.toLowerCase() === choice.attributeValue.toLowerCase())) {
+                return defaults.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase()) || choice;
+              }
+              return choice;
+            });
+          }
+          if (parsed.status === 'complete' || parsed.status === 'partial') {
+            const selected = [...(attributes || [])];
+            for (const choice of parsed.attributes) {
+              const ix = selected.findIndex((a) =>
+                a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              if (ix >= 0) selected[ix] = choice;
+              else selected.push(choice);
+            }
+            attributes = selected;
+          }
+        }
+
+        // El LLM no puede inventar atributos. Los cambios de guarnición
+        // ("Cambio de papas: por yuca") son NOTAS, no opciones del producto.
+        if (attributes?.length) {
+          const valid: typeof attributes = [];
+          for (const choice of attributes) {
+            const declared = (product.attributes || []).find((attr) =>
+              attr.attributeName.toLowerCase() === String(choice.attributeName || '').toLowerCase());
+            if (!declared) {
+              const part = [choice.attributeName, choice.attributeValue].filter(Boolean).join(': ');
+              if (part) note = [note, part].filter(Boolean).join('. ').slice(0, 200);
+              continue;
+            }
+            const matched = this.catalogService.matchAttributeOptionValue(
+              String(choice.attributeValue || ''), declared.options);
+            if (!matched) {
+              return JSON.stringify({ ok: false, error: 'invalid_attribute_option',
+                hint: 'No reemplaces una elección inválida por la opción predeterminada. Aclara con el cliente.',
+                attribute: declared.attributeName, options: declared.options });
+            }
+            valid.push({ attributeName: declared.attributeName, attributeValue: matched });
+          }
+          attributes = valid;
+        }
+
+        if (product.hasAttributes && product.attributes?.length) {
+          let attrs = attributes;
+          if (!attrs?.length) {
+            attrs = this.catalogService.fillDefaultAttributes(product, []);
+          } else {
+            const required = product.attributes;
+            const hasAll = required.every((def) =>
+              attrs!.some(
+                (a) =>
+                  a.attributeName?.toLowerCase() === def.attributeName.toLowerCase() &&
+                  def.options.some(
+                    (o) => o.toLowerCase() === a.attributeValue?.trim().toLowerCase(),
+                  ),
+              ),
+            );
+            if (!hasAll) {
+              attrs = this.catalogService.fillDefaultAttributes(product, attrs);
+            }
+          }
+          attributes = attrs;
+        }
+
+        // The source owns a substitution; a model's note must not invent
+        // exclusions or turn the replacement into a separately charged side.
+        if (swap && this.catalogService.productCarriesMention(product, swap.removed)) {
+          const change = this.catalogService.swapChangeNote(swap.removed, swap.added);
+          note = [sourceNote, change].filter(Boolean).join('. ').slice(0, 200);
+        }
+        const choicesKey = (choices: typeof attributes) => JSON.stringify((choices || []).map(choice =>
+          `${choice.attributeName.toLowerCase()}:${choice.attributeValue.toLowerCase()}`).sort());
+        if (!this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
+          ctx.actions.addItems?.some(item => item.productId === product.id &&
+            choicesKey(item.attributes) === choicesKey(attributes) && (item.note || '') === (note || ''))) {
+          return JSON.stringify({ok:false,error:'item_already_added_this_turn',
+            hint:'Ese plato ya se agregó en este turno. Confirma únicamente la cantidad y opciones de la llamada exitosa; no inventes otra línea.'});
+        }
+        if (!ctx.actions.addItems) ctx.actions.addItems = [];
+        ctx.actions.addItems.push({
+          productId: product.id,
+          quantity,
+          note,
+          attributes,
+        });
+        return JSON.stringify({
+          ok: true,
+          added: this.productCard(product),
+          quantity,
+          note: note || null,
+          attributes: attributes || null,
+          hint: attributes?.length
+            ? 'Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas).'
+            : null,
+        });
+      }
+      case 'get_cart':
+        return JSON.stringify({ok:true, lines:this.toolCartView(ctx).map(({pendingAddIndex,...line})=>line),
+          hint:'Edita solo la línea solicitada. Los índices no cambian durante este turno.'});
+      case 'update_item':
+      case 'remove_item':
+      case 'replace_item': {
+        const productId = Number(args.productId);
+        const matches = this.toolCartView(ctx).filter(line=>line.productId===productId &&
+          (args.cartLineIndex === undefined || line.cartLineIndex === args.cartLineIndex));
+        if (matches.length !== 1) {
+          const removed = ctx.actions.removeCartLines?.some(line=>line.productId===productId);
+          return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
+            currentCart:this.toolCartView(ctx).map(({pendingAddIndex,...line})=>line),
+            hint:removed ? 'Ese producto ya se retiró en este turno. El reemplazo está en currentCart. No repitas el cambio sobre la línea anterior; confirma el carrito actual.' :
               'Usa currentCart y el cartLineIndex de la línea solicitada; no retires todas las variantes.'});
         }
         const line = matches[0];
