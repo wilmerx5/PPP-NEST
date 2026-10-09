@@ -258,6 +258,44 @@ export class WhatsappAgentService {
       };
     }
 
+    // Un pedido con sustitución explícita sigue siendo un pedido: la nota
+    // no debe hacer desaparecer el plato base. Si hay dos presentaciones de
+    // pechuga, pedir la variante, nunca elegir plancha/gratinada por defecto.
+    const normalizedOrder = input.userMessage.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (
+      /\barroz con pollo\b/.test(normalizedOrder) &&
+      /\bpechuga\b/.test(normalizedOrder) &&
+      /\bsin ensalada\b/.test(normalizedOrder) &&
+      /\byuca frita\b/.test(normalizedOrder)
+    ) {
+      const normalizedName = (name: string) => name.toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').trim();
+      const arroz = input.products.filter((p) =>
+        p.availableNow !== false && normalizedName(p.name) === 'arroz con pollo');
+      const pechugas = input.products.filter((p) =>
+        p.availableNow !== false &&
+        /\bpechuga\b/.test(normalizedName(p.name)) &&
+        !/\b(ejecutivo|combo|arroz)\b/.test(normalizedName(p.name)));
+      if (
+        arroz.length === 1 && pechugas.length > 1 &&
+        !/\b(plancha|gratinada|asada)\b/.test(normalizedOrder)
+      ) {
+        return {
+          reply: 'Anoté el arroz con pollo sin ensalada y la solicitud de cambiarla por yuca frita (sujeto a confirmación del local). ¿La pechuga la quieres a la plancha o gratinada?',
+          actions: {
+            addItems: [{
+              productId: arroz[0].id,
+              quantity: 1,
+              note: 'Sin ensalada. Solicita cambiarla por yuca frita (confirmar disponibilidad).',
+            }],
+            setCustomerNotes: 'Para la pechuga también solicita cambiar ensalada por yuca frita (confirmar disponibilidad).',
+          },
+          toolCalls: [],
+        };
+      }
+    }
+
     // Un mensaje solo con domicilio no puede reinterpretar platos que
     // aparezcan en la memoria de la conversación; nunca llamar add_item.
     const rawAddressText = input.userMessage.trim();
