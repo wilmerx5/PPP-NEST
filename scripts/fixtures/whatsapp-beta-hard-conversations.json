@@ -371,7 +371,19 @@
     "exclude": [
       1
     ],
-    "maxReply": 500
+    "maxReply": 500,
+    "attrs": [
+      {
+        "id": 6,
+        "key": "Arepas",
+        "value": "Blancas"
+      },
+      {
+        "id": 6,
+        "key": "Presa",
+        "value": "Pierna Pernil"
+      }
+    ]
   },
   {
     "id": "multi-pollo-limonadas",

@@ -1170,8 +1170,12 @@ Contacto humano: *${phone || '3118866823'}*
             .map(segment => this.catalogService.findProductEmbeddedInMessage(segment, ctx.products))
             .find(candidate => candidate != null && candidate.id !== product.id);
         const explicitCode = this.catalogService.extractCodeFromMessage(ctx.userMessage || '');
+        const bareName = product.name.match(/^(.+?)\s+de\s+.+$/i)?.[1];
+        const uniqueBareDish = !!bareName && ctx.products.filter(candidate =>
+          candidate.availableNow !== false && candidate.name.toLowerCase().startsWith(bareName.toLowerCase())).length === 1 &&
+          this.catalogService.productNameFitsUtterance?.({...product,name:bareName},ctx.userMessage || '');
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
-          !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
+          !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
           return JSON.stringify({ok:false,error:'different_dish_not_requested',
             hint:'Ese SKU tiene una presentación distinta que el cliente no pidió. Usa el producto nombrado; no agregues una alternativa por tu cuenta.'});
         }
@@ -1190,6 +1194,21 @@ Contacto humano: *${phone || '3118866823'}*
           const parsed = this.catalogService.resolveAttributesFromMessage(
             product, attributeSource, [],
           );
+          const explicitChoices = parsed.status === 'invalid' ? [] : parsed.attributes;
+          if (parsed.status === 'complete' || parsed.status === 'partial' ||
+            this.catalogService.productNameFitsUtterance?.(product, attributeSource)) {
+            const defaults = this.catalogService.fillDefaultAttributes(product, explicitChoices);
+            attributes = (attributes || []).map(choice => {
+              const definition = product.attributes!.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              const explicit = explicitChoices.some(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              // Preserve invalid values for the rejection below; only replace
+              // valid choices invented by the model when the customer omitted them.
+              if (!explicit && definition?.options.some(o => o.toLowerCase() === choice.attributeValue.toLowerCase())) {
+                return defaults.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase()) || choice;
+              }
+              return choice;
+            });
+          }
           if (parsed.status === 'complete' || parsed.status === 'partial') {
             const selected = [...(attributes || [])];
             for (const choice of parsed.attributes) {

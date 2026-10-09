@@ -124,6 +124,24 @@ describe('Agent language boundaries with PPP menu', () => {
     expect(result.error).toBe('included_attribute_not_extra');
     expect(actions.addItems).toBeUndefined();
   });
+  it('accepts a unique bare dish name without accepting a compound rice variant', () => {
+    const text='Me regalas una sopa de mondongo por favor un cuarto de pollo broaster pierna pernil y unas costillas';
+    expect(add(text,60).result.ok).toBe(true);
+    expect(add(text,84).result.ok).toBe(false);
+  });
+  it('does not let an invented valid model choice replace an omitted catalog default', () => {
+    const {actions,result}=add('Un cuarto de pollo broaster pierna pernil',6,[
+      {attributeName:'Arepas',attributeValue:'sin arepas'},
+      {attributeName:'Presa',attributeValue:'Pierna Pernil'},
+    ]);
+    expect(result.ok).toBe(true);
+    expect(actions.addItems?.[0].attributes).toContainEqual({attributeName:'Arepas',attributeValue:'Blancas'});
+  });
+  it('uses the first option when every attribute was omitted by the customer', () => {
+    const {actions,result}=add('Un pollo frito',1,[{attributeName:'Arepas',attributeValue:'Fritas'}]);
+    expect(result.ok).toBe(true);
+    expect(actions.addItems?.[0].attributes).toEqual([{attributeName:'Arepas',attributeValue:'Blancas'}]);
+  });
 
   it.each(['Porfa manda bastante ají','Sin ensalada por favor'])('records a short kitchen note without promising an unapplied change: %s', async text => {
     const configured = new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test',localContext:{}})} as never,catalog);
