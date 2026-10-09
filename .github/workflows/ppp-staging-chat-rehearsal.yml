@@ -25,7 +25,7 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '8d10ee8b133bfce078d3f0b4ba5541ed567d0a8e'))
+       (github.event_name == 'push' && github.event.before == '38a0bd8dfe46e8e367da49fa8546d7a11d4dbc6c'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,7 +40,7 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: ${{ ((github.event_name == 'workflow_dispatch' && inputs.execute) || (github.event_name == 'push' && github.event.before == '8d10ee8b133bfce078d3f0b4ba5541ed567d0a8e')) && 'true' || 'false' }}
+          STAGING_CHAT_EXECUTE: 'false'
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
@@ -49,17 +49,28 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('node:fs');
-          const marker = 'const plan = buildPlan(products);';
-          const replacement = `ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === '¿Las costillas de cerdo traen ensalada?', 'CONTINUATION_INPUT_CHANGED');
-            const plan = buildPlan(products).slice(2);`;
+          const emptyGuard = "ensure(initial.state === 'building_cart' && initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');";
+          const marker = "if (report.mode === 'preflight') { report.ok = true; return report; }";
+          const replacement = `if (report.mode === 'preflight') {
+            report.cartFacts = initial.sessionData.cart.map(line => ({
+              productId: line.productId, quantity: line.quantity, unitPrice: Number(line.unitPrice),
+              selectionAsada: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'Asada') || false,
+              selectionSalsa: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'En Salsa') || false,
+              attributeCount: line.attributes?.length || 0,
+              noteSinEnsalada: normalize(line.note).includes('sin ensalada'), noteEmpty: !String(line.note || '').trim()
+            }));
+            report.ok = true; return report;
+          }`;
           const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs', 'utf8');
-          if (!source.includes(marker)) throw Error('CONTINUATION_MARKER_MISSING');
-          fs.writeFileSync('scripts/ppp-staging-cart-continuation.cjs', source.replace(marker, replacement));
-          require('./scripts/ppp-staging-cart-continuation.cjs').runRehearsal().then(report => {
+          if (!source.includes(marker) || !source.includes(emptyGuard)) throw Error('DIAGNOSTIC_MARKER_MISSING');
+          const guarded = `ensure(initial.state === 'building_cart' && initial.sessionData.cart.length <= 3 && initial.sessionData.cart.every(line => [17,13].includes(line.productId)), 'DIAGNOSTIC_CART_CHANGED');
+            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'DIAGNOSTIC_INPUT_CHANGED');`;
+          fs.writeFileSync('scripts/ppp-staging-cart-diagnostic.cjs', source.replace(emptyGuard, guarded).replace(marker, replacement));
+          require('./scripts/ppp-staging-cart-diagnostic.cjs').runRehearsal().then(report => {
             fs.mkdirSync('tmp', { recursive: true });
             fs.writeFileSync('tmp/ppp-staging-chat-report.json', JSON.stringify(report));
             console.log(JSON.stringify(report)); process.exitCode = report.ok ? 0 : 1;
-          }).catch(() => { console.error('CART_CONTINUATION_FAILED'); process.exitCode = 1; });
+          }).catch(() => { console.error('READONLY_CART_DIAGNOSTIC_FAILED'); process.exitCode = 1; });
           NODE
       - name: Archive counts and check results without credentials or message bodies
         if: always()
