@@ -292,11 +292,13 @@ export class WhatsappAgentService {
     if (/\barroz chino\b/.test(userNormalized) && /\bbroaster\b/.test(userNormalized) &&
         /\b(podria|puede|puedo|podemos|se puede)\b/.test(userNormalized)) {
       const variant = arrozChinoOptions.find((p) =>
-        normalizedProductName(p.name) === 'arroz chino con pollo broaster');
+        (p.attributes || []).some((attr) =>
+          attr.attributeName.toLowerCase() === 'pollo' &&
+          attr.options.some((option) => option.toLowerCase() === 'broaster')));
       if (variant) {
         return {
-          reply: 'Sí, tenemos la presentación ' + variant.name +
-            '. ¿Quieres que la agregue?',
+          reply: 'Sí, el ' + variant.name +
+            ' permite escoger pollo Broaster. ¿Quieres esa presentación?',
           actions: {},
           toolCalls: [],
         };
@@ -367,7 +369,7 @@ export class WhatsappAgentService {
       const soupProducts = input.products.filter((p) =>
         p.availableNow !== false &&
         (/sopas?/i.test(p.categoryName || '') || /\bsopa\b/i.test(p.name)) &&
-        !p.hasAttributes,
+        !(p.attributes?.length),
       );
       const selected = correctedDishes.map(({ qty, dish }) => {
         const candidates = soupProducts.filter((p) =>
