@@ -19,6 +19,20 @@ async function apply(text: string, actions: AiOrderAction, initial: WhatsappSess
   return (await service.applyActions({},session,guarded.actions,products,{},text)).session as WhatsappSessionData;
 }
 describe('Agent actions applied by the real orchestrator (no DB or transports)',()=> {
+  it.each([
+    'Tres churrascos, dos mojarras y un pollo frito con las arepas fritas',
+    '3 churrascos y 2 mojarras y 1 pollo frito con arepas fritas',
+    'Quiero tres churrascos, dos mojarras asadas y un pollo frito con arepas fritas',
+    'Regálame 3 churrascos, 2 mojarras y un pollo frito con arepas fritas',
+  ])('keeps independent 3/2/1 quantities despite a mistaken model quantity: %s', async text => {
+    const session = await apply(text, { addItems: [
+      { productId: 17, quantity: 3 }, { productId: 14, quantity: 3 },
+      { productId: 1, quantity: 3, note: 'con las arepas fritas', attributes: [{ attributeName: 'Arepas', attributeValue: 'Fritas' }] },
+    ] });
+    expect(session.cart.map(c => [c.productId, c.quantity]).sort((a,b) => a[0]-b[0])).toEqual([[1,1],[14,2],[17,3]]);
+    expect(session.cart.find(c => c.productId === 1)?.note).toBeUndefined();
+    expect(session.cart.find(c => c.productId === 1)?.attributes).toEqual([{ attributeName: 'Arepas', attributeValue: 'Fritas' }]);
+  });
   it('ignores the number of diners while honoring quantities beside written menu codes',async()=> {
     const session=await apply('Somos 3. Dame 2 del código 23 y 1 del código 60',{
       addItems:[{productId:23,quantity:2},{productId:60,quantity:1}],

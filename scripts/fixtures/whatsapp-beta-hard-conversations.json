@@ -4072,5 +4072,396 @@
       "updateAttributes",
       "clearCart"
     ]
+  },
+  {
+    "id": "qty-three-two-one-different-main-dishes",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Tres churrascos, dos mojarras asadas y un pollo frito con las arepas fritas"
+    ],
+    "initialCart": [],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      },
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 1,
+        "contains": [],
+        "forbid": [
+          "arepas",
+          "fritas"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "qty-only-one-chicken-preserve-main-dishes",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Solo era un pollo"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-chicken-one-total-preserve-rice-with-chicken",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Del pollo frito solo uno en total; el arroz con pollo y los demás platos quedan igual"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      },
+      {
+        "productId": 23,
+        "quantity": 2,
+        "note": "sin cilantro"
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1,
+      "23": 2
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      },
+      {
+        "id": 23,
+        "contains": [
+          "sin cilantro"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-explicit-fried-preserve-broaster",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Solo era un pollo frito, el broaster queda igual"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      },
+      {
+        "productId": 4,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1,
+      "4": 2
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-rejected-old-count-preserve-others",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "No eran tres pollos fritos, era uno; conserva todos los otros platos"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-order-then-correct-preserve-all",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Quiero tres churrascos sin ensalada, dos mojarras asadas y tres pollos fritos con arepas fritas aparte",
+      "Solo era un pollo"
+    ],
+    "initialCart": [],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "17": 3,
+          "14": 2,
+          "1": 3
+        }
+      },
+      {
+        "turn": 1,
+        "items": {
+          "17": 3,
+          "14": 2,
+          "1": 1
+        },
+        "forbidActions": [
+          "clearCart",
+          "addItems",
+          "removeProductIds",
+          "removeCartLines"
+        ]
+      }
+    ]
   }
 ]

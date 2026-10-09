@@ -23,7 +23,9 @@ function fixture(options = {}) {
     sessionData: { cart: options.existingDraft ? [{ productId: 17, quantity: 1 }] : [] },
     messages: [{ id: 1, direction: 'in', body: 'Hola', createdAt: new Date(clock).toISOString(), sentBy: 'bot' }] };
   const json = (body, status = 200, cookie) => {
-    const r = new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+    const payload = body === conversation && options.bigintMessageIds ? { ...body, messages: body.messages.map(m =>
+      ({ ...m, id: String(9007199254740993n + BigInt(m.id)) })) } : body;
+    const r = new Response(JSON.stringify(payload), { status, headers: { 'Content-Type': 'application/json' } });
     if (cookie) r.headers.append('Set-Cookie', cookie);
     return r;
   };
@@ -88,6 +90,12 @@ test('executes 13 bounded steps, validates HMAC, checks persisted cart and clear
 test('preflight verifies routing and signature without sending message payloads', async () => {
   const f = fixture(); const report = await runRehearsal({ ...env, STAGING_CHAT_EXECUTE: 'false' }, f.fetch, f.helpers);
   assert.equal(report.ok, true); assert.equal(report.webhookPosts, 0); assert.equal(f.sentTexts.length, 0);
+});
+test('accepts the real bigint string message IDs without losing precision during deduplication', async () => {
+  const f = fixture({ bigintMessageIds: true });
+  const report = await runRehearsal(env, f.fetch, f.helpers);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 13);
+  assert.equal(report.steps.find(s => s.id === 'duplicate-webhook').inboundCount, 0);
 });
 test('distinguishes mismatched secret from missing raw body without exposing the response', async () => {
   for (const [option, code] of [['signatureMismatch', 'APP_SECRET_MISMATCH'], ['rawBodyMissing', 'WEBHOOK_RAW_BODY_MISSING']]) {

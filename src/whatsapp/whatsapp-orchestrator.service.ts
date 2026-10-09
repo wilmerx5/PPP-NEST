@@ -1,4 +1,5 @@
 import { applyCartLineEdits } from './whatsapp-cart-edits';
+import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -605,6 +606,10 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Resolve scoped quantity changes before extracting names/addresses or asking the model.
+    // A correction refers to an existing cart line, even while a variant list is open.
+    if (session.cart.length &&
+      await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, originalText, cfg)) return;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
@@ -755,6 +760,7 @@ export class WhatsappOrchestratorService {
       cfg,
       compound,
     );
+
 
     if (
       !looksLikeClearCartMessage(originalText) &&
@@ -2425,7 +2431,7 @@ export class WhatsappOrchestratorService {
         conv,
         msg.waId,
         'Ese pedido por *Rappi/Uber* no lo podemos cambiar desde este WhatsApp 🙏\n' +
-          'Para cambios de sabor/gaseosa toca el chat del domicilio en la app, o contáctanos al *3118866823*.',
+          `Para cambios de sabor/gaseosa toca el chat del domicilio en la app. ${this.humanContactMessage()}`,
       );
       return;
     }
@@ -3626,6 +3632,7 @@ export class WhatsappOrchestratorService {
         pendingAttribute: undefined,
         pendingMultiOrder: undefined,
         pendingCartRemoval: undefined,
+        pendingCartQuantity: undefined,
         pendingCategoryBrowse: undefined,
         pendingQuantityHint: undefined,
       };
@@ -4116,6 +4123,7 @@ export class WhatsappOrchestratorService {
       return { session, missingAttributes: selected };
     }
 
+    note = omitRedundantAttributeNote(note, selected);
     const incomingKey = this.cartLineKey({
       productId: product.id,
       note,
@@ -5750,7 +5758,7 @@ export class WhatsappOrchestratorService {
     return digits.length >= 7 && digits.length <= 15 && /[\d\s+()-]{7,}/.test(text.trim());
   }
 
-  /** "Cel 321…" / "3214271130" sin platos ni dirección. */
+  /** "Cel 321…" / "[teléfono]" sin platos ni dirección. */
   private isPhoneOnlyCustomerMessage(text: string): boolean {
     const raw = (text || '').trim();
     if (!raw || raw.length > 40) return false;
@@ -8262,7 +8270,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          analysis.kind === 'payment_proof' && analysis.reply?.includes('3118866823')
+          analysis.kind === 'payment_proof' && analysis.reply?.includes(WHATSAPP_HUMAN_CONTACT_PHONE)
             ? analysis.reply
             : `Recibí tu comprobante ✅ ${this.humanContactMessage()}`,
         );
@@ -9074,6 +9082,7 @@ export class WhatsappOrchestratorService {
 
   /** “solo te pedí un combo” y en el carrito hay otro plato que no nombró. */
   private cartHasUnaskedExtra(text: string, session: WhatsappSessionData): boolean {
+    if (parseCartQuantityCorrection(text)) return false;
     const t = this.normalizeForMatch(text);
     if (!/\b(solo|solamente|unicamente|nada mas)\b/.test(t)) return false;
     if (session.cart.length < 2) return false;
@@ -9168,6 +9177,65 @@ export class WhatsappOrchestratorService {
     return { ...session, cart };
   }
 
+  private async tryHandleCartQuantityCorrection(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const correction = parseCartQuantityCorrection(text);
+    const pending = session.pendingCartQuantity;
+    const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
+    if (!correction && !(pending && pick !== null)) return false;
+    const quantity = correction?.quantity ?? pending!.quantity;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 30) {
+      await this.reply(conv, waId, 'Dime una cantidad entre 1 y 30. Para quitar un plato, dime cuál quitamos.');
+      return true;
+    }
+    let indices: number[];
+    if (correction) {
+      indices = session.cart.flatMap((line, index) => correctionMatchesLine(line, correction.query) ? [index] : []);
+      if (!indices.length) {
+        await this.reply(conv, waId, 'Ese plato no está en tu carrito. Dime cuál cantidad corregimos.');
+        return true;
+      }
+    } else {
+      if (JSON.stringify(session.cart) !== pending!.cartSignature) {
+        await this.conversationService.saveSession(conv, { ...session, pendingCartQuantity: undefined });
+        await this.reply(conv, waId, 'El carrito cambió. Dime otra vez qué plato y cantidad corregimos.');
+        return true;
+      }
+      if (!pick || pick > pending!.options.length) {
+        await this.reply(conv, waId, 'Elige uno de los números de la lista para corregir esa línea.');
+        return true;
+      }
+      indices = [pending!.options[pick - 1].cartIndex];
+    }
+    if (indices.length > 1) {
+      const options = indices.map(cartIndex => ({ cartIndex, label: this.formatCartLineLabel(session.cart[cartIndex]) +
+        (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
+      await this.conversationService.saveSession(conv, { ...session, pendingCartQuantity: {
+        quantity, options, cartSignature: JSON.stringify(session.cart),
+      } });
+      await this.reply(conv, waId, `¿Cuál línea dejamos en *${quantity}*?\n\n${options.map((o, i) => `${i + 1}. ${o.label}`).join('\n')}\n\nEscribe el número. Los demás platos se conservan.`);
+      return true;
+    }
+    const index = indices[0];
+    const next: WhatsappSessionData = { ...session, cart: session.cart.map((line, i) => i === index ?
+      { ...line, quantity, note: omitRedundantAttributeNote(line.note, line.attributes) } : line),
+      pendingCartQuantity: undefined, pendingMatch: undefined, pendingAttribute: undefined,
+      pendingMultiOrder: undefined, pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined };
+    const check = evaluateCartLimits(next.cart, this.toCartLimitsConfig(cfg, next), { orderType: next.orderType });
+    if (!check.ok) {
+      await this.reply(conv, waId, check.reason || 'Esa cantidad supera el límite del pedido.');
+      return true;
+    }
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(conv, waId, `Listo, corregí la cantidad ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    return true;
+  }
+
   private async tryHandleCartModification(
     conv: WhatsappConversation,
     waId: string,
@@ -9179,6 +9247,8 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const probe = (probeText || text).trim();
     const trimmed = probe;
+
+    if (await this.tryHandleCartQuantityCorrection(conv, waId, session, probe, cfg)) return true;
 
     if (session.pendingCartRemoval?.options.length) {
       const pick = /^[1-9]\d*$/.test(trimmed) ? parseInt(trimmed, 10) : null;
@@ -11554,7 +11624,7 @@ export class WhatsappOrchestratorService {
 
   /**
    * Un solo mensaje largo: "sopa de menudencias y medio broaster para la carrera 78,
-   * me llamo Juan, cel 3001234567".
+   * me llamo Juan, cel [teléfono]".
    */
   private parseCompoundOrderMessage(text: string): {
     productText: string;

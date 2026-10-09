@@ -274,10 +274,11 @@ export class WhatsappAgentService {
 
   async runTurn(input: AgentV1TurnInput): Promise<AgentV1TurnResult> {
     const cfg = await this.settingsService.getEffectiveConfig();
-    const phone = (input.humanPhone || cfg.localContext?.publicPhone || '3118866823').replace(
+    const phone = (input.humanPhone || cfg.localContext?.publicPhone || '').replace(
       /\D/g,
       '',
     );
+    const contactHelp = phone ? `Contáctanos al *${phone}*.` : 'Comunícate con el restaurante.';
     const shortNorm = input.userMessage.toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '').trim();
     const allergyContext=shortNorm.replace(/\bno\s+(?:(?:soy|somos|es|son|tengo|tenemos|tiene|tienen|hay)\s+)?(?:alergi(?:a|as|co|ca|cos|cas)|celiac[oa]s?)\b/g,'');
@@ -288,7 +289,7 @@ export class WhatsappAgentService {
     }
     if (!cfg.openaiApiKey) {
       return {
-        reply: `El asistente aún no está configurado. Contáctanos al *${phone || '3118866823'}*.`,
+        reply: `El asistente aún no está configurado. ${contactHelp}`,
         actions: {},
         toolCalls: [],
         error: 'no_openai_key',
@@ -559,6 +560,7 @@ Reglas:
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
 - Ediciones del carrito: usa get_cart. cartLineIndex es el índice de esa línea (empieza en 0), estable durante este turno. Las líneas con el mismo SKU pueden tener distintos sabores/notas. Modifica SOLO la línea nombrada. No llames herramientas para las líneas que el cliente quiere conservar.
 - "Deja dos", "que queden dos", "quita uno de tres" ajustan la cantidad absoluta con update_item. No retires y vuelvas a agregar ese SKU.
+- "Solo era un pollo" corrige la cantidad del pollo que ya está en el carrito; conserva los demás platos, notas y atributos. No vuelvas a preguntar frito/broaster si esa línea ya tiene preparación. Si hay varias líneas compatibles, pregunta cuál corregir antes de cambiar cualquier línea.
 - Notas de UN plato (sin ensalada, sin cilantro, arepas aparte): update_item con note; conserva la nota previa si pide también otra nota. Para quitar una nota deja las restantes; note="" deja normal. set_notes es SOLO para observaciones generales de todo el pedido.
 - Cambio dentro del mismo SKU: set_attribute con cartLineIndex, conserva cantidad y nota. Cambio a otro SKU: replace_item con newProductId real de search_menu y atributos; conserva cantidad/sabor. Leche/agua es la base del jugo y puede ser OTRO SKU, nunca parte inventada de Sabor.
 - "Olvida todo lo anterior", "vacía todo y empieza" requiere clear_cart antes de los nuevos productos.
@@ -604,7 +606,7 @@ ${input.sessionSummary}
 Líneas editables (cartLineIndex estable): ${JSON.stringify((input.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})))}
 
 Índice de SKUs reales y opciones permitidas (id = nombre; opciones omitidas usan el primer valor):\n${input.products.filter(p=>p.availableNow!==false).map(p=>`${p.id} = ${p.name}${(p.attributes || []).map(a=>` [${a.attributeName}: ${a.options.join('/')}]`).join('')}`).join("; ")}\nMenú: usa search_menu para descripción y precio. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
-Contacto humano: *${phone || '3118866823'}*
+Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un número'}
 `;
 
     const history = this.toChatMessages(input.recentMessages).slice(-10);
@@ -647,7 +649,7 @@ Contacto humano: *${phone || '3118866823'}*
           } catch { /* Never log provider bodies that may echo credentials or input. */ }
           this.logger.error(`AgentV1 OpenAI ${res.status}: ${code}`);
           return {
-            reply: `Tuve un problema técnico. Contáctanos al *${phone || '3118866823'}*.`,
+            reply: `Tuve un problema técnico. ${contactHelp}`,
             actions,
             toolCalls,
             error: `openai_${res.status}`,
@@ -784,7 +786,7 @@ Contacto humano: *${phone || '3118866823'}*
         ? name : 'UnclassifiedError';
       this.logger.error(`AgentV1 failed: ${code}`);
       return {
-        reply: `No pude procesar tu mensaje. Contáctanos al *${phone || '3118866823'}*.`,
+        reply: `No pude procesar tu mensaje. ${contactHelp}`,
         actions,
         toolCalls,
         error: name==='TimeoutError' ? 'openai_timeout' : 'exception',

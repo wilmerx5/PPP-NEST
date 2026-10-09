@@ -40,6 +40,11 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  pendingCartQuantity?: {
+    quantity: number;
+    options: Array<{ cartIndex: number; label: string }>;
+    cartSignature: string;
+  };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;

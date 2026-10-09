@@ -59,7 +59,9 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     const body = await r.json();
     ensure(body.id === conversationId && digits(body.phoneE164) === recipient && digits(body.waId) === recipient, 'CONVERSATION_RECIPIENT_MISMATCH');
     ensure(body.humanTakeover === false && Array.isArray(body.messages) && Array.isArray(body.sessionData?.cart), 'CONVERSATION_UNAVAILABLE_OR_TAKEOVER');
-    ensure(body.messages.every(m => Number.isSafeInteger(m.id) && m.id > 0), 'INVALID_MESSAGE_IDS');
+    ensure(body.messages.every(m => (typeof m.id === 'string' && /^[1-9]\d{0,19}$/.test(m.id)) ||
+      (Number.isSafeInteger(m.id) && m.id > 0)), 'INVALID_MESSAGE_IDS');
+    ensure(new Set(body.messages.map(m => String(m.id))).size === body.messages.length, 'DUPLICATE_MESSAGE_IDS');
     return body;
   };
   const unchangedIdentity = body => {
@@ -159,7 +161,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       const before = await detail(); unchangedIdentity(before);
       ensure(JSON.stringify(before.sessionData) === JSON.stringify(current.sessionData) &&
         JSON.stringify(before.messages) === JSON.stringify(current.messages), 'CONCURRENT_CHAT_ACTIVITY');
-      const maxId = Math.max(0, ...before.messages.map(m => m.id));
+      const previousIds = new Set(before.messages.map(m => String(m.id)));
       const wait = Math.max(0, 60000 / rateLimit + 1000 - (now() - lastSent));
       if (wait) await sleep(wait);
       ensure(report.webhookPosts < plan.length, 'WEBHOOK_BUDGET_EXCEEDED');
@@ -175,7 +177,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(r.status === 200 && (await r.json()).ok === true, 'WEBHOOK_HTTP_FAILED_NO_RETRY');
       lastPayload = payload;
       current = await detail(); unchangedIdentity(current);
-      const messages = current.messages.filter(m => m.id > maxId);
+      const messages = current.messages.filter(m => !previousIds.has(String(m.id)));
       const incoming = messages.filter(m => m.direction === 'in');
       const outgoing = messages.filter(m => m.direction === 'out');
       if (step.duplicatePrevious) {
