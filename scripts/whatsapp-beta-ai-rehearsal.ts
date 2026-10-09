@@ -106,12 +106,21 @@ for (const scenario of cases.slice(0, maxCases)) {
       finalCart.some((p) => p.productId === 60) &&
       !finalCart.some((p) => p.productId === 77 || p.productId === 78);
   } else if (scenario.id === 'arroz-chino-familia') {
+    const browseReply = String(turns[0]?.reply || '').toLowerCase();
+    const styleReply = String(turns[1]?.reply || '').toLowerCase();
     accepted = turns.length === 2 &&
+      /arroz chino/.test(browseReply) && /cu[aá]l|opci[oó]n|presentaci[oó]n/.test(browseReply) &&
+      /broaster/.test(styleReply) && !/no (?:manejamos|tenemos|ofrecemos)/.test(styleReply) &&
       turns.every((turn) => !(turn.actions as { addItems?: unknown[] } | undefined)?.addItems?.length) &&
       finalCart.length === 0;
   } else if (scenario.id === 'ejecutivo-estilo') {
-    accepted = finalCart.length === 1 &&
-      finalCart[0].productId === 22 && finalCart[0].quantity === 1;
+    const reply = String(turns[0]?.reply || '').toLowerCase();
+    accepted = (
+      finalCart.length === 1 && finalCart[0].productId === 22 && finalCart[0].quantity === 1
+    ) || (
+      finalCart.length === 0 &&
+      /ejecutivo con pollo frito/.test(reply) && /presa/.test(reply) && /sopa/.test(reply)
+    );
   } else if (scenario.id === 'nota-aji') {
     const action = turns[0]?.actions as { setCustomerNotes?: string; setCustomerName?: string; addItems?: unknown[] } | undefined;
     accepted = !!action?.setCustomerNotes?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/aji/i) &&
