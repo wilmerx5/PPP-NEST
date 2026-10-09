@@ -6,15 +6,16 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026
 
-Código candidato validado: `6148f81e5f0e28e0273584b1a7913f3c649c446a`; PR #6 permanece en borrador. Compilación, 713 unitarias, MariaDB e imagen Docker pasaron en ese SHA. La comparación conversacional y las repeticiones se intentaron sobre el mismo código, pero OpenAI rechazó las solicitudes por `credit_balance_exhausted`. No hay aceptación con IA de este candidato.
+Preparación de runtime validada: `0164a7fd5de9b6b0ff2b38b0925d36853c1cebde`; PR #6 permanece en borrador. El código de aplicación es idéntico al candidato `6148f81e5f0e28e0273584b1a7913f3c649c446a`: solo cambiaron documentación y scripts/workflow de comprobación. Compilación, 713 unitarias, MariaDB, imagen Docker y arranque/recuperación del contenedor con TLS pasaron. La comparación conversacional y las repeticiones sobre ese mismo código de aplicación siguen bloqueadas por `credit_balance_exhausted`; la última comprobación Mini a las 10:47 de Bogotá volvió a fallar después de la recarga indicada por el responsable. No hay aceptación con IA de este candidato.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Compilación y unitarias | PASS, 713/713; subconjunto WhatsApp 637/637 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947861964) |
-| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947862309) |
-| Imagen Docker y dependencias de runtime | PASS, build, 713/713 unitarias con Node 20/npm y Compose válido | [Imagen del candidato](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942) |
+| Compilación y unitarias | PASS, 713/713; subconjunto WhatsApp 637/637 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953627027) |
+| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953627030) |
+| Imagen Docker y dependencias de runtime | PASS, build, 713/713 unitarias con Node 20/npm y Compose válido | [Imagen del candidato](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346) |
+| Arranque y recuperación del contenedor | PASS: TLS verificado, CA no confiable/destino incorrecto/TLS desactivado rechazados, admin y firma webhook protegidos, 503 al caer DB, recuperación sin reiniciar API y reinicio del contenedor | [Runtime aislado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346/job/113898446933) |
 | Conversaciones con OpenAI, candidato 6148f81e | BLOQUEADAS: Mini y GPT-4.1 sin respuestas exitosas, error de saldo | [Comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853977) |
-| Repeticiones de casos que han fallado, candidato 6148f81e | BLOQUEADAS: una solicitud rechazada por modelo; detención por saldo, cobertura sin completar | [Endurance](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853986) |
+| Repeticiones de casos que han fallado, candidato 6148f81e | BLOQUEADAS: detención tras el primer rechazo por invocación; cobertura sin completar | [Endurance](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853986) |
 | Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
 | Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
@@ -22,6 +23,8 @@ Código candidato validado: `6148f81e5f0e28e0273584b1a7913f3c649c446a`; PR #6 pe
 **Todavía no listo para producción.** La comparación previa en `88d9d3b` ([37939501632](https://github.com/wilmerx5/PPP-NEST/actions/runs/37939501632)) terminó con GPT-4.1 en 303/303, sin errores del proveedor, y Mini en 302/303: omitió mondongo después de intentar agregar otro SKU de sopa. La revalidación siguiente pasó ese pedido, pero registró un timeout por modelo y un rechazo literal de la frase de garantía negada de alérgenos en GPT-4.1. En `6d7511ae`, Mini aprobó 302/303 y GPT-4.1 301/303 en [la comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176086); Mini pasó 140/140 repeticiones en [la prueba adicional](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176383). Es evidencia anterior, no aceptación del candidato actual. Las nuevas correcciones recuperan timeouts clasificados de inferencia sin repetir herramientas, marcan como desconocido su consumo y derivan alergias explícitas a verificación humana/cocina. La ronda anterior GPT-4.1 perdió las 140 pruebas adicionales por `credit_balance_exhausted`; en el candidato actual las invocaciones se detienen ante ese bloqueo, sin repetir todos los casos. Se requiere saldo en la organización de `OPENAI_API_KEY` y reejecutar la comparación y las repeticiones completas para aprobar el código final. Los jobs GPT-4.1 se serializan. La configuración desplegada debe coincidir con el modelo/snapshot aprobado y todavía requiere aceptación externa en staging.
 
 ## Puertas de salida
+
+El smoke de runtime usa únicamente una DB desechable de CI y una red sin acceso al exterior, con credenciales ficticias. La preparación del fixture crea tablas desde las entidades; la aplicación mantiene `synchronize:false`. Esto verifica arranque, configuración, protecciones HTTP y recuperación de conexión, no pedidos reales en cocina, login Google real ni compatibilidad completa del catálogo/esquema de la DB remota.
 
 | Puerta | Evidencia necesaria | Condición |
 | --- | --- | --- |

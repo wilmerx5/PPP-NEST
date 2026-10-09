@@ -4,7 +4,7 @@ El responsable confirmó que existe la base de staging, pero todavía no un back
 
 ## Qué está preparado
 
-`docker-compose.staging.yml` construye el Dockerfile del proyecto, usa una imagen distinta y un único proceso, escucha en `127.0.0.1:3301`, limita memoria y logs y consulta `/api/health`. No monta el repositorio sobre los archivos compilados. El workflow `PPP Staging Image Check` comprueba la imagen, las unitarias con Node/dependencias npm del contenedor y la configuración de Compose sin arrancar contra una base real. Si pasa, guarda `ppp-staging.tar.gz` como artefacto durante siete días, etiquetado con el SHA y sin secretos.
+`docker-compose.staging.yml` construye el Dockerfile del proyecto, usa una imagen distinta y un único proceso, escucha en `127.0.0.1:3301`, limita memoria y logs y consulta `/api/health`. No monta el repositorio sobre los archivos compilados. El workflow `PPP Staging Image Check` comprueba la imagen, las unitarias con Node/dependencias npm del contenedor, Compose y el arranque/recuperación contra MariaDB desechable con TLS. Nunca accede a la DB remota ni usa credenciales API: su red no tiene salida al exterior. Si pasa, guarda `ppp-staging.tar.gz` como artefacto durante siete días, etiquetado con el SHA y sin secretos.
 
 El perfil `PPP_STAGING=true` exige que host/base coincidan con los valores declarados en `STAGING_EXPECTED_DB_HOST` y `STAGING_EXPECTED_DB_DATABASE`, y que se use TLS con validación de certificado. Si hace falta una CA propia, configurar `DB_SSL_CA` con el PEM correspondiente; no desactivar la verificación para conseguir conectividad.
 
@@ -12,7 +12,7 @@ Las escrituras de Meta —texto, media y subida de archivos— están bloqueadas
 
 ## Imagen candidata comprobada
 
-El código `6148f81e5f0e28e0273584b1a7913f3c649c446a` pasó [construcción, Compose y 713 unitarias](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942). El [artefacto verificado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942/artifacts/11624543242) contiene `ppp-staging.tar.gz` y vence el 16 de octubre de 2026; extraer primero el ZIP descargado. Para usarlo, fijar `STAGING_IMAGE_TAG=6148f81e5f0e28e0273584b1a7913f3c649c446a`. No equivale a aprobación comercial: las pruebas con IA siguen bloqueadas por saldo, y no se ha arrancado ni desplegado este backend contra la DB remota. Ver [estado del piloto](ppp-pilot-readiness.md).
+El candidato `0164a7fd5de9b6b0ff2b38b0925d36853c1cebde` pasó [construcción, Compose, 713 unitarias y runtime aislado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346). El [artefacto verificado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346/artifacts/11626738283) contiene `ppp-staging.tar.gz` y vence el 16 de octubre de 2026; extraer primero el ZIP descargado. Para usarlo, fijar `STAGING_IMAGE_TAG=0164a7fd5de9b6b0ff2b38b0925d36853c1cebde`. La prueba comprueba TLS confiable y rechazo de CA no confiable/destino DB incorrecto/TLS desactivado, arranque, acceso admin y firma webhook, caída de DB con HTTP 503, recuperación sin reiniciar API y reinicio del contenedor. No equivale a aprobación comercial: las pruebas con IA siguen bloqueadas por saldo, y no se ha arrancado ni desplegado este backend contra la DB remota. Ver [estado del piloto](ppp-pilot-readiness.md).
 
 ## Información que falta
 

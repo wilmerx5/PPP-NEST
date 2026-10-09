@@ -41,6 +41,10 @@ Sumar las líneas de los cinco jobs y de todas las invocaciones dentro de `beta-
 
 ## Límites del ensayo
 
+El 9 de octubre, tras la recarga indicada por el responsable, los reintentos de la comparación y endurance siguieron recibiendo `credit_balance_exhausted`. La última comprobación Mini a las 10:47 de Bogotá hizo una solicitud rechazada, ninguna respuesta exitosa y ningún token reportado; no demuestra el costo facturado. Verificar saldo en la organización de la clave de GitHub antes de reanudar.
+
+Conservar resultados aprobados del mismo código/modelo/catálogo y repetir IA solo por cambios relevantes o fallos intermitentes observados. Tras las correcciones, ejecutar una aceptación completa del candidato final; la ausencia de saldo no aprueba casos. Las repeticiones dirigidas buscan fallos reales, no aumentan el conteo de escenarios distintos. Las pruebas locales, MariaDB y el nuevo smoke de runtime no usan OpenAI; este último tiene una red desechable sin salida al exterior.
+
 La suite `hard` cubre interpretación, sanitización y aplicación real de acciones al carrito **en memoria**. No ejecuta `handleIncoming`, el enrutamiento completo, persistencia, concurrencia distribuida, inventario, cobertura/tarifa real, cocina, pagos ni creación/confirmación de órdenes. Los seis casos básicos y los 33 informativos siguen aislados en AgentV1. Validar el recorrido completo en staging con BD y transportes aislados antes de desplegar.
 
 Las pruebas en `whatsapp-cart-integration.spec.ts` y `whatsapp-cart-edits.spec.ts` verifican además la aplicación real de correcciones, opciones y notas sin OpenAI. `yarn test:whatsapp` incluye estas pruebas y las de lenguaje con el catálogo suministrado.
