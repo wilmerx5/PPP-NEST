@@ -10,6 +10,11 @@ import { join } from 'path';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
 
+type HumanScenario = {
+  id: string; group: string; message?: string; messages?: string[];
+  any: string[]; all?: string[]; forbid?: string[];
+  minMenu: number; facts?: 'configured' | 'missing';
+};
 type Scenario = {
   id: string;
   context?: string[];
@@ -40,10 +45,60 @@ const settings = {
 };
 const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService(settings as never, catalog);
-const maxCases = Math.max(1, Math.min(cases.length, Number(process.env.WHATSAPP_BETA_CASE_LIMIT || cases.length)));
+const humanMode = process.env.WHATSAPP_BETA_SUITE === 'human';
+const humanScenarios = JSON.parse(readFileSync(
+  join(process.cwd(), 'scripts/fixtures/whatsapp-beta-human-intents.json'), 'utf8',
+)) as HumanScenario[];
+const maxCases = Math.max(1, Math.min(
+  humanMode ? humanScenarios.length : cases.length,
+  Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (humanMode ? 12 : cases.length)),
+));
+const offset = Math.max(0, Number(process.env.WHATSAPP_BETA_CASE_OFFSET || 0));
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
-for (const scenario of cases.slice(0, maxCases)) {
+if (humanMode) {
+  for (const scenario of humanScenarios.slice(offset, offset + maxCases)) {
+    const messages = scenario.messages || [scenario.message || ''];
+    const history: string[] = [];
+    const turns: Array<Record<string, unknown>> = [];
+    const facts = scenario.facts === 'configured'
+      ? 'Datos ficticios de PRUEBA, no son datos reales del local: dirección CALLE BETA 123, Bogotá. Horario de cierre 21:00. Domicilio de prueba para Castilla: verificar cobertura antes de confirmar. Tiempo estimado: 35–45 minutos.'
+      : 'No tenemos datos verificados de dirección, horario ni apertura actual. Nunca inventar esos datos; indicar que se necesita confirmación.';
+    for (const message of messages) {
+      const result = await agent.runTurn({
+        userMessage: message,
+        sessionSummary: 'carrito vacío, no hay pedidos creados',
+        recentMessages: history,
+        businessRulesBlock: [
+          'Cliente está haciendo preguntas informativas, NO agregues artículos ni confirmes pedidos.',
+          'Ofrece platos SOLO si existen en el catálogo de pruebas; no inventes precios, ingredientes ni disponibilidad.',
+          'Para carne incluye cortes de res o cerdo (churrasco, sobrebarriga, costillas). Para dulce no inventes brownies ni helados.',
+          'Para preguntas sobre local y horario SOLO utiliza estos datos de prueba:',
+          facts,
+        ].join('\n'),
+        brandName: 'Pronto Pollo Portal (simulación)',
+        products,
+      });
+      turns.push({user:message,reply:result.reply,actions:result.actions,toolCalls:result.toolCalls,error:result.error||null});
+      history.push('Cliente: '+message,'Bot: '+result.reply);
+      if (result.error) break;
+    }
+    const last = turns[turns.length - 1];
+    const reply = String(last?.reply || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const normalize = (value: string) => value.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const matched = (terms: string[]) => terms.some(t => reply.includes(normalize(t)));
+    const accepted = turns.length === messages.length &&
+      turns.every(t => !t.error && !Object.keys(t.actions as object).some(k =>
+        ['addItems','clearCart','removeProductIds','setCustomerName','setAddress'].includes(k))) &&
+      matched(scenario.any) && (scenario.all || []).every(t => reply.includes(normalize(t))) &&
+      !(scenario.forbid || []).some(t => reply.includes(normalize(t)));
+    results.push({scenario:scenario.id,group:scenario.group,accepted,turns,
+      checks:{matchedAny:matched(scenario.any),forbidden:(scenario.forbid||[]).filter(t=>reply.includes(normalize(t)))}});
+  }
+} else {
+for (const scenario of cases.slice(offset, offset + maxCases)) {
   const history = [...(scenario.context || [])];
   const cart = new Map<number, { productId: number; name: string; quantity: number }>();
   for (const initial of scenario.initialCart || []) {
@@ -134,7 +189,8 @@ for (const scenario of cases.slice(0, maxCases)) {
   if (accepted === null) throw new Error('Scenario has no acceptance assertion: '+scenario.id);
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
-const report = { kind: 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
+}
+const report = { kind: humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
   caveat: 'Agent suggestions only. Not the full orchestrator, not WhatsApp Meta, no DB/order write.',
   scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
