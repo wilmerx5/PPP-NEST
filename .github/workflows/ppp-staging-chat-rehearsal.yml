@@ -11,6 +11,12 @@ on:
         type: boolean
         default: false
         required: false
+      resume:
+        description: Resume only the verified failed synthetic variant draft
+        type: choice
+        options: [fresh, known-variant-draft]
+        default: fresh
+        required: false
 
 permissions:
   contents: read
@@ -24,14 +30,13 @@ jobs:
     if: >-
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == 'f97de19a52cf66236e265a66877fe618337061a3'))
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 28a1c0be0a62becef5c1361c832e817cf885eec0
+          ref: 8df688154e2c0403b3bed7fd9efaac03131a802c
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -40,43 +45,14 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: 'false'
+          STAGING_CHAT_EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute && 'true' || 'false' }}
+          STAGING_CHAT_RESUME: ${{ inputs.resume == 'known-variant-draft' && 'known-variant-draft' || '' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
           STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
           STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const emptyGuard = "ensure(initial.state === 'building_cart' && initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');";
-          const marker = "if (report.mode === 'preflight') { report.ok = true; return report; }";
-          const replacement = `if (report.mode === 'preflight') {
-            const latestReply = normalize(initial.messages.filter(m => m.direction === 'out').at(-1)?.body);
-            report.quantityFacts = { pendingQuestion: !!initial.sessionData.pendingCartQuantity,
-              pendingQuantity: initial.sessionData.pendingCartQuantity?.quantity ?? null,
-              correctedReply: latestReply.includes('corregi la cantidad'), asksWhich: latestReply.includes('cual'),
-              missingDish: latestReply.includes('no esta en tu carrito') };
-            report.cartFacts = initial.sessionData.cart.map(line => ({
-              productId: line.productId, quantity: line.quantity, unitPrice: Number(line.unitPrice),
-              selectionAsada: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'Asada') || false,
-              selectionSalsa: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'En Salsa') || false,
-              attributeCount: line.attributes?.length || 0,
-              noteSinEnsalada: normalize(line.note).includes('sin ensalada'), noteEmpty: !String(line.note || '').trim()
-            }));
-            report.ok = true; return report;
-          }`;
-          const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs', 'utf8');
-          if (!source.includes(marker) || !source.includes(emptyGuard)) throw Error('DIAGNOSTIC_MARKER_MISSING');
-          const guarded = `ensure(initial.state === 'building_cart' && initial.sessionData.cart.length <= 3 && initial.sessionData.cart.every(line => [17,13].includes(line.productId)), 'DIAGNOSTIC_CART_CHANGED');
-            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Solo era una sobrebarriga asada', 'DIAGNOSTIC_INPUT_CHANGED');`;
-          fs.writeFileSync('scripts/ppp-staging-cart-diagnostic.cjs', source.replace(emptyGuard, guarded).replace(marker, replacement));
-          require('./scripts/ppp-staging-cart-diagnostic.cjs').runRehearsal().then(report => {
-            fs.mkdirSync('tmp', { recursive: true });
-            fs.writeFileSync('tmp/ppp-staging-chat-report.json', JSON.stringify(report));
-            console.log(JSON.stringify(report)); process.exitCode = report.ok ? 0 : 1;
-          }).catch(() => { console.error('READONLY_CART_DIAGNOSTIC_FAILED'); process.exitCode = 1; });
-          NODE
+        run: node scripts/ppp-staging-chat-rehearsal.cjs
       - name: Archive counts and check results without credentials or message bodies
         if: always()
         uses: actions/upload-artifact@v4
