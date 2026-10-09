@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/whatsapp-beta-ai.yml
       - scripts/whatsapp-beta-ai-rehearsal.ts
+      - scripts/whatsapp-beta-cart-assertions.ts
       - src/whatsapp/whatsapp-agent.service.ts
       - src/whatsapp/whatsapp-catalog.service.ts
       - src/whatsapp/whatsapp-agent.spec.ts
@@ -297,6 +298,39 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: whatsapp-beta-everyday-conversations
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  cart-edit-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        offset: [91, 115]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Cart edits and independent variants (24 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: ${{ matrix.offset }}
+          WHATSAPP_BETA_CASE_LIMIT: '24'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: yarn beta:whatsapp:ai
+      - name: Archive cart edit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-cart-edits-${{ matrix.offset }}
           path: tmp/whatsapp-beta-ai-report.json
           retention-days: 7
           if-no-files-found: error

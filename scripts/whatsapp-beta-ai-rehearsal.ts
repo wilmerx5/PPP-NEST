@@ -12,17 +12,18 @@ import { WhatsappActionGuardService } from '../src/whatsapp/whatsapp-action-guar
 import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
+import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
 
 type HardScenario = {
  id:string;group:string;messages:string[];context?:string[];
- initialCart?:Array<{productId:number;quantity:number;attributes?:Array<{attributeName:string;attributeValue:string}>}>;
+ initialCart?:Array<{productId:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>;
  items:Record<string,number>;exclude?:number[];forbidNew?:number[];
  attrs?:Array<{id:number;key:string;value:string}>;note?:string[];customerNote?:string[];
  replyAny?:string[];maxReply:number;
  lineNotes?:Array<{id:number;contains:string[];forbid?:string[]}>;
  forbidActions?:string[];
- expectedLines?:Array<{id:number;quantity:number;attrs?:Array<{key:string;value:string}>;note?:string[]}>;
- turnCarts?:Array<{turn:number;items:Record<string,number>}>;
+ expectedLines?:ExpectedCartLine[];
+ turnCarts?:Array<{turn:number;items:Record<string,number>;forbidActions?:string[]}>;
 };
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
@@ -95,16 +96,15 @@ if (hardMode) {
   for (const scenario of hardScenarios.slice(offset, offset + maxCases)) {
     const cart = new Map<number, { productId: number; name: string; quantity: number;
       note?: string; attributes: Array<{attributeName:string;attributeValue:string}> }>();
+    const initialLines: WhatsappSessionData['cart'] = [];
     for (const line of scenario.initialCart || []) {
       const product = products.find(p => p.id === line.productId);
       if (!product) throw new Error('Invalid initialCart productId '+line.productId);
-      cart.set(line.productId,{ productId:line.productId,name:product.name,
-        quantity:line.quantity,attributes:line.attributes || [] });
+      initialLines.push({ productId:line.productId,name:product.name,code:product.code,unitPrice:product.price,
+        quantity:line.quantity,note:line.note,attributes:line.attributes || [] });
     }
-    let session: WhatsappSessionData = { orderType: 'pickup', cart: [...cart.values()].map(line => {
-      const product = products.find(p => p.id === line.productId)!;
-      return {...line,code:product.code,unitPrice:product.price};
-    }) };
+    // Same SKU may have multiple flavors/notes. Do not collapse seeded lines by ID.
+    let session: WhatsappSessionData = { orderType: 'pickup', cart: initialLines };
     const history = [...(scenario.context || [])];
     const turns: Array<Record<string,unknown>> = [];
     let customerNotes = '';
@@ -137,6 +137,7 @@ if (hardMode) {
     const expected=Object.entries(scenario.items);
     const problems:string[]=[];
     if (scenario.expectedLines) {
+      if (!matchesExpectedCartLines(scenario.expectedLines, finalCart)) problems.push('wrong_variant_lines');
       if (scenario.expectedLines.length !== finalCart.length) problems.push('wrong_line_count');
       for (const line of scenario.expectedLines) {
         if (!finalCart.some(actual => actual.productId === line.id && actual.quantity === line.quantity &&
@@ -155,6 +156,10 @@ if (hardMode) {
       if (!lines || quantities.size !== Object.keys(expectation.items).length ||
         Object.entries(expectation.items).some(([id,quantity])=>quantities.get(Number(id))!==quantity)) {
         problems.push('wrong_cart_after_turn_'+expectation.turn);
+      }
+      for (const action of expectation.forbidActions || []) {
+        if (Object.prototype.hasOwnProperty.call(turns[expectation.turn]?.actions || {}, action))
+          problems.push('forbidden_action_after_turn_'+expectation.turn+'_'+action);
       }
     }
     for (const action of scenario.forbidActions || []) {
