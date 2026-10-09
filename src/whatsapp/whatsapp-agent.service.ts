@@ -1117,10 +1117,34 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
-        const note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
+        let note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
         let attributes = Array.isArray(args.attributes)
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
+
+        // El LLM no puede inventar atributos. Los cambios de guarnición
+        // ("Cambio de papas: por yuca") son NOTAS, no opciones del producto.
+        if (attributes?.length) {
+          const valid: typeof attributes = [];
+          for (const choice of attributes) {
+            const declared = (product.attributes || []).find((attr) =>
+              attr.attributeName.toLowerCase() === String(choice.attributeName || '').toLowerCase());
+            if (!declared) {
+              const part = [choice.attributeName, choice.attributeValue].filter(Boolean).join(': ');
+              if (part) note = [note, part].filter(Boolean).join('. ').slice(0, 200);
+              continue;
+            }
+            const matched = this.catalogService.matchAttributeOptionValue(
+              String(choice.attributeValue || ''), declared.options);
+            if (!matched) {
+              return JSON.stringify({ ok: false, error: 'invalid_attribute_option',
+                hint: 'No reemplaces una elección inválida por la opción predeterminada. Aclara con el cliente.',
+                attribute: declared.attributeName, options: declared.options });
+            }
+            valid.push({ attributeName: declared.attributeName, attributeValue: matched });
+          }
+          attributes = valid;
+        }
 
         if (product.hasAttributes && product.attributes?.length) {
           let attrs = attributes;
