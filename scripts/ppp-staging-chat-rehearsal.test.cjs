@@ -14,9 +14,13 @@ const products = [
   { id: 13, name: 'Sobrebarriga', price: '33000.00', isActive: true, availableNow: true,
     attributes: [{ attributeName: 'Seleccion', options: ['Asada', 'En Salsa'] }] },
   { id: 60, name: 'Costillas De Cerdo', price: '29500.00', isActive: true, availableNow: true, attributes: [] },
+  { id: 14, name: 'Mojarra', price: '29500.00', isActive: true, availableNow: true,
+    attributes: [{ attributeName: 'Seleccion', options: ['Frita', 'Asada'] }] },
+  ...[[1, '1 Pollo Frito', '41000.00'], [4, '1 Pollo Broaster', '43000.00']].map(([id, name, price]) =>
+    ({ id, name, price, isActive: true, availableNow: true, attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas'] }] })),
 ];
 function fixture(options = {}) {
-  let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [];
+  let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [], simulatedStepIndex = 0;
   const calls = [], plan = buildPlan(products);
   const conversation = { id: 42, waId: env.STAGING_WHATSAPP_RECIPIENTS, phoneE164: '+' + env.STAGING_WHATSAPP_RECIPIENTS,
     humanTakeover: false, state: 'building_cart', customerName: null,
@@ -58,12 +62,17 @@ function fixture(options = {}) {
       }
       assert.equal(msg.from, env.STAGING_WHATSAPP_RECIPIENTS);
       if (options.timeout) throw Error('synthetic transport error with sensitive response text');
-      if (seen.has(msg.id) && !options.breakDedup) return json({ ok: true });
+      const duplicate = seen.has(msg.id);
+      if (duplicate && !options.breakDedup) return json({ ok: true });
       seen.add(msg.id); sentTexts.push(msg.text.body);
-      const step = plan.find(step => step.text === msg.text.body);
-      assert.ok(step);
+      while (plan[simulatedStepIndex]?.duplicatePrevious) simulatedStepIndex++;
+      const step = duplicate ? plan[simulatedStepIndex - 2] : plan[simulatedStepIndex++];
+      assert.equal(step.text, msg.text.body);
       conversation.sessionData.cart = step.cart.map(want => ({ productId: want.productId, quantity: want.quantity,
         unitPrice: want.unitPrice, attributes: want.attrs, note: want.note.join('. ') }));
+      if (typeof step.pendingQuantity === 'number' && !options.breakQuantityQuestion) conversation.sessionData.pendingCartQuantity =
+        { quantity: step.pendingQuantity, options: [{ cartIndex: 2 }, { cartIndex: 3 }] };
+      if (step.pendingQuantity === false && !options.breakQuantityChoice) delete conversation.sessionData.pendingCartQuantity;
       if (options.wrongCart && step.id === 'multiple-products-variants-note') conversation.sessionData.cart[0].quantity = 7;
       if (options.nameContamination && step.id === 'multiple-products-variants-note') conversation.customerName = 'Sin ensalada';
       if (options.orderCreation && step.id === 'multiple-products-variants-note') conversation.state = 'completed';
@@ -78,11 +87,11 @@ function fixture(options = {}) {
   return { fetch, calls, sentTexts, helpers: { now: () => clock, sleep: async ms => { clock += ms; } } };
 }
 
-test('executes 13 bounded steps, validates HMAC, checks persisted cart and clears its successful draft', async () => {
+test('executes 21 bounded steps, validates HMAC, checks persisted cart and clears its successful draft', async () => {
   const f = fixture(); const report = await runRehearsal(env, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.steps.length, 13); assert.equal(report.webhookPosts, 13);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 21); assert.equal(report.webhookPosts, 21);
   assert.ok(report.steps.every(s => s.pass)); assert.equal(report.steps.at(-1).actualCartLines, 0);
-  assert.equal(f.sentTexts.length, 12); // Duplicate does not process again.
+  assert.equal(f.sentTexts.length, 20); // Duplicate does not process again.
   assert.ok(f.sentTexts.every(text => !/^confirmar$/i.test(text)));
   const output = JSON.stringify(report);
   for (const value of ['synthetic-password', 'synthetic-app-secret', 'synthetic-cookie', env.STAGING_WHATSAPP_RECIPIENTS, env.STAGING_ADMIN_EMAIL]) assert.ok(!output.includes(value));
@@ -94,7 +103,7 @@ test('preflight verifies routing and signature without sending message payloads'
 test('accepts the real bigint string message IDs without losing precision during deduplication', async () => {
   const f = fixture({ bigintMessageIds: true });
   const report = await runRehearsal(env, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.steps.length, 13);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 21);
   assert.equal(report.steps.find(s => s.id === 'duplicate-webhook').inboundCount, 0);
 });
 test('distinguishes mismatched secret from missing raw body without exposing the response', async () => {
@@ -113,10 +122,10 @@ for (const option of ['missingEndpoint', 'notStaging', 'wrongTarget', 'unsafeCoo
     assert.equal(f.calls.at(-1).url.endsWith('/api/auth/logout'), true);
   });
 }
-for (const option of ['wrongCart', 'breakDedup', 'concurrentHuman', 'nameContamination', 'orderCreation']) {
+for (const option of ['wrongCart', 'breakDedup', 'concurrentHuman', 'nameContamination', 'orderCreation', 'breakQuantityQuestion', 'breakQuantityChoice']) {
   test(`fails closed on ${option} without continuing or clearing the failure`, async () => {
     const f = fixture({ [option]: true }); const report = await runRehearsal(env, f.fetch, f.helpers);
-    assert.equal(report.ok, false); assert.ok(report.webhookPosts < 13);
+    assert.equal(report.ok, false); assert.ok(report.webhookPosts < 21);
     assert.ok(!f.sentTexts.includes('Vacía el carrito y empieza de cero.'));
     assert.ok(report.activeStep);
   });

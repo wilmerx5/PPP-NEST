@@ -9188,6 +9188,12 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingCartQuantity;
     const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
     if (!correction && !(pending && pick !== null)) return false;
+    // A payment preference already contains a payable order snapshot. Clearing its
+    // local ID does not cancel that external link, so do not silently change it.
+    if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
+      await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
+      return true;
+    }
     const quantity = correction?.quantity ?? pending!.quantity;
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 30) {
       await this.reply(conv, waId, 'Dime una cantidad entre 1 y 30. Para quitar un plato, dime cuál quitamos.');

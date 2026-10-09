@@ -57,6 +57,14 @@ describe('Corrections preserve the rest of an existing cart', () => {
     expect(h.session.mpPreferenceId).toBeUndefined(); expect(h.session.awaitingField).toBeUndefined();
     expect(h.conv.state).toBe('building_cart');
   });
+  it('preserves a payable Mercado Pago snapshot instead of silently discarding its external link', async () => {
+    const h = harness(); h.conv.state = 'awaiting_mp_payment';
+    h.session.mpPreferenceId = 'synthetic-payable-preference';
+    const initial = structuredClone(h.session);
+    await h.inbound('Solo era un pollo');
+    expect(h.session).toEqual(initial); expect(h.conv.state).toBe('awaiting_mp_payment');
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
   it.each([
     ['Solamente era un pollo', 1, 1], ['Únicamente eran dos pollos', 1, 2],
     ['Del pollo solo uno', 1, 1], ['Deja solo un pollo', 1, 1],

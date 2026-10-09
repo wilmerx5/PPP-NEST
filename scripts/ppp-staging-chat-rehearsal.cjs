@@ -37,7 +37,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
   const now = helpers.now || Date.now;
   const sleep = helpers.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const report = { ok: false, mode: env.STAGING_CHAT_EXECUTE === 'true' ? 'execute' : 'preflight',
-    checks: [], steps: [], webhookPosts: 0, expectedSteps: 13,
+    checks: [], steps: [], webhookPosts: 0, expectedSteps: 21,
     limits: 'Synthetic signed inbound events; real staging persistence and Meta outbound. No genuine Meta inbound delivery, kitchen, payments or order confirmation tested.' };
   let cookie = '', requests = 0, startedAt = now(), recipient, channel, conversationId, initialName;
   const check = async (name, work) => {
@@ -144,12 +144,17 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     if (!await check('current_menu_products', async () => {
       const r = await request('/api/products'); ensure(r.status === 200, 'CATALOG_HTTP_FAILED');
       products = await r.json(); ensure(Array.isArray(products), 'INVALID_CATALOG');
-      for (const [name, price] of [['Churrasco', 38000], ['Sobrebarriga', 33000], ['Costillas De Cerdo', 29500]]) {
+      for (const [name, price] of [['Churrasco', 38000], ['Sobrebarriga', 33000], ['Costillas De Cerdo', 29500],
+        ['Mojarra', 29500], ['1 Pollo Frito', 41000], ['1 Pollo Broaster', 43000]]) {
         const p = products.find(p => p.name === name);
         ensure(p && Number.isSafeInteger(p.id) && p.isActive === true && p.availableNow === true && Number(p.price) === price, 'REQUIRED_PRODUCT_UNAVAILABLE_OR_CHANGED');
       }
       const p = products.find(p => p.name === 'Sobrebarriga');
       ensure(p.attributes?.some(a => a.attributeName === 'Seleccion' && a.options.includes('Asada') && a.options.includes('En Salsa')), 'REQUIRED_ATTRIBUTES_CHANGED');
+      for (const name of ['1 Pollo Frito', '1 Pollo Broaster']) ensure(products.find(p => p.name === name)?.attributes?.some(a =>
+        a.attributeName === 'Arepas' && a.options.includes('Fritas') && a.options.includes('Blancas')), 'REQUIRED_ATTRIBUTES_CHANGED');
+      ensure(products.find(p => p.name === 'Mojarra')?.attributes?.some(a => a.attributeName === 'Seleccion' &&
+        a.options.includes('Asada')), 'REQUIRED_ATTRIBUTES_CHANGED');
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
     const plan = buildPlan(products);
@@ -192,6 +197,9 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         if (step.reply === 'ribs') ensure(reply.includes('yuca') && /\bno\b/.test(reply) && reply.includes('ensalada'), 'RIBS_COMPOSITION_FACTS_FAILED');
       }
       const pass = cartMatches(step.cart, current.sessionData.cart);
+      if (typeof step.pendingQuantity === 'number') ensure(current.sessionData.pendingCartQuantity?.quantity === step.pendingQuantity &&
+        current.sessionData.pendingCartQuantity.options?.length === 2, 'QUANTITY_AMBIGUITY_NOT_PERSISTED');
+      if (step.pendingQuantity === false) ensure(!current.sessionData.pendingCartQuantity, 'QUANTITY_CHOICE_NOT_CLEARED');
       report.steps.push({ id: step.id, pass, inboundCount: incoming.length, outboundCount: outgoing.length,
         expectedCartLines: step.cart.length, actualCartLines: current.sessionData.cart.length });
       ensure(pass, 'PERSISTED_CART_DOES_NOT_MATCH_EXPECTED_LINES_ATTRIBUTES_NOTES_PRICE');
