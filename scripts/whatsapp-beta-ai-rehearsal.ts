@@ -1,12 +1,15 @@
 /**
  * Ensayo de Agent V1 con OpenAI REAL y catálogo sintético.
- * NO importa el orquestador, Meta, OrdersService ni repositorios de BD.
+ * Solo usa applyActions del orquestador; no instancia Meta, OrdersService ni repositorios de BD.
  * NUNCA ejecutar automáticamente en CI; requiere flag y key explícitos.
  *
  * OPENAI_API_KEY=<secret> WHATSAPP_BETA_LIVE=1 yarn beta:whatsapp:ai
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { WhatsappOrchestratorService } from '../src/whatsapp/whatsapp-orchestrator.service';
+import { WhatsappActionGuardService } from '../src/whatsapp/whatsapp-action-guard.service';
+import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
 
@@ -18,6 +21,7 @@ type HardScenario = {
  replyAny?:string[];maxReply:number;
  lineNotes?:Array<{id:number;contains:string[];forbid?:string[]}>;
  forbidActions?:string[];
+ expectedLines?:Array<{id:number;quantity:number;attrs?:Array<{key:string;value:string}>;note?:string[]}>;
 };
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
@@ -54,6 +58,12 @@ const settings = {
 };
 const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService(settings as never, catalog);
+const cartApplier = Object.create(WhatsappOrchestratorService.prototype) as {
+  catalogService: WhatsappCatalogService;
+  applyActions: (...args: any[]) => Promise<{session: WhatsappSessionData}>;
+};
+cartApplier.catalogService = catalog;
+const actionGuard = new WhatsappActionGuardService(catalog);
 // Capture only synthetic rehearsal tool traffic; never log credentials/config.
 const tracedAgent = agent as unknown as { executeTool: (...args: any[]) => string };
 const executeTool = tracedAgent.executeTool.bind(agent);
@@ -90,54 +100,58 @@ if (hardMode) {
       cart.set(line.productId,{ productId:line.productId,name:product.name,
         quantity:line.quantity,attributes:line.attributes || [] });
     }
+    let session: WhatsappSessionData = { orderType: 'pickup', cart: [...cart.values()].map(line => {
+      const product = products.find(p => p.id === line.productId)!;
+      return {...line,code:product.code,unitPrice:product.price};
+    }) };
     const history = [...(scenario.context || [])];
     const turns: Array<Record<string,unknown>> = [];
     let customerNotes = '';
     for (const message of scenario.messages) {
       toolTrace = [];
       const result = await agent.runTurn({
-        userMessage:message,sessionSummary:JSON.stringify({cart:[...cart.values()],customerNotes}),
+        userMessage:message,sessionSummary:JSON.stringify(session),
         recentMessages:history,
         businessRulesBlock:'Pedidos reales simulados. Siempre usar ids del catálogo y respetar cantidades. Diferenciar atributo del producto (opciones enumeradas), nota de cocina (sin ensalada, extra ají) y nuevo producto. No confirmar órdenes ni ejecutar pagos. Respuestas breves y amables. Para atributos sin elección explícita usar primera opción válida.',
         brandName:'Pronto Pollo Portal (simulación)',products,
-        cart:[...cart.values()],
+        cart:session.cart,
       });
       const actions = result.actions;
-      if(actions.clearCart)cart.clear();
-      for(const id of actions.removeProductIds || [])cart.delete(id);
-      for(const item of actions.addItems || []){
-        const product = products.find(p=>p.id===item.productId);
-        if(!product)throw new Error('Non-catalog product '+item.productId);
-        const prev=cart.get(item.productId);
-        cart.set(item.productId,{productId:item.productId,name:product.name,
-          quantity:(prev?.quantity || 0)+Math.max(1,item.quantity || 1),
-          note:item.note || prev?.note,
-          attributes:item.attributes || prev?.attributes || []});
+      const guarded = actionGuard.sanitize({actions:structuredClone(actions),products,businessOpen:true,allowMercadoPago:false});
+      session = (await cartApplier.applyActions({}, session, guarded.actions, products, {}, message)).session;
+      cart.clear();
+      for (const line of session.cart) {
+        const previous = cart.get(line.productId);
+        cart.set(line.productId, {...line, attributes:line.attributes || [], quantity: (previous?.quantity || 0) + line.quantity});
       }
-      for(const attr of actions.updateAttributes || []){
-        const line=cart.get(attr.productId);
-        if(!line)continue;
-        line.attributes=line.attributes.filter(a=>a.attributeName.toLowerCase()!==attr.attributeName.toLowerCase());
-        line.attributes.push({attributeName:attr.attributeName,attributeValue:attr.attributeValue});
-      }
-      if(actions.setCustomerNotes)customerNotes=actions.setCustomerNotes;
-      const turn={user:message,reply:result.reply,actions,toolCalls:result.toolCalls,toolTrace,
-        error:result.error || null,cart:[...cart.values()]};
+      customerNotes = session.customerNotes || '';
+      const turn={user:message,reply:result.reply,actions,appliedActions:guarded.actions,guardWarnings:guarded.warnings,toolCalls:result.toolCalls,toolTrace,
+        error:result.error || null,cart:session.cart};
       turns.push(structuredClone(turn));
       history.push('Cliente: '+message,'Bot: '+result.reply);
       if(result.error)break;
     }
-    const finalCart=[...cart.values()];
+    const finalCart=session.cart;
     const norm=(v:string)=>v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const expected=Object.entries(scenario.items);
     const problems:string[]=[];
+    if (scenario.expectedLines) {
+      if (scenario.expectedLines.length !== finalCart.length) problems.push('wrong_line_count');
+      for (const line of scenario.expectedLines) {
+        if (!finalCart.some(actual => actual.productId === line.id && actual.quantity === line.quantity &&
+          (line.attrs || []).every(a => (actual.attributes || []).some(choice =>
+            norm(choice.attributeName) === norm(a.key) && norm(choice.attributeValue) === norm(a.value))) &&
+          (line.note || []).every(token => norm(actual.note || '').includes(norm(token)))))
+          problems.push('missing_variant_line_' + line.id);
+      }
+    }
     if(turns.length!==scenario.messages.length)problems.push('turn_count');
     if(turns.some(t=>t.error))problems.push('agent_error');
     for (const action of scenario.forbidActions || []) {
       if (turns.some(t => Object.prototype.hasOwnProperty.call(t.actions, action)))
         problems.push('forbidden_action_' + action);
     }
-    if(expected.length!==finalCart.length ||
+    if(expected.length!==cart.size ||
       expected.some(([id,qty])=>cart.get(Number(id))?.quantity!==qty))problems.push('wrong_cart');
     for(const id of scenario.exclude || [])if(cart.has(id))problems.push('extra_'+id);
     for(const id of scenario.forbidNew || []){
@@ -145,8 +159,8 @@ if (hardMode) {
       if((cart.get(id)?.quantity||0)>seeded)problems.push('duplicate_'+id);
     }
     for(const attr of scenario.attrs||[]){
-      const val=cart.get(attr.id)?.attributes.find(a=>norm(a.attributeName)===norm(attr.key))?.attributeValue;
-      if(!val||norm(val)!==norm(attr.value))problems.push('missing_attr_'+attr.id+'_'+attr.key);
+      const values=finalCart.filter(line=>line.productId===attr.id).flatMap(line=>line.attributes || []).filter(a=>norm(a.attributeName)===norm(attr.key)).map(a=>norm(a.attributeValue));
+      if(!values.includes(norm(attr.value)))problems.push('missing_attr_'+attr.id+'_'+attr.key);
     }
     const noteText=norm(finalCart.map(c=>c.note||'').join(' ')+' '+customerNotes);
     for(const token of [...(scenario.note||[]),...(scenario.customerNote||[])])
@@ -160,7 +174,7 @@ if (hardMode) {
     }
     for (const line of finalCart) {
       const product = products.find(p => p.id === line.productId)!;
-      for (const choice of line.attributes) {
+      for (const choice of line.attributes || []) {
         const definition = product.attributes?.find(a => norm(a.attributeName) === norm(choice.attributeName));
         if (!definition?.options.some(o => norm(o) === norm(choice.attributeValue)))
           problems.push('non_catalog_attribute_' + line.productId);
@@ -312,7 +326,7 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
 }
 }
 const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
-  caveat: 'Agent suggestions only. Not the full orchestrator, not WhatsApp Meta, no DB/order write.',
+  caveat: 'Hard cases use AgentV1, ActionGuard and real orchestrator applyActions. Not the full inbound router, Meta, DB, or order creation.',
   scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));

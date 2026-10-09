@@ -301,7 +301,9 @@ export class WhatsappAgentService {
     }
 
     // Observacion de cocina con carrito existente.
-    if (input.cart?.length && looksLikeKitchenSendRequest(input.userMessage)) {
+    const kitchenText = input.userMessage.replace(/^(?:porfa|por\s+favor)\s+/i, '').trim();
+    if (input.cart?.length && (looksLikeKitchenSendRequest(kitchenText) ||
+      (input.cart.length === 1 && /^(?:sin|m[aá]s)\s+(?:ensalada|cilantro|aj[ií]|salsa)\b/i.test(kitchenText)))) {
       const note = input.userMessage.replace(/^(?:y\s+)/i, '').trim();
       return {
         reply: 'Listo, dejo esa observación para cocina. ¿Algo más?',
@@ -751,7 +753,8 @@ Contacto humano: *${phone || '3118866823'}*
         }
 
         const drinkOrder = this.catalogService.resolveStandaloneDrinkOrder(
-          query,
+          /\bjugos?\b/i.test(query) && /\b(?:agua|leche)\b/i.test(ctx.userMessage || '')
+            ? ctx.userMessage || query : query,
           ctx.products,
         );
         if (drinkOrder) {
@@ -1123,17 +1126,22 @@ Contacto humano: *${phone || '3118866823'}*
         // Alimentos incluidos en un plato compuesto no son líneas separadas.
         const txt = (ctx.userMessage || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '');
+        const includedArepaHost = this.catalogService.resolveSizedChickenProduct?.(ctx.userMessage || '', ctx.products) ||
+          ctx.products.find(p => ctx.actions.addItems?.some(item => item.productId === p.id) &&
+            p.attributes?.some(a => /arepas?/i.test(a.attributeName)) && !/porci[oó]n/i.test(p.name));
         const isExtraArepas = /porci[oó]n de arepas/i.test(product.name) &&
-          /\b(pollos?|broaster)\b/.test(txt) &&
+          (/\b(pollos?|broaster)\b/.test(txt) || !!includedArepaHost) &&
           !/\b(?:porci[oó]n|extra|adicional|aparte)\s+(?:de\s+)?arepas?\b/.test(txt);
         const comboHost = /\b(ejecutivo|combo)\b/.test(txt);
         const explicitlySeparate = /\b(?:aparte|adicional|extra)\b/.test(txt) &&
           this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '').some(segment =>
             /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
             this.catalogService.productNameFitsUtterance?.(product, segment));
-        const isComboIncluded = comboHost && !explicitlySeparate && (
+        const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
+          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) !== ctx.userMessage;
+        const isComboIncluded = comboHost && !explicitlySeparate && !separateQuantity && (
           (/^sopa de /i.test(product.name) && /\bsopa\b/.test(txt)) ||
-          (/^coca cola/i.test(product.name) && /\bcoca cola\b/.test(txt))
+          this.catalogService.isLikelyDrinkProduct?.(product)
         );
         const isIncludedChicken = /arroz chino con medio pollo/i.test(txt) &&
           /^1\/2 pollo /i.test(product.name) && !/\by\s+(?:otro\s+)?medio\s+pollo\b/.test(txt);
@@ -1142,6 +1150,13 @@ Contacto humano: *${phone || '3118866823'}*
             ok: false, error: 'included_attribute_not_extra',
             hint: 'Ya es un atributo o acompañamiento incluido del plato principal. No agregues otra línea sin solicitud explícita.',
           });
+        }
+        const requested = this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products);
+        const explicitCode = this.catalogService.extractCodeFromMessage(ctx.userMessage || '');
+        if (requested && requested.id !== product.id && explicitCode !== product.code &&
+          !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
+          return JSON.stringify({ok:false,error:'different_dish_not_requested',
+            hint:'Ese SKU tiene una presentación distinta que el cliente no pidió. Usa el producto nombrado; no agregues una alternativa por tu cuenta.'});
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         let note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
@@ -1153,7 +1168,7 @@ Contacto humano: *${phone || '3118866823'}*
         // del modelo y sobre los valores por defecto del catálogo.
         if (product.attributes?.length && ctx.userMessage?.trim()) {
           const attributeSource = this.catalogService.orderSegmentForProduct?.(
-            ctx.userMessage, product, ctx.products,
+            ctx.userMessage, product, ctx.products, attributes,
           ) || ctx.userMessage;
           const parsed = this.catalogService.resolveAttributesFromMessage(
             product, attributeSource, [],

@@ -1974,15 +1974,27 @@ export class WhatsappCatalogService {
   }
 
   /** Scope choices to their own dish when a multi-order has a unique owner. */
-  orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[]): string {
-    const segments = this.splitMultiProductSegments(text);
+  orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
+    // Preserve modifiers; the general matcher may strip them before splitting.
+    const explicitSegments = text.split(/(?:\s+y\s+|,\s*)(?=(?:otr[oa]s?|un[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i);
+    const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
     const owned = segments.filter(segment => {
       const tokens = this.dishContentTokens(normalizeText(segment));
       const anchor = this.bestClauseCoverage(tokens, products);
       return anchor?.products.some(p => p.id === product.id);
     });
-    return owned.length === 1 ? owned[0] : text;
+    if (owned.length === 1) return owned[0];
+    if (owned.length > 1 && selected?.length) {
+      const matching = owned.filter(segment => {
+        const parsed = this.resolveAttributesFromMessage(product, segment, []);
+        return parsed.status !== 'invalid' && selected.every(choice =>
+          parsed.attributes.some(a => normalizeText(a.attributeName) === normalizeText(choice.attributeName) &&
+            normalizeText(a.attributeValue) === normalizeText(choice.attributeValue)));
+      });
+      if (matching.length === 1) return matching[0];
+    }
+    return text;
   }
 
   private dishClauses(query: string): string[][] {
@@ -2727,7 +2739,9 @@ export class WhatsappCatalogService {
     // Ej: "y medio que vale", "y el cuarto?", "medio cuanto", tras cotizar un pollo
     if (this.isBareChickenPortionFollowUp(text, q)) {
       const portion = this.detectPortionHint(q)!;
-      const styleFromFocus = opts?.preferStyleFromName
+      const explicitStyle = q.match(/\b(?:pollo|cuarto|medio|1\s*\/\s*[24])\s+(frito|broaster|asado)\b/)?.[1] ||
+        (/\bbroaster\b/.test(q) ? 'broaster' : '');
+      const styleFromFocus = explicitStyle || (opts?.preferStyleFromName
         ? /\bbroaster\b/.test(normalizeText(opts.preferStyleFromName))
           ? 'broaster'
           : /\bfrit[oa]s?\b/.test(normalizeText(opts.preferStyleFromName))
@@ -2735,10 +2749,16 @@ export class WhatsappCatalogService {
             : /\basado\b/.test(normalizeText(opts.preferStyleFromName))
               ? 'asado'
               : ''
-        : '';
+        : '');
       q = normalizeText(`${portion} pollo ${styleFromFocus}`.trim());
     }
-    // Requiere pollo/broaster (o follow-up de porción ya expandido). "trucha frita" ≠ pollo.
+    // "Un cuarto frito ala pechuga" también nombra la presentación de pollo.
+    // Exigir porción y preparación contiguas evita interpretar "trucha frita" como pollo.
+    if (!/\bpollo\b/.test(q) &&
+      /\b(?:cuarto|medio|1\s*\/\s*[24])\s+(?:frito|broaster|asado)\b/.test(q)) {
+      q += ' pollo';
+    }
+    // Requiere pollo/broaster (o porción ya expandida). "trucha frita" ≠ pollo.
     if (!/\bpollo\b/.test(q) && !/\bbroaster\b/.test(q)) {
       return null;
     }

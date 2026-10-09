@@ -1108,5 +1108,110 @@
       1,
       18
     ]
+  },
+  {
+    "id": "mismo-pollo-dos-arepas",
+    "messages": [
+      "Un pollo frito con arepas blancas y otro pollo frito con arepas fritas"
+    ],
+    "items": {
+      "1": 2
+    },
+    "expectedLines": [
+      {
+        "id": 1,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Arepas",
+            "value": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Arepas",
+            "value": "Fritas"
+          }
+        ]
+      }
+    ],
+    "group": "variantes-por-linea",
+    "maxReply": 420
+  },
+  {
+    "id": "mismo-jugo-dos-sabores",
+    "messages": [
+      "Un jugo en agua de mango y otro jugo en agua de lulo"
+    ],
+    "items": {
+      "50": 2
+    },
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Mango"
+          }
+        ]
+      },
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Lulo"
+          }
+        ]
+      }
+    ],
+    "group": "variantes-por-linea",
+    "maxReply": 420
+  },
+  {
+    "id": "mismo-arroz-dos-notas",
+    "messages": [
+      "Un arroz con pollo sin ensalada y otro arroz con pollo sin cilantro"
+    ],
+    "items": {
+      "23": 2
+    },
+    "expectedLines": [
+      {
+        "id": 23,
+        "quantity": 1,
+        "note": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 23,
+        "quantity": 1,
+        "note": [
+          "sin cilantro"
+        ]
+      }
+    ],
+    "group": "variantes-por-linea",
+    "maxReply": 420
+  },
+  {
+    "id": "otro-arroz-no-reemplaza",
+    "messages": [
+      "Un arroz con pollo",
+      "Agrégame otro arroz con pollo"
+    ],
+    "items": {
+      "23": 2
+    },
+    "group": "variantes-por-linea",
+    "maxReply": 420
   }
 ]

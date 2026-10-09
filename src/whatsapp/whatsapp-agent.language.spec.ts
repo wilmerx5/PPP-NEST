@@ -72,6 +72,7 @@ describe('Agent language boundaries with PPP menu', () => {
   });
 
   it.each(['1 cuarto broaster pierna pernil y arepas fritas',
+    'Un cuarto frito con pierna pernil y arepas blancas',
     '3 pollos fritos con arepas blancas y 2 limonadas naturales'])('blocks included arepas without requiring the word pollo: %s', text => {
     expect(add(text, 11).result.ok).toBe(false);
   });
@@ -103,6 +104,33 @@ describe('Agent language boundaries with PPP menu', () => {
   it('multi-order juice is not substituted by bottled water', () => {
     const resolved = catalog.resolveMultiProductOrder('1 mojarra frita, 2 jugos en agua de mango y 1 arroz paisa',products);
     expect(resolved?.confident.map(c=>c.product.id).sort((a,b)=>a-b)).toEqual([14,35,50]);
+  });
+
+  it('preserves milk from the customer message when the model abbreviates a juice search', () => {
+    const result = JSON.parse((agent as any).executeTool('search_menu', {query:'jugo natural de lulo'}, {
+      products, userMessage:'2 jugos naturales en leche de lulo', actions:{}, cart:[],
+    }));
+    expect(result.mode).toBe('drink_order');
+    expect(result.product.productId ?? result.product.id).toBe(51);
+    expect(result.attributes).toEqual([{attributeName:'Sabor',attributeValue:'Lulo'}]);
+  });
+
+  it('rejects an unrequested rice presentation beside four requested families', () => {
+    expect(add('2 sopas de ajiaco, 3 sopas de menudencias, una costilla de cerdo y dos arroces con pollo',36).result.ok).toBe(false);
+  });
+
+  it('rejects an extra beverage already included in a combo', () => {
+    const {result,actions} = add('Un combo frito sin arepas con Pepsi',28);
+    expect(result.error).toBe('included_attribute_not_extra');
+    expect(actions.addItems).toBeUndefined();
+  });
+
+  it.each(['Porfa manda bastante ají','Sin ensalada por favor'])('records a short kitchen note without promising an unapplied change: %s', async text => {
+    const configured = new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test',localContext:{}})} as never,catalog);
+    const result = await configured.runTurn({userMessage:text,products,cart:[{productId:23,name:'Arroz Con Pollo'}],
+      recentMessages:[],sessionSummary:'test',businessRulesBlock:'test',brandName:'test'});
+    expect(result.actions.setCustomerNotes).toBe(text);
+    expect(result.actions.addItems).toBeUndefined();
   });
 
   it('recognizes the plural arroces and keeps its own quantity', () => {

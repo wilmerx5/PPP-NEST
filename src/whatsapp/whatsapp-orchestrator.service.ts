@@ -3643,6 +3643,12 @@ export class WhatsappOrchestratorService {
       };
     }
 
+    // A replacement may remove and re-add the same SKU with new quantity/options.
+    // Remove the old line before inserting its replacement.
+    if (actions.removeProductIds?.length) {
+      next.cart = next.cart.filter((c) => !actions.removeProductIds!.includes(c.productId));
+    }
+
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
       // Agente a veces toma "Las mojarras fritas" / "es todo" como domicilio
@@ -3756,6 +3762,9 @@ export class WhatsappOrchestratorService {
       for (const item of items) {
         const product = products.find((p) => p.id === item.productId);
         if (!product) continue;
+        const itemSource = sourceText && multiQtyOrder
+          ? this.catalogService.orderSegmentForProduct(sourceText, product, products, item.attributes)
+          : sourceText;
         const qty = this.resolveAddItemQuantity({
           product,
           aiQuantity: item.quantity,
@@ -3766,8 +3775,8 @@ export class WhatsappOrchestratorService {
         // En multi-ítem: la nota de "con queso" solo aplica al plato que la menciona
         const itemNote =
           item.note?.trim() || (multiQtyOrder ? undefined : modNote || undefined) || undefined;
-        const fromText = sourceText
-          ? this.catalogService.extractExplicitAttributeChoice(sourceText, product)
+        const fromText = itemSource
+          ? this.catalogService.extractExplicitAttributeChoice(itemSource, product)
           : null;
         const attempt = this.tryAddProductToCart(
           next,
@@ -3776,7 +3785,7 @@ export class WhatsappOrchestratorService {
           cfg,
           itemNote,
           fromText || item.attributes,
-          { sourceText },
+          { sourceText: itemSource },
         );
         if (attempt.missingAttributes) {
           deferredNeedsAttrs.push({
@@ -3813,10 +3822,6 @@ export class WhatsappOrchestratorService {
           },
         );
       }
-    }
-
-    if (actions.removeProductIds?.length) {
-      next.cart = next.cart.filter((c) => !actions.removeProductIds!.includes(c.productId));
     }
 
     if (actions.requestHuman) {
@@ -4182,6 +4187,10 @@ export class WhatsappOrchestratorService {
     forcedQty: number;
   }): number {
     const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
+    const correction = opts.sourceText ? parseQtyDishCorrection(opts.sourceText) : null;
+    const correctedLine = correction?.filter(line =>
+      this.normalizeForMatch(opts.product.name).includes(this.normalizeForMatch(line.dish)));
+    if (correctedLine?.length === 1) return correctedLine[0].qty;
     if (opts.multiQtyOrder && opts.sourceText) {
       const near = this.catalogService.extractQuantityNearProduct(
         opts.sourceText,
