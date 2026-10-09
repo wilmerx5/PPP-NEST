@@ -15,6 +15,7 @@ type Scenario = {
   context?: string[];
   messages: string[];
   expectation: string;
+  initialCart?: Array<{ productId: number; quantity: number }>;
 };
 const requireLive = process.env.WHATSAPP_BETA_LIVE === '1';
 const token = process.env.OPENAI_API_KEY || '';
@@ -45,6 +46,15 @@ async function runRehearsal(): Promise<void> {
 for (const scenario of cases.slice(0, maxCases)) {
   const history = [...(scenario.context || [])];
   const cart = new Map<number, { productId: number; name: string; quantity: number }>();
+  for (const initial of scenario.initialCart || []) {
+    const product = products.find((p) => p.id === initial.productId);
+    if (!product) throw new Error('Unknown seeded product id');
+    cart.set(initial.productId, {
+      productId: product.id,
+      name: product.name,
+      quantity: initial.quantity,
+    });
+  }
   const turns: Array<Record<string, unknown>> = [];
   for (const message of scenario.messages) {
     const summary = JSON.stringify({ cart: [...cart.values()] });
@@ -95,7 +105,24 @@ for (const scenario of cases.slice(0, maxCases)) {
       !(address.addItems?.length) &&
       finalCart.some((p) => p.productId === 60) &&
       !finalCart.some((p) => p.productId === 77 || p.productId === 78);
+  } else if (scenario.id === 'arroz-chino-familia') {
+    accepted = turns.length === 2 &&
+      turns.every((turn) => !(turn.actions as { addItems?: unknown[] } | undefined)?.addItems?.length) &&
+      finalCart.length === 0;
+  } else if (scenario.id === 'ejecutivo-estilo') {
+    accepted = finalCart.length === 1 &&
+      finalCart[0].productId === 22 && finalCart[0].quantity === 1;
+  } else if (scenario.id === 'nota-aji') {
+    const action = turns[0]?.actions as { setCustomerNotes?: string; setCustomerName?: string; addItems?: unknown[] } | undefined;
+    accepted = !!action?.setCustomerNotes?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/aji/i) &&
+      !action.setCustomerName && !(action.addItems?.length) &&
+      finalCart.length === 1 && finalCart[0].productId === 60;
+  } else if (scenario.id === 'sopas-por-codigos') {
+    accepted = finalCart.length === 2 &&
+      finalCart.some((p) => p.productId === 20 && p.quantity === 2) &&
+      finalCart.some((p) => p.productId === 21 && p.quantity === 2);
   }
+  if (accepted === null) throw new Error('Scenario has no acceptance assertion: '+scenario.id);
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
 const report = { kind: 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
