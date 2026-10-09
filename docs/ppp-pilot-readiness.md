@@ -6,20 +6,20 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026
 
-Última ronda evaluada: `6d7511ae0c565f18b07dc177cbe6bbc54cb122e9`; PR #6 permanece en borrador. Las correcciones posteriores tienen 713 unitarias locales aprobadas, pero todavía requieren revalidación en su SHA final. El saldo de la API se agotó durante la prueba adicional GPT-4.1.
+Código candidato validado: `6148f81e5f0e28e0273584b1a7913f3c649c446a`; PR #6 permanece en borrador. Compilación, 713 unitarias, MariaDB e imagen Docker pasaron en ese SHA. La comparación conversacional y las repeticiones se intentaron sobre el mismo código, pero OpenAI rechazó las solicitudes por `credit_balance_exhausted`. No hay aceptación con IA de este candidato.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Compilación y unitarias | PASS, 699/699 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942184230) |
-| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942184040) |
-| Imagen Docker y dependencias de runtime | PASS, build, 699/699 unitarias y Compose válido | [Imagen del candidato](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176100) |
-| Conversaciones con OpenAI, ronda 6d7511ae | Mini 302/303; GPT-4.1 301/303 | [Comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176086) |
-| Repeticiones de casos que han fallado, ronda 6d7511ae | Mini 140/140; GPT-4.1 bloqueado por saldo en las 140 | [Endurance](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176383) |
+| Compilación y unitarias | PASS, 713/713; subconjunto WhatsApp 637/637 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947861964) |
+| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947862309) |
+| Imagen Docker y dependencias de runtime | PASS, build, 713/713 unitarias con Node 20/npm y Compose válido | [Imagen del candidato](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942) |
+| Conversaciones con OpenAI, candidato 6148f81e | BLOQUEADAS: Mini y GPT-4.1 sin respuestas exitosas, error de saldo | [Comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853977) |
+| Repeticiones de casos que han fallado, candidato 6148f81e | BLOQUEADAS: una solicitud rechazada por modelo; detención por saldo, cobertura sin completar | [Endurance](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853986) |
 | Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
 | Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
 
-**Todavía no listo para producción.** La comparación previa en `88d9d3b` ([37939501632](https://github.com/wilmerx5/PPP-NEST/actions/runs/37939501632)) terminó con GPT-4.1 en 303/303, sin errores del proveedor, y Mini en 302/303: omitió mondongo después de intentar agregar otro SKU de sopa. La revalidación siguiente pasó ese pedido, pero registró un timeout por modelo y un rechazo literal de la frase de garantía negada de alérgenos en GPT-4.1. Las nuevas correcciones recuperan timeouts clasificados de inferencia sin repetir herramientas, marcan como desconocido su consumo y derivan alergias explícitas a verificación humana/cocina. El proveedor rechazó las 140 pruebas adicionales GPT-4.1 con `credit_balance_exhausted`: se requiere saldo en la organización de `OPENAI_API_KEY` para aprobar el código final. Los jobs GPT-4.1 se serializan. La configuración desplegada debe coincidir con el modelo/snapshot aprobado y todavía requiere aceptación externa en staging.
+**Todavía no listo para producción.** La comparación previa en `88d9d3b` ([37939501632](https://github.com/wilmerx5/PPP-NEST/actions/runs/37939501632)) terminó con GPT-4.1 en 303/303, sin errores del proveedor, y Mini en 302/303: omitió mondongo después de intentar agregar otro SKU de sopa. La revalidación siguiente pasó ese pedido, pero registró un timeout por modelo y un rechazo literal de la frase de garantía negada de alérgenos en GPT-4.1. En `6d7511ae`, Mini aprobó 302/303 y GPT-4.1 301/303 en [la comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176086); Mini pasó 140/140 repeticiones en [la prueba adicional](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176383). Es evidencia anterior, no aceptación del candidato actual. Las nuevas correcciones recuperan timeouts clasificados de inferencia sin repetir herramientas, marcan como desconocido su consumo y derivan alergias explícitas a verificación humana/cocina. La ronda anterior GPT-4.1 perdió las 140 pruebas adicionales por `credit_balance_exhausted`; en el candidato actual las invocaciones se detienen ante ese bloqueo, sin repetir todos los casos. Se requiere saldo en la organización de `OPENAI_API_KEY` y reejecutar la comparación y las repeticiones completas para aprobar el código final. Los jobs GPT-4.1 se serializan. La configuración desplegada debe coincidir con el modelo/snapshot aprobado y todavía requiere aceptación externa en staging.
 
 ## Puertas de salida
 

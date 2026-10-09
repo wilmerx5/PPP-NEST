@@ -10,6 +10,10 @@ El perfil `PPP_STAGING=true` exige que host/base coincidan con los valores decla
 
 Las escrituras de Meta —texto, media y subida de archivos— están bloqueadas en staging por defecto. Para habilitarlas se requieren `WHATSAPP_STAGING_OUTBOUND_ALLOW=true`, el mismo `phoneNumberId` que `STAGING_WHATSAPP_PHONE_NUMBER_ID` y una lista explícita `STAGING_WHATSAPP_RECIPIENTS` de números autorizados de prueba. Esto protege frente a credenciales o números copiados en settings de la DB. La configuración de producción mantiene su comportamiento existente cuando no se activa este perfil.
 
+## Imagen candidata comprobada
+
+El código `6148f81e5f0e28e0273584b1a7913f3c649c446a` pasó [construcción, Compose y 713 unitarias](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942). El [artefacto verificado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853942/artifacts/11624543242) contiene `ppp-staging.tar.gz` y vence el 16 de octubre de 2026; extraer primero el ZIP descargado. Para usarlo, fijar `STAGING_IMAGE_TAG=6148f81e5f0e28e0273584b1a7913f3c649c446a`. No equivale a aprobación comercial: las pruebas con IA siguen bloqueadas por saldo, y no se ha arrancado ni desplegado este backend contra la DB remota. Ver [estado del piloto](ppp-pilot-readiness.md).
+
 ## Información que falta
 
 - Servidor o plataforma donde ejecutar un backend separado y acceso de despliegue configurado por su responsable.
