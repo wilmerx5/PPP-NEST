@@ -2,26 +2,7 @@
 name: WhatsApp Beta AI Tests
 
 on:
-  push:
-    branches:
-      - fix/whatsapp-regression-baseline
-    paths:
-      - .github/workflows/whatsapp-beta-ai.yml
-      - scripts/whatsapp-beta-ai-rehearsal.ts
-      - scripts/whatsapp-beta-cart-assertions.ts
-      - scripts/whatsapp-beta-api-usage.ts
-      - src/whatsapp/whatsapp-agent.service.ts
-      - src/whatsapp/whatsapp-openai-request.ts
-      - src/whatsapp/whatsapp-catalog.service.ts
-      - src/whatsapp/whatsapp-agent.spec.ts
-      - src/whatsapp/whatsapp-agent.language.spec.ts
-      - src/whatsapp/whatsapp-action-guard.service.ts
-      - src/whatsapp/whatsapp-orchestrator.service.ts
-      - src/whatsapp/whatsapp-cart-integration.spec.ts
-      - scripts/fixtures/whatsapp-beta-menu.json
-      - scripts/fixtures/whatsapp-beta-cases.json
-      - scripts/fixtures/whatsapp-beta-human-intents.json
-      - scripts/fixtures/whatsapp-beta-hard-conversations.json
+  # Full paid AI suites run explicitly; focused regressions have a separate workflow.
   workflow_dispatch:
 
 permissions:
