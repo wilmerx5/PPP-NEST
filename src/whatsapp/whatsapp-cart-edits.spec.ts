@@ -177,4 +177,29 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     expect(edited.every(l=>!l.note)).toBe(true);
   });
 
+  it('refuses removing a flavor the customer explicitly asked to preserve',async()=>{
+    const cart=[line(50,2,'Mango'),line(50,1,'Lulo')];
+    const turn=turnTools(cart,'Quita los dos jugos de mango, deja solamente el de lulo');
+    expect(turn.call('remove_item',{productId:50,cartLineIndex:0}).ok).toBe(true);
+    expect(turn.call('remove_item',{productId:50,cartLineIndex:1}).error).toBe('customer_requested_preserve_line');
+    expect(await apply(turn.actions,cart)).toEqual([cart[1]]);
+  });
+  it('rejects a bottled-drink SKU whose catalog options exclude the requested brand',()=>{
+    const turn=turnTools([],'Quita el jugo de mango y agrega una gaseosa de 400 ml Pepsi');
+    expect(turn.call('add_item',{productId:34}).error).toBe('requested_option_not_in_this_sku');
+    expect(turn.actions).toEqual({});
+  });
+  it('changes a same-SKU replacement as attributes without removing other variants',async()=>{
+    const cart=[line(12,1,'Asada'),line(12,1,'Frita')];const turn=turnTools(cart,'La trucha asada cámbiala a apanada. La frita déjala frita');
+    expect(turn.call('replace_item',{productId:12,cartLineIndex:0,newProductId:12,attributes:[{attributeName:'Seleccion',attributeValue:'Apanada'}]}).ok).toBe(true);
+    const edited=await apply(turn.actions,cart);
+    expect(edited[0].attributes[0].attributeValue).toBe('Apanada');expect(edited[1]).toEqual(cart[1]);
+    expect(turn.actions.addItems).toBeUndefined();expect(turn.actions.removeCartLines).toBeUndefined();
+  });
+  it('allows removing a cart product that was retired from the current catalog',async()=>{
+    const cart=[{productId:9999,name:'Producto retirado',unitPrice:10000,quantity:1},line(23)];const turn=turnTools(cart,'Quita el producto retirado');
+    expect(turn.call('remove_item',{productId:9999,cartLineIndex:0}).ok).toBe(true);
+    expect(await apply(turn.actions,cart)).toEqual([cart[1]]);
+  });
+
 });

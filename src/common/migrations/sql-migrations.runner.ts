@@ -476,9 +476,9 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
         `SELECT COUNT(*) AS c
          FROM information_schema.TABLES
          WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'ppp_whatsapp_settings'`,
+           AND TABLE_NAME IN ('ppp_whatsapp_settings', 'ppp_whatsapp_conversations', 'ppp_whatsapp_messages')`,
       );
-      if (Number(table?.[0]?.c) > 0) {
+      if (Number(table?.[0]?.c) === 3) {
         // Alinear domicilio por defecto a $2.000 si quedó en 0
         await this.dataSource.query(
           `UPDATE ppp_whatsapp_settings

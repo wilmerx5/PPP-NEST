@@ -123,7 +123,7 @@ const AGENT_TOOLS = [
         properties: {
           productId: { type: 'number' },
           quantity: { type: 'number', minimum: 1, maximum: 10 },
-          note: { type: 'string', description: 'Nota de cocina (ej. pollo broaster)' },
+          note: { type: 'string', description: 'Nota de cocina o empaque (sin ensalada, bolsa aparte). Las opciones declaradas de preparación, sabor o bebida van en attributes, no en note.' },
           attributes: {
             type: 'array',
             items: {
@@ -519,6 +519,7 @@ Reglas:
 - Confirma únicamente las cantidades y opciones retornadas por add_item. No inventes otra línea ni opciones distintas para un pedido con opciones omitidas.
 - "Tres en total, no tres más" modifica la cantidad existente con update_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
 - Solo afirma que agregaste productos después de add_item exitoso. Una búsqueda no modifica el carrito. Ejecuta lo pedido antes de contestar.
+- Si una herramienta rechaza una llamada, lee el motivo y cambia la acción. No repitas la misma llamada rechazada. Conserva las acciones exitosas y pregunta solo lo que falta aclarar.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
 - Ediciones del carrito: usa get_cart. cartLineIndex es el índice de esa línea (empieza en 0), estable durante este turno. Las líneas con el mismo SKU pueden tener distintos sabores/notas. Modifica SOLO la línea nombrada. No llames herramientas para las líneas que el cliente quiere conservar.
@@ -567,7 +568,7 @@ Sesión (carrito y estado — fuente de verdad):
 ${input.sessionSummary}
 Líneas editables (cartLineIndex estable): ${JSON.stringify((input.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})))}
 
-Índice de SKUs reales (id = nombre; consulta search_menu para opciones):\n${input.products.filter(p=>p.availableNow!==false).map(p=>`${p.id} = ${p.name}`).join("; ")}\nMenú: usa search_menu. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
+Índice de SKUs reales y opciones permitidas (id = nombre; opciones omitidas usan el primer valor):\n${input.products.filter(p=>p.availableNow!==false).map(p=>`${p.id} = ${p.name}${(p.attributes || []).map(a=>` [${a.attributeName}: ${a.options.join('/')}]`).join('')}`).join("; ")}\nMenú: usa search_menu para descripción y precio. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
 Contacto humano: *${phone || '3118866823'}*
 `;
 
@@ -1195,6 +1196,23 @@ Contacto humano: *${phone || '3118866823'}*
         if (product.availableNow === false) {
           return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
         }
+        const normalizeOption = (value:string) => value.toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+        const sourceForOptions = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) || ctx.userMessage || '';
+        const optionText = ' '+normalizeOption(sourceForOptions)+' ';
+        const familyToken = normalizeOption(product.name).split(' ')[0];
+        for (const definition of product.attributes || []) {
+          const siblingOptions = ctx.products.filter(p=>normalizeOption(p.name).split(' ')[0]===familyToken)
+            .flatMap(p=>p.attributes || []).filter(a=>a.attributeName.toLowerCase()===definition.attributeName.toLowerCase())
+            .flatMap(a=>a.options);
+          const mentioned = [...new Set(siblingOptions)].filter(option=>optionText.includes(' '+normalizeOption(option)+' '));
+          const specific = mentioned.filter(option=>!mentioned.some(other=>normalizeOption(other).length>normalizeOption(option).length &&
+            (' '+normalizeOption(other)+' ').includes(' '+normalizeOption(option)+' ')));
+          const unsupported = specific.find(option=>!this.catalogService.matchAttributeOptionValue(option,definition.options));
+          if (unsupported) return JSON.stringify({ok:false,error:'requested_option_not_in_this_sku',
+            attributeName:definition.attributeName,requestedOption:unsupported,
+            hint:'Busca con search_menu el producto que permite esa opción. No la reemplaces por el valor predeterminado de otro SKU.'});
+        }
         const asked =
           this.catalogService.isAvailabilityInquiry(ctx.userMessage || '') ||
           this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
@@ -1435,8 +1453,41 @@ Contacto humano: *${phone || '3118866823'}*
           else (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
         };
         if (name === 'remove_item') {
+          const normalize = (value:string) => value.toLowerCase().normalize('NFD')
+            .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+          const preserved = (ctx.userMessage || '').split(/[;,.]|\s+y\s+/i).some(clause=> {
+            const phrase = normalize(clause);
+            if (!/\b(?:deja|conserva|manten|no quites|no lo cambies|no cambies)\b/.test(phrase)) return false;
+            const blob = ' '+phrase+' ';
+            const product = ctx.byId.get(productId);
+            const choices = (product?.attributes || []).flatMap(definition=>definition.options
+              .filter(value=>blob.includes(' '+normalize(value)+' '))
+              .map(value=>({name:definition.attributeName,value})));
+            if (choices.length) return choices.every(choice=>line.attributes?.some(a=>
+              normalize(a.attributeName)===normalize(choice.name) && normalize(a.attributeValue)===normalize(choice.value)));
+            const notes = (ctx.cart || []).filter(c=>c.productId===productId && !!c.note &&
+              blob.includes(' '+normalize(c.note!)+' ')).map(c=>normalize(c.note!));
+            if (notes.length) return !!line.note && notes.includes(normalize(line.note));
+            return !!product && !!this.catalogService.productNameFitsUtterance?.(product,clause);
+          });
+          if (preserved) return JSON.stringify({ok:false,error:'customer_requested_preserve_line',cartLineIndex,
+            hint:'El cliente pidió conservar esta línea. No la retires; usa update_item si solo cambia su cantidad o nota.'});
           removeLine();
         } else if (name === 'replace_item') {
+          if (Number(args.newProductId) === productId) {
+            const choices = Array.isArray(args.attributes) ? args.attributes as Array<{attributeName:string;attributeValue:string}> : [];
+            const product = ctx.byId.get(productId)!;
+            if (choices.some(choice=> {
+              const attr=product.attributes?.find(a=>a.attributeName.toLowerCase()===String(choice.attributeName).toLowerCase());
+              return !attr || !this.catalogService.matchAttributeOptionValue(String(choice.attributeValue),attr.options);
+            })) return JSON.stringify({ok:false,error:'invalid_attribute_option'});
+            for (const choice of choices) this.executeTool('set_attribute',{productId,cartLineIndex,...choice},ctx);
+            if (args.quantity !== undefined || typeof args.note==='string') {
+              const edit=JSON.parse(this.executeTool('update_item',{productId,cartLineIndex,quantity:args.quantity,note:args.note},ctx));
+              if(!edit.ok)return JSON.stringify(edit);
+            }
+            return JSON.stringify({ok:true,productId,cartLineIndex,hint:'Es el mismo SKU; se modificó la línea conservando las otras variantes.'});
+          }
           const result = JSON.parse(this.executeTool('add_item', {
             productId:args.newProductId, quantity:args.quantity ?? line.quantity ?? 1,
             note:typeof args.note === 'string' ? args.note : line.note, attributes:args.attributes,

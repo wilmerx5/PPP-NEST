@@ -334,3 +334,32 @@ jobs:
           path: tmp/whatsapp-beta-ai-report.json
           retention-days: 7
           if-no-files-found: error
+
+  real-chat-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Anonymized real-chat patterns (8 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: '139'
+          WHATSAPP_BETA_CASE_LIMIT: '8'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: yarn beta:whatsapp:ai
+      - name: Archive real-chat regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-real-chat-patterns
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error

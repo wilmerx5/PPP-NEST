@@ -167,6 +167,19 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
       await (runner as any).ensureWhatsappMessageColumns();
     }
   });
+  it('repairs a partial installation with settings present and conversation tables missing',async()=> {
+    const settingsBefore=await primary.getRepository(WhatsappSettings).findOneByOrFail({id:1});
+    await primary.query('DROP TABLE ppp_whatsapp_messages');
+    await primary.query('DROP TABLE ppp_whatsapp_conversations');
+    try {
+      await (runner as any).ensureWhatsappSchema();
+      const rebuilt=await service.findOrCreateConversation('573000000088','+573000000088');
+      await expect(service.claimInboundMessage({conversationId:rebuilt.id,waMessageId:'wamid.partial-schema',body:'hola'})).resolves.toBeTruthy();
+      const preserved=await primary.getRepository(WhatsappSettings).findOneByOrFail({id:1});
+      expect(preserved.enabled).toBe(settingsBefore.enabled);
+      expect(preserved.agentV1Enabled).toBe(settingsBefore.agentV1Enabled);
+    } finally {await (runner as any).ensureWhatsappSchema();}
+  });
   it('restores the single-column conversation identity key after a legacy schema loses it',async()=> {
     await primary.query('ALTER TABLE ppp_whatsapp_conversations DROP INDEX uq_whatsapp_wa_id');
     try {

@@ -3812,5 +3812,265 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chat-real-faltante-y-total",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Me faltó la milanesa de pollo y eran dos churrascos, no uno"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "17": 2,
+      "62": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      1,
+      4,
+      23,
+      25
+    ]
+  },
+  {
+    "id": "chat-real-composicion-sin-duplicar",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿Con qué viene el medio pollo frito que ya pedí?"
+    ],
+    "initialCart": [
+      {
+        "productId": 2,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "2": 1
+    },
+    "maxReply": 420,
+    "replyAny": [
+      "papa",
+      "arepa"
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-roaster-del-combo",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Se puede cambiar el pollo frito del combo por roaster?"
+    ],
+    "initialCart": [
+      {
+        "productId": 97,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Pollo",
+            "attributeValue": "Frito"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "97": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 97,
+        "key": "Pollo",
+        "value": "Broaster"
+      },
+      {
+        "id": 97,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "exclude": [
+      2,
+      5,
+      28
+    ]
+  },
+  {
+    "id": "chat-real-bebida-incluida",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿El combo ya incluye la bebida que escogí? Si sí, déjala y no agregues otra"
+    ],
+    "initialCart": [
+      {
+        "productId": 99,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "99": 1
+    },
+    "maxReply": 420,
+    "replyAny": [
+      "bebida",
+      "pepsi",
+      "incluye"
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-direccion-no-productos",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Cambia la dirección a carrera 19 # 54-26, apartamento 203"
+    ],
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-conservar-bebida-reducir",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "No quites la limonada. Solo deja el arroz con pollo en dos, no tres"
+    ],
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 3
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420
+  },
+  {
+    "id": "chat-real-combo-atributo-y-empaque",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Un combo de pollo frito con Coca Cola y arepas fritas. Las arepas en bolsa aparte"
+    ],
+    "initialCart": [],
+    "items": {
+      "99": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 99,
+        "key": "Bebida",
+        "value": "Coca Cola"
+      },
+      {
+        "id": 99,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 99,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "exclude": [
+      1,
+      11,
+      28
+    ]
+  },
+  {
+    "id": "chat-real-consulta-inexistente-conservar",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿Tienen salmón? Si no hay, deja la trucha asada como está"
+    ],
+    "initialCart": [
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "12": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
   }
 ]

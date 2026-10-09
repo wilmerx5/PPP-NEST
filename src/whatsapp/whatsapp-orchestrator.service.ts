@@ -13066,7 +13066,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
+    const intentMisses = editsExistingCart ? [] : this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
     if (
       !editsExistingCart && !guarded.actions?.addItems?.length &&
       /\bagregu[eé]\b/i.test(agentReply) &&

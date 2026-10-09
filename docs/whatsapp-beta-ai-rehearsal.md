@@ -35,10 +35,26 @@ Informes sintéticos: `tmp/whatsapp-beta-ai-report.json`, artefactos separados p
 
 La suite `hard` cubre interpretación, sanitización y aplicación real de acciones al carrito **en memoria**. No ejecuta `handleIncoming`, el enrutamiento completo, persistencia, concurrencia distribuida, inventario, cobertura/tarifa real, cocina, pagos ni creación/confirmación de órdenes. Los seis casos básicos y los 33 informativos siguen aislados en AgentV1. Validar el recorrido completo en staging con BD y transportes aislados antes de desplegar.
 
-Las 21 pruebas en `whatsapp-cart-integration.spec.ts` verifican además la aplicación real de correcciones, opciones y notas sin OpenAI. `yarn test:whatsapp` incluye estas pruebas y las de lenguaje con el catálogo suministrado.
+Las pruebas en `whatsapp-cart-integration.spec.ts` y `whatsapp-cart-edits.spec.ts` verifican además la aplicación real de correcciones, opciones y notas sin OpenAI. `yarn test:whatsapp` incluye estas pruebas y las de lenguaje con el catálogo suministrado.
 
-La suite difícil contiene 91 escenarios distintos. El workflow ejecuta 191 conversaciones en total: seis básicas, 33 informativas, 30 difíciles originales, 29 de seguimiento repetidas dos veces y 32 cotidianas repetidas dos veces. Los grupos nuevos cubren ejecutivos con sopas distintas, bebidas de combos independientes, consultas antes de comprar, cantidad total frente a adicional, número de personas frente a códigos, notas de empaque, retiro/cambio de productos y cifras de billete/dirección que no son unidades.
+La suite difícil contiene 147 escenarios distintos. El workflow ejecuta 303 conversaciones en total: seis básicas, 33 informativas, 30 difíciles originales, 29 de seguimiento repetidas dos veces, 32 cotidianas repetidas dos veces, 48 de edición repetidas dos veces y ocho patrones de chats reales convertidos en casos sintéticos repetidos dos veces. Los grupos nuevos cubren ejecutivos con sopas distintas, bebidas de combos independientes, consultas antes de comprar, cantidad total frente a adicional, número de personas frente a códigos, notas de empaque, retiro/cambio de productos y cifras de billete/dirección que no son unidades.
 
 La primera ejecución de los casos cotidianos aceptó 49/64; encontró errores en cantidades y selección de opciones que se corrigieron en catálogo, AgentV1, ActionGuard y aplicación del carrito. Una repetición del grupo original también descubrió que “medio pollo” podía añadirse como frito sin elegir preparación; `add_item` ahora rechaza esa elección arbitraria. Conservar los escenarios y sus expectativas originales permite comprobar estas correcciones en cada ejecución.
 
 El 9 de octubre de 2026, la ejecución [37881167159](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881167159) pasó los 191 ensayos en el commit `ef039b46b768c095966573310cc16dcaa3cc6a78`. Incluye la regresión de «¿Se puede pedir un jugo en leche?»: consultar esa posibilidad no añade el jugo. Es evidencia del conjunto probado, no del circuito completo de staging.
+
+## Edición por línea y patrones de chats
+
+```bash
+# 48 casos de edición, dos repeticiones
+WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_OFFSET=91 WHATSAPP_BETA_CASE_LIMIT=48 WHATSAPP_BETA_REPEATS=2 yarn beta:whatsapp:ai
+
+# 8 patrones de chats PPP, con textos e identificadores sintéticos
+WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_OFFSET=139 WHATSAPP_BETA_CASE_LIMIT=8 WHATSAPP_BETA_REPEATS=2 yarn beta:whatsapp:ai
+```
+
+`get_cart` proyecta las acciones aceptadas del turno, conservando índices estables incluso para líneas nuevas. `update_item` cambia cantidad absoluta o nota completa; una nota vacía la elimina. `remove_item` retira una línea y `set_attribute` cambia una opción de esa línea. `replace_item` valida el SKU nuevo antes de retirar el anterior; dentro del mismo SKU conserva las demás variantes. Las ediciones deben respetar límites y conservar todas las unidades al unir variantes idénticas.
+
+La primera ejecución de los 48 casos de edición aceptó 44/96 repeticiones. Las regresiones detectaron pérdida de variantes, notas generales en lugar de notas de línea, control de cantidades mezclado con palabras de platos y sustituciones equivocadas. Una ejecución posterior pasó 95/96; repetir los mismos casos descubrió además inconsistencias dentro del turno y preparación escrita como nota. Registrar los resultados de cada SHA; no usar un grupo verde de un commit anterior como aceptación del commit final.
+
+Estos ocho casos adicionales derivan de patrones observados en los chats compartidos: faltante y cantidad total en una frase; preguntar qué incluye un pedido existente; typo de preparación dentro de un combo; bebida incluida; cambio de dirección con números; negación de retiro; atributo más nota de empaque; consulta de un producto inexistente conservando el carrito. No se incluyen datos personales ni precios de los chats históricos.

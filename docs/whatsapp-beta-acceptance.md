@@ -36,6 +36,14 @@
 18. Cambio de dirección tras cotización de domicilio; recalcular y no reutilizar tarifa anterior.
 19. Cliente pregunta por estado de pedido ya enviado; no abrir pedido nuevo.
 20. Takeover humano; impedir respuestas automáticas mientras esté activo.
+21. Dos sabores del mismo SKU: cambiar o quitar el primero conserva el segundo y sus cantidades.
+22. Dos notas del mismo SKU: añadir o borrar una nota no afecta la otra línea.
+23. Reemplazar un plato y añadir una nota en el mismo turno; el agente puede ver el nuevo producto.
+24. Editar cantidad respeta límites; unir variantes iguales conserva todas las unidades.
+25. Preparación/sabor declarado como opción no se guarda solo como nota.
+26. Producto retirado del catálogo: se puede quitar del carrito para continuar.
+27. Precio cambiado después del resumen: revisar el nuevo total antes de crear el pedido.
+28. Verificar en el payload de cocina cada variante, nota y unidad, no solo el número de eventos.
 
 ## Criterio de salida beta
 - CI completo verde en el SHA a fusionar.
@@ -50,3 +58,7 @@
 **Severidad P0:** orden duplicada/incorrecta enviada a cocina, cobro inesperado, pérdida silenciosa de mensajes.
 **P1:** variante/nota/cantidad/dirección incorrecta antes de confirmación.
 **P2:** respuesta poco natural, exceso de mensajes, latencia o experiencia mejorable.
+
+## Piloto y siguiente producto
+
+Usar [ppp-pilot-readiness.md](ppp-pilot-readiness.md) para registrar métricas, revisar los primeros 100 pedidos y definir condiciones de interrupción. El piloto es supervisado y comienza después de cerrar los requisitos externos; este checklist no autoriza despliegues ni mensajes a clientes. La aceptación PPP precede a la validación de Kamppo con varios restaurantes.

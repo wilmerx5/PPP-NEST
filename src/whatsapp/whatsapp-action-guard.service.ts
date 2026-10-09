@@ -50,7 +50,7 @@ export class WhatsappActionGuardService {
     const validLine = (line: { productId: number; cartLineIndex: number }) =>
       byId.has(line.productId) && Number.isInteger(line.cartLineIndex) && line.cartLineIndex >= 0;
     if (params.actions.removeCartLines?.length) {
-      out.removeCartLines = params.actions.removeCartLines.filter(validLine);
+      out.removeCartLines = params.actions.removeCartLines.filter(line=>Number.isInteger(line.productId) && line.productId > 0 && Number.isInteger(line.cartLineIndex) && line.cartLineIndex >= 0);
       if (!out.removeCartLines.length) delete out.removeCartLines;
     }
     if (params.actions.updateCartLines?.length) {
@@ -143,7 +143,7 @@ export class WhatsappActionGuardService {
     }
 
     if (params.actions.removeProductIds?.length) {
-      out.removeProductIds = params.actions.removeProductIds.filter((id) => byId.has(id));
+      out.removeProductIds = params.actions.removeProductIds.filter(id=>Number.isInteger(id) && id > 0);
     }
 
     if (params.actions.addItems?.length) {
