@@ -301,8 +301,8 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
       catalogStub as never,
     );
     const dishes: WhatsappCatalogProduct[] = [
-      { id: 70, code: 70, name: 'Arroz Chino Especial', categoryName: 'Arroces', price: 30000, availableNow: true, hasAttributes: false, attributes: [] },
-      { id: 73, code: 73, name: 'Arroz Chino Con Pollo Broaster', categoryName: 'Arroces', price: 40000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 26, code: 26, name: 'Arroz Chino', categoryName: 'Arroces', price: 34000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 36, code: 36, name: 'Arroz Chino Con Medio Pollo', categoryName: 'Arroces', price: 45000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Pollo', options: ['Frito', 'Broaster'] }] },
     ];
     const browse = await agent.runTurn({
       userMessage: 'Para pedirte por fa un arroz chino',
@@ -318,7 +318,7 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
       sessionSummary: 'carrito vacío', recentMessages: [],
       businessRulesBlock: 'reglas', brandName: 'PPP', products: dishes,
     });
-    expect(question.reply).toMatch(/sí, tenemos/i);
+    expect(question.reply).toMatch(/sí, el arroz chino/i);
     expect(question.reply).toMatch(/broaster/i);
     expect(question.actions).toEqual({});
   });
