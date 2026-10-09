@@ -258,6 +258,22 @@ export class WhatsappAgentService {
       };
     }
 
+    // Un mensaje solo con domicilio no puede reinterpretar platos que
+    // aparezcan en la memoria de la conversación; nunca llamar add_item.
+    const rawAddressText = input.userMessage.trim();
+    const cleanAddress = rawAddressText.replace(/^(?:es\s+para|para)\s+/i, '').trim();
+    if (
+      looksLikeAddressOnlyMessage(rawAddressText) ||
+      looksLikeAddressOnlyMessage(cleanAddress) ||
+      /^(?:es\s+para|para)\s+(?:casa\s+\d+|calle|carrera|cra|dg|diagonal|conjunto|torre)\b/i.test(rawAddressText)
+    ) {
+      return {
+        reply: 'Listo, anoté esa dirección. ¿Qué más necesitas?',
+        actions: { setAddress: cleanAddress, setOrderType: 'delivery' },
+        toolCalls: [],
+      };
+    }
+
     // Corrección de sopas explícita: resolver por variante única y reemplazar,
     // no sumar al carrito anterior. Si faltan SKUs/variantes, decidir por LLM
     // con el flujo normal y nunca inventar IDs.
