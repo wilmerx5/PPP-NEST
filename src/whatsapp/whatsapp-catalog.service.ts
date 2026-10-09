@@ -7348,9 +7348,10 @@ export class WhatsappCatalogService {
     ) {
       return false;
     }
+    if (/\b(?:pueden|puede|podrian)\s+(?:hacer|preparar|cocinar)\b/.test(q) ||
+      /\b(?:se\s+puede|puedo|podria)\s+(?:pedir|comprar|ordenar)\b/.test(q)) return true;
     const availVerb =
       /\b(tienes|tiene|tienen|hay|venden|vendes|manejan|maneja|consiguen|conseguiste)\b/.test(q) ||
-      /\b(?:pueden|puede|podrian)\s+(?:hacer|preparar|cocinar)\b/.test(q) ||
       !!this.availabilitySubject(raw);
     if (!availVerb) return false;
     // "no tienes de mondongo" / "tienes sopa"

@@ -22,6 +22,7 @@ import { Address } from '../src/auth/entities/address.entity';
 import { Phone } from '../src/auth/entities/phone.entity';
 import { VerificationToken } from '../src/auth/entities/verification-token.entity';
 import { WhatsappSettings } from '../src/whatsapp/entities/whatsapp-settings.entity';
+import { getZonedClock } from '../src/business/business-clock';
 
 // Schema synchronization/cleanup is exclusively for an explicitly selected local
 // throwaway DB. Never substitute staging DB_* credentials for TEST_DB_* here.
@@ -48,7 +49,8 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
   let inventory:ProductsService;
   let closed:boolean;
   let externalFetch:jest.SpyInstance;
-  const business={assertAcceptingOnlineOrders:async()=>{if(closed)throw new Error('synthetic business closed');}};
+  const business={getClock:async()=>getZonedClock('America/Bogota'),
+    assertAcceptingOnlineOrders:async()=>{if(closed)throw new Error('synthetic business closed');}};
   const gateway={emitOrdersUpdates:jest.fn()};
   function services(ds:DataSource) {
     const stock=new ProductsService(ds.getRepository(Product),ds.getRepository(Category),ds.getRepository(ProductAttribute),
