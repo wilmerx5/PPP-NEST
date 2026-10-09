@@ -250,6 +250,33 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.toolCalls).toEqual([]);
   });
 
+  it('arroz con pollo y pechuga: conserva la nota y pregunta la variante sin añadirla', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 60, code: 60, name: 'Arroz Con Pollo', categoryName: 'Arroces', price: 25000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 77, code: 77, name: 'Pechuga A La Plancha', categoryName: 'Pollo', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 78, code: 78, name: 'Pechuga Gratinada', categoryName: 'Pollo', price: 32000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'Un arroz con pollo sin ensalada, cambia por yuca frita. Y una pechuga, la ensalada también por yuca frita.',
+      sessionSummary: 'carrito vacío',
+      recentMessages: [],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products: dishes,
+    });
+    expect(result.actions.addItems).toHaveLength(1);
+    expect(result.actions.addItems?.[0]).toEqual(
+      expect.objectContaining({ productId: 60, quantity: 1, note: expect.stringMatching(/yuca frita/i) }),
+    );
+    expect(result.actions.setCustomerNotes).toMatch(/pechuga/i);
+    expect(result.reply).toMatch(/plancha|gratinada/i);
+    expect(result.toolCalls).toEqual([]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
