@@ -1097,6 +1097,25 @@ Contacto humano: *${phone || '3118866823'}*
               'Responde que por ahora no lo manejamos, con las palabras del cliente, y el link del menú.',
           });
         }
+        // Alimentos incluidos en un plato compuesto no son líneas separadas.
+        const txt = (ctx.userMessage || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const isExtraArepas = /porci[oó]n de arepas/i.test(product.name) &&
+          /\bpollo\b/.test(txt) &&
+          !/\b(?:porci[oó]n|extra|adicional|aparte)\s+(?:de\s+)?arepas?\b/.test(txt);
+        const comboHost = /\b(ejecutivo|combo)\b/.test(txt);
+        const isComboIncluded = comboHost && (
+          (/^sopa de /i.test(product.name) && /\bsopa\b/.test(txt)) ||
+          (/^coca cola/i.test(product.name) && /\bcoca cola\b/.test(txt))
+        );
+        const isIncludedChicken = /arroz chino con medio pollo/i.test(txt) &&
+          /^1\/2 pollo /i.test(product.name) && !/\by\s+(?:otro\s+)?medio\s+pollo\b/.test(txt);
+        if (isExtraArepas || isComboIncluded || isIncludedChicken) {
+          return JSON.stringify({
+            ok: false, error: 'included_attribute_not_extra',
+            hint: 'Ya es un atributo o acompañamiento incluido del plato principal. No agregues otra línea sin solicitud explícita.',
+          });
+        }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         const note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
         let attributes = Array.isArray(args.attributes)
