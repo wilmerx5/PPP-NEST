@@ -11,6 +11,7 @@ on:
       - src/whatsapp/whatsapp-agent.service.ts
       - scripts/fixtures/whatsapp-beta-menu.json
       - scripts/fixtures/whatsapp-beta-cases.json
+      - scripts/fixtures/whatsapp-beta-human-intents.json
   workflow_dispatch:
 
 permissions:
@@ -51,6 +52,29 @@ jobs:
           WHATSAPP_BETA_CASE_LIMIT: '6'
           WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
         run: yarn beta:whatsapp:ai
+
+      - name: Human intent comprehension (12 synthetic conversations)
+        if: success()
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          yarn beta:whatsapp:ai
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-report.json
+
+      - name: Archive human-intent report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-intents
+          path: tmp/whatsapp-beta-human-report.json
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Save test report
         if: always()
