@@ -25,7 +25,7 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == 'f35a6366a9163df7dec3e1137289ac55316ce20d'))
+       (github.event_name == 'push' && github.event.before == '9014455ba7a36366ce36c93cce1a140a675bc699'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,7 +40,7 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: ${{ ((github.event_name == 'workflow_dispatch' && inputs.execute) || (github.event_name == 'push' && github.event.before == 'f35a6366a9163df7dec3e1137289ac55316ce20d')) && 'true' || 'false' }}
+          STAGING_CHAT_EXECUTE: ${{ ((github.event_name == 'workflow_dispatch' && inputs.execute) || (github.event_name == 'push' && github.event.before == '9014455ba7a36366ce36c93cce1a140a675bc699')) && 'true' || 'false' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
@@ -60,7 +60,7 @@ jobs:
             ];`;
           const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs', 'utf8');
           if (!source.includes(marker) || !source.includes(emptyGuard)) throw Error('CONTINUATION_MARKER_MISSING');
-          const guarded = `const failedDraft = buildPlan(products)[2].cart.map(line => ({ ...line, quantity: line.productId === 13 && line.attrs.some(a => a.attributeValue === 'Asada') ? 2 : line.quantity }));
+          const guarded = `const failedDraft = [{ productId: 17, quantity: 1, unitPrice: 38000, attrs: [], note: ['sin ensalada'], forbidNote: [] }, { productId: 13, quantity: 2, unitPrice: 33000, attrs: [{ attributeName: 'Seleccion', attributeValue: 'Asada' }], note: [], forbidNote: [] }, { productId: 13, quantity: 1, unitPrice: 33000, attrs: [{ attributeName: 'Seleccion', attributeValue: 'En Salsa' }], note: [], forbidNote: [] }];
             ensure(initial.state === 'building_cart' && cartMatches(failedDraft, initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
             ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'CONTINUATION_INPUT_CHANGED');`;
           fs.writeFileSync('scripts/ppp-staging-cart-continuation.cjs', source.replace(emptyGuard, guarded).replace(marker, replacement).replace('existing_empty_test_conversation', 'existing_known_failed_test_draft'));
