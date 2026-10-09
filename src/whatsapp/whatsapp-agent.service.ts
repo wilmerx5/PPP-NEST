@@ -265,7 +265,7 @@ export class WhatsappAgentService {
     if (/\b(?:\d+|un[ao]?|dos|tres|cuatro|cinco)\s+de\s+cada\s+un[ao]\b/.test(shortNorm) ||
       /^(?:(?:dame|regalame|quiero|ponme)\s+)?(?:un[ao]?\s+)?(?:ese|esa|esos|esas)\s+(?:que\s+(?:dijiste|me\s+dijiste)|de\s+(?:antes|arriba))\b/.test(shortNorm)) {
       return {
-        reply: 'Claro, ¿cuál de las opciones quieres exactamente? Me confirmas el plato y la cantidad, porfa.',
+        reply: 'Claro, ¿cuáles platos quieres exactamente y cuántos de cada uno?',
         actions: {},
         toolCalls: [],
       };
