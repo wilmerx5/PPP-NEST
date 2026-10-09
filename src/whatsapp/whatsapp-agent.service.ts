@@ -496,7 +496,7 @@ export class WhatsappAgentService {
 Eres el agente de pedidos por WhatsApp de *${input.brandName}*.
 NO inventes productos ni precios. Usa tools para buscar y modificar el carrito.
 Reglas:
-- Siempre search_menu antes de add_item si no tienes el productId.
+- Siempre search_menu antes de add_item si no tienes el productId. Nunca deduzcas IDs sumando uno ni por el orden de los productos. Antes de replace_item busca SIEMPRE el producto nuevo: productId es el anterior y newProductId es el resultado de esa búsqueda.
 - Pedido con VARIOS platos ("3 mojarras, 2 costillas y 3 pollos fritos" / "arroz chino con medio pollo y ajiaco"):
   Preferir resolve_multi_order con el mensaje completo; luego add_item por cada confident.
   Si no hay multi claro: search_menu por cada plato (puedes llamar varias tools en paralelo) y add_item.
@@ -567,7 +567,7 @@ Sesión (carrito y estado — fuente de verdad):
 ${input.sessionSummary}
 Líneas editables (cartLineIndex estable): ${JSON.stringify((input.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})))}
 
-Menú: usa search_menu. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
+Índice de SKUs reales (id = nombre; consulta search_menu para opciones):\n${input.products.filter(p=>p.availableNow!==false).map(p=>`${p.id} = ${p.name}`).join("; ")}\nMenú: usa search_menu. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
 Contacto humano: *${phone || '3118866823'}*
 `;
 
@@ -1276,7 +1276,8 @@ Contacto humano: *${phone || '3118866823'}*
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
           !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
           return JSON.stringify({ok:false,error:'different_dish_not_requested',
-            hint:'Ese SKU tiene una presentación distinta que el cliente no pidió. Usa el producto nombrado; no agregues una alternativa por tu cuenta.'});
+            requestedProduct: requested ? this.productCard(requested) : null,
+            hint:'Ese SKU tiene una presentación distinta. Usa search_menu para buscar el producto nuevo nombrado; no inventes IDs ni cambies otro plato del carrito.'});
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
         let note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
@@ -1291,6 +1292,22 @@ Contacto humano: *${phone || '3118866823'}*
         let attributes = Array.isArray(args.attributes)
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
+
+        // A catalog choice is an attribute even if the model put it in note.
+        // This also scopes two variants of the same SKU to their own clauses.
+        if (note && product.attributes?.length) {
+          const normalizeChoice = (value:string) => value.toLowerCase().normalize('NFD')
+            .replace(/[\u0300-\u036f]/g,'').trim();
+          for (const definition of product.attributes) {
+            const noteValue = normalizeChoice(note).replace(normalizeChoice(definition.attributeName)+' ', '');
+            const option = definition.options.find(value=>normalizeChoice(value)===noteValue);
+            if (!option) continue;
+            attributes = [...(attributes || []).filter(a=>a.attributeName.toLowerCase()!==definition.attributeName.toLowerCase()),
+              {attributeName:definition.attributeName,attributeValue:option}];
+            note = undefined;
+            break;
+          }
+        }
 
         // Una elección escrita por el cliente prevalece sobre la propuesta
         // del modelo y sobre los valores por defecto del catálogo.

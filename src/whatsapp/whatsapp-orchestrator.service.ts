@@ -13044,11 +13044,15 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    const editsExistingCart = !!(guarded.actions?.updateAttributes?.length ||
+      guarded.actions?.updateCartLines?.length || guarded.actions?.removeCartLines?.length ||
+      guarded.actions?.removeProductIds?.length || guarded.actions?.clearCart ||
+      (session.cart.length && guarded.actions?.setCustomerNotes));
     this.stripHostedDrinkAdds(text, products, guarded.actions);
     // Solo si Nest resolvió el pedido completo y el agente se dejó un plato
     // (combo + sopas, y agregó la gaseosa suelta). Si Nest duda o no encuentra
     // un nombre, se queda la lectura del agente: no la reemplaza la lista vieja.
-    if (this.agentDroppedResolvedDish(text, products, guarded.actions)) {
+    if (!editsExistingCart && this.agentDroppedResolvedDish(text, products, guarded.actions)) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',
@@ -13064,7 +13068,7 @@ export class WhatsappOrchestratorService {
 
     const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
     if (
-      !guarded.actions?.addItems?.length &&
+      !editsExistingCart && !guarded.actions?.addItems?.length &&
       /\bagregu[eé]\b/i.test(agentReply) &&
       !guarded.actions?.setAddress &&
       !guarded.actions?.setCustomerNotes
@@ -13082,7 +13086,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
     if (
-      !guarded.actions?.addItems?.length &&
+      !editsExistingCart && !guarded.actions?.addItems?.length &&
       (await this.tryReplySimilarNamedOffer(conv, msg.waId, originalText || text, products))
     ) {
       this.turnTelemetry.record({
@@ -13125,7 +13129,7 @@ export class WhatsappOrchestratorService {
 
     // "Un churrasco" es un pedido. Si el agente solo preguntó "¿lo agrego?", Nest lo agrega.
     if (
-      !guarded.actions?.addItems?.length &&
+      !editsExistingCart && !guarded.actions?.addItems?.length &&
       this.nestWouldAddDirectDishOrder(text, products)
     ) {
       this.turnTelemetry.record({

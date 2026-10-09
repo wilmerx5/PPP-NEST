@@ -167,4 +167,14 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     expect(edited).toHaveLength(1);expect(edited[0].quantity).toBe(32);
   });
 
+  it('treats each exact cooking option as an attribute when the model put it in note',async()=>{
+    const turn=turnTools([],'Una trucha asada y otra trucha frita');
+    turn.call('add_item',{productId:12,quantity:1,note:'Asada'});
+    turn.call('add_item',{productId:12,quantity:1,note:'Frita'});
+    const edited=await apply(turn.actions,[]);
+    expect(edited).toHaveLength(2);
+    expect(edited.map(l=>l.attributes[0].attributeValue).sort()).toEqual(['Asada','Frita']);
+    expect(edited.every(l=>!l.note)).toBe(true);
+  });
+
 });

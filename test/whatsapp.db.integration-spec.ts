@@ -158,9 +158,23 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
       await expect(conversationService(primary).claimInboundMessage({conversationId:conv.id,waMessageId:'wamid.bad-index',body:'hola'})).rejects.toThrow(/falta un índice UNIQUE/);
       expect(await primary.getRepository(WhatsappMessage).count()).toBe(0);
     } finally {
+      // InnoDB may replace its implicit FK-supporting index with the composite
+      // key. Keep a standalone FK index before removing the deliberately bad key.
+      const support=await primary.query(`SELECT COUNT(*) AS c FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ppp_whatsapp_messages' AND INDEX_NAME='idx_whatsapp_msg_conv'`);
+      if(!Number(support[0].c))await primary.query('CREATE INDEX idx_whatsapp_msg_conv ON ppp_whatsapp_messages (conversation_id)');
       await primary.query('ALTER TABLE ppp_whatsapp_messages DROP INDEX test_composite_claim');
       await (runner as any).ensureWhatsappMessageColumns();
     }
+  });
+  it('restores the single-column conversation identity key after a legacy schema loses it',async()=> {
+    await primary.query('ALTER TABLE ppp_whatsapp_conversations DROP INDEX uq_whatsapp_wa_id');
+    try {
+      await (runner as any).ensureWhatsappConversationColumns();
+      const conversations=await Promise.all(Array.from({length:16},(_,i)=>(i%2 ? service : other).findOrCreateConversation('573000000099','+573000000099')));
+      expect(new Set(conversations.map(c=>c.id)).size).toBe(1);
+      expect(await primary.getRepository(WhatsappConversation).count()).toBe(1);
+    } finally {await (runner as any).ensureWhatsappConversationColumns();}
   });
   it('does not disguise a foreign-key failure as an already processed message',async()=> {
     await expect(service.claimInboundMessage({conversationId:2147483647,waMessageId:'wamid.no-parent',body:'hola'})).rejects.toThrow();
