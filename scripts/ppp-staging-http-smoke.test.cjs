@@ -34,7 +34,7 @@ function fixtureFetch(env, override = () => undefined) {
       assert.equal(new URL(url).searchParams.get('hub.verify_token'), env.STAGING_WHATSAPP_VERIFY_TOKEN);
       return reply(200, 'ppp-staging-preflight-challenge');
     }
-    if (path === '/api/auth/login') return reply(200, { requires2FA: false, user: { roles: ['admin'], email: env.STAGING_ADMIN_EMAIL } }, {
+    if (path === '/api/auth/login') return reply(201, { requires2FA: false, user: { roles: ['admin'], email: env.STAGING_ADMIN_EMAIL } }, {
       'Set-Cookie': 'access_token=synthetic-session; Path=/; HttpOnly; Secure; SameSite=Lax',
     });
     if (path === '/api/auth/logout') return reply(200, {}, [
@@ -60,6 +60,7 @@ test('checks signatures, admin cookies and logout without orders or sensitive re
   assert.equal(result.ok, true);
   assert.equal(result.checks.length, 10);
   assert.equal(result.observations.approvedModelConfigured, true);
+  assert.equal(result.observations.staffLoginHttpStatus, 201);
   const serialized = JSON.stringify(result);
   for (const secret of Object.values(env).filter(value => /synthetic|qa@|57300|12345678/.test(value))) assert.equal(serialized.includes(secret), false);
   assert.equal(serialized.includes('synthetic-session'), false);
@@ -94,4 +95,22 @@ test('does not expose credentials in unexpected network errors', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.checks.at(-1).code, 'REQUEST_FAILED');
   assert.equal(JSON.stringify(result).includes('synthetic'), false);
+});
+test('can check staff alone without repeating successful Meta probes', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff' };
+  delete env.STAGING_WHATSAPP_APP_SECRET;
+  delete env.STAGING_WHATSAPP_VERIFY_TOKEN;
+  const f = fixtureFetch(env);
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.checks.length, 5);
+  assert.equal(f.requests.some(r => r.url.includes('/whatsapp/webhook')), false);
+});
+test('a real unauthorized login fails and reports only its status code', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff' }, f = fixtureFetch(env, url => url.endsWith('/api/auth/login') ? reply(401, { message: 'private account detail' }) : undefined);
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, false);
+  assert.equal(result.observations.staffLoginHttpStatus, 401);
+  assert.equal(JSON.stringify(result).includes('private account detail'), false);
+  assert.equal(f.requests.some(r => r.options.headers?.Cookie), false);
 });

@@ -13,7 +13,8 @@ class CheckError extends Error {
 const ensure = (condition, code) => { if (!condition) throw new CheckError(code); };
 
 async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
-  const report = { target: TARGET, checks: [], observations: {}, ok: false };
+  const scope = env.STAGING_HTTP_SCOPE || 'full';
+  const report = { target: TARGET, scope: scope === 'staff' ? 'staff' : 'full', checks: [], observations: {}, ok: false };
   const check = async (name, work) => {
     try {
       await work();
@@ -30,7 +31,10 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
       env.GITHUB_REF === 'refs/heads/fix/whatsapp-regression-baseline' &&
       ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
     ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
-    const missing = REQUIRED.filter(key => !env[key]?.trim());
+    ensure(['full', 'staff'].includes(scope), 'INVALID_PROBE_SCOPE');
+    const required = scope === 'staff' ? REQUIRED.filter(key =>
+      !['STAGING_WHATSAPP_APP_SECRET', 'STAGING_WHATSAPP_VERIFY_TOKEN'].includes(key)) : REQUIRED;
+    const missing = required.filter(key => !env[key]?.trim());
     report.observations.missingSecrets = missing;
     ensure(missing.length === 0, 'REQUIRED_SECRET_MISSING');
     ensure(/^\d{5,30}$/.test(env.STAGING_WHATSAPP_PHONE_NUMBER_ID.trim()), 'INVALID_TEST_CHANNEL_ID');
@@ -57,6 +61,7 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
   });
   if (!health) return report;
 
+  if (scope === 'full') {
   await check('admin_settings_require_authentication', async () => {
     const response = await request('/api/admin/whatsapp/settings');
     ensure(response.status === 401, 'ADMIN_SETTINGS_UNPROTECTED');
@@ -90,12 +95,15 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
     ensure(response.status === 200, 'VERIFY_TOKEN_MISMATCH_OR_NOT_CONFIGURED');
     ensure(await response.text() === challenge, 'INVALID_VERIFY_CHALLENGE');
   });
+  }
 
   let cookie = '';
   await check('test_staff_login_and_secure_cookie', async () => {
     const response = await request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: env.STAGING_ADMIN_EMAIL.trim(), password: env.STAGING_ADMIN_PASSWORD }) });
-    ensure(response.status === 200, 'STAGING_STAFF_LOGIN_REJECTED');
+    report.observations.staffLoginHttpStatus = response.status;
+    // @Post + @Res uses Nest's default 201 unless the handler overrides it.
+    ensure([200, 201].includes(response.status), 'STAGING_STAFF_LOGIN_REJECTED');
     const body = await response.json();
     ensure(body.requires2FA === false, 'STAGING_STAFF_REQUIRES_2FA');
     ensure(Array.isArray(body.user?.roles) && body.user.roles.includes('admin') &&
