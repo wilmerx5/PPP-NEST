@@ -229,6 +229,27 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.toolCalls).toEqual([]);
   });
 
+  it('dirección sola no revive un pedido anterior ni agrega una pechuga sin elegir variante', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Es para Casa 11 terrazas de Castilla 3',
+      sessionSummary: 'carrito vacío',
+      recentMessages: ['Cliente: un arroz con pollo y una pechuga'],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products,
+    });
+    expect(result.actions).toEqual({
+      setAddress: 'Casa 11 terrazas de Castilla 3',
+      setOrderType: 'delivery',
+    });
+    expect(result.actions.addItems).toBeUndefined();
+    expect(result.toolCalls).toEqual([]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
