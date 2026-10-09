@@ -207,8 +207,17 @@ export type AiOrderAction = {
     attributes?: { attributeName: string; attributeValue: string }[];
   }>;
   removeProductIds?: number[];
+  removeCartLines?: Array<{ productId: number; cartLineIndex: number }>;
+  updateCartLines?: Array<{
+    productId: number;
+    cartLineIndex: number;
+    quantity?: number;
+    /** Replacement note; empty string clears it. */
+    note?: string;
+  }>;
   updateAttributes?: Array<{
     productId: number;
+    cartLineIndex?: number;
     attributeName: string;
     attributeValue: string;
   }>;

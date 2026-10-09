@@ -241,7 +241,7 @@ if (hardMode) {
     const matched = (terms: string[]) => terms.some(t => reply.includes(normalize(t)));
     const accepted = turns.length === messages.length &&
       turns.every(t => !t.error && !Object.keys(t.actions as object).some(k =>
-        ['addItems','clearCart','removeProductIds','setCustomerName','setAddress'].includes(k))) &&
+        ['addItems','clearCart','removeProductIds','removeCartLines','updateCartLines','updateAttributes','setCustomerName','setAddress'].includes(k))) &&
       matched(scenario.any) && (scenario.all || []).every(t => reply.includes(normalize(t))) &&
       !(scenario.forbid || []).some(t => reply.includes(normalize(t)));
     results.push({scenario:scenario.id,group:scenario.group,accepted,turns,
@@ -272,6 +272,15 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
       products,
       cart: [...cart.values()],
     });
+    const turnLines = [...cart.values()];
+    for (const removal of result.actions.removeCartLines || []) {
+      if (turnLines[removal.cartLineIndex]?.productId === removal.productId) cart.delete(removal.productId);
+    }
+    for (const update of result.actions.updateCartLines || []) {
+      if (turnLines[update.cartLineIndex]?.productId === update.productId && update.quantity !== undefined && cart.has(update.productId)) {
+        cart.set(update.productId, {...cart.get(update.productId)!,quantity:update.quantity});
+      }
+    }
     for (const id of result.actions.removeProductIds || []) cart.delete(id);
     if (result.actions.clearCart) cart.clear();
     for (const item of result.actions.addItems || []) {

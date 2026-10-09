@@ -1,3 +1,4 @@
+import { resolveCartLineIndex } from './whatsapp-cart-edits';
 import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import {
@@ -24,6 +25,8 @@ export type AgentV1TurnInput = {
   cart?: Array<{
     productId: number;
     name: string;
+    quantity?: number;
+    note?: string;
     attributes?: { attributeName: string; attributeValue: string }[];
   }>;
 };
@@ -54,6 +57,27 @@ type ChatMessage = {
 };
 
 const AGENT_TOOLS = [
+  { type: 'function' as const, function: {
+    name: 'get_cart', description: 'Devuelve cada línea del carrito con índice estable, cantidad, notas y opciones. Consulta antes de editar variantes.',
+    parameters: { type: 'object', properties: {} },
+  } },
+  { type: 'function' as const, function: {
+    name: 'update_item', description: 'Modifica cantidad absoluta o nota completa de UNA línea existente. No suma ni agrega productos. note vacío elimina la nota; para añadir una nota conserva la anterior en note.',
+    parameters: { type: 'object', properties: {
+      productId: { type: 'number' }, cartLineIndex: { type: 'integer', minimum: 0 },
+      quantity: { type: 'integer', minimum: 1, maximum: 10 }, note: { type: 'string' },
+    }, required: ['productId'] },
+  } },
+  { type: 'function' as const, function: {
+    name: 'replace_item', description: 'Reemplaza UNA línea por otro SKU de la carta conservando cantidad y nota. Por ejemplo jugo en agua por jugo en leche del mismo sabor, o medio frito por medio broaster. Valida el producto nuevo antes de retirar el anterior.',
+    parameters: { type: 'object', properties: {
+      productId: { type: 'number', description: 'SKU anterior' }, cartLineIndex: { type: 'integer', minimum: 0 },
+      newProductId: { type: 'number' }, quantity: { type: 'integer', minimum: 1, maximum: 10 },
+      attributes: { type: 'array', items: { type: 'object', properties: {
+        attributeName: { type: 'string' }, attributeValue: { type: 'string' },
+      }, required: ['attributeName','attributeValue'] } },
+    }, required: ['productId','newProductId'] },
+  } },
   {
     type: 'function' as const,
     function: {
@@ -120,10 +144,10 @@ const AGENT_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'remove_item',
-      description: 'Quita un producto del carrito por productId.',
+      description: 'Quita UNA línea existente del carrito. Usa cartLineIndex de get_cart; conserva las otras variantes del mismo producto.',
       parameters: {
         type: 'object',
-        properties: { productId: { type: 'number' } },
+        properties: { productId: { type: 'number' }, cartLineIndex: { type: 'integer', minimum: 0 } },
         required: ['productId'],
       },
     },
@@ -139,6 +163,7 @@ const AGENT_TOOLS = [
         type: 'object',
         properties: {
           productId: { type: 'number' },
+          cartLineIndex: { type: 'integer', minimum: 0 },
           attributeName: { type: 'string' },
           attributeValue: { type: 'string' },
         },
@@ -489,10 +514,15 @@ Reglas:
 - También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
 - Para el mismo SKU con sabores, preparaciones o notas distintas, llama add_item por cada grupo con su cantidad y atributos/nota. No combines dos sabores ni notes diferentes en una línea.
 - Confirma únicamente las cantidades y opciones retornadas por add_item. No inventes otra línea ni opciones distintas para un pedido con opciones omitidas.
-- "Tres en total, no tres más" reemplaza la cantidad existente con remove_item y add_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
+- "Tres en total, no tres más" modifica la cantidad existente con update_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
 - Solo afirma que agregaste productos después de add_item exitoso. Una búsqueda no modifica el carrito. Ejecuta lo pedido antes de contestar.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
+- Ediciones del carrito: usa get_cart. cartLineIndex es el índice de esa línea (empieza en 0), estable durante este turno. Las líneas con el mismo SKU pueden tener distintos sabores/notas. Modifica SOLO la línea nombrada. No llames herramientas para las líneas que el cliente quiere conservar.
+- "Deja dos", "que queden dos", "quita uno de tres" ajustan la cantidad absoluta con update_item. No retires y vuelvas a agregar ese SKU.
+- Notas de UN plato (sin ensalada, sin cilantro, arepas aparte): update_item con note; conserva la nota previa si pide también otra nota. Para quitar una nota deja las restantes; note="" deja normal. set_notes es SOLO para observaciones generales de todo el pedido.
+- Cambio dentro del mismo SKU: set_attribute con cartLineIndex, conserva cantidad y nota. Cambio a otro SKU: replace_item con newProductId real de search_menu y atributos; conserva cantidad/sabor. Leche/agua es la base del jugo y puede ser OTRO SKU, nunca parte inventada de Sabor.
+- "Olvida todo lo anterior", "vacía todo y empieza" requiere clear_cart antes de los nuevos productos.
 - Corrección en lenguaje normal: es cambiar lo que está abierto o en el carrito. Mira la LISTA ABIERTA o la ELECCIÓN PENDIENTE y la carta. Corrige con set_attribute, remove_item o add_item. No digas que no entendiste. No uses request_human por una corrección.
 - "vi la milanesa en el menú" / "sí está en la carta": search_menu de esas palabras, con el typo. Si está, súmala al pedido que ya está abierto y confirma el resto. Si no está, discúlpate, di que no la tenemos, manda el link del menú y sigue con lo que sí quedó. No abras otro plato.
 - "no quiero el broaster, quiero el frito", "con ají", "paso a recoger", "hasta dónde llevan", "están abiertos", "no hay promo del día": responde esa intención. Tarifas y horario salen de las reglas, no los inventes. No hay promoción del día: dilo en una frase y pide el plato. El mixto es medio broaster y medio frito.
@@ -518,7 +548,7 @@ Reglas:
 - "pollo y medio" = 1 pollo entero + 1/2 pollo (elige estilos con el cliente).
 - "qué hay de comida rápida" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. Si piden un plato que no está y search_menu trae missing, dilo y ofrece esa categoría como alternativas. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
-- Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
+- Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, cartLineIndex, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
 - Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
 - set_address solo con un lugar (calle, carrera, barrio, conjunto). Si responde ok:false, contesta al cliente en una frase y no hables de domicilio.
 - Si piden un plato que existe en frito y en broaster y no dijeron cuál, el sistema lista las dos. No asumas frito.
@@ -532,6 +562,7 @@ ${input.businessRulesBlock}
 
 Sesión (carrito y estado — fuente de verdad):
 ${input.sessionSummary}
+Líneas editables (cartLineIndex estable): ${JSON.stringify((input.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})))}
 
 Menú: usa search_menu. Link: ${(input.menuUrl || '').trim() || 'menú del local'}
 Contacto humano: *${phone || '3118866823'}*
@@ -1131,6 +1162,12 @@ Contacto humano: *${phone || '3118866823'}*
               'Es una pregunta sobre el menú. Responde con lo que devolvió search_menu. No agregues al carrito.',
           });
         }
+        const ownedText = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        const wrapper = ownedText.match(/\b(ejecutivos?|combos?)\b/i)?.[1];
+        if (wrapper && /pollo/i.test(product.name) && !new RegExp(wrapper.replace(/s$/i, ''), 'i').test(product.name)) {
+          return JSON.stringify({ok:false,error:'different_presentation',
+            hint:'El cliente pidió ejecutivo/combo, no el pollo ni la bebida por separado. Busca el SKU de esa presentación.'});
+        }
         const styleChoices = this.catalogService.chickenStyleChoicesForSegment?.(ctx.userMessage || '', ctx.products);
         if (styleChoices?.some(candidate => candidate.id === product.id) &&
           this.catalogService.extractCodeFromMessage(ctx.userMessage || '') !== product.code) {
@@ -1139,7 +1176,7 @@ Contacto humano: *${phone || '3118866823'}*
             hint:'Pregunta si quiere frito o broaster; no elijas una preparación por tu cuenta.'});
         }
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
-          ctx.userMessage || '',
+          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '',
           product,
           ctx.products,
         );
@@ -1317,13 +1354,37 @@ Contacto humano: *${phone || '3118866823'}*
             : null,
         });
       }
-      case 'remove_item': {
+      case 'get_cart':
+        return JSON.stringify({ok:true, lines:(ctx.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})),
+          hint:'Edita solo la línea solicitada. Los índices no cambian durante este turno.'});
+      case 'update_item':
+      case 'remove_item':
+      case 'replace_item': {
         const productId = Number(args.productId);
-        if (!ctx.actions.removeProductIds) ctx.actions.removeProductIds = [];
-        if (!ctx.actions.removeProductIds.includes(productId)) {
-          ctx.actions.removeProductIds.push(productId);
+        const cartLineIndex = resolveCartLineIndex(ctx.cart || [], productId, args.cartLineIndex);
+        if (cartLineIndex < 0) return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
+          hint:'Usa get_cart y el cartLineIndex de la línea solicitada; no retires todas las variantes.'});
+        const line = ctx.cart![cartLineIndex];
+        if (name === 'remove_item') {
+          (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
+        } else if (name === 'replace_item') {
+          const result = JSON.parse(this.executeTool('add_item', {
+            productId:args.newProductId, quantity:args.quantity ?? line.quantity ?? 1,
+            note:line.note, attributes:args.attributes,
+          },ctx));
+          if (!result.ok) return JSON.stringify(result);
+          (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
+        } else {
+          if (args.quantity !== undefined && (!Number.isInteger(args.quantity) || Number(args.quantity) < 1 || Number(args.quantity) > 10)) {
+            return JSON.stringify({ok:false,error:'invalid_quantity'});
+          }
+          if (args.quantity === undefined && typeof args.note !== 'string') return JSON.stringify({ok:false,error:'missing_change'});
+          (ctx.actions.updateCartLines ||= []).push({productId,cartLineIndex,
+            ...(args.quantity !== undefined ? {quantity:Number(args.quantity)} : {}),
+            ...(typeof args.note === 'string' ? {note:args.note.trim().slice(0,200)} : {}),
+          });
         }
-        return JSON.stringify({ ok: true, removedProductId: productId });
+        return JSON.stringify({ok:true,productId,cartLineIndex,hint:'Cambio aceptado. Conserva las otras líneas.'});
       }
       case 'set_attribute': {
         const productId = Number(args.productId);
@@ -1350,20 +1411,24 @@ Contacto humano: *${phone || '3118866823'}*
           attributeValue,
           attr.options,
         );
-        if (!matched) {
+        if (!matched || (/\b(?:agua|leche)\b/i.test(attributeValue) && !/\b(?:agua|leche)\b/i.test(matched))) {
           return JSON.stringify({
             ok: false,
             error: 'opción no existe en ese atributo',
             options: attr.options,
           });
         }
-        const line = [...(ctx.cart || [])].reverse().find((c) => c.productId === productId);
+        const cartLineIndex = resolveCartLineIndex(ctx.cart || [], productId, args.cartLineIndex);
+        const line = cartLineIndex >= 0 ? ctx.cart![cartLineIndex] : undefined;
         if (!line) {
-          return JSON.stringify({ ok: false, error: 'ese producto no está en el carrito' });
+          return JSON.stringify({ ok: false, error: 'missing_or_ambiguous_cart_line', hint: 'Usa get_cart y el cartLineIndex de la línea solicitada' });
+        }
+        if (line.attributes?.some(a => a.attributeName.toLowerCase() === attr.attributeName.toLowerCase() && a.attributeValue.toLowerCase() === matched.toLowerCase())) {
+          return JSON.stringify({ok:true,unchanged:true,hint:'La línea ya tiene esa opción. No hay ningún cambio.'});
         }
         if (!ctx.actions.updateAttributes) ctx.actions.updateAttributes = [];
         ctx.actions.updateAttributes.push({
-          productId,
+          productId, cartLineIndex,
           attributeName: attr.attributeName,
           attributeValue: matched,
         });

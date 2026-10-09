@@ -1,3 +1,4 @@
+import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -3612,31 +3613,9 @@ export class WhatsappOrchestratorService {
     if (!actions) return { session };
     let next = { ...session };
 
-    if (actions.updateAttributes?.length) {
-      const cart = [...next.cart];
-      for (const upd of actions.updateAttributes) {
-        let idx = -1;
-        for (let i = cart.length - 1; i >= 0; i--) {
-          if (cart[i].productId === upd.productId) {
-            idx = i;
-            break;
-          }
-        }
-        if (idx < 0) continue;
-        const line = cart[idx];
-        const attributes = [...(line.attributes || [])];
-        const attrIdx = attributes.findIndex(
-          (a) => a.attributeName.toLowerCase() === upd.attributeName.toLowerCase(),
-        );
-        const nextAttr = {
-          attributeName: upd.attributeName,
-          attributeValue: upd.attributeValue,
-        };
-        if (attrIdx >= 0) attributes[attrIdx] = nextAttr;
-        else attributes.push(nextAttr);
-        cart[idx] = { ...line, attributes };
-      }
-      next = { ...next, cart, pendingAttribute: undefined, pendingMatch: undefined };
+    if (actions.updateAttributes?.length || actions.updateCartLines?.length || actions.removeCartLines?.length) {
+      next = { ...next, cart: this.consolidateCart(applyCartLineEdits(next.cart, actions)),
+        pendingAttribute: undefined, pendingMatch: undefined };
     }
 
     if (actions.clearCart) {
@@ -6344,6 +6323,25 @@ export class WhatsappOrchestratorService {
       await say(
         `${formatCartNeedsHalfChickenForPremio()}\n\nAgrega medio pollo y escribe *confirmar*.`,
       );
+      return;
+    }
+
+    // Refresh both caches before committing the quoted cart. A changed price
+    // requires a new customer confirmation, including the payment-link path.
+    const currentProducts = await this.catalogService.getMenuProducts(true);
+    const currentById = new Map(currentProducts.map(p => [p.id, p]));
+    const unavailable = session.cart.find(line => !currentById.has(line.productId) ||
+      currentById.get(line.productId)!.availableNow === false);
+    if (unavailable) {
+      await say(`*${unavailable.name}* ya no está disponible. Conservé tu carrito; cambia o retira ese producto para continuar.`);
+      return;
+    }
+    const priceChanged = session.cart.some(line => Number(currentById.get(line.productId)!.price) !== Number(line.unitPrice));
+    if (priceChanged) {
+      session = { ...session, cart: session.cart.map(line => ({ ...line,
+        unitPrice: Number(currentById.get(line.productId)!.price) })) };
+      await this.conversationService.saveSession(conv, session, 'awaiting_final_confirm');
+      await say(`El precio del menú cambió. Revisa el nuevo resumen:\n\n${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`);
       return;
     }
 
@@ -12799,6 +12797,8 @@ export class WhatsappOrchestratorService {
       cart: session.cart.map((c) => ({
         productId: c.productId,
         name: c.name,
+        quantity: c.quantity,
+        note: c.note,
         attributes: c.attributes,
       })),
       sessionSummary: this.buildSessionSummary(
@@ -12970,6 +12970,8 @@ export class WhatsappOrchestratorService {
     const hasProductiveActions = !!(
       guarded.actions?.addItems?.length ||
       guarded.actions?.removeProductIds?.length ||
+      guarded.actions?.removeCartLines?.length ||
+      guarded.actions?.updateCartLines?.length ||
       guarded.actions?.clearCart ||
       guarded.actions?.setAddress ||
       guarded.actions?.setOrderType ||

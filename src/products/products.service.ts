@@ -474,9 +474,9 @@ export class ProductsService {
     return saved;
   }
 
-  async findProductsGroupedByCategory() {
+  async findProductsGroupedByCategory(forceRefresh = false) {
     const cached = this.cache.get<any[]>(this.CACHE_KEY_GROUPED);
-    if (cached) return cached;
+    if (!forceRefresh && cached) return cached;
 
     const result = await this.circuitBreaker.execute(
       async () => {
