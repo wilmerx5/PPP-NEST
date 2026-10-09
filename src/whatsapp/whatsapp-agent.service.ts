@@ -258,6 +258,19 @@ export class WhatsappAgentService {
       };
     }
 
+    // Referencias deícticas y distributivas sin un único referente claro:
+    // jamás crear productos por adivinar "ese" o "de cada una".
+    const shortNorm = input.userMessage.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').trim();
+    if (/\b(?:\d+|un[ao]?|dos|tres|cuatro|cinco)\s+de\s+cada\s+un[ao]\b/.test(shortNorm) ||
+      /^(?:(?:dame|regalame|quiero|ponme)\s+)?(?:un[ao]?\s+)?(?:ese|esa|esos|esas)\s+(?:que\s+(?:dijiste|me\s+dijiste)|de\s+(?:antes|arriba))\b/.test(shortNorm)) {
+      return {
+        reply: 'Claro, ¿cuál de las opciones quieres exactamente? Me confirmas el plato y la cantidad, porfa.',
+        actions: {},
+        toolCalls: [],
+      };
+    }
+
     // Los mensajes informativos no deben crear lineas en el carrito.
     const broadQuery = input.userMessage.toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
