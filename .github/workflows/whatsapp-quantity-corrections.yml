@@ -1,6 +1,9 @@
 name: WhatsApp Quantity Corrections Focused
 
 on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/whatsapp-quantity-corrections.yml]
   workflow_dispatch:
 
 permissions:
@@ -12,13 +15,17 @@ concurrency:
 
 jobs:
   quantity-corrections:
-    if: github.repository == 'wilmerx5/PPP-NEST' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline'
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == '35b9f262807f2841f4834b78d89f975a0ca3d92e'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: 35b9f262807f2841f4834b78d89f975a0ca3d92e
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:

@@ -19,22 +19,22 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == 'eaa1a6e7e6e4467826a3d0d6d683214b1f01bd0a'))
+       (github.event_name == 'push' && github.event.before == '35b9f262807f2841f4834b78d89f975a0ca3d92e'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: eaa1a6e7e6e4467826a3d0d6d683214b1f01bd0a
+          ref: 35b9f262807f2841f4834b78d89f975a0ca3d92e
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Check runner isolation with synthetic secrets and no network
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
-      - name: Verify staging and execute the bounded test conversation
+      - name: Verify staging without sending conversation messages
         env:
-          STAGING_CHAT_EXECUTE: 'true'
+          STAGING_CHAT_EXECUTE: 'false'
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
