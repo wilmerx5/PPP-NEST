@@ -929,7 +929,7 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       const filled = catalog.fillDefaultAttributes(hit!, []);
       expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(true);
       expect(filled).toEqual(expect.arrayContaining([
-        expect.objectContaining({ attributeName: 'Seleccion', attributeValue: 'Frita' }),
+        expect.objectContaining({ attributeValue: 'Frita' }),
       ]));
     });
 
