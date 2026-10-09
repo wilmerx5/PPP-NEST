@@ -3,6 +3,7 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
+import { expandDistributedVariants } from './whatsapp-distributed-variants';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import {
   isNamedMenuDishOrderPhrase,
@@ -1994,6 +1995,7 @@ export class WhatsappCatalogService {
 
   /** Scope choices to their own dish when a multi-order has a unique owner. */
   orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
+    text = expandDistributedVariants(text, products, this);
     // Preserve modifiers; the general matcher may strip them before splitting.
     const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean);
     const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i));
@@ -7309,7 +7311,7 @@ export class WhatsappCatalogService {
       /\bque tiene el\b/,
       /\bque tiene la\b/,
       /\b(incluye|trae|viene|va)\s+con\b/,
-      /\b(tiene|lleva|trae|viene|va)\s+(cebolla|aji|ají|huevo|huevos|queso|lechuga|tomate|gluten|lacteos|lacteos|arepa|papas|yuca|arroz|sopa|bebida|gaseosa)\b/,
+      /\b(tienen?|llevan?|traen?|vienen?|incluyen?|contienen?|va)\s+(?:con\s+)?(cebolla|aji|huevo|huevos|queso|lechuga|tomate|ensalada|gluten|lacteos|arepas?|papas?|yuca|arroz|sopa|bebida|gaseosa)\b/,
       /\b(composicion|preparacion|descripcion|descrpcion)\b/,
       /\bcomo es el\b/,
       /\bcomo es la\b/,
@@ -7321,7 +7323,7 @@ export class WhatsappCatalogService {
     if (patterns.some((p) => p.test(q))) return true;
     return (
       /\?/.test(raw) &&
-      /\b(lleva|llava|trae|viene|va|incluye|contiene|ingredientes|descripcion|composicion|gramos|rinde|alcanza)\b/.test(
+      /\b(llevan?|llava|traen?|vienen?|va|incluyen?|contienen?|ingredientes|descripcion|composicion|gramos|rinde|alcanza)\b/.test(
         q,
       )
     );
@@ -7959,6 +7961,9 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
+    const distributedText = expandDistributedVariants(text, products, this);
+    const hasDistributedVariants = distributedText !== text;
+    text = distributedText;
     if (this.isOffTopicChitchat(text)) return null;
     if (this.isPriceInquiryIntent(text)) return null;
     if (this.isMenuExploreIntent(text, products)) return null;
@@ -8280,7 +8285,7 @@ export class WhatsappCatalogService {
       }
     }
 
-    if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text)) {
+    if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text) && !hasDistributedVariants) {
       const confident: MultiProductSegmentMatch[] = [];
       const needsAttributes: MultiProductSegmentMatch[] = [];
       for (const product of embeddedAll) {
@@ -8494,7 +8499,7 @@ export class WhatsappCatalogService {
           /^medio\s+pollo$/.test(normalizeText(embedded.name)) &&
           /\bbroaster\b/.test(normalizeText(`${segment} ${text}`));
         if (!skipGenericMedio) {
-          if (usedProductIds.has(embedded.id)) continue;
+          if (usedProductIds.has(embedded.id) && !hasDistributedVariants) continue;
           usedProductIds.add(embedded.id);
           const match = { segment, product: embedded, score: 100 };
           if (embedded.hasAttributes && embedded.attributes?.length) {

@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createHmac } = require('node:crypto');
 const { runRehearsal, cartMatches } = require('./ppp-staging-chat-rehearsal.cjs');
-const { buildPlan } = require('./ppp-staging-chat-plan.cjs');
+const { buildPlan, knownVariantDraft, buildKnownVariantResumePlan } = require('./ppp-staging-chat-plan.cjs');
 const env = { GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'wilmerx5/PPP-NEST',
   GITHUB_REF: 'refs/heads/fix/whatsapp-regression-baseline', GITHUB_EVENT_NAME: 'push',
   STAGING_CHAT_EXECUTE: 'true', STAGING_ADMIN_EMAIL: 'automation@example.invalid',
@@ -21,11 +21,17 @@ const products = [
 ];
 function fixture(options = {}) {
   let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [], simulatedStepIndex = 0;
-  const calls = [], plan = buildPlan(products);
+  const calls = [], plan = options.resumeKnownDraft ? buildKnownVariantResumePlan(products) : buildPlan(products);
   const conversation = { id: 42, waId: env.STAGING_WHATSAPP_RECIPIENTS, phoneE164: '+' + env.STAGING_WHATSAPP_RECIPIENTS,
     humanTakeover: false, state: 'building_cart', customerName: null,
     sessionData: { cart: options.existingDraft ? [{ productId: 17, quantity: 1 }] : [] },
     messages: [{ id: 1, direction: 'in', body: 'Hola', createdAt: new Date(clock).toISOString(), sentBy: 'bot' }] };
+  if (options.resumeKnownDraft) {
+    conversation.messages[0].body = options.changedDraftInput ? 'Nuevo mensaje humano' : 'Solo era una sobrebarriga asada';
+    conversation.sessionData.cart = knownVariantDraft(products).map(line => ({ productId: line.productId,
+      quantity: line.quantity, unitPrice: line.unitPrice, attributes: line.attrs, note: line.note.join('. ') }));
+    if (options.changedDraftQuantity) conversation.sessionData.cart[0].quantity = 7;
+  }
   const json = (body, status = 200, cookie) => {
     const payload = body === conversation && options.bigintMessageIds ? { ...body, messages: body.messages.map(m =>
       ({ ...m, id: String(9007199254740993n + BigInt(m.id)) })) } : body;
@@ -47,6 +53,7 @@ function fixture(options = {}) {
     assert.ok(!path.startsWith('/api/admin/') || opts.headers.Cookie === 'access_token=synthetic-cookie');
     if (path === '/api/admin/whatsapp/staging/test-target') return options.missingEndpoint ? json({}, 404) : json({
       staging: !options.notStaging, targetMatches: !options.wrongTarget, botEnabled: true,
+      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-09.cart-v2',
       agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);
@@ -99,6 +106,27 @@ test('executes 21 bounded steps, validates HMAC, checks persisted cart and clear
 test('preflight verifies routing and signature without sending message payloads', async () => {
   const f = fixture(); const report = await runRehearsal({ ...env, STAGING_CHAT_EXECUTE: 'false' }, f.fetch, f.helpers);
   assert.equal(report.ok, true); assert.equal(report.webhookPosts, 0); assert.equal(f.sentTexts.length, 0);
+});
+test('resumes only the known failed draft, rechecks both failures and all remaining edits in 23 steps', async () => {
+  const f = fixture({ resumeKnownDraft: true });
+  const report = await runRehearsal({ ...env, STAGING_CHAT_RESUME: 'known-variant-draft' }, f.fetch, f.helpers);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 23);
+  assert.equal(report.webhookPosts, 23); assert.equal(report.steps.at(-1).actualCartLines, 0);
+  assert.ok(!f.sentTexts.includes('Hola, ¿qué tienen para almorzar? ¿Hay algo con carne?'));
+  assert.ok(report.steps.every(step => step.pass));
+});
+for (const option of ['changedDraftInput', 'changedDraftQuantity']) {
+  test(`preserves the failed draft without sending when ${option}`, async () => {
+    const f = fixture({ resumeKnownDraft: true, [option]: true });
+    const report = await runRehearsal({ ...env, STAGING_CHAT_RESUME: 'known-variant-draft' }, f.fetch, f.helpers);
+    assert.equal(report.ok, false); assert.equal(report.webhookPosts, 0);
+    assert.equal(report.checks.find(check => !check.pass).code, 'KNOWN_FAILED_DRAFT_CHANGED');
+  });
+}
+test('requires the deployed cart patch version before sending any conversation', async () => {
+  const f = fixture({ oldDeployment: true }); const report = await runRehearsal(env, f.fetch, f.helpers);
+  assert.equal(report.ok, false); assert.equal(report.webhookPosts, 0);
+  assert.equal(report.checks.find(check => !check.pass).code, 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
 });
 test('accepts the real bigint string message IDs without losing precision during deduplication', async () => {
   const f = fixture({ bigintMessageIds: true });

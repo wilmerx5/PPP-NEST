@@ -7,6 +7,7 @@ import {
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 import { requestWhatsappInference } from './whatsapp-openai-request';
+import { catalogAccompanimentReply } from './whatsapp-product-composition';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
@@ -287,6 +288,8 @@ export class WhatsappAgentService {
       return {reply:'No puedo garantizar la ausencia de alérgenos. Un asesor debe verificar ingredientes y preparación con cocina antes de tomar tu pedido.',
         actions:{requestHuman:true},toolCalls:[]};
     }
+    const accompanimentReply = catalogAccompanimentReply(input.userMessage, input.products, this.catalogService);
+    if (accompanimentReply) return { reply: accompanimentReply, actions: {}, toolCalls: [] };
     if (!cfg.openaiApiKey) {
       return {
         reply: `El asistente aún no está configurado. ${contactHelp}`,

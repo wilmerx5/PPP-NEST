@@ -47,4 +47,24 @@ function buildPlan(products) {
   ];
 }
 
-module.exports = { buildPlan };
+function knownVariantDraft(products) {
+  return buildPlan(products)[2].cart.map(line => ({ ...line,
+    quantity: line.attrs.some(a => a.attributeValue === 'Asada') ? 2 : line.quantity }));
+}
+
+function buildKnownVariantResumePlan(products) {
+  const original = buildPlan(products);
+  const restored = original[2].cart;
+  return [
+    { ...original[1], id: 'recheck-ribs-composition', cart: knownVariantDraft(products) },
+    { id: 'recover-known-asada-quantity', text: 'Solo era una sobrebarriga asada', cart: restored },
+    { id: 'duplicate-recovery-webhook', duplicatePrevious: true, cart: restored },
+    ...original.slice(4, 13),
+    { ...original[2], id: 'recheck-grouped-variants-total' },
+    { ...original[3], id: 'duplicate-grouped-variants-webhook' },
+    { ...original[12], id: 'prepare-chicken-after-grouped-recheck' },
+    ...original.slice(13),
+  ];
+}
+
+module.exports = { buildPlan, knownVariantDraft, buildKnownVariantResumePlan };

@@ -36,6 +36,16 @@ function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'
   };
 }
 describe('Corrections preserve the rest of an existing cart', () => {
+  it.each(['Solo era una sobrebarriga asada', 'Solo era una sobrebarriga a la plancha'])('corrects only the named preparation through the real router: %s', async text => {
+    const cart = [line(17, 1, 'sin ensalada'),
+      line(13, 2, undefined, [{ attributeName: 'Seleccion', attributeValue: 'Asada' }]),
+      line(13, 1, undefined, [{ attributeName: 'Seleccion', attributeValue: 'En Salsa' }])];
+    const h = harness(cart);
+    await h.inbound(text);
+    expect(h.session.cart).toEqual(cart.map((item, i) => i === 1 ? { ...item, quantity: 1 } : item));
+    expect(h.session.pendingCartQuantity).toBeUndefined();
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
   it('changes only the chicken quantity in the reported conversation', async () => {
     const h = harness();
     const initial = structuredClone(h.session.cart);

@@ -14,6 +14,7 @@ describe('Staging conversation automation isolation', () => {
   it('proves the effective channel and single authorized recipient without exposing values', () => {
     const status = stagingTestTargetStatus(cfg, target, env);
     expect(status).toEqual({ staging: true, targetMatches: true, botEnabled: true,
+      conversationTestVersion: '2026-10-09.cart-v2',
       agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 });
     for (const value of Object.values(target).concat(['synthetic-token', 'synthetic-secret', 'synthetic-key'])) {
       expect(JSON.stringify(status)).not.toContain(value);

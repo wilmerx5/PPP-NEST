@@ -25,6 +25,7 @@ export function stagingTestTargetStatus(
     recipients.length === 1 && recipients[0] === target.recipient;
   return {
     staging, targetMatches,
+    conversationTestVersion: '2026-10-09.cart-v2',
     botEnabled: cfg.enabled === true,
     agentEnabled: cfg.agentV1Enabled === true,
     approvedModel: cfg.openaiModel === 'gpt-4.1-2025-04-14',
