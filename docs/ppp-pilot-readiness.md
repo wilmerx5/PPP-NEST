@@ -6,18 +6,18 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026
 
-Última ronda completa evaluada: `4cce38e2cc322fe7e7bb96726fee23637f2d0cd4`; PR #6 permanece en borrador. Las correcciones posteriores requieren una nueva ronda en su SHA.
+Última ronda completa evaluada: `219d940b10543f72251f78b8390fc4f4ae6e680a`; PR #6 permanece en borrador. Las correcciones posteriores requieren una nueva ronda en su SHA.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Compilación y unitarias | PASS, 662/662 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926048315) |
-| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926048262) |
-| Conversaciones con OpenAI tras las últimas correcciones | 301/303 aceptados; presentación adicional y agotamiento del agente | [Revalidación de correcciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926042975) |
+| Compilación y unitarias | PASS, 664/664 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37927402996) |
+| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37927403057) |
+| Conversaciones con OpenAI tras las últimas correcciones | Mini 301/303; GPT-4.1 bloqueado por límite TPM | [Revalidación de correcciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37927397919) |
 | Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
 | Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
 
-**Todavía no listo para producción.** El saldo ya permite probar. Revalidar la presentación pedida con typos y el cierre del turno tras una sustitución ya aplicada. Se comparan 303 ejecuciones idénticas por modelo (606 en total); la configuración desplegada debe coincidir con el modelo y versión efectivamente aprobados; después completar aceptación externa en staging antes de iniciar el piloto. La ronda anterior registró 760 solicitudes, 4.618.782 tokens de entrada (4.023.808 en caché) y 32.280 de salida: estimación US$0,4103997 a tarifa estándar de texto; no es factura ni costo por pedido en producción.
+**Todavía no listo para producción.** El saldo ya permite probar. Revalidar la nota de empaque y el cierre tras reemplazar una presentación. GPT-4.1 se repite con ritmo controlado, separado de los errores temporales del proveedor. Se comparan 303 ejecuciones idénticas por modelo (606 en total); la configuración desplegada debe coincidir con el modelo y versión efectivamente aprobados; después completar aceptación externa en staging antes de iniciar el piloto. La ronda anterior registró 760 solicitudes, 4.618.782 tokens de entrada (4.023.808 en caché) y 32.280 de salida: estimación US$0,4103997 a tarifa estándar de texto; no es factura ni costo por pedido en producción.
 
 ## Puertas de salida
 
@@ -80,3 +80,7 @@ Aislamiento de datos y operaciones entre restaurantes; catálogo y reglas config
 Los nombres y opciones PPP pertenecen a fixtures y configuración de negocio. La edición por línea y la validación de atributos deben depender del catálogo, no de IDs o productos fijos. La evidencia PPP es el primer caso operativo, no la certificación de restaurantes con otros catálogos.
 
 Ver también [aceptación beta](whatsapp-beta-acceptance.md), [pruebas MariaDB](whatsapp-db-integration.md) y [requisitos de staging](ppp-staging-test-requirements.md).
+
+## Backend de staging
+
+El responsable confirmó que solo está preparada la DB. Se prepara [un backend aislado](ppp-staging-backend.md), con TLS/destino DB comprobados, puerto privado y envíos Meta limitados explícitamente al canal y destinatarios de pruebas. Sigue faltando el servidor/URL y la aceptación desplegada; la imagen construida no equivale a un backend desplegado.

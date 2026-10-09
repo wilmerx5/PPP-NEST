@@ -93,4 +93,12 @@ describe('Observed live AI regressions', () => {
     expect(JSON.parse((agent as any).executeTool('add_item',{productId:4,quantity:1},ctx)).ok).toBe(true);
     expect(actions.addItems.map(x=>x.productId)).toEqual([6,4]);
   });
+  it('retains a packaging sentence for the catalog attribute of its combo',()=> {
+    const actions: any={};const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],
+      userMessage:'Un combo de pollo frito con Coca Cola y arepas fritas. Las arepas en bolsa aparte',setNeedsAttr:()=>undefined};
+    expect(JSON.parse((agent as any).executeTool('add_item',{productId:99,attributes:[{attributeName:'Arepas',attributeValue:'Fritas'}]},ctx)).ok).toBe(true);
+    expect(actions.addItems[0].note).toMatch(/aparte/);
+    expect(actions.addItems[0].attributes).toEqual(expect.arrayContaining([{attributeName:'Arepas',attributeValue:'Fritas'},
+      {attributeName:'Bebida',attributeValue:'Coca Cola'}]));
+  });
 });

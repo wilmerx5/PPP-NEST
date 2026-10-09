@@ -7,10 +7,14 @@ export class BetaApiUsage {
   cachedPromptTokens = 0;
   completionTokens = 0;
   readonly httpErrors: Record<string, number> = {};
+  readonly providerErrorCodes: Record<string,number> = {};
 
   record(status: number, payload?: unknown): void {
     if (status < 200 || status >= 300) {
       this.httpErrors[status] = (this.httpErrors[status] || 0) + 1;
+      const value=(payload as {error?:{code?:unknown}} | null)?.error?.code;
+      const code=typeof value==='string' && /^[a-z_]{1,60}$/.test(value) ? value : 'unclassified';
+      this.providerErrorCodes[code]=(this.providerErrorCodes[code] || 0)+1;
       return;
     }
     this.successfulResponses++;
@@ -33,7 +37,7 @@ export class BetaApiUsage {
       responsesWithUsage: this.responsesWithUsage,
       usageComplete: this.responsesWithUsage === this.successfulResponses,
       promptTokens: this.promptTokens, cachedPromptTokens: this.cachedPromptTokens,
-      completionTokens: this.completionTokens, httpErrors: {...this.httpErrors},
+      completionTokens: this.completionTokens, httpErrors: {...this.httpErrors},providerErrorCodes:{...this.providerErrorCodes},
       estimatedReportedCostUsd: priced ? (
         (this.promptTokens - this.cachedPromptTokens) * 0.15 +
         this.cachedPromptTokens * 0.075 + this.completionTokens * 0.60

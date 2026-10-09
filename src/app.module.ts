@@ -12,6 +12,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { BusinessModule } from './business/business.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FactusModule } from './factus/factus.module';
+import { databaseTransport, assertStagingDatabase } from './common/database-transport';
 
 @Module({
   imports: [
@@ -23,6 +24,11 @@ import { FactusModule } from './factus/factus.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
+        const transport=databaseTransport(configService.get<string>('DB_SSL_ENABLED'),configService.get<string>('DB_SSL_CA'));
+        assertStagingDatabase({staging:configService.get<string>('PPP_STAGING'),
+          host:configService.get<string>('DB_HOST'),database:configService.get<string>('DB_DATABASE'),
+          expectedHost:configService.get<string>('STAGING_EXPECTED_DB_HOST'),
+          expectedDatabase:configService.get<string>('STAGING_EXPECTED_DB_DATABASE'),tls:!!transport.ssl});
         const dbConfig = {
           type: 'mariadb' as const,
           host: configService.get<string>('DB_HOST'),
@@ -32,6 +38,7 @@ import { FactusModule } from './factus/factus.module';
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: false,
+          ...transport,
           timezone: 'Z', // UTC timezone
           poolSize: 100,
           keepConnectionAlive: true,

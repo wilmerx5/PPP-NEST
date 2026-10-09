@@ -40,3 +40,5 @@ El workflow se activa al actualizar una PR con cambios en las rutas indicadas, o
 El 9 de octubre de 2026, la ejecución [37881659946](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946) primero encontró un rechazo 1044. Después de corregir los permisos/secretos, la nueva ejecución del job [113666046435](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) pasó: DNS/TCP, conexión cifrada, MariaDB 11.8.9, columnas WhatsApp, índice único de Meta ID, tablas comerciales y 65 productos activos con precios válidos. No había mensajes entrantes para auditar su ciclo de procesamiento.
 
 Esta evidencia resuelve la conexión y estructura leída; no acredita fidelidad del catálogo, stock/horarios, índice único de `wa_id`, arranque del backend desplegado ni integraciones externas. Sigue pendiente el circuito de aceptación desplegado. Ver [criterios del piloto](ppp-pilot-readiness.md).
+
+El responsable confirmó que por ahora existe solo la DB. El paquete y los pasos de preparación del backend están en [ppp-staging-backend.md](ppp-staging-backend.md). Todavía no se ejecutó un despliegue ni se autorizaron envíos a números reales.

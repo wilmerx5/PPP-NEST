@@ -2012,6 +2012,16 @@ export class WhatsappCatalogService {
       (product.attributes?.some(attr => this.pickAttributeOptionFromText(segment, attr)) ||
         /^arepas?\s+aparte\b/.test(normalizeText(segment))))) return text;
     const named = segments.filter(segment => this.productNameFitsUtterance(product, segment));
+    if (named.length === 1) {
+      const following: string[] = [];
+      for (const segment of segments.slice(segments.indexOf(named[0])+1)) {
+        const q=normalizeText(segment).replace(/^(?:el|la|las|los|sus)\s+/,'');
+        if (!/\b(?:aparte|bolsa|empaque)\b/.test(q) ||
+          !product.attributes?.some(attr=>q.startsWith(normalizeText(attr.attributeName)+' '))) break;
+        following.push(segment);
+      }
+      if (following.length) return [named[0],...following].join('. ');
+    }
     const owned = segments.filter(segment => {
       const tokens = this.dishContentTokens(normalizeText(segment));
       const anchor = this.bestClauseCoverage(tokens, products);
@@ -2063,6 +2073,8 @@ export class WhatsappCatalogService {
       'favor',
       'porfa',
       'aparte',
+      'bolsa',
+      'empaque',
       'adicional',
       'adicionales',
       'ademas',

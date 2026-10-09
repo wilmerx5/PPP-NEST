@@ -6,6 +6,7 @@ import {
 } from './whatsapp-catalog.service';
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
+import { requestWhatsappInference } from './whatsapp-openai-request';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
 import type { MenuConceptGroup } from './whatsapp-menu-concepts';
 import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
@@ -605,6 +606,7 @@ Contacto humano: *${phone || '3118866823'}*
     ];
 
     const model = cfg.openaiModel || 'gpt-4o-mini';
+    const turnDeadline = Date.now()+25000;
 
     try {
       for (let i = 0; i < this.maxIterations; i++) {
@@ -626,18 +628,15 @@ Contacto humano: *${phone || '3118866823'}*
           },
         );
 
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${cfg.openaiApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
+        const res = await requestWhatsappInference(JSON.stringify(body),cfg.openaiApiKey,
+          {timeoutMs:Math.min(15000,turnDeadline-Date.now())});
 
         if (!res.ok) {
-          const err = await res.text();
-          this.logger.error(`AgentV1 OpenAI ${res.status}: ${err.slice(0, 300)}`);
+          let code='unclassified';
+          try { const value=(await res.json() as {error?:{code?:unknown}}).error?.code;
+            if(typeof value==='string' && /^[a-z_]{1,60}$/.test(value)) code=value;
+          } catch { /* Never log provider bodies that may echo credentials or input. */ }
+          this.logger.error(`AgentV1 OpenAI ${res.status}: ${code}`);
           return {
             reply: `Tuve un problema técnico. Contáctanos al *${phone || '3118866823'}*.`,
             actions,
@@ -1388,7 +1387,7 @@ Contacto humano: *${phone || '3118866823'}*
           if (!note?.toLowerCase().includes(change.toLowerCase())) note=[note,change].filter(Boolean).join('. ').slice(0,200);
         }
         if (product.attributes?.some(attr => /arepas?/i.test(attr.attributeName)) &&
-          !/porci[oó]n/i.test(product.name) && /\barepas?\s+aparte\b/i.test(source)) {
+          !/porci[oó]n/i.test(product.name) && /\barepas?\s+(?:en\s+)?(?:bolsa\s+)?aparte\b/i.test(source)) {
           note = [note, 'Arepas aparte'].filter(Boolean).join('. ').slice(0, 200);
         }
         if (/\ben\s+total\b/i.test(source) && ctx.cart?.some(line => line.productId === product.id)) {
@@ -1537,8 +1536,13 @@ Contacto humano: *${phone || '3118866823'}*
         const productId = Number(args.productId);
         const matches = this.toolCartView(ctx).filter(line=>line.productId===productId &&
           (args.cartLineIndex === undefined || line.cartLineIndex === args.cartLineIndex));
-        if (matches.length !== 1) return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
-          hint:'Usa get_cart y el cartLineIndex de la línea solicitada; no retires todas las variantes.'});
+        if (matches.length !== 1) {
+          const removed = ctx.actions.removeCartLines?.some(line=>line.productId===productId);
+          return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
+            currentCart:this.toolCartView(ctx).map(({pendingAddIndex,...line})=>line),
+            hint:removed ? 'Ese producto ya se retiró en este turno. El reemplazo está en currentCart. No repitas el cambio sobre la línea anterior; confirma el carrito actual.' :
+              'Usa currentCart y el cartLineIndex de la línea solicitada; no retires todas las variantes.'});
+        }
         const line = matches[0];
         const {cartLineIndex,pendingAddIndex} = line;
         const removeLine = () => {

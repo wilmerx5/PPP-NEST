@@ -23,4 +23,11 @@ describe('Synthetic rehearsal token accounting',()=>{
     const usage=new BetaApiUsage();usage.record(200,{usage:{prompt_tokens:1000,completion_tokens:100}});
     expect(usage.summary('other-model').estimatedReportedCostUsd).toBeNull();
   });
+  it('separates rate and billing errors without recording private provider messages',()=> {
+    const usage=new BetaApiUsage();usage.record(429,{error:{code:'rate_limit_exceeded',message:'private'}});
+    usage.record(429,{error:{code:'insufficient_quota'}});usage.record(500,{error:{code:'private-secret-value'}});
+    const result=usage.summary('gpt-4o-mini');
+    expect(result.providerErrorCodes).toEqual({rate_limit_exceeded:1,insufficient_quota:1,unclassified:1});
+    expect(JSON.stringify(result)).not.toContain('private');
+  });
 });

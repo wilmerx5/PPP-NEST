@@ -11,6 +11,7 @@ on:
       - scripts/whatsapp-beta-cart-assertions.ts
       - scripts/whatsapp-beta-api-usage.ts
       - src/whatsapp/whatsapp-agent.service.ts
+      - src/whatsapp/whatsapp-openai-request.ts
       - src/whatsapp/whatsapp-catalog.service.ts
       - src/whatsapp/whatsapp-agent.spec.ts
       - src/whatsapp/whatsapp-agent.language.spec.ts
@@ -31,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [gpt-4o-mini, gpt-4.1-2025-04-14]
+        model: [gpt-4o-mini]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -282,7 +283,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [gpt-4o-mini, gpt-4.1-2025-04-14]
+        model: [gpt-4o-mini]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -318,7 +319,7 @@ jobs:
       fail-fast: false
       matrix:
         offset: [91, 115]
-        model: [gpt-4o-mini, gpt-4.1-2025-04-14]
+        model: [gpt-4o-mini]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -349,7 +350,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [gpt-4o-mini, gpt-4.1-2025-04-14]
+        model: [gpt-4o-mini]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -375,5 +376,101 @@ jobs:
         with:
           name: whatsapp-beta-real-chat-patterns-${{ matrix.model }}
           path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  quality-candidate-gpt41:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      WHATSAPP_BETA_LIVE: '1'
+      WHATSAPP_BETA_MODEL: 'gpt-4.1-2025-04-14'
+      WHATSAPP_BETA_REQUEST_INTERVAL_MS: '1500'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: GPT-4.1 basic (6 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'basic'
+          WHATSAPP_BETA_CASE_LIMIT: '6'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-basic.json
+          echo "$result" > tmp/gpt41-basic-exit.txt
+          exit "$result"
+      - name: GPT-4.1 human (33 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '33'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-human.json
+          echo "$result" > tmp/gpt41-human-exit.txt
+          exit "$result"
+      - name: GPT-4.1 hard-initial (30 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '30'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-hard-initial.json
+          echo "$result" > tmp/gpt41-hard-initial-exit.txt
+          exit "$result"
+      - name: GPT-4.1 hard-repeated (234 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '117'
+          WHATSAPP_BETA_CASE_OFFSET: '30'
+          WHATSAPP_BETA_REPEATS: '2'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-hard-repeated.json
+          echo "$result" > tmp/gpt41-hard-repeated-exit.txt
+          exit "$result"
+      - name: GPT-4.1 acceptance gate
+        if: always()
+        run: |
+          failed=0
+          for suite in basic human hard-initial hard-repeated; do
+            result="tmp/gpt41-${suite}-exit.txt"
+            if [ ! -f "$result" ] || [ "$(cat "$result")" != "0" ]; then
+              echo "::error::GPT-4.1 suite failed or missing: $suite"
+              failed=1
+            fi
+          done
+          exit "$failed"
+      - name: Archive GPT-4.1 sequential comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-quality-gpt-4.1-2025-04-14
+          path: tmp/gpt41-*.json
           retention-days: 7
           if-no-files-found: error

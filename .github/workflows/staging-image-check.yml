@@ -1,0 +1,32 @@
+name: PPP Staging Image Check
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, package.json, package-lock.json, src/**, migrations/**, .github/workflows/staging-image-check.yml]
+permissions:
+  contents: read
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the exact candidate image
+        run: docker build --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "ppp-nest-staging:$GITHUB_SHA" .
+      - name: Test with the image's Node and locked npm dependencies
+        run: |
+          docker build --target builder -t ppp-nest-staging-tests:ci .
+          docker run --rm -v "$PWD/scripts:/app/scripts:ro" -v "$PWD/test:/app/test:ro" ppp-nest-staging-tests:ci npm test -- --runInBand --ci
+      - name: Validate isolated staging Compose
+        run: |
+          cp config/staging.env.example .env.staging
+          docker compose --env-file .env.staging -p ppp-staging -f docker-compose.staging.yml config --quiet
+      - name: Save the verified runtime image
+        run: docker save "ppp-nest-staging:$GITHUB_SHA" | gzip > ppp-staging.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppp-staging-image-${{ github.sha }}
+          path: ppp-staging.tar.gz
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error

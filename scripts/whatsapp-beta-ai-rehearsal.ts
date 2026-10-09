@@ -51,9 +51,21 @@ const products = JSON.parse(readFileSync(catalogPath, 'utf8')) as WhatsappCatalo
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
 const apiUsage = new BetaApiUsage();
 const originalFetch = globalThis.fetch;
+const requestIntervalMs = Math.max(0,Math.min(5000,Number(process.env.WHATSAPP_BETA_REQUEST_INTERVAL_MS)||0));
+let lastRequestStart = 0;
+let requestStartQueue = Promise.resolve();
 // Only this isolated process: observe cloned responses without changing AgentV1.
 globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   const tracked = args[0] === 'https://api.openai.com/v1/chat/completions';
+  if (tracked && requestIntervalMs) {
+    const gate=requestStartQueue.then(async()=> {
+      const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
+      if(delay) await new Promise(resolve=>setTimeout(resolve,delay));
+      lastRequestStart=Date.now();
+    });
+    requestStartQueue=gate.catch(()=>undefined);
+    await gate;
+  }
   if (tracked) apiUsage.requests++;
   const response = await originalFetch(...args);
   if (tracked) {

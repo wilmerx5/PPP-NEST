@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ppp-nest-staging:${STAGING_IMAGE_TAG:-candidate}
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      PPP_STAGING: 'true'
+      PORT: '3000'
+      FACTUS_ENV: sandbox
+    ports:
+      - '127.0.0.1:${STAGING_PORT:-3301}:3000'
+    mem_limit: 1024m
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
