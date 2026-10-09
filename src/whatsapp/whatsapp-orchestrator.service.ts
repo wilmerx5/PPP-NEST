@@ -3826,6 +3826,12 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    if (actions.updateCartLines?.some(update => update.quantity !== undefined &&
+      update.quantity > (session.cart[update.cartLineIndex]?.quantity || 0))) {
+      const limit = evaluateCartLimits(next.cart, this.toCartLimitsConfig(cfg, next), {orderType:next.orderType});
+      if (!limit.ok) return {session,limitBlocked:limit};
+    }
+
     if (actions.requestHuman) {
       // Temporal: no activar asesor; la reply de la IA / humanContactMessage orientan al teléfono
     }
@@ -4351,7 +4357,7 @@ export class WhatsappOrchestratorService {
       if (prev) {
         map.set(key, {
           ...prev,
-          quantity: Math.min(30, (prev.quantity || 1) + qty),
+          quantity: (prev.quantity || 1) + qty,
         });
       } else {
         map.set(key, { ...raw, quantity: qty });

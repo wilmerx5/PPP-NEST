@@ -145,4 +145,26 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     expect((await apply(turn.actions,cart))[0].attributes[0].attributeValue).toBe('Mango');
   });
 
+  it.each([
+    [{maxUnitsPerItem:3},'max_units_item'],
+    [{maxTotalUnits:3},'max_total_units'],
+    [{maxOrderAmount:90000},'max_amount'],
+  ])('does not bypass configured limits through a quantity edit: %j',async(cfg,kind)=>{
+    const service=Object.create(WhatsappOrchestratorService.prototype) as any;service.catalogService=catalog;
+    const session={cart:[line(23,2)],orderType:'pickup'};
+    const output=await service.applyActions({},session,{updateCartLines:[{productId:23,cartLineIndex:0,quantity:4}]},products,cfg);
+    expect(output.limitBlocked.kind).toBe(kind);expect(output.session).toEqual(session);expect(session.cart[0].quantity).toBe(2);
+  });
+  it('allows reducing quantity without discarding notes or options',async()=>{
+    const service=Object.create(WhatsappOrchestratorService.prototype) as any;service.catalogService=catalog;
+    const session={cart:[line(50,4,'Lulo','sin hielo')],orderType:'pickup'};
+    const output=await service.applyActions({},session,{updateCartLines:[{productId:50,cartLineIndex:0,quantity:2}]},products,{maxUnitsPerItem:3});
+    expect(output.limitBlocked).toBeUndefined();expect(output.session.cart[0]).toEqual({...session.cart[0],quantity:2});
+  });
+  it('does not silently lose units when identical variants merge above thirty',async()=>{
+    const cart=[line(50,16,'Mango'),line(50,16,'Lulo')];
+    const edited=await apply(tool('set_attribute',{productId:50,cartLineIndex:1,attributeName:'Sabor',attributeValue:'Mango'},cart).actions,cart);
+    expect(edited).toHaveLength(1);expect(edited[0].quantity).toBe(32);
+  });
+
 });
