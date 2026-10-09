@@ -24,7 +24,7 @@
       "Para pedirte por fa un arroz chino",
       "Veci, ¿el arroz chino con pollo podría ser con pollo broaster?"
     ],
-    "expectation": "Aclarar presentación del arroz chino; pregunta de sustitución no significa agregar pollo broaster suelto."
+    "expectation": "El arroz chino simple (#26) existe; al preguntar broaster explicar que #36 ofrece atributo Pollo=Broaster, sin agregar pollo suelto"
   },
   {
     "id": "ejecutivo-estilo",
@@ -44,7 +44,7 @@
     "expectation": "Tratar como nota del pedido, nunca como nombre del cliente.",
     "initialCart": [
       {
-        "productId": 60,
+        "productId": 23,
         "quantity": 1
       }
     ]
@@ -52,7 +52,7 @@
   {
     "id": "sopas-por-codigos",
     "messages": [
-      "2 #20 y 2 #21"
+      "2 #20 y 2 #38"
     ],
     "expectation": "Agregar 2 menudencias y 2 ajiacos, sin interpretar códigos como número de pedido."
   }
