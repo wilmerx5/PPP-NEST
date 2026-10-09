@@ -922,16 +922,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(looksLikeNonAddressCommand('Para hotel el conejo')).toBe(false);
     });
 
-    it('mojorra es Mojarra y pide preparación, no una ficha muda', () => {
+    it('mojorra se reconoce y toma la primera preparación predeterminada', () => {
       const hit = catalog.findProductEmbeddedInMessage('Una mojorra', pppMenu);
       expect(hit?.name).toBe('Mojarra');
       expect(catalog.uncoveredDishWords('Una mojorra', pppMenu)).toEqual([]);
       const filled = catalog.fillDefaultAttributes(hit!, []);
-      expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(false);
-      const prompt = catalog.formatProductOptionsPrompt(hit!, filled);
-      expect(prompt).toMatch(/Frita/);
-      expect(prompt).toMatch(/Escribe el número/);
-      expect(prompt).not.toBe(catalog.formatProductHeader(hit!.name, hit!.price, hit!.code));
+      expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(true);
+      expect(filled).toEqual(expect.arrayContaining([
+        expect.objectContaining({ attributeName: 'Seleccion', attributeValue: 'Frita' }),
+      ]));
     });
 
     it('sobrebariga sudada es Sobrebarriga En Salsa', () => {
@@ -2033,10 +2032,13 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(applied?.attributes).toEqual([
         { attributeName: 'Pollo', attributeValue: 'Broaster' },
       ]);
-      // No auto-elegir Frito/Broaster al agregar
+      // Primera opción por defecto, sin pisar una corrección explícita a Broaster
       const filled = catalog.fillDefaultAttributes(arroz, []);
-      expect(filled.some((a) => /^pollo$/i.test(a.attributeName))).toBe(false);
-      expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(false);
+      expect(filled).toEqual([{ attributeName: 'Pollo', attributeValue: 'Frito' }]);
+      expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(true);
+      expect(catalog.fillDefaultAttributes(arroz, [
+        { attributeName: 'Pollo', attributeValue: 'Broaster' },
+      ])).toEqual([{ attributeName: 'Pollo', attributeValue: 'Broaster' }]);
     });
 
     it('menú ejecutivo sin estilo lista frito y broaster', () => {
@@ -2683,10 +2685,11 @@ Cll 6 b 78 c 33`;
         categoryName: 'Arroces',
       };
       const defaults = catalog.fillDefaultAttributes(combo, []);
-      expect(defaults).toEqual([
+      expect(defaults).toEqual(expect.arrayContaining([
         expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Colombiana' }),
-      ]);
-      expect(catalog.isAttributeSelectionComplete(combo, defaults)).toBe(false);
+        expect.objectContaining({ attributeName: 'Pollo', attributeValue: 'Frito' }),
+      ]));
+      expect(catalog.isAttributeSelectionComplete(combo, defaults)).toBe(true);
       const afterStyle = catalog.fillDefaultAttributes(combo, [
         { attributeName: 'Pollo', attributeValue: 'Frito' },
       ]);
