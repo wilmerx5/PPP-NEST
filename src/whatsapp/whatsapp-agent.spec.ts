@@ -183,6 +183,20 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.actions).toEqual({});
   });
 
+  it('summarizes an overlong menu answer without executing more tools or losing actions',async()=>{
+    const fetchMock=jest.spyOn(global,'fetch').mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Opciones de almuerzo. '.repeat(50)}}]})}) as Response)
+      .mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Tenemos bandeja y ejecutivo. ¿Cuál prefieres?'}}]})}) as Response);
+    try {
+      const service=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test-key',openaiModel:'gpt-4o-mini',localContext:{}})} as never,new WhatsappCatalogService({} as never));
+      const result=await service.runTurn({userMessage:'Qué tienes de almuerzo?',sessionSummary:'carrito vacío',recentMessages:[],businessRulesBlock:'reglas',brandName:'PPP',products});
+      expect(result.reply).toBe('Tenemos bandeja y ejecutivo. ¿Cuál prefieres?');
+      expect(result.actions).toEqual({});
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const secondBody=JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+      expect(secondBody.tool_choice).toBe('none');
+    } finally {fetchMock.mockRestore();}
+  });
+
   it('no llama a OpenAI ni agrega SKUs ante un ambiguo "2 de cada una"', async () => {
     const agent = new WhatsappAgentService(
       { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,

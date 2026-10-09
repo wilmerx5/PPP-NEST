@@ -458,6 +458,7 @@ export class WhatsappAgentService {
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     let retriedUnappliedOrder = false;
+    let retriedConciseReply = false;
     let needsAttributeProductId: number | undefined;
     let lookupPlacedOrder: { orderNumber?: number } | undefined;
     let lookupDeliveryTime = false;
@@ -552,7 +553,7 @@ Contacto humano: *${phone || '3118866823'}*
             model,
             messages,
             tools: AGENT_TOOLS,
-            tool_choice: 'auto',
+            tool_choice: retriedConciseReply ? 'none' : 'auto',
           },
           {
             model,
@@ -614,6 +615,11 @@ Contacto humano: *${phone || '3118866823'}*
             !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {
             retriedUnappliedOrder = true;
             messages.push({role:'system',content:'Tu respuesta dice que agregaste productos pero no ejecutaste add_item. Una búsqueda no modifica el carrito. Ejecuta add_item para los productos solicitados y resueltos por las tools antes de responder. Si queda una ambigüedad real, pregunta solo por ella y no afirmes cambios que no ejecutaste.'});
+            continue;
+          }
+          if (reply.length > 420 && !retriedConciseReply && i < this.maxIterations - 1) {
+            retriedConciseReply = true;
+            messages.push({role:'system',content:'Resume tu respuesta anterior en máximo 360 caracteres, con tono cordial. Conserva lo esencial de lo preguntado: nombres y precios o cantidades/opciones efectivamente agregadas. Para una consulta general ofrece 2–3 opciones, sin enumerar todos sus atributos. No cambies el pedido ni ejecutes más herramientas.'});
             continue;
           }
           // Sin tools ni texto → el orquestador puede caer a reglas (multi-pedido)
@@ -1285,8 +1291,11 @@ Contacto humano: *${phone || '3118866823'}*
           attributes = attrs;
         }
 
+        const choicesKey = (choices: typeof attributes) => JSON.stringify((choices || []).map(choice =>
+          `${choice.attributeName.toLowerCase()}:${choice.attributeValue.toLowerCase()}`).sort());
         if (!this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
-          ctx.actions.addItems?.some(item => item.productId === product.id)) {
+          ctx.actions.addItems?.some(item => item.productId === product.id &&
+            choicesKey(item.attributes) === choicesKey(attributes) && (item.note || '') === (note || ''))) {
           return JSON.stringify({ok:false,error:'item_already_added_this_turn',
             hint:'Ese plato ya se agregó en este turno. Confirma únicamente la cantidad y opciones de la llamada exitosa; no inventes otra línea.'});
         }

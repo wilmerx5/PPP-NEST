@@ -33,6 +33,24 @@ describe('Agent language boundaries with PPP menu', () => {
     expect(result.error).toBe('question_not_order');
     expect(actions.addItems).toBeUndefined();
   });
+  it.each([
+    ['Una trucha asada y otra trucha frita',12,'Seleccion','Asada','Frita'],
+    ['Un ejecutivo frito con ajiaco y otro ejecutivo frito con menudencias',22,'Sopa','Ajiaco','Menudencias'],
+  ])('keeps two separately introduced preparations of one SKU: %s',(text,id,key,first,second)=>{
+    const actions:AiOrderAction={};
+    const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,userMessage:String(text),cart:[],setNeedsAttr:()=>{}};
+    for(const value of [first,second]){
+      const result=JSON.parse((agent as any).executeTool('add_item',{productId:Number(id),quantity:1,attributes:[{attributeName:String(key),attributeValue:String(value)}]},ctx));
+      expect(result.ok).toBe(true);
+    }
+    expect(actions.addItems).toHaveLength(2);
+    expect(actions.addItems?.map(item=>item.attributes?.find(a=>a.attributeName===key)?.attributeValue)).toEqual([first,second]);
+  });
+  it('does not copy the separately ordered soup flavor into the executive',()=>{
+    const {actions,result}=add('Un ejecutivo frito y aparte dos sopas pequeñas de menudencias',22,[{attributeName:'Sopa',attributeValue:'Menudencias'}]);
+    expect(result.ok).toBe(true);
+    expect(actions.addItems?.[0].attributes).toContainEqual({attributeName:'Sopa',attributeValue:'Ajiaco'});
+  });
   it('requires a cooking style for half a chicken even if the model picks frito', () => {
     const {actions,result}=add('quiero medio pollo',2);
     expect(result.error).toBe('missing_cooking_style');

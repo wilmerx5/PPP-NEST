@@ -1992,7 +1992,7 @@ export class WhatsappCatalogService {
   /** Scope choices to their own dish when a multi-order has a unique owner. */
   orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
     // Preserve modifiers; the general matcher may strip them before splitting.
-    const explicitSegments = text.split(/(?:\s+y\s+|,\s*)(?=(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i);
+    const explicitSegments = text.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i);
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
     // The general search splitter removes modifiers and may separate an included
@@ -3470,6 +3470,13 @@ export class WhatsappCatalogService {
       .replace(/^(?:bueno|listo|hola|buenas|dale|ok)\s*[,!:]\s*/i, '');
     if (!raw) return false;
     if (this.countQuantityMentions(raw) >= 2) return true;
+
+    // Two separately introduced dishes can belong to the same family; counting
+    // distinct food names alone loses "una trucha ... y otra trucha ...".
+    const separatelyOrdered = normalizeText(raw).split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|ademas)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/);
+    if (separatelyOrdered.length >= 2 && separatelyOrdered.every(segment =>
+      new RegExp(FOOD_ORDER_TOKEN, 'i').test(segment) ||
+      /\b(truchas?|ejecutivos?|churrascos?|sobrebarriga|mojarras?|jugos?|limonadas?|gaseosas?|sopas?|ajiaco|mondongo|menudencias?)\b/.test(segment))) return true;
 
     // "arroz chino en combo con medio pollo broaster" = 2 platos (no el SKU combo arroz+pollo)
     if (this.looksLikeArrozComboPlusSizedChicken(raw)) return true;
