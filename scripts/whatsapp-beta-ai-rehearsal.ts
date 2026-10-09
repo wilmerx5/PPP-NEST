@@ -10,6 +10,13 @@ import { join } from 'path';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
 
+type HardScenario = {
+ id:string;group:string;messages:string[];context?:string[];
+ initialCart?:Array<{productId:number;quantity:number;attributes?:Array<{attributeName:string;attributeValue:string}>}>;
+ items:Record<string,number>;exclude?:number[];forbidNew?:number[];
+ attrs?:Array<{id:number;key:string;value:string}>;note?:string[];customerNote?:string[];
+ replyAny?:string[];maxReply:number;
+};
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
   any: string[]; all?: string[]; forbid?: string[];
@@ -46,17 +53,97 @@ const settings = {
 const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService(settings as never, catalog);
 const humanMode = process.env.WHATSAPP_BETA_SUITE === 'human';
+const hardMode = process.env.WHATSAPP_BETA_SUITE === 'hard';
+const hardScenarios = JSON.parse(readFileSync(
+  join(process.cwd(), 'scripts/fixtures/whatsapp-beta-hard-conversations.json'), 'utf8',
+)) as HardScenario[];
 const humanScenarios = JSON.parse(readFileSync(
   join(process.cwd(), 'scripts/fixtures/whatsapp-beta-human-intents.json'), 'utf8',
 )) as HumanScenario[];
 const maxCases = Math.max(1, Math.min(
-  humanMode ? humanScenarios.length : cases.length,
-  Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (humanMode ? 12 : cases.length)),
+  hardMode ? hardScenarios.length : humanMode ? humanScenarios.length : cases.length,
+  Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (hardMode ? 10 : humanMode ? 12 : cases.length)),
 ));
 const offset = Math.max(0, Number(process.env.WHATSAPP_BETA_CASE_OFFSET || 0));
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
-if (humanMode) {
+if (hardMode) {
+  for (const scenario of hardScenarios.slice(offset, offset + maxCases)) {
+    const cart = new Map<number, { productId: number; name: string; quantity: number;
+      note?: string; attributes: Array<{attributeName:string;attributeValue:string}> }>();
+    for (const line of scenario.initialCart || []) {
+      const product = products.find(p => p.id === line.productId);
+      if (!product) throw new Error('Invalid initialCart productId '+line.productId);
+      cart.set(line.productId,{ productId:line.productId,name:product.name,
+        quantity:line.quantity,attributes:line.attributes || [] });
+    }
+    const history = [...(scenario.context || [])];
+    const turns: Array<Record<string,unknown>> = [];
+    let customerNotes = '';
+    for (const message of scenario.messages) {
+      const result = await agent.runTurn({
+        userMessage:message,sessionSummary:JSON.stringify({cart:[...cart.values()],customerNotes}),
+        recentMessages:history,
+        businessRulesBlock:'Pedidos reales simulados. Siempre usar ids del catálogo y respetar cantidades. Diferenciar atributo del producto (opciones enumeradas), nota de cocina (sin ensalada, extra ají) y nuevo producto. No confirmar órdenes ni ejecutar pagos. Respuestas breves y amables. Para atributos sin elección explícita usar primera opción válida.',
+        brandName:'Pronto Pollo Portal (simulación)',products,
+        cart:[...cart.values()],
+      });
+      const actions = result.actions;
+      if(actions.clearCart)cart.clear();
+      for(const id of actions.removeProductIds || [])cart.delete(id);
+      for(const item of actions.addItems || []){
+        const product = products.find(p=>p.id===item.productId);
+        if(!product)throw new Error('Non-catalog product '+item.productId);
+        const prev=cart.get(item.productId);
+        cart.set(item.productId,{productId:item.productId,name:product.name,
+          quantity:(prev?.quantity || 0)+Math.max(1,item.quantity || 1),
+          note:item.note || prev?.note,
+          attributes:item.attributes || prev?.attributes || []});
+      }
+      for(const attr of actions.updateAttributes || []){
+        const line=cart.get(attr.productId);
+        if(!line)continue;
+        line.attributes=line.attributes.filter(a=>a.attributeName.toLowerCase()!==attr.attributeName.toLowerCase());
+        line.attributes.push({attributeName:attr.attributeName,attributeValue:attr.attributeValue});
+      }
+      if(actions.setCustomerNotes)customerNotes=actions.setCustomerNotes;
+      const turn={user:message,reply:result.reply,actions,toolCalls:result.toolCalls,
+        error:result.error || null,cart:[...cart.values()]};
+      turns.push(turn);
+      history.push('Cliente: '+message,'Bot: '+result.reply);
+      if(result.error)break;
+    }
+    const finalCart=[...cart.values()];
+    const norm=(v:string)=>v.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+    const expected=Object.entries(scenario.items);
+    const problems:string[]=[];
+    if(turns.length!==scenario.messages.length)problems.push('turn_count');
+    if(turns.some(t=>t.error))problems.push('agent_error');
+    if(expected.length!==finalCart.length ||
+      expected.some(([id,qty])=>cart.get(Number(id))?.quantity!==qty))problems.push('wrong_cart');
+    for(const id of scenario.exclude || [])if(cart.has(id))problems.push('extra_'+id);
+    for(const id of scenario.forbidNew || []){
+      const seeded=scenario.initialCart?.find(c=>c.productId===id)?.quantity || 0;
+      if((cart.get(id)?.quantity||0)>seeded)problems.push('duplicate_'+id);
+    }
+    for(const attr of scenario.attrs||[]){
+      const val=cart.get(attr.id)?.attributes.find(a=>norm(a.attributeName)===norm(attr.key))?.attributeValue;
+      if(!val||norm(val)!==norm(attr.value))problems.push('missing_attr_'+attr.id+'_'+attr.key);
+    }
+    const noteText=norm(finalCart.map(c=>c.note||'').join(' ')+' '+customerNotes);
+    for(const token of [...(scenario.note||[]),...(scenario.customerNote||[])])
+      if(!noteText.includes(norm(token)))problems.push('missing_note_'+token);
+    if(scenario.replyAny?.length){
+      const answer=norm(turns.map(t=>String(t.reply)).join(' '));
+      if(!scenario.replyAny.some(t=>answer.includes(norm(t))))problems.push('reply_intent');
+    }
+    for(const turn of turns){
+      if(String(turn.reply).length>scenario.maxReply)problems.push('reply_too_long');
+    }
+    results.push({scenario:scenario.id,group:scenario.group,accepted:problems.length===0,
+      problems,expected:scenario.items,finalCart,customerNotes,turns});
+  }
+} else if (humanMode) {
   for (const scenario of humanScenarios.slice(offset, offset + maxCases)) {
     const messages = scenario.messages || [scenario.message || ''];
     const history: string[] = [];
@@ -190,7 +277,7 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
 }
-const report = { kind: humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
+const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
   caveat: 'Agent suggestions only. Not the full orchestrator, not WhatsApp Meta, no DB/order write.',
   scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
