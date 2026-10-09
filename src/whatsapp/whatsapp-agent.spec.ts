@@ -410,6 +410,27 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     ])).toEqual([{attributeName:'Pollo',attributeValue:'Broaster'}]);
   });
 
+  it('arepas fritas elegidas por cliente prevalecen sobre la propuesta Blancas', () => {
+    const catalog = new WhatsappCatalogService({} as never);
+    const agent = new WhatsappAgentService(settingsStub as never, catalog);
+    const p: WhatsappCatalogProduct = {
+      id: 1,code:1,name:'1 Pollo Frito',price:41000,hasAttributes:true,availableNow:true,
+      attributes:[{attributeName:'Arepas',options:['Blancas','Fritas','Sin arepas']}],
+    };
+    const actions: {addItems?:Array<{attributes?:Array<{attributeName:string;attributeValue:string}>}>} = {};
+    const response = (agent as any).executeTool('add_item',{
+      productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}],
+    },{
+      products:[p],byId:new Map([[p.id,p]]),actions,
+      userMessage:'Regálame un pollo frito con arepas fritas',
+      setNeedsAttr:()=>undefined,
+    });
+    expect(JSON.parse(response).ok).toBe(true);
+    expect(actions.addItems?.[0]?.attributes).toEqual([
+      {attributeName:'Arepas',attributeValue:'Fritas'},
+    ]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
