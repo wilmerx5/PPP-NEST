@@ -2,7 +2,7 @@ name: PPP Staging Image Check
 on:
   push:
     branches: [fix/whatsapp-regression-baseline]
-    paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, package.json, package-lock.json, src/**, migrations/**, .github/workflows/staging-image-check.yml]
+    paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, package.json, package-lock.json, src/**, migrations/**, scripts/ppp-runtime-smoke.*, .github/workflows/staging-image-check.yml]
 permissions:
   contents: read
 jobs:
@@ -21,7 +21,11 @@ jobs:
         run: |
           cp config/staging.env.example .env.staging
           docker compose --env-file .env.staging -p ppp-staging -f docker-compose.staging.yml config --quiet
-      - name: Save the verified runtime image
+      - name: Boot, protect and recover the isolated candidate runtime
+        # Only export an image after the real application has passed its runtime checks.
+        # No remote DB, API credentials or outbound messages are used by this fixture.
+        run: bash scripts/ppp-runtime-smoke.sh "$GITHUB_SHA"
+      - name: Save the verified runtime image archive
         run: docker save "ppp-nest-staging:$GITHUB_SHA" | gzip > ppp-staging.tar.gz
       - uses: actions/upload-artifact@v4
         with:
@@ -30,3 +34,11 @@ jobs:
           retention-days: 7
           compression-level: 0
           if-no-files-found: error
+      - name: Archive disposable runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppp-runtime-smoke-${{ github.sha }}
+          path: tmp/ppp-runtime-smoke.log
+          retention-days: 7
+          if-no-files-found: ignore
