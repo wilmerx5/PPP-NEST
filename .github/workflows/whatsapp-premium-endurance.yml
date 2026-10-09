@@ -1,0 +1,56 @@
+name: WhatsApp Premium Endurance
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/whatsapp-premium-endurance.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repeat-critical-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      WHATSAPP_BETA_LIVE: '1'
+      WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+      WHATSAPP_BETA_SUITE: 'hard'
+      WHATSAPP_BETA_REPEATS: '10'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Repeat five previously failing edits and all eight real-chat patterns (130 executions)
+        run: |
+          failed=0
+          for offset in 66 70 74 85 134 139; do
+            if [ "$offset" = 139 ]; then limit=8; else limit=1; fi
+            if WHATSAPP_BETA_CASE_OFFSET="$offset" WHATSAPP_BETA_CASE_LIMIT="$limit" yarn beta:whatsapp:ai; then
+              result=0
+            else
+              result=$?
+              failed=1
+            fi
+            if [ -f tmp/whatsapp-beta-ai-report.json ]; then
+              cp tmp/whatsapp-beta-ai-report.json "tmp/endurance-${offset}.json"
+              rm tmp/whatsapp-beta-ai-report.json
+            else
+              failed=1
+            fi
+            echo "$result" > "tmp/endurance-${offset}-exit.txt"
+          done
+          exit "$failed"
+      - name: Archive every result including failed repetitions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-endurance-gpt-4o-mini
+          path: tmp/endurance-*
+          retention-days: 7
+          if-no-files-found: error
