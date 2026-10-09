@@ -1122,6 +1122,24 @@ Contacto humano: *${phone || '3118866823'}*
           ? (args.attributes as { attributeName: string; attributeValue: string }[])
           : undefined;
 
+        // Una elección escrita por el cliente prevalece sobre la propuesta
+        // del modelo y sobre los valores por defecto del catálogo.
+        if (product.attributes?.length && ctx.userMessage?.trim()) {
+          const parsed = this.catalogService.resolveAttributesFromMessage(
+            product, ctx.userMessage, [],
+          );
+          if (parsed.status === 'complete' || parsed.status === 'partial') {
+            const selected = [...(attributes || [])];
+            for (const choice of parsed.attributes) {
+              const ix = selected.findIndex((a) =>
+                a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+              if (ix >= 0) selected[ix] = choice;
+              else selected.push(choice);
+            }
+            attributes = selected;
+          }
+        }
+
         // El LLM no puede inventar atributos. Los cambios de guarnición
         // ("Cambio de papas: por yuca") son NOTAS, no opciones del producto.
         if (attributes?.length) {
