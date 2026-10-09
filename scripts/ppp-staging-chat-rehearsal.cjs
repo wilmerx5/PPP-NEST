@@ -119,7 +119,12 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       const payload = JSON.stringify({ object: 'whatsapp_business_account', entry: [] });
       const r = await request('/api/whatsapp/webhook', { method: 'POST', headers: {
         'Content-Type': 'application/json', 'X-Hub-Signature-256': sign(payload) }, body: payload });
-      ensure(r.status === 200 && (await r.json()).ok === true, 'APP_SECRET_MISMATCH_OR_WEBHOOK_FAILED');
+      report.webhookSignatureHttpStatus = r.status;
+      const body = await r.json().catch(() => ({}));
+      if (r.status === 401 && body.error === 'invalid_signature') throw new CheckError('APP_SECRET_MISMATCH');
+      if (r.status === 401 && body.error === 'raw_body_missing') throw new CheckError('WEBHOOK_RAW_BODY_MISSING');
+      if (r.status === 503 && body.error === 'app_secret_missing') throw new CheckError('APP_SECRET_NOT_CONFIGURED_ON_SERVER');
+      ensure(r.status === 200 && body.ok === true, 'SIGNED_WEBHOOK_HTTP_FAILED');
     })) return report;
     let initial, products;
     if (!await check('existing_empty_test_conversation', async () => {

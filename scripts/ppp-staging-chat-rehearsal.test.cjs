@@ -49,7 +49,11 @@ function fixture(options = {}) {
       const signature = 'sha256=' + createHmac('sha256', env.STAGING_WHATSAPP_APP_SECRET).update(opts.body).digest('hex');
       assert.equal(opts.headers['X-Hub-Signature-256'], signature);
       const msg = JSON.parse(opts.body).entry[0]?.changes[0]?.value?.messages[0];
-      if (!msg) return json({ ok: !options.signatureMismatch }, options.signatureMismatch ? 401 : 200);
+      if (!msg) {
+        if (options.signatureMismatch) return json({ ok: false, error: 'invalid_signature' }, 401);
+        if (options.rawBodyMissing) return json({ ok: false, error: 'raw_body_missing' }, 401);
+        return json({ ok: true });
+      }
       assert.equal(msg.from, env.STAGING_WHATSAPP_RECIPIENTS);
       if (options.timeout) throw Error('synthetic transport error with sensitive response text');
       if (seen.has(msg.id) && !options.breakDedup) return json({ ok: true });
@@ -84,6 +88,14 @@ test('executes 13 bounded steps, validates HMAC, checks persisted cart and clear
 test('preflight verifies routing and signature without sending message payloads', async () => {
   const f = fixture(); const report = await runRehearsal({ ...env, STAGING_CHAT_EXECUTE: 'false' }, f.fetch, f.helpers);
   assert.equal(report.ok, true); assert.equal(report.webhookPosts, 0); assert.equal(f.sentTexts.length, 0);
+});
+test('distinguishes mismatched secret from missing raw body without exposing the response', async () => {
+  for (const [option, code] of [['signatureMismatch', 'APP_SECRET_MISMATCH'], ['rawBodyMissing', 'WEBHOOK_RAW_BODY_MISSING']]) {
+    const f = fixture({ [option]: true }); const report = await runRehearsal(env, f.fetch, f.helpers);
+    assert.equal(report.webhookSignatureHttpStatus, 401);
+    assert.equal(report.checks.find(c => !c.pass).code, code);
+    assert.equal(report.webhookPosts, 0);
+  }
 });
 for (const option of ['missingEndpoint', 'notStaging', 'wrongTarget', 'unsafeCookie', 'existingDraft', 'signatureMismatch']) {
   test(`blocks all conversation messages when ${option}`, async () => {
