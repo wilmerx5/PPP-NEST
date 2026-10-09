@@ -39,6 +39,7 @@ import { WhatsappOrchestratorService } from '../src/whatsapp/whatsapp-orchestrat
 import { WhatsappWebhookController } from '../src/whatsapp/whatsapp-webhook.controller';
 import { WhatsappMetaService } from '../src/whatsapp/whatsapp-meta.service';
 import { WhatsappRateLimitService } from '../src/whatsapp/whatsapp-rate-limit.service';
+import { WhatsappTurnTelemetryService } from '../src/whatsapp/whatsapp-turn-telemetry.service';
 import { WhatsappPointsService } from '../src/whatsapp/whatsapp-points.service';
 import type { AiOrderAction, WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 
@@ -59,6 +60,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
  let send:jest.SpyInstance,finalize:jest.SpyInstance,external:jest.SpyInstance;
  let cfg:any;
  let gateway:{emitOrdersUpdates:jest.Mock};
+ let agent:{runTurn:jest.Mock};
  const secret='synthetic-full-checkout-signature';
  const settings={getEffectiveConfig:async()=>cfg};
  const business={getClock:async()=>getZonedClock('America/Bogota'),assertAcceptingOnlineOrders:async()=>{},
@@ -104,6 +106,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   cfg={...await new WhatsappSettingsService(db.getRepository(WhatsappSettings),new ConfigService()).getEffectiveConfig(),
    enabled:true,agentV1Enabled:true,appSecret:secret,rateLimitPerMinute:500};
   gateway={emitOrdersUpdates:jest.fn()};
+  agent={runTurn:jest.fn().mockResolvedValue({reply:'Listo, conservé los otros productos. ¿Algo más?',actions:{},toolCalls:[]})};
   inventory=new ProductsService(db.getRepository(Product),db.getRepository(Category),db.getRepository(ProductAttribute),db.getRepository(ProductVariantStock),
    db.getRepository(InventoryGroup),db.getRepository(InventoryGroupItem),db.getRepository(InventorySelection),db.getRepository(InventorySelectionProduct),db.getRepository(ProductSchedule),
    {get:()=>undefined,set:()=>{}} as never,breaker as never,business as never);
@@ -116,7 +119,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   const meta=new WhatsappMetaService(settings as never);send=jest.spyOn(meta,'sendText').mockResolvedValue(undefined);
   orchestrator=new WhatsappOrchestratorService(settings as never,meta,catalog,{} as never,conversations,business as never,orders,
    {createPreference:async()=>{throw new Error('Cash tests must not initiate online payments');}} as never,new WhatsappActionGuardService(catalog),
-   new WhatsappPointsService({} as never),{} as never,{} as never,{} as never);
+   new WhatsappPointsService({} as never),{} as never,agent as never,new WhatsappTurnTelemetryService());
   const module=await Test.createTestingModule({controllers:[WhatsappWebhookController],providers:[
    {provide:WhatsappSettingsService,useValue:settings},{provide:WhatsappMetaService,useValue:meta},{provide:WhatsappOrchestratorService,useValue:orchestrator},
    {provide:WhatsappConversationService,useValue:conversations},{provide:WhatsappRateLimitService,useValue:new WhatsappRateLimitService()},
@@ -136,7 +139,12 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   expect(order.items.filter(i=>i.product.id===1&&i.attributes.some(a=>a.attributeValue==='Fritas'))).toHaveLength(1);
   expect(order.items.filter(i=>i.product.id===23).map(i=>i.note)).toEqual(['sin ensalada','sin ensalada']);
   expect(order.items.reduce((sum,i)=>sum+Number(i.unitPrice),0)).toBe(186500);expect(await stock(1)).toBe(7);expect(await stock(23)).toBe(8);
-  expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
+  const kitchen=gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order');
+  expect(kitchen).toHaveLength(1);
+  expect(kitchen[0][1].orderId).toBe(order.id);
+  expect(kitchen[0][1].items.find(i=>i.productId===1)).toMatchObject({quantity:3,price:41000});
+  expect(kitchen[0][1].items.find(i=>i.productId===1).variants.map(v=>v.attributes.Arepas).sort()).toEqual(['Blancas','Blancas','Fritas']);
+  expect(kitchen[0][1].items.find(i=>i.productId===23).variants.map(v=>v.note)).toEqual(['sin ensalada','sin ensalada']);
   expect((await other.reloadConversation(c.id)).state).toBe('completed');expect(other.getSession(await other.reloadConversation(c.id)).cart).toEqual([]);
  });
  it('applies removal and quantity corrections before the actual checkout',async()=>{
@@ -193,4 +201,67 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   await Promise.all([post('wamid.customer.a').expect(200),post('wamid.customer.b','confirmar','573000000002').expect(200)]);
   const rows=await otherDb.getRepository(Order).find();expect(rows).toHaveLength(2);expect(new Set(rows.map(r=>r.dailyOrderNumber)).size).toBe(2);expect(await stock(23)).toBe(8);
  });
+ it('routes a signed note edit into one variant, persistence and the real kitchen mapper',async()=>{
+  const cart=await apply('Dos pollos con arepas blancas y un pollo con arepas fritas',{
+   addItems:[{productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+    {productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Fritas'}]}]});
+  const c=await ready(cart);
+  agent.runTurn.mockResolvedValueOnce({reply:'Listo, los de arepas blancas van sin salsa.',
+   actions:{updateCartLines:[{productId:1,cartLineIndex:0,note:'sin salsa'}]},toolCalls:['update_item']});
+  await post('wamid.http.edit.note','A los pollos de arepas blancas ponles sin salsa. El de arepas fritas déjalo igual').expect(200);
+  expect(agent.runTurn).toHaveBeenCalledTimes(1);
+  const persisted=other.getSession(await other.reloadConversation(c.id)).cart;
+  expect(persisted.find(l=>l.attributes?.some(a=>a.attributeValue==='Blancas'))).toMatchObject({quantity:2,note:'sin salsa'});
+  expect(persisted.find(l=>l.attributes?.some(a=>a.attributeValue==='Fritas'))?.note).toBeFalsy();
+  expect(await db.getRepository(Order).count()).toBe(0);
+  await post('wamid.http.note.summary').expect(200);await post('wamid.http.note.submit').expect(200);await settled();
+  const order=await saved();expect(order.items).toHaveLength(3);expect(await stock(1)).toBe(7);
+  const kitchen=gateway.emitOrdersUpdates.mock.calls.find(call=>call[0]==='created_order')[1];
+  expect(kitchen.items[0].variants.filter(v=>v.attributes.Arepas==='Blancas').map(v=>v.note)).toEqual(['sin salsa','sin salsa']);
+  expect(kitchen.items[0].variants.find(v=>v.attributes.Arepas==='Fritas').note).toBeNull();
+ });
+ it('removes only the selected preparation through signed inbound and preserves the other units',async()=>{
+  const cart=await apply('Dos pollos con arepas blancas y un pollo con arepas fritas',{
+   addItems:[{productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+    {productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Fritas'}]}]});
+  const c=await ready(cart);
+  agent.runTurn.mockResolvedValueOnce({reply:'Listo, quedan los dos de arepas blancas.',
+   actions:{removeCartLines:[{productId:1,cartLineIndex:1}]},toolCalls:['remove_item']});
+  await post('wamid.http.remove.variant','Quita el pollo de arepas fritas y conserva los dos de arepas blancas').expect(200);
+  const persisted=other.getSession(await other.reloadConversation(c.id)).cart;
+  expect(persisted).toHaveLength(1);expect(persisted[0].quantity).toBe(2);
+  expect(persisted[0].attributes).toContainEqual({attributeName:'Arepas',attributeValue:'Blancas'});
+  await post('wamid.http.remove.summary').expect(200);await post('wamid.http.remove.submit').expect(200);
+  expect((await saved()).items).toHaveLength(2);expect(await stock(1)).toBe(8);
+ });
+ it('clears only the selected line note before real order creation',async()=>{
+  const cart=await apply('Un arroz con pollo sin ensalada y otro arroz con pollo sin cilantro',{addItems:[{productId:23,quantity:1,note:'sin ensalada'},
+   {productId:23,quantity:1,note:'sin cilantro'}]});
+  const c=await ready(cart);
+  agent.runTurn.mockResolvedValueOnce({reply:'Listo, el arroz que iba sin cilantro queda normal.',
+   actions:{updateCartLines:[{productId:23,cartLineIndex:1,note:''}]},toolCalls:['update_item']});
+  await post('wamid.http.clear.note','El arroz que iba sin cilantro déjalo normal. El de sin ensalada no lo cambies').expect(200);
+  const persisted=other.getSession(await other.reloadConversation(c.id)).cart;
+  expect(persisted).toHaveLength(2);expect(persisted[0].note).toBe('sin ensalada');expect(persisted[1].note).toBeFalsy();
+  await post('wamid.http.clear.summary').expect(200);await post('wamid.http.clear.submit').expect(200);
+  expect((await saved()).items.map(i=>i.note||'').sort()).toEqual(['','sin ensalada']);expect(await stock(23)).toBe(8);
+ });
+ it('answers a menu question without changing the persisted cart or creating an order',async()=>{
+  const cart=await apply('Un arroz con pollo',{addItems:[{productId:23}]});const c=await ready(cart);
+  agent.runTurn.mockResolvedValueOnce({reply:'La limonada natural vale $4.500. ¿Quieres agregar una?',actions:{},toolCalls:['search_menu']});
+  await post('wamid.http.question','¿Cuánto vale una limonada natural?').expect(200);
+  expect(other.getSession(await other.reloadConversation(c.id)).cart).toEqual(cart);
+  expect(await db.getRepository(Order).count()).toBe(0);expect(await stock(23)).toBe(10);
+ });
+ it('suppresses editing and checkout while a human has control, then resumes the preserved cart',async()=>{
+  const cart=await apply('Un arroz con pollo',{addItems:[{productId:23}]});const c=await ready(cart);
+  await db.getRepository(WhatsappConversation).update(c.id,{humanTakeover:true,humanTakeoverAt:new Date(),lastHumanOutboundAt:new Date()});
+  await post('wamid.http.takeover.edit','Al arroz ponle sin ensalada').expect(200);await post('wamid.http.takeover.confirm').expect(200);
+  expect(agent.runTurn).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();
+  expect(other.getSession(await other.reloadConversation(c.id)).cart).toEqual(cart);expect(await db.getRepository(Order).count()).toBe(0);
+  await db.getRepository(WhatsappConversation).update(c.id,{humanTakeover:false});
+  await post('wamid.http.resume.summary').expect(200);await post('wamid.http.resume.submit').expect(200);
+  expect(await db.getRepository(Order).count()).toBe(1);expect(await stock(23)).toBe(9);
+ });
+
 });
