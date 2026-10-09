@@ -25,7 +25,7 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '38a0bd8dfe46e8e367da49fa8546d7a11d4dbc6c'))
+       (github.event_name == 'push' && github.event.before == 'f35a6366a9163df7dec3e1137289ac55316ce20d'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,7 +40,7 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: 'false'
+          STAGING_CHAT_EXECUTE: ${{ ((github.event_name == 'workflow_dispatch' && inputs.execute) || (github.event_name == 'push' && github.event.before == 'f35a6366a9163df7dec3e1137289ac55316ce20d')) && 'true' || 'false' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
@@ -50,27 +50,25 @@ jobs:
           node - <<'NODE'
           const fs = require('node:fs');
           const emptyGuard = "ensure(initial.state === 'building_cart' && initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');";
-          const marker = "if (report.mode === 'preflight') { report.ok = true; return report; }";
-          const replacement = `if (report.mode === 'preflight') {
-            report.cartFacts = initial.sessionData.cart.map(line => ({
-              productId: line.productId, quantity: line.quantity, unitPrice: Number(line.unitPrice),
-              selectionAsada: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'Asada') || false,
-              selectionSalsa: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'En Salsa') || false,
-              attributeCount: line.attributes?.length || 0,
-              noteSinEnsalada: normalize(line.note).includes('sin ensalada'), noteEmpty: !String(line.note || '').trim()
-            }));
-            report.ok = true; return report;
-          }`;
+          const marker = 'const plan = buildPlan(products);';
+          const replacement = `const originalPlan = buildPlan(products);
+            const restored = originalPlan[2].cart;
+            const plan = [
+              { id: 'recover-known-asada-quantity', text: 'Solo era una sobrebarriga asada', cart: restored },
+              { id: 'duplicate-recovery-webhook', duplicatePrevious: true, cart: restored },
+              ...originalPlan.slice(4)
+            ];`;
           const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs', 'utf8');
-          if (!source.includes(marker) || !source.includes(emptyGuard)) throw Error('DIAGNOSTIC_MARKER_MISSING');
-          const guarded = `ensure(initial.state === 'building_cart' && initial.sessionData.cart.length <= 3 && initial.sessionData.cart.every(line => [17,13].includes(line.productId)), 'DIAGNOSTIC_CART_CHANGED');
-            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'DIAGNOSTIC_INPUT_CHANGED');`;
-          fs.writeFileSync('scripts/ppp-staging-cart-diagnostic.cjs', source.replace(emptyGuard, guarded).replace(marker, replacement));
-          require('./scripts/ppp-staging-cart-diagnostic.cjs').runRehearsal().then(report => {
+          if (!source.includes(marker) || !source.includes(emptyGuard)) throw Error('CONTINUATION_MARKER_MISSING');
+          const guarded = `const failedDraft = buildPlan(products)[2].cart.map(line => ({ ...line, quantity: line.productId === 13 && line.attrs.some(a => a.attributeValue === 'Asada') ? 2 : line.quantity }));
+            ensure(initial.state === 'building_cart' && cartMatches(failedDraft, initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
+            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'CONTINUATION_INPUT_CHANGED');`;
+          fs.writeFileSync('scripts/ppp-staging-cart-continuation.cjs', source.replace(emptyGuard, guarded).replace(marker, replacement).replace('existing_empty_test_conversation', 'existing_known_failed_test_draft'));
+          require('./scripts/ppp-staging-cart-continuation.cjs').runRehearsal().then(report => {
             fs.mkdirSync('tmp', { recursive: true });
             fs.writeFileSync('tmp/ppp-staging-chat-report.json', JSON.stringify(report));
             console.log(JSON.stringify(report)); process.exitCode = report.ok ? 0 : 1;
-          }).catch(() => { console.error('READONLY_CART_DIAGNOSTIC_FAILED'); process.exitCode = 1; });
+          }).catch(() => { console.error('CART_CONTINUATION_FAILED'); process.exitCode = 1; });
           NODE
       - name: Archive counts and check results without credentials or message bodies
         if: always()
