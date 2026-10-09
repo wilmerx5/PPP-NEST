@@ -92,19 +92,19 @@ for (const scenario of cases.slice(0, maxCases)) {
   if (scenario.id === 'sopas-correccion') {
     accepted = finalCart.length === 2 &&
       finalCart.some((p) => p.productId === 20 && p.quantity === 2) &&
-      finalCart.some((p) => p.productId === 21 && p.quantity === 2);
+      finalCart.some((p) => p.productId === 38 && p.quantity === 2);
   } else if (scenario.id === 'arroz-pechuga-yuca') {
     const first = turns[0]?.actions as { addItems?: Array<{ productId: number }>; setCustomerNotes?: string } | undefined;
     const address = turns[1]?.actions as { addItems?: Array<{ productId: number }>; setAddress?: string } | undefined;
     // Un pedido no se debe "recuperar" artificialmente cuando el cliente
     // solo informa la dirección, y "pechuga" no elige plancha/gratinada.
-    accepted = !!first?.addItems?.some((item) => item.productId === 60) &&
+    accepted = !!first?.addItems?.some((item) => item.productId === 23) &&
       !!first.setCustomerNotes?.match(/yuca/i) &&
-      !first.addItems.some((item) => item.productId === 77 || item.productId === 78) &&
+      !(first.addItems || []).some((item) => item.productId === 25 || item.productId === 61) &&
       !!address?.setAddress &&
       !(address.addItems?.length) &&
-      finalCart.some((p) => p.productId === 60) &&
-      !finalCart.some((p) => p.productId === 77 || p.productId === 78);
+      finalCart.some((p) => p.productId === 23) &&
+      !finalCart.some((p) => p.productId === 25 || p.productId === 61);
   } else if (scenario.id === 'arroz-chino-familia') {
     const browseReply = String(turns[0]?.reply || '').toLowerCase();
     const styleReply = String(turns[1]?.reply || '').toLowerCase();
@@ -125,11 +125,11 @@ for (const scenario of cases.slice(0, maxCases)) {
     const action = turns[0]?.actions as { setCustomerNotes?: string; setCustomerName?: string; addItems?: unknown[] } | undefined;
     accepted = !!action?.setCustomerNotes?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/aji/i) &&
       !action.setCustomerName && !(action.addItems?.length) &&
-      finalCart.length === 1 && finalCart[0].productId === 60;
+      finalCart.length === 1 && finalCart[0].productId === 23;
   } else if (scenario.id === 'sopas-por-codigos') {
     accepted = finalCart.length === 2 &&
       finalCart.some((p) => p.productId === 20 && p.quantity === 2) &&
-      finalCart.some((p) => p.productId === 21 && p.quantity === 2);
+      finalCart.some((p) => p.productId === 38 && p.quantity === 2);
   }
   if (accepted === null) throw new Error('Scenario has no acceptance assertion: '+scenario.id);
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
