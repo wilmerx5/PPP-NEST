@@ -13,23 +13,23 @@ jobs:
   preflight:
     # One authorized push, or an explicit dispatch on the same staging branch.
     # The script is immutable; neither PR code nor later branch edits receive secrets.
-    if: github.repository == 'wilmerx5/PPP-NEST' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == '10162923c61f2db74aa564ad1c14ec3faaa21091'))
+    if: github.repository == 'wilmerx5/PPP-NEST' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == 'b8426d70003879032871b7fd87eb4368fbb37e29'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 10162923c61f2db74aa564ad1c14ec3faaa21091
+          ref: b8426d70003879032871b7fd87eb4368fbb37e29
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Verify the bounded HTTP probe without real secrets or network
         run: node --test scripts/ppp-staging-http-smoke.test.cjs
-      - name: Verify staff and select the approved staging model
+      - name: Observe the authorized test conversation without sending messages
         env:
           STAGING_HTTP_SCOPE: staff
-          STAGING_CONFIGURE_APPROVED_MODEL: 'true'
+          STAGING_OBSERVE_TEST_CONVERSATION: 'true'
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
