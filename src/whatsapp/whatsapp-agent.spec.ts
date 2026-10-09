@@ -357,6 +357,59 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.toolCalls).toEqual([]);
   });
 
+  it('no añade porción extra de arepas si ya son opción del pollo', () => {
+    const agent = new WhatsappAgentService(settingsStub as never, new WhatsappCatalogService({} as never));
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 1, code: 1, name: '1 Pollo Frito', price: 41000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }] },
+      { id: 11, code: 11, name: 'Porcion De Arepas', price: 3500, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'sin arepas'] }] },
+    ];
+    const actions: { addItems?: unknown[] } = {};
+    const response = (agent as any).executeTool('add_item', { productId: 11, quantity: 1 }, {
+      products: dishes, byId: new Map(dishes.map(p=>[p.id,p])),
+      actions, userMessage: 'Un pollo frito con arepas fritas',
+      setNeedsAttr: () => undefined,
+    });
+    expect(JSON.parse(response).error).toBe('included_attribute_not_extra');
+    expect(actions.addItems).toBeUndefined();
+  });
+
+  it('convierte atributos inventados en notas sin cambiar la elección válida', () => {
+    const agent = new WhatsappAgentService(settingsStub as never, new WhatsappCatalogService({} as never));
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 23, code: 23, name: 'Arroz Con Pollo', price: 29500, availableNow: true,
+        hasAttributes: true, attributes: [] },
+    ];
+    const actions: { addItems?: Array<{ note?: string; attributes?: unknown[] }> } = {};
+    const response = (agent as any).executeTool('add_item', {
+      productId: 23, quantity: 1, note: 'sin ensalada',
+      attributes: [{ attributeName: 'Cambio de papas', attributeValue: 'por yuca' }],
+    }, {
+      products: dishes, byId: new Map(dishes.map(p=>[p.id,p])),
+      actions, userMessage: 'Un arroz con pollo sin ensalada y cambia las papas por yuca',
+      setNeedsAttr: () => undefined,
+    });
+    expect(JSON.parse(response).ok).toBe(true);
+    expect(actions.addItems?.[0]?.note).toMatch(/yuca/);
+    expect(actions.addItems?.[0]?.attributes).toEqual([]);
+  });
+
+  it('primera opción por defecto sin pisar atributos expresos', () => {
+    const catalog = new WhatsappCatalogService({} as never);
+    const item: WhatsappCatalogProduct = {
+      id:36,code:36,name:'Arroz Chino Con Medio Pollo',price:45000,
+      hasAttributes:true,availableNow:true,
+      attributes:[{attributeName:'Pollo',options:['Frito','Broaster']}],
+    };
+    expect(catalog.fillDefaultAttributes(item, [])).toEqual([
+      {attributeName:'Pollo',attributeValue:'Frito'},
+    ]);
+    expect(catalog.fillDefaultAttributes(item, [
+      {attributeName:'Pollo',attributeValue:'Broaster'},
+    ])).toEqual([{attributeName:'Pollo',attributeValue:'Broaster'}]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
