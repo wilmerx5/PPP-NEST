@@ -1258,5 +1258,786 @@
       }
     ],
     "maxReply": 420
+  },
+  {
+    "id": "almuerzo-pregunta-luego-dos-ejecutivos",
+    "group": "cotidiano",
+    "messages": [
+      "Buenas veci, qué tiene de almuerzo?",
+      "Bueno, regálame dos ejecutivos con pollo frito"
+    ],
+    "items": {
+      "22": 2
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {}
+      }
+    ],
+    "attrs": [
+      {
+        "id": 22,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      },
+      {
+        "id": 22,
+        "key": "Bebida",
+        "value": "Colombiana"
+      }
+    ]
+  },
+  {
+    "id": "carne-pregunta-luego-sobrebarriga",
+    "group": "cotidiano",
+    "messages": [
+      "Qué tienes de carne de res?",
+      "Entonces una sobrebarriga en salsa, porfa"
+    ],
+    "items": {
+      "13": 1
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {}
+      }
+    ],
+    "attrs": [
+      {
+        "id": 13,
+        "key": "Seleccion",
+        "value": "En Salsa"
+      }
+    ]
+  },
+  {
+    "id": "trucha-consulta-luego-orden",
+    "group": "cotidiano",
+    "messages": [
+      "La trucha la pueden hacer asada?",
+      "Listo, dame una trucha asada"
+    ],
+    "items": {
+      "12": 1
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {}
+      }
+    ],
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ]
+  },
+  {
+    "id": "consulta-churrasco-con-carrito",
+    "group": "cotidiano",
+    "messages": [
+      "Antes de pedir otra cosa, cuánto vale el churrasco?"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      }
+    ],
+    "exclude": [
+      17
+    ],
+    "forbidActions": [
+      "addItems",
+      "clearCart",
+      "removeProductIds"
+    ]
+  },
+  {
+    "id": "negacion-pollo-compra-churrasco",
+    "group": "cotidiano",
+    "messages": [
+      "No quiero pollo hoy, dame un churrasco"
+    ],
+    "items": {
+      "17": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "id": "negacion-bebida-solo-arroz",
+    "group": "cotidiano",
+    "messages": [
+      "No me agregues la limonada, solo un arroz con pollo"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      37
+    ]
+  },
+  {
+    "id": "dos-personas-no-dos-de-cada",
+    "group": "cotidiano",
+    "messages": [
+      "Somos dos: un arroz con pollo y una sobrebarriga en salsa"
+    ],
+    "items": {
+      "23": 1,
+      "13": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 13,
+        "key": "Seleccion",
+        "value": "En Salsa"
+      }
+    ]
+  },
+  {
+    "id": "medio-y-dos-cuartos-independientes",
+    "group": "cotidiano",
+    "messages": [
+      "Un medio pollo frito con arepas fritas, dos cuartos broaster ala pechuga y una limonada"
+    ],
+    "items": {
+      "2": 1,
+      "6": 2,
+      "37": 1
+    },
+    "maxReply": 520,
+    "attrs": [
+      {
+        "id": 2,
+        "key": "Arepas",
+        "value": "Fritas"
+      },
+      {
+        "id": 6,
+        "key": "Presa",
+        "value": "Ala pechuga"
+      }
+    ]
+  },
+  {
+    "id": "dos-combos-estilos-distintos",
+    "group": "cotidiano",
+    "messages": [
+      "Un combo de pollo broaster sin arepas con Pepsi y un combo de arroz chino con medio pollo frito con Manzana"
+    ],
+    "items": {
+      "98": 1,
+      "97": 1
+    },
+    "maxReply": 520,
+    "attrs": [
+      {
+        "id": 98,
+        "key": "Arepas",
+        "value": "sin arepas"
+      },
+      {
+        "id": 98,
+        "key": "Bebida",
+        "value": "Pepsi"
+      },
+      {
+        "id": 97,
+        "key": "Pollo",
+        "value": "Frito"
+      },
+      {
+        "id": 97,
+        "key": "Bebida",
+        "value": "Manzana"
+      }
+    ],
+    "exclude": [
+      4,
+      2,
+      36,
+      28,
+      42
+    ]
+  },
+  {
+    "id": "numero-personas-y-codigos",
+    "group": "cotidiano",
+    "messages": [
+      "Somos 3. Dame 2 del código 23 y 1 del código 60"
+    ],
+    "items": {
+      "23": 2,
+      "60": 1
+    },
+    "maxReply": 420
+  },
+  {
+    "id": "dos-truchas-preparacion-distinta",
+    "group": "cotidiano",
+    "messages": [
+      "Una trucha asada y otra trucha frita"
+    ],
+    "items": {
+      "12": 2
+    },
+    "maxReply": 420,
+    "expectedLines": [
+      {
+        "id": 12,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Asada"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Frita"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dos-ejecutivos-sopas-distintas",
+    "group": "cotidiano",
+    "messages": [
+      "Un ejecutivo frito con ajiaco y otro ejecutivo frito con menudencias"
+    ],
+    "items": {
+      "22": 2
+    },
+    "maxReply": 420,
+    "expectedLines": [
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sopa",
+            "value": "Ajiaco"
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sopa",
+            "value": "Menudencias"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "jugos-cantidades-sabores-distintos",
+    "group": "cotidiano",
+    "messages": [
+      "Dos jugos en agua de mango y un jugo en agua de lulo"
+    ],
+    "items": {
+      "50": 3
+    },
+    "maxReply": 420,
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 2,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Mango"
+          }
+        ]
+      },
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Lulo"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ejecutivo-eleccion-parcial-y-nota",
+    "group": "cotidiano",
+    "messages": [
+      "Un ejecutivo broaster con Pepsi, sin cilantro por favor"
+    ],
+    "items": {
+      "18": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 18,
+        "key": "Presa",
+        "value": "Pierna Pernil"
+      },
+      {
+        "id": 18,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      },
+      {
+        "id": 18,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "note": [
+      "cilantro"
+    ],
+    "exclude": [
+      28,
+      38
+    ]
+  },
+  {
+    "id": "arepas-aparte-no-porcion-extra",
+    "group": "cotidiano",
+    "messages": [
+      "Un pollo frito, las arepas aparte por favor"
+    ],
+    "items": {
+      "1": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      11
+    ],
+    "note": [
+      "aparte"
+    ]
+  },
+  {
+    "id": "cambio-yuca-no-extra-cobrado",
+    "group": "cotidiano",
+    "messages": [
+      "Un arroz con pollo, cambia las papas por yuca pero no agregues una porción adicional"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      7,
+      9
+    ],
+    "note": [
+      "yuca"
+    ]
+  },
+  {
+    "id": "quitar-dos-gaseosas-conservar-arroz",
+    "group": "cotidiano",
+    "messages": [
+      "Quita las dos gaseosas y deja el arroz"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      },
+      {
+        "productId": 28,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      },
+      {
+        "productId": 42,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Manzana"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cambiar-trucha-misma-cantidad",
+    "group": "cotidiano",
+    "messages": [
+      "La trucha mejor frita, no asada"
+    ],
+    "items": {
+      "12": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Frita"
+      }
+    ],
+    "forbidNew": [
+      12
+    ]
+  },
+  {
+    "id": "reemplazar-arroz-conservar-limonada",
+    "group": "cotidiano",
+    "messages": [
+      "En vez del arroz con pollo pon una pechuga a la plancha; deja la limonada"
+    ],
+    "items": {
+      "25": 1,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "exclude": [
+      23
+    ]
+  },
+  {
+    "id": "bajar-sopas-tres-a-una",
+    "group": "cotidiano",
+    "messages": [
+      "Deja solo un ajiaco, los otros dos no"
+    ],
+    "items": {
+      "38": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 38,
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "id": "cantidad-total-no-adicional",
+    "group": "cotidiano",
+    "messages": [
+      "Que sean tres arroces con pollo en total, no tres más"
+    ],
+    "items": {
+      "23": 3
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "id": "correccion-cantidad-no-suma",
+    "group": "cotidiano",
+    "messages": [
+      "No son 3 arroces con pollo, son 2"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "id": "quitar-arroz-dejar-bebida",
+    "group": "cotidiano",
+    "messages": [
+      "Ya no quiero el arroz con pollo, deja solo la limonada"
+    ],
+    "items": {
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "id": "nota-aji-no-producto",
+    "group": "cotidiano",
+    "messages": [
+      "Y no se te olvide bastante ají, porfa"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2
+      }
+    ],
+    "note": [
+      "aji"
+    ],
+    "forbidActions": [
+      "setCustomerName",
+      "addItems"
+    ]
+  },
+  {
+    "id": "cambiar-sopa-ejecutivo-no-sopa-extra",
+    "group": "cotidiano",
+    "messages": [
+      "La sopa del ejecutivo cámbiala por mondongo"
+    ],
+    "items": {
+      "18": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 18,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Ajiaco"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 18,
+        "key": "Sopa",
+        "value": "Mondongo"
+      },
+      {
+        "id": 18,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "exclude": [
+      45,
+      41
+    ],
+    "forbidNew": [
+      18
+    ]
+  },
+  {
+    "id": "ejecutivo-y-sopas-pequenas-aparte",
+    "group": "cotidiano",
+    "messages": [
+      "Un ejecutivo frito y aparte dos sopas pequeñas de menudencias"
+    ],
+    "items": {
+      "22": 1,
+      "40": 2
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 22,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      },
+      {
+        "id": 40,
+        "key": "Sopa",
+        "value": "Menudencias"
+      }
+    ],
+    "exclude": [
+      20
+    ]
+  },
+  {
+    "id": "pedido-typos-broster",
+    "group": "cotidiano",
+    "messages": [
+      "me rgala 2 cuartos broster pierna pernil porfa"
+    ],
+    "items": {
+      "6": 2
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 6,
+        "key": "Presa",
+        "value": "Pierna Pernil"
+      }
+    ]
+  },
+  {
+    "id": "filete-inexistente-ofrecer-alternativa",
+    "group": "cotidiano",
+    "messages": [
+      "Tiene filete de res? Si no tiene, qué otra carne maneja?"
+    ],
+    "items": {},
+    "maxReply": 420,
+    "replyAny": [
+      "churrasco",
+      "sobrebarriga"
+    ],
+    "forbidActions": [
+      "addItems"
+    ]
+  },
+  {
+    "id": "precio-varios-no-orden",
+    "group": "cotidiano",
+    "messages": [
+      "Cuánto me costarían dos arroces con pollo y una limonada? Solo estoy preguntando"
+    ],
+    "items": {},
+    "maxReply": 420,
+    "forbidActions": [
+      "addItems"
+    ],
+    "replyAny": [
+      "59",
+      "63",
+      "arroz"
+    ]
+  },
+  {
+    "id": "nota-billete-no-cantidad",
+    "group": "cotidiano",
+    "messages": [
+      "Un arroz con pollo, pago con un billete de 50 mil"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      50,
+      51
+    ]
+  },
+  {
+    "id": "direccion-numero-no-sku",
+    "group": "cotidiano",
+    "messages": [
+      "Un arroz con pollo",
+      "La dirección es calle 60 número 23-50, apartamento 301"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      60,
+      50,
+      51
+    ],
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "23": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ambiguo-pechuga-no-sku-por-defecto",
+    "group": "cotidiano",
+    "messages": [
+      "Quiero una pechuga, cuál tienen?"
+    ],
+    "items": {},
+    "maxReply": 420,
+    "replyAny": [
+      "plancha",
+      "gratinada",
+      "milanesa",
+      "milensa"
+    ],
+    "forbidActions": [
+      "addItems"
+    ]
   }
 ]

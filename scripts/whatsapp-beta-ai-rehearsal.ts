@@ -1,7 +1,7 @@
 /**
  * Ensayo de Agent V1 con OpenAI REAL y catálogo sintético.
  * Solo usa applyActions del orquestador; no instancia Meta, OrdersService ni repositorios de BD.
- * NUNCA ejecutar automáticamente en CI; requiere flag y key explícitos.
+ * Requiere flag y key explícitos, también en el workflow de ensayos autorizado.
  *
  * OPENAI_API_KEY=<secret> WHATSAPP_BETA_LIVE=1 yarn beta:whatsapp:ai
  */
@@ -22,6 +22,7 @@ type HardScenario = {
  lineNotes?:Array<{id:number;contains:string[];forbid?:string[]}>;
  forbidActions?:string[];
  expectedLines?:Array<{id:number;quantity:number;attrs?:Array<{key:string;value:string}>;note?:string[]}>;
+ turnCarts?:Array<{turn:number;items:Record<string,number>}>;
 };
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
@@ -147,6 +148,15 @@ if (hardMode) {
     }
     if(turns.length!==scenario.messages.length)problems.push('turn_count');
     if(turns.some(t=>t.error))problems.push('agent_error');
+    for (const expectation of scenario.turnCarts || []) {
+      const lines = turns[expectation.turn]?.cart as WhatsappSessionData['cart'] | undefined;
+      const quantities = new Map<number,number>();
+      for (const line of lines || []) quantities.set(line.productId,(quantities.get(line.productId)||0)+line.quantity);
+      if (!lines || quantities.size !== Object.keys(expectation.items).length ||
+        Object.entries(expectation.items).some(([id,quantity])=>quantities.get(Number(id))!==quantity)) {
+        problems.push('wrong_cart_after_turn_'+expectation.turn);
+      }
+    }
     for (const action of scenario.forbidActions || []) {
       if (turns.some(t => Object.prototype.hasOwnProperty.call(t.actions, action)))
         problems.push('forbidden_action_' + action);

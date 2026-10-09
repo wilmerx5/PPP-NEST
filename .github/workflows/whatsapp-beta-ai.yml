@@ -271,3 +271,32 @@ jobs:
           path: tmp/whatsapp-beta-ai-report.json
           retention-days: 7
           if-no-files-found: warn
+
+  everyday-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Everyday PPP conversations (32 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: '59'
+          WHATSAPP_BETA_CASE_LIMIT: '32'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: yarn beta:whatsapp:ai
+      - name: Archive everyday conversations and actual cart assertions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-everyday-conversations
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
