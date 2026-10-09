@@ -262,12 +262,12 @@ export class WhatsappAgentService {
     // no sumar al carrito anterior. Si faltan SKUs/variantes, decidir por LLM
     // con el flujo normal y nunca inventar IDs.
     const correctedDishes = parseQtyDishCorrection(input.userMessage);
-    if (correctedDishes?.length && /\\bsopas?\\b/i.test(input.userMessage)) {
+    if (correctedDishes?.length && /\bsopas?\b/i.test(input.userMessage)) {
       const normalize = (value: string) =>
-        value.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim();
+        value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       const soupProducts = input.products.filter((p) =>
         p.availableNow !== false &&
-        (/sopas?/i.test(p.categoryName || '') || /\\bsopa\\b/i.test(p.name)) &&
+        (/sopas?/i.test(p.categoryName || '') || /\bsopa\b/i.test(p.name)) &&
         !p.hasAttributes,
       );
       const selected = correctedDishes.map(({ qty, dish }) => {
