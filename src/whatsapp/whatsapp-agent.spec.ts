@@ -62,6 +62,7 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
   ];
 
   const catalogStub = {
+    extractProductModificationNote: (_text: string) => null,
     swapIntent: (_text: string) => null,
     hostedMenuDrink: () => null,
     similarNamedProducts: () => [],

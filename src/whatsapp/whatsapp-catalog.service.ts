@@ -294,7 +294,8 @@ function nearDishToken(word: string, tok: string): boolean {
   if (w.length >= 4 && t.length >= 4 && w.slice(0, 3) === t.slice(0, 3) && tokenEditDistance(w, t) <= 1) {
     return true;
   }
-  return w.length >= 6 && t.length >= 6 && w.slice(0, 4) === t.slice(0, 4) && tokenEditDistance(w, t) <= 2;
+  return w.length >= 7 && t.length >= 7 && w.slice(0, 3) === t.slice(0, 3) && tokenEditDistance(w, t) <= 2 ||
+    w.length >= 6 && t.length >= 6 && w.slice(0, 4) === t.slice(0, 4) && tokenEditDistance(w, t) <= 2;
 }
 
 /** Estilo de cocina / acompañamiento: no sirven solos para “encontrar” un producto. */
@@ -2005,15 +2006,13 @@ export class WhatsappCatalogService {
       (product.attributes?.some(attr => this.pickAttributeOptionFromText(segment, attr)) ||
         /^arepas?\s+aparte\b/.test(normalizeText(segment))))) return text;
     const named = segments.filter(segment => this.productNameFitsUtterance(product, segment));
-    if (named.length === 1) return named[0];
     const owned = segments.filter(segment => {
       const tokens = this.dishContentTokens(normalizeText(segment));
       const anchor = this.bestClauseCoverage(tokens, products);
       return anchor?.products.some(p => p.id === product.id);
     });
-    if (owned.length === 1) return owned[0];
-    if (owned.length > 1 && selected?.length) {
-      const matching = owned.filter(segment => {
+    if (selected?.length) {
+      const matching = [...new Set([...named,...owned])].filter(segment => {
         const parsed = this.resolveAttributesFromMessage(product, segment, []);
         // Defaults may exist on the action even though the segment only mentions
         // one choice. Compare choices actually spoken in this segment.
@@ -2023,6 +2022,8 @@ export class WhatsappCatalogService {
       });
       if (matching.length === 1) return matching[0];
     }
+    if (named.length === 1) return named[0];
+    if (owned.length === 1) return owned[0];
     return text;
   }
 

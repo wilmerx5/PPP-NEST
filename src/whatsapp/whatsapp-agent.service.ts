@@ -588,7 +588,11 @@ Contacto humano: *${phone || '3118866823'}*
             model,
             messages,
             tools: AGENT_TOOLS,
-            tool_choice: retriedConciseReply ? 'none' : 'auto',
+            tool_choice: retriedConciseReply ? 'none' : i===0 && (
+              this.catalogService.isAvailabilityInquiry(input.userMessage) ||
+              this.catalogService.isPriceInquiryIntent?.(input.userMessage) ||
+              this.catalogService.isProductDescriptionInquiry(input.userMessage)
+            ) ? {type:'function',function:{name:'search_menu'}} : 'auto',
           },
           {
             model,
@@ -1196,6 +1200,11 @@ Contacto humano: *${phone || '3118866823'}*
         if (product.availableNow === false) {
           return JSON.stringify({ ok: false, error: `"${product.name}" no disponible ahora` });
         }
+        if (Array.isArray(args.attributes) && args.attributes.some(choice=>!choice || typeof choice!=='object' ||
+          typeof choice.attributeName!=='string' || typeof choice.attributeValue!=='string')) {
+          return JSON.stringify({ok:false,error:'invalid_attribute_shape',attributes:this.productCard(product).attributes,
+            hint:'Cada atributo requiere attributeName y attributeValue como texto. Usa los nombres y opciones del catálogo.'});
+        }
         const normalizeOption = (value:string) => value.toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
         const sourceForOptions = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) || ctx.userMessage || '';
@@ -1232,6 +1241,14 @@ Contacto humano: *${phone || '3118866823'}*
           return JSON.stringify({ok:false,error:'different_presentation',
             hint:'El cliente pidió ejecutivo/combo, no el pollo ni la bebida por separado. Busca el SKU de esa presentación.'});
         }
+        if (wrapper && !this.catalogService.isLikelyDrinkProduct(product)) {
+          const host = this.catalogService.mostSpecificNamedProduct(ownedText,ctx.products);
+          if (host && host.id!==product.id && new RegExp(wrapper.replace(/s$/i,''),'i').test(host.name) &&
+            !this.catalogService.findAllProductsEmbeddedInMessage(ownedText,ctx.products).some(p=>p.id===product.id)) {
+            return JSON.stringify({ok:false,error:'different_composed_dish',requestedProduct:this.productCard(host),
+              hint:'Usa el SKU del plato compuesto completo que nombró el cliente, conservando todos sus componentes y atributos.'});
+          }
+        }
         const styleChoices = this.catalogService.chickenStyleChoicesForSegment?.(ctx.userMessage || '', ctx.products);
         if (styleChoices?.some(candidate => candidate.id === product.id) &&
           this.catalogService.extractCodeFromMessage(ctx.userMessage || '') !== product.code) {
@@ -1265,7 +1282,7 @@ Contacto humano: *${phone || '3118866823'}*
           !/\b(?:porci[oó]n|extra|adicional|aparte)\s+(?:de\s+)?arepas?\b/.test(txt);
         const comboHost = /\b(ejecutivo|combo)\b/.test(txt);
         const explicitlySeparate = /\b(?:aparte|adicional|extra)\b/.test(txt) &&
-          this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '').some(segment =>
+          (ctx.userMessage || '').split(/[;.!?]|\s+y\s+/i).some(segment =>
             /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
             this.catalogService.productNameFitsUtterance?.(product, segment));
         const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
@@ -1281,6 +1298,11 @@ Contacto humano: *${phone || '3118866823'}*
             ok: false, error: 'included_attribute_not_extra',
             hint: 'Ya es un atributo o acompañamiento incluido del plato principal. No agregues otra línea sin solicitud explícita.',
           });
+        }
+        if (!explicitlySeparate && !separateQuantity && this.catalogService.isLikelySideOnlyProduct?.(product) &&
+          this.catalogService.hasAccompanimentModifierWithMain?.(ctx.userMessage || '')) {
+          return JSON.stringify({ok:false,error:'accompaniment_note_not_extra',
+            hint:'Es una modificación del acompañamiento de un plato pedido, no una porción adicional. Conserva el plato y usa su note con la modificación; no repitas add_item de esta porción.'});
         }
         const requested = this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products) ||
           this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '')
@@ -1298,8 +1320,14 @@ Contacto humano: *${phone || '3118866823'}*
             hint:'Ese SKU tiene una presentación distinta. Usa search_menu para buscar el producto nuevo nombrado; no inventes IDs ni cambies otro plato del carrito.'});
         }
         const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
-        let note = args.note != null ? String(args.note).trim().slice(0, 200) : undefined;
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        let note = args.note != null ? String(args.note).trim().slice(0, 200) :
+          this.catalogService.extractProductModificationNote(source) || undefined;
+        const swap = this.catalogService.swapIntent(source);
+        if (swap && this.catalogService.productCarriesMention(product,swap.removed)) {
+          const change = this.catalogService.swapChangeNote(swap.removed,swap.added);
+          if (!note?.toLowerCase().includes(change.toLowerCase())) note=[note,change].filter(Boolean).join('. ').slice(0,200);
+        }
         if (product.attributes?.some(attr => /arepas?/i.test(attr.attributeName)) &&
           !/porci[oó]n/i.test(product.name) && /\barepas?\s+aparte\b/i.test(source)) {
           note = [note, 'Arepas aparte'].filter(Boolean).join('. ').slice(0, 200);
@@ -1455,7 +1483,7 @@ Contacto humano: *${phone || '3118866823'}*
         if (name === 'remove_item') {
           const normalize = (value:string) => value.toLowerCase().normalize('NFD')
             .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-          const preserved = (ctx.userMessage || '').split(/[;,.]|\s+y\s+/i).some(clause=> {
+          const preserved = (ctx.userMessage || '').split(/[;,.]|\s+y\s+(?=(?:deja|conserva|mant[eé]n|no quites|no cambies)\b)/i).some(clause=> {
             const phrase = normalize(clause);
             if (!/\b(?:deja|conserva|manten|no quites|no lo cambies|no cambies)\b/.test(phrase)) return false;
             const blob = ' '+phrase+' ';
@@ -1468,7 +1496,7 @@ Contacto humano: *${phone || '3118866823'}*
             const notes = (ctx.cart || []).filter(c=>c.productId===productId && !!c.note &&
               blob.includes(' '+normalize(c.note!)+' ')).map(c=>normalize(c.note!));
             if (notes.length) return !!line.note && notes.includes(normalize(line.note));
-            return !!product && !!this.catalogService.productNameFitsUtterance?.(product,clause);
+            return !!product && this.catalogService.findAllProductsEmbeddedInMessage(clause,ctx.products).some(p=>p.id===productId);
           });
           if (preserved) return JSON.stringify({ok:false,error:'customer_requested_preserve_line',cartLineIndex,
             hint:'El cliente pidió conservar esta línea. No la retires; usa update_item si solo cambia su cantidad o nota.'});

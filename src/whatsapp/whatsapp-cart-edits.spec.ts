@@ -202,4 +202,57 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     expect(await apply(turn.actions,cart)).toEqual([cart[1]]);
   });
 
+  it('removes rice while preserving the explicitly named meat and drink',async()=>{
+    const cart=[line(23,2),line(17),line(37)];const turn=turnTools(cart,'Quita los dos arroces con pollo; deja el churrasco y la limonada');
+    expect(turn.call('remove_item',{productId:23,cartLineIndex:0}).ok).toBe(true);
+    expect(turn.call('remove_item',{productId:17,cartLineIndex:1}).error).toBe('customer_requested_preserve_line');
+    expect(turn.call('remove_item',{productId:37,cartLineIndex:2}).error).toBe('customer_requested_preserve_line');
+    expect(await apply(turn.actions,cart)).toEqual(cart.slice(1));
+  });
+  it('does not treat conserving rice as conserving generic bottled drinks',()=>{
+    const turn=turnTools([line(23),line(28),line(42)],'Quita las dos gaseosas y deja el arroz');
+    expect(turn.call('remove_item',{productId:28,cartLineIndex:1}).ok).toBe(true);
+    expect(turn.call('remove_item',{productId:42,cartLineIndex:2}).ok).toBe(true);
+  });
+  it('adds a typo in the catalog alongside an absolute correction to a different dish',async()=>{
+    const turn=turnTools([line(17)],'Me faltó la milanesa de pollo y eran dos churrascos, no uno');
+    expect(turn.call('update_item',{productId:17,cartLineIndex:0,quantity:2}).ok).toBe(true);
+    expect(turn.call('add_item',{productId:62}).ok).toBe(true);
+    expect((await apply(turn.actions,[line(17)])).map(l=>[l.productId,l.quantity])).toEqual([[17,2],[62,1]]);
+  });
+  it('does not interpret packaging a side as ordering an additional included drink',()=>{
+    const turn=turnTools([],'Un combo de pollo frito con Coca Cola y arepas fritas. Las arepas en bolsa aparte');
+    expect(turn.call('add_item',{productId:99}).ok).toBe(true);
+    expect(turn.call('add_item',{productId:34}).ok).toBe(false);
+    expect(turn.actions.addItems).toHaveLength(1);
+  });
+  it('preserves the complete compound dish instead of adding its embedded simpler combo',()=>{
+    const turn=turnTools([],'Un combo de arroz chino con medio pollo frito y bebida Manzana');
+    expect(turn.call('add_item',{productId:99}).error).toBe('different_composed_dish');
+    expect(turn.call('add_item',{productId:97}).ok).toBe(true);
+    expect(turn.actions.addItems?.map(l=>l.productId)).toEqual([97]);
+  });
+  it('retains an explicit scoped note when the model omits it',()=>{
+    const turn=turnTools([],'Un arroz con pollo sin ensalada; una mojarra asada sin cilantro; dos limonadas naturales');
+    expect(turn.call('add_item',{productId:14,attributes:[{attributeName:'Seleccion',attributeValue:'Asada'}]}).ok).toBe(true);
+    expect(turn.actions.addItems?.[0].note).toMatch(/sin cilantro/i);
+  });
+  it('keeps selected variants when the first clause omits the SKU cooking word',async()=>{
+    const service=Object.create(WhatsappOrchestratorService.prototype) as any;service.catalogService=catalog;
+    const result=await service.applyActions({}, {cart:[],orderType:'pickup'}, {addItems:[
+      {productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+      {productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Fritas'}]},
+    ]},products,{},'Dos pollos con arepas blancas y un pollo con arepas fritas');
+    expect(result.session.cart.map(l=>[l.quantity,l.attributes[0].attributeValue])).toEqual([[2,'Blancas'],[1,'Fritas']]);
+  });
+  it('rejects malformed model attributes without throwing or changing the cart',()=>{
+    const turn=turnTools([],'Un cuarto frito ala pechuga con las arepas fritas');
+    expect(turn.call('add_item',{productId:3,attributes:['Fritas','Ala pechuga']}).error).toBe('invalid_attribute_shape');
+    expect(turn.actions).toEqual({});
+  });
+  it('preserves an explicit side substitution even when the model only sends the exclusion note',()=>{
+    const turn=turnTools([],'Un arroz con pollo sin ensalada y cambia las papas por yuca');
+    expect(turn.call('add_item',{productId:23,note:'sin ensalada'}).ok).toBe(true);
+    expect(turn.actions.addItems?.[0].note).toMatch(/sin ensalada.*yuca/i);
+  });
 });
