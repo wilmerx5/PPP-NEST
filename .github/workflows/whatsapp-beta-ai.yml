@@ -12,6 +12,7 @@ on:
       - scripts/fixtures/whatsapp-beta-menu.json
       - scripts/fixtures/whatsapp-beta-cases.json
       - scripts/fixtures/whatsapp-beta-human-intents.json
+      - scripts/fixtures/whatsapp-beta-hard-conversations.json
   workflow_dispatch:
 
 permissions:
@@ -128,6 +129,84 @@ jobs:
         with:
           name: whatsapp-beta-human-business-info
           path: tmp/whatsapp-beta-human-business-info.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations attributes
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-attributes.json
+          exit "$code"
+
+      - name: Archive hard attributes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-attributes
+          path: tmp/hard-attributes.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations notes-multi
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '10'
+          WHATSAPP_BETA_CASE_OFFSET: '12'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-notes-multi.json
+          exit "$code"
+
+      - name: Archive hard notes-multi
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-notes-multi
+          path: tmp/hard-notes-multi.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations ambiguity
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '8'
+          WHATSAPP_BETA_CASE_OFFSET: '22'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-ambiguity.json
+          exit "$code"
+
+      - name: Archive hard ambiguity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-ambiguity
+          path: tmp/hard-ambiguity.json
           retention-days: 7
           if-no-files-found: warn
 
