@@ -53,8 +53,7 @@ jobs:
           WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
         run: yarn beta:whatsapp:ai
 
-      - name: Human intent comprehension (12 synthetic conversations)
-        if: success()
+      - name: Human intent meals-meat (12 scenarios)
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -64,15 +63,71 @@ jobs:
           WHATSAPP_BETA_CASE_OFFSET: '0'
           WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
         run: |
+          set +e
           yarn beta:whatsapp:ai
-          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-report.json
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-meals-meat.json
+          exit "$result"
 
-      - name: Archive human-intent report
+      - name: Archive human intent meals-meat
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-human-intents
-          path: tmp/whatsapp-beta-human-report.json
+          name: whatsapp-beta-human-meals-meat
+          path: tmp/whatsapp-beta-human-meals-meat.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Human intent drinks-desserts (12 scenarios)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '12'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-drinks-desserts.json
+          exit "$result"
+
+      - name: Archive human intent drinks-desserts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-drinks-desserts
+          path: tmp/whatsapp-beta-human-drinks-desserts.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Human intent business-info (9 scenarios)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '9'
+          WHATSAPP_BETA_CASE_OFFSET: '24'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-business-info.json
+          exit "$result"
+
+      - name: Archive human intent business-info
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-business-info
+          path: tmp/whatsapp-beta-human-business-info.json
           retention-days: 7
           if-no-files-found: warn
 
