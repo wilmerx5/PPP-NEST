@@ -20,6 +20,8 @@ En la suite de checkout completo se prohíbe `fetch` externo y se usan pagos en 
 
 El 9 de octubre de 2026, [37884838374](https://github.com/wilmerx5/PPP-NEST/actions/runs/37884838374) pasó los 64 casos previos en las tres versiones. Al ampliar el recorrido de edición HTTP se reprodujeron adiciones indebidas durante la conciliación del carrito y una falta de reparación del índice de conversación en esquemas creados por TypeORM. Los casos nuevos deben permanecer exigentes hasta que la ejecución completa del SHA final pase.
 
+La ejecución [37888418885](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888418885), en el código `aac59934d8ed99249097d646eb03e259eb70b78a`, pasó **71/71 en cada versión: 10.11, 11.4 y 11.8 (213 ejecuciones)**. También comprobó la selección de variantes cuando una cláusula omite la palabra de preparación del SKU. Las ediciones y eliminaciones HTTP conservan ahora las otras variantes hasta persistencia y mapper de cocina; la conciliación no vuelve a añadir los productos mencionados en una edición aceptada.
+
 ## Ejecución segura
 
 Preparar una base vacía y desechable en MariaDB local. Definir `WHATSAPP_DB_TEST=1`, `TEST_DB_HOST=127.0.0.1`, `TEST_DB_PORT=3306`, `TEST_DB_DATABASE=ppp_test_whatsapp`, `TEST_DB_USERNAME` y `TEST_DB_PASSWORD`; luego ejecutar `yarn test:whatsapp:db`.

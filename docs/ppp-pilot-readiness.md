@@ -4,6 +4,21 @@
 
 Validar primero la operación de Pronto Pollo Portal. Este documento define una propuesta de piloto supervisado; no autoriza despliegues ni envíos a clientes. Una suite verde acredita los casos ejecutados, no garantiza todos los pedidos futuros.
 
+## Evidencia actual — 9 de octubre de 2026
+
+Código evaluado: `aac59934d8ed99249097d646eb03e259eb70b78a`; PR #6 permanece en borrador. Las posteriores modificaciones documentales no cambian ese código.
+
+| Comprobación | Resultado | Evidencia |
+| --- | --- | --- |
+| Compilación y unitarias | PASS, 650/650 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888418887) |
+| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888418885) |
+| Conversaciones con OpenAI tras las últimas correcciones | BLOQUEADO por falta de créditos API; no aceptado | [Revalidación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888415744) |
+| Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
+| Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
+| Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
+
+**Todavía no listo para deploy.** Restaurar saldo de la cuenta OpenAI, revalidar los 303 ensayos configurados y completar la aceptación externa antes de iniciar el piloto.
+
 ## Puertas de salida
 
 | Puerta | Evidencia necesaria | Condición |
