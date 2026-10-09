@@ -26,3 +26,11 @@ Prioridad: dejar PPP operativo antes de adaptar el motor para varios restaurante
 | Operación | Takeover humano, consulta del pedido enviado, cancelación según estado, panel administrativo y auditoría. |
 
 Usar `docs/whatsapp-beta-acceptance.md` y los casos de los ensayos como punto de partida. Para cada caso registrar PASS/FAIL, IDs sintéticos del mensaje/pedido, estado DB y evidencia del resultado. Cerrar la aceptación cuando los circuitos críticos estén comprobados en el commit que se desplegará.
+
+## Auditoría inicial desde GitHub Actions
+
+El workflow `PPP Staging Read-only DB Audit` ejecuta `scripts/whatsapp-staging-db-audit.ts`: no importa AppModule, no ejecuta migraciones y abre una transacción de solo lectura. Comprueba conexión TLS, columnas WhatsApp, índice UNIQUE de Meta ID, tablas comerciales y catálogo. Emite solo estructura/conteos, sin filas de clientes, pedidos ni valores de configuración.
+
+En Settings → Secrets and variables → Actions, crear secretos de repositorio `STAGING_DB_HOST`, `STAGING_DB_PORT`, `STAGING_DB_USERNAME`, `STAGING_DB_PASSWORD`, `STAGING_DB_DATABASE`; si el certificado requiere CA propia, también `STAGING_DB_SSL_CA`. Crear la variable `PPP_STAGING_DB_AUDIT=true` para activar el job. El usuario debe configurar estos valores: la conexión GitHub disponible no ofrece acceso a la API de secretos.
+
+El workflow se activa al actualizar una PR con cambios en las rutas indicadas, o manualmente cuando su definición esté disponible en la rama por defecto. Un job omitido porque falta la variable no significa que staging haya pasado. No se cambia silenciosamente a una conexión sin TLS si falla el certificado.

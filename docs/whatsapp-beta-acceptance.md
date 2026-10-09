@@ -4,7 +4,7 @@
 - Objetivo: probar toma de pedidos reales **con supervisión**, antes de habilitar operación autónoma.
 - Requisito de piloto: **una sola instancia del orquestador de WhatsApp**, con intervención humana y rollback disponible. No declarar soporte multiinstancia hasta disponer de serialización distribuida por `waId`.
 - No reejecutar automáticamente mensajes `processing` antiguos o `failed`; algunas acciones pueden haber modificado el carrito o generado una orden antes de la caída.
-- El CI valida lógica de pruebas y simulaciones; **no sustituye pruebas de WhatsApp Meta, base de datos real, geocodificación, pagos ni creación de pedidos en staging**.
+- El CI valida lógica, simulaciones y persistencia WhatsApp en MariaDB desechable; **no sustituye pruebas de Meta real, el esquema desplegado, geocodificación, pagos ni creación de pedidos en staging**. Ver `docs/whatsapp-db-integration.md` y `docs/ppp-staging-test-requirements.md`.
 
 ## Requisitos técnicos previos al piloto
 - [ ] Usar entorno aislado de staging con catálogo PPP fiel a producción y número de WhatsApp de prueba.

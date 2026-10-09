@@ -19,6 +19,7 @@ import { WhatsappOrchestratorService } from '../src/whatsapp/whatsapp-orchestrat
 import { WhatsappWebhookController } from '../src/whatsapp/whatsapp-webhook.controller';
 import { WhatsappMetaService } from '../src/whatsapp/whatsapp-meta.service';
 import { WhatsappRateLimitService } from '../src/whatsapp/whatsapp-rate-limit.service';
+import { WhatsappPointsService } from '../src/whatsapp/whatsapp-points.service';
 
 // Destructive cleanup is allowed only in an explicitly selected local throwaway database.
 if (process.env.WHATSAPP_DB_TEST !== '1' ||
@@ -94,7 +95,7 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     send=jest.spyOn(meta,'sendText').mockResolvedValue(undefined);
     const orchestrator=new WhatsappOrchestratorService(settings as never,meta,catalog,{} as never,service,
       {getStatus:async()=>({isOpen:true,message:'synthetic open',openTime:'00:00',closeTime:'23:59'})} as never,
-      orders as never,payments as never,new WhatsappActionGuardService(catalog),{} as never,{} as never,{} as never,{} as never);
+      orders as never,payments as never,new WhatsappActionGuardService(catalog),new WhatsappPointsService({} as never),{} as never,{} as never,{} as never);
     const module=await Test.createTestingModule({controllers:[WhatsappWebhookController],providers:[
       {provide:WhatsappSettingsService,useValue:settings},{provide:WhatsappMetaService,useValue:meta},
       {provide:WhatsappOrchestratorService,useValue:orchestrator},{provide:WhatsappConversationService,useValue:service},
