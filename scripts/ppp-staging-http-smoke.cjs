@@ -35,6 +35,9 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
     ensure(['full', 'staff'].includes(scope), 'INVALID_PROBE_SCOPE');
     ensure(!env.STAGING_CONFIGURE_APPROVED_MODEL ||
       (env.STAGING_CONFIGURE_APPROVED_MODEL === 'true' && scope === 'staff'), 'INVALID_CONFIGURATION_MODE');
+    ensure(!env.STAGING_OBSERVE_TEST_CONVERSATION ||
+      (env.STAGING_OBSERVE_TEST_CONVERSATION === 'true' && scope === 'staff' &&
+       !env.STAGING_CONFIGURE_APPROVED_MODEL), 'INVALID_OBSERVATION_MODE');
     const required = scope === 'staff' ? REQUIRED.filter(key =>
       !['STAGING_WHATSAPP_APP_SECRET', 'STAGING_WHATSAPP_VERIFY_TOKEN'].includes(key)) : REQUIRED;
     const missing = required.filter(key => !env[key]?.trim());
@@ -44,6 +47,7 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
     const recipients = env.STAGING_WHATSAPP_RECIPIENTS.split(',').map(value => value.replace(/\D/g, ''));
     ensure(recipients.length > 0 && recipients.every(value => /^\d{8,15}$/.test(value)), 'INVALID_TEST_RECIPIENTS');
     report.observations.testRecipientCount = recipients.length;
+    ensure(!env.STAGING_OBSERVE_TEST_CONVERSATION || recipients.length === 1, 'SINGLE_TEST_RECIPIENT_REQUIRED');
   });
   if (!eligible) return report;
 
@@ -119,7 +123,7 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
   });
   if (cookie) {
     try {
-      await check('authenticated_admin_settings_and_test_channel', async () => {
+      const settingsOk = await check('authenticated_admin_settings_and_test_channel', async () => {
         const response = await request('/api/admin/whatsapp/settings', { headers: { Cookie: cookie } });
         ensure(response.status === 200, 'STAFF_CANNOT_READ_ADMIN_SETTINGS');
         let settings = await response.json();
@@ -153,6 +157,47 @@ async function runPreflight(env = process.env, fetchImpl = globalThis.fetch) {
           report.observations.approvedModelConfigured = settings.openaiModel === APPROVED_MODEL;
         }
       });
+      if (settingsOk && env.STAGING_OBSERVE_TEST_CONVERSATION === 'true') {
+        await check('read_only_test_conversation_observation', async () => {
+          const recipient = env.STAGING_WHATSAPP_RECIPIENTS.replace(/\D/g, '');
+          const digits = value => typeof value === 'string' ? value.replace(/\D/g, '') : '';
+          const listResponse = await request('/api/admin/whatsapp/conversations', { headers: { Cookie: cookie } });
+          ensure(listResponse.status === 200, 'CONVERSATION_LIST_FAILED');
+          const list = await listResponse.json();
+          ensure(Array.isArray(list), 'INVALID_CONVERSATION_LIST');
+          const matches = list.filter(row => digits(row.phoneE164) === recipient);
+          ensure(matches.length <= 1, 'AMBIGUOUS_TEST_CONVERSATION');
+          report.observations.testConversationFound = matches.length === 1;
+          // The list contains at most 80 recent conversations; absence is a diagnostic, not readiness.
+          report.observations.conversationSearchLimitedToRecent80 = true;
+          if (!matches.length) return;
+          const id = matches[0].id;
+          ensure(Number.isSafeInteger(id) && id > 0, 'INVALID_CONVERSATION_ID');
+          const detailResponse = await request(`/api/admin/whatsapp/conversations/${id}`, { headers: { Cookie: cookie } });
+          ensure(detailResponse.status === 200, 'CONVERSATION_READ_FAILED');
+          const detail = await detailResponse.json();
+          ensure(detail.id === id && digits(detail.phoneE164) === recipient &&
+            digits(detail.waId) === recipient, 'CONVERSATION_RECIPIENT_MISMATCH');
+          ensure(Array.isArray(detail.messages) && typeof detail.humanTakeover === 'boolean', 'INVALID_CONVERSATION_DETAIL');
+          const time = value => typeof value === 'string' ? Date.parse(value) : NaN;
+          const lastAt = rows => {
+            const times = rows.map(row => time(row.createdAt)).filter(Number.isFinite);
+            return times.length ? new Date(times.reduce((max, value) => Math.max(max, value), -Infinity)).toISOString() : null;
+          };
+          const incoming = detail.messages.filter(row => row.direction === 'in');
+          const outgoing = detail.messages.filter(row => row.direction === 'out');
+          const recent = row => { const age = Date.now() - time(row.createdAt); return age >= 0 && age <= 600000; };
+          report.observations.testInboundCount = incoming.length;
+          report.observations.testOutboundCount = outgoing.length;
+          report.observations.testInboundLast10Minutes = incoming.filter(recent).length;
+          report.observations.testOutboundLast10Minutes = outgoing.filter(recent).length;
+          report.observations.testLastInboundAt = lastAt(incoming);
+          report.observations.testLastOutboundAt = lastAt(outgoing);
+          report.observations.testHumanTakeover = detail.humanTakeover;
+          report.observations.testCartLines = Array.isArray(detail.sessionData?.cart) ? detail.sessionData.cart.length : 0;
+          // Never expose names, phone numbers, message text, session values or private IDs.
+        });
+      }
     } finally {
       await check('logout_clears_session_cookies', async () => {
         const response = await request('/api/auth/logout', { method: 'POST', headers: { Cookie: cookie } });

@@ -178,3 +178,87 @@ test('a rejected logout fails even when the response has clearing cookies', asyn
   ]) : undefined);
   assert.equal((await runPreflight(env, f.fetch)).checks.at(-1).code, 'LOGOUT_FAILED');
 });
+
+
+const observationEnv = () => ({ ...fixture(), STAGING_HTTP_SCOPE: 'staff', STAGING_OBSERVE_TEST_CONVERSATION: 'true' });
+const observationFetch = (env, list, detail) => fixtureFetch(env, (url, options) => {
+  if (url.endsWith('/api/admin/whatsapp/conversations')) return reply(200, list);
+  if (url.endsWith('/api/admin/whatsapp/conversations/42')) return reply(200, detail);
+});
+test('observes only the exact test recipient and never exposes private history', async () => {
+  const env = observationEnv();
+  const now = new Date().toISOString();
+  const other = '573009999999';
+  const f = observationFetch(env, [{ id: 41, phoneE164: other },
+    { id: 42, phoneE164: '+' + env.STAGING_WHATSAPP_RECIPIENTS }], {
+    id: 42, phoneE164: '+' + env.STAGING_WHATSAPP_RECIPIENTS,
+    waId: env.STAGING_WHATSAPP_RECIPIENTS, humanTakeover: true,
+    customerName: 'Private customer', sessionData: { cart: [{ privateNote: 'Private note' }] },
+    messages: [{ direction: 'in', createdAt: now, body: 'Private request' },
+      { direction: 'out', createdAt: now, body: 'Private response' }],
+  });
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.checks.length, 6);
+  assert.equal(result.observations.testConversationFound, true);
+  assert.equal(result.observations.testInboundLast10Minutes, 1);
+  assert.equal(result.observations.testOutboundLast10Minutes, 1);
+  assert.equal(result.observations.testHumanTakeover, true);
+  assert.equal(result.observations.testCartLines, 1);
+  assert.equal(f.requests.some(r => r.url.endsWith('/41')), false);
+  assert.equal(f.requests.some(r => /webhook/.test(r.url) || r.options.method === 'PATCH'), false);
+  for (const secret of [other, env.STAGING_WHATSAPP_RECIPIENTS, 'Private', 'synthetic-session']) {
+    assert.equal(JSON.stringify(result).includes(secret), false);
+  }
+});
+test('reports a missing recipient in the recent list without reading someone else', async () => {
+  const env = observationEnv(), f = observationFetch(env, [{ id: 41, phoneE164: '573009999999' }], {});
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.observations.testConversationFound, false);
+  assert.equal(result.observations.conversationSearchLimitedToRecent80, true);
+  assert.equal(f.requests.some(r => /conversations\//.test(r.url)), false);
+});
+test('read-only observation rejects multiple recipients and configuration mode before networking', async () => {
+  for (const patch of [{ STAGING_WHATSAPP_RECIPIENTS: '573001234567,573009999999' },
+    { STAGING_CONFIGURE_APPROVED_MODEL: 'true' }, { STAGING_HTTP_SCOPE: 'full' },
+    { STAGING_OBSERVE_TEST_CONVERSATION: 'yes' }]) {
+    const env = { ...observationEnv(), ...patch }, f = fixtureFetch(env);
+    assert.equal((await runPreflight(env, f.fetch)).ok, false);
+    assert.equal(f.requests.length, 0);
+  }
+});
+test('a mismatched conversation detail stops observation and still logs out', async () => {
+  const env = observationEnv(), f = observationFetch(env, [{ id: 42, phoneE164: env.STAGING_WHATSAPP_RECIPIENTS }], {
+    id: 42, phoneE164: '573009999999', waId: '573009999999', messages: [], humanTakeover: false,
+  });
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, false);
+  assert.equal(result.checks.find(c => c.name === 'read_only_test_conversation_observation').code, 'CONVERSATION_RECIPIENT_MISMATCH');
+  assert.equal(result.checks.at(-1).pass, true);
+  assert.equal(JSON.stringify(result).includes('573009999999'), false);
+});
+test('observation refuses ambiguous histories and unsafe detail IDs', async () => {
+  const env = observationEnv();
+  for (const list of [[{ id: 42, phoneE164: env.STAGING_WHATSAPP_RECIPIENTS },
+    { id: 43, phoneE164: env.STAGING_WHATSAPP_RECIPIENTS }],
+    [{ id: '../settings', phoneE164: env.STAGING_WHATSAPP_RECIPIENTS }]]) {
+    const f = observationFetch(env, list, {});
+    const result = await runPreflight(env, f.fetch);
+    assert.equal(result.ok, false);
+    assert.equal(f.requests.some(r => /conversations\//.test(r.url)), false);
+    assert.equal(result.checks.at(-1).pass, true);
+  }
+});
+test('ignores invalid timestamps and does not count old messages as recent', async () => {
+  const env = observationEnv(), f = observationFetch(env, [{ id: 42, phoneE164: env.STAGING_WHATSAPP_RECIPIENTS }], {
+    id: 42, phoneE164: env.STAGING_WHATSAPP_RECIPIENTS, waId: env.STAGING_WHATSAPP_RECIPIENTS,
+    humanTakeover: false, messages: [{ direction: 'in', createdAt: '2000-01-01T00:00:00Z' },
+      { direction: 'out', createdAt: 'Private invalid timestamp' }],
+  });
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.observations.testInboundLast10Minutes, 0);
+  assert.equal(result.observations.testLastOutboundAt, null);
+  assert.equal(JSON.stringify(result).includes('Private'), false);
+});
