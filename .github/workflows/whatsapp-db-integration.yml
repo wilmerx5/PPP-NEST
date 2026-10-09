@@ -1,0 +1,56 @@
+name: WhatsApp MariaDB Integration
+
+on:
+  pull_request:
+    paths:
+      - src/whatsapp/**
+      - src/common/migrations/**
+      - test/**
+      - package.json
+      - yarn.lock
+      - .github/workflows/whatsapp-db-integration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        mariadb: ['10.11', '11.4']
+    services:
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          # Disposable job-local credentials. Never point this service at staging/production.
+          MARIADB_ROOT_PASSWORD: ephemeral-root-only
+          MARIADB_DATABASE: ppp_test_whatsapp
+          MARIADB_USER: ppp_test
+          MARIADB_PASSWORD: ephemeral-test-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Run real MariaDB persistence and webhook tests
+        env:
+          WHATSAPP_DB_TEST: '1'
+          TEST_DB_HOST: '127.0.0.1'
+          TEST_DB_PORT: '3306'
+          TEST_DB_DATABASE: ppp_test_whatsapp
+          TEST_DB_USERNAME: ppp_test
+          TEST_DB_PASSWORD: ephemeral-test-only
+        run: yarn test:whatsapp:db --ci

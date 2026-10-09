@@ -1,0 +1,302 @@
+
+name: WhatsApp Beta AI Tests
+
+on:
+  push:
+    branches:
+      - fix/whatsapp-regression-baseline
+    paths:
+      - .github/workflows/whatsapp-beta-ai.yml
+      - scripts/whatsapp-beta-ai-rehearsal.ts
+      - src/whatsapp/whatsapp-agent.service.ts
+      - src/whatsapp/whatsapp-catalog.service.ts
+      - src/whatsapp/whatsapp-agent.spec.ts
+      - src/whatsapp/whatsapp-agent.language.spec.ts
+      - src/whatsapp/whatsapp-action-guard.service.ts
+      - src/whatsapp/whatsapp-orchestrator.service.ts
+      - src/whatsapp/whatsapp-cart-integration.spec.ts
+      - scripts/fixtures/whatsapp-beta-menu.json
+      - scripts/fixtures/whatsapp-beta-cases.json
+      - scripts/fixtures/whatsapp-beta-human-intents.json
+      - scripts/fixtures/whatsapp-beta-hard-conversations.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beta-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Verify test secret is available (without exposing it)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY unavailable in Actions secrets"
+            exit 1
+          fi
+
+      - name: Run AI simulations
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_CASE_LIMIT: '6'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: yarn beta:whatsapp:ai
+
+      - name: Human intent meals-meat (12 scenarios)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-meals-meat.json
+          echo "$result" > tmp/human-meals-meat-exit.txt
+          exit "$result"
+
+      - name: Archive human intent meals-meat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-meals-meat
+          path: tmp/whatsapp-beta-human-meals-meat.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Human intent drinks-desserts (12 scenarios)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '12'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-drinks-desserts.json
+          echo "$result" > tmp/human-drinks-desserts-exit.txt
+          exit "$result"
+
+      - name: Archive human intent drinks-desserts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-drinks-desserts
+          path: tmp/whatsapp-beta-human-drinks-desserts.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Human intent business-info (9 scenarios)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '9'
+          WHATSAPP_BETA_CASE_OFFSET: '24'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-business-info.json
+          echo "$result" > tmp/human-business-info-exit.txt
+          exit "$result"
+
+      - name: Archive human intent business-info
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-human-business-info
+          path: tmp/whatsapp-beta-human-business-info.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations attributes
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '12'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-attributes.json
+          echo "$code" > tmp/hard-attributes-exit.txt
+          exit "$code"
+
+      - name: Archive hard attributes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-attributes
+          path: tmp/hard-attributes.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations notes-multi
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '10'
+          WHATSAPP_BETA_CASE_OFFSET: '12'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-notes-multi.json
+          echo "$code" > tmp/hard-notes-multi-exit.txt
+          exit "$code"
+
+      - name: Archive hard notes-multi
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-notes-multi
+          path: tmp/hard-notes-multi.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Hard conversations ambiguity
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '8'
+          WHATSAPP_BETA_CASE_OFFSET: '22'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-ambiguity.json
+          echo "$code" > tmp/hard-ambiguity-exit.txt
+          exit "$code"
+
+      - name: Archive hard ambiguity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-ambiguity
+          path: tmp/hard-ambiguity.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Follow-up conversations (29 scenarios, two repetitions)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '29'
+          WHATSAPP_BETA_CASE_OFFSET: '30'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-followup.json
+          echo "$code" > tmp/hard-followup-exit.txt
+          exit "$code"
+
+      - name: Archive follow-up conversations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-followup
+          path: tmp/hard-followup.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Final conversation acceptance gate
+        if: always()
+        run: |
+          failed=0
+          for suite in human-meals-meat human-drinks-desserts human-business-info hard-attributes hard-notes-multi hard-ambiguity hard-followup; do
+            result="tmp/${suite}-exit.txt"
+            if [ ! -f "$result" ] || [ "$(cat "$result")" != "0" ]; then
+              echo "::error::Conversation suite failed or missing: $suite"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Save test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-report
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  everyday-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Everyday PPP conversations (32 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: '59'
+          WHATSAPP_BETA_CASE_LIMIT: '32'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: yarn beta:whatsapp:ai
+      - name: Archive everyday conversations and actual cart assertions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-everyday-conversations
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error

@@ -190,15 +190,15 @@ export class WhatsappActionGuardService {
       }
     }
 
-    const hasCombo = normalized.some((s) => /\bcombo\b/i.test(s.attributeValue));
-    const requiredAttrs = product.attributes.filter((def) => {
-      const n = def.attributeName.toLowerCase();
-      const comboOnly = /\b(gaseosa|gaseosas|bebida|bebidas|refresco|refrescos)\b/.test(n);
-      if (comboOnly && !hasCombo) return false;
-      return true;
-    });
-
-    if (normalized.length !== requiredAttrs.length) {
+    // The catalog knows when a beverage is conditional on a Solo/Combo
+    // modality. An executive/always-combo has no modality attribute and its
+    // explicitly selected beverage must not be replaced by defaults.
+    if (!this.catalogService.isAttributeSelectionComplete(product, normalized)) {
+      // Keep valid partial choices and default only the options the customer omitted.
+      const completed = this.catalogService.fillDefaultAttributes(product, normalized);
+      if (normalized.length && this.catalogService.isAttributeSelectionComplete(product, completed)) {
+        return completed;
+      }
       warnings.push(
         `Opciones inválidas para "${product.name}". Elige: ${this.formatAttributeOptions(product)}.`,
       );

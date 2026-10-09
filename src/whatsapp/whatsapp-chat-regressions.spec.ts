@@ -922,16 +922,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(looksLikeNonAddressCommand('Para hotel el conejo')).toBe(false);
     });
 
-    it('mojorra es Mojarra y pide preparación, no una ficha muda', () => {
+    it('mojorra se reconoce y toma la primera preparación predeterminada', () => {
       const hit = catalog.findProductEmbeddedInMessage('Una mojorra', pppMenu);
       expect(hit?.name).toBe('Mojarra');
       expect(catalog.uncoveredDishWords('Una mojorra', pppMenu)).toEqual([]);
       const filled = catalog.fillDefaultAttributes(hit!, []);
-      expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(false);
-      const prompt = catalog.formatProductOptionsPrompt(hit!, filled);
-      expect(prompt).toMatch(/Frita/);
-      expect(prompt).toMatch(/Escribe el número/);
-      expect(prompt).not.toBe(catalog.formatProductHeader(hit!.name, hit!.price, hit!.code));
+      expect(catalog.isAttributeSelectionComplete(hit!, filled)).toBe(true);
+      expect(filled).toEqual(expect.arrayContaining([
+        expect.objectContaining({ attributeValue: 'Frita' }),
+      ]));
     });
 
     it('sobrebariga sudada es Sobrebarriga En Salsa', () => {
@@ -1223,7 +1222,10 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect(multi.unresolved).toEqual([]);
         expect(multi.confident.some((c) => /arroz chino/i.test(c.product.name))).toBe(true);
       } else {
-        expect(catalog.findProductEmbeddedInMessage(text, pppMenu)?.name).toMatch(/arroz chino/i);
+        const family = catalog.findProductVariantFamily(text, pppMenu);
+        expect(family?.baseLabel).toMatch(/arroz chino/i);
+        expect(family?.variants.length).toBeGreaterThan(1);
+        expect(catalog.pickVariantFromFamilyText(text, family!)).toBeNull();
       }
     });
 
@@ -1702,10 +1704,9 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.extractRequestedProteinStyle(raw)).toBe('broaster');
       expect(catalog.extractBaseDishQueryForStyleSwap(raw)).toMatch(/arroz chino/i);
       expect(catalog.resolveSizedChickenProduct(raw, pppMenu)).toBeNull();
+      // Es una consulta sobre una familia de platos; no hay autorización para elegir un SKU.
       const hit = catalog.findProductEmbeddedInMessage(raw, pppMenu);
-      expect(hit?.name).toMatch(/arroz chino/i);
-      expect(hit?.name).not.toMatch(/^1(\/|\\)?\s*pollo\s+broaster/i);
-      expect(hit?.name).not.toMatch(/^combo de pollo broaster/i);
+      expect(hit).toBeNull();
       const family = catalog.findProductVariantFamily(
         catalog.extractBaseDishQueryForStyleSwap(raw),
         pppMenu,
@@ -2031,10 +2032,13 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(applied?.attributes).toEqual([
         { attributeName: 'Pollo', attributeValue: 'Broaster' },
       ]);
-      // No auto-elegir Frito/Broaster al agregar
+      // Primera opción por defecto, sin pisar una corrección explícita a Broaster
       const filled = catalog.fillDefaultAttributes(arroz, []);
-      expect(filled.some((a) => /^pollo$/i.test(a.attributeName))).toBe(false);
-      expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(false);
+      expect(filled).toEqual([{ attributeName: 'Pollo', attributeValue: 'Frito' }]);
+      expect(catalog.isAttributeSelectionComplete(arroz, filled)).toBe(true);
+      expect(catalog.fillDefaultAttributes(arroz, [
+        { attributeName: 'Pollo', attributeValue: 'Broaster' },
+      ])).toEqual([{ attributeName: 'Pollo', attributeValue: 'Broaster' }]);
     });
 
     it('menú ejecutivo sin estilo lista frito y broaster', () => {
@@ -2681,10 +2685,11 @@ Cll 6 b 78 c 33`;
         categoryName: 'Arroces',
       };
       const defaults = catalog.fillDefaultAttributes(combo, []);
-      expect(defaults).toEqual([
+      expect(defaults).toEqual(expect.arrayContaining([
         expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Colombiana' }),
-      ]);
-      expect(catalog.isAttributeSelectionComplete(combo, defaults)).toBe(false);
+        expect.objectContaining({ attributeName: 'Pollo', attributeValue: 'Frito' }),
+      ]));
+      expect(catalog.isAttributeSelectionComplete(combo, defaults)).toBe(true);
       const afterStyle = catalog.fillDefaultAttributes(combo, [
         { attributeName: 'Pollo', attributeValue: 'Frito' },
       ]);

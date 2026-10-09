@@ -1,6 +1,6 @@
 import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
-import type { WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 
 describe('WhatsappTurnTelemetryService', () => {
   it('guarda ring buffer y recorta a max', () => {
@@ -62,6 +62,18 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
   ];
 
   const catalogStub = {
+    swapIntent: (_text: string) => null,
+    hostedMenuDrink: () => null,
+    similarNamedProducts: () => [],
+    resolveStandaloneDrinkOrder: () => null,
+    shouldOfferMenuDrinks: () => false,
+    menuDrinkProducts: () => [],
+    missingStyleAlternatives: () => [],
+    comesWithOffer: () => null,
+    extractCookingStyleBrowseIntent: () => null,
+    findProductsByCookingStyle: () => [],
+    listAvailableCookingStyles: () => [],
+
     extractCodeFromMessage: (t: string) => {
       const m = t.match(/\b(\d{1,4})\b/);
       return m ? parseInt(m[1], 10) : null;
@@ -169,6 +181,268 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.error).toBe('no_openai_key');
     expect(result.reply).toMatch(/3118866823/);
     expect(result.actions).toEqual({});
+  });
+
+  it('summarizes an overlong menu answer without executing more tools or losing actions',async()=>{
+    const fetchMock=jest.spyOn(global,'fetch').mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Opciones de almuerzo. '.repeat(50)}}]})}) as Response)
+      .mockImplementationOnce(async()=>({ok:true,json:async()=>({choices:[{message:{content:'Tenemos bandeja y ejecutivo. ¿Cuál prefieres?'}}]})}) as Response);
+    try {
+      const service=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test-key',openaiModel:'gpt-4o-mini',localContext:{}})} as never,new WhatsappCatalogService({} as never));
+      const result=await service.runTurn({userMessage:'Qué tienes de almuerzo?',sessionSummary:'carrito vacío',recentMessages:[],businessRulesBlock:'reglas',brandName:'PPP',products});
+      expect(result.reply).toBe('Tenemos bandeja y ejecutivo. ¿Cuál prefieres?');
+      expect(result.actions).toEqual({});
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const secondBody=JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+      expect(secondBody.tool_choice).toBe('none');
+    } finally {fetchMock.mockRestore();}
+  });
+
+  it('no llama a OpenAI ni agrega SKUs ante un ambiguo "2 de cada una"', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Por favor me das 2 de cada una',
+      sessionSummary: 'carrito vacío',
+      recentMessages: ['Bot: Sopa de Ajiaco, Sopa de Menudencias y Sopa pequeña'],
+      businessRulesBlock: 'solo productos válidos',
+      brandName: 'PPP',
+      products,
+    });
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+    expect(result.reply).toMatch(/cu[aá]les platos/i);
+  });
+
+  it('corrige exactamente dos tipos de sopa sin inventar productos ni sumar al error', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const soups: WhatsappCatalogProduct[] = [
+      { id: 20, code: 20, name: 'Sopa De Menudencias', categoryName: 'Sopas', price: 12000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 21, code: 21, name: 'Sopa De Ajiaco', categoryName: 'Sopas', price: 15000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 40, code: 40, name: 'Sopa pequeña', categoryName: 'Sopas', price: 8500, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias'] }] },
+      { id: 1, code: 1, name: 'Pollo Frito', categoryName: 'Pollo', price: 44000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'No, son 4 sopas, 2 de ajiaco y 2 de menudencias',
+      sessionSummary: 'carrito contiene pollo por error',
+      recentMessages: [],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products: soups,
+      cart: [{ productId: 1, name: 'Pollo Frito' }],
+    });
+    expect(result.actions.clearCart).toBe(true);
+    expect(result.actions.addItems).toEqual([
+      { productId: 21, quantity: 2 },
+      { productId: 20, quantity: 2 },
+    ]);
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('dirección sola no revive un pedido anterior ni agrega una pechuga sin elegir variante', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Es para Casa 11 terrazas de Castilla 3',
+      sessionSummary: 'carrito vacío',
+      recentMessages: ['Cliente: un arroz con pollo y una pechuga'],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products,
+    });
+    expect(result.actions).toEqual({
+      setAddress: 'Casa 11 terrazas de Castilla 3',
+      setOrderType: 'delivery',
+    });
+    expect(result.actions.addItems).toBeUndefined();
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('arroz con pollo y pechuga: conserva la nota y pregunta la variante sin añadirla', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 60, code: 60, name: 'Arroz Con Pollo', categoryName: 'Arroces', price: 25000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 77, code: 77, name: 'Pechuga A La Plancha', categoryName: 'Pollo', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 78, code: 78, name: 'Pechuga Gratinada', categoryName: 'Pollo', price: 32000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'Un arroz con pollo sin ensalada, cambia por yuca frita. Y una pechuga, la ensalada también por yuca frita.',
+      sessionSummary: 'carrito vacío',
+      recentMessages: [],
+      businessRulesBlock: 'reglas',
+      brandName: 'PPP',
+      products: dishes,
+    });
+    expect(result.actions.addItems).toHaveLength(1);
+    expect(result.actions.addItems?.[0]).toEqual(
+      expect.objectContaining({ productId: 60, quantity: 1, note: expect.stringMatching(/yuca frita/i) }),
+    );
+    expect(result.actions.setCustomerNotes).toMatch(/pechuga/i);
+    expect(result.reply).toMatch(/plancha|gratinada/i);
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('observación de ají no duplica el carrito ni cambia el nombre del cliente', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Y envías mucho ají',
+      sessionSummary: 'un arroz con pollo en el carrito',
+      recentMessages: ['Bot: ¿Qué más te agrego?'],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products,
+      cart: [{ productId: 1, name: '1 Pollo Frito' }],
+    });
+    expect(result.actions.setCustomerNotes).toMatch(/ají/i);
+    expect(result.actions.addItems).toBeUndefined();
+    expect(result.actions.setCustomerName).toBeUndefined();
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('arroz chino sin presentación consulta variantes; pregunta de broaster no agrega pollo suelto', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 26, code: 26, name: 'Arroz Chino', categoryName: 'Arroces', price: 34000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 36, code: 36, name: 'Arroz Chino Con Medio Pollo', categoryName: 'Arroces', price: 45000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Pollo', options: ['Frito', 'Broaster'] }] },
+    ];
+    const browse = await agent.runTurn({
+      userMessage: 'Para pedirte por fa un arroz chino',
+      sessionSummary: 'carrito vacío', recentMessages: [],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products: dishes,
+    });
+    expect(browse.reply).toMatch(/arroz chino/i);
+    expect(browse.reply).toMatch(/cu[aá]l/i);
+    expect(browse.actions).toEqual({});
+
+    const question = await agent.runTurn({
+      userMessage: 'Veci, ¿el arroz chino con pollo podría ser con pollo broaster?',
+      sessionSummary: 'carrito vacío', recentMessages: [],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products: dishes,
+    });
+    expect(question.reply).toMatch(/sí, el arroz chino/i);
+    expect(question.reply).toMatch(/broaster/i);
+    expect(question.actions).toEqual({});
+  });
+
+  it('presupuesto para almuerzo ofrece solo platos por debajo del límite', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const menu: WhatsappCatalogProduct[] = [
+      { id: 22, code: 22, name: 'Ejecutivo Con Pollo Frito', price: 24000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 17, code: 17, name: 'Churrasco', price: 38000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 20, code: 20, name: 'Sopa De Menudencias', price: 10500, availableNow: true, hasAttributes: true, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'Voy a almorzar, qué plato tienen de menos de 25 mil?',
+      sessionSummary: 'carrito vacío', recentMessages: [], businessRulesBlock: 'reglas', brandName: 'PPP', products: menu,
+    });
+    expect(result.reply).toMatch(/Ejecutivo Con Pollo Frito/);
+    expect(result.reply).not.toMatch(/Churrasco/);
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('consulta de domicilios en Castilla no se interpreta como dirección final', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: '¿Hacen domicilios? estoy por Castilla',
+      sessionSummary: 'carrito vacío', recentMessages: [], businessRulesBlock: 'reglas', brandName: 'PPP', products,
+    });
+    expect(result.reply).toMatch(/domicilio|cobertura/i);
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('no añade porción extra de arepas si ya son opción del pollo', () => {
+    const agent = new WhatsappAgentService(settingsStub as never, new WhatsappCatalogService({} as never));
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 1, code: 1, name: '1 Pollo Frito', price: 41000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'Sin arepas'] }] },
+      { id: 11, code: 11, name: 'Porcion De Arepas', price: 3500, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas', 'sin arepas'] }] },
+    ];
+    const actions: { addItems?: unknown[] } = {};
+    const response = (agent as any).executeTool('add_item', { productId: 11, quantity: 1 }, {
+      products: dishes, byId: new Map(dishes.map(p=>[p.id,p])),
+      actions, userMessage: 'Un pollo frito con arepas fritas',
+      setNeedsAttr: () => undefined,
+    });
+    expect(JSON.parse(response).error).toBe('included_attribute_not_extra');
+    expect(actions.addItems).toBeUndefined();
+  });
+
+  it('convierte atributos inventados en notas sin cambiar la elección válida', () => {
+    const agent = new WhatsappAgentService(settingsStub as never, new WhatsappCatalogService({} as never));
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 23, code: 23, name: 'Arroz Con Pollo', price: 29500, availableNow: true,
+        hasAttributes: true, attributes: [] },
+    ];
+    const actions: { addItems?: Array<{ note?: string; attributes?: unknown[] }> } = {};
+    const response = (agent as any).executeTool('add_item', {
+      productId: 23, quantity: 1, note: 'sin ensalada',
+      attributes: [{ attributeName: 'Cambio de papas', attributeValue: 'por yuca' }],
+    }, {
+      products: dishes, byId: new Map(dishes.map(p=>[p.id,p])),
+      actions, userMessage: 'Un arroz con pollo sin ensalada y cambia las papas por yuca',
+      setNeedsAttr: () => undefined,
+    });
+    expect(JSON.parse(response).ok).toBe(true);
+    expect(actions.addItems?.[0]?.note).toMatch(/yuca/);
+    expect(actions.addItems?.[0]?.attributes).toEqual([]);
+  });
+
+  it('primera opción por defecto sin pisar atributos expresos', () => {
+    const catalog = new WhatsappCatalogService({} as never);
+    const item: WhatsappCatalogProduct = {
+      id:36,code:36,name:'Arroz Chino Con Medio Pollo',price:45000,
+      hasAttributes:true,availableNow:true,
+      attributes:[{attributeName:'Pollo',options:['Frito','Broaster']}],
+    };
+    expect(catalog.fillDefaultAttributes(item, [])).toEqual([
+      {attributeName:'Pollo',attributeValue:'Frito'},
+    ]);
+    expect(catalog.fillDefaultAttributes(item, [
+      {attributeName:'Pollo',attributeValue:'Broaster'},
+    ])).toEqual([{attributeName:'Pollo',attributeValue:'Broaster'}]);
+  });
+
+  it('arepas fritas elegidas por cliente prevalecen sobre la propuesta Blancas', () => {
+    const catalog = new WhatsappCatalogService({} as never);
+    const agent = new WhatsappAgentService(settingsStub as never, catalog);
+    const p: WhatsappCatalogProduct = {
+      id: 1,code:1,name:'1 Pollo Frito',price:41000,hasAttributes:true,availableNow:true,
+      attributes:[{attributeName:'Arepas',options:['Blancas','Fritas','Sin arepas']}],
+    };
+    const actions: {addItems?:Array<{attributes?:Array<{attributeName:string;attributeValue:string}>}>} = {};
+    const response = (agent as any).executeTool('add_item',{
+      productId:1,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}],
+    },{
+      products:[p],byId:new Map([[p.id,p]]),actions,
+      userMessage:'Regálame un pollo frito con arepas fritas',
+      setNeedsAttr:()=>undefined,
+    });
+    expect(JSON.parse(response).ok).toBe(true);
+    expect(actions.addItems?.[0]?.attributes).toEqual([
+      {attributeName:'Arepas',attributeValue:'Fritas'},
+    ]);
   });
 
   it('executeTool search_menu por código vía reflexión de instancia', () => {

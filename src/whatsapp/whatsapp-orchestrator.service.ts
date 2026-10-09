@@ -137,6 +137,8 @@ export class WhatsappOrchestratorService {
   private readonly logger = new Logger(WhatsappOrchestratorService.name);
   /** Serializa webhooks por waId para no pisar humanTakeover (ASESOR → gracias). */
   private readonly inboundByWaId = new Map<string, Promise<void>>();
+  /** IDs reclamados por el turno activo, para auditar su resultado sin reejecutarlo. */
+  private readonly claimedInboundIdsByWaId = new Map<string, string[]>();
   /**
    * Junta textos rápidos del mismo waId (calle + apto) antes de responder,
    * para una sola respuesta en lugar de dos turnos a medias.
@@ -184,7 +186,7 @@ export class WhatsappOrchestratorService {
       state.pending.push(msg);
       state.waiters.push({ resolve, reject });
       if (state.pending.length >= WHATSAPP_INBOUND_COALESCE_MAX) {
-        void this.flushInboundCoalesce(key);
+        this.flushInboundCoalesceInBackground(key);
         return;
       }
       this.scheduleInboundCoalesceFlush(key);
@@ -197,8 +199,17 @@ export class WhatsappOrchestratorService {
     if (state.timer) clearTimeout(state.timer);
     const delayMs = coalesceDelayMsForBatch(state.pending);
     state.timer = setTimeout(() => {
-      void this.flushInboundCoalesce(key);
+      this.flushInboundCoalesceInBackground(key);
     }, delayMs);
+  }
+
+  private flushInboundCoalesceInBackground(key: string): void {
+    // flushInboundCoalesce forwards errors to every awaiting handleIncoming caller.
+    // Its background promise also needs a handler so provider failures cannot
+    // become unhandled rejections and terminate the Node process.
+    void this.flushInboundCoalesce(key).catch((err: unknown) => {
+      this.logger.error('WhatsApp background inbound flush failed', err);
+    });
   }
 
   private hasInboundCoalescePending(key: string): boolean {
@@ -342,14 +353,31 @@ export class WhatsappOrchestratorService {
     msg: IncomingWhatsappMessage,
   ): Promise<void> {
     this.beginOutboundHold(key);
+    let succeeded = false;
     try {
       await this.handleIncomingUnlocked(msg);
-    } finally {
       const conv = await this.conversationService.findOrCreateConversation(
         msg.waId,
         msg.phoneE164,
       );
+      // Un turno no está completado hasta finalizar también sus respuestas.
+      // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
+      // ciegamente las mutaciones del carrito o la creación de la orden.
       await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
+      succeeded = true;
+    } finally {
+      if (!succeeded) {
+        // No enviar respuestas parciales de un turno que falló.
+        this.outboundHoldByWaId.delete(key);
+      }
+      const claimedIds = this.claimedInboundIdsByWaId.get(key) || [];
+      this.claimedInboundIdsByWaId.delete(key);
+      if (claimedIds.length) {
+        await this.conversationService.setInboundProcessingOutcome(
+          claimedIds,
+          succeeded ? 'completed' : 'failed',
+        );
+      }
     }
   }
 
@@ -358,17 +386,59 @@ export class WhatsappOrchestratorService {
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
 
-    const logged = await this.conversationService.logMessage({
-      conversationId: conv.id,
-      direction: 'in',
-      body: msg.text,
-      waMessageId: msg.messageId,
-      sentBy: 'bot',
-      raw: msg.raw,
-      messageType: msg.messageType,
-      mediaId: msg.mediaId,
-      mimeType: msg.mimeType,
-    });
+    // Cada burbuja del lote tiene su propio ID de Meta. Reclamar todos,
+    // conservando únicamente los fragmentos nuevos para este turno.
+    const batch = Array.isArray(msg.raw?.coalescedMessages)
+      ? (msg.raw.coalescedMessages as Array<{
+          messageId: string;
+          text: string;
+          timestamp?: number;
+          raw?: Record<string, unknown>;
+        }>)
+      : null;
+    const freshTexts: string[] = [];
+    const newlyClaimedIds: string[] = [];
+    let logged: Awaited<ReturnType<WhatsappConversationService['claimInboundMessage']>> = null;
+    if (batch?.length) {
+      for (const part of batch) {
+        const claimed = await this.conversationService.claimInboundMessage({
+          conversationId: conv.id,
+          body: part.text,
+          waMessageId: part.messageId,
+          raw: part.raw,
+          messageType: 'text',
+        });
+        if (!claimed) continue;
+        if (part.messageId) newlyClaimedIds.push(part.messageId);
+        if (!logged) logged = claimed;
+        // Evitar repetir la misma línea si el cliente envía un texto idéntico
+        // en dos burbujas consecutivas (comportamiento previo del coalescer).
+        if (freshTexts[freshTexts.length - 1] !== part.text.trim()) {
+          freshTexts.push(part.text.trim());
+        }
+      }
+      if (logged) msg = { ...msg, text: freshTexts.join('\n') };
+    } else {
+      logged = await this.conversationService.claimInboundMessage({
+        conversationId: conv.id,
+        body: msg.text,
+        waMessageId: msg.messageId,
+        raw: msg.raw,
+        messageType: msg.messageType,
+        mediaId: msg.mediaId,
+        mimeType: msg.mimeType,
+      });
+      if (logged && msg.messageId) newlyClaimedIds.push(msg.messageId);
+    }
+    // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
+    // No tocar sesión ni crear pedidos a partir del webhook duplicado.
+    if (!logged) {
+      this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
+      return;
+    }
+    const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+    // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
+    this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
@@ -3582,6 +3652,12 @@ export class WhatsappOrchestratorService {
       };
     }
 
+    // A replacement may remove and re-add the same SKU with new quantity/options.
+    // Remove the old line before inserting its replacement.
+    if (actions.removeProductIds?.length) {
+      next.cart = next.cart.filter((c) => !actions.removeProductIds!.includes(c.productId));
+    }
+
     if (actions.setAddress) {
       const addr = actions.setAddress.trim();
       // Agente a veces toma "Las mojarras fritas" / "es todo" como domicilio
@@ -3661,6 +3737,19 @@ export class WhatsappOrchestratorService {
         : null;
       // Un plato + nota: no dejar que la IA meta acompañamientos (yuca/papa)
       let items = actions.addItems;
+      // The model may split "2 arroces" into two identical add_item calls.
+      // Resolve the customer's single quantity once for each identical line.
+      if (sourceText && !this.catalogService.looksLikeClearlyMultiDishOrder(sourceText)) {
+        const grouped = new Map<string, typeof items[number]>();
+        for (const item of items) {
+          const attrs = (item.attributes || []).map(a =>
+            `${a.attributeName.toLowerCase()}:${a.attributeValue.toLowerCase()}`).sort();
+          const key = JSON.stringify([item.productId, attrs, (item.note || '').trim().toLowerCase()]);
+          const previous = grouped.get(key);
+          grouped.set(key, previous ? {...previous,quantity:(previous.quantity || 1)+(item.quantity || 1)} : item);
+        }
+        items = [...grouped.values()];
+      }
       if (modNote && items.length > 1) {
         items = items.filter((item) => {
           const product = products.find((p) => p.id === item.productId);
@@ -3695,18 +3784,22 @@ export class WhatsappOrchestratorService {
       for (const item of items) {
         const product = products.find((p) => p.id === item.productId);
         if (!product) continue;
+        const itemSource = sourceText && multiQtyOrder
+          ? this.catalogService.orderSegmentForProduct(sourceText, product, products, item.attributes)
+          : sourceText;
         const qty = this.resolveAddItemQuantity({
           product,
           aiQuantity: item.quantity,
           sourceText,
+          quantitySource: itemSource,
           multiQtyOrder,
           forcedQty,
         });
         // En multi-ítem: la nota de "con queso" solo aplica al plato que la menciona
         const itemNote =
           item.note?.trim() || (multiQtyOrder ? undefined : modNote || undefined) || undefined;
-        const fromText = sourceText
-          ? this.catalogService.extractExplicitAttributeChoice(sourceText, product)
+        const fromText = itemSource
+          ? this.catalogService.extractExplicitAttributeChoice(itemSource, product)
           : null;
         const attempt = this.tryAddProductToCart(
           next,
@@ -3715,7 +3808,7 @@ export class WhatsappOrchestratorService {
           cfg,
           itemNote,
           fromText || item.attributes,
-          { sourceText },
+          { sourceText: itemSource },
         );
         if (attempt.missingAttributes) {
           deferredNeedsAttrs.push({
@@ -3752,10 +3845,6 @@ export class WhatsappOrchestratorService {
           },
         );
       }
-    }
-
-    if (actions.removeProductIds?.length) {
-      next.cart = next.cart.filter((c) => !actions.removeProductIds!.includes(c.productId));
     }
 
     if (actions.requestHuman) {
@@ -4114,16 +4203,30 @@ export class WhatsappOrchestratorService {
    * En pedidos multi-ítem nunca reutilizar el primer número del mensaje para todos.
    */
   private resolveAddItemQuantity(opts: {
-    product: { name: string };
+    product: { name: string; code?: number };
     aiQuantity?: number;
     sourceText?: string;
+    quantitySource?: string;
     multiQtyOrder: boolean;
     forcedQty: number;
   }): number {
     const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
+    const correctedQty = this.catalogService.extractCorrectedQuantityForProduct(opts.sourceText || '', opts.product.name);
+    if (correctedQty != null) return correctedQty;
+    if (opts.sourceText && opts.product.code != null) {
+      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*(?:#|(?:del?\s+)?c[oó]digo\s*)\s*(\d{1,4})\b/gi)]
+        .filter(match => Number(match[2]) === opts.product.code);
+      if (codeMentions.length === 1) {
+        return this.catalogService.extractQuantityFromSegment(`${codeMentions[0][1]} platos`);
+      }
+    }
+    const correction = opts.sourceText ? parseQtyDishCorrection(opts.sourceText) : null;
+    const correctedLine = correction?.filter(line =>
+      this.normalizeForMatch(opts.product.name).includes(this.normalizeForMatch(line.dish)));
+    if (correctedLine?.length === 1) return correctedLine[0].qty;
     if (opts.multiQtyOrder && opts.sourceText) {
       const near = this.catalogService.extractQuantityNearProduct(
-        opts.sourceText,
+        opts.quantitySource || opts.sourceText,
         opts.product.name,
       );
       if (near != null) return Math.max(1, Math.min(30, near));
@@ -10212,6 +10315,20 @@ export class WhatsappOrchestratorService {
       if (dish && !dishes.some((d) => d.id === dish.id)) dishes.push(dish);
     }
     if (dishes.length < 2) return false;
+
+    // "2 de cada una" puede referirse a variantes listadas junto a una
+    // categoría genérica ("sopa pequeña", que exige elegir sabor).
+    // No modificar el carrito hasta que el cliente precise qué presentaciones.
+    if (dishes.some((dish) => dish.hasAttributes && dish.attributes?.length)) {
+      await this.reply(
+        conv,
+        waId,
+        `Para no equivocarme, ¿cuáles quieres exactamente? Te mencioné ${dishes
+          .map((dish) => dish.name)
+          .join(', ')}. Dime los nombres y las cantidades antes de agregarlas.`,
+      );
+      return true;
+    }
 
     let next = session;
     const labels: string[] = [];

@@ -39,7 +39,23 @@ export class WhatsappConversationService {
       },
       customerName: usableLinkedName,
     });
-    return this.convRepo.save(conv);
+    try {
+      return await this.convRepo.save(conv);
+    } catch (err: unknown) {
+      const db = err as {
+        code?: string;
+        errno?: number;
+        driverError?: { code?: string; errno?: number };
+      };
+      const duplicate = db?.code === 'ER_DUP_ENTRY' || db?.errno === 1062 ||
+        db?.driverError?.code === 'ER_DUP_ENTRY' || db?.driverError?.errno === 1062;
+      if (!duplicate) throw err;
+      // Another worker may have created this phone after our initial lookup.
+      // Reuse its persisted session instead of dropping the inbound message.
+      const winner = await this.convRepo.findOne({ where: { waId } });
+      if (!winner) throw err;
+      return winner;
+    }
   }
 
   async touchInbound(conv: WhatsappConversation) {
@@ -178,6 +194,132 @@ export class WhatsappConversationService {
     const id = (waMessageId || '').trim();
     if (!id) return null;
     return this.msgRepo.findOne({ where: { waMessageId: id } });
+  }
+
+  /**
+   * El índice debe ser UNIQUE sobre wa_message_id solamente: un índice
+   * compuesto UNIQUE no garantiza unicidad de un messageId en toda la tabla.
+   * Verificación al primer claim; si falta, fallar cerrado y reintentar en
+   * el próximo mensaje (el migrador podría arreglarlo posteriormente).
+   */
+  private inboundUniqueClaimIndexVerified = false;
+
+  private async assertInboundUniqueClaimIndex(): Promise<void> {
+    if (this.inboundUniqueClaimIndexVerified) return;
+
+    const rows: Array<{ total: number | string }> = await this.msgRepo.query(`
+      SELECT COUNT(*) AS total
+      FROM (
+        SELECT INDEX_NAME
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'ppp_whatsapp_messages'
+          AND NON_UNIQUE = 0
+        GROUP BY INDEX_NAME
+        HAVING COUNT(*) = 1 AND MAX(COLUMN_NAME) = 'wa_message_id'
+      ) AS unique_message_indexes
+    `);
+    if (Number(rows?.[0]?.total) < 1) {
+      throw new Error(
+        'WhatsApp inbound bloqueado: falta un índice UNIQUE sobre ppp_whatsapp_messages.wa_message_id. Corrige la migración antes de procesar mensajes.',
+      );
+    }
+    this.inboundUniqueClaimIndexVerified = true;
+  }
+
+  /**
+   * Reclama un inbound por messageId mediante INSERT atómico.
+   * El índice UNIQUE wa_message_id decide el ganador entre instancias.
+   * null significa que otro worker ya reclamó ese mismo mensaje: no procesarlo.
+   *
+   * Los mensajes sin ID no pueden deduplicarse aquí y siguen el log normal.
+   */
+  async claimInboundMessage(params: {
+    conversationId: number;
+    body: string;
+    waMessageId?: string;
+    raw?: Record<string, unknown>;
+    messageType?: string;
+    mediaId?: string;
+    mimeType?: string;
+  }): Promise<WhatsappMessage | null> {
+    const waMessageId = (params.waMessageId || '').trim();
+    if (!waMessageId) {
+      return this.logMessage({
+        ...params,
+        direction: 'in',
+        sentBy: 'bot',
+      });
+    }
+
+    const cid = Number(params.conversationId);
+    if (!Number.isFinite(cid) || cid <= 0) {
+      throw new Error(`claimInboundMessage: conversationId inválido (${params.conversationId})`);
+    }
+    // No aceptar mensajes nuevos si la base no puede impedir el doble claim.
+    await this.assertInboundUniqueClaimIndex();
+
+    try {
+      const result = await this.msgRepo.insert({
+        conversationId: cid,
+        direction: 'in',
+        body: params.body,
+        waMessageId,
+        processingStatus: 'processing',
+        processedAt: null,
+        processingError: null,
+        sentBy: 'bot',
+        rawPayload: (params.raw ?? null) as object | null,
+        messageType: params.messageType || 'text',
+        mediaId: params.mediaId ?? null,
+        mimeType: params.mimeType ?? null,
+      } as Parameters<typeof this.msgRepo.insert>[0]);
+
+      const insertedId = result.identifiers?.[0]?.id;
+      const saved = insertedId != null
+        ? await this.msgRepo.findOne({ where: { id: String(insertedId) } })
+        : await this.findByWaMessageId(waMessageId);
+      if (!saved) {
+        throw new Error(`claimInboundMessage: inbound insertado pero no recuperable (${waMessageId})`);
+      }
+      return saved;
+    } catch (err: unknown) {
+      const db = err as {
+        code?: string;
+        errno?: number;
+        driverError?: { code?: string; errno?: number };
+      };
+      if (
+        db?.code === 'ER_DUP_ENTRY' ||
+        db?.errno === 1062 ||
+        db?.driverError?.code === 'ER_DUP_ENTRY' ||
+        db?.driverError?.errno === 1062
+      ) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  /** Audita la conclusión del turno sin reabrirlo ni tocar el carrito. */
+  async setInboundProcessingOutcome(
+    messageIds: string[],
+    status: 'completed' | 'failed',
+  ): Promise<void> {
+    const ids = [...new Set(messageIds.map((id) => (id || '').trim()).filter(Boolean))];
+    if (!ids.length) return;
+    await this.msgRepo
+      .createQueryBuilder()
+      .update()
+      .set({
+        processingStatus: status,
+        processedAt: status === 'completed' ? new Date() : null,
+        processingError: status === 'failed' ? 'turn_failed_requires_review' : null,
+      })
+      .where('wa_message_id IN (:...ids)', { ids })
+      .andWhere('direction = :direction', { direction: 'in' })
+      .andWhere('processing_status = :previous', { previous: 'processing' })
+      .execute();
   }
 
   async logMessage(params: {

@@ -677,13 +677,17 @@ export function parseQtyDishCorrection(text: string): { qty: number; dish: strin
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   if (!/\b(no|esta mal|estan mal|son solo|solo son)\b/.test(t)) return null;
+  // The total ("son 4 sopas") is a heading, not another ordered line.
+  const heading = raw.match(/\bson\s+(\d{1,2})\s+sopas?\s*[:,]?\s*/i);
+  const list = heading ? raw.slice((heading.index || 0) + heading[0].length).split(';')[0] : raw;
   const parts = [
-    ...raw.matchAll(/(\d{1,2})\s+de\s+([a-záéíóúñü]+(?:\s+(?!y\b|e\b)[a-záéíóúñü]+)*)/gi),
+    ...list.matchAll(/(\d{1,2})\s+(?:de\s+)?([a-záéíóúñü]+(?:\s+(?!y\b|e\b)[a-záéíóúñü]+)*)/gi),
   ];
   const lines = parts
     .map((m) => ({ qty: parseInt(m[1], 10), dish: m[2].trim() }))
     .filter((l) => l.qty >= 1 && l.qty <= 20 && !/^(cada|esas|esos|ellas|ellos)$/i.test(l.dish));
   if (lines.length < 2) return null;
+  if (heading && lines.reduce((sum, line) => sum + line.qty, 0) !== Number(heading[1])) return null;
   return lines;
 }
 

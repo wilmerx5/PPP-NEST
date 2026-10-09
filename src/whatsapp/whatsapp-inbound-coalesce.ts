@@ -50,7 +50,19 @@ export function mergeCoalescedInboundMessages(
   }
   if (messages.length === 1) return messages[0];
 
-  const texts = messages
+  // Meta puede reenviar el mismo messageId mientras el lote sigue pendiente.
+  // Deduplicar por identificador, no solo por texto consecutivo: A, B, A
+  // debe procesarse como A, B (nunca volver a sumar el pedido de A).
+  const seenMessageIds = new Set<string>();
+  const uniqueMessages = messages.filter((m) => {
+    const id = (m.messageId || '').trim();
+    if (!id) return true;
+    if (seenMessageIds.has(id)) return false;
+    seenMessageIds.add(id);
+    return true;
+  });
+
+  const texts = uniqueMessages
     .map((m) => (m.text || '').trim())
     .filter(Boolean);
   const uniqueOrdered: string[] = [];
@@ -59,8 +71,8 @@ export function mergeCoalescedInboundMessages(
     uniqueOrdered.push(t);
   }
 
-  const first = messages[0];
-  const last = messages[messages.length - 1];
+  const first = uniqueMessages[0];
+  const last = uniqueMessages[uniqueMessages.length - 1];
   return {
     ...first,
     messageId: first.messageId || last.messageId,
@@ -68,8 +80,16 @@ export function mergeCoalescedInboundMessages(
     timestamp: last.timestamp || first.timestamp,
     raw: {
       ...first.raw,
-      coalescedFrom: messages.map((m) => m.messageId).filter(Boolean),
-      coalescedCount: messages.length,
+      coalescedFrom: uniqueMessages.map((m) => m.messageId).filter(Boolean),
+      coalescedCount: uniqueMessages.length,
+      // ID + texto de cada burbuja: permite reclamar individualmente y
+      // reconstruir solo los fragmentos nuevos tras un reenvío parcial de Meta.
+      coalescedMessages: uniqueMessages.map((m) => ({
+        messageId: m.messageId,
+        text: (m.text || '').trim(),
+        timestamp: m.timestamp,
+        raw: m.raw,
+      })),
     },
   };
 }

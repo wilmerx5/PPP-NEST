@@ -571,6 +571,7 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
   /** Columnas de contexto del local para la IA (idempotente). */
   private async ensureWhatsappSettingsColumns() {
     const cols: Array<{ name: string; ddl: string }> = [
+      { name: 'agent_v1_enabled', ddl: 'TINYINT(1) NOT NULL DEFAULT 0' },
       { name: 'restaurant_name', ddl: 'VARCHAR(120) NULL' },
       { name: 'restaurant_address', ddl: 'VARCHAR(500) NULL' },
       { name: 'restaurant_city', ddl: 'VARCHAR(120) NULL' },
@@ -681,6 +682,9 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
     const cols: Array<{ name: string; ddl: string }> = [
       { name: 'media_id', ddl: 'VARCHAR(128) NULL' },
       { name: 'mime_type', ddl: 'VARCHAR(120) NULL' },
+      { name: 'processing_status', ddl: "VARCHAR(16) NOT NULL DEFAULT 'completed'" },
+      { name: 'processed_at', ddl: 'TIMESTAMP NULL' },
+      { name: 'processing_error', ddl: 'VARCHAR(80) NULL' },
     ];
     for (const col of cols) {
       const exists: { c: number }[] = await this.dataSource.query(
