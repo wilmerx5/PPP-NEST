@@ -9,6 +9,8 @@ on:
       - .github/workflows/whatsapp-beta-ai.yml
       - scripts/whatsapp-beta-ai-rehearsal.ts
       - src/whatsapp/whatsapp-agent.service.ts
+      - src/whatsapp/whatsapp-catalog.service.ts
+      - src/whatsapp/whatsapp-agent.spec.ts
       - scripts/fixtures/whatsapp-beta-menu.json
       - scripts/fixtures/whatsapp-beta-cases.json
       - scripts/fixtures/whatsapp-beta-human-intents.json
