@@ -277,6 +277,52 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(result.toolCalls).toEqual([]);
   });
 
+  it('observación de ají no duplica el carrito ni cambia el nombre del cliente', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: 'Y envías mucho ají',
+      sessionSummary: 'un arroz con pollo en el carrito',
+      recentMessages: ['Bot: ¿Qué más te agrego?'],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products,
+      cart: [{ productId: 1, name: '1 Pollo Frito' }],
+    });
+    expect(result.actions.setCustomerNotes).toMatch(/ají/i);
+    expect(result.actions.addItems).toBeUndefined();
+    expect(result.actions.setCustomerName).toBeUndefined();
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('arroz chino sin presentación consulta variantes; pregunta de broaster no agrega pollo suelto', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const dishes: WhatsappCatalogProduct[] = [
+      { id: 70, code: 70, name: 'Arroz Chino Especial', categoryName: 'Arroces', price: 30000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: 73, code: 73, name: 'Arroz Chino Con Pollo Broaster', categoryName: 'Arroces', price: 40000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const browse = await agent.runTurn({
+      userMessage: 'Para pedirte por fa un arroz chino',
+      sessionSummary: 'carrito vacío', recentMessages: [],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products: dishes,
+    });
+    expect(browse.reply).toMatch(/arroz chino/i);
+    expect(browse.reply).toMatch(/cu[aá]l/i);
+    expect(browse.actions).toEqual({});
+
+    const question = await agent.runTurn({
+      userMessage: 'Veci, ¿el arroz chino con pollo podría ser con pollo broaster?',
+      sessionSummary: 'carrito vacío', recentMessages: [],
+      businessRulesBlock: 'reglas', brandName: 'PPP', products: dishes,
+    });
+    expect(question.reply).toMatch(/sí, tenemos/i);
+    expect(question.reply).toMatch(/broaster/i);
+    expect(question.actions).toEqual({});
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
