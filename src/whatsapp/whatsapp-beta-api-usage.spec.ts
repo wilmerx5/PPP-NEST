@@ -1,6 +1,20 @@
 import { BetaApiUsage } from '../../scripts/whatsapp-beta-api-usage';
 
 describe('Synthetic rehearsal token accounting',()=>{
+  it('stops a rehearsal for billing errors but keeps temporary rate limits retryable',()=> {
+    const usage=new BetaApiUsage();usage.record(429,{error:{code:'rate_limit_exceeded'}});
+    expect(usage.blockingProviderErrorCode).toBeUndefined();
+    usage.record(429,{error:{code:'credit_balance_exhausted'}});
+    expect(usage.blockingProviderErrorCode).toBe('credit_balance_exhausted');
+  });
+  it('marks an aborted inference as unknown usage even when its retry succeeds',()=> {
+    const usage=new BetaApiUsage();usage.requests=2;usage.recordTransportFailure(new DOMException('private','TimeoutError'));
+    usage.record(200,{usage:{prompt_tokens:100,completion_tokens:20}});
+    const result=usage.summary('gpt-4o-mini');
+    expect(result).toMatchObject({requests:2,successfulResponses:1,responsesWithUsage:1,uncertainResponses:1,
+      usageComplete:false,transportErrors:{timeout:1},promptTokens:100,completionTokens:20});
+    expect(JSON.stringify(result)).not.toContain('private');
+  });
   it('sums every completion and prices cached input only once',()=>{
     const usage=new BetaApiUsage();usage.requests=2;
     for(let i=0;i<2;i++)usage.record(200,{usage:{prompt_tokens:10000,completion_tokens:1000,prompt_tokens_details:{cached_tokens:6000}}});

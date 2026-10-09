@@ -55,6 +55,11 @@ jobs:
               failed=1
             fi
             echo "$result" > "tmp/endurance-${offset}-exit.txt"
+            if node -e 'const r=require("./"+process.argv[1]); process.exit(r.blockedProviderCode ? 0 : 1);' "tmp/endurance-${offset}.json"; then
+              echo "::error::Endurance stopped: provider billing/quota blocks inference"
+              failed=1
+              break
+            fi
           done
           exit "$failed"
       - name: Archive every result including failed repetitions

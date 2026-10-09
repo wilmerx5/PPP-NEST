@@ -67,10 +67,20 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
     await gate;
   }
   if (tracked) apiUsage.requests++;
-  const response = await originalFetch(...args);
+  let response:Response;
+  try {response = await originalFetch(...args);} catch(error) {
+    if(tracked)apiUsage.recordTransportFailure(error);
+    throw error;
+  }
   if (tracked) {
     let payload: unknown;
-    try { payload = await response.clone().json(); } catch { /* Preserve the real response. */ }
+    try { payload = await response.clone().json(); } catch(error) {
+      if((error as {name?:string})?.name==='TimeoutError') {
+        apiUsage.recordTransportFailure(error);
+        throw error;
+      }
+      /* Preserve the real response. */
+    }
     apiUsage.record(response.status,payload);
   }
   return response;
@@ -122,8 +132,9 @@ if (!Number.isInteger(repeats) || repeats<1 || repeats>10) {
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
 if (hardMode) {
-  for (let repetition = 1; repetition <= repeats; repetition++) {
+  hardRuns:for (let repetition = 1; repetition <= repeats; repetition++) {
   for (const scenario of hardScenarios.slice(offset, offset + maxCases)) {
+    if(apiUsage.blockingProviderErrorCode)break hardRuns;
     const cart = new Map<number, { productId: number; name: string; quantity: number;
       note?: string; attributes: Array<{attributeName:string;attributeValue:string}> }>();
     const initialLines: WhatsappSessionData['cart'] = [];
@@ -238,6 +249,7 @@ if (hardMode) {
   }
 } else if (humanMode) {
   for (const scenario of humanScenarios.slice(offset, offset + maxCases)) {
+    if(apiUsage.blockingProviderErrorCode)break;
     const messages = scenario.messages || [scenario.message || ''];
     const history: string[] = [];
     const turns: Array<Record<string, unknown>> = [];
@@ -279,6 +291,7 @@ if (hardMode) {
   }
 } else {
 for (const scenario of cases.slice(offset, offset + maxCases)) {
+  if(apiUsage.blockingProviderErrorCode)break;
   const history = [...(scenario.context || [])];
   const cart = new Map<number, { productId: number; name: string; quantity: number }>();
   for (const initial of scenario.initialCart || []) {
@@ -381,7 +394,7 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
 }
 const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, repetitions:hardMode ? repeats : 1, date: new Date().toISOString(),
   caveat: 'Hard cases use AgentV1, ActionGuard and real orchestrator applyActions. Not the full inbound router, Meta, DB, or order creation.',
-  apiUsage: apiUsage.summary(model), scenarios: results };
+  blockedProviderCode:apiUsage.blockingProviderErrorCode || null,apiUsage: apiUsage.summary(model), scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ scenarios: results.length, model,

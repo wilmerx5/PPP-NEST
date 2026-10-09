@@ -278,6 +278,14 @@ export class WhatsappAgentService {
       /\D/g,
       '',
     );
+    const shortNorm = input.userMessage.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').trim();
+    const allergyContext=shortNorm.replace(/\bno\s+(?:(?:soy|somos|es|son|tengo|tenemos|tiene|tienen|hay)\s+)?(?:alergi(?:a|as|co|ca|cos|cas)|celiac[oa]s?)\b/g,'');
+    if(/\b(?:alergi(?:a|as|co|ca|cos|cas)|celiac[oa]s?)\b/.test(allergyContext) ||
+      (/\bgarantiz\w*\b/.test(shortNorm) && /\b(?:alergenos?|gluten|lacteos?|leche)\b/.test(shortNorm))) {
+      return {reply:'No puedo garantizar la ausencia de alérgenos. Un asesor debe verificar ingredientes y preparación con cocina antes de tomar tu pedido.',
+        actions:{requestHuman:true},toolCalls:[]};
+    }
     if (!cfg.openaiApiKey) {
       return {
         reply: `El asistente aún no está configurado. Contáctanos al *${phone || '3118866823'}*.`,
@@ -289,8 +297,6 @@ export class WhatsappAgentService {
 
     // Referencias deícticas y distributivas sin un único referente claro:
     // jamás crear productos por adivinar "ese" o "de cada una".
-    const shortNorm = input.userMessage.toLowerCase().normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '').trim();
     if (/\b(?:\d+|un[ao]?|dos|tres|cuatro|cinco)\s+de\s+cada\s+un[ao]\b/.test(shortNorm) ||
       /^(?:(?:dame|regalame|quiero|ponme)\s+)?(?:un[ao]?\s+)?(?:ese|esa|esos|esas)\s+(?:que\s+(?:dijiste|me\s+dijiste)|de\s+(?:antes|arriba))\b/.test(shortNorm)) {
       return {
@@ -630,7 +636,7 @@ Contacto humano: *${phone || '3118866823'}*
         );
 
         const res = await requestWhatsappInference(JSON.stringify(body),cfg.openaiApiKey,
-          {timeoutMs:Math.min(15000,turnDeadline-Date.now())});
+          {timeoutMs:Math.min(20000,turnDeadline-Date.now())});
 
         if (!res.ok) {
           let code='unclassified';
@@ -771,12 +777,15 @@ Contacto humano: *${phone || '3118866823'}*
         error: 'max_iterations',
       };
     } catch (err) {
-      this.logger.error(`AgentV1 failed: ${err}`);
+      const name=(err as {name?:string})?.name;
+      const code=['TimeoutError','AbortError','TypeError','SyntaxError','Error','RangeError'].includes(name || '')
+        ? name : 'UnclassifiedError';
+      this.logger.error(`AgentV1 failed: ${code}`);
       return {
         reply: `No pude procesar tu mensaje. Contáctanos al *${phone || '3118866823'}*.`,
         actions,
         toolCalls,
-        error: 'exception',
+        error: name==='TimeoutError' ? 'openai_timeout' : 'exception',
       };
     }
   }

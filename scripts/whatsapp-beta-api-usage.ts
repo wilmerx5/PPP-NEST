@@ -6,8 +6,17 @@ export class BetaApiUsage {
   promptTokens = 0;
   cachedPromptTokens = 0;
   completionTokens = 0;
+  uncertainResponses = 0;
+  blockingProviderErrorCode?: string;
   readonly httpErrors: Record<string, number> = {};
   readonly providerErrorCodes: Record<string,number> = {};
+  readonly transportErrors: Record<string,number> = {};
+
+  recordTransportFailure(error:unknown):void {
+    this.uncertainResponses++;
+    const code=(error as {name?:string})?.name==='TimeoutError' ? 'timeout' : 'transport_error';
+    this.transportErrors[code]=(this.transportErrors[code] || 0)+1;
+  }
 
   record(status: number, payload?: unknown): void {
     if (status < 200 || status >= 300) {
@@ -15,6 +24,9 @@ export class BetaApiUsage {
       const value=(payload as {error?:{code?:unknown}} | null)?.error?.code;
       const code=typeof value==='string' && /^[a-z_]{1,60}$/.test(value) ? value : 'unclassified';
       this.providerErrorCodes[code]=(this.providerErrorCodes[code] || 0)+1;
+      if(['credit_balance_exhausted','insufficient_quota','billing_hard_limit_reached'].includes(code)) {
+        this.blockingProviderErrorCode=code;
+      }
       return;
     }
     this.successfulResponses++;
@@ -35,7 +47,8 @@ export class BetaApiUsage {
     return {
       model, requests: this.requests, successfulResponses: this.successfulResponses,
       responsesWithUsage: this.responsesWithUsage,
-      usageComplete: this.responsesWithUsage === this.successfulResponses,
+      usageComplete: this.responsesWithUsage === this.successfulResponses && this.uncertainResponses===0,
+      uncertainResponses:this.uncertainResponses,transportErrors:{...this.transportErrors},
       promptTokens: this.promptTokens, cachedPromptTokens: this.cachedPromptTokens,
       completionTokens: this.completionTokens, httpErrors: {...this.httpErrors},providerErrorCodes:{...this.providerErrorCodes},
       estimatedReportedCostUsd: priced ? (

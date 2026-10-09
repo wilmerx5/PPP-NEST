@@ -18,6 +18,41 @@ async function apply(text: string, actions: any, cart: any[] = []) {
   return (await service.applyActions({}, {cart,orderType:'pickup'}, guarded.actions, products, {}, text)).session;
 }
 describe('Observed live AI regressions', () => {
+  it.each(['Soy alérgico a los lácteos, ¿me garantizas un plato sin leche?',
+    'Mi hijo tiene alergia al maní. Un arroz con pollo',
+    'No soy alérgico, pero mi hijo tiene alergia a la leche', 'Soy celíaco'])
+  ('routes explicit allergies to kitchen verification without model or cart changes: %s',async text=> {
+    const fetchMock=jest.spyOn(global,'fetch');const cart=[combo];
+    try {
+      const result=await agent.runTurn({userMessage:text,cart,products,brandName:'PPP',recentMessages:[],
+        sessionSummary:'',businessRulesBlock:''});
+      expect(result.actions).toEqual({requestHuman:true});expect(result.reply).toMatch(/verificar.*cocina/);
+      expect(result.reply).not.toMatch(/100% libre|garantizo que/i);expect(result.error).toBeUndefined();
+      expect(cart).toEqual([combo]);expect(fetchMock).not.toHaveBeenCalled();
+    } finally {fetchMock.mockRestore();}
+  });
+  it.each(['No soy alérgico, un arroz con pollo sin queso','Un arroz con pollo sin queso'])
+  ('does not classify ordinary preferences or a negated allergy as an allergy: %s',async text=> {
+    const configured=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:null,localContext:{}})} as never,catalog);
+    const result=await configured.runTurn({userMessage:text,cart:[],products,brandName:'PPP',recentMessages:[],
+      sessionSummary:'',businessRulesBlock:''});
+    expect(result.actions.requestHuman).toBeUndefined();expect(result.error).toBe('no_openai_key');
+  });
+  it('does not replay an applied cart tool when the next inference times out',async()=> {
+    const response=(message:any)=>new Response(JSON.stringify({choices:[{message}]}));
+    const fetchMock=jest.spyOn(global,'fetch').mockResolvedValueOnce(response({role:'assistant',content:null,tool_calls:[{
+      id:'test-add',type:'function',function:{name:'add_item',arguments:'{"productId":23}'},
+    }]})).mockRejectedValueOnce(new DOMException('lost reply','TimeoutError'))
+      .mockResolvedValueOnce(response({role:'assistant',content:'Listo, un arroz con pollo.'}));
+    try {
+      const result=await agent.runTurn({userMessage:'Un arroz con pollo',cart:[],products,brandName:'PPP',
+        recentMessages:[],sessionSummary:'',businessRulesBlock:''});
+      expect(result.error).toBeUndefined();expect(result.toolCalls).toEqual(['add_item']);
+      expect(result.actions.addItems?.map(item=>[item.productId,item.quantity])).toEqual([[23,1]]);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls[2][1]!.body).toBe(fetchMock.mock.calls[1][1]!.body);
+    } finally {fetchMock.mockRestore();}
+  });
   const longOrder='Me regalas una sopa de mondongo por favor un cuarto de pollo broaster pierna pernil y unas costillas';
   it('points a rejected soup SKU to the missing soup rather than an unrelated chicken',()=> {
     const actions:any={addItems:[{productId:6},{productId:60}]};
