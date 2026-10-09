@@ -1999,6 +1999,12 @@ export class WhatsappCatalogService {
     const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i));
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
+    const swap = this.swapIntent(text);
+    if (explicitSegments.length === 1 && swap && this.productCarriesMention(product, swap.removed) &&
+      !segments.some(segment => {
+        const other = this.findProductEmbeddedInMessage(segment, products);
+        return other && other.id !== product.id && !this.isLikelySideOnlyProduct(other);
+      })) return text;
     // The general search splitter removes modifiers and may separate an included
     // beverage from its executive. Preserve the complete original order then.
     if (explicitSegments.length === 1 && segments.slice(1).every(segment =>
@@ -2351,7 +2357,7 @@ export class WhatsappCatalogService {
       /\bcambia(?:r|me|le|les|melo|melas)?\s+(.+?)\s+\bpor\b\s+(.+)/,
     );
     if (!m?.[1] || !m?.[2]) return null;
-    const added = m[2].split(/\s*,\s*|\s+\by\b\s+/)[0].trim();
+    const added = m[2].split(/\s*,\s*|\s+\by\b\s+|\s+pero\b/)[0].trim();
     const removed = m[1].trim();
     if (removed.length < 3 || added.length < 3) return null;
     return { removed, added };

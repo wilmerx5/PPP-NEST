@@ -45,6 +45,11 @@ describe('Observed live AI regressions', () => {
     const session = await apply('Un arroz con pollo y otro arroz con pollo', {addItems:[{productId:23,quantity:1},{productId:23,quantity:1}]});
     expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[23,2]]);
   });
+  it.each([[{productId:23,quantity:2},{productId:23,quantity:1}], [{productId:23,quantity:3}]])(
+    'sums independently written quantities once regardless of how the model groups its calls', async (...addItems) => {
+      const session = await apply('Dos arroces con pollo y otro arroz con pollo', {addItems});
+      expect(session.cart.map(c=>[c.productId,c.quantity])).toEqual([[23,3]]);
+    });
   it('preserves an omitted second kitchen preference on its own dish', () => {
     const actions: any = {};
     const result = JSON.parse((agent as any).executeTool('add_item',{productId:23,note:'sin ensalada'}, {
@@ -54,5 +59,17 @@ describe('Observed live AI regressions', () => {
     expect(result.ok).toBe(true);
     expect(actions.addItems[0].note).toBe('sin ensalada, más yuca');
     expect(actions.addItems[0].note).not.toMatch(/arepas/);
+  });
+  it('keeps a requested substitution through an incorrect follow-up tool edit', () => {
+    const actions: any = {};
+    const ctx = {products,byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],
+      userMessage:'Un arroz con pollo, cambia las papas por yuca pero no agregues una porción adicional',setNeedsAttr:()=>undefined};
+    const call = (name:string,args:any) => JSON.parse((agent as any).executeTool(name,args,ctx));
+    expect(call('add_item',{productId:23,note:'sin ensalada',attributes:[{attributeName:'Arepas',attributeValue:'Sin arepas'}]}).ok).toBe(true);
+    const cart = call('get_cart',{});
+    expect(call('update_item',{productId:23,cartLineIndex:cart.lines[0].cartLineIndex,note:'sin ensalada, sin papa francesa'}).ok).toBe(true);
+    expect(actions.addItems).toHaveLength(1);
+    expect(actions.addItems[0].note).toMatch(/cambio por yuca/i);
+    expect(actions.addItems[0].note).not.toMatch(/ensalada|arepas|no agregues/i);
   });
 });

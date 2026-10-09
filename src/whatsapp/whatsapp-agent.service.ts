@@ -1470,6 +1470,12 @@ Contacto humano: *${phone || '3118866823'}*
           attributes = attrs;
         }
 
+        // The source owns a substitution; a model's note must not invent
+        // exclusions or turn the replacement into a separately charged side.
+        if (swap && this.catalogService.productCarriesMention(product, swap.removed)) {
+          const change = this.catalogService.swapChangeNote(swap.removed, swap.added);
+          note = [sourceNote, change].filter(Boolean).join('. ').slice(0, 200);
+        }
         const choicesKey = (choices: typeof attributes) => JSON.stringify((choices || []).map(choice =>
           `${choice.attributeName.toLowerCase()}:${choice.attributeValue.toLowerCase()}`).sort());
         if (!this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
@@ -1568,6 +1574,15 @@ Contacto humano: *${phone || '3118866823'}*
             ...(args.quantity !== undefined ? {quantity:Number(args.quantity)} : {}),
             ...(typeof args.note === 'string' ? {note:args.note.trim().slice(0,200)} : {}),
           };
+          if (pendingAddIndex >= 0 && typeof args.note === 'string') {
+            const product = ctx.byId.get(productId);
+            const source = product && this.catalogService.orderSegmentForProduct(ctx.userMessage || '', product, ctx.products);
+            const swap = source && this.catalogService.swapIntent(source);
+            if (product && swap && this.catalogService.productCarriesMention(product, swap.removed)) {
+              update.note = [this.catalogService.extractProductModificationNote(source),
+                this.catalogService.swapChangeNote(swap.removed, swap.added)].filter(Boolean).join('. ').slice(0,200);
+            }
+          }
           if (pendingAddIndex >= 0) {
             const pending = ctx.actions.addItems![pendingAddIndex];
             if (update.quantity !== undefined) pending.quantity = update.quantity;

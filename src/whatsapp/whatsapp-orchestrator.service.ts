@@ -3716,6 +3716,7 @@ export class WhatsappOrchestratorService {
         : null;
       // Un plato + nota: no dejar que la IA meta acompañamientos (yuca/papa)
       let items = actions.addItems;
+      const repeatedClauseQuantities = new Map<typeof items[number], number>();
       // The model may split "2 arroces" into two identical add_item calls.
       // Resolve the customer's single quantity once for each identical line.
       if (sourceText) {
@@ -3726,10 +3727,29 @@ export class WhatsappOrchestratorService {
           const product = products.find(p => p.id === item.productId);
           const ownSegment = product && this.catalogService.orderSegmentForProduct(sourceText, product, products, item.attributes);
           const uniqueClause = !this.catalogService.looksLikeClearlyMultiDishOrder(sourceText) || ownSegment !== sourceText;
+          const clauses = !uniqueClause && product && !item.note ? sourceText
+            .split(/(?:\s+y\s+|,\s*|;\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i)
+            .filter(segment => {
+              const codes = [...segment.matchAll(/(?:#|c[oó]digo\s*)\s*(\d{1,4})\b/gi)];
+              return codes.length ? codes.some(match => Number(match[1]) === product.code) :
+                this.catalogService.productNameFitsUtterance(product, segment);
+            }) : [];
+          const choicesKey = (choices: typeof item.attributes) => JSON.stringify((choices || [])
+            .map(a => `${a.attributeName.toLowerCase()}:${a.attributeValue.toLowerCase()}`).sort());
+          const sameChoices = clauses.length > 1 && clauses.every(segment => {
+            const parsed = this.catalogService.resolveAttributesFromMessage(product!, segment, []);
+            return parsed.status !== 'invalid' &&
+              choicesKey(this.catalogService.fillDefaultAttributes(product!, parsed.attributes)) ===
+              choicesKey(this.catalogService.fillDefaultAttributes(product!, item.attributes || [])) &&
+              !this.catalogService.extractProductModificationNote(segment);
+          });
           const key = JSON.stringify([item.productId, attrs, (item.note || '').trim().toLowerCase(),
-            uniqueClause ? null : grouped.size]);
+            uniqueClause || sameChoices ? null : grouped.size]);
           const previous = grouped.get(key);
-          grouped.set(key, previous ? {...previous,quantity:(previous.quantity || 1)+(item.quantity || 1)} : item);
+          const combined = previous ? {...previous,quantity:(previous.quantity || 1)+(item.quantity || 1)} : item;
+          grouped.set(key, combined);
+          if (sameChoices) repeatedClauseQuantities.set(combined, clauses.reduce((sum, segment) =>
+            sum + this.catalogService.extractQuantityFromSegment(segment), 0));
         }
         items = [...grouped.values()];
       }
@@ -3770,7 +3790,7 @@ export class WhatsappOrchestratorService {
         const itemSource = sourceText && multiQtyOrder
           ? this.catalogService.orderSegmentForProduct(sourceText, product, products, item.attributes)
           : sourceText;
-        const qty = this.resolveAddItemQuantity({
+        const qty = repeatedClauseQuantities.get(item) ?? this.resolveAddItemQuantity({
           product,
           aiQuantity: item.quantity,
           sourceText,
