@@ -825,6 +825,7 @@ Contacto humano: *${phone || '3118866823'}*
           .replace(/[\u0300-\u036f]/g, '');
         const queryIsThisSwap =
           !!this.catalogService.swapIntent(query) ||
+          (!!swap && queryNorm.includes(swap.added)) ||
           (queryNorm.split(/\s+/).length <= 8 &&
             /\b(combo|gaseosa|bebida|papas?|frito)\b/.test(queryNorm));
         if (swap && queryIsThisSwap) {
@@ -832,6 +833,12 @@ Contacto humano: *${phone || '3118866823'}*
           const host = this.catalogService.mostSpecificNamedProduct(dish, ctx.products);
           const carries = !!host && this.catalogService.productCarriesMention(host, swap.removed);
           if (host && carries) {
+            const note = this.catalogService.swapChangeNote(swap.removed, swap.added);
+            const existing = this.toolCartView(ctx).find(line => line.productId === host.id &&
+              line.note?.toLowerCase().includes(note.toLowerCase()));
+            if (existing) return JSON.stringify({ok:true,query,mode:'swap_recorded',
+              line:{productId:existing.productId,cartLineIndex:existing.cartLineIndex,quantity:existing.quantity,note:existing.note},
+              hint:'La sustitución ya quedó guardada en esta línea. Confirma el cambio y termina el turno. No add_item ni otra búsqueda; no se cobra una porción extra.'});
             return JSON.stringify({
               ok: true,
               query,
@@ -1312,6 +1319,17 @@ Contacto humano: *${phone || '3118866823'}*
             this.catalogService.productNameFitsUtterance?.(product, segment));
         const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
           this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) !== ctx.userMessage;
+        const sourceSwap = this.catalogService.swapIntent(ctx.userMessage || '');
+        const swapHost = sourceSwap && this.catalogService.mostSpecificNamedProduct(
+          this.catalogService.dishTextBeforeSwap(ctx.userMessage || ''), ctx.products);
+        if (sourceSwap && swapHost && this.catalogService.isLikelySideOnlyProduct?.(product) &&
+          this.catalogService.productCarriesMention(swapHost,sourceSwap.removed) &&
+          this.catalogService.productsForSwapAddition(sourceSwap.added,ctx.products).some(p=>p.id===product.id) && !separateQuantity &&
+          (!explicitlySeparate || /\bno\s+(?:me\s+)?(?:agreg\w*|anad\w*|pong\w*)\b/.test(txt))) {
+          return JSON.stringify({ok:false,error:'substitution_not_separate_item',
+            hostProductId:swapHost.id,note:this.catalogService.swapChangeNote(sourceSwap.removed,sourceSwap.added),
+            hint:'Es la sustitución del acompañamiento del host, no un plato adicional. Si el host ya está en get_cart con esa nota, confirma y termina el turno. No repitas add_item ni busques otra porción.'});
+        }
         const isComboIncluded = comboHost && !explicitlySeparate && !separateQuantity && (
           (/^sopa de /i.test(product.name) && /\bsopa\b/.test(txt)) ||
           this.catalogService.isLikelyDrinkProduct?.(product)
@@ -1329,7 +1347,15 @@ Contacto humano: *${phone || '3118866823'}*
           return JSON.stringify({ok:false,error:'accompaniment_note_not_extra',
             hint:'Es una modificación del acompañamiento de un plato pedido, no una porción adicional. Conserva el plato y usa su note con la modificación; no repitas add_item de esta porción.'});
         }
-        const requested = this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products) ||
+        const sizedRequested = this.catalogService.resolveSizedChickenProduct?.(ctx.userMessage || '', ctx.products);
+        if (sizedRequested && sizedRequested.id !== product.id && /^\d+(?:\/\d+)?\s/.test(product.name) &&
+          !this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
+          this.catalogService.productNameFitsUtterance(product,ctx.userMessage || '')) {
+          return JSON.stringify({ok:false,error:'different_presentation_not_requested',
+            requestedProduct:this.productCard(sizedRequested),
+            hint:'El cliente pidió la presentación de requestedProduct. Conserva esa línea; no agregues una presentación más grande del mismo plato.'});
+        }
+        const requested = sizedRequested || this.catalogService.findProductEmbeddedInMessage(ctx.userMessage || '', ctx.products) ||
           this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '')
             .map(segment => this.catalogService.findProductEmbeddedInMessage(segment, ctx.products))
             .find(candidate => candidate != null && candidate.id !== product.id);

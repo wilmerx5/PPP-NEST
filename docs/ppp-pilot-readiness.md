@@ -6,18 +6,18 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026
 
-Última ronda completa evaluada: `204cc7aaf41ba7002e0ca157dc8839e900527e15`; PR #6 permanece en borrador. Las correcciones posteriores requieren una nueva ronda en su SHA.
+Última ronda completa evaluada: `4cce38e2cc322fe7e7bb96726fee23637f2d0cd4`; PR #6 permanece en borrador. Las correcciones posteriores requieren una nueva ronda en su SHA.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Compilación y unitarias | PASS, 659/659 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37890717619) |
-| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37890717699) |
-| Conversaciones con OpenAI tras las últimas correcciones | 302/303 aceptados; 1 sustitución incompleta | [Revalidación de correcciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37890713475) |
+| Compilación y unitarias | PASS, 662/662 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926048315) |
+| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926048262) |
+| Conversaciones con OpenAI tras las últimas correcciones | 301/303 aceptados; presentación adicional y agotamiento del agente | [Revalidación de correcciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37926042975) |
 | Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
 | Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
 
-**Todavía no listo para producción.** El saldo ya permite probar. La última ronda aprobó los cambios de atributos del combo, las sopas y «más yuca». Revalidar la nueva protección de sustituciones frente a ediciones posteriores y la suma de cantidades de platos idénticos; después completar aceptación externa en staging antes de iniciar el piloto. La ronda anterior registró 760 solicitudes, 4.618.782 tokens de entrada (4.023.808 en caché) y 32.280 de salida: estimación US$0,4103997 a tarifa estándar de texto; no es factura ni costo por pedido en producción.
+**Todavía no listo para producción.** El saldo ya permite probar. Revalidar la presentación pedida con typos y el cierre del turno tras una sustitución ya aplicada. Se comparan 303 ejecuciones idénticas por modelo (606 en total); la configuración desplegada debe coincidir con el modelo y versión efectivamente aprobados; después completar aceptación externa en staging antes de iniciar el piloto. La ronda anterior registró 760 solicitudes, 4.618.782 tokens de entrada (4.023.808 en caché) y 32.280 de salida: estimación US$0,4103997 a tarifa estándar de texto; no es factura ni costo por pedido en producción.
 
 ## Puertas de salida
 

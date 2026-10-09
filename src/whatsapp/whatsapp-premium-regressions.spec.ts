@@ -71,5 +71,26 @@ describe('Observed live AI regressions', () => {
     expect(actions.addItems).toHaveLength(1);
     expect(actions.addItems[0].note).toMatch(/cambio por yuca/i);
     expect(actions.addItems[0].note).not.toMatch(/ensalada|arepas|no agregues/i);
+    expect(call('add_item',{productId:7}).error).toBe('substitution_not_separate_item');
+    expect(call('search_menu',{query:'porción de yuca frita'}).mode).toBe('swap_recorded');
+    expect(actions.addItems).toHaveLength(1);
+  });
+  it('does not add whole chickens after a misspelled request for quarters', () => {
+    const actions: any = {};
+    const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],
+      userMessage:'me rgala 2 cuartos broster pierna pernil porfa',setNeedsAttr:()=>undefined};
+    const call=(productId:number) => JSON.parse((agent as any).executeTool('add_item',
+      {productId,quantity:2,attributes:[{attributeName:'Presa',attributeValue:'Pierna Pernil'}]},ctx));
+    expect(call(6).ok).toBe(true);
+    expect(call(4).error).toBe('different_presentation_not_requested');
+    expect(actions.addItems.map(x=>x.productId)).toEqual([6]);
+  });
+  it('allows independently requested sizes of the same family', () => {
+    const actions: any = {};
+    const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],
+      userMessage:'Dos cuartos de pollo broaster y un pollo broaster entero',setNeedsAttr:()=>undefined};
+    expect(JSON.parse((agent as any).executeTool('add_item',{productId:6,quantity:2},ctx)).ok).toBe(true);
+    expect(JSON.parse((agent as any).executeTool('add_item',{productId:4,quantity:1},ctx)).ok).toBe(true);
+    expect(actions.addItems.map(x=>x.productId)).toEqual([6,4]);
   });
 });
