@@ -4,11 +4,13 @@ La suite `yarn test:whatsapp:db` usa repositorios TypeORM, el bootstrap SQL real
 
 ## Cobertura y límites
 
-17 casos verifican lectura de settings con `RUN_MIGRATIONS=false`, bootstrap repetible, creación simultánea de una conversación por 16 workers, 64 intentos concurrentes del mismo Meta ID en dos conexiones, 32 IDs distintos con texto idéntico, índice UNIQUE correcto, errores de claves foráneas, IDs nulos, estados terminales, persistencia de variantes/cantidades/notas, cancelación y snapshots viejos de atención humana.
+28 casos verifican lectura de settings con `RUN_MIGRATIONS=false`, bootstrap repetible, creación simultánea de una conversación por 16 workers, 64 intentos concurrentes del mismo Meta ID en dos conexiones, 32 IDs distintos con texto idéntico, índice UNIQUE correcto, errores de claves foráneas, IDs nulos, estados terminales, persistencia de variantes/cantidades/notas, cancelación y snapshots viejos de atención humana.
 
 El tramo HTTP verifica suscripción Meta, rechazo HMAC inválido antes de escribir, mensaje firmado a través del agrupador real, deduplicación, respuesta y auditoría de fallo del transporte. Incluye fallos del flush temporizado y del lote inmediato de ocho mensajes, además de un siguiente mensaje exitoso tras el fallo. Usa la respuesta del bot deshabilitado para ejercitar el ciclo de persistencia. El envío a Meta y la consulta de perfiles de usuario están aislados; la suite prohíbe llamadas mediante `fetch` externo.
 
-Esta suite no verifica el checkout completo, creación de pedidos en las tablas comerciales, pagos reales, reparto, autenticación administrativa ni múltiples restaurantes. Las pruebas del agente con OpenAI se ejecutan en otro workflow.
+Con el bot activado, los webhooks de confirmación verifican datos faltantes, espera del resumen final, DTO con cantidad/notas, confirmaciones repetidas, cancelación, takeover, rechazo de creación, límites mínimos/máximos, estado de pago y fallo de envío posterior a aceptación del pedido. La conversación y los mensajes se persisten en MariaDB; `OrdersService.create`, `PaymentsService.createPreference`, catálogo y horario se aíslan con respuestas sintéticas. No se llama a la IA en estos casos de protocolo cerrado.
+
+Esta suite no verifica el checkout completo contra las tablas comerciales, pagos reales, reparto, autenticación administrativa ni múltiples restaurantes. Las pruebas del agente con OpenAI se ejecutan en otro workflow. El objetivo inmediato es completar la aceptación de PPP; la adaptación a Kamppo se evalúa después.
 
 ## Ejecución segura
 

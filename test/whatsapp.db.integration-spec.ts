@@ -30,7 +30,8 @@ if (process.env.WHATSAPP_DB_TEST !== '1' ||
 const products = JSON.parse(readFileSync(join(__dirname, '../scripts/fixtures/whatsapp-beta-menu.json'), 'utf8'));
 const catalog = new WhatsappCatalogService({} as never);
 const secret = 'synthetic-webhook-secret';
-const settings = { getEffectiveConfig: async () => ({enabled:false, appSecret:secret, verifyToken:'synthetic-verify', rateLimitPerMinute:500}) };
+let effectiveConfig: any;
+const settings = { getEffectiveConfig: async () => effectiveConfig };
 function dataSource() {
   return new DataSource({type:'mariadb', host:process.env.TEST_DB_HOST, port:Number(process.env.TEST_DB_PORT || 3306),
     username:process.env.TEST_DB_USERNAME, password:process.env.TEST_DB_PASSWORD, database:process.env.TEST_DB_DATABASE,
@@ -48,6 +49,9 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
   let meta: WhatsappMetaService;
   let send: jest.SpyInstance;
   let externalFetch: jest.SpyInstance;
+  let catalogFetch: jest.SpyInstance;
+  let orders: {create: jest.Mock; findTodayOrdersByPhone: jest.Mock};
+  let payments: {createPreference: jest.Mock};
 
   function conversationService(ds: DataSource) {
     const result=new WhatsappConversationService(ds.getRepository(WhatsappConversation),ds.getRepository(WhatsappMessage),{} as never,{} as never);
@@ -76,15 +80,21 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     runner=new SqlMigrationsRunner(new ConfigService({RUN_MIGRATIONS:'false'}),primary);
     await (runner as any).ensureWhatsappSchema();
     await secondary.initialize();
+    catalogFetch=jest.spyOn(catalog,'getMenuProducts').mockResolvedValue(products);
   });
   beforeEach(async()=> {
     await primary.query('DELETE FROM ppp_whatsapp_messages');
     await primary.query('DELETE FROM ppp_whatsapp_conversations');
     service=conversationService(primary);other=conversationService(secondary);
+    const config=new WhatsappSettingsService(primary.getRepository(WhatsappSettings),new ConfigService());
+    effectiveConfig={...await config.getEffectiveConfig(),enabled:false,appSecret:secret,verifyToken:'synthetic-verify',rateLimitPerMinute:500};
+    orders={create:jest.fn().mockResolvedValue({orderId:44,dailyOrderNumber:7}),findTodayOrdersByPhone:jest.fn().mockResolvedValue([])};
+    payments={createPreference:jest.fn().mockResolvedValue({preferenceId:'synthetic-preference',initPoint:'https://sandbox.invalid/synthetic-payment'})};
     meta=new WhatsappMetaService(settings as never);
     send=jest.spyOn(meta,'sendText').mockResolvedValue(undefined);
     const orchestrator=new WhatsappOrchestratorService(settings as never,meta,catalog,{} as never,service,
-      {} as never,{} as never,{} as never,new WhatsappActionGuardService(catalog),{} as never,{} as never,{} as never,{} as never);
+      {getStatus:async()=>({isOpen:true,message:'synthetic open',openTime:'00:00',closeTime:'23:59'})} as never,
+      orders as never,payments as never,new WhatsappActionGuardService(catalog),{} as never,{} as never,{} as never,{} as never);
     const module=await Test.createTestingModule({controllers:[WhatsappWebhookController],providers:[
       {provide:WhatsappSettingsService,useValue:settings},{provide:WhatsappMetaService,useValue:meta},
       {provide:WhatsappOrchestratorService,useValue:orchestrator},{provide:WhatsappConversationService,useValue:service},
@@ -93,7 +103,16 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     app=module.createNestApplication({rawBody:true});await app.init();
   });
   afterEach(async()=> {await app?.close();expect(externalFetch).not.toHaveBeenCalled();});
-  afterAll(async()=> {await app?.close();if(secondary?.isInitialized)await secondary.destroy();if(primary?.isInitialized)await primary.destroy();externalFetch?.mockRestore();});
+  afterAll(async()=> {await app?.close();if(secondary?.isInitialized)await secondary.destroy();if(primary?.isInitialized)await primary.destroy();externalFetch?.mockRestore();catalogFetch?.mockRestore();});
+
+  async function readyCheckout(patch: Record<string,unknown>={}) {
+    effectiveConfig.enabled=true;effectiveConfig.agentV1Enabled=true;
+    const conv=await conversation();await service.updateCustomerName(conv,'Cliente Sintético');
+    await service.saveSession(conv,{cart:[{productId:23,code:23,name:'Arroz Con Pollo',quantity:2,unitPrice:29500,note:'sin ensalada'}],
+      orderType:'pickup',fulfillmentChosen:true,address:'Recoge en el local',addressConfirmed:true,phoneConfirmed:true,
+      paymentMethod:'cash',notesCollected:true,...patch},'building_cart');
+    return conv;
+  }
 
   it('bootstraps a readable settings schema with migrations disabled',async()=> {
     const configured=new WhatsappSettingsService(primary.getRepository(WhatsappSettings),new ConfigService());
@@ -217,5 +236,75 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     const messages=await primary.getRepository(WhatsappMessage).find({where:{direction:'in'}});
     expect(messages).toHaveLength(8);expect(messages.every(m=>m.processingStatus==='failed')).toBe(true);
     expect(send).toHaveBeenCalledTimes(1);
+  });
+  it.each(['name','address','payment'])('does not submit a checkout with missing %s',async field=> {
+    const conv=await readyCheckout(field==='address' ? {orderType:'delivery',address:'',addressConfirmed:false} :
+      field==='payment' ? {paymentMethod:undefined} : {});
+    if(field==='name')await service.updateCustomerName(conv,'');
+    await post(payload('wamid.missing.'+field,'confirmar')).expect(200);
+    expect(orders.create).not.toHaveBeenCalled();expect(payments.createPreference).not.toHaveBeenCalled();
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_'+field);
+    expect((await other.findByWaMessageId('wamid.missing.'+field))?.processingStatus).toBe('completed');
+  });
+  it('requires final confirmation and submits one DTO for repeated confirmations',async()=> {
+    const conv=await readyCheckout();
+    await post(payload('wamid.checkout.summary','confirmar')).expect(200);
+    expect(orders.create).not.toHaveBeenCalled();expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_final_confirm');
+    await post(payload('wamid.checkout.submit','confirmar')).expect(200);
+    expect(orders.create).toHaveBeenCalledTimes(1);
+    expect(orders.create.mock.calls[0][0]).toMatchObject({customerName:'Cliente Sintético',orderType:'pickup',orderSource:'whatsapp',
+      items:[{productId:23,note:'sin ensalada'},{productId:23,note:'sin ensalada'}]});
+    expect((await other.reloadConversation(conv.id)).state).toBe('completed');
+    expect(other.getSession(await other.reloadConversation(conv.id)).cart).toEqual([]);
+    await post(payload('wamid.checkout.submit','confirmar')).expect(200);
+    await post(payload('wamid.checkout.new-confirm','confirmar')).expect(200);
+    expect(orders.create).toHaveBeenCalledTimes(1);
+    expect((await other.findByWaMessageId('wamid.checkout.new-confirm'))?.processingStatus).toBe('completed');
+  });
+  it('cancels an unsubmitted cart through HTTP and does not submit it afterward',async()=> {
+    const conv=await readyCheckout();await post(payload('wamid.cancel','cancelar')).expect(200);
+    expect(other.getSession(await other.reloadConversation(conv.id)).cart).toEqual([]);
+    await post(payload('wamid.after-cancel','confirmar')).expect(200);
+    expect(orders.create).not.toHaveBeenCalled();expect((await other.findByWaMessageId('wamid.after-cancel'))?.processingStatus).toBe('completed');
+  });
+  it('keeps human takeover silent without losing the persisted cart',async()=> {
+    const conv=await readyCheckout();await primary.getRepository(WhatsappConversation).update(conv.id,{humanTakeover:true});
+    await post(payload('wamid.human','confirmar')).expect(200);
+    expect(send).not.toHaveBeenCalled();expect(orders.create).not.toHaveBeenCalled();
+    expect(other.getSession(await other.reloadConversation(conv.id)).cart).toHaveLength(1);
+    expect((await other.findByWaMessageId('wamid.human'))?.processingStatus).toBe('completed');
+  });
+  it('retains the cart when the order boundary rejects creation',async()=> {
+    const conv=await readyCheckout();await primary.getRepository(WhatsappConversation).update(conv.id,{state:'awaiting_final_confirm'});
+    orders.create.mockRejectedValue(new Error('synthetic product unavailable'));
+    await post(payload('wamid.order-rejected','confirmar')).expect(200);
+    expect(orders.create).toHaveBeenCalledTimes(1);expect(other.getSession(await other.reloadConversation(conv.id)).cart).toHaveLength(1);
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_final_confirm');
+    expect(send.mock.calls.map(c=>c[1]).join(' ')).toContain('no pude registrar');
+  });
+  it('persists the sandbox payment state without creating an unpaid order',async()=> {
+    const conv=await readyCheckout({paymentMethod:'mercadopago'});
+    await post(payload('wamid.mp','confirmar')).expect(200);
+    expect(payments.createPreference).toHaveBeenCalledTimes(1);expect(orders.create).not.toHaveBeenCalled();
+    const fresh=await other.reloadConversation(conv.id);expect(fresh.state).toBe('awaiting_mp_payment');
+    expect(other.getSession(fresh).mpPreferenceId).toBe('synthetic-preference');expect(other.getSession(fresh).cart).toHaveLength(1);
+    expect(payments.createPreference.mock.calls[0][2]).toBe(59000);
+  });
+  it('does not resubmit an accepted order when its success message cannot be delivered',async()=> {
+    const conv=await readyCheckout();await primary.getRepository(WhatsappConversation).update(conv.id,{state:'awaiting_final_confirm'});
+    send.mockRejectedValue(new Error('synthetic confirmation send failure'));
+    await post(payload('wamid.accepted-no-reply','confirmar')).expect(200);
+    expect(orders.create).toHaveBeenCalledTimes(1);expect((await other.reloadConversation(conv.id)).state).toBe('completed');
+    expect((await other.findByWaMessageId('wamid.accepted-no-reply'))?.processingStatus).toBe('failed');
+    send.mockResolvedValue(undefined);await post(payload('wamid.accepted-no-reply','confirmar')).expect(200);
+    await post(payload('wamid.accepted-new-confirm','confirmar')).expect(200);expect(orders.create).toHaveBeenCalledTimes(1);
+    expect((await other.findByWaMessageId('wamid.accepted-new-confirm'))?.processingStatus).toBe('completed');
+  });
+  it.each(['min','max'])('blocks submission outside the configured %s order amount',async limit=> {
+    const conv=await readyCheckout();effectiveConfig.minOrderAmount=limit==='min' ? 100000 : 0;
+    effectiveConfig.maxOrderAmount=limit==='max' ? 10000 : 0;
+    await post(payload('wamid.amount.'+limit,'confirmar')).expect(200);
+    expect(orders.create).not.toHaveBeenCalled();expect(payments.createPreference).not.toHaveBeenCalled();
+    expect(other.getSession(await other.reloadConversation(conv.id)).cart).toHaveLength(1);
   });
 });
