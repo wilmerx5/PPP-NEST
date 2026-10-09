@@ -3330,7 +3330,8 @@ export class WhatsappCatalogService {
       let m: RegExpExecArray | null;
       re.lastIndex = 0;
       while ((m = re.exec(source)) !== null) {
-        const phrase = m[1].replace(/\s+/g, ' ').trim();
+        const phrase = m[1].replace(/\s+y\s+(?:sin|con|mas|más)\b.*$/i, '')
+          .replace(/\s+y\s*$/i, '').replace(/\s+/g, ' ').trim();
         const norm = normalizeText(phrase);
         if (new RegExp(`\\b${DRINK_ORDER_TOKEN}\\b`, 'i').test(norm)) continue;
         if (/\b(con|mas|más)\s+(pollo|carne|churrasco|pechuga|mojarra|bandeja|sopa)\b/.test(norm)) {

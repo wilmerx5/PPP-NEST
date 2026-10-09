@@ -483,6 +483,31 @@ export class WhatsappAgentService {
     }
 
     const byId = new Map(input.products.map((p) => [p.id, p]));
+    // A complete, unambiguous correction of catalog options keeps its SKU.
+    // Leave mixed requests and questions to the agent rather than guessing.
+    if (input.cart?.length === 1 && !/[?¿]/.test(input.userMessage) &&
+      /^(?:mejor|cambia(?:me)?|que sea)\b/.test(shortNorm)) {
+      const choices = this.catalogService.listCartAttributeOptionsNamedInText(
+        input.userMessage, input.cart, input.products,
+      );
+      let remaining = ` ${shortNorm} `;
+      const normalize = (value: string) => value.toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      for (const choice of choices) {
+        for (const value of [choice.attributeValue, choice.attributeName]) {
+          remaining = remaining.split(` ${normalize(value)} `).join(' ');
+        }
+      }
+      remaining = remaining.replace(/\b(?:mejor|cambia|cambiame|que|sea|el|la|los|las|y|por|a)\b/g, '').trim();
+      if (choices.length && !remaining) {
+        return {
+          reply: 'Listo, cambio ' + choices.map(c => `${c.attributeName}: ${c.attributeValue}`).join(', ') + '. ¿Algo más?',
+          actions: { updateAttributes: choices.map(({productId, cartIndex, attributeName, attributeValue}) =>
+            ({productId, cartLineIndex: cartIndex, attributeName, attributeValue})) },
+          toolCalls: [],
+        };
+      }
+    }
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
     let retriedUnappliedOrder = false;
@@ -1323,6 +1348,14 @@ Contacto humano: *${phone || '3118866823'}*
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
         let note = args.note != null ? String(args.note).trim().slice(0, 200) :
           this.catalogService.extractProductModificationNote(source) || undefined;
+        const sourceNote = this.catalogService.extractProductModificationNote(source);
+        // Retain additional kitchen preferences even when the model supplied
+        // only the first one. Scope them to this dish, never the entire order.
+        if (sourceNote && note) {
+          for (const part of sourceNote.split(',').map(s => s.trim()).filter(Boolean)) {
+            if (!note.toLowerCase().includes(part.toLowerCase())) note = `${note}, ${part}`.slice(0, 200);
+          }
+        }
         const swap = this.catalogService.swapIntent(source);
         if (swap && this.catalogService.productCarriesMention(product,swap.removed)) {
           const change = this.catalogService.swapChangeNote(swap.removed,swap.added);

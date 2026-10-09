@@ -72,3 +72,9 @@ La ejecución [37887612562](https://github.com/wilmerx5/PPP-NEST/actions/runs/37
 En el código `aac59934d8ed99249097d646eb03e259eb70b78a`, [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888418887) pasó compilación y 650 unitarias, incluidas las nuevas regresiones. La revalidación con OpenAI [37888415744](https://github.com/wilmerx5/PPP-NEST/actions/runs/37888415744) quedó **bloqueada**: HTTP 429, `insufficient_quota`, código `credit_balance_exhausted`. El proveedor indica que la cuenta no tiene créditos restantes. Esto no demuestra que las correcciones conversacionales pasen ni sustituye las expectativas originales.
 
 Tras restaurar saldo en la cuenta de la clave `OPENAI_API_KEY`, ejecutar el workflow completo para los 303 ensayos configurados, con los cinco jobs. Mantener la PR en borrador hasta revisar esa ejecución y la aceptación externa. Las pruebas MariaDB usan acciones sintéticas; su resultado verde no certifica interpretación por el modelo.
+
+## Revalidación después de recargar créditos
+
+En `ce0d495`, la ronda [37889757623](https://github.com/wilmerx5/PPP-NEST/actions/runs/37889757623) completó 303 ejecuciones: 299 aceptadas y 4 fallos, correspondientes a tres patrones. Cambiar dos atributos del combo intentó reemplazar su SKU (dos repeticiones); dos llamadas de sopa reutilizaron la cantidad escrita y sumaron cuatro en vez de dos; una nota parcial omitió «más yuca». Se agregan regresiones que comparan acciones y carrito real, conservando las expectativas de la suite. Las correcciones deben validarse de nuevo con IA antes de aprobar producción.
+
+El medidor de esta ronda informó 760 solicitudes y estimación total US$0,4103997 por tokens de texto reportados, con uso completo. No permite reconstruir cargos previos ni medir aún el costo comercial por pedido.

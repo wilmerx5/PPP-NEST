@@ -3718,12 +3718,16 @@ export class WhatsappOrchestratorService {
       let items = actions.addItems;
       // The model may split "2 arroces" into two identical add_item calls.
       // Resolve the customer's single quantity once for each identical line.
-      if (sourceText && !this.catalogService.looksLikeClearlyMultiDishOrder(sourceText)) {
+      if (sourceText) {
         const grouped = new Map<string, typeof items[number]>();
         for (const item of items) {
           const attrs = (item.attributes || []).map(a =>
             `${a.attributeName.toLowerCase()}:${a.attributeValue.toLowerCase()}`).sort();
-          const key = JSON.stringify([item.productId, attrs, (item.note || '').trim().toLowerCase()]);
+          const product = products.find(p => p.id === item.productId);
+          const ownSegment = product && this.catalogService.orderSegmentForProduct(sourceText, product, products, item.attributes);
+          const uniqueClause = !this.catalogService.looksLikeClearlyMultiDishOrder(sourceText) || ownSegment !== sourceText;
+          const key = JSON.stringify([item.productId, attrs, (item.note || '').trim().toLowerCase(),
+            uniqueClause ? null : grouped.size]);
           const previous = grouped.get(key);
           grouped.set(key, previous ? {...previous,quantity:(previous.quantity || 1)+(item.quantity || 1)} : item);
         }
