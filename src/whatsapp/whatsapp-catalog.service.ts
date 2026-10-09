@@ -407,6 +407,7 @@ function productHasConflictingCookingStyle(
 
 function singularizeEsToken(token: string): string {
   const t = normalizeText(token);
+  if (t === 'arroces') return 'arroz';
   if (t.length < 4) return t;
   if (/(?:ciones|siones)$/.test(t)) return t.replace(/(?:ciones|siones)$/, 'cion');
   if (/as$/.test(t) && t.length > 4) return t.slice(0, -1); // mojarras→mojarra, fritas→frita
@@ -1941,13 +1942,47 @@ export class WhatsappCatalogService {
    * "bandeja y una limonada" no impide agregar la bandeja.
    * "bandeja con frijolitos" sí: frijolitos va en la misma parte y la bandeja no lo trae.
    */
-  uncoveredWordsAnchoredByProduct(query: string, product: WhatsappCatalogProduct): string[] {
+  uncoveredWordsAnchoredByProduct(query: string, product: WhatsappCatalogProduct, products?: WhatsappCatalogProduct[]): string[] {
+    const dishQuery = this.stripOrderMetadata(query, product);
     const out: string[] = [];
-    for (const tokens of this.dishClauses(query)) {
+    for (const tokens of this.dishClauses(dishQuery)) {
+      // A generic token (sopa/pollo/arroz) in another dish is not this line.
+      const anchor = products?.length ? this.bestClauseCoverage(tokens, products) : null;
+      if (anchor && !anchor.products.some(p => p.id === product.id)) continue;
       const best = this.bestClauseCoverage(tokens, [product]);
       if (best) out.push(...best.leftover);
     }
     return [...new Set(out)];
+  }
+
+  private stripOrderMetadata(query: string, product: WhatsappCatalogProduct): string {
+    // Fulfillment and a matching serving/bottle size describe the order;
+    // they are not unavailable ingredients ("sobrebarriga para llevar").
+    let dishQuery = query.replace(/\bpara\s+llevar\b|\b(?:paso|voy)\s+a\s+recoger\b/gi, ' ');
+    if (/\bsopa\b/i.test(product.name) &&
+      this.detectServingSizeHint(query) === 'grande' &&
+      !/peque[nñ]a/i.test(product.name)) {
+      dishQuery = dishQuery.replace(/\bgrandes?\b/gi, ' ');
+    }
+    const volume = this.extractRequestedDrinkVolumeMl(query);
+    if (volume && this.isLikelyDrinkProduct(product) &&
+      volume === this.productDrinkVolumeMl(product)) {
+      dishQuery = dishQuery.replace(/\b(?:un\s+)?litro\s+y\s+medi[oa]\b/gi, ' ')
+        .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)\b/gi, ' ');
+    }
+    return dishQuery;
+  }
+
+  /** Scope choices to their own dish when a multi-order has a unique owner. */
+  orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[]): string {
+    const segments = this.splitMultiProductSegments(text);
+    if (segments.length < 2) return text;
+    const owned = segments.filter(segment => {
+      const tokens = this.dishContentTokens(normalizeText(segment));
+      const anchor = this.bestClauseCoverage(tokens, products);
+      return anchor?.products.some(p => p.id === product.id);
+    });
+    return owned.length === 1 ? owned[0] : text;
   }
 
   private dishClauses(query: string): string[][] {
@@ -1955,12 +1990,11 @@ export class WhatsappCatalogService {
       this.extractProductSearchQuery(query) || query,
     );
     const withoutAddress = splitTrailingEmbeddedAddress(raw)?.productText || raw;
-    const stripped = normalizeText(withoutAddress);
-    const clauses = stripped
-      .split(/\s*,\s*|\s+y\s+/)
-      .map((s) => s.trim())
+    const clauses = withoutAddress
+      .split(/\s*,\s*|\s+y\s+|\r?\n/)
+      .map((s) => normalizeText(s).trim())
       .filter(Boolean);
-    return (clauses.length ? clauses : [stripped])
+    return (clauses.length ? clauses : [normalizeText(withoutAddress)])
       .map((clause) => this.dishContentTokens(clause))
       .filter((tokens) => tokens.length > 0);
   }
@@ -1979,6 +2013,11 @@ export class WhatsappCatalogService {
       'por',
       'para',
       'favor',
+      'porfa',
+      'aparte',
+      'adicional',
+      'adicionales',
+      'ademas',
       'mas',
       'que',
       'sus',
@@ -2215,7 +2254,7 @@ export class WhatsappCatalogService {
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
     const q = (text || '').trim();
-    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     const weight = (p: WhatsappCatalogProduct) =>
       normalizeText(p.name)
         .split(/\s+/)
@@ -2268,7 +2307,7 @@ export class WhatsappCatalogService {
 
   /** Palabras del nombre que distinguen el plato. “Pollo” solo no distingue combo de porción. */
   dishSpecificTokens(name: string): string[] {
-    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     return normalizeText(name)
       .split(/\s+/)
       .filter((t) => t.length >= 4 && !generic.has(t) && !/\d/.test(t));
@@ -2360,7 +2399,7 @@ export class WhatsappCatalogService {
   productNameFitsUtterance(product: WhatsappCatalogProduct, text: string): boolean {
     const utter = normalizeText(text || '');
     const words = utter.split(/\s+/).filter((w) => w.length >= 4);
-    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     const nameTokens = normalizeText(product.name)
       .split(/\s+/)
       .filter((t) => t.length >= 4 && !/\d/.test(t) && !generic.has(t));
@@ -2386,7 +2425,7 @@ export class WhatsappCatalogService {
     ) {
       return [];
     }
-    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+    const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     const tokens = this.dishContentTokens(asked).filter((t) => t.length >= 4 && !generic.has(t));
     if (!tokens.length) return [];
     const hits: WhatsappCatalogProduct[] = [];
@@ -3077,8 +3116,9 @@ export class WhatsappCatalogService {
   }
 
   isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean {
-    const hay = normalizeText(`${product.name} ${product.categoryName || ''} ${product.description || ''}`);
-    return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon|colombiana)\b/.test(
+    // A main dish that includes a drink in its description is still food.
+    const hay = normalizeText(`${product.name} ${product.categoryName || ''}`);
+    return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon|colombiana|tea|pola)\b/.test(
       hay,
     );
   }
@@ -4189,9 +4229,10 @@ export class WhatsappCatalogService {
     const tokens = clauses[0];
     if (this.foodNameAnchorsTokens(tokens, products)) return null;
 
-    const covering = drinks.filter((p) =>
-      tokens.every((t) => this.productTextCoversToken(p, t)),
-    );
+    const covering = drinks.filter((p) => {
+      const candidateTokens = this.dishClauses(this.stripOrderMetadata(raw, p)).flat();
+      return candidateTokens.length > 0 && candidateTokens.every(t => this.productTextCoversToken(p, t));
+    });
     if (!covering.length) return null;
 
     const want = this.extractRequestedDrinkVolumeMl(raw);
@@ -8084,7 +8125,7 @@ export class WhatsappCatalogService {
       );
       const dish = this.dishTextBeforeSwap(text);
       const host = this.mostSpecificNamedProduct(dish, products);
-      const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa']);
+      const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
       const weight = (p: WhatsappCatalogProduct) =>
         normalizeText(p.name)
           .split(/\s+/)
@@ -8242,6 +8283,13 @@ export class WhatsappCatalogService {
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
+      const standaloneDrink = this.resolveStandaloneDrinkOrder(segment, products);
+      if (standaloneDrink && !usedProductIds.has(standaloneDrink.product.id) &&
+        !(swap && this.productIsSwapRemoval(standaloneDrink.product, swap.removed, swap.added))) {
+        usedProductIds.add(standaloneDrink.product.id);
+        confident.push({ segment, product: standaloneDrink.product, score: 100 });
+        continue;
+      }
       if (swap && swapNotedHostId != null) {
         const segN = normalizeText(segment);
         const removedTokens = normalizeText(swap.removed)

@@ -93,7 +93,7 @@ const AGENT_TOOLS = [
     function: {
       name: 'add_item',
       description:
-        'Agrega un producto al carrito por id del menú. Si requiere opciones (arepas/bebida), pásalas en attributes o el sistema pedirá al cliente.',
+        'Agrega un producto al carrito por id del menú. Pasa opciones explícitas en attributes; las omitidas toman la primera opción del catálogo, sin preguntar.',
       parameters: {
         type: 'object',
         properties: {
@@ -420,10 +420,20 @@ export class WhatsappAgentService {
         return candidates.length === 1 ? { productId: candidates[0].id, quantity: qty } : null;
       });
       if (selected.every((p) => p !== null)) {
+        const preserveText = input.userMessage.match(/;\s*(?:deja|conserva)\s+(.+)$/i)?.[1];
+        const preserved = preserveText ? (input.cart || []).filter(line => {
+          const product = input.products.find(p => p.id === line.productId);
+          return product && this.catalogService.productNameFitsUtterance(product, preserveText);
+        }) : [];
+        if (preserveText && preserved.length !== 1) {
+          return { reply: '¿Cuál producto del pedido quieres conservar?', actions: {}, toolCalls: [] };
+        }
         return {
           reply: 'Entendido, corrijo el pedido con esas cantidades. ¿Algo más?',
           actions: {
-            clearCart: true,
+            ...(preserved.length
+              ? { removeProductIds: (input.cart || []).filter(line => line.productId !== preserved[0].productId).map(line => line.productId) }
+              : { clearCart: true }),
             addItems: selected as Array<{ productId: number; quantity: number }>,
           },
           toolCalls: [],
@@ -472,6 +482,7 @@ Reglas:
 - "¿Tienes algo de X?" (también "tines", "hay algo de", "te pregunté que si tienes"): pregunta si hay X. Si search_menu no lo trae, di "No tenemos productos de X". X es el producto, sin "algo de", sin "tienes" y sin repetir la frase. No reenvíes el carrito.
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
+- También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
 - "sí", "si por favor", "dale", "ok" y "listo" confirman solo cuando el mensaje no dice nada más. No son el nombre del cliente.
 - Si la frase trae otra intención (quitar, cambiar, agregar, corregir, preguntar), aunque empiece con "listo" o "ok" y aunque tenga typos: haz esa intención con el carrito y la carta. No confirmes el pedido y no pidas la dirección.
 - Corrección en lenguaje normal: es cambiar lo que está abierto o en el carrito. Mira la LISTA ABIERTA o la ELECCIÓN PENDIENTE y la carta. Corrige con set_attribute, remove_item o add_item. No digas que no entendiste. No uses request_human por una corrección.
@@ -782,7 +793,15 @@ Contacto humano: *${phone || '3118866823'}*
           });
         }
 
-        const uncovered = this.catalogService.uncoveredDishWords(query, ctx.products);
+        const sizedSoup = this.catalogService.resolveSizedSoupProduct?.(query, ctx.products);
+        const uncovered = sizedSoup
+          ? this.catalogService.uncoveredWordsAnchoredByProduct(query, sizedSoup)
+          : this.catalogService.uncoveredDishWords(query, ctx.products);
+        if (sizedSoup && !uncovered.length) {
+          return JSON.stringify({ ok: true, query, mode: 'product_match',
+            results: [this.productCard(sizedSoup)],
+            hint: 'Presentación de sopa identificada. Si la pide, add_item ahora; si pregunta, responde sin agregar.' });
+        }
         if (uncovered.length) {
           const named = this.catalogService.listCartAttributeOptionsNamedInText(
             query,
@@ -933,7 +952,7 @@ Contacto humano: *${phone || '3118866823'}*
             results: [this.productCard(namedMenuHit)],
             hint:
               'Es un *plato del catálogo* tipo menú/envoltorio (ejecutivo, especial, de la casa, bandeja…), ' +
-              'NO el link de la carta. Usa este productId en add_item. No ofrezcas el pollo/sopa sueltos aparte.',
+              'NO el link de la carta. Si lo pide, add_item AHORA con defaults para opciones omitidas; no preguntes por presa/sopa/bebida. No ofrezcas el pollo/sopa sueltos aparte.',
           });
         }
 
@@ -958,7 +977,7 @@ Contacto humano: *${phone || '3118866823'}*
             mode: 'product_match',
             results: results.slice(0, 6),
             hint:
-              'Hay coincidencia fuerte de producto. Confirma nombre+precio; si preguntan "¿tienen?", di que sí y ofrece agregarlo. ' +
+              'Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan "¿tienen?", di que sí y ofrece agregarlo. ' +
               'No digas que no hay ese producto si está en results.',
           });
         }
@@ -1045,6 +1064,9 @@ Contacto humano: *${phone || '3118866823'}*
             segment: c.segment,
             ...card(c.product),
             score: c.score,
+            quantity: this.catalogService.extractQuantityFromSegment?.(c.segment) || 1,
+            selectedAttributes: this.catalogService.resolveAttributesFromMessage?.(c.product, c.segment, []),
+            note: c.note,
           })),
           needsAttributes: multi.needsAttributes.map((c) => ({
             segment: c.segment,
@@ -1086,6 +1108,7 @@ Contacto humano: *${phone || '3118866823'}*
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
           ctx.userMessage || '',
           product,
+          ctx.products,
         );
         if (uncovered.length) {
           return JSON.stringify({
@@ -1101,10 +1124,14 @@ Contacto humano: *${phone || '3118866823'}*
         const txt = (ctx.userMessage || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '');
         const isExtraArepas = /porci[oó]n de arepas/i.test(product.name) &&
-          /\bpollo\b/.test(txt) &&
+          /\b(pollos?|broaster)\b/.test(txt) &&
           !/\b(?:porci[oó]n|extra|adicional|aparte)\s+(?:de\s+)?arepas?\b/.test(txt);
         const comboHost = /\b(ejecutivo|combo)\b/.test(txt);
-        const isComboIncluded = comboHost && (
+        const explicitlySeparate = /\b(?:aparte|adicional|extra)\b/.test(txt) &&
+          this.catalogService.splitMultiProductSegments?.(ctx.userMessage || '').some(segment =>
+            /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
+            this.catalogService.productNameFitsUtterance?.(product, segment));
+        const isComboIncluded = comboHost && !explicitlySeparate && (
           (/^sopa de /i.test(product.name) && /\bsopa\b/.test(txt)) ||
           (/^coca cola/i.test(product.name) && /\bcoca cola\b/.test(txt))
         );
@@ -1125,8 +1152,11 @@ Contacto humano: *${phone || '3118866823'}*
         // Una elección escrita por el cliente prevalece sobre la propuesta
         // del modelo y sobre los valores por defecto del catálogo.
         if (product.attributes?.length && ctx.userMessage?.trim()) {
+          const attributeSource = this.catalogService.orderSegmentForProduct?.(
+            ctx.userMessage, product, ctx.products,
+          ) || ctx.userMessage;
           const parsed = this.catalogService.resolveAttributesFromMessage(
-            product, ctx.userMessage, [],
+            product, attributeSource, [],
           );
           if (parsed.status === 'complete' || parsed.status === 'partial') {
             const selected = [...(attributes || [])];

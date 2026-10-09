@@ -11,6 +11,7 @@ on:
       - src/whatsapp/whatsapp-agent.service.ts
       - src/whatsapp/whatsapp-catalog.service.ts
       - src/whatsapp/whatsapp-agent.spec.ts
+      - src/whatsapp/whatsapp-agent.language.spec.ts
       - scripts/fixtures/whatsapp-beta-menu.json
       - scripts/fixtures/whatsapp-beta-cases.json
       - scripts/fixtures/whatsapp-beta-human-intents.json
@@ -71,6 +72,7 @@ jobs:
           result=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-meals-meat.json
+          echo "$result" > tmp/human-meals-meat-exit.txt
           exit "$result"
 
       - name: Archive human intent meals-meat
@@ -97,6 +99,7 @@ jobs:
           result=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-drinks-desserts.json
+          echo "$result" > tmp/human-drinks-desserts-exit.txt
           exit "$result"
 
       - name: Archive human intent drinks-desserts
@@ -123,6 +126,7 @@ jobs:
           result=$?
           set -e
           cp tmp/whatsapp-beta-ai-report.json tmp/whatsapp-beta-human-business-info.json
+          echo "$result" > tmp/human-business-info-exit.txt
           exit "$result"
 
       - name: Archive human intent business-info
@@ -215,19 +219,46 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Final hard-case acceptance gate
+      - name: Follow-up conversations (24 scenarios, two repetitions)
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '24'
+          WHATSAPP_BETA_CASE_OFFSET: '30'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          code=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/hard-followup.json
+          echo "$code" > tmp/hard-followup-exit.txt
+          exit "$code"
+
+      - name: Archive follow-up conversations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hard-followup
+          path: tmp/hard-followup.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Final conversation acceptance gate
         if: always()
         run: |
-          for result in tmp/hard-*-exit.txt; do
-            if [ ! -f "$result" ]; then
-              echo "::error::Missing hard-suite status"
-              exit 1
-            fi
-            if [ "$(cat "$result")" != "0" ]; then
-              echo "::error::One or more hard order scenarios failed; inspect uploaded artifacts."
-              exit 1
+          failed=0
+          for suite in human-meals-meat human-drinks-desserts human-business-info hard-attributes hard-notes-multi hard-ambiguity hard-followup; do
+            result="tmp/${suite}-exit.txt"
+            if [ ! -f "$result" ] || [ "$(cat "$result")" != "0" ]; then
+              echo "::error::Conversation suite failed or missing: $suite"
+              failed=1
             fi
           done
+          exit "$failed"
 
       - name: Save test report
         if: always()

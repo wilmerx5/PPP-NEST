@@ -592,5 +592,521 @@
       "churrasco"
     ],
     "maxReply": 440
+  },
+  {
+    "id": "recoger-sobrebarriga",
+    "group": "seguimiento",
+    "messages": [
+      "Regálame una sobrebarriga en salsa, paso a recoger"
+    ],
+    "items": {
+      "13": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 13,
+        "key": "Seleccion",
+        "value": "En Salsa"
+      }
+    ]
+  },
+  {
+    "id": "cuarto-dos-opciones",
+    "group": "seguimiento",
+    "messages": [
+      "Un cuarto frito ala pechuga con las arepas fritas"
+    ],
+    "items": {
+      "3": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 3,
+        "key": "Presa",
+        "value": "Ala pechuga"
+      },
+      {
+        "id": 3,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ]
+  },
+  {
+    "id": "bagre-salsa",
+    "group": "seguimiento",
+    "messages": [
+      "1 bagre en salsa porfa"
+    ],
+    "items": {
+      "19": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 19,
+        "key": "Seleccion",
+        "value": "En Salsa"
+      }
+    ]
+  },
+  {
+    "id": "mojarra-default",
+    "group": "seguimiento",
+    "messages": [
+      "Una mojarra"
+    ],
+    "items": {
+      "14": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Frita"
+      }
+    ]
+  },
+  {
+    "id": "ejecutivo-no-sku-extra",
+    "group": "seguimiento",
+    "messages": [
+      "Un ejecutivo frito con menudencias y Pepsi"
+    ],
+    "items": {
+      "22": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 22,
+        "key": "Sopa",
+        "value": "Menudencias"
+      },
+      {
+        "id": 22,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "exclude": [
+      20,
+      28
+    ]
+  },
+  {
+    "id": "combo-medio-elecciones",
+    "group": "seguimiento",
+    "messages": [
+      "Un combo de arroz chino con medio pollo broaster y bebida Pepsi"
+    ],
+    "items": {
+      "97": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 97,
+        "key": "Pollo",
+        "value": "Broaster"
+      },
+      {
+        "id": 97,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "exclude": [
+      5,
+      28
+    ]
+  },
+  {
+    "id": "coca-zero-decimal",
+    "group": "seguimiento",
+    "messages": [
+      "Una Coca Cola Zero de 1.5 litros"
+    ],
+    "items": {
+      "95": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 95,
+        "key": "sabor",
+        "value": "Zero"
+      }
+    ]
+  },
+  {
+    "id": "agua-sin-gas",
+    "group": "seguimiento",
+    "messages": [
+      "Una botella de agua sin gas de 600 ml"
+    ],
+    "items": {
+      "31": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 31,
+        "key": "Sabor",
+        "value": "Sin gas"
+      }
+    ]
+  },
+  {
+    "id": "jugo-leche-lulo",
+    "group": "seguimiento",
+    "messages": [
+      "2 jugos naturales en leche de lulo"
+    ],
+    "items": {
+      "51": 2
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 51,
+        "key": "Sabor",
+        "value": "Lulo"
+      }
+    ]
+  },
+  {
+    "id": "sopa-grande-nota",
+    "group": "seguimiento",
+    "messages": [
+      "Un ajiaco grande sin cilantro porfa"
+    ],
+    "items": {
+      "38": 1
+    },
+    "maxReply": 420,
+    "lineNotes": [
+      {
+        "id": 38,
+        "contains": [
+          "sin cilantro"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nota-no-nombre",
+    "group": "seguimiento",
+    "messages": [
+      "Porfa manda bastante ají"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      }
+    ],
+    "customerNote": [
+      "ají"
+    ],
+    "forbidActions": [
+      "setCustomerName",
+      "addItems"
+    ]
+  },
+  {
+    "id": "nota-sin-nombre",
+    "group": "seguimiento",
+    "messages": [
+      "Sin ensalada por favor"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      }
+    ],
+    "note": [
+      "ensalada"
+    ],
+    "forbidActions": [
+      "setCustomerName",
+      "addItems"
+    ]
+  },
+  {
+    "id": "multi-cantidades-letras",
+    "group": "seguimiento",
+    "messages": [
+      "Dos ajiacos y tres arroces con pollo"
+    ],
+    "items": {
+      "38": 2,
+      "23": 3
+    },
+    "maxReply": 420
+  },
+  {
+    "id": "multi-comas",
+    "group": "seguimiento",
+    "messages": [
+      "2 ajiacos, 1 costilla de cerdo, 3 limonadas naturales"
+    ],
+    "items": {
+      "38": 2,
+      "60": 1,
+      "37": 3
+    },
+    "maxReply": 420
+  },
+  {
+    "id": "multi-notas-por-plato",
+    "group": "seguimiento",
+    "messages": [
+      "Una mojarra asada sin ensalada y un arroz con pollo sin cilantro"
+    ],
+    "items": {
+      "14": 1,
+      "23": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 14,
+        "contains": [
+          "sin ensalada"
+        ],
+        "forbid": [
+          "cilantro"
+        ]
+      },
+      {
+        "id": 23,
+        "contains": [
+          "sin cilantro"
+        ],
+        "forbid": [
+          "ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "multi-estilos-independientes",
+    "group": "seguimiento",
+    "messages": [
+      "Una trucha asada y una mojarra frita"
+    ],
+    "items": {
+      "12": 1,
+      "14": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Asada"
+      },
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Frita"
+      }
+    ]
+  },
+  {
+    "id": "extra-arepas-explicita",
+    "group": "seguimiento",
+    "messages": [
+      "Un pollo frito con arepas blancas y una porción adicional de arepas fritas"
+    ],
+    "items": {
+      "1": 1,
+      "11": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Blancas"
+      },
+      {
+        "id": 11,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ]
+  },
+  {
+    "id": "ejecutivo-sopa-aparte",
+    "group": "seguimiento",
+    "messages": [
+      "Un ejecutivo frito con sopa de ajiaco y además una sopa de menudencias aparte"
+    ],
+    "items": {
+      "22": 1,
+      "20": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 22,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      }
+    ]
+  },
+  {
+    "id": "corrige-conserva-bebida",
+    "group": "seguimiento",
+    "messages": [
+      "No son pollos, son 4 sopas: 2 ajiaco y 2 de menudencias; deja la limonada"
+    ],
+    "items": {
+      "38": 2,
+      "20": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 1,
+        "quantity": 2
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "exclude": [
+      1
+    ]
+  },
+  {
+    "id": "cambio-arepa-sin-duplicar",
+    "group": "seguimiento",
+    "messages": [
+      "Un pollo frito",
+      "Mejor con arepas fritas"
+    ],
+    "items": {
+      "1": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "forbidNew": [
+      11
+    ]
+  },
+  {
+    "id": "cancelar-uno-conservar-resto",
+    "group": "seguimiento",
+    "messages": [
+      "Quita la limonada, deja el arroz"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "exclude": [
+      37
+    ]
+  },
+  {
+    "id": "consulta-no-orden-con-carrito",
+    "group": "seguimiento",
+    "messages": [
+      "¿Tienes carne de res?"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1
+      }
+    ],
+    "replyAny": [
+      "churrasco",
+      "sobrebarriga"
+    ],
+    "forbidActions": [
+      "addItems",
+      "clearCart",
+      "removeProductIds"
+    ]
+  },
+  {
+    "id": "consulta-arepas-no-cobro",
+    "group": "seguimiento",
+    "messages": [
+      "¿El pollo frito viene con arepas?"
+    ],
+    "items": {},
+    "maxReply": 420,
+    "replyAny": [
+      "arepa"
+    ],
+    "forbidActions": [
+      "addItems"
+    ]
+  },
+  {
+    "id": "pedido-direccion-y-nota",
+    "group": "seguimiento",
+    "messages": [
+      "2 arroces con pollo",
+      "Para calle 6 # 80-15",
+      "Y envías mucho ají por favor"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "customerNote": [
+      "ají"
+    ],
+    "forbidNew": [
+      1,
+      18
+    ]
   }
 ]

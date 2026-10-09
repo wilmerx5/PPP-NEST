@@ -16,6 +16,8 @@ type HardScenario = {
  items:Record<string,number>;exclude?:number[];forbidNew?:number[];
  attrs?:Array<{id:number;key:string;value:string}>;note?:string[];customerNote?:string[];
  replyAny?:string[];maxReply:number;
+ lineNotes?:Array<{id:number;contains:string[];forbid?:string[]}>;
+ forbidActions?:string[];
 };
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
@@ -74,9 +76,11 @@ const maxCases = Math.max(1, Math.min(
   Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (hardMode ? 10 : humanMode ? 12 : cases.length)),
 ));
 const offset = Math.max(0, Number(process.env.WHATSAPP_BETA_CASE_OFFSET || 0));
+const repeats = Math.max(1, Math.min(3, Number(process.env.WHATSAPP_BETA_REPEATS || 1)));
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
 if (hardMode) {
+  for (let repetition = 1; repetition <= repeats; repetition++) {
   for (const scenario of hardScenarios.slice(offset, offset + maxCases)) {
     const cart = new Map<number, { productId: number; name: string; quantity: number;
       note?: string; attributes: Array<{attributeName:string;attributeValue:string}> }>();
@@ -119,7 +123,7 @@ if (hardMode) {
       if(actions.setCustomerNotes)customerNotes=actions.setCustomerNotes;
       const turn={user:message,reply:result.reply,actions,toolCalls:result.toolCalls,toolTrace,
         error:result.error || null,cart:[...cart.values()]};
-      turns.push(turn);
+      turns.push(structuredClone(turn));
       history.push('Cliente: '+message,'Bot: '+result.reply);
       if(result.error)break;
     }
@@ -129,6 +133,10 @@ if (hardMode) {
     const problems:string[]=[];
     if(turns.length!==scenario.messages.length)problems.push('turn_count');
     if(turns.some(t=>t.error))problems.push('agent_error');
+    for (const action of scenario.forbidActions || []) {
+      if (turns.some(t => Object.prototype.hasOwnProperty.call(t.actions, action)))
+        problems.push('forbidden_action_' + action);
+    }
     if(expected.length!==finalCart.length ||
       expected.some(([id,qty])=>cart.get(Number(id))?.quantity!==qty))problems.push('wrong_cart');
     for(const id of scenario.exclude || [])if(cart.has(id))problems.push('extra_'+id);
@@ -143,6 +151,21 @@ if (hardMode) {
     const noteText=norm(finalCart.map(c=>c.note||'').join(' ')+' '+customerNotes);
     for(const token of [...(scenario.note||[]),...(scenario.customerNote||[])])
       if(!noteText.includes(norm(token)))problems.push('missing_note_'+token);
+    for (const requirement of scenario.lineNotes || []) {
+      const note = norm(cart.get(requirement.id)?.note || '');
+      for (const value of requirement.contains)
+        if (!note.includes(norm(value))) problems.push('missing_line_note_' + requirement.id + '_' + value);
+      for (const value of requirement.forbid || [])
+        if (note.includes(norm(value))) problems.push('misplaced_note_' + requirement.id + '_' + value);
+    }
+    for (const line of finalCart) {
+      const product = products.find(p => p.id === line.productId)!;
+      for (const choice of line.attributes) {
+        const definition = product.attributes?.find(a => norm(a.attributeName) === norm(choice.attributeName));
+        if (!definition?.options.some(o => norm(o) === norm(choice.attributeValue)))
+          problems.push('non_catalog_attribute_' + line.productId);
+      }
+    }
     if(scenario.replyAny?.length){
       const answer=norm(turns.map(t=>String(t.reply)).join(' '));
       if(!scenario.replyAny.some(t=>answer.includes(norm(t))))problems.push('reply_intent');
@@ -150,8 +173,9 @@ if (hardMode) {
     for(const turn of turns){
       if(String(turn.reply).length>scenario.maxReply)problems.push('reply_too_long');
     }
-    results.push({scenario:scenario.id,group:scenario.group,accepted:problems.length===0,
+    results.push({scenario:scenario.id,repetition,group:scenario.group,accepted:problems.length===0,
       problems,expected:scenario.items,finalCart,customerNotes,turns});
+  }
   }
 } else if (humanMode) {
   for (const scenario of humanScenarios.slice(offset, offset + maxCases)) {
@@ -300,7 +324,7 @@ console.log(JSON.stringify({ scenarios: results.length, model,
 for (const rejected of results.filter(x => x.accepted === false)) {
   console.log('REJECTED_SCENARIO ' + JSON.stringify(rejected));
 }
-if (results.some(x => x.accepted === false)) process.exitCode = 1;
+if (!results.length || results.some(x => x.accepted === false)) process.exitCode = 1;
 }
 void runRehearsal().catch((err: unknown) => {
   console.error('Beta rehearsal failed:', err instanceof Error ? err.message : 'unknown');
