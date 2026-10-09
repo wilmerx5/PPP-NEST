@@ -1,6 +1,6 @@
 import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
-import type { WhatsappCatalogProduct } from './whatsapp-catalog.service';
+import { WhatsappCatalogService, type WhatsappCatalogProduct } from './whatsapp-catalog.service';
 
 describe('WhatsappTurnTelemetryService', () => {
   it('guarda ring buffer y recorta a max', () => {
