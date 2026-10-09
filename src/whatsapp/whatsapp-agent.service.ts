@@ -1,4 +1,3 @@
-import { resolveCartLineIndex } from './whatsapp-cart-edits';
 import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import {
@@ -73,6 +72,7 @@ const AGENT_TOOLS = [
     parameters: { type: 'object', properties: {
       productId: { type: 'number', description: 'SKU anterior' }, cartLineIndex: { type: 'integer', minimum: 0 },
       newProductId: { type: 'number' }, quantity: { type: 'integer', minimum: 1, maximum: 10 },
+      note: { type: 'string', description: 'Nota completa del producto nuevo; vacío la elimina. Si se omite conserva la anterior.' },
       attributes: { type: 'array', items: { type: 'object', properties: {
         attributeName: { type: 'string' }, attributeValue: { type: 'string' },
       }, required: ['attributeName','attributeValue'] } },
@@ -261,6 +261,9 @@ const AGENT_TOOLS = [
 @Injectable()
 export class WhatsappAgentService {
   private readonly logger = new Logger(WhatsappAgentService.name);
+  private readonly toolCartIndexes = new WeakMap<AiOrderAction, {
+    nextIndex: number; addedIndexes: WeakMap<object, number>;
+  }>();
   private readonly maxIterations = 6;
 
   constructor(
@@ -719,6 +722,49 @@ Contacto humano: *${phone || '3118866823'}*
         error: 'exception',
       };
     }
+  }
+
+  /** Project accepted tool actions without moving any existing line index. */
+  private toolCartView(ctx: {
+    cart?: AgentV1TurnInput['cart']; actions: AiOrderAction;
+    byId: Map<number, WhatsappCatalogProduct>;
+  }) {
+    const actions = ctx.actions;
+    let state = this.toolCartIndexes.get(actions);
+    if (!state) {
+      state = {nextIndex:(ctx.cart || []).length,addedIndexes:new WeakMap()};
+      this.toolCartIndexes.set(actions,state);
+    }
+    const lines = (actions.clearCart ? [] : ctx.cart || []).map((original,cartLineIndex) => {
+      const line = {...original,cartLineIndex,pendingAddIndex:-1,
+        attributes:original.attributes?.map(a=>({...a})) || []};
+      for (const update of actions.updateCartLines || []) {
+        if (update.cartLineIndex !== cartLineIndex || update.productId !== line.productId) continue;
+        if (update.quantity !== undefined) line.quantity = update.quantity;
+        if (update.note !== undefined) line.note = update.note || undefined;
+      }
+      for (const update of actions.updateAttributes || []) {
+        if (update.productId !== line.productId || update.cartLineIndex !== cartLineIndex) continue;
+        const old = line.attributes.findIndex(a=>a.attributeName.toLowerCase()===update.attributeName.toLowerCase());
+        const attribute = {attributeName:update.attributeName,attributeValue:update.attributeValue};
+        if (old < 0) line.attributes.push(attribute);
+        else line.attributes[old] = attribute;
+      }
+      return line;
+    }).filter(line => !actions.removeProductIds?.includes(line.productId) &&
+      !actions.removeCartLines?.some(r=>r.productId===line.productId && r.cartLineIndex===line.cartLineIndex));
+    for (const [pendingAddIndex,item] of (actions.addItems || []).entries()) {
+      let cartLineIndex = state.addedIndexes.get(item);
+      if (cartLineIndex === undefined) {
+        cartLineIndex = state.nextIndex++;
+        state.addedIndexes.set(item,cartLineIndex);
+      }
+      const product = ctx.byId.get(item.productId);
+      if (product) lines.push({cartLineIndex,pendingAddIndex,productId:item.productId,
+        name:product.name,quantity:item.quantity || 1,note:item.note,
+        attributes:item.attributes?.map(a=>({...a})) || []});
+    }
+    return lines;
   }
 
   private executeTool(
@@ -1355,34 +1401,49 @@ Contacto humano: *${phone || '3118866823'}*
         });
       }
       case 'get_cart':
-        return JSON.stringify({ok:true, lines:(ctx.cart || []).map((line,cartLineIndex) => ({cartLineIndex,...line})),
+        return JSON.stringify({ok:true, lines:this.toolCartView(ctx).map(({pendingAddIndex,...line})=>line),
           hint:'Edita solo la línea solicitada. Los índices no cambian durante este turno.'});
       case 'update_item':
       case 'remove_item':
       case 'replace_item': {
         const productId = Number(args.productId);
-        const cartLineIndex = resolveCartLineIndex(ctx.cart || [], productId, args.cartLineIndex);
-        if (cartLineIndex < 0) return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
+        const matches = this.toolCartView(ctx).filter(line=>line.productId===productId &&
+          (args.cartLineIndex === undefined || line.cartLineIndex === args.cartLineIndex));
+        if (matches.length !== 1) return JSON.stringify({ok:false,error:'missing_or_ambiguous_cart_line',
           hint:'Usa get_cart y el cartLineIndex de la línea solicitada; no retires todas las variantes.'});
-        const line = ctx.cart![cartLineIndex];
+        const line = matches[0];
+        const {cartLineIndex,pendingAddIndex} = line;
+        const removeLine = () => {
+          if (pendingAddIndex >= 0) ctx.actions.addItems!.splice(pendingAddIndex,1);
+          else (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
+        };
         if (name === 'remove_item') {
-          (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
+          removeLine();
         } else if (name === 'replace_item') {
           const result = JSON.parse(this.executeTool('add_item', {
             productId:args.newProductId, quantity:args.quantity ?? line.quantity ?? 1,
-            note:line.note, attributes:args.attributes,
+            note:typeof args.note === 'string' ? args.note : line.note, attributes:args.attributes,
           },ctx));
           if (!result.ok) return JSON.stringify(result);
-          (ctx.actions.removeCartLines ||= []).push({productId,cartLineIndex});
+          removeLine();
+          const replacement = this.toolCartView(ctx).find(c=>c.pendingAddIndex === ctx.actions.addItems!.length-1);
+          return JSON.stringify({ok:true,replacedProductId:productId,newLine:replacement &&
+            {productId:replacement.productId,cartLineIndex:replacement.cartLineIndex,quantity:replacement.quantity,note:replacement.note},
+            hint:'Producto reemplazado. Si necesita otra nota edita el newLine.cartLineIndex, o pasa note directamente a replace_item.'});
         } else {
           if (args.quantity !== undefined && (!Number.isInteger(args.quantity) || Number(args.quantity) < 1 || Number(args.quantity) > 10)) {
             return JSON.stringify({ok:false,error:'invalid_quantity'});
           }
           if (args.quantity === undefined && typeof args.note !== 'string') return JSON.stringify({ok:false,error:'missing_change'});
-          (ctx.actions.updateCartLines ||= []).push({productId,cartLineIndex,
+          const update = {productId,cartLineIndex,
             ...(args.quantity !== undefined ? {quantity:Number(args.quantity)} : {}),
             ...(typeof args.note === 'string' ? {note:args.note.trim().slice(0,200)} : {}),
-          });
+          };
+          if (pendingAddIndex >= 0) {
+            const pending = ctx.actions.addItems![pendingAddIndex];
+            if (update.quantity !== undefined) pending.quantity = update.quantity;
+            if (update.note !== undefined) pending.note = update.note || undefined;
+          } else (ctx.actions.updateCartLines ||= []).push(update);
         }
         return JSON.stringify({ok:true,productId,cartLineIndex,hint:'Cambio aceptado. Conserva las otras líneas.'});
       }
@@ -1418,20 +1479,25 @@ Contacto humano: *${phone || '3118866823'}*
             options: attr.options,
           });
         }
-        const cartLineIndex = resolveCartLineIndex(ctx.cart || [], productId, args.cartLineIndex);
-        const line = cartLineIndex >= 0 ? ctx.cart![cartLineIndex] : undefined;
+        const matches = this.toolCartView(ctx).filter(line=>line.productId===productId &&
+          (args.cartLineIndex === undefined || line.cartLineIndex===args.cartLineIndex));
+        const line = matches.length===1 ? matches[0] : undefined;
         if (!line) {
           return JSON.stringify({ ok: false, error: 'missing_or_ambiguous_cart_line', hint: 'Usa get_cart y el cartLineIndex de la línea solicitada' });
         }
         if (line.attributes?.some(a => a.attributeName.toLowerCase() === attr.attributeName.toLowerCase() && a.attributeValue.toLowerCase() === matched.toLowerCase())) {
           return JSON.stringify({ok:true,unchanged:true,hint:'La línea ya tiene esa opción. No hay ningún cambio.'});
         }
-        if (!ctx.actions.updateAttributes) ctx.actions.updateAttributes = [];
-        ctx.actions.updateAttributes.push({
-          productId, cartLineIndex,
-          attributeName: attr.attributeName,
-          attributeValue: matched,
-        });
+        const cartLineIndex = line.cartLineIndex;
+        const update = {productId,cartLineIndex,attributeName:attr.attributeName,attributeValue:matched};
+        if (line.pendingAddIndex >= 0) {
+          const pending = ctx.actions.addItems![line.pendingAddIndex];
+          const attributes = pending.attributes || [];
+          const index = attributes.findIndex(a=>a.attributeName.toLowerCase()===attr.attributeName.toLowerCase());
+          if (index < 0) attributes.push({attributeName:attr.attributeName,attributeValue:matched});
+          else attributes[index] = {attributeName:attr.attributeName,attributeValue:matched};
+          pending.attributes = attributes;
+        } else (ctx.actions.updateAttributes ||= []).push(update);
         return JSON.stringify({
           ok: true,
           productId,

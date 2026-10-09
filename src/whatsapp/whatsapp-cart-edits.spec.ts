@@ -26,6 +26,11 @@ async function apply(actions: AiOrderAction,cart: any[]) {
   const guarded=new WhatsappActionGuardService(catalog).sanitize({actions,products,businessOpen:true,allowMercadoPago:false});
   return (await service.applyActions({}, {cart,orderType:'pickup'}, guarded.actions,products,{})).session.cart;
 }
+function turnTools(cart:any[],userMessage='') {
+  const actions:AiOrderAction={};
+  const ctx={actions,cart,userMessage,products,byId:new Map(products.map(p=>[p.id,p])),setNeedsAttr:()=>{}};
+  return {actions,call:(name:string,args:object={})=>JSON.parse(agent.executeTool(name,args,ctx))};
+}
 describe('Cart edits preserve the other variants and use stable indexes',()=>{
   it('refuses an ambiguous SKU instead of changing the last line',()=>{
     const cart=[line(50,2,'Mango'),line(50,1,'Lulo')];
@@ -92,4 +97,52 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     const output=tool('add_item',{productId:1,quantity:2},[],'Bueno, regálame dos ejecutivos con pollo frito');
     expect(output.result.ok).toBe(false);expect(output.actions).toEqual({});
   });
+  it('lets a replacement receive its own note in the same turn',async()=>{
+    const cart=[line(25),line(37,2)];
+    const turn=turnTools(cart,'Cambia la pechuga a la plancha por un churrasco sin ensalada. Deja las dos limonadas');
+    const replacement=turn.call('replace_item',{productId:25,cartLineIndex:0,newProductId:17});
+    expect(replacement.ok).toBe(true);
+    expect(turn.call('get_cart').lines.map(l=>l.productId)).toEqual([37,17]);
+    expect(turn.call('update_item',{productId:17,cartLineIndex:replacement.newLine.cartLineIndex,note:'sin ensalada'}).ok).toBe(true);
+    const edited=await apply(turn.actions,cart);
+    expect(edited.find(l=>l.productId===17).note).toBe('sin ensalada');
+    expect(edited.find(l=>l.productId===37)).toEqual(cart[1]);
+  });
+  it('accepts a replacement note directly and retains it through guard and application',async()=>{
+    const cart=[line(25,2,undefined,'sin cilantro')];const turn=turnTools(cart,'Cambia la pechuga por churrasco sin ensalada');
+    expect(turn.call('replace_item',{productId:25,newProductId:17,note:'sin cilantro, sin ensalada'}).ok).toBe(true);
+    const edited=await apply(turn.actions,cart);
+    expect(edited).toHaveLength(1);expect(edited[0].quantity).toBe(2);expect(edited[0].note).toBe('sin cilantro, sin ensalada');
+  });
+  it('edits a newly queued item rather than adding a duplicate',async()=>{
+    const turn=turnTools([],'Un arroz con pollo sin ensalada');
+    expect(turn.call('add_item',{productId:23}).ok).toBe(true);
+    const added=turn.call('get_cart').lines[0];
+    expect(turn.call('update_item',{productId:23,cartLineIndex:added.cartLineIndex,quantity:2,note:'sin ensalada'}).ok).toBe(true);
+    const edited=await apply(turn.actions,[]);
+    expect(edited).toHaveLength(1);expect(edited[0].quantity).toBe(2);expect(edited[0].note).toBe('sin ensalada');
+  });
+  it('changes attributes on a newly queued item',async()=>{
+    const turn=turnTools([],'Un jugo en agua de mango');turn.call('add_item',{productId:50});
+    const added=turn.call('get_cart').lines[0];
+    expect(turn.call('set_attribute',{productId:50,cartLineIndex:added.cartLineIndex,attributeName:'Sabor',attributeValue:'Lulo'}).ok).toBe(true);
+    expect((await apply(turn.actions,[]))[0].attributes[0].attributeValue).toBe('Lulo');
+  });
+  it('keeps new line identifiers stable after removing another queued item',async()=>{
+    const turn=turnTools([],'Un arroz con pollo y una limonada');
+    turn.call('add_item',{productId:23});turn.call('add_item',{productId:37});
+    const [rice,drink]=turn.call('get_cart').lines;
+    turn.call('remove_item',{productId:23,cartLineIndex:rice.cartLineIndex});
+    expect(turn.call('get_cart').lines[0].cartLineIndex).toBe(drink.cartLineIndex);
+    expect(turn.call('update_item',{productId:37,cartLineIndex:drink.cartLineIndex,quantity:2}).ok).toBe(true);
+    const edited=await apply(turn.actions,[]);expect(edited).toHaveLength(1);expect(edited[0].productId).toBe(37);expect(edited[0].quantity).toBe(2);
+  });
+  it('shows queued changes and allows reverting an attribute to its original choice',async()=>{
+    const cart=[line(50,1,'Mango')];const turn=turnTools(cart);
+    turn.call('set_attribute',{productId:50,attributeName:'Sabor',attributeValue:'Lulo'});
+    expect(turn.call('get_cart').lines[0].attributes[0].attributeValue).toBe('Lulo');
+    turn.call('set_attribute',{productId:50,attributeName:'Sabor',attributeValue:'Mango'});
+    expect((await apply(turn.actions,cart))[0].attributes[0].attributeValue).toBe('Mango');
+  });
+
 });
