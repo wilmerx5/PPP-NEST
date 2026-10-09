@@ -37,7 +37,7 @@ function fixtureFetch(env, override = () => undefined) {
     if (path === '/api/auth/login') return reply(201, { requires2FA: false, user: { roles: ['admin'], email: env.STAGING_ADMIN_EMAIL } }, {
       'Set-Cookie': 'access_token=synthetic-session; Path=/; HttpOnly; Secure; SameSite=Lax',
     });
-    if (path === '/api/auth/logout') return reply(200, {}, [
+    if (path === '/api/auth/logout') return reply(201, {}, [
       ['Set-Cookie', 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'],
       ['Set-Cookie', 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'],
     ]);
@@ -61,6 +61,7 @@ test('checks signatures, admin cookies and logout without orders or sensitive re
   assert.equal(result.checks.length, 10);
   assert.equal(result.observations.approvedModelConfigured, true);
   assert.equal(result.observations.staffLoginHttpStatus, 201);
+  assert.equal(result.observations.staffLogoutHttpStatus, 201);
   const serialized = JSON.stringify(result);
   for (const secret of Object.values(env).filter(value => /synthetic|qa@|57300|12345678/.test(value))) assert.equal(serialized.includes(secret), false);
   assert.equal(serialized.includes('synthetic-session'), false);
@@ -113,4 +114,67 @@ test('a real unauthorized login fails and reports only its status code', async (
   assert.equal(result.observations.staffLoginHttpStatus, 401);
   assert.equal(JSON.stringify(result).includes('private account detail'), false);
   assert.equal(f.requests.some(r => r.options.headers?.Cookie), false);
+});
+
+
+test('updates only the approved staging model and verifies persistence before logout', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff', STAGING_CONFIGURE_APPROVED_MODEL: 'true' };
+  let model = 'gpt-4o-mini';
+  const f = fixtureFetch(env, (url, options) => {
+    if (!url.endsWith('/api/admin/whatsapp/settings') || !options.headers?.Cookie) return;
+    if (options.method === 'PATCH') {
+      assert.deepEqual(JSON.parse(options.body), { openaiModel: 'gpt-4.1-2025-04-14' });
+      model = JSON.parse(options.body).openaiModel;
+    }
+    return reply(200, { openaiModel: model, phoneNumberId: null, enabled: false,
+      agentV1Enabled: false, accessTokenSet: false, openaiApiKeySet: false });
+  });
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.observations.approvedModelUpdated, true);
+  assert.equal(result.observations.approvedModelConfigured, true);
+  assert.equal(f.requests.filter(r => r.options.method === 'PATCH').length, 1);
+  assert.equal(f.requests.at(-1).url.endsWith('/api/auth/logout'), true);
+});
+test('approved model updates are opt-in and idempotent', async () => {
+  for (const patch of [{}, { STAGING_CONFIGURE_APPROVED_MODEL: 'true' }]) {
+    const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff', ...patch };
+    const f = fixtureFetch(env);
+    assert.equal((await runPreflight(env, f.fetch)).ok, true);
+    assert.equal(f.requests.some(r => r.options.method === 'PATCH'), false);
+  }
+});
+test('refuses configuration outside the selective staff scope before any network request', async () => {
+  for (const patch of [{ STAGING_CONFIGURE_APPROVED_MODEL: 'true' },
+    { STAGING_HTTP_SCOPE: 'staff', STAGING_CONFIGURE_APPROVED_MODEL: 'yes' }]) {
+    const env = { ...fixture(), ...patch }, f = fixtureFetch(env);
+    assert.equal((await runPreflight(env, f.fetch)).ok, false);
+    assert.equal(f.requests.length, 0);
+  }
+});
+test('does not update the model if the database points to a different channel', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff', STAGING_CONFIGURE_APPROVED_MODEL: 'true' };
+  const f = fixtureFetch(env, (url, options) => url.endsWith('/settings') && options.headers?.Cookie ?
+    reply(200, { phoneNumberId: '87654321', openaiModel: 'gpt-4o-mini' }) : undefined);
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, false);
+  assert.equal(f.requests.some(r => r.options.method === 'PATCH'), false);
+  assert.equal(result.checks.at(-1).pass, true);
+});
+test('a failed model readback still clears session cookies', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff', STAGING_CONFIGURE_APPROVED_MODEL: 'true' };
+  const f = fixtureFetch(env, (url, options) => url.endsWith('/settings') && options.headers?.Cookie ?
+    reply(200, { phoneNumberId: null, openaiModel: 'gpt-4o-mini' }) : undefined);
+  const result = await runPreflight(env, f.fetch);
+  assert.equal(result.ok, false);
+  assert.equal(result.checks.find(c => c.name === 'authenticated_admin_settings_and_test_channel').code, 'MODEL_UPDATE_NOT_PERSISTED');
+  assert.equal(result.checks.at(-1).pass, true);
+});
+test('a rejected logout fails even when the response has clearing cookies', async () => {
+  const env = { ...fixture(), STAGING_HTTP_SCOPE: 'staff' };
+  const f = fixtureFetch(env, url => url.endsWith('/api/auth/logout') ? reply(401, {}, [
+    ['Set-Cookie', 'access_token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT'],
+    ['Set-Cookie', 'refresh_token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT'],
+  ]) : undefined);
+  assert.equal((await runPreflight(env, f.fetch)).checks.at(-1).code, 'LOGOUT_FAILED');
 });
