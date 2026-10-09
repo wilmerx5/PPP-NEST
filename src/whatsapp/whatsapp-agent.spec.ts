@@ -323,6 +323,40 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(question.actions).toEqual({});
   });
 
+  it('presupuesto para almuerzo ofrece solo platos por debajo del límite', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const menu: WhatsappCatalogProduct[] = [
+      { id: 22, code: 22, name: 'Ejecutivo Con Pollo Frito', price: 24000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 17, code: 17, name: 'Churrasco', price: 38000, availableNow: true, hasAttributes: true, attributes: [] },
+      { id: 20, code: 20, name: 'Sopa De Menudencias', price: 10500, availableNow: true, hasAttributes: true, attributes: [] },
+    ];
+    const result = await agent.runTurn({
+      userMessage: 'Voy a almorzar, qué plato tienen de menos de 25 mil?',
+      sessionSummary: 'carrito vacío', recentMessages: [], businessRulesBlock: 'reglas', brandName: 'PPP', products: menu,
+    });
+    expect(result.reply).toMatch(/Ejecutivo Con Pollo Frito/);
+    expect(result.reply).not.toMatch(/Churrasco/);
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('consulta de domicilios en Castilla no se interpreta como dirección final', async () => {
+    const agent = new WhatsappAgentService(
+      { getEffectiveConfig: jest.fn().mockResolvedValue({ openaiApiKey: 'dummy', localContext: {}, systemPrompt: '', openaiModel: 'gpt-4o-mini' }) } as never,
+      catalogStub as never,
+    );
+    const result = await agent.runTurn({
+      userMessage: '¿Hacen domicilios? estoy por Castilla',
+      sessionSummary: 'carrito vacío', recentMessages: [], businessRulesBlock: 'reglas', brandName: 'PPP', products,
+    });
+    expect(result.reply).toMatch(/domicilio|cobertura/i);
+    expect(result.actions).toEqual({});
+    expect(result.toolCalls).toEqual([]);
+  });
+
   it('executeTool search_menu por código vía reflexión de instancia', () => {
     const agent = new WhatsappAgentService(
       settingsStub as never,
