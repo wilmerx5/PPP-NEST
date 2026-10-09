@@ -63,10 +63,14 @@ const cases = [
   { id: 'ribs-salad-question', message: '¿Las costillas de cerdo traen ensalada?', kind: 'salad' },
   { id: 'three-dishes-composition', message: '¿Qué acompañamientos traen el churrasco, la sobrebarriga y las costillas de cerdo?', kind: 'composition' },
 ];
+const requestedCases = (process.env.WHATSAPP_MENU_FACTS_CASES || '').split(',').filter(Boolean);
+if (requestedCases.some(id => !cases.some(test => test.id === id))) throw Error('MENU_FACTS_UNKNOWN_CASE');
+const selectedCases = requestedCases.length ? cases.filter(test => requestedCases.includes(test.id)) : cases;
+const expectedExecutions = selectedCases.length * 3;
 async function main() {
   const results: Array<{ id: string; repetition: number; accepted: boolean; problems: string[]; reply: string }> = [];
   for (let repetition = 1; repetition <= 3; repetition++) {
-    for (const test of cases) {
+    for (const test of selectedCases) {
       if (usage.blockingProviderErrorCode || usage.requests >= 48) break;
       const result = await agent.runTurn({
         userMessage: test.message, sessionSummary: 'Carrito vacío; consulta informativa; no existe pedido.',
@@ -98,7 +102,7 @@ async function main() {
       results.push({ id: test.id, repetition, accepted: !problems.length, problems, reply: result.reply });
     }
   }
-  const report = { model, expectedExecutions: 12, executions: results.length,
+  const report = { model, expectedExecutions, executions: results.length,
     passed: results.filter(row => row.accepted).length, apiUsage: usage.summary(model), results,
     limits: 'Curated three-dish catalog, synthetic histories, no deployed Meta or kitchen verification.' };
   mkdirSync('tmp', { recursive: true });
@@ -106,6 +110,6 @@ async function main() {
   // Only synthetic food queries/replies: useful for checking associations beyond lexical assertions.
   for (const row of results) console.log(JSON.stringify({ menuFactCase: row }));
   console.log(JSON.stringify({ model, executions: report.executions, passed: report.passed, apiUsage: report.apiUsage }));
-  process.exitCode = results.length === 12 && results.every(row => row.accepted) ? 0 : 1;
+  process.exitCode = results.length === expectedExecutions && results.every(row => row.accepted) ? 0 : 1;
 }
 main().catch(() => { console.error('MENU_FACTS_EVALUATION_FAILED'); process.exitCode = 1; });
