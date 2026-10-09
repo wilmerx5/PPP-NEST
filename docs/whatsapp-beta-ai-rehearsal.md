@@ -12,6 +12,9 @@ WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_LIMIT=30 yarn b
 
 # 29 conversaciones nuevas, repetidas dos veces: cantidades, notas, variantes y correcciones
 WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_OFFSET=30 WHATSAPP_BETA_CASE_LIMIT=29 WHATSAPP_BETA_REPEATS=2 yarn beta:whatsapp:ai
+
+# 32 conversaciones cotidianas adicionales, repetidas dos veces
+WHATSAPP_BETA_LIVE=1 WHATSAPP_BETA_SUITE=hard WHATSAPP_BETA_CASE_OFFSET=59 WHATSAPP_BETA_CASE_LIMIT=32 WHATSAPP_BETA_REPEATS=2 yarn beta:whatsapp:ai
 ```
 
 Modelo predeterminado: `gpt-4o-mini`; `WHATSAPP_BETA_MODEL` permite especificar otro. Dos repeticiones ayudan a detectar variación; no garantizan robustez general.
@@ -23,6 +26,7 @@ Modelo predeterminado: `gpt-4o-mini`; `WHATSAPP_BETA_MODEL` permite especificar 
 - Notas por plato y variantes del mismo SKU en líneas independientes.
 - Ausencia de acciones prohibidas, intención de la respuesta y límite de longitud.
 - Copias independientes del carrito en cada turno, evitando alterar retrospectivamente el historial del informe.
+- Carritos intermedios esperados: preguntar disponibilidad/precio no añade productos, y una dirección posterior no cambia las cantidades.
 - Una suite vacía o un caso rechazado devuelve código de error. Actions verifica todos los grupos informativos y difíciles, incluidas las repeticiones.
 
 Informes sintéticos: `tmp/whatsapp-beta-ai-report.json`, artefactos separados por grupo y detalles de los rechazos en los logs. No subir al repositorio informes con chats reales, datos personales o credenciales.
@@ -31,4 +35,10 @@ Informes sintéticos: `tmp/whatsapp-beta-ai-report.json`, artefactos separados p
 
 La suite `hard` cubre interpretación, sanitización y aplicación real de acciones al carrito **en memoria**. No ejecuta `handleIncoming`, el enrutamiento completo, persistencia, concurrencia distribuida, inventario, cobertura/tarifa real, cocina, pagos ni creación/confirmación de órdenes. Los seis casos básicos y los 33 informativos siguen aislados en AgentV1. Validar el recorrido completo en staging con BD y transportes aislados antes de desplegar.
 
-Las once pruebas en `whatsapp-cart-integration.spec.ts` verifican además la aplicación real de correcciones, opciones y notas sin OpenAI. `yarn test:whatsapp` incluye estas pruebas y las de lenguaje con el catálogo suministrado.
+Las 21 pruebas en `whatsapp-cart-integration.spec.ts` verifican además la aplicación real de correcciones, opciones y notas sin OpenAI. `yarn test:whatsapp` incluye estas pruebas y las de lenguaje con el catálogo suministrado.
+
+La suite difícil contiene 91 escenarios distintos. El workflow ejecuta 191 conversaciones en total: seis básicas, 33 informativas, 30 difíciles originales, 29 de seguimiento repetidas dos veces y 32 cotidianas repetidas dos veces. Los grupos nuevos cubren ejecutivos con sopas distintas, bebidas de combos independientes, consultas antes de comprar, cantidad total frente a adicional, número de personas frente a códigos, notas de empaque, retiro/cambio de productos y cifras de billete/dirección que no son unidades.
+
+La primera ejecución de los casos cotidianos aceptó 49/64; encontró errores en cantidades y selección de opciones que se corrigieron en catálogo, AgentV1, ActionGuard y aplicación del carrito. Una repetición del grupo original también descubrió que “medio pollo” podía añadirse como frito sin elegir preparación; `add_item` ahora rechaza esa elección arbitraria. Conservar los escenarios y sus expectativas originales permite comprobar estas correcciones en cada ejecución.
+
+El 9 de octubre de 2026, la ejecución [37881167159](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881167159) pasó los 191 ensayos en el commit `ef039b46b768c095966573310cc16dcaa3cc6a78`. Incluye la regresión de «¿Se puede pedir un jugo en leche?»: consultar esa posibilidad no añade el jugo. Es evidencia del conjunto probado, no del circuito completo de staging.

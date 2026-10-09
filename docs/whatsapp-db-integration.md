@@ -10,13 +10,15 @@ El tramo HTTP verifica suscripción Meta, rechazo HMAC inválido antes de escrib
 
 Con el bot activado, los webhooks de confirmación verifican datos faltantes, espera del resumen final, DTO con cantidad/notas, confirmaciones repetidas, cancelación, takeover, rechazo de creación, límites mínimos/máximos, estado de pago y fallo de envío posterior a aceptación del pedido. La conversación y los mensajes se persisten en MariaDB; `OrdersService.create`, `PaymentsService.createPreference`, catálogo y horario se aíslan con respuestas sintéticas. No se llama a la IA en estos casos de protocolo cerrado.
 
-Esta suite no verifica el checkout completo contra las tablas comerciales, pagos reales, reparto, autenticación administrativa ni múltiples restaurantes. Las pruebas del agente con OpenAI se ejecutan en otro workflow. El objetivo inmediato es completar la aceptación de PPP; la adaptación a Kamppo se evalúa después.
+La suite adicional `orders.db.integration-spec.ts` ejecuta 25 casos con `OrdersService`, `ProductsService`, tablas comerciales, transacciones e inventario reales. Usa dos conexiones e instancias independientes para probar reintentos, numeración diaria, competencia por la última unidad y cancelación concurrente. Verifica precios persistidos, notas/opciones por unidad, variantes, stock compartido fraccionario, rollback tras un fallo tardío, horario, tarifa de domicilio, cancelación repetida/forzada y preparación en cocina. La prueba concurrente sincroniza ambas lecturas reales antes de cancelar para reproducir la carrera de manera controlada.
+
+Las dos suites suman 53 pruebas por versión de MariaDB. Los límites de horario, puntos y notificaciones se aíslan en la suite comercial; no se ejecuta la finalización externa del pedido. No se comprueban pagos reales, reparto, autenticación administrativa ni múltiples restaurantes. El webhook probado usa un creador de órdenes aislado; la suite comercial llama al servicio real por separado. Falta unirlos en una aceptación completa de staging. Las pruebas del agente con OpenAI se ejecutan en otro workflow. El objetivo inmediato es completar la aceptación de PPP; la adaptación a Kamppo se evalúa después.
 
 ## Ejecución segura
 
 Preparar una base vacía y desechable en MariaDB local. Definir `WHATSAPP_DB_TEST=1`, `TEST_DB_HOST=127.0.0.1`, `TEST_DB_PORT=3306`, `TEST_DB_DATABASE=ppp_test_whatsapp`, `TEST_DB_USERNAME` y `TEST_DB_PASSWORD`; luego ejecutar `yarn test:whatsapp:db`.
 
-La suite borra conversaciones y mensajes entre casos y modifica índices. Se niega a arrancar sin la selección explícita, un host de loopback y un nombre de base que comience con `ppp_test_whatsapp` según el patrón permitido. No cargar `.env` de producción para estas pruebas.
+Las suites sincronizan tablas comerciales, borran datos sintéticos entre casos y modifican índices WhatsApp. Se niegan a arrancar sin la selección explícita, un host de loopback y un nombre de base que comience con `ppp_test_whatsapp` según el patrón permitido. No cargar `.env` de producción para estas pruebas.
 
 ## Staging posterior
 

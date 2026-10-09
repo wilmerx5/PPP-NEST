@@ -47,6 +47,7 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
   let orders:OrdersService;
   let otherOrders:OrdersService;
   let inventory:ProductsService;
+  let otherInventory:ProductsService;
   let closed:boolean;
   let externalFetch:jest.SpyInstance;
   const business={getClock:async()=>getZonedClock('America/Bogota'),
@@ -59,7 +60,7 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
       {} as never,{} as never,business as never);
     const service=new OrdersService(ds.getRepository(Order),ds.getRepository(OrderItem),ds.getRepository(OrderItemAttribute),
       ds.getRepository(OrderExtra),ds.getRepository(Product),ds.getRepository(User),gateway as never,ds,
-      {calculatePointsFromCodes:()=>0,invalidatePointsForCanceledOrder:async()=>{}} as never,
+      {calculatePointsFromCodes:()=>0,getPointCodesByOrderId:async()=>[],invalidatePointsForCanceledOrder:async()=>{}} as never,
       stock,business as never,{} as never,{} as never,{} as never,{} as never);
     // Outbound notifications, email, loyalty and invoices are separate boundaries.
     // Creation, stock queries/updates, locks and all commercial repositories are real.
@@ -86,7 +87,8 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     ]);
     await db.getRepository(WhatsappSettings).save({id:1,ignoreBusinessHours:false});
     closed=false;gateway.emitOrdersUpdates.mockReset();
-    const a=services(db);orders=a.orders;inventory=a.inventory;otherOrders=services(otherDb).orders;
+    const a=services(db);orders=a.orders;inventory=a.inventory;
+    const b=services(otherDb);otherOrders=b.orders;otherInventory=b.inventory;
   });
   afterEach(()=>{expect(externalFetch).not.toHaveBeenCalled();jest.restoreAllMocks();
     // restoreAllMocks also removes the fetch boundary; install it for the next case.
@@ -147,6 +149,7 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     expect(await db.getRepository(OrderItem).count()).toBe(0);expect(await productStock()).toBe(1);
   });
   it('deducts only the chosen variant stock',async()=>{
+    await db.getRepository(Product).update(2,{trackInventory:true});
     await db.getRepository(ProductVariantStock).save([
       {productId:2,attributeName:'Sabor',attributeValue:'Mango',stock:3},
       {productId:2,attributeName:'Sabor',attributeValue:'Lulo',stock:4},
@@ -156,6 +159,7 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     expect(rows.map(r=>[r.attributeValue,r.stock])).toEqual([['Lulo',4],['Mango',2]]);
   });
   it('rejects an exhausted variant even when another flavor has stock',async()=>{
+    await db.getRepository(Product).update(2,{trackInventory:true});
     await db.getRepository(ProductVariantStock).save([
       {productId:2,attributeName:'Sabor',attributeValue:'Mango',stock:0},
       {productId:2,attributeName:'Sabor',attributeValue:'Lulo',stock:4},
@@ -201,13 +205,70 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
   });
   it('does not restore stock twice when two processes cancel simultaneously',async()=>{
     const r=await orders.create(dto({items:[{productId:1},{productId:1}]}));
-    await Promise.allSettled([orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'}),otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'})]);
+    // Synchronize after real inventory reads so both processes have seen the
+    // uncanceled order before either transaction starts. No stock data is mocked.
+    let readers=0;
+    let release:()=>void;
+    const bothRead=new Promise<void>(resolve=>{release=resolve;});
+    for(const stock of [inventory,otherInventory]){
+      const read=stock.getInventoryByProductIds.bind(stock);
+      jest.spyOn(stock,'getInventoryByProductIds').mockImplementation(async(...args)=>{
+        const result=await read(...args);if(++readers===2)release();await bothRead;return result;
+      });
+    }
+    const results=await Promise.all([orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'}),otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'})]);
+    expect(results.every(result=>result.success)).toBe(true);
     expect(await productStock()).toBe(10);expect((await saved(r.orderId)).orderStatus).toBe('canceled');
+    expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='deleted_order')).toHaveLength(1);
+    expect(await db.getRepository(OrderItem).count()).toBe(0);
   });
   it('marks all physical items prepared when kitchen completes cooking',async()=>{
     const r=await orders.create(dto({items:[{productId:1},{productId:1}]}));
     await orders.updateOrderGeneral(r.orderId,{orderStatus:'cooked'});
     const order=await saved(r.orderId);expect(order.orderStatus).toBe('cooked');
     expect(order.items.every(item=>item.kitchenPreparedAt instanceof Date)).toBe(true);
+  });
+  it('treats repeated cancellation as successful without restoring stock again',async()=>{
+    const r=await orders.create(dto());
+    await orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    const again=await otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    expect(again.success).toBe(true);expect(await productStock()).toBe(10);
+    expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='deleted_order')).toHaveLength(1);
+  });
+  it('restores the selected variant on cancellation without touching another flavor',async()=>{
+    await db.getRepository(Product).update(2,{trackInventory:true});
+    await db.getRepository(ProductVariantStock).save([
+      {productId:2,attributeName:'Sabor',attributeValue:'Mango',stock:3},
+      {productId:2,attributeName:'Sabor',attributeValue:'Lulo',stock:4},
+    ]);
+    const r=await orders.create(dto({items:[{productId:2,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]}]}));
+    await orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    const rows=await db.getRepository(ProductVariantStock).find({order:{attributeValue:'ASC'}});
+    expect(rows.map(row=>[row.attributeValue,row.stock])).toEqual([['Lulo',4],['Mango',3]]);
+    expect(await productStock(2)).toBe(0);
+  });
+  it('restores fractional shared stock exactly once on repeated cancellation',async()=>{
+    const group=await db.getRepository(InventoryGroup).save({name:'synthetic cancellation pool',stock:2});
+    await db.getRepository(InventoryGroupItem).save({groupId:group.id,productId:1,baseUnits:0.25});
+    const r=await orders.create(dto({items:[{productId:1},{productId:1},{productId:1}]}));
+    await orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    await otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'});
+    expect(Number((await db.getRepository(InventoryGroup).findOneByOrFail({id:group.id})).stock)).toBe(2);
+    expect(await productStock()).toBe(10);
+  });
+  it('requires explicit force to cancel a completed order and restores stock once',async()=>{
+    const r=await orders.create(dto());
+    await db.getRepository(Order).update(r.orderId,{orderStatus:'completed'});
+    await expect(orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled'})).rejects.toThrow(/force=true/);
+    expect(await productStock()).toBe(9);expect((await saved(r.orderId)).orderStatus).toBe('completed');
+    await orders.updateOrderGeneral(r.orderId,{orderStatus:'canceled',forceCancel:true});
+    await otherOrders.updateOrderGeneral(r.orderId,{orderStatus:'canceled',forceCancel:true});
+    expect(await productStock()).toBe(10);expect((await saved(r.orderId)).orderStatus).toBe('canceled');
+  });
+  it('does not enforce variant stock when inventory tracking is explicitly disabled',async()=>{
+    await db.getRepository(ProductVariantStock).save({productId:2,attributeName:'Sabor',attributeValue:'Mango',stock:0});
+    const r=await orders.create(dto({items:[{productId:2,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]}]}));
+    expect(r.success).toBe(true);
+    expect((await db.getRepository(ProductVariantStock).findOneByOrFail({productId:2})).stock).toBe(0);
   });
 });
