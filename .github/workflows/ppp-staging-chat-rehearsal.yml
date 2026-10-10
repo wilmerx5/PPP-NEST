@@ -31,13 +31,13 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '6d360333c389db1fef619065ecb7c1f4dd3b80ce'))
+       (github.event_name == 'push' && github.event.before == '900805cf691a56e1669df30240af0a80fc1f69c1'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 6d360333c389db1fef619065ecb7c1f4dd3b80ce
+          ref: 900805cf691a56e1669df30240af0a80fc1f69c1
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
