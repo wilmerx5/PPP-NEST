@@ -429,6 +429,24 @@ test('validates delivery, pickup and takeover without creating an order', async 
   }
 });
 
+test('rejects an unapproved branch before any staging write', async () => {
+  const f = fixture();
+  const report = await runCheckoutRehearsal(
+    { ...env, GITHUB_REF: 'refs/heads/Main' },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, false);
+  assert.ok(
+    report.checks.some(
+      item =>
+        item.name === 'authorized_context' &&
+        item.code === 'UNAPPROVED_EXECUTION_CONTEXT',
+    ),
+  );
+  assert.equal(f.sentTexts.length, 0);
+});
+
 test('preflight performs no conversation writes', async () => {
   const f = fixture();
   const report = await runCheckoutRehearsal(
@@ -547,6 +565,7 @@ test('creates, validates and cancels one isolated cash pickup order', async () =
   const report = await runCheckoutRehearsal(
     {
       ...env,
+      GITHUB_REF: 'refs/heads/fix/whatsapp-checkout-flow-20261010',
       STAGING_ORDER_LIFECYCLE: 'true',
     },
     f.fetch,

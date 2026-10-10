@@ -2,8 +2,9 @@ name: PPP Staging Order Lifecycle
 
 on:
   push:
-    branches: [fix/whatsapp-regression-baseline]
+    branches: [fix/whatsapp-checkout-flow-20261010]
     paths: [.github/workflows/ppp-staging-order-lifecycle.yml]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,14 +17,12 @@ jobs:
   order-lifecycle:
     if: >-
       github.repository == 'wilmerx5/PPP-NEST' &&
-      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      github.event.before == 'ba7de5dd3b723a1a4168855af7612070f3358375'
+      github.ref == 'refs/heads/fix/whatsapp-checkout-flow-20261010'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ba7de5dd3b723a1a4168855af7612070f3358375
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
