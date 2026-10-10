@@ -9312,6 +9312,10 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const index = indices[0];
+    if (edit.kind === 'append' && edit.preserve.some(query => correctionMatchesLine(session.cart[index], query))) {
+      await this.reply(conv, waId, 'Me indicas cambiar y conservar la misma línea. ¿Cuál debe llevar la nota? El carrito sigue igual.');
+      return true;
+    }
     if (edit.kind === 'append') {
       const products = await this.catalogService.getMenuProducts();
       const product = products.find(product => product.id === session.cart[index].productId);

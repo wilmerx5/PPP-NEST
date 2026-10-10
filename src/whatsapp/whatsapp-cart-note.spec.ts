@@ -24,6 +24,17 @@ describe('Scoped dish notes through the inbound router', () => {
     expect(h.session.cart[0].quantity).toBe(2); expect(h.session.cart[1]).toEqual(initial[1]);
     expect(h.session.customerNotes).toBeUndefined(); expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
   });
+  it('uses the variant in the target and preserves the other preparation instead of changing its attribute',async()=>{
+    const initial=[line(1,2,undefined,[{attributeName:'Arepas',attributeValue:'Blancas'}]),
+      line(1,1,undefined,[{attributeName:'Arepas',attributeValue:'Fritas'}])];
+    const h=harness(initial);
+    await h.inbound('A los pollos de arepas blancas ponles sin salsa. El de arepas fritas déjalo igual');
+    expect(h.session.cart[0]).toEqual({...initial[0],note:'sin salsa'});
+    expect(h.session.cart[1]).toEqual(initial[1]);
+  });
+  it('does not parse an additional sentence that requests another modification as a preservation',()=>{
+    expect(parseScopedCartNote('A los pollos ponles sin salsa. Agrega dos bebidas')).toBeNull();
+  });
   it('adds and then removes only the cooking note in consecutive turns', async () => {
     const initial = cart(); const h = harness(initial);
     await h.inbound('A los churrascos ponles también papas bien crocantes.');

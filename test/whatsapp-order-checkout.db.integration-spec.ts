@@ -99,6 +99,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   await db.getRepository(Product).save([
    {id:1,code:1,name:'1 Pollo Frito',price:41000,isActive:true,trackInventory:true,stock:10,hasAttributes:true,categories:[category]},
    {id:23,code:23,name:'Arroz Con Pollo',price:29500,isActive:true,trackInventory:true,stock:10,hasAttributes:false,categories:[category]},
+   {id:27,code:27,name:'Bebida Natural 2.5L',price:8000,isActive:true,trackInventory:true,stock:10,hasAttributes:false,categories:[category]},
    {id:37,code:37,name:'Limonada Natural',price:4500,isActive:true,trackInventory:false,stock:0,hasAttributes:false,categories:[category]},
    {id:94,code:94,name:'Tres Arepas Doradas',price:18000,isActive:true,trackInventory:true,stock:10,hasAttributes:false,categories:[category]},
   ]);
@@ -206,6 +207,17 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
  });
 
+ it.each([['Quiero Bebida Natural 2.5L',1],['Quiero dos bebidas naturales de 2.5 litros',2]])('persists beverage copies independently from its volume: %s',async(text,copies)=>{
+  const cart=await apply(String(text),{addItems:[{productId:27,quantity:Number(copies)}]});
+  expect(cart).toHaveLength(1);expect(cart[0]).toMatchObject({quantity:Number(copies),unitPrice:8000});
+  await ready(cart);await post('wamid.volume.summary','No más').expect(200);
+  await post('wamid.volume.confirm','Confirmar').expect(200);await settled();
+  const order=await saved();expect(order.items).toHaveLength(Number(copies));
+  expect(order.items.every(item=>item.product.id===27)).toBe(true);
+  expect(await stock(27)).toBe(10-Number(copies));
+  expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
+ });
+
  it('stores all units, independent variants and notes, and emits the real kitchen payload',async()=>{
   const cart=await apply('Dos pollos fritos con arepas blancas, un pollo frito con arepas fritas, dos arroces con pollo sin ensalada y una limonada',{
    addItems:[{productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
@@ -287,7 +299,6 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   agent.runTurn.mockResolvedValueOnce({reply:'Listo, los de arepas blancas van sin salsa.',
    actions:{updateCartLines:[{productId:1,cartLineIndex:0,note:'sin salsa'}]},toolCalls:['update_item']});
   await post('wamid.http.edit.note','A los pollos de arepas blancas ponles sin salsa. El de arepas fritas déjalo igual').expect(200);
-  expect(agent.runTurn).toHaveBeenCalledTimes(1);
   const persisted=other.getSession(await other.reloadConversation(c.id)).cart;
   expect(persisted.find(l=>l.attributes?.some(a=>a.attributeValue==='Blancas'))).toMatchObject({quantity:2,note:'sin salsa'});
   expect(persisted.find(l=>l.attributes?.some(a=>a.attributeValue==='Fritas'))?.note).toBeFalsy();

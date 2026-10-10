@@ -1216,7 +1216,9 @@ export class WhatsappCatalogService {
     // "3" / "12" sueltos = opción de lista / arepa / sabor — NO cantidad de pedido
     if (/^\d{1,2}$/.test(raw)) return 1;
     if (/^(?:opci[oó]n|la|el|numero|n[uú]mero)\s*[1-9]\d{0,2}$/i.test(raw)) return 1;
-    let q = normalizeText(raw);
+    // Catalog sizes (2.5 L, 500 ml, 2 kg) describe a presentation, not copies.
+    const withoutMeasurements = raw.replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|mililitros?|l|lt|lts|litros?|g|gr|gramos?|kg|kilogramos?)\b/gi, ' ');
+    let q = normalizeText(withoutMeasurements);
 
     // "medio pollo broaster 2" — el "2" final es elección de arepas/lista, no ×2
     if (/\s\d{1,2}$/.test(q) && /\b(pollo|broaster|frito|asado|sopa|mojarra|arepa)\b/.test(q)) {
@@ -1719,6 +1721,13 @@ export class WhatsappCatalogService {
   ): WhatsappCatalogProduct | null {
     const q = normalizeText(segment || '');
     if (!q || q.length < 4) return null;
+    const requestedVolume = this.extractRequestedDrinkVolumeMl(segment);
+    if (requestedVolume != null) {
+      const exactDrinks = products.filter(product => product.availableNow !== false &&
+        this.isLikelyDrinkProduct(product) && this.productDrinkVolumeMl(product) === requestedVolume &&
+        this.productNameFitsUtterance(product, segment));
+      if (exactDrinks.length === 1) return exactDrinks[0];
+    }
     const explicitSide = this.resolveExplicitSidePortionProduct(segment, products);
     if (explicitSide) return explicitSide;
     const scored = this.searchByNameScored(q, products, 3);
@@ -2521,7 +2530,19 @@ export class WhatsappCatalogService {
   }
 
   /** El nombre del plato está en la frase (typo incluido). “Pronto” no está en “bandeja paisa”. */
+  /** Explicit bottle sizes are exact choices, not permission to add nearby sizes. */
+  productMatchesExplicitDrinkSize(product: WhatsappCatalogProduct, text: string): boolean {
+    if (!this.isLikelyDrinkProduct(product)) return true;
+    const volume = this.productDrinkVolumeMl(product);
+    if (volume == null) return true;
+    const sizes = [...text.matchAll(/\b\d+(?:[.,]\s*\d+|\s+\d)?\s*(?:ml|cc|l|lt|lts|litros?)\b/gi)]
+      .map(match => this.extractRequestedDrinkVolumeMl('gaseosa ' + match[0]))
+      .filter((size): size is number => size != null);
+    return !sizes.length || sizes.includes(volume);
+  }
+
   productNameFitsUtterance(product: WhatsappCatalogProduct, text: string): boolean {
+    if (!this.productMatchesExplicitDrinkSize(product, text)) return false;
     const utter = normalizeText(text || '');
     const words = utter.split(/\s+/).filter((w) => w.length >= 4);
     const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
@@ -4416,7 +4437,7 @@ export class WhatsappCatalogService {
       const sized = covering.filter((p) => {
         const vol = this.productDrinkVolumeMl(p);
         if (vol == null) return false;
-        return Math.abs(vol - want) <= Math.max(150, want * 0.2);
+        return vol === want;
       });
       if (!sized.length) return null;
       pool = sized;

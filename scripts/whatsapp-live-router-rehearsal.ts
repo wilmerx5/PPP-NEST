@@ -14,16 +14,22 @@ import { WhatsappTurnTelemetryService } from '../src/whatsapp/whatsapp-turn-tele
 import { DEFAULT_PAYMENT_METHODS } from '../src/whatsapp/whatsapp-payment-methods';
 import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 import { BetaApiUsage } from './whatsapp-beta-api-usage';
+import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
 
-type Expectation = { items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
-type Scenario = { id: string; initialCart?: Array<{id:number;quantity:number;note?:string}>; messages: Array<{text:string;expect:Expectation}> };
+type Expectation = { lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
+type Scenario = { id: string; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
 Logger.overrideLogger(false);
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
 const usage = new BetaApiUsage();
 const originalFetch = globalThis.fetch;
+const requestIntervalMs = Math.max(0,Math.min(5000,Number(process.env.WHATSAPP_BETA_REQUEST_INTERVAL_MS ?? 1500)));
+let lastRequestStart=0;
 globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   if (args[0] !== 'https://api.openai.com/v1/chat/completions') throw Error('Only isolated OpenAI inference is permitted');
+  const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
+  if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+  lastRequestStart=Date.now();
   usage.requests++;
   try {
     const response = await originalFetch(...args);
@@ -49,9 +55,9 @@ const results:any[]=[];
 
 function harness(scenario:Scenario) {
   let count=0;
-  const cart=(scenario.initialCart||[]).map(line=>{const p=products.find(p=>p.id===line.id);if(!p)throw Error('Unknown fixture SKU');return {productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:line.quantity,note:line.note,attributes:[]};});
+  const cart=(scenario.initialCart||[]).map(line=>{const p=products.find(p=>p.id===line.id);if(!p)throw Error('Unknown fixture SKU');return {productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:line.quantity,note:line.note,attributes:structuredClone(line.attributes||[])};});
   const conv:any={id:1,waId:'synthetic-live-router',phoneE164:'+573000000001',customerName:'Cliente Sintético',state:'building_cart',sessionData:{cart,orderType:'delivery'}};
-  const history:string[]=[];const replies:string[]=[];const orders:any[]=[];let agentTurns=0;const agentErrors:string[]=[];
+  const history:string[]=[];const replies:string[]=[];const orders:any[]=[];let agentTurns=0;const agentErrors:string[]=[];const agentResults:any[]=[];
   const conversations:any={
     findOrCreateConversation:async()=>conv,touchInbound:async()=>{},claimInboundMessage:async()=>({id:++count}),
     reloadConversation:async()=>structuredClone(conv),getSession:()=>structuredClone(conv.sessionData),
@@ -62,7 +68,7 @@ function harness(scenario:Scenario) {
     findUserByPhone:async()=>null,
   };
   const agent=new WhatsappAgentService(settings,catalog);
-  const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);if(result.error)agentErrors.push(result.error);return result;};
+  const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);agentResults.push({reply:result.reply,actions:result.actions,toolCalls:result.toolCalls});if(result.error)agentErrors.push(result.error);return result;};
   const service=new WhatsappOrchestratorService(settings,{sendText:async()=>{throw Error('Meta must stay isolated');}} as never,
     catalog,new WhatsappAiService(settings),conversations,{getStatus:async()=>({isOpen:true,message:'Abierto',openTime:'00:00',closeTime:'23:59'})} as never,
     {create:async(dto:any)=>{orders.push(structuredClone(dto));return {id:orders.length,dailyOrderNumber:orders.length};}} as never,
@@ -74,7 +80,7 @@ function harness(scenario:Scenario) {
     const beforeReplies=replies.length;
     history.push('Cliente: '+text);
     await service.handleIncomingUnlocked({waId:conv.waId,phoneE164:conv.phoneE164,messageId:`synthetic-${count}`,messageType:'text',text,raw:{}});
-    return {session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors]};
+    return {session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults)};
   };
   return {send};
 }
@@ -90,6 +96,7 @@ async function main(){
         const expected=step.expect;
         if(expected.items){const items:Record<string,number>={};for(const line of actual.session.cart)items[line.productId]=(items[line.productId]||0)+line.quantity;
           if(JSON.stringify(Object.entries(items).sort())!==JSON.stringify(Object.entries(expected.items).sort()))problems.push(`turn_${i}:cart`);}
+        if(expected.lines && !matchesExpectedCartLines(expected.lines,actual.session.cart))problems.push(`turn_${i}:variant_lines`);
         if(expected.state && actual.state!==expected.state)problems.push(`turn_${i}:state:${actual.state}`);
         if(expected.address && !(actual.session.address||'').toLowerCase().includes(expected.address.toLowerCase()))problems.push(`turn_${i}:address`);
         if(expected.payment && actual.session.paymentMethod!==expected.payment)problems.push(`turn_${i}:payment`);

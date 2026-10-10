@@ -433,15 +433,31 @@
     "messages": [
       {
         "text": "Quiero un churrasco",
-        "expect": { "items": { "17": 1 } }
+        "expect": {
+          "items": {
+            "17": 1
+          }
+        }
       },
       {
         "text": "Para la Calle 48 sur 87 86",
-        "expect": { "items": { "17": 1 }, "state": "awaiting_payment", "address": "48" }
+        "expect": {
+          "items": {
+            "17": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
       },
       {
         "text": "No quiero que lo quites",
-        "expect": { "items": { "17": 1 }, "address": "48", "orderCount": 0 }
+        "expect": {
+          "items": {
+            "17": 1
+          },
+          "address": "48",
+          "orderCount": 0
+        }
       }
     ]
   },
@@ -486,14 +502,29 @@
   {
     "id": "ambiguous-chicken-then-quarter",
     "messages": [
-      { "text": "Quiero un pollo", "expect": { "items": {} } },
+      {
+        "text": "Quiero un pollo",
+        "expect": {
+          "items": {}
+        }
+      },
       {
         "text": "Un cuarto de pollo frito, ala pechuga, arepas fritas",
         "expect": {
-          "items": { "3": 1 },
+          "items": {
+            "3": 1
+          },
           "attrs": [
-            { "id": 3, "key": "Presa", "value": "Ala pechuga" },
-            { "id": 3, "key": "Arepas", "value": "Fritas" }
+            {
+              "id": 3,
+              "key": "Presa",
+              "value": "Ala pechuga"
+            },
+            {
+              "id": 3,
+              "key": "Arepas",
+              "value": "Fritas"
+            }
           ]
         }
       }
@@ -505,22 +536,55 @@
       {
         "text": "Una mojarra frita",
         "expect": {
-          "items": { "14": 1 },
-          "attrs": [{ "id": 14, "key": "Seleccion", "value": "Frita" }]
+          "items": {
+            "14": 1
+          },
+          "attrs": [
+            {
+              "id": 14,
+              "key": "Seleccion",
+              "value": "Frita"
+            }
+          ]
         }
       },
       {
         "text": "Arroz chino con costillas de cerdo",
-        "expect": { "items": { "14": 1, "84": 1 } }
+        "expect": {
+          "items": {
+            "14": 1,
+            "84": 1
+          }
+        }
       }
     ]
   },
   {
     "id": "pechuga-then-gratinada",
     "messages": [
-      { "text": "Una pechuga", "expect": { "items": {} } },
-      { "text": "La gratinada", "expect": { "items": { "61": 1 } } },
-      { "text": "Y una porcion de yuca", "expect": { "items": { "61": 1, "7": 1 } } }
+      {
+        "text": "Una pechuga",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "La gratinada",
+        "expect": {
+          "items": {
+            "61": 1
+          }
+        }
+      },
+      {
+        "text": "Y una porcion de yuca",
+        "expect": {
+          "items": {
+            "61": 1,
+            "7": 1
+          }
+        }
+      }
     ]
   },
   {
@@ -529,15 +593,32 @@
       {
         "text": "Una gaseosa de 400 pepsi",
         "expect": {
-          "items": { "28": 1 },
-          "attrs": [{ "id": 28, "key": "Sabor", "value": "Pepsi" }]
+          "items": {
+            "28": 1
+          },
+          "attrs": [
+            {
+              "id": 28,
+              "key": "Sabor",
+              "value": "Pepsi"
+            }
+          ]
         }
       },
       {
         "text": "Un jugo de guanabana en leche",
         "expect": {
-          "items": { "28": 1, "51": 1 },
-          "attrs": [{ "id": 51, "key": "Sabor", "value": "Guanabana" }]
+          "items": {
+            "28": 1,
+            "51": 1
+          },
+          "attrs": [
+            {
+              "id": 51,
+              "key": "Sabor",
+              "value": "Guanabana"
+            }
+          ]
         }
       }
     ]
@@ -545,15 +626,36 @@
   {
     "id": "ejecutivo-frito-choices",
     "messages": [
-      { "text": "Un ejecutivo con pollo frito", "expect": { "items": { "22": 1 } } },
+      {
+        "text": "Un ejecutivo con pollo frito",
+        "expect": {
+          "items": {
+            "22": 1
+          }
+        }
+      },
       {
         "text": "Pierna pernil, mondongo y limonada",
         "expect": {
-          "items": { "22": 1 },
+          "items": {
+            "22": 1
+          },
           "attrs": [
-            { "id": 22, "key": "Presa", "value": "Pierna Pernil" },
-            { "id": 22, "key": "Sopa", "value": "Mondongo" },
-            { "id": 22, "key": "Bebida", "value": "Limonada" }
+            {
+              "id": 22,
+              "key": "Presa",
+              "value": "Pierna Pernil"
+            },
+            {
+              "id": 22,
+              "key": "Sopa",
+              "value": "Mondongo"
+            },
+            {
+              "id": 22,
+              "key": "Bebida",
+              "value": "Limonada"
+            }
           ]
         }
       }
@@ -562,12 +664,461 @@
   {
     "id": "taco-pastor-colombiana",
     "messages": [
-      { "text": "Un taco al pastor", "expect": { "items": { "70": 1 } } },
+      {
+        "text": "Un taco al pastor",
+        "expect": {
+          "items": {
+            "70": 1
+          }
+        }
+      },
       {
         "text": "Colombiana",
         "expect": {
-          "items": { "70": 1 },
-          "attrs": [{ "id": 70, "key": "Bebida", "value": "Colombiana" }]
+          "items": {
+            "70": 1
+          },
+          "attrs": [
+            {
+              "id": 70,
+              "key": "Bebida",
+              "value": "Colombiana"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "composed-rice-default",
+    "messages": [
+      {
+        "text": "Un arroz chino con medio pollo",
+        "expect": {
+          "items": {
+            "36": 1
+          },
+          "attrs": [
+            {
+              "id": 36,
+              "key": "Pollo",
+              "value": "Frito"
+            }
+          ]
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "36": 1
+          },
+          "attrs": [
+            {
+              "id": 36,
+              "key": "Pollo",
+              "value": "Frito"
+            }
+          ],
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "single-volume-presentation",
+    "messages": [
+      {
+        "text": "Quiero gaseosa 2.5L",
+        "expect": {
+          "items": {
+            "27": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "27": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "two-volume-presentations",
+    "messages": [
+      {
+        "text": "Quiero dos gaseosas de 2.5 litros",
+        "expect": {
+          "items": {
+            "27": 2
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "27": 2
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "small-volume-beverage",
+    "messages": [
+      {
+        "text": "Quiero una gaseosa de 250ml",
+        "expect": {
+          "items": {
+            "44": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "44": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "two-water-bottles",
+    "messages": [
+      {
+        "text": "Quiero dos aguas de 600ml",
+        "expect": {
+          "items": {
+            "31": 2
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "31": 2
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "standalone-yuca-portion",
+    "messages": [
+      {
+        "text": "Quiero una porción de yuca frita",
+        "expect": {
+          "items": {
+            "7": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "7": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "paisa-combo-no-extra-components",
+    "messages": [
+      {
+        "text": "Quiero un combo de arroz paisa",
+        "expect": {
+          "items": {
+            "94": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "94": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "rice-ribs-composed-dish",
+    "messages": [
+      {
+        "text": "Un arroz chino con costillas de cerdo",
+        "expect": {
+          "items": {
+            "84": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "84": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "two-named-burger-packages",
+    "messages": [
+      {
+        "text": "Quiero dos paquetes de tres hamburguesas clásicas",
+        "expect": {
+          "items": {
+            "78": 2
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "78": 2
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "small-mondongo",
+    "messages": [
+      {
+        "text": "Quiero dos sopas de mondongo pequeñas",
+        "expect": {
+          "items": {
+            "41": 2
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "41": 2
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gratinada-pending-choice",
+    "messages": [
+      {
+        "text": "Quiero una pechuga",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "La gratinada",
+        "expect": {
+          "items": {
+            "61": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "61": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "quarter-fried-after-generic-chicken",
+    "messages": [
+      {
+        "text": "Quiero un pollo",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Un cuarto frito",
+        "expect": {
+          "items": {
+            "3": 1
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "3": 1
+          },
+          "state": "awaiting_payment",
+          "address": "48"
+        }
+      }
+    ]
+  },
+  {
+    "id": "negated-removal-at-payment",
+    "messages": [
+      {
+        "text": "Quiero dos churrascos",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "17": 2
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "No quites los churrascos. Cambia la dirección a calle 50 sur 87 90",
+        "expect": {
+          "items": {
+            "17": 2
+          },
+          "state": "awaiting_payment",
+          "address": "50"
+        }
+      }
+    ]
+  },
+  {
+    "id": "scoped-note-preserves-other-variant",
+    "initialCart": [
+      {
+        "id": 1,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "A los pollos de arepas blancas ponles sin salsa. El de arepas fritas déjalo igual",
+        "expect": {
+          "items": {
+            "1": 3
+          },
+          "lines": [
+            {
+              "id": 1,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Blancas"
+                }
+              ],
+              "note": [
+                "sin salsa"
+              ]
+            },
+            {
+              "id": 1,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Fritas"
+                }
+              ],
+              "forbidNote": [
+                "sin salsa"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "text": "Para la calle 48 sur 86 87",
+        "expect": {
+          "items": {
+            "1": 3
+          },
+          "lines": [
+            {
+              "id": 1,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Blancas"
+                }
+              ],
+              "note": [
+                "sin salsa"
+              ]
+            },
+            {
+              "id": 1,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Fritas"
+                }
+              ],
+              "forbidNote": [
+                "sin salsa"
+              ]
+            }
+          ],
+          "state": "awaiting_payment"
         }
       }
     ]

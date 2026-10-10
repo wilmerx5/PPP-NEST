@@ -218,3 +218,22 @@ describe('Named catalog packs through guarded model actions',()=>{
     expect(session.cart[0].quantity).toBe(quantity);
   });
 });
+
+// Catalog-wide invariants complement conversational inference, without paid API calls.
+describe('Every fixture SKU through guard and cart application',()=>{
+  it.each(products.map(p=>[p.id,p.name,p.price]))('one catalog presentation of %s / %s preserves its price',async(id,name,price)=>{
+    const session=await apply(`Quiero ${name}`,{addItems:[{productId:Number(id),quantity:1}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0]).toMatchObject({productId:Number(id),quantity:1,unitPrice:Number(price)});
+    const product=products.find(p=>p.id===id);
+    for(const choice of session.cart[0].attributes||[]){
+      const attr=product.attributes?.find(a=>a.attributeName===choice.attributeName);
+      expect(attr?.options).toContain(choice.attributeValue);
+    }
+  });
+  it.each(products.map(p=>[p.id,p.name,p.code]))('two explicit code units of %s / %s preserve copies',async(id,_name,code)=>{
+    const session=await apply(`Quiero 2 unidades del código ${code}`,{addItems:[{productId:Number(id),quantity:2}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0]).toMatchObject({productId:Number(id),quantity:2});
+  });
+});
