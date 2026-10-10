@@ -17,6 +17,10 @@ const STEPS = [
   { id: 'reset-before-pack', text: 'Reiniciar' },
   { id: 'named-pack', text: 'Quiero tres hamburguesas clasicas' },
   { id: 'pack-drink', text: 'Colombiana' },
+  { id: 'reset-before-street', text: 'Reiniciar' },
+  { id: 'churrasco', text: 'Quiero un churrasco' },
+  { id: 'street-address', text: 'Para la Calle 48 sur 87 86' },
+  { id: 'keep-cart', text: 'No quiero que lo quites' },
   { id: 'reset-end', text: 'Reiniciar' },
 ];
 
@@ -37,7 +41,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     limits: 'Signed synthetic inbound to the one authorized recipient. Stops before the final confirmation. No invoice, Mercado Pago or kitchen event.',
   };
   let cookie = '', requests = 0, startedAt = now(), recipient, channel, conversationId, rateLimit = 20;
-  let flank, pack, single, baselineOrderIds, current;
+  let flank, pack, single, steak, baselineOrderIds, current;
   const check = async (name, work) => {
     try { await work(); report.checks.push({ name, pass: true }); return true; }
     catch (error) { report.checks.push({ name, pass: false, code: error instanceof CheckError ? error.code : 'REQUEST_FAILED' }); return false; }
@@ -115,9 +119,10 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(productsResponse.status === 200, 'CATALOG_HTTP_FAILED');
       const products = await productsResponse.json();
       flank = products.find(product => product.name === 'Sobrebarriga');
+      steak = products.find(product => product.name === 'Churrasco');
       pack = products.find(product => product.id === 78);
       single = products.find(product => product.id === 76);
-      ensure(flank && pack && single && [flank, pack].every(product => product.availableNow === true), 'REQUIRED_PRODUCT_UNAVAILABLE');
+      ensure(flank && steak && pack && single && [flank, steak, pack].every(product => product.availableNow === true), 'REQUIRED_PRODUCT_UNAVAILABLE');
       const list = await admin('/api/admin/whatsapp/conversations');
       ensure(list.status === 200, 'CONVERSATION_LIST_FAILED');
       const matches = (await list.json()).filter(row => digits(row.phoneE164) === recipient);
@@ -160,7 +165,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(outgoing.length >= 1 && outgoing.every(message => message.sentBy === 'bot'), 'BOT_REPLY_NOT_PERSISTED');
       const cart = current.sessionData.cart;
       const session = current.sessionData;
-      if (step.id === 'reset-start' || step.id === 'reset-before-pack' || step.id === 'reset-end') {
+      if (step.id === 'reset-start' || step.id === 'reset-before-pack' || step.id === 'reset-before-street' || step.id === 'reset-end') {
         ensure(current.state === 'building_cart' && cart.length === 0 && !session.paymentMethod && !session.cashChangeFor, 'RESET_LEFT_DRAFT');
       }
       if (step.id === 'sobrebarriga') {
@@ -182,6 +187,16 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       }
       if (step.id === 'named-pack') {
         ensure(lineQty(cart, pack.id) === 1 && lineQty(cart, single.id) === 0, 'NAMED_PACK_COUNTED_AS_COPIES');
+      }
+      if (step.id === 'churrasco') {
+        ensure(lineQty(cart, steak.id) === 1 && current.state === 'building_cart', 'CHURRASCO_NOT_ADDED');
+      }
+      if (step.id === 'street-address') {
+        ensure(session.addressConfirmed === true && normalize(session.address).includes('48') && Number(session.deliveryFeeCalculated) >= 0, 'STREET_NOT_QUOTED');
+        ensure(lineQty(cart, steak.id) === 1 && current.state === 'awaiting_payment', 'STREET_READ_AS_QUANTITY');
+      }
+      if (step.id === 'keep-cart') {
+        ensure(lineQty(cart, steak.id) === 1 && normalize(session.address).includes('48') && current.state !== 'completed', 'KEEP_REMOVED_THE_DISH');
       }
       if (step.id === 'pack-drink') {
         ensure(lineQty(cart, pack.id) === 1 && lineQty(cart, single.id) === 0 && hasAttr(cart, pack.id, 'Colombiana'), 'PACK_DRINK_NOT_SAVED');

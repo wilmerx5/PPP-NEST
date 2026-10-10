@@ -429,6 +429,23 @@
     ]
   },
   {
+    "id": "street-is-not-a-quantity",
+    "messages": [
+      {
+        "text": "Quiero un churrasco",
+        "expect": { "items": { "17": 1 } }
+      },
+      {
+        "text": "Para la Calle 48 sur 87 86",
+        "expect": { "items": { "17": 1 }, "state": "awaiting_payment", "address": "48" }
+      },
+      {
+        "text": "No quiero que lo quites",
+        "expect": { "items": { "17": 1 }, "address": "48", "orderCount": 0 }
+      }
+    ]
+  },
+  {
     "id": "reset-and-new-order",
     "messages": [
       {

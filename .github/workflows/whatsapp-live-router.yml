@@ -1,5 +1,8 @@
 name: WhatsApp Real Model Router
 on:
+  push:
+    branches: [fix/whatsapp-checkout-flow-20261010]
+    paths: [.github/workflows/whatsapp-live-router.yml]
   workflow_dispatch:
     inputs:
       model:
@@ -20,6 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   conversations:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == '2e7036ffb197c93f4a990e9341b1b27ef585ce73')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -33,8 +37,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WHATSAPP_BETA_LIVE: '1'
-          WHATSAPP_BETA_MODEL: ${{ inputs.model }}
-          WHATSAPP_BETA_REPEATS: ${{ inputs.repetitions }}
+          WHATSAPP_BETA_MODEL: ${{ github.event_name == 'push' && 'gpt-4.1-2025-04-14' || inputs.model }}
+          WHATSAPP_BETA_REPEATS: ${{ github.event_name == 'push' && '1' || inputs.repetitions }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

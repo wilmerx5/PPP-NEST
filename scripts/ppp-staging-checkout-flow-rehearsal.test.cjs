@@ -13,6 +13,7 @@ const env = {
 };
 const products = [
   { id: 13, name: 'Sobrebarriga', availableNow: true },
+  { id: 17, name: 'Churrasco', availableNow: true },
   { id: 78, name: 'Tres  Hamburguesas Clasicas', availableNow: true },
   { id: 76, name: 'Hamburguesa Clasica', availableNow: true },
 ];
@@ -70,6 +71,16 @@ function fixture() {
         conversation.state = 'awaiting_final_confirm';
       } else if (text.startsWith('Quiero tres hamburguesas')) {
         session.cart = [{ productId: 78, quantity: 1, attributes: [] }];
+        conversation.state = 'building_cart';
+      } else if (text.startsWith('Quiero un churrasco')) {
+        session.cart = [{ productId: 17, quantity: 1, attributes: [] }];
+        conversation.state = 'building_cart';
+      } else if (text.startsWith('Para la Calle 48')) {
+        session.address = 'Calle 48 sur 87 86';
+        session.addressConfirmed = true;
+        session.deliveryFeeCalculated = 6000;
+        conversation.state = 'awaiting_payment';
+      } else if (text.startsWith('No quiero que lo quites')) {
         conversation.state = 'building_cart';
       } else if (text === 'Colombiana') {
         session.cart = [{ productId: 78, quantity: 1, attributes: [{ attributeName: 'Bebida', attributeValue: 'Colombiana' }] }];
