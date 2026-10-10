@@ -40,6 +40,11 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  pendingCartQuantity?: {
+    quantity: number;
+    options: Array<{ cartIndex: number; label: string }>;
+    cartSignature: string;
+  };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
@@ -112,6 +117,7 @@ export type WhatsappSessionData = {
   };
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
+    cartSignature?: string;
     options: Array<{ cartIndex: number; label: string }>;
   };
   /**
@@ -207,8 +213,17 @@ export type AiOrderAction = {
     attributes?: { attributeName: string; attributeValue: string }[];
   }>;
   removeProductIds?: number[];
+  removeCartLines?: Array<{ productId: number; cartLineIndex: number }>;
+  updateCartLines?: Array<{
+    productId: number;
+    cartLineIndex: number;
+    quantity?: number;
+    /** Replacement note; empty string clears it. */
+    note?: string;
+  }>;
   updateAttributes?: Array<{
     productId: number;
+    cartLineIndex?: number;
     attributeName: string;
     attributeValue: string;
   }>;

@@ -1,0 +1,55 @@
+name: WhatsApp Quantity Corrections Focused
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/whatsapp-quantity-corrections.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatsapp-inference-gpt-4.1-2025-04-14
+  cancel-in-progress: false
+
+jobs:
+  quantity-corrections:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == '35b9f262807f2841f4834b78d89f975a0ca3d92e'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 35b9f262807f2841f4834b78d89f975a0ca3d92e
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile
+      - name: Validate deterministic cart regressions before paid inference
+        run: yarn jest --runInBand --testPathPattern='whatsapp-quantity-corrections|whatsapp-cart-integration'
+      - name: Six new conversations with two repetitions
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: hard
+          WHATSAPP_BETA_CASE_OFFSET: '147'
+          WHATSAPP_BETA_CASE_LIMIT: '6'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: gpt-4.1-2025-04-14
+          WHATSAPP_BETA_REQUEST_INTERVAL_MS: '1500'
+        run: yarn beta:whatsapp:ai
+      - name: Archive synthetic conversation results and API usage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-quantity-corrections-report
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: ignore

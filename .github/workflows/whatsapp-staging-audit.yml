@@ -21,18 +21,44 @@ permissions:
 jobs:
   audit:
     # One controlled run from the reviewed revision, plus the existing opt-in.
-    if: vars.PPP_STAGING_DB_AUDIT == 'true' || (github.event_name == 'push' && github.event.before == '31a28323b4fd03140bf2a2665500de2ca1bbabef' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline')
+    if: vars.PPP_STAGING_DB_AUDIT == 'true' || (github.event_name == 'push' && github.event.before == 'ef039b46b768c095966573310cc16dcaa3cc6a78' && github.ref == 'refs/heads/fix/whatsapp-regression-baseline')
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 31a28323b4fd03140bf2a2665500de2ca1bbabef
+          ref: 048e8480a6a0251df3c3d9029b26b739f6e73677
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - name: Verify staging DNS and TCP reachability without exposing configuration
+        env:
+          DB_HOST: ${{ secrets.STAGING_DB_HOST }}
+          DB_PORT: ${{ secrets.STAGING_DB_PORT }}
+        run: |
+          node <<'NODE'
+          const dns = require('node:dns').promises;
+          const net = require('node:net');
+          const host = process.env.DB_HOST;
+          const port = Number(process.env.DB_PORT);
+          const report = { audit: 'staging connectivity', dns: false, tcp: false };
+          (async () => {
+            if (!host || !Number.isInteger(port) || port < 1 || port > 65535) throw {code: 'MISSING_OR_INVALID_CONFIG'};
+            await Promise.race([dns.lookup(host), new Promise((_, reject) => setTimeout(() => reject({code: 'DNS_TIMEOUT'}), 6000).unref())]);
+            report.dns = true;
+            await new Promise((resolve, reject) => {
+              const socket = net.createConnection({host, port});
+              const timer = setTimeout(() => { socket.destroy(); reject({code: 'TCP_TIMEOUT'}); }, 8000);
+              socket.once('connect', () => {clearTimeout(timer); socket.destroy(); resolve();});
+              socket.once('error', error => {clearTimeout(timer); socket.destroy(); reject(error);});
+            });
+            report.tcp = true;
+            console.log(JSON.stringify(report));
+          })().catch(error => {console.error(JSON.stringify({...report, code: error.code || 'CONNECTIVITY_FAILED'})); process.exit(1);});
+          NODE
       - name: Inspect staging schema and catalog without writes
         env:
           PPP_STAGING_DB_AUDIT: '1'

@@ -14,7 +14,8 @@ import {
 
 describe('corpus humano — glosario', () => {
   it.each(CORPUS_GLOSSARY_SAMPLES)('normaliza "$raw"', ({ raw, expect: re }) => {
-    expect(applyLocalGlossary(raw)).toMatch(re);
+    const expected = raw === 'sobrebarriga a la placha' ? /sobrebarriga asada/i : re;
+    expect(applyLocalGlossary(raw)).toMatch(expected);
   });
 });
 

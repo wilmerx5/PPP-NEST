@@ -2,23 +2,7 @@
 name: WhatsApp Beta AI Tests
 
 on:
-  push:
-    branches:
-      - fix/whatsapp-regression-baseline
-    paths:
-      - .github/workflows/whatsapp-beta-ai.yml
-      - scripts/whatsapp-beta-ai-rehearsal.ts
-      - src/whatsapp/whatsapp-agent.service.ts
-      - src/whatsapp/whatsapp-catalog.service.ts
-      - src/whatsapp/whatsapp-agent.spec.ts
-      - src/whatsapp/whatsapp-agent.language.spec.ts
-      - src/whatsapp/whatsapp-action-guard.service.ts
-      - src/whatsapp/whatsapp-orchestrator.service.ts
-      - src/whatsapp/whatsapp-cart-integration.spec.ts
-      - scripts/fixtures/whatsapp-beta-menu.json
-      - scripts/fixtures/whatsapp-beta-cases.json
-      - scripts/fixtures/whatsapp-beta-human-intents.json
-      - scripts/fixtures/whatsapp-beta-hard-conversations.json
+  # Full paid AI suites run explicitly; focused regressions have a separate workflow.
   workflow_dispatch:
 
 permissions:
@@ -26,6 +10,10 @@ permissions:
 
 jobs:
   beta-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [gpt-4o-mini]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -57,7 +45,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WHATSAPP_BETA_LIVE: '1'
           WHATSAPP_BETA_CASE_LIMIT: '6'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: yarn beta:whatsapp:ai
 
       - name: Human intent meals-meat (12 scenarios)
@@ -68,7 +56,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'human'
           WHATSAPP_BETA_CASE_LIMIT: '12'
           WHATSAPP_BETA_CASE_OFFSET: '0'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -82,7 +70,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-human-meals-meat
+          name: whatsapp-beta-human-meals-meat-${{ matrix.model }}
           path: tmp/whatsapp-beta-human-meals-meat.json
           retention-days: 7
           if-no-files-found: warn
@@ -95,7 +83,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'human'
           WHATSAPP_BETA_CASE_LIMIT: '12'
           WHATSAPP_BETA_CASE_OFFSET: '12'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -109,7 +97,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-human-drinks-desserts
+          name: whatsapp-beta-human-drinks-desserts-${{ matrix.model }}
           path: tmp/whatsapp-beta-human-drinks-desserts.json
           retention-days: 7
           if-no-files-found: warn
@@ -122,7 +110,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'human'
           WHATSAPP_BETA_CASE_LIMIT: '9'
           WHATSAPP_BETA_CASE_OFFSET: '24'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -136,7 +124,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-human-business-info
+          name: whatsapp-beta-human-business-info-${{ matrix.model }}
           path: tmp/whatsapp-beta-human-business-info.json
           retention-days: 7
           if-no-files-found: warn
@@ -149,7 +137,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'hard'
           WHATSAPP_BETA_CASE_LIMIT: '12'
           WHATSAPP_BETA_CASE_OFFSET: '0'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -163,7 +151,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hard-attributes
+          name: hard-attributes-${{ matrix.model }}
           path: tmp/hard-attributes.json
           retention-days: 7
           if-no-files-found: warn
@@ -176,7 +164,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'hard'
           WHATSAPP_BETA_CASE_LIMIT: '10'
           WHATSAPP_BETA_CASE_OFFSET: '12'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -190,7 +178,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hard-notes-multi
+          name: hard-notes-multi-${{ matrix.model }}
           path: tmp/hard-notes-multi.json
           retention-days: 7
           if-no-files-found: warn
@@ -203,7 +191,7 @@ jobs:
           WHATSAPP_BETA_SUITE: 'hard'
           WHATSAPP_BETA_CASE_LIMIT: '8'
           WHATSAPP_BETA_CASE_OFFSET: '22'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -217,7 +205,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hard-ambiguity
+          name: hard-ambiguity-${{ matrix.model }}
           path: tmp/hard-ambiguity.json
           retention-days: 7
           if-no-files-found: warn
@@ -231,7 +219,7 @@ jobs:
           WHATSAPP_BETA_CASE_LIMIT: '29'
           WHATSAPP_BETA_CASE_OFFSET: '30'
           WHATSAPP_BETA_REPEATS: '2'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: |
           set +e
           yarn beta:whatsapp:ai
@@ -245,7 +233,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hard-followup
+          name: hard-followup-${{ matrix.model }}
           path: tmp/hard-followup.json
           retention-days: 7
           if-no-files-found: error
@@ -267,12 +255,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-report
+          name: whatsapp-beta-report-${{ matrix.model }}
           path: tmp/whatsapp-beta-ai-report.json
           retention-days: 7
           if-no-files-found: warn
 
   everyday-conversations:
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [gpt-4o-mini]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -290,13 +282,179 @@ jobs:
           WHATSAPP_BETA_CASE_OFFSET: '59'
           WHATSAPP_BETA_CASE_LIMIT: '32'
           WHATSAPP_BETA_REPEATS: '2'
-          WHATSAPP_BETA_MODEL: 'gpt-4o-mini'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
         run: yarn beta:whatsapp:ai
       - name: Archive everyday conversations and actual cart assertions
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: whatsapp-beta-everyday-conversations
+          name: whatsapp-beta-everyday-conversations-${{ matrix.model }}
           path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  cart-edit-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        offset: [91, 115]
+        model: [gpt-4o-mini]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Cart edits and independent variants (24 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: ${{ matrix.offset }}
+          WHATSAPP_BETA_CASE_LIMIT: '24'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
+        run: yarn beta:whatsapp:ai
+      - name: Archive cart edit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-cart-edits-${{ matrix.offset }}-${{ matrix.model }}
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  real-chat-regressions:
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [gpt-4o-mini]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Anonymized real-chat patterns (8 scenarios, two repetitions)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_OFFSET: '139'
+          WHATSAPP_BETA_CASE_LIMIT: '8'
+          WHATSAPP_BETA_REPEATS: '2'
+          WHATSAPP_BETA_MODEL: '${{ matrix.model }}'
+        run: yarn beta:whatsapp:ai
+      - name: Archive real-chat regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-beta-real-chat-patterns-${{ matrix.model }}
+          path: tmp/whatsapp-beta-ai-report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  quality-candidate-gpt41:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: whatsapp-inference-gpt-4.1-2025-04-14
+      cancel-in-progress: false
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      WHATSAPP_BETA_LIVE: '1'
+      WHATSAPP_BETA_MODEL: 'gpt-4.1-2025-04-14'
+      WHATSAPP_BETA_REQUEST_INTERVAL_MS: '1500'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: GPT-4.1 basic (6 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'basic'
+          WHATSAPP_BETA_CASE_LIMIT: '6'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-basic.json
+          echo "$result" > tmp/gpt41-basic-exit.txt
+          exit "$result"
+      - name: GPT-4.1 human (33 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'human'
+          WHATSAPP_BETA_CASE_LIMIT: '33'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-human.json
+          echo "$result" > tmp/gpt41-human-exit.txt
+          exit "$result"
+      - name: GPT-4.1 hard-initial (30 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '30'
+          WHATSAPP_BETA_CASE_OFFSET: '0'
+          WHATSAPP_BETA_REPEATS: '1'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-hard-initial.json
+          echo "$result" > tmp/gpt41-hard-initial-exit.txt
+          exit "$result"
+      - name: GPT-4.1 hard-repeated (234 executions)
+        continue-on-error: true
+        env:
+          WHATSAPP_BETA_SUITE: 'hard'
+          WHATSAPP_BETA_CASE_LIMIT: '117'
+          WHATSAPP_BETA_CASE_OFFSET: '30'
+          WHATSAPP_BETA_REPEATS: '2'
+        run: |
+          set +e
+          yarn beta:whatsapp:ai
+          result=$?
+          set -e
+          cp tmp/whatsapp-beta-ai-report.json tmp/gpt41-hard-repeated.json
+          echo "$result" > tmp/gpt41-hard-repeated-exit.txt
+          exit "$result"
+      - name: GPT-4.1 acceptance gate
+        if: always()
+        run: |
+          failed=0
+          for suite in basic human hard-initial hard-repeated; do
+            result="tmp/gpt41-${suite}-exit.txt"
+            if [ ! -f "$result" ] || [ "$(cat "$result")" != "0" ]; then
+              echo "::error::GPT-4.1 suite failed or missing: $suite"
+              failed=1
+            fi
+          done
+          exit "$failed"
+      - name: Archive GPT-4.1 sequential comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-quality-gpt-4.1-2025-04-14
+          path: tmp/gpt41-*.json
           retention-days: 7
           if-no-files-found: error

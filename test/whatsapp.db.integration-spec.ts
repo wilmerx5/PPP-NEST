@@ -158,9 +158,36 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
       await expect(conversationService(primary).claimInboundMessage({conversationId:conv.id,waMessageId:'wamid.bad-index',body:'hola'})).rejects.toThrow(/falta un índice UNIQUE/);
       expect(await primary.getRepository(WhatsappMessage).count()).toBe(0);
     } finally {
+      // InnoDB may replace its implicit FK-supporting index with the composite
+      // key. Keep a standalone FK index before removing the deliberately bad key.
+      const support=await primary.query(`SELECT COUNT(*) AS c FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ppp_whatsapp_messages' AND INDEX_NAME='idx_whatsapp_msg_conv'`);
+      if(!Number(support[0].c))await primary.query('CREATE INDEX idx_whatsapp_msg_conv ON ppp_whatsapp_messages (conversation_id)');
       await primary.query('ALTER TABLE ppp_whatsapp_messages DROP INDEX test_composite_claim');
       await (runner as any).ensureWhatsappMessageColumns();
     }
+  });
+  it('repairs a partial installation with settings present and conversation tables missing',async()=> {
+    const settingsBefore=await primary.getRepository(WhatsappSettings).findOneByOrFail({id:1});
+    await primary.query('DROP TABLE ppp_whatsapp_messages');
+    await primary.query('DROP TABLE ppp_whatsapp_conversations');
+    try {
+      await (runner as any).ensureWhatsappSchema();
+      const rebuilt=await service.findOrCreateConversation('573000000088','+573000000088');
+      await expect(service.claimInboundMessage({conversationId:rebuilt.id,waMessageId:'wamid.partial-schema',body:'hola'})).resolves.toBeTruthy();
+      const preserved=await primary.getRepository(WhatsappSettings).findOneByOrFail({id:1});
+      expect(preserved.enabled).toBe(settingsBefore.enabled);
+      expect(preserved.agentV1Enabled).toBe(settingsBefore.agentV1Enabled);
+    } finally {await (runner as any).ensureWhatsappSchema();}
+  });
+  it('restores the single-column conversation identity key after a legacy schema loses it',async()=> {
+    await primary.query('ALTER TABLE ppp_whatsapp_conversations DROP INDEX uq_whatsapp_wa_id');
+    try {
+      await (runner as any).ensureWhatsappConversationColumns();
+      const conversations=await Promise.all(Array.from({length:16},(_,i)=>(i%2 ? service : other).findOrCreateConversation('573000000099','+573000000099')));
+      expect(new Set(conversations.map(c=>c.id)).size).toBe(1);
+      expect(await primary.getRepository(WhatsappConversation).count()).toBe(1);
+    } finally {await (runner as any).ensureWhatsappConversationColumns();}
   });
   it('does not disguise a foreign-key failure as an already processed message',async()=> {
     await expect(service.claimInboundMessage({conversationId:2147483647,waMessageId:'wamid.no-parent',body:'hola'})).rejects.toThrow();
@@ -194,6 +221,53 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     expect(actual.cart).toEqual(result.session.cart);expect(actual.cart.map(c=>c.quantity)).toEqual([2,1]);
     await service.saveSession(conv,{customerNotes:'Entrega sintética',address:'Dirección de prueba'});
     expect(other.getSession(await other.reloadConversation(conv.id)).cart).toEqual(actual.cart);
+  });
+  it('persists three chickens and two soups through signed clarification turns without duplication', async () => {
+    effectiveConfig.enabled = true;
+    effectiveConfig.agentV1Enabled = true;
+    const conv = await conversation();
+    await service.saveSession(conv, { cart: [], orderType: 'pickup' }, 'building_cart');
+    const read = async () => other.getSession(await other.reloadConversation(conv.id));
+    await post(payload('wamid.generic.chickens', 'Quiero Tres pillos')).expect(200);
+    expect((await read()).pendingMatch?.quantity).toBe(3);
+    expect((await read()).cart).toEqual([]);
+    await post(payload('wamid.generic.fried', 'Los quiero fritos')).expect(200);
+    expect((await read()).cart.map(c => [c.productId, c.quantity])).toEqual([[1, 3]]);
+    await post(payload('wamid.generic.soups', 'Dos sopas')).expect(200);
+    expect((await read()).pendingMatch?.quantity).toBe(2);
+    await post(payload('wamid.generic.ajiaco', 'Ajiaco porfa')).expect(200);
+    const expected = await read();
+    expect(expected.cart.map(c => [c.productId, c.quantity])).toEqual([[1, 3], [38, 2]]);
+    await post(payload('wamid.generic.ajiaco', 'Ajiaco porfa')).expect(200);
+    expect(await read()).toEqual(expected);
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(orders.create).not.toHaveBeenCalled();
+  });
+  it('persists numbered soups through adversarial model adds, checkout and payment without replaying history', async () => {
+    const conv = await readyCheckout({cart:[],paymentMethod:undefined});
+    const orchestrator = app.get(WhatsappOrchestratorService) as any;
+    orchestrator.agentService = {runTurn: jest.fn().mockResolvedValue({reply:'Listo',toolCalls:['add_item'],actions:{
+      addItems:[{productId:38,quantity:1},{productId:1,quantity:3}],setCustomerNotes:'cubiertos',
+    }})};
+    orchestrator.turnTelemetry = {record:()=>undefined};
+    const read = async () => other.getSession(await other.reloadConversation(conv.id));
+    await post(payload('wamid.journey.soups','Quiero dos sopas')).expect(200);
+    const pending = (await read()).pendingMatch!;
+    const row = pending.candidates.findIndex(p => p.id === 38) + 1;
+    await post(payload('wamid.journey.choice',String(row))).expect(200);
+    expect((await read()).cart.map(c=>[c.productId,c.quantity])).toEqual([[38,2]]);
+    await post(payload('wamid.journey.chickens','Tres pollos fritos')).expect(200);
+    const expected = (await read()).cart;
+    expect(expected.map(c=>[c.productId,c.quantity])).toEqual([[38,2],[1,3]]);
+    await post(payload('wamid.journey.chickens','Tres pollos fritos')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    await post(payload('wamid.journey.checkout','No mas')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_payment');
+    await post(payload('wamid.journey.payment','1')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_final_confirm');
+    expect(orders.create).not.toHaveBeenCalled();
   });
   it('does not restore a canceled cart after reloading the conversation',async()=> {
     const conv=await conversation();await service.saveSession(conv,{cart:[{productId:23,code:23,name:'Arroz Con Pollo',quantity:2,unitPrice:29500}],

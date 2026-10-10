@@ -2039,5 +2039,2429 @@
     "forbidActions": [
       "addItems"
     ]
+  },
+  {
+    "id": "edicion-retirar-arroz-conservar-carne",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita los dos arroces con pollo; deja el churrasco y la limonada"
+    ],
+    "items": {
+      "17": 1,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 17,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-jugo-agregar-gaseosa",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita el jugo de mango y agrega una gaseosa de 400 ml Pepsi"
+    ],
+    "items": {
+      "23": 1,
+      "28": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 28,
+        "key": "Sabor",
+        "value": "Pepsi"
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-dos-familias",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita el arroz con pollo y la limonada; deja solo la sobrebarriga"
+    ],
+    "items": {
+      "13": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 13,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "En Salsa"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-vaciar-y-empezar",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Olvida todo lo anterior. Mejor solo un churrasco y una limonada"
+    ],
+    "items": {
+      "17": 1,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 3,
+        "attributes": []
+      },
+      {
+        "productId": 1,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "productId": 50,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-vaciar-sin-pedido",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Borra todo el carrito, ya no voy a pedir"
+    ],
+    "items": {},
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-ausente",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita la sopa de mondongo si la agregaste; deja el arroz como está"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-reducir-cuatro-a-dos",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Del arroz con pollo deja solo dos en total. El churrasco no lo cambies"
+    ],
+    "items": {
+      "23": 2,
+      "17": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 4,
+        "attributes": []
+      },
+      {
+        "productId": 17,
+        "quantity": 1,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-aumentar-total",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Que sean cuatro arroces con pollo en total; conserva la limonada"
+    ],
+    "items": {
+      "23": 4,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-adicionales-y-billete",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Agrega dos limonadas más. Pago con un billete de 50 mil"
+    ],
+    "items": {
+      "23": 1,
+      "37": 3
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-restar-una-unidad",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita un arroz con pollo de los tres, que queden dos"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 3,
+        "attributes": []
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-combo-primera-linea",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al combo de pollo frito que tiene Pepsi cámbiale la bebida a Coca Cola. El de Manzana déjalo igual"
+    ],
+    "items": {
+      "99": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 99,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          },
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "productId": 99,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Manzana"
+          },
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 99,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Bebida",
+            "value": "Coca Cola"
+          },
+          {
+            "key": "Arepas",
+            "value": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 99,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Bebida",
+            "value": "Manzana"
+          },
+          {
+            "key": "Arepas",
+            "value": "Blancas"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-primer-sabor",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Los dos jugos de mango cámbialos a guanábana; deja el de lulo igual"
+    ],
+    "items": {
+      "50": 3
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      },
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Lulo"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 2,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Guanabana"
+          }
+        ]
+      },
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Lulo"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-igualar-sabores",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "El jugo de lulo cámbialo a mango, así quedan los tres de mango"
+    ],
+    "items": {
+      "50": 3
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      },
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Lulo"
+          }
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 50,
+        "key": "Sabor",
+        "value": "Mango"
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 3,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Mango"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-primer-sabor",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita los dos jugos de mango, deja solamente el de lulo"
+    ],
+    "items": {
+      "50": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      },
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Lulo"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Lulo"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-segundo-sabor",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita el jugo de lulo; los dos de mango déjalos"
+    ],
+    "items": {
+      "50": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      },
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Lulo"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 2,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Mango"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-primera-trucha",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "La trucha asada cámbiala a apanada. La frita déjala frita"
+    ],
+    "items": {
+      "12": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Frita"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 12,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Apanada"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Frita"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-retirar-trucha-frita",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Quita la trucha frita y deja la asada"
+    ],
+    "items": {
+      "12": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Frita"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 12,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Asada"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-nota-a-primera-linea",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al arroz que va sin ensalada ponle también sin cilantro. El otro arroz déjalo normal"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": [],
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 23,
+        "quantity": 1,
+        "note": [
+          "sin ensalada",
+          "sin cilantro"
+        ]
+      },
+      {
+        "id": 23,
+        "quantity": 1,
+        "forbidNote": [
+          "sin ensalada",
+          "sin cilantro"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-quitar-nota-de-segunda-linea",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "El arroz que iba sin cilantro déjalo normal. El arroz sin ensalada no lo cambies"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": [],
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": [],
+        "note": "sin cilantro"
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 23,
+        "quantity": 1,
+        "note": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 23,
+        "quantity": 1,
+        "forbidNote": [
+          "sin ensalada",
+          "sin cilantro"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-primer-ejecutivo-bebida",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al ejecutivo con Pepsi cámbiale la bebida a Coca Cola; el ejecutivo con Manzana déjalo igual"
+    ],
+    "items": {
+      "22": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 22,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Ajiaco"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      },
+      {
+        "productId": 22,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Ajiaco"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Manzana"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Bebida",
+            "value": "Coca Cola"
+          },
+          {
+            "key": "Sopa",
+            "value": "Ajiaco"
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Bebida",
+            "value": "Manzana"
+          },
+          {
+            "key": "Sopa",
+            "value": "Ajiaco"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-primer-ejecutivo-sopa",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al ejecutivo que tiene ajiaco cámbiale la sopa por mondongo. El de menudencias queda igual"
+    ],
+    "items": {
+      "22": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 22,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Ajiaco"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Colombiana"
+          }
+        ]
+      },
+      {
+        "productId": 22,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Menudencias"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Colombiana"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sopa",
+            "value": "Mondongo"
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sopa",
+            "value": "Menudencias"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-nota-empaque-linea-pollo",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al pollo frito ponle las arepas aparte. El arroz no lo cambies"
+    ],
+    "items": {
+      "1": 1,
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 1,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      },
+      {
+        "id": 23,
+        "contains": [],
+        "forbid": [
+          "aparte"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-nota-solo-arroz",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al arroz con pollo ponle sin ensalada. La mojarra queda normal"
+    ],
+    "items": {
+      "23": 1,
+      "14": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 14,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Frita"
+          }
+        ]
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 23,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 14,
+        "contains": [],
+        "forbid": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-quitar-nota",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Al arroz con pollo quítale la nota de sin ensalada, lo quiero normal"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": [],
+        "note": "sin ensalada"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 23,
+        "contains": [],
+        "forbid": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-lista-seis-familias",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "2 arroces con pollo, 1 churrasco, 2 ajiacos, 1 limonada, 1 trucha asada y 2 jugos en agua de lulo"
+    ],
+    "items": {
+      "23": 2,
+      "17": 1,
+      "38": 2,
+      "37": 1,
+      "12": 1,
+      "50": 2
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Asada"
+      },
+      {
+        "id": 50,
+        "key": "Sabor",
+        "value": "Lulo"
+      }
+    ]
+  },
+  {
+    "id": "edicion-lista-punto-coma-notas",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Un arroz con pollo sin ensalada; una mojarra asada sin cilantro; dos limonadas naturales"
+    ],
+    "items": {
+      "23": 1,
+      "14": 1,
+      "37": 2
+    },
+    "maxReply": 420,
+    "lineNotes": [
+      {
+        "id": 23,
+        "contains": [
+          "sin ensalada"
+        ],
+        "forbid": [
+          "sin cilantro"
+        ]
+      },
+      {
+        "id": 14,
+        "contains": [
+          "sin cilantro"
+        ],
+        "forbid": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-carne-dos-opciones",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Una sobrebarriga asada y otra sobrebarriga en salsa, más un churrasco"
+    ],
+    "items": {
+      "13": 2,
+      "17": 1
+    },
+    "maxReply": 420,
+    "expectedLines": [
+      {
+        "id": 13,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "Asada"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Seleccion",
+            "value": "En Salsa"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "id": "edicion-sopas-tamano-distinto",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Dos sopas pequeñas de ajiaco y un ajiaco grande sin cilantro"
+    ],
+    "items": {
+      "40": 2,
+      "38": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 40,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 38,
+        "contains": [
+          "sin cilantro"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-cuartos-dos-estilos",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Dos cuartos fritos pierna pernil con arepas blancas y un cuarto broaster ala pechuga con arepas fritas"
+    ],
+    "items": {
+      "3": 2,
+      "6": 1
+    },
+    "maxReply": 420,
+    "expectedLines": [
+      {
+        "id": 3,
+        "quantity": 2,
+        "attrs": [
+          {
+            "key": "Presa",
+            "value": "Pierna Pernil"
+          },
+          {
+            "key": "Arepas",
+            "value": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Presa",
+            "value": "Ala pechuga"
+          },
+          {
+            "key": "Arepas",
+            "value": "Fritas"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-combo-cambiar-dos-atributos",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Un combo de arroz chino con medio pollo frito y bebida Manzana",
+      "Mejor el pollo broaster y la bebida Pepsi"
+    ],
+    "items": {
+      "97": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 97,
+        "key": "Pollo",
+        "value": "Broaster"
+      },
+      {
+        "id": 97,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "97": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambio-fish-conservar-arroz",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Una mojarra frita y dos arroces con pollo",
+      "La mojarra mejor asada, los arroces iguales"
+    ],
+    "items": {
+      "14": 1,
+      "23": 2
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambiar-base-jugo",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "El jugo de lulo mejor en leche, conserva el mismo sabor y el arroz"
+    ],
+    "items": {
+      "51": 1,
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Lulo"
+          }
+        ]
+      },
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "attrs": [
+      {
+        "id": 51,
+        "key": "Sabor",
+        "value": "Lulo"
+      }
+    ]
+  },
+  {
+    "id": "edicion-reemplazar-plato-con-nota",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Cambia la pechuga a la plancha por un churrasco sin ensalada. Deja las dos limonadas"
+    ],
+    "items": {
+      "17": 1,
+      "37": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 25,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 2,
+        "attributes": []
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-consulta-con-carrito-variado",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Antes de cambiar algo, cuánto vale la sobrebarriga en salsa?"
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-consulta-sabor-no-cambio",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "El jugo de lulo tiene azúcar? Solo pregunto, deja mi jugo de mango como está"
+    ],
+    "items": {
+      "50": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 50,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Mango"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 50,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Mango"
+          }
+        ]
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-cambio-billete-con-carrito",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Pago con un billete de 100 mil; envía cambio por favor"
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-direccion-con-repetidos",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Calle 23 número 50-37, apartamento 202, son dos timbres"
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-pregunta-luego-carne",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Qué platos de carne tienen?",
+      "Dame un churrasco y una sobrebarriga asada"
+    ],
+    "items": {
+      "17": 1,
+      "13": 1
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {},
+        "forbidActions": [
+          "addItems"
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 13,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ]
+  },
+  {
+    "id": "edicion-consulta-sopa-ejecutivo",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "El ejecutivo incluye la sopa de menudencias? Solo quiero saber, no me cambies el ajiaco"
+    ],
+    "items": {
+      "22": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 22,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Presa",
+            "attributeValue": "Pierna Pernil"
+          },
+          {
+            "attributeName": "Sopa",
+            "attributeValue": "Ajiaco"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Colombiana"
+          }
+        ]
+      }
+    ],
+    "attrs": [
+      {
+        "id": 22,
+        "key": "Sopa",
+        "value": "Ajiaco"
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-salmon-inexistente-preserva",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Tienen salmón? Si no tienen, no me cambies el arroz"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-consulta-precio-grupo",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Cuánto valen dos churrascos y tres limonadas? Todavía no los agregues"
+    ],
+    "items": {
+      "23": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-negacion-remocion",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "No quites la limonada ni el arroz; deja todo igual"
+    ],
+    "items": {
+      "23": 1,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 1,
+        "attributes": []
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-cadena-ediciones",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Dos arroces con pollo y una limonada",
+      "Deja un arroz con pollo y agrega un churrasco",
+      "Quita la limonada",
+      "Que sean dos churrascos en total"
+    ],
+    "items": {
+      "23": 1,
+      "17": 2
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "23": 2,
+          "37": 1
+        }
+      },
+      {
+        "turn": 1,
+        "items": {
+          "23": 1,
+          "17": 1,
+          "37": 1
+        }
+      },
+      {
+        "turn": 2,
+        "items": {
+          "23": 1,
+          "17": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "edicion-cambio-medio-preparacion",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Los dos medios pollos fritos cámbialos por dos medios broaster con arepas fritas. Deja la limonada"
+    ],
+    "items": {
+      "5": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 2,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "productId": 37,
+        "quantity": 1,
+        "attributes": []
+      }
+    ],
+    "attrs": [
+      {
+        "id": 5,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ]
+  },
+  {
+    "id": "edicion-nota-aji-no-nombre",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Y envías bastante ají, que no se te olvide porfa"
+    ],
+    "items": {
+      "23": 2
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2,
+        "attributes": []
+      }
+    ],
+    "note": [
+      "aji"
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "clearCart",
+      "setCustomerName"
+    ]
+  },
+  {
+    "id": "edicion-opcion-fanta-inexistente",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "A la gaseosa de 400 ml le puedes poner Fanta? Si no hay, deja Pepsi como está"
+    ],
+    "items": {
+      "28": 1
+    },
+    "maxReply": 420,
+    "initialCart": [
+      {
+        "productId": 28,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Sabor",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 28,
+        "quantity": 1,
+        "attrs": [
+          {
+            "key": "Sabor",
+            "value": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "edicion-multi-codigos-y-notas",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Dame 2 del código 23 sin ensalada, 1 del código 17, y 3 del código 37"
+    ],
+    "items": {
+      "23": 2,
+      "17": 1,
+      "37": 3
+    },
+    "maxReply": 420,
+    "lineNotes": [
+      {
+        "id": 23,
+        "contains": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edicion-consulta-despues-agregar",
+    "group": "edicion-exhaustiva",
+    "messages": [
+      "Un arroz con pollo y una limonada",
+      "La limonada es natural? No cambies nada",
+      "Agrega otro arroz con pollo, también sin ensalada"
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "23": 1,
+          "37": 1
+        }
+      },
+      {
+        "turn": 1,
+        "items": {
+          "23": 1,
+          "37": 1
+        },
+        "forbidActions": [
+          "addItems",
+          "removeProductIds",
+          "updateAttributes",
+          "clearCart"
+        ]
+      }
+    ],
+    "expectedLines": [
+      {
+        "id": 23,
+        "quantity": 1,
+        "forbidNote": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 37,
+        "quantity": 1
+      },
+      {
+        "id": 23,
+        "quantity": 1,
+        "note": [
+          "sin ensalada"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chat-real-faltante-y-total",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Me faltó la milanesa de pollo y eran dos churrascos, no uno"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "17": 2,
+      "62": 1
+    },
+    "maxReply": 420,
+    "exclude": [
+      1,
+      4,
+      23,
+      25
+    ]
+  },
+  {
+    "id": "chat-real-composicion-sin-duplicar",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿Con qué viene el medio pollo frito que ya pedí?"
+    ],
+    "initialCart": [
+      {
+        "productId": 2,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "2": 1
+    },
+    "maxReply": 420,
+    "replyAny": [
+      "papa",
+      "arepa"
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-roaster-del-combo",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Se puede cambiar el pollo frito del combo por roaster?"
+    ],
+    "initialCart": [
+      {
+        "productId": 97,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Pollo",
+            "attributeValue": "Frito"
+          },
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "97": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 97,
+        "key": "Pollo",
+        "value": "Broaster"
+      },
+      {
+        "id": 97,
+        "key": "Bebida",
+        "value": "Pepsi"
+      }
+    ],
+    "exclude": [
+      2,
+      5,
+      28
+    ]
+  },
+  {
+    "id": "chat-real-bebida-incluida",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿El combo ya incluye la bebida que escogí? Si sí, déjala y no agregues otra"
+    ],
+    "initialCart": [
+      {
+        "productId": 99,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Bebida",
+            "attributeValue": "Pepsi"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "99": 1
+    },
+    "maxReply": 420,
+    "replyAny": [
+      "bebida",
+      "pepsi",
+      "incluye"
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-direccion-no-productos",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Cambia la dirección a carrera 19 # 54-26, apartamento 203"
+    ],
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 2
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420,
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "chat-real-conservar-bebida-reducir",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "No quites la limonada. Solo deja el arroz con pollo en dos, no tres"
+    ],
+    "initialCart": [
+      {
+        "productId": 23,
+        "quantity": 3
+      },
+      {
+        "productId": 37,
+        "quantity": 1
+      }
+    ],
+    "items": {
+      "23": 2,
+      "37": 1
+    },
+    "maxReply": 420
+  },
+  {
+    "id": "chat-real-combo-atributo-y-empaque",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "Un combo de pollo frito con Coca Cola y arepas fritas. Las arepas en bolsa aparte"
+    ],
+    "initialCart": [],
+    "items": {
+      "99": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 99,
+        "key": "Bebida",
+        "value": "Coca Cola"
+      },
+      {
+        "id": 99,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 99,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "exclude": [
+      1,
+      11,
+      28
+    ]
+  },
+  {
+    "id": "chat-real-consulta-inexistente-conservar",
+    "group": "patrones-chats-ppp",
+    "messages": [
+      "¿Tienen salmón? Si no hay, deja la trucha asada como está"
+    ],
+    "initialCart": [
+      {
+        "productId": 12,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "12": 1
+    },
+    "maxReply": 420,
+    "attrs": [
+      {
+        "id": 12,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ],
+    "forbidActions": [
+      "addItems",
+      "removeProductIds",
+      "removeCartLines",
+      "updateCartLines",
+      "updateAttributes",
+      "clearCart"
+    ]
+  },
+  {
+    "id": "qty-three-two-one-different-main-dishes",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Tres churrascos, dos mojarras asadas y un pollo frito con las arepas fritas"
+    ],
+    "initialCart": [],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      },
+      {
+        "id": 14,
+        "key": "Seleccion",
+        "value": "Asada"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 1,
+        "contains": [],
+        "forbid": [
+          "arepas",
+          "fritas"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "qty-only-one-chicken-preserve-main-dishes",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Solo era un pollo"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-chicken-one-total-preserve-rice-with-chicken",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Del pollo frito solo uno en total; el arroz con pollo y los demás platos quedan igual"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      },
+      {
+        "productId": 23,
+        "quantity": 2,
+        "note": "sin cilantro"
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1,
+      "23": 2
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      },
+      {
+        "id": 23,
+        "contains": [
+          "sin cilantro"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-explicit-fried-preserve-broaster",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Solo era un pollo frito, el broaster queda igual"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      },
+      {
+        "productId": 4,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1,
+      "4": 2
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-rejected-old-count-preserve-others",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "No eran tres pollos fritos, era uno; conserva todos los otros platos"
+    ],
+    "initialCart": [
+      {
+        "productId": 17,
+        "quantity": 3,
+        "note": "sin ensalada"
+      },
+      {
+        "productId": 14,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "productId": 1,
+        "quantity": 3,
+        "note": "arepas aparte",
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Fritas"
+          }
+        ]
+      }
+    ],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "forbidActions": [
+      "clearCart",
+      "addItems",
+      "removeProductIds",
+      "removeCartLines"
+    ]
+  },
+  {
+    "id": "qty-order-then-correct-preserve-all",
+    "group": "quantity-corrections-preserve-cart",
+    "messages": [
+      "Quiero tres churrascos sin ensalada, dos mojarras asadas y tres pollos fritos con arepas fritas aparte",
+      "Solo era un pollo"
+    ],
+    "initialCart": [],
+    "items": {
+      "17": 3,
+      "14": 2,
+      "1": 1
+    },
+    "maxReply": 600,
+    "attrs": [
+      {
+        "id": 1,
+        "key": "Arepas",
+        "value": "Fritas"
+      }
+    ],
+    "lineNotes": [
+      {
+        "id": 17,
+        "contains": [
+          "sin ensalada"
+        ]
+      },
+      {
+        "id": 1,
+        "contains": [
+          "aparte"
+        ]
+      }
+    ],
+    "turnCarts": [
+      {
+        "turn": 0,
+        "items": {
+          "17": 3,
+          "14": 2,
+          "1": 3
+        }
+      },
+      {
+        "turn": 1,
+        "items": {
+          "17": 3,
+          "14": 2,
+          "1": 1
+        },
+        "forbidActions": [
+          "clearCart",
+          "addItems",
+          "removeProductIds",
+          "removeCartLines"
+        ]
+      }
+    ]
   }
 ]

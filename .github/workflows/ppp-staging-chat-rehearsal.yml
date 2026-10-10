@@ -1,0 +1,64 @@
+name: PPP Staging Automated Conversations
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/ppp-staging-chat-rehearsal.yml]
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Execute bounded conversations on the single authorized test recipient
+        type: boolean
+        default: false
+        required: false
+      resume:
+        description: Resume only the verified failed synthetic variant draft
+        type: choice
+        options: [fresh, known-variant-draft, known-collapsed-variant-draft, known-variant-removal-draft, known-dish-note-draft, known-soup-checkout-draft]
+        default: fresh
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppp-staging-authorized-test-chat
+  cancel-in-progress: false
+
+jobs:
+  conversations:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == '900805cf691a56e1669df30240af0a80fc1f69c1'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 900805cf691a56e1669df30240af0a80fc1f69c1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check runner isolation with synthetic secrets and no network
+        run: node scripts/ppp-staging-chat-rehearsal.test.cjs
+      - name: Verify staging and optionally execute bounded test conversations
+        env:
+          STAGING_CHAT_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_CHAT_RESUME: ${{ github.event_name == 'push' && 'known-soup-checkout-draft' || (inputs.resume != 'fresh' && inputs.resume || '') }}
+          STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+          STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+          STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
+          STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
+          STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
+        run: node scripts/ppp-staging-chat-rehearsal.cjs
+      - name: Archive counts and check results without credentials or message bodies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppp-staging-chat-report
+          path: tmp/ppp-staging-chat-report.json
+          retention-days: 7
+          if-no-files-found: ignore

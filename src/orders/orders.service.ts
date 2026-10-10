@@ -1177,6 +1177,29 @@ export class OrdersService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      // Recheck under the row lock: another process may have canceled after
+      // the initial read. Only the first cancellation may restore inventory.
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId },
+        select: ['id', 'orderStatus', 'dailyOrderNumber'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedOrder) {
+        throw new NotFoundException(`No se encontró la orden con ID ${orderId}`);
+      }
+      if (lockedOrder.orderStatus === 'canceled') {
+        await queryRunner.commitTransaction();
+        return {
+          success: true,
+          message: `Orden #${lockedOrder.dailyOrderNumber ?? orderId} ya estaba cancelada`,
+          dailyOrderNumber: lockedOrder.dailyOrderNumber,
+        };
+      }
+      if (lockedOrder.orderStatus === 'completed' && !force) {
+        throw new BadRequestException(
+          'No se puede cancelar una orden ya completada sin confirmación. Usa force=true si fue un error (se restaurará inventario).',
+        );
+      }
       await this.restoreInventory(queryRunner.manager, oldCountByStockKey);
 
       const itemIds = order.items
@@ -2062,7 +2085,7 @@ export class OrdersService {
     }
 
     // Check if order is being canceled → ruta completa (inventario + ítems + extras + grupo)
-    if (dto.orderStatus === 'canceled' && order.orderStatus !== 'canceled') {
+    if (dto.orderStatus === 'canceled') {
       return this.cancelOrderFully(orderId, { force: dto.forceCancel === true });
     }
 

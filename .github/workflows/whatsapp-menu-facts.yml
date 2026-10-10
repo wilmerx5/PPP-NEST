@@ -1,0 +1,48 @@
+name: WhatsApp Menu Facts Focused
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/whatsapp-menu-facts.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatsapp-inference-gpt-4.1-2025-04-14
+  cancel-in-progress: false
+
+jobs:
+  menu-facts:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == 'cf73ffef269161e7b7ce49eca4f4f8bb66861dfd'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cf73ffef269161e7b7ce49eca4f4f8bb66861dfd
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile
+      - name: Evaluate three general menu queries
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_MENU_FACTS_LIVE: '1'
+          WHATSAPP_MENU_FACTS_CASES: lunch-meat-offer
+        run: yarn ts-node -r tsconfig-paths/register scripts/whatsapp-menu-facts-ai.ts
+      - name: Upload focused report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-menu-facts-report
+          path: tmp/whatsapp-menu-facts-report.json
+          if-no-files-found: ignore
+          retention-days: 7

@@ -47,6 +47,20 @@ export class WhatsappActionGuardService {
 
     if (params.actions.requestHuman) out.requestHuman = true;
     if (params.actions.clearCart) out.clearCart = true;
+    const validLine = (line: { productId: number; cartLineIndex: number }) =>
+      byId.has(line.productId) && Number.isInteger(line.cartLineIndex) && line.cartLineIndex >= 0;
+    if (params.actions.removeCartLines?.length) {
+      out.removeCartLines = params.actions.removeCartLines.filter(line=>Number.isInteger(line.productId) && line.productId > 0 && Number.isInteger(line.cartLineIndex) && line.cartLineIndex >= 0);
+      if (!out.removeCartLines.length) delete out.removeCartLines;
+    }
+    if (params.actions.updateCartLines?.length) {
+      out.updateCartLines = params.actions.updateCartLines.filter(validLine).map(line => ({
+        productId: line.productId, cartLineIndex: line.cartLineIndex,
+        ...(typeof line.quantity === 'number' && Number.isInteger(line.quantity) && line.quantity >= 1 && line.quantity <= 10 ? { quantity: line.quantity } : {}),
+        ...(typeof line.note === 'string' ? { note: line.note.trim().slice(0, 200) } : {}),
+      })).filter(line => line.quantity !== undefined || line.note !== undefined);
+      if (!out.updateCartLines.length) delete out.updateCartLines;
+    }
 
     if (params.actions.requestConfirm) {
       warnings.push('La confirmación solo la hace el cliente escribiendo "confirmar".');
@@ -84,6 +98,7 @@ export class WhatsappActionGuardService {
         }
         out.updateAttributes.push({
           productId: product.id,
+          ...(typeof upd.cartLineIndex === 'number' && Number.isInteger(upd.cartLineIndex) && upd.cartLineIndex >= 0 ? { cartLineIndex: upd.cartLineIndex } : {}),
           attributeName: attr.attributeName,
           attributeValue: matched,
         });
@@ -128,7 +143,7 @@ export class WhatsappActionGuardService {
     }
 
     if (params.actions.removeProductIds?.length) {
-      out.removeProductIds = params.actions.removeProductIds.filter((id) => byId.has(id));
+      out.removeProductIds = params.actions.removeProductIds.filter(id=>Number.isInteger(id) && id > 0);
     }
 
     if (params.actions.addItems?.length) {

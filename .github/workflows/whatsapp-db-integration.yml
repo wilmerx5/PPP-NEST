@@ -4,12 +4,21 @@ on:
   pull_request:
     paths:
       - src/whatsapp/**
+      - src/orders/**
+      - src/products/**
+      - src/business/**
+      - src/auth/entities/**
       - src/common/migrations/**
       - test/**
       - package.json
       - yarn.lock
       - .github/workflows/whatsapp-db-integration.yml
   workflow_dispatch:
+    inputs:
+      compatibility:
+        description: Also test MariaDB 10.11 and 11.4 in addition to deployed 11.8
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mariadb: ['10.11', '11.4']
+        mariadb: ${{ fromJSON(inputs.compatibility && '["10.11","11.4","11.8"]' || '["11.8"]') }}
     services:
       mariadb:
         image: mariadb:${{ matrix.mariadb }}

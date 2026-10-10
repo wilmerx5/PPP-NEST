@@ -2468,6 +2468,13 @@ Cll 6 b 78 c 33`;
       expect(names.some((n) => /mojarra/i.test(n))).toBe(true);
       expect(multi!.unresolved).toEqual([]);
     });
+
+    it('también resuelve el pedido si WhatsApp aplana el salto de línea', () => {
+      const multi = catalog.resolveMultiProductOrder('Me vendes 2 costillas 1 mojarra', pppMenu);
+      expect(multi).toBeTruthy();
+      expect(multi!.unresolved).toEqual([]);
+      expect(catalog.isPolitenessOnlySegment('Me vendes')).toBe(true);
+    });
   });
 
   describe('Línea con coma: costillas + ajiaco + mojarra + bagre + papa', () => {

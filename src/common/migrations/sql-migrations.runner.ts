@@ -476,9 +476,9 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
         `SELECT COUNT(*) AS c
          FROM information_schema.TABLES
          WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'ppp_whatsapp_settings'`,
+           AND TABLE_NAME IN ('ppp_whatsapp_settings', 'ppp_whatsapp_conversations', 'ppp_whatsapp_messages')`,
       );
-      if (Number(table?.[0]?.c) > 0) {
+      if (Number(table?.[0]?.c) === 3) {
         // Alinear domicilio por defecto a $2.000 si quedó en 0
         await this.dataSource.query(
           `UPDATE ppp_whatsapp_settings
@@ -733,6 +733,22 @@ export class SqlMigrationsRunner implements OnApplicationBootstrap {
          AND TABLE_NAME = 'ppp_whatsapp_conversations'`,
     );
     if (Number(table?.[0]?.c) === 0) return;
+
+    // A schema created by TypeORM or an older install can lack the unique
+    // WhatsApp identity key. Concurrent find-or-create requires this invariant.
+    const identityIndexes: Array<{ INDEX_NAME: string }> = await this.dataSource.query(
+      `SELECT INDEX_NAME FROM information_schema.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ppp_whatsapp_conversations'
+       GROUP BY INDEX_NAME
+       HAVING MAX(NON_UNIQUE) = 0 AND COUNT(*) = 1
+         AND MAX(COLUMN_NAME) = 'wa_id' AND MAX(SUB_PART) IS NULL`,
+    );
+    if (!identityIndexes.length) {
+      await this.dataSource.query(
+        'ALTER TABLE ppp_whatsapp_conversations ADD UNIQUE INDEX uq_whatsapp_wa_id (wa_id)',
+      );
+      this.logger.log('✓ WhatsApp conversations unique identity index restored');
+    }
 
     const cols: Array<{ name: string; ddl: string }> = [
       { name: 'human_takeover_at', ddl: 'TIMESTAMP NULL' },

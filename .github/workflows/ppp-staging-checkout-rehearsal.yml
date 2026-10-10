@@ -1,0 +1,58 @@
+name: PPP Staging Checkout Rehearsal
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/ppp-staging-checkout-rehearsal.yml]
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Execute bounded checkout and takeover tests on the authorized recipient
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppp-staging-authorized-checkout
+  cancel-in-progress: false
+
+jobs:
+  checkout:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == '1d3d8fdc57b9c97a8a68bd97e863f1d03e6f43e5'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1d3d8fdc57b9c97a8a68bd97e863f1d03e6f43e5
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate the rehearsal with synthetic data and no network
+        run: node --test scripts/ppp-staging-checkout-rehearsal.test.cjs
+      - name: Verify staging and optionally execute bounded checkout tests
+        env:
+          STAGING_CHECKOUT_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_CHECKOUT_RESUME: ${{ github.event_name == 'push' && 'known-recovered-soup-cart' || '' }}
+          STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+          STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+          STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
+          STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
+          STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
+        run: node scripts/ppp-staging-checkout-rehearsal.cjs
+      - name: Archive sanitized checkout results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppp-staging-checkout-report
+          path: tmp/ppp-staging-checkout-report.json
+          retention-days: 7
+          if-no-files-found: ignore

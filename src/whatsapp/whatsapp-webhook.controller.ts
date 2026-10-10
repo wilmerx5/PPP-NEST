@@ -67,20 +67,18 @@ export class WhatsappWebhookController {
     const cfg = await this.settingsService.getEffectiveConfig();
     const appSecret = (cfg.appSecret || '').trim();
 
-    if (appSecret) {
-      const raw = req.rawBody;
-      if (!raw || !Buffer.isBuffer(raw)) {
-        this.logger.warn('Webhook rechazado: falta rawBody para verificar firma Meta');
-        return res.status(401).json({ ok: false, error: 'raw_body_missing' });
-      }
-      if (!verifyWhatsappMetaSignature(raw, signature, appSecret)) {
-        this.logger.warn('Webhook rechazado: firma X-Hub-Signature-256 inválida');
-        return res.status(401).json({ ok: false, error: 'invalid_signature' });
-      }
-    } else {
-      this.logger.warn(
-        'WhatsApp App Secret no configurado — webhook sin verificación de firma. Configúralo en Admin.',
-      );
+    if (!appSecret) {
+      this.logger.error('Webhook rechazado: WhatsApp App Secret no configurado');
+      return res.status(503).json({ ok: false, error: 'app_secret_missing' });
+    }
+    const raw = req.rawBody;
+    if (!raw || !Buffer.isBuffer(raw)) {
+      this.logger.warn('Webhook rechazado: falta rawBody para verificar firma Meta');
+      return res.status(401).json({ ok: false, error: 'raw_body_missing' });
+    }
+    if (!verifyWhatsappMetaSignature(raw, signature, appSecret)) {
+      this.logger.warn('Webhook rechazado: firma X-Hub-Signature-256 inválida');
+      return res.status(401).json({ ok: false, error: 'invalid_signature' });
     }
 
     const body = (req.body || {}) as Record<string, unknown>;

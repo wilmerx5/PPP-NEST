@@ -40,6 +40,18 @@ export class WhatsappMetaService {
 
   constructor(private readonly settingsService: WhatsappSettingsService) {}
 
+  private assertStagingTarget(phoneNumberId: string | null | undefined, recipient?:string) {
+    if (process.env.PPP_STAGING !== 'true') return;
+    const allowed=(process.env.STAGING_WHATSAPP_RECIPIENTS || '').split(',')
+      .map(value=>value.replace(/\D/g,'')).filter(value=>/^\d{8,15}$/.test(value));
+    if (process.env.WHATSAPP_STAGING_OUTBOUND_ALLOW !== 'true' ||
+      !process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID ||
+      phoneNumberId !== process.env.STAGING_WHATSAPP_PHONE_NUMBER_ID || !allowed.length ||
+      (recipient!==undefined && !allowed.includes(recipient.replace(/\D/g,'')))) {
+      throw new Error('Staging WhatsApp outbound blocked: verify test channel and recipients');
+    }
+  }
+
   parseWebhookPayload(body: Record<string, unknown>): IncomingWhatsappMessage[] {
     const out: IncomingWhatsappMessage[] = [];
     if (body.object !== 'whatsapp_business_account') return out;
@@ -174,6 +186,7 @@ export class WhatsappMetaService {
 
   async sendText(toWaId: string, body: string): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
+    this.assertStagingTarget(cfg.phoneNumberId,toWaId);
     if (!cfg.accessToken || !cfg.phoneNumberId) {
       this.logger.warn('WhatsApp no configurado — no se envía mensaje');
       return;
@@ -212,6 +225,7 @@ export class WhatsappMetaService {
     filename: string;
   }): Promise<{ mediaId: string }> {
     const cfg = await this.settingsService.getEffectiveConfig();
+    this.assertStagingTarget(cfg.phoneNumberId);
     if (!cfg.accessToken || !cfg.phoneNumberId) {
       throw new Error('WhatsApp no configurado');
     }
@@ -248,6 +262,7 @@ export class WhatsappMetaService {
     filename?: string | null;
   }): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
+    this.assertStagingTarget(cfg.phoneNumberId,params.toWaId);
     if (!cfg.accessToken || !cfg.phoneNumberId) {
       this.logger.warn('WhatsApp no configurado — no se envía media');
       return;

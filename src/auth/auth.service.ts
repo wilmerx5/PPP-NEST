@@ -94,7 +94,18 @@ export class AuthService {
     }
 
     const tokens = this.getJwtTokens({ id: user.id });
-    return { requires2FA: false as const, ...tokens, user };
+    return {
+      requires2FA: false as const,
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        isActive: user.isActive,
+        provider: user.provider,
+        roles: user.roles,
+      },
+    };
   }
 
   async verifyLogin2fa(dto: VerifyLogin2faDto) {

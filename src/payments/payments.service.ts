@@ -39,6 +39,15 @@ export class PaymentsService {
       if (!accessToken) {
         return;
       }
+      if (
+        process.env.PPP_STAGING === 'true' &&
+        !accessToken.startsWith('TEST-')
+      ) {
+        this.logger.warn(
+          'Mercado Pago deshabilitado en staging: se requiere un token TEST',
+        );
+        return;
+      }
 
       this.client = new MercadoPagoConfig({
         accessToken: accessToken,

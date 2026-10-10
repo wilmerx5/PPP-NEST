@@ -86,7 +86,8 @@ const PHRASE_REWRITES: Array<{
   { re: /\ba\s+la\s+placha\b/gi, to: 'a la plancha' },
   // En carta: pechuga/carne "asada" = a la plancha (no gratinada)
   { re: /\bpechugas?\s+asad[oa]s?\b/gi, to: 'pechuga a la plancha' },
-  { re: /\bsobrebarrigas?\s+asad[oa]s?\b/gi, to: 'sobrebarriga a la plancha' },
+  // Sobrebarriga uses the catalog option "Asada"; preserve that choice in cart corrections.
+  { re: /\bsobrebarrigas?\s+(?:asad[oa]s?|a\s+la\s+plancha)\b/gi, to: 'sobrebarriga asada' },
   { re: /\bcarne\s+asad[oa]\b/gi, to: 'carne a la plancha' },
   { re: /\barroz\s+chuno\b/gi, to: 'arroz chino' },
   { re: /\barroz\s+chino\s+el\s+que\s+viene\s+con\s+medio\s+pollo\b/gi, to: 'arroz chino con medio pollo' },

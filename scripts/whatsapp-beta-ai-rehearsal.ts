@@ -12,17 +12,19 @@ import { WhatsappActionGuardService } from '../src/whatsapp/whatsapp-action-guar
 import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session.types';
 import { WhatsappAgentService } from '../src/whatsapp/whatsapp-agent.service';
 import { WhatsappCatalogService, type WhatsappCatalogProduct } from '../src/whatsapp/whatsapp-catalog.service';
+import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
+import { BetaApiUsage } from './whatsapp-beta-api-usage';
 
 type HardScenario = {
  id:string;group:string;messages:string[];context?:string[];
- initialCart?:Array<{productId:number;quantity:number;attributes?:Array<{attributeName:string;attributeValue:string}>}>;
+ initialCart?:Array<{productId:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>;
  items:Record<string,number>;exclude?:number[];forbidNew?:number[];
  attrs?:Array<{id:number;key:string;value:string}>;note?:string[];customerNote?:string[];
  replyAny?:string[];maxReply:number;
  lineNotes?:Array<{id:number;contains:string[];forbid?:string[]}>;
  forbidActions?:string[];
- expectedLines?:Array<{id:number;quantity:number;attrs?:Array<{key:string;value:string}>;note?:string[]}>;
- turnCarts?:Array<{turn:number;items:Record<string,number>}>;
+ expectedLines?:ExpectedCartLine[];
+ turnCarts?:Array<{turn:number;items:Record<string,number>;forbidActions?:string[]}>;
 };
 type HumanScenario = {
   id: string; group: string; message?: string; messages?: string[];
@@ -47,6 +49,42 @@ const catalogPath = join(process.cwd(), 'scripts/fixtures/whatsapp-beta-menu.jso
 const cases = JSON.parse(readFileSync(scenarioPath, 'utf8')) as Scenario[];
 const products = JSON.parse(readFileSync(catalogPath, 'utf8')) as WhatsappCatalogProduct[];
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
+const apiUsage = new BetaApiUsage();
+const originalFetch = globalThis.fetch;
+const requestIntervalMs = Math.max(0,Math.min(5000,Number(process.env.WHATSAPP_BETA_REQUEST_INTERVAL_MS)||0));
+let lastRequestStart = 0;
+let requestStartQueue = Promise.resolve();
+// Only this isolated process: observe cloned responses without changing AgentV1.
+globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
+  const tracked = args[0] === 'https://api.openai.com/v1/chat/completions';
+  if (tracked && requestIntervalMs) {
+    const gate=requestStartQueue.then(async()=> {
+      const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
+      if(delay) await new Promise(resolve=>setTimeout(resolve,delay));
+      lastRequestStart=Date.now();
+    });
+    requestStartQueue=gate.catch(()=>undefined);
+    await gate;
+  }
+  if (tracked) apiUsage.requests++;
+  let response:Response;
+  try {response = await originalFetch(...args);} catch(error) {
+    if(tracked)apiUsage.recordTransportFailure(error);
+    throw error;
+  }
+  if (tracked) {
+    let payload: unknown;
+    try { payload = await response.clone().json(); } catch(error) {
+      if((error as {name?:string})?.name==='TimeoutError') {
+        apiUsage.recordTransportFailure(error);
+        throw error;
+      }
+      /* Preserve the real response. */
+    }
+    apiUsage.record(response.status,payload);
+  }
+  return response;
+};
 const settings = {
   getEffectiveConfig: async () => ({
     openaiApiKey: token,
@@ -87,24 +125,27 @@ const maxCases = Math.max(1, Math.min(
   Number(process.env.WHATSAPP_BETA_CASE_LIMIT || (hardMode ? 10 : humanMode ? 12 : cases.length)),
 ));
 const offset = Math.max(0, Number(process.env.WHATSAPP_BETA_CASE_OFFSET || 0));
-const repeats = Math.max(1, Math.min(3, Number(process.env.WHATSAPP_BETA_REPEATS || 1)));
+const repeats = Number(process.env.WHATSAPP_BETA_REPEATS || 1);
+if (!Number.isInteger(repeats) || repeats<1 || repeats>10) {
+  throw new Error('WHATSAPP_BETA_REPEATS must be an integer between 1 and 10');
+}
 const results: Array<Record<string, unknown>> = [];
 async function runRehearsal(): Promise<void> {
 if (hardMode) {
-  for (let repetition = 1; repetition <= repeats; repetition++) {
+  hardRuns:for (let repetition = 1; repetition <= repeats; repetition++) {
   for (const scenario of hardScenarios.slice(offset, offset + maxCases)) {
+    if(apiUsage.blockingProviderErrorCode)break hardRuns;
     const cart = new Map<number, { productId: number; name: string; quantity: number;
       note?: string; attributes: Array<{attributeName:string;attributeValue:string}> }>();
+    const initialLines: WhatsappSessionData['cart'] = [];
     for (const line of scenario.initialCart || []) {
       const product = products.find(p => p.id === line.productId);
       if (!product) throw new Error('Invalid initialCart productId '+line.productId);
-      cart.set(line.productId,{ productId:line.productId,name:product.name,
-        quantity:line.quantity,attributes:line.attributes || [] });
+      initialLines.push({ productId:line.productId,name:product.name,code:product.code,unitPrice:product.price,
+        quantity:line.quantity,note:line.note,attributes:line.attributes || [] });
     }
-    let session: WhatsappSessionData = { orderType: 'pickup', cart: [...cart.values()].map(line => {
-      const product = products.find(p => p.id === line.productId)!;
-      return {...line,code:product.code,unitPrice:product.price};
-    }) };
+    // Same SKU may have multiple flavors/notes. Do not collapse seeded lines by ID.
+    let session: WhatsappSessionData = { orderType: 'pickup', cart: initialLines };
     const history = [...(scenario.context || [])];
     const turns: Array<Record<string,unknown>> = [];
     let customerNotes = '';
@@ -137,6 +178,7 @@ if (hardMode) {
     const expected=Object.entries(scenario.items);
     const problems:string[]=[];
     if (scenario.expectedLines) {
+      if (!matchesExpectedCartLines(scenario.expectedLines, finalCart)) problems.push('wrong_variant_lines');
       if (scenario.expectedLines.length !== finalCart.length) problems.push('wrong_line_count');
       for (const line of scenario.expectedLines) {
         if (!finalCart.some(actual => actual.productId === line.id && actual.quantity === line.quantity &&
@@ -155,6 +197,10 @@ if (hardMode) {
       if (!lines || quantities.size !== Object.keys(expectation.items).length ||
         Object.entries(expectation.items).some(([id,quantity])=>quantities.get(Number(id))!==quantity)) {
         problems.push('wrong_cart_after_turn_'+expectation.turn);
+      }
+      for (const action of expectation.forbidActions || []) {
+        if (Object.prototype.hasOwnProperty.call(turns[expectation.turn]?.actions || {}, action))
+          problems.push('forbidden_action_after_turn_'+expectation.turn+'_'+action);
       }
     }
     for (const action of scenario.forbidActions || []) {
@@ -203,6 +249,7 @@ if (hardMode) {
   }
 } else if (humanMode) {
   for (const scenario of humanScenarios.slice(offset, offset + maxCases)) {
+    if(apiUsage.blockingProviderErrorCode)break;
     const messages = scenario.messages || [scenario.message || ''];
     const history: string[] = [];
     const turns: Array<Record<string, unknown>> = [];
@@ -236,7 +283,7 @@ if (hardMode) {
     const matched = (terms: string[]) => terms.some(t => reply.includes(normalize(t)));
     const accepted = turns.length === messages.length &&
       turns.every(t => !t.error && !Object.keys(t.actions as object).some(k =>
-        ['addItems','clearCart','removeProductIds','setCustomerName','setAddress'].includes(k))) &&
+        ['addItems','clearCart','removeProductIds','removeCartLines','updateCartLines','updateAttributes','setCustomerName','setAddress'].includes(k))) &&
       matched(scenario.any) && (scenario.all || []).every(t => reply.includes(normalize(t))) &&
       !(scenario.forbid || []).some(t => reply.includes(normalize(t)));
     results.push({scenario:scenario.id,group:scenario.group,accepted,turns,
@@ -244,6 +291,7 @@ if (hardMode) {
   }
 } else {
 for (const scenario of cases.slice(offset, offset + maxCases)) {
+  if(apiUsage.blockingProviderErrorCode)break;
   const history = [...(scenario.context || [])];
   const cart = new Map<number, { productId: number; name: string; quantity: number }>();
   for (const initial of scenario.initialCart || []) {
@@ -267,6 +315,15 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
       products,
       cart: [...cart.values()],
     });
+    const turnLines = [...cart.values()];
+    for (const removal of result.actions.removeCartLines || []) {
+      if (turnLines[removal.cartLineIndex]?.productId === removal.productId) cart.delete(removal.productId);
+    }
+    for (const update of result.actions.updateCartLines || []) {
+      if (turnLines[update.cartLineIndex]?.productId === update.productId && update.quantity !== undefined && cart.has(update.productId)) {
+        cart.set(update.productId, {...cart.get(update.productId)!,quantity:update.quantity});
+      }
+    }
     for (const id of result.actions.removeProductIds || []) cart.delete(id);
     if (result.actions.clearCart) cart.clear();
     for (const item of result.actions.addItems || []) {
@@ -335,9 +392,9 @@ for (const scenario of cases.slice(offset, offset + maxCases)) {
   results.push({ scenario: scenario.id, expectation: scenario.expectation, accepted, turns });
 }
 }
-const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, date: new Date().toISOString(),
+const report = { kind: hardMode ? 'isolated-hard-dialogues' : humanMode ? 'isolated-human-intents' : 'isolated-agent-rehearsal', model, repetitions:hardMode ? repeats : 1, date: new Date().toISOString(),
   caveat: 'Hard cases use AgentV1, ActionGuard and real orchestrator applyActions. Not the full inbound router, Meta, DB, or order creation.',
-  scenarios: results };
+  blockedProviderCode:apiUsage.blockingProviderErrorCode || null,apiUsage: apiUsage.summary(model), scenarios: results };
 mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
 writeFileSync(join(process.cwd(), 'tmp/whatsapp-beta-ai-report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ scenarios: results.length, model,
@@ -345,6 +402,7 @@ console.log(JSON.stringify({ scenarios: results.length, model,
   errors: results.flatMap((x) => (x.turns as Array<{error:string|null}>).filter(t=>t.error).map(t=>t.error)),
   accepted: results.filter(x => x.accepted === true).length,
   rejected: results.filter(x => x.accepted === false).map(x => x.scenario) },null,2));
+console.log('API_USAGE_SUMMARY '+JSON.stringify(apiUsage.summary(model)));
 for (const rejected of results.filter(x => x.accepted === false)) {
   console.log('REJECTED_SCENARIO ' + JSON.stringify(rejected));
 }
@@ -353,4 +411,4 @@ if (!results.length || results.some(x => x.accepted === false)) process.exitCode
 void runRehearsal().catch((err: unknown) => {
   console.error('Beta rehearsal failed:', err instanceof Error ? err.message : 'unknown');
   process.exitCode = 1;
-});
+}).finally(()=>{globalThis.fetch=originalFetch;});

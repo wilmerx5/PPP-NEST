@@ -33,6 +33,11 @@ describe('Agent language boundaries with PPP menu', () => {
     expect(result.error).toBe('question_not_order');
     expect(actions.addItems).toBeUndefined();
   });
+  it('answers whether a drink can be ordered without buying it automatically',()=>{
+    const {actions,result}=add('¿Se puede pedir un jugo en leche?',51);
+    expect(result.error).toBe('question_not_order');
+    expect(actions.addItems).toBeUndefined();
+  });
   it.each([
     ['Una trucha asada y otra trucha frita',12,'Seleccion','Asada','Frita'],
     ['Un ejecutivo frito con ajiaco y otro ejecutivo frito con menudencias',22,'Sopa','Ajiaco','Menudencias'],

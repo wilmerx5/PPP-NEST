@@ -19,6 +19,41 @@ async function apply(text: string, actions: AiOrderAction, initial: WhatsappSess
   return (await service.applyActions({},session,guarded.actions,products,{},text)).session as WhatsappSessionData;
 }
 describe('Agent actions applied by the real orchestrator (no DB or transports)',()=> {
+  it.each([
+    'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.',
+    'Un churrasco sin ensalada y 2 sobrebarrigas: 1 asada y 1 en salsa.',
+  ])('distributes a grouped total across its named preparations: %s', async text => {
+    const session = await apply(text, { addItems: [
+      { productId: 17, quantity: 1, note: 'sin ensalada' },
+      { productId: 13, quantity: 2, attributes: [{ attributeName: 'Seleccion', attributeValue: 'Asada' }] },
+      { productId: 13, quantity: 2, attributes: [{ attributeName: 'Seleccion', attributeValue: 'En Salsa' }] },
+    ] });
+    expect(session.cart).toHaveLength(3);
+    expect(session.cart.map(c => c.quantity)).toEqual([1, 1, 1]);
+    expect(session.cart[0].note).toBe('sin ensalada');
+    expect(session.cart.slice(1).map(c => c.attributes?.[0].attributeValue)).toEqual(['Asada', 'En Salsa']);
+  });
+  it('keeps uneven distributed quantities independent from the group total', async () => {
+    const session = await apply('Tres sobrebarrigas: dos asadas y una en salsa.', { addItems: [
+      { productId: 13, quantity: 3, attributes: [{ attributeName: 'Seleccion', attributeValue: 'Asada' }] },
+      { productId: 13, quantity: 3, attributes: [{ attributeName: 'Seleccion', attributeValue: 'En Salsa' }] },
+    ] });
+    expect(session.cart.map(c => c.quantity)).toEqual([2, 1]);
+  });
+  it.each([
+    'Tres churrascos, dos mojarras y un pollo frito con las arepas fritas',
+    '3 churrascos y 2 mojarras y 1 pollo frito con arepas fritas',
+    'Quiero tres churrascos, dos mojarras asadas y un pollo frito con arepas fritas',
+    'Regálame 3 churrascos, 2 mojarras y un pollo frito con arepas fritas',
+  ])('keeps independent 3/2/1 quantities despite a mistaken model quantity: %s', async text => {
+    const session = await apply(text, { addItems: [
+      { productId: 17, quantity: 3 }, { productId: 14, quantity: 3 },
+      { productId: 1, quantity: 3, note: 'con las arepas fritas', attributes: [{ attributeName: 'Arepas', attributeValue: 'Fritas' }] },
+    ] });
+    expect(session.cart.map(c => [c.productId, c.quantity]).sort((a,b) => a[0]-b[0])).toEqual([[1,1],[14,2],[17,3]]);
+    expect(session.cart.find(c => c.productId === 1)?.note).toBeUndefined();
+    expect(session.cart.find(c => c.productId === 1)?.attributes).toEqual([{ attributeName: 'Arepas', attributeValue: 'Fritas' }]);
+  });
   it('ignores the number of diners while honoring quantities beside written menu codes',async()=> {
     const session=await apply('Somos 3. Dame 2 del código 23 y 1 del código 60',{
       addItems:[{productId:23,quantity:2},{productId:60,quantity:1}],
