@@ -711,7 +711,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             return {reply:'Falta revisar '+missing.map(item=>item.product.name).join(', ')+'. Te ayudo a completar el pedido.',
               actions,toolCalls,error:'incomplete_multi_order'};
           }
-          const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)\b/i.test(reply);
+          const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
             toolCalls.some(name => name === 'search_menu' || name === 'resolve_multi_order') &&
             !this.catalogService.isAvailabilityInquiry(input.userMessage) &&

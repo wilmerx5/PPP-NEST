@@ -222,6 +222,27 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     await service.saveSession(conv,{customerNotes:'Entrega sintética',address:'Dirección de prueba'});
     expect(other.getSession(await other.reloadConversation(conv.id)).cart).toEqual(actual.cart);
   });
+  it('persists three chickens and two soups through signed clarification turns without duplication', async () => {
+    effectiveConfig.enabled = true;
+    effectiveConfig.agentV1Enabled = true;
+    const conv = await conversation();
+    await service.saveSession(conv, { cart: [], orderType: 'pickup' }, 'building_cart');
+    const read = async () => other.getSession(await other.reloadConversation(conv.id));
+    await post(payload('wamid.generic.chickens', 'Quiero Tres pillos')).expect(200);
+    expect((await read()).pendingMatch?.quantity).toBe(3);
+    expect((await read()).cart).toEqual([]);
+    await post(payload('wamid.generic.fried', 'Los quiero fritos')).expect(200);
+    expect((await read()).cart.map(c => [c.productId, c.quantity])).toEqual([[1, 3]]);
+    await post(payload('wamid.generic.soups', 'Dos sopas')).expect(200);
+    expect((await read()).pendingMatch?.quantity).toBe(2);
+    await post(payload('wamid.generic.ajiaco', 'Ajiaco porfa')).expect(200);
+    const expected = await read();
+    expect(expected.cart.map(c => [c.productId, c.quantity])).toEqual([[1, 3], [38, 2]]);
+    await post(payload('wamid.generic.ajiaco', 'Ajiaco porfa')).expect(200);
+    expect(await read()).toEqual(expected);
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(orders.create).not.toHaveBeenCalled();
+  });
   it('does not restore a canceled cart after reloading the conversation',async()=> {
     const conv=await conversation();await service.saveSession(conv,{cart:[{productId:23,code:23,name:'Arroz Con Pollo',quantity:2,unitPrice:29500}],
       orderType:'delivery',address:'Dirección sintética',linkedUserId:'synthetic-user'});

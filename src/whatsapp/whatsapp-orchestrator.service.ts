@@ -2123,9 +2123,13 @@ export class WhatsappOrchestratorService {
     // Número o "broaster" sobre una lista ya mostrada, antes del agente.
     // Una frase ("no, yo quería el otro") no elige sola: la lee el agente.
     if (session.pendingMatch?.candidates?.length) {
+      const pickText = text
+        .replace(/^(?:los|las|lo|la)\s+(?:quiero|prefiero)\s+/i, '')
+        .replace(/\s+(?:porfa|por\s+favor|gracias)[.!\s]*$/i, '')
+        .trim();
       if (
-        !this.looksLikeHumanIntentSentence(text) &&
-        (await this.tryResolvePendingMatchPick(conv, msg.waId, session, text, products, cfg))
+        !this.looksLikeHumanIntentSentence(pickText) &&
+        (await this.tryResolvePendingMatchPick(conv, msg.waId, session, pickText, products, cfg))
       ) {
         return;
       }
@@ -2143,6 +2147,16 @@ export class WhatsappOrchestratorService {
         products,
         cfg,
       )
+    ) {
+      return;
+    }
+
+    // Generic orders need a durable choice before any model can pick a SKU or
+    // merely ask a question: "tres pollos" / "dos sopas" are not specific dishes.
+    if (
+      businessOpenForBot && conv.state === 'building_cart' &&
+      !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      (await this.tryHandleGenericProductOrder(conv, msg.waId, session, text, products))
     ) {
       return;
     }
@@ -4666,6 +4680,43 @@ export class WhatsappOrchestratorService {
       this.catalogService.formatCategoryBrowseReply(hit),
     );
     return null;
+  }
+
+  private async tryHandleGenericProductOrder(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): Promise<boolean> {
+    if (this.catalogService.isGenericProductInquiry(text) ||
+      this.catalogService.isCategoryBrowseQuestion(text) ||
+      this.catalogService.isMenuExploreIntent(text, products) ||
+      looksLikeExplicitCartItemNote(text) || this.looksLikeStandaloneOrderNote(text)) return false;
+    const quantity = this.catalogService.extractQuantityFromMessage(text);
+    if (quantity < 2 && !this.catalogService.looksLikeExplicitAddProductRequest(text)) return false;
+    const query = this.catalogService.stripQuantityFromSearchQuery(
+      this.catalogService.extractProductSearchQuery(text),
+    ).replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '').trim();
+    if (!/^\p{L}+$/u.test(query)) return false;
+    const family = this.catalogService.findProductVariantFamily(text, products);
+    if (family && this.catalogService.pickVariantFromFamilyText(text, family)) return false;
+    const scored = this.catalogService.searchByNameScored(query, products, 8);
+    const candidates = family?.variants || scored
+      .filter(hit => hit.score >= 60 && hit.score >= (scored[0]?.score || 0) - 12)
+      .map(hit => hit.p);
+    const available = candidates.filter(p => p.availableNow !== false);
+    if (available.length < 2) return false;
+    session = {
+      ...session,
+      pendingMatch: { query: text, candidates: available, intent: 'order', quantity },
+      pendingQuantityHint: { query, quantity },
+    };
+    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.reply(conv, waId,
+      `Pediste *${quantity}*. ¿Cuál prefieres?\n\n` +
+      available.map((p, i) => `${i + 1}. ${p.name} · ${this.catalogService.formatMoney(p.price)}`).join('\n'));
+    return true;
   }
 
   /** Re-mostrar lista pendiente solo si el cliente pide aclaración, no si eligió código válido. */
@@ -13182,6 +13233,23 @@ export class WhatsappOrchestratorService {
       agent.needsAttributeProductId
     );
     const agentReply = (agent.reply || '').trim();
+    // A model clarification has no durable selection/quantity. Let the catalog
+    // open its persisted pendingMatch rather than trusting conversation history.
+    const isCountedOrder = this.catalogService.extractQuantityFromMessage(text) >= 2 &&
+      !this.catalogService.isGenericProductInquiry(text) &&
+      !this.catalogService.isCategoryBrowseQuestion(text) &&
+      !this.catalogService.isMenuExploreIntent(text, products) &&
+      !looksLikeExplicitCartItemNote(text) &&
+      !this.looksLikeStandaloneOrderNote(text);
+    if (!hasProductiveActions && isCountedOrder) {
+      this.turnTelemetry.record({
+        path: 'agent_v1', outcome: 'fallback_rules', waId: msg.waId,
+        conversationId: conv.id, toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started, userTextPreview: text,
+        warnings: ['agent_counted_order_without_actions'],
+      });
+      return false;
+    }
     const replyIsVagueAsk =
       !agentReply ||
       /\bqu[eé]\s+se\s+te\s+antoja\b/i.test(agentReply) ||
@@ -13263,7 +13331,7 @@ export class WhatsappOrchestratorService {
     const intentMisses = editsExistingCart ? [] : this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
     if (
       !editsExistingCart && !guarded.actions?.addItems?.length &&
-      /\bagregu[eé]\b/i.test(agentReply) &&
+      /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(agentReply) &&
       !guarded.actions?.setAddress &&
       !guarded.actions?.setCustomerNotes
     ) {
