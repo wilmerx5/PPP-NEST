@@ -58,7 +58,10 @@ async function runCheckoutRehearsal(
     env.STAGING_CHECKOUT_RESUME === 'known-soup-list-cart';
   const resumeDeliveryAwaitingName =
     env.STAGING_CHECKOUT_RESUME === 'known-delivery-awaiting-name';
-  const resumeResetState = resumeFailedSoup || resumeSoupListCart;
+  const resumeRecoveredSoupCart =
+    env.STAGING_CHECKOUT_RESUME === 'known-recovered-soup-cart';
+  const resumeResetState =
+    resumeFailedSoup || resumeSoupListCart || resumeRecoveredSoupCart;
 
   const check = async (name, work) => {
     try {
@@ -159,6 +162,7 @@ async function runCheckoutRehearsal(
               'known-failed-soup-phrase',
               'known-soup-list-cart',
               'known-delivery-awaiting-name',
+              'known-recovered-soup-cart',
             ].includes(env.STAGING_CHECKOUT_RESUME),
           'INVALID_RESUME_MODE',
         );
@@ -395,6 +399,20 @@ async function runCheckoutRehearsal(
               lastInbound?.body === 'No más',
             'KNOWN_DELIVERY_NAME_STATE_CHANGED',
           );
+        } else if (resumeRecoveredSoupCart) {
+          ensure(
+            current.state === 'building_cart' &&
+              current.humanTakeover === false &&
+              current.sessionData.cart.length === 1 &&
+              current.sessionData.cart[0].productId === 38 &&
+              current.sessionData.cart[0].quantity === 2 &&
+              !current.sessionData.pendingMatch &&
+              current.sessionData.pendingQuantityHint?.quantity === 2 &&
+              !current.sessionData.address &&
+              !current.sessionData.paymentMethod &&
+              lastInbound?.body === 'Paso a recoger',
+            'KNOWN_RECOVERED_SOUP_CART_STATE_CHANGED',
+          );
         } else if (resumeSoupListCart) {
           const expectedPick = current.sessionData.pendingMatch?.candidates
             ?.findIndex(candidate => candidate.id === 38);
@@ -603,9 +621,11 @@ async function runCheckoutRehearsal(
 
     if (resumeResetState) {
       await send({
-        id: resumeSoupListCart
-          ? 'reset-known-soup-list-cart'
-          : 'reset-known-failed-soup-phrase',
+        id: resumeRecoveredSoupCart
+          ? 'reset-known-recovered-soup-cart'
+          : resumeSoupListCart
+            ? 'reset-known-soup-list-cart'
+            : 'reset-known-failed-soup-phrase',
         text: 'Reiniciar',
         validate: body => {
           ensure(

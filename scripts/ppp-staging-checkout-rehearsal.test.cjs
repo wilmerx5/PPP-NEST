@@ -75,6 +75,22 @@ function fixture(options = {}) {
             query: 'sopas',
           },
         }
+      : options.recoveredSoupCartDraft
+      ? {
+          cart: [
+            {
+              productId: soup.id,
+              quantity: 2,
+              unitPrice: Number(soup.price),
+              attributes: [],
+              note: '',
+            },
+          ],
+          pendingQuantityHint: {
+            quantity: 2,
+            query: 'sopas',
+          },
+        }
       : options.soupListCartDraft
       ? {
           cart: [
@@ -122,6 +138,8 @@ function fixture(options = {}) {
         direction: 'in',
         body: options.deliveryAwaitingNameDraft
           ? 'No más'
+          : options.recoveredSoupCartDraft
+          ? 'Paso a recoger'
           : options.soupListCartDraft
           ? '2'
           : options.failedSoupDraft
@@ -461,6 +479,22 @@ test('resets only the exact retained soup-list cart before continuing', async ()
     {
       ...env,
       STAGING_CHECKOUT_RESUME: 'known-soup-list-cart',
+    },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, true, JSON.stringify(report));
+  assert.equal(report.steps.length, 15);
+  assert.equal(f.sentTexts[0], 'Reiniciar');
+  assert.equal(f.conversation.sessionData.cart.length, 0);
+});
+
+test('resets only the exact recovered soup cart before continuing', async () => {
+  const f = fixture({ recoveredSoupCartDraft: true });
+  const report = await runCheckoutRehearsal(
+    {
+      ...env,
+      STAGING_CHECKOUT_RESUME: 'known-recovered-soup-cart',
     },
     f.fetch,
     f.helpers,
