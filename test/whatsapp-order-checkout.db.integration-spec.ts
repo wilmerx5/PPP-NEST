@@ -119,7 +119,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   const meta=new WhatsappMetaService(settings as never);send=jest.spyOn(meta,'sendText').mockResolvedValue(undefined);
   orchestrator=new WhatsappOrchestratorService(settings as never,meta,catalog,{} as never,conversations,business as never,orders,
    {createPreference:async()=>{throw new Error('Cash tests must not initiate online payments');}} as never,new WhatsappActionGuardService(catalog),
-   new WhatsappPointsService({} as never),{} as never,agent as never,new WhatsappTurnTelemetryService());
+   new WhatsappPointsService({} as never),{quoteDeliveryFee:async()=>({ok:false,reason:'no_api_key',message:'Synthetic routing: fixed delivery fee'})} as never,agent as never,new WhatsappTurnTelemetryService());
   const module=await Test.createTestingModule({controllers:[WhatsappWebhookController],providers:[
    {provide:WhatsappSettingsService,useValue:settings},{provide:WhatsappMetaService,useValue:meta},{provide:WhatsappOrchestratorService,useValue:orchestrator},
    {provide:WhatsappConversationService,useValue:conversations},{provide:WhatsappRateLimitService,useValue:new WhatsappRateLimitService()},
@@ -160,6 +160,38 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   expect(await stock(23)).toBe(8);
   expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
   expect((await other.reloadConversation(c.id)).state).toBe('completed');
+ });
+
+ it.each(['cash','transfer'])('persists address shortcut and a checkout correction through %s confirmation',async payment=>{
+  const cart=await apply('dos arroces con pollo',{addItems:[{productId:23,quantity:2,note:'sin ensalada'}]});
+  const c=await ready(cart);
+  await conversations.saveSession(c,{cart,orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true},'building_cart');
+  await post('wamid.address.hotel','Para ek hotel santandereano').expect(200);
+  let fresh=await other.reloadConversation(c.id);
+  expect(fresh.state).toBe('awaiting_payment');
+  expect(other.getSession(fresh).address).toMatch(/hotel santandereano/i);
+  expect(await otherDb.getRepository(Order).count()).toBe(0);
+  await post('wamid.address.fix','Cambiar la direction a d2 b 79 a. 86').expect(200);
+  fresh=await other.reloadConversation(c.id);
+  expect(fresh.state).toBe('awaiting_payment');
+  expect(other.getSession(fresh).address).toContain('79');
+  expect(other.getSession(fresh).address).not.toMatch(/hotel/i);
+  expect(other.getSession(fresh).cart).toEqual(cart);
+  await post('wamid.address.pay',payment==='cash'?'Efectivo':'Transferencia').expect(200);
+  expect((await other.reloadConversation(c.id)).state).toBe('awaiting_final_confirm');
+  await post('wamid.address.fix.again','Cambia la direccion a Calle 12 34 56').expect(200);
+  expect((await other.reloadConversation(c.id)).state).toBe('awaiting_final_confirm');
+  await post('wamid.address.confirm','Confirmar').expect(200);
+  await post('wamid.address.confirm','Confirmar').expect(200);
+  await settled();
+  expect(await otherDb.getRepository(Order).count()).toBe(1);
+  const order=await saved();
+  expect(order.address).toContain('34');
+  expect(order.address).not.toMatch(/hotel|79/);
+  expect(order.items).toHaveLength(2);
+  expect(order.items.map(item=>item.note)).toEqual(['sin ensalada','sin ensalada']);
+  expect(await stock(23)).toBe(8);
+  expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
  });
 
  it('stores all units, independent variants and notes, and emits the real kitchen payload',async()=>{

@@ -620,6 +620,11 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
+    // Resolve an address-only turn before compound parsing pre-applies it;
+    // otherwise the new address looks like an already-confirmed old address.
+    if (session.cart.length && !this.isPickupIntent(originalText) &&
+        this.isAddressOnlyCustomerMessage(originalText, compound) &&
+        await this.tryHandleAddressOnlyWhileBuildingCart(conv, msg.waId, session, originalText, compound, cfg)) return;
     session = this.withDeliveryAddress(session, compound.address);
     if (compound.phone) {
       session = {
@@ -8601,10 +8606,10 @@ export class WhatsappOrchestratorService {
     if (!raw) return null;
     const m =
       raw.match(
-        /\b(?:cambia(?:r|me)?|actualiza(?:r|me)?|modifica(?:r|me)?|corrige|corregir)\s+(?:la\s+)?(?:direcci[oó]n|domicilio|ubicaci[oó]n)\s*(?:a|por|:)?\s*(.+)$/i,
+        /\b(?:cambia(?:r|me)?|actualiza(?:r|me)?|modifica(?:r|me)?|corrige|corregir)\s+(?:la\s+)?(?:direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\s*(?:a|por|:)?\s*(.+)$/i,
       ) ||
       raw.match(
-        /\b(?:la\s+)?(?:direcci[oó]n|domicilio)\s+(?:es|queda|ahora|nueva)\s*:?\s*(.+)$/i,
+        /\b(?:la\s+)?(?:direcci[oó]n|direcion|direction|domicilio)\s+(?:es|queda|ahora|nueva)\s*:?\s*(.+)$/i,
       ) ||
       raw.match(/\bnueva\s+direcci[oó]n\s*:?\s*(.+)$/i);
     const addr = this.normalizeDeliveryAddress((m?.[1] || '').trim());
@@ -8667,8 +8672,9 @@ export class WhatsappOrchestratorService {
     let next = this.withDeliveryAddress(
       {
         ...session,
-        pendingMultiOrder: undefined,
-        pendingMatch: undefined,
+        // An explicit correction must replace even an unconventional address.
+        address: undefined,
+        addressConfirmed: false,
       },
       addr,
     );
@@ -8680,6 +8686,13 @@ export class WhatsappOrchestratorService {
       : fee.notice
         ? `\n\n${fee.notice}`
         : '';
+    if (!fee.blocked && next.cart.length &&
+        !next.pendingAttribute && !next.pendingMatch && !next.pendingMultiOrder) {
+      await this.tryConfirmOrder(conv, waId, next, {
+        preface: `Listo, dirección actualizada:\n📍 _${next.address}_${feeLine}`,
+      });
+      return true;
+    }
     await this.reply(
       conv,
       waId,
@@ -10794,7 +10807,7 @@ export class WhatsappOrchestratorService {
       }
       const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
       // Tras “¿Misma dirección?” (awaiting_address) → seguir checkout, no ¿algo más?
-      if (wasAwaitingAddress) {
+      if (wasAwaitingAddress || (session.cart.length > 0 && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder)) {
         await this.tryConfirmOrder(conv, waId, session, {
           preface: `📍 Misma dirección ✅ _${session.address}_${feeLine}`,
         });
@@ -10828,6 +10841,13 @@ export class WhatsappOrchestratorService {
 
     if (!this.isAddressOnlyCustomerMessage(originalText, compound)) return false;
 
+    const pendingAttribute = session.pendingAttribute &&
+      !this.isAddressOnlyCustomerMessage(session.pendingAttribute.sourceText || session.pendingAttribute.name)
+        ? session.pendingAttribute : undefined;
+    const pendingMatch = session.pendingMatch &&
+      !this.isAddressOnlyCustomerMessage(session.pendingMatch.query)
+        ? session.pendingMatch : undefined;
+    const pendingMultiOrder = session.pendingMultiOrder;
     const wasAwaitingAddress = conv.state === 'awaiting_address';
     const addr =
       compound.address ||
@@ -10843,10 +10863,10 @@ export class WhatsappOrchestratorService {
         ...session,
         fulfillmentChosen: true,
         orderType: 'delivery',
-        // Soltar selección errónea (ej. #2 de "CRA … #2-38" tratado como 1/2 pollo)
-        pendingAttribute: undefined,
-        pendingMatch: undefined,
-        pendingMultiOrder: undefined,
+        // Keep genuine product choices; discard selections caused by address numbers.
+        pendingAttribute,
+        pendingMatch,
+        pendingMultiOrder,
       },
       addr,
     );
@@ -10882,8 +10902,23 @@ export class WhatsappOrchestratorService {
       );
       return true;
     }
+    if (pendingAttribute || pendingMatch || pendingMultiOrder) {
+      const prompt = pendingAttribute
+        ? this.catalogService.formatProductOptionsPrompt({
+            id: pendingAttribute.productId, name: pendingAttribute.name,
+            code: pendingAttribute.code, price: pendingAttribute.price,
+            attributes: pendingAttribute.attributes,
+          } as MenuProduct, pendingAttribute.selected, this.attributeFlowOpts(pendingAttribute))
+        : pendingMatch
+          ? `Falta escoger ${pendingMatch.query}:\n` + pendingMatch.candidates
+              .map((item, i) => `${i + 1}. ${item.name}`).join('\n')
+          : 'Falta completar la selección de los productos del pedido.';
+      await this.conversationService.saveSession(conv, session, pendingAttribute ? 'awaiting_attribute' : 'building_cart');
+      await this.reply(conv, waId, `📍 Domicilio anotado: _${session.address}_${feeLine}\n\n${prompt}`);
+      return true;
+    }
     // Dirección nueva mientras pedimos domicilio → seguir checkout (pago/confirmar)
-    if (wasAwaitingAddress) {
+    if (wasAwaitingAddress || (session.cart.length > 0 && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder)) {
       await this.tryConfirmOrder(conv, waId, session, {
         preface: `📍 Domicilio anotado: _${session.address}_${feeLine}`,
       });
