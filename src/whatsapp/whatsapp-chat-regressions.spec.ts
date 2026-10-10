@@ -1492,6 +1492,26 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect(hit?.code).toBe(3);
       }
     });
+
+    it('cuarto frito con presa y arepas elige 1/4, no lista la familia', () => {
+      const text = 'Un cuarto de pollo frito, ala pechuga, arepas fritas';
+      const quarter = catalog.resolveSizedChickenProduct(text, pppMenu);
+      expect(quarter?.name).toMatch(/1\/4\s+pollo\s+frito/i);
+      const family = {
+        baseLabel: 'Pollo',
+        baseKey: 'pollo',
+        variants: pppMenu.filter((p) =>
+          /^(1\/[24]\s+pollo|1\s+pollo|combo de pollo)/i.test(p.name),
+        ),
+      };
+      expect(family.variants.length).toBeGreaterThanOrEqual(4);
+      expect(catalog.pickVariantFromFamilyText(text, family)?.name).toMatch(
+        /1\/4\s+pollo\s+frito/i,
+      );
+      expect(catalog.pickFromCandidateList(text, family.variants)?.name).toMatch(
+        /1\/4\s+pollo\s+frito/i,
+      );
+    });
   });
 
   describe('Nota de unidad tras CUALQUIER dirección (patrón general)', () => {
@@ -3505,6 +3525,11 @@ Cll 6 b 78 c 33`;
       expect(scored[0]?.p.name).toMatch(/yuca/i);
       expect(scored[0]?.p.name).not.toMatch(/arroz/i);
       expect(catalog.findProductEmbeddedInMessage(text, menu)?.name).toMatch(/yuca/i);
+      const yuca = menu.find((p) => /yuca/i.test(p.name))!;
+      expect(catalog.productNameFitsUtterance(yuca, text)).toBe(true);
+      expect(catalog.productNameFitsUtterance(rice, text)).toBe(false);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).toMatch(/yuca/i);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).not.toMatch(/arroz/i);
     });
 
     it('jugo de guanábana en leche no es barrio', () => {

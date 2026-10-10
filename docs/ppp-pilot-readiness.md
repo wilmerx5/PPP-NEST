@@ -16,7 +16,7 @@ La [PR #7](https://github.com/wilmerx5/PPP-NEST/pull/7) está abierta. El conten
 - **Inventario — NO APLICA AL CATÁLOGO ACTUAL:** los 65 productos activos de staging tienen `trackInventory=false` y stock 0. No se activó inventario en un SKU comercial para no mutar la carta. El decremento/restauración de stock sigue acreditado solo en MariaDB desechable.
 - **Meta inbound auténtico — PENDIENTE:** los webhooks de ensayo van firmados y sintéticos; falta un mensaje originado desde el celular autorizado.
 - **Cocina e impresión — PENDIENTES:** no habilitar `STAGING_ORDER_EVENTS_ALLOW` hasta tener un front de cocina/mesas aislado en staging. Encenderlo ahora no imprimiría en la cocina de producción, pero tampoco acreditaría el ticket.
-- **Mercado Pago — BLOQUEADO:** requiere credenciales sandbox `TEST-`; no se usarán credenciales de producción.
+- **Mercado Pago — OMITIDO (se asume ya validado fuera de este ciclo):** no se ensaya ni se redeploya por MP. El circuito que se acredita aquí es efectivo/transferencia.
 - **Piloto supervisado — NO EJECUTADO:** comienza únicamente después de cerrar las puertas humanas anteriores.
 
 **Aún no listo para declararlo vendible.** El circuito comercial básico (carrito, domicilio, efectivo, creación y cancelación de una orden) ya está acreditado en el staging redeployado. Faltan el inbound auténtico de Meta, una cocina de staging con impresión física y, si el alcance comercial incluye Mercado Pago, el sandbox.

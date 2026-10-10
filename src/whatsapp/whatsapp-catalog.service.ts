@@ -819,14 +819,20 @@ export class WhatsappCatalogService {
     if (!this.looksLikeExplicitAddProductRequest(text)) return null;
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!/\b(porci[oó]n(?:es)?|yuca|papas?|arepas?)\b/.test(q)) return null;
-    const scored = this.searchByNameScored(text, products, 4);
-    const top = scored[0];
-    if (!top || !this.isLikelySideOnlyProduct(top.p)) return null;
-    if (/\byuca\b/.test(q) && !/\byuca\b/.test(normalizeText(top.p.name))) return null;
-    if (/\bpapas?\b/.test(q) && !/\byuca\b/.test(q) && !/\bpapas?\b/.test(normalizeText(top.p.name))) {
-      return null;
-    }
-    return top.p;
+    const matchesQuery = (p: WhatsappCatalogProduct) => {
+      const name = normalizeText(p.name);
+      if (/\byuca\b/.test(q)) return /\byuca\b/.test(name);
+      if (/\bpapas?\b/.test(q)) return /\bpapas?\b/.test(name);
+      if (/\barepas?\b/.test(q)) return /\barepas?\b/.test(name);
+      return false;
+    };
+    const sides = products.filter(
+      (p) => p.availableNow !== false && this.isLikelySideOnlyProduct(p) && matchesQuery(p),
+    );
+    if (sides.length === 1) return sides[0];
+    const scored = this.searchByNameScored(text, products, 8);
+    const named = scored.find((x) => this.isLikelySideOnlyProduct(x.p) && matchesQuery(x.p));
+    return named?.p || null;
   }
 
   /** Productos cuyo nombre o atributo de *preparación* trae el estilo. */
@@ -1713,6 +1719,8 @@ export class WhatsappCatalogService {
   ): WhatsappCatalogProduct | null {
     const q = normalizeText(segment || '');
     if (!q || q.length < 4) return null;
+    const explicitSide = this.resolveExplicitSidePortionProduct(segment, products);
+    if (explicitSide) return explicitSide;
     const scored = this.searchByNameScored(q, products, 3);
     const aligned = scored.find((s) => this.spokenCandidateCoversClause(s.p, q));
     if (aligned) return aligned.p;
@@ -2517,9 +2525,30 @@ export class WhatsappCatalogService {
     const utter = normalizeText(text || '');
     const words = utter.split(/\s+/).filter((w) => w.length >= 4);
     const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
+    const sideIdentity = (token: string) => {
+      if (/^yucas?$/.test(token)) return 'yuca';
+      if (/^papas?$/.test(token)) return 'papa';
+      if (/^arepas?$/.test(token)) return 'arepa';
+      if (/^(arroz|maduro|ensalada)$/.test(token)) return token;
+      return null;
+    };
+    const sidesOf = (tokens: string[]) =>
+      new Set(tokens.map(sideIdentity).filter((s): s is string => !!s));
+    const nameSides = sidesOf(normalizeText(product.name).split(/\s+/));
+    const utterSides = sidesOf(utter.split(/\s+/));
+    if (nameSides.size && utterSides.size && ![...nameSides].some((s) => utterSides.has(s))) {
+      return false;
+    }
+    const skipUnspokenStyle = this.isLikelySideOnlyProduct(product);
     const nameTokens = normalizeText(product.name)
       .split(/\s+/)
-      .filter((t) => t.length >= 4 && !/\d/.test(t) && !generic.has(t));
+      .filter((t) => t.length >= 4 && !/\d/.test(t) && !generic.has(t))
+      .filter(
+        (t) =>
+          !skipUnspokenStyle ||
+          !COOKING_STYLE_TOKENS.has(t) ||
+          words.some((w) => nearDishToken(w, t)),
+      );
     if (!nameTokens.length) return true;
     return nameTokens.every((tok) => words.some((w) => nearDishToken(w, tok)));
   }
@@ -6649,6 +6678,23 @@ export class WhatsappCatalogService {
       if (byPrice) return byPrice;
     }
     const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
+    const portion = this.detectPortionHint(q);
+    if (portion) {
+      const sized = family.variants.filter(
+        (p) => this.detectProductPortionSize(p.name) === portion,
+      );
+      const sizedStyled = styleAsked.length
+        ? sized.filter((p) =>
+            styleAsked.some(
+              (st) =>
+                productNameHasCookingStyle(p.name, st) ||
+                normalizeText(p.name).includes(st),
+            ),
+          )
+        : sized;
+      if (sizedStyled.length === 1) return sizedStyled[0];
+      if (!styleAsked.length && sized.length === 1) return sized[0];
+    }
     if (styleAsked.length) {
       const styled = family.variants.filter((p) =>
         styleAsked.some((st) => normalizeText(p.name).includes(st)),

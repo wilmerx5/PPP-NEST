@@ -2161,10 +2161,7 @@ export class WhatsappOrchestratorService {
         .replace(/^(?:los|las|lo|la)\s+(?:quiero|prefiero)\s+/i, '')
         .replace(/\s+(?:porfa|por\s+favor|gracias)[.!\s]*$/i, '')
         .trim();
-      if (
-        !this.looksLikeHumanIntentSentence(pickText) &&
-        (await this.tryResolvePendingMatchPick(conv, msg.waId, session, pickText, products, cfg))
-      ) {
+      if (await this.tryResolvePendingMatchPick(conv, msg.waId, session, pickText, products, cfg)) {
         return;
       }
       session = { ...session, pendingMatch: undefined };
@@ -3274,7 +3271,10 @@ export class WhatsappOrchestratorService {
         const picked = this.catalogService.pickVariantFromFamilyText(text, family);
         if (picked) {
           embeddedProduct = picked;
-        } else {
+        } else if (
+          this.catalogService.resolveSizedChickenProduct(text, products)?.id !==
+          embeddedProductRaw.id
+        ) {
           embeddedProduct = null;
         }
       }
@@ -5023,6 +5023,8 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.isDishStyleSubstitutionInquiry(text)) return false;
     if (this.catalogService.isMenuExploreIntent(text, products)) return false;
     if (this.catalogService.isCategoryBrowseQuestion(text)) return false;
+    if (this.catalogService.resolveSizedChickenProduct(text, products)) return false;
+    if (this.catalogService.findProductEmbeddedInMessage(text, products)) return false;
 
     const family = this.catalogService.findProductVariantFamily(text, products);
     if (!family || family.variants.length < 2) return false;
@@ -5214,6 +5216,11 @@ export class WhatsappOrchestratorService {
         pending.candidates as MenuProduct[],
       );
       if (byList) chosenLite = byList;
+    }
+
+    if (!chosenLite) {
+      const sized = this.catalogService.resolveSizedChickenProduct(text, products);
+      if (sized) chosenLite = sized;
     }
 
     if (!chosenLite) {
@@ -13080,7 +13087,13 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.uncoveredDishWords(query, products).length) return false;
 
     const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
-    if (!embedded || this.catalogService.isLikelySideOnlyProduct(embedded)) return false;
+    if (
+      !embedded ||
+      (this.catalogService.isLikelySideOnlyProduct(embedded) &&
+        !this.catalogService.looksLikeExplicitAddProductRequest(text))
+    ) {
+      return false;
+    }
     const family = this.catalogService.findProductVariantFamily(text, products, [embedded]);
     if (family && family.variants.length >= 2) {
       return !!this.catalogService.pickVariantFromFamilyText(text, family);

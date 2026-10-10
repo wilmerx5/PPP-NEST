@@ -45,7 +45,7 @@ function fixture() {
     if (path === '/api/auth/logout') return json({}, 201);
     if (path === '/api/admin/whatsapp/staging/test-target') return json({
       staging: true, targetMatches: true, botEnabled: true, credentialsPresent: true,
-      conversationTestVersion: '2026-10-10.cart-v7', rateLimitPerMinute: 25,
+      conversationTestVersion: '2026-10-10.cart-v8', rateLimitPerMinute: 25,
     }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);

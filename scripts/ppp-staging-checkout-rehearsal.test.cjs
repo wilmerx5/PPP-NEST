@@ -336,7 +336,7 @@ function fixture(options = {}) {
           factusSandbox: !options.factusProduction,
           conversationTestVersion: options.oldDeployment
             ? '2026-10-10.cart-v1'
-            : '2026-10-10.cart-v7',
+            : '2026-10-10.cart-v8',
           rateLimitPerMinute: 25,
         },
         201,
