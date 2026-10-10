@@ -51,6 +51,10 @@ function fixture(options = {}) {
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);
     if (path === '/api/products') return json(products);
+    if (path === '/api/admin/whatsapp/conversations/42/takeover') {
+      conversation.humanTakeover = JSON.parse(opts.body || '{}').takeover !== false;
+      return json({ success: true, humanTakeover: conversation.humanTakeover });
+    }
     if (path === '/api/orders/daily') {
       orderReads++;
       return json(options.newOrder && orderReads > 1 ? [{ id: '9', phone: env.STAGING_WHATSAPP_RECIPIENTS }] : []);
@@ -61,6 +65,7 @@ function fixture(options = {}) {
       const text = JSON.parse(opts.body).entry[0].changes[0].value.messages[0].text.body;
       assert.notEqual(text.trim().toLowerCase(), 'confirmar');
       conversation.messages.push({ id: nextId++, direction: 'in', body: text, sentBy: 'customer' });
+      if (conversation.humanTakeover) return json({ ok: true });
       conversation.messages.push({ id: nextId++, direction: 'out', body: 'Listo.', sentBy: 'bot' });
       const session = conversation.sessionData;
       if (text === 'Reiniciar') {

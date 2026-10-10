@@ -52,12 +52,17 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     return response;
   };
   const admin = (path, options = {}) => request(path, { ...options, headers: { ...options.headers, Cookie: cookie } });
-  const detail = async () => {
+  const detailUnchecked = async () => {
     const response = await admin(`/api/admin/whatsapp/conversations/${conversationId}`);
     ensure(response.status === 200, 'CONVERSATION_READ_FAILED');
     const body = await response.json();
     ensure(body.id === conversationId && digits(body.phoneE164) === recipient && digits(body.waId) === recipient, 'CONVERSATION_RECIPIENT_MISMATCH');
-    ensure(body.humanTakeover === false && Array.isArray(body.messages) && Array.isArray(body.sessionData?.cart), 'CONVERSATION_UNAVAILABLE_OR_TAKEOVER');
+    ensure(Array.isArray(body.messages) && Array.isArray(body.sessionData?.cart), 'CONVERSATION_DETAIL_INVALID');
+    return body;
+  };
+  const detail = async () => {
+    const body = await detailUnchecked();
+    ensure(body.humanTakeover === false, 'CONVERSATION_UNAVAILABLE_OR_TAKEOVER');
     return body;
   };
   const orderIds = async () => {
@@ -220,7 +225,33 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     }
     delete report.activeStep;
     report.expectedSteps = steps.length;
-    report.ok = report.steps.length === steps.length && report.steps.every(step => step.pass);
+    const silenced = await check('human_takeover_silences_bot', async () => {
+      const taken = await admin(`/api/admin/whatsapp/conversations/${conversationId}/takeover`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ takeover: true }),
+      });
+      ensure([200, 201].includes(taken.status), 'TAKEOVER_FAILED');
+      const before = await detailUnchecked();
+      const previousIds = new Set(before.messages.map(message => String(message.id)));
+      const payload = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: {
+        messaging_product: 'whatsapp', metadata: { phone_number_id: channel }, messages: [{ from: recipient,
+          id: `wamid.ppp-human-${runId}-takeover`, timestamp: String(Math.floor(now() / 1000)), type: 'text', text: { body: 'Quiero un pollo frito' } }] } }] }] });
+      report.webhookPosts++;
+      const response = await request('/api/whatsapp/webhook', { method: 'POST', headers: {
+        'Content-Type': 'application/json', 'X-Hub-Signature-256': sign(payload) }, body: payload });
+      ensure(response.status === 200 && (await response.json()).ok === true, 'TAKEOVER_WEBHOOK_FAILED');
+      const during = await detailUnchecked();
+      const outgoing = during.messages.filter(message => !previousIds.has(String(message.id)) && message.direction === 'out' && message.sentBy === 'bot');
+      ensure(during.humanTakeover === true && outgoing.length === 0 && during.sessionData.cart.length === 0, 'BOT_REPLIED_DURING_TAKEOVER');
+      const released = await admin(`/api/admin/whatsapp/conversations/${conversationId}/takeover`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ takeover: false }),
+      });
+      ensure([200, 201].includes(released.status), 'RELEASE_FAILED');
+      current = await detail();
+      ensure(current.humanTakeover === false && current.sessionData.cart.length === 0, 'BOT_NOT_RELEASED');
+      const ids = await orderIds();
+      ensure([...ids].every(id => baselineOrderIds.has(id)), 'UNEXPECTED_STAGING_ORDER_CREATED');
+    });
+    report.ok = silenced && report.steps.length === steps.length && report.steps.every(step => step.pass);
   } catch (error) {
     report.checks.push({ name: 'human_rehearsal', pass: false, code: error instanceof CheckError ? error.code : 'EXECUTION_FAILED_NO_RETRY' });
   } finally {

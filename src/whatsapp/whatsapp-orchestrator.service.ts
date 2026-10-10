@@ -616,6 +616,8 @@ export class WhatsappOrchestratorService {
       await this.tryHandleScopedCartRemoval(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length &&
       await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
+    // A payment or name prompt must not swallow "cambia la dirección a …".
+    if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
