@@ -98,3 +98,7 @@ Que las reglas nuevas sean generales es una buena base; no demuestra por sí sol
 - Participar en la comprobación visual de cocina y acordar horario/responsable del piloto.
 
 El desarrollo, generación de casos, pruebas automáticas y preparación de despliegue deben completarse primero. Mercado Pago e impresión automática no bloquean el piloto acordado.
+
+## Aceptación desplegada del candidato
+
+Staging corre el código `97efc842`, imagen verificada, health/DB conectadas y configuración efectivo/transferencia. [Checkout](https://github.com/wilmerx5/PPP-NEST/actions/runs/38084785817) aprobó 14 pasos sin órdenes. [Ciclo de pedido](https://github.com/wilmerx5/PPP-NEST/actions/runs/38084980813) aprobó 20 pasos/webhooks, creó una orden aislada, la canceló y dejó la conversación limpia. CI Nest y MariaDB 11.8 aprobaron 1.174 y 81 pruebas. La recepción visual de cocina, recuperación desplegada y pilotaje siguen abiertos; consultar el registro actualizado en `ppp-pilot-readiness.md`.
