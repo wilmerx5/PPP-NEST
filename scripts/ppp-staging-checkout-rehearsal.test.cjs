@@ -44,24 +44,32 @@ function fixture(options = {}) {
     humanTakeover: false,
     state: 'building_cart',
     customerName: 'Cliente Sintético',
-    sessionData: {
-      cart: options.existingDraft
-        ? [
-            {
-              productId: soup.id,
-              quantity: 1,
-              unitPrice: Number(soup.price),
-              attributes: [],
-              note: '',
-            },
-          ]
-        : [],
-    },
+    sessionData: options.failedSoupDraft
+      ? {
+          cart: [],
+          pendingMatch: {
+            quantity: 1,
+            candidates: [soup],
+          },
+        }
+      : {
+          cart: options.existingDraft
+            ? [
+                {
+                  productId: soup.id,
+                  quantity: 1,
+                  unitPrice: Number(soup.price),
+                  attributes: [],
+                  note: '',
+                },
+              ]
+            : [],
+        },
     messages: [
       {
         id: 1,
         direction: 'in',
-        body: 'Hola',
+        body: options.failedSoupDraft ? 'Una sopa de ajiaco' : 'Hola',
         createdAt: new Date(clock).toISOString(),
         sentBy: 'bot',
       },
@@ -99,7 +107,29 @@ function fixture(options = {}) {
       return;
     }
 
-    if (text === 'Una sopa de ajiaco') {
+    if (conversation.sessionData.pendingMatch && /^\d+$/.test(text)) {
+      const choice =
+        conversation.sessionData.pendingMatch.candidates[Number(text) - 1];
+      if (choice) {
+        conversation.sessionData.cart = [
+          {
+            productId: choice.id,
+            quantity: conversation.sessionData.pendingMatch.quantity,
+            unitPrice: Number(choice.price),
+            attributes: [],
+            note: '',
+          },
+        ];
+        delete conversation.sessionData.pendingMatch;
+      }
+      conversation.state = 'building_cart';
+    } else if (text === 'Quiero dos sopas') {
+      conversation.sessionData.pendingMatch = {
+        quantity: 2,
+        candidates: [soup],
+      };
+      conversation.state = 'building_cart';
+    } else if (text === 'Una sopa de ajiaco') {
       conversation.sessionData.cart = [
         {
           productId: soup.id,
@@ -260,8 +290,8 @@ function fixture(options = {}) {
 test('validates delivery, pickup and takeover without creating an order', async () => {
   const f = fixture();
   const report = await runCheckoutRehearsal(env, f.fetch, f.helpers);
-  assert.equal(report.ok, true);
-  assert.equal(report.steps.length, 13);
+  assert.equal(report.ok, true, JSON.stringify(report));
+  assert.equal(report.steps.length, 15);
   assert.ok(report.steps.every(step => step.pass));
   assert.equal(f.conversation.state, 'building_cart');
   assert.equal(f.conversation.sessionData.cart.length, 0);
@@ -286,7 +316,7 @@ test('preflight performs no conversation writes', async () => {
     f.fetch,
     f.helpers,
   );
-  assert.equal(report.ok, true);
+  assert.equal(report.ok, true, JSON.stringify(report));
   assert.equal(report.mode, 'preflight');
   assert.equal(report.steps.length, 0);
   assert.equal(f.sentTexts.length, 0);
@@ -298,6 +328,22 @@ test('refuses to start from an existing cart', async () => {
   assert.equal(report.ok, false);
   assert.equal(report.steps.length, 0);
   assert.equal(f.sentTexts.length, 0);
+});
+
+test('resets only the exact failed soup-selection draft before continuing', async () => {
+  const f = fixture({ failedSoupDraft: true });
+  const report = await runCheckoutRehearsal(
+    {
+      ...env,
+      STAGING_CHECKOUT_RESUME: 'known-failed-soup-phrase',
+    },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, true);
+  assert.equal(report.steps.length, 16);
+  assert.equal(f.sentTexts[0], 'Reiniciar');
+  assert.equal(f.conversation.sessionData.cart.length, 0);
 });
 
 test('fails if checkout creates an order before final confirmation', async () => {

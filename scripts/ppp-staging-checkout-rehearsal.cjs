@@ -9,6 +9,10 @@ const normalize = value =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 const digits = value => String(value || '').replace(/\D/g, '');
+const hasPendingState = sessionData =>
+  Object.entries(sessionData || {}).some(
+    ([key, value]) => key.startsWith('pending') && value != null,
+  );
 
 class CheckError extends Error {
   constructor(code) {
@@ -48,6 +52,8 @@ async function runCheckoutRehearsal(
   let lastSent = 0;
   let lastPayload = null;
   let baselineOrderIds = new Set();
+  const resumeFailedSoup =
+    env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase';
 
   const check = async (name, work) => {
     try {
@@ -141,6 +147,11 @@ async function runCheckoutRehearsal(
           !env.STAGING_CHECKOUT_EXECUTE ||
             ['true', 'false'].includes(env.STAGING_CHECKOUT_EXECUTE),
           'INVALID_EXECUTION_MODE',
+        );
+        ensure(
+          !env.STAGING_CHECKOUT_RESUME ||
+            env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase',
+          'INVALID_RESUME_MODE',
         );
         ensure(
           [
@@ -293,17 +304,35 @@ async function runCheckoutRehearsal(
         );
         conversationId = matches[0].id;
         current = await detail();
-        ensure(
-          current.state === 'building_cart' &&
-            current.humanTakeover === false &&
-            current.sessionData.cart.length === 0 &&
-            !current.sessionData.pendingMatch &&
-            !current.sessionData.pendingAttribute &&
-            !current.sessionData.pendingMultiOrder &&
-            !current.sessionData.address &&
-            !current.sessionData.paymentMethod,
-          'TEST_CHAT_NOT_CLEAN',
-        );
+        const lastInbound = current.messages
+          .filter(message => message.direction === 'in')
+          .at(-1);
+        if (resumeFailedSoup) {
+          ensure(
+            current.state === 'building_cart' &&
+              current.humanTakeover === false &&
+              current.sessionData.cart.length === 0 &&
+              current.sessionData.pendingMatch?.quantity === 1 &&
+              Array.isArray(current.sessionData.pendingMatch?.candidates) &&
+              current.sessionData.pendingMatch.candidates.some(
+                candidate => candidate.name === 'Sopa De Ajiaco',
+              ) &&
+              !current.sessionData.address &&
+              !current.sessionData.paymentMethod &&
+              lastInbound?.body === 'Una sopa de ajiaco',
+            'KNOWN_FAILED_SOUP_STATE_CHANGED',
+          );
+        } else {
+          ensure(
+            current.state === 'building_cart' &&
+              current.humanTakeover === false &&
+              current.sessionData.cart.length === 0 &&
+              !hasPendingState(current.sessionData) &&
+              !current.sessionData.address &&
+              !current.sessionData.paymentMethod,
+            'TEST_CHAT_NOT_CLEAN',
+          );
+        }
         const recentInbound = current.messages.some(
           message =>
             message.direction === 'in' &&
@@ -450,21 +479,61 @@ async function runCheckoutRehearsal(
       return current;
     };
 
-    const expectSoup = body => {
+    if (resumeFailedSoup) {
+      await send({
+        id: 'reset-known-failed-soup-phrase',
+        text: 'Reiniciar',
+        validate: body => {
+          ensure(
+            body.state === 'building_cart' &&
+              body.sessionData.cart.length === 0 &&
+              !hasPendingState(body.sessionData) &&
+              !body.sessionData.address &&
+              !body.sessionData.paymentMethod,
+            'KNOWN_FAILED_SOUP_NOT_CLEARED',
+          );
+        },
+      });
+    }
+
+    const expectSoup = (body, quantity = 2) => {
       ensure(
         body.sessionData.cart.length === 1 &&
           body.sessionData.cart[0].productId === soup.id &&
-          body.sessionData.cart[0].quantity === 1,
+          body.sessionData.cart[0].quantity === quantity,
         'SOUP_CART_MISMATCH',
       );
     };
 
     await send({
-      id: 'delivery-add-soup',
-      text: 'Una sopa de ajiaco',
+      id: 'delivery-request-soups',
+      text: 'Quiero dos sopas',
+      validate: body => {
+        ensure(
+          body.state === 'building_cart' &&
+            body.sessionData.cart.length === 0 &&
+            body.sessionData.pendingMatch?.quantity === 2 &&
+            body.sessionData.pendingMatch.candidates?.some(
+              candidate => candidate.id === soup.id,
+            ),
+          'DELIVERY_SOUP_CHOICE_NOT_REACHED',
+        );
+      },
+    });
+    const deliverySoupRow =
+      current.sessionData.pendingMatch.candidates.findIndex(
+        candidate => candidate.id === soup.id,
+      ) + 1;
+    ensure(deliverySoupRow > 0, 'DELIVERY_SOUP_CHOICE_MISSING');
+    await send({
+      id: 'delivery-select-ajiaco',
+      text: String(deliverySoupRow),
       validate: body => {
         expectSoup(body);
-        ensure(body.state === 'building_cart', 'DELIVERY_ADD_STATE_INVALID');
+        ensure(
+          body.state === 'building_cart' && !body.sessionData.pendingMatch,
+          'DELIVERY_ADD_STATE_INVALID',
+        );
       },
     });
     await send({
@@ -535,11 +604,34 @@ async function runCheckoutRehearsal(
     });
 
     await send({
-      id: 'pickup-add-soup',
-      text: 'Una sopa de ajiaco',
+      id: 'pickup-request-soups',
+      text: 'Quiero dos sopas',
+      validate: body => {
+        ensure(
+          body.state === 'building_cart' &&
+            body.sessionData.cart.length === 0 &&
+            body.sessionData.pendingMatch?.quantity === 2 &&
+            body.sessionData.pendingMatch.candidates?.some(
+              candidate => candidate.id === soup.id,
+            ),
+          'PICKUP_SOUP_CHOICE_NOT_REACHED',
+        );
+      },
+    });
+    const pickupSoupRow =
+      current.sessionData.pendingMatch.candidates.findIndex(
+        candidate => candidate.id === soup.id,
+      ) + 1;
+    ensure(pickupSoupRow > 0, 'PICKUP_SOUP_CHOICE_MISSING');
+    await send({
+      id: 'pickup-select-ajiaco',
+      text: String(pickupSoupRow),
       validate: body => {
         expectSoup(body);
-        ensure(body.state === 'building_cart', 'PICKUP_ADD_STATE_INVALID');
+        ensure(
+          body.state === 'building_cart' && !body.sessionData.pendingMatch,
+          'PICKUP_ADD_STATE_INVALID',
+        );
       },
     });
     await send({
@@ -676,7 +768,7 @@ async function runCheckoutRehearsal(
     await assertNoNewOrder();
     delete report.activeStep;
     report.ok =
-      report.steps.length === 13 &&
+      report.steps.length === (resumeFailedSoup ? 16 : 15) &&
       report.steps.every(step => step.pass) &&
       report.checks.every(item => item.pass);
   } catch (error) {
