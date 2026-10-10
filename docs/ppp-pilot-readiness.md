@@ -6,17 +6,18 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026, hora de Bogotá
 
-La PR #6 permanece en borrador. El código `eac6ccee` pasó 843 pruebas, TypeScript, MariaDB e imagen Docker. El staging desplegado acreditó `cart-v4`. Las conversaciones reales automatizadas validan persistencia y respuestas de Meta al único destinatario propio autorizado; no certifican por sí mismas recepción original de Meta, cocina ni pagos.
+La PR #6 permanece en borrador. El código `838789bf` pasó 873 pruebas, TypeScript, MariaDB e imagen Docker. El staging desplegado acreditó `cart-v4`. Las conversaciones reales automatizadas validan persistencia y respuestas de Meta al único destinatario propio autorizado; no certifican por sí mismas recepción original de Meta, cocina ni pagos.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Código `eac6ccee`, compilación y unitarias | PASS, 843/843 en 45 suites | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009640554) |
-| MariaDB y checkout interno aislado | PASS, 71/71 en 10.11, 11.4 y 11.8; creación comercial y proveedores simulados | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009640666) |
-| Imagen y runtime `eac6ccee` | PASS: 843 pruebas con Node/npm de la imagen, Compose, Nginx, TLS, protecciones HTTP, caída/recuperación de DB y reinicio | [Docker](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009637206) |
+| Código `838789bf`, compilación y unitarias | PASS, 873/873 en 45 suites | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012071741) |
+| MariaDB y checkout interno aislado | PASS, 71/71 en 10.11, 11.4 y 11.8; creación comercial y proveedores simulados | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012071742) |
+| Imagen y runtime `838789bf` | PASS: 873 pruebas con Node/npm de la imagen, Compose, Nginx, TLS, protecciones HTTP, caída/recuperación de DB y reinicio | [Docker](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012068562) |
 | Catálogo, nota, variantes agrupadas, deduplicación y cantidad absoluta desplegados | PASS en los pasos ejecutados sobre `cart-v3` | [Conversaciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38008362174) |
 | Eliminación de una variante conservando las demás líneas | PASS desplegado en `cart-v4` | [Continuación](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010418809) |
 | Adición de nota dirigida al churrasco | FAIL: conserva «sin ensalada» pero no agrega «papas crocantes»; la ejecución se detiene y conserva el borrador | [Lectura sin mensajes](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010533243) |
 | Acceso y estructura de DB remota | PASS previo: TLS, columnas, Meta ID único y catálogo activo | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
+| Continuación sobre `cart-v6` | BLOQUEADA antes de enviar mensajes: la versión final todavía no está desplegada; DB, login y logout pasan | [Comprobación, cero mensajes](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012345846) |
 | Pedido comercial, cocina y pagos habilitados desplegados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado | NO EJECUTADO | Requiere cerrar las puertas previas |
 

@@ -49,3 +49,6 @@ Las notas explícitas dirigidas a un plato ahora se resuelven antes de la infere
 
 
 Antes de otra actualización, un ensayo sin red del enrutador multi-producto detectó además que «tres pollos fritos con las arepas fritas» agregaba una porción de arepas no solicitada. Se protege el artículo después de con/sin para conservar el acompañamiento en su plato. Las regresiones comparan el carrito 3/2/3, mantienen «aparte» como nota y verifican que «con una porción de arepas fritas» sí agregue esa porción con su opción correcta. `cart-v6` acredita también este parche; su efecto en staging todavía necesita la continuación pendiente.
+
+
+El código final `838789bf` pasó 873 pruebas en 46 suites, TypeScript, 213 ejecuciones MariaDB y la imagen/recuperación Docker. La continuación [38012345846](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012345846) comprobó DB y acceso administrativo, pero se detuvo con `CURRENT_CART_PATCHES_NOT_DEPLOYED`, sin mensajes de prueba. Actualizar únicamente la API antes de continuar; conservar el borrador. Las 36 comprobaciones offline del ejecutor pasan y no consumen API OpenAI.
