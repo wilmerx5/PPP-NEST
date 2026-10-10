@@ -174,7 +174,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       }
       if (step.id === 'mojarra-fried') {
         ensure(lineQty(cart, ribs.id) === 2 && lineQty(cart, mojarra.id) === 1, 'FRIED_MOJARRA_CART_MISMATCH');
-        ensure(!session.address && session.orderType !== 'delivery', 'FOOD_STYLE_STORED_AS_ADDRESS');
+        ensure(!session.address, 'FOOD_STYLE_STORED_AS_ADDRESS');
         const fish = cart.find(item => item.productId === mojarra.id);
         ensure(fish?.attributes?.some(attribute => normalize(attribute.attributeValue) === 'frita'), 'MOJARRA_STYLE_NOT_SAVED');
       }
