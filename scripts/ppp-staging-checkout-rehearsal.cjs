@@ -56,7 +56,9 @@ async function runCheckoutRehearsal(
     env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase';
   const resumeSoupListCart =
     env.STAGING_CHECKOUT_RESUME === 'known-soup-list-cart';
-  const resumeKnownState = resumeFailedSoup || resumeSoupListCart;
+  const resumeDeliveryAwaitingName =
+    env.STAGING_CHECKOUT_RESUME === 'known-delivery-awaiting-name';
+  const resumeResetState = resumeFailedSoup || resumeSoupListCart;
 
   const check = async (name, work) => {
     try {
@@ -156,6 +158,7 @@ async function runCheckoutRehearsal(
             [
               'known-failed-soup-phrase',
               'known-soup-list-cart',
+              'known-delivery-awaiting-name',
             ].includes(env.STAGING_CHECKOUT_RESUME),
           'INVALID_RESUME_MODE',
         );
@@ -378,7 +381,21 @@ async function runCheckoutRehearsal(
               )
             : null,
         };
-        if (resumeSoupListCart) {
+        if (resumeDeliveryAwaitingName) {
+          ensure(
+            current.state === 'awaiting_name' &&
+              current.humanTakeover === false &&
+              current.sessionData.cart.length === 1 &&
+              current.sessionData.cart[0].productId === 38 &&
+              current.sessionData.cart[0].quantity === 2 &&
+              !current.sessionData.pendingMatch &&
+              current.sessionData.pendingQuantityHint?.quantity === 2 &&
+              !current.sessionData.address &&
+              !current.sessionData.paymentMethod &&
+              lastInbound?.body === 'No más',
+            'KNOWN_DELIVERY_NAME_STATE_CHANGED',
+          );
+        } else if (resumeSoupListCart) {
           const expectedPick = current.sessionData.pendingMatch?.candidates
             ?.findIndex(candidate => candidate.id === 38);
           ensure(
@@ -476,6 +493,7 @@ async function runCheckoutRehearsal(
     }
 
     const runId = randomUUID();
+    let expectedSteps = 0;
     const send = async ({
       id,
       text,
@@ -484,6 +502,7 @@ async function runCheckoutRehearsal(
       validate,
       allowTakeover = false,
     }) => {
+      expectedSteps++;
       report.activeStep = id;
       const before = await detail();
       ensure(
@@ -582,7 +601,7 @@ async function runCheckoutRehearsal(
       return current;
     };
 
-    if (resumeKnownState) {
+    if (resumeResetState) {
       await send({
         id: resumeSoupListCart
           ? 'reset-known-soup-list-cart'
@@ -610,54 +629,76 @@ async function runCheckoutRehearsal(
       );
     };
 
-    await send({
-      id: 'delivery-request-soups',
-      text: 'Quiero dos sopas',
-      validate: body => {
-        ensure(
-          body.state === 'building_cart' &&
-            body.sessionData.cart.length === 0 &&
-            body.sessionData.pendingMatch?.quantity === 2 &&
-            body.sessionData.pendingMatch.candidates?.some(
-              candidate => candidate.id === soup.id,
-            ),
-          'DELIVERY_SOUP_CHOICE_NOT_REACHED',
-        );
-      },
-    });
-    const deliverySoupRow =
-      current.sessionData.pendingMatch.candidates.findIndex(
-        candidate => candidate.id === soup.id,
-      ) + 1;
-    ensure(deliverySoupRow > 0, 'DELIVERY_SOUP_CHOICE_MISSING');
-    await send({
-      id: 'delivery-select-ajiaco',
-      text: String(deliverySoupRow),
-      validate: body => {
-        expectSoup(body);
-        ensure(
-          body.state === 'building_cart' &&
-            body.sessionData.pendingMatch?.quantity === 2 &&
-            body.sessionData.pendingMatch.candidates?.some(
-              candidate => candidate.id === soup.id,
-            ),
-          'DELIVERY_ADD_STATE_INVALID',
-        );
-      },
-    });
-    await send({
-      id: 'delivery-finish-items',
-      text: 'No más',
-      validate: body => {
-        expectSoup(body);
-        ensure(
-          body.state === 'awaiting_address' &&
-            body.sessionData.orderType === 'delivery' &&
-            body.sessionData.fulfillmentChosen === true,
-          'DELIVERY_ADDRESS_STEP_NOT_REACHED',
-        );
-      },
-    });
+    if (!resumeDeliveryAwaitingName) {
+      await send({
+        id: 'delivery-request-soups',
+        text: 'Quiero dos sopas',
+        validate: body => {
+          ensure(
+            body.state === 'building_cart' &&
+              body.sessionData.cart.length === 0 &&
+              body.sessionData.pendingMatch?.quantity === 2 &&
+              body.sessionData.pendingMatch.candidates?.some(
+                candidate => candidate.id === soup.id,
+              ),
+            'DELIVERY_SOUP_CHOICE_NOT_REACHED',
+          );
+        },
+      });
+      const deliverySoupRow =
+        current.sessionData.pendingMatch.candidates.findIndex(
+          candidate => candidate.id === soup.id,
+        ) + 1;
+      ensure(deliverySoupRow > 0, 'DELIVERY_SOUP_CHOICE_MISSING');
+      await send({
+        id: 'delivery-select-ajiaco',
+        text: String(deliverySoupRow),
+        validate: body => {
+          expectSoup(body);
+          ensure(
+            body.state === 'building_cart' &&
+              body.sessionData.pendingMatch?.quantity === 2 &&
+              body.sessionData.pendingMatch.candidates?.some(
+                candidate => candidate.id === soup.id,
+              ),
+            'DELIVERY_ADD_STATE_INVALID',
+          );
+        },
+      });
+      await send({
+        id: 'delivery-finish-items',
+        text: 'No más',
+        validate: body => {
+          expectSoup(body);
+          ensure(
+            ['awaiting_name', 'awaiting_address'].includes(body.state),
+            'DELIVERY_CHECKOUT_NOT_STARTED',
+          );
+        },
+      });
+    }
+    if (current.state === 'awaiting_name') {
+      await send({
+        id: 'delivery-customer-name',
+        text: 'Cliente Sintético',
+        validate: body => {
+          expectSoup(body);
+          ensure(
+            body.state === 'awaiting_address' &&
+              body.sessionData.orderType === 'delivery' &&
+              body.sessionData.fulfillmentChosen === true,
+            'DELIVERY_ADDRESS_STEP_NOT_REACHED',
+          );
+        },
+      });
+    } else {
+      ensure(
+        current.state === 'awaiting_address' &&
+          current.sessionData.orderType === 'delivery' &&
+          current.sessionData.fulfillmentChosen === true,
+        'DELIVERY_ADDRESS_STEP_NOT_REACHED',
+      );
+    }
     await send({
       id: 'delivery-address',
       text: 'Dg 6 b #78 b 20, Castilla, Bogotá',
@@ -881,7 +922,7 @@ async function runCheckoutRehearsal(
     await assertNoNewOrder();
     delete report.activeStep;
     report.ok =
-      report.steps.length === (resumeKnownState ? 16 : 15) &&
+      report.steps.length === expectedSteps &&
       report.steps.every(step => step.pass) &&
       report.checks.every(item => item.pass);
   } catch (error) {

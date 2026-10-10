@@ -53,9 +53,29 @@ function fixture(options = {}) {
     waId: env.STAGING_WHATSAPP_RECIPIENTS,
     phoneE164: `+${env.STAGING_WHATSAPP_RECIPIENTS}`,
     humanTakeover: false,
-    state: 'building_cart',
-    customerName: 'Cliente Sintético',
-    sessionData: options.soupListCartDraft
+    state: options.deliveryAwaitingNameDraft
+      ? 'awaiting_name'
+      : 'building_cart',
+    customerName: options.deliveryAwaitingNameDraft
+      ? null
+      : 'Cliente Sintético',
+    sessionData: options.deliveryAwaitingNameDraft
+      ? {
+          cart: [
+            {
+              productId: soup.id,
+              quantity: 2,
+              unitPrice: Number(soup.price),
+              attributes: [],
+              note: '',
+            },
+          ],
+          pendingQuantityHint: {
+            quantity: 2,
+            query: 'sopas',
+          },
+        }
+      : options.soupListCartDraft
       ? {
           cart: [
             {
@@ -100,7 +120,9 @@ function fixture(options = {}) {
       {
         id: 1,
         direction: 'in',
-        body: options.soupListCartDraft
+        body: options.deliveryAwaitingNameDraft
+          ? 'No más'
+          : options.soupListCartDraft
           ? '2'
           : options.failedSoupDraft
             ? 'Una sopa de ajiaco'
@@ -142,7 +164,15 @@ function fixture(options = {}) {
       return;
     }
 
-    if (conversation.sessionData.pendingMatch && /^\d+$/.test(text)) {
+    if (
+      conversation.state === 'awaiting_name' &&
+      text === 'Cliente Sintético'
+    ) {
+      conversation.customerName = text;
+      conversation.state = 'awaiting_address';
+      conversation.sessionData.orderType = 'delivery';
+      conversation.sessionData.fulfillmentChosen = true;
+    } else if (conversation.sessionData.pendingMatch && /^\d+$/.test(text)) {
       const choice =
         conversation.sessionData.pendingMatch.candidates[Number(text) - 1];
       if (choice) {
@@ -436,6 +466,22 @@ test('resets only the exact retained soup-list cart before continuing', async ()
   assert.equal(report.ok, true, JSON.stringify(report));
   assert.equal(report.steps.length, 16);
   assert.equal(f.sentTexts[0], 'Reiniciar');
+  assert.equal(f.conversation.sessionData.cart.length, 0);
+});
+
+test('continues only the exact delivery checkout waiting for a name', async () => {
+  const f = fixture({ deliveryAwaitingNameDraft: true });
+  const report = await runCheckoutRehearsal(
+    {
+      ...env,
+      STAGING_CHECKOUT_RESUME: 'known-delivery-awaiting-name',
+    },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, true, JSON.stringify(report));
+  assert.equal(report.steps.length, 13);
+  assert.equal(f.sentTexts[0], 'Cliente Sintético');
   assert.equal(f.conversation.sessionData.cart.length, 0);
 });
 
