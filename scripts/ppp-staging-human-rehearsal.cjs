@@ -127,10 +127,26 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(matches.length === 1, 'TEST_CONVERSATION_MISSING_OR_AMBIGUOUS');
       conversationId = matches[0].id;
       current = await detail();
-      ensure(current.state === 'building_cart', 'TEST_CHAT_NOT_BUILDING_CART');
+      ensure(env.STAGING_HUMAN_CLEANUP === 'true' || current.state === 'building_cart', 'TEST_CHAT_NOT_BUILDING_CART');
       baselineOrderIds = await orderIds();
     })) return report;
-    if (report.mode === 'preflight') { report.ok = true; return report; }
+    if (report.mode === 'preflight' && env.STAGING_HUMAN_CLEANUP !== 'true') { report.ok = true; return report; }
+    if (env.STAGING_HUMAN_CLEANUP === 'true') {
+      report.mode = 'cleanup';
+      const payload = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: {
+        messaging_product: 'whatsapp', metadata: { phone_number_id: channel }, messages: [{ from: recipient,
+          id: `wamid.ppp-human-cleanup-${randomUUID()}`, timestamp: String(Math.floor(now() / 1000)), type: 'text', text: { body: 'Reiniciar' } }] } }] }] });
+      report.webhookPosts++;
+      const response = await request('/api/whatsapp/webhook', { method: 'POST', headers: {
+        'Content-Type': 'application/json', 'X-Hub-Signature-256': sign(payload) }, body: payload });
+      ensure(response.status === 200 && (await response.json()).ok === true, 'CLEANUP_WEBHOOK_FAILED');
+      current = await detail();
+      ensure(current.state === 'building_cart' && current.sessionData.cart.length === 0 && !current.sessionData.paymentMethod, 'CLEANUP_LEFT_A_DRAFT');
+      const ids = await orderIds();
+      ensure([...ids].every(id => baselineOrderIds.has(id)), 'UNEXPECTED_STAGING_ORDER_CREATED');
+      report.ok = true;
+      return report;
+    }
 
     const runId = randomUUID();
     let lastSent = 0;
