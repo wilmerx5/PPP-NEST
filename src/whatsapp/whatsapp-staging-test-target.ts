@@ -30,6 +30,9 @@ export function stagingTestTargetStatus(
     agentEnabled: cfg.agentV1Enabled === true,
     approvedModel: cfg.openaiModel === 'gpt-4.1-2025-04-14',
     credentialsPresent: !!cfg.accessToken && !!cfg.appSecret && !!cfg.openaiApiKey,
+    staffOrderEventsBlocked:
+      staging && env.STAGING_ORDER_EVENTS_ALLOW !== 'true',
+    factusSandbox: staging && env.FACTUS_ENV === 'sandbox',
     rateLimitPerMinute: cfg.rateLimitPerMinute,
   };
 }

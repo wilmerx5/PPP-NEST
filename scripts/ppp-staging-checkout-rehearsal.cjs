@@ -30,6 +30,8 @@ async function runCheckoutRehearsal(
   fetchImpl = globalThis.fetch,
   helpers = {},
 ) {
+  const executeOrderLifecycle =
+    env.STAGING_ORDER_LIFECYCLE === 'true';
   const now = helpers.now || Date.now;
   const sleep = helpers.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const report = {
@@ -38,8 +40,9 @@ async function runCheckoutRehearsal(
     checks: [],
     steps: [],
     webhookPosts: 0,
-    limits:
-      'Authorized synthetic signed inbound events, real staging persistence and Meta outbound. Checkout stops before order confirmation. No order, payment preference or kitchen event is intentionally created.',
+    limits: executeOrderLifecycle
+      ? 'Authorized synthetic signed inbound events and one cash pickup order. Staff WebSocket events and Factus are gated off. The order is canceled and inventory restored before success.'
+      : 'Authorized synthetic signed inbound events, real staging persistence and Meta outbound. Checkout stops before order confirmation. No order, payment preference or kitchen event is intentionally created.',
   };
 
   let cookie = '';
@@ -52,6 +55,8 @@ async function runCheckoutRehearsal(
   let lastSent = 0;
   let lastPayload = null;
   let baselineOrderIds = new Set();
+  let baselineCaptured = false;
+  let lifecycleOrderId = null;
   const resumeFailedSoup =
     env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase';
   const resumeSoupListCart =
@@ -81,7 +86,11 @@ async function runCheckoutRehearsal(
   const request = async (path, options = {}) => {
     const url = new URL(path, TARGET);
     ensure(url.origin === TARGET && url.pathname.startsWith('/api/'), 'TARGET_NOT_ALLOWED');
-    ensure(++requests <= 90 && now() - startedAt < 480000, 'HTTP_OR_TIME_BUDGET_EXCEEDED');
+    ensure(
+      ++requests <= (executeOrderLifecycle ? 150 : 90) &&
+        now() - startedAt < (executeOrderLifecycle ? 720000 : 480000),
+      'HTTP_OR_TIME_BUDGET_EXCEEDED',
+    );
     const response = await fetchImpl(url.href, {
       ...options,
       redirect: 'manual',
@@ -118,19 +127,21 @@ async function runCheckoutRehearsal(
     return body;
   };
 
-  const authorizedOrderIds = async () => {
+  const authorizedOrders = async () => {
     const response = await admin('/api/orders/daily');
     ensure(response.status === 200, 'DAILY_ORDERS_READ_FAILED');
     const body = await response.json();
     const orders = Array.isArray(body) ? body : body?.orders;
     ensure(Array.isArray(orders), 'DAILY_ORDERS_INVALID');
-    return new Set(
-      orders
-        .filter(order => digits(order.phone) === recipient)
+    return orders.filter(order => digits(order.phone) === recipient);
+  };
+
+  const authorizedOrderIds = async () =>
+    new Set(
+      (await authorizedOrders())
         .map(order => String(order.orderId ?? order.id))
         .filter(Boolean),
     );
-  };
 
   const assertNoNewOrder = async () => {
     const current = await authorizedOrderIds();
@@ -155,6 +166,15 @@ async function runCheckoutRehearsal(
           !env.STAGING_CHECKOUT_EXECUTE ||
             ['true', 'false'].includes(env.STAGING_CHECKOUT_EXECUTE),
           'INVALID_EXECUTION_MODE',
+        );
+        ensure(
+          !env.STAGING_ORDER_LIFECYCLE ||
+            ['true', 'false'].includes(env.STAGING_ORDER_LIFECYCLE),
+          'INVALID_ORDER_LIFECYCLE_MODE',
+        );
+        ensure(
+          !executeOrderLifecycle || env.STAGING_CHECKOUT_EXECUTE === 'true',
+          'ORDER_LIFECYCLE_REQUIRES_EXECUTE',
         );
         ensure(
           !env.STAGING_CHECKOUT_RESUME ||
@@ -261,6 +281,12 @@ async function runCheckoutRehearsal(
           typeof body.conversationTestVersion === 'string' &&
             body.conversationTestVersion.startsWith('2026-10-10.cart-v'),
           'CHECKOUT_PATCH_LEVEL_NOT_DEPLOYED',
+        );
+        ensure(
+          !executeOrderLifecycle ||
+            (body.staffOrderEventsBlocked === true &&
+              body.factusSandbox === true),
+          'ORDER_SIDE_EFFECTS_NOT_ISOLATED',
         );
         ensure(
           Number.isInteger(body.rateLimitPerMinute) &&
@@ -500,6 +526,13 @@ async function runCheckoutRehearsal(
           'REQUIRED_SOUP_UNAVAILABLE_OR_CHANGED',
         );
         baselineOrderIds = await authorizedOrderIds();
+        baselineCaptured = true;
+        if (executeOrderLifecycle) {
+          ensure(
+            baselineOrderIds.size === 0,
+            'AUTHORIZED_RECIPIENT_HAS_ACTIVE_ORDER',
+          );
+        }
       }))
     ) {
       return report;
@@ -927,6 +960,134 @@ async function runCheckoutRehearsal(
       },
     });
 
+    if (executeOrderLifecycle) {
+      await send({
+        id: 'lifecycle-add-ajiaco',
+        text: 'Una sopa de ajiaco',
+        validate: body => {
+          expectSoup(body, 1);
+          ensure(
+            body.state === 'building_cart' &&
+              !body.sessionData.pendingMatch,
+            'LIFECYCLE_SOUP_NOT_ADDED',
+          );
+        },
+      });
+      await send({
+        id: 'lifecycle-pickup',
+        text: 'Paso a recoger',
+        validate: body => {
+          expectSoup(body, 1);
+          ensure(
+            body.state === 'awaiting_payment' &&
+              body.sessionData.orderType === 'pickup' &&
+              body.sessionData.fulfillmentChosen === true &&
+              body.sessionData.addressConfirmed === true,
+            'LIFECYCLE_PICKUP_NOT_READY',
+          );
+        },
+      });
+      await send({
+        id: 'lifecycle-cash',
+        text: '1',
+        validate: body => {
+          expectSoup(body, 1);
+          ensure(
+            body.state === 'awaiting_final_confirm' &&
+              body.sessionData.paymentMethod === 'cash' &&
+              !body.sessionData.mpPreferenceId,
+            'LIFECYCLE_FINAL_CONFIRM_NOT_REACHED',
+          );
+        },
+      });
+      await send({
+        id: 'lifecycle-duplicate-cash-webhook',
+        text: '1',
+        duplicate: true,
+        validate: body => {
+          expectSoup(body, 1);
+          ensure(
+            body.state === 'awaiting_final_confirm',
+            'LIFECYCLE_DUPLICATE_CHANGED_STATE',
+          );
+        },
+      });
+      await assertNoNewOrder();
+      await send({
+        id: 'lifecycle-confirm-order',
+        text: 'confirmar',
+        validate: body => {
+          ensure(
+            body.state === 'completed' &&
+              body.sessionData.cart.length === 0 &&
+              !body.sessionData.mpPreferenceId,
+            'LIFECYCLE_ORDER_NOT_COMPLETED',
+          );
+        },
+      });
+
+      const createdOrders = (await authorizedOrders()).filter(
+        order =>
+          !baselineOrderIds.has(String(order.orderId ?? order.id)),
+      );
+      ensure(createdOrders.length === 1, 'LIFECYCLE_ORDER_COUNT_INVALID');
+      const created = createdOrders[0];
+      lifecycleOrderId = Number(created.orderId ?? created.id);
+      ensure(
+        Number.isSafeInteger(lifecycleOrderId) &&
+          lifecycleOrderId > 0 &&
+          created.orderSource === 'whatsapp' &&
+          created.orderType === 'pickup' &&
+          created.orderStatus === 'cooking' &&
+          created.printed !== true &&
+          created.electronicInvoiceStatus === 'none' &&
+          !created.electronicInvoiceNumber &&
+          Array.isArray(created.items) &&
+          created.items.length === 1 &&
+          created.items[0].productId === soup.id &&
+          created.items[0].quantity === 1,
+        'LIFECYCLE_ORDER_PERSISTENCE_INVALID',
+      );
+      report.orderLifecycle = {
+        created: true,
+        source: 'whatsapp',
+        orderType: 'pickup',
+        payment: 'cash',
+        itemProductId: soup.id,
+        itemQuantity: 1,
+        printed: false,
+        electronicInvoice: false,
+        mercadoPagoPreference: false,
+      };
+
+      const cancelResponse = await admin(`/api/orders/${lifecycleOrderId}`, {
+        method: 'DELETE',
+      });
+      ensure(
+        [200, 201].includes(cancelResponse.status) &&
+          (await cancelResponse.json()).success === true,
+        'LIFECYCLE_ORDER_CLEANUP_FAILED',
+      );
+      lifecycleOrderId = null;
+      await assertNoNewOrder();
+      await send({
+        id: 'lifecycle-reset-conversation',
+        text: 'Reiniciar',
+        validate: body => {
+          ensure(
+            body.humanTakeover === false &&
+              body.state === 'building_cart' &&
+              body.sessionData.cart.length === 0 &&
+              !hasPendingState(body.sessionData) &&
+              !body.sessionData.address &&
+              !body.sessionData.paymentMethod,
+            'LIFECYCLE_CONVERSATION_NOT_CLEAN',
+          );
+        },
+      });
+      report.orderLifecycle.cleaned = true;
+    }
+
     await assertNoNewOrder();
     delete report.activeStep;
     report.ok =
@@ -940,6 +1101,42 @@ async function runCheckoutRehearsal(
       code: error instanceof CheckError ? error.code : 'EXECUTION_FAILED_NO_RETRY',
     });
   } finally {
+    if (executeOrderLifecycle && cookie && baselineCaptured) {
+      const cleanup = await check('lifecycle_order_cleanup', async () => {
+        const remaining = (await authorizedOrders()).filter(
+          order =>
+            !baselineOrderIds.has(String(order.orderId ?? order.id)),
+        );
+        ensure(remaining.length <= 1, 'LIFECYCLE_CLEANUP_AMBIGUOUS');
+        if (remaining.length === 1) {
+          const order = remaining[0];
+          const orderId = Number(order.orderId ?? order.id);
+          ensure(
+            Number.isSafeInteger(orderId) &&
+              orderId > 0 &&
+              order.orderSource === 'whatsapp' &&
+              order.electronicInvoiceStatus === 'none' &&
+              !order.electronicInvoiceNumber,
+            'LIFECYCLE_CLEANUP_ORDER_UNSAFE',
+          );
+          const response = await admin(`/api/orders/${orderId}`, {
+            method: 'DELETE',
+          });
+          ensure(
+            [200, 201].includes(response.status) &&
+              (await response.json()).success === true,
+            'LIFECYCLE_CLEANUP_DELETE_FAILED',
+          );
+          lifecycleOrderId = null;
+          report.orderLifecycle = {
+            ...(report.orderLifecycle || {}),
+            cleanupRecovered: true,
+          };
+        }
+        await assertNoNewOrder();
+      });
+      if (!cleanup) report.ok = false;
+    }
     if (cookie) {
       const logout = await check('logout', async () => {
         const response = await admin('/api/auth/logout', { method: 'POST' });

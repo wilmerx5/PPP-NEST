@@ -256,6 +256,20 @@ function fixture(options = {}) {
       conversation.sessionData.address = 'Recoge en el local';
       delete conversation.sessionData.pendingMatch;
       delete conversation.sessionData.pendingQuantityHint;
+    } else if (text === 'confirmar') {
+      orders.push({
+        orderId: 99,
+        phone: conversation.phoneE164,
+        orderSource: 'whatsapp',
+        orderType: 'pickup',
+        orderStatus: 'cooking',
+        printed: false,
+        electronicInvoiceStatus: 'none',
+        electronicInvoiceNumber: null,
+        items: [{ productId: soup.id, quantity: 1 }],
+      });
+      conversation.state = 'completed';
+      conversation.sessionData = { cart: [] };
     } else if (text === 'Reiniciar') {
       reset();
     }
@@ -318,6 +332,8 @@ function fixture(options = {}) {
           agentEnabled: true,
           approvedModel: true,
           credentialsPresent: true,
+          staffOrderEventsBlocked: !options.orderEventsEnabled,
+          factusSandbox: !options.factusProduction,
           conversationTestVersion: options.oldDeployment
             ? '2026-10-10.cart-v1'
             : '2026-10-10.cart-v7',
@@ -347,6 +363,11 @@ function fixture(options = {}) {
         });
       }
       return json(orders);
+    }
+    if (path === '/api/orders/99' && opts.method === 'DELETE') {
+      const index = orders.findIndex(order => order.orderId === 99);
+      if (index >= 0) orders.splice(index, 1);
+      return json({ success: true, message: 'Orden cancelada' });
     }
     if (path === '/api/products') {
       return json([soup]);
@@ -519,6 +540,55 @@ test('continues only the exact delivery checkout waiting for a name', async () =
   assert.equal(report.steps.length, 12);
   assert.equal(f.sentTexts[0], 'Cliente Sintético');
   assert.equal(f.conversation.sessionData.cart.length, 0);
+});
+
+test('creates, validates and cancels one isolated cash pickup order', async () => {
+  const f = fixture();
+  const report = await runCheckoutRehearsal(
+    {
+      ...env,
+      STAGING_ORDER_LIFECYCLE: 'true',
+    },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, true, JSON.stringify(report));
+  assert.equal(report.steps.length, 20);
+  assert.deepEqual(report.orderLifecycle, {
+    created: true,
+    source: 'whatsapp',
+    orderType: 'pickup',
+    payment: 'cash',
+    itemProductId: soup.id,
+    itemQuantity: 1,
+    printed: false,
+    electronicInvoice: false,
+    mercadoPagoPreference: false,
+    cleaned: true,
+  });
+  assert.equal(f.conversation.state, 'building_cart');
+  assert.equal(f.conversation.sessionData.cart.length, 0);
+});
+
+test('refuses an order lifecycle unless staff events and Factus are isolated', async () => {
+  for (const unsafe of [
+    { orderEventsEnabled: true },
+    { factusProduction: true },
+  ]) {
+    const f = fixture(unsafe);
+    const report = await runCheckoutRehearsal(
+      {
+        ...env,
+        STAGING_ORDER_LIFECYCLE: 'true',
+      },
+      f.fetch,
+      f.helpers,
+    );
+    assert.equal(report.ok, false);
+    assert.ok(report.checks.some(check =>
+      check.code === 'ORDER_SIDE_EFFECTS_NOT_ISOLATED'));
+    assert.equal(f.sentTexts.length, 0);
+  }
 });
 
 test('fails if checkout creates an order before final confirmation', async () => {
