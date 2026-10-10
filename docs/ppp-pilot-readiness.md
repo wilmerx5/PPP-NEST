@@ -6,22 +6,19 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 9 de octubre de 2026, hora de Bogotá
 
-La PR #6 permanece en borrador. El código `838789bf` pasó 873 pruebas, TypeScript, MariaDB e imagen Docker. El staging desplegado acreditó `cart-v4`. Las conversaciones reales automatizadas validan persistencia y respuestas de Meta al único destinatario propio autorizado; no certifican por sí mismas recepción original de Meta, cocina ni pagos.
+La [PR #6](https://github.com/wilmerx5/PPP-NEST/pull/6) permanece en borrador. El candidato `c3c11180e5a86c12863d0cdab3c824aa5dceff53` está desplegado en staging y coincide con la cabeza de la PR.
 
-| Comprobación | Resultado | Evidencia |
-| --- | --- | --- |
-| Código `838789bf`, compilación y unitarias | PASS, 873/873 en 45 suites | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012071741) |
-| MariaDB y checkout interno aislado | PASS, 71/71 en 10.11, 11.4 y 11.8; creación comercial y proveedores simulados | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012071742) |
-| Imagen y runtime `838789bf` | PASS: 873 pruebas con Node/npm de la imagen, Compose, Nginx, TLS, protecciones HTTP, caída/recuperación de DB y reinicio | [Docker](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012068562) |
-| Catálogo, nota, variantes agrupadas, deduplicación y cantidad absoluta desplegados | PASS en los pasos ejecutados sobre `cart-v3` | [Conversaciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38008362174) |
-| Eliminación de una variante conservando las demás líneas | PASS desplegado en `cart-v4` | [Continuación](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010418809) |
-| Adición de nota dirigida al churrasco | FAIL: conserva «sin ensalada» pero no agrega «papas crocantes»; la ejecución se detiene y conserva el borrador | [Lectura sin mensajes](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010533243) |
-| Acceso y estructura de DB remota | PASS previo: TLS, columnas, Meta ID único y catálogo activo | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
-| Continuación sobre `cart-v6` | BLOQUEADA antes de enviar mensajes: la versión final todavía no está desplegada; DB, login y logout pasan | [Comprobación, cero mensajes](https://github.com/wilmerx5/PPP-NEST/actions/runs/38012345846) |
-| Pedido comercial, cocina y pagos habilitados desplegados | PENDIENTE | Completar en staging aislado sobre el código candidato |
-| Piloto supervisado | NO EJECUTADO | Requiere cerrar las puertas previas |
+- **Código y CI — PASS:** 838/838 pruebas WhatsApp, build, imagen/Nginx y persistencia en MariaDB 10.11, 11.4 y 11.8. Los seis checks ejecutables del SHA terminaron correctamente; el check condicional `audit` fue omitido. Evidencia: [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/38024027270), [MariaDB](https://github.com/wilmerx5/PPP-NEST/actions/runs/38024027379) e [imagen](https://github.com/wilmerx5/PPP-NEST/actions/runs/38024025204).
+- **Checkout desplegado sin confirmar — PASS:** domicilio, recojo, efectivo, webhook duplicado, reset y takeover/release; chat y carrito quedaron limpios y no se creó ninguna orden. Evidencia: [checkout real acotado](https://github.com/wilmerx5/PPP-NEST/actions/runs/38022425970).
+- **Orden comercial aislada — PASS:** una orden WhatsApp para recoger y pagar en efectivo; sin impresión, FE ni Mercado Pago; cancelación y limpieza automáticas, sin órdenes activas residuales. Evidencia: [ciclo de orden](https://github.com/wilmerx5/PPP-NEST/actions/runs/38023585964).
+- **Horario y runtime — PASS:** negocio abierto `00:00–23:59` los siete días, health público con DB conectada y circuito cerrado.
+- **Protecciones — PASS:** eventos WebSocket de órdenes hacia cocina/mesas bloqueados por defecto en staging, Factus en sandbox y Mercado Pago sin credenciales ni método publicado. El backend rechaza tokens `APP_USR` cuando `PPP_STAGING=true`.
+- **Inventario — NO ACREDITADO EN STAGING:** el producto del ciclo no controla stock y no existe un SKU/grupo configurado con inventario positivo.
+- **Meta inbound, cocina e impresión — PENDIENTES:** los webhooks firmados sintéticos y el outbound real no sustituyen un mensaje auténtico originado desde el celular ni la validación visual/física en un frontend de staging aislado.
+- **Mercado Pago — BLOQUEADO:** requiere credenciales sandbox `TEST-`; no se usarán credenciales de producción para aceptación.
+- **Piloto supervisado — NO EJECUTADO:** comienza únicamente después de cerrar las puertas pendientes anteriores.
 
-**Todavía no listo para la beta.** El parche de notas añade regresiones del enrutador de entrada para conservar exclusiones, editar una sola cláusula, evitar duplicación de notas y proteger variantes ambiguas y enlaces de pago. Requiere desplegar `cart-v6` y aprobar los 15 pasos restantes del borrador exacto antes de continuar la aceptación comercial. Los resultados del código anterior no se presentan como aprobación de esta nueva corrección.
+**Aún no listo para declararlo vendible.** El circuito comercial básico ya está acreditado en staging, pero faltan el inbound auténtico de Meta, la conexión controlada de cocina/mesas con impresión física, inventario configurado y un pago sandbox si Mercado Pago forma parte del alcance comercial.
 
 Las comparaciones históricas con OpenAI y las pruebas adicionales ya ejecutadas se conservan como evidencia previa. No repetir suites de pago aprobadas por rutina: priorizar el fallo observado y los casos afectados; una modificación de modelo, prompt o catálogo requiere reevaluar su alcance. Comprobar el carrito guardado además del texto del bot. Un porcentaje estimado de avance no sustituye el cierre de cada puerta.
 
