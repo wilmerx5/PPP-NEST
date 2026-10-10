@@ -54,6 +54,9 @@ async function runCheckoutRehearsal(
   let baselineOrderIds = new Set();
   const resumeFailedSoup =
     env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase';
+  const resumeSoupListCart =
+    env.STAGING_CHECKOUT_RESUME === 'known-soup-list-cart';
+  const resumeKnownState = resumeFailedSoup || resumeSoupListCart;
 
   const check = async (name, work) => {
     try {
@@ -150,7 +153,10 @@ async function runCheckoutRehearsal(
         );
         ensure(
           !env.STAGING_CHECKOUT_RESUME ||
-            env.STAGING_CHECKOUT_RESUME === 'known-failed-soup-phrase',
+            [
+              'known-failed-soup-phrase',
+              'known-soup-list-cart',
+            ].includes(env.STAGING_CHECKOUT_RESUME),
           'INVALID_RESUME_MODE',
         );
         ensure(
@@ -372,7 +378,25 @@ async function runCheckoutRehearsal(
               )
             : null,
         };
-        if (resumeFailedSoup) {
+        if (resumeSoupListCart) {
+          const expectedPick = current.sessionData.pendingMatch?.candidates
+            ?.findIndex(candidate => candidate.id === 38);
+          ensure(
+            current.state === 'building_cart' &&
+              current.humanTakeover === false &&
+              current.sessionData.cart.length === 1 &&
+              current.sessionData.cart[0].productId === 38 &&
+              current.sessionData.cart[0].quantity === 2 &&
+              current.sessionData.pendingMatch?.quantity === 2 &&
+              current.sessionData.pendingQuantityHint?.quantity === 2 &&
+              Number.isInteger(expectedPick) &&
+              expectedPick >= 0 &&
+              !current.sessionData.address &&
+              !current.sessionData.paymentMethod &&
+              lastInbound?.body === String(expectedPick + 1),
+            'KNOWN_SOUP_LIST_CART_STATE_CHANGED',
+          );
+        } else if (resumeFailedSoup) {
           ensure(
             current.state === 'building_cart' &&
               current.humanTakeover === false &&
@@ -558,9 +582,11 @@ async function runCheckoutRehearsal(
       return current;
     };
 
-    if (resumeFailedSoup) {
+    if (resumeKnownState) {
       await send({
-        id: 'reset-known-failed-soup-phrase',
+        id: resumeSoupListCart
+          ? 'reset-known-soup-list-cart'
+          : 'reset-known-failed-soup-phrase',
         text: 'Reiniciar',
         validate: body => {
           ensure(
@@ -569,7 +595,7 @@ async function runCheckoutRehearsal(
               !hasPendingState(body.sessionData) &&
               !body.sessionData.address &&
               !body.sessionData.paymentMethod,
-            'KNOWN_FAILED_SOUP_NOT_CLEARED',
+            'KNOWN_SOUP_STATE_NOT_CLEARED',
           );
         },
       });
@@ -610,7 +636,11 @@ async function runCheckoutRehearsal(
       validate: body => {
         expectSoup(body);
         ensure(
-          body.state === 'building_cart' && !body.sessionData.pendingMatch,
+          body.state === 'building_cart' &&
+            body.sessionData.pendingMatch?.quantity === 2 &&
+            body.sessionData.pendingMatch.candidates?.some(
+              candidate => candidate.id === soup.id,
+            ),
           'DELIVERY_ADD_STATE_INVALID',
         );
       },
@@ -708,7 +738,11 @@ async function runCheckoutRehearsal(
       validate: body => {
         expectSoup(body);
         ensure(
-          body.state === 'building_cart' && !body.sessionData.pendingMatch,
+          body.state === 'building_cart' &&
+            body.sessionData.pendingMatch?.quantity === 2 &&
+            body.sessionData.pendingMatch.candidates?.some(
+              candidate => candidate.id === soup.id,
+            ),
           'PICKUP_ADD_STATE_INVALID',
         );
       },
@@ -847,7 +881,7 @@ async function runCheckoutRehearsal(
     await assertNoNewOrder();
     delete report.activeStep;
     report.ok =
-      report.steps.length === (resumeFailedSoup ? 16 : 15) &&
+      report.steps.length === (resumeKnownState ? 16 : 15) &&
       report.steps.every(step => step.pass) &&
       report.checks.every(item => item.pass);
   } catch (error) {

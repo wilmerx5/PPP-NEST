@@ -28,6 +28,17 @@ const soup = {
   availableNow: true,
   attributes: [],
 };
+const soupCandidates = [
+  {
+    id: 40,
+    name: 'Sopa pequeña',
+    price: '7500.00',
+    isActive: true,
+    availableNow: true,
+    attributes: [{ attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias'] }],
+  },
+  soup,
+];
 
 function fixture(options = {}) {
   let clock = Date.parse('2026-10-10T03:10:00Z');
@@ -44,7 +55,27 @@ function fixture(options = {}) {
     humanTakeover: false,
     state: 'building_cart',
     customerName: 'Cliente Sintético',
-    sessionData: options.failedSoupDraft
+    sessionData: options.soupListCartDraft
+      ? {
+          cart: [
+            {
+              productId: soup.id,
+              quantity: 2,
+              unitPrice: Number(soup.price),
+              attributes: [],
+              note: '',
+            },
+          ],
+          pendingMatch: {
+            quantity: 2,
+            candidates: soupCandidates,
+          },
+          pendingQuantityHint: {
+            quantity: 2,
+            query: 'sopas',
+          },
+        }
+      : options.failedSoupDraft
       ? {
           cart: [],
           pendingMatch: {
@@ -69,7 +100,11 @@ function fixture(options = {}) {
       {
         id: 1,
         direction: 'in',
-        body: options.failedSoupDraft ? 'Una sopa de ajiaco' : 'Hola',
+        body: options.soupListCartDraft
+          ? '2'
+          : options.failedSoupDraft
+            ? 'Una sopa de ajiaco'
+            : 'Hola',
         createdAt: new Date(clock).toISOString(),
         sentBy: 'bot',
       },
@@ -120,13 +155,16 @@ function fixture(options = {}) {
             note: '',
           },
         ];
-        delete conversation.sessionData.pendingMatch;
       }
       conversation.state = 'building_cart';
     } else if (text === 'Quiero dos sopas') {
       conversation.sessionData.pendingMatch = {
         quantity: 2,
-        candidates: [soup],
+        candidates: soupCandidates,
+      };
+      conversation.sessionData.pendingQuantityHint = {
+        quantity: 2,
+        query: 'sopas',
       };
       conversation.state = 'building_cart';
     } else if (text === 'Una sopa de ajiaco') {
@@ -141,6 +179,8 @@ function fixture(options = {}) {
       ];
       conversation.state = 'building_cart';
     } else if (text === 'No más') {
+      delete conversation.sessionData.pendingMatch;
+      delete conversation.sessionData.pendingQuantityHint;
       if (conversation.sessionData.orderType === 'pickup') {
         conversation.state = 'awaiting_payment';
         conversation.sessionData.address = 'Recoge en el local';
@@ -378,6 +418,22 @@ test('resets only the exact failed soup-selection draft before continuing', asyn
     f.helpers,
   );
   assert.equal(report.ok, true);
+  assert.equal(report.steps.length, 16);
+  assert.equal(f.sentTexts[0], 'Reiniciar');
+  assert.equal(f.conversation.sessionData.cart.length, 0);
+});
+
+test('resets only the exact retained soup-list cart before continuing', async () => {
+  const f = fixture({ soupListCartDraft: true });
+  const report = await runCheckoutRehearsal(
+    {
+      ...env,
+      STAGING_CHECKOUT_RESUME: 'known-soup-list-cart',
+    },
+    f.fetch,
+    f.helpers,
+  );
+  assert.equal(report.ok, true, JSON.stringify(report));
   assert.equal(report.steps.length, 16);
   assert.equal(f.sentTexts[0], 'Reiniciar');
   assert.equal(f.conversation.sessionData.cart.length, 0);
