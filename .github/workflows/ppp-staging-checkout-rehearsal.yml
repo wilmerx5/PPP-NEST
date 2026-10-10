@@ -21,14 +21,17 @@ concurrency:
 
 jobs:
   checkout:
-    # Intentionally disabled in this first revision. A follow-up commit must pin
-    # actions/checkout to this reviewed revision before staging secrets are used.
-    if: ${{ false }}
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == 'cfff26d11ee04a66dc9ecb859ee7b4f0cf7ee14c'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: cfff26d11ee04a66dc9ecb859ee7b4f0cf7ee14c
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -37,7 +40,7 @@ jobs:
         run: node --test scripts/ppp-staging-checkout-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded checkout tests
         env:
-          STAGING_CHECKOUT_EXECUTE: ${{ inputs.execute && 'true' || 'false' }}
+          STAGING_CHECKOUT_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
