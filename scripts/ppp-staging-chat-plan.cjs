@@ -80,4 +80,6 @@ function buildCollapsedVariantResumePlan(products) {
 module.exports = { buildPlan, knownVariantDraft, buildKnownVariantResumePlan,
   knownCollapsedVariantDraft, buildCollapsedVariantResumePlan,
   knownVariantRemovalDraft: products => buildPlan(products)[4].cart,
-  buildVariantRemovalResumePlan: products => buildPlan(products).slice(5) };
+  buildVariantRemovalResumePlan: products => buildPlan(products).slice(5),
+  knownDishNoteDraft: products => buildPlan(products)[5].cart,
+  buildDishNoteResumePlan: products => buildPlan(products).slice(6) };

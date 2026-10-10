@@ -1,3 +1,4 @@
+import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
 import { parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
@@ -613,6 +614,8 @@ export class WhatsappOrchestratorService {
       await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length &&
       await this.tryHandleScopedCartRemoval(conv, msg.waId, session, originalText, cfg)) return;
+    if (session.cart.length &&
+      await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
@@ -9178,6 +9181,44 @@ export class WhatsappOrchestratorService {
     });
     if (!changed) return null;
     return { ...session, cart };
+  }
+
+  private async tryHandleScopedCartNote(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const edit = parseScopedCartNote(text);
+    if (!edit) return false;
+    const indices = session.cart.flatMap((line, index) => correctionMatchesLine(line, edit.query) ? [index] : []);
+    if (!indices.length) return false;
+    if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
+      await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
+      return true;
+    }
+    if (indices.length !== 1) {
+      await this.reply(conv, waId, 'Tienes varias líneas de ese plato. Escribe la preparación y la nota juntas para indicarme cuál cambiamos. El carrito sigue igual.');
+      return true;
+    }
+    const index = indices[0];
+    if (edit.kind === 'append') {
+      const products = await this.catalogService.getMenuProducts();
+      const product = products.find(product => product.id === session.cart[index].productId);
+      if (product && this.catalogService.extractExplicitAttributeChoice(edit.note, product)?.length) return false;
+    }
+    const edited = editScopedCartNote(session.cart[index].note, edit);
+    if (edited.blocked) {
+      await this.reply(conv, waId, 'Necesito aclarar la nota para conservar las otras instrucciones. El carrito sigue igual. Dime la nota completa que debe llevar ese plato.');
+      return true;
+    }
+    const next: WhatsappSessionData = { ...session,
+      cart: session.cart.map((line, i) => i === index ? { ...line, note: edited.note } : line),
+      pendingCartQuantity: undefined, pendingCartRemoval: undefined,
+      pendingMatch: undefined, pendingAttribute: undefined, pendingMultiOrder: undefined,
+      pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined,
+    };
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(conv, waId, `Listo, actualicé la nota ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    return true;
   }
 
   private async tryHandleScopedCartRemoval(

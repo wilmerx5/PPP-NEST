@@ -5,7 +5,7 @@ const { createHmac } = require('node:crypto');
 const { runRehearsal, cartMatches } = require('./ppp-staging-chat-rehearsal.cjs');
 const { buildPlan, knownVariantDraft, buildKnownVariantResumePlan,
   knownCollapsedVariantDraft, buildCollapsedVariantResumePlan,
-  knownVariantRemovalDraft, buildVariantRemovalResumePlan } = require('./ppp-staging-chat-plan.cjs');
+  knownVariantRemovalDraft, buildVariantRemovalResumePlan, knownDishNoteDraft, buildDishNoteResumePlan } = require('./ppp-staging-chat-plan.cjs');
 const env = { GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'wilmerx5/PPP-NEST',
   GITHUB_REF: 'refs/heads/fix/whatsapp-regression-baseline', GITHUB_EVENT_NAME: 'push',
   STAGING_CHAT_EXECUTE: 'true', STAGING_ADMIN_EMAIL: 'automation@example.invalid',
@@ -25,7 +25,8 @@ function fixture(options = {}) {
   let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [], simulatedStepIndex = 0;
   const calls = [], plan = options.resumeKnownDraft ? buildKnownVariantResumePlan(products) :
     options.resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
-    options.resumeRemovalDraft ? buildVariantRemovalResumePlan(products) : buildPlan(products);
+    options.resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
+    options.resumeNoteDraft ? buildDishNoteResumePlan(products) : buildPlan(products);
   const conversation = { id: 42, waId: env.STAGING_WHATSAPP_RECIPIENTS, phoneE164: '+' + env.STAGING_WHATSAPP_RECIPIENTS,
     humanTakeover: false, state: 'building_cart', customerName: null,
     sessionData: { cart: options.existingDraft ? [{ productId: 17, quantity: 1 }] : [] },
@@ -52,6 +53,14 @@ function fixture(options = {}) {
     if (options.changedDraftQuantity) conversation.sessionData.cart[0].quantity = 5;
     if (options.changedDraftPending) conversation.sessionData.pendingCartRemoval = {options: [{cartIndex:2}]};
   }
+  if (options.resumeNoteDraft) {
+    conversation.messages[0].body = options.changedDraftInput ? 'Nuevo mensaje humano' :
+      'A los churrascos ponles también papas bien crocantes.';
+    conversation.sessionData.cart = knownDishNoteDraft(products).map(line => ({productId:line.productId,
+      quantity:line.quantity,unitPrice:line.unitPrice,attributes:line.attrs,note:line.note.join('. ')}));
+    if (options.changedDraftQuantity) conversation.sessionData.cart[0].quantity = 5;
+    if (options.changedDraftPending) conversation.sessionData.pendingAttribute = {productId:17};
+  }
   const json = (body, status = 200, cookie) => {
     const payload = body === conversation && options.bigintMessageIds ? { ...body, messages: body.messages.map(m =>
       ({ ...m, id: String(9007199254740993n + BigInt(m.id)) })) } : body;
@@ -73,7 +82,7 @@ function fixture(options = {}) {
     assert.ok(!path.startsWith('/api/admin/') || opts.headers.Cookie === 'access_token=synthetic-cookie');
     if (path === '/api/admin/whatsapp/staging/test-target') return options.missingEndpoint ? json({}, 404) : json({
       staging: !options.notStaging, targetMatches: !options.wrongTarget, botEnabled: true,
-      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v4',
+      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v5',
       agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);
@@ -230,3 +239,19 @@ test('cart oracle matches variants one-to-one and rejects quantity, price, attrs
   assert.equal(cartMatches([...want, ...want], [line]), false);
   assert.equal(cartMatches([{ ...want[0], note: [] }], [line]), false);
 });
+
+test('resumes only the verified unchanged note draft in 15 pending steps',async()=>{
+  const f=fixture({resumeNoteDraft:true});
+  const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-dish-note-draft'},f.fetch,f.helpers);
+  assert.equal(report.ok,true);assert.equal(report.webhookPosts,15);assert.equal(report.steps.length,15);
+  assert.equal(report.steps[0].id,'append-dish-note');assert.equal(report.steps.at(-1).actualCartLines,0);
+  assert.ok(!f.sentTexts.includes('Quita la sobrebarriga en salsa; conserva la asada y los churrascos.'));
+});
+for(const option of ['changedDraftInput','changedDraftQuantity','changedDraftPending']){
+  test(`does not touch the failed note draft when ${option}`,async()=>{
+    const f=fixture({resumeNoteDraft:true,[option]:true});
+    const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-dish-note-draft'},f.fetch,f.helpers);
+    assert.equal(report.ok,false);assert.equal(report.webhookPosts,0);assert.equal(f.sentTexts.length,0);
+    assert.equal(report.checks.find(check=>!check.pass).code,'KNOWN_FAILED_DRAFT_CHANGED');
+  });
+}

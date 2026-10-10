@@ -4,23 +4,25 @@
 
 Validar primero la operación de Pronto Pollo Portal. Este documento define una propuesta de piloto supervisado; no autoriza despliegues ni envíos a clientes. Una suite verde acredita los casos ejecutados, no garantiza todos los pedidos futuros.
 
-## Evidencia actual — 9 de octubre de 2026
+## Evidencia actual — 9 de octubre de 2026, hora de Bogotá
 
-Preparación de runtime validada: `0164a7fd5de9b6b0ff2b38b0925d36853c1cebde`; PR #6 permanece en borrador. El código de aplicación es idéntico al candidato `6148f81e5f0e28e0273584b1a7913f3c649c446a`: solo cambiaron documentación y scripts/workflow de comprobación. Compilación, 713 unitarias, MariaDB, imagen Docker y arranque/recuperación del contenedor con TLS pasaron. La comparación conversacional y las repeticiones sobre ese mismo código de aplicación siguen bloqueadas por `credit_balance_exhausted`; la última comprobación Mini a las 10:47 de Bogotá volvió a fallar después de la recarga indicada por el responsable. No hay aceptación con IA de este candidato.
+La PR #6 permanece en borrador. El código `eac6ccee` pasó 843 pruebas, TypeScript, MariaDB e imagen Docker. El staging desplegado acreditó `cart-v4`. Las conversaciones reales automatizadas validan persistencia y respuestas de Meta al único destinatario propio autorizado; no certifican por sí mismas recepción original de Meta, cocina ni pagos.
 
 | Comprobación | Resultado | Evidencia |
 | --- | --- | --- |
-| Compilación y unitarias | PASS, 713/713; subconjunto WhatsApp 637/637 | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953627027) |
-| MariaDB y checkout interno | PASS, 71/71 en 10.11, 11.4 y 11.8 | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953627030) |
-| Imagen Docker y dependencias de runtime | PASS, build, 713/713 unitarias con Node 20/npm y Compose válido | [Imagen del candidato](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346) |
-| Arranque y recuperación del contenedor | PASS: TLS verificado, CA no confiable/destino incorrecto/TLS desactivado rechazados, admin y firma webhook protegidos, 503 al caer DB, recuperación sin reiniciar API y reinicio del contenedor | [Runtime aislado](https://github.com/wilmerx5/PPP-NEST/actions/runs/37953620346/job/113898446933) |
-| Conversaciones con OpenAI, candidato 6148f81e | BLOQUEADAS: Mini y GPT-4.1 sin respuestas exitosas, error de saldo | [Comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853977) |
-| Repeticiones de casos que han fallado, candidato 6148f81e | BLOQUEADAS: detención tras el primer rechazo por invocación; cobertura sin completar | [Endurance](https://github.com/wilmerx5/PPP-NEST/actions/runs/37947853986) |
-| Acceso y esquema de staging, solo lectura | PASS previo: TLS, columnas, Meta ID único y 65 productos activos | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
-| Circuito desplegado Meta, cocina y pagos habilitados | PENDIENTE | Completar en staging aislado sobre el código candidato |
-| Piloto supervisado de 100 pedidos | NO EJECUTADO | Requiere cerrar las puertas previas |
+| Código `eac6ccee`, compilación y unitarias | PASS, 843/843 en 45 suites | [Nest CI](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009640554) |
+| MariaDB y checkout interno aislado | PASS, 71/71 en 10.11, 11.4 y 11.8; creación comercial y proveedores simulados | [213 ejecuciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009640666) |
+| Imagen y runtime `eac6ccee` | PASS: 843 pruebas con Node/npm de la imagen, Compose, Nginx, TLS, protecciones HTTP, caída/recuperación de DB y reinicio | [Docker](https://github.com/wilmerx5/PPP-NEST/actions/runs/38009637206) |
+| Catálogo, nota, variantes agrupadas, deduplicación y cantidad absoluta desplegados | PASS en los pasos ejecutados sobre `cart-v3` | [Conversaciones](https://github.com/wilmerx5/PPP-NEST/actions/runs/38008362174) |
+| Eliminación de una variante conservando las demás líneas | PASS desplegado en `cart-v4` | [Continuación](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010418809) |
+| Adición de nota dirigida al churrasco | FAIL: conserva «sin ensalada» pero no agrega «papas crocantes»; la ejecución se detiene y conserva el borrador | [Lectura sin mensajes](https://github.com/wilmerx5/PPP-NEST/actions/runs/38010533243) |
+| Acceso y estructura de DB remota | PASS previo: TLS, columnas, Meta ID único y catálogo activo | [Auditoría](https://github.com/wilmerx5/PPP-NEST/actions/runs/37881659946/job/113666046435) |
+| Pedido comercial, cocina y pagos habilitados desplegados | PENDIENTE | Completar en staging aislado sobre el código candidato |
+| Piloto supervisado | NO EJECUTADO | Requiere cerrar las puertas previas |
 
-**Todavía no listo para producción.** La comparación previa en `88d9d3b` ([37939501632](https://github.com/wilmerx5/PPP-NEST/actions/runs/37939501632)) terminó con GPT-4.1 en 303/303, sin errores del proveedor, y Mini en 302/303: omitió mondongo después de intentar agregar otro SKU de sopa. La revalidación siguiente pasó ese pedido, pero registró un timeout por modelo y un rechazo literal de la frase de garantía negada de alérgenos en GPT-4.1. En `6d7511ae`, Mini aprobó 302/303 y GPT-4.1 301/303 en [la comparación](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176086); Mini pasó 140/140 repeticiones en [la prueba adicional](https://github.com/wilmerx5/PPP-NEST/actions/runs/37942176383). Es evidencia anterior, no aceptación del candidato actual. Las nuevas correcciones recuperan timeouts clasificados de inferencia sin repetir herramientas, marcan como desconocido su consumo y derivan alergias explícitas a verificación humana/cocina. La ronda anterior GPT-4.1 perdió las 140 pruebas adicionales por `credit_balance_exhausted`; en el candidato actual las invocaciones se detienen ante ese bloqueo, sin repetir todos los casos. Se requiere saldo en la organización de `OPENAI_API_KEY` y reejecutar la comparación y las repeticiones completas para aprobar el código final. Los jobs GPT-4.1 se serializan. La configuración desplegada debe coincidir con el modelo/snapshot aprobado y todavía requiere aceptación externa en staging.
+**Todavía no listo para la beta.** El parche de notas añade regresiones del enrutador de entrada para conservar exclusiones, editar una sola cláusula, evitar duplicación de notas y proteger variantes ambiguas y enlaces de pago. Requiere desplegar `cart-v5` y aprobar los 15 pasos restantes del borrador exacto antes de continuar la aceptación comercial. Los resultados del código anterior no se presentan como aprobación de esta nueva corrección.
+
+Las comparaciones históricas con OpenAI y las pruebas adicionales ya ejecutadas se conservan como evidencia previa. No repetir suites de pago aprobadas por rutina: priorizar el fallo observado y los casos afectados; una modificación de modelo, prompt o catálogo requiere reevaluar su alcance. Comprobar el carrito guardado además del texto del bot. Un porcentaje estimado de avance no sustituye el cierre de cada puerta.
 
 ## Puertas de salida
 
@@ -88,4 +90,6 @@ Ver también [aceptación beta](whatsapp-beta-acceptance.md), [pruebas MariaDB](
 
 ## Backend de staging
 
-El responsable arrancó [el backend aislado](ppp-staging-backend.md) en `dev.prontopolloportal.com`; HTTPS y health con DB conectada están comprobados. La [auditoría HTTP desplegada](ppp-staging-live-checks.md) detectó que faltaba el rechazo del webhook cuando no había App Secret efectivo. Se corrige y debe actualizarse el VPS antes de habilitar el canal de pruebas. Los envíos Meta permanecen limitados explícitamente al canal y destinatarios de prueba. Sigue pendiente la aceptación del circuito de pedidos desplegado.
+El backend está aislado en `dev.prontopolloportal.com`; acceso administrativo, configuración efectiva del destinatario/canal, firma del webhook, modelo aprobado y persistencia se han comprobado antes de los mensajes automatizados. Los envíos permanecen limitados al único destinatario propio autorizado. Una continuación solo procede si acredita la versión del parche y el estado exacto del borrador; cambios humanos o diferencias de catálogo detienen la prueba sin sobrescribirlos.
+
+Confirmar cocina/avisos aislados y el sandbox de cualquier pago antes de crear los primeros pedidos de aceptación. Ver [requisitos de staging](ppp-staging-test-requirements.md).
