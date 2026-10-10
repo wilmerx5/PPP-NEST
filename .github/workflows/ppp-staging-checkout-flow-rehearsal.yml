@@ -25,7 +25,7 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-checkout-flow-20261010' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '6f75cd8c7ad474f0d7ad1d19abcdeec9d31d21c2'))
+       (github.event_name == 'push' && github.event.before == 'ae3d660400041483e15b95d06064e4d7e2d11355'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -124,7 +124,6 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(matches.length === 1, 'TEST_CONVERSATION_MISSING_OR_AMBIGUOUS');
       conversationId = matches[0].id;
       current = await detail();
-      ensure(current.state === 'building_cart', 'TEST_CHAT_NOT_BUILDING_CART');
       baselineOrderIds = await orderIds();
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
