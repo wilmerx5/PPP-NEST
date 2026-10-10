@@ -20,7 +20,7 @@ La PR #6 permanece en borrador. El código `eac6ccee` pasó 843 pruebas, TypeScr
 | Pedido comercial, cocina y pagos habilitados desplegados | PENDIENTE | Completar en staging aislado sobre el código candidato |
 | Piloto supervisado | NO EJECUTADO | Requiere cerrar las puertas previas |
 
-**Todavía no listo para la beta.** El parche de notas añade regresiones del enrutador de entrada para conservar exclusiones, editar una sola cláusula, evitar duplicación de notas y proteger variantes ambiguas y enlaces de pago. Requiere desplegar `cart-v5` y aprobar los 15 pasos restantes del borrador exacto antes de continuar la aceptación comercial. Los resultados del código anterior no se presentan como aprobación de esta nueva corrección.
+**Todavía no listo para la beta.** El parche de notas añade regresiones del enrutador de entrada para conservar exclusiones, editar una sola cláusula, evitar duplicación de notas y proteger variantes ambiguas y enlaces de pago. Requiere desplegar `cart-v6` y aprobar los 15 pasos restantes del borrador exacto antes de continuar la aceptación comercial. Los resultados del código anterior no se presentan como aprobación de esta nueva corrección.
 
 Las comparaciones históricas con OpenAI y las pruebas adicionales ya ejecutadas se conservan como evidencia previa. No repetir suites de pago aprobadas por rutina: priorizar el fallo observado y los casos afectados; una modificación de modelo, prompt o catálogo requiere reevaluar su alcance. Comprobar el carrito guardado además del texto del bot. Un porcentaje estimado de avance no sustituye el cierre de cada puerta.
 

@@ -82,7 +82,7 @@ function fixture(options = {}) {
     assert.ok(!path.startsWith('/api/admin/') || opts.headers.Cookie === 'access_token=synthetic-cookie');
     if (path === '/api/admin/whatsapp/staging/test-target') return options.missingEndpoint ? json({}, 404) : json({
       staging: !options.notStaging, targetMatches: !options.wrongTarget, botEnabled: true,
-      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v5',
+      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v6',
       agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);

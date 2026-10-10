@@ -58,4 +58,24 @@ describe('Resolved multi orders persisted through the real router path', () => {
     expect(session.cart[1].note).toContain('aparte');
     expect(session.cart[1].note).not.toContain('ensalada');
   });
+  it('does not add a paid arepa portion when selecting the included chicken accompaniment', async () => {
+    const session = await route('Tres churrascos sin ensalada, dos mojarras asadas y tres pollos fritos con las arepas fritas.');
+    expect(session.cart.map(c => [c.productId, c.quantity])).toEqual([[17, 3], [14, 2], [1, 3]]);
+    expect(session.cart[0].note).toBe('sin ensalada');
+    expect(session.cart[1].attributes).toContainEqual({attributeName:'Seleccion',attributeValue:'Asada'});
+    expect(session.cart[2].attributes).toContainEqual({attributeName:'Arepas',attributeValue:'Fritas'});
+    expect(session.cart[2].note).toBeUndefined();
+  });
+  it.each(['con las arepas blancas', 'con las arepas blancas aparte'])('keeps declared accompaniments on broaster: %s', async choice => {
+    const session = await route('Dos churrascos sin ensalada y dos pollos broaster ' + choice);
+    expect(session.cart.map(c => [c.productId, c.quantity])).toEqual([[17,2],[4,2]]);
+    expect(session.cart[1].attributes).toContainEqual({attributeName:'Arepas',attributeValue:'Blancas'});
+    expect(session.cart[0].note).toBe('sin ensalada');
+    if (choice.endsWith('aparte')) expect(session.cart[1].note).toContain('aparte');
+  });
+  it('still adds an explicitly ordered separate arepa portion', async () => {
+    const session = await route('Un churrasco y un pollo frito con una porción de arepas fritas.');
+    expect(session.cart.map(c => [c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[1,1],[11,1],[17,1]]);
+    expect(session.cart.find(c=>c.productId===11)?.attributes).toContainEqual({attributeName:'Arepas',attributeValue:'Fritas'});
+  });
 });

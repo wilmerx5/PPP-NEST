@@ -1998,7 +1998,7 @@ export class WhatsappCatalogService {
     text = expandDistributedVariants(text, products, this);
     // Preserve modifiers; the general matcher may strip them before splitting.
     const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean);
-    const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)/i));
+    const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)|\s+con\s+(?=(?:un[oa]?|\d+|dos|tres|cuatro|cinco)\s+porci[oó]n(?:es)?\b)/i));
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
     const swap = this.swapIntent(text);
@@ -3337,7 +3337,7 @@ export class WhatsappCatalogService {
     const chunks: string[] = [];
     const source = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const patterns = [
-      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
+      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?(?:(?:la|el|las|los)\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
       /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
       /\b((?:quiero\s+)?(?:mas|más)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,1})/gi,
       /\b((?:cambia(?:r|me)?|cambiar)\s+(?:la\s+|el\s+)?(?:ensalada|papa|papas|yuca|arepa)(?:\s+por\s+[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})?)/gi,
@@ -7849,10 +7849,13 @@ export class WhatsappCatalogService {
     // "pechuga a la plancha" / "mojarra al horno": "la"/"al" no son otro plato
     const protectedStyle = fixed
       .replace(/\ba\s+la\s+/gi, 'a__LA__')
+      // Definite articles after con/sin belong to that dish's accompaniment.
+      // An explicit extra ("con una porción de arepas") still starts a new item.
+      .replace(/\b(con|sin)\s+(el|la|los|las)\s+/gi, '$1__SIDE__$2 ')
       .replace(/\bal\s+(?=horno|ajillo|vapor|grill|carbon|carb[oó]n)\b/gi, 'a__L__');
     const parts = protectedStyle
       .split(/\s+(?=(?:un|una|unos|unas|el|la|los|las)\s+)/i)
-      .map((s) => s.replace(/a__LA__/g, 'a la ').replace(/a__L__/g, 'al ').trim())
+      .map((s) => s.replace(/a__LA__/g, 'a la ').replace(/__SIDE__/g, ' ').replace(/a__L__/g, 'al ').trim())
       .filter((s) => s.length >= 3);
     const merged = parts.filter((s) => !ORDER_INTENT_ONLY.has(normalizeText(s)));
     const use = merged.length ? merged : parts;
@@ -9038,7 +9041,7 @@ export class WhatsappCatalogService {
     // Prompt ordering must not hide a choice already written by the customer.
     for (const attr of product.attributes) {
       if (selected.some(choice => choice.attributeName === attr.attributeName)) continue;
-      const picked = this.pickAttributeOptionFromText(text, attr);
+      const picked = this.pickAttributeOptionFromText(text, attr, this.isLikelySideOnlyProduct(product));
       if (picked) selected.push({attributeName: attr.attributeName, attributeValue: picked});
     }
 
@@ -9077,7 +9080,7 @@ export class WhatsappCatalogService {
       }
 
       for (const attr of remaining) {
-        const picked = this.pickAttributeOptionFromText(text, attr);
+        const picked = this.pickAttributeOptionFromText(text, attr, this.isLikelySideOnlyProduct(product));
         if (!picked) continue;
         selected = [...selected, { attributeName: attr.attributeName, attributeValue: picked }];
         progress = true;
@@ -9252,14 +9255,15 @@ export class WhatsappCatalogService {
   pickAttributeOptionFromText(
     text: string,
     attr: { attributeName: string; options: string[] },
+    allowPortionChoice = false,
   ): string | null {
     // Quitar porciones sueltas pedidas aparte: no usar "papas fritas" como arepas Fritas
-    let cleaned = (text || '')
-      .replace(
+    let cleaned = text || '';
+    if (!allowPortionChoice) cleaned = cleaned.replace(
         /\bporci[oó]n(?:es)?\s+(?:de\s+)?(?:papas?|yuca|arepas?|maduro)(?:\s+\w+){0,3}\b/gi,
         ' ',
-      )
-      .replace(/\bpapas?\s+fritas?\b/gi, ' ')
+      );
+    cleaned = cleaned.replace(/\bpapas?\s+fritas?\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
     const q = normalizeText(cleaned);
