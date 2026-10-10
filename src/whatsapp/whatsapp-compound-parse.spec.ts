@@ -358,6 +358,9 @@ describe('isUsableWhatsappCustomerName', () => {
     'Por qué 5?',
     'Este',
     'Esto',
+    'Solo era',
+    'Solo eran',
+    'Eran dos',
   ])(
     'rechaza placeholder: %s',
     (name) => {

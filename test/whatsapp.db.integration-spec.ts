@@ -243,6 +243,32 @@ describe('WhatsApp real MariaDB persistence and signed HTTP webhook (isolated tr
     expect(send).toHaveBeenCalledTimes(4);
     expect(orders.create).not.toHaveBeenCalled();
   });
+  it('persists numbered soups through adversarial model adds, checkout and payment without replaying history', async () => {
+    const conv = await readyCheckout({cart:[],paymentMethod:undefined});
+    const orchestrator = app.get(WhatsappOrchestratorService) as any;
+    orchestrator.agentService = {runTurn: jest.fn().mockResolvedValue({reply:'Listo',toolCalls:['add_item'],actions:{
+      addItems:[{productId:38,quantity:1},{productId:1,quantity:3}],setCustomerNotes:'cubiertos',
+    }})};
+    orchestrator.turnTelemetry = {record:()=>undefined};
+    const read = async () => other.getSession(await other.reloadConversation(conv.id));
+    await post(payload('wamid.journey.soups','Quiero dos sopas')).expect(200);
+    const pending = (await read()).pendingMatch!;
+    const row = pending.candidates.findIndex(p => p.id === 38) + 1;
+    await post(payload('wamid.journey.choice',String(row))).expect(200);
+    expect((await read()).cart.map(c=>[c.productId,c.quantity])).toEqual([[38,2]]);
+    await post(payload('wamid.journey.chickens','Tres pollos fritos')).expect(200);
+    const expected = (await read()).cart;
+    expect(expected.map(c=>[c.productId,c.quantity])).toEqual([[38,2],[1,3]]);
+    await post(payload('wamid.journey.chickens','Tres pollos fritos')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    await post(payload('wamid.journey.checkout','No mas')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_payment');
+    await post(payload('wamid.journey.payment','1')).expect(200);
+    expect((await read()).cart).toEqual(expected);
+    expect((await other.reloadConversation(conv.id)).state).toBe('awaiting_final_confirm');
+    expect(orders.create).not.toHaveBeenCalled();
+  });
   it('does not restore a canceled cart after reloading the conversation',async()=> {
     const conv=await conversation();await service.saveSession(conv,{cart:[{productId:23,code:23,name:'Arroz Con Pollo',quantity:2,unitPrice:29500}],
       orderType:'delivery',address:'Dirección sintética',linkedUserId:'synthetic-user'});

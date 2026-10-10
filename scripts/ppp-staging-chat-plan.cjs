@@ -4,7 +4,8 @@ function buildPlan(products) {
   const find = name => products.find(p => p.name === name);
   const churrasco = find('Churrasco'), sobrebarriga = find('Sobrebarriga'), ribs = find('Costillas De Cerdo');
   const mojarra = find('Mojarra'), chicken = find('1 Pollo Frito'), broaster = find('1 Pollo Broaster');
-  if (!churrasco || !sobrebarriga || !ribs || !mojarra || !chicken || !broaster) throw Error('REQUIRED_MENU_PRODUCTS_MISSING');
+  const soup = find('Sopa De Ajiaco');
+  if (!churrasco || !sobrebarriga || !ribs || !mojarra || !chicken || !broaster || !soup) throw Error('REQUIRED_MENU_PRODUCTS_MISSING');
   const line = (p, quantity, attrs = [], note = [], forbidNote = []) => ({
     productId: p.id, quantity, unitPrice: Number(p.price), attrs, note, forbidNote,
   });
@@ -44,6 +45,14 @@ function buildPlan(products) {
     { id: 'choose-second-existing-chicken-line', text: '2', cart: [c3, m2, chicken1, broaster1], pendingQuantity: false },
     { id: 'remove-broaster-preserve-fried-chicken', text: 'Quita el pollo broaster; conserva el pollo frito, las mojarras y los churrascos.', cart: [c3, m2, chicken1] },
     { id: 'clear-cart', text: 'Vacía el carrito y empieza de cero.', cart: [] },
+    ...(soup ? [
+      { id: 'request-two-soups', text: 'Quiero dos sopas', cart: [], pendingMatchQuantity: 2 },
+      { id: 'choose-ajiaco-by-row', chooseProductId: soup.id, cart: [line(soup, 2)] },
+      { id: 'duplicate-soup-choice', duplicatePrevious: true, cart: [line(soup, 2)] },
+      { id: 'add-chickens-preserve-two-soups', text: 'Tres pollos fritos', cart: [line(soup, 2), line(chicken, 3, arepas('Blancas'))] },
+      { id: 'read-five-items', text: '¿Cómo va el carrito?', cart: [line(soup, 2), line(chicken, 3, arepas('Blancas'))] },
+      { id: 'clear-soup-test', text: 'Reiniciar', cart: [] },
+    ] : []),
   ];
 }
 

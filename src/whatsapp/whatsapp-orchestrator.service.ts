@@ -4694,7 +4694,9 @@ export class WhatsappOrchestratorService {
       this.catalogService.isMenuExploreIntent(text, products) ||
       looksLikeExplicitCartItemNote(text) || this.looksLikeStandaloneOrderNote(text)) return false;
     const quantity = this.catalogService.extractQuantityFromMessage(text);
-    if (quantity < 2 && !this.catalogService.looksLikeExplicitAddProductRequest(text)) return false;
+    const explicitOrder = this.catalogService.looksLikeExplicitAddProductRequest(text) ||
+      /^(?:quiero|quieor|qiero|kiero|dame|ponme|me das|me regalas|regalame|pido)\b/.test(this.normalizeForMatch(text));
+    if (quantity < 2 && !explicitOrder) return false;
     const query = this.catalogService.stripQuantityFromSearchQuery(
       this.catalogService.extractProductSearchQuery(text),
     ).replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '').trim();
@@ -12819,6 +12821,7 @@ export class WhatsappOrchestratorService {
         attributes?: { attributeName: string; attributeValue: string }[];
       }[];
     },
+    inferMissingAdds = true,
   ): string[] {
     if (!actions) return [];
     const misses: string[] = [];
@@ -12835,6 +12838,12 @@ export class WhatsappOrchestratorService {
       if (!this.catalogService.productNameFitsUtterance(product, text)) return false;
       return true;
     });
+    // An edit/note in the same turn does not authorize replaying dishes from
+    // history. Validate explicit adds even when we must not infer new dishes.
+    if (!inferMissingAdds) {
+      actions.addItems = kept.length ? kept : undefined;
+      return [];
+    }
     const ids = new Set(kept.map((item) => item.productId));
     const swapBlob = this.normalizeForMatch(`${swap?.removed || ''} ${swap?.added || ''}`);
     for (const seg of this.catalogService.splitMultiProductSegments(text)) {
@@ -13328,7 +13337,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    const intentMisses = editsExistingCart ? [] : this.reconcileAgentAddsWithUtterance(text, products, guarded.actions);
+    const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions, !editsExistingCart);
     if (
       !editsExistingCart && !guarded.actions?.addItems?.length &&
       /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(agentReply) &&

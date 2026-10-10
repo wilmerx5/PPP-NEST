@@ -12,6 +12,7 @@ const env = { GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'wilmerx5/PPP-NEST',
   STAGING_ADMIN_PASSWORD: 'synthetic-password', STAGING_WHATSAPP_APP_SECRET: 'synthetic-app-secret',
   STAGING_WHATSAPP_PHONE_NUMBER_ID: '12345', STAGING_WHATSAPP_RECIPIENTS: '573001234567' };
 const products = [
+  { id: 38, name: 'Sopa De Ajiaco', price: '10500.00', isActive: true, availableNow: true, attributes: [] },
   { id: 17, name: 'Churrasco', price: '38000.00', isActive: true, availableNow: true, attributes: [] },
   { id: 13, name: 'Sobrebarriga', price: '33000.00', isActive: true, availableNow: true,
     attributes: [{ attributeName: 'Seleccion', options: ['Asada', 'En Salsa'] }] },
@@ -23,7 +24,7 @@ const products = [
 ];
 function fixture(options = {}) {
   let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [], simulatedStepIndex = 0;
-  const calls = [], plan = options.resumeKnownDraft ? buildKnownVariantResumePlan(products) :
+  const calls = [], plan = options.resumeCheckoutDraft ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}, ...buildPlan(products)] : options.resumeKnownDraft ? buildKnownVariantResumePlan(products) :
     options.resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
     options.resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
     options.resumeNoteDraft ? buildDishNoteResumePlan(products) : buildPlan(products);
@@ -61,6 +62,18 @@ function fixture(options = {}) {
     if (options.changedDraftQuantity) conversation.sessionData.cart[0].quantity = 5;
     if (options.changedDraftPending) conversation.sessionData.pendingAttribute = {productId:17};
   }
+  if (options.resumeCheckoutDraft) {
+    conversation.state = 'awaiting_final_confirm'; conversation.customerName = 'Solo era';
+    conversation.sessionData = {paymentMethod:'cash',addressConfirmed:true,address:'Dirección sintética',cart:[
+      {productId:38,quantity:3,unitPrice:10500,attributes:[]},
+      {productId:1,quantity:3,unitPrice:41000,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+    ]};
+    conversation.messages = ['Quiero dos sopas','2','Tres pollos fritos','No mas','Dirección sintética','1'].map((body,index) =>
+      ({id:index+1,direction:'in',body,createdAt:new Date(clock).toISOString(),sentBy:'bot'}));
+    nextId = 7;
+    if (options.changedDraftInput) conversation.messages[5].body = 'Nuevo mensaje';
+    if (options.changedDraftQuantity) conversation.sessionData.cart[0].quantity = 4;
+  }
   const json = (body, status = 200, cookie) => {
     const payload = body === conversation && options.bigintMessageIds ? { ...body, messages: body.messages.map(m =>
       ({ ...m, id: String(9007199254740993n + BigInt(m.id)) })) } : body;
@@ -82,7 +95,7 @@ function fixture(options = {}) {
     assert.ok(!path.startsWith('/api/admin/') || opts.headers.Cookie === 'access_token=synthetic-cookie');
     if (path === '/api/admin/whatsapp/staging/test-target') return options.missingEndpoint ? json({}, 404) : json({
       staging: !options.notStaging, targetMatches: !options.wrongTarget, botEnabled: true,
-      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v6',
+      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v7',
       agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);
@@ -103,7 +116,10 @@ function fixture(options = {}) {
       seen.add(msg.id); sentTexts.push(msg.text.body);
       while (plan[simulatedStepIndex]?.duplicatePrevious) simulatedStepIndex++;
       const step = duplicate ? plan[simulatedStepIndex - 2] : plan[simulatedStepIndex++];
-      assert.equal(step.text, msg.text.body);
+      assert.equal(step.chooseProductId ? String(conversation.sessionData.pendingMatch.candidates.findIndex(p => p.id === step.chooseProductId) + 1) : step.text, msg.text.body);
+      if (step.id === 'reset-authorized-checkout-test') {conversation.sessionData={cart:[]};conversation.state='building_cart';}
+      if (step.pendingMatchQuantity) conversation.sessionData.pendingMatch = {quantity: step.pendingMatchQuantity, candidates: products};
+      if (step.chooseProductId) delete conversation.sessionData.pendingMatch;
       conversation.sessionData.cart = step.cart.map(want => ({ productId: want.productId, quantity: want.quantity,
         unitPrice: want.unitPrice, attributes: want.attrs, note: want.note.join('. ') }));
       if (typeof step.pendingQuantity === 'number' && !options.breakQuantityQuestion) conversation.sessionData.pendingCartQuantity =
@@ -123,24 +139,36 @@ function fixture(options = {}) {
   return { fetch, calls, sentTexts, helpers: { now: () => clock, sleep: async ms => { clock += ms; } } };
 }
 
-test('executes 21 bounded steps, validates HMAC, checks persisted cart and clears its successful draft', async () => {
+test('executes 27 bounded steps, validates HMAC, checks persisted cart and clears its successful draft', async () => {
   const f = fixture(); const report = await runRehearsal(env, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.steps.length, 21); assert.equal(report.webhookPosts, 21);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 27); assert.equal(report.webhookPosts, 27);
   assert.ok(report.steps.every(s => s.pass)); assert.equal(report.steps.at(-1).actualCartLines, 0);
-  assert.equal(f.sentTexts.length, 20); // Duplicate does not process again.
+  assert.equal(f.sentTexts.length, 25); // Duplicate does not process again.
   assert.ok(f.sentTexts.every(text => !/^confirmar$/i.test(text)));
   const output = JSON.stringify(report);
   for (const value of ['synthetic-password', 'synthetic-app-secret', 'synthetic-cookie', env.STAGING_WHATSAPP_RECIPIENTS, env.STAGING_ADMIN_EMAIL]) assert.ok(!output.includes(value));
+});
+
+test('resets only the authorized exact soup checkout draft and checks all 28 turns', async () => {
+  const f=fixture({resumeCheckoutDraft:true});
+  const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-soup-checkout-draft'},f.fetch,f.helpers);
+  assert.equal(report.ok,true);assert.equal(report.steps.length,28);
+  assert.equal(f.sentTexts[0],'Reiniciar');assert.equal(report.steps.at(-1).actualCartLines,0);
+});
+for (const option of ['changedDraftInput','changedDraftQuantity']) test(`preserves checkout draft when ${option}`, async () => {
+  const f=fixture({resumeCheckoutDraft:true,[option]:true});
+  const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-soup-checkout-draft'},f.fetch,f.helpers);
+  assert.equal(report.ok,false);assert.equal(report.webhookPosts,0);
 });
 test('preflight verifies routing and signature without sending message payloads', async () => {
   const f = fixture(); const report = await runRehearsal({ ...env, STAGING_CHAT_EXECUTE: 'false' }, f.fetch, f.helpers);
   assert.equal(report.ok, true); assert.equal(report.webhookPosts, 0); assert.equal(f.sentTexts.length, 0);
 });
-test('resumes only the known failed draft, rechecks both failures and all remaining edits in 23 steps', async () => {
+test('resumes only the known failed draft, rechecks both failures and all remaining edits in 29 steps', async () => {
   const f = fixture({ resumeKnownDraft: true });
   const report = await runRehearsal({ ...env, STAGING_CHAT_RESUME: 'known-variant-draft' }, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.steps.length, 23);
-  assert.equal(report.webhookPosts, 23); assert.equal(report.steps.at(-1).actualCartLines, 0);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 29);
+  assert.equal(report.webhookPosts, 29); assert.equal(report.steps.at(-1).actualCartLines, 0);
   assert.ok(!f.sentTexts.includes('Hola, ¿qué tienen para almorzar? ¿Hay algo con carne?'));
   assert.ok(report.steps.every(step => step.pass));
 });
@@ -157,10 +185,10 @@ test('requires the deployed cart patch version before sending any conversation',
   assert.equal(report.ok, false); assert.equal(report.webhookPosts, 0);
   assert.equal(report.checks.find(check => !check.pass).code, 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
 });
-test('resets only the verified collapsed synthetic draft and runs 20 pending steps', async () => {
+test('resets only the verified collapsed synthetic draft and runs 26 pending steps', async () => {
   const f = fixture({ resumeCollapsedDraft: true });
   const report = await runRehearsal({ ...env, STAGING_CHAT_RESUME: 'known-collapsed-variant-draft' }, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.webhookPosts, 20); assert.equal(report.steps.length, 20);
+  assert.equal(report.ok, true); assert.equal(report.webhookPosts, 26); assert.equal(report.steps.length, 26);
   assert.equal(report.steps.at(-1).actualCartLines, 0);
   assert.ok(!f.sentTexts.includes('¿Las costillas de cerdo traen ensalada?'));
 });
@@ -172,10 +200,10 @@ for (const option of ['changedDraftInput', 'changedDraftQuantity', 'changedDraft
     assert.equal(report.checks.find(check => !check.pass).code, 'KNOWN_FAILED_DRAFT_CHANGED');
   });
 }
-test('continues the verified variant-removal draft in exactly 16 pending steps', async () => {
+test('continues the verified variant-removal draft in exactly 22 pending steps', async () => {
   const f = fixture({resumeRemovalDraft:true});
   const report = await runRehearsal({...env, STAGING_CHAT_RESUME:'known-variant-removal-draft'},f.fetch,f.helpers);
-  assert.equal(report.ok,true); assert.equal(report.webhookPosts,16); assert.equal(report.steps.length,16);
+  assert.equal(report.ok,true); assert.equal(report.webhookPosts,22); assert.equal(report.steps.length,22);
   assert.equal(report.steps[0].id,'remove-one-variant'); assert.equal(report.steps.at(-1).actualCartLines,0);
   assert.ok(!f.sentTexts.includes('Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.'));
 });
@@ -190,7 +218,7 @@ for (const option of ['changedDraftInput','changedDraftQuantity','changedDraftPe
 test('accepts the real bigint string message IDs without losing precision during deduplication', async () => {
   const f = fixture({ bigintMessageIds: true });
   const report = await runRehearsal(env, f.fetch, f.helpers);
-  assert.equal(report.ok, true); assert.equal(report.steps.length, 21);
+  assert.equal(report.ok, true); assert.equal(report.steps.length, 27);
   assert.equal(report.steps.find(s => s.id === 'duplicate-webhook').inboundCount, 0);
 });
 test('distinguishes mismatched secret from missing raw body without exposing the response', async () => {
@@ -240,10 +268,10 @@ test('cart oracle matches variants one-to-one and rejects quantity, price, attrs
   assert.equal(cartMatches([{ ...want[0], note: [] }], [line]), false);
 });
 
-test('resumes only the verified unchanged note draft in 15 pending steps',async()=>{
+test('resumes only the verified unchanged note draft in 21 pending steps',async()=>{
   const f=fixture({resumeNoteDraft:true});
   const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-dish-note-draft'},f.fetch,f.helpers);
-  assert.equal(report.ok,true);assert.equal(report.webhookPosts,15);assert.equal(report.steps.length,15);
+  assert.equal(report.ok,true);assert.equal(report.webhookPosts,21);assert.equal(report.steps.length,21);
   assert.equal(report.steps[0].id,'append-dish-note');assert.equal(report.steps.at(-1).actualCartLines,0);
   assert.ok(!f.sentTexts.includes('Quita la sobrebarriga en salsa; conserva la asada y los churrascos.'));
 });

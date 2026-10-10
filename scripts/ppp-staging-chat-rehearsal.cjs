@@ -42,8 +42,9 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
   const resumeCollapsedDraft = env.STAGING_CHAT_RESUME === 'known-collapsed-variant-draft';
   const resumeRemovalDraft = env.STAGING_CHAT_RESUME === 'known-variant-removal-draft';
   const resumeNoteDraft = env.STAGING_CHAT_RESUME === 'known-dish-note-draft';
+  const resumeCheckoutDraft = env.STAGING_CHAT_RESUME === 'known-soup-checkout-draft';
   const report = { ok: false, mode: env.STAGING_CHAT_EXECUTE === 'true' ? 'execute' : 'preflight',
-    checks: [], steps: [], webhookPosts: 0, expectedSteps: resumeKnownDraft ? 23 : resumeCollapsedDraft ? 20 : resumeRemovalDraft ? 16 : resumeNoteDraft ? 15 : 21,
+    checks: [], steps: [], webhookPosts: 0, expectedSteps: resumeCheckoutDraft ? 28 : resumeKnownDraft ? 29 : resumeCollapsedDraft ? 26 : resumeRemovalDraft ? 22 : resumeNoteDraft ? 21 : 27,
     limits: 'Synthetic signed inbound events; real staging persistence and Meta outbound. No genuine Meta inbound delivery, kitchen, payments or order confirmation tested.' };
   let cookie = '', requests = 0, startedAt = now(), recipient, channel, conversationId, initialName;
   const check = async (name, work) => {
@@ -84,7 +85,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
       ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
       ensure(!env.STAGING_CHAT_EXECUTE || ['true', 'false'].includes(env.STAGING_CHAT_EXECUTE), 'INVALID_EXECUTION_MODE');
-      ensure(!env.STAGING_CHAT_RESUME || resumeKnownDraft || resumeCollapsedDraft || resumeRemovalDraft || resumeNoteDraft, 'INVALID_RESUME_MODE');
+      ensure(!env.STAGING_CHAT_RESUME || resumeKnownDraft || resumeCollapsedDraft || resumeRemovalDraft || resumeNoteDraft || resumeCheckoutDraft, 'INVALID_RESUME_MODE');
       ensure(['STAGING_ADMIN_EMAIL', 'STAGING_ADMIN_PASSWORD', 'STAGING_WHATSAPP_APP_SECRET',
         'STAGING_WHATSAPP_PHONE_NUMBER_ID', 'STAGING_WHATSAPP_RECIPIENTS'].every(k => env[k]?.trim()), 'REQUIRED_SECRET_MISSING');
       const recipients = env.STAGING_WHATSAPP_RECIPIENTS.split(',').map(digits);
@@ -118,7 +119,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure([200, 201].includes(r.status), 'TARGET_VERIFICATION_FAILED');
       const body = await r.json();
       ensure(body.staging === true, 'SERVER_NOT_STAGING');
-      ensure(body.conversationTestVersion === '2026-10-10.cart-v6', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
+      ensure(body.conversationTestVersion === '2026-10-10.cart-v7', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
       ensure(body.targetMatches === true, 'TEST_CHANNEL_OR_RECIPIENT_MISMATCH');
       ensure(body.botEnabled === true && body.agentEnabled === true && body.approvedModel === true && body.credentialsPresent === true, 'BOT_OR_APPROVED_MODEL_NOT_READY');
       ensure(Number.isInteger(body.rateLimitPerMinute) && body.rateLimitPerMinute >= 5 && body.rateLimitPerMinute <= 120, 'INVALID_RATE_LIMIT');
@@ -143,7 +144,14 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       const matches = list.filter(row => digits(row.phoneE164) === recipient);
       ensure(matches.length === 1 && Number.isSafeInteger(matches[0].id), 'TEST_CONVERSATION_MISSING_OR_AMBIGUOUS');
       conversationId = matches[0].id; initial = await detail(); initialName = initial.customerName;
-      ensure(initial.state === 'building_cart', 'TEST_CHAT_NOT_BUILDING_CART');
+      report.initialCart = initial.sessionData.cart.map(line => ({productId: line.productId, quantity: line.quantity}));
+      if (resumeCheckoutDraft) {
+        const inbound = initial.messages.filter(m => m.direction === 'in').slice(-6).map(m => normalize(m.body).trim());
+        ensure(initial.state === 'awaiting_final_confirm' && initial.sessionData.paymentMethod === 'cash' &&
+          initial.sessionData.addressConfirmed === true && inbound.length === 6 &&
+          inbound[0] === 'quiero dos sopas' && inbound[1] === '2' && inbound[2] === 'tres pollos fritos' &&
+          inbound[3] === 'no mas' && inbound[5] === '1', 'KNOWN_CHECKOUT_DRAFT_CHANGED');
+      } else ensure(initial.state === 'building_cart', 'TEST_CHAT_NOT_BUILDING_CART');
       if (resumeKnownDraft) {
         ensure(initial.sessionData.cart.length === 3 && !initial.sessionData.pendingCartQuantity &&
           initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Solo era una sobrebarriga asada', 'KNOWN_FAILED_DRAFT_CHANGED');
@@ -164,8 +172,8 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
           !initial.sessionData.pendingAttribute && !initial.sessionData.pendingMultiOrder &&
           initial.messages.filter(m => m.direction === 'in').at(-1)?.body ===
             'A los churrascos ponles también papas bien crocantes.', 'KNOWN_FAILED_DRAFT_CHANGED');
-      } else ensure(initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');
-      unchangedIdentity(initial);
+      } else if (!resumeCheckoutDraft) ensure(initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');
+      if (!resumeCheckoutDraft) unchangedIdentity(initial);
       const recentInbound = initial.messages.some(m => m.direction === 'in' && Number.isFinite(Date.parse(m.createdAt)) &&
         now() - Date.parse(m.createdAt) >= 0 && now() - Date.parse(m.createdAt) < 23 * 3600000);
       ensure(recentInbound, 'RECENT_TEST_CHAT_REQUIRED_META_WINDOW_NOT_GUARANTEED');
@@ -174,7 +182,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       const r = await request('/api/products'); ensure(r.status === 200, 'CATALOG_HTTP_FAILED');
       products = await r.json(); ensure(Array.isArray(products), 'INVALID_CATALOG');
       for (const [name, price] of [['Churrasco', 38000], ['Sobrebarriga', 33000], ['Costillas De Cerdo', 29500],
-        ['Mojarra', 29500], ['1 Pollo Frito', 41000], ['1 Pollo Broaster', 43000]]) {
+        ['Mojarra', 29500], ['1 Pollo Frito', 41000], ['1 Pollo Broaster', 43000], ['Sopa De Ajiaco', 10500]]) {
         const p = products.find(p => p.name === name);
         ensure(p && Number.isSafeInteger(p.id) && p.isActive === true && p.availableNow === true && Number(p.price) === price, 'REQUIRED_PRODUCT_UNAVAILABLE_OR_CHANGED');
       }
@@ -188,9 +196,17 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       if (resumeCollapsedDraft) ensure(cartMatches(knownCollapsedVariantDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
       if (resumeRemovalDraft) ensure(cartMatches(knownVariantRemovalDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
       if (resumeNoteDraft) ensure(cartMatches(knownDishNoteDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
+      if (resumeCheckoutDraft) {
+        const soup = products.find(p => p.name === 'Sopa De Ajiaco'), chicken = products.find(p => p.name === '1 Pollo Frito');
+        ensure(soup && chicken && cartMatches([
+          {productId:soup.id, quantity:3, unitPrice:Number(soup.price), attrs:[], note:[], forbidNote:[]},
+          {productId:chicken.id, quantity:3, unitPrice:Number(chicken.price), attrs:[{attributeName:'Arepas',attributeValue:'Blancas'}], note:[], forbidNote:[]},
+        ], initial.sessionData.cart), 'KNOWN_CHECKOUT_DRAFT_CHANGED');
+      }
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
-    const plan = resumeKnownDraft ? buildKnownVariantResumePlan(products) :
+    const plan = resumeCheckoutDraft ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}, ...buildPlan(products)] :
+      resumeKnownDraft ? buildKnownVariantResumePlan(products) :
       resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
       resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
       resumeNoteDraft ? buildDishNoteResumePlan(products) : buildPlan(products);
@@ -199,10 +215,14 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     const runId = randomUUID();
     for (const step of plan) {
       report.activeStep = step.id;
-      const before = await detail(); unchangedIdentity(before);
+      const before = await detail();
+      if (!(resumeCheckoutDraft && step.id === 'reset-authorized-checkout-test')) unchangedIdentity(before);
       ensure(JSON.stringify(before.sessionData) === JSON.stringify(current.sessionData) &&
         JSON.stringify(before.messages) === JSON.stringify(current.messages), 'CONCURRENT_CHAT_ACTIVITY');
       const previousIds = new Set(before.messages.map(m => String(m.id)));
+      const choiceIndex = step.chooseProductId ? before.sessionData.pendingMatch?.candidates?.findIndex(p => p.id === step.chooseProductId) : undefined;
+      if (step.chooseProductId) ensure(Number.isInteger(choiceIndex) && choiceIndex >= 0, 'EXPECTED_CHOICE_NOT_PRESENT');
+      const text = step.chooseProductId ? String(choiceIndex + 1) : step.text;
       const wait = Math.max(0, 60000 / rateLimit + 1000 - (now() - lastSent));
       if (wait) await sleep(wait);
       ensure(report.webhookPosts < plan.length, 'WEBHOOK_BUDGET_EXCEEDED');
@@ -210,7 +230,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         entry: [{ changes: [{ field: 'messages', value: { messaging_product: 'whatsapp',
           metadata: { phone_number_id: channel }, messages: [{ from: recipient,
             id: `wamid.ppp-staging-${runId}-${step.id}`, timestamp: String(Math.floor(now() / 1000)),
-            type: 'text', text: { body: step.text } }] } }] }] });
+            type: 'text', text: { body: text } }] } }] }] });
       ensure(payload, 'DUPLICATE_WITHOUT_PREVIOUS_MESSAGE');
       lastSent = now(); report.webhookPosts++;
       const r = await request('/api/whatsapp/webhook', { method: 'POST', headers: {
@@ -224,7 +244,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       if (step.duplicatePrevious) {
         ensure(messages.length === 0 && JSON.stringify(current.sessionData) === JSON.stringify(before.sessionData), 'DUPLICATE_PROCESSED_TWICE');
       } else {
-        ensure(incoming.length === 1 && incoming[0].body === step.text, 'MISSING_OR_CONCURRENT_INBOUND');
+        ensure(incoming.length === 1 && incoming[0].body === text, 'MISSING_OR_CONCURRENT_INBOUND');
         ensure(outgoing.length >= 1 && outgoing.every(m => m.sentBy === 'bot' && m.body?.trim()), 'BOT_REPLY_NOT_PERSISTED_OR_MANUAL_INTERFERENCE');
         ensure(outgoing.every(m => m.body.length <= 600), 'REPLY_TOO_LONG');
         const reply = normalize(outgoing.map(m => m.body).join(' '));
@@ -233,11 +253,14 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         if (step.reply === 'ribs') ensure(reply.includes('yuca') && /\bno\b/.test(reply) && reply.includes('ensalada'), 'RIBS_COMPOSITION_FACTS_FAILED');
       }
       const pass = cartMatches(step.cart, current.sessionData.cart);
+      if (step.pendingMatchQuantity) ensure(current.sessionData.pendingMatch?.quantity === step.pendingMatchQuantity, 'ORDER_CHOICE_QUANTITY_NOT_PERSISTED');
       if (typeof step.pendingQuantity === 'number') ensure(current.sessionData.pendingCartQuantity?.quantity === step.pendingQuantity &&
         current.sessionData.pendingCartQuantity.options?.length === 2, 'QUANTITY_AMBIGUITY_NOT_PERSISTED');
       if (step.pendingQuantity === false) ensure(!current.sessionData.pendingCartQuantity, 'QUANTITY_CHOICE_NOT_CLEARED');
       report.steps.push({ id: step.id, pass, inboundCount: incoming.length, outboundCount: outgoing.length,
-        expectedCartLines: step.cart.length, actualCartLines: current.sessionData.cart.length });
+        expectedCartLines: step.cart.length, actualCartLines: current.sessionData.cart.length,
+        expectedCart: step.cart.map(line=>({productId:line.productId,quantity:line.quantity})),
+        actualCart: current.sessionData.cart.map(line=>({productId:line.productId,quantity:line.quantity})) });
       ensure(pass, 'PERSISTED_CART_DOES_NOT_MATCH_EXPECTED_LINES_ATTRIBUTES_NOTES_PRICE');
     }
     delete report.activeStep;

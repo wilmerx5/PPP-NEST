@@ -319,6 +319,8 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'regala',
   ]);
   if (blockedExact.has(t)) return false;
+  // Quantity correction fragments can leak from old model turns into identity.
+  if (/^(?:(?:solo|solamente)\s+)?(?:eran?|faltan?|quita|quitar|cambia|cambiar)\b/.test(t)) return false;
   // "Este", "eso" señalan el plato; no son el nombre.
   if (/^(este|esta|esto|ese|esa|eso|aquel|aquella)$/.test(t)) return false;
   // "Por qué 5?" / "cuánto es" preguntan por el pedido.
