@@ -14880,13 +14880,22 @@ export class WhatsappOrchestratorService {
     for (const item of pending.confident) {
       const product = products.find((p) => p.id === item.productId);
       if (!product) continue;
-      const attrSource = [item.segment, sourceText].filter(Boolean).join(' ');
+      // Each resolved clause owns its quantity, choices and kitchen note.
+      // Appending the full message can turn both variants into the first one.
+      const rawSegment = this.rawOrderSegmentForQuantity(item.segment, sourceText);
+      const segmentChoices = this.catalogService.extractExplicitAttributeChoice(rawSegment, product) || [];
+      const ownedSource = sourceText
+        ? this.catalogService.orderSegmentForProduct(sourceText, product, products, segmentChoices)
+        : rawSegment;
+      const hasOwnedSource = !!ownedSource && ownedSource !== sourceText;
+      const attrSource = hasOwnedSource ? ownedSource : [item.segment, sourceText].filter(Boolean).join(' ');
       const qty =
         sourceText &&
         this.catalogService.askedForOneComboEach(sourceText) &&
         /\bcombo\b/i.test(product.name)
           ? 1
-          : this.quantityForMultiSegment(item.segment, product.name, sourceText);
+          : this.quantityForMultiSegment(hasOwnedSource ? ownedSource : item.segment, product.name,
+              hasOwnedSource ? ownedSource : sourceText);
       const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
       const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
       const explicit =
@@ -14921,11 +14930,12 @@ export class WhatsappOrchestratorService {
       }
       const lineNote =
         item.note ||
+        (hasOwnedSource ? this.catalogService.extractProductModificationNote(ownedSource) : undefined) ||
         (carriesSwap && swap
           ? this.catalogService.swapChangeNote(swap.removed, swap.added)
           : undefined);
       const attempt = this.tryAddProductToCart(next, product, qty, cfg, lineNote, attrs, {
-        sourceText,
+        sourceText: hasOwnedSource ? ownedSource : sourceText,
       });
       if (attempt.missingAttributes) {
         next = {

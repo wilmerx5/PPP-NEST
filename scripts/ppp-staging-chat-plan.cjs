@@ -67,4 +67,15 @@ function buildKnownVariantResumePlan(products) {
   ];
 }
 
-module.exports = { buildPlan, knownVariantDraft, buildKnownVariantResumePlan };
+function knownCollapsedVariantDraft(products) {
+  const original = buildPlan(products)[2].cart;
+  return [{ ...original[0], note: [] }, { ...original[1], quantity: 4 }];
+}
+
+function buildCollapsedVariantResumePlan(products) {
+  return [{ id: 'reset-verified-collapsed-test-draft', text: 'Vacía el carrito y empieza de cero.', cart: [] },
+    ...buildPlan(products).slice(2)];
+}
+
+module.exports = { buildPlan, knownVariantDraft, buildKnownVariantResumePlan,
+  knownCollapsedVariantDraft, buildCollapsedVariantResumePlan };

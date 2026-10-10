@@ -8499,7 +8499,15 @@ export class WhatsappCatalogService {
           /^medio\s+pollo$/.test(normalizeText(embedded.name)) &&
           /\bbroaster\b/.test(normalizeText(`${segment} ${text}`));
         if (!skipGenericMedio) {
-          if (usedProductIds.has(embedded.id) && !hasDistributedVariants) continue;
+          if (usedProductIds.has(embedded.id) && !hasDistributedVariants) {
+            const selected = this.extractExplicitAttributeChoice(segment, embedded) || [];
+            const distinctChoice = selected.length > 0 && confident.some(previous =>
+              previous.product.id === embedded.id &&
+              (this.extractExplicitAttributeChoice(previous.segment, embedded) || []).some(choice =>
+                selected.some(current => normalizeText(current.attributeName) === normalizeText(choice.attributeName) &&
+                  normalizeText(current.attributeValue) !== normalizeText(choice.attributeValue))));
+            if (!distinctChoice) continue;
+          }
           usedProductIds.add(embedded.id);
           const match = { segment, product: embedded, score: 100 };
           if (embedded.hasAttributes && embedded.attributes?.length) {
