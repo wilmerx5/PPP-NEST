@@ -205,3 +205,16 @@ describe('Agent actions applied by the real orchestrator (no DB or transports)',
     expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[25,1],[37,1]]);
   });
 });
+
+
+describe('Named catalog packs through guarded model actions',()=>{
+  it.each([
+    ['Quiero tres hamburguesas clasicas',1],
+    ['Quiero 3 hamburguesas clasicas',1],
+    ['Quiero dos paquetes de tres hamburguesas clasicas',2],
+  ])('keeps pack copies for %s',async(text,quantity)=>{
+    const session=await apply(String(text),{addItems:[{productId:78,quantity:3}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0].quantity).toBe(quantity);
+  });
+});

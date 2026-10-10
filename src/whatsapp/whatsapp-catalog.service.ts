@@ -9129,6 +9129,7 @@ export class WhatsappCatalogService {
       attributes?: { attributeName: string; attributeValue: string }[];
     }[],
     products: WhatsappCatalogProduct[],
+    opts?: { allowBareOption?: boolean },
   ): {
     cartIndex: number;
     itemName: string;
@@ -9141,7 +9142,7 @@ export class WhatsappCatalogService {
       /\b(puede ser|se puede|cambiar|en vez|en lugar|que sea|dejalo|dejala|cambialo|cambiala)\b/.test(
         q,
       );
-    if (!wantsChange) return null;
+    if (!wantsChange && !opts?.allowBareOption) return null;
 
     const hits: {
       cartIndex: number;
@@ -9156,7 +9157,7 @@ export class WhatsappCatalogService {
       if (!product?.attributes?.length) continue;
       for (const attr of product.attributes) {
         const picked = this.pickAttributeOptionFromText(text, attr);
-        if (!picked) continue;
+        if (!picked || (!wantsChange && normalizeText(picked) !== q)) continue;
         const current = (line.attributes || []).find(
           (a) => normalizeText(a.attributeName) === normalizeText(attr.attributeName),
         );
@@ -9170,7 +9171,7 @@ export class WhatsappCatalogService {
         });
       }
     }
-    if (!hits.length) return null;
+    if (!hits.length || (!wantsChange && hits.length !== 1)) return null;
     const mentionsDrink = /\b(gaseosa|bebida|sabor)\b/.test(q);
     const hit = (mentionsDrink ? hits.find((h) => h.drink) : null) || hits[0];
     return {

@@ -100,6 +100,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
    {id:1,code:1,name:'1 Pollo Frito',price:41000,isActive:true,trackInventory:true,stock:10,hasAttributes:true,categories:[category]},
    {id:23,code:23,name:'Arroz Con Pollo',price:29500,isActive:true,trackInventory:true,stock:10,hasAttributes:false,categories:[category]},
    {id:37,code:37,name:'Limonada Natural',price:4500,isActive:true,trackInventory:false,stock:0,hasAttributes:false,categories:[category]},
+   {id:94,code:94,name:'Tres Arepas Doradas',price:18000,isActive:true,trackInventory:true,stock:10,hasAttributes:false,categories:[category]},
   ]);
   await db.getRepository(ProductAttribute).save({product:{id:1},attributeName:'Arepas',options:JSON.stringify(['Blancas','Fritas','Sin arepas'])});
   await db.getRepository(WhatsappSettings).save({id:1,ignoreBusinessHours:false});
@@ -191,6 +192,17 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   expect(order.items).toHaveLength(2);
   expect(order.items.map(item=>item.note)).toEqual(['sin ensalada','sin ensalada']);
   expect(await stock(23)).toBe(8);
+  expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
+ });
+
+ it.each([['Quiero tres arepas doradas',1],['Quiero dos paquetes de tres arepas doradas',2]])('persists pack copies rather than package contents: %s',async(text,copies)=>{
+  const cart=await apply(String(text),{addItems:[{productId:94,quantity:3}]});
+  expect(cart).toHaveLength(1);expect(cart[0].quantity).toBe(copies);
+  await ready(cart);await post('wamid.pack.summary','No más').expect(200);
+  await post('wamid.pack.confirm','Confirmar').expect(200);await settled();
+  const order=await saved();expect(order.items).toHaveLength(Number(copies));
+  expect(order.items.every(item=>item.product.id===94)).toBe(true);
+  expect(await stock(94)).toBe(10-Number(copies));
   expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
  });
 

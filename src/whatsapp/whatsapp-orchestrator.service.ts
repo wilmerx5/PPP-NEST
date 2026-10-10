@@ -1,3 +1,4 @@
+import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
@@ -629,6 +630,11 @@ export class WhatsappOrchestratorService {
       await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
+    if (session.cart.length && !session.pendingAttribute && !session.pendingMatch &&
+        ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state)) {
+      const productsForChange = await this.catalogService.getMenuProducts();
+      if (await this.tryHandleCartAttributeOptionChange(conv,msg.waId,session,originalText,productsForChange)) return;
+    }
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     // Resolve an address-only turn before compound parsing pre-applies it;
@@ -4263,6 +4269,8 @@ export class WhatsappOrchestratorService {
     multiQtyOrder: boolean;
     forcedQty: number;
   }): number {
+    const packCopies = namedPackOrderQuantity(opts.sourceText || opts.quantitySource || '', opts.product.name);
+    if (packCopies != null) return packCopies;
     const aiQty = Math.max(1, Math.min(30, opts.aiQuantity ?? 1));
     const correctedQty = this.catalogService.extractCorrectedQuantityForProduct(opts.sourceText || '', opts.product.name);
     if (correctedQty != null) return correctedQty;
@@ -4296,6 +4304,8 @@ export class WhatsappOrchestratorService {
     productName: string,
     fullText?: string,
   ): number {
+    const packCopies = namedPackOrderQuantity(segment || fullText || '', productName);
+    if (packCopies != null) return packCopies;
     const rawSeg = this.rawOrderSegmentForQuantity(segment, fullText);
     const fromSeg = this.catalogService.extractQuantityFromSegment(rawSeg || '');
     if (fromSeg >= 2) return Math.min(30, fromSeg);
@@ -4323,6 +4333,8 @@ export class WhatsappOrchestratorService {
     product: MenuProduct,
     opts?: { sourceText?: string; segment?: string },
   ): number {
+    const packCopies = namedPackOrderQuantity(opts?.sourceText || opts?.segment || session.pendingMatch?.query || '', product.name);
+    if (packCopies != null) return packCopies;
     const pm = session.pendingMultiOrder;
     const segment =
       opts?.segment ||
@@ -13927,7 +13939,8 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
   ): Promise<boolean> {
     if (!session.cart.length) return false;
-    const change = this.catalogService.findCartAttributeOptionChange(text, session.cart, products);
+    const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
+    const change = this.catalogService.findCartAttributeOptionChange(text, session.cart, products, {allowBareOption:resumeCheckout});
     if (!change) return false;
     const line = session.cart[change.cartIndex];
     if (!line) return false;
@@ -13940,6 +13953,10 @@ export class WhatsappOrchestratorService {
     const cart = session.cart.map((item, i) => (i === change.cartIndex ? { ...item, attributes } : item));
     session = { ...session, cart, pendingAttribute: undefined, pendingMatch: undefined };
     await this.conversationService.saveSession(conv, session, 'building_cart');
+    if (resumeCheckout) {
+      await this.tryConfirmOrder(conv,waId,session,{preface:`Listo ✅ *${change.itemName}* queda con *${change.attributeName}: ${change.attributeValue}*.`});
+      return true;
+    }
     await this.reply(
       conv,
       waId,

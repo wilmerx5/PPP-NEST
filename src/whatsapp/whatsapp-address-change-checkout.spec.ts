@@ -253,3 +253,15 @@ describe('Payment shortcut respects configured methods and questions', () => {
     expect(h.conv.state).not.toBe('awaiting_final_confirm');
   });
 });
+
+
+describe('Explicit option changes while choosing payment',()=>{
+  it.each(['awaiting_payment','awaiting_final_confirm'])('changes a preparation in %s without losing checkout',async state=>{
+    const h=harness();h.conv.state=state;
+    if(state==='awaiting_final_confirm')h.conv.sessionData.paymentMethod='cash';
+    h.conv.sessionData.cart=[{productId:13,name:'Sobrebarriga',code:13,unitPrice:33000,quantity:2,note:'sin ensalada',attributes:[{attributeName:'Seleccion',attributeValue:'Asada'}]}];
+    await h.send('En salsa');
+    expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:13,quantity:2,note:'sin ensalada',attributes:[{attributeName:'Seleccion',attributeValue:'En Salsa'}]})]);
+    expect(h.conv.state).toBe(state);
+  });
+});

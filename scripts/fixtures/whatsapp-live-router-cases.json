@@ -1,0 +1,469 @@
+[
+  {
+    "id": "hotel-address-correction",
+    "messages": [
+      {
+        "text": "Quiero costillas de cerdo",
+        "expect": {
+          "items": {
+            "60": 1
+          }
+        }
+      },
+      {
+        "text": "Para ek hotel santandereano",
+        "expect": {
+          "items": {
+            "60": 1
+          },
+          "state": "awaiting_payment",
+          "address": "hotel santandereano"
+        }
+      },
+      {
+        "text": "Cambiar la direction a d2 b 79 a. 86",
+        "expect": {
+          "items": {
+            "60": 1
+          },
+          "state": "awaiting_payment",
+          "address": "79"
+        }
+      },
+      {
+        "text": "Pago con 100 mil",
+        "expect": {
+          "items": {
+            "60": 1
+          },
+          "state": "awaiting_final_confirm",
+          "payment": "cash",
+          "cashContains": "100"
+        }
+      },
+      {
+        "text": "Confirmar",
+        "expect": {
+          "items": {},
+          "state": "completed",
+          "orderCount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "soup-chicken-quantities",
+    "messages": [
+      {
+        "text": "Quiero dos sopas",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "2",
+        "expect": {
+          "items": {
+            "38": 2
+          }
+        }
+      },
+      {
+        "text": "Tres pollos fritos",
+        "expect": {
+          "items": {
+            "38": 2,
+            "1": 3
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "38": 2,
+            "1": 3
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "Transferencia",
+        "expect": {
+          "items": {
+            "38": 2,
+            "1": 3
+          },
+          "state": "awaiting_final_confirm",
+          "payment": "transfer"
+        }
+      },
+      {
+        "text": "Confirmar",
+        "expect": {
+          "state": "completed",
+          "orderCount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "typo-chicken-clarification",
+    "messages": [
+      {
+        "text": "Quiero Tres pillos",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Fritos",
+        "expect": {
+          "items": {
+            "1": 3
+          }
+        }
+      },
+      {
+        "text": "Para el hotel santandereano",
+        "expect": {
+          "items": {
+            "1": 3
+          },
+          "state": "awaiting_payment"
+        }
+      }
+    ]
+  },
+  {
+    "id": "address-during-soup-selection",
+    "messages": [
+      {
+        "text": "Dos sopas",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      },
+      {
+        "text": "Ajiaco",
+        "expect": {
+          "items": {
+            "17": 2,
+            "38": 2
+          }
+        }
+      }
+    ],
+    "initialCart": [
+      {
+        "id": 17,
+        "quantity": 2,
+        "note": "sin ensalada"
+      }
+    ]
+  },
+  {
+    "id": "add-after-payment-prompt",
+    "messages": [
+      {
+        "text": "Quiero dos arroces con pollo",
+        "expect": {
+          "items": {
+            "23": 2
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "23": 2
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "Una sopa de ajiaco",
+        "expect": {
+          "items": {
+            "23": 2,
+            "38": 1
+          }
+        }
+      },
+      {
+        "text": "No más",
+        "expect": {
+          "items": {
+            "23": 2,
+            "38": 1
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "Efectivo",
+        "expect": {
+          "items": {
+            "23": 2,
+            "38": 1
+          },
+          "state": "awaiting_final_confirm"
+        }
+      }
+    ]
+  },
+  {
+    "id": "availability-before-order",
+    "messages": [
+      {
+        "text": "¿Tienen dos pollos fritos?",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Quiero dos pollos fritos",
+        "expect": {
+          "items": {
+            "1": 2
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56, pago por transferencia",
+        "expect": {
+          "items": {
+            "1": 2
+          },
+          "state": "awaiting_final_confirm",
+          "payment": "transfer"
+        }
+      }
+    ]
+  },
+  {
+    "id": "quantity-correction-before-payment",
+    "messages": [
+      {
+        "text": "Quiero tres pollos fritos",
+        "expect": {
+          "items": {
+            "1": 3
+          }
+        }
+      },
+      {
+        "text": "Solo dos pollos fritos",
+        "expect": {
+          "items": {
+            "1": 2
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "1": 2
+          },
+          "state": "awaiting_payment"
+        }
+      }
+    ]
+  },
+  {
+    "id": "selective-removal",
+    "messages": [
+      {
+        "text": "Quita el ajiaco, conserva los pollos",
+        "expect": {
+          "items": {
+            "1": 3
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "1": 3
+          },
+          "state": "awaiting_payment"
+        }
+      }
+    ],
+    "initialCart": [
+      {
+        "id": 1,
+        "quantity": 3
+      },
+      {
+        "id": 38,
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "id": "address-correction-after-transfer",
+    "messages": [
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "23": 2
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "Transferencia",
+        "expect": {
+          "state": "awaiting_final_confirm",
+          "payment": "transfer"
+        }
+      },
+      {
+        "text": "Cambia la direccion a Carrera 7 20 30",
+        "expect": {
+          "items": {
+            "23": 2
+          },
+          "state": "awaiting_final_confirm",
+          "address": "20",
+          "payment": "transfer"
+        }
+      }
+    ],
+    "initialCart": [
+      {
+        "id": 23,
+        "quantity": 2,
+        "note": "sin ensalada"
+      }
+    ]
+  },
+  {
+    "id": "preparation-change-during-payment",
+    "messages": [
+      {
+        "text": "Quiero una sobrebarriga",
+        "expect": {
+          "items": {
+            "13": 1
+          },
+          "attrs": [
+            {
+              "id": 13,
+              "key": "Seleccion",
+              "value": "Asada"
+            }
+          ]
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "13": 1
+          },
+          "state": "awaiting_payment"
+        }
+      },
+      {
+        "text": "En salsa",
+        "expect": {
+          "items": {
+            "13": 1
+          },
+          "state": "awaiting_payment",
+          "attrs": [
+            {
+              "id": 13,
+              "key": "Seleccion",
+              "value": "En Salsa"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "named-burger-bundle",
+    "messages": [
+      {
+        "text": "Quiero tres hamburguesas clasicas",
+        "expect": {
+          "items": {
+            "78": 1
+          }
+        }
+      },
+      {
+        "text": "Colombiana",
+        "expect": {
+          "items": {
+            "78": 1
+          }
+        }
+      },
+      {
+        "text": "Calle 12 34 56",
+        "expect": {
+          "items": {
+            "78": 1
+          },
+          "state": "awaiting_payment"
+        }
+      }
+    ]
+  },
+  {
+    "id": "reset-and-new-order",
+    "messages": [
+      {
+        "text": "Reiniciar",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Quiero una sopa de ajiaco",
+        "expect": {
+          "items": {
+            "38": 1
+          }
+        }
+      },
+      {
+        "text": "Para el hotel santandereano",
+        "expect": {
+          "items": {
+            "38": 1
+          },
+          "state": "awaiting_payment"
+        }
+      }
+    ],
+    "initialCart": [
+      {
+        "id": 17,
+        "quantity": 2
+      },
+      {
+        "id": 1,
+        "quantity": 3
+      }
+    ]
+  }
+]

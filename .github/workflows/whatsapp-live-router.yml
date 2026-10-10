@@ -1,0 +1,43 @@
+name: WhatsApp Real Model Router
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model snapshot used by the deployed bot
+        default: gpt-4.1-2025-04-14
+        required: true
+        type: string
+      repetitions:
+        description: Repetitions of each full-router conversation (1–3)
+        default: '2'
+        required: true
+        type: choice
+        options: ['1', '2', '3']
+permissions:
+  contents: read
+concurrency:
+  group: ppp-real-model-router
+  cancel-in-progress: false
+jobs:
+  conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn beta:whatsapp:router
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_MODEL: ${{ inputs.model }}
+          WHATSAPP_BETA_REPEATS: ${{ inputs.repetitions }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-model-router-report
+          path: tmp/whatsapp-live-router-report.json
+          if-no-files-found: error
