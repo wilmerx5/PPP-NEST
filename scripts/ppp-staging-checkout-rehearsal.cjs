@@ -307,6 +307,44 @@ async function runCheckoutRehearsal(
         const lastInbound = current.messages
           .filter(message => message.direction === 'in')
           .at(-1);
+        report.conversationSnapshot = {
+          state: String(current.state || ''),
+          humanTakeover: current.humanTakeover === true,
+          cart: current.sessionData.cart.map(line => ({
+            productId: Number(line.productId),
+            quantity: Number(line.quantity),
+          })),
+          pendingKeys: Object.entries(current.sessionData)
+            .filter(
+              ([key, value]) => key.startsWith('pending') && value != null,
+            )
+            .map(([key]) => key)
+            .sort(),
+          pendingMatch: current.sessionData.pendingMatch
+            ? {
+                quantity: Number(current.sessionData.pendingMatch.quantity),
+                candidateProductIds: Array.isArray(
+                  current.sessionData.pendingMatch.candidates,
+                )
+                  ? current.sessionData.pendingMatch.candidates.map(candidate =>
+                      Number(candidate.id),
+                    )
+                  : [],
+              }
+            : null,
+          hasAddress: Boolean(current.sessionData.address),
+          hasPaymentMethod: Boolean(current.sessionData.paymentMethod),
+          lastInboundMatchesFailedSoup:
+            lastInbound?.body === 'Una sopa de ajiaco',
+          lastInboundAgeSeconds: Number.isFinite(
+            Date.parse(lastInbound?.createdAt),
+          )
+            ? Math.max(
+                0,
+                Math.round((now() - Date.parse(lastInbound.createdAt)) / 1000),
+              )
+            : null,
+        };
         if (resumeFailedSoup) {
           ensure(
             current.state === 'building_cart' &&
