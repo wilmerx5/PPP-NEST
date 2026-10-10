@@ -14,7 +14,7 @@ on:
       resume:
         description: Resume only the verified failed synthetic variant draft
         type: choice
-        options: [fresh, known-variant-draft]
+        options: [fresh, known-variant-draft, known-collapsed-variant-draft]
         default: fresh
         required: false
 
@@ -30,13 +30,13 @@ jobs:
     if: >-
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == '43ea7c0ea104979496bda85a0e0b4bfee62a784f'))
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 8df688154e2c0403b3bed7fd9efaac03131a802c
+          ref: 66c60e30b4cb6cf9443aba5a966fe09d7c69f403
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -45,28 +45,14 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: 'false'
-          STAGING_CHAT_RESUME: ${{ inputs.resume == 'known-variant-draft' && 'known-variant-draft' || '' }}
+          STAGING_CHAT_EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute && 'true' || 'false' }}
+          STAGING_CHAT_RESUME: ${{ inputs.resume != 'fresh' && inputs.resume || '' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
           STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
           STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const marker = 'conversationId = matches[0].id; initial = await detail(); initialName = initial.customerName;';
-          const replacement = marker + `
-            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'KNOWN_SYNTHETIC_DRAFT_CHANGED');
-            report.syntheticCartFacts = initial.sessionData.cart.map(line => ({productId: line.productId, quantity: line.quantity, unitPrice: Number(line.unitPrice), selectionAsada: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'Asada') || false, selectionSalsa: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'En Salsa') || false, noteSinEnsalada: normalize(line.note).includes('sin ensalada'), noteEmpty: !String(line.note || '').trim()}));`;
-          const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs','utf8');
-          if (!source.includes(marker)) throw Error('DIAGNOSTIC_MARKER_MISSING');
-          fs.writeFileSync('scripts/ppp-staging-variant-diagnostic.cjs',source.replace(marker,replacement));
-          require('./scripts/ppp-staging-variant-diagnostic.cjs').runRehearsal().then(report => {
-            fs.mkdirSync('tmp',{recursive:true});fs.writeFileSync('tmp/ppp-staging-chat-report.json',JSON.stringify(report));
-            console.log(JSON.stringify(report));process.exitCode = report.ok ? 0 : 1;
-          }).catch(() => {console.error('VARIANT_DIAGNOSTIC_FAILED');process.exitCode = 1;});
-          NODE
+        run: node scripts/ppp-staging-chat-rehearsal.cjs
       - name: Archive counts and check results without credentials or message bodies
         if: always()
         uses: actions/upload-artifact@v4
