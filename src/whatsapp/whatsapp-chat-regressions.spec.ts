@@ -1511,6 +1511,16 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       expect(catalog.pickFromCandidateList(text, family.variants)?.name).toMatch(
         /1\/4\s+pollo\s+frito/i,
       );
+      const wholeOnly = pppMenu.filter((p) => /^1\s+pollo\s+(frito|broaster)/i.test(p.name));
+      expect(wholeOnly.length).toBeGreaterThanOrEqual(2);
+      expect(catalog.pickFromCandidateList(text, wholeOnly)).toBeNull();
+      expect(
+        catalog.pickVariantFromFamilyText(text, {
+          baseLabel: 'Pollo',
+          baseKey: 'pollo',
+          variants: wholeOnly,
+        }),
+      ).toBeNull();
     });
   });
 

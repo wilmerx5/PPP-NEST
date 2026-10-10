@@ -5199,6 +5199,11 @@ export class WhatsappOrchestratorService {
     }
 
     if (!chosenLite) {
+      const sized = this.catalogService.resolveSizedChickenProduct(text, products);
+      if (sized) chosenLite = sized;
+    }
+
+    if (!chosenLite) {
       const family = this.catalogService.findProductVariantFamily(
         pending.query || text,
         products,
@@ -5216,11 +5221,6 @@ export class WhatsappOrchestratorService {
         pending.candidates as MenuProduct[],
       );
       if (byList) chosenLite = byList;
-    }
-
-    if (!chosenLite) {
-      const sized = this.catalogService.resolveSizedChickenProduct(text, products);
-      if (sized) chosenLite = sized;
     }
 
     if (!chosenLite) {

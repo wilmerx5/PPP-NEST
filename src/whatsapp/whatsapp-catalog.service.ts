@@ -6694,6 +6694,13 @@ export class WhatsappCatalogService {
         : sized;
       if (sizedStyled.length === 1) return sizedStyled[0];
       if (!styleAsked.length && sized.length === 1) return sized[0];
+      // "cuarto frito" no puede caer en un entero de la lista previa
+      if (
+        !sized.length &&
+        family.variants.some((p) => this.detectProductPortionSize(p.name))
+      ) {
+        return null;
+      }
     }
     if (styleAsked.length) {
       const styled = family.variants.filter((p) =>
@@ -6790,6 +6797,12 @@ export class WhatsappCatalogService {
     if (portion) {
       const sized = candidates.filter((p) => this.detectProductPortionSize(p.name) === portion);
       if (sized.length === 1) return sized[0];
+      if (
+        !sized.length &&
+        candidates.some((p) => this.detectProductPortionSize(p.name))
+      ) {
+        return null;
+      }
     }
 
     const asFamily: ProductVariantFamily = {
