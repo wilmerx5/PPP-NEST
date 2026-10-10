@@ -49,8 +49,16 @@ export class OrdersGateway {
   /**
    * Emite solo a rooms de staff (kitchen / orders / tables),
    * no a todo el namespace (evita clientes ajenos).
+   * En staging queda bloqueado por defecto para que una orden sintética no
+   * llegue a una cocina, impresora o app de mesas conectada por error.
    */
   emitOrdersUpdates(action: string, order: any) {
+    if (
+      process.env.PPP_STAGING === 'true' &&
+      process.env.STAGING_ORDER_EVENTS_ALLOW !== 'true'
+    ) {
+      return;
+    }
     this.server.to([...ORDER_STAFF_ROOMS]).emit(action, order);
   }
 }
