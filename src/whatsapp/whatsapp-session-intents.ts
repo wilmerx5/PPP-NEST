@@ -901,6 +901,30 @@ function offerNorm(text: string): string {
     .trim();
 }
 
+function offerOptionNorm(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9$\s()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeOfferName(name: string): string {
+  return name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Evita que “Arroz Chino” robe la opción “Arroz Chino con Costillas ($50.000)”. */
+function nameListedAsOfferOption(offer: string, name: string): boolean {
+  const priced = new RegExp(`${escapeOfferName(name)}\\s*\\(\\s*\\$`).test(offer);
+  if (priced) return true;
+  const bounded = new RegExp(
+    `(?:^|[?¿]|quieres|cual|\\bo\\b|,)\\s*${escapeOfferName(name)}(?:\\s*(?:\\(|\\$|\\bo\\b|,|\\?|$))`,
+  );
+  return bounded.test(offer);
+}
+
 function offerEditDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
@@ -950,9 +974,10 @@ export function pickProductNamedInLastOffer(
     rawOffer.includes('cual');
   if (!rawOffer || !asked) return null;
   const offer = rawOffer;
+  const optionOffer = offerOptionNorm(offerText);
   const offered = products.filter((p) => {
     const name = offerNorm(p.name);
-    return name.length >= 8 && offer.includes(name);
+    return name.length >= 8 && offer.includes(name) && nameListedAsOfferOption(optionOffer, name);
   });
   if (offered.length < 2) return null;
   const said = offerContentTokens(userText);

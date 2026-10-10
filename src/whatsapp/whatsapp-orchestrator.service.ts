@@ -2030,16 +2030,20 @@ export class WhatsappOrchestratorService {
         this.catalogService.looksLikeMultiItemOrderMessage(originalText))
     ) {
       const multi = this.catalogService.resolveMultiProductOrder(text, products);
+      const leftoverUnresolved = (multi?.unresolved || []).filter(
+        (s) => !this.catalogService.isPolitenessOnlySegment(s),
+      );
       const multiClean =
         !!multi &&
         multi.ambiguous.length === 0 &&
-        multi.unresolved.length === 0 &&
+        leftoverUnresolved.length === 0 &&
         multi.confident.length + multi.needsAttributes.length >= 1;
       const multiAskStyle =
         !!multi &&
-        multi.unresolved.length === 0 &&
+        leftoverUnresolved.length === 0 &&
         multi.ambiguous.length > 0 &&
-        multi.confident.length + multi.needsAttributes.length >= 1;
+        (multi.confident.length + multi.needsAttributes.length >= 1 ||
+          multi.ambiguous.length >= 2);
       if (
         multiAskStyle &&
         (await this.tryAskChickenStyleKeepingOthers(
@@ -2214,6 +2218,13 @@ export class WhatsappOrchestratorService {
     }
 
     if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
+      return;
+    }
+
+    if (
+      session.pendingMultiOrder &&
+      (await this.tryResolvePendingMultiOrder(conv, msg.waId, session, text, products, cfg))
+    ) {
       return;
     }
 
@@ -10469,7 +10480,7 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const raw = (text || '').trim();
     if (raw.length < 3 || raw.length > 80 || /[?¿]/.test(raw)) return false;
-    if (session.pendingAttribute || session.pendingMultiOrder) return false;
+    if (session.pendingAttribute) return false;
     if (conv.state !== 'building_cart' && conv.state !== 'awaiting_attribute') return false;
     if (
       this.catalogService.looksLikeClearlyMultiDishOrder(raw) ||
@@ -11770,7 +11781,8 @@ export class WhatsappOrchestratorService {
     customerName: string | null;
     phoneUsesWhatsapp?: boolean;
   } {
-    let working = (text || '').trim().replace(/\s*\n+\s*/g, ' ');
+    const original = (text || '').trim();
+    let working = original.replace(/\s*\n+\s*/g, ' ');
     let phone: string | null = null;
     let customerName: string | null = null;
     let phoneUsesWhatsapp = false;
@@ -11904,6 +11916,18 @@ export class WhatsappOrchestratorService {
         phone,
         customerName,
         phoneUsesWhatsapp,
+      };
+    }
+
+    // WhatsApp manda cada plato en su línea. Si no sacamos dirección,
+    // nombre ni teléfono, no aplastar esos saltos: "2 costillas\n1 mojarra"
+    // dejaría de verse como dos platos.
+    if (!phone && !customerName && !phoneUsesWhatsapp) {
+      return {
+        productText: original,
+        address: null,
+        phone: null,
+        customerName: null,
       };
     }
 

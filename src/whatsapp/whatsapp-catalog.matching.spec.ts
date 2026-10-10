@@ -176,6 +176,8 @@ describe('WhatsappCatalogService matching regressions', () => {
     expect(catalog.isAvailabilityInquiry('Me vendes 2 costillas\n1 mojarra')).toBe(false);
     expect(catalog.isAvailabilityInquiry('Me vendes 2 costillas')).toBe(false);
     expect(catalog.looksLikeClearlyMultiDishOrder('Me vendes 2 costillas\n1 mojarra')).toBe(true);
+    expect(catalog.isPolitenessOnlySegment('Me vendes')).toBe(true);
+    expect(catalog.isPolitenessOnlySegment('2 costillas')).toBe(false);
     expect(catalog.isAvailabilityInquiry('¿venden arroz chino?')).toBe(true);
     expect(catalog.isAvailabilityInquiry('tienes mazorcada?')).toBe(true);
     expect(catalog.stripAvailabilityInquiryNoise('tienes mazorcada?')).toMatch(/^mazorcada$/i);

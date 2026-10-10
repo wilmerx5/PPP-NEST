@@ -391,8 +391,28 @@ describe('pickProductNamedInLastOffer', () => {
     );
   });
 
+  it('la lista de candidatos también entiende der', () => {
+    const catalog = new (require('./whatsapp-catalog.service').WhatsappCatalogService)({} as never);
+    expect(
+      catalog.pickFromCandidateList('costillas der cerdo', [
+        { id: 25, name: 'Costillas De Cerdo' },
+        { id: 72, name: 'Arroz Chino Con Costillas De Cerdo' },
+      ])?.name,
+    ).toBe('Costillas De Cerdo');
+  });
+
   it('elige el arroz si lo nombra', () => {
     expect(pickProductNamedInLastOffer('el arroz chino', offer, products)?.name).toBe(
+      'Arroz Chino Con Costillas De Cerdo',
+    );
+  });
+
+  it('no elige el arroz chino suelto si la oferta era el combo', () => {
+    const withSimple = [
+      ...products,
+      { id: 26, name: 'Arroz Chino' },
+    ];
+    expect(pickProductNamedInLastOffer('el arroz chino', offer, withSimple)?.name).toBe(
       'Arroz Chino Con Costillas De Cerdo',
     );
   });

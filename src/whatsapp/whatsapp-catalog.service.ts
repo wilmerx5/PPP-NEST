@@ -10,7 +10,7 @@ import {
   MENU_WRAPPER_TOKENS,
   productLooksLikeNamedMenuDish,
 } from './whatsapp-named-menu-dish';
-import { isAddressChangeIntent } from './whatsapp-session-intents';
+import { isAddressChangeIntent, pickProductNamedInLastOffer } from './whatsapp-session-intents';
 import {
   isDeliverySetupWithoutFood,
   isUpcomingAddressIntent,
@@ -180,6 +180,10 @@ const ORDER_INTENT_ONLY = new Set([
   'ordenar',
   'pedir',
   'hacer',
+  'vendes',
+  'venden',
+  'vendeme',
+  'vendame',
 ]);
 
 /** Palabras frecuentes de charla que NO son comida (evita "cuento" → plato). */
@@ -1608,7 +1612,7 @@ export class WhatsappCatalogService {
     if (/\d/.test(n) && /\b(codigo|#)\b/.test(n)) return false;
     n = n
       .replace(
-        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|por\s+fa|pf|gracias|pedirte|pedir|encargar|encargarte|para|fa|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|regala|poner|ponerme|das|regalas|traes|pones|mandas|hola|buenas|tardes|noches|dias|ok|okay|entonces|listo|bueno)\b/g,
+        /\b(veci(?:no|na)?|amigo|amiga|parce|compadre|por\s+favor|porfa|por\s+fa|pf|gracias|pedirte|pedir|encargar|encargarte|para|fa|me|te|le|nos|puedes|puede|podes|podrias|podria|enviar|enviarme|mandar|mandarme|traer|traerme|dar|darme|regalar|regalarme|regala|poner|ponerme|das|regalas|traes|pones|mandas|vendes|venden|vendeme|vendame|vender|hola|buenas|tardes|noches|dias|ok|okay|entonces|listo|bueno)\b/g,
         ' ',
       )
       .replace(/[!.?,;:]+/g, ' ')
@@ -6706,7 +6710,21 @@ export class WhatsappCatalogService {
     });
     if (hits.length === 1) return hits[0];
 
-    return null;
+    const relaxed = q.replace(/\bder\b/g, 'de');
+    if (relaxed !== q) {
+      const byDe = candidates.filter((p) => {
+        const name = normalizeText(p.name);
+        return relaxed === name || (name.length >= 5 && (relaxed.includes(name) || name.includes(relaxed)));
+      });
+      if (byDe.length === 1) return byDe[0];
+    }
+
+    const fromOffer = pickProductNamedInLastOffer(
+      text,
+      `¿Quieres ${candidates.map((p) => p.name).join(' o ')}?`,
+      candidates,
+    );
+    return fromOffer ? candidates.find((p) => p.id === fromOffer.id) || null : null;
   }
 
   /**
@@ -8808,6 +8826,8 @@ export class WhatsappCatalogService {
     }
 
     this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
+    const leftover = unresolved.filter((s) => !this.isPolitenessOnlySegment(s));
+    unresolved.splice(0, unresolved.length, ...leftover);
     const resolvedCount = confident.length + ambiguous.length + needsAttributes.length;
     const names =
       possibleCustomerNames.length > 0
