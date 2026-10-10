@@ -155,6 +155,12 @@ test('resets only the authorized exact soup checkout draft and checks all 28 tur
   assert.equal(report.ok,true);assert.equal(report.steps.length,28);
   assert.equal(f.sentTexts[0],'Reiniciar');assert.equal(report.steps.at(-1).actualCartLines,0);
 });
+test('starts all 27 turns when the authorized checkout draft was already reset to a verified empty cart', async () => {
+  const f=fixture();
+  const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-soup-checkout-draft'},f.fetch,f.helpers);
+  assert.equal(report.ok,true);assert.equal(report.steps.length,27);
+  assert.equal(report.steps[0].id,'lunch-meat-inquiry');
+});
 for (const option of ['changedDraftInput','changedDraftQuantity']) test(`preserves checkout draft when ${option}`, async () => {
   const f=fixture({resumeCheckoutDraft:true,[option]:true});
   const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-soup-checkout-draft'},f.fetch,f.helpers);

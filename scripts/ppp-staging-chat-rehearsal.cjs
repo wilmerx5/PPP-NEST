@@ -43,6 +43,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
   const resumeRemovalDraft = env.STAGING_CHAT_RESUME === 'known-variant-removal-draft';
   const resumeNoteDraft = env.STAGING_CHAT_RESUME === 'known-dish-note-draft';
   const resumeCheckoutDraft = env.STAGING_CHAT_RESUME === 'known-soup-checkout-draft';
+  let checkoutResumeNeedsReset = resumeCheckoutDraft;
   const report = { ok: false, mode: env.STAGING_CHAT_EXECUTE === 'true' ? 'execute' : 'preflight',
     checks: [], steps: [], webhookPosts: 0, expectedSteps: resumeCheckoutDraft ? 28 : resumeKnownDraft ? 29 : resumeCollapsedDraft ? 26 : resumeRemovalDraft ? 22 : resumeNoteDraft ? 21 : 27,
     limits: 'Synthetic signed inbound events; real staging persistence and Meta outbound. No genuine Meta inbound delivery, kitchen, payments or order confirmation tested.' };
@@ -145,7 +146,13 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure(matches.length === 1 && Number.isSafeInteger(matches[0].id), 'TEST_CONVERSATION_MISSING_OR_AMBIGUOUS');
       conversationId = matches[0].id; initial = await detail(); initialName = initial.customerName;
       report.initialCart = initial.sessionData.cart.map(line => ({productId: line.productId, quantity: line.quantity}));
-      if (resumeCheckoutDraft) {
+      if (resumeCheckoutDraft && initial.state === 'building_cart' && initial.sessionData.cart.length === 0 &&
+        !initial.sessionData.pendingMatch && !initial.sessionData.pendingAttribute && !initial.sessionData.pendingMultiOrder &&
+        !initial.sessionData.pendingCartQuantity && !initial.sessionData.pendingCartRemoval) {
+        checkoutResumeNeedsReset = false;
+        unchangedIdentity(initial);
+        report.expectedSteps = 27;
+      } else if (resumeCheckoutDraft) {
         const inbound = initial.messages.filter(m => m.direction === 'in').slice(-6).map(m => normalize(m.body).trim());
         ensure(initial.state === 'awaiting_final_confirm' && initial.sessionData.paymentMethod === 'cash' &&
           initial.sessionData.addressConfirmed === true && inbound.length === 6 &&
@@ -196,7 +203,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       if (resumeCollapsedDraft) ensure(cartMatches(knownCollapsedVariantDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
       if (resumeRemovalDraft) ensure(cartMatches(knownVariantRemovalDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
       if (resumeNoteDraft) ensure(cartMatches(knownDishNoteDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
-      if (resumeCheckoutDraft) {
+      if (checkoutResumeNeedsReset) {
         const soup = products.find(p => p.name === 'Sopa De Ajiaco'), chicken = products.find(p => p.name === '1 Pollo Frito');
         ensure(soup && chicken && cartMatches([
           {productId:soup.id, quantity:3, unitPrice:Number(soup.price), attrs:[], note:[], forbidNote:[]},
@@ -205,7 +212,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       }
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
-    const plan = resumeCheckoutDraft ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}, ...buildPlan(products)] :
+    const plan = resumeCheckoutDraft ? [...(checkoutResumeNeedsReset ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}] : []), ...buildPlan(products)] :
       resumeKnownDraft ? buildKnownVariantResumePlan(products) :
       resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
       resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
