@@ -14,7 +14,7 @@ on:
       resume:
         description: Resume only the verified failed synthetic variant draft
         type: choice
-        options: [fresh, known-variant-draft, known-collapsed-variant-draft, known-variant-removal-draft, known-dish-note-draft]
+        options: [fresh, known-variant-draft, known-collapsed-variant-draft, known-variant-removal-draft, known-dish-note-draft, known-soup-checkout-draft]
         default: fresh
         required: false
 
@@ -30,23 +30,24 @@ jobs:
     if: >-
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.event.before == '6d360333c389db1fef619065ecb7c1f4dd3b80ce'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 838789bf887aa39280f4995247304f662dc7aac0
+          ref: 6d360333c389db1fef619065ecb7c1f4dd3b80ce
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Check runner isolation with synthetic secrets and no network
-        run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
+        run: node scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute && 'true' || 'false' }}
-          STAGING_CHAT_RESUME: ${{ inputs.resume != 'fresh' && inputs.resume || '' }}
+          STAGING_CHAT_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_CHAT_RESUME: ${{ github.event_name == 'push' && 'known-soup-checkout-draft' || (inputs.resume != 'fresh' && inputs.resume || '') }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
