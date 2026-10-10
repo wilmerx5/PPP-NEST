@@ -15,7 +15,7 @@ describe('OrdersGateway staging isolation', () => {
   });
 
   function harness() {
-    const gateway = new OrdersGateway();
+    const gateway = new OrdersGateway({} as never, {} as never);
     const emit = jest.fn();
     const to = jest.fn(() => ({ emit }));
     gateway.server = { to } as never;

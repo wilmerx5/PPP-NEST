@@ -154,6 +154,7 @@ export class MailService {
     phone?: string,
     deliveryFee?: number,
   ) {
+    if (this.configService.get<string>('PPP_STAGING') === 'true') return false;
     const mailHost = this.configService.get<string>('MAIL_HOST');
     const mailUser = this.configService.get<string>('MAIL_USER');
     if (!mailHost || !mailUser) return false;
@@ -311,6 +312,8 @@ export class MailService {
     total: number,
     deliveryFee?: number,
   ) {
+    // Test orders must never notify the operational inboxes.
+    if (this.configService.get<string>('PPP_STAGING') === 'true') return false;
     const mailHost = this.configService.get<string>('MAIL_HOST');
     const mailUser = this.configService.get<string>('MAIL_USER');
     if (!mailHost || !mailUser) return false;
