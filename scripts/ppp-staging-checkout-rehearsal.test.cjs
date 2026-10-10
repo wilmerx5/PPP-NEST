@@ -182,6 +182,15 @@ function fixture(options = {}) {
     if (path === '/api/health') {
       return json({ status: 'ok', db: 'connected' });
     }
+    if (path === '/api/business/status') {
+      return json({
+        timezone: 'America/Bogota',
+        isOpen: !options.businessClosed,
+        reason: options.businessClosed ? 'outside_hours' : 'open',
+        openTime: '11:00',
+        closeTime: '22:00',
+      });
+    }
     if (path === '/api/auth/login') {
       return json(
         {
@@ -320,6 +329,34 @@ test('preflight performs no conversation writes', async () => {
   assert.equal(report.mode, 'preflight');
   assert.equal(report.steps.length, 0);
   assert.equal(f.sentTexts.length, 0);
+});
+
+test('preflight may inspect a closed business but execute mode sends nothing', async () => {
+  const preflight = fixture({ businessClosed: true });
+  const preflightReport = await runCheckoutRehearsal(
+    { ...env, STAGING_CHECKOUT_EXECUTE: 'false' },
+    preflight.fetch,
+    preflight.helpers,
+  );
+  assert.equal(preflightReport.ok, true, JSON.stringify(preflightReport));
+  assert.equal(preflightReport.businessSnapshot.isOpen, false);
+  assert.equal(preflight.sentTexts.length, 0);
+
+  const execute = fixture({ businessClosed: true });
+  const executeReport = await runCheckoutRehearsal(
+    env,
+    execute.fetch,
+    execute.helpers,
+  );
+  assert.equal(executeReport.ok, false);
+  assert.ok(
+    executeReport.checks.some(
+      item =>
+        item.name === 'business_window' && item.code === 'BUSINESS_CLOSED',
+    ),
+  );
+  assert.equal(executeReport.webhookPosts, 0);
+  assert.equal(execute.sentTexts.length, 0);
 });
 
 test('refuses to start from an existing cart', async () => {

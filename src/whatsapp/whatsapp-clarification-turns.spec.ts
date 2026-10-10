@@ -180,6 +180,12 @@ describe('Real chat: quantities survive clarification turns', () => {
     expect(h.replies.at(-1)).not.toBe(reply);
   });
 
+  it('adds a specific dish expressed as a short quantity phrase', async () => {
+    const h = harness();
+    await h.send('Una sopa de ajiaco');
+    expect(h.conv.sessionData.cart.map(c => [c.productId, c.quantity])).toEqual([[38, 1]]);
+  });
+
   it('preserves a specific order quantity even if the model asks to add only one', async () => {
     const h = harness();
     h.agent.runTurn.mockResolvedValue({ reply: 'Listo', actions: { addItems: [{ productId: 1, quantity: 1 }] }, toolCalls: ['add_item'] });

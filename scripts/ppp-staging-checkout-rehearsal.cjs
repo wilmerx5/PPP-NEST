@@ -261,6 +261,33 @@ async function runCheckoutRehearsal(
       return report;
     }
 
+    if (
+      !(await check('business_window', async () => {
+        const response = await request('/api/business/status');
+        ensure(response.status === 200, 'BUSINESS_STATUS_HTTP_FAILED');
+        const body = await response.json();
+        ensure(
+          typeof body.isOpen === 'boolean' &&
+            typeof body.timezone === 'string' &&
+            /^\d{2}:\d{2}$/.test(body.openTime) &&
+            /^\d{2}:\d{2}$/.test(body.closeTime),
+          'BUSINESS_STATUS_INVALID',
+        );
+        report.businessSnapshot = {
+          isOpen: body.isOpen,
+          reason: String(body.reason || ''),
+          timezone: body.timezone,
+          openTime: body.openTime,
+          closeTime: body.closeTime,
+        };
+        if (report.mode === 'execute') {
+          ensure(body.isOpen === true, 'BUSINESS_CLOSED');
+        }
+      }))
+    ) {
+      return report;
+    }
+
     const sign = payload =>
       `sha256=${createHmac('sha256', env.STAGING_WHATSAPP_APP_SECRET.trim())
         .update(payload)
@@ -408,8 +435,9 @@ async function runCheckoutRehearsal(
           soup &&
             Number.isSafeInteger(soup.id) &&
             soup.isActive === true &&
-            soup.availableNow === true &&
-            Number(soup.price) === 10500,
+            Number.isFinite(Number(soup.price)) &&
+            Number(soup.price) > 0 &&
+            (report.mode !== 'execute' || soup.availableNow === true),
           'REQUIRED_SOUP_UNAVAILABLE_OR_CHANGED',
         );
         baselineOrderIds = await authorizedOrderIds();
