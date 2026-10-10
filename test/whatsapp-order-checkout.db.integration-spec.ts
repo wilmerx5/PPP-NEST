@@ -128,6 +128,39 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
  afterEach(async()=>{await settled();await app?.close();expect(external).not.toHaveBeenCalled();});
  afterAll(async()=>{external?.mockRestore();if(otherDb?.isInitialized)await otherDb.destroy();if(db?.isInitialized)await db.destroy();});
 
+ it('starts with an empty conversation and collects checkout data before creating exactly two units',async()=>{
+  const phone='573000000001';
+  agent.runTurn.mockResolvedValueOnce({reply:'Listo, dos arroces con pollo sin ensalada.',
+   actions:{addItems:[{productId:23,quantity:2,note:'sin ensalada'}]},toolCalls:['add_item']});
+  await post('wamid.empty.add','Quiero dos arroces con pollo sin ensalada',phone).expect(200);
+  await post('wamid.empty.add','Quiero dos arroces con pollo sin ensalada',phone).expect(200);
+  const c=await conversations.findOrCreateConversation(phone,'+'+phone);
+  expect(other.getSession(await other.reloadConversation(c.id)).cart).toMatchObject([{productId:23,quantity:2,note:'sin ensalada'}]);
+  await post('wamid.empty.checkout','No más',phone).expect(200);
+  const answers:Record<string,string>={awaiting_name:'Cliente Sintético',awaiting_phone:'3000000001',
+   awaiting_fulfillment:'Paso a recoger',awaiting_address:'Paso a recoger',awaiting_notes:'No',awaiting_payment:'Efectivo'};
+  const visited:string[]=[];
+  for(let step=0;step<8;step++){
+   const current=await other.reloadConversation(c.id);visited.push(current.state);
+   expect(await otherDb.getRepository(Order).count()).toBe(0);
+   expect(other.getSession(current).cart.reduce((sum,line)=>sum+line.quantity,0)).toBe(2);
+   if(current.state==='awaiting_final_confirm')break;
+   expect(answers[current.state]).toBeDefined();
+   await post('wamid.empty.data.'+step,answers[current.state],phone).expect(200);
+  }
+  expect(visited).toContain('awaiting_final_confirm');
+  await post('wamid.empty.confirm','Confirmar',phone).expect(200);
+  await post('wamid.empty.confirm','Confirmar',phone).expect(200);
+  await settled();
+  expect(await otherDb.getRepository(Order).count()).toBe(1);
+  const order=await saved();expect(order.items).toHaveLength(2);
+  expect(order.items.map(item=>item.note)).toEqual(['sin ensalada','sin ensalada']);
+  expect(order.items.reduce((sum,item)=>sum+Number(item.unitPrice),0)).toBe(59000);
+  expect(await stock(23)).toBe(8);
+  expect(gateway.emitOrdersUpdates.mock.calls.filter(call=>call[0]==='created_order')).toHaveLength(1);
+  expect((await other.reloadConversation(c.id)).state).toBe('completed');
+ });
+
  it('stores all units, independent variants and notes, and emits the real kitchen payload',async()=>{
   const cart=await apply('Dos pollos fritos con arepas blancas, un pollo frito con arepas fritas, dos arroces con pollo sin ensalada y una limonada',{
    addItems:[{productId:1,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
