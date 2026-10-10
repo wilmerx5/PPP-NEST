@@ -16,7 +16,7 @@ import type { WhatsappSessionData } from '../src/whatsapp/types/whatsapp-session
 import { BetaApiUsage } from './whatsapp-beta-api-usage';
 import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
 
-type Expectation = { lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
+type Expectation = { replyAny?: string[]; replyAll?: string[]; replyForbid?: string[]; lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
 type Scenario = { id: string; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
 Logger.overrideLogger(false);
@@ -104,6 +104,11 @@ async function main(){
         if(expected.cashContains && !(actual.session.cashChangeFor||'').includes(expected.cashContains))problems.push(`turn_${i}:cash`);
         if(expected.orderCount!==undefined && actual.orders.length!==expected.orderCount)problems.push(`turn_${i}:order_count`);
         if(actual.agentErrors.length)problems.push(`turn_${i}:agent_error`);
+        const normalizeReply = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+        const replyText = normalizeReply(actual.replies.join(' '));
+        if(expected.replyAny?.length && !expected.replyAny.some(value=>replyText.includes(normalizeReply(value))))problems.push(`turn_${i}:reply_missing_any`);
+        if(expected.replyAll?.some(value=>!replyText.includes(normalizeReply(value))))problems.push(`turn_${i}:reply_missing_fact`);
+        if(expected.replyForbid?.some(value=>replyText.includes(normalizeReply(value))))problems.push(`turn_${i}:reply_forbidden_fact`);
         if(!actual.replies.length)problems.push(`turn_${i}:no_reply`);
       }catch(error){problems.push(`turn_${i}:exception:${(error as Error).message}`);break;}
       if(usage.blockingProviderErrorCode){problems.push('provider_blocked');break;}

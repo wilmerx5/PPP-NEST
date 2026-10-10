@@ -25,3 +25,14 @@ Una integración firmada detectó que una nota dirigida a la variante de arepas 
 La revalidación del candidato integrado aprobó **33/33 conversaciones** con GPT-4.1, 73 inferencias exitosas y sin errores HTTP, además de **6/6 ejecuciones focalizadas** (tres por fallo). Pasaron **1.174 unitarias/56 suites**, TypeScript y **81 integraciones/3 suites** con MariaDB 10.11 local. La matriz determinista verifica 65 productos, una presentación por nombre y dos unidades por código. El caso de arroz chino con medio pollo pasó en el router completo: la omisión observada en el ensayo del agente aislado no obliga a cambiar la política de defaults ni aceptar un carrito vacío.
 
 El runner agrega comparación exacta de líneas/variantes y pacing de 1.500 ms entre inicios de inferencias. La ronda inicial tuvo dos respuestas 429 de rate limit recuperadas; esto se conserva como evidencia, no se presenta como ausencia de errores de proveedor. No se compararon modelos ni se volvió a ejecutar el corpus amplio completo por rutina.
+
+
+## Comprensión e intención: campaña adicional
+
+El foco actual es lenguaje y continuidad del pedido; pagos, eventos de cocina y transporte quedan fuera de esta campaña. Se añadieron 17 conversaciones, para un total de 50. Incluyen consultas de precio/cantidad y disponibilidad sin compra, hipótesis, recomendaciones, negaciones, referencias sin antecedente, sustitución de producto, aceptación de una cotización, corrección coloquial de cantidades, eliminación con preservación, compra junto con consulta, cierre cortés y notas acumuladas.
+
+La primera ampliación de intención aceptó 13/17. Detectó cuatro fallos: aceptación referencial sin producto persistido, una pregunta de precio que bloqueaba la compra en otra cláusula, un demostrativo ambiguo que activaba un candidato ajeno y cierre cortés que no avanzaba. Las correcciones consultan nombres del catálogo y contexto real; no agregan IDs, precios ni excepciones de productos PPP al runtime. Una consulta con varios productos unidos por «y» conserva su intención de cotización.
+
+El runner también verifica hechos requeridos y prohibidos en las respuestas (`replyAny`, `replyAll`, `replyForbid`), además del carrito y el estado. Estas comprobaciones son acotadas; no equivalen a evaluar automáticamente toda la calidad semántica de cada respuesta. Se inspeccionan también los diálogos completos.
+
+La revalidación aprobó **50/50 conversaciones** con `gpt-4.1-2025-04-14`, **113 respuestas de inferencia**, sin errores HTTP ni del agente. Los dos casos de aceptación y compra con consulta aprobaron además **6/6 repeticiones focalizadas**. Pasaron **1.177 pruebas unitarias en 56 suites** y TypeScript. Los respaldos de las primeras rondas conservan los fallos; no se presentan como rondas aprobadas.

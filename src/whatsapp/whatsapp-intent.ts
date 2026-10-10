@@ -239,7 +239,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
     /^(asi\s+)?nomas$/.test(t) ||
     // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
     /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
-    /^(no\s+gracias|gracias\s+no)$/.test(t) ||
+    /^(no\s+gracias|gracias\s+no)(?:\s+nada\s+mas)?$/.test(t) ||
     // "es todo" / "eso es todo" / "ya es todo" / "con eso es todo"
     /^(ya\s+)?(eso\s+)?es\s+todo$/.test(t) ||
     /^(eso\s+todo|listo\s+es\s+todo|ya\s+todo)$/.test(t) ||

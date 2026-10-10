@@ -3076,6 +3076,15 @@ Cll 6 b 78 c 33`;
   });
 
   describe('Precio pollo + dos sopas / código 38 (chat coalesce)', () => {
+    it('separates a purchase from a trailing price query without turning a quotation into an order', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype);
+      orch.catalogService = catalog;
+      expect(orch.splitPriceAndOrderParts('Agrégame dos sopas de ajiaco y dime cuánto cuesta el churrasco'))
+        .toEqual({orderText:'Agrégame dos sopas de ajiaco',priceText:'dime cuánto cuesta el churrasco'});
+      expect(orch.splitPriceAndOrderParts('¿Cuánto cuestan el ajiaco y el churrasco?')).toBeNull();
+    });
+
     it('parte precio y pedido en líneas', () => {
       const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
       const orch = Object.create(WhatsappOrchestratorService.prototype) as {

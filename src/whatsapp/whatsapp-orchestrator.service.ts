@@ -690,6 +690,46 @@ export class WhatsappOrchestratorService {
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
 
+    // Resolve independent purchase/price clauses before the agent's inquiry guards.
+    const mixedPriceOrder = this.splitPriceAndOrderParts(text);
+    if (mixedPriceOrder && !session.pendingAttribute && !session.pendingMultiOrder &&
+      await this.tryHandleProductInfoInquiry(conv, msg.waId, mixedPriceOrder.priceText, products, cfg)) {
+      text = mixedPriceOrder.orderText;
+    }
+
+    // A demonstrative without a prior focus cannot select an unrelated fuzzy SKU.
+    if (conv.state === 'building_cart' && session.cart.length > 1 && !session.productFocus &&
+      /^(?:ponle|agregale|sumale|añadele)\s+(?:otra?|una?)\s+(?:unidad\s+)?a\s+(?:ese|esa|eso)$/i.test(this.normalizeForMatch(text))) {
+      await this.reply(conv, msg.waId, '¿A cuál producto quieres agregarle una unidad? ' +
+        session.cart.map(line => line.name).join(' o '));
+      return;
+    }
+
+    const acceptsQuotedQuantity = businessOpenForBot && conv.state === 'building_cart' && /^(?:si\s+)?(?:agregame|agrega|anade|dame)\s+(?:las?|los?)\s+(?:dos|tres|cuatro|cinco|\d{1,2})$/i.test(this.normalizeForMatch(text));
+    if (acceptsQuotedQuantity && !session.pendingAddOffer && !session.pendingMatch && !session.pendingAttribute) {
+      const lastReply = await this.conversationService.getLastOutboundBody(conv.id);
+      const quoted = this.normalizeForMatch(lastReply || '');
+      const mentioned = products.filter(product =>
+        (' ' + quoted + ' ').includes(' ' + this.normalizeForMatch(product.name) + ' '));
+      const distinct = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
+        this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
+      if (distinct.length === 1 && /\b(?:agregar|agregue|agrego|agregarlas|agregarlos|pedido)\b/.test(quoted)) {
+        const quantityToken = this.normalizeForMatch(text).split(' ').at(-1);
+        const quantity = this.catalogService.extractQuantityFromMessage(`${quantityToken} ${distinct[0].name}`);
+        await this.savePendingAddOffer(conv, distinct[0], quantity, {sourceText:`${quantity} ${distinct[0].name}`});
+        session = this.conversationService.getSession(conv);
+      }
+    }
+
+    if (acceptsQuotedQuantity && session.pendingAddOffer && !session.pendingMatch && !session.pendingAttribute &&
+      /^(?:si\s+)?(?:agregame|agrega|añade|anade|dame)\s+(?:las?|los?)\s+(?:dos|tres|cuatro|cinco|\d{1,2})$/i.test(this.normalizeForMatch(text)) &&
+      !((session.pendingAddOffer.productIds?.length || 0) > 1)) {
+      const quantityToken = this.normalizeForMatch(text).split(' ').at(-1);
+      const offerQuantity = this.catalogService.extractQuantityFromMessage(`${quantityToken} ${session.pendingAddOffer.name}`);
+      session = {...session, pendingAddOffer: {...session.pendingAddOffer, quantity: offerQuantity}};
+      if (await this.tryHandlePendingAddOffer(conv, msg.waId, session, 'sí', products, cfg)) return;
+    }
+
     // Primer mensaje de la conversación — aviso IA + bienvenida
     const inboundCount = await this.conversationService.countInboundMessages(conv.id);
     const isFirstInbound = inboundCount <= 1;
@@ -14467,6 +14507,16 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // Purchase first, then an independent price question: do not quote both as an offer.
+    const orderThenPrice = raw.match(/^(.+?)\s+y\s+((?:dime\s+)?(?:cu[aá]nto|qu[eé]\s+precio).+)$/i);
+    if (orderThenPrice &&
+      (this.catalogService.looksLikeExplicitAddProductRequest(orderThenPrice[1]) ||
+        /^(?:agregame|agrega|dame|quiero|ponme|regalame)\s+/.test(this.normalizeForMatch(orderThenPrice[1]))) &&
+      !this.catalogService.isPriceInquiryIntent(orderThenPrice[1]) &&
+      this.catalogService.isPriceInquiryIntent(orderThenPrice[2])) {
+      return {orderText: orderThenPrice[1].trim(), priceText: orderThenPrice[2].trim()};
+    }
+
     // "Código 38 y un pollo frito que precio tiene"
     const codeThenPrice = raw.match(
       /^(?:c[oó]digo\s*)?#?\s*(\d{1,3})\s*(?:y|,|\n+)\s*(.+\b(?:precio|cuesta|cuestan|vale|valen|cu[aá]nto)\b.*)$/i,
@@ -14496,7 +14546,10 @@ export class WhatsappOrchestratorService {
       if (
         this.catalogService.isPriceInquiryIntent(priceText) &&
         orderText.length >= 3 &&
-        !this.catalogService.isPriceInquiryIntent(orderText)
+        !this.catalogService.isPriceInquiryIntent(orderText) &&
+        (this.catalogService.looksLikeExplicitAddProductRequest(orderText) ||
+          this.catalogService.extractQuantityFromMessage(orderText) >= 2 ||
+          /^(?:un|una|\d{1,3})\b/i.test(orderText))
       ) {
         return { priceText, orderText };
       }

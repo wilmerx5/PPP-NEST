@@ -100,6 +100,24 @@ describe('Scoped dish notes through the inbound router', () => {
     expect(parseScopedCartNote(text)).toBeNull();
   });
 });
+describe('Quoted purchase context through the inbound router', () => {
+  it('accepts two quoted units without inventing a SKU or relying on a model reply', async () => {
+    const h = harness([]);
+    h.service.conversationService.getLastOutboundBody = jest.fn(async () =>
+      'La Sopa De Ajiaco cuesta $10.500; dos serían $21.000. ¿Quieres agregarlas al pedido?');
+    await h.inbound('Sí, agrégame las dos');
+    expect(h.session.cart.map(item => [item.productId,item.quantity])).toEqual([[38,2]]);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+  it('asks which existing dish a demonstrative means instead of opening an unrelated product list', async () => {
+    const initial = [line(38,2),line(17,1)]; const h = harness(initial);
+    await h.inbound('Ponle otra unidad a ese');
+    expect(h.session.cart).toEqual(initial);
+    expect(h.session.pendingMatch).toBeUndefined();
+    expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/cuál producto/);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+});
 function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'), line(14, 2),
   line(1, 3, 'arepas aparte', [{ attributeName: 'Arepas', attributeValue: 'Fritas' }])]) {
   const service = Object.create(WhatsappOrchestratorService.prototype) as any;

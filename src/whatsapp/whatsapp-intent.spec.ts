@@ -296,6 +296,7 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
       'ya no mas',
       'no solo eso',
       'No, solo eso',
+      'No gracias, nada más',
     ]) {
       expect(isNothingElseOrderIntent(t)).toBe(true);
       expect(looksLikeNonAddressCommand(t)).toBe(true);

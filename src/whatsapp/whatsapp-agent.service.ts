@@ -552,6 +552,7 @@ Reglas:
 - "¿Tienes X?" / "¿qué tienes de X?" vale para cualquier cosa. Lista lo que search_menu sí trae con nombre y precio, y pregunta cuál quiere. Describe ingredientes y acompañamientos SOLO si pregunta "¿cómo es X?", qué incluye o una composición concreta. NO add_item. add_item solo si está pidiendo ese plato.
 - "¿Tienes algo de X?" (también "tines", "hay algo de", "te pregunté que si tienes"): pregunta si hay X. Si search_menu no lo trae, di "No tenemos productos de X". X es el producto, sin "algo de", sin "tienes" y sin repetir la frase. No reenvíes el carrito.
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
+- Si tras una consulta el cliente acepta explícitamente ("sí, agrégame las dos"), resuelve el producto y la cantidad usando el intercambio anterior. Busca su ID y ejecuta add_item; no basta decir que lo agregaste. Si el intercambio ofrece varias alternativas sin una elección, pregunta cuál.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
 - También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
 - Para el mismo SKU con sabores, preparaciones o notas distintas, llama add_item por cada grupo con su cantidad y atributos/nota. No combines dos sabores ni notes diferentes en una línea.
@@ -713,7 +714,6 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
-            toolCalls.some(name => name === 'search_menu' || name === 'resolve_multi_order') &&
             !this.catalogService.isAvailabilityInquiry(input.userMessage) &&
             !this.catalogService.isPriceInquiryIntent(input.userMessage) &&
             !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {

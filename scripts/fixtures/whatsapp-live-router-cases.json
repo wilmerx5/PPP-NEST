@@ -1122,5 +1122,342 @@
         }
       }
     ]
+  },
+  {
+    "id": "intent-price-two-soups",
+    "messages": [
+      {
+        "text": "¿Cuánto cuestan dos sopas de ajiaco?",
+        "expect": {
+          "items": {},
+          "orderCount": 0,
+          "replyAll": [
+            "21.000"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-availability-three-chickens",
+    "messages": [
+      {
+        "text": "¿Tienen tres pollos fritos disponibles?",
+        "expect": {
+          "items": {},
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-inclusions-ribs",
+    "messages": [
+      {
+        "text": "¿Qué traen las costillas de cerdo?",
+        "expect": {
+          "items": {},
+          "orderCount": 0,
+          "replyAll": [
+            "papa",
+            "yuca",
+            "arroz"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-hypothetical-churrasco",
+    "messages": [
+      {
+        "text": "Si pido dos churrascos, ¿cuánto sería?",
+        "expect": {
+          "items": {},
+          "orderCount": 0,
+          "replyAll": [
+            "76.000"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-negated-soup",
+    "messages": [
+      {
+        "text": "No me agregues sopa de ajiaco, solo estoy mirando",
+        "expect": {
+          "items": {},
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-alternatives-fish",
+    "messages": [
+      {
+        "text": "Estoy entre mojarra y trucha, ¿qué me recomiendas?",
+        "expect": {
+          "items": {},
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-unknown-reference",
+    "messages": [
+      {
+        "text": "Dame dos de ese",
+        "expect": {
+          "items": {},
+          "orderCount": 0,
+          "replyAny": [
+            "cuál",
+            "cual",
+            "refieres",
+            "confirmas"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-question-keeps-cart",
+    "initialCart": [
+      {
+        "id": 17,
+        "quantity": 2
+      }
+    ],
+    "messages": [
+      {
+        "text": "¿Cuánto cuesta la sopa de ajiaco?",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      },
+      {
+        "text": "No quiero agregarla todavía",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-correction-replaces-product",
+    "messages": [
+      {
+        "text": "Una sopa de ajiaco",
+        "expect": {
+          "items": {
+            "38": 1
+          }
+        }
+      },
+      {
+        "text": "Perdón, no quería ajiaco, quería una sopa de menudencias",
+        "expect": {
+          "items": {
+            "20": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-price-then-explicit-acceptance",
+    "messages": [
+      {
+        "text": "¿Cuánto cuestan dos sopas de ajiaco?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "21.000"
+          ]
+        }
+      },
+      {
+        "text": "Sí, agrégame las dos",
+        "expect": {
+          "items": {
+            "38": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-reduce-with-colloquial-correction",
+    "messages": [
+      {
+        "text": "Tres churrascos",
+        "expect": {
+          "items": {
+            "17": 3
+          }
+        }
+      },
+      {
+        "text": "Mejor déjalo en dos",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-negated-removal-preserves-other",
+    "initialCart": [
+      {
+        "id": 38,
+        "quantity": 2
+      },
+      {
+        "id": 17,
+        "quantity": 1
+      }
+    ],
+    "messages": [
+      {
+        "text": "No quites las sopas, quita solamente el churrasco",
+        "expect": {
+          "items": {
+            "38": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-mixed-question-and-order",
+    "messages": [
+      {
+        "text": "Agrégame dos sopas de ajiaco y dime cuánto cuesta el churrasco",
+        "expect": {
+          "items": {
+            "38": 2
+          },
+          "replyAll": [
+            "38.000"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-referent-ambiguous-two-lines",
+    "initialCart": [
+      {
+        "id": 38,
+        "quantity": 2
+      },
+      {
+        "id": 17,
+        "quantity": 1
+      }
+    ],
+    "messages": [
+      {
+        "text": "Ponle otra unidad a ese",
+        "expect": {
+          "items": {
+            "38": 2,
+            "17": 1
+          },
+          "replyAny": [
+            "cuál",
+            "cual",
+            "refieres",
+            "confirmas"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-no-more-is-not-reset",
+    "initialCart": [
+      {
+        "id": 60,
+        "quantity": 1
+      }
+    ],
+    "messages": [
+      {
+        "text": "No gracias, nada más",
+        "expect": {
+          "items": {
+            "60": 1
+          },
+          "state": "awaiting_address"
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-price-unknown-product",
+    "messages": [
+      {
+        "text": "¿Cuánto cuesta la pizza hawaiana?",
+        "expect": {
+          "items": {},
+          "replyAny": [
+            "no",
+            "carta",
+            "menú"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "intent-notes-not-extra-products",
+    "messages": [
+      {
+        "text": "Dos churrascos sin ensalada",
+        "expect": {
+          "items": {
+            "17": 2
+          },
+          "lines": [
+            {
+              "id": 17,
+              "quantity": 2,
+              "note": [
+                "sin ensalada"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "text": "Y sin arroz también",
+        "expect": {
+          "items": {
+            "17": 2
+          },
+          "lines": [
+            {
+              "id": 17,
+              "quantity": 2,
+              "note": [
+                "sin ensalada",
+                "sin arroz"
+              ]
+            }
+          ]
+        }
+      }
+    ]
   }
 ]
