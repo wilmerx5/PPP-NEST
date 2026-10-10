@@ -165,7 +165,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
  it.each(['cash','transfer'])('persists address shortcut and a checkout correction through %s confirmation',async payment=>{
   const cart=await apply('dos arroces con pollo',{addItems:[{productId:23,quantity:2,note:'sin ensalada'}]});
   const c=await ready(cart);
-  await conversations.saveSession(c,{cart,orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true},'building_cart');
+  await conversations.saveSession(c,{cart,orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true,paymentMethod:undefined,notesCollected:false},'building_cart');
   await post('wamid.address.hotel','Para ek hotel santandereano').expect(200);
   let fresh=await other.reloadConversation(c.id);
   expect(fresh.state).toBe('awaiting_payment');

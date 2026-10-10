@@ -608,6 +608,17 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (conv.state === 'awaiting_payment' &&
+        /\b(?:pago|pagar[eé]|pagamos)\s+con\b/i.test(originalText)) {
+      const cashMethod = this.resolvePaymentChoice(originalText, cfg);
+      const amount = this.extractCashChangeFromText(originalText);
+      if (amount && (cashMethod?.id === 'cash' || cashMethod?.id === 'contraentrega')) {
+        session = { ...session, paymentMethod: cashMethod.id, cashChangeFor: amount, notesCollected: true };
+        await this.conversationService.saveSession(conv, session, 'confirming');
+        await this.tryConfirmOrder(conv, msg.waId, session);
+        return;
+      }
+    }
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
     if (session.cart.length &&
@@ -1826,6 +1837,9 @@ export class WhatsappOrchestratorService {
       const payPick = this.resolvePaymentChoice(text, cfg);
       if (payPick) {
         session.paymentMethod = payPick.id;
+        const cashAmount = payPick.id === 'cash' || payPick.id === 'contraentrega'
+          ? this.extractCashChangeFromText(text) : null;
+        if (cashAmount && !/^\d{1,2}$/.test(text.trim())) session.cashChangeFor = cashAmount;
         session.notesCollected = true;
         await this.conversationService.saveSession(conv, session, 'confirming');
         const confirmExtra = this.buildPaymentConfirmReply(payPick, cfg);
@@ -12321,6 +12335,10 @@ export class WhatsappOrchestratorService {
     const t = text.trim();
     const patterns = [
       new RegExp(
+        String.raw`\b(?:pago|pagar[eé]|pagamos|efectivo)\s+(?:con\s+)?(?:un\s+billete\s+de\s+)?\$?\s*(${this.CASH_CHANGE_AMOUNT})`,
+        'i',
+      ),
+      new RegExp(
         String.raw`(?:traer|trae|traeme|traiga|con)\s+vueltas?\s*(?:de\s*)?\$?\s*(${this.CASH_CHANGE_AMOUNT})`,
         'i',
       ),
@@ -12344,6 +12362,10 @@ export class WhatsappOrchestratorService {
 
   private stripCashChangePhrases(text: string): string {
     return text
+      .replace(new RegExp(
+        String.raw`\b(?:pago|pagar[eé]|pagamos|efectivo)\s+(?:con\s+)?(?:un\s+billete\s+de\s+)?\$?\s*${this.CASH_CHANGE_AMOUNT}`,
+        'gi',
+      ), '')
       .replace(
         new RegExp(
           String.raw`(?:traer|trae|traeme|traiga|con)\s+vueltas?\s*(?:de\s*)?\$?\s*${this.CASH_CHANGE_AMOUNT}`,
@@ -12487,7 +12509,13 @@ export class WhatsappOrchestratorService {
       const n = parseInt(trimmed, 10);
       if (n >= 1 && n <= enabled.length) return enabled[n - 1];
     }
-    return findPaymentMethodByText(text, cfg.paymentMethods || []);
+    const method = findPaymentMethodByText(text, cfg.paymentMethods || []);
+    if (method) return method;
+    // An explicit cash amount answers the payment question without another turn.
+    if (/\b(?:pago|pagar[eé]|pagamos)\s+con\b/i.test(text) && this.extractCashChangeFromText(text)) {
+      return enabled.find(m => m.id === 'cash' || m.id === 'contraentrega') || null;
+    }
+    return null;
   }
 
   private buildPaymentConfirmReply(

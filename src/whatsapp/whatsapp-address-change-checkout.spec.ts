@@ -219,3 +219,37 @@ describe('Combined address and payment', () => {
     expect(h.conv.sessionData.cart[0].quantity).toBe(2);
   });
 });
+
+
+describe('Cash amount can answer the payment question', () => {
+  it.each(['Pago con 100 mil', 'Efectivo, pago con 100000', 'Pagaré con 100.000', 'Pago con un billete de 100 mil'])('records cash and change in one turn: %s', async message => {
+    const h = harness();
+    await h.send(message);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.sessionData.cashChangeFor).toMatch(/100/);
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+  it('a numbered payment option is not a cash amount', async () => {
+    const h = harness();
+    await h.send('1');
+    expect(h.conv.sessionData.cashChangeFor).toBeUndefined();
+  });
+});
+
+
+describe('Payment shortcut respects configured methods and questions', () => {
+  it('does not select disabled cash', async () => {
+    const h = harness();
+    h.cfg.paymentMethods = DEFAULT_PAYMENT_METHODS.filter(method => method.id !== 'cash');
+    await h.send('Pago con 100 mil');
+    expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+    expect(h.conv.state).not.toBe('awaiting_final_confirm');
+  });
+  it('a question about cash is not a payment selection', async () => {
+    const h = harness();
+    await h.send('¿Puedo pagar con un billete de 100 mil?');
+    expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+    expect(h.conv.state).not.toBe('awaiting_final_confirm');
+  });
+});
