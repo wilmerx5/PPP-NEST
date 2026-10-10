@@ -14,7 +14,7 @@ on:
       resume:
         description: Resume only the verified failed synthetic variant draft
         type: choice
-        options: [fresh, known-variant-draft, known-collapsed-variant-draft]
+        options: [fresh, known-variant-draft, known-collapsed-variant-draft, known-variant-removal-draft, known-dish-note-draft]
         default: fresh
         required: false
 
@@ -30,13 +30,13 @@ jobs:
     if: >-
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == '9ad4ddac17e0175ba2247f7e7d2126e31c6d7126'))
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: eac6cceebca6131cf1a8f640869c6eb4f49913ca
+          ref: 17fced4b7d8496ef9d036181e2a556609e0bf18d
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -45,28 +45,14 @@ jobs:
         run: node --test scripts/ppp-staging-chat-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded test conversations
         env:
-          STAGING_CHAT_EXECUTE: 'false'
+          STAGING_CHAT_EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute && 'true' || 'false' }}
           STAGING_CHAT_RESUME: ${{ inputs.resume != 'fresh' && inputs.resume || '' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
           STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
           STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const marker = 'conversationId = matches[0].id; initial = await detail(); initialName = initial.customerName;';
-          const replacement = marker + `
-            ensure(initial.messages.filter(m => m.direction === 'in').at(-1)?.body === 'A los churrascos ponles también papas bien crocantes.', 'KNOWN_SYNTHETIC_DRAFT_CHANGED');
-            report.syntheticFacts = {state: initial.state, pendingRemovalOptions: initial.sessionData.pendingCartRemoval?.options?.length || 0, pendingMatch: !!initial.sessionData.pendingMatch, pendingAttribute: !!initial.sessionData.pendingAttribute, cart: initial.sessionData.cart.map(line => ({productId: line.productId, quantity: line.quantity, unitPrice: Number(line.unitPrice), selectionAsada: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'Asada') || false, selectionSalsa: line.attributes?.some(a => a.attributeName === 'Seleccion' && a.attributeValue === 'En Salsa') || false, noteSinEnsalada: normalize(line.note).includes('sin ensalada'), noteCrocantes: normalize(line.note).includes('crocantes'), notePapas: normalize(line.note).includes('papas'), noteEmpty: !String(line.note || '').trim()}))};`;
-          const source = fs.readFileSync('scripts/ppp-staging-chat-rehearsal.cjs','utf8');
-          if (!source.includes(marker)) throw Error('DIAGNOSTIC_MARKER_MISSING');
-          fs.writeFileSync('scripts/ppp-staging-removal-diagnostic.cjs',source.replace(marker,replacement));
-          require('./scripts/ppp-staging-removal-diagnostic.cjs').runRehearsal().then(report => {
-            fs.mkdirSync('tmp',{recursive:true});fs.writeFileSync('tmp/ppp-staging-chat-report.json',JSON.stringify(report));
-            console.log(JSON.stringify(report));process.exitCode = report.ok ? 0 : 1;
-          }).catch(() => {console.error('REMOVAL_DIAGNOSTIC_FAILED');process.exitCode = 1;});
-          NODE
+        run: node scripts/ppp-staging-chat-rehearsal.cjs
       - name: Archive counts and check results without credentials or message bodies
         if: always()
         uses: actions/upload-artifact@v4
