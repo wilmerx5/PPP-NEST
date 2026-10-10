@@ -231,11 +231,13 @@ function fixture(options = {}) {
       conversation.state = 'awaiting_final_confirm';
       conversation.sessionData.paymentMethod = 'cash';
     } else if (text === 'Paso a recoger') {
-      conversation.state = 'building_cart';
+      conversation.state = 'awaiting_payment';
       conversation.sessionData.orderType = 'pickup';
       conversation.sessionData.fulfillmentChosen = true;
       conversation.sessionData.addressConfirmed = true;
       conversation.sessionData.address = 'Recoge en el local';
+      delete conversation.sessionData.pendingMatch;
+      delete conversation.sessionData.pendingQuantityHint;
     } else if (text === 'Reiniciar') {
       reset();
     }
@@ -370,7 +372,7 @@ test('validates delivery, pickup and takeover without creating an order', async 
   const f = fixture();
   const report = await runCheckoutRehearsal(env, f.fetch, f.helpers);
   assert.equal(report.ok, true, JSON.stringify(report));
-  assert.equal(report.steps.length, 15);
+  assert.equal(report.steps.length, 14);
   assert.ok(report.steps.every(step => step.pass));
   assert.equal(f.conversation.state, 'building_cart');
   assert.equal(f.conversation.sessionData.cart.length, 0);
@@ -448,7 +450,7 @@ test('resets only the exact failed soup-selection draft before continuing', asyn
     f.helpers,
   );
   assert.equal(report.ok, true);
-  assert.equal(report.steps.length, 16);
+  assert.equal(report.steps.length, 15);
   assert.equal(f.sentTexts[0], 'Reiniciar');
   assert.equal(f.conversation.sessionData.cart.length, 0);
 });
@@ -464,7 +466,7 @@ test('resets only the exact retained soup-list cart before continuing', async ()
     f.helpers,
   );
   assert.equal(report.ok, true, JSON.stringify(report));
-  assert.equal(report.steps.length, 16);
+  assert.equal(report.steps.length, 15);
   assert.equal(f.sentTexts[0], 'Reiniciar');
   assert.equal(f.conversation.sessionData.cart.length, 0);
 });
@@ -480,7 +482,7 @@ test('continues only the exact delivery checkout waiting for a name', async () =
     f.helpers,
   );
   assert.equal(report.ok, true, JSON.stringify(report));
-  assert.equal(report.steps.length, 13);
+  assert.equal(report.steps.length, 12);
   assert.equal(f.sentTexts[0], 'Cliente Sintético');
   assert.equal(f.conversation.sessionData.cart.length, 0);
 });

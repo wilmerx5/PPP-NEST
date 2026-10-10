@@ -794,23 +794,11 @@ async function runCheckoutRehearsal(
       validate: body => {
         expectSoup(body);
         ensure(
-          body.state === 'building_cart' &&
-            body.sessionData.orderType === 'pickup' &&
-            body.sessionData.fulfillmentChosen === true,
-          'PICKUP_NOT_SELECTED',
-        );
-      },
-    });
-    await send({
-      id: 'pickup-finish-items',
-      text: 'No más',
-      validate: body => {
-        expectSoup(body);
-        ensure(
           body.state === 'awaiting_payment' &&
             body.sessionData.orderType === 'pickup' &&
+            body.sessionData.fulfillmentChosen === true &&
             body.sessionData.addressConfirmed === true,
-          'PICKUP_PAYMENT_STEP_NOT_REACHED',
+          'PICKUP_NOT_SELECTED',
         );
       },
     });

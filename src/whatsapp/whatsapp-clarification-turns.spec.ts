@@ -160,6 +160,26 @@ describe('Real chat: quantities survive clarification turns', () => {
     expect(h.conv.sessionData.cart.map(c => [c.productId, c.quantity])).toEqual([[38, 2]]);
   });
 
+  it('applies pickup before the agent can finish the cart as delivery', async () => {
+    const h = harness();
+    await h.send('Dos sopas');
+    const row = h.conv.sessionData.pendingMatch!.candidates.findIndex(p => p.id === 38) + 1;
+    await h.send(String(row));
+    h.agent.runTurn.mockClear();
+
+    await h.send('Paso a recoger');
+
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+    expect(h.conv.sessionData.cart.map(c => [c.productId, c.quantity])).toEqual([[38, 2]]);
+    expect(h.conv.sessionData).toMatchObject({
+      orderType: 'pickup',
+      fulfillmentChosen: true,
+      addressConfirmed: true,
+    });
+    expect(h.conv.sessionData.address).toMatch(/recoge en el local/i);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+
   it('reset clears pending selections and their quantities as well as the cart', async () => {
     const h = harness();
     await h.send('Quiero tres pollos');

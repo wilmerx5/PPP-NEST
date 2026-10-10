@@ -767,6 +767,26 @@ export class WhatsappOrchestratorService {
       compound,
     );
 
+    // Pickup explícito con carrito es una instrucción logística determinista.
+    // Resolverla antes del agente evita que "paso a recoger" se interprete como
+    // fin del pedido y conserve por error el domicilio predeterminado.
+    if (
+      session.cart.length > 0 &&
+      (this.isPickupIntent(originalText) || this.isPickupIntent(text))
+    ) {
+      session = this.applyPickupIntent(session, text || originalText);
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(
+        conv,
+        msg.waId,
+        `Listo, queda como *recoger en el local* (sin domicilio).\n_${session.address}_`,
+      );
+      const freshPickup = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshPickup);
+      session = this.conversationService.getSession(conv);
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
 
     if (
       !looksLikeClearCartMessage(originalText) &&
@@ -913,25 +933,6 @@ export class WhatsappOrchestratorService {
         cfg,
       ))
     ) {
-      return;
-    }
-
-    // Pickup explícito temprano (antes del agente): "recogo en el local" / "paso por ella"
-    if (
-      session.cart.length > 0 &&
-      (this.isPickupIntent(originalText) || this.isPickupIntent(text))
-    ) {
-      session = this.applyPickupIntent(session, text || originalText);
-      await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(
-        conv,
-        msg.waId,
-        `Listo, queda como *recoger en el local* (sin domicilio).\n_${session.address}_`,
-      );
-      const freshPu = await this.conversationService.reloadConversation(conv.id);
-      Object.assign(conv, freshPu);
-      session = this.conversationService.getSession(conv);
-      await this.tryConfirmOrder(conv, msg.waId, session);
       return;
     }
 
@@ -2367,23 +2368,6 @@ export class WhatsappOrchestratorService {
           cfg,
         ))
       ) {
-        return;
-      }
-      if (
-        session.cart.length > 0 &&
-        (this.isPickupIntent(originalText) || this.isPickupIntent(text))
-      ) {
-        session = this.applyPickupIntent(session, text || originalText);
-        await this.conversationService.saveSession(conv, session, 'building_cart');
-        await this.reply(
-          conv,
-          msg.waId,
-          `Listo, queda como *recoger en el local* (sin domicilio).\n_${session.address}_`,
-        );
-        const freshPu = await this.conversationService.reloadConversation(conv.id);
-        Object.assign(conv, freshPu);
-        session = this.conversationService.getSession(conv);
-        await this.tryConfirmOrder(conv, msg.waId, session);
         return;
       }
       if (
