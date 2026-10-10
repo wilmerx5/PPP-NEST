@@ -97,11 +97,25 @@ describe('Explicit removals through the real inbound router', () => {
     expect(h.session.awaitingField).toBeUndefined(); expect(h.conv.state).toBe('building_cart');
   });
   it.each([
+    'Quita el pollo broaster; conserva el pollo frito, las mojarras y los churrascos.',
+    'Quita el pollo broaster, conserva el pollo frito, las mojarras y los churrascos.',
+  ])('preserves a comma-separated dish list through the full inbound router: %s', async text => {
+    const initial = [line(17, 3, 'sin ensalada'), line(14, 2),
+      line(1, 1, undefined, [{attributeName:'Arepas',attributeValue:'Fritas'}]),
+      line(4, 1, undefined, [{attributeName:'Arepas',attributeValue:'Blancas'}])];
+    const h = harness(initial); await h.inbound(text);
+    expect(h.session.cart).toEqual(initial.slice(0,3));
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+  it.each([
     'No quites la sobrebarriga', '¿Quita la sobrebarriga?',
     'Quita solamente la nota sin arroz de las costillas.',
     'Quita la nota de papas crocantes de los churrascos y conserva sin ensalada.',
     'Quita el arroz y agrega una limonada', 'Quita la sobrebarriga; agrega una limonada',
     'Quita todo el carrito', 'Quita la sobrebarriga sin ensalada',
+    'Quita el pollo frito, el pollo broaster',
+    'Quita el pollo broaster; conserva el pollo frito, agrega una limonada',
+    'Quita el pollo broaster; conserva el pollo frito y agrega una limonada',
   ])('defers compound, negated, note and question intents: %s', text => {
     expect(parseScopedCartRemoval(text)).toBeNull();
   });
