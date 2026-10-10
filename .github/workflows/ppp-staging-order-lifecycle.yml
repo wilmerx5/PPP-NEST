@@ -1,0 +1,50 @@
+name: PPP Staging Order Lifecycle
+
+on:
+  push:
+    branches: [fix/whatsapp-regression-baseline]
+    paths: [.github/workflows/ppp-staging-order-lifecycle.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppp-staging-authorized-checkout
+  cancel-in-progress: false
+
+jobs:
+  order-lifecycle:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
+      github.event.before == 'ba7de5dd3b723a1a4168855af7612070f3358375'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ba7de5dd3b723a1a4168855af7612070f3358375
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate lifecycle guards with synthetic data and no network
+        run: node --test scripts/ppp-staging-checkout-rehearsal.test.cjs
+      - name: Create, validate and clean one isolated staging order
+        env:
+          STAGING_CHECKOUT_EXECUTE: 'true'
+          STAGING_ORDER_LIFECYCLE: 'true'
+          STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+          STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+          STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
+          STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
+          STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
+        run: node scripts/ppp-staging-checkout-rehearsal.cjs
+      - name: Archive sanitized lifecycle results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppp-staging-order-lifecycle-report
+          path: tmp/ppp-staging-checkout-report.json
+          retention-days: 7
+          if-no-files-found: ignore
