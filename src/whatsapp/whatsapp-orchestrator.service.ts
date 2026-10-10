@@ -634,8 +634,7 @@ export class WhatsappOrchestratorService {
       await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
-    if (session.cart.length && !session.pendingAttribute && !session.pendingMatch &&
-        ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state)) {
+    if (session.cart.length && !session.pendingAttribute && !session.pendingMatch) {
       const productsForChange = await this.catalogService.getMenuProducts();
       if (await this.tryHandleCartAttributeOptionChange(conv,msg.waId,session,originalText,productsForChange)) return;
     }
@@ -2112,9 +2111,8 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    // "menú ejecutivo" sin frito/broaster → listar esos SKUs, no asumir Frito
+    // Pechuga/ejecutivo sin estilo: listar variantes ANTES del agente
     if (
-      !cfg.agentV1Enabled &&
       (await this.tryHandleUnspecifiedCookingStyleFamily(
         conv,
         msg.waId,
@@ -3283,7 +3281,10 @@ export class WhatsappOrchestratorService {
     }
     if (
       embeddedProduct &&
-      !this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
+      !(
+        this.catalogService.isLikelySideOnlyProduct(embeddedProduct) &&
+        !this.catalogService.looksLikeExplicitAddProductRequest(text)
+      ) &&
       !this.catalogService.isProductDescriptionInquiry(text) &&
       !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isAvailabilityInquiry(text) &&
@@ -5029,7 +5030,7 @@ export class WhatsappOrchestratorService {
 
     const styled = family.variants.filter((p) => {
       const n = this.normalizeForMatch(p.name);
-      return /\b(broaster|frito|asado|plancha|sudado|apanado)\b/.test(n);
+      return /\b(broaster|frito|asado|plancha|gratinad[oa]|sudado|apanado)\b/.test(n);
     });
     const styles = new Set(
       styled.map((p) => {
@@ -5038,6 +5039,7 @@ export class WhatsappOrchestratorService {
         if (/\bfrito\b/.test(n)) return 'frito';
         if (/\basado\b/.test(n)) return 'asado';
         if (/\bplancha\b/.test(n)) return 'plancha';
+        if (/\bgratinad[oa]\b/.test(n)) return 'gratinada';
         if (/\bsudado\b/.test(n)) return 'sudado';
         return 'apanado';
       }),
@@ -5204,6 +5206,14 @@ export class WhatsappOrchestratorService {
         const byFamily = this.catalogService.pickVariantFromFamilyText(text, family);
         if (byFamily) chosenLite = byFamily;
       }
+    }
+
+    if (!chosenLite) {
+      const byList = this.catalogService.pickFromCandidateList(
+        text,
+        pending.candidates as MenuProduct[],
+      );
+      if (byList) chosenLite = byList;
     }
 
     if (!chosenLite) {
@@ -11581,7 +11591,7 @@ export class WhatsappOrchestratorService {
       !/^(hola|buenas|buenos|gracias|listo|ok|dale|claro|menu|menú|carta|quiero|dame|ponme|que|qué|cuanto|cuánto|puedo|puedes|solicitar|pedir|asi|nada|eso|solo|solamente|masomenos)\b/i.test(
         t,
       ) &&
-      !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?|cambiar|ensalada|otra\s+cosa|guarnici[oó]n|nada\s+m[aá]s|nomas|eso\s+es\s+todo|demora|tarda|tiempo)\b/i.test(
+      !/\b(hay|tienen|tiene|tienes|ofrecen|ofreces|bebidas?|sopas?|pollos?|jugos?|guanabana|guan[aá]bana|cambiar|ensalada|otra\s+cosa|guarnici[oó]n|nada\s+m[aá]s|nomas|eso\s+es\s+todo|demora|tarda|tiempo)\b/i.test(
         t,
       ) &&
       !isConfirmCurrentAddressIntent(t) &&
@@ -11647,11 +11657,14 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (
-      /\b(broasters?|frit[oa]s?|asad[oa]s?|plancha|gaseosas?|arepas?|combos?|mondongos?|ajiacos?|pechugas?|costillas?|pollos?|pillos?|arroz|sopas?|bandejas?|mojarras?|churrascos?|hamburguesas?|alitas?|ejecutivos?|sancochos?|limonadas?|bebidas?|ensaladas?|papas?|yuca|aguacate|maduro)\b/i.test(
+      /\b(broasters?|frit[oa]s?|asad[oa]s?|plancha|gaseosas?|arepas?|combos?|mondongos?|ajiacos?|pechugas?|costillas?|pollos?|pillos?|arroz|sopas?|bandejas?|mojarras?|churrascos?|hamburguesas?|alitas?|ejecutivos?|sancochos?|limonadas?|jugos?|guanabana|guan[aá]bana|bebidas?|ensaladas?|papas?|yuca|aguacate|maduro)\b/i.test(
         t,
       ) &&
       !hasStreetCue
     ) {
+      return true;
+    }
+    if (/\bjugo\b/i.test(t) && /\b(leche|agua|guanabana|guan[aá]bana|lulo|mora|mango)\b/i.test(t)) {
       return true;
     }
     // Cambio de guarnición ≠ dirección
@@ -13833,6 +13846,13 @@ export class WhatsappOrchestratorService {
         products,
         12,
       );
+      const bareStylePick =
+        styleHits.length === 1 &&
+        /^(?:la|el|las|los)\s+\w+$/i.test((text || '').trim()) &&
+        !/\b(que|qué|tienes|hay|algo)\b/i.test(text);
+      if (bareStylePick) {
+        return false;
+      }
       const reply = this.catalogService.formatCookingStyleBrowseReply(styleBrowse, styleHits, {
         menuUrl: cfg.menuUrl,
         availableStyles: this.catalogService.listAvailableCookingStyles(products),
@@ -13947,27 +13967,46 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!session.cart.length) return false;
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
-    const change = this.catalogService.findCartAttributeOptionChange(text, session.cart, products, {allowBareOption:resumeCheckout});
-    if (!change) return false;
-    const line = session.cart[change.cartIndex];
+    const onlyAttrs = this.catalogService.resolveCartAttributeOnlyUpdate(
+      text,
+      session.cart,
+      products,
+    );
+    const change = onlyAttrs
+      ? null
+      : this.catalogService.findCartAttributeOptionChange(text, session.cart, products, {allowBareOption:resumeCheckout});
+    const updates = onlyAttrs
+      ? onlyAttrs.updates
+      : change
+        ? [{ attributeName: change.attributeName, attributeValue: change.attributeValue }]
+        : [];
+    const cartIndex = onlyAttrs?.cartIndex ?? change?.cartIndex;
+    const itemName = onlyAttrs?.itemName ?? change?.itemName;
+    if (cartIndex == null || !itemName || !updates.length) return false;
+    const line = session.cart[cartIndex];
     if (!line) return false;
     const attributes = [...(line.attributes || [])];
-    const idx = attributes.findIndex(
-      (a) => a.attributeName.toLowerCase() === change.attributeName.toLowerCase(),
-    );
-    if (idx >= 0) attributes[idx] = { attributeName: change.attributeName, attributeValue: change.attributeValue };
-    else attributes.push({ attributeName: change.attributeName, attributeValue: change.attributeValue });
-    const cart = session.cart.map((item, i) => (i === change.cartIndex ? { ...item, attributes } : item));
+    for (const update of updates) {
+      const idx = attributes.findIndex(
+        (a) => a.attributeName.toLowerCase() === update.attributeName.toLowerCase(),
+      );
+      if (idx >= 0) attributes[idx] = { attributeName: update.attributeName, attributeValue: update.attributeValue };
+      else attributes.push({ attributeName: update.attributeName, attributeValue: update.attributeValue });
+    }
+    const cart = session.cart.map((item, i) => (i === cartIndex ? { ...item, attributes } : item));
     session = { ...session, cart, pendingAttribute: undefined, pendingMatch: undefined };
     await this.conversationService.saveSession(conv, session, 'building_cart');
+    const summary = updates
+      .map((u) => `${u.attributeName}: ${u.attributeValue}`)
+      .join(' · ');
     if (resumeCheckout) {
-      await this.tryConfirmOrder(conv,waId,session,{preface:`Listo ✅ *${change.itemName}* queda con *${change.attributeName}: ${change.attributeValue}*.`});
+      await this.tryConfirmOrder(conv,waId,session,{preface:`Listo ✅ *${itemName}* queda con *${summary}*.`});
       return true;
     }
     await this.reply(
       conv,
       waId,
-      `Listo ✅ *${change.itemName}* queda con *${change.attributeName}: ${change.attributeValue}*.\n\n¿*Algo más*?`,
+      `Listo ✅ *${itemName}* queda con *${summary}*.\n\n¿*Algo más*?`,
     );
     return true;
   }

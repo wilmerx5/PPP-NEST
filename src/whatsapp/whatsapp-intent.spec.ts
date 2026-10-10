@@ -158,6 +158,17 @@ describe('classifyWhatsappCustomerIntent', () => {
     expect(looksLikeAddressOnlyMessage(order)).toBe(false);
   });
 
+  it('jugo de guanábana en leche no es dirección', () => {
+    expect(looksLikeAddressOnlyMessage('Un jugo de guanabana en leche')).toBe(false);
+    expect(looksLikeAddressOnlyMessage('un jugo de guanábana en leche')).toBe(false);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'Un jugo de guanabana en leche',
+        cartLength: 1,
+      }),
+    ).toBe('order_product');
+  });
+
   it('detecta dirección estricta con landmark', () => {
     expect(
       looksLikeAddressOnlyMessage('para el hospital de kennedy'),

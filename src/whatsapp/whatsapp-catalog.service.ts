@@ -138,7 +138,7 @@ const DRINK_ORDER_TOKEN =
   '(?:gaseosa|gaseosas|coca\\s*cola?|cola|sprite|pepsi|jugo|jugos|limonada|malta|cerveza|agua|hit|postobon|postob[oó]n|mr\\s*tea|cysco|colombiana|manzana|uva|ginger)';
 
 const FOOD_ORDER_TOKEN =
-  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|ajiacos?|menudencias?|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas|hamburguesa|hamburguesas|trucha|bagre|pescado)';
+  '(?:medio|cuarto|entero|pollo|broaster|frito|asado|pechuga|alas?|ejecutivo|bandeja|costilla|churrasco|churrascos|sobrebarriga|ajiacos?|menudencias?|mondongo|sopa|arroz|paisa|chino|mojarra|mojarras|platano|plátano|alitas?|yuca|papa|papas|hamburguesa|hamburguesas|trucha|bagre|pescado|jugo|jugos)';
 
 /** Multiplicadores de pack en el nombre del SKU (no son el plato unitario). */
 const PACK_MULTIPLIER_TOKENS = new Set([
@@ -766,8 +766,8 @@ export class WhatsappCatalogService {
       /\balgo\s+\w*(sudad|frit|asad|apanad|broaster|plancha|guisad|horno)/.test(q) ||
       /\b(tienes|tiene|tienen|hay|ofreces|ofrecen|manejan)\b.{0,40}\b/.test(q) ||
       /\bpreparaci[oó]n\b/.test(q) ||
-      // "sudado?" / "frito?" solo
-      new RegExp(`^(el\\s+|la\\s+|en\\s+)?${style}\\??$`).test(q);
+      // "sudado?" / "frito?" solo — no "la gratinada" (eso elige una variante)
+      new RegExp(`^(en\\s+)?${style}\\??$`).test(q);
 
     if (!asksBrowse) return null;
 
@@ -787,6 +787,46 @@ export class WhatsappCatalogService {
     }
 
     return singularizeEsToken(style) || style;
+  }
+
+  /**
+   * "La gratinada" / "el plancha" con un único SKU de ese estilo → ese plato,
+   * no un browse de todos los gratinados.
+   */
+  resolveBareCookingStyleProduct(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
+    const m = q.match(/^(?:la|el|las|los)\s+([a-z]+)$/);
+    if (!m) return null;
+    const style = m[1];
+    if (!COOKING_STYLE_TOKENS.has(style)) return null;
+    const hits = products.filter(
+      (p) => p.availableNow !== false && productNameHasCookingStyle(p.name, style),
+    );
+    return hits.length === 1 ? hits[0] : null;
+  }
+
+  /**
+   * "Y una porción de yuca" → Porcion De Yuca Frita, aunque el cliente no diga "frita"
+   * y el SKU sea acompañamiento.
+   */
+  resolveExplicitSidePortionProduct(
+    text: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    if (!this.looksLikeExplicitAddProductRequest(text)) return null;
+    const q = normalizeText(fixCommonOrderTypos(text || ''));
+    if (!/\b(porci[oó]n(?:es)?|yuca|papas?|arepas?)\b/.test(q)) return null;
+    const scored = this.searchByNameScored(text, products, 4);
+    const top = scored[0];
+    if (!top || !this.isLikelySideOnlyProduct(top.p)) return null;
+    if (/\byuca\b/.test(q) && !/\byuca\b/.test(normalizeText(top.p.name))) return null;
+    if (/\bpapas?\b/.test(q) && !/\byuca\b/.test(q) && !/\bpapas?\b/.test(normalizeText(top.p.name))) {
+      return null;
+    }
+    return top.p;
   }
 
   /** Productos cuyo nombre o atributo de *preparación* trae el estilo. */
@@ -1826,6 +1866,7 @@ export class WhatsappCatalogService {
 
   private isDistinctiveProductToken(token: string): boolean {
     const t = normalizeText(token);
+    if (/^(yuca|papa|lulo|mora)$/.test(t)) return true;
     if (t.length < 5) return false;
     if (this.WEAK_PRODUCT_TOKENS.has(t)) return false;
     if (COOKING_STYLE_TOKENS.has(t)) return false;
@@ -3302,6 +3343,18 @@ export class WhatsappCatalogService {
       return true;
     }
 
+    // "y una porción de yuca" / "una porcion de papa" = SKU suelto, no nota
+    if (
+      (/(?:^|\by\s+)(?:un|una|unos|unas|\d{1,2})\s+porci[oó]n(?:es)?\s+(?:de\s+)?(?:yuca|papas?|arepas?|maduro)\b/.test(
+        q,
+      ) ||
+        /(?:^|\by\s+)(?:un|una)\s+(?:yuca|papas?|arepas?)\b/.test(q)) &&
+      !/\b(sin|cambiar|en\s+vez|a\s+cambio)\b/.test(q) &&
+      !this.hasAccompanimentModifierWithMain(raw)
+    ) {
+      return true;
+    }
+
     if (
       !/\b(adicionar|adiciona|adicioname|agregame|agregar|añadir|anadir|ponme|dame|traeme|traer)\b/.test(
         q,
@@ -4560,6 +4613,12 @@ export class WhatsappCatalogService {
     const namedMenu = this.resolveNamedMenuDishProduct(text, products);
     if (namedMenu) return namedMenu;
 
+    const styleOnly = this.resolveBareCookingStyleProduct(text, products);
+    if (styleOnly) return styleOnly;
+
+    const sidePortion = this.resolveExplicitSidePortionProduct(text, products);
+    if (sidePortion) return sidePortion;
+
     const sizedSoup = this.resolveSizedSoupProduct(text, products);
     if (sizedSoup && !this.looksLikeClearlyMultiDishOrder(text)) return sizedSoup;
 
@@ -5637,6 +5696,8 @@ export class WhatsappCatalogService {
           /\byuca\b/.test(q) && !/\bpapas?\b/.test(q);
         if (wantsPapa && /\byuca\b/.test(name)) score -= 130;
         if (wantsYuca && /\bpapas?\b/.test(name) && !/\byuca\b/.test(name)) score -= 130;
+        if (wantsYuca && /\barroz\b/.test(name) && !/\byuca\b/.test(name)) score -= 130;
+        if (/\barroz\b/.test(q) && !/\byuca\b/.test(q) && /\byuca\b/.test(name)) score -= 130;
         if (
           wantsPapa &&
           (/\bfritas?\b/.test(q) || /\bfrancesa\b/.test(q)) &&
@@ -9180,6 +9241,86 @@ export class WhatsappCatalogService {
       attributeName: hit.attributeName,
       attributeValue: hit.attributeValue,
     };
+  }
+
+  /**
+   * "Pierna pernil, mondongo y limonada" con un ejecutivo en el carrito:
+   * solo nombra opciones de ese ítem → actualizar attrs, no agregar sopa/jugo.
+   */
+  resolveCartAttributeOnlyUpdate(
+    text: string,
+    cart: {
+      productId: number;
+      name: string;
+      attributes?: { attributeName: string; attributeValue: string }[];
+    }[],
+    products: WhatsappCatalogProduct[],
+  ): {
+    cartIndex: number;
+    itemName: string;
+    updates: { attributeName: string; attributeValue: string }[];
+  } | null {
+    const q = normalizeText(text || '');
+    if (!q || !cart.length) return null;
+    if (this.looksLikeExplicitAddProductRequest(text) && this.looksLikeClearlyMultiDishOrder(text)) {
+      return null;
+    }
+
+    const mentioned: {
+      cartIndex: number;
+      itemName: string;
+      updates: { attributeName: string; attributeValue: string }[];
+    }[] = [];
+    for (let i = cart.length - 1; i >= 0; i--) {
+      const line = cart[i];
+      const product = products.find((p) => p.id === line.productId);
+      if (!product?.attributes?.length) continue;
+      const updates: { attributeName: string; attributeValue: string }[] = [];
+      for (const attr of product.attributes) {
+        const named = attr.options
+          .filter((opt) => {
+            const o = normalizeText(opt);
+            if (o.length < 3) return false;
+            if (o.includes(' ')) return q.includes(o);
+            return new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(q);
+          })
+          .sort((a, b) => normalizeText(b).length - normalizeText(a).length)[0];
+        if (!named) continue;
+        updates.push({ attributeName: attr.attributeName, attributeValue: named });
+      }
+      if (updates.length) {
+        mentioned.push({ cartIndex: i, itemName: line.name, updates });
+      }
+    }
+    if (mentioned.length !== 1) return null;
+    const hit = mentioned[0];
+
+    let leftover = q;
+    const namedValues = [...hit.updates]
+      .map((u) => normalizeText(u.attributeValue))
+      .sort((a, b) => b.length - a.length);
+    for (const value of namedValues) {
+      leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(value)}\\b`, 'g'), ' ');
+    }
+    leftover = leftover
+      .replace(
+        /\b(y|con|de|el|la|los|las|un|una|para|quiero|dame|ponme|cambia|cambiar|puede|ser|que|sea)\b/g,
+        ' ',
+      )
+      .replace(/[,.;:]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (leftover.length > 0) return null;
+
+    const line = cart[hit.cartIndex];
+    const changes = hit.updates.filter((u) => {
+      const current = (line.attributes || []).find(
+        (a) => normalizeText(a.attributeName) === normalizeText(u.attributeName),
+      );
+      return !current || normalizeText(current.attributeValue) !== normalizeText(u.attributeValue);
+    });
+    if (!changes.length) return null;
+    return { cartIndex: hit.cartIndex, itemName: hit.itemName, updates: changes };
   }
 
   /**
