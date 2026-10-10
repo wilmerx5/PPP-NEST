@@ -2,7 +2,8 @@
 
 const { createHmac, randomUUID } = require('node:crypto');
 const { buildPlan, knownVariantDraft, buildKnownVariantResumePlan,
-  knownCollapsedVariantDraft, buildCollapsedVariantResumePlan } = require('./ppp-staging-chat-plan.cjs');
+  knownCollapsedVariantDraft, buildCollapsedVariantResumePlan,
+  knownVariantRemovalDraft, buildVariantRemovalResumePlan } = require('./ppp-staging-chat-plan.cjs');
 const TARGET = 'https://dev.prontopolloportal.com';
 const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const digits = value => String(value || '').replace(/\D/g, '');
@@ -39,8 +40,9 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
   const sleep = helpers.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const resumeKnownDraft = env.STAGING_CHAT_RESUME === 'known-variant-draft';
   const resumeCollapsedDraft = env.STAGING_CHAT_RESUME === 'known-collapsed-variant-draft';
+  const resumeRemovalDraft = env.STAGING_CHAT_RESUME === 'known-variant-removal-draft';
   const report = { ok: false, mode: env.STAGING_CHAT_EXECUTE === 'true' ? 'execute' : 'preflight',
-    checks: [], steps: [], webhookPosts: 0, expectedSteps: resumeKnownDraft ? 23 : resumeCollapsedDraft ? 20 : 21,
+    checks: [], steps: [], webhookPosts: 0, expectedSteps: resumeKnownDraft ? 23 : resumeCollapsedDraft ? 20 : resumeRemovalDraft ? 16 : 21,
     limits: 'Synthetic signed inbound events; real staging persistence and Meta outbound. No genuine Meta inbound delivery, kitchen, payments or order confirmation tested.' };
   let cookie = '', requests = 0, startedAt = now(), recipient, channel, conversationId, initialName;
   const check = async (name, work) => {
@@ -81,7 +83,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
       ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
       ensure(!env.STAGING_CHAT_EXECUTE || ['true', 'false'].includes(env.STAGING_CHAT_EXECUTE), 'INVALID_EXECUTION_MODE');
-      ensure(!env.STAGING_CHAT_RESUME || resumeKnownDraft || resumeCollapsedDraft, 'INVALID_RESUME_MODE');
+      ensure(!env.STAGING_CHAT_RESUME || resumeKnownDraft || resumeCollapsedDraft || resumeRemovalDraft, 'INVALID_RESUME_MODE');
       ensure(['STAGING_ADMIN_EMAIL', 'STAGING_ADMIN_PASSWORD', 'STAGING_WHATSAPP_APP_SECRET',
         'STAGING_WHATSAPP_PHONE_NUMBER_ID', 'STAGING_WHATSAPP_RECIPIENTS'].every(k => env[k]?.trim()), 'REQUIRED_SECRET_MISSING');
       const recipients = env.STAGING_WHATSAPP_RECIPIENTS.split(',').map(digits);
@@ -115,7 +117,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure([200, 201].includes(r.status), 'TARGET_VERIFICATION_FAILED');
       const body = await r.json();
       ensure(body.staging === true, 'SERVER_NOT_STAGING');
-      ensure(body.conversationTestVersion === '2026-10-10.cart-v3', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
+      ensure(body.conversationTestVersion === '2026-10-10.cart-v4', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
       ensure(body.targetMatches === true, 'TEST_CHANNEL_OR_RECIPIENT_MISMATCH');
       ensure(body.botEnabled === true && body.agentEnabled === true && body.approvedModel === true && body.credentialsPresent === true, 'BOT_OR_APPROVED_MODEL_NOT_READY');
       ensure(Number.isInteger(body.rateLimitPerMinute) && body.rateLimitPerMinute >= 5 && body.rateLimitPerMinute <= 120, 'INVALID_RATE_LIMIT');
@@ -149,6 +151,12 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
           !initial.sessionData.pendingMatch && !initial.sessionData.pendingAttribute && !initial.sessionData.pendingMultiOrder &&
           initial.messages.filter(m => m.direction === 'in').at(-1)?.body ===
             'Quiero un churrasco sin ensalada y dos sobrebarrigas: una asada y otra en salsa.', 'KNOWN_FAILED_DRAFT_CHANGED');
+      } else if (resumeRemovalDraft) {
+        ensure(initial.sessionData.cart.length === 3 && !initial.sessionData.pendingCartRemoval &&
+          !initial.sessionData.pendingCartQuantity && !initial.sessionData.pendingMatch &&
+          !initial.sessionData.pendingAttribute && !initial.sessionData.pendingMultiOrder &&
+          initial.messages.filter(m => m.direction === 'in').at(-1)?.body ===
+            'Quita la sobrebarriga en salsa; conserva la asada y los churrascos.', 'KNOWN_FAILED_DRAFT_CHANGED');
       } else ensure(initial.sessionData.cart.length === 0, 'TEST_CHAT_HAS_EXISTING_DRAFT');
       unchangedIdentity(initial);
       const recentInbound = initial.messages.some(m => m.direction === 'in' && Number.isFinite(Date.parse(m.createdAt)) &&
@@ -171,10 +179,12 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         a.options.includes('Asada')), 'REQUIRED_ATTRIBUTES_CHANGED');
       if (resumeKnownDraft) ensure(cartMatches(knownVariantDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
       if (resumeCollapsedDraft) ensure(cartMatches(knownCollapsedVariantDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
+      if (resumeRemovalDraft) ensure(cartMatches(knownVariantRemovalDraft(products), initial.sessionData.cart), 'KNOWN_FAILED_DRAFT_CHANGED');
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
     const plan = resumeKnownDraft ? buildKnownVariantResumePlan(products) :
-      resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) : buildPlan(products);
+      resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
+      resumeRemovalDraft ? buildVariantRemovalResumePlan(products) : buildPlan(products);
     report.expectedSteps = plan.length;
     let current = initial, lastPayload, lastSent = 0;
     const runId = randomUUID();

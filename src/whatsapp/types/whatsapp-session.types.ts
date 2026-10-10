@@ -117,6 +117,7 @@ export type WhatsappSessionData = {
   };
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
+    cartSignature?: string;
     options: Array<{ cartIndex: number; label: string }>;
   };
   /**

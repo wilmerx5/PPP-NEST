@@ -1,5 +1,6 @@
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
+import { parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -610,6 +611,8 @@ export class WhatsappOrchestratorService {
     // A correction refers to an existing cart line, even while a variant list is open.
     if (session.cart.length &&
       await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, originalText, cfg)) return;
+    if (session.cart.length &&
+      await this.tryHandleScopedCartRemoval(conv, msg.waId, session, originalText, cfg)) return;
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
     session = this.withDeliveryAddress(session, compound.address);
@@ -9175,6 +9178,56 @@ export class WhatsappOrchestratorService {
     });
     if (!changed) return null;
     return { ...session, cart };
+  }
+
+  private async tryHandleScopedCartRemoval(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const removal = parseScopedCartRemoval(text);
+    const pending = session.pendingCartRemoval;
+    const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
+    if (!removal && !(pending?.cartSignature && pick !== null)) return false;
+    const indices = removal ? session.cart.flatMap((line, index) => correctionMatchesLine(line, removal.query) ? [index] : []) : [];
+    if (!removal && pending) {
+      if (pending.cartSignature !== JSON.stringify(session.cart)) {
+        await this.conversationService.saveSession(conv, { ...session, pendingCartRemoval: undefined });
+        await this.reply(conv, waId, 'El carrito cambió. Dime otra vez cuál plato quitamos.');
+        return true;
+      }
+      if (!pick || !Number.isSafeInteger(pick) || pick > pending.options.length) {
+        await this.reply(conv, waId, 'Elige uno de los números de la lista para quitar esa línea.');
+        return true;
+      }
+      indices.push(pending.options[pick - 1].cartIndex);
+    }
+    if (!indices.length) return false;
+    if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
+      await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
+      return true;
+    }
+    if (removal && indices.some(index => preservedRemovalConflict(session.cart[index], removal.preserve))) {
+      await this.reply(conv, waId, 'Me pediste quitar y conservar la misma línea. ¿Cuál plato quitamos? El carrito sigue igual.');
+      return true;
+    }
+    if (indices.length > 1) {
+      const options = indices.map(cartIndex => ({ cartIndex, label: this.formatCartLineLabel(session.cart[cartIndex]) +
+        (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
+      await this.conversationService.saveSession(conv, { ...session, pendingCartRemoval: { options,
+        cartSignature: JSON.stringify(session.cart) }, pendingCartQuantity: undefined });
+      await this.reply(conv, waId, `¿Cuál línea quitamos?\n\n${options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')}\n\nEscribe el número. Los demás platos se conservan.`);
+      return true;
+    }
+    const label = this.formatCartLineLabel(session.cart[indices[0]]);
+    const next = { ...this.removeCartLines(session, indices), pendingCartQuantity: undefined,
+      pendingMatch: undefined, pendingMultiOrder: undefined, pendingAttribute: undefined,
+      pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined };
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(conv, waId, `Listo, quité ${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    return true;
   }
 
   private async tryHandleCartQuantityCorrection(
