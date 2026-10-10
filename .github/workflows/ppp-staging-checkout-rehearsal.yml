@@ -25,13 +25,13 @@ jobs:
       github.repository == 'wilmerx5/PPP-NEST' &&
       github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '60d524ce5031f0f55b68ea7fda27bcb6f830a626'))
+       (github.event_name == 'push' && github.event.before == '77a4be6c99fe6b2d6dede4e118d4fcaa94f939fc'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 60d524ce5031f0f55b68ea7fda27bcb6f830a626
+          ref: 77a4be6c99fe6b2d6dede4e118d4fcaa94f939fc
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -40,8 +40,8 @@ jobs:
         run: node --test scripts/ppp-staging-checkout-rehearsal.test.cjs
       - name: Verify staging and optionally execute bounded checkout tests
         env:
-          STAGING_CHECKOUT_EXECUTE: ${{ (github.event_name == 'workflow_dispatch' && inputs.execute) && 'true' || 'false' }}
-          STAGING_CHECKOUT_RESUME: ''
+          STAGING_CHECKOUT_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_CHECKOUT_RESUME: ${{ github.event_name == 'push' && 'known-soup-list-cart' || '' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
