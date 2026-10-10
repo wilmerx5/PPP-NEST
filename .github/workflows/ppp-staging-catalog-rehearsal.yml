@@ -1,0 +1,54 @@
+name: PPP Staging Catalog Rehearsal
+
+on:
+  push:
+    branches: [fix/whatsapp-checkout-flow-20261010]
+    paths: [.github/workflows/ppp-staging-catalog-rehearsal.yml]
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Run the diverse-catalog rehearsal on the authorized recipient
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppp-staging-authorized-catalog
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    if: >-
+      github.repository == 'wilmerx5/PPP-NEST' &&
+      github.ref == 'refs/heads/fix/whatsapp-checkout-flow-20261010'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate the rehearsal offline
+        run: node --test scripts/ppp-staging-catalog-rehearsal.test.cjs
+      - name: Execute the diverse catalog rehearsal
+        env:
+          STAGING_CATALOG_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+          STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+          STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
+          STAGING_WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.STAGING_WHATSAPP_PHONE_NUMBER_ID }}
+          STAGING_WHATSAPP_RECIPIENTS: ${{ secrets.STAGING_WHATSAPP_RECIPIENTS }}
+        run: node scripts/ppp-staging-catalog-rehearsal.cjs
+      - name: Archive sanitized results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppp-staging-catalog-report
+          path: tmp/ppp-staging-catalog-report.json
+          retention-days: 7
+          if-no-files-found: ignore

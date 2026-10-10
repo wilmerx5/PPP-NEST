@@ -482,5 +482,94 @@
         "quantity": 3
       }
     ]
+  },
+  {
+    "id": "ambiguous-chicken-then-quarter",
+    "messages": [
+      { "text": "Quiero un pollo", "expect": { "items": {} } },
+      {
+        "text": "Un cuarto de pollo frito, ala pechuga, arepas fritas",
+        "expect": {
+          "items": { "3": 1 },
+          "attrs": [
+            { "id": 3, "key": "Presa", "value": "Ala pechuga" },
+            { "id": 3, "key": "Arepas", "value": "Fritas" }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "mojarra-and-ribs-rice",
+    "messages": [
+      {
+        "text": "Una mojarra frita",
+        "expect": {
+          "items": { "14": 1 },
+          "attrs": [{ "id": 14, "key": "Seleccion", "value": "Frita" }]
+        }
+      },
+      {
+        "text": "Arroz chino con costillas de cerdo",
+        "expect": { "items": { "14": 1, "84": 1 } }
+      }
+    ]
+  },
+  {
+    "id": "pechuga-then-gratinada",
+    "messages": [
+      { "text": "Una pechuga", "expect": { "items": {} } },
+      { "text": "La gratinada", "expect": { "items": { "61": 1 } } },
+      { "text": "Y una porcion de yuca", "expect": { "items": { "61": 1, "7": 1 } } }
+    ]
+  },
+  {
+    "id": "soda-and-milk-juice",
+    "messages": [
+      {
+        "text": "Una gaseosa de 400 pepsi",
+        "expect": {
+          "items": { "28": 1 },
+          "attrs": [{ "id": 28, "key": "Sabor", "value": "Pepsi" }]
+        }
+      },
+      {
+        "text": "Un jugo de guanabana en leche",
+        "expect": {
+          "items": { "28": 1, "51": 1 },
+          "attrs": [{ "id": 51, "key": "Sabor", "value": "Guanabana" }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "ejecutivo-frito-choices",
+    "messages": [
+      { "text": "Un ejecutivo con pollo frito", "expect": { "items": { "22": 1 } } },
+      {
+        "text": "Pierna pernil, mondongo y limonada",
+        "expect": {
+          "items": { "22": 1 },
+          "attrs": [
+            { "id": 22, "key": "Presa", "value": "Pierna Pernil" },
+            { "id": 22, "key": "Sopa", "value": "Mondongo" },
+            { "id": 22, "key": "Bebida", "value": "Limonada" }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "taco-pastor-colombiana",
+    "messages": [
+      { "text": "Un taco al pastor", "expect": { "items": { "70": 1 } } },
+      {
+        "text": "Colombiana",
+        "expect": {
+          "items": { "70": 1 },
+          "attrs": [{ "id": 70, "key": "Bebida", "value": "Colombiana" }]
+        }
+      }
+    ]
   }
 ]
