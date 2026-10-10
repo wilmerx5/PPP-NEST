@@ -2,7 +2,7 @@ import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
-import { parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
+import { isKeepCartRefusal, parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -619,6 +619,10 @@ export class WhatsappOrchestratorService {
         await this.tryConfirmOrder(conv, msg.waId, session);
         return;
       }
+    }
+    if (session.cart.length && isKeepCartRefusal(originalText)) {
+      await this.reply(conv, msg.waId, 'Listo, no quito nada ✅ El pedido sigue igual.\n\n¿*Algo más*?');
+      return;
     }
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
@@ -10848,11 +10852,13 @@ export class WhatsappOrchestratorService {
       );
       return true;
     }
-    // No interferir en pasos de pago / notas / confirmación final
+    // No interferir en pasos de pago / notas / confirmación final.
+    // Una calle nueva sí reemplaza el domicilio y se vuelve a cotizar.
     if (
       conv.state &&
       [
         'awaiting_payment',
+        'awaiting_final_confirm',
         'awaiting_notes',
         'awaiting_phone',
         'awaiting_name',
@@ -10860,7 +10866,8 @@ export class WhatsappOrchestratorService {
         'completed',
         'closed',
         'human_takeover',
-      ].includes(conv.state)
+      ].includes(conv.state) &&
+      !this.looksLikeAddressReplacement(originalText)
     ) {
       return false;
     }

@@ -1,6 +1,13 @@
 import { correctionMatchesLine, normalizeCorrection } from './whatsapp-quantity-correction';
 import type { WhatsappCartItem } from './types/whatsapp-session.types';
 
+/** The customer is refusing a removal the bot just suggested. The cart stays. */
+export function isKeepCartRefusal(text: string): boolean {
+  const t = normalizeCorrection(text);
+  if (!t || t.length > 80) return false;
+  return /^(?:no quiero que (?:me )?(?:lo|la|los|las) quites|no (?:me )?(?:lo|la|los|las) quites|no quites nada|no quiero que quites nada)$/.test(t);
+}
+
 /** Only a single explicit dish removal, optionally followed by preservation clauses. */
 export function parseScopedCartRemoval(text: string): { query: string; preserve: string[] } | null {
   if (!text.trim() || text.length > 350 || /[¿?]/.test(text)) return null;

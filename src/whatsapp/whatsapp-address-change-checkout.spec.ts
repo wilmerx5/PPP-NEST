@@ -97,7 +97,12 @@ describe('Checkout interruptions preserve the order', () => {
     expect(h.replies.at(-1)).toMatch(/direcci[oó]n actualizada/i);
   });
 
-  it.each(['Para el hotel santandereano', 'Para ek hotel santandereano', 'Calle 48 sur 87 86'])('address after products advances to payment: %s', async address => {
+  it.each([
+    'Para el hotel santandereano', 'Para ek hotel santandereano', 'Calle 48 sur 87 86',
+    'Para la Calle 48 sur 87 86', 'para la calle 39 sur 38 a 56', 'para la cra 80 # 12-34',
+    'Cll 48 sur 87 86', 'Dg 6 b #78 b 20, Castilla', 'diagonal 6 b 78 b 20',
+    'transversal 68 sur 12 40', 'para la 48 sur 87 86',
+  ])('address after products advances to payment: %s', async address => {
     const h = harness();
     h.conv.state = 'building_cart';
     h.conv.sessionData.address = undefined;
@@ -108,7 +113,34 @@ describe('Checkout interruptions preserve the order', () => {
     expect(h.conv.sessionData.address).toBeTruthy();
     expect(h.conv.state).toBe('awaiting_payment');
     expect(h.replies.at(-1)).toMatch(/cómo pagas/i);
+    expect(h.replies.join('\n')).not.toMatch(/cantidad entre 1 y 30/i);
+    expect(h.conv.state).not.toBe('completed');
     expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'Para la Calle 48 sur 87 86', 'Cra 80 # 12-34', 'cll 6 b 81 b 51, Castilla, Bogotá',
+  ])('a new street during payment is requoted, not a quantity: %s', async address => {
+    const h = harness();
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send(address);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.address).not.toContain('78 b 20');
+    expect(h.conv.sessionData.deliveryFeeCalculated).toBe(4500);
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.replies.join('\n')).not.toMatch(/cantidad entre 1 y 30/i);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+  it.each(['No quiero que lo quites', 'No lo quites', 'No me lo quites', 'No quites nada'])('a refusal to remove keeps the dish: %s', async text => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send(text);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/no quito nada/i);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+    expect(h.conv.state).not.toBe('completed');
   });
 });
 
