@@ -391,6 +391,19 @@ async function runCheckoutRehearsal(
         const products = await productsResponse.json();
         ensure(Array.isArray(products), 'INVALID_CATALOG');
         soup = products.find(product => product.name === 'Sopa De Ajiaco');
+        report.catalogSnapshot = products
+          .filter(
+            product =>
+              product.id === 38 ||
+              normalize(product.name).includes('sopa de ajiaco'),
+          )
+          .map(product => ({
+            id: Number(product.id),
+            name: String(product.name || ''),
+            price: Number(product.price),
+            isActive: product.isActive === true,
+            availableNow: product.availableNow === true,
+          }));
         ensure(
           soup &&
             Number.isSafeInteger(soup.id) &&
