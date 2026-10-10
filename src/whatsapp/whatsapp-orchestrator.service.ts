@@ -8326,9 +8326,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          analysis.kind === 'payment_proof' && analysis.reply?.includes(WHATSAPP_HUMAN_CONTACT_PHONE)
-            ? analysis.reply
-            : `Recibí tu comprobante ✅ ${this.humanContactMessage()}`,
+          this.paymentProofAcknowledgement(),
         );
         return { done: true };
       }
@@ -8351,7 +8349,7 @@ export class WhatsappOrchestratorService {
           await this.reply(
             conv,
             msg.waId,
-            `Recibí tu comprobante ✅ ${this.humanContactMessage()}`,
+            this.paymentProofAcknowledgement(),
           );
           return { done: true };
         }
@@ -8400,6 +8398,10 @@ export class WhatsappOrchestratorService {
   }
 
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
+  private paymentProofAcknowledgement(): string {
+    return `Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago. ${this.humanContactMessage()}`;
+  }
+
   private isLikelyPaymentProofContext(conv: WhatsappConversation): boolean {
     if (conv.state === 'completed' || conv.state === 'closed') return true;
     const session = this.conversationService.getSession(conv);

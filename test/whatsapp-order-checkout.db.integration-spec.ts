@@ -128,7 +128,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
  afterEach(async()=>{await settled();await app?.close();expect(external).not.toHaveBeenCalled();});
  afterAll(async()=>{external?.mockRestore();if(otherDb?.isInitialized)await otherDb.destroy();if(db?.isInitialized)await db.destroy();});
 
- it('starts with an empty conversation and collects checkout data before creating exactly two units',async()=>{
+ it.each(['cash','transfer'])('starts with an empty conversation and collects %s checkout data before creating exactly two units',async payment=>{
   const phone='573000000001';
   agent.runTurn.mockResolvedValueOnce({reply:'Listo, dos arroces con pollo sin ensalada.',
    actions:{addItems:[{productId:23,quantity:2,note:'sin ensalada'}]},toolCalls:['add_item']});
@@ -138,7 +138,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   expect(other.getSession(await other.reloadConversation(c.id)).cart).toMatchObject([{productId:23,quantity:2,note:'sin ensalada'}]);
   await post('wamid.empty.checkout','No más',phone).expect(200);
   const answers:Record<string,string>={awaiting_name:'Cliente Sintético',awaiting_phone:'3000000001',
-   awaiting_fulfillment:'Paso a recoger',awaiting_address:'Paso a recoger',awaiting_notes:'No',awaiting_payment:'Efectivo'};
+   awaiting_fulfillment:'Paso a recoger',awaiting_address:'Paso a recoger',awaiting_notes:'No',awaiting_payment:payment==='transfer'?'Transferencia':'Efectivo'};
   const visited:string[]=[];
   for(let step=0;step<8;step++){
    const current=await other.reloadConversation(c.id);visited.push(current.state);
@@ -154,6 +154,7 @@ describe('Signed WhatsApp confirmation into real PPP orders, inventory and kitch
   await settled();
   expect(await otherDb.getRepository(Order).count()).toBe(1);
   const order=await saved();expect(order.items).toHaveLength(2);
+  expect(order.address).toMatch(payment==='transfer'?/transferencia/i:/contraentrega|efectivo/i);
   expect(order.items.map(item=>item.note)).toEqual(['sin ensalada','sin ensalada']);
   expect(order.items.reduce((sum,item)=>sum+Number(item.unitPrice),0)).toBe(59000);
   expect(await stock(23)).toBe(8);
