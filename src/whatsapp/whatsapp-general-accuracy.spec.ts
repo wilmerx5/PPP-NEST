@@ -523,8 +523,40 @@ describe('Selected anonymized historical chat patterns — offline router', () =
     if (scenario.expect.items) {
       expect(Object.fromEntries(h.cartRows().map(row => [String(row.id), row.qty]))).toEqual(scenario.expect.items);
     }
+    for (const component of scenario.expect.addressAll || []) expect(h.conv.sessionData.address).toEqual(expect.stringContaining(component));
     expect(h.replies.at(-1)).toBeTruthy();
     if (scenario.expect.replyPattern) expect(h.replies.at(-1)).toMatch(new RegExp(scenario.expect.replyPattern, 'i'));
     expect(h.conv.state).not.toBe('completed');
+  });
+});
+
+
+describe('Historical chat continuation: address components and late notes', () => {
+  it.each([true, false])('keeps street, complex and unit through checkout (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero un churrasco');
+    await h.send('Para la calle 10B #80C-20');
+    const state = h.conv.state;
+    await h.send('Conjunto residencial Prueba');
+    await h.send('Torre 2 apto 301');
+    expect(h.conv.sessionData.address).toMatch(/80C-20/i);
+    expect(h.conv.sessionData.address).toMatch(/Conjunto residencial Prueba/i);
+    expect(h.conv.sessionData.address).toMatch(/Torre 2.*301/i);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1})]);
+    expect(h.conv.state).toBe(state);
+    await h.send('Cambiar la dirección a calle 20 #30-40');
+    expect(h.conv.sessionData.address).toMatch(/30-40/);
+    expect(h.conv.sessionData.address).not.toMatch(/80C-20/);
+  });
+
+  it.each([true, false])('keeps a late dish exclusion while awaiting payment (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero un churrasco');
+    await h.send('Para la calle 10B #80C-20');
+    const state = h.conv.state;
+    await h.send('Sin ensalada x favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1,note:expect.stringMatching(/sin ensalada/i)})]);
+    expect(h.conv.state).toBe(state);
+    expect(h.replies.at(-1)).toMatch(/sin ensalada/i);
   });
 });

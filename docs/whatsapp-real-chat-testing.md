@@ -6,7 +6,7 @@ Los 14 escenarios seleccionados están en `scripts/fixtures/whatsapp-real-chat-p
 
 ## Cobertura inicial
 
-Cuatro escenarios con `automated: true` se ejecutan en `whatsapp-general-accuracy.spec.ts`: consulta de precio con cantidad, referencia sin adjunto, consulta de total y agradecimiento. Se verifican carrito y respuesta cuando corresponde. El mismo archivo cubre por separado la preparación del plato y el barrio en mensajes sucesivos, incluyendo repetición del barrio; todavía falta extender esa conversación con la nota tardía «sin ensalada».
+Cinco escenarios con `automated: true` se ejecutan en `whatsapp-general-accuracy.spec.ts`: consulta de precio con cantidad, referencia sin adjunto, consulta de total, agradecimiento y dirección por partes. Se verifican carrito y respuesta cuando corresponde. El mismo archivo cubre por separado la preparación del plato y el barrio en mensajes sucesivos, incluyendo repetición del barrio; todavía falta extender esa conversación con la nota tardía «sin ensalada».
 
 Las regresiones de cocción cubren el pedido inicial, corrección posterior con typo, conservación de otras notas, sustitución del término anterior y alcance ambiguo con otro catálogo. Una pregunta de alcance ambiguo no acredita que una respuesta posterior solo con el nombre retome la edición: ese recorrido sigue pendiente.
 
@@ -21,7 +21,7 @@ Estos tests usan router, catálogo y carrito reales con modelo, persistencia y t
 5. Respuestas que citan opciones anteriores, typos de sabores y opciones agotadas: resolver solo dentro del catálogo y el contexto vigente.
 6. Casos con dependencia especial: imagen ausente, canje validado, nueva sesión otro día y cancelación de pedido ya confirmado. Aclarar o derivar cuando falte contexto.
 
-Los diez escenarios con `automated: false` son selección pendiente, no pruebas aprobadas. Antes de marcar cada uno como aprobado: ejecutar el recorrido completo, comprobar carrito/estado/respuesta y añadir variaciones con otro catálogo. Reservar variantes inéditas para evaluación; no copiar mensajes de prueba en reglas de producción.
+Los nueve escenarios con `automated: false` son selección pendiente, no pruebas aprobadas. Antes de marcar cada uno como aprobado: ejecutar el recorrido completo, comprobar carrito/estado/respuesta y añadir variaciones con otro catálogo. Reservar variantes inéditas para evaluación; no copiar mensajes de prueba en reglas de producción.
 
 ## Ejecución y gasto
 
@@ -36,3 +36,5 @@ npx jest src/whatsapp/whatsapp-general-accuracy.spec.ts --runInBand -t 'historic
 Después de cambiar reglas compartidas: `npx tsc --noEmit --incremental false` y `npm run test:whatsapp`.
 
 Esta selección no realizó llamadas pagadas. El saldo autorizado se conserva en `docs/whatsapp-model-budget.json`; no ejecutar inferencia masiva sobre el archivo original ni reiniciar el presupuesto. Una suite verde no acredita que el producto esté listo para venta.
+
+Actualización: dirección calle → conjunto → torre/apartamento ya tiene una prueba ejecutable. Regresiones adicionales verifican que se conserve el paso de checkout, que una calle explícitamente distinta reemplace la anterior y que una exclusión tardía se aplique con agente habilitado o deshabilitado. Las instrucciones compuestas y la conversación completa de preparación siguen pendientes.

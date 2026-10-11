@@ -50,14 +50,25 @@
       "id": "direccion-por-partes",
       "source": "lote-2/chat-11",
       "priority": "alta",
-      "automated": false,
+      "automated": true,
       "messages": [
         "Medio pollo frito",
         "Calle 10B #80C-20",
         "Conjunto residencial Prueba",
         "Torre 2 apto 301"
       ],
-      "invariant": "Anexar conjunto y unidad sin sustituir la calle ni duplicar el producto."
+      "invariant": "Anexar conjunto y unidad sin sustituir la calle ni duplicar el producto.",
+      "expect": {
+        "items": {
+          "2": 1
+        },
+        "addressAll": [
+          "80C-20",
+          "Conjunto residencial Prueba",
+          "Torre 2",
+          "301"
+        ]
+      }
     },
     {
       "id": "cambio-acompanamiento",

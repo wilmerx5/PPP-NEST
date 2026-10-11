@@ -665,13 +665,41 @@ export class WhatsappOrchestratorService {
 
     // A neighborhood sent as a separate turn supplements the street in any active checkout step.
     if (!['completed', 'closed', 'human_takeover'].includes(conv.state || '') &&
-      /^(?:en\s+el\s+|el\s+)?barrio\s+[\p{L}\s.-]+$/iu.test(originalText.trim()) && session.address) {
+      /^(?:en\s+el\s+|el\s+)?(?:barrio|conjunto(?:\s+residencial)?)\s+[\p{L}\s.-]+$/iu.test(originalText.trim()) && session.address) {
       const next = this.withDeliveryAddress(session, originalText.trim());
       if (next.address !== session.address || session.address.toLowerCase().includes(originalText.trim().toLowerCase())) {
         await this.conversationService.saveSession(conv, next);
         await this.reply(conv, msg.waId, `📍 Dirección actualizada ✅ ${next.address}`);
         return;
       }
+    }
+
+    // A standalone exclusion edits the existing dish before an agent can overlook it.
+    const exclusionText = originalText.trim().replace(/\s+(?:x\s+favor|por\s+favor|porfa)[.!]*$/i, '').replace(/[.!]+$/, '');
+    const exclusionCandidate = /^sin\s+[\p{L}\s]{1,60}$/iu.test(exclusionText) &&
+      !/\b(?:y|agrega|quiero|dame|dos|tres|cuatro|cinco|otro|otra)\b/i.test(exclusionText);
+    const exclusionMenu = exclusionCandidate && session.cart.length ? await this.catalogService.getMenuProducts() : [];
+    const exclusionIsAttribute = exclusionMenu.some(product => session.cart.some(line => line.productId === product.id) &&
+      this.catalogService.extractExplicitAttributeChoice(exclusionText, product)?.length);
+    if (!['completed', 'closed', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state || '') &&
+      exclusionCandidate && !exclusionIsAttribute && session.cart.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+      /^sin\s+[\p{L}\s]{1,60}$/iu.test(exclusionText)) {
+      if (session.cart.length > 1) {
+        await this.reply(conv, msg.waId, '¿A cuál plato le aplico esa nota? Escribe el plato y la nota juntos.');
+        return;
+      }
+      const edited = editScopedCartNote(session.cart[0].note, {kind:'append',query:'',note:exclusionText,preserve:[]});
+      if (edited.blocked) {
+        await this.reply(conv, msg.waId, 'Necesito que resumas las notas del plato para conservar todas las instrucciones.');
+        return;
+      }
+      session = {...session,cart:[{...session.cart[0],note:edited.note}]};
+      await this.conversationService.saveSession(conv, session);
+      const preface = `Listo ✅ *${session.cart[0].name}* · ${edited.note}`;
+      if (['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state || '')) {
+        await this.tryConfirmOrder(conv, msg.waId, session, {preface});
+      } else await this.reply(conv, msg.waId, `${preface}\n\n${this.formatContinueShoppingPrompt(session)}`);
+      return;
     }
 
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
@@ -10274,7 +10302,7 @@ export class WhatsappOrchestratorService {
 
     // Neighborhood-only messages supplement an existing street, even before confirmation.
     // Explicit replacement commands and complete new streets still use the replacement path.
-    const neighborhoodDetail = /^(?:en\s+el\s+|el\s+)?barrio\s+[\p{L}\s.-]+$/iu.test(addr);
+    const neighborhoodDetail = /^(?:en\s+el\s+|el\s+)?(?:barrio|conjunto(?:\s+residencial)?)\s+[\p{L}\s.-]+$/iu.test(addr);
     if (prev && neighborhoodDetail && /\b(calle|carrera|cra|cll|diagonal|dg|avenida|transversal)\b/i.test(prev) && /\d/.test(prev)) {
       if (prev.toLowerCase().includes(addr.toLowerCase())) return session;
       return { ...session, address: `${prev}, ${addr}`.slice(0, 240), orderType: 'delivery', fulfillmentChosen: true };
@@ -11236,7 +11264,12 @@ export class WhatsappOrchestratorService {
       // Mantener fee/coords del conjunto; no recalcular por torre/apto
       // No duplicar en Notas: el detalle ya va en la dirección
     };
-    await this.conversationService.saveSession(conv, session, 'building_cart');
+    const inCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state || '');
+    await this.conversationService.saveSession(conv, session, inCheckout ? undefined : 'building_cart');
+    if (inCheckout) {
+      await this.tryConfirmOrder(conv, waId, session, {preface:`📍 Dirección actualizada ✅ ${nextAddr}`});
+      return true;
+    }
     await this.reply(
       conv,
       waId,
