@@ -2668,3 +2668,65 @@ describe('PDF segunda tanda — aclaración conserva el cambio pendiente',()=>{
     expect(h.conv.sessionData.pendingCartAttributeEdit).toBeFalsy();
   });
 });
+
+describe('PDF tercera tanda — citas antiguas, recogida y mensajes consecutivos',()=>{
+  const bowl={id:9701,code:9701,name:'Bowl Mediterraneo',price:17000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]};
+  it.each(['missing','foreign','removed'])('cita %s no reincorpora el plato retirado',async scenario=>{
+    const h=harness([bowl,{...bowl,id:9702,code:9702,name:'Bowl Oriental'}],false);
+    await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Un bowl oriental');await h.sendQueued('Quita el bowl mediterraneo');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9702,qty:1})]);const before=structuredClone(h.conv.sessionData.cart);
+    h.service.conversationService.findByWaMessageId=jest.fn().mockResolvedValue(scenario==='missing'?null:{conversationId:scenario==='foreign'?99:1,direction:'out',body:'Bowl Mediterraneo. Base: Arroz o Quinoa',waMessageId:'old-quote'});
+    await h.send('Quinoa',{context:{id:'old-quote'}});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál|identificar|plato|producto/i);
+  });
+  it.each(['Lo recoge otra persona','Lo recoge mi hermano','Paso a recogerlo'])('cambio a recogida conserva productos: %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.orderType).toBe('pickup');
+  });
+  it.each([
+    {menu:products,order:'Dos arroces con pollo',id:23},
+    {menu:[bowl],order:'Dos bowls mediterraneos',id:9701},
+  ])('turnos consecutivos complementan el domicilio sin duplicar $id',async({menu,order,id})=>{
+    const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    for(const text of [order,'Para la calle 7 #20-30','Torre 3 apartamento 607','Barrio Tintal'])await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);expect(h.conv.sessionData.address).toMatch(/607/);
+  });
+  it.each(['Los quiero 1 con arroz y tofu y 1 con quinoa y pollo','Los quiero 1 con arroz y pollo y 1 con quinoa y tofu'])('reparto de varios atributos aplica cada combinación completa: %s',async text=>{
+    const meal={...bowl,attributes:[...bowl.attributes,{attributeName:'Proteina',options:['Pollo','Tofu']}]};
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);
+    expect(before[0].quantity).toBe(2);
+    expect(h.cartRows()).toHaveLength(2);
+    for(const row of h.cartRows())expect(row).toMatchObject({id:9701,qty:1});
+    expect(h.cartRows()[0].attrs).toEqual(expect.arrayContaining(['Base:Arroz',text.includes('arroz y tofu')?'Proteina:Tofu':'Proteina:Pollo']));
+    expect(h.cartRows()[1].attrs).toEqual(expect.arrayContaining(['Base:Quinoa',text.includes('quinoa y pollo')?'Proteina:Pollo':'Proteina:Tofu']));
+    expect(h.replies.at(-1)).toMatch(/Repartí/i);
+  });
+});
+
+describe('PDF tercera tanda — límites del reparto y recogida',()=>{
+  const meal={id:9801,code:9801,name:'Bowl Mediterraneo',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']},{attributeName:'Proteina',options:['Pollo','Tofu']}]};
+  it.each(['Los quiero 1 con arroz y tofu y 1 con quinoa y cerdo','Los quiero 1 con arroz y 1 con quinoa y tofu','Los quiero 2 con arroz y tofu y 2 con quinoa y pollo'])('reparto inválido no modifica parcialmente: %s',async text=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu sin cebolla');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/opciones|cantidad|cuál|unidades/i);
+    expect(h.replies.at(-1)).not.toMatch(/no manejamos:.*tofu/i);
+  });
+  it('cada combinación conserva nota en ambas líneas',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu sin cebolla');
+    await h.sendQueued('Los quiero 1 con arroz y tofu y 1 con quinoa y pollo');
+    expect(h.cartRows()).toHaveLength(2);for(const row of h.cartRows())expect(row.note).toMatch(/sin cebolla/i);
+  });
+  it.each(['Lo recoge el domiciliario','Lo recoge el repartidor'])('recogida del repartidor no cambia domicilio a pickup: %s',async text=>{
+    const h=harness([meal],false);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.orderType).toBe('delivery');
+  });
+  it('cita de cantidad antigua cambia la opción sin restaurar diez unidades',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu');
+    h.service.conversationService.findByWaMessageId=jest.fn().mockResolvedValue({conversationId:1,direction:'out',body:'Bowl Mediterraneo ×10. Base: Arroz o Quinoa',waMessageId:'old-quantity'});
+    await h.send('Quinoa',{context:{id:'old-quantity'}});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9801,qty:2,attrs:expect.arrayContaining(['Base:Quinoa','Proteina:Tofu'])})]);
+  });
+});

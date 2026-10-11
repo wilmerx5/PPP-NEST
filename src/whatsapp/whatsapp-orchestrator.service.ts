@@ -696,7 +696,7 @@ export class WhatsappOrchestratorService {
 
     const lower = text.toLowerCase();
 
-    if (isHumanHandoffRequest(text)) {
+    if (isHumanHandoffRequest(text) && !this.isPickupIntent(text)) {
       // Temporal: no activar asesor por chat; orientar a llamada
       await this.reply(conv, msg.waId, this.humanContactMessage());
       return;
@@ -10896,6 +10896,7 @@ export class WhatsappOrchestratorService {
     if (t.length < 4) return false;
     if (/\b(codigo|código|code)\s*\d+/i.test(t)) return false;
     return (
+      (/\blo\s+recoge\b/i.test(t) && !/\bno\s+lo\s+recoge\b/i.test(t) && !/\b(domiciliario|repartidor|mensajero)\b/i.test(t)) ||
       /\b(para\s+llevar|pickup|recogida|pasar[eé]\s+a\s+recoger|lo\s+recojo|voy\s+por\s+(é|e)l|paso\s+yo|sin\s+domicilio|no\s+(quiero\s+)?domicilio)\b/i.test(
         t,
       ) ||
@@ -14959,7 +14960,7 @@ export class WhatsappOrchestratorService {
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (/[?¿]/.test(text) || !/^(?:los|las)\s+quiero\s+/i.test(text.trim())) return false;
-    const parts = text.trim().replace(/^(?:los|las)\s+quiero\s+/i, '').split(/\s+y\s+|[,;]/i).map(part => part.trim());
+    const parts = text.trim().replace(/^(?:los|las)\s+quiero\s+/i, '').split(/(?:\s+y\s+|[,;]\s*)(?=(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+)/i).map(part => part.trim());
     if (parts.length < 2 || parts.length > 6 || parts.some(part => !/^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(part))) return false;
     if (session.pendingMultiOrder || session.pendingMatch) {
       await this.reply(conv, waId, '¿Cuál presentación quieres repartir? Primero debemos aclarar el producto; el pedido sigue igual.');
@@ -14977,7 +14978,9 @@ export class WhatsappOrchestratorService {
         const parsed = this.catalogService.resolveAttributesFromMessage(product, part, []);
         return parsed.status === 'invalid' ? undefined : parsed.attributes;
       });
-      if (choices.some(choice => choice?.length !== 1) || new Set(choices.map(choice => choice?.[0].attributeName)).size !== 1) return [];
+      if (choices.some(choice => !choice?.length)) return [];
+      const attributeSets = choices.map(choice => choice!.map(attr => attr.attributeName).sort().join('|'));
+      if (new Set(attributeSets).size !== 1) return [];
       return [{line,index,product,choices}];
     });
     if (!candidates.length) {
@@ -14999,7 +15002,7 @@ export class WhatsappOrchestratorService {
     }
     let next: WhatsappSessionData = {...session,pendingAttribute:undefined,cart:pending ? session.cart : session.cart.filter((_,index) => index !== selected.index)};
     for (let index = 0; index < parts.length; index++) {
-      const attributes = [...(selected.line.attributes || [])].filter(attr => attr.attributeName !== selected.choices[index]![0].attributeName)
+      const attributes = [...(selected.line.attributes || [])].filter(attr => !selected.choices[index]!.some(choice => choice.attributeName === attr.attributeName))
         .concat(selected.choices[index]!);
       const added = this.tryAddProductToCart(next, selected.product, quantities[index], cfg, selected.line.note, attributes, {sourceText:parts[index]});
       if (added.blocked || added.missingAttributes) {

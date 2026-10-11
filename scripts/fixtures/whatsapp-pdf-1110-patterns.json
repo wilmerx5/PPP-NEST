@@ -83,20 +83,32 @@
       "id": "ambiguous-reference",
       "invariant": "Esas cuatro con varios candidatos requiere aclaración sin mutar.",
       "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
+    },
+    {
+      "id": "quoted-history",
+      "invariant": "Respuesta citada antigua no reincorpora platos ya retirados.",
+      "execution": "Tercera tanda PDF: router real y transporte simulado; recogida explícita sin nombres propios; citas ausentes, ajenas, retiradas y cantidad antigua."
+    },
+    {
+      "id": "pickup-third-party",
+      "invariant": "Cambio a recogida por tercero conserva pedido sin interpretar nombre como dirección.",
+      "execution": "Tercera tanda PDF: router real y transporte simulado; recogida explícita sin nombres propios; citas ausentes, ajenas, retiradas y cantidad antigua."
+    },
+    {
+      "id": "single-product-multi-attribute-distribution",
+      "invariant": "Reparto atómico de cantidades de un producto entre dos atributos; conserva notas; cantidades y opciones inconsistentes no mutan.",
+      "execution": "Tercera tanda PDF, catálogo sintético; no acredita dos productos padre diferentes."
+    },
+    {
+      "id": "sequential-address-burst",
+      "invariant": "Pedido, calle, apartamento y barrio en turnos seriales conservan cantidad.",
+      "execution": "Tercera tanda PDF, PPP y menú sintético; no acredita concurrencia ni deduplicación de webhooks."
     }
   ],
   "pending_not_executed": [
     {
       "id": "multi-attribute-distribution",
       "invariant": "Dos ejecutivos diferentes; repartir presa, sopa y papa por línea de forma atómica."
-    },
-    {
-      "id": "quoted-history",
-      "invariant": "Respuesta citada antigua no reincorpora platos ya retirados."
-    },
-    {
-      "id": "pickup-third-party",
-      "invariant": "Cambio a recogida por tercero conserva pedido sin interpretar nombre como dirección."
     },
     {
       "id": "rapid-message-burst",
