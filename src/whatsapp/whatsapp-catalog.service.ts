@@ -1309,7 +1309,7 @@ export class WhatsappCatalogService {
     const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).split(/\s+/);
     const namedQuantity = this.QTY_WORD_MAP[word];
     if (namedQuantity >= 2 && noun && products.some(product =>
-      normalizeText(product.name).split(/\s+/).some(token => stemLoose(token) === stemLoose(noun)))) {
+      normalizeText(product.name).split(/\s+/).some(token => token === noun || `${token}s` === noun || `${token}es` === noun || stemLoose(token) === stemLoose(noun)))) {
       return namedQuantity;
     }
     return quantity;
@@ -9640,6 +9640,14 @@ export class WhatsappCatalogService {
     const nameWithoutCopies = product?.name.replace(/^(?:\d+(?:\/\d+)?\s+)+/, '');
     for (const label of [product?.name, nameWithoutCopies, ...hit.updates.map(update => update.attributeName)]) {
       if (label) leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(normalizeText(label))}\\b`, 'g'), ' ');
+    }
+    // Definite references and change commands may abbreviate a cart product name.
+    // The attribute candidates above must still identify exactly one cart line.
+    if (/^(?:el|la|los|las|cambia|cambiar)\b/i.test(q) && !/\b(?:otro|otra|adicional|agrega|dos|tres|\d+)\b/i.test(q)) {
+      for (const token of normalizeText(nameWithoutCopies || '').split(/\s+/).filter(token => token.length >= 3)) {
+        leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'g'), ' ');
+      }
+      leftover = leftover.replace(/\b(?:del|a)\b/g, ' ');
     }
     leftover = leftover
       .replace(

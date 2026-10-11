@@ -694,6 +694,14 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Standalone time answers must not enter the catalog as "medio pollo".
+    if (!/[?¿]/.test(originalText) &&
+      /^(?:(?:los|las|lo|la)\s+quiero|ser[ií]a|es)?\s*(?:para\s+)?(?:(?:el|al)\s+)?(?:medio\s*d[ií]a|(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+al\s+medio\s*d[ií]a)[.!]*$/i.test(originalText.trim())) {
+      const next = this.appendCustomerNote(session, `Horario solicitado: ${originalText.trim()}`);
+      await this.conversationService.saveSession(conv, next);
+      await this.reply(conv, msg.waId, 'Anoté el horario solicitado. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
+      return;
+    }
     if (this.looksLikeUnvalidatedRedemptionSplit(originalText) && !session.pendingRedemptionCode) {
       await this.reply(
         conv,
@@ -769,18 +777,23 @@ export class WhatsappOrchestratorService {
     }
     const cookingPreference = parseCookingTerm(originalText);
     if (cookingPreference && session.cart.length &&
-      !/\b(?:\d+|un|una|dos|tres|cuatro|cinco|seis|otro|otra|otros|otras|agrega|añade)\b/i.test(cookingPreference.productText)) {
+      !/\b(?:\d+|un|una|dos|tres|cuatro|cinco|seis|otro|otra|otros|otras|agrega|añade)\b/i.test(cookingPreference.productText.replace(/\b(?:los|las)\s+dos\b/ig, ''))) {
       const remainder = this.normalizeForMatch(cookingPreference.productText)
-        .replace(/\b(?:lo|los|la|las|el|quiero|quieor|quero|por|favor|porfa|gracias|con|en|a)\b/g, ' ').trim();
+        .replace(/\b(?:lo|los|la|las|el|ambos|ambas|dos|quiero|quieor|quero|por|favor|porfa|gracias|con|en|a)\b/g, ' ').trim();
       const menu = await this.catalogService.getMenuProducts();
       const candidates = session.cart.flatMap((line, index) => {
         const product = menu.find(p => p.id === line.productId);
         if (!product || !supportsCookingTerm(product, cookingPreference.note)) return [];
         if (session.cart.length === 1 || !remainder || this.catalogService.isCartProductNamedInText(line.name, remainder)) return [index];
-        const namedPiece = this.normalizeForMatch(line.name).split(' ').filter(token => token.length >= 5)
-          .some(token => new RegExp(`\\b${token}\\b`).test(this.normalizeForMatch(remainder)));
+        const namedPiece = this.normalizeForMatch(line.name).split(' ').filter(token => token.length >= 4)
+          .some(token => new RegExp(`\\b${token}(?:s|es)?\\b`).test(this.normalizeForMatch(remainder)));
         return namedPiece ? [index] : [];
       });
+      if (/\b(?:ambos|ambas|los dos|las dos)\b/i.test(cookingPreference.productText) &&
+        candidates.reduce((total, index) => total + session.cart[index].quantity, 0) !== 2) {
+        await this.reply(conv, msg.waId, '¿Cuáles dos platos quieres con ese término? El carrito sigue igual.');
+        return;
+      }
       if (candidates.length > 1) {
         await this.reply(conv, msg.waId, '¿A cuál plato le aplico ese término de cocción?');
         return;
@@ -915,6 +928,32 @@ export class WhatsappOrchestratorService {
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
 
+    // A nearby delivery reference is separate from the ordered catalog product.
+    const nearbyRequest = originalText.match(/^(.+?)\s+((?:aqu[ií]|por aqu[ií])\s+(?:para|a)\s+la\s+vuelta)(?:\s+por favor)?[.!]*$/i);
+    if (nearbyRequest && (this.catalogService.isAvailabilityInquiry(originalText) ||
+      this.catalogService.isProductDescriptionInquiry(originalText) || this.catalogService.isPriceInquiryIntent(originalText))) {
+      if (await this.tryHandleProductAvailabilityQuestion(conv, msg.waId, session, nearbyRequest[1], products, cfg) ||
+        await this.tryHandleDeterministicMenuBrowse(conv, msg.waId, session, nearbyRequest[1], products, cfg)) return;
+      await this.reply(conv, msg.waId, '¿Cuál producto quieres consultar? Todavía no agregué nada al pedido.');
+      return;
+    }
+    if (nearbyRequest && !/[?¿]/.test(originalText) &&
+      !/\bno\s+(?:quiero|deseo|necesito)\b/i.test(originalText) &&
+      !this.catalogService.isAvailabilityInquiry(originalText) &&
+      !this.catalogService.isProductDescriptionInquiry(originalText) &&
+      !this.catalogService.isPriceInquiryIntent(originalText) && !session.pendingMatch &&
+      !session.pendingAttribute && !session.pendingMultiOrder) {
+      const query = this.catalogService.extractProductSearchQuery(nearbyRequest[1]);
+      const hits = this.catalogService.searchByNameScored(query, products, 4);
+      if (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) &&
+        this.catalogService.productNameFitsUtterance(hits[0].p, query) &&
+        !this.catalogService.uncoveredDishWords(query, products).length) {
+        const next = this.appendCustomerNote(session, `Referencia de entrega: ${nearbyRequest[2]}`);
+        if (await this.addResolvedDishesToCart(conv, msg.waId, next,
+          [{product:hits[0].p, segment:nearbyRequest[1]}], cfg)) return;
+      }
+    }
+
     // Resolve a single named dish before broad substitution/style heuristics consume its notes.
     const kitchenRequest = splitKitchenPreference(originalText);
     if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
@@ -931,7 +970,7 @@ export class WhatsappOrchestratorService {
         if (await this.handleProductWithVariants(conv, msg.waId, session, selected, originalText, cfg)) return;
         if (!selected.hasAttributes || !selected.attributes?.length) {
           await this.addResolvedDishesToCart(conv, msg.waId, session,
-            [{product:selected,segment:kitchenRequest.productText,note:kitchenRequest.note}], cfg);
+            [{product:selected,segment:kitchenRequest.productText,note:[supportsCookingTerm(selected) ? parseCookingTerm(kitchenRequest.productText)?.note : undefined, kitchenRequest.note].filter(Boolean).join('; ')}], cfg);
           return;
         }
       }
@@ -3684,7 +3723,7 @@ export class WhatsappOrchestratorService {
     }
 
     // Título embebido / pollo con tamaño / "arroz con pollo"
-    let orderQty = this.resolveOrderQuantity(session, text);
+    let orderQty = Math.max(this.resolveOrderQuantity(session, text), this.catalogService.extractQuantityFromMessage(text, products));
     if (orderQty >= 2) {
       session = this.rememberQuantityHint(session, text, orderQty);
     }
@@ -12344,6 +12383,7 @@ export class WhatsappOrchestratorService {
       if (!addr || addr.length < 3) continue;
       if (this.isPickupOnlyDeliveryClause(addr)) continue;
       if (isDeliveryLogisticsFluff(addr)) continue;
+      if (/^(?:(?:aqu[ií]|por aqu[ií])\s+(?:a|para)\s+la\s+)?(?:la\s+)?vuelta[.!]*$/i.test(addr)) continue;
       if (this.looksLikeFoodNotAddress(addr)) continue;
       // En pedido compuesto, aceptar landmarks / nombres sueltos aunque no tengan #
       if (orderLike) {

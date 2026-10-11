@@ -8,7 +8,15 @@ Crear un agente de pedidos fiable y vendible para PPP, reutilizable después en 
 
 Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para pruebas gratuitas, correcciones reversibles y despliegues rutinarios de staging. No enviar mensajes a clientes, Meta ni crear pedidos externos por accidente. El usuario autorizó usar su número y reiniciar sus pedidos de prueba, no datos de clientes reales. No inferir que staging está aislado de todas las integraciones: conservar los bloqueos existentes.
 
-## Tanda actual: consultas, códigos sueltos y pedidos compuestos
+## Tanda actual: correcciones, cercanía y horario
+
+Base `93369975`, rama `staging`. Se añaden 23 regresiones. Verificación final: 62/62 suites, 1.486/1.486 pruebas y TypeScript sin errores. Logs `/tmp/ppp-references-approved-full.log`, `/tmp/ppp-references-approved-tsc.log` y `/tmp/ppp-references-targets-approved.log`. La primera ejecución completa pasó 1.482 pruebas antes de cuatro controles añadidos; la siguiente encontró una consulta que agregaba un plato (1.485 pasaron, una falló). Se corrigió la separación de consultas y la última ejecución completa pasó. Publicación/despliegue se registran después de verificar. Las correcciones usan catálogo para cantidades/plurales y atributos; conservan notas independientes al corregir cocción. «Los dos» con una sola unidad pregunta. La cercanía se conserva como nota y no inventa dirección; «medio día» se registra como horario solicitado sin prometer reserva.
+
+Leer la sección nueva de `docs/whatsapp-next-batches.md` y `scripts/fixtures/whatsapp-development-pending.json` antes de seguir. Compra por nombre «Bowl Verde con arroz» está reproducida y no resuelta; la edición posterior se prueba seleccionando por código. El usuario añadió flujo de diez cajas de arroz con medio pollo, reparto 5/5 frito/broaster, rendimiento para veinte personas, miércoles/mediodía y abono: solo horario aislado acreditado; recorrido completo pendiente. El webhook conserva raw pero el orquestador no utiliza `context.id` para recuperar mensaje citado. No confundir con los tests existentes de texto copiado.
+
+Ninguna llamada pagada; sigue 8/20 usado, 12 restante. No se cambia persistencia/transacciones; no requiere repetir DB. Siguiente prioridad: los tres casos pendientes y controles de referencia vieja/ajena, nunca tratar cita como nueva compra ni inventar políticas/rendimiento.
+
+## Histórico: consultas, códigos sueltos y pedidos compuestos
 
 Código publicado y desplegado `adb8d582`, base `61fc7f50`, rama permanente `staging`. Verificación: contenedor running/healthy, health OK y DB connected; imagen activa/candidate `sha256:570635addf0c281c9ab851a5cb5796bd9eec8bbd858c39bdc71753b1f609a18c`. El primer health dio 502 durante arranque; la comprobación posterior pasó tras alcanzar healthy. Una actualización posterior solo de documentación no requiere reconstrucción. Plan operativo y procedencia/licencias: `docs/whatsapp-next-batches.md`. Hay ocho casos sintéticos reservados en `scripts/fixtures/whatsapp-reserved-patterns.json`; aún no se ejecutaron y no están conectados automáticamente al runner.
 

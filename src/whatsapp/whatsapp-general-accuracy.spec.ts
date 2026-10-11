@@ -1470,3 +1470,137 @@ describe('Pedidos compuestos en dos catálogos — patrones de evaluación públ
     expect(h.cartRows().find(row => row.id === dish)?.note).toMatch(/sin ensalada/i);
   });
 });
+
+describe('Tanda de correcciones y referencias con contexto', () => {
+  it.each(['El pollo con arepas fritas', 'Cambia las arepas del pollo a fritas'])('corrige variante sin tocar sopa: %s', async text => {
+    const h = harness(products, false);
+    await h.send('Un pollo frito');
+    await h.send('Dos ajiacos');
+    const soup = structuredClone(h.cartRows().find(r => r.id === 38));
+    const reply = await h.send(text);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows().find(r => r.id === 1)).toEqual(expect.objectContaining({qty: 1, attrs: expect.arrayContaining(['Arepas:Fritas'])}));
+    expect(h.cartRows().find(r => r.id === 38)).toEqual(soup);
+    expect(reply).toMatch(/fritas/i);
+  });
+  it.each(['Los dos a tres cuartos', 'Ambos churrascos 3/4'])('cocción conserva bebida: %s', async text => {
+    const h = harness(products, false);
+    await h.send('Dos churrascos');
+    await h.send('Una limonada natural');
+    const drink = structuredClone(h.cartRows().find(r => r.id !== 17));
+    expect(drink).toBeTruthy();
+    const reply = await h.send(text);
+    expect(h.cartRows().find(r => r.id === 17)).toEqual(expect.objectContaining({qty:2, note: expect.stringMatching(/3\/4|tres cuartos/i)}));
+    expect(h.cartRows().find(r => r.id !== 17)).toEqual(drink);
+    expect(reply).toMatch(/3\/4|tres cuartos/i);
+  });
+  it.each(['Ese mismo', 'El segundo', 'Lo quiero sin eso', 'Igual que antes'])('pide referente cuando el carrito está vacío: %s', async text => {
+    const h = harness(products, false);
+    const reply = await h.send(text);
+    expect(h.cartRows()).toEqual([]);
+    expect(reply).toMatch(/cu[aá]l|qu[eé]|plato|producto|pedido/i);
+    expect(reply).not.toMatch(/Listo ✅|agregu[eé]|anotado/i);
+  });
+  it.each(['Cuánto cuesta el churrasco?', 'Tienen ajiaco?'])('consultar otro plato no cambia el carrito: %s', async text => {
+    const h = harness(products, false);
+    await h.send('Dos pollos fritos');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/churrasco|ajiaco/i);
+  });
+});
+
+
+describe('Correcciones generales en catálogo alternativo', () => {
+  const menu = [
+    {id: 921, code:921, name:'Bowl Verde', categoryName:'Bowls', price:18000, availableNow:true, hasAttributes:true, attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},
+    {id:922, code:922, name:'Sopa De Lentejas', categoryName:'Sopas', price:8000, availableNow:true, hasAttributes:false, attributes:[]},
+    {id:923, code:923, name:'Bife', categoryName:'Carnes', price:22000, availableNow:true, hasAttributes:false, attributes:[]},
+  ];
+  it.each(['El bowl con quinoa', 'Cambia la base del bowl a quinoa'])('abrevia plato sin cambiar sopa: %s', async text => {
+    const h = harness(menu, false);
+    // Select by catalog code to isolate the subsequent abbreviated correction.
+    await h.send('codigo 921');
+    await h.send('Arroz');
+    expect(h.cartRows().find(r => r.id === 921)?.qty).toBe(1);
+    await h.send('Dos sopas de lentejas');
+    const soup = structuredClone(h.cartRows().find(r => r.id === 922));
+    expect(await h.send(text)).toMatch(/quinoa/i);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows().find(r => r.id === 921)).toEqual(expect.objectContaining({qty:1,attrs:expect.arrayContaining(['Base:Quinoa'])}));
+    expect(h.cartRows().find(r => r.id === 922)).toEqual(soup);
+  });
+  it('corrige cocción anterior y conserva notas independientes', async () => {
+    const h = harness(menu, false);
+    await h.send('Dos bifes bien cocidos sin ensalada');
+    expect(h.cartRows().find(r => r.id === 923)?.qty).toBe(2);
+    expect(h.cartRows().find(r => r.id === 923)?.note).toMatch(/bien cocidos/i);
+    await h.send('Una sopa de lentejas');
+    const soup = structuredClone(h.cartRows().find(r => r.id === 922));
+    await h.send('Ambos bifes 3/4');
+    const line = h.cartRows().find(r => r.id === 923);
+    expect(line).toEqual(expect.objectContaining({qty:2,note:expect.stringMatching(/tres cuartos/i)}));
+    expect(line?.note).toMatch(/sin ensalada/i);
+    expect(line?.note).not.toMatch(/bien cocido/i);
+    expect(h.cartRows().find(r => r.id === 922)).toEqual(soup);
+  });
+  it('no interpreta los dos cuando solamente existe una unidad', async () => {
+    const h = harness(menu, false);
+    await h.send('Un bife');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Los dos 3/4');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]les|dos platos/i);
+  });
+});
+
+describe('Pedido coloquial con referencia de cercanía', () => {
+  it.each(['Quiero una sopita de menudencias aquí para la vuelta', 'Una sopa de menudencias por aquí a la vuelta'])('separa cercanía del producto: %s', async text => {
+    const h = harness(products, false);
+    const reply = await h.send(text);
+    const product = products.find((p: {name:string}) => /^Sopa De Menudencias$/i.test(p.name));
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:1})]);
+    expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+    expect(h.conv.sessionData.address).toBeFalsy();
+  });
+});
+
+describe('Horario y consulta para grupos no son productos', () => {
+  it.each(['Los quiero para el medio día', 'Los quiero para el mediodía', 'Sería para el miércoles al mediodía'])('no confunde horario con medio pollo: %s', async text => {
+    const h = harness(products, false);
+    await h.send('Dos ajiacos');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingMatch?.candidates?.some(p => [2,5].includes(p.id))).not.toBe(true);
+    expect(reply).not.toMatch(/Para Medio Pollo|Listo ✅.*Pollo/i);
+  });
+});
+
+describe('Cercanía en otro menú sin nombres de PPP', () => {
+  const menu = [
+    {id:931,code:931,name:'Pasta Al Pesto',categoryName:'Pastas',price:17000,availableNow:true,hasAttributes:false,attributes:[]},
+    {id:932,code:932,name:'Sopa De Lentejas',categoryName:'Sopas',price:8000,availableNow:true,hasAttributes:false,attributes:[]},
+  ];
+  it.each([
+    {text:'Una Pasta Al Pesto aquí para la vuelta',id:931},
+    {text:'Una sopa de lentejas por aquí a la vuelta',id:932},
+  ])('conserva producto $id y no inventa dirección', async ({text,id}) => {
+    const h = harness(menu,false);
+    const reply = await h.send(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:1})]);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(h.conv.sessionData.customerNotes).toMatch(/Referencia de entrega/);
+    expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+  });
+});
+
+
+describe('Cercanía no convierte consultas o negaciones en compra', () => {
+  it.each(['No quiero sopa de menudencias aquí para la vuelta', 'Tienen sopa de menudencias aquí para la vuelta'])('no agrega: %s', async text => {
+    const h = harness(products,false);
+    await h.send(text);
+    expect(h.cartRows()).toEqual([]);
+  });
+});
