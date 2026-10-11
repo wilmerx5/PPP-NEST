@@ -86,23 +86,48 @@
       "id": "salsas-compuestas",
       "source": "lote-2/chat-06",
       "priority": "alta",
-      "automated": false,
+      "automated": true,
       "messages": [
         "Medio pollo broaster, sin salsas, en vez de salsas más miel por favor"
       ],
-      "invariant": "Guardar ambas instrucciones sin convertir miel en otro producto."
+      "invariant": "Guardar ambas instrucciones sin convertir miel en otro producto.",
+      "expect": {
+        "items": {
+          "5": 1
+        },
+        "notesByProduct": {
+          "5": [
+            "sin salsas",
+            "miel"
+          ]
+        },
+        "replyPattern": "sin salsas.*miel"
+      }
     },
     {
       "id": "pregunta-durante-variante",
       "source": "lote-1/chat-06",
       "priority": "alta",
-      "automated": false,
+      "automated": true,
       "messages": [
-        "Me regalas un pollo por favor y una sopita",
+        "Me regalas un pollo frito por favor y una sopita",
         "Que sopita tienes?",
         "Un ajiaco sin tanto recado por favor"
       ],
-      "invariant": "No perder el pollo ni duplicar sopa cuando una consulta interrumpe la elección."
+      "invariant": "No perder el pollo ni duplicar sopa cuando una consulta interrumpe la elección.",
+      "expect": {
+        "items": {
+          "1": 1,
+          "38": 1
+        },
+        "notesByProduct": {
+          "38": [
+            "sin tanto recado"
+          ]
+        },
+        "replyPattern": "sin tanto recado"
+      },
+      "adaptation": "El tipo frito se hace explícito para aislar la interrupción de sopa; la ambigüedad de pollo tiene regresiones separadas."
     },
     {
       "id": "pedido-multilinea",

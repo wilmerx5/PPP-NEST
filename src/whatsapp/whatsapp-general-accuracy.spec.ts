@@ -523,6 +523,10 @@ describe('Selected anonymized historical chat patterns — offline router', () =
     if (scenario.expect.items) {
       expect(Object.fromEntries(h.cartRows().map(row => [String(row.id), row.qty]))).toEqual(scenario.expect.items);
     }
+    for (const [productId, notes] of Object.entries(scenario.expect.notesByProduct || {}) as Array<[string,string[]]>) {
+      const row = h.cartRows().find(item => String(item.id) === productId);
+      for (const note of notes) expect(row?.note).toEqual(expect.stringContaining(note));
+    }
     for (const component of scenario.expect.addressAll || []) expect(h.conv.sessionData.address).toEqual(expect.stringContaining(component));
     expect(h.replies.at(-1)).toBeTruthy();
     if (scenario.expect.replyPattern) expect(h.replies.at(-1)).toMatch(new RegExp(scenario.expect.replyPattern, 'i'));
@@ -558,5 +562,80 @@ describe('Historical chat continuation: address components and late notes', () =
     expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1,note:expect.stringMatching(/sin ensalada/i)})]);
     expect(h.conv.state).toBe(state);
     expect(h.replies.at(-1)).toMatch(/sin ensalada/i);
+  });
+});
+
+
+describe('Historical chat batch: compound preferences and interrupted choices', () => {
+  it.each([true,false])('keeps both sauce instructions on the purchased half chicken (agent: %s)', async enabled => {
+    const h = harness(products,enabled);
+    await h.send('Medio pollo broaster, sin salsas, en vez de salsas más miel por favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:5,qty:1,note:expect.stringMatching(/sin salsas.*miel/i)})]);
+    expect(h.replies.at(-1)).toMatch(/sin salsas/i);
+    expect(h.replies.at(-1)).toMatch(/miel/i);
+  });
+  it.each([true,false])('keeps chicken while a soup question interrupts the purchase (agent: %s)', async enabled => {
+    const h = harness(products,enabled);
+    await h.send('Me regalas un pollo frito por favor y una sopita');
+    expect(h.conv.sessionData.pendingMultiOrder?.confident).toContainEqual(expect.objectContaining({productId:1}));
+    const pending = structuredClone(h.conv.sessionData.pendingMultiOrder);
+    await h.send('Que sopita tienes?');
+    expect(h.conv.sessionData.pendingMultiOrder).toEqual(pending);
+    expect(h.replies.at(-1)).toMatch(/ajiaco/i);
+    await h.send('Un ajiaco sin tanto recado por favor');
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows()).toContainEqual(expect.objectContaining({id:1,qty:1}));
+    expect(h.cartRows()).toContainEqual(expect.objectContaining({id:38,qty:1,note:expect.stringMatching(/sin tanto recado/i)}));
+    expect(h.replies.at(-1)).toMatch(/sin tanto recado/i);
+  });
+});
+
+
+describe('Unavailable dish feedback', () => {
+  it.each([true,false])('explains unavailability before offering the menu (agent: %s)', async enabled => {
+    for (const message of ['Quiero una mazorca da', 'Quiero una mazorcada']) {
+      const h = harness(products,enabled);
+      await h.send(message);
+      expect(h.cartRows()).toEqual([]);
+      expect(h.replies.at(-1)).toMatch(/no (?:tenemos|manejamos|está)|no aparece/i);
+    }
+  });
+});
+
+
+describe('Cross-catalog preparation and unavailable requests', () => {
+  it('preserves two portions and both preferences in another restaurant', async () => {
+    const menu = [{id:903,code:903,name:'Bowl Andino',categoryName:'Bowls',price:18700,hasAttributes:false,attributes:[],availableNow:true}];
+    const h = harness(menu,false);
+    await h.send('Quiero dos Bowl Andino sin cebolla, más tahini por favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:903,qty:2,note:expect.stringMatching(/sin cebolla.*tahini/i)})]);
+    expect(h.replies.at(-1)).toMatch(/sin cebolla/i);
+    expect(h.replies.at(-1)).toMatch(/tahini/i);
+  });
+  it('uses the catalog when another restaurant does sell the requested dish', async () => {
+    const menu = [{id:903,code:903,name:'Mazorcada',categoryName:'Especiales',price:19000,hasAttributes:false,attributes:[],availableNow:true}];
+    const h = harness(menu,false);
+    await h.send('Quiero una mazorcada');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:903,qty:1})]);
+    expect(h.replies.at(-1)).not.toMatch(/no (?:tenemos|manejamos)/i);
+  });
+  it('leaves an existing cart unchanged when declining an unavailable dish', async () => {
+    const h = harness(products,false);
+    await h.send('Quiero un churrasco');
+    const before = structuredClone(h.cartRows());
+    await h.send('Quiero una mazorca da');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/no (?:tenemos|manejamos)/i);
+  });
+});
+
+
+describe('Preparation questions remain informational', () => {
+  it.each([true,false])('does not purchase a dish from a preparation question (agent: %s)', async enabled => {
+    const h = harness(products,enabled);
+    for (const text of ['Tienes medio pollo broaster sin salsas','Cuánto cuesta un pollo frito sin ensalada']) {
+      await h.send(text);
+      expect(h.cartRows()).toEqual([]);
+    }
   });
 });

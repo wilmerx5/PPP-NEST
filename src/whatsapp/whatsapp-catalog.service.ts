@@ -1,3 +1,4 @@
+import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable } from '@nestjs/common';
 import { interpretProductNote } from './whatsapp-product-intent';
@@ -1498,6 +1499,7 @@ export class WhatsappCatalogService {
    * Quita muletillas y la parte de domicilio ("… para calle 10") para buscar producto.
    */
   extractProductSearchQuery(text: string): string {
+    text = splitKitchenPreference(text)?.productText || text;
     let q = fixCommonOrderTypos(text.trim());
     if (!q) return q;
 
@@ -1943,6 +1945,7 @@ export class WhatsappCatalogService {
    */
   uncoveredDishWords(query: string, products: WhatsappCatalogProduct[]): string[] {
     if (!products.length) return [];
+    query = splitKitchenPreference(query)?.productText || query;
     if (supportsCookingTerm({name:query})) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, products)?.productText || query;
     const leftover: string[] = [];
@@ -2054,6 +2057,7 @@ export class WhatsappCatalogService {
   }
 
   private stripOrderMetadata(query: string, product: WhatsappCatalogProduct): string {
+    query = splitKitchenPreference(query)?.productText || query;
     if (supportsCookingTerm(product)) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, [product])?.productText || query;
     // Fulfillment and a matching serving/bottle size describe the order;
@@ -3443,6 +3447,8 @@ export class WhatsappCatalogService {
    * preferencias del plato, no ítems nuevos.
    */
   extractProductModificationNote(text: string): string | null {
+    const preference = splitKitchenPreference(text);
+    if (preference && !this.looksLikeClearlyMultiDishOrder(preference.productText)) return preference.note;
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return null;
     if (this.looksLikeExplicitAddProductRequest(raw)) return null;

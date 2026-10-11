@@ -1,3 +1,4 @@
+import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { interpretProductNote } from './whatsapp-product-intent';
@@ -768,6 +769,42 @@ export class WhatsappOrchestratorService {
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
 
+    // Resolve a single named dish before broad substitution/style heuristics consume its notes.
+    const kitchenRequest = splitKitchenPreference(originalText);
+    if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      !this.catalogService.isAvailabilityInquiry(originalText) &&
+      !this.catalogService.isPriceInquiryIntent(originalText) &&
+      !this.catalogService.isProductDescriptionInquiry(originalText) &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(kitchenRequest.productText)) {
+      const hits = this.catalogService.searchByNameScored(kitchenRequest.productText, products, 4);
+      const sized = this.catalogService.resolveSizedChickenProduct(kitchenRequest.productText, products);
+      const selected = sized || (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) ? hits[0].p : undefined);
+      if (selected && selected.availableNow !== false &&
+        this.catalogService.productNameFitsUtterance(selected, kitchenRequest.productText) &&
+        !this.catalogService.uncoveredDishWords(kitchenRequest.productText, products).length) {
+        if (await this.handleProductWithVariants(conv, msg.waId, session, selected, originalText, cfg)) return;
+        if (!selected.hasAttributes || !selected.attributes?.length) {
+          await this.addResolvedDishesToCart(conv, msg.waId, session,
+            [{product:selected,segment:kitchenRequest.productText,note:kitchenRequest.note}], cfg);
+          return;
+        }
+      }
+    }
+
+    // A concrete unavailable request deserves an explicit answer before the generic menu nudge.
+    if (!session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      /^(?:quiero|quisiera|dame|me\s+regalas?)\s+(?:un|una|unos|unas)\s+/i.test(originalText) &&
+      !/[?¿]/.test(originalText) && !this.isVagueOrderIntent(originalText) &&
+      !this.catalogService.isMenuExploreIntent(originalText, products) &&
+      !this.catalogService.looksLikeClearlyMultiDishOrder(originalText) && !this.looksLikeAddress(originalText)) {
+      const query = this.catalogService.extractProductSearchQuery(originalText);
+      if (query.length >= 3 && !/\b(?:pedido|domicilio|orden|menu|menú|carta|algo|comida)\b/i.test(query) &&
+        !this.catalogService.searchByName(query, products).length && !this.catalogService.resolveSpokenDish(query, products)) {
+        await this.reply(conv, msg.waId, this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl));
+        return;
+      }
+    }
+
     // Conditional alternatives select one branch before multi-product matching.
     const conditionalOrder = text.match(/^((?:quiero|dame|agregame|agrégame|ponme)\s+.+?)[;,]?\s+si\s+no\s+(?:hay|tienen|tienes)(?:\s*,)?\s+(.+)$/i);
     if (conditionalOrder && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
@@ -1479,7 +1516,8 @@ export class WhatsappOrchestratorService {
             addQty,
             cfg,
             interpretProductNote(pa.sourceText || '', [product])?.note ||
-              (supportsCookingTerm(product) ? parseCookingTerm(pa.sourceText || '')?.note : undefined),
+              (supportsCookingTerm(product) ? parseCookingTerm(pa.sourceText || '')?.note : undefined) ||
+              this.catalogService.extractProductModificationNote(pa.sourceText || '') || undefined,
             step.attributes,
             attrOpts,
           );
@@ -5683,7 +5721,8 @@ export class WhatsappOrchestratorService {
     };
     const labels: string[] = [];
     for (const item of items) {
-      const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(item.segment) || 1);
+      const qty = namedPackOrderQuantity(item.segment, item.product.name) ??
+        Math.max(1, this.catalogService.extractQuantityFromMessage(item.segment, [item.product]) || 1);
       const added = this.tryAddProductToCart(next, item.product, qty, cfg, item.note, undefined, {
         sourceText: item.segment,
       });
@@ -12953,7 +12992,8 @@ export class WhatsappOrchestratorService {
     const lineNote =
       carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
         interpretProductNote(text, [product])?.note ||
-        (supportsCookingTerm(product) ? parseCookingTerm(text)?.note : undefined);
+        (supportsCookingTerm(product) ? parseCookingTerm(text)?.note : undefined) ||
+        this.catalogService.extractProductModificationNote(text) || undefined;
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
       sourceText: text,
@@ -16360,7 +16400,7 @@ export class WhatsappOrchestratorService {
             (item) => item.productId !== full.id,
           );
           const items = [
-            { product: full, segment: group.segment || full.name, note: undefined as string | undefined },
+            { product: full, segment: group.segment || full.name, note: this.catalogService.extractProductModificationNote(text) || undefined },
             ...extras.map((item) => {
               const product =
                 products.find((p) => p.id === item.productId) ||
@@ -16380,7 +16420,7 @@ export class WhatsappOrchestratorService {
         }
         const nextConfident = [
           ...pending.confident,
-          { segment: group.segment, ...this.toPendingMultiProduct(full) },
+          { segment: group.segment, ...this.toPendingMultiProduct(full), note:this.catalogService.extractProductModificationNote(text) || undefined },
         ];
         session = {
           ...session,
