@@ -6,7 +6,7 @@ Fecha: 2026-10-11. Rama permanente: staging. Usar AGENTS.md y el relevo. Este pl
 
 Once casos originales adicionales, dos catálogos, dependencias externas simuladas. Consultar rendimiento no compra ni inventa cuántas personas comen; solamente usa datos numéricos escritos en descripción. Abono/anticipo se coordina con el local y no modifica pago/cart. Compra explícita referida de diez cajas conserva un único producto previo; si hay carrito u otro pendiente pide aclaración. Fechas y comensales no son direcciones. Recorrido con arroz, miércoles, abono, mediodía nativo y reparto 5/5 aprobado en la revisión focalizada. Copia de respuesta más horario solo se separa con fuente Bot reciente verificable; fuente no encontrada pide aclaración sin comprar su contenido.
 
-Resultado final y despliegue se registran en el relevo. Sigue pendiente fechas/horas adicionales, negación/intervalos de rendimiento, opciones desconocidas/múltiples atributos en reparto y otras intenciones nativas. No se incorpora reserva o abono automático ni se cambia política del piloto. Cero llamadas pagadas.
+Verificación: 62 suites y 1.519 pruebas aprobadas en dos grupos (43 WhatsApp/1.421 + 19 restantes/98), TypeScript sin errores. Código `46a4f1bf` desplegado y verificado healthy el 2026-10-11; evidencia en el relevo. Sigue pendiente fechas/horas adicionales, negación/intervalos de rendimiento, opciones desconocidas/múltiples atributos en reparto y otras intenciones nativas. No se incorpora reserva o abono automático ni se cambia política del piloto. Cero llamadas pagadas.
 
 ## Histórico: respuestas nativas y reparto — 11 de octubre
 
