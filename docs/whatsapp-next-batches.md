@@ -48,3 +48,5 @@ Pendientes explícitos en `scripts/fixtures/whatsapp-development-pending.json` (
 Próxima tanda prioritaria: enlace nativo de respuesta dentro de la misma conversación (incluidos ID ausente/ajeno/viejo), producto con nombre de color, y compra para grupos preservando producto/cantidad/variantes durante consultas y horarios. Rendimiento y políticas de programación/abono deben venir de configuración, no del modelo. Cero llamadas pagadas; saldo compartido doce.
 
 Verificación final de esta tanda: 62/62 suites y 1.486/1.486 pruebas; TypeScript sin errores. Los 23 casos focalizados pasan. Logs `/tmp/ppp-references-approved-full.log`, `/tmp/ppp-references-approved-tsc.log`, `/tmp/ppp-references-targets-approved.log`. Cero API pagada; no se repitió DB porque no se cambió persistencia. No atribuir estos resultados a los tres pendientes de desarrollo.
+
+Publicado y desplegado `3a5e7f42` en staging, API healthy y DB connected. Imagen activa/candidate `sha256:52255c901a457e53520753345e2fd235e2521d5a149f2696915bd6662d736dd7`.
