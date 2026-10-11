@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "createdOn": "2026-10-11",
+  "kind": "Original synthetic patterns; not customer transcripts",
+  "status": "reserved-not-executed",
+  "executionNote": "Not integrated automatically. Bind catalog/seed/media fixtures and explicit per-turn assertions before execution. Never include expectations in model prompts.",
+  "cases": [
+    {
+      "id": "next-info-plus-independent-order",
+      "pattern": "mixed-query-and-action",
+      "messages": [
+        "Me recomiendas mojarra o trucha? Y agrega una limonada natural"
+      ],
+      "invariants": [
+        "recommendation does not buy fish",
+        "explicit independent beverage purchase is not swallowed",
+        "no invented sensory claims"
+      ]
+    },
+    {
+      "id": "next-note-after-quantity-reduction",
+      "pattern": "edit-recovery",
+      "messages": [
+        "Tres churrascos",
+        "Quita uno de los churrascos",
+        "Los dos restantes sin ensalada"
+      ],
+      "invariants": [
+        "exactly two units after removal",
+        "both remaining units retain note",
+        "no new duplicate line"
+      ]
+    },
+    {
+      "id": "next-address-payment-and-note",
+      "pattern": "compound-checkout",
+      "messages": [
+        "Dos arroces con pollo sin ensalada para la carrera 7 20 30, pago por transferencia"
+      ],
+      "invariants": [
+        "two units with note",
+        "address and payment preserved",
+        "no shopping prompt when all required choices are resolved",
+        "no external order created before explicit confirmation"
+      ]
+    },
+    {
+      "id": "next-photo-failure-after-valid-photo",
+      "pattern": "mixed-media-outcome",
+      "messages": [
+        "[mock valid order photo]",
+        "[mock unreadable photo]"
+      ],
+      "invariants": [
+        "first photo items preserved",
+        "unreadable second photo error remains visible",
+        "no replacement by stale cart-only summary"
+      ]
+    },
+    {
+      "id": "next-size-question-and-return",
+      "pattern": "comparison-interruption",
+      "messages": [
+        "Tres pollos",
+        "Cuál es el más barato?",
+        "Los tres broaster"
+      ],
+      "invariants": [
+        "question does not buy or change pending quantity",
+        "final product follows explicit preparation",
+        "exactly three units"
+      ]
+    },
+    {
+      "id": "next-correction-before-payment",
+      "pattern": "compound-correction",
+      "messages": [
+        "Una sopa de menudencias para la calle 48 sur 87 86",
+        "Perdón, dos sopas, en esa misma dirección"
+      ],
+      "invariants": [
+        "quantity ends at two",
+        "address preserved",
+        "checkout resumes without duplicate purchase"
+      ]
+    },
+    {
+      "id": "next-future-date-in-reference",
+      "pattern": "referenced-purchase-with-schedule",
+      "messages": [
+        "Cuánto cuesta el arroz chino con medio pollo?",
+        "Quiero esas diez cajas para el 15/10 a las 14:00"
+      ],
+      "invariants": [
+        "first turn does not purchase",
+        "second turn buys exactly ten of the referenced product",
+        "date and time recorded separately from address",
+        "no automatic reservation claim"
+      ]
+    },
+    {
+      "id": "next-preserve-one-variant-remove-unit",
+      "pattern": "scoped-partial-removal",
+      "messages": [
+        "[seed two separate preparations of one product]",
+        "Quita una de las fritas, las asadas sí las dejo"
+      ],
+      "invariants": [
+        "only one unit removed from fried preparation",
+        "other preparation preserved",
+        "ambiguous referent requires clarification before mutation"
+      ]
+    }
+  ]
+}

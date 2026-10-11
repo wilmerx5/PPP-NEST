@@ -2,6 +2,10 @@
 
 El entorno elegido es `/opt/ppp-staging` en el VPS autorizado, con dominio `dev.prontopolloportal.com` y una DB externa de staging. Los archivos están preparados; el operador debe completar el entorno privado y ejecutar el despliegue. El backend de producción y los demás proyectos Docker usan sus propios contenedores y puertos.
 
+## Rama permanente
+
+`staging` es la línea única de integración para pruebas, creada desde `231a9bf8`. Los cambios nuevos se publican aquí; `Main` se actualiza únicamente mediante una promoción explícita. Las ramas anteriores se conservan como historial y no deben usarse para desplegar nuevas versiones. La publicación de código no despliega automáticamente el servidor ni autoriza llamadas pagadas.
+
 ## Qué está preparado
 
 `docker-compose.staging.yml` construye el Dockerfile del proyecto, usa una imagen distinta y un único proceso, escucha en `127.0.0.1:3301`, limita el runtime a una CPU y 1 GiB de memoria, rota logs y consulta `/api/health`. Los límites del contenedor no limitan el trabajo de construcción de la imagen. No monta el repositorio sobre los archivos compilados ni crea MariaDB. Usar siempre este archivo: el `docker-compose.yml` general del repositorio define una DB local.
@@ -33,11 +37,13 @@ No entregar contraseñas ni llaves privadas por el chat o Git. Completar los sec
 
    ```bash
    cd /opt/ppp-staging
-   git pull --ff-only origin fix/whatsapp-regression-baseline
+   git fetch origin staging
+   git switch staging || git switch --track -c staging origin/staging
+   git merge --ff-only origin/staging
    git rev-parse HEAD
    ```
 
-   Si aún no se ha clonado, usar `git clone --branch fix/whatsapp-regression-baseline https://github.com/wilmerx5/PPP-NEST.git /opt/ppp-staging`. Respaldar la DB de staging antes de iniciar la aplicación y comprobar permisos sobre esa base. El arranque puede modificar el esquema: `RUN_MIGRATIONS=false` desactiva los SQL de carpeta, pero el bootstrap sigue asegurando columnas/tablas/índices críticos. `synchronize` de TypeORM permanece desactivado.
+   Si aún no se ha clonado, usar `git clone --branch staging https://github.com/wilmerx5/PPP-NEST.git /opt/ppp-staging`. Respaldar la DB de staging antes de iniciar la aplicación y comprobar permisos sobre esa base. El arranque puede modificar el esquema: `RUN_MIGRATIONS=false` desactiva los SQL de carpeta, pero el bootstrap sigue asegurando columnas/tablas/índices críticos. `synchronize` de TypeORM permanece desactivado.
 2. Copiar la plantilla y editar sus valores de forma privada:
 
    ```bash

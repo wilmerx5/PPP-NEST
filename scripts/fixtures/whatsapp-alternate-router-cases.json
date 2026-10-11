@@ -1,0 +1,113 @@
+[
+  {
+    "id": "alternate-exact-product",
+    "messages": [
+      {
+        "text": "Dame dos bowls andinos",
+        "expect": {
+          "items": {
+            "501": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-question-not-purchase",
+    "messages": [
+      {
+        "text": "¿Qué trae el wrap vegetariano?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "hummus"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-quote-acceptance",
+    "messages": [
+      {
+        "text": "¿Cuánto cuestan dos sopas de zapallo?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "18.400"
+          ]
+        }
+      },
+      {
+        "text": "Sí, agrégame las dos",
+        "expect": {
+          "items": {
+            "505": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-package-quantity",
+    "messages": [
+      {
+        "text": "Quiero un trio de wraps",
+        "expect": {
+          "items": {
+            "504": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-specific-attribute",
+    "messages": [
+      {
+        "text": "Dos wraps vegetarianos con salsa yogur",
+        "expect": {
+          "items": {
+            "502": 2
+          },
+          "attrs": [
+            {
+              "id": 502,
+              "key": "Salsa",
+              "value": "Yogur"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-conditional-available",
+    "messages": [
+      {
+        "text": "Quiero una sopa de zapallo; si no hay, un wrap vegetariano",
+        "expect": {
+          "items": {
+            "505": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alternate-conditional-unavailable",
+    "unavailableProductIds": [
+      505
+    ],
+    "messages": [
+      {
+        "text": "Quiero una sopa de zapallo; si no hay, un wrap vegetariano",
+        "expect": {
+          "items": {
+            "502": 1
+          }
+        }
+      }
+    ]
+  }
+]

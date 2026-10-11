@@ -24,6 +24,17 @@ describe('Scoped dish notes through the inbound router', () => {
     expect(h.session.cart[0].quantity).toBe(2); expect(h.session.cart[1]).toEqual(initial[1]);
     expect(h.session.customerNotes).toBeUndefined(); expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
   });
+  it('uses the variant in the target and preserves the other preparation instead of changing its attribute',async()=>{
+    const initial=[line(1,2,undefined,[{attributeName:'Arepas',attributeValue:'Blancas'}]),
+      line(1,1,undefined,[{attributeName:'Arepas',attributeValue:'Fritas'}])];
+    const h=harness(initial);
+    await h.inbound('A los pollos de arepas blancas ponles sin salsa. El de arepas fritas déjalo igual');
+    expect(h.session.cart[0]).toEqual({...initial[0],note:'sin salsa'});
+    expect(h.session.cart[1]).toEqual(initial[1]);
+  });
+  it('does not parse an additional sentence that requests another modification as a preservation',()=>{
+    expect(parseScopedCartNote('A los pollos ponles sin salsa. Agrega dos bebidas')).toBeNull();
+  });
   it('adds and then removes only the cooking note in consecutive turns', async () => {
     const initial = cart(); const h = harness(initial);
     await h.inbound('A los churrascos ponles también papas bien crocantes.');
@@ -87,6 +98,41 @@ describe('Scoped dish notes through the inbound router', () => {
     'Quita la nota sin arroz de las costillas y agrega una limonada',
   ])('defers questions, negation, partial quantities and compound orders: %s', text => {
     expect(parseScopedCartNote(text)).toBeNull();
+  });
+});
+describe('Partial notes through the inbound router', () => {
+  it('splits the requested units while preserving total quantity and catalog options', async () => {
+    const attributes = [{attributeName:'Arepas',attributeValue:'Blancas'}];
+    const h = harness([line(1,3,undefined,attributes)]);
+    await h.inbound('Uno sin salsa y los otros dos normales');
+    expect(h.session.cart).toEqual([line(1,2,undefined,attributes),line(1,1,'sin salsa',attributes)]);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+  it('asks rather than changing an ambiguous product or inconsistent unit total', async () => {
+    for (const initial of [[line(17,3),line(60,3)],[line(17,4)]]) {
+      const h = harness(initial);
+      await h.inbound('Uno sin ensalada y los otros dos normales');
+      expect(h.session.cart).toEqual(initial);
+      expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/cuál producto/);
+    }
+  });
+});
+describe('Quoted purchase context through the inbound router', () => {
+  it('accepts two quoted units without inventing a SKU or relying on a model reply', async () => {
+    const h = harness([]);
+    h.service.conversationService.getLastOutboundBody = jest.fn(async () =>
+      'La Sopa De Ajiaco cuesta $10.500; dos serían $21.000. ¿Quieres agregarlas al pedido?');
+    await h.inbound('Sí, agrégame las dos');
+    expect(h.session.cart.map(item => [item.productId,item.quantity])).toEqual([[38,2]]);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+  it('asks which existing dish a demonstrative means instead of opening an unrelated product list', async () => {
+    const initial = [line(38,2),line(17,1)]; const h = harness(initial);
+    await h.inbound('Ponle otra unidad a ese');
+    expect(h.session.cart).toEqual(initial);
+    expect(h.session.pendingMatch).toBeUndefined();
+    expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/cuál producto/);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
   });
 });
 function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'), line(14, 2),

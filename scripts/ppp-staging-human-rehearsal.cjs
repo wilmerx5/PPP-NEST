@@ -112,7 +112,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         body: JSON.stringify({ phoneNumberId: channel, recipient }) });
       ensure([200, 201].includes(response.status), 'TARGET_VERIFICATION_FAILED');
       const body = await response.json();
-      ensure(body.staging === true && body.conversationTestVersion === '2026-10-10.cart-v7', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
+      ensure(body.staging === true && body.conversationTestVersion === '2026-10-10.cart-v8', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
       ensure(body.targetMatches === true && body.botEnabled === true && body.credentialsPresent === true, 'TEST_CHANNEL_OR_RECIPIENT_MISMATCH');
       ensure(Number.isInteger(body.rateLimitPerMinute) && body.rateLimitPerMinute >= 5, 'INVALID_RATE_LIMIT');
       rateLimit = body.rateLimitPerMinute;

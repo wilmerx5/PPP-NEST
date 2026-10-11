@@ -49,6 +49,7 @@ describe('applyLocalGlossary', () => {
     expect(applyLocalGlossary('quiero una pechuga asada')).toMatch(/pechuga a la plancha/i);
     expect(applyLocalGlossary('Adicionar un plata')).toMatch(/plátano/i);
     expect(applyLocalGlossary('medio broaster medio frito')).toMatch(/mixto/i);
+    expect(applyLocalGlossary('mitad frito mitad broaster')).toMatch(/medio frito y medio broaster/i);
     expect(applyLocalGlossary('Me regalas un combo de pollo mixt')).toMatch(/\bmixto\b/i);
     expect(applyLocalGlossary('coca cola cero')).toMatch(/zero/i);
     expect(applyLocalGlossary('Q cuestan 2 sopas')).toMatch(/que cuestan/i);

@@ -448,6 +448,13 @@ export function findByMenuConcept(
     const available = products.filter((p) => p.availableNow !== false);
     let matched = available.filter((p) => productMatchesConcept(p, concept));
     if (!matched.length) continue;
+    // Prefer products belonging to the requested family over meals that only
+    // mention it as an included side in their description. Descriptions remain
+    // a fallback when the catalog has no category/name evidence.
+    const direct = matched.filter(product => categoryMatchesConcept(product.categoryName, concept) ||
+      concept.productKeywords.some(keyword => keyword.length >= 3 &&
+        hasWholeWordOrStem(normalizeText(product.name), normalizeText(keyword))));
+    if (direct.length) matched = direct;
 
     const matchedTriggers = getMatchedConceptTriggers(q, concept);
     const narrowTriggers = matchedTriggers.filter((t) => !isBroadConceptTrigger(concept, t));

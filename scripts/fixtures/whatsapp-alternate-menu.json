@@ -1,0 +1,61 @@
+[
+  {
+    "id": 501,
+    "code": 501,
+    "name": "Bowl Andino",
+    "description": "Quinua, garbanzos y vegetales asados",
+    "price": 18700,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  },
+  {
+    "id": 502,
+    "code": 502,
+    "name": "Wrap Vegetariano",
+    "description": "Tortilla, vegetales y hummus",
+    "price": 14900,
+    "availableNow": true,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Salsa",
+        "options": [
+          "Tahini",
+          "Yogur",
+          "Sin salsa"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 503,
+    "code": 503,
+    "name": "Limonada De Hierbabuena",
+    "description": "Limón, agua y hierbabuena",
+    "price": 6800,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  },
+  {
+    "id": 504,
+    "code": 504,
+    "name": "Trio De Wraps",
+    "description": "Paquete con tres wraps vegetarianos",
+    "price": 39000,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  },
+  {
+    "id": 505,
+    "code": 505,
+    "name": "Sopa De Zapallo",
+    "description": "Zapallo y caldo vegetal",
+    "price": 9200,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  }
+]

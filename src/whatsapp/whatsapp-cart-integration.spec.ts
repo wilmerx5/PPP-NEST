@@ -205,3 +205,55 @@ describe('Agent actions applied by the real orchestrator (no DB or transports)',
     expect(session.cart.map(c=>[c.productId,c.quantity]).sort((a,b)=>a[0]-b[0])).toEqual([[25,1],[37,1]]);
   });
 });
+
+
+describe('Named catalog packs through guarded model actions',()=>{
+  it.each([
+    ['Quiero tres hamburguesas clasicas',1],
+    ['Quiero 3 hamburguesas clasicas',1],
+    ['Quiero dos paquetes de tres hamburguesas clasicas',2],
+  ])('keeps pack copies for %s',async(text,quantity)=>{
+    const session=await apply(String(text),{addItems:[{productId:78,quantity:3}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0].quantity).toBe(quantity);
+  });
+});
+
+// Catalog-wide invariants complement conversational inference, without paid API calls.
+describe('Every fixture SKU through guard and cart application',()=>{
+  it.each(products.map(p=>[p.id,p.name,p.price]))('one catalog presentation of %s / %s preserves its price',async(id,name,price)=>{
+    const requested = products.find(p=>p.id===id);
+    const attributes = (requested.attributes || []).filter(a=>catalog.requiresExplicitAttributeChoice(requested,a))
+      .map(a=>({attributeName:a.attributeName,attributeValue:a.options[0]}));
+    const session=await apply(`Quiero ${name} ${attributes.map(a=>a.attributeValue).join(' ')}`,{addItems:[{productId:Number(id),quantity:1,attributes}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0]).toMatchObject({productId:Number(id),quantity:1,unitPrice:Number(price)});
+    const product=products.find(p=>p.id===id);
+    for(const choice of session.cart[0].attributes||[]){
+      const attr=product.attributes?.find(a=>a.attributeName===choice.attributeName);
+      expect(attr?.options).toContain(choice.attributeValue);
+    }
+  });
+  it.each(products.map(p=>[p.id,p.name,p.code]))('two explicit code units of %s / %s preserve copies',async(id,_name,code)=>{
+    const requested = products.find(p=>p.id===id);
+    const attributes = (requested.attributes || []).filter(a=>catalog.requiresExplicitAttributeChoice(requested,a))
+      .map(a=>({attributeName:a.attributeName,attributeValue:a.options[0]}));
+    const session=await apply(`Quiero 2 unidades del código ${code} ${attributes.map(a=>a.attributeValue).join(' ')}`,{addItems:[{productId:Number(id),quantity:2,attributes}]});
+    expect(session.cart).toHaveLength(1);
+    expect(session.cart[0]).toMatchObject({productId:Number(id),quantity:2});
+  });
+});
+
+
+describe('Explicit beverage choices across the entire catalog',()=> {
+  const beverages = products.filter(p=>(p.attributes || []).some(a=>catalog.requiresExplicitAttributeChoice(p,a)));
+  it.each(beverages.map(p=>[p.id,p.name,p.price]))('keeps %s / %s pending rather than choosing its flavor', async (id,name,price)=> {
+    const requested = products.find(p=>p.id===id);
+    const session = await apply(`Quiero una unidad del código ${requested.code}`,{addItems:[{productId:Number(id),quantity:1}]});
+    expect(session.cart).toEqual([]);
+    expect(session.pendingAttribute).toMatchObject({productId:Number(id),price:Number(price)});
+    expect(session.pendingAttribute!.selected).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({attributeName:'Sabor'}),
+    ]));
+  });
+});

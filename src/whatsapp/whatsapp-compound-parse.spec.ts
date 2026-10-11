@@ -273,6 +273,9 @@ describe('pedido de sopas (2 de cada una)', () => {
     expect(isCartChargeQuestion('Pero cuanto me están cobrando por 4 sopas???')).toBe(true);
     expect(isCartChargeQuestion('Son solo 4 sopas, que estan cobrando??')).toBe(true);
     expect(isCartChargeQuestion('cuanto vale la sopa')).toBe(false);
+    expect(isCartChargeQuestion('Cuánto sería???')).toBe(true);
+    expect(isCartChargeQuestion('Y cuanto es')).toBe(true);
+    expect(isCartChargeQuestion('Cuánto sería un pollo?')).toBe(false);
   });
 
   it('enviar mucho ají es nota, no nombre', () => {

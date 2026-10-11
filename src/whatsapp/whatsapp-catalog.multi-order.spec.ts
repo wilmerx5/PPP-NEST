@@ -235,3 +235,40 @@ describe('multi-item order quantities', () => {
     expect(multi!.ambiguous.length > 0).toBe(true);
   });
 });
+
+describe('Presentation measurements are not purchase quantities',()=>{
+ const catalog=new WhatsappCatalogService({} as never);
+ it.each([
+  ['Quiero gaseosa 2.5L',1],['Quiero gaseosa 2,5 litros',1],
+  ['Dos gaseosas de 2.5 L',2],['Quiero 3 gaseosas de 500ml',3],
+  ['Quiero una bolsa de arroz 2 kg',1],['Quiero 2 bolsas de arroz de 2kg',2],
+  ['Gaseosa 2.5L x3',3],['Quiero agua de 600 ml',1],
+ ])('%s => %s',(message,quantity)=>expect(catalog.extractQuantityFromSegment(String(message))).toBe(quantity));
+});
+
+describe('Explicit beverage size compatibility',()=>{
+ const catalog=new WhatsappCatalogService({} as never);
+ const small={id:501,code:501,name:'Bebida Gaseosa 250ml',price:3000,availableNow:true,hasAttributes:false,attributes:[]};
+ const other={...small,id:502,code:502,name:'Bebida Gaseosa 400ml'};
+ it('rejects a nearby but unrequested bottle size',()=>{
+  expect(catalog.productNameFitsUtterance(small,'Quiero una bebida gaseosa de 250ml')).toBe(true);
+  expect(catalog.productNameFitsUtterance(other,'Quiero una bebida gaseosa de 250ml')).toBe(false);
+ });
+ it('preserves two explicitly requested bottle sizes',()=>{
+  const text='Una bebida gaseosa de 250ml y una bebida gaseosa de 400ml';
+  expect(catalog.productMatchesExplicitDrinkSize(small,text)).toBe(true);
+  expect(catalog.productMatchesExplicitDrinkSize(other,text)).toBe(true);
+ });
+ it('uses the exact size in standalone checkout instead of the preferred common bottle',()=>{
+  expect(catalog.resolveStandaloneDrinkOrder('Quiero una bebida gaseosa de 250ml',[other,small])?.product.id).toBe(501);
+  expect(catalog.resolveStandaloneDrinkOrder('Quiero una bebida gaseosa de 300ml',[other,small])).toBeNull();
+ });
+ it('resolves the requested SKU without inferring the common nearby size',()=>{
+  expect(catalog.resolveSpokenDish('Quiero una bebida gaseosa de 250ml',[other,small])?.id).toBe(501);
+ });
+ it('handles decimal liters after normalization without changing quantities',()=>{
+  const family={...small,name:'Bebida Gaseosa 2.5L'};
+  expect(catalog.productMatchesExplicitDrinkSize(family,'Una gaseosa 2 5L')).toBe(true);
+  expect(catalog.productMatchesExplicitDrinkSize(other,'Una gaseosa 2.5L')).toBe(false);
+ });
+});

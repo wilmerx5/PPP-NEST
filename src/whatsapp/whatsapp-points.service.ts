@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PointsService } from '../auth/services/points.service';
-import type { WhatsappCartItem } from './types/whatsapp-session.types';
+import type { WhatsappCartItem, WhatsappSessionData } from './types/whatsapp-session.types';
 import {
   POINTS_REQUIRED_FOR_PRIZE,
   buildPointsOverviewReply,
@@ -16,6 +16,21 @@ const POINT_CODE_CHARSET = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/;
 /** Palabras típicas de pedido — evita confundir "unpollofrito" con código de factura. */
 const ORDER_INTENT_WORD =
   /\b(quiero|quieor|qiero|kiero|dame|ponme|pedir|ordenar|agrega|agregame|un|una|unos|unas|medio|cuarto|entero|combo|pollo|arroz|sopa|ejecutivo|frito|broaster|bandeja|bebida|gaseosa|domicilio|habitacion|habitaci[oó]n)\b/i;
+
+function isPrizeEligibleItem(item: WhatsappCartItem): boolean {
+  return item.code === 2 || item.code === 5;
+}
+
+/** The validated voucher discounts one physical unit, never the whole cart line. */
+export function whatsappPrizeDiscount(session: WhatsappSessionData): number {
+  if (!session.pendingRedemptionCode) return 0;
+  if (session.pendingRedemptionExpiresAt) {
+    const expiry = new Date(session.pendingRedemptionExpiresAt).getTime();
+    if (!Number.isFinite(expiry) || expiry < Date.now()) return 0;
+  }
+  const item = session.cart.find(isPrizeEligibleItem);
+  return item ? Math.max(0, Number(item.unitPrice) || 0) : 0;
+}
 
 @Injectable()
 export class WhatsappPointsService {
@@ -83,6 +98,7 @@ export class WhatsappPointsService {
   }
 
   isRedeemIntent(text: string): boolean {
+    if (this.isExplicitRedeemRequest(text)) return true;
     const t = (text || '').toLowerCase();
     return (
       /\b(redimir|canjear\s+(mis\s+)?puntos|generar\s+premio|sacar\s+premio)\b/.test(t) ||
@@ -90,6 +106,16 @@ export class WhatsappPointsService {
       /\bpara\s+redimir\b/.test(t) ||
       t === 'redimir'
     );
+  }
+
+  /** Only an explicit request authorizes spending points; capability/help is read-only. */
+  isExplicitRedeemRequest(text: string): boolean {
+    const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (/\b(no|nunca|todavia|puedo|podria|podemos|cuanto|cuando|como|pasos|procedimiento|proceso|es posible|me alcanza|que pasa)\b/.test(t)) return false;
+    if (/\bsi\s+(?!quiero\b|quisiera\b|deseo\b)/.test(t)) return false;
+    const action = '(?:redimir|redime|canjear(?: mis)? puntos|canjea(?: mis)? puntos|generar (?:el |un |mi )?premio|genera (?:el |un |mi )?premio|sacar (?:el |un |mi )?premio)';
+    return new RegExp('^[¿¡\\s]*(?:por favor\\s+)?' + action + '\\b').test(t) ||
+      new RegExp('\\b(?:quiero|quisiera|deseo|necesito|me gustaria|ayudame a|puedes|podrias)\\s+' + action + '\\b').test(t);
   }
 
   /** “Mira el código” sin pegar aún el código de 12 chars. */
@@ -124,7 +150,7 @@ export class WhatsappPointsService {
   }
 
   cartHasHalfChicken(cart: WhatsappCartItem[]): boolean {
-    return cart.some((c) => c.code === 2 || c.code === 5);
+    return cart.some(isPrizeEligibleItem);
   }
 
   async getAvailablePoints(userId: string | null | undefined): Promise<number | null> {
@@ -190,13 +216,14 @@ export class WhatsappPointsService {
     linkedUserId?: string | null,
   ): Promise<
     | { ok: true; code: string; expiresAt: Date | null }
-    | { ok: false; message: string }
+    | { ok: false; message: string; reason: 'unknown' | 'unavailable' | 'owner' }
   > {
     try {
       const redemption = await this.pointsService.validateRedemptionCode(code.toUpperCase().trim());
       if (linkedUserId && redemption.userId && redemption.userId !== linkedUserId) {
         return {
           ok: false,
+          reason: 'owner',
           message:
             'Ese premio pertenece a otra cuenta. Inicia sesión en la web con la cuenta correcta o usa el código en el local.',
         };
@@ -207,7 +234,7 @@ export class WhatsappPointsService {
         expiresAt: redemption.expiresAt ?? null,
       };
     } catch (err) {
-      return { ok: false, message: this.mapPointsError(err) };
+      return { ok: false, message: this.mapPointsError(err), reason: err instanceof NotFoundException ? 'unknown' : 'unavailable' };
     }
   }
 

@@ -1,7 +1,7 @@
 name: PPP Staging Image Check
 on:
   push:
-    branches: [fix/whatsapp-regression-baseline]
+    branches: [staging]
     paths: [Dockerfile, .dockerignore, docker-compose.staging.yml, config/staging.env.example, config/nginx/**, package.json, package-lock.json, src/**, migrations/**, scripts/ppp-runtime-smoke.*, .github/workflows/staging-image-check.yml]
 permissions:
   contents: read

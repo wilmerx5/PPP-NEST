@@ -12,6 +12,37 @@ export const WHATSAPP_INBOUND_COALESCE_QUICK_MS = 900;
 /** Máximo de textos a fusionar en un solo turno (anti-abuso). */
 export const WHATSAPP_INBOUND_COALESCE_MAX = 8;
 
+/**
+ * Varias fotos de un mismo carrito llegan como webhooks separados.
+ * Se espera este silencio antes de responder, para mandar un solo resumen.
+ */
+export const WHATSAPP_IMAGE_BURST_MS = 2000;
+
+export function isImageBurstMessage(msg: IncomingWhatsappMessage): boolean {
+  if (msg.messageType === 'image' && !!msg.mediaId) return true;
+  // El álbum de WhatsApp a veces llega primero como tipo no soportado.
+  return msg.messageType === 'other' || msg.messageType === 'sticker';
+}
+
+/** Un álbum ya armó el pedido: una sola burbuja, o ninguna si aún llega otra foto. */
+export function collapseImageBurstReplies(input: {
+  /** Only a successfully interpreted order photo can replace its acknowledgements. */
+  resolvedOrderImage?: boolean;
+  /** Suppress only an unsupported envelope followed by an actual photo, never image-read errors. */
+  unsupportedEnvelopeSupersededByImage?: boolean;
+  newerArrived: boolean;
+  hasCart: boolean;
+  pending: boolean;
+  replies: string[];
+  summary: string;
+}): string[] {
+  if (input.unsupportedEnvelopeSupersededByImage) return [];
+  if (!input.resolvedOrderImage) return input.replies;
+  if (input.newerArrived) return [];
+  if (input.pending || !input.hasCart || !input.summary.trim()) return input.replies;
+  return [input.summary.trim()];
+}
+
 export function isCoalesceableInboundMessage(msg: IncomingWhatsappMessage): boolean {
   if (msg.messageType !== 'text') return false;
   if (msg.mediaId) return false;

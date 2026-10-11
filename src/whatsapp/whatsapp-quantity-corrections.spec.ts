@@ -142,6 +142,12 @@ describe('Corrections preserve the rest of an existing cart', () => {
     const h = harness(); const initial = structuredClone(h.session.cart);
     await h.send('Solo eran dos ajiacos'); expect(h.session.cart).toEqual(initial);
   });
+  it.each(['Para la Calle 48 sur 87 86', 'para la calle 39 sur 38 a 56', 'para la 48 sur 87 86'])('does not read a street address as a quantity: %s', text => {
+    expect(parseCartQuantityCorrection(text)).toBeNull();
+  });
+  it('still reads a dish quantity after para el', () => {
+    expect(parseCartQuantityCorrection('Para el churrasco 2')).toEqual({ quantity: 2, query: 'churrasco' });
+  });
   it.each(['Solo quiero un pollo', 'Solo te pedí un combo', 'Vacía el carrito', 'Agrega un pollo',
     'Solo era un pollo y dos mojarras', '¿Son dos pollos?', 'Quita un pollo', '1', 'Sin ensalada',
     'Deja solo un ajiaco, los otros dos no', 'Era un pollo, pero agrega dos limonadas'])('leaves other intents to their existing handlers: %s', text => {

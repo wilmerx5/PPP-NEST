@@ -1,0 +1,20 @@
+{
+  "round": "2026-10-10-authorized-20",
+  "authorizedRequests": 20,
+  "usedRequests": 11,
+  "remainingRequests": 9,
+  "scope": "Current user-authorized round only; not standing authorization",
+  "acceptedConversations": 10,
+  "validationBaseCommit": "a3d54eae",
+  "includesCompoundEditWorkingTree": true,
+  "lastAttemptAt": "2026-10-11T15:18:23.633Z",
+  "latestEvaluation": {
+    "baseCommit": "53e4d1c1",
+    "includesWorkingTree": true,
+    "model": "gpt-4.1-2025-04-14",
+    "requests": 3,
+    "automatedAcceptedConversations": 2,
+    "manuallyAcceptedConversations": 1,
+    "manualIssue": "Fish recommendation included unsupported sensory comparison; promoted to regression and corrected without more paid calls."
+  }
+}

@@ -1,0 +1,291 @@
+{
+  "sourceChatBlocks": 34,
+  "privacy": "Solo mensajes seleccionados; nombres, teléfonos, ubicaciones y cuentas reales excluidos. Precios históricos no son oráculos. Numeración repetida identificada por lote.",
+  "execution": "automated=true se ejecuta gratis mediante whatsapp-general-accuracy.spec.ts; false es selección pendiente, no validación. Modelo simulado; no acredita inferencia real.",
+  "cases": [
+    {
+      "id": "consultas-precio-no-compra",
+      "source": "lote-1/chat-07",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Q cuestan 2 sopas de menudencias",
+        "Buenas tardes q costo tiene 2 combos de hamburguesa"
+      ],
+      "expect": {
+        "emptyCart": true,
+        "replyPattern": "\\$|precio|cuesta|valor"
+      },
+      "invariant": "Consultar precio con cantidad no agrega productos."
+    },
+    {
+      "id": "referencia-sin-adjunto",
+      "source": "lote-1/chat-03",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Me regalas por favor esta"
+      ],
+      "expect": {
+        "emptyCart": true,
+        "replyPattern": "cu[aá]l|producto|plato|c[oó]digo"
+      },
+      "invariant": "Sin foto ni referencia resoluble, preguntar cuál producto; no adivinar."
+    },
+    {
+      "id": "preparacion-y-barrio",
+      "source": "lote-1/chat-02",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Por favor para un domicilio",
+        "1-sobre barriga dorada delgada",
+        "Para la calle 10 B Bis #80-20 casa 101",
+        "Barrio Prueba",
+        "Sin ensalada x favor"
+      ],
+      "expect": {
+        "items": {
+          "13": 1
+        },
+        "notesByProduct": {
+          "13": [
+            "dorada",
+            "delgada",
+            "Sin ensalada"
+          ]
+        },
+        "addressAll": [
+          "80-20",
+          "101",
+          "Barrio Prueba"
+        ],
+        "orderType": "delivery"
+      },
+      "invariant": "Conservar producto, nota de preparación, calle, casa y barrio al añadir una exclusión posterior."
+    },
+    {
+      "id": "direccion-por-partes",
+      "source": "lote-2/chat-11",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Medio pollo frito",
+        "Calle 10B #80C-20",
+        "Conjunto residencial Prueba",
+        "Torre 2 apto 301"
+      ],
+      "invariant": "Anexar conjunto y unidad sin sustituir la calle ni duplicar el producto.",
+      "expect": {
+        "items": {
+          "2": 1
+        },
+        "addressAll": [
+          "80C-20",
+          "Conjunto residencial Prueba",
+          "Torre 2",
+          "301"
+        ]
+      }
+    },
+    {
+      "id": "cambio-acompanamiento",
+      "source": "lote-2/chat-10",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Un ejecutivo con pierna pernil de pollo frito y sopa de menudencias",
+        "Es posible que me cambien el arroz por papa salada?",
+        "Te recomiendo que el pollo esté muy muy bien frito"
+      ],
+      "expect": {
+        "items": {
+          "22": 1
+        },
+        "attributesByProduct": {
+          "22": [
+            "Presa:Pierna Pernil",
+            "Sopa:Menudencias"
+          ]
+        },
+        "notesByProduct": {
+          "22": [
+            "papa salada",
+            "bien frito"
+          ]
+        },
+        "replyPattern": "bien frito"
+      },
+      "invariant": "Distinguir sustitución de compra; conservar preferencia sin prometer cambios no configurados."
+    },
+    {
+      "id": "salsas-compuestas",
+      "source": "lote-2/chat-06",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Medio pollo broaster, sin salsas, en vez de salsas más miel por favor"
+      ],
+      "invariant": "Guardar ambas instrucciones sin convertir miel en otro producto.",
+      "expect": {
+        "items": {
+          "5": 1
+        },
+        "notesByProduct": {
+          "5": [
+            "sin salsas",
+            "miel"
+          ]
+        },
+        "replyPattern": "sin salsas.*miel"
+      }
+    },
+    {
+      "id": "pregunta-durante-variante",
+      "source": "lote-1/chat-06",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Me regalas un pollo frito por favor y una sopita",
+        "Que sopita tienes?",
+        "Un ajiaco sin tanto recado por favor"
+      ],
+      "invariant": "No perder el pollo ni duplicar sopa cuando una consulta interrumpe la elección.",
+      "expect": {
+        "items": {
+          "1": 1,
+          "38": 1
+        },
+        "notesByProduct": {
+          "38": [
+            "sin tanto recado"
+          ]
+        },
+        "replyPattern": "sin tanto recado"
+      },
+      "adaptation": "El tipo frito se hace explícito para aislar la interrupción de sopa; la ambigüedad de pollo tiene regresiones separadas."
+    },
+    {
+      "id": "pedido-multilinea",
+      "source": "lote-1/chat-10",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Buena tarde\nPara un domicilio por favor\nDos sopas de ajiaco\nConjunto Prueba\nTorre 2\nApto 301",
+        "Me confirma tiempo y valor por favor?"
+      ],
+      "invariant": "Dos sopas, dirección compuesta; consulta posterior conserva cantidades y no inventa ETA.",
+      "expect": {
+        "items": {
+          "38": 2
+        },
+        "addressAll": [
+          "Conjunto Prueba",
+          "Torre 2",
+          "Apto 301"
+        ],
+        "orderType": "delivery",
+        "replyPattern": "confirmar el tiempo"
+      }
+    },
+    {
+      "id": "respuesta-con-cita",
+      "source": "lote-1/chat-08",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Un cuarto de pollo frito",
+        "pierna o pechuga\nPierna porfa"
+      ],
+      "invariant": "La elección está en la respuesta; las opciones citadas no son dos pedidos.",
+      "expect": {
+        "items": {
+          "3": 1
+        },
+        "attributesByProduct": {
+          "3": [
+            "Presa:Pierna Pernil"
+          ]
+        },
+        "replyPattern": "Pierna"
+      }
+    },
+    {
+      "id": "bebida-typo",
+      "source": "lote-1/chat-01",
+      "priority": "media",
+      "automated": true,
+      "messages": [
+        "Un combo de arroz paisa",
+        "Giger"
+      ],
+      "expect": {
+        "items": {
+          "94": 1
+        },
+        "attributesByProduct": {
+          "94": [
+            "Bebida:Ginger"
+          ]
+        },
+        "replyPattern": "Ginger"
+      },
+      "invariant": "Resolver typo solo si una opción actual es inequívoca; conservar cantidad."
+    },
+    {
+      "id": "consulta-total",
+      "source": "lote-3/chat-01",
+      "priority": "alta",
+      "automated": true,
+      "messages": [
+        "Quiero un churrasco",
+        "Cuánto sería???"
+      ],
+      "expect": {
+        "items": {
+          "17": 1
+        },
+        "replyPattern": "\\$|total|subtotal|38[.,]000"
+      },
+      "invariant": "Consultar total conserva SKU y cantidad."
+    },
+    {
+      "id": "agradecimiento-no-duplica",
+      "source": "lote-1/chat-09",
+      "priority": "media",
+      "automated": true,
+      "messages": [
+        "Quiero un churrasco",
+        "Muchas gracias"
+      ],
+      "expect": {
+        "items": {
+          "17": 1
+        }
+      },
+      "invariant": "Agradecer no duplica ni confirma la orden."
+    },
+    {
+      "id": "canje-y-adicional",
+      "source": "lote-1/chat-05",
+      "priority": "alta",
+      "automated": false,
+      "messages": [
+        "Más otro medio pollo",
+        "No. Es medio pollo redimido más el medio pollo adicional."
+      ],
+      "invariant": "Separar canje y compra; requiere contexto de canje validado, no inferir descuento."
+    },
+    {
+      "id": "postventa-cancelacion",
+      "source": "lote-2/chat-13",
+      "priority": "alta",
+      "automated": false,
+      "messages": [
+        "Veci será que se demora",
+        "Me va tocar cancelarlo, me tengo que ir"
+      ],
+      "invariant": "Estado real o derivación humana; no inventar entrega ni borrar un pedido confirmado sin procedimiento."
+    }
+  ]
+}

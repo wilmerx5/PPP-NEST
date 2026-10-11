@@ -54,7 +54,7 @@ function harness() {
   const send = (text: string) => service.handleIncomingUnlocked({
     waId: 'customer', phoneE164: conv.phoneE164, messageId: `test-${count}`, messageType: 'text', text, raw: {},
   });
-  return { conv, send, agent, replies, deliveryRouting };
+  return { conv, send, agent, replies, deliveryRouting, cfg };
 }
 
 describe('Address changes during checkout', () => {
@@ -78,5 +78,222 @@ describe('Address changes during checkout', () => {
     expect(h.conv.sessionData.address).toContain('78');
     expect(h.conv.sessionData.paymentMethod).toBeTruthy();
     expect(h.conv.state).not.toBe('completed');
+  });
+});
+
+
+describe('Checkout interruptions preserve the order', () => {
+  it.each(['awaiting_payment', 'awaiting_final_confirm', 'confirming'])('corrects a typo address in %s and resumes checkout', async state => {
+    const h = harness();
+    h.conv.state = state;
+    if (state !== 'awaiting_payment') h.conv.sessionData.paymentMethod = 'cash';
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send('Cambiar la direction a d2 b 79 a. 86');
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+    expect(h.conv.sessionData.address).toContain('79');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.deliveryFeeCalculated).toBe(4500);
+    expect(h.conv.state).toBe(state === 'awaiting_payment' ? 'awaiting_payment' : 'awaiting_final_confirm');
+    expect(h.replies.at(-1)).toMatch(/direcci[oó]n actualizada/i);
+  });
+
+  it.each([
+    'Para el hotel santandereano', 'Para ek hotel santandereano', 'Calle 48 sur 87 86',
+    'Para la Calle 48 sur 87 86', 'para la calle 39 sur 38 a 56', 'para la cra 80 # 12-34',
+    'Cll 48 sur 87 86', 'Dg 6 b #78 b 20, Castilla', 'diagonal 6 b 78 b 20',
+    'transversal 68 sur 12 40', 'para la 48 sur 87 86',
+  ])('address after products advances to payment: %s', async address => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send(address);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.address).toBeTruthy();
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.replies.at(-1)).toMatch(/cómo pagas/i);
+    expect(h.replies.join('\n')).not.toMatch(/cantidad entre 1 y 30/i);
+    expect(h.conv.state).not.toBe('completed');
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'Para la Calle 48 sur 87 86', 'Cra 80 # 12-34', 'cll 6 b 81 b 51, Castilla, Bogotá',
+  ])('a new street during payment is requoted, not a quantity: %s', async address => {
+    const h = harness();
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send(address);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.address).not.toContain('78 b 20');
+    expect(h.conv.sessionData.deliveryFeeCalculated).toBe(4500);
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.replies.join('\n')).not.toMatch(/cantidad entre 1 y 30/i);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+  it.each(['No quiero que lo quites', 'No lo quites', 'No me lo quites', 'No quites nada'])('a refusal to remove keeps the dish: %s', async text => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send(text);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/no quito nada/i);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+    expect(h.conv.state).not.toBe('completed');
+  });
+});
+
+
+describe('Address checkout boundaries', () => {
+  it.each(['Cambia la direcion a Calle 12 34 56', 'Actualiza domicilio a Carrera 7 20 30', 'La direction es Calle 8 10 20'])('handles alternate correction phrasing: %s', async message => {
+    const h = harness();
+    await h.send(message);
+    expect(h.conv.sessionData.address).not.toContain('78');
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+
+  it('allows adding another product after the address shortcut', async () => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    await h.send('Calle 48 sur 87 86');
+    await h.send('Una sopa de ajiaco');
+    expect(h.conv.sessionData.cart.find(item => item.productId === 17)?.quantity).toBe(2);
+    expect(h.conv.sessionData.cart.find(item => item.productId === 38)?.quantity).toBe(1);
+    expect(h.conv.sessionData.address).toContain('87');
+  });
+
+  it('asks for the missing customer name after an address, preserving the cart', async () => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.customerName = '';
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    await h.send('Calle 48 sur 87 86');
+    expect(h.conv.state).toBe('awaiting_name');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+
+  it('an address without products does not start payment', async () => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.sessionData.cart = [];
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    await h.send('Calle 48 sur 87 86');
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    expect(h.conv.sessionData.cart).toEqual([]);
+  });
+
+  it('a correction without its replacement asks for the new address', async () => {
+    const h = harness();
+    await h.send('Cambiar la direction');
+    expect(h.conv.state).toBe('awaiting_address');
+    expect(h.replies.at(-1)).toMatch(/nueva dirección/i);
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+});
+
+
+describe('Address does not discard unfinished product choices', () => {
+  it('keeps the requested soup quantity through address and variant selection', async () => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    await h.send('Dos sopas');
+    expect(h.conv.sessionData.pendingMatch?.quantity).toBe(2);
+    await h.send('Calle 48 sur 87 86');
+    expect(h.conv.sessionData.pendingMatch?.quantity).toBe(2);
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    await h.send('Ajiaco');
+    expect(h.conv.sessionData.cart.find(item => item.productId === 38)?.quantity).toBe(2);
+    expect(h.conv.sessionData.cart.find(item => item.productId === 17)?.quantity).toBe(2);
+    expect(h.conv.sessionData.address).toContain('87');
+  });
+});
+
+
+describe('Cross-stage correction matrix', () => {
+  const cases = ['building_cart', 'awaiting_address', 'awaiting_payment', 'awaiting_name', 'awaiting_phone', 'awaiting_final_confirm']
+    .flatMap(state => [undefined, 'cash', 'transfer'].map(payment => ({state, payment})));
+  it.each(cases)('resumes $state with payment=$payment without changing items or notes', async ({state, payment}) => {
+    const h = harness();
+    h.conv.state = state;
+    h.conv.sessionData.paymentMethod = payment;
+    h.conv.sessionData.customerNotes = 'Llamar al llegar';
+    h.conv.sessionData.cashChangeFor = payment === 'cash' ? 'cambio de 100000' : undefined;
+    const cart = structuredClone(h.conv.sessionData.cart);
+    await h.send('Actualiza la direction a Carrera 12 34 56');
+    expect(h.conv.sessionData.address).toContain('34');
+    expect(h.conv.sessionData.cart).toEqual(cart);
+    expect(h.conv.sessionData.customerNotes).toBe('Llamar al llegar');
+    expect(h.conv.sessionData.paymentMethod).toBe(payment);
+    expect(h.conv.sessionData.cashChangeFor).toBe(payment === 'cash' ? 'cambio de 100000' : undefined);
+    expect(h.conv.state).toBe(payment ? 'awaiting_final_confirm' : 'awaiting_payment');
+  });
+});
+
+
+describe('Combined address and payment', () => {
+  it.each(['Calle 48 sur 87 86, pago en efectivo', 'Calle 48 sur 87 86, pago por transferencia'])('retains payment already supplied with address: %s', async message => {
+    const h = harness();
+    h.conv.state = 'building_cart';
+    h.conv.sessionData.address = undefined;
+    h.conv.sessionData.addressConfirmed = false;
+    await h.send(message);
+    expect(h.conv.sessionData.address).toContain('87');
+    expect(h.conv.sessionData.paymentMethod).toBeTruthy();
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+});
+
+
+describe('Cash amount can answer the payment question', () => {
+  it.each(['Pago con 100 mil', 'Efectivo, pago con 100000', 'Pagaré con 100.000', 'Pago con un billete de 100 mil'])('records cash and change in one turn: %s', async message => {
+    const h = harness();
+    await h.send(message);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.sessionData.cashChangeFor).toMatch(/100/);
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.conv.sessionData.cart[0].quantity).toBe(2);
+  });
+  it('a numbered payment option is not a cash amount', async () => {
+    const h = harness();
+    await h.send('1');
+    expect(h.conv.sessionData.cashChangeFor).toBeUndefined();
+  });
+});
+
+
+describe('Payment shortcut respects configured methods and questions', () => {
+  it('does not select disabled cash', async () => {
+    const h = harness();
+    h.cfg.paymentMethods = DEFAULT_PAYMENT_METHODS.filter(method => method.id !== 'cash');
+    await h.send('Pago con 100 mil');
+    expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+    expect(h.conv.state).not.toBe('awaiting_final_confirm');
+  });
+  it('a question about cash is not a payment selection', async () => {
+    const h = harness();
+    await h.send('¿Puedo pagar con un billete de 100 mil?');
+    expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+    expect(h.conv.state).not.toBe('awaiting_final_confirm');
+  });
+});
+
+
+describe('Explicit option changes while choosing payment',()=>{
+  it.each(['awaiting_payment','awaiting_final_confirm'])('changes a preparation in %s without losing checkout',async state=>{
+    const h=harness();h.conv.state=state;
+    if(state==='awaiting_final_confirm')h.conv.sessionData.paymentMethod='cash';
+    h.conv.sessionData.cart=[{productId:13,name:'Sobrebarriga',code:13,unitPrice:33000,quantity:2,note:'sin ensalada',attributes:[{attributeName:'Seleccion',attributeValue:'Asada'}]}];
+    await h.send('En salsa');
+    expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:13,quantity:2,note:'sin ensalada',attributes:[{attributeName:'Seleccion',attributeValue:'En Salsa'}]})]);
+    expect(h.conv.state).toBe(state);
   });
 });

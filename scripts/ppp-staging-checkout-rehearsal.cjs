@@ -157,7 +157,10 @@ async function runCheckoutRehearsal(
         ensure(
           env.GITHUB_ACTIONS === 'true' &&
             env.GITHUB_REPOSITORY === 'wilmerx5/PPP-NEST' &&
-            env.GITHUB_REF === 'refs/heads/fix/whatsapp-regression-baseline' &&
+            [
+              'refs/heads/fix/whatsapp-regression-baseline',
+              'refs/heads/fix/whatsapp-checkout-flow-20261010',
+            ].includes(env.GITHUB_REF) &&
             ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME),
           'UNAPPROVED_EXECUTION_CONTEXT',
         );
