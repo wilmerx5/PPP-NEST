@@ -436,6 +436,31 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.conv.sessionData.orderType).toBe('delivery');
   });
 
+  it.each([true, false])('keeps the preparation note when a later exclusion arrives after the neighborhood (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Por favor para un domicilio');
+    await h.send('1-sobre barriga dorada delgada');
+    expect(h.cartRows().length).toBeGreaterThan(0);
+    await h.send('Para la calle 10 B Bis #80-20 casa 101');
+    await h.send('Barrio Prueba');
+    const before = structuredClone(h.cartRows());
+    await h.send('Sin ensalada x favor');
+    const product = products.find(p => p.name === 'Sobrebarriga');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: product.id,
+        qty: before[0]?.qty || 1,
+        note: expect.stringMatching(/dorada.*delgada/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/sin ensalada/i);
+    expect(h.conv.sessionData.address).toMatch(/80-20/);
+    expect(h.conv.sessionData.address).toMatch(/casa 101|101/);
+    expect(h.conv.sessionData.address).toMatch(/barrio Prueba/i);
+    expect(h.conv.sessionData.orderType).toBe('delivery');
+    expect(h.conv.state).not.toBe('completed');
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {
@@ -760,6 +785,130 @@ describe('Multiline orders and quoted — expanded coverage', () => {
     await h.send('Quinoa o Arroz integral\nArroz integral porfa');
     expect(h.cartRows()).toEqual([expect.objectContaining({ id: 903, qty: 2, note: 'sin cebolla', attrs: ['Base:Arroz integral'] })]);
     expect(h.replies.at(-1)).toMatch(/Arroz integral/i);
+  });
+});
+
+describe('A later drink name replaces the default option', () => {
+  it.each([true, false])('keeps the first drink until the customer names another (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un combo de arroz paisa');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 94, qty: 1, attrs: expect.arrayContaining(['Bebida:Colombiana']) }),
+    ]);
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    await h.send('Giger');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 94, qty: 1, attrs: expect.arrayContaining(['Bebida:Ginger']) }),
+    ]);
+    expect(h.replies.at(-1)).toMatch(/ginger/i);
+  });
+
+  it.each([true, false])('leaves the default drink when the word is not an option (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un combo de arroz paisa');
+    await h.send('Fanta');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 94, qty: 1, attrs: expect.arrayContaining(['Bebida:Colombiana']) }),
+    ]);
+  });
+
+  it('replaces the default when another catalog has one close option', async () => {
+    const menu = [{
+      id: 880, code: 880, name: 'Bowl Andino', categoryName: 'Bowls', price: 25000, availableNow: true,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Horchata', 'Maracuyá', 'Avena'] }],
+    }];
+    const h = harness(menu, false);
+    await h.send('Quiero un Bowl Andino');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 880, qty: 1, attrs: ['Bebida:Horchata'] }),
+    ]);
+    await h.send('Avenna');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 880, qty: 1, attrs: ['Bebida:Avena'] }),
+    ]);
+  });
+
+  it('keeps the default when two options are equally close', async () => {
+    const menu = [{
+      id: 881, code: 881, name: 'Bowl Norteño', categoryName: 'Bowls', price: 25000, availableNow: true,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Limonada', 'Jengibre', 'Jengibra'] }],
+    }];
+    const h = harness(menu, false);
+    await h.send('Quiero un Bowl Norteño');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 881, qty: 1, attrs: ['Bebida:Limonada'] }),
+    ]);
+    await h.send('Jengibr');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id: 881, qty: 1, attrs: ['Bebida:Limonada'] }),
+    ]);
+  });
+});
+
+describe('Side substitution stays a note, not a second dish', () => {
+  it.each([true, false])('keeps the ejecutivo and both preferences (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un ejecutivo con pierna pernil de pollo frito y sopa de menudencias');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Menudencias']),
+      }),
+    ]);
+    const before = h.cartRows().length;
+    const swapReply = await h.send('Es posible que me cambien el arroz por papa salada?');
+    expect(h.cartRows()).toHaveLength(before);
+    expect(h.cartRows()[0].id).toBe(22);
+    expect(h.cartRows()[0].note || swapReply).toMatch(/papa salada/i);
+    expect(swapReply).not.toMatch(/agregu[eé].*papa|porci[oó]n de papa/i);
+    await h.send('Te recomiendo que el pollo esté muy muy bien frito');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        note: expect.stringMatching(/papa salada/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/bien frito/i);
+    expect(h.conv.state).not.toBe('completed');
+  });
+
+  it('keeps a named soup as an attribute in another catalog', async () => {
+    const menu = [
+      {
+        id: 910, code: 910, name: 'Almuerzo Andino', categoryName: 'Almuerzos', price: 22000,
+        availableNow: true, hasAttributes: true,
+        attributes: [
+          { attributeName: 'Proteina', options: ['Cerdo', 'Res'] },
+          { attributeName: 'Sopa', options: ['Verduras', 'Lentejas'] },
+        ],
+      },
+      {
+        id: 911, code: 911, name: 'Sopa De Lentejas', categoryName: 'Sopas', price: 12000,
+        availableNow: true, hasAttributes: false, attributes: [],
+      },
+    ];
+    const h = harness(menu, false);
+    await h.send('Un almuerzo andino con res y sopa de lentejas');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 910,
+        qty: 1,
+        attrs: expect.arrayContaining(['Proteina:Res', 'Sopa:Lentejas']),
+      }),
+    ]);
+    const swapReply = await h.send('Es posible que me cambien el arroz por papa salada?');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].id).toBe(910);
+    expect(h.cartRows()[0].note || swapReply).toMatch(/papa salada/i);
+    expect(swapReply).not.toMatch(/agregu[eé].*papa|porci[oó]n de papa/i);
+    await h.send('Te recomiendo que la carne esté bien asada');
+    expect(h.cartRows()[0].note).toMatch(/papa salada/i);
+    expect(h.cartRows()[0].note).toMatch(/bien asada/i);
+    expect(h.conv.state).not.toBe('completed');
   });
 });
 

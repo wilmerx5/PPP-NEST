@@ -20,7 +20,7 @@ Estos tests usan router, catálogo y carrito reales con modelo, persistencia y t
 4. Pollo sin estilo + sopa: preguntar frito/broaster sin perder la segunda elección. La prueba actual de interrupción hace explícito «frito».
 5. Casos con dependencia especial: imagen ausente, canje validado, nueva sesión otro día y cancelación de pedido ya confirmado. Aclarar o derivar cuando falte contexto.
 
-Los cinco escenarios con `automated: false` son selección pendiente, no pruebas aprobadas. Antes de marcar cada uno como aprobado: ejecutar el recorrido completo, comprobar carrito/estado/respuesta y añadir variaciones con otro catálogo. Reservar variantes inéditas para evaluación; no copiar mensajes de prueba en reglas de producción.
+Los dos escenarios con `automated: false` son `canje-y-adicional` y `postventa-cancelacion`: selección pendiente, no pruebas aprobadas. `cambio-acompanamiento` ya recorre el router simulado, con la sopa como atributo y el cambio de arroz como nota. Antes de marcar los que faltan: ejecutar el recorrido completo, comprobar carrito/estado/respuesta y añadir variaciones con otro catálogo. Reservar variantes inéditas para evaluación; no copiar mensajes de prueba en reglas de producción.
 
 ## Ejecución y gasto
 
@@ -52,6 +52,10 @@ Regresiones gratuitas: tres productos, cantidades, notas, carta sin selección, 
 
 Se separan las líneas de dirección del pedido, conservando saltos entre platos y excluyendo saludos e intención genérica de domicilio. Las unidades no se leen como cantidades. Las respuestas citadas solo se simplifican si las opciones pertenecen a atributos de productos del carrito o selección pendiente y la respuesta identifica una opción única; se reconoce también una elección que ya estaba aplicada. Se conserva el término de cocción por plato en pedidos múltiples. La consulta conjunta de tiempo y valor muestra el carrito sin confirmar el pedido: usa el tiempo configurado o pide confirmación del equipo, sin inventar una estimación.
 
-Cobertura: dos sopas + conjunto/unidad + consulta; dos churrascos tres cuartos + sopa + calle/conjunto/unidad; elección de ambas presas; catálogo de bowls conservando dos unidades y nota; consulta de precio multilínea sin compra; tiempo configurado. Modelo, persistencia y transporte simulados; cero llamadas pagadas en esta tanda. Hay nueve escenarios del corpus automatizados y cinco pendientes.
+Cobertura: dos sopas + conjunto/unidad + consulta; dos churrascos tres cuartos + sopa + calle/conjunto/unidad; elección de ambas presas; catálogo de bowls conservando dos unidades y nota; consulta de precio multilínea sin compra; tiempo configurado. Modelo, persistencia y transporte simulados; cero llamadas pagadas en esta tanda. Hay doce escenarios del corpus automatizados y dos pendientes: `canje-y-adicional` y `postventa-cancelacion`.
+
+### Sustitución de acompañamiento (2026-10-10)
+
+«Un ejecutivo con pierna pernil de pollo frito y sopa de menudencias» queda en un solo ejecutivo: presa Pierna Pernil y sopa Menudencias, sin agregar la sopa suelta ni dejar Ajiaco por defecto. «Es posible que me cambien el arroz por papa salada?» se guarda como nota, sin vender una porción de papa. «muy muy bien frito» se anexa a esa nota. «además / aparte / y una sopa» conserva la sopa como plato aparte. El mismo criterio se comprobó con un almuerzo de otro catálogo (proteína Res, sopa Lentejas, nota de papa salada y bien asada). Simulación del router; cero llamadas de inferencia.
 
 Verificación de la tanda multilínea: 13 casos focalizados y suite completa 58/58 con 1.307 pruebas, incluyendo 97 en la suite de acertividad; TypeScript sin errores. Las cantidades, atributos y notas se comprueban contra el carrito, no solo por el texto de confirmación. Cero solicitudes de inferencia real; permanecen 8 usadas y 12 disponibles del presupuesto autorizado. Estos resultados no acreditan aún precisión del modelo real ni que los cinco escenarios pendientes estén resueltos.

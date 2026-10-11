@@ -3087,6 +3087,37 @@ export class WhatsappCatalogService {
    * "almuerzo ejecutivo con pechuga y sopa de ajiaco" → SKU Ejecutivo…,
    * no "Sopa De Ajiaco" suelta ni pechuga a la plancha aparte.
    */
+  /**
+   * La sopa nombrada dentro del ejecutivo es su atributo.
+   * "además / aparte / y una sopa" conserva el SKU suelto.
+   */
+  private dropEjecutivoAttributeSoups(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    embedded: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const q = normalizeText(text);
+    if (!this.isEjecutivoLunchOrderPhrase(text) || !/\bejecutivo\b/.test(q)) return embedded;
+    if (/\b(?:aparte|ademas|adicionalmente|otra)\b/.test(q) || /\by\s+(?:una|uno|dos|tres|otra|otro)\b/.test(q)) {
+      return embedded;
+    }
+    const host = this.resolveEjecutivoOrderProduct(text, products);
+    if (!host) return embedded;
+    const options = (host.attributes || [])
+      .filter((attr) => /\bsopa\b/.test(normalizeText(attr.attributeName)))
+      .flatMap((attr) => attr.options || [])
+      .map((option) => normalizeText(option))
+      .filter((option) => option.length >= 4);
+    const next = embedded.filter((product) => {
+      if (product.id === host.id) return true;
+      const name = normalizeText(product.name);
+      if (!/\b(?:sopa|ajiaco|mondongo|menudencia)\b/.test(name)) return true;
+      return !options.some((option) => name.includes(option));
+    });
+    if (!next.some((product) => product.id === host.id)) next.unshift(host);
+    return next;
+  }
+
   isEjecutivoLunchOrderPhrase(text: string): boolean {
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q) return false;
@@ -3485,7 +3516,14 @@ export class WhatsappCatalogService {
           .replace(/\s+y\s*$/i, '').replace(/\s+/g, ' ').trim();
         const norm = normalizeText(phrase);
         if (new RegExp(`\\b${DRINK_ORDER_TOKEN}\\b`, 'i').test(norm)) continue;
-        if (/\b(con|mas|más)\s+(pollo|carne|churrasco|pechuga|mojarra|bandeja|sopa)\b/.test(norm)) {
+        if (/\b(con|mas|más)\s+(pollo|carne|churrasco|pechuga|mojarra|bandeja|sopa|pierna|pernil|presa|ala)\b/.test(norm)) {
+          continue;
+        }
+        if (
+          (this.isEjecutivoLunchOrderPhrase(raw) || /\balmuerzo\b/.test(q)) &&
+          /^(?:con|mas|más)\b/.test(norm) &&
+          !/\b(?:ensalada|papa|yuca|arepa|aguacate|maduro)\b/.test(norm)
+        ) {
           continue;
         }
         // Evitar duplicar el mismo chunk
@@ -3695,6 +3733,8 @@ export class WhatsappCatalogService {
         .replace(/\bsopa\s+de\s+\w+/g, ' ')
         .replace(/\b(ajiaco|mondongo|menudencias?)\b/g, ' ')
         .replace(/\bcon\s+pechuga\b/g, ' ')
+        .replace(/\bpierna(?:\s+pernil)?\b/g, ' ')
+        .replace(/\bpollo\b/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
     }
@@ -7825,6 +7865,17 @@ export class WhatsappCatalogService {
       return main ? [main] : [];
     }
 
+    // "ejecutivo … y sopa de menudencias" es el atributo del almuerzo, no otra sopa.
+    // "y además una sopa … aparte" sí es otro plato.
+    if (
+      !/\n/.test(text || '') &&
+      this.isEjecutivoLunchOrderPhrase(text) &&
+      !/\b(?:aparte|ademas|adicionalmente|otra|y\s+(?:una|uno|dos|tres|otra|otro))\b/.test(normalizeText(text))
+    ) {
+      const main = this.cleanOrderSegment(text) || (text || '').trim();
+      return main ? [main] : [];
+    }
+
     // Bullets / saltos de línea: cada ítem es un segmento
     const bulletLines = (text || '')
       .split(/\r?\n+|(?=\s[*•\-–—]\s+)/)
@@ -8373,6 +8424,10 @@ export class WhatsappCatalogService {
           ? [companion, embeddedAll[0]]
           : [embeddedAll[0], companion];
       }
+    }
+
+    if (embeddedAll.length >= 2) {
+      embeddedAll = this.dropEjecutivoAttributeSoups(text, products, embeddedAll);
     }
 
     if (embeddedAll.length >= 2) {
@@ -9312,6 +9367,23 @@ export class WhatsappCatalogService {
   }
 
   /**
+   * El mensaje entero es esa opción, o un typo corto de ella.
+   * "manzana extra arroz" no cuenta: sobran palabras que no son de la opción.
+   */
+  private queryIsJustThisOption(query: string, picked: string | null, options: string[]): boolean {
+    if (!picked) return false;
+    const q = normalizeText(query);
+    const option = normalizeText(picked);
+    if (!q || !option || q.split(/\s+/).length > 3) return false;
+    if (this.matchAttributeOptionValue(q, options) !== picked) return false;
+    const optionTokens = option.split(/\s+/).filter((token) => token.length >= 3);
+    return q.split(/\s+/).every((token) => {
+      if (token.length < 3) return true;
+      return optionTokens.some((part) => part === token || (boundedEditDistance(token, part, 1) ?? 99) <= 1);
+    });
+  }
+
+  /**
    * El cliente nombra una opción que ya está en un atributo del carrito
    * ("la gaseosa puede ser coca cola"). No es un plato nuevo.
    */
@@ -9351,7 +9423,8 @@ export class WhatsappCatalogService {
       if (!product?.attributes?.length) continue;
       for (const attr of product.attributes) {
         const picked = this.pickAttributeOptionFromText(text, attr);
-        if (!picked || (!wantsChange && normalizeText(picked) !== q)) continue;
+        const bareTypo = !!opts?.allowBareOption && this.queryIsJustThisOption(q, picked, attr.options);
+        if (!picked || (!wantsChange && normalizeText(picked) !== q && !bareTypo)) continue;
         const current = (line.attributes || []).find(
           (a) => normalizeText(a.attributeName) === normalizeText(attr.attributeName),
         );
@@ -9549,14 +9622,25 @@ export class WhatsappCatalogService {
       .sort((a, b) => compactAlphaNum(b).length - compactAlphaNum(a).length);
     if (compactHits[0]) return compactHits[0];
     let best: { opt: string; distance: number } | null = null;
+    let equallyClose = 0;
     for (const opt of options) {
       const n = normalizeText(opt);
       if (n.length < 4 || q.length < 4) continue;
       const distance = boundedEditDistance(n, q, 2);
       if (distance == null) continue;
-      if (!best || distance < best.distance) best = { opt, distance };
+      if (!best || distance < best.distance) {
+        best = { opt, distance };
+        equallyClose = 1;
+      } else if (distance === best.distance) {
+        equallyClose += 1;
+      }
     }
-    return best?.opt || null;
+    if (!best || equallyClose > 1) return null;
+    if (best.distance > 1) {
+      const n = normalizeText(best.opt);
+      if (n.slice(0, 4) !== q.slice(0, 4)) return null;
+    }
+    return best.opt;
   }
 
   /** Encuentra una opción de atributo mencionada en texto libre. */

@@ -680,8 +680,11 @@ export class WhatsappOrchestratorService {
       const menu = await this.catalogService.getMenuProducts();
       const candidates = session.cart.flatMap((line, index) => {
         const product = menu.find(p => p.id === line.productId);
-        return product && supportsCookingTerm(product) && (!remainder ||
-          this.catalogService.isCartProductNamedInText(line.name, remainder)) ? [index] : [];
+        if (!product || !supportsCookingTerm(product, cookingPreference.note)) return [];
+        if (session.cart.length === 1 || !remainder || this.catalogService.isCartProductNamedInText(line.name, remainder)) return [index];
+        const namedPiece = this.normalizeForMatch(line.name).split(' ').filter(token => token.length >= 5)
+          .some(token => new RegExp(`\\b${token}\\b`).test(this.normalizeForMatch(remainder)));
+        return namedPiece ? [index] : [];
       });
       if (candidates.length > 1) {
         await this.reply(conv, msg.waId, '¿A cuál plato le aplico ese término de cocción?');
@@ -13886,6 +13889,25 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    if (
+      !hasProductiveActions &&
+      session.cart.length > 0 &&
+      (this.catalogService.looksLikeSideModificationNote(originalText || text) ||
+        this.looksLikeStandaloneOrderNote(originalText || text))
+    ) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['agent_side_note'],
+      });
+      return false;
+    }
+
     // "Un churrasco" es un pedido. Si el agente solo preguntó "¿lo agrego?", Nest lo agrega.
     if (
       !editsExistingCart && !guarded.actions?.addItems?.length &&
@@ -14338,6 +14360,19 @@ export class WhatsappOrchestratorService {
     return false;
   }
 
+  /** "Giger" o "coca cola" después del pedido: cambia la opción ya puesta, no abre otra pregunta. */
+  private looksLikeBareAttributeChoice(text: string): boolean {
+    if (/[?¿]/.test(text)) return false;
+    const q = this.normalizeForMatch(text)
+      .replace(/\b(porfa|por|favor|gracias)\b/g, ' ')
+      .trim();
+    const words = q.split(/\s+/).filter(Boolean);
+    if (!words.length || words.length > 3) return false;
+    return !words.some((word) =>
+      ['un', 'una', 'uno', 'dos', 'tres', 'cuatro', 'quiero', 'dame', 'regalame', 'agrega', 'agregue', 'añade', 'otro', 'otra', 'combo', 'porcion'].includes(word),
+    );
+  }
+
   /** Cambia una opción ya elegida (bebida, arepa, presa) si el cliente nombra otra del mismo atributo. */
   private async tryHandleCartAttributeOptionChange(
     conv: WhatsappConversation,
@@ -14387,7 +14422,9 @@ export class WhatsappOrchestratorService {
     );
     const change = onlyAttrs
       ? null
-      : this.catalogService.findCartAttributeOptionChange(attributeText, session.cart, products, {allowBareOption:resumeCheckout});
+      : this.catalogService.findCartAttributeOptionChange(attributeText, session.cart, products, {
+          allowBareOption: resumeCheckout || this.looksLikeBareAttributeChoice(attributeText),
+        });
     const updates = onlyAttrs
       ? onlyAttrs.updates
       : change

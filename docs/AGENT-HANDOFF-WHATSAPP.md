@@ -78,14 +78,14 @@ El original privado de chats está en `/home/levi/.codex/attachments/e387d2f2-9c
 
 ## Siguiente tanda concreta
 
-1. Typos de sabores y opciones agotadas: `Giger` después de un combo, respuestas cortas, sabores no disponibles. Resolver solo si una opción del catálogo/contexto vigente es inequívoca; preguntar en caso contrario. No codificar `Giger` ni SKU de PPP como excepciones universales.
-2. Completar el caso `preparacion-y-barrio`: domicilio → sobrebarriga dorada/delgada → variante → calle/casa → barrio → `Sin ensalada x favor`. El patrón completo sigue marcado pendiente; comprobar todas las notas y estado al finalizar, no solo los primeros cuatro turnos.
-3. `cambio-acompanamiento`: ejecutivo con pollo/sopa → preguntar cambiar arroz por papa → bien frito. Distinguir consulta de sustitución y compra adicional. No prometer sustituciones sin soporte de catálogo/configuración. Verificar que la preferencia se conserve.
+1. Hecho en simulación, sin inferencia: si el cliente no nombra la bebida, el combo toma la primera opción y no pregunta. Un mensaje posterior corto la cambia solo si hay una opción única: `Giger` pasa de Colombiana a Ginger; `Fanta` deja la primera; un typo empatado no cambia nada.
+2. Hecho en simulación: `preparacion-y-barrio` conserva sobrebarriga, notas `dorada delgada` y `Sin ensalada`, calle, casa y barrio.
+3. Hecho en simulación: `cambio-acompanamiento` deja un ejecutivo, sopa Menudencias, nota de papa salada y «bien frito». «además / aparte / y una sopa» sigue siendo otra sopa. El mismo recorrido pasa con un almuerzo de otro catálogo.
 4. Pollo SIN estilo + sopa: conservar cantidad de ambos mientras se pregunta frito/broaster y tipo de sopa, incluyendo una consulta intermedia. El caso actual del corpus hace explícito `frito`, no acredita este recorrido distinto.
 5. Variantes nuevas reservadas: respuesta ambigua `sí`, corrección de cantidad, opción citada sin respuesta, varias líneas elegibles para un cambio, corrección en pago, reinicio con selecciones pendientes, modificación de notas contradictorias. Validar que no aparezcan productos adicionales y que la respuesta corresponda al estado.
 6. Después: `canje-y-adicional` necesita contexto de canje validado; `postventa-cancelacion` requiere estado real o derivación, sin inventar entrega ni borrar una orden confirmada. No marcar esos patrones aprobados mediante mocks que inventen el estado que falta.
 
-Los cinco pendientes del JSON son `preparacion-y-barrio`, `cambio-acompanamiento`, `bebida-typo`, `canje-y-adicional`, `postventa-cancelacion`. No confundir selección de casos con ejecución aprobada.
+Los dos pendientes del JSON son `canje-y-adicional` y `postventa-cancelacion`. No confundir selección de casos con ejecución aprobada.
 
 ## Método de trabajo y verificaciones
 
