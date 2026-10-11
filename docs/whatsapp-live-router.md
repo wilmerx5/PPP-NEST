@@ -55,3 +55,13 @@ La revalidación integrada aprobó **58/58 conversaciones PPP**, 131 inferencias
 `whatsapp-intent-contract.spec.ts` verifica las herramientas y el catálogo reales sin inferencia: consultas abreviadas de categorías, preferencias de cocina, separación de composiciones desconocidas y consultas que no deben comprar. Incluye un catálogo sintético de otro restaurante. Estos contratos no sustituyen una validación completa del router con el modelo desplegado.
 
 El límite de solicitudes del simulador es obligatorio y se comprueba antes de llamar al proveedor. Incluye las solicitudes fallidas; al agotarse, se marca la ejecución incompleta y se detiene. Es un límite de llamadas, no un presupuesto monetario. No lanzar baterías completas sin acordar el límite de la ronda.
+
+## Interrupciones y elecciones explícitas (2026-10-10)
+
+Los recorridos de `whatsapp-general-accuracy.spec.ts` usan el router, catálogo y carrito reales con persistencia y agente simulados; no envían mensajes por WhatsApp ni evalúan la comprensión del modelo. Las compras pendientes conservan cantidades y selecciones al responder preguntas de categorías y precios. La lista informativa no reutiliza la numeración de la compra pendiente; después de responder se vuelve a mostrar qué falta elegir. Reiniciar elimina también las selecciones y cantidades pendientes.
+
+Una familia de bebidas conocida no se declara ausente por no tener presentación elegida. El sabor de una bebida con varias opciones requiere elección explícita; la primera opción ya no se aplica automáticamente ni se acepta una sugerencia del modelo sin respaldo en el mensaje. Otros valores predeterminados existentes mantienen su comportamiento. Los contratos verifican que la elección explícita prevalezca sobre la propuesta del modelo.
+
+Las cantidades en palabras de pedidos genéricos también reconocen vocabulario del catálogo suministrado, además del glosario existente. Un catálogo sintético de bowls verifica cantidad, consulta de precio y selección por número sin excepciones para productos de PPP.
+
+Se añadieron cinco recorridos al simulador con modelo para validar estas interacciones después. Están preparados, pero no se ejecutaron en esta ronda gratuita. Las cifras históricas de 58 casos no incluyen estas cinco conversaciones ni validan el cambio de sabores.

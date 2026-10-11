@@ -1280,14 +1280,23 @@ export class WhatsappCatalogService {
   }
 
   /** Extrae cantidad pedida: "5 pollos", "cinco", "x3", "dos sopas". Default 1. */
-  extractQuantityFromMessage(text: string): number {
+  extractQuantityFromMessage(text: string, products: WhatsappCatalogProduct[] = []): number {
     const raw = (text || '').trim();
     if (!raw) return 1;
 
     // Pedido multi-cantidad en el mensaje entero: no devolver el primer número como qty global
     if (this.countQuantityMentions(raw) >= 2) return 1;
 
-    return this.extractQuantityFromSegment(raw);
+    const quantity = this.extractQuantityFromSegment(raw);
+    if (quantity > 1 || !products.length) return quantity;
+    // Catalog vocabulary must also work outside the built-in food glossary.
+    const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).split(/\s+/);
+    const namedQuantity = this.QTY_WORD_MAP[word];
+    if (namedQuantity >= 2 && noun && products.some(product =>
+      normalizeText(product.name).split(/\s+/).some(token => stemLoose(token) === stemLoose(noun)))) {
+      return namedQuantity;
+    }
+    return quantity;
   }
 
   /** Quita la cantidad del texto para buscar el producto ("5 pollos" → "pollos"). */
@@ -4475,6 +4484,10 @@ export class WhatsappCatalogService {
     const clauses = this.dishClauses(raw);
     if (clauses.length !== 1 || !clauses[0].length) return false;
     const tokens = clauses[0];
+    // A known product family is not an unavailable drink merely because no
+    // specific preparation or size was selected yet.
+    if (!/\d/.test(raw) && this.menuDrinkProducts(products).some(p =>
+      tokens.every(token => this.queryHasToken(normalizeText(p.name), token)))) return false;
     if (this.foodNameAnchorsTokens(tokens, products)) return false;
     const embedded = this.findProductEmbeddedInMessage(raw, products);
     if (embedded && !this.isLikelyDrinkProduct(embedded)) return false;
@@ -7128,6 +7141,8 @@ export class WhatsappCatalogService {
       const remaining = this.getRemainingAttributes(product, selected, opts);
       const next = remaining[0];
       if (!next?.options?.length) break;
+      // A juice flavor is a customer choice, not a kitchen garnish default.
+      if (this.requiresExplicitAttributeChoice(product, next)) break;
       // La opción 1 se aplica a atributos faltantes, incluso al estilo.
       // Las elecciones explícitas del cliente ya están en selected y NO se pisan.
       // Mostrar la opción aplicada en el resumen para facilitar cambios.
@@ -7138,6 +7153,11 @@ export class WhatsappCatalogService {
       ];
     }
     return selected;
+  }
+
+  requiresExplicitAttributeChoice(product: WhatsappCatalogProduct, attribute: {attributeName: string; options: string[]}): boolean {
+    return this.isLikelyDrinkProduct(product) && normalizeText(attribute.attributeName) === 'sabor' &&
+      attribute.options.length > 1;
   }
 
   /**

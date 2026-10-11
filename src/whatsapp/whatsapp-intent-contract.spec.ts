@@ -19,6 +19,14 @@ describe('Catalog intent contracts without paid inference', () => {
       expect(result.results.map(p=>p.id).sort()).toEqual([50,51]);
     }
   });
+  it('does not declare a known drink family unavailable when no preparation was selected', () => {
+    const ctx = context('jugos naturales');
+    const result = JSON.parse(agent.executeTool('search_menu', {query:'jugos naturales'}, ctx));
+    expect(result.mode).not.toBe('menu_drinks');
+    expect(result.results.map(p=>p.id)).toEqual(expect.arrayContaining([50,51]));
+    expect(result.hint).not.toMatch(/no (?:tenemos|está)/i);
+    expect((ctx.actions as any).addItems).toBeUndefined();
+  });
   it.each(['arto Ahi','harto ají','bastante ají','mucho cilantro','extra salsa'])
   ('keeps the product and applies its qualified note: %s', preference => {
     const source=`Quiero un arroz con pollo con ${preference} por favor`;
@@ -28,6 +36,23 @@ describe('Catalog intent contracts without paid inference', () => {
     expect(result.ok).toBe(true);
     expect((ctx.actions as any).addItems[0].note).toMatch(/con /);
     expect((ctx.actions as any).addItems[0].productId).toBe(23);
+  });
+  it('does not keep a model-invented juice flavor when the customer omitted it', () => {
+    const ctx = context('Dos jugos naturales en agua');
+    const result = JSON.parse(agent.executeTool('add_item', {productId:50, quantity:2,
+      attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]}, ctx));
+    expect(result.ok).toBe(true);
+    expect(result.pendingChoices).toEqual([expect.objectContaining({attributeName:'Sabor'})]);
+    expect((ctx.actions as any).addItems[0]).toMatchObject({productId:50, quantity:2});
+    expect((ctx.actions as any).addItems?.[0]?.attributes || []).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({attributeName:'Sabor'})]));
+    expect(catalog.fillDefaultAttributes(products.find(p=>p.id===50), [])).toEqual([]);
+  });
+  it('keeps an explicit juice flavor instead of a different model suggestion', () => {
+    const ctx = context('Dos jugos naturales en agua de lulo');
+    agent.executeTool('add_item', {productId:50, quantity:2,
+      attributes:[{attributeName:'Sabor',attributeValue:'Mango'}]}, ctx);
+    expect((ctx.actions as any).addItems[0].attributes).toEqual([{attributeName:'Sabor',attributeValue:'Lulo'}]);
   });
   it('uses catalog names for another restaurant rather than PPP-specific dishes',()=>{
     const menu=[{id:903,name:'Bowl Andino',code:903,price:18700,attributes:[],hasAttributes:false,availableNow:true}];

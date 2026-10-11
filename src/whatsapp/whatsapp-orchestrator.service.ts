@@ -1077,11 +1077,33 @@ export class WhatsappOrchestratorService {
     }
     }
 
-    // Explorar otra categoría mientras hay attrs pendientes → soltar y listar (no atrapar en arepas)
+    // A catalog question is an interruption, not cancellation of a pending purchase.
     {
       const browseWhilePending =
         this.catalogService.isMenuExploreIntent(text, products) ||
         this.catalogService.isCategoryBrowseQuestion(text);
+      const hasPendingPurchase = session.pendingMatch?.intent === 'order' ||
+        !!session.pendingAttribute || !!session.pendingMultiOrder;
+      if (hasPendingPurchase && this.catalogService.isPriceInquiryIntent(text) &&
+        !this.splitPriceAndOrderParts(text)) {
+        const priced = this.catalogService.resolvePriceInquiryProducts(text, products);
+        if (priced.length) {
+          await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(priced) +
+            '\n\n' + this.formatPendingPurchaseReminder(session));
+          return;
+        }
+      }
+      if (browseWhilePending && hasPendingPurchase) {
+        const hit = this.catalogService.findCategoryBrowseHit(text, products, cfg.menuConceptGroups);
+        if (hit?.products.length) {
+          // Only the pending purchase uses numbered choices, so "2" cannot
+          // silently select a numbered item in the informational list.
+          const information = this.catalogService.formatCategoryBrowseReply(hit).replace(/^\s*\d+\.\s*/gm, '- ');
+          await this.reply(conv, msg.waId, information +
+            '\n\n' + this.formatPendingPurchaseReminder(session));
+          return;
+        }
+      }
       if (
         browseWhilePending &&
         (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)
@@ -4355,7 +4377,7 @@ export class WhatsappOrchestratorService {
     const correctedQty = this.catalogService.extractCorrectedQuantityForProduct(opts.sourceText || '', opts.product.name);
     if (correctedQty != null) return correctedQty;
     if (opts.sourceText && opts.product.code != null) {
-      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*(?:#|(?:del?\s+)?c[oó]digo\s*)\s*(\d{1,4})\b/gi)]
+      const codeMentions = [...opts.sourceText.matchAll(/\b(\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*(?:unidades?\s+)?(?:#|(?:del?\s+)?c[oó]digo\s*)\s*(\d{1,4})\b/gi)]
         .filter(match => Number(match[2]) === opts.product.code);
       if (codeMentions.length === 1) {
         return this.catalogService.extractQuantityFromSegment(`${codeMentions[0][1]} platos`);
@@ -4759,6 +4781,23 @@ export class WhatsappOrchestratorService {
    * Muestra lista de categoría; reemplaza pendingMatch anterior (sopas → pollo).
    * @returns null si ya respondió; session actualizada si no aplicó.
    */
+  private formatPendingPurchaseReminder(session: WhatsappSessionData): string {
+    const attribute = session.pendingAttribute;
+    if (attribute) {
+      return this.catalogService.formatProductOptionsPrompt({
+        id: attribute.productId, name: attribute.name, code: attribute.code,
+        price: attribute.price, hasAttributes: true, attributes: attribute.attributes,
+      }, attribute.selected, this.attributeFlowOpts(attribute));
+    }
+    const pending = session.pendingMatch;
+    if (pending?.candidates.length) {
+      return `Tu pedido pendiente${pending.quantity ? ` (${pending.quantity} unidades)` : ''}:\n` +
+        pending.candidates.map((product, index) => `${index + 1}. ${product.name}`).join('\n') +
+        '\n¿Cuál prefieres para ese pedido?';
+    }
+    return 'Conservo tu pedido. Falta completar las opciones que estabas eligiendo.';
+  }
+
   private async tryHandleCategoryBrowse(
     conv: WhatsappConversation,
     waId: string,
@@ -4801,7 +4840,7 @@ export class WhatsappOrchestratorService {
       this.catalogService.isCategoryBrowseQuestion(text) ||
       this.catalogService.isMenuExploreIntent(text, products) ||
       looksLikeExplicitCartItemNote(text) || this.looksLikeStandaloneOrderNote(text)) return false;
-    const quantity = this.catalogService.extractQuantityFromMessage(text);
+    const quantity = this.catalogService.extractQuantityFromMessage(text, products);
     const explicitOrder = this.catalogService.looksLikeExplicitAddProductRequest(text) ||
       /^(?:quiero|quieor|qiero|kiero|dame|ponme|me das|me regalas|regalame|pido)\b/.test(this.normalizeForMatch(text));
     if (quantity < 2 && !explicitOrder) return false;
@@ -5129,6 +5168,7 @@ export class WhatsappOrchestratorService {
       pendingMatch: {
         query: text,
         candidates: styled,
+        intent: 'order',
         quantity: qty > 1 ? qty : undefined,
       },
       ...(qty > 1
@@ -5184,6 +5224,7 @@ export class WhatsappOrchestratorService {
       pendingMatch: {
         query: text,
         candidates: choices,
+        intent: 'order',
         quantity: qty > 1 ? qty : undefined,
       },
       ...(qty > 1

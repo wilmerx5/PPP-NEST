@@ -1679,5 +1679,171 @@
         }
       }
     ]
+  },
+  {
+    "id": "soup-quantity-after-catalog-interruption",
+    "messages": [
+      {
+        "text": "Quiero dos sopas",
+        "expect": {
+          "items": {},
+          "replyAny": [
+            "cuál",
+            "prefieres"
+          ]
+        }
+      },
+      {
+        "text": "¿Qué bebidas tienes?",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Ajiaco",
+        "expect": {
+          "items": {
+            "38": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "chicken-quantity-after-price-interruption",
+    "messages": [
+      {
+        "text": "Quiero tres pollos",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "¿Cuánto cuesta el churrasco?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "38.000"
+          ]
+        }
+      },
+      {
+        "text": "Broaster",
+        "expect": {
+          "items": {
+            "4": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "juice-explicit-flavor-after-interruption",
+    "messages": [
+      {
+        "text": "Tres jugos naturales en agua",
+        "expect": {
+          "items": {},
+          "state": "awaiting_attribute",
+          "replyAny": [
+            "sabor",
+            "Mango"
+          ]
+        }
+      },
+      {
+        "text": "¿Qué sopas hay?",
+        "expect": {
+          "items": {},
+          "state": "awaiting_attribute"
+        }
+      },
+      {
+        "text": "Lulo",
+        "expect": {
+          "items": {
+            "50": 3
+          },
+          "attrs": [
+            {
+              "id": 50,
+              "key": "Sabor",
+              "value": "Lulo"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "qualified-kitchen-note-and-juice-discovery",
+    "messages": [
+      {
+        "text": "Quiero un arroz con pollo con arto Ahi por favor",
+        "expect": {
+          "items": {
+            "23": 1
+          },
+          "lines": [
+            {
+              "id": 23,
+              "quantity": 1,
+              "note": [
+                "harto",
+                "ají"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "text": "Que jugos naturales hay?",
+        "expect": {
+          "items": {
+            "23": 1
+          },
+          "replyAll": [
+            "agua",
+            "leche"
+          ],
+          "replyForbid": [
+            "no tenemos jugos",
+            "no manejamos jugos"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "restart-clears-interrupted-selection",
+    "messages": [
+      {
+        "text": "Quiero dos sopas",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "¿Qué bebidas hay?",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Reiniciar",
+        "expect": {
+          "items": {},
+          "state": "building_cart"
+        }
+      },
+      {
+        "text": "Quiero un ajiaco",
+        "expect": {
+          "items": {
+            "38": 1
+          }
+        }
+      }
+    ]
   }
 ]
