@@ -221,7 +221,7 @@ const pppMenu: WhatsappCatalogProduct[] = [
     attributes: [
       { attributeName: 'Presa', options: ['Pierna pernil', 'Ala pechuga'] },
       { attributeName: 'Sopa', options: ['Ajiaco', 'Menudencias', 'Mondongo'] },
-      { attributeName: 'Bebida', options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola'] },
+      { attributeName: 'Bebida', options: ['Colombiana', 'Manzana', 'Pepsi', 'Coca Cola', 'Limonada'] },
     ],
     availableNow: true,
     categoryName: 'Ejecutivos',
@@ -1491,6 +1491,45 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         expect(hit?.name).toMatch(/1\/4\s+pollo\s+frito/i);
         expect(hit?.code).toBe(3);
       }
+    });
+
+    it('cuarto frito con presa y arepas elige 1/4, no lista la familia', () => {
+      const text = 'Un cuarto de pollo frito, ala pechuga, arepas fritas';
+      const quarter = catalog.resolveSizedChickenProduct(text, pppMenu);
+      expect(quarter?.name).toMatch(/1\/4\s+pollo\s+frito/i);
+      const family = {
+        baseLabel: 'Pollo',
+        baseKey: 'pollo',
+        variants: pppMenu.filter((p) =>
+          /^(1\/[24]\s+pollo|1\s+pollo|combo de pollo)/i.test(p.name),
+        ),
+      };
+      expect(family.variants.length).toBeGreaterThanOrEqual(4);
+      expect(catalog.pickVariantFromFamilyText(text, family)?.name).toMatch(
+        /1\/4\s+pollo\s+frito/i,
+      );
+      expect(catalog.pickFromCandidateList(text, family.variants)?.name).toMatch(
+        /1\/4\s+pollo\s+frito/i,
+      );
+      const wholeOnly = pppMenu.filter((p) => /^1\s+pollo\s+(frito|broaster)/i.test(p.name));
+      expect(wholeOnly.length).toBeGreaterThanOrEqual(2);
+      expect(catalog.pickFromCandidateList(text, wholeOnly)).toBeNull();
+      expect(
+        catalog.pickVariantFromFamilyText(text, {
+          baseLabel: 'Pollo',
+          baseKey: 'pollo',
+          variants: wholeOnly,
+        }),
+      ).toBeNull();
+    });
+
+    it('medio broaster tras lista de enteros no cae en 1 Pollo Broaster', () => {
+      const text = 'Un medio pollo broaster';
+      expect(catalog.resolveSizedChickenProduct(text, pppMenu)?.name).toMatch(
+        /1\/2\s+pollo\s+broaster/i,
+      );
+      const wholeOnly = pppMenu.filter((p) => /^1\s+pollo\s+(frito|broaster)/i.test(p.name));
+      expect(catalog.pickFromCandidateList(text, wholeOnly)).toBeNull();
     });
   });
 
@@ -3046,6 +3085,15 @@ Cll 6 b 78 c 33`;
   });
 
   describe('Precio pollo + dos sopas / código 38 (chat coalesce)', () => {
+    it('separates a purchase from a trailing price query without turning a quotation into an order', () => {
+      const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
+      const orch = Object.create(WhatsappOrchestratorService.prototype);
+      orch.catalogService = catalog;
+      expect(orch.splitPriceAndOrderParts('Agrégame dos sopas de ajiaco y dime cuánto cuesta el churrasco'))
+        .toEqual({orderText:'Agrégame dos sopas de ajiaco',priceText:'dime cuánto cuesta el churrasco'});
+      expect(orch.splitPriceAndOrderParts('¿Cuánto cuestan el ajiaco y el churrasco?')).toBeNull();
+    });
+
     it('parte precio y pedido en líneas', () => {
       const { WhatsappOrchestratorService } = require('./whatsapp-orchestrator.service');
       const orch = Object.create(WhatsappOrchestratorService.prototype) as {
@@ -3153,6 +3201,8 @@ Cll 6 b 78 c 33`;
         'fritas',
         'asadas',
         'las fritas',
+        'Un jugo de guanabana en leche',
+        'jugo de guanábana en leche',
       ]) {
         expect(orch.looksLikeFoodNotAddress(raw)).toBe(true);
         expect(orch.isAddressOnlyCustomerMessage(raw)).toBe(false);
@@ -3440,6 +3490,121 @@ Cll 6 b 78 c 33`;
       const hit = catalog.resolveCatalogQuestion('que jugos tienes', [menu[0]]);
       expect(hit?.products).toEqual([]);
       expect(catalog.resolveCatalogQuestion('cambia la bebida a colombiana', menu)).toBeNull();
+    });
+  });
+
+  describe('Pechuga gratinada + yuca + jugo + ejecutivo attrs (ensayo 2026-10-10)', () => {
+    const rice: WhatsappCatalogProduct = {
+      id: 10,
+      code: 10,
+      name: 'Porcion De Arroz',
+      price: 7000,
+      hasAttributes: false,
+      attributes: [],
+      availableNow: true,
+      categoryName: 'Porciones',
+    };
+    const juice: WhatsappCatalogProduct = {
+      id: 51,
+      code: 51,
+      name: 'Jugo Natural En Leche',
+      price: 7000,
+      hasAttributes: true,
+      attributes: [
+        {
+          attributeName: 'Sabor',
+          options: ['Guanabana', 'Mango', 'Lulo', 'Mora'],
+        },
+      ],
+      availableNow: true,
+      categoryName: 'Bebidas',
+    };
+    const menu = [...pppMenu, rice, juice];
+
+    it('la gratinada no es browse: elige Pechuga Gratinada', () => {
+      expect(catalog.extractCookingStyleBrowseIntent('La gratinada')).toBeNull();
+      expect(catalog.extractCookingStyleBrowseIntent('qué tienes frito')).toMatch(/frito/i);
+      expect(catalog.resolveBareCookingStyleProduct('La gratinada', menu)?.name).toMatch(
+        /gratinada/i,
+      );
+      expect(catalog.findProductEmbeddedInMessage('La gratinada', menu)?.name).toMatch(
+        /gratinada/i,
+      );
+      const pechugas = menu.filter((p) => /^pechuga/i.test(p.name));
+      expect(pechugas.length).toBeGreaterThanOrEqual(2);
+      const family = {
+        baseLabel: 'Pechuga',
+        baseKey: 'pechuga',
+        variants: pechugas,
+      };
+      expect(catalog.pickVariantFromFamilyText('La gratinada', family)?.name).toMatch(
+        /gratinada/i,
+      );
+      expect(catalog.pickFromCandidateList('La gratinada', pechugas)?.name).toMatch(
+        /gratinada/i,
+      );
+    });
+
+    it('y una porción de yuca agrega yuca, no arroz ni nota', () => {
+      const text = 'Y una porcion de yuca';
+      expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
+      expect(catalog.looksLikeSideModificationNote(text)).toBe(false);
+      const scored = catalog.searchByNameScored(text, menu, 5);
+      expect(scored[0]?.p.name).toMatch(/yuca/i);
+      expect(scored[0]?.p.name).not.toMatch(/arroz/i);
+      expect(catalog.findProductEmbeddedInMessage(text, menu)?.name).toMatch(/yuca/i);
+      const yuca = menu.find((p) => /yuca/i.test(p.name))!;
+      expect(catalog.productNameFitsUtterance(yuca, text)).toBe(true);
+      expect(catalog.productNameFitsUtterance(rice, text)).toBe(false);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).toMatch(/yuca/i);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).not.toMatch(/arroz/i);
+    });
+
+    it('y una porción de papa no es yuca ni arroz', () => {
+      const text = 'Y una porcion de papa';
+      expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
+      const hit = catalog.findProductEmbeddedInMessage(text, menu);
+      expect(hit?.name).toMatch(/papa/i);
+      expect(hit?.name).not.toMatch(/yuca|arroz/i);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).toMatch(/papa/i);
+    });
+
+    it('jugo de guanábana en leche no es barrio', () => {
+      expect(FOOD_ORDER_SIGNAL_RE.test('Un jugo de guanabana en leche')).toBe(true);
+      expect(looksLikeAddressOnlyMessage('Un jugo de guanabana en leche')).toBe(false);
+      const scored = catalog.searchByNameScored('Un jugo de guanabana en leche', menu, 5);
+      expect(scored[0]?.p.name).toMatch(/jugo/i);
+      expect(scored[0]?.p.name).toMatch(/leche/i);
+    });
+
+    it('pierna, mondongo y limonada actualiza el ejecutivo', () => {
+      const ejecutivo = menu.find((p) => p.name === 'Ejecutivo Con Pollo Frito')!;
+      const cart = [
+        {
+          productId: ejecutivo.id,
+          name: ejecutivo.name,
+          attributes: [
+            { attributeName: 'Presa', attributeValue: 'Pierna pernil' },
+            { attributeName: 'Sopa', attributeValue: 'Ajiaco' },
+            { attributeName: 'Bebida', attributeValue: 'Colombiana' },
+          ],
+        },
+      ];
+      const update = catalog.resolveCartAttributeOnlyUpdate(
+        'Pierna pernil, mondongo y limonada',
+        cart,
+        menu,
+      );
+      expect(update?.cartIndex).toBe(0);
+      expect(update?.updates).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ attributeName: 'Sopa', attributeValue: 'Mondongo' }),
+          expect.objectContaining({ attributeName: 'Bebida', attributeValue: 'Limonada' }),
+        ]),
+      );
+      expect(update?.updates.some((u) => /sopa de mondongo/i.test(u.attributeValue))).toBe(
+        false,
+      );
     });
   });
 });

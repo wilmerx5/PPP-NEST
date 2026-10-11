@@ -158,7 +158,7 @@ const STREET_ADDRESS_RE =
 
 /** Señales de comida en un mensaje (no tratar como solo-dirección). */
 export const FOOD_ORDER_SIGNAL_RE =
-  /\b(pollo|pollos|sopa|sopas|bandeja|mojarra|mojarras|churrasco|churrascos|hamburguesa|hamburguesas|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|arepas|combo|ejecutivo|bebidas?|arroz|costilla|costillas|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado|tacos?|burritos?|salchipapa|patacon|patacones|yuca|papas?)\b/i;
+  /\b(pollo|pollos|sopa|sopas|bandeja|mojarra|mojarras|churrasco|churrascos|hamburguesa|hamburguesas|ajiaco|mondongo|gaseosa|limonada|jugo|jugos|guanabana|guan[aá]bana|broaster|arepa|arepas|combo|ejecutivo|bebidas?|arroz|costilla|costillas|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado|tacos?|burritos?|salchipapa|patacon|patacones|yuca|papas?)\b/i;
 
 /**
  * Cola falsa de “para un domicilio por favor” — no es dirección real.
@@ -239,7 +239,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
     /^(asi\s+)?nomas$/.test(t) ||
     // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
     /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
-    /^(no\s+gracias|gracias\s+no)$/.test(t) ||
+    /^(no\s+gracias|gracias\s+no)(?:\s+nada\s+mas)?$/.test(t) ||
     // "es todo" / "eso es todo" / "ya es todo" / "con eso es todo"
     /^(ya\s+)?(eso\s+)?es\s+todo$/.test(t) ||
     /^(eso\s+todo|listo\s+es\s+todo|ya\s+todo)$/.test(t) ||
@@ -670,7 +670,7 @@ export function classifyWhatsappCustomerIntent(
 
   if (hints.isCheckoutFieldReply || CHECKOUT_DATA_RE.test(text)) {
     if (
-      !/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster)\b/i.test(
+      !/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|jugo|broaster)\b/i.test(
         text,
       )
     ) {
@@ -682,7 +682,7 @@ export function classifyWhatsappCustomerIntent(
 
   if (
     /\b(quiero|dame|ponme|pedi|pido|agrega|mandame|traeme|unos?|unas?|\d+)\b/i.test(text) ||
-    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/i.test(
+    /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|jugo|broaster|arepa|combo|ejecutivo)\b/i.test(
       text,
     )
   ) {

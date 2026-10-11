@@ -120,7 +120,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure([200, 201].includes(r.status), 'TARGET_VERIFICATION_FAILED');
       const body = await r.json();
       ensure(body.staging === true, 'SERVER_NOT_STAGING');
-      ensure(body.conversationTestVersion === '2026-10-10.cart-v7', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
+      ensure(body.conversationTestVersion === '2026-10-10.cart-v8', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
       ensure(body.targetMatches === true, 'TEST_CHANNEL_OR_RECIPIENT_MISMATCH');
       ensure(body.botEnabled === true && body.agentEnabled === true && body.approvedModel === true && body.credentialsPresent === true, 'BOT_OR_APPROVED_MODEL_NOT_READY');
       ensure(Number.isInteger(body.rateLimitPerMinute) && body.rateLimitPerMinute >= 5 && body.rateLimitPerMinute <= 120, 'INVALID_RATE_LIMIT');

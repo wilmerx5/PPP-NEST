@@ -158,6 +158,17 @@ describe('classifyWhatsappCustomerIntent', () => {
     expect(looksLikeAddressOnlyMessage(order)).toBe(false);
   });
 
+  it('jugo de guanábana en leche no es dirección', () => {
+    expect(looksLikeAddressOnlyMessage('Un jugo de guanabana en leche')).toBe(false);
+    expect(looksLikeAddressOnlyMessage('un jugo de guanábana en leche')).toBe(false);
+    expect(
+      classifyWhatsappCustomerIntent({
+        text: 'Un jugo de guanabana en leche',
+        cartLength: 1,
+      }),
+    ).toBe('order_product');
+  });
+
   it('detecta dirección estricta con landmark', () => {
     expect(
       looksLikeAddressOnlyMessage('para el hospital de kennedy'),
@@ -285,6 +296,7 @@ describe('delivery setup sin platos (anti multi-tonto)', () => {
       'ya no mas',
       'no solo eso',
       'No, solo eso',
+      'No gracias, nada más',
     ]) {
       expect(isNothingElseOrderIntent(t)).toBe(true);
       expect(looksLikeNonAddressCommand(t)).toBe(true);

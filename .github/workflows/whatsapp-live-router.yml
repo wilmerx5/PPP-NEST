@@ -1,0 +1,59 @@
+name: WhatsApp Real Model Router
+on:
+  push:
+    branches: [fix/whatsapp-checkout-flow-20261010]
+    paths: [.github/workflows/whatsapp-live-router.yml]
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model snapshot used by the deployed bot
+        default: gpt-4.1-2025-04-14
+        required: true
+        type: string
+      repetitions:
+        description: Repetitions of each full-router conversation (1–3)
+        default: '2'
+        required: true
+        type: choice
+        options: ['1', '2', '3']
+      caseIds:
+        description: Optional comma-separated case IDs. Empty runs the full fixture.
+        required: false
+        default: ''
+        type: string
+      maxRequests:
+        description: Hard cap on OpenAI chat completion calls
+        required: true
+        default: '40'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: ppp-real-model-router
+  cancel-in-progress: false
+jobs:
+  conversations:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.before == '2e7036ffb197c93f4a990e9341b1b27ef585ce73')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn beta:whatsapp:router
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WHATSAPP_BETA_LIVE: '1'
+          WHATSAPP_BETA_MODEL: ${{ github.event_name == 'push' && 'gpt-4.1-2025-04-14' || inputs.model }}
+          WHATSAPP_BETA_REPEATS: ${{ github.event_name == 'push' && '1' || inputs.repetitions }}
+          WHATSAPP_BETA_MAX_REQUESTS: ${{ github.event_name == 'push' && '40' || inputs.maxRequests }}
+          WHATSAPP_BETA_CASE_IDS: ${{ github.event_name == 'workflow_dispatch' && inputs.caseIds || '' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-model-router-report
+          path: tmp/whatsapp-live-router-report.json
+          if-no-files-found: error

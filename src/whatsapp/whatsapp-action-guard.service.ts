@@ -164,7 +164,9 @@ export class WhatsappActionGuardService {
         if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
           attrs = this.catalogService.fillDefaultAttributes(product, []);
         }
-        if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
+        const needsExplicitChoice = product.attributes?.some(definition =>
+          this.catalogService.requiresExplicitAttributeChoice?.(product, definition));
+        if (product.hasAttributes && product.attributes?.length && !attrs?.length && !needsExplicitChoice) {
           warnings.push(`"${product.name}" requiere elegir opciones antes de agregarlo.`);
           continue;
         }
@@ -213,6 +215,11 @@ export class WhatsappActionGuardService {
       const completed = this.catalogService.fillDefaultAttributes(product, normalized);
       if (normalized.length && this.catalogService.isAttributeSelectionComplete(product, completed)) {
         return completed;
+      }
+      if (product.attributes.some(definition => this.catalogService.requiresExplicitAttributeChoice?.(product, definition))) {
+        // Preserve the purchase so the router can ask for its missing choice.
+        // No invalid option is included in normalized.
+        return normalized;
       }
       warnings.push(
         `Opciones inválidas para "${product.name}". Elige: ${this.formatAttributeOptions(product)}.`,

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { interpretProductNote } from './whatsapp-product-intent';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import {
   WhatsappCatalogService,
@@ -119,7 +120,7 @@ const AGENT_TOOLS = [
     function: {
       name: 'add_item',
       description:
-        'Agrega un producto al carrito por id del menú. Pasa opciones explícitas en attributes; las omitidas toman la primera opción del catálogo, sin preguntar.',
+        'Agrega un producto al carrito por id del menú. Pasa opciones explícitas en attributes; las omitidas toman los valores predeterminados. El sabor de una bebida requiere elección del cliente: no lo inventes.',
       parameters: {
         type: 'object',
         properties: {
@@ -552,8 +553,9 @@ Reglas:
 - "¿Tienes X?" / "¿qué tienes de X?" vale para cualquier cosa. Lista lo que search_menu sí trae con nombre y precio, y pregunta cuál quiere. Describe ingredientes y acompañamientos SOLO si pregunta "¿cómo es X?", qué incluye o una composición concreta. NO add_item. add_item solo si está pidiendo ese plato.
 - "¿Tienes algo de X?" (también "tines", "hay algo de", "te pregunté que si tienes"): pregunta si hay X. Si search_menu no lo trae, di "No tenemos productos de X". X es el producto, sin "algo de", sin "tienes" y sin repetir la frase. No reenvíes el carrito.
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
+- Si tras una consulta el cliente acepta explícitamente ("sí, agrégame las dos"), resuelve el producto y la cantidad usando el intercambio anterior. Busca su ID y ejecuta add_item; no basta decir que lo agregaste. Si el intercambio ofrece varias alternativas sin una elección, pregunta cuál.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
-- También aplica a varios platos y ejecutivos. No pidas elegir atributos omitidos: add_item rellena los predeterminados. Respeta los explícitos.
+- También aplica a varios platos y ejecutivos. add_item rellena los predeterminados. Respeta los explícitos. EXCEPCIÓN: si una bebida tiene varios sabores y no eligieron uno, pregunta el sabor; conserva producto y cantidad.
 - Para el mismo SKU con sabores, preparaciones o notas distintas, llama add_item por cada grupo con su cantidad y atributos/nota. No combines dos sabores ni notes diferentes en una línea.
 - Confirma únicamente las cantidades y opciones retornadas por add_item. No inventes otra línea ni opciones distintas para un pedido con opciones omitidas.
 - "Tres en total, no tres más" modifica la cantidad existente con update_item; no suma tres unidades. "Arepas aparte" es una nota de empaque: conserva las arepas incluidas, no significa sin arepas ni una porción adicional.
@@ -600,7 +602,7 @@ Reglas:
 - La confirmación final la hace el cliente escribiendo *confirmar* (no inventes pagos).
 - Si no entiendes: una pregunta corta o request_human.
 - Español colombiano o neutro (tú/te). PROHIBIDO voseo argentino (vos, tenés, querés, respondé, mirá).
-- Mensajes CORTOS (1–3 frases). No listes attrs 1/2/3: el sistema pone la primera opción; el cliente puede cambiar después.
+- Mensajes CORTOS (1–3 frases). No listes atributos que tengan valores predeterminados. Para un sabor de bebida pendiente, pregunta las opciones reales.
 
 ${input.businessRulesBlock}
 
@@ -713,7 +715,6 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
-            toolCalls.some(name => name === 'search_menu' || name === 'resolve_multi_order') &&
             !this.catalogService.isAvailabilityInquiry(input.userMessage) &&
             !this.catalogService.isPriceInquiryIntent(input.userMessage) &&
             !this.catalogService.isProductDescriptionInquiry(input.userMessage)) {
@@ -859,6 +860,18 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       case 'search_menu': {
         const query = String(args.query || '').trim();
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
+
+        // Abbreviated tool queries retain the customer's category inquiry.
+        if (this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '')) {
+          const sourceHit = this.catalogService.findCategoryBrowseHit(ctx.userMessage || '', ctx.products, ctx.menuConceptGroups);
+          const queryHit = this.catalogService.findCategoryBrowseHit(`qué ${query} hay`, ctx.products, ctx.menuConceptGroups);
+          if (sourceHit && queryHit && !queryHit.askedButMissing &&
+            queryHit.products.some(product=>sourceHit.products.some(source=>source.id===product.id))) {
+            return JSON.stringify({ok:true,query,mode:'category_browse',category:queryHit.categoryName,
+              missing:null,results:queryHit.products.map(product=>this.productCard(product)),
+              hint:'Consulta del catálogo: estos productos sí están en la carta. Responde sus nombres, precios y opciones. NO add_item.'});
+          }
+        }
 
         const swapSource = ctx.userMessage || query;
         const swap = this.catalogService.swapIntent(swapSource);
@@ -1423,7 +1436,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
         let note = args.note != null ? String(args.note).trim().slice(0, 200) :
           this.catalogService.extractProductModificationNote(source) || undefined;
-        const sourceNote = this.catalogService.extractProductModificationNote(source);
+        const sourceNote = interpretProductNote(source, [product])?.note || this.catalogService.extractProductModificationNote(source);
+        if (!note && sourceNote) note = sourceNote;
         // Retain additional kitchen preferences even when the model supplied
         // only the first one. Scope them to this dish, never the entire order.
         if (sourceNote && note) {
@@ -1473,6 +1487,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             product, attributeSource, [],
           );
           const explicitChoices = parsed.status === 'invalid' ? [] : parsed.attributes;
+          attributes = (attributes || []).filter(choice => {
+            const definition = product.attributes!.find(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+            return !definition || !this.catalogService.requiresExplicitAttributeChoice?.(product, definition) ||
+              explicitChoices.some(a => a.attributeName.toLowerCase() === choice.attributeName.toLowerCase());
+          });
           if (parsed.status === 'complete' || parsed.status === 'partial' ||
             this.catalogService.productNameFitsUtterance?.(product, attributeSource)) {
             const defaults = this.catalogService.fillDefaultAttributes(product, explicitChoices);
@@ -1566,13 +1585,19 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           note,
           attributes,
         });
+        const pendingChoices = (product.attributes || []).filter(definition =>
+          this.catalogService.requiresExplicitAttributeChoice?.(product, definition) &&
+          !attributes?.some(choice => choice.attributeName.toLowerCase() === definition.attributeName.toLowerCase()));
         return JSON.stringify({
           ok: true,
           added: this.productCard(product),
           quantity,
           note: note || null,
           attributes: attributes || null,
-          hint: attributes?.length
+          pendingChoices: pendingChoices.length ? pendingChoices : undefined,
+          hint: pendingChoices.length
+            ? 'Producto y cantidad conservados, pero falta elegir el sabor. Pregunta las opciones de pendingChoices; no afirmes que el pedido está completo ni inventes una elección.'
+            : attributes?.length
             ? 'Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas).'
             : null,
         });

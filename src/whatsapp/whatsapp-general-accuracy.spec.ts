@@ -17,7 +17,7 @@ const products = JSON.parse(
  * Persistencia, modelo y Meta quedan aislados. El agente solo entra si
  * el camino determinista no resuelve el turno.
  */
-function harness() {
+function harness(menu = products, agentEnabled = true) {
   let count = 0;
   const conv = {
     id: 1,
@@ -55,18 +55,20 @@ function harness() {
     },
   };
   const catalog = new WhatsappCatalogService({} as never);
-  jest.spyOn(catalog, 'getMenuProducts').mockResolvedValue(products);
+  jest.spyOn(catalog, 'getMenuProducts').mockResolvedValue(menu);
   const agent = {
     runTurn: jest.fn().mockResolvedValue({ reply: '¿Cuál prefieres?', actions: {}, toolCalls: [] }),
   };
   const cfg = {
     enabled: true,
-    agentV1Enabled: true,
+    agentV1Enabled: agentEnabled,
     ignoreBusinessHours: true,
     brandName: 'PPP',
     localContext: {},
     paymentMethods: DEFAULT_PAYMENT_METHODS,
     menuConceptGroups: [],
+    deliveryFeeMode: 'fixed',
+    defaultDeliveryFee: 2000,
   };
   const service = new WhatsappOrchestratorService(
     { getEffectiveConfig: async () => cfg } as never,
@@ -235,5 +237,124 @@ describe('Acertividad general — chats reales y ediciones', () => {
     await h.send('¿El combo mixto es medio broaster medio frito?');
     expect(h.conv.sessionData.cart).toEqual([]);
     expect(h.conv.sessionData.pendingMatch?.intent).not.toBe('order');
+  });
+});
+
+
+describe('Offline conversation acceptance across products and interruptions', () => {
+  it.each(['Quiero un arroz con pollo con arto Ahi por favor',
+    'Quiero un arroz con pollo con bastante ají'])
+  ('persists a qualified kitchen preference through the inbound router: %s', async text => {
+    const h = harness(products, false);
+    await h.send(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:23, qty:1, note:expect.stringMatching(/con (harto|bastante) ají/)})]);
+    expect(h.replies.at(-1)).not.toMatch(/no manejamos|no tenemos/i);
+  });
+
+  it.each(['jugos naturales', 'Que jugos naturales hay?', 'Qué bebidas tienen'])
+  ('answers catalog discovery without buying or denying existing juice: %s', async text => {
+    const h = harness(products, false);
+    const reply = await h.send(text);
+    expect(h.cartRows()).toEqual([]);
+    expect(reply).toMatch(/jugo/i);
+    expect(reply).not.toMatch(/no (?:tenemos|manejamos).*jugo/i);
+  });
+
+  it.each([true, false])('keeps quantity while a soup selection is interrupted by a menu inquiry (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero dos sopas');
+    expect(h.cartRows()).toEqual([]);
+    await h.send('¿Qué bebidas tienes?');
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Ajiaco');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:38, qty:2})]);
+  });
+
+  it.each([true, false])('keeps a pending purchase while answering prices (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero tres pollos');
+    const pending = structuredClone(h.conv.sessionData.pendingMatch);
+    expect(pending?.quantity).toBe(3);
+    const reply = await h.send('¿Cuánto cuesta el churrasco?');
+    expect(reply).toMatch(/38[.,]000/);
+    expect(h.conv.sessionData.pendingMatch).toEqual(pending);
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Broaster');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:4, qty:3})]);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+  });
+
+  it('does not turn questions about a named dish into a purchase', async () => {
+    const h = harness(products, false);
+    for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {
+      await h.send(text);
+      expect(h.cartRows()).toEqual([]);
+    }
+    await h.send('Quiero un churrasco');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17, qty:1})]);
+  });
+
+  it('preserves the cart while editing delivery address during payment selection', async () => {
+    const h = harness(products, false);
+    await h.send('Quiero dos churrascos');
+    const initial = structuredClone(h.cartRows());
+    await h.send('Para la calle 48 sur 86 87');
+    expect(h.conv.sessionData.address).toContain('48');
+    await h.send('Cambiar la dirección a carrera 79a 48 sur 86');
+    expect(h.conv.sessionData.address).toMatch(/79a/i);
+    expect(h.cartRows()).toEqual(initial);
+    expect(h.conv.sessionData.orderType).toBe('delivery');
+  });
+
+  it.each([true, false])('preserves flavor and quantity selection across a catalog question (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Tres jugos naturales en agua');
+    const pending = structuredClone(h.conv.sessionData.pendingAttribute);
+    expect(pending?.productId).toBe(50);
+    expect(pending?.sourceText).toMatch(/tres/i);
+    await h.send('¿Qué sopas hay?');
+    expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Mango');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:50, qty:3,
+      attrs:expect.arrayContaining(['Sabor:Mango'])})]);
+  });
+
+  it.each([true, false])('preserves quantity for a numbered choice in another catalog (agent enabled: %s)', async enabled => {
+    const menu = [
+      {id:903, code:903, name:'Bowl Andino', price:18700, categoryName:'Bowls', hasAttributes:false, attributes:[], availableNow:true},
+      {id:904, code:904, name:'Bowl Mediterraneo', price:21900, categoryName:'Bowls', hasAttributes:false, attributes:[], availableNow:true},
+    ];
+    const h = harness(menu, enabled);
+    await h.send('Quiero dos bowls');
+    const pending = structuredClone(h.conv.sessionData.pendingMatch);
+    expect(pending?.quantity).toBe(2);
+    const chosen = pending!.candidates[1].id;
+    await h.send('¿Cuánto cuesta Bowl Andino?');
+    expect(h.conv.sessionData.pendingMatch).toEqual(pending);
+    await h.send('2');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:chosen, qty:2})]);
+  });
+
+  it.each([true, false])('clears interrupted purchases when the customer explicitly restarts (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero dos sopas');
+    await h.send('¿Qué bebidas hay?');
+    await h.send('Reiniciar');
+    expect(h.conv.sessionData.pendingMatch).toBeUndefined();
+    expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+    expect(h.conv.sessionData.pendingQuantityHint).toBeUndefined();
+    expect(h.cartRows()).toEqual([]);
+  });
+
+  it('applies the same preference rule with another restaurant catalog', async () => {
+    const menu = [{id:903, code:903, name:'Bowl Andino', price:18700,
+      categoryName:'Bowls', hasAttributes:false, attributes:[], availableNow:true}];
+    const h = harness(menu, false);
+    await h.send('Quiero un Bowl Andino con bastante tahini');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:903, qty:1, note:'con bastante tahini'})]);
+    await h.send('¿Cuánto cuesta Bowl Andino?');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].qty).toBe(1);
   });
 });

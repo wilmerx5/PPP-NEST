@@ -14,12 +14,19 @@ export function parseScopedCartNote(text: string): ScopedCartNote | null {
   }
   const addition = t.match(/^(?:a\s+(?:el|la|los|las)|al|para\s+(?:el|la|los|las))\s+(.+?)\s+(?:ponles?|an[oó]tales?|a[nñ][aá]deles?|agr[eé]gales?)\s+(?:(?:tambi[eé]n|adem[aá]s)\s+)?(?:(?:la\s+nota|como\s+nota)\s+)?(.+)$/i);
   if (!addition) return null;
-  const note = clean(addition[2]);
+  const clauses = clean(addition[2]).split(/\.\s+/);
+  const preserve: string[] = [];
+  for (const clause of clauses.slice(1)) {
+    const keep = clause.match(/^(?:el|la|los|las)\s+(?:de\s+)?(.+?)\s+(?:d[eé]jal[oa]s?|mant[eé]nl[oa]s?)\s+igual(?:es)?$/i);
+    if (!keep) return null;
+    preserve.push(keep[1]);
+  }
+  const note = clean(clauses[0]);
   const norm = normalizeCorrection(note);
   if (/\b(?:agrega|cambia|reemplaza|quita|cuanto|precio|cantidad|pago|domicilio|y|dos|tres|cuatro|cinco)\b/.test(norm)) return null;
   if (!/\b(?:sin|aparte|separad[oa]s?|crocantes?|crujientes?|dorad[oa]s?|cocid[oa]s?|bolsa|empaque)\b/.test(norm)) return null;
   if (/\b(?:y|una?|dos|tres|cuatro|cinco)\b/.test(normalizeCorrection(addition[1]))) return null;
-  return { kind: 'append', query: addition[1], note, preserve: [] };
+  return { kind: 'append', query: addition[1], note, preserve };
 }
 
 const noteTokens = (text: string) => normalizeCorrection(text).split(' ').filter(w => !['bien', 'muy'].includes(w));
