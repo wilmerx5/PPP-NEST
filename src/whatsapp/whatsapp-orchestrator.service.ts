@@ -817,7 +817,7 @@ export class WhatsappOrchestratorService {
           }
           session.pendingQuantityHint = undefined;
           await this.conversationService.saveSession(conv, session);
-          await this.reply(conv, msg.waId, `Listo, serán ${quantity} unidades.\n\n` +
+          await this.reply(conv, msg.waId, `Listo, ${quantity === 1 ? 'será 1 unidad' : `serán ${quantity} unidades`}.\n\n` +
             this.formatPendingPurchaseReminder(session));
           return;
         }
@@ -4830,7 +4830,7 @@ export class WhatsappOrchestratorService {
     }
     const pending = session.pendingMatch;
     if (pending?.candidates.length) {
-      return `Tu pedido pendiente${pending.quantity ? ` (${pending.quantity} unidades)` : ''}:\n` +
+      return `Tu pedido pendiente${pending.quantity ? ` (${pending.quantity} ${pending.quantity === 1 ? 'unidad' : 'unidades'})` : ''}:\n` +
         pending.candidates.map((product, index) => `${index + 1}. ${product.name}`).join('\n') +
         '\n¿Cuál prefieres para ese pedido?';
     }
@@ -14139,14 +14139,15 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!session.cart.length) return false;
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
+    const attributeText = text.replace(/\s+y\s+(?:con\s+)?(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}[\p{L}\s-]*[.!]?$/iu, '');
     const onlyAttrs = this.catalogService.resolveCartAttributeOnlyUpdate(
-      text,
+      attributeText,
       session.cart,
       products,
     );
     const change = onlyAttrs
       ? null
-      : this.catalogService.findCartAttributeOptionChange(text, session.cart, products, {allowBareOption:resumeCheckout});
+      : this.catalogService.findCartAttributeOptionChange(attributeText, session.cart, products, {allowBareOption:resumeCheckout});
     const updates = onlyAttrs
       ? onlyAttrs.updates
       : change
@@ -14165,12 +14166,28 @@ export class WhatsappOrchestratorService {
       if (idx >= 0) attributes[idx] = { attributeName: update.attributeName, attributeValue: update.attributeValue };
       else attributes.push({ attributeName: update.attributeName, attributeValue: update.attributeValue });
     }
-    const cart = session.cart.map((item, i) => (i === cartIndex ? { ...item, attributes } : item));
+    // Attribute updates and kitchen preferences may share one customer turn.
+    // Remove notes already represented by the chosen option, then retain the rest.
+    const noteClauses = text.split(/\s+y\s+/i).map(clause => {
+      const clean = clause.trim().replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i, '');
+      const qualified = clean.match(/^(?:con\s+)?(harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+(\p{L}[\p{L}\s-]*)$/iu);
+      const note = qualified ? `con ${qualified[1]} ${qualified[2]}`
+        .replace(/\barto\b/gi, 'harto').replace(/\b(?:aji|ahi)\b/gi, 'ají') :
+        this.catalogService.extractProductModificationNote(clean) || undefined;
+      return omitRedundantAttributeNote(note, attributes);
+    }).filter((note): note is string => !!note);
+    const noteEdit = editScopedCartNote(line.note, {kind:'append', query:'', note:noteClauses.join('; '), preserve:[]});
+    if (noteEdit.blocked) {
+      await this.reply(conv, waId, 'La nota es demasiado larga. ¿Puedes resumirla para aplicar el cambio completo?');
+      return true;
+    }
+    const note = noteClauses.length ? noteEdit.note : line.note;
+    const cart = session.cart.map((item, i) => (i === cartIndex ? { ...item, attributes, note } : item));
     session = { ...session, cart, pendingAttribute: undefined, pendingMatch: undefined };
     await this.conversationService.saveSession(conv, session, 'building_cart');
     const summary = updates
       .map((u) => `${u.attributeName}: ${u.attributeValue}`)
-      .join(' · ');
+      .join(' · ') + (noteClauses.length ? ` · Nota: ${note}` : '');
     if (resumeCheckout) {
       await this.tryConfirmOrder(conv,waId,session,{preface:`Listo ✅ *${itemName}* queda con *${summary}*.`});
       return true;

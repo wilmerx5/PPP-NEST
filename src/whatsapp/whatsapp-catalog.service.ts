@@ -9422,11 +9422,15 @@ export class WhatsappCatalogService {
       .map((u) => normalizeText(u.attributeValue))
       .sort((a, b) => b.length - a.length);
     for (const value of namedValues) {
-      leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(value)}\\b`, 'g'), ' ');
+      const product = products.find(p => p.id === cart[hit.cartIndex].productId);
+    for (const label of [product?.name, ...hit.updates.map(update => update.attributeName)]) {
+      if (label) leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(normalizeText(label))}\\b`, 'g'), ' ');
+    }
+    leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(value)}\\b`, 'g'), ' ');
     }
     leftover = leftover
       .replace(
-        /\b(y|con|de|el|la|los|las|un|una|para|quiero|dame|ponme|cambia|cambiar|puede|ser|que|sea)\b/g,
+        /\b(y|con|de|el|la|lo|los|las|por|favor|porfa|gracias|un|una|para|quiero|dame|ponme|cambia|cambiar|puede|ser|que|sea)\b/g,
         ' ',
       )
       .replace(/[,.;:]+/g, ' ')

@@ -1939,5 +1939,49 @@
         }
       }
     ]
+  },
+  {
+    "id": "compound-option-and-kitchen-note",
+    "initialCart": [
+      {
+        "id": 1,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "Lo quiero con arepas fritas y arto Aji por favor",
+        "expect": {
+          "items": {
+            "1": 1
+          },
+          "lines": [
+            {
+              "id": 1,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Fritas"
+                }
+              ],
+              "note": [
+                "harto ají"
+              ]
+            }
+          ],
+          "replyAll": [
+            "Fritas",
+            "harto ají"
+          ]
+        }
+      }
+    ]
   }
 ]

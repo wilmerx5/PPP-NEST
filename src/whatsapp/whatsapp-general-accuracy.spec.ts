@@ -326,6 +326,29 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.cartRows()).toEqual([expect.objectContaining({id:4, qty:3})]);
   });
 
+  it.each([true, false])('applies arepa choice and qualified kitchen note together (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    // Start from the already accepted line shown in the customer's transcript.
+    h.conv.sessionData.cart = [{productId:1,code:1,name:'1 Pollo Frito',unitPrice:41000,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]}];
+    await h.send('Lo quiero con arepas fritas y arto Aji por favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:1, qty:1,
+      attrs:expect.arrayContaining(['Arepas:Fritas']), note:expect.stringMatching(/harto ají/i)})]);
+    expect(h.replies.at(-1)).toMatch(/harto ají/i);
+  });
+
+  it('applies a compound option and note edit in another catalog without touching another dish', async () => {
+    const menu = [{id:903,code:903,name:'Bowl Andino',price:18700,categoryName:'Bowls',hasAttributes:true,
+      attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}],availableNow:true},
+      {id:904,code:904,name:'Bowl Mediterraneo',price:21900,categoryName:'Bowls',hasAttributes:false,attributes:[],availableNow:true}];
+    const h = harness(menu, false);
+    h.conv.sessionData.cart = [{productId:903,code:903,name:'Bowl Andino',unitPrice:18700,quantity:2,note:'sin cebolla',attributes:[{attributeName:'Base',attributeValue:'Arroz'}]},
+      {productId:904,code:904,name:'Bowl Mediterraneo',unitPrice:21900,quantity:1}];
+    await h.send('El Bowl Andino con quinoa y bastante tahini por favor');
+    expect(h.cartRows()[0]).toMatchObject({qty:2,attrs:['Base:Quinoa'],note:expect.stringMatching(/sin cebolla.*bastante tahini/i)});
+    expect(h.cartRows()[1]).toMatchObject({id:904,qty:1});
+    expect(h.cartRows()[1].note).toBeUndefined();
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {
