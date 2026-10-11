@@ -17,7 +17,7 @@ export function parseCartQuantityCorrection(text: string): { quantity: number; q
   const result = (amount: string, query: string) =>
     /\b(?:no|pero|mas|menos|otros?|resto|igual|conserva|pedido|en vez)\b/.test(query) ? null
       : { quantity: words[amount] ?? Number(amount), query };
-  const apology = t.match(new RegExp(`^(?:perdon|perdona|disculpa|disculpe)\\s+(${number})\\s+(.+?)(?:\\s+en (?:esa|la) misma direccion)?$`));
+  const apology = t.match(new RegExp(`^(?:perdon|perdona|disculpa|disculpe)\\s+(?:quiero\\s+)?(${number})\\s+(.+?)(?:\\s+en (?:esa|la) misma direccion)?$`));
   if (apology) return result(apology[1], apology[2]);
   let m = t.match(new RegExp(`^(?:(?:solo|solamente|unicamente)\\s+)?(?:era|eran|es|son|queria)\\s+(?:solo\\s+)?(${number})\\s+(.+?)(?:\\s+en total)?$`));
   if (m) return result(m[1], m[2]);

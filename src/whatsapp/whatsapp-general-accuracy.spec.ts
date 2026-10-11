@@ -2897,3 +2897,49 @@ describe('Medios — OCR incierto no equivale a compra',()=>{
     });
   }
 });
+
+
+describe('Medios secuenciales — edición y recuperación en dos menús',()=>{
+  const bowl={id:9860,code:8,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  for(const fixture of [{menu:products,name:'Churrasco',id:17},{menu:[bowl],name:'Bowl Mediterraneo',id:9860}]) {
+    const setup=()=>{
+      const h=harness(fixture.menu,false);
+      h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+      h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue(fixture.name);
+      h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+      h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'order',textForBot:'Quiero dos '+fixture.name});
+      return h;
+    };
+    it('foto y corrección de cantidad no duplican '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:2})]);
+      await h.sendQueued('Perdón, quiero tres '+fixture.name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:3})]);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it('foto ilegible posterior conserva la edición de '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      await h.sendQueued('Perdón, quiero tres '+fixture.name);const before=structuredClone(h.conv.sessionData.cart);
+      h.service.aiService.analyzeOrderImage.mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer la foto'});
+      h.replies.length=0;await h.sendQueued('',{messageType:'image',mediaId:'mock-unreadable'});
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/plato.*código/s);
+    });
+    it('consulta escrita con foto incierta no compra '+fixture.name,async()=>{
+      const h=setup();h.service.aiService.analyzeOrderImage.mockResolvedValue({kind:'unclear',textForBot:'',visibleText:fixture.name});
+      await h.sendQueued('Cuánto cuesta '+fixture.name+'?',{messageType:'image',mediaId:'mock-price'});
+      expect(h.cartRows()).toEqual([]);expect(h.replies.at(-1)).toMatch(/\$/);
+    });
+    it('audio transcrito corrige selección previa por imagen de '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      h.service.resolveAudioToText=jest.fn().mockResolvedValue('Perdón, quiero tres '+fixture.name);
+      await h.sendQueued('',{messageType:'audio',mediaId:'mock-correction'});
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:3})]);
+    });
+  }
+});
+
+describe('Corrección con cortesía — límites',()=>{
+  it.each(['Perdón, quiero tres churrascos más','Disculpa, quiero tres churrascos y una sopa'])('no interpreta como cantidad absoluta %s',text=>{
+    expect(require('./whatsapp-quantity-correction').parseCartQuantityCorrection(text)).toBeNull();
+  });
+});
