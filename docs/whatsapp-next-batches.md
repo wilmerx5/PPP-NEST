@@ -8,7 +8,7 @@ Nueva cobertura: referencias a mensajes salientes por ID de Meta, límites por c
 
 Reparto de diez unidades por atributo: 5/5 del mismo producto, tanto preparación pendiente PPP como base de bowl en otro catálogo; conservar notas, cantidades, otro plato y estado. Suma incorrecta o varios referentes requieren aclaración. Preguntar rendimiento para veinte personas no implica comprar veinte unidades.
 
-La tanda no acredita todavía el recorrido completo con rendimiento, abono, fecha y texto copiado. Los próximos casos deben medir todo el recorrido y respuesta, no solo el carrito final. Resultado final y despliegue se registran en el relevo al terminar. No se gastan llamadas API.
+La tanda no acredita todavía el recorrido completo con rendimiento, abono, fecha y texto copiado. Los próximos casos deben medir todo el recorrido y respuesta, no solo el carrito final. Verificación local: 62/62 suites, 1.508/1.508 pruebas y TypeScript sin errores. Cero llamadas pagadas. Publicado y desplegado `91cd9a67` en staging, API healthy y DB connected.
 
 ## Fuentes públicas revisadas
 
