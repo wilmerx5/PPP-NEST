@@ -2351,7 +2351,7 @@ export class WhatsappCatalogService {
   /** Lo que va antes de “cambiame … por …”. La última parte es el plato de ese cambio. */
   dishTextBeforeSwap(text: string): string {
     const raw = (text || '').trim();
-    const cut = raw.split(/\b(?:pero\s+)?cambia/i)[0]?.trim() || raw;
+    const cut = raw.split(/\b(?:a\s+cambio\s+de|(?:pero\s+)?cambia)/i)[0]?.trim() || raw;
     const parts = cut
       .split(/\s*,\s*|\s+\by\b\s+/i)
       .map((s) => s.trim())
@@ -2464,9 +2464,9 @@ export class WhatsappCatalogService {
     const q = normalizeText(text || '');
     const m = q.match(
       /\bcambia(?:r|me|le|les|melo|melas)?\s+(.+?)\s+\bpor\b\s+(.+)/,
-    );
+    ) || q.match(/\ba cambio de\s+(.+?)\s+(?:un|una)\s+(.+)/);
     if (!m?.[1] || !m?.[2]) return null;
-    const added = m[2].split(/\s*,\s*|\s+\by\b\s+|\s+pero\b/)[0].trim();
+    const added = m[2].split(/\s*[,.;]\s*|\s+y\s+(?=(?:un|una|otro|otra|dos|tres|\d+)\b)|\s+pero\b/)[0].trim();
     const removed = m[1].trim();
     if (removed.length < 3 || added.length < 3) return null;
     return { removed, added };
@@ -3136,6 +3136,7 @@ export class WhatsappCatalogService {
     if (named && !this.isLikelySideOnlyProduct(named)) return -1;
     for (let i = previous.length - 1; i >= 0; i--) {
       const host =
+        this.resolveNamedMenuDishProduct(previous[i], products) ||
         this.resolveSizedChickenProduct(previous[i], products) ||
         this.findProductEmbeddedInMessage(previous[i], products);
       if (!host?.attributes?.length) continue;
@@ -3143,7 +3144,7 @@ export class WhatsappCatalogService {
         const attrName = singularizeEsToken(normalizeText(attr.attributeName));
         return (attr.options || []).some((option) => {
           const value = normalizeText(option);
-          if (value.length < 4 || !q.includes(value)) return false;
+          if (value.length < 2 || !q.includes(value) || value.length < 4 && !q.includes(attrName)) return false;
           return q.includes(attrName) || q.includes(`${attrName} ${value}`) || q.endsWith(value);
         });
       });
@@ -8619,7 +8620,7 @@ export class WhatsappCatalogService {
         (p) => !this.productIsSwapRemoval(p, swap.removed, swap.added),
       );
       const dish = this.dishTextBeforeSwap(text);
-      const host = this.mostSpecificNamedProduct(dish, products);
+      const host = this.mostSpecificNamedProduct(dish, products) || this.resolveSpokenDish(dish, products);
       const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
       const weight = (p: WhatsappCatalogProduct) =>
         normalizeText(p.name)
@@ -8652,7 +8653,9 @@ export class WhatsappCatalogService {
       });
     }
 
-    if (swap && swapNotedHostId != null && !this.looksLikeClearlyMultiDishOrder(text)) {
+    if (swap && swapNotedHostId != null &&
+      !this.looksLikeClearlyMultiDishOrder(this.dishTextBeforeSwap(text)) &&
+      !/\by\s+(?:un|una|otro|otra|dos|tres|\d+)\b/i.test(text)) {
       const host = products.find((p) => p.id === swapNotedHostId);
       if (host) {
         const match: MultiProductSegmentMatch = {
@@ -8957,6 +8960,10 @@ export class WhatsappCatalogService {
           }
         }
       }
+      // A distinctive named preparation must constrain an ambiguous list.
+      const qualifiers = normalizeText(query).split(' ').filter(token => this.isDistinctiveProductToken(token));
+      const qualified = scored.filter(hit => qualifiers.length && qualifiers.every(token => this.queryHasToken(normalizeText(hit.p.name), token)));
+      if (qualified.length) scored = qualified;
       if (!scored.length) {
         if (
           this.looksLikePersonNameSegment(segment) &&

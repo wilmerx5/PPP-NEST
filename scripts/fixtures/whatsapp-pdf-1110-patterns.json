@@ -1,0 +1,101 @@
+{
+  "source": "Chats reales PDF 11/10, 30 páginas; fuente privada no versionada",
+  "privacy": "Frases de prueba sanitizadas; no copiar teléfonos, nombres ni direcciones reales",
+  "oracle": "Catálogo/configuración/estado; respuestas históricas no son verdad comercial",
+  "executed_development_patterns": [
+    {
+      "id": "included-components",
+      "invariant": "Sopa/bebida de un menú no son productos adicionales; adicional explícito sí lo es."
+    },
+    {
+      "id": "reply-menu-variant",
+      "invariant": "Respuesta a ejecutivo conserva el producto padre y sus atributos."
+    },
+    {
+      "id": "soup-qualification",
+      "invariant": "Una receta explícita no ofrece recetas distintas en una aclaración."
+    },
+    {
+      "id": "spoken-courtesy",
+      "invariant": "Muletillas, pausas y agradecimientos no son nombres de productos."
+    },
+    {
+      "id": "swap-composition",
+      "invariant": "Retirar bebida y solicitar acompañamiento conserva la composición con queso y bocadillo."
+    },
+    {
+      "id": "independent-quantity",
+      "invariant": "Cada plato mantiene su cantidad; una cantidad no se propaga a otros."
+    },
+    {
+      "id": "fragmented-address",
+      "invariant": "Torre, interior y apartamento complementan dirección sin modificar cantidades."
+    },
+    {
+      "id": "cart-total",
+      "invariant": "Pregunta de total responde estado calculado; precio de plato sigue siendo consulta de catálogo."
+    },
+    {
+      "id": "utensils",
+      "invariant": "Cubiertos se anotan sin comprar otro plato."
+    },
+    {
+      "id": "cash-change",
+      "invariant": "Billete de 100mil es cambio, no cantidad de productos."
+    },
+    {
+      "id": "availability",
+      "invariant": "Consulta no compra ni afirma disponibilidad fuera del catálogo."
+    },
+    {
+      "id": "yield",
+      "invariant": "No inventar cuántas personas alcanza ni condiciones de abono."
+    },
+    {
+      "id": "drink-target",
+      "invariant": "Con varios platos compatibles pide cuál cambiar."
+    },
+    {
+      "id": "transcription-failure",
+      "invariant": "Fallo de transcripción conserva carrito y solicita texto."
+    }
+  ],
+  "pending_not_executed": [
+    {
+      "id": "multi-attribute-distribution",
+      "invariant": "Dos ejecutivos diferentes; repartir presa, sopa y papa por línea de forma atómica."
+    },
+    {
+      "id": "flavor-fallback",
+      "invariant": "Coca Zero; si no hay, 7up: solo usar opciones disponibles y no comprar ambas."
+    },
+    {
+      "id": "quoted-history",
+      "invariant": "Respuesta citada antigua no reincorpora platos ya retirados."
+    },
+    {
+      "id": "historical-price",
+      "invariant": "Precio dicho por cliente no cambia precio actual ni se convierte en cantidad."
+    },
+    {
+      "id": "pickup-third-party",
+      "invariant": "Cambio a recogida por tercero conserva pedido sin interpretar nombre como dirección."
+    },
+    {
+      "id": "postorder-status",
+      "invariant": "Reclamo de demora requiere datos reales; no inventa ETA."
+    },
+    {
+      "id": "cancel-vs-payment",
+      "invariant": "Cancelar pedido frente a cancelo con 100mil."
+    },
+    {
+      "id": "ambiguous-reference",
+      "invariant": "Esas cuatro con varios candidatos requiere aclaración sin mutar."
+    },
+    {
+      "id": "rapid-message-burst",
+      "invariant": "Pedido/dirección/barrio consecutivos conservan orden y no duplican respuestas."
+    }
+  ]
+}

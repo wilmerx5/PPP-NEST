@@ -1,3 +1,4 @@
+import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
@@ -690,6 +691,7 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+el\s+/gi, ' y un ')
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
+    text = normalizeSpokenOrderCourtesy(text);
     let originalText = text;
 
     const lower = text.toLowerCase();
@@ -1003,6 +1005,21 @@ export class WhatsappOrchestratorService {
       await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
+    const requestedDrink = originalText.match(/^(?:y\s+)?de\s+tomar\s+me\s+puedes\s+enviar\s+(.+?)[?!.]*$/i);
+    if (requestedDrink && session.cart.length && !session.pendingAttribute && !session.pendingMatch) {
+      const menu = await this.catalogService.getMenuProducts();
+      const choices = session.cart.flatMap(line => {
+        const product = menu.find(product => product.id === line.productId);
+        const choice = product && this.catalogService.drinkTextMatchesAttribute(product, requestedDrink[1]);
+        return choice ? [choice] : [];
+      });
+      if (choices.length > 1) {
+        await this.reply(conv, msg.waId, '¿A cuál plato le cambiamos la bebida?');
+        return;
+      }
+      if (choices.length && await this.tryHandleCartAttributeOptionChange(conv, msg.waId, session,
+        `cambia ${choices[0].attributeName} a ${choices[0].attributeValue}`, menu)) return;
+    }
     if (session.cart.length && !session.pendingAttribute && !session.pendingMatch) {
       const productsForChange = await this.catalogService.getMenuProducts();
       if (await this.tryHandleCartAttributeOptionChange(conv,msg.waId,session,originalText,productsForChange)) return;
@@ -1058,6 +1075,26 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
+
+    if (businessOpenForBot && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      this.catalogService.swapIntent(originalText) && !this.catalogService.isPriceInquiryIntent(originalText) &&
+      !this.catalogService.isAvailabilityInquiry(originalText)) {
+      const swapped = this.catalogService.resolveMultiProductOrder(originalText, products);
+      if (swapped && swapped.unresolved.length === 0 && swapped.ambiguous.length === 0 &&
+        swapped.confident.length + swapped.needsAttributes.length > 0 &&
+        await this.tryHandleMultiProductOrder(conv, msg.waId, session, swapped, cfg, originalText, products, originalText)) return;
+    }
+
+    // A named meal owns its included soup/drink and preparation notes.
+    const namedMeal = this.catalogService.resolveNamedMenuDishProduct(text, products);
+    if (businessOpenForBot && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      this.catalogService.isCartProductNamedInText(namedMeal.name, text) &&
+      !/\by\s+(?:un|una|otro|otra|dos|tres|\d+)\b/i.test(text) &&
+      !/\b(?:aparte|adicional|extra|por separado)\b/i.test(text) &&
+      !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isPriceInquiryIntent(text) &&
+      !this.catalogService.isProductDescriptionInquiry(text)) {
+      if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, splitKitchenPreference(text)?.note)) return;
+    }
 
     // An explicit purchase of "those ten boxes" may refer to one discussed product.
     const referencedOrder = originalText.match(/^(?:de acuerdo[, ]+)?quiero\s+(?:pedir\s+)?(?:esas|esos|estas|estos)\s+(\d{1,2}|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte)\s+(?:cajas|porciones|unidades|platos|bowls)(?:\s+(?:ser[ií]an|son|para)\b.*)?[.!]*$/i);
@@ -4835,7 +4872,7 @@ export class WhatsappOrchestratorService {
     const textSwap = attrOpts?.sourceText
       ? this.catalogService.swapIntent(attrOpts.sourceText)
       : null;
-    // La bebida del combo sigue (es obligatoria). El cambio va en la nota de la línea.
+    // El cambio se conserva en la nota; omitir la bebida requiere la opción explícita del flujo.
     if (
       textSwap &&
       this.catalogService.productCarriesMention(product, textSwap.removed) &&
@@ -4872,6 +4909,9 @@ export class WhatsappOrchestratorService {
       return { session, missingAttributes: selected };
     }
 
+    if (attrOpts?.omitSwappedDrink) {
+      selected = selected.filter(attr => !this.catalogService.isComboOnlyAttribute(attr));
+    }
     note = omitRedundantAttributeNote(note, selected);
     const incomingKey = this.cartLineKey({
       productId: product.id,
@@ -5945,7 +5985,7 @@ export class WhatsappOrchestratorService {
 
     if (!chosenLite) {
       const sized = this.catalogService.resolveSizedChickenProduct(text, products);
-      if (sized) chosenLite = sized;
+      if (sized && pending.candidates.some(candidate => candidate.id === sized.id)) chosenLite = sized;
     }
 
     if (!chosenLite) {
@@ -12685,6 +12725,7 @@ export class WhatsappOrchestratorService {
       )
       .replace(new RegExp(`\\b(?:para|a|en)\\s+(?:la\\s+|el\\s+)?${escaped}\\s*$`, 'i'), '')
       .replace(new RegExp(`\\bpara\\b\\s+${escaped}\\s*$`, 'i'), '')
+      .replace(/(?:[.!]\s*)?\bes\s*$/i, '')
       .replace(/[.,;:\s]+$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
@@ -13560,6 +13601,7 @@ export class WhatsappOrchestratorService {
     product: MenuProduct,
     text: string,
     cfg: EffectiveWhatsappConfig,
+    kitchenNote?: string,
   ): Promise<boolean> {
     if (!product.hasAttributes || !product.attributes?.length) return false;
 
@@ -13568,13 +13610,14 @@ export class WhatsappOrchestratorService {
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     const swap = this.catalogService.swapIntent(text);
     const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
-    const lineNote =
-      carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
+    const lineNote = kitchenNote ||
+      (carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
         interpretProductNote(text, [product])?.note ||
         (supportsCookingTerm(product) ? parseCookingTerm(text)?.note : undefined) ||
-        this.catalogService.extractProductModificationNote(text) || undefined;
+        this.catalogService.extractProductModificationNote(text) || undefined);
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
+      omitSwappedDrink: carriesSwap && this.catalogService.swapRemovesDrink(text),
       sourceText: text,
     };
     const stepRaw = this.catalogService.resolveAttributesFromMessage(product, text, [], attrOpts);
@@ -16181,6 +16224,7 @@ export class WhatsappOrchestratorService {
       })),
       needsAttributes: multi.needsAttributes.map((c) => ({
         segment: c.segment,
+        note: c.note,
         ...this.toPendingMultiProduct(c.product),
       })),
       unresolved: multi.unresolved,
@@ -16251,15 +16295,16 @@ export class WhatsappOrchestratorService {
         product.hasAttributes && product.attributes?.length
           ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || []
           : [];
+      const swapOpts = {omitSwappedDrink: carriesSwap && !!sourceText && this.catalogService.swapRemovesDrink(sourceText)};
       const filled =
         product.hasAttributes && product.attributes?.length
-          ? this.catalogService.fillDefaultAttributes(product, explicit)
+          ? this.catalogService.fillDefaultAttributes(product, explicit, swapOpts)
           : explicit;
       const attrs = filled.length ? filled : undefined;
       if (
         product.hasAttributes &&
         product.attributes?.length &&
-        !this.catalogService.isAttributeSelectionComplete(product, filled)
+        !this.catalogService.isAttributeSelectionComplete(product, filled, swapOpts)
       ) {
         // No agregar sin opciones: pasar a cola de atributos
         next = {
@@ -16286,6 +16331,7 @@ export class WhatsappOrchestratorService {
           : undefined);
       const attempt = this.tryAddProductToCart(next, product, qty, cfg, lineNote, attrs, {
         sourceText: hasOwnedSource ? ownedSource : sourceText,
+        ...swapOpts,
       });
       if (attempt.missingAttributes) {
         next = {
@@ -16491,8 +16537,11 @@ export class WhatsappOrchestratorService {
       [...multi.confident, ...multi.needsAttributes].some((m) =>
         this.catalogService.drinkTextMatchesAttribute(m.product, drinkTail),
       );
-    const attrOptsFor = (product: MenuProduct): { variantIntent: 'solo' } | undefined =>
-      isFoodPlusDrink &&
+    const swapRequest = this.catalogService.swapIntent(text);
+    const attrOptsFor = (product: MenuProduct): { variantIntent?: 'solo'; omitSwappedDrink?: boolean; sourceText?: string } | undefined =>
+      swapRequest && this.catalogService.productCarriesMention(product, swapRequest.removed)
+        ? {omitSwappedDrink: this.catalogService.swapRemovesDrink(text), sourceText:text}
+        : isFoodPlusDrink &&
       !drinkIsComboOption &&
       !this.catalogService.isLikelyDrinkProduct(product)
         ? { variantIntent: 'solo' }
@@ -16534,6 +16583,7 @@ export class WhatsappOrchestratorService {
         ? pendingAfter.needsAttributes
         : multi.needsAttributes.map((c) => ({
             segment: c.segment,
+            note: c.note,
             ...this.toPendingMultiProduct(c.product),
           }));
 
@@ -16567,7 +16617,7 @@ export class WhatsappOrchestratorService {
               product,
               attrQty,
               cfg,
-              undefined,
+              first.note,
               step.attributes,
               productAttrOpts,
             );
