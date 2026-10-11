@@ -547,6 +547,16 @@ export class WhatsappOrchestratorService {
 
     // Glosario local: typos / aliases antes de matching e IA
     text = applyLocalGlossary(text);
+    // A missing item in an unfinished cart is an addition request. Do not
+    // reinterpret complaints about delivered/confirmed orders as new purchases.
+    if (conv.state === 'building_cart' && this.conversationService.getSession(conv).cart.length > 0 &&
+      !/[?¿]/.test(text) && /^falt[oó]\s+(?:el|la|los|las|un|una|dos|tres|\d+)\b/i.test(text)) {
+      text = text.replace(/^falt[oó]\s+/i, 'Quiero ')
+        .replace(/^(Quiero )el\s+/i, '$1un ')
+        .replace(/^(Quiero )la\s+/i, '$1una ')
+        .replace(/\s+y\s+el\s+/gi, ' y un ')
+        .replace(/\s+y\s+la\s+/gi, ' y una ');
+    }
     let originalText = text;
 
     const lower = text.toLowerCase();
@@ -8567,6 +8577,20 @@ export class WhatsappOrchestratorService {
     caption: string | undefined,
     products: MenuProduct[],
   ): string | null {
+    // Vision produces an order utterance, not raw menu OCR. Keep every line,
+    // quantity and modifier for the normal router instead of selecting its first SKU.
+    // Do not do this with visibleText: a menu photo may list unselected products.
+    const proposedOrder = analysis.textForBot?.trim();
+    if (analysis.kind === 'unclear' && !proposedOrder && analysis.reply) return null;
+    if (analysis.kind === 'order' && proposedOrder) {
+      const clauses = proposedOrder.split(/\r?\n|;|,|\s+y\s+/i).map(s => s.trim()).filter(Boolean);
+      const recognized = clauses.filter(clause => {
+        const code = this.catalogService.extractCodeFromMessage(clause);
+        return (code != null && this.catalogService.findByCode(code, products)) ||
+          this.catalogService.findProductEmbeddedInMessage(clause, products);
+      });
+      if (recognized.length > 0) return proposedOrder;
+    }
     const blobs = [analysis.textForBot, analysis.visibleText, caption].filter(
       (s): s is string => !!s?.trim(),
     );

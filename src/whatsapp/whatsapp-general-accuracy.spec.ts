@@ -107,7 +107,7 @@ function harness(menu = products, agentEnabled = true) {
       note: c.note,
       attrs: (c.attributes || []).map((a) => `${a.attributeName}:${a.attributeValue}`),
     }));
-  return { conv, send, agent, replies, cartRows };
+  return { conv, send, agent, replies, cartRows, service };
 }
 
 describe('Acertividad general — chats reales y ediciones', () => {
@@ -637,5 +637,63 @@ describe('Preparation questions remain informational', () => {
       await h.send(text);
       expect(h.cartRows()).toEqual([]);
     }
+  });
+});
+
+describe('Image order transcription keeps complete selected cart — offline', () => {
+  it.each([true, false])('routes all three image products with quantities (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    const text = h.service.resolveImageOrderText({
+      kind: 'order',
+      textForBot: 'Un pollo frito\nDos churrascos\nUn arroz con pollo',
+      visibleText: 'Carrito: 3 productos',
+    }, 'Esto por favor', products);
+    expect(text).toBe('Un pollo frito\nDos churrascos\nUn arroz con pollo');
+    await h.send(text);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 1, qty: 1 }),
+      expect.objectContaining({ id: 17, qty: 2 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(3);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({ id: 23, qty: 1 })]));
+    expect(h.replies.at(-1)).toMatch(/churrasco/i);
+    expect(h.replies.at(-1)).toMatch(/arroz/i);
+  });
+
+  it('keeps quantities and preparation notes for a single image product', () => {
+    const h = harness();
+    expect(h.service.resolveImageOrderText({ kind: 'order', textForBot: 'Tres churrascos 3/4 sin ensalada' }, undefined, products))
+      .toBe('Tres churrascos 3/4 sin ensalada');
+  });
+
+  it('does not turn a menu with no selection into the first product', () => {
+    const h = harness();
+    expect(h.service.resolveImageOrderText({
+      kind: 'unclear', textForBot: '', visibleText: '1 Pollo Frito\nChurrasco\nArroz Con Pollo',
+      reply: '¿Cuál de los platos de la carta quieres?',
+    }, 'Esto', products)).toBeNull();
+  });
+
+  it.each([true, false])('adds missing products without repeating the existing chicken (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    // Snapshot after the photo's first chicken was already accepted.
+    h.conv.sessionData.cart = [{ productId: 1, code: 1, name: '1 Pollo Frito', quantity: 1, unitPrice: 41000 }];
+    await h.send('Faltó el churrasco y el arroz con pollo');
+    expect(h.cartRows()).toHaveLength(3);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 1, qty: 1 }),
+      expect.objectContaining({ id: 17, qty: 1 }),
+      expect.objectContaining({ id: 23, qty: 1 }),
+    ]));
+  });
+
+  it('preserves a multi-product transcription for another restaurant catalog', () => {
+    const menu = [
+      { ...products[0], id: 901, code: 901, name: 'Bowl Andino' },
+      { ...products[0], id: 902, code: 902, name: 'Filete Andino' },
+    ];
+    const h = harness(menu);
+    const order = 'Dos Bowl Andino\nUn Filete Andino';
+    expect(h.service.resolveImageOrderText({ kind: 'order', textForBot: order }, 'Esto', menu)).toBe(order);
   });
 });
