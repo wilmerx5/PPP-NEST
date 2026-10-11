@@ -19,6 +19,10 @@ describe('Catalog intent contracts without paid inference', () => {
       expect(result.results.map(p=>p.id).sort()).toEqual([50,51]);
     }
   });
+  it('lists soups rather than meals that only include soup as an accompaniment', () => {
+    const result = catalog.findCategoryBrowseHit('¿Qué sopas hay?', products);
+    expect(result?.products.map(p=>p.id).sort((a,b)=>a-b)).toEqual([20,38,40,41,45]);
+  });
   it('does not declare a known drink family unavailable when no preparation was selected', () => {
     const ctx = context('jugos naturales');
     const result = JSON.parse(agent.executeTool('search_menu', {query:'jugos naturales'}, ctx));

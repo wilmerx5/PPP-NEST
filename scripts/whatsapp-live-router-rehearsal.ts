@@ -93,6 +93,8 @@ function harness(scenario:Scenario) {
   return {send};
 }
 
+const stopOnFailure = process.env.WHATSAPP_BETA_STOP_ON_FAILURE === '1';
+
 async function main(){
   outer:for(let repetition=1;repetition<=repeats;repetition++)for(const scenario of cases){
     if(usage.blockingProviderErrorCode || budgetExhausted)break outer;
@@ -119,12 +121,14 @@ async function main(){
         if(expected.replyForbid?.some(value=>replyText.includes(normalizeReply(value))))problems.push(`turn_${i}:reply_forbidden_fact`);
         if(!actual.replies.length)problems.push(`turn_${i}:no_reply`);
       }catch(error){problems.push(`turn_${i}:exception:${(error as Error).message}`);break;}
+      if(stopOnFailure && problems.length)break;
       if(budgetExhausted){problems.push('request_budget_exhausted');break;}
       if(usage.blockingProviderErrorCode){problems.push('provider_blocked');break;}
     }
     results.push({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore,turns});
     console.log(JSON.stringify({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore}));
     mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,maxRequests,budgetExhausted,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
+    if(stopOnFailure && problems.length)break outer;
   }
   const accepted=results.filter(r=>r.accepted).length;
   console.log(JSON.stringify({accepted,executed:results.length,planned:cases.length*repeats,apiUsage:usage.summary(model)}));
