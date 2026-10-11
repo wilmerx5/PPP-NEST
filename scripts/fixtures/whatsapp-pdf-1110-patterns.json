@@ -103,6 +103,12 @@
       "id": "sequential-address-burst",
       "invariant": "Pedido, calle, apartamento y barrio en turnos seriales conservan cantidad.",
       "execution": "Tercera tanda PDF, PPP y menú sintético; no acredita concurrencia ni deduplicación de webhooks."
+    },
+    {
+      "id": "pickup-third-person-time",
+      "source": "PDF: tercero pasa en 10 mn por el pedido; texto sanitizado",
+      "invariant": "Recogida declarada conserva productos, elimina domicilio y guarda tiempo indicado sin prometer preparación.",
+      "execution": "Cuarta tanda: mismo recorrido con PPP y catálogo sintético; router real, servicios externos simulados."
     }
   ],
   "pending_not_executed": [
@@ -114,5 +120,6 @@
       "id": "rapid-message-burst",
       "invariant": "Pedido/dirección/barrio consecutivos conservan orden y no duplican respuestas."
     }
-  ]
+  ],
+  "test_contract": "docs/whatsapp-test-contract.md"
 }

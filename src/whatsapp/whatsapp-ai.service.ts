@@ -358,11 +358,14 @@ ${input.menuSummary.slice(0, 6000)}`;
       }
 
       const data = (await res.json()) as {
-        choices?: { message?: { content?: string } }[];
+        choices?: { message?: { content?: string }; finish_reason?: string }[];
       };
-      const parsed = JSON.parse(
-        data.choices?.[0]?.message?.content || '{}',
-      ) as Partial<WhatsappImageAnalysis>;
+      const choice = data.choices?.[0];
+      const content = choice?.message?.content?.trim();
+      if (!content) {
+        this.logger.warn(`Vision empty response: model=${model} finish=${choice?.finish_reason || 'unknown'}`);
+      }
+      const parsed = JSON.parse(content || '{}') as Partial<WhatsappImageAnalysis>;
       const kind = parsed.kind;
       if (kind !== 'order' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
         return {

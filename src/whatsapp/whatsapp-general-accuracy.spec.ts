@@ -2730,3 +2730,71 @@ describe('PDF tercera tanda — límites del reparto y recogida',()=>{
     expect(h.cartRows()).toEqual([expect.objectContaining({id:9801,qty:2,attrs:expect.arrayContaining(['Base:Quinoa','Proteina:Tofu'])})]);
   });
 });
+
+describe('PDF cuarta tanda — contexto de fotos y recogida portable', () => {
+  const bowl = {id:9851,code:9851,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  it.each([
+    {menu:products,order:'Un churrasco',id:17},
+    {menu:[bowl],order:'Un bowl mediterraneo',id:9851},
+  ])('tercero pasa en diez minutos sin cambiar productos: $id', async ({menu,order,id}) => {
+    const h=harness(menu,false);await h.sendQueued(order);await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Es para mi hermano, el mismo pasa en 10 mn por el pedido');
+    expect(h.conv.sessionData.orderType).toBe('pickup');expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.cartRows()[0].id).toBe(id);expect(h.conv.sessionData.address).toMatch(/10 mn/);expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entendí/i);
+  });
+  it.each(['No lo recoge mi hermano, es para domicilio','Lo recoge el mensajero','El domiciliario pasa en 10 mn por el pedido','Mi hermano no pasa en 10 mn por el pedido'])('no cambia domicilio con %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.orderType).toBe('delivery');expect(h.conv.sessionData.cart).toEqual(before);
+  });
+  it.each(['completed','closed','building_cart','awaiting_payment_method'])('producto legible no se convierte en comprobante por estado %s',async state=>{
+    const h=harness([bowl],false);h.conv.state=state;if(state==='awaiting_payment_method')h.conv.sessionData.paymentMethod='nequi';
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'order',textForBot:'Dos bowls mediterraneos'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-photo'},'1',h.conv,h.cfg);
+    expect(result).toEqual({done:false,text:'Dos bowls mediterraneos'});expect(h.replies.join(' ')).not.toMatch(/comprobante/i);
+  });
+  it.each(['contraentrega','transferencia','nequi'])('menú ambiguo pide selección sin comprar ni acreditar pago: %s',async paymentMethod=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');h.conv.sessionData.paymentMethod=paymentMethod;
+    const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',visibleText:'Bowl Mediterraneo y Wrap Oriental',reply:'¿Cuál plato de la carta quieres?'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-menu',text:'Quiero pedir de este menú'},'1',h.conv,h.cfg);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál.*plato/i);expect(h.replies.at(-1)).not.toMatch(/comprobante/i);
+  });
+  it('foto ilegible sin selección conserva carrito y máximo dos análisis',async()=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer el plato'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-unreadable'},'1',h.conv,h.cfg);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.aiService.analyzeOrderImage).toHaveBeenCalledTimes(2);
+    expect(h.replies.at(-1)).toMatch(/foto|plato|código/i);
+  });
+  it('reintento OCR recupera plato completo conservando cantidad',async()=>{
+    const h=harness([bowl],false);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValueOnce({kind:'unclear',textForBot:''}).mockResolvedValueOnce({kind:'order',textForBot:'Tres bowls mediterraneos'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-retry'},'1',h.conv,h.cfg);
+    expect(result).toEqual({done:false,text:'Tres bowls mediterraneos'});expect(h.service.aiService.analyzeOrderImage).toHaveBeenLastCalledWith(expect.objectContaining({ocrRetry:true}));
+    await h.send(result.text);expect(h.cartRows()).toEqual([expect.objectContaining({id:9851,qty:3})]);
+  });
+  it.each(['completed','building_cart'])('comprobante explícito no compra aunque texto contenga un plato: %s',async state=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');h.conv.state=state;const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:'Un bowl mediterraneo'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    expect(await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-proof'},'1',h.conv,h.cfg)).toEqual({done:true});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/no confirma el pago/i);
+  });
+});

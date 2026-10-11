@@ -7826,6 +7826,7 @@ export class WhatsappOrchestratorService {
     opts?: { forceGeneric?: boolean },
   ): Promise<boolean> {
     const probe = originalText || text;
+    if (session.cart.length && !/[?¿]/.test(probe) && this.isPickupIntent(probe)) return false;
     const specific =
       !opts?.forceGeneric &&
       (isSpecificOrderProgressInquiry(probe) || isSpecificOrderProgressInquiry(text));
@@ -9235,12 +9236,14 @@ export class WhatsappOrchestratorService {
         menuSummary,
       });
 
-      const treatAsProof =
-        analysis.kind === 'payment_proof' ||
-        (proofCtx &&
-          (analysis.kind === 'unclear' ||
-            analysis.kind === 'other' ||
-            this.isVagueImageCaption(caption)));
+      // A previous payment must not override positive food recognition.
+      // Uncertain photos may be proof only when their caption does not request food.
+      const asksForFood = /\b(menu|menú|carta|pedir|plato|comida|quiero)\b/i.test(caption || '');
+      const isProof = (result: WhatsappImageAnalysis) =>
+        result.kind === 'payment_proof' ||
+        (proofCtx && result.kind !== 'order' && !asksForFood &&
+          (result.kind === 'unclear' || result.kind === 'other' || this.isVagueImageCaption(caption)));
+      const treatAsProof = isProof(analysis);
 
       if (treatAsProof) {
         await this.conversationService.updateMessageBody(
@@ -9265,7 +9268,7 @@ export class WhatsappOrchestratorService {
           menuSummary,
           ocrRetry: true,
         });
-        if (analysis.kind === 'payment_proof' || proofCtx) {
+        if (isProof(analysis)) {
           await this.conversationService.updateMessageBody(
             loggedMessageId,
             `🧾 Comprobante de pago${caption ? `: ${caption}` : ''}`,
@@ -10906,6 +10909,8 @@ export class WhatsappOrchestratorService {
       /\b(en|para)\s+\d{1,3}\s*(-|a|o|\/)?\s*\d{0,3}\s*(minutos?|mins?)\b.{0,30}\b(paso|recojo|recogo|voy|pasar)/i.test(
         t,
       ) ||
+      (/\bpasa\s+en\s+\d{1,3}\s*(?:mn|mins?|minutos?)\b.{0,30}\bpor\s+(?:el\s+)?pedido\b/i.test(t) &&
+        !/\bno\s+pasa\b/i.test(t) && !/\b(domiciliario|repartidor|mensajero)\b/i.test(t)) ||
       /\bpaso\s+en\s+\d/i.test(t) ||
       /\brecogo\s+(en|por|a|yo)\b/i.test(t) ||
       /\brecojo\s+(en|por|a|yo)\b/i.test(t) ||
@@ -10956,9 +10961,9 @@ export class WhatsappOrchestratorService {
 
   private extractEtaPhrase(text: string): string | null {
     const m =
-      text.match(/\b(?:en|para|dentro\s+de)\s+(\d{1,3}\s*(?:-|a|o|\/)?\s*\d{0,3}\s*(?:minutos?|mins?|horas?|hrs?))\b/i) ||
-      text.match(/\b(\d{1,3}\s*(?:-|a|o|\/)\s*\d{1,3}\s*(?:minutos?|mins?))\b/i) ||
-      text.match(/\b(\d{1,3}\s*(?:minutos?|mins?))\b/i);
+      text.match(/\b(?:en|para|dentro\s+de)\s+(\d{1,3}\s*(?:-|a|o|\/)?\s*\d{0,3}\s*(?:minutos?|mins?|mn|horas?|hrs?))\b/i) ||
+      text.match(/\b(\d{1,3}\s*(?:-|a|o|\/)\s*\d{1,3}\s*(?:minutos?|mins?|mn))\b/i) ||
+      text.match(/\b(\d{1,3}\s*(?:minutos?|mins?|mn))\b/i);
     if (!m?.[1]) return null;
     const cleaned = m[1].replace(/\s+/g, ' ').trim().toLowerCase();
     return `paso en ~${cleaned}`;
