@@ -287,6 +287,19 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.agent.runTurn).not.toHaveBeenCalled();
   });
 
+  it.each([true, false])('keeps one purchase through repeated category and price interruptions (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero dos sopas');
+    const pending = structuredClone(h.conv.sessionData.pendingMatch);
+    for (const question of ['¿Qué bebidas hay?', '¿Cuánto cuesta el churrasco?', '¿Qué jugos naturales hay?']) {
+      await h.send(question);
+      expect(h.conv.sessionData.pendingMatch).toEqual(pending);
+      expect(h.cartRows()).toEqual([]);
+    }
+    await h.send('Ajiaco');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:38, qty:2})]);
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {
