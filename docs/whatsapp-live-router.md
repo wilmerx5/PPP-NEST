@@ -36,3 +36,16 @@ La primera ampliación de intención aceptó 13/17. Detectó cuatro fallos: acep
 El runner también verifica hechos requeridos y prohibidos en las respuestas (`replyAny`, `replyAll`, `replyForbid`), además del carrito y el estado. Estas comprobaciones son acotadas; no equivalen a evaluar automáticamente toda la calidad semántica de cada respuesta. Se inspeccionan también los diálogos completos.
 
 La revalidación aprobó **50/50 conversaciones** con `gpt-4.1-2025-04-14`, **113 respuestas de inferencia**, sin errores HTTP ni del agente. Los dos casos de aceptación y compra con consulta aprobaron además **6/6 repeticiones focalizadas**. Pasaron **1.177 pruebas unitarias en 56 suites** y TypeScript. Los respaldos de las primeras rondas conservan los fallos; no se presentan como rondas aprobadas.
+
+
+## Variantes, grupos de unidades y una carta distinta
+
+La ampliación añade ocho conversaciones PPP: notas para parte de las unidades, eliminación por preparación, cantidad dirigida a una línea con nota, preguntas condicionales, pedido con alternativa, negación seguida de compra, reemplazo preservando otro plato y consulta seguida de otro producto. La primera ronda aceptó 6/8; las notas parciales quedaban en toda la línea y las alternativas condicionales se agregaban juntas. Tras corregirlo aceptó 8/8.
+
+La exclusión parcial explícita separa la línea conservando cantidad total y atributos. Si hay varios productos sin un referente único, notas previas o cantidades incompatibles, pide aclaración sin mutar el carrito. El pedido condicional comprueba una primera presentación identificada en el catálogo y conserva una sola rama; una presentación inicial no identificada pide aclaración.
+
+El runner acepta una carta y conversaciones distintas mediante `WHATSAPP_BETA_MENU_FIXTURE` y `WHATSAPP_BETA_SCENARIOS_FIXTURE` (rutas relativas al repositorio), y marca por escenario `unavailableProductIds`. Para respetar esos agotados usa `WHATSAPP_BETA_IGNORE_BUSINESS_HOURS=0`; el negocio simulado sigue abierto. `WHATSAPP_BETA_RESTAURANT_NAME` permite otro nombre de restaurante.
+
+La carta sintética Mesa Verde usa cinco productos, IDs, precios y opciones ajenos a PPP. Sus siete casos incluyen pedido, composición sin compra, cotización con aceptación, paquete nombrado, atributo y alternativa condicional disponible/agotada. Pasaron 7/7 con 17 inferencias exitosas, sin errores HTTP ni del agente. Esto acredita comportamiento ante otra carta, no aislamiento de datos, credenciales o sesiones entre tenants de Kamppo.
+
+La revalidación integrada aprobó **58/58 conversaciones PPP**, 131 inferencias exitosas, sin errores HTTP ni del agente; la carta alternativa aprobó **7/7** adicionales. Pasaron **1.187 unitarias en 57 suites** y TypeScript. Estos resultados usan inferencia real y transportes/persistencia simulados; no acreditan nuevos eventos de cocina ni pagos.

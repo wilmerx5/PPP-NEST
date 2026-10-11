@@ -1,5 +1,6 @@
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
+import { parsePartialNote } from './whatsapp-partial-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
 import { isKeepCartRefusal, parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
@@ -543,7 +544,7 @@ export class WhatsappOrchestratorService {
 
     // Glosario local: typos / aliases antes de matching e IA
     text = applyLocalGlossary(text);
-    const originalText = text;
+    let originalText = text;
 
     const lower = text.toLowerCase();
 
@@ -689,6 +690,39 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
+
+    // Conditional alternatives select one branch before multi-product matching.
+    const conditionalOrder = text.match(/^((?:quiero|dame|agregame|agrégame|ponme)\s+.+?)[;,]?\s+si\s+no\s+(?:hay|tienen|tienes)(?:\s*,)?\s+(.+)$/i);
+    if (conditionalOrder && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const query = this.catalogService.extractProductSearchQuery(conditionalOrder[1]);
+      const hits = this.catalogService.searchByNameScored(query, products.map(product => ({...product, availableNow:true})), 4);
+      const first = hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12)
+        ? products.find(product => product.id === hits[0].p.id) : undefined;
+      if (!first) {
+        await this.reply(conv, msg.waId, '¿Cuál presentación quieres como primera opción? No agregaré las dos alternativas.');
+        return;
+      }
+      text = first.availableNow !== false ? conditionalOrder[1] : conditionalOrder[2];
+      originalText = text;
+    }
+
+    const partialNote = parsePartialNote(text);
+    if (partialNote && session.cart.length && conv.state === 'building_cart' &&
+      !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const line = session.cart[0];
+      if (session.cart.length !== 1 || line.note || partialNote.quantity >= line.quantity ||
+        (partialNote.remainder !== undefined && partialNote.quantity + partialNote.remainder !== line.quantity)) {
+        await this.reply(conv, msg.waId, '¿De cuál producto y cuántas unidades llevan esa nota? Así conservo las demás como están.');
+        return;
+      }
+      session = {...session, cart: [
+        {...line, quantity: line.quantity - partialNote.quantity},
+        {...line, quantity: partialNote.quantity, note: partialNote.note},
+      ]};
+      await this.conversationService.saveSession(conv, session);
+      await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n¿Algo más?');
+      return;
+    }
 
     // Resolve independent purchase/price clauses before the agent's inquiry guards.
     const mixedPriceOrder = this.splitPriceAndOrderParts(text);

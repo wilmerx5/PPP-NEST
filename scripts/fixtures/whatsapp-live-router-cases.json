@@ -1459,5 +1459,225 @@
         }
       }
     ]
+  },
+  {
+    "id": "context-partial-churrasco-note",
+    "messages": [
+      {
+        "text": "Tres churrascos",
+        "expect": {
+          "items": {
+            "17": 3
+          }
+        }
+      },
+      {
+        "text": "Uno sin ensalada y los otros dos normales",
+        "expect": {
+          "items": {
+            "17": 3
+          },
+          "lines": [
+            {
+              "id": 17,
+              "quantity": 1,
+              "note": [
+                "sin ensalada"
+              ]
+            },
+            {
+              "id": 17,
+              "quantity": 2,
+              "forbidNote": [
+                "sin ensalada"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-selective-preparation-removal",
+    "initialCart": [
+      {
+        "id": 13,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "Asada"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Seleccion",
+            "attributeValue": "En Salsa"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "Quita solo la sobrebarriga en salsa, deja las asadas",
+        "expect": {
+          "items": {
+            "13": 2
+          },
+          "attrs": [
+            {
+              "id": 13,
+              "key": "Seleccion",
+              "value": "Asada"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-reduce-specific-note-line",
+    "initialCart": [
+      {
+        "id": 17,
+        "quantity": 2,
+        "note": "sin ensalada"
+      },
+      {
+        "id": 17,
+        "quantity": 1
+      }
+    ],
+    "messages": [
+      {
+        "text": "Del churrasco sin ensalada deja solamente uno, el normal queda igual",
+        "expect": {
+          "items": {
+            "17": 2
+          },
+          "lines": [
+            {
+              "id": 17,
+              "quantity": 1,
+              "note": [
+                "sin ensalada"
+              ]
+            },
+            {
+              "id": 17,
+              "quantity": 1,
+              "forbidNote": [
+                "sin ensalada"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-informational-condition",
+    "messages": [
+      {
+        "text": "Si no hay ajiaco, ¿tienen sopa de menudencias?",
+        "expect": {
+          "items": {}
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-order-available-first-alternative",
+    "messages": [
+      {
+        "text": "Quiero una sopa de ajiaco; si no hay, una de menudencias",
+        "expect": {
+          "items": {
+            "38": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-negated-alternative",
+    "messages": [
+      {
+        "text": "No quiero pollo, dame dos churrascos",
+        "expect": {
+          "items": {
+            "17": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-replace-and-preserve",
+    "initialCart": [
+      {
+        "id": 38,
+        "quantity": 2
+      },
+      {
+        "id": 17,
+        "quantity": 1,
+        "note": "sin ensalada"
+      }
+    ],
+    "messages": [
+      {
+        "text": "Cambia las dos sopas de ajiaco por dos de menudencias y deja el churrasco como está",
+        "expect": {
+          "items": {
+            "20": 2,
+            "17": 1
+          },
+          "lines": [
+            {
+              "id": 20,
+              "quantity": 2
+            },
+            {
+              "id": 17,
+              "quantity": 1,
+              "note": [
+                "sin ensalada"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "context-question-then-other-purchase",
+    "messages": [
+      {
+        "text": "¿Qué trae la mojarra?",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Mejor dame una trucha asada",
+        "expect": {
+          "items": {
+            "12": 1
+          },
+          "attrs": [
+            {
+              "id": 12,
+              "key": "Seleccion",
+              "value": "Asada"
+            }
+          ]
+        }
+      }
+    ]
   }
 ]

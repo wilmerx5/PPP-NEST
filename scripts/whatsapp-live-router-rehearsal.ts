@@ -17,7 +17,7 @@ import { BetaApiUsage } from './whatsapp-beta-api-usage';
 import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta-cart-assertions';
 
 type Expectation = { replyAny?: string[]; replyAll?: string[]; replyForbid?: string[]; lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
-type Scenario = { id: string; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
+type Scenario = { id: string; unavailableProductIds?: number[]; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
 Logger.overrideLogger(false);
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
@@ -38,11 +38,11 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
     return response;
   } catch(error) { usage.recordTransportFailure(error); throw error; }
 };
-const products = JSON.parse(readFileSync(join(process.cwd(),'scripts/fixtures/whatsapp-beta-menu.json'),'utf8'));
-const scenarios:Scenario[] = JSON.parse(readFileSync(join(process.cwd(),'scripts/fixtures/whatsapp-live-router-cases.json'),'utf8'));
-const row = {id:1,enabled:true,agentV1Enabled:true,ignoreBusinessHours:true,openaiApiKey:process.env.OPENAI_API_KEY,
+const products = JSON.parse(readFileSync(join(process.cwd(),process.env.WHATSAPP_BETA_MENU_FIXTURE || 'scripts/fixtures/whatsapp-beta-menu.json'),'utf8'));
+const scenarios:Scenario[] = JSON.parse(readFileSync(join(process.cwd(),process.env.WHATSAPP_BETA_SCENARIOS_FIXTURE || 'scripts/fixtures/whatsapp-live-router-cases.json'),'utf8'));
+const row = {id:1,enabled:true,agentV1Enabled:true,ignoreBusinessHours:process.env.WHATSAPP_BETA_IGNORE_BUSINESS_HOURS !== '0',openaiApiKey:process.env.OPENAI_API_KEY,
   openaiModel:model,systemPrompt:process.env.WHATSAPP_BETA_SYSTEM_PROMPT || null,aiTemperature:0.2,
-  restaurantName:'Pronto Pollo Portal (simulación)',allowMercadoPago:false,paymentMethods:DEFAULT_PAYMENT_METHODS,
+  restaurantName:process.env.WHATSAPP_BETA_RESTAURANT_NAME || 'Pronto Pollo Portal (simulación)',allowMercadoPago:false,paymentMethods:DEFAULT_PAYMENT_METHODS,
   defaultDeliveryFee:2000,deliveryFeeMode:'fixed',maxUnitsPerItem:10,maxTotalUnits:30,maxCartLines:20};
 const settings = new WhatsappSettingsService({findOne:async()=>row} as never,new ConfigService());
 const catalog = new WhatsappCatalogService({getMenuProducts:async()=>products} as never);
@@ -54,6 +54,7 @@ if (!cases.length || !Number.isInteger(repeats) || repeats<1 || repeats>3) throw
 const results:any[]=[];
 
 function harness(scenario:Scenario) {
+  catalog.getMenuProducts = async () => structuredClone(products).map(product=>({...product,availableNow:product.availableNow !== false && !scenario.unavailableProductIds?.includes(product.id)}));
   let count=0;
   const cart=(scenario.initialCart||[]).map(line=>{const p=products.find(p=>p.id===line.id);if(!p)throw Error('Unknown fixture SKU');return {productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:line.quantity,note:line.note,attributes:structuredClone(line.attributes||[])};});
   const conv:any={id:1,waId:'synthetic-live-router',phoneE164:'+573000000001',customerName:'Cliente Sintético',state:'building_cart',sessionData:{cart,orderType:'delivery'}};

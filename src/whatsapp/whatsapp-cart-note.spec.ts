@@ -100,6 +100,23 @@ describe('Scoped dish notes through the inbound router', () => {
     expect(parseScopedCartNote(text)).toBeNull();
   });
 });
+describe('Partial notes through the inbound router', () => {
+  it('splits the requested units while preserving total quantity and catalog options', async () => {
+    const attributes = [{attributeName:'Arepas',attributeValue:'Blancas'}];
+    const h = harness([line(1,3,undefined,attributes)]);
+    await h.inbound('Uno sin salsa y los otros dos normales');
+    expect(h.session.cart).toEqual([line(1,2,undefined,attributes),line(1,1,'sin salsa',attributes)]);
+    expect(h.service.agentService.runTurn).not.toHaveBeenCalled();
+  });
+  it('asks rather than changing an ambiguous product or inconsistent unit total', async () => {
+    for (const initial of [[line(17,3),line(60,3)],[line(17,4)]]) {
+      const h = harness(initial);
+      await h.inbound('Uno sin ensalada y los otros dos normales');
+      expect(h.session.cart).toEqual(initial);
+      expect(h.service.reply.mock.calls.at(-1)[2]).toMatch(/cuál producto/);
+    }
+  });
+});
 describe('Quoted purchase context through the inbound router', () => {
   it('accepts two quoted units without inventing a SKU or relying on a model reply', async () => {
     const h = harness([]);
