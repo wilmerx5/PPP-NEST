@@ -10,6 +10,8 @@ Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para 
 
 ## Tanda siguiente: consumo del premio y total de la orden
 
+Código publicado y desplegado: `a36a5a68`. Verificado el 2026-10-11: checkout `a36a5a6`, API running/healthy, health HTTP OK y DB connected. Imagen activa y candidate coinciden: `sha256:8fc82333a6038b4455133fc71aafb18dda5feb7bcc73c2a47c43edfdac0b05bf`. Una actualización posterior exclusiva de documentación no requiere reconstruir la API.
+
 Verificación: 62/62 suites unitarias y 1.433/1.433 pruebas; TypeScript sin errores. Las cuatro suites DB cubren 92 pruebas: 90 pasaron en la ejecución conjunta; checkout tuvo un timeout de 30 segundos y un fallo posterior de estado. Se repitió esa suite sola, sin cambios de código ni aumento de timeout: 22/22 pasaron. Las otras tres suites habían pasado. Logs `/tmp/ppp-voucher-full.log`, `/tmp/ppp-voucher-db-full.log`, `/tmp/ppp-voucher-checkout-repeat.log`, `/tmp/ppp-voucher-tsc-final.log`. No confundir esta verificación por suites con un único run DB completo verde. Evitar ejecutar simultáneamente Jest unitario completo y Jest DB en este PC: pueden competir por memoria; la causa exacta del timeout no está acreditada por un perfil.
 
 Base de código: `73bf4fc1` (relevo `5ab77b9d`). Se encontró y corrigió que la creación confirmaba la orden antes de aplicar el voucher y ocultaba el error del canje.
