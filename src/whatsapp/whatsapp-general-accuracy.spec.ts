@@ -107,7 +107,7 @@ function harness(menu = products, agentEnabled = true) {
       note: c.note,
       attrs: (c.attributes || []).map((a) => `${a.attributeName}:${a.attributeValue}`),
     }));
-  return { conv, send, agent, replies, cartRows, service };
+  return { conv, send, agent, replies, cartRows, service, cfg };
 }
 
 describe('Acertividad general — chats reales y ediciones', () => {
@@ -527,7 +527,11 @@ describe('Selected anonymized historical chat patterns — offline router', () =
       const row = h.cartRows().find(item => String(item.id) === productId);
       for (const note of notes) expect(row?.note).toEqual(expect.stringContaining(note));
     }
-    for (const component of scenario.expect.addressAll || []) expect(h.conv.sessionData.address).toEqual(expect.stringContaining(component));
+    for (const component of scenario.expect.addressAll || []) expect(h.conv.sessionData.address?.toLowerCase()).toEqual(expect.stringContaining(component.toLowerCase()));
+    for (const [productId, attrs] of Object.entries(scenario.expect.attributesByProduct || {}) as Array<[string,string[]]>) {
+      expect(h.cartRows().find(row => String(row.id) === productId)?.attrs).toEqual(expect.arrayContaining(attrs));
+    }
+    if (scenario.expect.orderType) expect(h.conv.sessionData.orderType).toBe(scenario.expect.orderType);
     expect(h.replies.at(-1)).toBeTruthy();
     if (scenario.expect.replyPattern) expect(h.replies.at(-1)).toMatch(new RegExp(scenario.expect.replyPattern, 'i'));
     expect(h.conv.state).not.toBe('completed');
@@ -695,5 +699,86 @@ describe('Image order transcription keeps complete selected cart — offline', (
     const h = harness(menu);
     const order = 'Dos Bowl Andino\nUn Filete Andino';
     expect(h.service.resolveImageOrderText({ kind: 'order', textForBot: order }, 'Esto', menu)).toBe(order);
+  });
+});
+
+describe('Multiline orders and quoted attribute answers — offline', () => {
+  it.each([true, false])('keeps soup quantity and composed delivery address (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Buena tarde\nPara un domicilio por favor\nDos sopas de ajiaco\nConjunto Prueba\nTorre 2\nApto 301');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 38, qty: 2 })]);
+    expect(h.conv.sessionData.orderType).toBe('delivery');
+    expect(h.conv.sessionData.address).toMatch(/Conjunto Prueba.*Torre 2.*Apto 301/is);
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Me confirma tiempo y valor por favor?');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/21[.,]000|23[.,]000/);
+    expect(reply).toMatch(/confirmar el tiempo/i);
+    expect(h.conv.state).not.toBe('completed');
+  });
+
+  it.each([true, false])('selects the answer after quoted options, not both options (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un cuarto de pollo frito');
+    await h.send('pierna o pechuga\nPierna porfa');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 3, qty: 1, attrs: expect.arrayContaining(['Presa:Pierna Pernil']) })]);
+    expect(h.replies.at(-1)).toMatch(/pierna/i);
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+  });
+});
+
+describe('Multiline orders and quoted — expanded coverage', () => {
+  it.each([true, false])('selects the other quoted choice and keeps the same quantity (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un cuarto de pollo frito');
+    await h.send('Pierna Pernil o Ala pechuga\nAla pechuga por favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 3, qty: 1, attrs: expect.arrayContaining(['Presa:Ala pechuga']) })]);
+    expect(h.replies.at(-1)).toMatch(/Ala pechuga/i);
+    expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+  });
+
+  it.each([true, false])('keeps two dishes, preparation and street details in one message (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Buenas tardes\nPara un domicilio por favor\nDos churrascos 3/4\nUna sopa de ajiaco\nCalle 10 B #80-20\nConjunto Prueba\nTorre 2\nApto 301');
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 17, qty: 2, note: expect.stringMatching(/tres cuartos/) }),
+      expect.objectContaining({ id: 38, qty: 1 }),
+    ]));
+    expect(h.conv.sessionData.address).toMatch(/80-20.*Conjunto Prueba.*Torre 2.*301/is);
+    expect(h.conv.sessionData.orderType).toBe('delivery');
+    expect(h.replies.at(-1)).toMatch(/churrasco/i);
+    expect(h.replies.at(-1)).toMatch(/tres cuartos/);
+  });
+
+  it('uses quoted options from another tenant catalog', async () => {
+    const menu = [{ id: 903, code: 903, name: 'Bowl Andino', categoryName: 'Bowls', price: 18700, availableNow: true,
+      hasAttributes: true, attributes: [{ attributeName: 'Base', options: ['Quinoa', 'Arroz integral'] }] }];
+    const h = harness(menu, false);
+    h.conv.sessionData.cart = [{ productId: 903, name: 'Bowl Andino', code: 903, quantity: 2, unitPrice: 18700,
+      note: 'sin cebolla', attributes: [{ attributeName: 'Base', attributeValue: 'Quinoa' }] }];
+    await h.send('Quinoa o Arroz integral\nArroz integral porfa');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 903, qty: 2, note: 'sin cebolla', attrs: ['Base:Arroz integral'] })]);
+    expect(h.replies.at(-1)).toMatch(/Arroz integral/i);
+  });
+});
+
+describe('Multiline orders and quoted — informational controls', () => {
+  it('uses the configured delivery estimate without changing the cart', async () => {
+    const h = harness(products, false);
+    Object.assign(h.cfg.localContext, { deliveryTimeNote: 'entre 50 y 60 minutos' });
+    h.conv.sessionData.cart = [{ productId: 38, name: 'Sopa De Ajiaco', code: 38, quantity: 2, unitPrice: 10500 }];
+    h.conv.sessionData.orderType = 'delivery';
+    const reply = await h.send('Me confirma tiempo y valor por favor?');
+    expect(reply).toMatch(/50 y 60 minutos/);
+    expect(reply).toMatch(/21[.,]000|23[.,]000/);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 38, qty: 2 })]);
+    expect(h.conv.state).toBe('building_cart');
+  });
+  it('does not purchase from a multiline price inquiry', async () => {
+    const h = harness(products, false);
+    await h.send('Buenas tardes\nCuánto cuestan dos sopas de ajiaco?\nCalle 10 B #80-20\nTorre 2 apto 301');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.replies.at(-1)).toMatch(/precio|21[.,]000|10[.,]500/i);
   });
 });

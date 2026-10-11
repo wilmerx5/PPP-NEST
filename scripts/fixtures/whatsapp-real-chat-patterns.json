@@ -133,23 +133,46 @@
       "id": "pedido-multilinea",
       "source": "lote-1/chat-10",
       "priority": "alta",
-      "automated": false,
+      "automated": true,
       "messages": [
         "Buena tarde\nPara un domicilio por favor\nDos sopas de ajiaco\nConjunto Prueba\nTorre 2\nApto 301",
         "Me confirma tiempo y valor por favor?"
       ],
-      "invariant": "Dos sopas, dirección compuesta; consulta posterior conserva cantidades y no inventa ETA."
+      "invariant": "Dos sopas, dirección compuesta; consulta posterior conserva cantidades y no inventa ETA.",
+      "expect": {
+        "items": {
+          "38": 2
+        },
+        "addressAll": [
+          "Conjunto Prueba",
+          "Torre 2",
+          "Apto 301"
+        ],
+        "orderType": "delivery",
+        "replyPattern": "confirmar el tiempo"
+      }
     },
     {
       "id": "respuesta-con-cita",
       "source": "lote-1/chat-08",
       "priority": "alta",
-      "automated": false,
+      "automated": true,
       "messages": [
         "Un cuarto de pollo frito",
         "pierna o pechuga\nPierna porfa"
       ],
-      "invariant": "La elección está en la respuesta; las opciones citadas no son dos pedidos."
+      "invariant": "La elección está en la respuesta; las opciones citadas no son dos pedidos.",
+      "expect": {
+        "items": {
+          "3": 1
+        },
+        "attributesByProduct": {
+          "3": [
+            "Presa:Pierna Pernil"
+          ]
+        },
+        "replyPattern": "Pierna"
+      }
     },
     {
       "id": "bebida-typo",
