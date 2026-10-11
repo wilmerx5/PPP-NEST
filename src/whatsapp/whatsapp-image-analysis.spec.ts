@@ -26,3 +26,37 @@ describe('Image analysis provider contract — offline', () => {
     expect(await service.analyzeOrderImage(input)).toMatchObject({kind:'unclear',textForBot:''});expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('Image extraction completeness and latency — offline',()=>{
+  const originalFetch=global.fetch;
+  const input={buffer:Buffer.from('mock-image'),mimeType:'image/png',menuSummary:'Synthetic menu'};
+  const make=(model='gpt-4.1-2025-04-14')=>new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'mock-key',openaiModel:model})} as never);
+  const reply=(data:unknown,finish='stop')=>jest.fn().mockResolvedValue({ok:true,json:async()=>({choices:[{finish_reason:finish,message:{content:JSON.stringify(data)}}]})});
+  afterEach(()=>{global.fetch=originalFetch;jest.restoreAllMocks();});
+  it('keeps every selected product after character 500',async()=>{
+    const text=Array.from({length:18},(_,i)=>`Dos bowls variante ${i+1} sin cebolla y con salsa aparte`).join('\n');
+    global.fetch=reply({kind:'order',textForBot:text});expect((await make().analyzeOrderImage(input)).textForBot).toBe(text);
+  });
+  it('does not execute a partial order when the provider hits its token limit',async()=>{
+    global.fetch=reply({kind:'order',textForBot:'Un bowl mediterraneo'},'length');
+    expect(await make().analyzeOrderImage(input)).toMatchObject({kind:'unclear',textForBot:''});
+  });
+  it('empty image never calls the provider',async()=>{
+    const fetchMock=reply({kind:'order',textForBot:'Un bowl'});global.fetch=fetchMock;
+    expect(await make().analyzeOrderImage({...input,buffer:Buffer.alloc(0)})).toMatchObject({kind:'unclear',textForBot:''});expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each(['gpt-5','gpt-5-mini','gpt-5-nano'])('uses minimal extraction reasoning and the existing cap for %s',async model=>{
+    const fetchMock=reply({kind:'order',textForBot:'Dos bowls'});global.fetch=fetchMock;await make(model).analyzeOrderImage(input);
+    const body=JSON.parse(fetchMock.mock.calls[0][1].body);expect(body.reasoning_effort).toBe('minimal');expect(body.max_completion_tokens).toBe(700);
+  });
+  it.each(['gpt-4.1-2025-04-14','gpt-5.1'])('does not send unsupported minimal reasoning to %s',async model=>{
+    const fetchMock=reply({kind:'order',textForBot:'Dos bowls'});global.fetch=fetchMock;await make(model).analyzeOrderImage(input);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).reasoning_effort).toBeUndefined();
+  });
+  it('a stalled image request has a deadline and preserves a safe result',async()=>{
+    const service=make();jest.spyOn((service as any).logger,'error').mockImplementation(()=>undefined);
+    const fetchMock=jest.fn().mockRejectedValue(new Error('fixture aborted'));global.fetch=fetchMock;
+    expect(await service.analyzeOrderImage(input)).toMatchObject({kind:'unclear',textForBot:''});
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+});

@@ -3691,7 +3691,7 @@ export class WhatsappOrchestratorService {
         if (!skipCodeAdd) {
         // Qty: texto explícito ("3 sopas") > hint sticky ("Pediste 2")
         const qtyExplicit = this.catalogService.extractQuantityFromMessage(
-          `${originalText}\n${text}`,
+          originalText || text,
         );
         const qtyForCode =
           qtyExplicit >= 2
@@ -9159,6 +9159,15 @@ export class WhatsappOrchestratorService {
     // quantity and modifier for the normal router instead of selecting its first SKU.
     // Do not do this with visibleText: a menu photo may list unselected products.
     const proposedOrder = analysis.textForBot?.trim();
+    // A customer's explicit caption remains usable when vision is uncertain.
+    if (analysis.kind === 'unclear' || analysis.kind === 'other') {
+      const captionCode = this.catalogService.extractCodeFromMessage(caption || '');
+      const selected = caption && (this.catalogService.findProductEmbeddedInMessage(caption, products) ||
+        (captionCode != null && this.catalogService.findByCode(captionCode, products)));
+      if (selected) return caption!.trim();
+      // Raw OCR of a multi-option menu is not a product selection.
+      if (this.catalogService.findAllProductsEmbeddedInMessage(analysis.visibleText || '', products).length >= 2) return null;
+    }
     if (analysis.kind === 'unclear' && !proposedOrder && analysis.reply) return null;
     if (analysis.kind === 'order' && proposedOrder) {
       const clauses = proposedOrder.split(/\r?\n|;|,|\s+y\s+/i).map(s => s.trim()).filter(Boolean);

@@ -2842,3 +2842,35 @@ describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
   });
 
 });
+
+describe('Imagen de carta — selección explícita frente a OCR ambiguo',()=>{
+  const analysis={kind:'unclear',textForBot:'',visibleText:'Churrasco\nArroz Con Pollo'};
+  it('no compra el primer plato de una carta sin selección aunque no haya reply',()=>{
+    const h=harness(products,false);expect(h.service.resolveImageOrderText(analysis,'Esto',products)).toBeNull();expect(h.cartRows()).toEqual([]);
+  });
+  it('respeta la selección y cantidad del pie en una carta con varios platos',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText(analysis,'Dos churrascos',products);
+    expect(text).toBe('Dos churrascos');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2})]);
+  });
+  it('selección por código del pie no se sustituye por el primer plato del OCR',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText(analysis,'código 23',products);
+    expect(text).toBe('código 23');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:23,qty:1})]);
+  });
+
+  it('si el cliente escribió el plato, usa ese texto aunque la imagen sea ilegible',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText({kind:'unclear',textForBot:'',reply:'No pude leer la foto'},'Tres churrascos',products);
+    expect(text).toBe('Tres churrascos');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:3})]);
+  });
+
+});
+
+
+describe('Código de producto no es cantidad — dos catálogos',()=>{
+  const bowl={id:9855,code:7,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  for(const fixture of [{menu:products,id:23,code:23},{menu:[bowl],id:9855,code:7}]){
+    it.each([['código CODE',1],['#CODE',1],['dos del código CODE',2],['código CODE x3',3]])('conserva cantidad de %s para '+fixture.code,async(template,qty)=>{
+      const h=harness(fixture.menu,false);await h.sendQueued(String(template).replace('CODE',String(fixture.code)));
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty})]);
+    });
+  }
+});

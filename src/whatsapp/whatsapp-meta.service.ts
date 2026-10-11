@@ -332,8 +332,10 @@ export class WhatsappMetaService {
       throw new NotFoundException('WhatsApp no configurado');
     }
 
+    const deadline = AbortSignal.timeout(30_000);
     const metaRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`, {
       headers: { Authorization: `Bearer ${cfg.accessToken}` },
+      signal: deadline,
     });
     if (!metaRes.ok) {
       const errText = await metaRes.text();
@@ -346,12 +348,14 @@ export class WhatsappMetaService {
 
     const binRes = await fetch(meta.url, {
       headers: { Authorization: `Bearer ${cfg.accessToken}` },
+      signal: deadline,
     });
     if (!binRes.ok) {
       throw new NotFoundException('No se pudo descargar el media');
     }
 
     const arr = await binRes.arrayBuffer();
+    if (!arr.byteLength) throw new NotFoundException('Media vacío');
     return {
       buffer: Buffer.from(arr),
       mimeType: meta.mime_type || 'application/octet-stream',

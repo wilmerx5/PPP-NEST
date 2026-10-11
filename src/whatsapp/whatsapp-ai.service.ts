@@ -218,7 +218,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
   /** Whisper: nota de voz / audio → texto en español. */
   async transcribeAudio(buffer: Buffer, mimeType: string): Promise<string | null> {
     const cfg = await this.settingsService.getEffectiveConfig();
-    if (!cfg.openaiApiKey) return null;
+    if (!cfg.openaiApiKey || !buffer.length) return null;
 
     const ext = this.audioExtension(mimeType);
     const form = new FormData();
@@ -235,6 +235,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         method: 'POST',
         headers: { Authorization: `Bearer ${cfg.openaiApiKey}` },
         body: form,
+        signal: AbortSignal.timeout(45_000),
       });
       if (!res.ok) {
         const err = await res.text();
@@ -263,7 +264,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     ocrRetry?: boolean;
   }): Promise<WhatsappImageAnalysis> {
     const cfg = await this.settingsService.getEffectiveConfig();
-    if (!cfg.openaiApiKey) {
+    if (!cfg.openaiApiKey || !input.buffer.length) {
       return {
         kind: 'unclear',
         textForBot: '',
@@ -338,6 +339,12 @@ ${input.menuSummary.slice(0, 6000)}`;
         { model, maxOutputTokens: 700, temperature: 0.1 },
       );
 
+      // These original GPT-5 models support minimal effort for extraction.
+      // Do not send that value to other model families without checking support.
+      if (/^gpt-5(?:-(?:mini|nano))?(?:-\d{4}-\d{2}-\d{2})?$/.test(model)) {
+        body.reasoning_effort = 'minimal';
+      }
+
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -345,6 +352,7 @@ ${input.menuSummary.slice(0, 6000)}`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(45_000),
       });
 
       if (!res.ok) {
@@ -365,6 +373,10 @@ ${input.menuSummary.slice(0, 6000)}`;
       if (!content) {
         this.logger.warn(`Vision empty response: model=${model} finish=${choice?.finish_reason || 'unknown'}`);
       }
+      if (choice?.finish_reason === 'length') {
+        this.logger.warn(`Vision incomplete response: model=${model} finish=length`);
+        return { kind: 'unclear', textForBot: '', reply: 'No pude leer el pedido completo. Escribe los platos o sus códigos.' };
+      }
       const parsed = JSON.parse(content || '{}') as Partial<WhatsappImageAnalysis>;
       const kind = parsed.kind;
       if (kind !== 'order' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
@@ -377,7 +389,7 @@ ${input.menuSummary.slice(0, 6000)}`;
       }
       return {
         kind,
-        textForBot: (parsed.textForBot || '').trim().slice(0, 500),
+        textForBot: (parsed.textForBot || '').trim(),
         visibleText: (parsed.visibleText || '').trim().slice(0, 800),
         reply: parsed.reply?.trim().slice(0, 800),
       };
@@ -404,6 +416,7 @@ ${input.menuSummary.slice(0, 6000)}`;
     const m = (mimeType || '').toLowerCase();
     if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
     if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
+    if (m.includes('flac')) return 'flac';
     if (m.includes('wav')) return 'wav';
     if (m.includes('webm')) return 'webm';
     return 'ogg';

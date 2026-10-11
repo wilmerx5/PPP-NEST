@@ -1230,6 +1230,16 @@ export class WhatsappCatalogService {
     let raw = fixCommonOrderTypos((text || '').trim());
     if (supportsCookingTerm({name:raw})) raw = parseCookingTerm(raw)?.productText || raw;
     if (!raw) return 1;
+    // A SKU number is an identifier, while a separate prefix is its quantity.
+    const codeQuantities = raw.matchAll(new RegExp(
+      `\\b(\\d{1,2}|${Object.keys(this.QTY_WORD_MAP).join('|')})\\s*(?:unidades?\\s+)?(?:del?\\s+)?(?:c[oó]digo|cod\\.?|code|#)\\s*#?\\s*\\d{1,4}\\b`, 'gi'));
+    for (const codeQuantity of codeQuantities) {
+      if (/(?:\b(?:c[oó]digo|cod\.?|code)\s*#?|#)\s*$/i.test(raw.slice(0,codeQuantity.index))) continue;
+      const quantity = this.QTY_WORD_MAP[codeQuantity[1].toLowerCase()] ?? Number(codeQuantity[1]);
+      if (quantity >= 1 && quantity <= 30) return quantity;
+    }
+    raw = raw.replace(/\b(?:c[oó]digo|cod\.?|code)\s*#?\s*\d{1,4}\b|#\s*\d{1,4}\b/gi, ' ').trim();
+    if (!raw) return 1;
     // "3" / "12" sueltos = opción de lista / arepa / sabor — NO cantidad de pedido
     if (/^\d{1,2}$/.test(raw)) return 1;
     if (/^(?:opci[oó]n|la|el|numero|n[uú]mero)\s*[1-9]\d{0,2}$/i.test(raw)) return 1;
