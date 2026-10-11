@@ -12,6 +12,7 @@ Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para 
 
 Checkout activo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama `staging`, base `a57a2f69`. Se integran los cambios locales de comprensión, ambigüedades y fotos existentes sobre esa base. El estado histórico más abajo corresponde a una tanda anterior y no describe el runtime actual.
 
+- Código publicado y desplegado en staging: `73bf4fc1`. Verificado el 2026-10-11: checkout `73bf4fc`, API running/healthy, health HTTP OK y DB connected; imagen activa y candidate coinciden (`sha256:7eaeeb0b0fb36897b6c5434cbd3dd5bbc4e75d3578883f135c667c65d46e2f3e`). Un commit posterior de este documento no requiere reconstruir la API.
 - Verificación final: 61/61 suites y 1.428/1.428 pruebas; TypeScript sin errores. Integración adicional de canjes en MariaDB: 2/2. Logs locales `/tmp/ppp-redemption-full-final.log`, `/tmp/ppp-redemption-tsc.log`, `/tmp/ppp-redemption-db.log`.
 - Canje: `PointsService.redeemPointsForVoucher` guarda premio y descuento en una transacción; bloquea la fila de la cuenta para serializar solicitudes concurrentes y elige puntos FIFO con desempate por ID. No se cambiaron las reglas comerciales ni los productos que generan puntos.
 - Pruebas gratuitas contra MariaDB 10.11 local descartable: dos solicitudes simultáneas con nueve puntos producen un premio y un rechazo; un trigger que falla al actualizar puntos revierte premio y descuento. 2/2 pasaron. Esquema mínimo aislado: no acredita las migraciones completas ni configuración de staging.
