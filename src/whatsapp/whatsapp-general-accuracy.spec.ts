@@ -2874,3 +2874,26 @@ describe('Código de producto no es cantidad — dos catálogos',()=>{
     });
   }
 });
+
+
+describe('Medios — OCR incierto no equivale a compra',()=>{
+  const alternate=[{id:9855,code:7,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]}];
+  for(const fixture of [{menu:products,name:'Churrasco'},{menu:alternate,name:'Bowl Mediterraneo'}]) {
+    it.each(['','Esto'])('no compra el único nombre visible sin selección: '+fixture.name+' %s',caption=>{
+      const h=harness(fixture.menu,false);
+      expect(h.service.resolveImageOrderText({kind:'unclear',textForBot:'',visibleText:fixture.name},caption,fixture.menu)).toBeNull();
+      expect(h.cartRows()).toEqual([]);
+    });
+    it('conserva texto explícito de selección para '+fixture.name,()=>{
+      const h=harness(fixture.menu,false);const caption='Quiero dos '+fixture.name;
+      expect(h.service.resolveImageOrderText({kind:'unclear',textForBot:'',visibleText:fixture.name},caption,fixture.menu)).toBe(caption);
+    });
+    it('audio fallido seguido de texto recupera cantidad en '+fixture.name,async()=>{
+      const h=harness(fixture.menu,false);h.service.resolveAudioToText=jest.fn().mockResolvedValue(null);
+      await h.sendQueued('',{messageType:'audio',mediaId:'mock-failed'});expect(h.cartRows()).toEqual([]);
+      await h.sendQueued('Quiero dos '+fixture.name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.menu===products?17:9855,qty:2})]);
+      expect(h.replies.at(-1)).not.toMatch(/no pude escuchar|no entend[ií]/i);
+    });
+  }
+});

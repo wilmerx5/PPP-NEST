@@ -351,3 +351,8 @@ Sincronizar también el checkout habitual del usuario con fast-forward después 
 Cocina: el usuario la dio por verificada. `cocina-ppp` sigue apuntando a producción, así que `STAGING_ORDER_EVENTS_ALLOW` permanece apagado. Pagos en línea: el usuario ya los recorrió; no reabrir Mercado Pago en este ciclo.
 
 Siguen abiertos: desplegar el trabajo local; un canje con puntos reales de staging (la suite ya cubre premio validado y no validado); un inbound auténtico de Meta; un piloto corto vigilado; y las 12 llamadas de modelo que quedan. No es certificación de venta.
+
+
+## Tanda de OCR incierto y recuperación de audio — 2026-10-11
+
+Base 23ccdb05, rama staging. Ocho regresiones nuevas con PPP y menú ficticio: foto incierta con un único producto visible, sin pie o con «Esto», no selecciona; selección escrita explícita se conserva; audio fallido seguido de pedido por texto recupera cantidad sin repetir error. Cuatro fallos iniciales reproducidos en /tmp/ppp-media-uncertain-baseline.log. Se evita convertir OCR incierto sin pedido propuesto en compra, incluso cuando visión no devuelve reply. Dieciocho controles focalizados aprobados (/tmp/ppp-media-uncertain-targets.log) y TypeScript aprobado (/tmp/ppp-media-uncertain-tsc.log). Suite completa aprobada: 65 suites y 1.741 pruebas, 196,519 s (/tmp/ppp-media-uncertain-full.log). Cero llamadas pagadas, presupuesto permanece 11/20 usadas y nueve restantes. Percepción simulada; no acredita el archivo original. Main no cambia.

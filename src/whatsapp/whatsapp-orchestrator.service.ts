@@ -9168,7 +9168,7 @@ export class WhatsappOrchestratorService {
       // Raw OCR of a multi-option menu is not a product selection.
       if (this.catalogService.findAllProductsEmbeddedInMessage(analysis.visibleText || '', products).length >= 2) return null;
     }
-    if (analysis.kind === 'unclear' && !proposedOrder && analysis.reply) return null;
+    if (analysis.kind === 'unclear' && !proposedOrder) return null;
     if (analysis.kind === 'order' && proposedOrder) {
       const clauses = proposedOrder.split(/\r?\n|;|,|\s+y\s+/i).map(s => s.trim()).filter(Boolean);
       const recognized = clauses.filter(clause => {
