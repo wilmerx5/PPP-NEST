@@ -2798,3 +2798,47 @@ describe('PDF cuarta tanda — contexto de fotos y recogida portable', () => {
     expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/no confirma el pago/i);
   });
 });
+
+describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
+  it.each(['','Esta'])('foto ilegible pide plato una vez y conserva carrito: %s',async caption=>{
+    const h=harness(products,false);await h.sendQueued('Un churrasco');const before=structuredClone(h.conv.sessionData.cart);h.replies.length=0;
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Churrasco #17');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer la foto'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.sendQueued(caption,{messageType:'image',mediaId:'mock-unreadable'});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);
+    expect(h.replies[0]).toMatch(/Vi tu foto.*plato.*código/s);expect(h.replies[0]).toMatch(/llámanos/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('descarga de foto fallida usa una aclaración específica sin compra',async()=>{
+    const h=harness(products,false);h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-expired'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/No pude leer la imagen/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('audio ilegible pide texto sin duplicar no-entendí',async()=>{
+    const h=harness(products,false);h.service.resolveAudioToText=jest.fn().mockResolvedValue(null);
+    await h.sendQueued('',{messageType:'audio',mediaId:'mock-audio'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/No pude escuchar.*texto/s);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('comprobante recibido informa verificación sin decir que no entendió',async()=>{
+    const h=harness(products,false);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Churrasco #17');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:''});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-proof'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/no confirma el pago/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('comprobante que no abre solicita reenvío sin aclaración genérica',async()=>{
+    const h=harness(products,false);h.conv.sessionData.paymentMethod='nequi';
+    h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-proof-expired'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/comprobante.*[Mm]ándala/s);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+
+});

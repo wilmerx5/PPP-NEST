@@ -553,7 +553,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          'No pude escuchar el audio. Escríbelo por texto.\n' + this.humanHelpHint(),
+          'No pude escuchar el audio. Escríbelo por texto.\n' + this.humanPhoneHint(),
         );
         return;
       }
@@ -7693,6 +7693,10 @@ export class WhatsappOrchestratorService {
     return this.humanContactMessage();
   }
 
+  private humanPhoneHint(): string {
+    return `Si prefieres, llámanos al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*.`;
+  }
+
   /**
    * Pedido ya creado (completed/closed): demora, ETA, faltante, amenaza de cancelar.
    * No reabre carrito ni busca productos.
@@ -9304,7 +9308,7 @@ export class WhatsappOrchestratorService {
         conv,
         msg.waId,
         vague
-          ? 'Vi tu foto 👀 Escribe el *plato* o el *código*.\n' + this.humanHelpHint()
+          ? 'Vi tu foto 👀 Escribe el *plato* o el *código*.\n' + this.humanPhoneHint()
           : fallback,
       );
       return { done: true };
@@ -9315,10 +9319,10 @@ export class WhatsappOrchestratorService {
         msg.waId,
         proofCtx
           ? 'No pude abrir tu foto del comprobante (a veces Meta la deja caducar).\n' +
-              'Mándala de nuevo por aquí, o ' +
-              this.humanContactMessage()
+              'Mándala de nuevo por aquí.\n' +
+              this.humanPhoneHint()
           : 'No pude leer la imagen. Escribe el *plato* o el *código*.\n' +
-              this.humanHelpHint(),
+              this.humanPhoneHint(),
       );
       return { done: true };
     }
@@ -9326,7 +9330,7 @@ export class WhatsappOrchestratorService {
 
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
   private paymentProofAcknowledgement(): string {
-    return `Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago. ${this.humanContactMessage()}`;
+    return `Recibí tu comprobante. El equipo debe verificar la transferencia; recibir la imagen no confirma el pago. ${this.humanPhoneHint()}`;
   }
 
   private isLikelyPaymentProofContext(conv: WhatsappConversation): boolean {
