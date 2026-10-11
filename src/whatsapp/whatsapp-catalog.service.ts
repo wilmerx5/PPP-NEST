@@ -6098,9 +6098,12 @@ export class WhatsappCatalogService {
   }
 
   /** Cotización de varios platos en una sola consulta de precio. */
-  formatMultiProductPriceReply(products: WhatsappCatalogProduct[]): string {
+  formatMultiProductPriceReply(
+    products: WhatsappCatalogProduct[],
+    opts?: { offerAdd?: boolean },
+  ): string {
     if (!products.length) return '';
-    if (products.length === 1) return this.formatProductPriceReply(products[0]);
+    if (products.length === 1) return this.formatProductPriceReply(products[0], opts);
 
     const lines: string[] = ['💰 *Cotización:*\n'];
     let total = 0;
@@ -6119,7 +6122,9 @@ export class WhatsappCatalogService {
       lines.push('');
     }
     lines.push(`*Estimado (sin domicilio): $${total.toLocaleString('es-CO')}*`);
-    lines.push('\n_¿Te los agrego al pedido? Responde *sí*._');
+    if (opts?.offerAdd !== false) {
+      lines.push('\n_¿Te los agrego al pedido? Responde *sí*._');
+    }
     return lines.join('\n');
   }
 
@@ -9088,12 +9093,22 @@ export class WhatsappCatalogService {
     return lines.join('\n');
   }
 
-  formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string {
-    const body = list.map((p, i) => this.formatProductListItem(p, i + 1)).join('\n');
+  formatCategoryList(
+    categoryName: string,
+    list: WhatsappCatalogProduct[],
+    opts?: { numbered?: boolean },
+  ): string {
+    const numbered = opts?.numbered !== false;
+    const body = list
+      .map((p, i) => this.formatProductListItem(p, numbered ? i + 1 : undefined))
+      .join('\n');
+    const hint = numbered
+      ? this.formatListChoiceHint()
+      : '_Es información. El número de tu pedido pendiente sigue abajo._';
     return (
       `📋 *${categoryName}* (_${list.length}_)\n` +
       `${body}\n\n` +
-      this.formatListChoiceHint()
+      hint
     );
   }
 
@@ -9173,11 +9188,14 @@ export class WhatsappCatalogService {
     };
   }
 
-  formatCategoryBrowseReply(hit: {
-    categoryName: string;
-    products: WhatsappCatalogProduct[];
-    askedButMissing?: string;
-  }): string {
+  formatCategoryBrowseReply(
+    hit: {
+      categoryName: string;
+      products: WhatsappCatalogProduct[];
+      askedButMissing?: string;
+    },
+    opts?: { numbered?: boolean },
+  ): string {
     if (hit.askedButMissing) {
       return this.formatCategoryAlternatives(
         hit.askedButMissing,
@@ -9185,7 +9203,7 @@ export class WhatsappCatalogService {
         hit.products,
       );
     }
-    return this.formatCategoryList(hit.categoryName, hit.products);
+    return this.formatCategoryList(hit.categoryName, hit.products, opts);
   }
 
   /** Texto para pedir atributos — una pregunta, formato tabla. */

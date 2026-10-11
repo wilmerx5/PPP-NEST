@@ -4,7 +4,18 @@ Actualizado: 10 de octubre de 2026, Bogotá.
 
 ## Decisión actual
 
-Todavía no declararía el chat vendible. La ampliación corrigió dos fallos nuevos y validó el router con más productos; falta cerrar la aceptación operativa desplegada y el piloto. Continuar con el recorrido desplegado y un piloto supervisado.
+Todavía no declararía el chat vendible. El candidato de código va por delante del contenedor. Staging acreditado sigue en `97efc842`. La cabeza `36816c04` ya pasó los cinco recorridos de interrupción que esa imagen no tiene. El siguiente corte vendible es uno solo: redeploy de la cabeza, reensayo del webhook, y después la pantalla de cocina aislada. Mercado Pago y la impresora no entran.
+
+## Siguiente corte
+
+1. **No robar el pedido pendiente.** Una consulta de carta o de precio, en medio de una elección, informa sin números de opción y sin «¿te lo agrego?». El número sigue eligiendo lo que ya estaba pendiente. Cubierto por regresiones offline; falta verlo en el router de pago solo si el redeploy lo pide.
+2. **Redeploy de la cabeza actual** en `dev.prontopolloportal.com`. Sin eso, el webhook sigue en `97efc842` y no tiene sabor explícito de jugo ni la interrupción. Avisar antes de ensayar el catálogo por webhook.
+3. **Reensayo desplegado, no otra batería nueva:** checkout de calle, ciclo de una orden en efectivo, y el catálogo diverso (cuarto, yuca, jugo, ejecutivo). Cero órdenes al final, salvo la del ciclo, que se cancela.
+4. **Cocina en pantalla, todavía bloqueada.** `cocina-ppp` apunta a producción. No encender `STAGING_ORDER_EVENTS_ALLOW` hasta tener un front que apunte a staging. Entonces una sola orden de ensayo debe verse en esa pantalla.
+5. **Un mensaje real desde el celular autorizado.** Los webhooks de ensayo siguen siendo sintéticos.
+6. **Piloto de 100 pedidos** con una persona del local comparando chat, orden y cocina. Duplicado, cantidad mala o dirección mala enviada a cocina detiene el piloto.
+
+Kamppo multi-restaurante queda después de ese piloto. No se declara vendible por suites verdes de un solo local.
 
 Alcance del primer producto: pedidos por WhatsApp, domicilio/recojo, efectivo y transferencia, entrega a la pantalla de cocina, intervención humana y seguimiento. Mercado Pago y la impresión automática quedan fuera de este piloto. La cocina recibe órdenes en pantalla; no se exige una impresora inexistente.
 

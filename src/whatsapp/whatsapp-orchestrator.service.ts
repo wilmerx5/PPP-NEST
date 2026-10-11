@@ -1088,7 +1088,9 @@ export class WhatsappOrchestratorService {
         !this.splitPriceAndOrderParts(text)) {
         const priced = this.catalogService.resolvePriceInquiryProducts(text, products);
         if (priced.length) {
-          await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(priced) +
+          await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(priced, {
+            offerAdd: false,
+          }) +
             '\n\n' + this.formatPendingPurchaseReminder(session));
           return;
         }
@@ -1098,7 +1100,7 @@ export class WhatsappOrchestratorService {
         if (hit?.products.length) {
           // Only the pending purchase uses numbered choices, so "2" cannot
           // silently select a numbered item in the informational list.
-          const information = this.catalogService.formatCategoryBrowseReply(hit).replace(/^\s*\d+\.\s*/gm, '- ');
+          const information = this.catalogService.formatCategoryBrowseReply(hit, { numbered: false });
           await this.reply(conv, msg.waId, information +
             '\n\n' + this.formatPendingPurchaseReminder(session));
           return;

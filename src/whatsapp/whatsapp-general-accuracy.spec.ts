@@ -264,7 +264,9 @@ describe('Offline conversation acceptance across products and interruptions', ()
     const h = harness(products, enabled);
     await h.send('Quiero dos sopas');
     expect(h.cartRows()).toEqual([]);
-    await h.send('¿Qué bebidas tienes?');
+    const drinks = await h.send('¿Qué bebidas tienes?');
+    expect(drinks).not.toMatch(/[1-9]️⃣|Escribe el número/i);
+    expect(drinks).toMatch(/pedido pendiente|cuál prefieres/i);
     expect(h.cartRows()).toEqual([]);
     await h.send('Ajiaco');
     expect(h.cartRows()).toEqual([expect.objectContaining({id:38, qty:2})]);
@@ -277,6 +279,7 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(pending?.quantity).toBe(3);
     const reply = await h.send('¿Cuánto cuesta el churrasco?');
     expect(reply).toMatch(/38[.,]000/);
+    expect(reply).not.toMatch(/te lo agrego/i);
     expect(h.conv.sessionData.pendingMatch).toEqual(pending);
     expect(h.cartRows()).toEqual([]);
     await h.send('Broaster');
