@@ -14138,8 +14138,39 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
   ): Promise<boolean> {
     if (!session.cart.length) return false;
+    const pendingEdit = session.pendingCartAttributeEdit;
+    if (pendingEdit) {
+      if (pendingEdit.cartSignature !== JSON.stringify(session.cart)) {
+        session = {...session, pendingCartAttributeEdit:undefined};
+        await this.conversationService.saveSession(conv, session);
+      } else if (!/[¿?]/.test(text)) {
+        const words = this.normalizeForMatch(text).split(/\s+/).filter(word =>
+          !['el','la','los','las','ese','esa','del','de'].includes(word));
+        const shortChoice = words.length > 0 && words.length <= 6 &&
+          words.every(word => /^(?:[a-zñ]+|\d+)$/.test(word));
+        const selected = pendingEdit.candidates.filter(candidate =>
+          shortChoice && words.every(word => this.normalizeForMatch(candidate.name).split(/\s+/).includes(word)));
+        if (selected.length === 1) {
+          text = `${selected[0].name} ${pendingEdit.sourceText}`;
+          session = {...session, pendingCartAttributeEdit:undefined};
+        }
+      }
+    }
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
     const attributeText = text.replace(/\s+y\s+(?:con\s+)?(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}[\p{L}\s-]*[.!]?$/iu, '');
+    if (!/[¿?]/.test(text)) {
+      const targets = this.catalogService.listCartAttributeOptionsNamedInText(attributeText, session.cart, products);
+      const indexes = [...new Set(targets.map(target => target.cartIndex))];
+      const scoped = indexes.filter(index => this.catalogService.isCartProductNamedInText(session.cart[index].name, attributeText));
+      if (indexes.length > 1 && scoped.length !== 1) {
+        session = {...session, pendingCartAttributeEdit:{sourceText:text, cartSignature:JSON.stringify(session.cart),
+          candidates:indexes.map(cartIndex => ({cartIndex,name:session.cart[cartIndex].name}))}};
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, waId, '¿A cuál plato le aplico ese cambio?\n' +
+          indexes.map(index => `• ${session.cart[index].name}`).join('\n'));
+        return true;
+      }
+    }
     const onlyAttrs = this.catalogService.resolveCartAttributeOnlyUpdate(
       attributeText,
       session.cart,

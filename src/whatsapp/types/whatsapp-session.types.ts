@@ -42,6 +42,11 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  pendingCartAttributeEdit?: {
+    sourceText: string;
+    cartSignature: string;
+    candidates: Array<{cartIndex: number; name: string}>;
+  };
   pendingCartQuantity?: {
     quantity: number;
     options: Array<{ cartIndex: number; label: string }>;

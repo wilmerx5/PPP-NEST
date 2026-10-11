@@ -349,6 +349,34 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.cartRows()[1].note).toBeUndefined();
   });
 
+  it.each([true, false])('scoped compound edit changes only the named chicken when both share arepa options (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    h.conv.sessionData.cart = [
+      {productId:1,code:1,name:'1 Pollo Frito',unitPrice:41000,quantity:2,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+      {productId:4,code:4,name:'1 Pollo Broaster',unitPrice:43000,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+    ];
+    await h.send('El pollo frito con arepas fritas y bastante ají');
+    expect(h.cartRows()[0]).toMatchObject({qty:2,attrs:['Arepas:Fritas'],note:expect.stringMatching(/bastante ají/i)});
+    expect(h.cartRows()[1]).toMatchObject({qty:1,attrs:['Arepas:Blancas']});
+    expect(h.cartRows()[1].note).toBeUndefined();
+  });
+
+  it.each([[true,'El pollo frito'],[false,'El pollo frito'],[true,'Frito'],[false,'Frito']] as const)('ambiguous compound edit leaves two possible dishes unchanged (agent enabled: %s, answer: %s)', async (enabled, answer) => {
+    const h = harness(products, enabled);
+    h.conv.sessionData.cart = [
+      {productId:1,code:1,name:'1 Pollo Frito',unitPrice:41000,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+      {productId:4,code:4,name:'1 Pollo Broaster',unitPrice:43000,quantity:1,attributes:[{attributeName:'Arepas',attributeValue:'Blancas'}]},
+    ];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Lo quiero con arepas fritas y bastante ají');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]l|qu[eé] (?:pollo|producto|plato)/i);
+    await h.send(answer);
+    expect(h.cartRows()[0]).toMatchObject({attrs:['Arepas:Fritas'],note:expect.stringMatching(/bastante ají/i)});
+    expect(h.cartRows()[1]).toEqual(before[1]);
+    expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {

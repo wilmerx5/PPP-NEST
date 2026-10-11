@@ -9369,6 +9369,12 @@ export class WhatsappCatalogService {
    * "Pierna pernil, mondongo y limonada" con un ejecutivo en el carrito:
    * solo nombra opciones de ese ítem → actualizar attrs, no agregar sopa/jugo.
    */
+  /** Require the dish name itself, not a cooking word borrowed from its side. */
+  isCartProductNamedInText(name: string, text: string): boolean {
+    const identity = normalizeText(name).replace(/^(?:\d+(?:\/\d+)?\s+)+/, '').trim();
+    return identity.length >= 4 && new RegExp(`\\b${escapeRegExp(identity)}\\b`).test(normalizeText(text));
+  }
+
   resolveCartAttributeOnlyUpdate(
     text: string,
     cart: {
@@ -9414,19 +9420,22 @@ export class WhatsappCatalogService {
         mentioned.push({ cartIndex: i, itemName: line.name, updates });
       }
     }
-    if (mentioned.length !== 1) return null;
-    const hit = mentioned[0];
+    const scoped = mentioned.filter(hit => this.isCartProductNamedInText(hit.itemName, text));
+    const candidates = scoped.length ? scoped : mentioned;
+    if (candidates.length !== 1) return null;
+    const hit = candidates[0];
 
     let leftover = q;
     const namedValues = [...hit.updates]
       .map((u) => normalizeText(u.attributeValue))
       .sort((a, b) => b.length - a.length);
     for (const value of namedValues) {
-      const product = products.find(p => p.id === cart[hit.cartIndex].productId);
-    for (const label of [product?.name, ...hit.updates.map(update => update.attributeName)]) {
-      if (label) leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(normalizeText(label))}\\b`, 'g'), ' ');
+      leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(value)}\\b`, 'g'), ' ');
     }
-    leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(value)}\\b`, 'g'), ' ');
+    const product = products.find(p => p.id === cart[hit.cartIndex].productId);
+    const nameWithoutCopies = product?.name.replace(/^(?:\d+(?:\/\d+)?\s+)+/, '');
+    for (const label of [product?.name, nameWithoutCopies, ...hit.updates.map(update => update.attributeName)]) {
+      if (label) leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(normalizeText(label))}\\b`, 'g'), ' ');
     }
     leftover = leftover
       .replace(

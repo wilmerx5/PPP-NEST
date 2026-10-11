@@ -1983,5 +1983,97 @@
         }
       }
     ]
+  },
+  {
+    "id": "ambiguous-attribute-note-target-then-short-choice",
+    "initialCart": [
+      {
+        "id": 1,
+        "quantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "Lo quiero con arepas fritas y bastante ají",
+        "expect": {
+          "items": {
+            "1": 2,
+            "4": 1
+          },
+          "replyAny": [
+            "cuál plato"
+          ],
+          "attrs": [
+            {
+              "id": 1,
+              "key": "Arepas",
+              "value": "Blancas"
+            },
+            {
+              "id": 4,
+              "key": "Arepas",
+              "value": "Blancas"
+            }
+          ]
+        }
+      },
+      {
+        "text": "Frito",
+        "expect": {
+          "items": {
+            "1": 2,
+            "4": 1
+          },
+          "lines": [
+            {
+              "id": 1,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Fritas"
+                }
+              ],
+              "note": [
+                "bastante ají"
+              ]
+            },
+            {
+              "id": 4,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Arepas",
+                  "value": "Blancas"
+                }
+              ],
+              "forbidNote": [
+                "ají"
+              ]
+            }
+          ],
+          "replyAll": [
+            "Fritas",
+            "bastante ají"
+          ]
+        }
+      }
+    ]
   }
 ]
