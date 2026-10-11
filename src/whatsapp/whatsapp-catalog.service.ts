@@ -819,12 +819,13 @@ export class WhatsappCatalogService {
   ): WhatsappCatalogProduct | null {
     if (!this.looksLikeExplicitAddProductRequest(text)) return null;
     const q = normalizeText(fixCommonOrderTypos(text || ''));
-    if (!/\b(porci[oó]n(?:es)?|yuca|papas?|arepas?)\b/.test(q)) return null;
+    if (!/\b(porci[oó]n(?:es)?|yuca|papas?|arepas?|maduro)\b/.test(q)) return null;
     const matchesQuery = (p: WhatsappCatalogProduct) => {
       const name = normalizeText(p.name);
       if (/\byuca\b/.test(q)) return /\byuca\b/.test(name);
       if (/\bpapas?\b/.test(q)) return /\bpapas?\b/.test(name);
       if (/\barepas?\b/.test(q)) return /\barepas?\b/.test(name);
+      if (/\bmaduro\b/.test(q)) return /\bmaduro\b/.test(name);
       return false;
     };
     const sides = products.filter(

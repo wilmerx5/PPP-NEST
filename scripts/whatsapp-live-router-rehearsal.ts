@@ -55,8 +55,8 @@ const settings = new WhatsappSettingsService({findOne:async()=>row} as never,new
 const catalog = new WhatsappCatalogService({getMenuProducts:async()=>products} as never);
 catalog.getMenuProducts = async () => structuredClone(products);
 const repeats = Number(process.env.WHATSAPP_BETA_REPEATS || 1);
-const selected = process.env.WHATSAPP_BETA_CASE_IDS?.split(',');
-const cases = selected ? scenarios.filter(c=>selected.includes(c.id)) : scenarios;
+const selected = (process.env.WHATSAPP_BETA_CASE_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+const cases = selected.length ? scenarios.filter(c=>selected.includes(c.id)) : scenarios;
 if (!cases.length || !Number.isInteger(repeats) || repeats<1 || repeats>3) throw Error('Nonempty cases and 1–3 repetitions required');
 const results:any[]=[];
 

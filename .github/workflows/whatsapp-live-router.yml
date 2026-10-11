@@ -16,6 +16,16 @@ on:
         required: true
         type: choice
         options: ['1', '2', '3']
+      caseIds:
+        description: Optional comma-separated case IDs. Empty runs the full fixture.
+        required: false
+        default: ''
+        type: string
+      maxRequests:
+        description: Hard cap on OpenAI chat completion calls
+        required: true
+        default: '40'
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -39,6 +49,8 @@ jobs:
           WHATSAPP_BETA_LIVE: '1'
           WHATSAPP_BETA_MODEL: ${{ github.event_name == 'push' && 'gpt-4.1-2025-04-14' || inputs.model }}
           WHATSAPP_BETA_REPEATS: ${{ github.event_name == 'push' && '1' || inputs.repetitions }}
+          WHATSAPP_BETA_MAX_REQUESTS: ${{ github.event_name == 'push' && '40' || inputs.maxRequests }}
+          WHATSAPP_BETA_CASE_IDS: ${{ github.event_name == 'workflow_dispatch' && inputs.caseIds || '' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

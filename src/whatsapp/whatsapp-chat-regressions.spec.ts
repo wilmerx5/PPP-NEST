@@ -1522,6 +1522,15 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
         }),
       ).toBeNull();
     });
+
+    it('medio broaster tras lista de enteros no cae en 1 Pollo Broaster', () => {
+      const text = 'Un medio pollo broaster';
+      expect(catalog.resolveSizedChickenProduct(text, pppMenu)?.name).toMatch(
+        /1\/2\s+pollo\s+broaster/i,
+      );
+      const wholeOnly = pppMenu.filter((p) => /^1\s+pollo\s+(frito|broaster)/i.test(p.name));
+      expect(catalog.pickFromCandidateList(text, wholeOnly)).toBeNull();
+    });
   });
 
   describe('Nota de unidad tras CUALQUIER dirección (patrón general)', () => {
@@ -3549,6 +3558,15 @@ Cll 6 b 78 c 33`;
       expect(catalog.productNameFitsUtterance(rice, text)).toBe(false);
       expect(catalog.resolveSpokenDish(text, menu)?.name).toMatch(/yuca/i);
       expect(catalog.resolveSpokenDish(text, menu)?.name).not.toMatch(/arroz/i);
+    });
+
+    it('y una porción de papa no es yuca ni arroz', () => {
+      const text = 'Y una porcion de papa';
+      expect(catalog.looksLikeExplicitAddProductRequest(text)).toBe(true);
+      const hit = catalog.findProductEmbeddedInMessage(text, menu);
+      expect(hit?.name).toMatch(/papa/i);
+      expect(hit?.name).not.toMatch(/yuca|arroz/i);
+      expect(catalog.resolveSpokenDish(text, menu)?.name).toMatch(/papa/i);
     });
 
     it('jugo de guanábana en leche no es barrio', () => {
