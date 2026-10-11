@@ -1,3 +1,4 @@
+import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable, Logger } from '@nestjs/common';
 import { interpretProductNote } from './whatsapp-product-intent';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -1403,7 +1404,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           return JSON.stringify({ok:false,error:'accompaniment_note_not_extra',
             hint:'Es una modificación del acompañamiento de un plato pedido, no una porción adicional. Conserva el plato y usa su note con la modificación; no repitas add_item de esta porción.'});
         }
-        const sizedRequested = this.catalogService.resolveSizedChickenProduct?.(ctx.userMessage || '', ctx.products);
+        const portionSource = supportsCookingTerm(product) ? parseCookingTerm(ctx.userMessage || '')?.productText || ctx.userMessage || '' : ctx.userMessage || '';
+        const sizedRequested = this.catalogService.resolveSizedChickenProduct?.(portionSource, ctx.products);
         if (sizedRequested && sizedRequested.id !== product.id && /^\d+(?:\/\d+)?\s/.test(product.name) &&
           !this.catalogService.looksLikeClearlyMultiDishOrder?.(ctx.userMessage || '') &&
           this.catalogService.productNameFitsUtterance(product,ctx.userMessage || '')) {
@@ -1436,7 +1438,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
         let note = args.note != null ? String(args.note).trim().slice(0, 200) :
           this.catalogService.extractProductModificationNote(source) || undefined;
-        const sourceNote = interpretProductNote(source, [product])?.note || this.catalogService.extractProductModificationNote(source);
+        const sourceNote = (supportsCookingTerm(product) ? parseCookingTerm(source)?.note : undefined) || interpretProductNote(source, [product])?.note || this.catalogService.extractProductModificationNote(source);
         if (!note && sourceNote) note = sourceNote;
         // Retain additional kitchen preferences even when the model supplied
         // only the first one. Scope them to this dish, never the entire order.

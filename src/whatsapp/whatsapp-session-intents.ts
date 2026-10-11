@@ -699,7 +699,8 @@ export function isCartChargeQuestion(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-  return /\b(cobrando|me cobran)\b/.test(t);
+  return /\b(cobrando|me cobran)\b/.test(t) ||
+    /^(?:[¿?\s]*)(?:y\s+)?(?:cuanto\s+(?:seria|es|vale|sale)|(?:me\s+)?(?:regalas?|confirmas?)\s+(?:porfa\s+)?(?:el\s+)?(?:total|valor\s+del\s+pedido))(?:\s+(?:en\s+total|todo|el\s+pedido))?(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.test(t);
 }
 
 /** "Y envias mucho aji, por favor" — nota, no pedido ni nombre. */

@@ -1,3 +1,4 @@
+import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { interpretProductNote } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
@@ -626,6 +627,53 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, 'Listo, no quito nada ✅ El pedido sigue igual.\n\n¿*Algo más*?');
       return;
     }
+    const cookingPreference = parseCookingTerm(originalText);
+    if (cookingPreference && session.cart.length &&
+      !/\b(?:\d+|un|una|dos|tres|cuatro|cinco|seis|otro|otra|otros|otras|agrega|añade)\b/i.test(cookingPreference.productText)) {
+      const remainder = this.normalizeForMatch(cookingPreference.productText)
+        .replace(/\b(?:lo|los|la|las|el|quiero|quieor|quero|por|favor|porfa|gracias|con|en|a)\b/g, ' ').trim();
+      const menu = await this.catalogService.getMenuProducts();
+      const candidates = session.cart.flatMap((line, index) => {
+        const product = menu.find(p => p.id === line.productId);
+        return product && supportsCookingTerm(product) && (!remainder ||
+          this.catalogService.isCartProductNamedInText(line.name, remainder)) ? [index] : [];
+      });
+      if (candidates.length > 1) {
+        await this.reply(conv, msg.waId, '¿A cuál plato le aplico ese término de cocción?');
+        return;
+      }
+      if (candidates.length === 1) {
+        const index = candidates[0];
+        const line = session.cart[index];
+        const notes = (line.note || '').split(';').map(note => {
+          const previousTerm = parseCookingTerm(note);
+          return (previousTerm ? previousTerm.productText : note)
+            .replace(/^[,.;:\s]+|[,.;:\s]+$/g,'').trim();
+        }).filter(Boolean);
+        notes.push(cookingPreference.note);
+        const note = notes.join('; ');
+        if (note.length > 200) {
+          await this.reply(conv, msg.waId, '¿Puedes resumir las notas de ese plato para añadir el término de cocción?');
+          return;
+        }
+        session = {...session,cart:session.cart.map((item,i) => i === index ? {...item,note} : item)};
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, msg.waId, `Listo ✅ *${line.name} ×${line.quantity}* · ${note}.`);
+        return;
+      }
+    }
+
+    // A neighborhood sent as a separate turn supplements the street in any active checkout step.
+    if (!['completed', 'closed', 'human_takeover'].includes(conv.state || '') &&
+      /^(?:en\s+el\s+|el\s+)?barrio\s+[\p{L}\s.-]+$/iu.test(originalText.trim()) && session.address) {
+      const next = this.withDeliveryAddress(session, originalText.trim());
+      if (next.address !== session.address || session.address.toLowerCase().includes(originalText.trim().toLowerCase())) {
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, msg.waId, `📍 Dirección actualizada ✅ ${next.address}`);
+        return;
+      }
+    }
+
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
     if (session.cart.length &&
@@ -1402,7 +1450,8 @@ export class WhatsappOrchestratorService {
             product,
             addQty,
             cfg,
-            undefined,
+            interpretProductNote(pa.sourceText || '', [product])?.note ||
+              (supportsCookingTerm(product) ? parseCookingTerm(pa.sourceText || '')?.note : undefined),
             step.attributes,
             attrOpts,
           );
@@ -3452,7 +3501,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = interpretProductNote(text, [embeddedProduct])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = (supportsCookingTerm(embeddedProduct) ? parseCookingTerm(text)?.note : undefined) || interpretProductNote(text, [embeddedProduct])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
       const embeddedAdd = this.tryAddProductToCart(
         session,
         embeddedProduct,
@@ -3656,7 +3705,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = interpretProductNote(text, [one])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = (supportsCookingTerm(one) ? parseCookingTerm(text)?.note : undefined) || interpretProductNote(text, [one])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
       const added = this.tryAddProductToCart(session, one, orderQty, cfg, lineNote, undefined, {
         sourceText: text,
       });
@@ -10223,6 +10272,14 @@ export class WhatsappOrchestratorService {
     if (!addr) return session;
     const prev = (session.address || '').trim();
 
+    // Neighborhood-only messages supplement an existing street, even before confirmation.
+    // Explicit replacement commands and complete new streets still use the replacement path.
+    const neighborhoodDetail = /^(?:en\s+el\s+|el\s+)?barrio\s+[\p{L}\s.-]+$/iu.test(addr);
+    if (prev && neighborhoodDetail && /\b(calle|carrera|cra|cll|diagonal|dg|avenida|transversal)\b/i.test(prev) && /\d/.test(prev)) {
+      if (prev.toLowerCase().includes(addr.toLowerCase())) return session;
+      return { ...session, address: `${prev}, ${addr}`.slice(0, 240), orderType: 'delivery', fulfillmentChosen: true };
+    }
+
     // Regla general: domicilio ya confirmado + nota de unidad/ref (apto, torre, portón…)
     // → anexar sin pisar ni borrar fee/coords. Solo se reemplaza si es otra dirección completa.
     if (prev && session.addressConfirmed && !this.looksLikeAddressReplacement(addr)) {
@@ -12861,7 +12918,9 @@ export class WhatsappOrchestratorService {
     const swap = this.catalogService.swapIntent(text);
     const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
     const lineNote =
-      carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) : undefined;
+      carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
+        interpretProductNote(text, [product])?.note ||
+        (supportsCookingTerm(product) ? parseCookingTerm(text)?.note : undefined);
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
       sourceText: text,

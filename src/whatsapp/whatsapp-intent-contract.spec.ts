@@ -41,6 +41,12 @@ describe('Catalog intent contracts without paid inference', () => {
     expect((ctx.actions as any).addItems[0].note).toMatch(/con /);
     expect((ctx.actions as any).addItems[0].productId).toBe(23);
   });
+  it.each(['3/4','tres cuartos','término medio'])('keeps cooking metadata even when the model add tool omits the note: %s', term => {
+    const ctx = context(`Quiero tres churrascos ${term}`);
+    agent.executeTool('add_item',{productId:17,quantity:3},ctx);
+    expect((ctx.actions as any).addItems[0]).toMatchObject({productId:17,quantity:3,note:expect.stringMatching(/término/)});
+  });
+
   it('does not keep a model-invented juice flavor when the customer omitted it', () => {
     const ctx = context('Dos jugos naturales en agua');
     const result = JSON.parse(agent.executeTool('add_item', {productId:50, quantity:2,

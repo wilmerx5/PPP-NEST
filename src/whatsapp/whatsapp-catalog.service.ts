@@ -1,3 +1,4 @@
+import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable } from '@nestjs/common';
 import { interpretProductNote } from './whatsapp-product-intent';
 import { ProductsService } from '../products/products.service';
@@ -1084,6 +1085,7 @@ export class WhatsappCatalogService {
    * Si hay ≥2, no se debe aplicar una sola cantidad global al mensaje entero.
    */
   countQuantityMentions(text: string): number {
+    if (supportsCookingTerm({name:text})) text = parseCookingTerm(text)?.productText || text;
     let q = normalizeText(text || '');
     if (!q) return 0;
     // No contar el "1 5" de "1,5 litros" / volumen de gaseosa como 2ª cantidad
@@ -1213,7 +1215,8 @@ export class WhatsappCatalogService {
 
   /** Extrae cantidad de UN segmento/ítem ("3 pollos", "2 limonadas"). Sin regla multi-ítem global. */
   extractQuantityFromSegment(text: string): number {
-    const raw = fixCommonOrderTypos((text || '').trim());
+    let raw = fixCommonOrderTypos((text || '').trim());
+    if (supportsCookingTerm({name:raw})) raw = parseCookingTerm(raw)?.productText || raw;
     if (!raw) return 1;
     // "3" / "12" sueltos = opción de lista / arepa / sabor — NO cantidad de pedido
     if (/^\d{1,2}$/.test(raw)) return 1;
@@ -1940,6 +1943,7 @@ export class WhatsappCatalogService {
    */
   uncoveredDishWords(query: string, products: WhatsappCatalogProduct[]): string[] {
     if (!products.length) return [];
+    if (supportsCookingTerm({name:query})) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, products)?.productText || query;
     const leftover: string[] = [];
     const unknown: string[] = [];
@@ -2050,6 +2054,7 @@ export class WhatsappCatalogService {
   }
 
   private stripOrderMetadata(query: string, product: WhatsappCatalogProduct): string {
+    if (supportsCookingTerm(product)) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, [product])?.productText || query;
     // Fulfillment and a matching serving/bottle size describe the order;
     // they are not unavailable ingredients ("sobrebarriga para llevar").

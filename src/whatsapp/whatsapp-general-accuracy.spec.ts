@@ -377,6 +377,65 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
   });
 
+  it.each(['3/4','tres cuartos','término medio','bien asado'])('keeps three steaks and their requested cooking term: %s', async term => {
+    const h = harness(products, false);
+    await h.send(`quiero tres churrascos ${term} por favor`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:3,note:expect.stringMatching(/término|asado/i)})]);
+    expect(h.replies.at(-1)).toMatch(/término|asado/i);
+  });
+
+  it.each([true,false])('updates cooking term from a typo follow-up without changing copies (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    h.conv.sessionData.cart = [{productId:17,code:17,name:'Churrasco',unitPrice:38000,quantity:3,note:'sin ensalada'}];
+    await h.send('los quieor 3/4');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:3,note:expect.stringMatching(/sin ensalada.*término tres cuartos/i)})]);
+    expect(h.replies.at(-1)).toMatch(/tres cuartos/i);
+  });
+
+  it('asks which meat without changing either line when cooking scope is ambiguous', async () => {
+    const menu = [
+      {id:903,code:903,name:'Filete Andino',categoryName:'Carnes',price:26000,hasAttributes:false,attributes:[],availableNow:true},
+      {id:904,code:904,name:'Lomo Serrano',categoryName:'Carnes',price:27000,hasAttributes:false,attributes:[],availableNow:true},
+    ];
+    const h = harness(menu, false);
+    h.conv.sessionData.cart = menu.map(p => ({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1}));
+    const before = structuredClone(h.cartRows());
+    await h.send('lo quiero 3/4');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/cuál plato/i);
+    await h.send('el Filete Andino lo quiero al punto');
+    expect(h.cartRows()[0].note).toBe('al punto');
+    expect(h.cartRows()[1]).toEqual(before[1]);
+  });
+
+  it('keeps cooking preferences in another restaurant catalog', async () => {
+    const menu = [{id:903,code:903,name:'Filete Andino',categoryName:'Carnes',price:26000,hasAttributes:false,attributes:[],availableNow:true}];
+    const h = harness(menu,false);
+    h.conv.sessionData.cart = [{productId:903,code:903,name:'Filete Andino',unitPrice:26000,quantity:2}];
+    await h.send('los quiero término medio');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:903,qty:2,note:'término medio'})]);
+    await h.send('los quiero 3/4');
+    expect(h.cartRows()[0].note).toBe('término tres cuartos');
+  });
+
+  it.each([true,false])('keeps a described dish while delivery details arrive in separate messages (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('por favor apra un domicilio');
+    const dishReply = await h.send('1-sobre barriga dorada delgada');
+    expect(dishReply).not.toMatch(/no (?:manejamos|tenemos)/i);
+    if (!h.cartRows().length) await h.send('Asada');
+    const product = products.find(p => p.name === 'Sobrebarriga');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:1,note:expect.stringMatching(/dorada.*delgada/i)})]);
+    await h.send('Para la calle 10 B Bis #80-20 casa 101');
+    await h.send('barrio Prueba');
+    await h.send('barrio Prueba');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.conv.sessionData.address).toMatch(/80-20/);
+    expect(h.conv.sessionData.address).toMatch(/101/);
+    expect(h.conv.sessionData.address?.match(/barrio Prueba/gi)).toHaveLength(1);
+    expect(h.conv.sessionData.orderType).toBe('delivery');
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {
@@ -449,5 +508,23 @@ describe('Offline conversation acceptance across products and interruptions', ()
     await h.send('¿Cuánto cuesta Bowl Andino?');
     expect(h.cartRows()).toHaveLength(1);
     expect(h.cartRows()[0].qty).toBe(1);
+  });
+});
+
+
+describe('Selected anonymized historical chat patterns — offline router', () => {
+  const corpus = JSON.parse(readFileSync(join(__dirname, '../../scripts/fixtures/whatsapp-real-chat-patterns.json'), 'utf8'));
+  it.each(corpus.cases.filter(c => c.automated))('$id', async scenario => {
+    const h = harness(products, false);
+    for (const message of scenario.messages) {
+      await h.send(message);
+      if (scenario.expect.emptyCart) expect(h.cartRows()).toEqual([]);
+    }
+    if (scenario.expect.items) {
+      expect(Object.fromEntries(h.cartRows().map(row => [String(row.id), row.qty]))).toEqual(scenario.expect.items);
+    }
+    expect(h.replies.at(-1)).toBeTruthy();
+    if (scenario.expect.replyPattern) expect(h.replies.at(-1)).toMatch(new RegExp(scenario.expect.replyPattern, 'i'));
+    expect(h.conv.state).not.toBe('completed');
   });
 });
