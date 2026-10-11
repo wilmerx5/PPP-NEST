@@ -6,10 +6,11 @@ Validar primero la operación de Pronto Pollo Portal. Este documento define una 
 
 ## Evidencia actual — 10 de octubre de 2026, hora de Bogotá
 
-La [PR #7](https://github.com/wilmerx5/PPP-NEST/pull/7) está abierta. El contenedor de staging (`dev.prontopolloportal.com`) corre `2e7036ff` y está healthy; la cabeza de la rama incluye solo el ejecutor de retest. No hace falta redesplegar por el runner.
+La [PR #7](https://github.com/wilmerx5/PPP-NEST/pull/7) está abierta. La cabeza vendible es `997b5a13` (`2026-10-10.cart-v8`). El health de staging sigue ok; el ensayo de catálogo por webhook exige ese `cart-v8` en el contenedor. El router real ya corre el código de la rama sin redeploy.
 
 - **Checkout de calle y paquetes — PASS:** domicilio, preparación durante pago, billete de 50 mil, paquete «tres hamburguesas clásicas» como una unidad, «Para la Calle 48 sur 87 86» cotizada sin leerse como cantidad, y «no lo quites» conserva el churrasco. Chat limpio al final, cero órdenes. Evidencia: [flujo tras el redeploy](https://github.com/wilmerx5/PPP-NEST/actions/runs/38076817324) y [misma batería previa](https://github.com/wilmerx5/PPP-NEST/actions/runs/38076296628).
-- **Modelo real — PASS:** router completo con `gpt-4.1-2025-04-14` sobre los casos de checkout/dirección/paquetes. Evidencia: [router](https://github.com/wilmerx5/PPP-NEST/actions/runs/38076296702).
+- **Modelo real — PASS (19/19):** `gpt-4.1-2025-04-14` sobre checkout/dirección/paquetes y el catálogo diverso (cuarto de pollo tras «quiero un pollo», pechuga → gratinada → porción de yuca #7, jugo en leche, ejecutivo, taco). Evidencia: [router 38081394915](https://github.com/wilmerx5/PPP-NEST/actions/runs/38081394915).
+- **Catálogo por webhook — PENDIENTE DE REDEPLOY `cart-v8`:** el último execute en el contenedor viejo cortó en `QUARTER_FRIED_NOT_SAVED` ([38080406994](https://github.com/wilmerx5/PPP-NEST/actions/runs/38080406994)). No reensayar hasta que `/staging/test-target` devuelva `2026-10-10.cart-v8`.
 - **Orden comercial aislada en este SHA — PASS:** domicilio, recojo, efectivo, webhook duplicado, takeover/release y una orden WhatsApp de ajiaco para recoger en efectivo; `printed=false`, sin FE ni preferencia de Mercado Pago; cancelación y chat limpios. Evidencia: [ciclo de orden](https://github.com/wilmerx5/PPP-NEST/actions/runs/38077049426).
 - **Horario y runtime — PASS:** negocio abierto `00:00–23:59` los siete días, health público con DB conectada y circuito cerrado.
 - **Protecciones — PASS:** eventos WebSocket hacia cocina/mesas bloqueados (`STAGING_ORDER_EVENTS_ALLOW` ausente). La cocina local sigue apuntando a producción, no a staging.
