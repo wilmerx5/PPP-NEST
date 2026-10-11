@@ -1252,6 +1252,93 @@ describe('Redemption and a registered order stay uninvented', () => {
     expect(h.conv.state).toBe('completed');
   });
 
+  it.each([
+    '¿Ya puedo redimir mis puntos?', 'Puedo redimir?', '¿Podría canjear mis puntos?',
+    '¿Me alcanza para canjear mis puntos?', '¿Es posible redimir?',
+    '¿Qué pasa si quiero redimir?', 'No quiero redimir todavía',
+    'Cuánto cuesta redimir?', 'Cuándo puedo redimir mis puntos?',
+  ])('consulta de canje no gasta puntos: %s', async text => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    const redeem = jest.fn(async () => ({ code: 'ABCD2345EFGH', expiresAt: null }));
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 9, redeemPointsForVoucher: redeem,
+    } as never);
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send(text);
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.conv.sessionData).toEqual(before);
+    expect(reply).toMatch(/9|puntos|redimir/i);
+    expect(reply).not.toMatch(/premio generado/i);
+  });
+
+  it.each(['redimir', 'Quiero redimir mis puntos', 'Quisiera canjear mis puntos',
+    'Por favor redimir', 'Sí, quiero redimir', 'Generar premio', 'Quiero generar un premio',
+    'Puedes redimir mis puntos por favor', 'Redime mis puntos'])('petición explícita genera un solo premio: %s', async text => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    let balance = 9;
+    const redeem = jest.fn(async () => {
+      balance -= 9; return { code: 'ABCD2345EFGH', expiresAt: null };
+    });
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => balance, redeemPointsForVoucher: redeem,
+    } as never);
+    const reply = await h.send(text);
+    expect(redeem).toHaveBeenCalledTimes(1);
+    expect(balance).toBe(0);
+    expect(reply).toMatch(/premio generado/i);
+    expect(h.cartRows()).toEqual([]);
+  });
+
+  it.each(['explicit', 'bare'])('registra factura %s sin anotarla como premio', async mode => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    const validate = jest.fn(async () => { throw new NotFoundException('Código de premio no encontrado'); });
+    const register = jest.fn(async () => undefined);
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 1, validateRedemptionCode: validate, registerPointByCode: register,
+    } as never);
+    const reply = await h.send(mode === 'explicit' ? 'Registrar ABCD2345EFGH' : 'ABCD2345EFGH');
+    expect(register).toHaveBeenCalledTimes(1);
+    expect(validate).toHaveBeenCalledTimes(mode === 'explicit' ? 0 : 1);
+    expect(reply).toMatch(/punto registrado/i);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+  });
+
+  it('reconoce un código de premio suelto con carrito vacío sin registrarlo como factura', async () => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    const register = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 0, registerPointByCode: register,
+      validateRedemptionCode: async () => ({ code: 'ABCD2345EFGH', userId: 'test-account', expiresAt: null }),
+    } as never);
+    const reply = await h.send('abcd2345efgh');
+    expect(register).not.toHaveBeenCalled();
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(h.conv.sessionData.cart).toEqual([]);
+    expect(reply).toMatch(/medio pollo/i);
+  });
+
+  it.each(['expired', 'used', 'owner'])('un código suelto %s no intenta registrarse como factura', async scenario => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    const register = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 0, registerPointByCode: register,
+      validateRedemptionCode: async () => {
+        if (scenario === 'expired') throw new BadRequestException('expired');
+        if (scenario === 'used') throw new ConflictException('already been used');
+        return { code: 'ABCD2345EFGH', userId: 'another-account' };
+      },
+    } as never);
+    const reply = await h.send('ABCD2345EFGH');
+    expect(register).not.toHaveBeenCalled();
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(reply).toMatch(/venci[oó]|usado|otra cuenta/i);
+  });
+
   it('consulta, genera el premio, lo aplica y conserva el medio adicional sin gastar dos veces', async () => {
     const h = harness(products, false);
     h.conv.sessionData.linkedUserId = 'test-account';
@@ -1341,5 +1428,45 @@ describe('Redemption and a registered order stay uninvented', () => {
     expect(reply).toMatch(/n[uú]mero de orden/i);
     expect(reply).not.toMatch(/35|en camino|ya qued[oó] registrado|ya sali[oó]/i);
     expect(h.conv.state).toBe('completed');
+  });
+});
+
+// Original Spanish scenarios for multi-intent/nested preference patterns.
+// No external dataset transcript is copied or translated here.
+describe('Pedidos compuestos en dos catálogos — patrones de evaluación pública', () => {
+  const andes = [
+    { id: 912, code: 912, name: 'Sopa De Lentejas', categoryName: 'Sopas', price: 8000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 914, code: 914, name: 'Bowl Andino', categoryName: 'Bowls', price: 18000, hasAttributes: true, attributes: [{ attributeName: 'Base', options: ['Quinoa', 'Arroz'] }], availableNow: true },
+    { id: 915, code: 915, name: 'Bowl Costeno', categoryName: 'Bowls', price: 19000, hasAttributes: true, attributes: [{ attributeName: 'Base', options: ['Quinoa', 'Arroz'] }], availableNow: true },
+  ];
+  it.each([
+    { menu: products, text: 'Dos pollos fritos con arepas fritas, sin ensalada y harto ají', id: 1, attr: 'Arepas:Fritas' },
+    { menu: andes, text: 'Dos Bowls Andinos con quinoa, sin ensalada y harto ají', id: 914, attr: 'Base:Quinoa' },
+  ])('cantidad, atributo y notas en $id', async ({ menu, text, id, attr }) => {
+    const h = harness(menu, false);
+    await h.send(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 2, attrs: expect.arrayContaining([attr]) })]);
+    expect(h.cartRows()[0].note).toMatch(/sin ensalada/i);
+    expect(h.cartRows()[0].note).toMatch(/(?:harto|arto).*aj[ií]/i);
+  });
+  it.each([
+    { menu: products, text: 'Un pollo frito con arepas fritas y un pollo broaster con arepas blancas', ids: [1, 4], attrs: ['Arepas:Fritas', 'Arepas:Blancas'] },
+    { menu: andes, text: 'Un Bowl Andino con quinoa y un Bowl Costeno con arroz', ids: [914, 915], attrs: ['Base:Quinoa', 'Base:Arroz'] },
+  ])('separa variantes entre líneas $ids', async ({ menu, text, ids, attrs }) => {
+    const h = harness(menu, false);
+    await h.send(text);
+    expect(h.cartRows()).toHaveLength(2);
+    ids.forEach((id, i) => expect(h.cartRows().find(row => row.id === id)).toEqual(expect.objectContaining({ qty: 1, attrs: expect.arrayContaining([attrs[i]]) })));
+  });
+  it.each([
+    { menu: products, text: 'Dos ajiacos y un churrasco sin ensalada', soup: 38, dish: 17 },
+    { menu: andes, text: 'Dos sopas de lentejas y un Bowl Andino sin ensalada', soup: 912, dish: 914 },
+  ])('no propaga la nota del plato a las sopas $soup', async ({ menu, text, soup, dish }) => {
+    const h = harness(menu, false);
+    await h.send(text);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows().find(row => row.id === soup)).toEqual(expect.objectContaining({ qty: 2 }));
+    expect(h.cartRows().find(row => row.id === soup)?.note || '').not.toMatch(/sin ensalada/i);
+    expect(h.cartRows().find(row => row.id === dish)?.note).toMatch(/sin ensalada/i);
   });
 });

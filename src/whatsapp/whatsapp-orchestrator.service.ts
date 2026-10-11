@@ -17617,11 +17617,9 @@ export class WhatsappOrchestratorService {
         }
       }
 
-      if (
-        this.pointsHandler.isPremioApplyIntent(text) ||
-        session.cart.length > 0 ||
-        /\bpremio\b/i.test(text)
-      ) {
+      // Bare codes can be vouchers even before the customer chooses a product.
+      // Explicit invoice registration was already handled above.
+      {
         const premio = await this.pointsHandler.validatePremioCode(code, linkedUserId);
         if (premio.ok) {
           session = {
@@ -17641,7 +17639,7 @@ export class WhatsappOrchestratorService {
           );
           return true;
         }
-        if (this.pointsHandler.isPremioApplyIntent(text)) {
+        if (this.pointsHandler.isPremioApplyIntent(text) || premio.reason !== 'unknown') {
           await this.reply(conv, waId, premio.message);
           return true;
         }
@@ -17670,15 +17668,7 @@ export class WhatsappOrchestratorService {
         return true;
       }
       const avail = available ?? 0;
-      // Pregunta de procedimiento (no “redimir” a secas) → explicar pasos
-      if (
-        !/^redimir[\s!.?]*$/i.test(text.trim()) &&
-        /\b(procedimiento|proceso|pasos?|c[oó]mo|para\s+redimir)\b/i.test(text)
-      ) {
-        await this.reply(conv, waId, this.pointsHandler.buildRedeemHelp(avail));
-        return true;
-      }
-      if (!/\bredimir\b/i.test(text) && avail < 9) {
+      if (!this.pointsHandler.isExplicitRedeemRequest(text)) {
         await this.reply(conv, waId, this.pointsHandler.buildRedeemHelp(avail));
         return true;
       }

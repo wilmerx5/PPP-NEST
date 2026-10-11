@@ -8,7 +8,17 @@ Crear un agente de pedidos fiable y vendible para PPP, reutilizable después en 
 
 Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para pruebas gratuitas, correcciones reversibles y despliegues rutinarios de staging. No enviar mensajes a clientes, Meta ni crear pedidos externos por accidente. El usuario autorizó usar su número y reiniciar sus pedidos de prueba, no datos de clientes reales. No inferir que staging está aislado de todas las integraciones: conservar los bloqueos existentes.
 
-## Tanda siguiente: consumo del premio y total de la orden
+## Tanda actual: consultas, códigos sueltos y pedidos compuestos
+
+Base `61fc7f50`, rama permanente `staging`. Plan operativo y procedencia/licencias: `docs/whatsapp-next-batches.md`. Hay ocho casos sintéticos reservados en `scripts/fixtures/whatsapp-reserved-patterns.json`; aún no se ejecutaron y no están conectados automáticamente al runner.
+
+Esta tanda agrega 30 regresiones: 24 de puntos/códigos y seis de pedidos compuestos en dos catálogos. Se reprodujeron 12 fallos iniciales de consultas/códigos y dos de pedidos con variante + «sin ensalada y harto ají». Las correcciones distinguen capacidad frente a petición explícita, validan vouchers sueltos antes de registrarlos como factura y separan la preferencia de cocina de la identidad del producto. No se cambiaron reglas comerciales de puntos ni persistencia. Verificación: 62/62 suites y 1.463/1.463 pruebas pasaron; TypeScript sin errores. Logs `/tmp/ppp-public-full.log`, `/tmp/ppp-public-final-tsc.log`, `/tmp/ppp-public-intents-expanded.log` y `/tmp/ppp-compound-fixed.log`. No se repitió DB porque esta tanda no cambia persistencia/transacciones.
+
+Cero llamadas pagadas en esta tanda: presupuesto compartido sigue en ocho usadas y doce restantes. Las fuentes públicas se usan para seleccionar patrones; no se importaron ni tradujeron conversaciones de licencia no comercial al producto. Las nuevas pruebas son independientes y sintéticas, con dependencias externas simuladas.
+
+Siguiente: cambios de preferencias con otra línea presente, referencias ambiguas después de consultas, turnos compuestos de dirección/pago, medios duplicados y errores parciales. Ejecutar casos reservados después, sin agregarlos al prompt; si fallan pasan a desarrollo y se repone el conjunto reservado. El verde unitario no acredita modelo real, visión real ni operación del local.
+
+## Histórico: consumo del premio y total de la orden
 
 Código publicado y desplegado: `a36a5a68`. Verificado el 2026-10-11: checkout `a36a5a6`, API running/healthy, health HTTP OK y DB connected. Imagen activa y candidate coinciden: `sha256:8fc82333a6038b4455133fc71aafb18dda5feb7bcc73c2a47c43edfdac0b05bf`. Una actualización posterior exclusiva de documentación no requiere reconstruir la API.
 
