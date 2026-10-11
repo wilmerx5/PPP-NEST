@@ -4,3 +4,5 @@ alwaysApply: true
 ---
 
 Lee y aplica `AGENTS.md` en la raíz del repositorio antes de trabajar. La rama de integración es `staging`. El presupuesto de inferencia se registra en `docs/whatsapp-model-budget.json`; no se reinicia entre agentes.
+
+Para continuar WhatsApp, leer también `docs/AGENT-HANDOFF-WHATSAPP.md` antes de ejecutar nuevas tandas o desplegar.

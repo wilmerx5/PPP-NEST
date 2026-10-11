@@ -1,5 +1,7 @@
 # Instrucciones para agentes de PPP
 
+Antes de continuar el agente de WhatsApp, leer `docs/AGENT-HANDOFF-WHATSAPP.md`: estado verificado, próximos casos, rutas, presupuesto compartido y despliegue. Revisar también el estado actual del repositorio; el relevo es una fotografía del trabajo al 2026-10-10.
+
 ## Rama y colaboración
 - La rama permanente de integración y pruebas es `staging` en `wilmerx5/PPP-NEST`; no usar las ramas históricas como fuente de deploy.
 - Antes de editar: leer estas instrucciones, revisar `git status`, traer `origin/staging` y comparar el HEAD. Preservar cambios ajenos y archivos privados.
