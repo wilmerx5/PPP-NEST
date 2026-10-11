@@ -5,13 +5,18 @@ describe('Audio transcription format and failures — offline',()=>{
   const make=()=>new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'mock-key'})} as never);
   afterEach(()=>{global.fetch=originalFetch;jest.restoreAllMocks();});
   it.each([
-    ['audio/ogg; codecs=opus','ogg'],['audio/mpeg','mp3'],['audio/mp4','m4a'],['audio/flac','flac'],['audio/webm','webm'],
+    ['audio/ogg; codecs=opus','ogg'],['audio/mpeg','mp3'],['audio/mp4','m4a'],['audio/flac','flac'],['audio/webm','webm'],['audio/wav','wav'],['audio/x-m4a','m4a'],['audio/mpga','mpga'],
   ])('keeps format and exact Spanish transcript for %s',async(mime,ext)=>{
     const transcript='Me hace el favor, dos bowls con harto ají, sin cebolla. Para la calle 7 #20-30.';
     const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({text:transcript})});global.fetch=fetchMock;
     expect(await make().transcribeAudio(Buffer.from('mock-audio'),mime)).toBe(transcript);
     const form=fetchMock.mock.calls[0][1].body as FormData;expect((form.get('file') as File).name).toBe(`audio.${ext}`);
     expect(form.get('language')).toBe('es');expect(form.get('model')).toBe('whisper-1');
+  });
+  it.each([null,{}, {text:null},{text:42}])('invalid provider payload never invents a transcript: %j',async payload=>{
+    const service=make();jest.spyOn((service as any).logger,'error').mockImplementation(()=>undefined);
+    global.fetch=jest.fn().mockResolvedValue({ok:true,json:async()=>payload});
+    expect(await service.transcribeAudio(Buffer.from('mock-audio'),'audio/ogg')).toBeNull();
   });
   it('empty audio avoids paid request',async()=>{
     const fetchMock=jest.fn();global.fetch=fetchMock;

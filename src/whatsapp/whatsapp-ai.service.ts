@@ -414,6 +414,7 @@ ${input.menuSummary.slice(0, 6000)}`;
 
   private audioExtension(mimeType: string): string {
     const m = (mimeType || '').toLowerCase();
+    if (m.includes('mpga')) return 'mpga';
     if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
     if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
     if (m.includes('flac')) return 'flac';
