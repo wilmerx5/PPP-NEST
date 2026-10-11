@@ -1876,3 +1876,134 @@ describe('Horario con una respuesta copiada no vuelve a comprar su contenido', (
     }
   });
 });
+
+describe('Tanda portable — fechas, horas y correcciones sin tocar el pedido', () => {
+  const bowl = {id:981,code:981,name:'Bowl Mediterraneo',categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]};
+  const menus = [{menu:products,order:'Tres churrascos',tag:'PPP'},{menu:[bowl],order:'Tres bowls mediterraneos',tag:'alternativo'}];
+  const times = [
+    {text:'Para mañana a las 12:30',tokens:/mañana.*12:30/i},
+    {text:'Para el viernes a las 7 pm',tokens:/viernes.*(?:7 pm|19:00)/i},
+    {text:'Los quiero para el domingo a las 13:15',tokens:/domingo.*13:15/i},
+    {text:'Para el 15/10 a las 14:00',tokens:/15\/10.*14:00/i},
+    {text:'Para el 3/4 a las 14:00',tokens:/3\/4.*14:00/i},
+  ];
+  it('cambiar solo la hora conserva la fecha solicitada y las notas de entrega', async () => {
+    const h = harness([bowl],false);
+    await h.send('Tres bowls mediterraneos');
+    h.conv.sessionData.customerNotes = 'No tocar el timbre';
+    await h.send('Para el viernes a las 7 pm');
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send('Mejor a las 2 pm');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.customerNotes).toMatch(/Fecha solicitada: viernes/);
+    expect(h.conv.sessionData.customerNotes).toMatch(/Horario solicitado: 2 pm/);
+    expect(h.conv.sessionData.customerNotes).not.toMatch(/7 pm/);
+    expect(h.conv.sessionData.customerNotes).toMatch(/No tocar el timbre/);
+  });
+  it('cambiar solo la fecha conserva el horario elegido y elimina la fecha vieja', async () => {
+    const h = harness([bowl],false);
+    await h.send('Tres bowls mediterraneos');
+    await h.send('Para el miércoles al mediodía');
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send('Mejor para el viernes');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.customerNotes).toMatch(/Fecha solicitada: viernes/);
+    expect(h.conv.sessionData.customerNotes).toMatch(/Horario solicitado: medio día/);
+    expect(h.conv.sessionData.customerNotes).not.toMatch(/miércoles/);
+  });
+  it('no corta silenciosamente notas existentes para guardar una fecha', async () => {
+    const h = harness([bowl],false);
+    await h.send('Tres bowls mediterraneos');
+    h.conv.sessionData.customerNotes = 'a'.repeat(399);
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send('Para el viernes a las 2 pm');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(reply).toMatch(/resumir/);
+  });
+  for (const {menu,order,tag} of menus) {
+    it.each(times)(`${tag}: registra $text como solicitud, conserva dirección y pago`, async ({text,tokens}) => {
+      const h = harness(menu,false);
+      await h.send(order);
+      expect(h.cartRows().reduce((sum,row) => sum + row.qty,0)).toBe(3);
+      h.conv.sessionData = {...h.conv.sessionData,address:'Calle 48 sur 86 87',paymentMethod:'transferencia',customerNotes:'No tocar el timbre'};
+      const before = structuredClone(h.conv.sessionData);
+      const reply = await h.send(text);
+      expect(h.cartRows().reduce((sum,row) => sum + row.qty,0)).toBe(3);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);
+      expect(h.conv.sessionData.address).toEqual(before.address);
+      expect(h.conv.sessionData.paymentMethod).toEqual(before.paymentMethod);
+      expect(h.conv.sessionData.customerNotes).toMatch(tokens);
+      expect(h.conv.sessionData.customerNotes).toMatch(/No tocar el timbre/);
+      expect(reply).toMatch(/confirm.*local|no está reservad/i);
+    });
+    it(`${tag}: corregir fecha y hora reemplaza la solicitud anterior, conserva otras notas`, async () => {
+      const h = harness(menu,false);
+      await h.send(order);
+      h.conv.sessionData.customerNotes = 'No tocar el timbre';
+      await h.send('Para el miércoles al mediodía');
+      const before = structuredClone(h.conv.sessionData.cart);
+      const reply = await h.send('Mejor para el viernes a las 2 pm');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.customerNotes).toMatch(/viernes.*(?:2 pm|14:00)/i);
+      expect(h.conv.sessionData.customerNotes).not.toMatch(/miércoles|mediodía/i);
+      expect(h.conv.sessionData.customerNotes).toMatch(/No tocar el timbre/);
+      expect(reply).toMatch(/confirm.*local|no está reservad/i);
+    });
+    it.each(['A las 7','A las 25:90','Para el 31/02 a las 14:00'])(`${tag}: pregunta sin registrar horario ambiguo o inválido %s`, async text => {
+      const h = harness(menu,false);
+      await h.send(order);
+      const before = structuredClone(h.conv.sessionData);
+      const reply = await h.send(text);
+      expect(h.conv.sessionData).toEqual(before);
+      expect(reply).toMatch(/hora|fecha|mañana|tarde/i);
+      expect(reply).not.toMatch(/Listo.*(?:pedido|agregué)|No manejamos/i);
+    });
+  }
+});
+
+describe('Tanda portable — reparto con opciones desconocidas y atributos múltiples', () => {
+  const bowl = {id:982,code:982,name:'Bowl Mediterraneo',categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']},{attributeName:'Proteina',options:['Pollo','Tofu']}]};
+  it('reparte un atributo conservando proteína y nota en todas las unidades', async () => {
+    const h = harness([bowl],false);
+    await h.send('Diez bowls mediterraneos con arroz y tofu sin cebolla');
+    expect(h.cartRows().reduce((sum,row) => sum + row.qty,0)).toBe(10);
+    const reply = await h.send('Los quiero 5 con arroz y 5 con quinoa');
+    expect(h.cartRows()).toHaveLength(2);
+    for (const row of h.cartRows()) {
+      expect(row).toMatchObject({id:982,qty:5});
+      expect(row.attrs).toContain('Proteina:Tofu');
+      expect(row.note).toMatch(/sin cebolla/i);
+    }
+    expect(h.cartRows().map(row => row.attrs)).toEqual(expect.arrayContaining([
+      expect.arrayContaining(['Base:Arroz']),expect.arrayContaining(['Base:Quinoa']),
+    ]));
+    expect(reply).toMatch(/5/);
+  });
+  it.each([
+    {menu:products,order:'Quiero solo diez arroces chinos con medio pollo',split:'Los quiero 5 con pollo frito y 5 con pollo ahumado'},
+    {menu:[bowl],order:'Diez bowls mediterraneos con arroz y tofu',split:'Los quiero 5 con arroz y 5 con cuscús'},
+  ])('una opción fuera del catálogo no modifica parcialmente el pedido: $split', async ({menu,order,split}) => {
+    const h = harness(menu,false);
+    await h.send(order);
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send(split);
+    expect(h.conv.sessionData.cart).toEqual(before.cart);
+    expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+    expect(reply).toMatch(/opci[oó]n|preparaci[oó]n|aclar|catálogo|carta/i);
+  });
+});
+
+describe('Tanda portable — el rendimiento conserva negaciones y límites', () => {
+  it.each([
+    {description:'No alcanza para 3 personas. Porción individual.',positive:false},
+    {description:'No recomendamos esta porción para 4 personas.',positive:false},
+    {description:'Rinde para 2 a 3 personas.',positive:true},
+  ])('no convierte la descripción en otra promesa: $description', async ({description,positive}) => {
+    const menu = [{id:983,code:983,name:'Bowl Mediterraneo',categoryName:'Bowls',price:18000,description,availableNow:true,hasAttributes:false,attributes:[]}];
+    const h = harness(menu,false);
+    const reply = await h.send('Para cuántas personas alcanza el Bowl Mediterraneo?');
+    expect(h.cartRows()).toEqual([]);
+    if (positive) expect(reply).toMatch(/2 a 3 personas/);
+    else expect(reply).toMatch(/no.*(?:alcanza|recomend|confirmado)|confirm.*local/i);
+  });
+});

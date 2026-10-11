@@ -1,3 +1,4 @@
+import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
@@ -587,7 +588,7 @@ export class WhatsappOrchestratorService {
     if (text.includes('\n')) {
       const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       const answer = lines.at(-1) || '';
-      const isTimeAnswer = /^(?:(?:los|las|lo|la)\s+quiero|ser[ií]a|es)?\s*(?:para\s+)?(?:(?:el|al)\s+)?(?:medio\s*d[ií]a|(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+al\s+medio\s*d[ií]a)[.!]*$/i.test(answer);
+      const isTimeAnswer = !!parseScheduleRequest(answer);
       if (lines.length > 1 && isTimeAnswer) {
         const quote = lines.slice(0,-1).join(' ');
         const normalizeQuote = (value: string) => this.normalizeForMatch(value.replace(/[*_]/g, '')).replace(/\s+/g,' ').trim();
@@ -730,7 +731,7 @@ export class WhatsappOrchestratorService {
         session = this.rememberProductFocus(session, product, menu);
         await this.conversationService.saveSession(conv, session);
       }
-      const yieldFact = product?.description?.match(/\b(?:rinde|alcanza|porci[oó]n(?:es)?\s+para|para)\s+(?:para\s+)?\d+(?:\s*(?:a|-)\s*\d+)?\s+personas\b/i)?.[0];
+      const yieldFact = product?.description?.split(/(?<=[.!?])\s+/).find(sentence => /\b(?:rinde|alcanza|porci[oó]n(?:es)?\s+para|para)\s+(?:para\s+)?\d+(?:\s*(?:a|-)\s*\d+)?\s+personas\b/i.test(sentence))?.trim();
       await this.reply(conv, msg.waId, yieldFact
         ? `La carta de ${product!.name} indica: ${yieldFact}. El pedido sigue igual.`
         : 'No tengo un rendimiento por personas confirmado en la carta para ese plato. Debes confirmarlo con el local antes de calcular cuántas porciones pedir. El pedido sigue igual.');
@@ -769,13 +770,26 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, '¿Qué opción quieres para ese plato? El pedido sigue igual.');
       return;
     }
-    // Standalone time answers must not enter the catalog as "medio pollo".
-    if (!/[?¿]/.test(originalText) &&
-      /^(?:(?:los|las|lo|la)\s+quiero|ser[ií]a|es)?\s*(?:para\s+)?(?:(?:el|al)\s+)?(?:medio\s*d[ií]a|(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+al\s+medio\s*d[ií]a)[.!]*$/i.test(originalText.trim())) {
-      const next = this.appendCustomerNote(session, `Horario solicitado: ${originalText.trim()}`);
-      await this.conversationService.saveSession(conv, next);
-      await this.reply(conv, msg.waId, 'Anoté el horario solicitado. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
+    // Whole scheduling turns are metadata, including invalid/ambiguous times that need clarification.
+    const schedule = parseScheduleRequest(originalText);
+    if (schedule) {
+      if (schedule.clarification) {
+        await this.reply(conv, msg.waId, schedule.clarification);
+        return;
+      }
+      const customerNotes = upsertScheduleNotes(session.customerNotes, schedule);
+      if (customerNotes.length > 400) {
+        await this.reply(conv, msg.waId, 'Las notas son demasiado largas para guardar el horario completo. ¿Puedes resumirlas? El pedido sigue igual.');
+        return;
+      }
+      await this.conversationService.saveSession(conv, {...session,customerNotes});
+      await this.reply(conv, msg.waId, 'Anoté la fecha y el horario solicitados. La disponibilidad para una entrega programada debe confirmarla el local; todavía no está reservada.');
       return;
+    }
+    if (/^(?:los|las)\s+quiero\s+/i.test(originalText.trim())) {
+      const distributionMenu = await this.catalogService.getMenuProducts();
+      const available = cfg.ignoreBusinessHours ? distributionMenu.map(product => ({...product,availableNow:true})) : distributionMenu;
+      if (await this.tryHandleAttributeDistribution(conv, msg.waId, session, originalText, available, cfg)) return;
     }
     if (this.looksLikeUnvalidatedRedemptionSplit(originalText) && !session.pendingRedemptionCode) {
       await this.reply(
@@ -1041,7 +1055,6 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (await this.tryHandleAttributeDistribution(conv, msg.waId, session, originalText, products, cfg)) return;
 
     // A nearby delivery reference is separate from the ordered catalog product.
     const nearbyRequest = originalText.match(/^(.+?)\s+((?:aqu[ií]|por aqu[ií])\s+(?:para|a)\s+la\s+vuelta)(?:\s+por favor)?[.!]*$/i);
@@ -12514,6 +12527,7 @@ export class WhatsappOrchestratorService {
     for (const cand of candidates) {
       const addr = this.normalizeDeliveryAddress(cand);
       if (!addr || addr.length < 3) continue;
+      if (parseScheduleRequest(addr)) continue;
       if (this.isPickupOnlyDeliveryClause(addr)) continue;
       if (isDeliveryLogisticsFluff(addr)) continue;
       // A requested date or diner count is not a delivery address.
@@ -14749,10 +14763,13 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (session.pendingMultiOrder || session.pendingMatch) return false;
     if (/[?¿]/.test(text) || !/^(?:los|las)\s+quiero\s+/i.test(text.trim())) return false;
     const parts = text.trim().replace(/^(?:los|las)\s+quiero\s+/i, '').split(/\s+y\s+|[,;]/i).map(part => part.trim());
     if (parts.length < 2 || parts.length > 6 || parts.some(part => !/^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(part))) return false;
+    if (session.pendingMultiOrder || session.pendingMatch) {
+      await this.reply(conv, waId, '¿Cuál presentación quieres repartir? Primero debemos aclarar el producto; el pedido sigue igual.');
+      return true;
+    }
     const quantities = parts.map(part => this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i,' platos')));
     const pending = session.pendingAttribute;
     const distributionLines = pending ? [{productId:pending.productId,name:pending.name,
@@ -14761,11 +14778,17 @@ export class WhatsappOrchestratorService {
     const candidates = distributionLines.flatMap((line,index) => {
       const product = products.find(product => product.id === line.productId);
       if (!product?.attributes?.length) return [];
-      const choices = parts.map(part => this.catalogService.extractExplicitAttributeChoice(part, product));
+      const choices = parts.map(part => {
+        const parsed = this.catalogService.resolveAttributesFromMessage(product, part, []);
+        return parsed.status === 'invalid' ? undefined : parsed.attributes;
+      });
       if (choices.some(choice => choice?.length !== 1) || new Set(choices.map(choice => choice?.[0].attributeName)).size !== 1) return [];
       return [{line,index,product,choices}];
     });
-    if (!candidates.length) return false;
+    if (!candidates.length) {
+      await this.reply(conv, waId, 'No pude identificar todas las opciones de preparación en la carta para un mismo plato. ¿Qué producto y opciones quieres repartir? El pedido sigue igual.');
+      return true;
+    }
     if (candidates.length !== 1) {
       await this.reply(conv, waId, '¿Cuál plato quieres repartir entre esas opciones? El carrito sigue igual.');
       return true;

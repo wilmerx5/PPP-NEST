@@ -2,6 +2,21 @@
 
 Fecha: 2026-10-11. Rama permanente: staging. Usar AGENTS.md y el relevo. Este plan describe pruebas, no acredita que el producto sea vendible.
 
+## Tanda portable: horarios, repartos y condiciones del catálogo
+
+Base `1e694852`, rama `staging`. Se añaden 27 casos gratuitos con el router real y dependencias externas simuladas, sobre PPP y un catálogo alternativo:
+- Fechas relativas, días distintos y DD/MM; horas de 24 horas y am/pm. Cambiar solo fecha conserva hora y viceversa. Conserva carrito, dirección, pago y notas ajenas. Horas ambiguas/ inválidas, fechas imposibles y notas demasiado largas requieren aclaración sin modificar la sesión.
+- Reparto por un atributo de un producto con varios atributos: conserva la otra opción y notas en ambas líneas. Opción desconocida no aplica parcialmente el reparto ni cae en una compra distinta. Cambiar varios atributos simultáneamente en cada parte todavía requiere aclaración.
+- Rendimiento: comunica la frase completa de la descripción, conservando negaciones y rangos; no extrae «alcanza para tres» de «no alcanza para tres».
+
+Reproducción inicial: 21 de 22 casos fallaban (`/tmp/ppp-portable-baseline.log`). Tras corregir y añadir tres controles de conservación/límite de notas, pasan 46 controles focalizados, incluidos los 25 nuevos (`/tmp/ppp-portable-targets.log`). TypeScript sin errores (`/tmp/ppp-portable-tsc.log`). Primer run completo: 61 suites verdes, una fallida; 1.540 aprobadas y cuatro regresiones de cocción: «3/4» se confundía con fecha (`/tmp/ppp-portable-full.log`). Se distingue la fracción de cocción de una fecha con señal explícita y se añaden dos controles de fecha 3/4. TypeScript final aprobado (`/tmp/ppp-portable-tsc-final.log`). Repetición completa aprobada: 62 suites y 1.546 pruebas en un único run (`/tmp/ppp-portable-full-final.log`). Despliegue pendiente de verificación. Cero llamadas pagadas; presupuesto compartido sigue 8/20 usadas, 12 restantes.
+
+Límites pendientes: solicitudes de horario son notas, no reservas. No se resuelven fechas relativas a calendario/zona horaria ni se valida operación futura del local. Compra referida con fecha/hora compuesta, fechas escritas con nombre de mes, citas antiguas y otras intenciones nativas requieren más casos. No acreditar todo el lenguaje ni pedidos programados operativos.
+
+## Reutilización futura en Kamppo
+
+Reutilizar contratos de comportamiento y componentes generales; adaptar catálogo, sesión y transporte a Kamppo. Ejecutar los mismos comportamientos con fixtures por tenant, conservando las regresiones concretas de PPP. No copiar IDs, nombres o precios de PPP como reglas de producción. Añadir una suite específica de aislamiento entre tenants para catálogo, carrito, políticas, mensajes y referencias. Puntos, pagos, horarios y condiciones comerciales deben provenir de configuración del negocio; las reglas históricas de puntos siguen pendientes de parametrización. No se ha migrado ni inspeccionado Kamppo en esta tanda.
+
 ## Tanda de pedido grande, fecha y abono — 11 de octubre
 
 Once casos originales adicionales, dos catálogos, dependencias externas simuladas. Consultar rendimiento no compra ni inventa cuántas personas comen; solamente usa datos numéricos escritos en descripción. Abono/anticipo se coordina con el local y no modifica pago/cart. Compra explícita referida de diez cajas conserva un único producto previo; si hay carrito u otro pendiente pide aclaración. Fechas y comensales no son direcciones. Recorrido con arroz, miércoles, abono, mediodía nativo y reparto 5/5 aprobado en la revisión focalizada. Copia de respuesta más horario solo se separa con fuente Bot reciente verificable; fuente no encontrada pide aclaración sin comprar su contenido.
