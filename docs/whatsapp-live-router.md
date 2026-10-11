@@ -1,6 +1,6 @@
 # Conversaciones con el modelo real y el router completo
 
-`yarn beta:whatsapp:router` ejecuta los mensajes secuenciales de `scripts/fixtures/whatsapp-live-router-cases.json` contra `WhatsappOrchestratorService`, `WhatsappAgentService`, `WhatsappAiService` y el catálogo reales. Requiere `WHATSAPP_BETA_LIVE=1`, `OPENAI_API_KEY` y `WHATSAPP_BETA_MODEL` igual al snapshot desplegado. `WHATSAPP_BETA_REPEATS` admite 1–3; `WHATSAPP_BETA_CASE_IDS` permite investigar casos concretos.
+`yarn beta:whatsapp:router` ejecuta los mensajes secuenciales de `scripts/fixtures/whatsapp-live-router-cases.json` contra `WhatsappOrchestratorService`, `WhatsappAgentService`, `WhatsappAiService` y el catálogo reales. Requiere un límite positivo explícito `WHATSAPP_BETA_MAX_REQUESTS`, `WHATSAPP_BETA_LIVE=1`, `OPENAI_API_KEY` y `WHATSAPP_BETA_MODEL` igual al snapshot desplegado. `WHATSAPP_BETA_REPEATS` admite 1–3; `WHATSAPP_BETA_CASE_IDS` permite investigar casos concretos.
 
 La persistencia, clientes, pedidos, domicilio y transportes son sintéticos. Solo se permiten solicitudes a la inferencia de OpenAI: no se envían mensajes de WhatsApp, pagos ni pedidos a cocina. El reporte conserva cada turno, carrito, atributos, estado, pedidos simulados y consumo reportado, sin credenciales, en `tmp/whatsapp-live-router-report.json`. Un error del agente, ausencia de respuesta, diferencia de cantidad/estado/atributos o ejecución incompleta rechaza la ronda. El workflow manual `WhatsApp Real Model Router` conserva el reporte y no genera consumo en cada push.
 
@@ -49,3 +49,9 @@ El runner acepta una carta y conversaciones distintas mediante `WHATSAPP_BETA_ME
 La carta sintética Mesa Verde usa cinco productos, IDs, precios y opciones ajenos a PPP. Sus siete casos incluyen pedido, composición sin compra, cotización con aceptación, paquete nombrado, atributo y alternativa condicional disponible/agotada. Pasaron 7/7 con 17 inferencias exitosas, sin errores HTTP ni del agente. Esto acredita comportamiento ante otra carta, no aislamiento de datos, credenciales o sesiones entre tenants de Kamppo.
 
 La revalidación integrada aprobó **58/58 conversaciones PPP**, 131 inferencias exitosas, sin errores HTTP ni del agente; la carta alternativa aprobó **7/7** adicionales. Pasaron **1.187 unitarias en 57 suites** y TypeScript. Estos resultados usan inferencia real y transportes/persistencia simulados; no acreditan nuevos eventos de cocina ni pagos.
+
+## Contratos gratuitos de interpretación (2026-10-10)
+
+`whatsapp-intent-contract.spec.ts` verifica las herramientas y el catálogo reales sin inferencia: consultas abreviadas de categorías, preferencias de cocina, separación de composiciones desconocidas y consultas que no deben comprar. Incluye un catálogo sintético de otro restaurante. Estos contratos no sustituyen una validación completa del router con el modelo desplegado.
+
+El límite de solicitudes del simulador es obligatorio y se comprueba antes de llamar al proveedor. Incluye las solicitudes fallidas; al agotarse, se marca la ejecución incompleta y se detiene. Es un límite de llamadas, no un presupuesto monetario. No lanzar baterías completas sin acordar el límite de la ronda.

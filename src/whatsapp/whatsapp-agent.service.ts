@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { interpretProductNote } from './whatsapp-product-intent';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import {
   WhatsappCatalogService,
@@ -860,6 +861,18 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const query = String(args.query || '').trim();
         if (!query) return JSON.stringify({ ok: false, error: 'query vacío' });
 
+        // Abbreviated tool queries retain the customer's category inquiry.
+        if (this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '')) {
+          const sourceHit = this.catalogService.findCategoryBrowseHit(ctx.userMessage || '', ctx.products, ctx.menuConceptGroups);
+          const queryHit = this.catalogService.findCategoryBrowseHit(`qué ${query} hay`, ctx.products, ctx.menuConceptGroups);
+          if (sourceHit && queryHit && !queryHit.askedButMissing &&
+            queryHit.products.some(product=>sourceHit.products.some(source=>source.id===product.id))) {
+            return JSON.stringify({ok:true,query,mode:'category_browse',category:queryHit.categoryName,
+              missing:null,results:queryHit.products.map(product=>this.productCard(product)),
+              hint:'Consulta del catálogo: estos productos sí están en la carta. Responde sus nombres, precios y opciones. NO add_item.'});
+          }
+        }
+
         const swapSource = ctx.userMessage || query;
         const swap = this.catalogService.swapIntent(swapSource);
         const queryNorm = query
@@ -1423,7 +1436,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
         let note = args.note != null ? String(args.note).trim().slice(0, 200) :
           this.catalogService.extractProductModificationNote(source) || undefined;
-        const sourceNote = this.catalogService.extractProductModificationNote(source);
+        const sourceNote = interpretProductNote(source, [product])?.note || this.catalogService.extractProductModificationNote(source);
+        if (!note && sourceNote) note = sourceNote;
         // Retain additional kitchen preferences even when the model supplied
         // only the first one. Scope them to this dish, never the entire order.
         if (sourceNote && note) {

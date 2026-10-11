@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { interpretProductNote } from './whatsapp-product-intent';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
@@ -1929,6 +1930,7 @@ export class WhatsappCatalogService {
    */
   uncoveredDishWords(query: string, products: WhatsappCatalogProduct[]): string[] {
     if (!products.length) return [];
+    query = interpretProductNote(query, products)?.productText || query;
     const leftover: string[] = [];
     const unknown: string[] = [];
     let anchored = false;
@@ -2038,6 +2040,7 @@ export class WhatsappCatalogService {
   }
 
   private stripOrderMetadata(query: string, product: WhatsappCatalogProduct): string {
+    query = interpretProductNote(query, [product])?.productText || query;
     // Fulfillment and a matching serving/bottle size describe the order;
     // they are not unavailable ingredients ("sobrebarriga para llevar").
     let dishQuery = query.replace(/\bpara\s+llevar\b|\b(?:paso|voy)\s+a\s+recoger\b/gi, ' ');

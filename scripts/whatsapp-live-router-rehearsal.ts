@@ -19,6 +19,9 @@ import { matchesExpectedCartLines, type ExpectedCartLine } from './whatsapp-beta
 type Expectation = { replyAny?: string[]; replyAll?: string[]; replyForbid?: string[]; lines?: ExpectedCartLine[]; items?: Record<string, number>; state?: string; address?: string; payment?: string; orderCount?: number; cashContains?: string; attrs?: Array<{id:number;key:string;value:string}> };
 type Scenario = { id: string; unavailableProductIds?: number[]; initialCart?: Array<{id:number;quantity:number;note?:string;attributes?:Array<{attributeName:string;attributeValue:string}>}>; messages: Array<{text:string;expect:Expectation}> };
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
+const maxRequests = Number(process.env.WHATSAPP_BETA_MAX_REQUESTS);
+if (!Number.isSafeInteger(maxRequests) || maxRequests < 1) throw Error('An explicit positive WHATSAPP_BETA_MAX_REQUESTS budget is required before paid inference');
+let budgetExhausted = false;
 Logger.overrideLogger(false);
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
 const usage = new BetaApiUsage();
@@ -29,6 +32,10 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   if (args[0] !== 'https://api.openai.com/v1/chat/completions') throw Error('Only isolated OpenAI inference is permitted');
   const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
   if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+  if (usage.requests >= maxRequests) {
+    budgetExhausted = true;
+    throw Error('REHEARSAL_REQUEST_BUDGET_EXHAUSTED');
+  }
   lastRequestStart=Date.now();
   usage.requests++;
   try {
@@ -88,7 +95,7 @@ function harness(scenario:Scenario) {
 
 async function main(){
   outer:for(let repetition=1;repetition<=repeats;repetition++)for(const scenario of cases){
-    if(usage.blockingProviderErrorCode)break outer;
+    if(usage.blockingProviderErrorCode || budgetExhausted)break outer;
     const h=harness(scenario);const turns:any[]=[];const problems:string[]=[];const requestsBefore=usage.requests;
     for(let i=0;i<scenario.messages.length;i++){
       const step=scenario.messages[i];
@@ -112,11 +119,12 @@ async function main(){
         if(expected.replyForbid?.some(value=>replyText.includes(normalizeReply(value))))problems.push(`turn_${i}:reply_forbidden_fact`);
         if(!actual.replies.length)problems.push(`turn_${i}:no_reply`);
       }catch(error){problems.push(`turn_${i}:exception:${(error as Error).message}`);break;}
+      if(budgetExhausted){problems.push('request_budget_exhausted');break;}
       if(usage.blockingProviderErrorCode){problems.push('provider_blocked');break;}
     }
     results.push({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore,turns});
     console.log(JSON.stringify({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore}));
-    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
+    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,maxRequests,budgetExhausted,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
   }
   const accepted=results.filter(r=>r.accepted).length;
   console.log(JSON.stringify({accepted,executed:results.length,planned:cases.length*repeats,apiUsage:usage.summary(model)}));

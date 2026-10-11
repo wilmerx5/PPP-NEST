@@ -1,4 +1,5 @@
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
+import { interpretProductNote } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
@@ -3397,7 +3398,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = interpretProductNote(text, [embeddedProduct])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
       const embeddedAdd = this.tryAddProductToCart(
         session,
         embeddedProduct,
@@ -3601,7 +3602,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = interpretProductNote(text, [one])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
       const added = this.tryAddProductToCart(session, one, orderQty, cfg, lineNote, undefined, {
         sourceText: text,
       });
