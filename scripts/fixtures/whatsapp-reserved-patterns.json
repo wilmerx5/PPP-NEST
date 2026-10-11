@@ -2,15 +2,113 @@
   "version": 1,
   "createdOn": "2026-10-11",
   "kind": "Independently written synthetic evaluation; not downloaded customer transcripts",
-  "status": "reserved-not-executed",
+  "status": "executed-promoted-to-regressions",
   "cases": [
-    {"id":"reserved-price-before-purchase","pattern":"information-before-action","messages":["Antes de pedir, cuánto cuesta una sopa de ajiaco?","Bueno, ahora sí dos ajiacos"],"invariants":["first turn must not buy","second turn must contain exactly two units"]},
-    {"id":"reserved-change-one-preserve-other","pattern":"preference-change","messages":["Un pollo frito y una limonada natural","La limonada dejala igual, al pollo ponle las arepas fritas"],"invariants":["two products remain","only chicken attribute changes"]},
-    {"id":"reserved-soup-clarification-return","pattern":"interruption","messages":["Dos sopas","Cuál es la más pequeña?","Las dos de ajiaco"],"invariants":["question does not add soup","final quantity exactly two","no unresolved choice is silently guessed"]},
-    {"id":"reserved-package-and-beverage","pattern":"package-vs-unit","messages":["Dos paquetes de tres arepas doradas","Y una limonada natural","Quita uno de los paquetes, la bebida sí la dejo"],"invariants":["package quantity ends at one","beverage preserved"]},
-    {"id":"reserved-cooking-reversal","pattern":"contradictory-preferences","messages":["Dos churrascos bien asados","Mejor tres cuartos, los dos"],"invariants":["quantity remains two","new cooking instruction replaces old instruction"]},
-    {"id":"reserved-points-condition","pattern":"conditional-vs-action","messages":["Si mañana quiero canjear mis puntos, qué tendría que hacer?"],"invariants":["no voucher generated","no balance change","no food purchased"]},
-    {"id":"reserved-allergy-consultation","pattern":"unsupported-guarantee","messages":["El arroz con pollo es seguro para alguien alérgico al maní?"],"invariants":["no purchase","no unsupported safety guarantee"]},
-    {"id":"reserved-unclear-reference","pattern":"missing-reference","messages":["Mandame ese mismo pero sin eso"],"invariants":["no guessed product","ask a concrete clarification"]}
-  ]
+    {
+      "id": "reserved-price-before-purchase",
+      "pattern": "information-before-action",
+      "messages": [
+        "Antes de pedir, cuánto cuesta una sopa de ajiaco?",
+        "Bueno, ahora sí dos ajiacos"
+      ],
+      "invariants": [
+        "first turn must not buy",
+        "second turn must contain exactly two units"
+      ]
+    },
+    {
+      "id": "reserved-change-one-preserve-other",
+      "pattern": "preference-change",
+      "messages": [
+        "Un pollo frito y una limonada natural",
+        "La limonada dejala igual, al pollo ponle las arepas fritas"
+      ],
+      "invariants": [
+        "two products remain",
+        "only chicken attribute changes"
+      ]
+    },
+    {
+      "id": "reserved-soup-clarification-return",
+      "pattern": "interruption",
+      "messages": [
+        "Dos sopas",
+        "Cuál es la más pequeña?",
+        "Las dos de ajiaco"
+      ],
+      "invariants": [
+        "question does not add soup",
+        "final quantity exactly two",
+        "no unresolved choice is silently guessed"
+      ]
+    },
+    {
+      "id": "reserved-package-and-beverage",
+      "pattern": "package-vs-unit",
+      "messages": [
+        "Dos paquetes de tres arepas doradas",
+        "Y una limonada natural",
+        "Quita uno de los paquetes, la bebida sí la dejo"
+      ],
+      "invariants": [
+        "package quantity ends at one",
+        "beverage preserved"
+      ]
+    },
+    {
+      "id": "reserved-cooking-reversal",
+      "pattern": "contradictory-preferences",
+      "messages": [
+        "Dos churrascos bien asados",
+        "Mejor tres cuartos, los dos"
+      ],
+      "invariants": [
+        "quantity remains two",
+        "new cooking instruction replaces old instruction"
+      ]
+    },
+    {
+      "id": "reserved-points-condition",
+      "pattern": "conditional-vs-action",
+      "messages": [
+        "Si mañana quiero canjear mis puntos, qué tendría que hacer?"
+      ],
+      "invariants": [
+        "no voucher generated",
+        "no balance change",
+        "no food purchased"
+      ]
+    },
+    {
+      "id": "reserved-allergy-consultation",
+      "pattern": "unsupported-guarantee",
+      "messages": [
+        "El arroz con pollo es seguro para alguien alérgico al maní?"
+      ],
+      "invariants": [
+        "no purchase",
+        "no unsupported safety guarantee"
+      ]
+    },
+    {
+      "id": "reserved-unclear-reference",
+      "pattern": "missing-reference",
+      "messages": [
+        "Mandame ese mismo pero sin eso"
+      ],
+      "invariants": [
+        "no guessed product",
+        "ask a concrete clarification"
+      ]
+    }
+  ],
+  "firstEvaluation": {
+    "baseCommit": "53e4d1c1",
+    "mode": "offline-router",
+    "passed": 6,
+    "failed": 2,
+    "afterFixPassed": 8,
+    "externalCalls": 0,
+    "packageCatalog": "Synthetic Tres Arepas Doradas added alongside PPP fixture"
+  }
 }

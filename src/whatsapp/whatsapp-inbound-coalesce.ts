@@ -28,12 +28,15 @@ export function isImageBurstMessage(msg: IncomingWhatsappMessage): boolean {
 export function collapseImageBurstReplies(input: {
   /** Only a successfully interpreted order photo can replace its acknowledgements. */
   resolvedOrderImage?: boolean;
+  /** Suppress only an unsupported envelope followed by an actual photo, never image-read errors. */
+  unsupportedEnvelopeSupersededByImage?: boolean;
   newerArrived: boolean;
   hasCart: boolean;
   pending: boolean;
   replies: string[];
   summary: string;
 }): string[] {
+  if (input.unsupportedEnvelopeSupersededByImage) return [];
   if (!input.resolvedOrderImage) return input.replies;
   if (input.newerArrived) return [];
   if (input.pending || !input.hasCart || !input.summary.trim()) return input.replies;

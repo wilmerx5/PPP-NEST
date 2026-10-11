@@ -21,6 +21,12 @@ type Scenario = { id: string; unavailableProductIds?: number[]; initialCart?: Ar
 if (process.env.WHATSAPP_BETA_LIVE !== '1' || !process.env.OPENAI_API_KEY) throw Error('Explicit live flag and private API key required');
 const maxRequests = Number(process.env.WHATSAPP_BETA_MAX_REQUESTS);
 if (!Number.isSafeInteger(maxRequests) || maxRequests < 1) throw Error('An explicit positive WHATSAPP_BETA_MAX_REQUESTS budget is required before paid inference');
+const budgetFile = join(process.cwd(),'docs/whatsapp-model-budget.json');
+const sharedBudget = JSON.parse(readFileSync(budgetFile,'utf8'));
+if (!Number.isSafeInteger(sharedBudget.remainingRequests) || maxRequests > sharedBudget.remainingRequests ||
+  sharedBudget.usedRequests + sharedBudget.remainingRequests !== sharedBudget.authorizedRequests) {
+  throw Error('Shared authorized budget is invalid or insufficient');
+}
 let budgetExhausted = false;
 Logger.overrideLogger(false);
 const model = process.env.WHATSAPP_BETA_MODEL || 'gpt-4o-mini';
@@ -36,6 +42,14 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
     budgetExhausted = true;
     throw Error('REHEARSAL_REQUEST_BUDGET_EXHAUSTED');
   }
+  // Persist each attempt BEFORE network I/O, so failures/interruption never reset its cost allowance.
+  const currentBudget = JSON.parse(readFileSync(budgetFile,'utf8'));
+  if (currentBudget.round !== sharedBudget.round || currentBudget.usedRequests !== sharedBudget.usedRequests + usage.requests ||
+    currentBudget.remainingRequests < 1) throw Error('SHARED_REQUEST_BUDGET_CHANGED');
+  currentBudget.usedRequests++;
+  currentBudget.remainingRequests--;
+  currentBudget.lastAttemptAt = new Date().toISOString();
+  writeFileSync(budgetFile,JSON.stringify(currentBudget,null,2)+'\n');
   lastRequestStart=Date.now();
   usage.requests++;
   try {

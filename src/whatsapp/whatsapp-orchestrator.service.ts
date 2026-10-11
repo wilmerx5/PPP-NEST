@@ -159,6 +159,8 @@ export class WhatsappOrchestratorService {
   private readonly inboundCoalesceByWaId = new Map<string, InboundCoalesceState>();
   /** Fotos y avisos de álbum seguidos: el último turno resume el carrito una sola vez. */
   private readonly imageBurstSeq = new Map<string, number>();
+  private readonly latestImageTicketByWaId = new Map<string, number>();
+  private readonly registeredBurstTickets = new WeakMap<IncomingWhatsappMessage, number>();
   /**
    * Durante un turno: acumula replies. Si llega otro texto a mitad de proceso,
    * se conservan (carry) y se envían con el siguiente flush — no se descartan.
@@ -183,12 +185,29 @@ export class WhatsappOrchestratorService {
     private readonly turnTelemetry: WhatsappTurnTelemetryService,
   ) {}
 
+  /** Register a webhook batch before serial processing so an album envelope can see its photos. */
+  registerIncomingBatch(messages: IncomingWhatsappMessage[]): void {
+    for (const msg of messages) {
+      if (!isImageBurstMessage(msg) || this.registeredBurstTickets.has(msg)) continue;
+      const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+      const ticket = (this.imageBurstSeq.get(key) || 0) + 1;
+      this.imageBurstSeq.set(key,ticket);
+      this.registeredBurstTickets.set(msg,ticket);
+      if (msg.messageType === 'image' && msg.mediaId) this.latestImageTicketByWaId.set(key,ticket);
+    }
+  }
+
   async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
 
     if (isImageBurstMessage(msg)) {
-      const ticket = (this.imageBurstSeq.get(key) || 0) + 1;
-      this.imageBurstSeq.set(key, ticket);
+      const registered = this.registeredBurstTickets.get(msg);
+      const ticket = registered || (this.imageBurstSeq.get(key) || 0) + 1;
+      this.registeredBurstTickets.delete(msg);
+      if (!registered) {
+        this.imageBurstSeq.set(key,ticket);
+        if (msg.messageType === 'image' && msg.mediaId) this.latestImageTicketByWaId.set(key,ticket);
+      }
       msg = { ...msg, raw: { ...(msg.raw || {}), imageBurstTicket: ticket, resolvedOrderImage: false } };
     }
 
@@ -258,6 +277,7 @@ export class WhatsappOrchestratorService {
       : '';
     const next = collapseImageBurstReplies({
       resolvedOrderImage: msg.raw?.resolvedOrderImage === true && fresh.state === 'building_cart',
+      unsupportedEnvelopeSupersededByImage: msg.messageType === 'other' && (this.latestImageTicketByWaId?.get(key) || 0) > ticket,
       newerArrived: (this.imageBurstSeq.get(key) || 0) > ticket,
       hasCart: session.cart.length > 0,
       pending: !!(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder),
@@ -430,6 +450,25 @@ export class WhatsappOrchestratorService {
   }
 
   private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
+    const turn: {conv?: WhatsappConversation; initialCart?: string} = {};
+    await this.handleIncomingTurn(msg, turn);
+    if (!turn.conv) return;
+    const conv = turn.conv;
+    const session = this.conversationService.getSession(conv);
+    // An active delivery address expresses checkout intent. Advance once every selection is resolved.
+    if (conv.state !== 'building_cart' || !session.cart.length || session.orderType !== 'delivery' ||
+      !session.address?.trim() || !session.addressConfirmed || conv.humanTakeover ||
+      session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ||
+      session.pendingAddOffer || session.pendingCartQuantity || session.pendingCartRemoval ||
+      JSON.stringify(session.cart) === turn.initialCart) return;
+    const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+    // Production holds replies until the turn is complete: replace the shopping prompt with checkout.
+    if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
+    await this.tryConfirmOrder(conv,msg.waId,session);
+  }
+
+  private async handleIncomingTurn(msg: IncomingWhatsappMessage,
+    turn: {conv?: WhatsappConversation; initialCart?: string}): Promise<void> {
     const cfg = await this.settingsService.getEffectiveConfig();
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
     await this.conversationService.touchInbound(conv);
@@ -501,6 +540,9 @@ export class WhatsappOrchestratorService {
     if (conv.humanTakeover) {
       return;
     }
+
+    turn.conv = conv;
+    turn.initialCart = JSON.stringify(this.conversationService.getSession(conv).cart);
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
@@ -1055,6 +1097,40 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+
+    // Named alternatives are compared with catalog facts, without invented sensory claims.
+    if (/\b(?:recomiend|recomend|compar|diferenc)\w*\b/.test(this.normalizeForMatch(originalText)) &&
+      /[?¿]|\bestoy entre\b/i.test(originalText)) {
+      const mentioned = products.filter(product => this.catalogService.isCartProductNamedInText(product.name, originalText));
+      const distinct = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
+        this.normalizeForMatch(other.name) !== this.normalizeForMatch(product.name) &&
+        this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
+      if (distinct.length >= 2 && distinct.length <= 4) {
+        const facts = distinct.map(product => this.catalogService.formatProductPriceReply(product,{offerAdd:false})).join('\n\n');
+        await this.reply(conv, msg.waId, facts + '\n\nEstas son las características registradas en la carta. ¿Cuál prefieres?' +
+          (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ? '\n\n' + this.formatPendingPurchaseReminder(session) : ''));
+        return;
+      }
+    }
+
+    // A comparative question interrupts a pending choice; it never selects or adds it.
+    const comparative = this.normalizeForMatch(originalText).match(/^cual(?:es)?\s+(?:es|son)\s+(?:la|el|las|los)\s+mas\s+(pequen[oa]s?|grandes?|barat[oa]s?|car[oa]s?)\b/);
+    if (comparative && session.pendingMatch?.candidates?.length) {
+      const candidates = session.pendingMatch.candidates.map(candidate => products.find(product => product.id === candidate.id)).filter(Boolean) as MenuProduct[];
+      const criterion = comparative[1];
+      let choices: MenuProduct[] = [];
+      if (/^(?:barat|car)/.test(criterion) && candidates.length) {
+        const price = /barat/.test(criterion) ? Math.min(...candidates.map(product => product.price)) : Math.max(...candidates.map(product => product.price));
+        choices = candidates.filter(product => product.price === price);
+      } else {
+        const label = /pequen/.test(criterion) ? /\b(?:pequen[oa]|mini)\b/ : /\b(?:grande|familiar)\b/;
+        choices = candidates.filter(product => label.test(this.normalizeForMatch(product.name)));
+      }
+      const information = choices.length ? 'La carta indica estas opciones: ' + choices.map(product => `${product.name} · ${this.catalogService.formatMoney(product.price)}`).join('; ')
+        : 'No tengo una comparación de tamaños confirmada entre esas presentaciones; debe confirmarla el local.';
+      await this.reply(conv, msg.waId, information + '\n\n' + this.formatPendingPurchaseReminder(session));
+      return;
+    }
 
     // A nearby delivery reference is separate from the ordered catalog product.
     const nearbyRequest = originalText.match(/^(.+?)\s+((?:aqu[ií]|por aqu[ií])\s+(?:para|a)\s+la\s+vuelta)(?:\s+por favor)?[.!]*$/i);
@@ -4137,7 +4213,7 @@ export class WhatsappOrchestratorService {
         }
       }
       const lineNote = (supportsCookingTerm(one) ? parseCookingTerm(text)?.note : undefined) || interpretProductNote(text, [one])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
-      const added = this.tryAddProductToCart(session, one, orderQty, cfg, lineNote, undefined, {
+      const added = this.tryAddProductToCart(session, one, namedPackOrderQuantity(originalText, one.name) ?? orderQty, cfg, lineNote, undefined, {
         sourceText: text,
       });
       if (added.blocked) {
@@ -10058,7 +10134,9 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingCartRemoval;
     const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
     if (!removal && !(pending?.cartSignature && pick !== null)) return false;
-    const indices = removal ? session.cart.flatMap((line, index) => correctionMatchesLine(line, removal.query) ? [index] : []) : [];
+    const packageQuery = removal && /^(?:los |las |el |la )?(?:paquetes?|promociones?)$/.test(this.normalizeForMatch(removal.query));
+    const indices = removal ? session.cart.flatMap((line, index) =>
+      (packageQuery ? namedPackOrderQuantity(line.name,line.name) !== null : correctionMatchesLine(line, removal.query)) ? [index] : []) : [];
     if (!removal && pending) {
       if (pending.cartSignature !== JSON.stringify(session.cart)) {
         await this.conversationService.saveSession(conv, { ...session, pendingCartRemoval: undefined });
@@ -10081,6 +10159,10 @@ export class WhatsappOrchestratorService {
       return true;
     }
     if (indices.length > 1) {
+      if (removal?.quantity) {
+        await this.reply(conv, waId, '¿De cuál plato quito una unidad? Escribe el nombre y la instrucción juntos. El carrito sigue igual.');
+        return true;
+      }
       const options = indices.map(cartIndex => ({ cartIndex, label: this.formatCartLineLabel(session.cart[cartIndex]) +
         (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
       await this.conversationService.saveSession(conv, { ...session, pendingCartRemoval: { options,
@@ -10089,11 +10171,13 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const label = this.formatCartLineLabel(session.cart[indices[0]]);
-    const next = { ...this.removeCartLines(session, indices), pendingCartQuantity: undefined,
+    const remaining = session.cart[indices[0]].quantity - (removal?.quantity || session.cart[indices[0]].quantity);
+    const changed = remaining > 0 ? {...session,cart:session.cart.map((line,index) => index === indices[0] ? {...line,quantity:remaining} : line)} : this.removeCartLines(session,indices);
+    const next = { ...changed, pendingCartQuantity: undefined,
       pendingMatch: undefined, pendingMultiOrder: undefined, pendingAttribute: undefined,
       pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined };
     await this.conversationService.saveSession(conv, next, 'building_cart');
-    await this.reply(conv, waId, `Listo, quité ${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    await this.reply(conv, waId, `Listo, quité ${removal?.quantity ? 'una unidad de ' : ''}${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
     return true;
   }
 

@@ -51,6 +51,7 @@ function harness(menu = products, agentEnabled = true) {
     countInboundMessages: async () => count + 1,
     getRecentMessageTexts: async () => history,
     getLastOutboundBody: async () => replies.at(-1) || null,
+    setInboundProcessingOutcome: async () => undefined,
     updateCustomerName: async (_conv: unknown, name: string) => {
       conv.customerName = name;
     },
@@ -86,9 +87,19 @@ function harness(menu = products, agentEnabled = true) {
     agent as never,
     new WhatsappTurnTelemetryService(),
   ) as any;
-  service.reply = async (_conv: unknown, _waId: string, reply: string) => {
+  const recordReply = async (_conv: unknown, _waId: string, reply: string) => {
     replies.push(reply);
     history.push(`Bot: ${reply}`);
+  };
+  service.sendReplyNow = recordReply;
+  service.reply = async (_conv: unknown, waId: string, body: string) => {
+    const hold = service.outboundHoldByWaId.get(waId);
+    if (hold) hold.push(body); else await recordReply(_conv,waId,body);
+  };
+  const sendQueued = async (text: string, extra: Record<string,unknown> = {}) => {
+    await service.runInboundUnlockedWithOutboundHold('customer',{waId:'customer',phoneE164:conv.phoneE164,
+      messageId:`queued-${count}`,messageType:'text',text,raw:{},...extra});
+    return replies.at(-1);
   };
   const send = async (text: string, raw: Record<string, unknown> = {}) => {
     await service.handleIncomingUnlocked({
@@ -108,7 +119,7 @@ function harness(menu = products, agentEnabled = true) {
       note: c.note,
       attrs: (c.attributes || []).map((a) => `${a.attributeName}:${a.attributeValue}`),
     }));
-  return { conv, send, agent, replies, cartRows, service, cfg };
+  return { conv, send, sendQueued, agent, replies, cartRows, service, cfg };
 }
 
 describe('Acertividad general — chats reales y ediciones', () => {
@@ -1669,7 +1680,7 @@ describe('Respuestas nativas de WhatsApp — vínculo y alcance', () => {
     h.service.metaService = {sendText:jest.fn().mockResolvedValue('wamid.sent')};
     h.service.conversationService.logMessage = jest.fn().mockResolvedValue({id:'sent'});
     h.service.conversationService.touchOutbound = jest.fn();
-    await h.service.sendReplyNow(h.conv,'customer','Respuesta de prueba');
+    await (WhatsappOrchestratorService.prototype as any).sendReplyNow.call(h.service,h.conv,'customer','Respuesta de prueba');
     expect(h.service.conversationService.logMessage).toHaveBeenCalledWith(expect.objectContaining({direction:'out',waMessageId:'wamid.sent',conversationId:1}));
   });
 });
@@ -2005,5 +2016,205 @@ describe('Tanda portable — el rendimiento conserva negaciones y límites', () 
     expect(h.cartRows()).toEqual([]);
     if (positive) expect(reply).toMatch(/2 a 3 personas/);
     else expect(reply).toMatch(/no.*(?:alcanza|recomend|confirmado)|confirm.*local/i);
+  });
+});
+
+// Reserved inputs stay out of prompts. After this first execution they are regression cases.
+describe('Evaluación reservada — primera ejecución de ocho patrones', () => {
+  const reserved = JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-reserved-patterns.json'),'utf8'));
+  it.each(reserved.cases)('$id', async (scenario: {id:string;messages:string[]}) => {
+    const pack = {id:984,code:984,name:'Tres Arepas Doradas',price:9000,categoryName:'Porciones',availableNow:true,attributes:[]};
+    const h = harness(scenario.id === 'reserved-package-and-beverage' ? [...products,pack] : products,false);
+    const redeem = jest.spyOn(h.service.pointsHandler,'redeemNinePoints').mockRejectedValue(new Error('Unexpected redemption'));
+    const register = jest.spyOn(h.service.pointsHandler,'registerPointForUser').mockRejectedValue(new Error('Unexpected points mutation'));
+    for (let i=0;i<scenario.messages.length;i++) {
+      await h.send(scenario.messages[i]);
+      const rows = h.cartRows();
+      const reply = h.replies.at(-1) || '';
+      if (scenario.id === 'reserved-price-before-purchase') {
+        if (i===0) { expect(rows).toEqual([]); expect(reply).toMatch(/10[.,]500/); }
+        else expect(rows).toEqual([expect.objectContaining({id:38,qty:2})]);
+      }
+      if (scenario.id === 'reserved-change-one-preserve-other') {
+        expect(rows).toHaveLength(2);
+        expect(rows.find(row=>row.id===37)).toMatchObject({qty:1,attrs:[]});
+        expect(rows.find(row=>row.id===1)).toMatchObject({qty:1,attrs:expect.arrayContaining([i===0?'Arepas:Blancas':'Arepas:Fritas'])});
+      }
+      if (scenario.id === 'reserved-soup-clarification-return') {
+        if(i<2) expect(rows).toEqual([]);
+        else expect(rows).toEqual([expect.objectContaining({id:38,qty:2})]);
+      }
+      if (scenario.id === 'reserved-package-and-beverage') {
+        expect(rows.find(row=>row.id===984)?.qty).toBe(i<2?2:1);
+        if(i>0) expect(rows.find(row=>row.id===37)).toMatchObject({qty:1});
+        expect(rows).toHaveLength(i===0?1:2);
+      }
+      if (scenario.id === 'reserved-cooking-reversal') {
+        expect(rows).toEqual([expect.objectContaining({id:17,qty:2})]);
+        if(i===1) { expect(rows[0].note).toMatch(/tres cuartos/i); expect(rows[0].note).not.toMatch(/bien asad/i); }
+      }
+      if (scenario.id === 'reserved-points-condition') {
+        expect(rows).toEqual([]); expect(redeem).not.toHaveBeenCalled(); expect(register).not.toHaveBeenCalled();
+        expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy(); expect(reply).toMatch(/puntos|canj|redim/i);
+      }
+      if (scenario.id === 'reserved-allergy-consultation') {
+        expect(rows).toEqual([]); expect(reply).not.toMatch(/(?:sí|si),?\s+(?:es seguro|puedes comer)|sin (?:riesgo|maní)|garantiz/i);
+        expect(reply).toMatch(/confirm|local|al[eé]rg|segur|ingrediente/i);
+      }
+      if (scenario.id === 'reserved-unclear-reference') {
+        expect(rows).toEqual([]); expect(reply).toMatch(/cu[aá]l|qu[eé].*(?:plato|producto)|nombre|aclar/i);
+      }
+      expect(reply).toBeTruthy();
+    }
+  });
+});
+
+describe('Recuperación general — preguntas comparativas y quitar una unidad', () => {
+  it.each([1,2])('quita una sopa de una línea de %s unidades y conserva la bebida', async quantity => {
+    const h = harness(products,false);
+    h.conv.sessionData.cart = [
+      {productId:38,code:38,name:'Sopa De Ajiaco',quantity,unitPrice:10500,note:'sin cilantro'},
+      {productId:37,code:37,name:'Limonada Natural',quantity:2,unitPrice:4500},
+    ];
+    await h.send('Quita una de las sopas de ajiaco, la limonada sí la dejo');
+    expect(h.cartRows().find(row=>row.id===37)).toMatchObject({qty:2});
+    if(quantity===1) expect(h.cartRows()).toHaveLength(1);
+    else expect(h.cartRows().find(row=>row.id===38)).toMatchObject({qty:1,note:'sin cilantro'});
+  });
+  it('no elige entre varios paquetes ni cambia cantidades', async () => {
+    const h = harness(products,false);
+    h.conv.sessionData.cart = [
+      {productId:985,code:985,name:'Tres Arepas Doradas',quantity:2,unitPrice:9000},
+      {productId:986,code:986,name:'Dos Empanadas',quantity:2,unitPrice:7000},
+    ];
+    const before = structuredClone(h.conv.sessionData);
+    await h.send('Quita uno de los paquetes');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/cu[aá]l plato|nombre/i);
+  });
+  it('pide aclaración al quitar y conservar la misma sopa', async () => {
+    const h = harness(products,false);
+    h.conv.sessionData.cart = [{productId:38,code:38,name:'Sopa De Ajiaco',quantity:2,unitPrice:10500}];
+    const before = structuredClone(h.conv.sessionData);
+    await h.send('Quita una de las sopas de ajiaco, la sopa de ajiaco sí la dejo');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/quitar y conservar/i);
+  });
+  const bowls = [
+    {id:987,code:987,name:'Bowl Mini',price:12000,categoryName:'Bowls',availableNow:true,attributes:[]},
+    {id:988,code:988,name:'Bowl Familiar',price:28000,categoryName:'Bowls',availableNow:true,attributes:[]},
+  ];
+  it.each(['Cuál es la más pequeña?','Cuál es la más barata?'])('responde una comparación en otro catálogo y conserva la selección: %s', async question => {
+    const h = harness(bowls,false);
+    h.conv.sessionData.pendingMatch = {query:'Tres bowls',quantity:3,intent:'order',candidates:bowls};
+    const before = structuredClone(h.conv.sessionData);
+    await h.send(question);
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/Bowl Mini/);
+    await h.send('Bowl Familiar');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:988,qty:3})]);
+  });
+});
+
+describe('Comparación de platos — solo hechos del catálogo', () => {
+  it.each([true,false])('no inventa textura ni compra al recomendar pescados (agent: %s)', async enabled => {
+    const h = harness(products,enabled);
+    await h.send('Estoy entre mojarra y trucha, ¿qué me recomiendas?');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.agent.runTurn).not.toHaveBeenCalled();
+    expect(h.replies.at(-1)).toMatch(/Mojarra/);
+    expect(h.replies.at(-1)).toMatch(/Trucha/);
+    expect(h.replies.at(-1)).not.toMatch(/m[aá]s suave|m[aá]s tradicional/);
+  });
+  it('compara otro catálogo y conserva el pedido pendiente', async () => {
+    const menu = [
+      {id:989,code:989,name:'Bowl Andino',description:'Con quinoa',price:17000,availableNow:true,attributes:[]},
+      {id:990,code:990,name:'Wrap Oriental',description:'Con arroz',price:14000,availableNow:true,attributes:[]},
+    ];
+    const h = harness(menu,false);
+    h.conv.sessionData.pendingMatch = {query:'Dos platos',quantity:2,intent:'order',candidates:menu};
+    const before = structuredClone(h.conv.sessionData);
+    await h.send('Estoy entre Bowl Andino y Wrap Oriental, ¿qué me recomiendas?');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/quinoa/);
+    expect(h.replies.at(-1)).toMatch(/arroz/);
+    expect(h.replies.at(-1)).not.toMatch(/m[aá]s saludable|m[aá]s suave/);
+  });
+});
+
+describe('Checkout breve — productos y dirección en el mismo turno', () => {
+  const bowl = {id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  it.each([
+    {text:'Quiero una sopa de menudencias para la calle 48 sur 87 86',id:20,menu:products},
+    {text:'Quiero un pollo frito para la calle 48 sur 87 86',id:1,menu:products},
+    {text:'Quiero un Bowl Mediterraneo para la calle 48 sur 87 86',id:991,menu:[bowl]},
+    {text:'Dos churrascos y una limonada natural para la calle 48 sur 87 86',id:17,menu:products},
+  ])('pasa al pago sin preguntar algo más: $text', async ({text,id,menu}) => {
+    const h = harness(menu,false);
+    h.cfg.paymentMethods = DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+    Object.assign(h.cfg,{paymentInstructions:'Puedes pagar contraentrega, transferencia o con el link de Mercado Pago.'});
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(text);
+    expect(h.cartRows().find(row=>row.id===id)).toBeTruthy();
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.conv.sessionData.address).toMatch(/48 sur 87 86/i);
+    expect(h.replies).toHaveLength(1);
+    expect(h.replies[0]).toMatch(/c[oó]mo pagas/i);
+    expect(h.replies[0]).not.toMatch(/algo m[aá]s|mercado pago/i);
+  });
+  it('si ya indicó transferencia pasa a confirmar sin crear la orden', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Una sopa de menudencias para la calle 48 sur 87 86, pago por transferencia');
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.replies.join(' ')).toMatch(/confirmar/i);
+    expect(h.replies.join(' ')).not.toMatch(/algo m[aá]s/i);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:20,qty:1})]);
+  });
+  it('resuelve la sopa pendiente antes de pasar al pago y conserva dos unidades', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos sopas para la calle 48 sur 87 86');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    expect(h.replies.at(-1)).toMatch(/prefieres|cu[aá]l/i);
+    h.replies.length=0;
+    await h.sendQueued('Ajiaco');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:38,qty:2})]);
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.replies).toHaveLength(1);
+    expect(h.replies[0]).not.toMatch(/algo m[aá]s/i);
+  });
+  it('una consulta de precio con dirección no compra ni inicia pago', async () => {
+    const h = harness(products,false);
+    await h.sendQueued('Cuánto cuesta una sopa de menudencias para la calle 48 sur 87 86?');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    expect(h.replies.join(' ')).not.toMatch(/c[oó]mo pagas/i);
+  });
+});
+
+describe('Álbum — sobre no soportado seguido de foto válida', () => {
+  it('envía solo el carrito y conserva los productos de la foto', async () => {
+    jest.useFakeTimers();
+    try {
+      const h = harness(products,false);
+      const envelopeMessage = {waId:'customer',phoneE164:h.conv.phoneE164,messageId:'envelope',messageType:'other',raw:{}};
+      const photoMessage = {waId:'customer',phoneE164:h.conv.phoneE164,messageId:'photo',messageType:'image',mediaId:'synthetic-photo',raw:{}};
+      h.service.registerIncomingBatch([envelopeMessage,photoMessage]);
+      h.service.resolveImageMessage = jest.fn().mockResolvedValue({done:false,text:'Un churrasco y una sopa de ajiaco'});
+      const envelope = h.service.handleIncoming(envelopeMessage);
+      await jest.advanceTimersByTimeAsync(2100);
+      await envelope;
+      expect(h.replies).toEqual([]);
+      const photo = h.service.handleIncoming(photoMessage);
+      await jest.advanceTimersByTimeAsync(2100);
+      await photo;
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:17,qty:1}),expect.objectContaining({id:38,qty:1})]));
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.replies).toHaveLength(1);
+      expect(h.replies[0]).toMatch(/carrito/i);
+      expect(h.replies[0]).not.toMatch(/no entend[ií]|mejor por.*texto/i);
+    } finally { jest.useRealTimers(); }
   });
 });

@@ -233,7 +233,15 @@ export function buildPaymentOptionsPrompt(
   }
   const lines = enabled.map((m, i) => `${i + 1}. ${m.optionText || `*${m.keywords[0] || m.label}*`}`);
   let msg = `¿Cómo pagas?\n${lines.join('\n')}`;
-  if (globalHint?.trim()) msg += `\n\n_${globalHint.trim()}_`;
+  const hint = globalHint?.trim() || '';
+  const normalizeHint = (value: string) => normalizeKeyword(value).replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
+  const normalizedHint = normalizeHint(hint);
+  const mentionsDisabledMethod = methods.some(method => !method.enabled &&
+    [method.label,...method.keywords].some(keyword => {
+      const token = normalizeHint(keyword);
+      return token.length >= 3 && (' ' + normalizedHint + ' ').includes(' ' + token + ' ');
+    }));
+  if (hint && !mentionsDisabledMethod) msg += `\n\n_${hint}_`;
   return msg;
 }
 

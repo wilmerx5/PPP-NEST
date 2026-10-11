@@ -11,7 +11,7 @@ describe('WhatsApp webhook authentication before processing', () => {
   let controller: WhatsappWebhookController;
   let settings: { getEffectiveConfig: jest.Mock };
   let meta: { parseWebhookPayload: jest.Mock };
-  let orchestrator: { handleIncoming: jest.Mock };
+  let orchestrator: { handleIncoming: jest.Mock; registerIncomingBatch: jest.Mock };
   let rateLimit: { allow: jest.Mock };
   let conversations: { findByWaMessageId: jest.Mock };
   let response: { status: jest.Mock; json: jest.Mock };
@@ -21,7 +21,7 @@ describe('WhatsApp webhook authentication before processing', () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     settings = { getEffectiveConfig: jest.fn().mockResolvedValue({ appSecret: secret }) };
     meta = { parseWebhookPayload: jest.fn().mockReturnValue([]) };
-    orchestrator = { handleIncoming: jest.fn().mockResolvedValue(undefined) };
+    orchestrator = { handleIncoming: jest.fn().mockResolvedValue(undefined),registerIncomingBatch:jest.fn() };
     rateLimit = { allow: jest.fn().mockReturnValue(true) };
     conversations = { findByWaMessageId: jest.fn().mockResolvedValue(null) };
     controller = new WhatsappWebhookController(
@@ -73,6 +73,8 @@ describe('WhatsApp webhook authentication before processing', () => {
     meta.parseWebhookPayload.mockReturnValue([message]);
     await controller.receive({ body: payload, rawBody } as any, signature(), response as any);
     expect(meta.parseWebhookPayload).toHaveBeenCalledWith(payload);
+    expect(orchestrator.registerIncomingBatch).toHaveBeenCalledWith([message]);
+    expect(orchestrator.registerIncomingBatch.mock.invocationCallOrder[0]).toBeLessThan(orchestrator.handleIncoming.mock.invocationCallOrder[0]);
     expect(orchestrator.handleIncoming).toHaveBeenCalledTimes(1);
     expect(orchestrator.handleIncoming).toHaveBeenCalledWith(message);
     expect(response.status).toHaveBeenCalledWith(200);

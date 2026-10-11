@@ -28,3 +28,25 @@ describe('Resumen de fotos: conserva errores y comprobantes', () => {
     expect(service.outboundHoldByWaId.get('test')).toEqual([expected]);
   });
 });
+
+describe('Sobre no soportado de un álbum', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+  it.each([
+    {type:'other',nextImage:2,expected:[]},
+    {type:'other',nextImage:0,expected:['No entendí bien tu mensaje']},
+    {type:'image',nextImage:2,expected:['No entendí bien tu mensaje']},
+  ])('tipo $type, siguiente foto $nextImage', async ({type,nextImage,expected}) => {
+    const service = Object.create(WhatsappOrchestratorService.prototype) as any;
+    service.imageBurstSeq = new Map([['test',2]]);
+    service.latestImageTicketByWaId = new Map([['test',nextImage]]);
+    service.outboundHoldByWaId = new Map([['test',['No entendí bien tu mensaje']]]);
+    service.conversationService = {reloadConversation:async()=>({state:'building_cart'}),getSession:()=>({cart:[]})};
+    service.settingsService = {getEffectiveConfig:async()=>({})};
+    service.deliveryFeeFor = () => 0;
+    const processing = service.collapseBurstReplies('test',{messageType:type,raw:{imageBurstTicket:1,resolvedOrderImage:false}},{id:1});
+    await jest.advanceTimersByTimeAsync(2000);
+    await processing;
+    expect(service.outboundHoldByWaId.get('test')).toEqual(expected);
+  });
+});
