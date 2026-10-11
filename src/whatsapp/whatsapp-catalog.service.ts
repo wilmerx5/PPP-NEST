@@ -2707,7 +2707,8 @@ export class WhatsappCatalogService {
     const attrs = product.attributes || [];
     const hostsDrink =
       attrs.some((a) => this.isComboOnlyAttribute(a)) &&
-      (attrs.some((a) => !this.isComboOnlyAttribute(a)) || /\bcombo\b/i.test(product.name));
+      (attrs.some((a) => !this.isComboOnlyAttribute(a)) || /\bcombo\b/i.test(product.name) ||
+        !this.isLikelyDrinkProduct(product) && attrs.some(a => /\b(bebida|gaseosa|refresco)s?\b/i.test(a.attributeName)));
     if (!hostsDrink) return null;
     for (const attr of attrs) {
       if (!this.isComboOnlyAttribute(attr)) continue;
@@ -9649,7 +9650,7 @@ export class WhatsappCatalogService {
         const named = attr.options
           .filter((opt) => {
             const o = normalizeText(opt);
-            if (o.length < 3) return false;
+            if (o.length < 2 || o.length < 3 && !q.includes(normalizeText(attr.attributeName))) return false;
             if (o.includes(' ')) return q.includes(o);
             return new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(q);
           })
@@ -9743,7 +9744,7 @@ export class WhatsappCatalogService {
         const named = attr.options
           .filter((opt) => {
             const o = normalizeText(opt);
-            if (o.length < 3) return false;
+            if (o.length < 2 || o.length < 3 && !q.includes(normalizeText(attr.attributeName))) return false;
             if (o.includes(' ')) return q.includes(o);
             return new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(q);
           })
@@ -9859,7 +9860,7 @@ export class WhatsappCatalogService {
 
     for (const opt of attr.options) {
       const o = normalizeText(opt);
-      if (o.length < 3) continue;
+      if (o.length < 2 || o.length < 3 && (!q.includes(attrName) || !q.split(' ').includes(o))) continue;
       if (!(q === o || q.includes(o))) continue;
       if (rejectsOption) continue;
       // Arepas "Fritas"/"Blancas": exigir arepa cerca, o que digan "arepas fritas"

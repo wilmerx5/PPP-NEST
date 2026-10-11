@@ -58,6 +58,31 @@
     {
       "id": "transcription-failure",
       "invariant": "Fallo de transcripción conserva carrito y solicita texto."
+    },
+    {
+      "id": "flavor-fallback",
+      "invariant": "Coca Zero; si no hay, 7up: solo usar opciones disponibles y no comprar ambas.",
+      "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
+    },
+    {
+      "id": "historical-price",
+      "invariant": "Precio dicho por cliente no cambia precio actual ni se convierte en cantidad.",
+      "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
+    },
+    {
+      "id": "postorder-status",
+      "invariant": "Reclamo de demora requiere datos reales; no inventa ETA.",
+      "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
+    },
+    {
+      "id": "cancel-vs-payment",
+      "invariant": "Cancelar pedido frente a cancelo con 100mil.",
+      "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
+    },
+    {
+      "id": "ambiguous-reference",
+      "invariant": "Esas cuatro con varios candidatos requiere aclaración sin mutar.",
+      "execution": "Segunda tanda PDF: router simulado; límites y controles registrados en relevo"
     }
   ],
   "pending_not_executed": [
@@ -66,32 +91,12 @@
       "invariant": "Dos ejecutivos diferentes; repartir presa, sopa y papa por línea de forma atómica."
     },
     {
-      "id": "flavor-fallback",
-      "invariant": "Coca Zero; si no hay, 7up: solo usar opciones disponibles y no comprar ambas."
-    },
-    {
       "id": "quoted-history",
       "invariant": "Respuesta citada antigua no reincorpora platos ya retirados."
     },
     {
-      "id": "historical-price",
-      "invariant": "Precio dicho por cliente no cambia precio actual ni se convierte en cantidad."
-    },
-    {
       "id": "pickup-third-party",
       "invariant": "Cambio a recogida por tercero conserva pedido sin interpretar nombre como dirección."
-    },
-    {
-      "id": "postorder-status",
-      "invariant": "Reclamo de demora requiere datos reales; no inventa ETA."
-    },
-    {
-      "id": "cancel-vs-payment",
-      "invariant": "Cancelar pedido frente a cancelo con 100mil."
-    },
-    {
-      "id": "ambiguous-reference",
-      "invariant": "Esas cuatro con varios candidatos requiere aclaración sin mutar."
     },
     {
       "id": "rapid-message-burst",

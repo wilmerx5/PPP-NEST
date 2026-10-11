@@ -2543,3 +2543,128 @@ describe('PDF — límites de cambios de bebida y consultas', () => {
     expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.join(' ')).toMatch(/38[.,]000/);
   });
 });
+
+describe('PDF segunda tanda — dinero, disponibilidad y referencias', () => {
+  const bowl={id:9101,code:9101,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  it.each([
+    {menu:products,order:'Un arroz con pollo',price:29500},
+    {menu:[bowl],order:'Un bowl mediterraneo',price:17000},
+  ])('precio histórico no modifica el valor ni la cantidad: $order', async ({menu,order,price})=>{
+    const h=harness(menu,false);await h.sendQueued(order);const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Antes me costaba 22000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.cart[0].unitPrice).toBe(price);
+    expect(h.replies.at(-1)).toMatch(new RegExp(price===29500?'29[.,]500':'17[.,]000'));
+  });
+  it.each(['Cancelo con 100mil','Pago con un billete de 100mil','Pagamos con un billete de 100mil'])('pago conserva el carrito: %s',async text=>{
+    const h=harness([bowl],false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    expect(h.cartRows()).toHaveLength(1);await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9101,qty:1})]);
+    expect(String(h.conv.sessionData.cashChangeFor)).toMatch(/100/);
+  });
+  it.each(['Cancela el pedido','Ya no quiero nada cancélalo'])('cancelación no se confunde con pago: %s',async text=>{
+    const h=harness([bowl],false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([]);
+  });
+  it.each(['Esas cuatro','Esos cuatro por favor'])('referencia sin producto no compra cuatro platos: %s',async text=>{
+    const h=harness([bowl,{...bowl,id:9102,code:9102,name:'Wrap Oriental'}],false);
+    await h.sendQueued('Un bowl mediterraneo y un wrap oriental');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/cu[aá]l|aclara|producto/i);
+  });
+  it.each(['Tienen hamburguesas?','Hay postres?','Tienen sopita hoy?','Qué jugos naturales hay?'])('consulta con otro catálogo no compra: %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued(text);expect(h.cartRows()).toEqual([]);
+    expect(h.replies.join(' ')).not.toMatch(/Listo ✅|agregué/i);
+  });
+  it.each(['Disculpa se demora','Está muy demorado','Un favor mi pedido se demora'])('consulta de demora no inventa estado: %s',async text=>{
+    const h=harness([bowl],false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);h.cfg.localContext={deliveryTimeNote:'Tiempo por confirmar con el local'};await h.sendQueued('Un bowl mediterraneo');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).not.toMatch(/ya.*(?:sali[oó]|llegando)|en camino|\b\d+\s*minutos/i);
+  });
+});
+
+
+describe('PDF segunda tanda — compra y dirección en catálogo alternativo',()=>{
+  it.each(['Un bowl mediterraneo','Dos bowls mediterraneos'])('conserva plato con dirección en un turno: %s',async order=>{
+    const menu=[{id:9101,code:9101,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(`${order} para la calle 7 #20-30`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9101,qty:order.startsWith('Dos')?2:1})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);
+  });
+});
+
+describe('PDF segunda tanda — sabor condicionado y seguimiento',()=>{
+  it.each([
+    {options:['Agua','Te'],expected:'Te'},
+    {options:['Agua'],expected:'Agua'},
+  ])('bebida condicional usa solo una opción existente: $expected',async ({options,expected})=>{
+    const meal={id:9201,code:9201,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options}]};
+    const h=harness([meal],false);await h.sendQueued('Un menu vegetariano');
+    await h.sendQueued('Si tienes por favor con bebida Te, si no con Agua');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9201,qty:1,attrs:[`Bebida:${expected}`]})]);
+  });
+  it.each(['Disculpa se demora','Está muy demorado','Un favor mi pedido se demora'])('reclamo posterior sin orden comprobada no inventa despacho: %s',async text=>{
+    const h=harness(products,false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+    h.conv.state='completed';await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([]);expect(h.replies.at(-1)).not.toMatch(/ya.*(?:sali[oó]|llegando)|en camino|\b\d+\s*minutos/i);
+  });
+});
+
+describe('PDF segunda tanda — domicilio portable conserva cantidades y precio',()=>{
+  it.each([
+    {name:'Wrap Oriental',order:'Un wrap oriental',quantity:1},
+    {name:'Pizza Vegetariana',order:'Tres pizzas vegetarianas',quantity:3},
+    {name:'Bowl Mediterraneo',order:'Un bowl mediterraneo',quantity:1},
+  ])('no incluye $name en la dirección',async({name,order,quantity})=>{
+    const h=harness([{id:9301,code:9301,name,price:17000,availableNow:true,attributes:[]}],false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(`${order} para la carrera 12 #34-56 torre 8 apartamento 903`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9301,qty:quantity})]);
+    expect(h.conv.sessionData.address).toMatch(/^carrera 12/i);
+    expect(h.conv.sessionData.address).not.toMatch(/wrap|pizza|bowl/i);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+});
+
+describe('PDF segunda tanda — límites de bebida condicional',()=>{
+  const meal={id:9401,code:9401,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Te']}]};
+  it('dos platos compatibles requieren elegir destino',async()=>{
+    const h=harness([meal,{...meal,id:9402,code:9402,name:'Menu Infantil'}],false);
+    await h.sendQueued('Un menu vegetariano');await h.sendQueued('Un menu infantil');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Si tienes con bebida Te, si no con Agua');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál plato/i);
+  });
+  it('ninguna opción disponible no inventa una bebida',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Un menu vegetariano');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Si tienes con bebida Chocolate, si no con Cafe');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/No pude confirmar/i);
+  });
+});
+
+describe('PDF segunda tanda — límites del precio histórico',()=>{
+  it('precio vigente del catálogo no reescribe el precio del carrito',async()=>{
+    const menu=[{id:9501,code:9501,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);await h.sendQueued('Un bowl mediterraneo');const before=structuredClone(h.conv.sessionData.cart);
+    menu[0].price=19000;await h.sendQueued('Antes me costaba 15000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/19[.,]000/);
+  });
+  it('con varios platos consulta el producto antes de atribuir el precio',async()=>{
+    const menu=[{id:9501,code:9501,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]},{id:9502,code:9502,name:'Wrap Oriental',price:21000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);await h.sendQueued('Un bowl mediterraneo y un wrap oriental');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Antes me costaba 15000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál producto/i);
+  });
+});
+
+
+describe('PDF segunda tanda — aclaración conserva el cambio pendiente',()=>{
+  it.each(['Si tienes con bebida Te, si no con Agua','Y de tomar me puedes enviar Te?'])('retoma la bebida después de elegir el plato: %s',async text=>{
+    const meal={id:9601,code:9601,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Te']}]};
+    const h=harness([meal,{...meal,id:9602,code:9602,name:'Menu Infantil'}],false);
+    await h.sendQueued('Un menu vegetariano');await h.sendQueued('Un menu infantil');
+    await h.sendQueued(text);await h.sendQueued('Menu Vegetariano');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9601,qty:1,attrs:['Bebida:Te']}),expect.objectContaining({id:9602,qty:1,attrs:['Bebida:Agua']})]);
+    expect(h.conv.sessionData.pendingCartAttributeEdit).toBeFalsy();
+  });
+});
