@@ -300,6 +300,32 @@ describe('Offline conversation acceptance across products and interruptions', ()
     expect(h.cartRows()).toEqual([expect.objectContaining({id:38, qty:2})]);
   });
 
+  it.each([true, false])('applies a corrected quantity before a pending beverage flavor is chosen (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Tres jugos naturales en agua');
+    await h.send('Mejor dos');
+    await h.send('Lulo');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:50, qty:2, attrs:expect.arrayContaining(['Sabor:Lulo'])})]);
+  });
+
+  it.each([1, 2])('replaces the original quantity before a chicken variant is selected: %s', async quantity => {
+    const h = harness(products, false);
+    await h.send('Quiero tres pollos');
+    await h.send(`Mejor ${quantity}`);
+    await h.send('Broaster');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:4, qty:quantity})]);
+  });
+
+  it.each([true, false])('does not buy a quoted dish on yes while another purchase is unresolved (agent enabled: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero tres pollos');
+    await h.send('¿Cuánto cuesta el churrasco?');
+    await h.send('Sí');
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Broaster');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:4, qty:3})]);
+  });
+
   it('does not turn questions about a named dish into a purchase', async () => {
     const h = harness(products, false);
     for (const text of ['¿Cuánto cuesta el churrasco?', '¿El arroz con pollo trae ensalada?', '¿Tienes sopa de ajiaco?']) {

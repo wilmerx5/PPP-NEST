@@ -1845,5 +1845,99 @@
         }
       }
     ]
+  },
+  {
+    "id": "pending-flavor-quantity-correction",
+    "messages": [
+      {
+        "text": "Tres jugos naturales en agua",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Mejor dos",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "2"
+          ]
+        }
+      },
+      {
+        "text": "Lulo",
+        "expect": {
+          "items": {
+            "50": 2
+          },
+          "attrs": [
+            {
+              "id": 50,
+              "key": "Sabor",
+              "value": "Lulo"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "pending-price-yes-does-not-buy",
+    "messages": [
+      {
+        "text": "Quiero tres pollos",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "¿Cuánto cuesta el churrasco?",
+        "expect": {
+          "items": {},
+          "replyForbid": [
+            "te lo agrego"
+          ]
+        }
+      },
+      {
+        "text": "Sí",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Broaster",
+        "expect": {
+          "items": {
+            "4": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "pending-candidate-reduce-to-one",
+    "messages": [
+      {
+        "text": "Quiero tres pollos",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Mejor 1",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Broaster",
+        "expect": {
+          "items": {
+            "4": 1
+          }
+        }
+      }
+    ]
   }
 ]

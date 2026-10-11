@@ -1,0 +1,6 @@
+---
+description: Rama fija y procedimiento de trabajo de PPP
+alwaysApply: true
+---
+
+Lee y aplica `AGENTS.md` en la raíz del repositorio antes de trabajar. La rama de integración es `staging`. El presupuesto de inferencia se registra en `docs/whatsapp-model-budget.json`; no se reinicia entre agentes.

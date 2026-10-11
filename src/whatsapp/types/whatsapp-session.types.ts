@@ -26,6 +26,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Explicit correction while the product options are still pending. */
+  quantity?: number;
   productId: number;
   name: string;
   code: number;
@@ -69,6 +71,8 @@ export type WhatsappSessionData = {
     intent?: 'info' | 'order';
     /** Cantidad pedida al elegir de la lista (ej. 5 pollos) */
     quantity?: number;
+    /** Explicit quantity replacement before selecting a candidate. */
+    correctedQuantity?: number;
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
   };

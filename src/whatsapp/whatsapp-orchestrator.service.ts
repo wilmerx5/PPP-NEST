@@ -799,6 +799,36 @@ export class WhatsappOrchestratorService {
       session = this.conversationService.getSession(conv);
     }
 
+    // A correction refers to the one unresolved purchase, not a menu index.
+    const singlePendingPurchase = !session.pendingMultiOrder &&
+      (session.pendingAttribute || session.pendingMatch?.intent === 'order');
+    if (singlePendingPurchase) {
+      const correction = this.normalizeForMatch(originalText).match(
+        /^(?:mejor|solo|solo eran|que sean|en vez de eso|cambia la cantidad a)\s+(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+unidades)?[.!]?$/,
+      );
+      if (correction) {
+        const quantity = /^\d+$/.test(correction[1]) ? Number(correction[1]) :
+          this.catalogService.extractQuantityFromSegment(`${correction[1]} unidades`);
+        if (quantity >= 1 && quantity <= 30) {
+          if (session.pendingAttribute) session.pendingAttribute.quantity = quantity;
+          else if (session.pendingMatch) {
+            session.pendingMatch.quantity = quantity;
+            session.pendingMatch.correctedQuantity = quantity;
+          }
+          session.pendingQuantityHint = undefined;
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(conv, msg.waId, `Listo, serán ${quantity} unidades.\n\n` +
+            this.formatPendingPurchaseReminder(session));
+          return;
+        }
+      }
+      // Yes alone does not select a SKU or flavor from several choices.
+      if (/^(?:si|sip|sipi|claro|ok|okay)[.!]?$/.test(this.normalizeForMatch(originalText))) {
+        await this.reply(conv, msg.waId, this.formatPendingPurchaseReminder(session));
+        return;
+      }
+    }
+
     // Respuesta al “¿cuál es el # de orden?” (sin geocodificar el número)
     if (
       await this.tryResolvePendingOrderStatusLookup(
@@ -4437,6 +4467,13 @@ export class WhatsappOrchestratorService {
     product: MenuProduct,
     opts?: { sourceText?: string; segment?: string },
   ): number {
+    if (session.pendingAttribute?.productId === product.id && session.pendingAttribute.quantity) {
+      return Math.min(30, session.pendingAttribute.quantity);
+    }
+    if (session.pendingMatch?.correctedQuantity &&
+      session.pendingMatch.candidates.some(candidate => candidate.id === product.id)) {
+      return session.pendingMatch.correctedQuantity;
+    }
     const packCopies = namedPackOrderQuantity(opts?.sourceText || opts?.segment || session.pendingMatch?.query || '', product.name);
     if (packCopies != null) return packCopies;
     const pm = session.pendingMultiOrder;
