@@ -3732,6 +3732,23 @@ export class WhatsappCatalogService {
         q,
       );
     if (mainDish && !refsCombo && !refsExistingDishUnit) return false;
+    // "Un Bowl Verde con arroz" nombra el plato. Un cambio o una negación
+    // de guarnición sigue siendo nota.
+    const attachedWithSide = new RegExp(
+      `\\bcon\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b`,
+    ).test(q);
+    if (attachedWithSide && !hasNegSide && !hasChangeSide && !hasSwapSide && !refsCombo && !refsExistingDishUnit) {
+      const withoutSide = q.replace(
+        new RegExp(
+          `\\bcon\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?(?:${sideAlt})\\b`,
+          'g',
+        ),
+        ' ',
+      );
+      const filler = new Set(['quiero', 'dame', 'ponme', 'favor', 'porfa', 'para', 'pedido']);
+      const namedDish = withoutSide.split(/\s+/).filter((token) => token.length >= 4 && !filler.has(token));
+      if (namedDish.length >= 2) return false;
+    }
 
     return true;
   }
@@ -3927,10 +3944,16 @@ export class WhatsappCatalogService {
     const q = normalizeText(raw);
     const modNote = this.extractProductModificationNote(raw);
     if (!q || q.length < 4) return [];
-    // "no quiero arepas, quiero más papas" → no embeber Arepa como producto
-    if (this.looksLikeSideModificationNote(raw)) return [];
-
     const available = products.filter((p) => p.availableNow !== false);
+    // "con arroz" es nota de guarnición, salvo que el cliente haya nombrado un
+    // plato completo y esa palabra sea una opción de ese plato.
+    if (this.looksLikeSideModificationNote(raw) && !available.some((product) => {
+      const name = normalizeText(product.name);
+      if (name.split(' ').length < 2 || !q.includes(name)) return false;
+      return (product.attributes || []).some((attr) =>
+        (attr.options || []).some((option) => this.queryHasToken(q, normalizeText(option))),
+      );
+    })) return [];
     const foodDrink = this.looksLikeFoodPlusDrinkOrder(raw);
     const hits: Array<{
       p: WhatsappCatalogProduct;
@@ -6864,6 +6887,11 @@ export class WhatsappCatalogService {
       const byPrice = this.pickProductByMentionedPrice(family.variants, mentionedPrice);
       if (byPrice) return byPrice;
     }
+    // A base dish does not imply buying a combo merely because it ranks first.
+    if (!/\b(combo|completo|completa|gaseosa|bebida)\b/.test(q)) {
+      const plain = family.variants.filter(product => !this.productImpliesCombo(product));
+      if (plain.length) family = {...family, variants:plain};
+    }
     const styleAsked = [...COOKING_STYLE_TOKENS].filter((st) => this.queryHasToken(q, st));
     const portion = this.detectPortionHint(q);
     if (portion) {
@@ -6911,7 +6939,9 @@ export class WhatsappCatalogService {
       }
     }
     if (/\bsolo\b/.test(q)) {
-      return family.variants.find((p) => /\bsolo\b/.test(normalizeText(p.name))) || null;
+      const namedSolo = family.variants.find((p) => /\bsolo\b/.test(normalizeText(p.name)));
+      if (namedSolo) return namedSolo;
+      if (family.variants.length === 1) return family.variants[0];
     }
     if (/\b(combo|completo|completa|gaseosa|bebida)\b/.test(q)) {
       const combos = family.variants.filter((p) =>

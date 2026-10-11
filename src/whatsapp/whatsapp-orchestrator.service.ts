@@ -314,11 +314,12 @@ export class WhatsappOrchestratorService {
       this.logger.warn(`[WhatsApp] skip empty reply waId=${waId}`);
       return;
     }
-    await this.metaService.sendText(waId, trimmed);
+    const sentMessageId = await this.metaService.sendText(waId, trimmed);
     await this.conversationService.logMessage({
       conversationId: conv.id,
       direction: 'out',
       body: trimmed,
+      waMessageId: sentMessageId || undefined,
       sentBy: 'bot',
     });
     await this.conversationService.touchOutbound(conv, 'bot');
@@ -694,6 +695,35 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Native replies identify their source by Meta ID, not by copied text.
+    const replyContext = msg.raw?.context as {id?: unknown} | undefined;
+    const quotedId = typeof replyContext?.id === 'string' && replyContext.id.length <= 128 ? replyContext.id : undefined;
+    const quotedAttributeMenu = quotedId && session.cart.length && this.looksLikeBareAttributeChoice(originalText)
+      ? await this.catalogService.getMenuProducts() : undefined;
+    if (quotedId && session.cart.length && !session.pendingMatch && !session.pendingAttribute &&
+      !session.pendingMultiOrder && !/[?¿]/.test(originalText) &&
+      quotedAttributeMenu && this.catalogService.listCartAttributeOptionsNamedInText(originalText, session.cart, quotedAttributeMenu).length > 0) {
+      let source: Awaited<ReturnType<WhatsappConversationService['findByWaMessageId']>> = null;
+      try { source = await this.conversationService.findByWaMessageId(quotedId); }
+      catch { /* An unresolved quote must not silently target the latest product. */ }
+      if (!source || Number(source.conversationId) !== Number(conv.id) || source.direction !== 'out') {
+        await this.reply(conv, msg.waId, 'No pude identificar esa referencia. ¿A cuál plato le aplico el cambio?');
+        return;
+      }
+      const candidates = session.cart.filter(line => this.catalogService.isCartProductNamedInText(line.name, source.body || ''));
+      if (candidates.length !== 1) {
+        await this.reply(conv, msg.waId, '¿A cuál plato de este pedido le aplico el cambio? La referencia no identifica una sola línea actual.');
+        return;
+      }
+      if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
+        await this.reply(conv, msg.waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
+        return;
+      }
+      if (await this.tryHandleCartAttributeOptionChange(conv, msg.waId, session,
+        `${candidates[0].name} ${originalText}`, quotedAttributeMenu)) return;
+      await this.reply(conv, msg.waId, '¿Qué opción quieres para ese plato? El pedido sigue igual.');
+      return;
+    }
     // Standalone time answers must not enter the catalog as "medio pollo".
     if (!/[?¿]/.test(originalText) &&
       /^(?:(?:los|las|lo|la)\s+quiero|ser[ií]a|es)?\s*(?:para\s+)?(?:(?:el|al)\s+)?(?:medio\s*d[ií]a|(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+al\s+medio\s*d[ií]a)[.!]*$/i.test(originalText.trim())) {
@@ -927,6 +957,8 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
+
+    if (await this.tryHandleAttributeDistribution(conv, msg.waId, session, originalText, products, cfg)) return;
 
     // A nearby delivery reference is separate from the ordered catalog product.
     const nearbyRequest = originalText.match(/^(.+?)\s+((?:aqu[ií]|por aqu[ií])\s+(?:para|a)\s+la\s+vuelta)(?:\s+por favor)?[.!]*$/i);
@@ -1416,10 +1448,21 @@ export class WhatsappOrchestratorService {
       if (hasPendingPurchase && this.catalogService.isPriceInquiryIntent(text) &&
         !this.splitPriceAndOrderParts(text)) {
         const priced = this.catalogService.resolvePriceInquiryProducts(text, products);
-        if (priced.length) {
-          await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(priced, {
+        const priceLeftover = this.catalogService.stripPriceInquiryNoise(text)
+          .replace(/[^\p{L}\p{N}\s]+/gu, '')
+          .trim();
+        const pendingProduct = !priced.length && session.pendingAttribute && !priceLeftover
+          ? products.find((product) => product.id === session.pendingAttribute?.productId)
+          : undefined;
+        const quoted = priced.length ? priced : pendingProduct ? [pendingProduct] : [];
+        if (quoted.length) {
+          const units = session.pendingAttribute?.quantity;
+          const unitNote = !priced.length && units && units > 1
+            ? `\nSon ${units} unidades; el valor de arriba es por una.`
+            : '';
+          await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(quoted, {
             offerAdd: false,
-          }) +
+          }) + unitNote +
             '\n\n' + this.formatPendingPurchaseReminder(session));
           return;
         }
@@ -4825,7 +4868,8 @@ export class WhatsappOrchestratorService {
     const sourceText = opts?.sourceText || segment || session.pendingMatch?.query || '';
 
     if (segment || sourceText) {
-      const qty = this.quantityForMultiSegment(segment || sourceText, product.name, sourceText);
+      const qty = Math.max(this.quantityForMultiSegment(segment || sourceText, product.name, sourceText),
+        this.catalogService.extractQuantityFromMessage(segment || sourceText, [product]));
       if (qty >= 2) return qty;
       if (segment && this.catalogService.extractQuantityFromSegment(
         this.rawOrderSegmentForQuantity(segment, sourceText),
@@ -4982,6 +5026,8 @@ export class WhatsappOrchestratorService {
         : undefined) ||
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     return {
+      quantity: opts?.sourceText && this.catalogService.extractQuantityFromMessage(opts.sourceText, [product]) > 1
+        ? this.catalogService.extractQuantityFromMessage(opts.sourceText, [product]) : undefined,
       productId: product.id,
       name: product.name,
       code: product.code,
@@ -8321,6 +8367,8 @@ export class WhatsappOrchestratorService {
         session = {
           ...session,
           pendingAttribute: {
+            sourceText: text,
+            quantity: this.resolveAddQuantity(session, picked, {sourceText:text}),
             productId: picked.id,
             name: picked.name,
             code: picked.code,
@@ -8453,6 +8501,8 @@ export class WhatsappOrchestratorService {
         session = {
           ...session,
           pendingAttribute: {
+            sourceText: text,
+            quantity: this.resolveAddQuantity(session, product, {sourceText:text}),
             productId: product.id,
             name: product.name,
             code: product.code,
@@ -13435,6 +13485,8 @@ export class WhatsappOrchestratorService {
       session = {
         ...session,
         pendingAttribute: {
+          sourceText: text,
+          quantity: this.resolveAddQuantity(session, product, {sourceText:text}),
           productId: product.id,
           name: product.name,
           code: product.code,
@@ -14606,7 +14658,58 @@ export class WhatsappOrchestratorService {
     return false;
   }
 
-  /** "Giger" o "coca cola" después del pedido: cambia la opción ya puesta, no abre otra pregunta. */
+  /** Distribute existing units over catalog options, without replacing their product. */
+  private async tryHandleAttributeDistribution(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (session.pendingMultiOrder || session.pendingMatch) return false;
+    if (/[?¿]/.test(text) || !/^(?:los|las)\s+quiero\s+/i.test(text.trim())) return false;
+    const parts = text.trim().replace(/^(?:los|las)\s+quiero\s+/i, '').split(/\s+y\s+|[,;]/i).map(part => part.trim());
+    if (parts.length < 2 || parts.length > 6 || parts.some(part => !/^(?:\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+con\s+/i.test(part))) return false;
+    const quantities = parts.map(part => this.catalogService.extractQuantityFromSegment(part.replace(/\s+con\s+.+$/i,' platos')));
+    const pending = session.pendingAttribute;
+    const distributionLines = pending ? [{productId:pending.productId,name:pending.name,
+      quantity:pending.quantity || this.catalogService.extractQuantityFromSegment(pending.sourceText || '') || 1,
+      attributes:pending.selected, note:this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined}] : session.cart;
+    const candidates = distributionLines.flatMap((line,index) => {
+      const product = products.find(product => product.id === line.productId);
+      if (!product?.attributes?.length) return [];
+      const choices = parts.map(part => this.catalogService.extractExplicitAttributeChoice(part, product));
+      if (choices.some(choice => choice?.length !== 1) || new Set(choices.map(choice => choice?.[0].attributeName)).size !== 1) return [];
+      return [{line,index,product,choices}];
+    });
+    if (!candidates.length) return false;
+    if (candidates.length !== 1) {
+      await this.reply(conv, waId, '¿Cuál plato quieres repartir entre esas opciones? El carrito sigue igual.');
+      return true;
+    }
+    const selected = candidates[0];
+    if (quantities.some(qty => qty < 1 || qty > 30) || quantities.reduce((a,b) => a+b,0) !== selected.line.quantity) {
+      await this.reply(conv, waId, `Tienes ${selected.line.quantity} unidades de ${selected.line.name}. ¿Cómo repartimos esa cantidad? El carrito sigue igual.`);
+      return true;
+    }
+    if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
+      await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
+      return true;
+    }
+    let next: WhatsappSessionData = {...session,pendingAttribute:undefined,cart:pending ? session.cart : session.cart.filter((_,index) => index !== selected.index)};
+    for (let index = 0; index < parts.length; index++) {
+      const attributes = [...(selected.line.attributes || [])].filter(attr => attr.attributeName !== selected.choices[index]![0].attributeName)
+        .concat(selected.choices[index]!);
+      const added = this.tryAddProductToCart(next, selected.product, quantities[index], cfg, selected.line.note, attributes, {sourceText:parts[index]});
+      if (added.blocked || added.missingAttributes) {
+        await this.reply(conv, waId, added.blocked?.reason || 'Necesito completar las opciones del plato antes de repartirlo. El carrito sigue igual.');
+        return true;
+      }
+      next = added.session;
+    }
+    next = {...next,pendingCartAttributeEdit:undefined,pendingQuantityHint:undefined};
+    await this.conversationService.saveSession(conv,next, pending ? 'building_cart' : undefined);
+    await this.reply(conv,waId, `Listo ✅ Repartí ${selected.line.quantity} unidades de ${selected.line.name}.\n\n${this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    return true;
+  }
+
   private looksLikeBareAttributeChoice(text: string): boolean {
     if (/[?¿]/.test(text)) return false;
     const q = this.normalizeForMatch(text)

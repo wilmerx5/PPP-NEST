@@ -5,7 +5,7 @@
   "cases": [
     {
       "id": "catalog-color-name",
-      "status": "reproduced-unfixed",
+      "status": "regression-added",
       "menu": [
         {
           "id": 921,
@@ -29,7 +29,7 @@
         "Un Bowl Verde con arroz"
       ],
       "expected": "One Bowl Verde with Arroz; do not replace product name with a category query.",
-      "observed": "Category list, or generic menu nudge when bypassing category handler. Correction tests select product by code to isolate editing."
+      "observed": "Regression covers Bowl Verde con arroz and Bowl Rojo con quinoa: the color stays in the product name and the base is the attribute. A side word is not a note when two other words name the dish."
     },
     {
       "id": "rice-large-order-scheduled-split",
@@ -43,7 +43,7 @@
         "Los quiero 5 con pollo frito y 5 con pollo broaster"
       ],
       "expected": "Do not assume 20 units from diner count; only give servings supported by catalog; preserve 10 rice-with-half-chicken boxes when splitting preparation; time is metadata; do not guarantee scheduling or deposits without supported policy.",
-      "verified_this_batch": "Standalone time response no longer selects half chicken; full multi-turn flow remains pending.",
+      "verified_this_batch": "New regression covers ten explicitly ordered rice-with-half-chicken portions (with and without solo), choosing catalog attributes as 5 Frito + 5 Broaster, plus an alternate bowl menu. Full servings/scheduling/deposit/copied-quote conversation remains pending; do not infer it passes from the split test.",
       "catalog_fixture_checked": {
         "productId": 36,
         "name": "Arroz Chino Con Medio Pollo",
@@ -63,9 +63,9 @@
     },
     {
       "id": "whatsapp-reply-context",
-      "status": "code-gap-inspected-not-implemented",
+      "status": "implemented-for-existing-cart-attribute-replies-under-verification",
       "expected": "Use raw.context.id to resolve a stored message in the same conversation; quote stays evidence not a new purchase or instruction. Handle missing, cross-conversation and stale context safely.",
-      "observed": "Raw webhook is retained; current orchestrator does not resolve context.id. Existing tests cover copied quote text, not native WhatsApp reply linkage."
+      "observed": "Bot text sends retain Meta message ID. Native context.id resolves stored outbound in the same conversation for recognized catalog option replies with no pending choice. Missing/foreign/inbound/stale/ambiguous quotes ask instead of changing latest line. Other reply intents, human/media send IDs and quoted full scheduled flow remain pending."
     }
   ]
 }

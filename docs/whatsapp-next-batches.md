@@ -2,6 +2,14 @@
 
 Fecha: 2026-10-11. Rama permanente: staging. Usar AGENTS.md y el relevo. Este plan describe pruebas, no acredita que el producto sea vendible.
 
+## Tanda de respuestas nativas y reparto — 11 de octubre
+
+Nueva cobertura: referencias a mensajes salientes por ID de Meta, límites por conversación/línea, referencias no recuperables o ambiguas y ausencia de compra por cantidades en la cita. Textos bot nuevos guardan ID; mensajes históricos sin ID y medios/humanos no quedan acreditados. Cambios por opción citada solamente cuando el carrito ya existe y no hay selección pendiente.
+
+Reparto de diez unidades por atributo: 5/5 del mismo producto, tanto preparación pendiente PPP como base de bowl en otro catálogo; conservar notas, cantidades, otro plato y estado. Suma incorrecta o varios referentes requieren aclaración. Preguntar rendimiento para veinte personas no implica comprar veinte unidades.
+
+La tanda no acredita todavía el recorrido completo con rendimiento, abono, fecha y texto copiado. Los próximos casos deben medir todo el recorrido y respuesta, no solo el carrito final. Resultado final y despliegue se registran en el relevo al terminar. No se gastan llamadas API.
+
 ## Fuentes públicas revisadas
 
 - [MultiWOZ 2.2](https://github.com/budzianowski/multiwoz/blob/fe0c8e65cfcd8462bd33c86e35f21addc84ca82b/data/MultiWOZ_2.2/README.md). Revisión fe0c8e65cfcd8462bd33c86e35f21addc84ca82b; licencia MIT. Se inspeccionó dev/dialogues_001.json: 512 diálogos, 220 con servicio de restaurante; IDs de referencia PMUL0698.json y MUL0242.json. Útil para consultas sucesivas, restricciones y cambios de objetivo. Son conversaciones de un benchmark de tareas, no pedidos reales de PPP.

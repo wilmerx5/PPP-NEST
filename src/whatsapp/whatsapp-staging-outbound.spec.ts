@@ -34,4 +34,12 @@ describe('Staging outbound isolation',()=> {
   it('preserves normal behavior outside the staging profile',async()=> {
     delete process.env.PPP_STAGING;await meta.sendText('573009999999','test');expect(fetcher).toHaveBeenCalledTimes(1);
   });
+  it('returns the sent Meta ID without making a second request',async()=> {
+    enable();fetcher.mockResolvedValueOnce(new Response(JSON.stringify({messages:[{id:'wamid.synthetic'}]})));
+    expect(await meta.sendText('573001234567','test')).toBe('wamid.synthetic');expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('does not retry a successful send with an unreadable response body',async()=> {
+    enable();fetcher.mockResolvedValueOnce(new Response('not-json'));
+    expect(await meta.sendText('573001234567','test')).toBeUndefined();expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });

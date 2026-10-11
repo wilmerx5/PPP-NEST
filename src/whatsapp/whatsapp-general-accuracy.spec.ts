@@ -90,14 +90,14 @@ function harness(menu = products, agentEnabled = true) {
     replies.push(reply);
     history.push(`Bot: ${reply}`);
   };
-  const send = async (text: string) => {
+  const send = async (text: string, raw: Record<string, unknown> = {}) => {
     await service.handleIncomingUnlocked({
       waId: 'customer',
       phoneE164: conv.phoneE164,
       messageId: `acc-${count}`,
       messageType: 'text',
       text,
-      raw: {},
+      raw,
     });
     return replies[replies.length - 1];
   };
@@ -1602,5 +1602,159 @@ describe('Cercanía no convierte consultas o negaciones en compra', () => {
     const h = harness(products,false);
     await h.send(text);
     expect(h.cartRows()).toEqual([]);
+  });
+});
+
+
+describe('Respuestas nativas de WhatsApp — vínculo y alcance', () => {
+  it('usa la respuesta citada para elegir entre dos líneas con las mismas opciones', async () => {
+    const h = harness(products,false);
+    await h.send('Un pollo frito');
+    await h.send('Un pollo broaster');
+    const other = structuredClone(h.cartRows().find(r => r.id === 4));
+    h.service.conversationService.findByWaMessageId = jest.fn().mockResolvedValue({conversationId:1,direction:'out',body:'Listo ✅ 1 Pollo Frito. Arepas blancas o fritas?',waMessageId:'wamid.quote'});
+    const reply = await h.send('Fritas',{context:{id:'wamid.quote'}});
+    expect(h.cartRows().find(r => r.id === 1)).toEqual(expect.objectContaining({qty:1,attrs:expect.arrayContaining(['Arepas:Fritas'])}));
+    expect(h.cartRows().find(r => r.id === 4)).toEqual(other);
+    expect(reply).toMatch(/fritas/i);
+  });
+  it.each(['missing','foreign','inbound','stale'])('no aplica una referencia %s al último plato', async scenario => {
+    const h = harness(products,false);
+    await h.send('Un pollo frito');
+    await h.send('Un pollo broaster');
+    const before = structuredClone(h.cartRows());
+    h.service.conversationService.findByWaMessageId = jest.fn().mockResolvedValue(scenario === 'missing' ? null : {
+      conversationId:scenario === 'foreign' ? 99 : 1,direction:scenario === 'inbound' ? 'in':'out',
+      body:scenario === 'stale' ? 'Listo ✅ Sopa De Ajiaco':'Listo ✅ 1 Pollo Frito',waMessageId:'wamid.quote',
+    });
+    const reply = await h.send('Fritas',{context:{id:'wamid.quote'}});
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]l|identificar|plato|producto/i);
+  });
+  it('otro catálogo conserva cantidad y cambia solo la base del plato citado', async () => {
+    const menu = ['Mediterraneo','Oriental'].map((suffix,index) => ({id:951+index,code:951+index,name:`Bowl ${suffix}`,categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]}));
+    const h = harness(menu,false);
+    await h.send('Tres Bowls Mediterraneos');
+    await h.send('Dos Bowls Orientales');
+    h.service.conversationService.findByWaMessageId = jest.fn().mockResolvedValue({conversationId:1,direction:'out',body:'Bowl Mediterraneo ×9. Base: Arroz',waMessageId:'wamid.quote'});
+    await h.send('Quinoa',{context:{id:'wamid.quote'}});
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({id:951,qty:3,attrs:['Base:Quinoa']}),
+      expect.objectContaining({id:952,qty:2,attrs:['Base:Arroz']}),
+    ]);
+  });
+  it.each(['lookup-error','ambiguous'])('una cita %s pide aclaración y conserva el carrito', async scenario => {
+    const h = harness(products,false);
+    await h.send('Un pollo frito');
+    await h.send('Un pollo broaster');
+    const before = structuredClone(h.cartRows());
+    h.service.conversationService.findByWaMessageId = scenario === 'lookup-error'
+      ? jest.fn().mockRejectedValue(new Error('Simulated lookup failure'))
+      : jest.fn().mockResolvedValue({conversationId:1,direction:'out',body:'1 Pollo Frito y 1 Pollo Broaster',waMessageId:'wamid.quote'});
+    const reply = await h.send('Fritas',{context:{id:'wamid.quote'}});
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]l|identificar|plato|producto/i);
+  });
+  it('una respuesta citada de horario conserva el carrito y registra el horario', async () => {
+    const h = harness(products,false);
+    await h.send('Un pollo frito');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Mediodía',{context:{id:'wamid.schedule'}});
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.customerNotes).toMatch(/Horario solicitado/);
+    expect(reply).toMatch(/todavía no está reservada/);
+  });
+  it('guardar respuesta enviada conserva el ID de Meta para futuras citas', async () => {
+    const h = harness(products,false);
+    h.service.metaService = {sendText:jest.fn().mockResolvedValue('wamid.sent')};
+    h.service.conversationService.logMessage = jest.fn().mockResolvedValue({id:'sent'});
+    h.service.conversationService.touchOutbound = jest.fn();
+    await h.service.sendReplyNow(h.conv,'customer','Respuesta de prueba');
+    expect(h.service.conversationService.logMessage).toHaveBeenCalledWith(expect.objectContaining({direction:'out',waMessageId:'wamid.sent',conversationId:1}));
+  });
+});
+
+describe('Distribución de preparaciones conserva el producto y la cantidad', () => {
+  const menu = [{id:941,code:941,name:'Bowl Mediterraneo',categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]}];
+  it.each([
+    {menu:products,order:'Diez arroces chinos con medio pollo',split:'Los quiero 5 con pollo frito y 5 con pollo broaster',id:36,attr:'Pollo',values:['Frito','Broaster']},
+    {menu:products,order:'Quiero solo diez arroces chinos con medio pollo',split:'Los quiero 5 con pollo frito y 5 con pollo broaster',id:36,attr:'Pollo',values:['Frito','Broaster']},
+    {menu,order:'Diez Bowls Mediterraneos',split:'Los quiero 5 con arroz y 5 con quinoa',id:941,attr:'Base',values:['Arroz','Quinoa']},
+  ])('resuelve diez unidades pendientes como dos líneas del producto $id', async ({menu,order,split,id,attr,values}) => {
+    const h = harness(menu,false);
+    await h.send(order);
+    expect(h.cartRows().some(r => r.id === id && r.qty === 10) || h.conv.sessionData.pendingAttribute?.productId === id).toBe(true);
+    const reply = await h.send(split);
+    expect(h.cartRows()).toHaveLength(2);
+    for (const value of values) expect(h.cartRows()).toContainEqual(expect.objectContaining({id,qty:5,attrs:expect.arrayContaining([`${attr}:${value}`])}));
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    expect(reply).toMatch(/5/);
+  });
+  it('un reparto incompleto conserva las diez unidades y pide aclaración', async () => {
+    const h = harness(menu,false);
+    await h.send('Diez Bowls Mediterraneos');
+    const before = h.cartRows();
+    const reply = await h.send('Los quiero 4 con arroz y 5 con quinoa');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/10.*unidades/);
+    expect(reply).toMatch(/repartimos/);
+  });
+  it('dos platos con las mismas opciones requieren identificar el referente', async () => {
+    const h = harness([...menu,{...menu[0],id:942,code:942,name:'Bowl Oriental'}],false);
+    await h.send('Diez Bowls Mediterraneos');
+    await h.send('Diez Bowls Orientales');
+    const before = h.cartRows();
+    expect(before).toHaveLength(2);
+    const reply = await h.send('Los quiero 5 con arroz y 5 con quinoa');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cuál plato/i);
+  });
+  it('repartir conserva la nota y permite continuar comprando', async () => {
+    const h = harness(products,false);
+    await h.send('Quiero solo diez arroces chinos con medio pollo sin papa francesa');
+    expect(h.cartRows().some(row => row.id === 36 && row.qty === 10) || h.conv.sessionData.pendingAttribute?.quantity === 10).toBe(true);
+    await h.send('Los quiero 5 con pollo frito y 5 con pollo broaster');
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.conv.state).toBe('building_cart');
+    for (const line of h.conv.sessionData.cart) expect(line.note).toMatch(/sin papa francesa/i);
+    await h.send('Una limonada natural');
+    expect(h.cartRows().filter(row => row.id === 36).reduce((sum,row) => sum + row.qty,0)).toBe(10);
+    expect(h.cartRows().some(row => row.id === 37)).toBe(true);
+  });
+  it('la cantidad pendiente sobrevive una consulta antes de elegir la preparación', async () => {
+    const h = harness(products,false);
+    await h.send('Quiero solo diez arroces chinos con medio pollo');
+    expect(h.conv.sessionData.pendingAttribute?.productId).toBe(36);
+    expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(10);
+    await h.send('Cuánto cuesta?');
+    expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(10);
+    await h.send('Frito');
+    expect(h.cartRows()).toContainEqual(expect.objectContaining({id:36,qty:10,attrs:expect.arrayContaining(['Pollo:Frito'])}));
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+  });
+  it('personas es contexto de rendimiento y no veinte productos', async () => {
+    const h = harness(products,false);
+    await h.send('Hola buenos días quiero pedir arroz chino para unas veinte personas');
+    expect(h.cartRows().reduce((n,row) => n + row.qty,0)).toBeLessThanOrEqual(1);
+    expect(h.conv.sessionData.pendingQuantityHint?.quantity || 1).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('Un color del nombre no se trata como estilo ni como categoría', () => {
+  const bowls = [
+    {id:921,code:921,name:'Bowl Verde',categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},
+    {id:922,code:922,name:'Bowl Rojo',categoryName:'Bowls',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},
+  ];
+  it('compra el bowl nombrado y aplica la base pedida', async () => {
+    const h = harness(bowls, false);
+    const reply = await h.send('Un Bowl Verde con arroz');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:921,qty:1,attrs:expect.arrayContaining(['Base:Arroz'])})]);
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+  });
+  it('no elige el otro color cuando el cliente nombra uno', async () => {
+    const h = harness(bowls, false);
+    await h.send('Un Bowl Rojo con quinoa');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:922,qty:1,attrs:expect.arrayContaining(['Base:Quinoa'])})]);
   });
 });

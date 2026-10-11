@@ -184,7 +184,7 @@ export class WhatsappMetaService {
     return digits ? `+${digits}` : raw;
   }
 
-  async sendText(toWaId: string, body: string): Promise<void> {
+  async sendText(toWaId: string, body: string): Promise<string | undefined> {
     const cfg = await this.settingsService.getEffectiveConfig();
     this.assertStagingTarget(cfg.phoneNumberId,toWaId);
     if (!cfg.accessToken || !cfg.phoneNumberId) {
@@ -213,6 +213,12 @@ export class WhatsappMetaService {
       this.logger.error(`Meta send failed (${res.status}): ${errText}`);
       throw new Error(`WhatsApp send failed: ${res.status}`);
     }
+    // Sending succeeded even if the response body cannot supply a reference ID.
+    // Never turn a metadata parsing issue into a retry of an already sent message.
+    let result: {messages?: Array<{id?: unknown}>} | undefined;
+    try { result = await res.json(); } catch { return undefined; }
+    const messageId = result?.messages?.[0]?.id;
+    return typeof messageId === 'string' && messageId.length <= 128 ? messageId : undefined;
   }
 
   /**
