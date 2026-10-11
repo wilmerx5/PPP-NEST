@@ -2218,3 +2218,728 @@ describe('Álbum — sobre no soportado seguido de foto válida', () => {
     } finally { jest.useRealTimers(); }
   });
 });
+
+describe('Tanda siguiente — intenciones combinadas y recuperación', () => {
+  it('consulta dos pescados y compra solo la bebida independiente', async () => {
+    const h = harness(products,false);
+    await h.send('Me recomiendas mojarra o trucha? Y agrega una limonada natural');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:37,qty:1})]);
+    expect(h.replies.join(' ')).toMatch(/Mojarra/i);
+    expect(h.replies.join(' ')).toMatch(/Trucha/i);
+    expect(h.replies.join(' ')).not.toMatch(/más suave|más tradicional/);
+  });
+  it('anota los dos restantes después de retirar una unidad', async () => {
+    const h = harness(products,false);
+    await h.send('Tres churrascos');
+    await h.send('Quita uno de los churrascos');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2})]);
+    await h.send('Los dos restantes sin ensalada');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2,note:expect.stringMatching(/sin ensalada/i)})]);
+  });
+  it('conserva cantidad nota dirección y transferencia en un turno', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos arroces con pollo sin ensalada para la carrera 7 20 30, pago por transferencia');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:23,qty:2,note:expect.stringMatching(/sin ensalada/i)})]);
+    expect(h.conv.sessionData.address).toMatch(/7 20 30/);
+    expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.replies.join(' ')).not.toMatch(/algo más/i);
+  });
+  it('consulta el precio mínimo y vuelve a elegir tres broaster', async () => {
+    const h = harness(products,false);
+    await h.send('Tres pollos');
+    const before = structuredClone(h.conv.sessionData);
+    await h.send('Cuál es el más barato?');
+    expect(h.conv.sessionData).toEqual(before);
+    await h.send('Los tres broaster');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:4,qty:3})]);
+  });
+  it('corrige a dos sopas durante pago sin perder la dirección', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Una sopa de menudencias para la calle 48 sur 87 86');
+    expect(h.conv.state).toBe('awaiting_payment');
+    await h.sendQueued('Perdón, dos sopas, en esa misma dirección');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:20,qty:2})]);
+    expect(h.conv.sessionData.address).toMatch(/48 sur 87 86/);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+  it('compra referida conserva fecha y hora explícitas', async () => {
+    const bowl = {id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+    const h = harness([bowl],false);
+    await h.send('Cuánto cuesta el Bowl Mediterraneo?');
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Quiero esas diez cajas para el 15/10 a las 14:00');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:991,qty:10})]);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(h.conv.sessionData.customerNotes).toMatch(/15\/10/);
+    expect(h.conv.sessionData.customerNotes).toMatch(/14:00/);
+    expect(h.replies.at(-1)).toMatch(/no está reservada/);
+  });
+  it('retira una unidad de una preparación y conserva la otra', async () => {
+    const h = harness(products,false);
+    h.conv.sessionData.cart = [
+      {productId:14,code:14,name:'Mojarra',quantity:2,unitPrice:32000,attributes:[{attributeName:'Seleccion',attributeValue:'Frita'}]},
+      {productId:14,code:14,name:'Mojarra',quantity:3,unitPrice:32000,attributes:[{attributeName:'Seleccion',attributeValue:'Asada'}]},
+    ];
+    await h.send('Quita una de las fritas, las asadas sí las dejo');
+    expect(h.cartRows().find(r=>r.attrs.includes('Seleccion:Frita'))?.qty).toBe(1);
+    expect(h.cartRows().find(r=>r.attrs.includes('Seleccion:Asada'))?.qty).toBe(3);
+    expect(h.cartRows()).toHaveLength(2);
+  });
+  it('conserva la primera foto y muestra el fallo de la segunda', async () => {
+    const h = harness(products,false);
+    h.service.resolveImageMessage = jest.fn()
+      .mockResolvedValueOnce({done:false,text:'Un churrasco'})
+      .mockImplementationOnce(async () => {await h.service.reply(h.conv,'customer','No pude leer tu foto');return {done:true};});
+    await h.sendQueued('',{messageType:'image',mediaId:'valid-photo'});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1})]);
+    await h.sendQueued('',{messageType:'image',mediaId:'unreadable-photo'});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1})]);
+    expect(h.replies.at(-1)).toMatch(/No pude leer tu foto/);
+  });
+});
+
+describe('Tanda siguiente portable — límites y otro menú', () => {
+  const bowl = {id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  const wrap = {id:992,code:992,name:'Wrap Oriental',price:14000,availableNow:true,attributes:[]};
+  const tea = {id:993,code:993,name:'Te Helado',price:5000,availableNow:true,attributes:[]};
+  it('consulta dos platos de otro menú y compra la bebida explícita', async () => {
+    const h = harness([bowl,wrap,tea],false);
+    await h.send('Me recomiendas Bowl Mediterraneo o Wrap Oriental? Y agrega dos Te Helado');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:993,qty:2})]);
+    expect(h.replies.join(' ')).toMatch(/Bowl Mediterraneo/);
+    expect(h.replies.join(' ')).toMatch(/Wrap Oriental/);
+  });
+  it('compra otro plato con nota dirección y pago sin perder unidades', async () => {
+    const h = harness([bowl],false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos bowls mediterraneos sin cebolla para la carrera 7 20 30, pago por transferencia');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:991,qty:2,note:expect.stringMatching(/sin cebolla/i)})]);
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.conv.sessionData.address).toMatch(/7 20 30/);
+  });
+  it('corrige cantidad de otro plato sin modificar dirección ni bebida', async () => {
+    const h = harness([bowl,tea],false);
+    await h.send('Un Bowl Mediterraneo y un Te Helado');
+    await h.send('Perdón, dos bowls mediterraneos');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:991,qty:2}),expect.objectContaining({id:993,qty:1})]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+  it.each(['Quiero esas diez cajas para el 31/02 a las 14:00','Quiero esas diez cajas para el 15/10 a las 25:00'])('fecha u hora inválida no compra: %s', async text => {
+    const h = harness([bowl],false);
+    await h.send('Cuánto cuesta el Bowl Mediterraneo?');
+    const before = structuredClone(h.conv.sessionData);
+    await h.send(text);
+    expect(h.conv.sessionData.cart).toEqual(before.cart);
+    expect(h.conv.sessionData.customerNotes).toEqual(before.customerNotes);
+    expect(h.replies.at(-1)).toMatch(/no es válida/);
+  });
+  it('perdón sin cantidad no corrige ni duplica el pedido', async () => {
+    const h = harness([bowl],false);
+    await h.send('Un Bowl Mediterraneo');
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send('Perdón, cuánto cuesta el Bowl Mediterraneo?');
+    expect(h.conv.sessionData.cart).toEqual(before);
+  });
+  it('preguntar si agrega bebida no la compra', async () => {
+    const h = harness(products,false);
+    await h.send('Me recomiendas mojarra o trucha? Y puedo agregar una limonada natural?');
+    expect(h.cartRows()).toEqual([]);
+  });
+});
+
+describe('Audio hablado — cortesía y pausas no son productos', () => {
+  const spoken = 'Me hace. Favor. Me envía un combo de pollo frito, a cambio de las papas un madurito con bocadillo y queso. Y una gaseosa 400ml. Muchas gracias.';
+  it.each(['text','audio'])('conserva combo y bebida sin rechazar fragmentos de cortesía (%s)', async type => {
+    const h = harness(products,false);
+    h.service.resolveAudioToText = jest.fn().mockResolvedValue(spoken);
+    await h.sendQueued(type === 'audio' ? '' : spoken,type === 'audio' ? {messageType:'audio',mediaId:'synthetic-audio'} : {});
+    const pending = h.conv.sessionData.pendingMultiOrder;
+    const ids = [...h.cartRows().map(r=>r.id),...(pending?.confident||[]).map(r=>r.productId),...(pending?.needsAttributes||[]).map(r=>r.productId),...(h.conv.sessionData.pendingAttribute?[h.conv.sessionData.pendingAttribute.productId]:[])];
+    expect(ids).toContain(99);
+    expect(ids).toContain(28);
+    expect(h.replies.join(' ')).not.toMatch(/no manejamos:\s*_?(?:me hace|favor|me envía|muchas)/i);
+    expect(h.cartRows().some(r=>/madur/i.test(r.note||'')) || /madur|acompañamiento|cambio/i.test(h.replies.join(' '))).toBe(true);
+  });
+  it.each([
+    'Me hace el favor, me envía dos churrascos. Muchas gracias.',
+    'Me hace\nfavor\nme envía\ndos churrascos\nMuchas gracias',
+    'Buenas tardes. Por favor. Me manda dos sopas de menudencias. Gracias.',
+  ])('no interpreta muletillas como productos: %s', async text => {
+    const h = harness(products,false);
+    await h.sendQueued(text);
+    const id = /churrascos/.test(text)?17:20;
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2})]);
+    expect(h.replies.join(' ')).not.toMatch(/no manejamos|Entendí varios platos/i);
+  });
+  it('cortesía no oculta un producto realmente fuera del catálogo', async () => {
+    const h = harness(products,false);
+    await h.sendQueued('Me hace el favor, me envía una mazorcada. Muchas gracias.');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.replies.join(' ')).toMatch(/mazorcada/i);
+    expect(h.replies.join(' ')).toMatch(/no.*(?:manejamos|tenemos|carta)/i);
+  });
+  it('otro menú conserva cantidades en un pedido hablado', async () => {
+    const menu = [{id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]}];
+    const h = harness(menu,false);
+    await h.sendQueued('Me hace el favor. Me envía dos bowls mediterraneos. Muchas gracias.');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:991,qty:2})]);
+    expect(h.replies.join(' ')).not.toMatch(/no manejamos/i);
+  });
+});
+
+describe('Audio hablado — sustitución exacta reportada', () => {
+  it.each(['text','audio'])('combo frito cambia su bebida sin comprar la gaseosa (%s)', async type => {
+    const h = harness(products,false);
+    const text = 'me hace el favor me envia un combo frito a cambio de la gaseosa un madurito con bocadillo y queso, muchas gracias';
+    h.service.resolveAudioToText = jest.fn().mockResolvedValue(text);
+    await h.sendQueued(type==='audio'?'':text,type==='audio'?{messageType:'audio',mediaId:'exact-spoken'}:{});
+    const session = h.conv.sessionData;
+    const rows = [...session.cart,...(session.pendingMultiOrder?.confident||[]),...(session.pendingMultiOrder?.needsAttributes||[])];
+    expect(rows.some(row=>row.productId===99) || session.pendingAttribute?.productId===99).toBe(true);
+    expect(rows.every(row=>row.productId===99)).toBe(true);
+    expect(h.replies.join(' ')).not.toMatch(/no manejamos:\s*_?(?:me hace|favor|me envía|combo frito a cambio)/i);
+    const notes = [...rows.map(row=>row.note||''),session.pendingAttribute?.sourceText||'',h.replies.join(' ')].join(' ');
+    expect(notes).toMatch(/gaseosa/i);
+    expect(notes).toMatch(/madurito con bocadillo y queso/i);
+  });
+});
+
+describe('PDF 11/10 — primeros tres chats y equivalentes portables', () => {
+  const weekend = products.map(p=>[41,45].includes(p.id)?{...p,name:p.name+' (Fines de semana)'}:p);
+  const pendingIds = (h: ReturnType<typeof harness>) => {
+    const s = h.conv.sessionData;
+    return [...s.cart.map(row=>row.productId),...(s.pendingMultiOrder?.confident||[]).map(row=>row.productId),...(s.pendingMultiOrder?.needsAttributes||[]).map(row=>row.productId),...(s.pendingAttribute?[s.pendingAttribute.productId]:[])];
+  };
+  it('chat 1: mondongo no ofrece ajiaco ni sopas con otra preparación', async () => {
+    const h = harness(weekend,false);
+    await h.sendQueued('1 sopa de mondongo, medio pollo frito y un platano maduro con bocdillo y queso');
+    const s = h.conv.sessionData;
+    const candidates = [...(s.pendingMatch?.candidates||[]),...(s.pendingMultiOrder?.ambiguous||[]).flatMap(row=>row.candidates)];
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.every(p=>/mondongo/i.test(p.name))).toBe(true);
+    expect(pendingIds(h)).toEqual(expect.arrayContaining([2,53]));
+    expect(h.replies.join(' ')).not.toMatch(/Sopa De Ajiaco/);
+  });
+  it('chat 2: ejecutivo conserva menudencias nota y dirección sin bebida adicional', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Es para pedir el menú ejecutivo con pollo BROASTER, con papas a la francesa, pierna pernil el arroz, sopa de menudencias y la gaseosa, me puedes dar porfa el menú sin ensalada.\nEs para la calle 7 #20-30 torre 5 int 2 apto 402');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:18,qty:1,note:expect.stringMatching(/sin ensalada/i),attrs:expect.arrayContaining(['Presa:Pierna Pernil','Sopa:Menudencias'])})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+  it('chat 3: respuesta de ejecutivo no compra un pollo entero', async () => {
+    const h = harness(products,false);
+    await h.sendQueued('Quiero pedir un almuerzo ejecutivo por favor');
+    expect(h.cartRows()).toEqual([]);
+    await h.sendQueued('Mondongo pollo frito pierna pernil papa salada');
+    expect(pendingIds(h)).toContain(22);
+    expect(pendingIds(h)).not.toContain(1);
+    await h.sendQueued('Y de tomar me puedes enviar limonada?');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:22,qty:1,attrs:expect.arrayContaining(['Presa:Pierna Pernil','Sopa:Mondongo','Bebida:Limonada'])})]);
+    expect(h.cartRows()[0].note).toMatch(/papa salada/i);
+  });
+  const lunch = {id:8701,code:8701,name:'Menu Vegetariano',description:'Incluye sopa, arroz, ensalada y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Lentejas','Calabaza']},{attributeName:'Bebida',options:['Te','Agua']}]};
+  const alt = [lunch,{id:8702,code:8702,name:'Sopa De Lentejas',price:6000,availableNow:true,attributes:[]},{id:8703,code:8703,name:'Te Helado',price:4000,availableNow:true,attributes:[]}];
+  it('otro menú: sopa y bebida incluidas no crean líneas adicionales', async () => {
+    const h = harness(alt,false);
+    await h.sendQueued('Un menu vegetariano con sopa de lentejas y la bebida te, sin ensalada');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:8701,qty:1,attrs:expect.arrayContaining(['Sopa:Lentejas','Bebida:Te']),note:expect.stringMatching(/sin ensalada/i)})]);
+  });
+  it('otro menú: una sopa extra explícita se agrega por separado', async () => {
+    const h = harness(alt,false);
+    await h.sendQueued('Un menu vegetariano con sopa de lentejas y bebida te, y una sopa de lentejas adicional aparte');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:8701,qty:1}),expect.objectContaining({id:8702,qty:1})]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+});
+
+describe('PDF 11/10 — patrones adicionales y menús ficticios', () => {
+  const bowl = {id:8801,code:8801,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  it.each([
+    {menu:products,text:'1 arroz con pollo y 2 ajiacos',rows:[{id:23,qty:1},{id:38,qty:2}]},
+    {menu:[bowl,{...bowl,id:8802,code:8802,name:'Wrap Oriental'}],text:'1 bowl mediterraneo y 2 wraps orientales',rows:[{id:8801,qty:1},{id:8802,qty:2}]},
+  ])('cantidades independientes por plato: $text', async ({menu,text,rows}) => {
+    const h = harness(menu,false);await h.sendQueued(text);
+    expect(h.cartRows()).toHaveLength(2);
+    for(const row of rows)expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining(row)]));
+  });
+  it.each([
+    {menu:products,order:'Dos arroces con pollo',id:23},
+    {menu:[bowl],order:'Dos bowls mediterraneos',id:8801},
+  ])('dirección por partes no cambia cantidad de $id', async ({menu,order,id}) => {
+    const h = harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(order);await h.sendQueued('Para la calle 7 #20-30');await h.sendQueued('Torre 3 apto 607');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);
+    expect(h.conv.sessionData.address).toMatch(/torre 3 apto 607/i);
+  });
+  it.each(['Gracias','Porfa','Mil gracias veci'])('cortesía aislada conserva el pedido: %s', async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).not.toMatch(/no manejamos/i);
+  });
+  it.each(['Cuánto suma?','Y cuánto es el total?'])('consultar total no cambia platos: %s', async text=>{
+    const h=harness(products,false);await h.sendQueued('Un arroz con pollo y dos ajiacos');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/50[.,]500/);
+  });
+  it.each(['Qué vale el Bowl Mediterraneo?','El Bowl Mediterraneo alcanza para cuatro personas?'])('consulta de precio/rendimiento no compra: %s', async text=>{
+    const h=harness([bowl],false);await h.sendQueued(text);expect(h.cartRows()).toEqual([]);
+    expect(h.replies.join(' ')).not.toMatch(/alcanza para 4|para cuatro personas/i);
+  });
+  it.each(['No gracias','No señor así está bien muchas gracias'])('terminar compra conserva dos unidades: %s', async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:8801,qty:2})]);
+  });
+  it('nota posterior de cubiertos no compra otro producto', async()=>{
+    const h=harness([bowl],false);await h.sendQueued('Un Bowl Mediterraneo');await h.sendQueued('Con los cubiertos por favor');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:8801,qty:1})]);
+    expect([h.conv.sessionData.customerNotes,...h.cartRows().map(r=>r.note),h.replies.at(-1)].join(' ')).toMatch(/cubiertos/i);
+  });
+  it('cantidad y billete durante pago no agregan sopas', async()=>{
+    const h=harness(products,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos ajiacos para la calle 7 #20-30');await h.sendQueued('Pago con un billete de 100mil');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:38,qty:2})]);expect(h.conv.sessionData.cashChangeFor).toBeTruthy();
+  });
+  it.each(['Tomate','Lentejas'])('otro menú limita las opciones al tipo de sopa %s', async type=>{
+    const menu=[{id:8803,code:8803,name:'Sopa De Tomate',price:5000,availableNow:true,attributes:[]},{id:8804,code:8804,name:'Sopa De Tomate Pequeña',price:3000,availableNow:true,attributes:[]},{id:8805,code:8805,name:'Sopa De Lentejas',price:6000,availableNow:true,attributes:[]},{id:8806,code:8806,name:'Sopa De Lentejas Pequeña',price:4000,availableNow:true,attributes:[]},bowl];
+    const h=harness(menu,false);await h.sendQueued(`Una sopa de ${type} y un Bowl Mediterraneo`);
+    const choices=[...(h.conv.sessionData.pendingMatch?.candidates||[]),...(h.conv.sessionData.pendingMultiOrder?.ambiguous||[]).flatMap(x=>x.candidates)];
+    expect(choices.every(p=>p.name.includes(type))).toBe(true);
+    // Un nombre exacto selecciona la presentación regular; no exige una ambigüedad artificial.
+    expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:type==='Tomate'?8803:8805,qty:1}),expect.objectContaining({id:8801,qty:1})]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+  it.each(['text','audio'])('otro menú interpreta cortesía y sustitución (%s)', async type=>{
+    const meal={id:8807,code:8807,name:'Combo Vegetariano',description:'Incluye bebida y ensalada',price:20000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te','Agua']}]};
+    const h=harness([meal],false);const text='Me hace el favor me envía un combo vegetariano a cambio de la bebida una ensalada con tomate y queso, muchas gracias';
+    h.service.resolveAudioToText=jest.fn().mockResolvedValue(text);await h.sendQueued(type==='audio'?'':text,type==='audio'?{messageType:'audio',mediaId:'synthetic-alt'}:{});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:8807,qty:1,note:expect.stringMatching(/ensalada con tomate y queso/i)})]);
+    expect(h.cartRows()[0].attrs).not.toContain('Bebida:Te');
+  });
+  it('transcripción fallida conserva el carrito y pide texto', async()=>{
+    const h=harness([bowl],false);await h.sendQueued('Un Bowl Mediterraneo');const before=structuredClone(h.conv.sessionData.cart);
+    h.service.resolveAudioToText=jest.fn().mockResolvedValue(null);await h.sendQueued('',{messageType:'audio',mediaId:'failed-audio'});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/No pude escuchar/);
+  });
+});
+
+
+describe('PDF — límites de cambios de bebida y consultas', () => {
+  it('con dos ejecutivos pregunta a cuál cambiar la bebida sin alterar ninguno', async () => {
+    const h=harness(products,false);await h.sendQueued('Un ejecutivo broaster');await h.sendQueued('Un ejecutivo frito');
+    const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Y de tomar me puedes enviar limonada?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál plato/i);
+  });
+  it('preguntar el precio de otro plato no responde el total del carrito', async()=>{
+    const h=harness(products,false);await h.sendQueued('Un arroz con pollo');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Cuánto vale el churrasco?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.join(' ')).toMatch(/38[.,]000/);
+  });
+});
+
+describe('PDF segunda tanda — dinero, disponibilidad y referencias', () => {
+  const bowl={id:9101,code:9101,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  it.each([
+    {menu:products,order:'Un arroz con pollo',price:29500},
+    {menu:[bowl],order:'Un bowl mediterraneo',price:17000},
+  ])('precio histórico no modifica el valor ni la cantidad: $order', async ({menu,order,price})=>{
+    const h=harness(menu,false);await h.sendQueued(order);const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Antes me costaba 22000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.cart[0].unitPrice).toBe(price);
+    expect(h.replies.at(-1)).toMatch(new RegExp(price===29500?'29[.,]500':'17[.,]000'));
+  });
+  it.each(['Cancelo con 100mil','Pago con un billete de 100mil','Pagamos con un billete de 100mil'])('pago conserva el carrito: %s',async text=>{
+    const h=harness([bowl],false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    expect(h.cartRows()).toHaveLength(1);await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9101,qty:1})]);
+    expect(String(h.conv.sessionData.cashChangeFor)).toMatch(/100/);
+  });
+  it.each(['Cancela el pedido','Ya no quiero nada cancélalo'])('cancelación no se confunde con pago: %s',async text=>{
+    const h=harness([bowl],false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([]);
+  });
+  it.each(['Esas cuatro','Esos cuatro por favor'])('referencia sin producto no compra cuatro platos: %s',async text=>{
+    const h=harness([bowl,{...bowl,id:9102,code:9102,name:'Wrap Oriental'}],false);
+    await h.sendQueued('Un bowl mediterraneo y un wrap oriental');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).toMatch(/cu[aá]l|aclara|producto/i);
+  });
+  it.each(['Tienen hamburguesas?','Hay postres?','Tienen sopita hoy?','Qué jugos naturales hay?'])('consulta con otro catálogo no compra: %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued(text);expect(h.cartRows()).toEqual([]);
+    expect(h.replies.join(' ')).not.toMatch(/Listo ✅|agregué/i);
+  });
+  it.each(['Disculpa se demora','Está muy demorado','Un favor mi pedido se demora'])('consulta de demora no inventa estado: %s',async text=>{
+    const h=harness([bowl],false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);h.cfg.localContext={deliveryTimeNote:'Tiempo por confirmar con el local'};await h.sendQueued('Un bowl mediterraneo');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.replies.at(-1)).not.toMatch(/ya.*(?:sali[oó]|llegando)|en camino|\b\d+\s*minutos/i);
+  });
+});
+
+
+describe('PDF segunda tanda — compra y dirección en catálogo alternativo',()=>{
+  it.each(['Un bowl mediterraneo','Dos bowls mediterraneos'])('conserva plato con dirección en un turno: %s',async order=>{
+    const menu=[{id:9101,code:9101,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(`${order} para la calle 7 #20-30`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9101,qty:order.startsWith('Dos')?2:1})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);
+  });
+});
+
+describe('PDF segunda tanda — sabor condicionado y seguimiento',()=>{
+  it.each([
+    {options:['Agua','Te'],expected:'Te'},
+    {options:['Agua'],expected:'Agua'},
+  ])('bebida condicional usa solo una opción existente: $expected',async ({options,expected})=>{
+    const meal={id:9201,code:9201,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options}]};
+    const h=harness([meal],false);await h.sendQueued('Un menu vegetariano');
+    await h.sendQueued('Si tienes por favor con bebida Te, si no con Agua');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9201,qty:1,attrs:[`Bebida:${expected}`]})]);
+  });
+  it.each(['Disculpa se demora','Está muy demorado','Un favor mi pedido se demora'])('reclamo posterior sin orden comprobada no inventa despacho: %s',async text=>{
+    const h=harness(products,false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+    h.conv.state='completed';await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([]);expect(h.replies.at(-1)).not.toMatch(/ya.*(?:sali[oó]|llegando)|en camino|\b\d+\s*minutos/i);
+  });
+});
+
+describe('PDF segunda tanda — domicilio portable conserva cantidades y precio',()=>{
+  it.each([
+    {name:'Wrap Oriental',order:'Un wrap oriental',quantity:1},
+    {name:'Pizza Vegetariana',order:'Tres pizzas vegetarianas',quantity:3},
+    {name:'Bowl Mediterraneo',order:'Un bowl mediterraneo',quantity:1},
+  ])('no incluye $name en la dirección',async({name,order,quantity})=>{
+    const h=harness([{id:9301,code:9301,name,price:17000,availableNow:true,attributes:[]}],false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(`${order} para la carrera 12 #34-56 torre 8 apartamento 903`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9301,qty:quantity})]);
+    expect(h.conv.sessionData.address).toMatch(/^carrera 12/i);
+    expect(h.conv.sessionData.address).not.toMatch(/wrap|pizza|bowl/i);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+});
+
+describe('PDF segunda tanda — límites de bebida condicional',()=>{
+  const meal={id:9401,code:9401,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Te']}]};
+  it('dos platos compatibles requieren elegir destino',async()=>{
+    const h=harness([meal,{...meal,id:9402,code:9402,name:'Menu Infantil'}],false);
+    await h.sendQueued('Un menu vegetariano');await h.sendQueued('Un menu infantil');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Si tienes con bebida Te, si no con Agua');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál plato/i);
+  });
+  it('ninguna opción disponible no inventa una bebida',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Un menu vegetariano');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Si tienes con bebida Chocolate, si no con Cafe');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/No pude confirmar/i);
+  });
+});
+
+describe('PDF segunda tanda — límites del precio histórico',()=>{
+  it('precio vigente del catálogo no reescribe el precio del carrito',async()=>{
+    const menu=[{id:9501,code:9501,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);await h.sendQueued('Un bowl mediterraneo');const before=structuredClone(h.conv.sessionData.cart);
+    menu[0].price=19000;await h.sendQueued('Antes me costaba 15000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/19[.,]000/);
+  });
+  it('con varios platos consulta el producto antes de atribuir el precio',async()=>{
+    const menu=[{id:9501,code:9501,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]},{id:9502,code:9502,name:'Wrap Oriental',price:21000,availableNow:true,attributes:[]}];
+    const h=harness(menu,false);await h.sendQueued('Un bowl mediterraneo y un wrap oriental');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Antes me costaba 15000, cuánto vale ahora?');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál producto/i);
+  });
+});
+
+
+describe('PDF segunda tanda — aclaración conserva el cambio pendiente',()=>{
+  it.each(['Si tienes con bebida Te, si no con Agua','Y de tomar me puedes enviar Te?'])('retoma la bebida después de elegir el plato: %s',async text=>{
+    const meal={id:9601,code:9601,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Te']}]};
+    const h=harness([meal,{...meal,id:9602,code:9602,name:'Menu Infantil'}],false);
+    await h.sendQueued('Un menu vegetariano');await h.sendQueued('Un menu infantil');
+    await h.sendQueued(text);await h.sendQueued('Menu Vegetariano');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9601,qty:1,attrs:['Bebida:Te']}),expect.objectContaining({id:9602,qty:1,attrs:['Bebida:Agua']})]);
+    expect(h.conv.sessionData.pendingCartAttributeEdit).toBeFalsy();
+  });
+});
+
+describe('PDF tercera tanda — citas antiguas, recogida y mensajes consecutivos',()=>{
+  const bowl={id:9701,code:9701,name:'Bowl Mediterraneo',price:17000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]};
+  it.each(['missing','foreign','removed'])('cita %s no reincorpora el plato retirado',async scenario=>{
+    const h=harness([bowl,{...bowl,id:9702,code:9702,name:'Bowl Oriental'}],false);
+    await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Un bowl oriental');await h.sendQueued('Quita el bowl mediterraneo');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9702,qty:1})]);const before=structuredClone(h.conv.sessionData.cart);
+    h.service.conversationService.findByWaMessageId=jest.fn().mockResolvedValue(scenario==='missing'?null:{conversationId:scenario==='foreign'?99:1,direction:'out',body:'Bowl Mediterraneo. Base: Arroz o Quinoa',waMessageId:'old-quote'});
+    await h.send('Quinoa',{context:{id:'old-quote'}});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál|identificar|plato|producto/i);
+  });
+  it.each(['Lo recoge otra persona','Lo recoge mi hermano','Paso a recogerlo'])('cambio a recogida conserva productos: %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.orderType).toBe('pickup');
+  });
+  it.each([
+    {menu:products,order:'Dos arroces con pollo',id:23},
+    {menu:[bowl],order:'Dos bowls mediterraneos',id:9701},
+  ])('turnos consecutivos complementan el domicilio sin duplicar $id',async({menu,order,id})=>{
+    const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    for(const text of [order,'Para la calle 7 #20-30','Torre 3 apartamento 607','Barrio Tintal'])await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2})]);
+    expect(h.conv.sessionData.address).toMatch(/20-30/);expect(h.conv.sessionData.address).toMatch(/607/);
+  });
+  it.each(['Los quiero 1 con arroz y tofu y 1 con quinoa y pollo','Los quiero 1 con arroz y pollo y 1 con quinoa y tofu'])('reparto de varios atributos aplica cada combinación completa: %s',async text=>{
+    const meal={...bowl,attributes:[...bowl.attributes,{attributeName:'Proteina',options:['Pollo','Tofu']}]};
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);
+    expect(before[0].quantity).toBe(2);
+    expect(h.cartRows()).toHaveLength(2);
+    for(const row of h.cartRows())expect(row).toMatchObject({id:9701,qty:1});
+    expect(h.cartRows()[0].attrs).toEqual(expect.arrayContaining(['Base:Arroz',text.includes('arroz y tofu')?'Proteina:Tofu':'Proteina:Pollo']));
+    expect(h.cartRows()[1].attrs).toEqual(expect.arrayContaining(['Base:Quinoa',text.includes('quinoa y pollo')?'Proteina:Pollo':'Proteina:Tofu']));
+    expect(h.replies.at(-1)).toMatch(/Repartí/i);
+  });
+});
+
+describe('PDF tercera tanda — límites del reparto y recogida',()=>{
+  const meal={id:9801,code:9801,name:'Bowl Mediterraneo',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']},{attributeName:'Proteina',options:['Pollo','Tofu']}]};
+  it.each(['Los quiero 1 con arroz y tofu y 1 con quinoa y cerdo','Los quiero 1 con arroz y 1 con quinoa y tofu','Los quiero 2 con arroz y tofu y 2 con quinoa y pollo'])('reparto inválido no modifica parcialmente: %s',async text=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu sin cebolla');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/opciones|cantidad|cuál|unidades/i);
+    expect(h.replies.at(-1)).not.toMatch(/no manejamos:.*tofu/i);
+  });
+  it('cada combinación conserva nota en ambas líneas',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu sin cebolla');
+    await h.sendQueued('Los quiero 1 con arroz y tofu y 1 con quinoa y pollo');
+    expect(h.cartRows()).toHaveLength(2);for(const row of h.cartRows())expect(row.note).toMatch(/sin cebolla/i);
+  });
+  it.each(['Lo recoge el domiciliario','Lo recoge el repartidor'])('recogida del repartidor no cambia domicilio a pickup: %s',async text=>{
+    const h=harness([meal],false);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.orderType).toBe('delivery');
+  });
+  it('cita de cantidad antigua cambia la opción sin restaurar diez unidades',async()=>{
+    const h=harness([meal],false);await h.sendQueued('Dos bowls mediterraneos con arroz y tofu');
+    h.service.conversationService.findByWaMessageId=jest.fn().mockResolvedValue({conversationId:1,direction:'out',body:'Bowl Mediterraneo ×10. Base: Arroz o Quinoa',waMessageId:'old-quantity'});
+    await h.send('Quinoa',{context:{id:'old-quantity'}});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:9801,qty:2,attrs:expect.arrayContaining(['Base:Quinoa','Proteina:Tofu'])})]);
+  });
+});
+
+describe('PDF cuarta tanda — contexto de fotos y recogida portable', () => {
+  const bowl = {id:9851,code:9851,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  it.each([
+    {menu:products,order:'Un churrasco',id:17},
+    {menu:[bowl],order:'Un bowl mediterraneo',id:9851},
+  ])('tercero pasa en diez minutos sin cambiar productos: $id', async ({menu,order,id}) => {
+    const h=harness(menu,false);await h.sendQueued(order);await h.sendQueued('Para la calle 7 #20-30');
+    const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Es para mi hermano, el mismo pasa en 10 mn por el pedido');
+    expect(h.conv.sessionData.orderType).toBe('pickup');expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.cartRows()[0].id).toBe(id);expect(h.conv.sessionData.address).toMatch(/10 mn/);expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entendí/i);
+  });
+  it.each(['No lo recoge mi hermano, es para domicilio','Lo recoge el mensajero','El domiciliario pasa en 10 mn por el pedido','Mi hermano no pasa en 10 mn por el pedido'])('no cambia domicilio con %s',async text=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');await h.sendQueued('Para la calle 7 #20-30');
+    h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+    const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);
+    expect(h.conv.sessionData.orderType).toBe('delivery');expect(h.conv.sessionData.cart).toEqual(before);
+  });
+  it.each(['completed','closed','building_cart','awaiting_payment_method'])('producto legible no se convierte en comprobante por estado %s',async state=>{
+    const h=harness([bowl],false);h.conv.state=state;if(state==='awaiting_payment_method')h.conv.sessionData.paymentMethod='nequi';
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'order',textForBot:'Dos bowls mediterraneos'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-photo'},'1',h.conv,h.cfg);
+    expect(result).toEqual({done:false,text:'Dos bowls mediterraneos'});expect(h.replies.join(' ')).not.toMatch(/comprobante/i);
+  });
+  it.each(['contraentrega','transferencia','nequi'])('menú ambiguo pide selección sin comprar ni acreditar pago: %s',async paymentMethod=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');h.conv.sessionData.paymentMethod=paymentMethod;
+    const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',visibleText:'Bowl Mediterraneo y Wrap Oriental',reply:'¿Cuál plato de la carta quieres?'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-menu',text:'Quiero pedir de este menú'},'1',h.conv,h.cfg);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cuál.*plato/i);expect(h.replies.at(-1)).not.toMatch(/comprobante/i);
+  });
+  it('foto ilegible sin selección conserva carrito y máximo dos análisis',async()=>{
+    const h=harness([bowl],false);await h.sendQueued('Dos bowls mediterraneos');const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer el plato'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-unreadable'},'1',h.conv,h.cfg);
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.aiService.analyzeOrderImage).toHaveBeenCalledTimes(2);
+    expect(h.replies.at(-1)).toMatch(/foto|plato|código/i);
+  });
+  it('reintento OCR recupera plato completo conservando cantidad',async()=>{
+    const h=harness([bowl],false);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValueOnce({kind:'unclear',textForBot:''}).mockResolvedValueOnce({kind:'order',textForBot:'Tres bowls mediterraneos'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-retry'},'1',h.conv,h.cfg);
+    expect(result).toEqual({done:false,text:'Tres bowls mediterraneos'});expect(h.service.aiService.analyzeOrderImage).toHaveBeenLastCalledWith(expect.objectContaining({ocrRetry:true}));
+    await h.send(result.text);expect(h.cartRows()).toEqual([expect.objectContaining({id:9851,qty:3})]);
+  });
+  it.each(['completed','building_cart'])('comprobante explícito no compra aunque texto contenga un plato: %s',async state=>{
+    const h=harness([bowl],false);await h.sendQueued('Un bowl mediterraneo');h.conv.state=state;const before=structuredClone(h.conv.sessionData.cart);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Bowl Mediterraneo #9851');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:'Un bowl mediterraneo'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    expect(await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-proof'},'1',h.conv,h.cfg)).toEqual({done:true});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/no confirma el pago/i);
+  });
+});
+
+describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
+  it.each(['','Esta'])('foto ilegible pide plato una vez y conserva carrito: %s',async caption=>{
+    const h=harness(products,false);await h.sendQueued('Un churrasco');const before=structuredClone(h.conv.sessionData.cart);h.replies.length=0;
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Churrasco #17');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer la foto'});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.sendQueued(caption,{messageType:'image',mediaId:'mock-unreadable'});
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);
+    expect(h.replies[0]).toMatch(/Vi tu foto.*plato.*código/s);expect(h.replies[0]).toMatch(/llámanos/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('descarga de foto fallida usa una aclaración específica sin compra',async()=>{
+    const h=harness(products,false);h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-expired'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/No pude leer la imagen/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('audio ilegible pide texto sin duplicar no-entendí',async()=>{
+    const h=harness(products,false);h.service.resolveAudioToText=jest.fn().mockResolvedValue(null);
+    await h.sendQueued('',{messageType:'audio',mediaId:'mock-audio'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/No pude escuchar.*texto/s);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('comprobante recibido informa verificación sin decir que no entendió',async()=>{
+    const h=harness(products,false);
+    h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+    h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('Churrasco #17');
+    h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'payment_proof',textForBot:''});
+    h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-proof'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/no confirma el pago/i);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+  it('comprobante que no abre solicita reenvío sin aclaración genérica',async()=>{
+    const h=harness(products,false);h.conv.sessionData.paymentMethod='nequi';
+    h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));
+    await h.sendQueued('',{messageType:'image',mediaId:'mock-proof-expired'});
+    expect(h.cartRows()).toEqual([]);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/comprobante.*[Mm]ándala/s);
+    expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
+  });
+
+});
+
+describe('Imagen de carta — selección explícita frente a OCR ambiguo',()=>{
+  const analysis={kind:'unclear',textForBot:'',visibleText:'Churrasco\nArroz Con Pollo'};
+  it('no compra el primer plato de una carta sin selección aunque no haya reply',()=>{
+    const h=harness(products,false);expect(h.service.resolveImageOrderText(analysis,'Esto',products)).toBeNull();expect(h.cartRows()).toEqual([]);
+  });
+  it('respeta la selección y cantidad del pie en una carta con varios platos',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText(analysis,'Dos churrascos',products);
+    expect(text).toBe('Dos churrascos');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2})]);
+  });
+  it('selección por código del pie no se sustituye por el primer plato del OCR',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText(analysis,'código 23',products);
+    expect(text).toBe('código 23');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:23,qty:1})]);
+  });
+
+  it('si el cliente escribió el plato, usa ese texto aunque la imagen sea ilegible',async()=>{
+    const h=harness(products,false);const text=h.service.resolveImageOrderText({kind:'unclear',textForBot:'',reply:'No pude leer la foto'},'Tres churrascos',products);
+    expect(text).toBe('Tres churrascos');await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:3})]);
+  });
+
+});
+
+
+describe('Código de producto no es cantidad — dos catálogos',()=>{
+  const bowl={id:9855,code:7,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  for(const fixture of [{menu:products,id:23,code:23},{menu:[bowl],id:9855,code:7}]){
+    it.each([['código CODE',1],['#CODE',1],['dos del código CODE',2],['código CODE x3',3]])('conserva cantidad de %s para '+fixture.code,async(template,qty)=>{
+      const h=harness(fixture.menu,false);await h.sendQueued(String(template).replace('CODE',String(fixture.code)));
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty})]);
+    });
+  }
+});
+
+
+describe('Medios — OCR incierto no equivale a compra',()=>{
+  const alternate=[{id:9855,code:7,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]}];
+  for(const fixture of [{menu:products,name:'Churrasco'},{menu:alternate,name:'Bowl Mediterraneo'}]) {
+    it.each(['','Esto'])('no compra el único nombre visible sin selección: '+fixture.name+' %s',caption=>{
+      const h=harness(fixture.menu,false);
+      expect(h.service.resolveImageOrderText({kind:'unclear',textForBot:'',visibleText:fixture.name},caption,fixture.menu)).toBeNull();
+      expect(h.cartRows()).toEqual([]);
+    });
+    it('conserva texto explícito de selección para '+fixture.name,()=>{
+      const h=harness(fixture.menu,false);const caption='Quiero dos '+fixture.name;
+      expect(h.service.resolveImageOrderText({kind:'unclear',textForBot:'',visibleText:fixture.name},caption,fixture.menu)).toBe(caption);
+    });
+    it('audio fallido seguido de texto recupera cantidad en '+fixture.name,async()=>{
+      const h=harness(fixture.menu,false);h.service.resolveAudioToText=jest.fn().mockResolvedValue(null);
+      await h.sendQueued('',{messageType:'audio',mediaId:'mock-failed'});expect(h.cartRows()).toEqual([]);
+      await h.sendQueued('Quiero dos '+fixture.name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.menu===products?17:9855,qty:2})]);
+      expect(h.replies.at(-1)).not.toMatch(/no pude escuchar|no entend[ií]/i);
+    });
+  }
+});
+
+
+describe('Medios secuenciales — edición y recuperación en dos menús',()=>{
+  const bowl={id:9860,code:8,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  for(const fixture of [{menu:products,name:'Churrasco',id:17},{menu:[bowl],name:'Bowl Mediterraneo',id:9860}]) {
+    const setup=()=>{
+      const h=harness(fixture.menu,false);
+      h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+      h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue(fixture.name);
+      h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+      h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'order',textForBot:'Quiero dos '+fixture.name});
+      return h;
+    };
+    it('foto y corrección de cantidad no duplican '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:2})]);
+      await h.sendQueued('Perdón, quiero tres '+fixture.name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:3})]);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it('foto ilegible posterior conserva la edición de '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      await h.sendQueued('Perdón, quiero tres '+fixture.name);const before=structuredClone(h.conv.sessionData.cart);
+      h.service.aiService.analyzeOrderImage.mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer la foto'});
+      h.replies.length=0;await h.sendQueued('',{messageType:'image',mediaId:'mock-unreadable'});
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/plato.*código/s);
+    });
+    it('consulta escrita con foto incierta no compra '+fixture.name,async()=>{
+      const h=setup();h.service.aiService.analyzeOrderImage.mockResolvedValue({kind:'unclear',textForBot:'',visibleText:fixture.name});
+      await h.sendQueued('Cuánto cuesta '+fixture.name+'?',{messageType:'image',mediaId:'mock-price'});
+      expect(h.cartRows()).toEqual([]);expect(h.replies.at(-1)).toMatch(/\$/);
+    });
+    it('audio transcrito corrige selección previa por imagen de '+fixture.name,async()=>{
+      const h=setup();await h.sendQueued('Esto',{messageType:'image',mediaId:'mock-selection'});
+      h.service.resolveAudioToText=jest.fn().mockResolvedValue('Perdón, quiero tres '+fixture.name);
+      await h.sendQueued('',{messageType:'audio',mediaId:'mock-correction'});
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:3})]);
+    });
+  }
+});
+
+describe('Corrección con cortesía — límites',()=>{
+  it.each(['Perdón, quiero tres churrascos más','Disculpa, quiero tres churrascos y una sopa'])('no interpreta como cantidad absoluta %s',text=>{
+    expect(require('./whatsapp-quantity-correction').parseCartQuantityCorrection(text)).toBeNull();
+  });
+});

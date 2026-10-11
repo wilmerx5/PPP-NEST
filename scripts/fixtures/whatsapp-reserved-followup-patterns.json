@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "createdOn": "2026-10-11",
+  "kind": "Original synthetic patterns; not customer transcripts",
+  "status": "reserved-not-executed",
+  "executionNote": "Bind catalogs, pending-state seeds and explicit per-turn assertions before execution. Never include expected outcomes in model prompts. Not an automatic runner.",
+  "cases": [
+    {
+      "id": "next-comparison-during-pending-with-independent-order",
+      "messages": [
+        "Dos sopas",
+        "Me recomiendas mojarra o trucha? Y agrega dos limonadas naturales",
+        "Menudencias"
+      ],
+      "invariants": [
+        "keep soup quantity two",
+        "do not buy comparison alternatives",
+        "independent drink purchase is handled or explicitly clarified, never silently lost"
+      ]
+    },
+    {
+      "id": "next-comparison-multiline-purchase",
+      "messages": [
+        "Estoy entre Bowl Mediterraneo y Wrap Oriental, qué me recomiendas\nAgrega dos Te Helado"
+      ],
+      "invariants": [
+        "catalog facts only",
+        "two beverages only",
+        "no unintended purchase of compared dishes"
+      ]
+    },
+    {
+      "id": "next-address-note-payment-with-variant",
+      "messages": [
+        "Dos mojarras fritas sin ensalada para la carrera 7 20 30, pago por transferencia"
+      ],
+      "invariants": [
+        "two fish with correct preparation and note",
+        "address digits are not product quantity",
+        "next required checkout step, explicit final confirmation"
+      ]
+    },
+    {
+      "id": "next-apology-quantity-two-preparations",
+      "messages": [
+        "[seed two preparations of same product plus beverage]",
+        "Perdón, dos mojarras"
+      ],
+      "invariants": [
+        "clarify which preparation before mutation",
+        "beverage and notes preserved",
+        "no additional product"
+      ]
+    },
+    {
+      "id": "next-referred-schedule-address-and-note",
+      "messages": [
+        "Cuánto cuesta Bowl Mediterraneo?",
+        "Quiero esas diez cajas para el 15/10 a las 14:00, sin cebolla, para la carrera 7 20 30"
+      ],
+      "invariants": [
+        "exactly ten referenced products",
+        "date time address and note preserved or unresolved clause explicitly clarified",
+        "no reservation claim"
+      ]
+    },
+    {
+      "id": "next-late-invalid-photo-with-text",
+      "messages": [
+        "[valid photo]",
+        "Sin ensalada",
+        "[unreadable photo outside burst window]"
+      ],
+      "invariants": [
+        "existing cart and note preserved",
+        "unreadable photo error visible",
+        "no duplicate items"
+      ]
+    }
+  ]
+}
