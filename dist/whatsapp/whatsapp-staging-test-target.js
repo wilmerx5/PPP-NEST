@@ -12,7 +12,7 @@ function stagingTestTargetStatus(cfg, target, env = process.env) {
         recipients.length === 1 && recipients[0] === target.recipient;
     return {
         staging, targetMatches,
-        conversationTestVersion: '2026-10-10.cart-v7',
+        conversationTestVersion: '2026-10-10.cart-v8',
         botEnabled: cfg.enabled === true,
         agentEnabled: cfg.agentV1Enabled === true,
         approvedModel: cfg.openaiModel === 'gpt-4.1-2025-04-14',

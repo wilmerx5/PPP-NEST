@@ -158,7 +158,8 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
                 if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
                     attrs = this.catalogService.fillDefaultAttributes(product, []);
                 }
-                if (product.hasAttributes && product.attributes?.length && !attrs?.length) {
+                const needsExplicitChoice = product.attributes?.some(definition => this.catalogService.requiresExplicitAttributeChoice?.(product, definition));
+                if (product.hasAttributes && product.attributes?.length && !attrs?.length && !needsExplicitChoice) {
                     warnings.push(`"${product.name}" requiere elegir opciones antes de agregarlo.`);
                     continue;
                 }
@@ -193,6 +194,9 @@ let WhatsappActionGuardService = WhatsappActionGuardService_1 = class WhatsappAc
             const completed = this.catalogService.fillDefaultAttributes(product, normalized);
             if (normalized.length && this.catalogService.isAttributeSelectionComplete(product, completed)) {
                 return completed;
+            }
+            if (product.attributes.some(definition => this.catalogService.requiresExplicitAttributeChoice?.(product, definition))) {
+                return normalized;
             }
             warnings.push(`Opciones inválidas para "${product.name}". Elige: ${this.formatAttributeOptions(product)}.`);
             return undefined;

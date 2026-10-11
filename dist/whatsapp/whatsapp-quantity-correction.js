@@ -17,12 +17,16 @@ function parseCartQuantityCorrection(text) {
         .replace(new RegExp(`( en total) no (?:${number}) mas$`), '$1');
     if (/\b(?:y|ademas|tambien|nada mas|quita|borra|vacia|solo quiero|solo pedi|solo te pedi)\b/.test(t))
         return null;
+    if (/\b(?:calle|carrera|cra|cll|avenida|av|diagonal|diag|dg|transversal|tv|autopista)\b/.test(t) && /\d/.test(t))
+        return null;
     const result = (amount, query) => /\b(?:no|pero|mas|menos|otros?|resto|igual|conserva|pedido|en vez)\b/.test(query) ? null
         : { quantity: words[amount] ?? Number(amount), query };
     let m = t.match(new RegExp(`^(?:(?:solo|solamente|unicamente)\\s+)?(?:era|eran|es|son|queria)\\s+(?:solo\\s+)?(${number})\\s+(.+?)(?:\\s+en total)?$`));
     if (m)
         return result(m[1], m[2]);
     m = t.match(new RegExp(`^(?:del?|para el|para la)\\s+(.+?)\\s+(?:(?:solo|solamente|unicamente)\\s+)?(?:(?:era|eran|es|son|deja|quiero)\\s+)?(${number})(?:\\s+en total)?$`));
+    if (m && /\d/.test(m[1]))
+        return null;
     if (m)
         return result(m[2], m[1]);
     m = t.match(new RegExp(`^(?:deja(?: solo)?|que (?:sean|queden)|que quede)\\s+(${number})\\s+(.+?)(?:\\s+en total)?$`));

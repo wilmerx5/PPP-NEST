@@ -2,6 +2,17 @@ import type { IncomingWhatsappMessage } from './whatsapp-meta.service';
 export declare const WHATSAPP_INBOUND_COALESCE_MS = 3000;
 export declare const WHATSAPP_INBOUND_COALESCE_QUICK_MS = 900;
 export declare const WHATSAPP_INBOUND_COALESCE_MAX = 8;
+export declare const WHATSAPP_IMAGE_BURST_MS = 2000;
+export declare function isImageBurstMessage(msg: IncomingWhatsappMessage): boolean;
+export declare function collapseImageBurstReplies(input: {
+    resolvedOrderImage?: boolean;
+    unsupportedEnvelopeSupersededByImage?: boolean;
+    newerArrived: boolean;
+    hasCart: boolean;
+    pending: boolean;
+    replies: string[];
+    summary: string;
+}): string[];
 export declare function isCoalesceableInboundMessage(msg: IncomingWhatsappMessage): boolean;
 export declare function isQuickCoalesceText(text: string): boolean;
 export declare function coalesceDelayMsForText(text: string): number;

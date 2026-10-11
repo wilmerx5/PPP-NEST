@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WHATSAPP_INBOUND_COALESCE_MAX = exports.WHATSAPP_INBOUND_COALESCE_QUICK_MS = exports.WHATSAPP_INBOUND_COALESCE_MS = void 0;
+exports.WHATSAPP_IMAGE_BURST_MS = exports.WHATSAPP_INBOUND_COALESCE_MAX = exports.WHATSAPP_INBOUND_COALESCE_QUICK_MS = exports.WHATSAPP_INBOUND_COALESCE_MS = void 0;
+exports.isImageBurstMessage = isImageBurstMessage;
+exports.collapseImageBurstReplies = collapseImageBurstReplies;
 exports.isCoalesceableInboundMessage = isCoalesceableInboundMessage;
 exports.isQuickCoalesceText = isQuickCoalesceText;
 exports.coalesceDelayMsForText = coalesceDelayMsForText;
@@ -9,6 +11,23 @@ exports.mergeCoalescedInboundMessages = mergeCoalescedInboundMessages;
 exports.WHATSAPP_INBOUND_COALESCE_MS = 3000;
 exports.WHATSAPP_INBOUND_COALESCE_QUICK_MS = 900;
 exports.WHATSAPP_INBOUND_COALESCE_MAX = 8;
+exports.WHATSAPP_IMAGE_BURST_MS = 2000;
+function isImageBurstMessage(msg) {
+    if (msg.messageType === 'image' && !!msg.mediaId)
+        return true;
+    return msg.messageType === 'other' || msg.messageType === 'sticker';
+}
+function collapseImageBurstReplies(input) {
+    if (input.unsupportedEnvelopeSupersededByImage)
+        return [];
+    if (!input.resolvedOrderImage)
+        return input.replies;
+    if (input.newerArrived)
+        return [];
+    if (input.pending || !input.hasCart || !input.summary.trim())
+        return input.replies;
+    return [input.summary.trim()];
+}
 function isCoalesceableInboundMessage(msg) {
     if (msg.messageType !== 'text')
         return false;

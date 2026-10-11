@@ -301,40 +301,42 @@ let PointsService = class PointsService {
         });
     }
     async redeemPointsForVoucher(userId) {
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (!user) {
-            throw new common_1.NotFoundException('User not found');
-        }
-        const availablePoints = await this.getAvailablePoints(userId);
-        if (availablePoints < this.REDEMPTION_POINTS_REQUIRED) {
-            throw new common_1.BadRequestException(`You need at least ${this.REDEMPTION_POINTS_REQUIRED} points to redeem. You currently have ${availablePoints} available points.`);
-        }
-        const pointsToRedeem = await this.pointsRepo.find({
-            where: {
-                userId,
-                isCanceled: false,
-                isRedeemed: false,
-            },
-            order: { createdAt: 'ASC' },
-            take: this.REDEMPTION_POINTS_REQUIRED,
+        return this.dataSource.transaction(async (manager) => {
+            const user = await manager.getRepository(user_entity_1.User).findOne({
+                where: { id: userId }, lock: { mode: 'pessimistic_write' },
+            });
+            if (!user)
+                throw new common_1.NotFoundException('User not found');
+            const pointsRepo = manager.getRepository(user_points_entity_1.UserPoints);
+            const redemptionRepo = manager.getRepository(point_redemption_entity_1.PointRedemption);
+            const pointsToRedeem = await pointsRepo.find({
+                where: { userId, isCanceled: false, isRedeemed: false },
+                order: { createdAt: 'ASC', id: 'ASC' },
+                take: this.REDEMPTION_POINTS_REQUIRED,
+            });
+            if (pointsToRedeem.length < this.REDEMPTION_POINTS_REQUIRED) {
+                throw new common_1.BadRequestException(`You need at least ${this.REDEMPTION_POINTS_REQUIRED} points to redeem.`);
+            }
+            let code;
+            for (let attempt = 0; attempt < 10; attempt++) {
+                const candidate = generatePointCode();
+                if (!(await redemptionRepo.findOne({ where: { code: candidate } }))) {
+                    code = candidate;
+                    break;
+                }
+            }
+            if (!code)
+                throw new Error('No se pudo generar un código de premio único después de varios intentos');
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30);
+            const redemption = await redemptionRepo.save(redemptionRepo.create({
+                code, userId, isUsed: false, expiresAt,
+            }));
+            for (const point of pointsToRedeem)
+                point.isRedeemed = true;
+            await pointsRepo.save(pointsToRedeem);
+            return redemption;
         });
-        if (pointsToRedeem.length < this.REDEMPTION_POINTS_REQUIRED) {
-            throw new common_1.BadRequestException('Not enough available points to redeem');
-        }
-        for (const point of pointsToRedeem) {
-            point.isRedeemed = true;
-            await this.pointsRepo.save(point);
-        }
-        const redemptionCode = await this.generateUniqueRedemptionCode();
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30);
-        const redemption = this.redemptionRepo.create({
-            code: redemptionCode,
-            userId,
-            isUsed: false,
-            expiresAt,
-        });
-        return await this.redemptionRepo.save(redemption);
     }
     async generateUniqueRedemptionCode() {
         let code;
@@ -352,12 +354,13 @@ let PointsService = class PointsService {
         }
         return code;
     }
-    async validateRedemptionCode(code) {
+    async validateRedemptionCode(code, manager) {
         if (!code || code.length !== 12) {
             throw new common_1.BadRequestException('Redemption code must be exactly 12 characters');
         }
-        const redemption = await this.redemptionRepo.findOne({
-            where: { code: code.toUpperCase() },
+        const redemption = await (manager?.getRepository(point_redemption_entity_1.PointRedemption) ?? this.redemptionRepo).findOne({
+            where: { code: code.toUpperCase().trim() },
+            ...(manager ? { lock: { mode: 'pessimistic_write' } } : {}),
         });
         if (!redemption) {
             throw new common_1.NotFoundException('Código de premio no encontrado');
@@ -370,12 +373,15 @@ let PointsService = class PointsService {
         }
         return redemption;
     }
-    async applyRedemptionToOrder(code, orderId) {
-        const redemption = await this.validateRedemptionCode(code);
-        redemption.isUsed = true;
-        redemption.usedAt = new Date();
-        redemption.usedInOrderId = orderId;
-        return await this.redemptionRepo.save(redemption);
+    async applyRedemptionToOrder(code, orderId, manager) {
+        const consume = async (transaction) => {
+            const redemption = await this.validateRedemptionCode(code.trim(), transaction);
+            redemption.isUsed = true;
+            redemption.usedAt = new Date();
+            redemption.usedInOrderId = orderId;
+            return transaction.getRepository(point_redemption_entity_1.PointRedemption).save(redemption);
+        };
+        return manager ? consume(manager) : this.dataSource.transaction(consume);
     }
     async getUserRedemptions(userId) {
         const redemptions = await this.redemptionRepo.find({

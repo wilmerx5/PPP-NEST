@@ -1,4 +1,4 @@
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { UserPoints } from '../entities/user-points.entity';
 import { PointRedemption } from '../entities/point-redemption.entity';
 import { User } from '../entities/user.entity';
@@ -29,8 +29,8 @@ export declare class PointsService {
     getAvailablePoints(userId: string): Promise<number>;
     redeemPointsForVoucher(userId: string): Promise<PointRedemption>;
     generateUniqueRedemptionCode(): Promise<string>;
-    validateRedemptionCode(code: string): Promise<PointRedemption>;
-    applyRedemptionToOrder(code: string, orderId: number): Promise<PointRedemption>;
+    validateRedemptionCode(code: string, manager?: EntityManager): Promise<PointRedemption>;
+    applyRedemptionToOrder(code: string, orderId: number, manager?: EntityManager): Promise<PointRedemption>;
     getUserRedemptions(userId: string): Promise<any[]>;
     getActiveRedemptions(userId: string): Promise<PointRedemption[]>;
     getLeaderboard(limit?: number, offset?: number, search?: string): Promise<{

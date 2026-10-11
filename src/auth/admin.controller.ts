@@ -31,6 +31,7 @@ import { PointsService } from './services/points.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPoints } from './entities/user-points.entity';
+import { PointRedemption } from './entities/point-redemption.entity';
 import { OrdersService } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
 import { ExpensesService } from '../expenses/expenses.service';
@@ -60,6 +61,8 @@ export class AdminController {
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserPoints)
     private readonly pointsRepo: Repository<UserPoints>,
+    @InjectRepository(PointRedemption)
+    private readonly redemptionRepo: Repository<PointRedemption>,
   ) {}
 
   @Get('users')
@@ -935,6 +938,91 @@ export class AdminController {
     });
 
     return { records, total: records.length };
+  }
+
+  @Get('points/redemptions')
+  @ApiOperation({
+    summary: 'List prize coupons from redeemed points (admin only).',
+    description:
+      'Each row is a coupon created when a client redeemed points. Includes who redeemed it, when, and the order where it was used.',
+  })
+  @ApiQuery({ name: 'date', required: false, description: 'Single day YYYY-MM-DD (Bogotá), by coupon creation' })
+  @ApiQuery({ name: 'from', required: false, description: 'Start date YYYY-MM-DD (use with to)' })
+  @ApiQuery({ name: 'to', required: false, description: 'End date YYYY-MM-DD (use with from)' })
+  @ApiQuery({ name: 'allTime', required: false, description: '1 = no date filter' })
+  @ApiResponse({ status: 200, description: 'Redemption coupons' })
+  async getPointRedemptions(
+    @Query('date') date?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('allTime') allTime?: string,
+  ) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const qb = this.redemptionRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.user', 'user')
+      .orderBy('r.createdAt', 'DESC');
+
+    if (allTime === '1' || allTime === 'true') {
+      // sin filtro de fecha
+    } else if (date && dateRegex.test(date)) {
+      const range = getBogotaDateRange(date);
+      qb.where('r.createdAt >= :start', { start: range.start }).andWhere('r.createdAt <= :end', { end: range.end });
+    } else if (from && to && dateRegex.test(from) && dateRegex.test(to)) {
+      const startRange = getBogotaDateRange(from);
+      const endRange = getBogotaDateRange(to);
+      if (startRange.start > endRange.end) {
+        throw new BadRequestException('La fecha de inicio debe ser anterior o igual a la fecha fin');
+      }
+      qb.where('r.createdAt >= :start', { start: startRange.start }).andWhere('r.createdAt <= :end', { end: endRange.end });
+    } else {
+      throw new BadRequestException('Indica date=YYYY-MM-DD, from y to, o allTime=1');
+    }
+
+    const redemptions = await qb.getMany();
+    const orderIds = redemptions.map((r) => r.usedInOrderId).filter((id): id is number => id != null);
+    const ordersBrief = orderIds.length ? await this.ordersService.getOrdersBrief(orderIds) : [];
+    const orderMap = new Map(ordersBrief.map((o) => [o.id, o]));
+    const now = Date.now();
+    const stamp = (value: Date | null | undefined) =>
+      value ? formatInTimeZone(value, 'America/Bogota', "yyyy-MM-dd'T'HH:mm:ss") : null;
+
+    const records = redemptions.map((r) => {
+      const order = r.usedInOrderId ? orderMap.get(r.usedInOrderId) : null;
+      const expired = !r.isUsed && r.expiresAt != null && r.expiresAt.getTime() < now;
+      return {
+        id: r.id,
+        code: r.code,
+        userId: r.userId,
+        user: r.user
+          ? { id: r.user.id, fullName: r.user.fullName, email: r.user.email, phone: r.user.phone ?? null }
+          : null,
+        createdAt: stamp(r.createdAt),
+        expiresAt: stamp(r.expiresAt),
+        isUsed: r.isUsed,
+        expired,
+        usedAt: stamp(r.usedAt),
+        order: order
+          ? {
+              id: order.id,
+              dailyOrderNumber: order.dailyOrderNumber,
+              createdAt: stamp(order.createdAt),
+              customerName: order.customerName ?? null,
+              phone: order.phone ?? null,
+              orderType: order.orderType ?? null,
+              address: order.address ?? null,
+            }
+          : null,
+      };
+    });
+
+    const used = records.filter((r) => r.isUsed).length;
+    return {
+      records,
+      total: records.length,
+      used,
+      pending: records.length - used,
+    };
   }
 
   @Get('points/records/search')

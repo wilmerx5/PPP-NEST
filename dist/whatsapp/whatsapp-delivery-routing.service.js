@@ -51,7 +51,13 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
         if (customer) {
             const pinKm = this.haversineKm(params.restaurant, customer);
             if (pinKm > maxStraightKm) {
-                this.logger.warn(`Customer pin too far (${pinKm.toFixed(1)} km) — treating as geocode_failed`);
+                this.logQuote({
+                    source: 'app',
+                    api: 'geocode',
+                    reason: 'pin_too_far',
+                    km: Number(pinKm.toFixed(1)),
+                    maxKm: maxStraightKm,
+                });
                 return {
                     ok: false,
                     reason: 'geocode_failed',
@@ -85,7 +91,13 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
         }
         const absurdRouteKm = Math.max(40, Number(params.maxKm) * 8 || 44);
         if (route.distanceKm > absurdRouteKm) {
-            this.logger.warn(`Route absurdly long (${route.distanceKm} km) — treating as geocode_failed`);
+            this.logQuote({
+                source: 'app',
+                api: 'directions',
+                reason: 'route_too_long',
+                km: route.distanceKm,
+                maxKm: absurdRouteKm,
+            });
             return {
                 ok: false,
                 reason: 'geocode_failed',
@@ -158,7 +170,14 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
             const res = await fetch(url.toString());
             const data = (await res.json());
             if (data.status !== 'OK' || !Array.isArray(data.results) || !data.results.length) {
-                this.logger.warn(`Geocode fail status=${data.status} for "${q.slice(0, 80)}"`);
+                this.logQuote({
+                    source: 'google',
+                    api: 'geocode',
+                    http: res.status,
+                    status: data.status || null,
+                    error: this.googleErrorText(data.error_message),
+                    query: q.slice(0, 120),
+                });
                 return null;
             }
             for (const result of data.results) {
@@ -168,11 +187,23 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
                     return accepted;
                 }
             }
-            this.logger.warn(`Geocode: ${data.results.length} result(s) rejected (far/foreign) for "${q.slice(0, 80)}"`);
+            this.logQuote({
+                source: 'app',
+                api: 'geocode',
+                reason: 'results_rejected',
+                results: data.results.length,
+                query: q.slice(0, 120),
+            });
             return null;
         }
         catch (e) {
-            this.logger.warn(`Geocode error: ${e.message}`);
+            this.logQuote({
+                source: 'app',
+                api: 'geocode',
+                reason: 'request_failed',
+                error: e.message,
+                query: q.slice(0, 120),
+            });
             return null;
         }
     }
@@ -188,17 +219,35 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
         const comps = Array.isArray(result.address_components) ? result.address_components : [];
         const country = comps.find((c) => (c.types || []).includes('country'));
         if (country?.short_name && country.short_name !== 'CO') {
-            this.logger.warn(`Geocode reject foreign country=${country.short_name}: ${formatted}`);
+            this.logQuote({
+                source: 'app',
+                api: 'geocode',
+                reason: 'foreign_country',
+                country: country.short_name,
+                formatted: formatted.slice(0, 120),
+            });
             return null;
         }
         if (/\b(españa|spain|madrid|barcelona|valencia|sevilla|portugal|méxico|mexico|peru|perú|argentina|chile)\b/i.test(formatted) &&
             !/\b(colombia|bogot[aá]|cundinamarca|kennedy|bosa|soacha)\b/i.test(formatted)) {
-            this.logger.warn(`Geocode reject foreign-looking: ${formatted}`);
+            this.logQuote({
+                source: 'app',
+                api: 'geocode',
+                reason: 'foreign_looking',
+                formatted: formatted.slice(0, 120),
+            });
             return null;
         }
         const km = this.haversineKm(near, { lat, lng });
         if (km > maxStraightKm) {
-            this.logger.warn(`Geocode reject far ${km.toFixed(1)}km (>${maxStraightKm}): ${formatted}`);
+            this.logQuote({
+                source: 'app',
+                api: 'geocode',
+                reason: 'too_far',
+                km: Number(km.toFixed(1)),
+                maxKm: maxStraightKm,
+                formatted: formatted.slice(0, 120),
+            });
             return null;
         }
         return { lat, lng, formatted };
@@ -230,7 +279,13 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
             const res = await fetch(url.toString());
             const data = (await res.json());
             if (data.status !== 'OK' || !data.routes?.[0]?.legs?.[0]) {
-                this.logger.warn(`Directions fail status=${data.status}`);
+                this.logQuote({
+                    source: 'google',
+                    api: 'directions',
+                    http: res.status,
+                    status: data.status || null,
+                    error: this.googleErrorText(data.error_message),
+                });
                 return null;
             }
             const leg = data.routes[0].legs[0];
@@ -244,9 +299,24 @@ let WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService_1 = class Wh
             };
         }
         catch (e) {
-            this.logger.warn(`Directions error: ${e.message}`);
+            this.logQuote({
+                source: 'app',
+                api: 'directions',
+                reason: 'request_failed',
+                error: e.message,
+            });
             return null;
         }
+    }
+    googleErrorText(message) {
+        const raw = String(message || '').trim();
+        if (!raw)
+            return null;
+        const key = this.apiKey();
+        return (key ? raw.replaceAll(key, 'REDACTED') : raw).slice(0, 300);
+    }
+    logQuote(detail) {
+        this.logger.warn(`delivery_quote ${JSON.stringify(detail)}`);
     }
 };
 exports.WhatsappDeliveryRoutingService = WhatsappDeliveryRoutingService;

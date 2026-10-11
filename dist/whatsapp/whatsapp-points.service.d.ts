@@ -1,6 +1,7 @@
 import { PointsService } from '../auth/services/points.service';
-import type { WhatsappCartItem } from './types/whatsapp-session.types';
+import type { WhatsappCartItem, WhatsappSessionData } from './types/whatsapp-session.types';
 import { type PointsHelpContext } from './whatsapp-points-help';
+export declare function whatsappPrizeDiscount(session: WhatsappSessionData): number;
 export declare class WhatsappPointsService {
     private readonly pointsService;
     constructor(pointsService: PointsService);
@@ -9,6 +10,7 @@ export declare class WhatsappPointsService {
     isPointsTopic(text: string): boolean;
     isBalanceIntent(text: string): boolean;
     isRedeemIntent(text: string): boolean;
+    isExplicitRedeemRequest(text: string): boolean;
     isAwaitingPointCodePrompt(text: string): boolean;
     isRegisterIntent(text: string): boolean;
     isPremioApplyIntent(text: string): boolean;
@@ -42,6 +44,7 @@ export declare class WhatsappPointsService {
     } | {
         ok: false;
         message: string;
+        reason: 'unknown' | 'unavailable' | 'owner';
     }>;
     tryRegisterOnly(userId: string | null | undefined, code: string): Promise<{
         handled: true;

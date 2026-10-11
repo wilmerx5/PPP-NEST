@@ -509,6 +509,9 @@ let OrdersService = class OrdersService {
                 const allCodes = allCodesFromProducts;
                 let adjustedCodes = [...allCodes];
                 if (redemptionCode && redemptionCode.trim()) {
+                    if (!adjustedCodes.some(code => code === 2 || code === 5)) {
+                        throw new common_1.BadRequestException('El premio requiere un medio pollo en el pedido');
+                    }
                     const hasCode2 = adjustedCodes.includes(2);
                     const hasCode5 = adjustedCodes.includes(5);
                     if (hasCode2 && hasCode5) {
@@ -586,6 +589,11 @@ let OrdersService = class OrdersService {
                     }));
                     await queryRunner.manager.save(extraEntities);
                 }
+                if (redemptionCode?.trim()) {
+                    const voucher = await this.pointsService.applyRedemptionToOrder(redemptionCode.trim(), savedOrder.id, queryRunner.manager);
+                    savedOrder.redemptionCode = voucher.code;
+                    await queryRunner.manager.save(savedOrder);
+                }
                 await queryRunner.commitTransaction();
             }
             finally {
@@ -659,13 +667,6 @@ let OrdersService = class OrdersService {
                         if (pointRecords.length > 0)
                             await pointsRepo.save(pointRecords);
                     }
-                }
-                catch {
-                }
-            }
-            if (redemptionCode && redemptionCode.trim()) {
-                try {
-                    await this.applyRedemptionVoucher(orderId, redemptionCode.trim());
                 }
                 catch {
                 }
@@ -2053,75 +2054,81 @@ let OrdersService = class OrdersService {
         return await this.pointsService.validateRedemptionCode(code);
     }
     async applyRedemptionVoucher(orderId, redemptionCode) {
-        const order = await this.orderRepo.findOne({
-            where: { id: orderId },
-            relations: ['items', 'items.product'],
-        });
-        if (!order) {
-            throw new common_1.BadRequestException('Orden no encontrada');
-        }
-        this.assertOrderContentEditable(order);
-        if (order.redemptionCode) {
-            throw new common_1.BadRequestException('This order already has a redemption prize applied');
-        }
-        const redemption = await this.pointsService.validateRedemptionCode(redemptionCode.toUpperCase().trim());
-        const hasHalfChicken = order.items.some(item => {
-            const productCode = item.product?.code;
-            return productCode === 2 || productCode === 5;
-        });
-        if (!hasHalfChicken) {
-            throw new common_1.BadRequestException('To use a redemption prize, your order must include at least one half chicken (product code 2 or 5)');
-        }
-        order.redemptionCode = redemption.code;
-        const allCodes = [];
-        for (const item of order.items) {
-            if (item.product?.code) {
-                allCodes.push(item.product.code);
+        const order = await this.dataSource.transaction(async (manager) => {
+            const orderRepo = manager.getRepository(order_entity_1.Order);
+            const order = await orderRepo.findOne({
+                where: { id: orderId },
+                relations: ['items', 'items.product'],
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!order) {
+                throw new common_1.BadRequestException('Orden no encontrada');
             }
-        }
-        let adjustedCodes = [...allCodes];
-        const hasCode2 = adjustedCodes.includes(2);
-        const hasCode5 = adjustedCodes.includes(5);
-        if (hasCode2 && hasCode5) {
-            const indexToRemove = adjustedCodes.indexOf(2);
-            if (indexToRemove !== -1) {
-                adjustedCodes.splice(indexToRemove, 1);
+            this.assertOrderContentEditable(order);
+            if (order.redemptionCode) {
+                throw new common_1.BadRequestException('This order already has a redemption prize applied');
             }
-            else {
-                const index5 = adjustedCodes.indexOf(5);
-                if (index5 !== -1) {
-                    adjustedCodes.splice(index5, 1);
+            const redemption = await this.pointsService.validateRedemptionCode(redemptionCode.toUpperCase().trim(), manager);
+            const hasHalfChicken = order.items.some(item => {
+                const productCode = item.product?.code;
+                return productCode === 2 || productCode === 5;
+            });
+            if (!hasHalfChicken) {
+                throw new common_1.BadRequestException('To use a redemption prize, your order must include at least one half chicken (product code 2 or 5)');
+            }
+            order.redemptionCode = redemption.code;
+            const allCodes = [];
+            for (const item of order.items) {
+                if (item.product?.code) {
+                    allCodes.push(item.product.code);
                 }
             }
-        }
-        else if (hasCode2) {
-            const indexToRemove = adjustedCodes.indexOf(2);
-            if (indexToRemove !== -1) {
-                adjustedCodes.splice(indexToRemove, 1);
-            }
-        }
-        else if (hasCode5) {
-            const indexToRemove = adjustedCodes.indexOf(5);
-            if (indexToRemove !== -1) {
-                adjustedCodes.splice(indexToRemove, 1);
-            }
-        }
-        const newPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
-        const oldPoints = order.points || 0;
-        order.points = newPoints;
-        if (newPoints < oldPoints) {
-            const pointsToRemove = oldPoints - newPoints;
-            const pointCodes = await this.pointsService.getPointCodesByOrderId(orderId);
-            if (pointCodes.length > newPoints) {
-                const codesToDelete = pointCodes.slice(0, pointsToRemove);
-                const pointsRepo = this.dataSource.getRepository(user_points_entity_1.UserPoints);
-                if (codesToDelete.length > 0) {
-                    await pointsRepo.delete({ code: (0, typeorm_2.In)(codesToDelete) });
+            let adjustedCodes = [...allCodes];
+            const hasCode2 = adjustedCodes.includes(2);
+            const hasCode5 = adjustedCodes.includes(5);
+            if (hasCode2 && hasCode5) {
+                const indexToRemove = adjustedCodes.indexOf(2);
+                if (indexToRemove !== -1) {
+                    adjustedCodes.splice(indexToRemove, 1);
+                }
+                else {
+                    const index5 = adjustedCodes.indexOf(5);
+                    if (index5 !== -1) {
+                        adjustedCodes.splice(index5, 1);
+                    }
                 }
             }
-        }
-        await this.pointsService.applyRedemptionToOrder(redemption.code, orderId);
-        await this.orderRepo.save(order);
+            else if (hasCode2) {
+                const indexToRemove = adjustedCodes.indexOf(2);
+                if (indexToRemove !== -1) {
+                    adjustedCodes.splice(indexToRemove, 1);
+                }
+            }
+            else if (hasCode5) {
+                const indexToRemove = adjustedCodes.indexOf(5);
+                if (indexToRemove !== -1) {
+                    adjustedCodes.splice(indexToRemove, 1);
+                }
+            }
+            const newPoints = this.pointsService.calculatePointsFromCodes(adjustedCodes);
+            const oldPoints = order.points || 0;
+            order.points = newPoints;
+            if (newPoints < oldPoints) {
+                const pointsToRemove = oldPoints - newPoints;
+                const pointRows = await manager.getRepository(user_points_entity_1.UserPoints).find({ where: { orderId }, order: { createdAt: 'ASC', id: 'ASC' }, select: ['code'] });
+                const pointCodes = pointRows.map(point => point.code);
+                if (pointCodes.length > newPoints) {
+                    const codesToDelete = pointCodes.slice(0, pointsToRemove);
+                    const pointsRepo = manager.getRepository(user_points_entity_1.UserPoints);
+                    if (codesToDelete.length > 0) {
+                        await pointsRepo.delete({ code: (0, typeorm_2.In)(codesToDelete) });
+                    }
+                }
+            }
+            await this.pointsService.applyRedemptionToOrder(redemption.code, orderId, manager);
+            await orderRepo.save(order);
+            return order;
+        });
         const fullOrder = await this.orderRepo.findOne({
             where: { id: order.id },
             relations: ['items', 'items.product', 'items.attributes'],

@@ -219,6 +219,7 @@ ${whatsapp_business_rules_1.WHATSAPP_AI_JSON_SCHEMA}`;
   "reply": "opcional"
 }
 Si hay un CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
+Si es un carrito o lista de pedido, incluye TODOS sus productos seleccionados, uno por línea, con su cantidad explícita y sus notas. No reduzcas el pedido al primer producto. No confundas precios, códigos o números del nombre con cantidades. En una carta con varias opciones sin selección, pide cuál quiere; no conviertas toda la carta en un pedido.
 Menú referencia:\n${input.menuSummary.slice(0, 4000)}`
             : `Eres el asistente de un restaurante de pollo asado (WhatsApp).
 Analizas UNA imagen del cliente. Responde SOLO JSON:
@@ -237,8 +238,9 @@ Reglas:
   textForBot = lo que el cliente querría escribir ("código 28", "28", "medio pollo frito", nombre del plato).
   Si ves un número de código claro (ej. cód. 12, #28, código 5) → SIEMPRE kind=order e inclúyelo en textForBot.
   Si la imagen muestra UN producto del menú con título legible → kind=order (NO unclear).
-- other / unclear: solo si no hay texto de menú ni comprobante legible.
+- other / unclear: si no hay texto legible o si hay varias opciones de carta sin una selección identificable.
 - No inventes productos fuera del menú.
+- Si es un carrito o lista de pedido, textForBot incluye TODOS los productos seleccionados, uno por línea, con cantidades explícitas y notas. Nunca reduzcas una lista al primer producto. Los precios y códigos no son cantidades. Si solo se ve una carta con varias opciones sin selección, kind=unclear y pregunta cuál quiere. No agregues toda la carta.
 Menú (referencia):
 ${input.menuSummary.slice(0, 6000)}`;
         const userText = caption

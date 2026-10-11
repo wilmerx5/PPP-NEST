@@ -85,7 +85,7 @@ const LANDMARK_KEYWORD_RE = /\b(hospital|cl[ií]nica|ips|hotel|hostal|motel|conj
 const NAMED_COMPLEX_RE = /\b(bosques?|tierras?|villas?|alamedas?|jardines?|prados?|rincones?|miradores?|portales?|ciudadelas?|parques?|brisas?|terrazas?|balcones?|agrupaci[oó]n)\s+(de|del|de\s+la|de\s+los|de\s+las)\b/i;
 exports.PPP_ZONE_LANDMARK_RE = /\b(castilla|castell[oó]n?|tintal|tabaku|altavista|alta\s*vista|vizcaya|techo|nuevo\s+sol|terrazas|aralia|mandalay|toledo|natura|galante|plazuela|san\s+esteban|pio\s*xii|pi[oó]\s*12|senderos?|imperial)\b/i;
 const STREET_ADDRESS_RE = /\b(calle|carrera|cra|cll|av\.?|avenida|diag(?:onal)?|dg|transversal|barrio|habitaci[oó]n|apto|apartamento|torre|porter[ií]a|int\.?|interior)\b/i;
-exports.FOOD_ORDER_SIGNAL_RE = /\b(pollo|pollos|sopa|sopas|bandeja|mojarra|mojarras|churrasco|churrascos|hamburguesa|hamburguesas|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|arepas|combo|ejecutivo|bebidas?|arroz|costilla|costillas|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado|tacos?|burritos?|salchipapa|patacon|patacones|yuca|papas?)\b/i;
+exports.FOOD_ORDER_SIGNAL_RE = /\b(pollo|pollos|sopa|sopas|bandeja|mojarra|mojarras|churrasco|churrascos|hamburguesa|hamburguesas|ajiaco|mondongo|gaseosa|limonada|jugo|jugos|guanabana|guan[aá]bana|broaster|arepa|arepas|combo|ejecutivo|bebidas?|arroz|costilla|costillas|pechuga|alitas?|sobrebarriga|chino|paisa|maduro|trucha|bagre|pescado|tacos?|burritos?|salchipapa|patacon|patacones|yuca|papas?)\b/i;
 function isDeliveryLogisticsFluff(text) {
     const t = (text || '')
         .toLowerCase()
@@ -137,7 +137,7 @@ function isNothingElseOrderIntent(text) {
     return (/^(asi\s+)?nada\s+mas$/.test(t) ||
         /^(asi\s+)?nomas$/.test(t) ||
         /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
-        /^(no\s+gracias|gracias\s+no)$/.test(t) ||
+        /^(no\s+gracias|gracias\s+no)(?:\s+nada\s+mas)?$/.test(t) ||
         /^(ya\s+)?(eso\s+)?es\s+todo$/.test(t) ||
         /^(eso\s+todo|listo\s+es\s+todo|ya\s+todo)$/.test(t) ||
         /^(solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(t) ||
@@ -444,14 +444,14 @@ function classifyWhatsappCustomerIntent(hints) {
         return 'menu_question';
     }
     if (hints.isCheckoutFieldReply || CHECKOUT_DATA_RE.test(text)) {
-        if (!/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster)\b/i.test(text)) {
+        if (!/\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|jugo|broaster)\b/i.test(text)) {
             return 'checkout_data';
         }
     }
     if (hints.isOffTopicChitchat)
         return 'chitchat';
     if (/\b(quiero|dame|ponme|pedi|pido|agrega|mandame|traeme|unos?|unas?|\d+)\b/i.test(text) ||
-        /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|broaster|arepa|combo|ejecutivo)\b/i.test(text)) {
+        /\b(pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|ajiaco|mondongo|gaseosa|limonada|jugo|broaster|arepa|combo|ejecutivo)\b/i.test(text)) {
         return 'order_product';
     }
     return 'other';

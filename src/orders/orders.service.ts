@@ -2802,12 +2802,20 @@ export class OrdersService {
   /**
    * Obtiene datos breves de órdenes por IDs (para listados de puntos u otros reportes).
    */
-  async getOrdersBrief(orderIds: number[]): Promise<Array<{ id: number; dailyOrderNumber: number; createdAt: Date }>> {
+  async getOrdersBrief(orderIds: number[]): Promise<Array<{
+    id: number;
+    dailyOrderNumber: number;
+    createdAt: Date;
+    customerName: string;
+    phone: string;
+    address: string;
+    orderType: Order['orderType'];
+  }>> {
     if (!orderIds?.length) return [];
     const uniq = [...new Set(orderIds)];
     const orders = await this.orderRepo.find({
       where: { id: In(uniq) },
-      select: ['id', 'dailyOrderNumber', 'createdAt'],
+      select: ['id', 'dailyOrderNumber', 'createdAt', 'customerName', 'phone', 'address', 'orderType'],
     });
     return orders;
   }

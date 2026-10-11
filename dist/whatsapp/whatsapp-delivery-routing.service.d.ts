@@ -41,4 +41,6 @@ export declare class WhatsappDeliveryRoutingService {
     private acceptGeocodeResult;
     private haversineKm;
     private directionsDistance;
+    private googleErrorText;
+    private logQuote;
 }

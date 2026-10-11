@@ -39,6 +39,8 @@ export declare class WhatsappCatalogService {
     isMenuExploreIntent(text: string, products?: WhatsappCatalogProduct[]): boolean;
     isCategoryBrowseQuestion(text: string): boolean;
     extractCookingStyleBrowseIntent(text: string): string | null;
+    resolveBareCookingStyleProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
+    resolveExplicitSidePortionProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     findProductsByCookingStyle(style: string, products: WhatsappCatalogProduct[], limit?: number): WhatsappCatalogProduct[];
     private spreadCookingStyleHits;
     private isPrepAttributeName;
@@ -56,7 +58,7 @@ export declare class WhatsappCatalogService {
     extractQuantityNearProduct(fullText: string, productName: string): number | null;
     extractCorrectedQuantityForProduct(text: string, productName: string): number | null;
     extractQuantityFromSegment(text: string): number;
-    extractQuantityFromMessage(text: string): number;
+    extractQuantityFromMessage(text: string, products?: WhatsappCatalogProduct[]): number;
     stripQuantityFromSearchQuery(text: string): string;
     buildMenuExploreIntro(text: string): string;
     formatMenuCategoryOverview(products: WhatsappCatalogProduct[], opts?: {
@@ -131,6 +133,7 @@ export declare class WhatsappCatalogService {
         quantity?: number;
     }>(text: string, products: WhatsappCatalogProduct[], kept: T[]): T[];
     nameMentionedInText(name: string, text: string): boolean;
+    productMatchesExplicitDrinkSize(product: WhatsappCatalogProduct, text: string): boolean;
     productNameFitsUtterance(product: WhatsappCatalogProduct, text: string): boolean;
     similarNamedProducts(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[];
     formatSimilarOfferReply(text: string, products: WhatsappCatalogProduct[]): string;
@@ -170,6 +173,10 @@ export declare class WhatsappCatalogService {
     resolveSizedChickenProduct(text: string, products: WhatsappCatalogProduct[], opts?: {
         preferStyleFromName?: string;
     }): WhatsappCatalogProduct | null;
+    private foldBareAttributeSegments;
+    private bareAttributeHostIndex;
+    private dropAttributeSideProducts;
+    private dropEjecutivoAttributeSoups;
     isEjecutivoLunchOrderPhrase(text: string): boolean;
     resolveNamedMenuDishProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     resolveEjecutivoOrderProduct(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
@@ -205,6 +212,7 @@ export declare class WhatsappCatalogService {
     formatMissingStyleOffer(text: string, products: WhatsappCatalogProduct[]): string | null;
     formatMenuDrinksOffer(asked: string, products: WhatsappCatalogProduct[]): string;
     looksLikeMultiItemOrderMessage(text: string): boolean;
+    private isBareAccompanimentPhrase;
     findProductEmbeddedInMessage(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null;
     private foodSideHasAnotherDish;
     splitFoodPlusDrinkSegments(text: string): string[];
@@ -261,7 +269,9 @@ export declare class WhatsappCatalogService {
     }): string;
     formatProductScheduleNote(product: WhatsappCatalogProduct): string | null;
     isWeekendScheduleQuestion(text: string): boolean;
-    formatMultiProductPriceReply(products: WhatsappCatalogProduct[]): string;
+    formatMultiProductPriceReply(products: WhatsappCatalogProduct[], opts?: {
+        offerAdd?: boolean;
+    }): string;
     resolvePriceInquiryProducts(text: string, products: WhatsappCatalogProduct[], opts?: {
         preferStyleFromName?: string;
     }): WhatsappCatalogProduct[];
@@ -345,6 +355,10 @@ export declare class WhatsappCatalogService {
         attributeName: string;
         attributeValue: string;
     }[];
+    requiresExplicitAttributeChoice(product: WhatsappCatalogProduct, attribute: {
+        attributeName: string;
+        options: string[];
+    }): boolean;
     findCookingStyleSibling(product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], style: string): WhatsappCatalogProduct | null;
     isCookingStyleAttribute(attributeName: string): boolean;
     coerceAttributeStep(product: WhatsappCatalogProduct, step: {
@@ -458,6 +472,7 @@ export declare class WhatsappCatalogService {
     private splitSegmentOnArticles;
     private splitSegmentOnQuantityBoundaries;
     chickenStyleChoicesForSegment(segment: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] | null;
+    soupTypeChoicesForSegment(segment: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] | null;
     resolveMultiProductOrder(text: string, products: WhatsappCatalogProduct[]): MultiProductResolveResult | null;
     private keepOnlyOpenAttributeChoices;
     formatMoney(amount: number): string;
@@ -467,7 +482,9 @@ export declare class WhatsappCatalogService {
     formatProductHeader(name: string, price?: number, code?: number): string;
     formatListChoiceHint(): string;
     formatProductListItem(product: WhatsappCatalogProduct, index?: number): string;
-    formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[]): string;
+    formatCategoryList(categoryName: string, list: WhatsappCatalogProduct[], opts?: {
+        numbered?: boolean;
+    }): string;
     formatCategoryAlternatives(missingLabel: string, categoryName: string, list: WhatsappCatalogProduct[]): string;
     comesWithOffer(text: string, products: WhatsappCatalogProduct[]): {
         reply: string;
@@ -476,6 +493,8 @@ export declare class WhatsappCatalogService {
         categoryName: string;
         products: WhatsappCatalogProduct[];
         askedButMissing?: string;
+    }, opts?: {
+        numbered?: boolean;
     }): string;
     formatProductOptionsPrompt(product: WhatsappCatalogProduct, alreadySelected?: {
         attributeName: string;
@@ -503,7 +522,24 @@ export declare class WhatsappCatalogService {
     } | {
         status: 'invalid';
     };
+    private queryIsJustThisOption;
     findCartAttributeOptionChange(text: string, cart: {
+        productId: number;
+        name: string;
+        attributes?: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
+    }[], products: WhatsappCatalogProduct[], opts?: {
+        allowBareOption?: boolean;
+    }): {
+        cartIndex: number;
+        itemName: string;
+        attributeName: string;
+        attributeValue: string;
+    } | null;
+    isCartProductNamedInText(name: string, text: string): boolean;
+    resolveCartAttributeOnlyUpdate(text: string, cart: {
         productId: number;
         name: string;
         attributes?: {
@@ -513,8 +549,10 @@ export declare class WhatsappCatalogService {
     }[], products: WhatsappCatalogProduct[]): {
         cartIndex: number;
         itemName: string;
-        attributeName: string;
-        attributeValue: string;
+        updates: {
+            attributeName: string;
+            attributeValue: string;
+        }[];
     } | null;
     listCartAttributeOptionsNamedInText(text: string, cart: {
         productId: number;

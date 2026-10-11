@@ -10,12 +10,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsappPointsService = void 0;
+exports.whatsappPrizeDiscount = whatsappPrizeDiscount;
 const common_1 = require("@nestjs/common");
 const points_service_1 = require("../auth/services/points.service");
 const whatsapp_points_help_1 = require("./whatsapp-points-help");
 const TWELVE_CHAR_CODE = /\b([A-Za-z0-9]{12})\b/;
 const POINT_CODE_CHARSET = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/;
 const ORDER_INTENT_WORD = /\b(quiero|quieor|qiero|kiero|dame|ponme|pedir|ordenar|agrega|agregame|un|una|unos|unas|medio|cuarto|entero|combo|pollo|arroz|sopa|ejecutivo|frito|broaster|bandeja|bebida|gaseosa|domicilio|habitacion|habitaci[oó]n)\b/i;
+function isPrizeEligibleItem(item) {
+    return item.code === 2 || item.code === 5;
+}
+function whatsappPrizeDiscount(session) {
+    if (!session.pendingRedemptionCode)
+        return 0;
+    if (session.pendingRedemptionExpiresAt) {
+        const expiry = new Date(session.pendingRedemptionExpiresAt).getTime();
+        if (!Number.isFinite(expiry) || expiry < Date.now())
+            return 0;
+    }
+    const item = session.cart.find(isPrizeEligibleItem);
+    return item ? Math.max(0, Number(item.unitPrice) || 0) : 0;
+}
 let WhatsappPointsService = class WhatsappPointsService {
     pointsService;
     constructor(pointsService) {
@@ -66,11 +81,23 @@ let WhatsappPointsService = class WhatsappPointsService {
         return /\b(mis\s+puntos|cu[aá]ntos\s+puntos|saldo\s+de\s+puntos|ver\s+puntos)\b/i.test(text);
     }
     isRedeemIntent(text) {
+        if (this.isExplicitRedeemRequest(text))
+            return true;
         const t = (text || '').toLowerCase();
         return (/\b(redimir|canjear\s+(mis\s+)?puntos|generar\s+premio|sacar\s+premio)\b/.test(t) ||
             /\b(procedimiento|proceso|pasos?|c[oó]mo)\s+.+\bredimir\b/.test(t) ||
             /\bpara\s+redimir\b/.test(t) ||
             t === 'redimir');
+    }
+    isExplicitRedeemRequest(text) {
+        const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (/\b(no|nunca|todavia|puedo|podria|podemos|cuanto|cuando|como|pasos|procedimiento|proceso|es posible|me alcanza|que pasa)\b/.test(t))
+            return false;
+        if (/\bsi\s+(?!quiero\b|quisiera\b|deseo\b)/.test(t))
+            return false;
+        const action = '(?:redimir|redime|canjear(?: mis)? puntos|canjea(?: mis)? puntos|generar (?:el |un |mi )?premio|genera (?:el |un |mi )?premio|sacar (?:el |un |mi )?premio)';
+        return new RegExp('^[¿¡\\s]*(?:por favor\\s+)?' + action + '\\b').test(t) ||
+            new RegExp('\\b(?:quiero|quisiera|deseo|necesito|me gustaria|ayudame a|puedes|podrias)\\s+' + action + '\\b').test(t);
     }
     isAwaitingPointCodePrompt(text) {
         const t = (text || '').trim();
@@ -92,7 +119,7 @@ let WhatsappPointsService = class WhatsappPointsService {
         return /\b(quitar|cancelar|sin|remover|borrar)\s+(el\s+)?premio\b/i.test(text);
     }
     cartHasHalfChicken(cart) {
-        return cart.some((c) => c.code === 2 || c.code === 5);
+        return cart.some(isPrizeEligibleItem);
     }
     async getAvailablePoints(userId) {
         if (!userId)
@@ -142,6 +169,7 @@ let WhatsappPointsService = class WhatsappPointsService {
             if (linkedUserId && redemption.userId && redemption.userId !== linkedUserId) {
                 return {
                     ok: false,
+                    reason: 'owner',
                     message: 'Ese premio pertenece a otra cuenta. Inicia sesión en la web con la cuenta correcta o usa el código en el local.',
                 };
             }
@@ -152,7 +180,7 @@ let WhatsappPointsService = class WhatsappPointsService {
             };
         }
         catch (err) {
-            return { ok: false, message: this.mapPointsError(err) };
+            return { ok: false, message: this.mapPointsError(err), reason: err instanceof common_1.NotFoundException ? 'unknown' : 'unavailable' };
         }
     }
     async tryRegisterOnly(userId, code) {

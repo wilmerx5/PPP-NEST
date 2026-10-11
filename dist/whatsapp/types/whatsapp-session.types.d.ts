@@ -26,6 +26,7 @@ export type WhatsappProductCandidate = {
     availableNow?: boolean;
 };
 export type WhatsappPendingAttribute = {
+    quantity?: number;
     productId: number;
     name: string;
     code: number;
@@ -39,6 +40,14 @@ export type WhatsappPendingAttribute = {
     sourceText?: string;
 };
 export type WhatsappSessionData = {
+    pendingCartAttributeEdit?: {
+        sourceText: string;
+        cartSignature: string;
+        candidates: Array<{
+            cartIndex: number;
+            name: string;
+        }>;
+    };
     pendingCartQuantity?: {
         quantity: number;
         options: Array<{
@@ -61,6 +70,7 @@ export type WhatsappSessionData = {
         candidates: WhatsappProductCandidate[];
         intent?: 'info' | 'order';
         quantity?: number;
+        correctedQuantity?: number;
         alsoAdd?: Array<{
             productId: number;
             segment: string;

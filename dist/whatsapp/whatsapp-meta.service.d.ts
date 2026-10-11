@@ -25,7 +25,7 @@ export declare class WhatsappMetaService {
     parseWebhookPayload(body: Record<string, unknown>): IncomingWhatsappMessage[];
     private parseOneMessage;
     normalizePhone(raw: string): string;
-    sendText(toWaId: string, body: string): Promise<void>;
+    sendText(toWaId: string, body: string): Promise<string | undefined>;
     uploadMedia(params: {
         buffer: Buffer;
         mimeType: string;

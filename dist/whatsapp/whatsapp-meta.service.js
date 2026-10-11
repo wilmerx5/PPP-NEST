@@ -182,6 +182,15 @@ let WhatsappMetaService = WhatsappMetaService_1 = class WhatsappMetaService {
             this.logger.error(`Meta send failed (${res.status}): ${errText}`);
             throw new Error(`WhatsApp send failed: ${res.status}`);
         }
+        let result;
+        try {
+            result = await res.json();
+        }
+        catch {
+            return undefined;
+        }
+        const messageId = result?.messages?.[0]?.id;
+        return typeof messageId === 'string' && messageId.length <= 128 ? messageId : undefined;
     }
     async uploadMedia(params) {
         const cfg = await this.settingsService.getEffectiveConfig();

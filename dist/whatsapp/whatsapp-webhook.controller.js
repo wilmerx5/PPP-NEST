@@ -70,6 +70,7 @@ let WhatsappWebhookController = WhatsappWebhookController_1 = class WhatsappWebh
         }
         const body = (req.body || {});
         const messages = this.metaService.parseWebhookPayload(body);
+        this.orchestrator.registerIncomingBatch?.(messages);
         const limit = Math.max(1, Number(cfg.rateLimitPerMinute) || 25);
         for (const msg of messages) {
             try {
