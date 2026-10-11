@@ -583,6 +583,24 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // A copied bot response is context, not another purchase, when its source matches history.
+    if (text.includes('\n')) {
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const answer = lines.at(-1) || '';
+      const isTimeAnswer = /^(?:(?:los|las|lo|la)\s+quiero|ser[ií]a|es)?\s*(?:para\s+)?(?:(?:el|al)\s+)?(?:medio\s*d[ií]a|(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+al\s+medio\s*d[ií]a)[.!]*$/i.test(answer);
+      if (lines.length > 1 && isTimeAnswer) {
+        const quote = lines.slice(0,-1).join(' ');
+        const normalizeQuote = (value: string) => this.normalizeForMatch(value.replace(/[*_]/g, '')).replace(/\s+/g,' ').trim();
+        const history = await this.conversationService.getRecentMessageTexts(conv.id,20);
+        if (history.some(row => row.startsWith('Bot: ') && normalizeQuote(row.slice(5)) === normalizeQuote(quote))) {
+          text = answer;
+        } else if (/^(?:perfecto|listo)\b/i.test(quote) || /[?¿]/.test(quote)) {
+          await this.reply(conv, msg.waId, 'No pude vincular esa cita con una respuesta reciente. Escribe solo el horario solicitado para conservar tu pedido.');
+          return;
+        }
+      }
+    }
+
     // Glosario local: typos / aliases antes de matching e IA
     text = applyLocalGlossary(text);
     if (text.includes('\n') && !['completed', 'closed', 'human'].includes(conv.state || '')) {
@@ -695,6 +713,33 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Serving yield and deposits are business facts, never inferred from order size.
+    const inquiryText = this.normalizeForMatch(originalText);
+    if (/\bpersonas?\b/.test(inquiryText) &&
+      /\b(alcanza|alcanzan|rinde|rinden|rendimiento|cuantas personas|para cuantas)\b/.test(inquiryText)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const mentioned = menu.filter(product => this.catalogService.isCartProductNamedInText(product.name, originalText));
+      const named = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
+        this.normalizeForMatch(other.name) !== this.normalizeForMatch(product.name) &&
+        this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
+      const contextId = session.pendingAttribute?.productId || session.productFocus?.productId ||
+        (session.cart.length === 1 ? session.cart[0].productId : undefined);
+      const product = named.length === 1 ? named[0] : !named.length && contextId
+        ? menu.find(product => product.id === contextId) : undefined;
+      if (product && named.length === 1) {
+        session = this.rememberProductFocus(session, product, menu);
+        await this.conversationService.saveSession(conv, session);
+      }
+      const yieldFact = product?.description?.match(/\b(?:rinde|alcanza|porci[oó]n(?:es)?\s+para|para)\s+(?:para\s+)?\d+(?:\s*(?:a|-)\s*\d+)?\s+personas\b/i)?.[0];
+      await this.reply(conv, msg.waId, yieldFact
+        ? `La carta de ${product!.name} indica: ${yieldFact}. El pedido sigue igual.`
+        : 'No tengo un rendimiento por personas confirmado en la carta para ese plato. Debes confirmarlo con el local antes de calcular cuántas porciones pedir. El pedido sigue igual.');
+      return;
+    }
+    if (/\b(abonar|abono|abonos|anticipo|anticipos|pago parcial|pagos parciales)\b/.test(inquiryText)) {
+      await this.reply(conv, msg.waId, 'Los abonos y pagos parciales deben coordinarse con el local. El chat no confirma un abono ni una reserva; tu pedido sigue igual.');
+      return;
+    }
     // Native replies identify their source by Meta ID, not by copied text.
     const replyContext = msg.raw?.context as {id?: unknown} | undefined;
     const quotedId = typeof replyContext?.id === 'string' && replyContext.id.length <= 128 ? replyContext.id : undefined;
@@ -957,6 +1002,44 @@ export class WhatsappOrchestratorService {
     const products = cfg.ignoreBusinessHours
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
+
+    // An explicit purchase of "those ten boxes" may refer to one discussed product.
+    const referencedOrder = originalText.match(/^(?:de acuerdo[, ]+)?quiero\s+(?:pedir\s+)?(?:esas|esos|estas|estos)\s+(\d{1,2}|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte)\s+(?:cajas|porciones|unidades|platos|bowls)(?:\s+(?:ser[ií]an|son|para)\b.*)?[.!]*$/i);
+    if (referencedOrder) {
+      const product = products.find(product => product.id === session.productFocus?.productId);
+      if (session.cart.length || session.pendingMultiOrder ||
+        session.pendingAttribute && session.pendingAttribute.productId !== product?.id ||
+        session.pendingMatch && !session.pendingMatch.candidates.some(candidate => candidate.id === product?.id)) {
+        await this.reply(conv, msg.waId, '¿Quieres cambiar la cantidad de un plato pendiente o agregar otro? Indica el producto; el pedido sigue igual.');
+        return;
+      }
+      if (!product || !businessOpenForBot || product.availableNow === false) {
+        await this.reply(conv, msg.waId, '¿De cuál producto quieres esa cantidad? Necesito confirmar el plato y su disponibilidad.');
+        return;
+      }
+      const quantity = this.catalogService.extractQuantityFromSegment(`${referencedOrder[1]} platos`);
+      const sourceText = `${quantity} ${product.name}`;
+      let next: WhatsappSessionData = {...session,pendingMatch:undefined,pendingAttribute:undefined,pendingQuantityHint:undefined};
+      const day = originalText.match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i)?.[0];
+      if (day) next = this.appendCustomerNote(next, `Fecha solicitada: ${day}`);
+      const added = this.tryAddProductToCart(next, product, quantity, cfg, undefined, [], {sourceText});
+      if (added.blocked) {
+        await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
+        return;
+      }
+      if (added.missingAttributes) {
+        next = this.buildPendingAttributeSession(next, product, added.missingAttributes, {sourceText});
+        await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+        await this.reply(conv, msg.waId, `Pediste ${quantity} de ${product.name}.\n\n` +
+          this.catalogService.formatProductOptionsPrompt(product, added.missingAttributes) +
+          (day ? '\n\nAnoté la fecha solicitada; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
+      } else {
+        await this.conversationService.saveSession(conv, added.session, 'building_cart');
+        await this.reply(conv, msg.waId, this.buildCartAddReply(added.session, this.deliveryFeeFor(added.session,cfg), product.name) +
+          (day ? '\n\nAnoté la fecha solicitada; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
+      }
+      return;
+    }
 
     if (await this.tryHandleAttributeDistribution(conv, msg.waId, session, originalText, products, cfg)) return;
 
@@ -12433,6 +12516,9 @@ export class WhatsappOrchestratorService {
       if (!addr || addr.length < 3) continue;
       if (this.isPickupOnlyDeliveryClause(addr)) continue;
       if (isDeliveryLogisticsFluff(addr)) continue;
+      // A requested date or diner count is not a delivery address.
+      if (/^(?:(?:el|al)\s+)?(?:d[ií]a\s+)?(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)(?:\s+(?:al|a|por)\s+(?:medio\s*d[ií]a|la\s+(?:ma[nñ]ana|tarde|noche)))?[.!]*$/i.test(addr)) continue;
+      if (/^(?:(?:unas?|unos?|aproximadamente)\s+)?(?:\d+|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta|cincuenta|cien)(?:\s+a\s+\d+)?\s+personas?[.!]*$/i.test(addr)) continue;
       if (/^(?:(?:aqu[ií]|por aqu[ií])\s+(?:a|para)\s+la\s+)?(?:la\s+)?vuelta[.!]*$/i.test(addr)) continue;
       if (this.looksLikeFoodNotAddress(addr)) continue;
       // En pedido compuesto, aceptar landmarks / nombres sueltos aunque no tengan #

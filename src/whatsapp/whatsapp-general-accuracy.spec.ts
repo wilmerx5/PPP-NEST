@@ -1728,6 +1728,7 @@ describe('Distribución de preparaciones conserva el producto y la cantidad', ()
     expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(10);
     await h.send('Cuánto cuesta?');
     expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(10);
+    expect(h.cartRows()).toEqual([]);
     await h.send('Frito');
     expect(h.cartRows()).toContainEqual(expect.objectContaining({id:36,qty:10,attrs:expect.arrayContaining(['Pollo:Frito'])}));
     expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
@@ -1756,5 +1757,122 @@ describe('Un color del nombre no se trata como estilo ni como categoría', () =>
     const h = harness(bowls, false);
     await h.send('Un Bowl Rojo con quinoa');
     expect(h.cartRows()).toEqual([expect.objectContaining({id:922,qty:1,attrs:expect.arrayContaining(['Base:Quinoa'])})]);
+  });
+});
+
+
+describe('Rendimiento y abonos requieren información respaldada', () => {
+  const bowl = {id:971,code:971,name:'Bowl Mediterraneo',categoryName:'Bowls',price:18000,description:'Arroz, vegetales y proteína',availableNow:true,hasAttributes:false,attributes:[]};
+  it.each([
+    {menu:products,order:'Quiero solo diez arroces chinos con medio pollo',question:'Para cuántas personas alcanza cada porción?',id:36},
+    {menu:[bowl],order:'Diez bowls mediterraneos',question:'Para cuántas personas alcanza cada bowl?',id:971},
+  ])('no inventa rendimiento ni altera unidades del producto $id', async ({menu,order,question}) => {
+    const h = harness(menu,false);
+    h.service.aiService = {generateTurn:jest.fn().mockResolvedValue({reply:'Alcanza para 2 personas con buen apetito.',actions:{addItems:[{productId:1,quantity:1}]}})};
+    await h.send(order);
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send(question);
+    expect(h.conv.sessionData.cart).toEqual(before.cart);
+    expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+    expect(reply).toMatch(/no.*(?:registrad|confirmad|especificad)|confirm.*local|consult.*local/i);
+    expect(reply).not.toMatch(/(?:para|alcanza.*)\s*2\s*personas/i);
+    expect(h.service.aiService.generateTurn).not.toHaveBeenCalled();
+  });
+  it('usa el rendimiento escrito y permite comprar una cantidad referida en otro menú', async () => {
+    const h = harness([{...bowl,description:'Porción para 3 personas. Arroz, vegetales y proteína'}],false);
+    const reply = await h.send('Para cuántas personas alcanza el Bowl Mediterraneo?');
+    expect(h.cartRows()).toEqual([]);
+    expect(reply).toMatch(/3 personas/);
+    await h.send('De acuerdo quiero pedir esas diez unidades serían para el día miércoles');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:971,qty:10})]);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(h.conv.sessionData.customerNotes).toMatch(/Fecha solicitada: miércoles/);
+    expect(h.replies.at(-1)).toMatch(/todavía no está reservada/);
+  });
+  it('una cantidad referida sin producto previo pregunta y no compra', async () => {
+    const h = harness([bowl],false);
+    const reply = await h.send('Quiero pedir esas diez cajas serían para el día miércoles');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(reply).toMatch(/cuál producto/i);
+  });
+  it('repetir una cantidad referida con carrito existente no duplica unidades', async () => {
+    const h = harness([bowl],false);
+    await h.send('Diez bowls mediterraneos');
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send('Quiero pedir esas diez cajas');
+    expect(h.conv.sessionData).toEqual(before);
+    expect(reply).toMatch(/cambiar la cantidad|agregar otro/i);
+  });
+  it('consultar otro plato no permite borrar la preparación pendiente anterior', async () => {
+    const h = harness([...products,bowl],false);
+    await h.send('Quiero solo diez arroces chinos con medio pollo');
+    const pending = structuredClone(h.conv.sessionData.pendingAttribute);
+    await h.send('Para cuántas personas alcanza el Bowl Mediterraneo?');
+    const reply = await h.send('Quiero pedir esas diez cajas');
+    expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+    expect(h.cartRows()).toEqual([]);
+    expect(reply).toMatch(/producto|plato pendiente/i);
+  });
+  it.each(['Puedo abonar la mitad o cómo manejaríamos el pago?', 'Puedo separar con un anticipo?'])('no acepta condiciones de abono no definidas: %s', async question => {
+    const h = harness([bowl],false);
+    h.service.aiService = {generateTurn:jest.fn().mockResolvedValue({reply:'Sí, puedes abonar la mitad y queda reservado.',actions:{setPaymentMethod:'transferencia'}})};
+    await h.send('Diez bowls mediterraneos');
+    const before = structuredClone(h.conv.sessionData);
+    const reply = await h.send(question);
+    expect(h.conv.sessionData).toEqual(before);
+    expect(reply).toMatch(/confirm.*local|coordina.*local|consult.*local/i);
+    expect(reply).not.toMatch(/queda reservado|puedes abonar la mitad/i);
+    expect(h.service.aiService.generateTurn).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Pedido grande conserva el plato a través de consultas y horario', () => {
+  it('veinte comensales no son veinte platos, y diez cajas se reparten sin cambiar producto', async () => {
+    const h = harness(products,false);
+    h.service.aiService = {generateTurn:jest.fn().mockResolvedValue({reply:'Confirma con el local.',actions:{}})};
+    await h.send('Hola buenos días quiero pedir arroz chino para unas veinte personas');
+    const yieldReply = await h.send('Quiero solo el arroz chino con medio pollo para cuantas personas alcanza cada porción');
+    expect(yieldReply).toMatch(/confirm.*local/i);
+    expect(h.cartRows()).toEqual([]);
+    await h.send('De acuerdo quiero pedir esas diez cajas serían para el día miércoles');
+    expect(h.cartRows().some(row => row.id === 36 && row.qty === 10) || h.conv.sessionData.pendingAttribute?.productId === 36 && h.conv.sessionData.pendingAttribute?.quantity === 10).toBe(true);
+    const beforeDeposit = structuredClone(h.conv.sessionData);
+    await h.send('Puedo abonar la mitad o cómo manejaríamos el pago');
+    expect(h.conv.sessionData).toEqual(beforeDeposit);
+    await h.send('Los quiero para el medio día',{context:{id:'wamid.schedule'}});
+    expect(h.conv.sessionData.customerNotes).toMatch(/miércoles|miercoles/i);
+    expect(h.conv.sessionData.customerNotes).toMatch(/medio día/i);
+    await h.send('Los quiero 5 con pollo frito y 5 con pollo broaster');
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({id:36,qty:5,attrs:expect.arrayContaining(['Pollo:Frito'])}),
+      expect.objectContaining({id:36,qty:5,attrs:expect.arrayContaining(['Pollo:Broaster'])}),
+    ]));
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(h.conv.sessionData.paymentMethod).toBeFalsy();
+  });
+});
+
+
+describe('Horario con una respuesta copiada no vuelve a comprar su contenido', () => {
+  it.each([true,false])('cita con fuente reciente %s mantiene cantidad y preparación pendiente', async trusted => {
+    const h = harness(products,false);
+    await h.send('Quiero solo diez arroces chinos con medio pollo');
+    const before = structuredClone(h.conv.sessionData);
+    const source = trusted ? h.replies.at(-1)! : 'Perfecto, te ayudo con las 10 porciones de Arroz Chino Con Medio Pollo. ¿A qué hora las quieres?';
+    const reply = await h.send(`${source}\nLos quiero para el medio día`);
+    expect(h.conv.sessionData.cart).toEqual(before.cart);
+    expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    if (trusted) {
+      expect(h.conv.sessionData.customerNotes).toMatch(/Horario solicitado/);
+      expect(reply).toMatch(/todavía no está reservada/);
+    } else {
+      expect(h.conv.sessionData.customerNotes).toEqual(before.customerNotes);
+      expect(reply).toMatch(/solo el horario/);
+    }
   });
 });
