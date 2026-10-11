@@ -36,3 +36,5 @@ Registrar commit, casos ejecutados, fallos, recuperaciones, tipo de modelo y gas
 30 regresiones nuevas: nueve consultas de capacidad/condición/negación, nueve peticiones explícitas de canje, dos registros de factura, un voucher válido suelto y tres vouchers usados/vencidos/de otra cuenta; seis pedidos compuestos en PPP y catálogo sintético. Inicialmente fallaron doce casos de consultas/códigos y dos compuestos. Se corrigieron las causas y las 30 regresiones pasan.
 
 Resultado completo: 62/62 suites, 1.463/1.463 pruebas y TypeScript sin errores. Modelo y servicios externos simulados, cero solicitudes pagadas; quedan doce del límite compartido. Los ocho casos reservados siguen sin ejecutarse. Los resultados de DB anteriores están documentados en el relevo, no se atribuyen a esta tanda.
+
+Código `adb8d582` publicado y desplegado en staging: contenedor healthy, health OK y DB connected. Verificación del 2026-10-11; documentación posterior no cambia la imagen de código.
