@@ -101,7 +101,7 @@ export function isPostOrderFollowUpIntent(text: string): boolean {
   }
 
   if (
-    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancelar?\s+(el\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
+    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancelar?\s+((el|mi|este)\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
       t,
     )
   ) {
@@ -700,6 +700,7 @@ export function isCartChargeQuestion(text: string): boolean {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   return /\b(cobrando|me cobran)\b/.test(t) ||
+    /^(?:[¿?\s]*)cuanto(?:\s+vale|\s+es|\s+seria|\s+sale|\s+cuesta)?(?:\s+(?:en\s+total|todo|el\s+pedido))?[?¿.!\s]*$/.test(t) ||
     /^(?:[¿?\s]*)(?:me\s+)?confirmas?\s+(?:el\s+)?(?:tiempo\s+y\s+(?:el\s+)?valor|valor\s+y\s+(?:el\s+)?tiempo)(?:\s+por\s+favor|\s+porfa)?[?¿.!\s]*$/.test(t) ||
     /^(?:[¿?\s]*)(?:y\s+)?(?:cuanto\s+(?:seria|es|vale|sale)|(?:me\s+)?(?:regalas?|confirmas?)\s+(?:porfa\s+)?(?:el\s+)?(?:total|valor\s+del\s+pedido))(?:\s+(?:en\s+total|todo|el\s+pedido))?(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.test(t);
 }

@@ -120,8 +120,11 @@ import {
 } from './whatsapp-outbound-media';
 import {
   coalesceDelayMsForBatch,
+  collapseImageBurstReplies,
   isCoalesceableInboundMessage,
+  isImageBurstMessage,
   mergeCoalescedInboundMessages,
+  WHATSAPP_IMAGE_BURST_MS,
   WHATSAPP_INBOUND_COALESCE_MAX,
 } from './whatsapp-inbound-coalesce';
 import { WhatsappConversation } from './entities/whatsapp-conversation.entity';
@@ -153,6 +156,8 @@ export class WhatsappOrchestratorService {
    * para una sola respuesta en lugar de dos turnos a medias.
    */
   private readonly inboundCoalesceByWaId = new Map<string, InboundCoalesceState>();
+  /** Fotos y avisos de álbum seguidos: el último turno resume el carrito una sola vez. */
+  private readonly imageBurstSeq = new Map<string, number>();
   /**
    * Durante un turno: acumula replies. Si llega otro texto a mitad de proceso,
    * se conservan (carry) y se envían con el siguiente flush — no se descartan.
@@ -179,6 +184,12 @@ export class WhatsappOrchestratorService {
 
   async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+
+    if (isImageBurstMessage(msg)) {
+      const ticket = (this.imageBurstSeq.get(key) || 0) + 1;
+      this.imageBurstSeq.set(key, ticket);
+      msg = { ...msg, raw: { ...(msg.raw || {}), imageBurstTicket: ticket, resolvedOrderImage: false } };
+    }
 
     // Media / ubicación: no fusionar (cada uno es un turno propio).
     if (!isCoalesceableInboundMessage(msg)) {
@@ -228,6 +239,31 @@ export class WhatsappOrchestratorService {
 
   private beginOutboundHold(key: string): void {
     this.outboundHoldByWaId.set(key, []);
+  }
+
+  private async collapseBurstReplies(
+    key: string,
+    msg: IncomingWhatsappMessage,
+    conv: WhatsappConversation,
+  ): Promise<void> {
+    const ticket = Number(msg.raw?.imageBurstTicket || 0);
+    if (!ticket) return;
+    await new Promise((resolve) => setTimeout(resolve, WHATSAPP_IMAGE_BURST_MS));
+    const fresh = await this.conversationService.reloadConversation(conv.id);
+    const session = this.conversationService.getSession(fresh);
+    const cfg = await this.settingsService.getEffectiveConfig();
+    const summary = session.cart.length
+      ? `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n${this.formatContinueShoppingPrompt(session)}`
+      : '';
+    const next = collapseImageBurstReplies({
+      resolvedOrderImage: msg.raw?.resolvedOrderImage === true && fresh.state === 'building_cart',
+      newerArrived: (this.imageBurstSeq.get(key) || 0) > ticket,
+      hasCart: session.cart.length > 0,
+      pending: !!(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder),
+      replies: this.outboundHoldByWaId.get(key) || [],
+      summary,
+    });
+    this.outboundHoldByWaId.set(key, next);
   }
 
   private async flushOrDiscardOutboundHold(
@@ -369,6 +405,7 @@ export class WhatsappOrchestratorService {
         msg.waId,
         msg.phoneE164,
       );
+      await this.collapseBurstReplies(key, msg, conv);
       // Un turno no está completado hasta finalizar también sus respuestas.
       // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
       // ciegamente las mutaciones del carrito o la creación de la orden.
@@ -480,8 +517,8 @@ export class WhatsappOrchestratorService {
     } else if (msg.messageType === 'image' && msg.mediaId) {
       const img = await this.resolveImageMessage(msg, logged.id, conv, cfg);
       if (img.done) return;
+      msg.raw = { ...(msg.raw || {}), resolvedOrderImage: true };
       text = img.text;
-      await this.reply(conv, msg.waId, `Vi en tu foto: _${this.shortQuote(text)}_`);
     } else if (msg.messageType === 'location') {
       const addr = this.formatLocationAddress(msg);
       if (!addr) {
@@ -657,6 +694,15 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (this.looksLikeUnvalidatedRedemptionSplit(originalText) && !session.pendingRedemptionCode) {
+      await this.reply(
+        conv,
+        msg.waId,
+        'El canje no está validado en este pedido, así que *no lo descuento*.\n\n' +
+          'El adicional se pide normal. Para el premio, pega el código de *12 caracteres* cuando lo tengas.',
+      );
+      return;
+    }
     if (conv.state === 'awaiting_payment' &&
         /\b(?:pago|pagar[eé]|pagamos)\s+con\b/i.test(originalText)) {
       const cashMethod = this.resolvePaymentChoice(originalText, cfg);
@@ -668,9 +714,58 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    if (/^(?:manana|hoy|ayer|ahora|luego|despues|temprano)$/.test(this.normalizeForMatch(originalText))) {
+      if (session.pendingMatch || session.pendingMultiOrder || session.pendingAttribute) {
+        await this.reply(conv, msg.waId, this.formatPendingPurchaseReminder(session));
+        return;
+      }
+      await this.reply(
+        conv,
+        msg.waId,
+        session.cart.length
+          ? `Cuando quieras seguimos.\n\n${this.formatContinueShoppingPrompt(session)}`
+          : this.buildAskWhatToOrderMessage(cfg),
+      );
+      return;
+    }
+    if (session.cart.length && isCartChargeQuestion(originalText)) {
+      await this.tryHandleCartChargeQuestion(conv, msg.waId, session, originalText, cfg);
+      return;
+    }
     if (session.cart.length && isKeepCartRefusal(originalText)) {
       await this.reply(conv, msg.waId, 'Listo, no quito nada ✅ El pedido sigue igual.\n\n¿*Algo más*?');
       return;
+    }
+    if (
+      session.cart.length === 1 &&
+      !session.pendingAttribute &&
+      !session.pendingMatch &&
+      !session.pendingMultiOrder &&
+      conv.state === 'building_cart'
+    ) {
+      const followUp = this.normalizeForMatch(originalText);
+      const sameAgain =
+        /^(?:otro|otra|uno|una)\s+igual$/.test(followUp) ||
+        /^(?:otro|otra)\s+de\s+lo\s+mismo$/.test(followUp);
+      const forTwo = /^(?:para|somos)\s+dos$/.test(followUp);
+      const line = session.cart[0];
+      const nextQty = sameAgain
+        ? Math.min(30, line.quantity + 1)
+        : forTwo && line.quantity === 1
+          ? 2
+          : line.quantity;
+      if (nextQty !== line.quantity) {
+        session = { ...session, cart: [{ ...line, quantity: nextQty }] };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(
+          conv,
+          msg.waId,
+          `Listo, *${line.name}* ×${nextQty}.\n\n` +
+            this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
+            '\n\n¿Algo más?',
+        );
+        return;
+      }
     }
     const cookingPreference = parseCookingTerm(originalText);
     if (cookingPreference && session.cart.length &&
@@ -749,6 +844,10 @@ export class WhatsappOrchestratorService {
       } else await this.reply(conv, msg.waId, `${preface}\n\n${this.formatContinueShoppingPrompt(session)}`);
       return;
     }
+
+    // Removing a voucher is not removing a dish; handle it before generic cart edits.
+    if (/\bpremio\b/i.test(originalText) && this.pointsHandler.isRemovePremioIntent(originalText) &&
+        await this.tryHandlePointsFlow(conv, msg.waId, session, originalText, cfg)) return;
 
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
@@ -2284,9 +2383,29 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // La foto ya armó el pedido. "Quiero eso" no lo vuelve a leer ni agrega otra línea.
+    if (
+      session.cart.length > 0 &&
+      !session.pendingAttribute &&
+      !session.pendingMatch &&
+      !session.pendingMultiOrder &&
+      /^(?:quiero eso|eso quiero|eso es|eso mismo|quiero esa|eso)[\s!.]*$/i.test(text.trim())
+    ) {
+      await this.reply(
+        conv,
+        msg.waId,
+        `Eso ya quedó en el pedido ✅\n\n${this.formatContinueShoppingPrompt(session)}`,
+      );
+      return;
+    }
+
     // "gracias" suelto → NUNCA agregar productos.
     // "listo"/"ok"/"dale" con carrito → checkout (no tragar la confirmación).
     if (this.catalogService.isCourtesyOnlyMessage(text)) {
+      if (session.pendingMultiOrder || session.pendingMatch || session.pendingAttribute) {
+        await this.reply(conv, msg.waId, this.formatPendingPurchaseReminder(session));
+        return;
+      }
       if (session.cart.length > 0 && this.isConfirmKeyword(text)) {
         const fresh = await this.conversationService.reloadConversation(conv.id);
         Object.assign(conv, fresh);
@@ -2456,6 +2575,24 @@ export class WhatsappOrchestratorService {
       if (await this.tryResolvePendingMatchPick(conv, msg.waId, session, pickText, products, cfg)) {
         return;
       }
+      const qtyOfThese = this.normalizeForMatch(pickText).match(
+        /^(?:(?:quiero|dame|mejor|que sean|ponme)\s+)?(dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+de\s+(?:esos|esas|estos|estas)$/,
+      );
+      if (qtyOfThese) {
+        const quantity = /^\d+$/.test(qtyOfThese[1])
+          ? Number(qtyOfThese[1])
+          : this.catalogService.extractQuantityFromSegment(`${qtyOfThese[1]} unidades`);
+        if (quantity >= 2 && quantity <= 30) {
+          session = { ...session, pendingMatch: { ...session.pendingMatch!, quantity } };
+          await this.conversationService.saveSession(conv, session);
+          await this.reply(
+            conv,
+            msg.waId,
+            `Listo, serán ${quantity} unidades.\n\n${this.formatPendingPurchaseReminder(session)}`,
+          );
+          return;
+        }
+      }
       session = { ...session, pendingMatch: undefined };
       await this.conversationService.saveSession(conv, session);
     }
@@ -2535,14 +2672,16 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
-      return;
-    }
-
+    // "broaster" / "ajiaco" responden la duda abierta. Si no, el listado de
+    // estilos borra el pedido y ofrece otra vez todo el menú.
     if (
       session.pendingMultiOrder &&
       (await this.tryResolvePendingMultiOrder(conv, msg.waId, session, text, products, cfg))
     ) {
+      return;
+    }
+
+    if (!cfg.agentV1Enabled && (await answerMenuWithNest())) {
       return;
     }
 
@@ -4997,6 +5136,19 @@ export class WhatsappOrchestratorService {
         pending.candidates.map((product, index) => `${index + 1}. ${product.name}`).join('\n') +
         '\n¿Cuál prefieres para ese pedido?';
     }
+    if (session.pendingMultiOrder?.ambiguous.length) {
+      return 'Conservo tu pedido. Falta elegir lo pendiente 👇\n\n' +
+        this.formatMultiOrderProposal({
+          segments: [],
+          confident: [],
+          ambiguous: session.pendingMultiOrder.ambiguous.map((group) => ({
+            segment: group.segment,
+            candidates: group.candidates as MenuProduct[],
+          })),
+          unresolved: session.pendingMultiOrder.unresolved || [],
+          needsAttributes: [],
+        });
+    }
     return 'Conservo tu pedido. Falta completar las opciones que estabas eligiendo.';
   }
 
@@ -6423,6 +6575,7 @@ export class WhatsappOrchestratorService {
     if (this.looksLikePhoneNumber(raw)) return false;
     if (looksLikeAddressOnlyMessage(raw) || this.isAddressOnlyCustomerMessage(raw)) return false;
     if (isCourtesyAffirmation(raw) || this.isConfirmKeyword(raw)) return false;
+    if (/^(?:el|la|un|una)?\s*(?:medio|media|cuarto|entero)\s*$/i.test(raw)) return false;
 
     let dish = this.catalogService.findProductEmbeddedInMessage(raw, products);
     if (!dish) {
@@ -7195,7 +7348,9 @@ export class WhatsappOrchestratorService {
   ): Promise<void> {
     const t = (text || '').toLowerCase();
     const wantsCancel =
-      /\b(cancel|me\s+tengo\s+que\s+ir|mejor\s+lo\s+cancelo)\b/i.test(t);
+      /\b(cancel(?:ar|a|o)?|me\s+tengo\s+que\s+ir|mejor\s+lo\s+cancelo|cancelarl[oa]|va\s+(?:a\s+)?tocar\s+cancel)\b/i.test(
+        t,
+      );
     const complaint =
       /\b(trajo|no\s+me\s+(regalaron|trajeron|enviaron)|falto|faltó|me\s+falta)\b/i.test(t);
     const arrived = /\b(ya\s+lleg|gracias\s+ya\s+lleg)\b/i.test(t);
@@ -7205,14 +7360,33 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (wantsCancel || complaint) {
+    if (wantsCancel) {
+      let detail = '';
+      let activeFound = false;
+      try {
+        const today = await this.ordersService.findTodayOrdersByPhone(conv.phoneE164);
+        const active = today.find(
+          (order) => order.orderStatus !== 'canceled' && order.orderStatus !== 'completed',
+        );
+        if (active) {
+          activeFound = true;
+          const num = String(active.dailyOrderNumber).padStart(2, '0');
+          detail = `La orden *#${num}* sigue *${this.formatOrderStatusLabel(active.orderStatus)}*.\n`;
+        }
+      } catch {
+        detail = '';
+      }
       await this.reply(
         conv,
         waId,
-        (wantsCancel
-          ? 'Entiendo, qué pena con la demora 🙏\n\n'
-          : 'Qué pena con eso 🙏\n\n') + this.humanContactMessage(),
+        `${detail}${activeFound ? 'Ese pedido *sigue activo*.' : 'No pude confirmar una orden activa.'} Por este chat no lo cancelo.\n\n` +
+          `Si hay que detenerlo, llámanos al *${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*.`,
       );
+      return;
+    }
+
+    if (complaint) {
+      await this.reply(conv, waId, 'Qué pena con eso 🙏\n\n' + this.humanContactMessage());
       return;
     }
 
@@ -8628,6 +8802,10 @@ export class WhatsappOrchestratorService {
           this.catalogService.findProductEmbeddedInMessage(clause, products);
       });
       if (recognized.length > 0) return proposedOrder;
+      const named = this.catalogService.findAllProductsEmbeddedInMessage(proposedOrder, products);
+      if (named.length >= 2 || this.catalogService.splitMultiProductSegments(proposedOrder).length >= 2) {
+        return proposedOrder;
+      }
     }
     const blobs = [analysis.textForBot, analysis.visibleText, caption].filter(
       (s): s is string => !!s?.trim(),
@@ -8844,7 +9022,6 @@ export class WhatsappOrchestratorService {
       'pedido',
       'carrito',
       'todo',
-      'eso',
       'confirmar',
     ]);
 
@@ -8901,6 +9078,18 @@ export class WhatsappOrchestratorService {
     const q = this.normalizeForMatch(query).replace(/(.)\1{2,}/g, '$1$1');
     const cart = session.cart;
     if (!cart.length || !q) return { kind: 'none' };
+    if (/^(?:eso|esto|esa|ese|estas|estos)$/.test(q)) {
+      if (cart.length === 1) {
+        return { kind: 'single', indices: [0], label: this.formatCartLineLabel(cart[0]) };
+      }
+      return {
+        kind: 'ambiguous',
+        options: cart.map((item, cartIndex) => ({
+          cartIndex,
+          label: this.formatCartLineLabel(item),
+        })),
+      };
+    }
 
     let hits: number[] = [];
     const code = this.catalogService.extractCodeFromMessage(query);
@@ -9983,10 +10172,22 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** Un premio y un adicional en la misma frase, sin código validado en la sesión. */
+  private looksLikeUnvalidatedRedemptionSplit(text: string): boolean {
+    const t = (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const redeemed = /\b(redimid[oa]s?|canjead[oa]s?|canje)\b/.test(t);
+    const extra = /\b(adicional|aparte|otro|otra|mas)\b/.test(t);
+    return redeemed && extra;
+  }
+
   private isCancelIntent(text: string): boolean {
     const t = text.trim().toLowerCase();
     if (/\bno\s+(quiero\s+)?(cancelar|anular)\b/i.test(t)) return false;
     if (/^(cancelar|cancela|cancelo|anular|anula)$/i.test(t)) return true;
+    if (/\b(cancelarl[oa]|va\s+(?:a\s+)?tocar\s+cancel)\b/i.test(t)) return true;
     return /\b(quiero\s+cancelar|cancelar\s+(el\s+)?pedido|cancela(r|me)?(\s+el)?\s*pedido|anular\s+(el\s+)?pedido|cancelen\s+(el\s+)?pedido)\b/i.test(
       t,
     );

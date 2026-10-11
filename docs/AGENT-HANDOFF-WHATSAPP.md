@@ -1,12 +1,26 @@
 # Relevo del agente: PPP WhatsApp
 
-Actualizado el 10 de octubre de 2026, hora de Bogotá. Leer este documento y `AGENTS.md` antes de ejecutar pruebas, editar o desplegar. Es un estado de trabajo, no evidencia de que el producto ya sea vendible.
+Actualizado el 11 de octubre de 2026, hora de Bogotá. Leer este documento y `AGENTS.md` antes de ejecutar pruebas, editar o desplegar. Es un estado de trabajo, no evidencia de que el producto ya sea vendible.
 
 ## Objetivo y alcance acordado
 
 Crear un agente de pedidos fiable y vendible para PPP, reutilizable después en Kamppo multitenant. El usuario quiere tandas sistemáticas de casos variados, no depender de que él descubra cada fallo por WhatsApp. Prioridad actual: comprensión de mensajes, consultas frente a compra, ambigüedad, cantidades, variantes, notas, cambios, interrupciones y checkout breve. Cocina, WebSocket, impresoras y pagos externos quedan fuera del foco actual. El piloto considera efectivo y transferencia; Mercado Pago está fuera de esta fase.
 
 Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para pruebas gratuitas, correcciones reversibles y despliegues rutinarios de staging. No enviar mensajes a clientes, Meta ni crear pedidos externos por accidente. El usuario autorizó usar su número y reiniciar sus pedidos de prueba, no datos de clientes reales. No inferir que staging está aislado de todas las integraciones: conservar los bloqueos existentes.
+
+## Tanda del 11 de octubre: integración y canjes
+
+Checkout activo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama `staging`, base `a57a2f69`. Se integran los cambios locales de comprensión, ambigüedades y fotos existentes sobre esa base. El estado histórico más abajo corresponde a una tanda anterior y no describe el runtime actual.
+
+- Verificación final: 61/61 suites y 1.428/1.428 pruebas; TypeScript sin errores. Integración adicional de canjes en MariaDB: 2/2. Logs locales `/tmp/ppp-redemption-full-final.log`, `/tmp/ppp-redemption-tsc.log`, `/tmp/ppp-redemption-db.log`.
+- Canje: `PointsService.redeemPointsForVoucher` guarda premio y descuento en una transacción; bloquea la fila de la cuenta para serializar solicitudes concurrentes y elige puntos FIFO con desempate por ID. No se cambiaron las reglas comerciales ni los productos que generan puntos.
+- Pruebas gratuitas contra MariaDB 10.11 local descartable: dos solicitudes simultáneas con nueve puntos producen un premio y un rechazo; un trigger que falla al actualizar puntos revierte premio y descuento. 2/2 pasaron. Esquema mínimo aislado: no acredita las migraciones completas ni configuración de staging.
+- Router: consulta del procedimiento no genera premio; redimir genera código; aplicar código conserva el medio adicional; repetir con saldo cero rechaza; quitar premio no quita platos ni devuelve puntos ya convertidos en voucher. Se rechazan códigos desconocidos, vencidos, usados y de otra cuenta.
+- Se corrige prioridad de «quitar el premio» antes de eliminación de platos; cancelación de «mi pedido» se mantiene como seguimiento. No se afirma una orden activa cuando no existe evidencia o falla la consulta.
+- Resumen de fotos: únicamente fotos de pedidos resueltas pueden sustituir su respuesta por carrito. Errores de lectura y comprobantes permanecen visibles, así como preguntas de pago. Las pruebas de fotos simulan interpretación; falta visión real con imágenes originales y álbumes con reenvíos duplicados.
+- Revisión de solo lectura en staging: `ppp_users`, `ppp_user_points` y `ppp_point_redemptions` usan InnoDB, necesario para transacciones y bloqueos.
+- No se generaron códigos en cuentas reales ni en staging, no se enviaron mensajes externos ni se hicieron llamadas pagadas. Presupuesto sigue 8 usadas / 12 restantes.
+- Antes de afirmar vendible: validar modelo real de forma acotada, fotos reales, álbumes con duplicados, identidad de cuenta/canje y descuento/consumo final de premio. Las reglas existentes de puntos usan códigos PPP; su configuración por tenant sigue pendiente para Kamppo.
 
 ## Estado verificado al cerrar la última tanda
 
@@ -81,9 +95,10 @@ El original privado de chats está en `/home/levi/.codex/attachments/e387d2f2-9c
 1. Hecho en simulación, sin inferencia: si el cliente no nombra la bebida, el combo toma la primera opción y no pregunta. Un mensaje posterior corto la cambia solo si hay una opción única: `Giger` pasa de Colombiana a Ginger; `Fanta` deja la primera; un typo empatado no cambia nada.
 2. Hecho en simulación: `preparacion-y-barrio` conserva sobrebarriga, notas `dorada delgada` y `Sin ensalada`, calle, casa y barrio.
 3. Hecho en simulación: `cambio-acompanamiento` deja un ejecutivo, sopa Menudencias, nota de papa salada y «bien frito». «además / aparte / y una sopa» sigue siendo otra sopa. El mismo recorrido pasa con un almuerzo de otro catálogo.
-4. Pollo SIN estilo + sopa: conservar cantidad de ambos mientras se pregunta frito/broaster y tipo de sopa, incluyendo una consulta intermedia. El caso actual del corpus hace explícito `frito`, no acredita este recorrido distinto.
-5. Variantes nuevas reservadas: respuesta ambigua `sí`, corrección de cantidad, opción citada sin respuesta, varias líneas elegibles para un cambio, corrección en pago, reinicio con selecciones pendientes, modificación de notas contradictorias. Validar que no aparezcan productos adicionales y que la respuesta corresponda al estado.
-6. Después: `canje-y-adicional` necesita contexto de canje validado; `postventa-cancelacion` requiere estado real o derivación, sin inventar entrega ni borrar una orden confirmada. No marcar esos patrones aprobados mediante mocks que inventen el estado que falta.
+4. Hecho en simulación: pollo sin estilo + sopa conserva las dos cantidades. «dos pollos y una sopa» pregunta frito/broaster y el tipo de sopa; «¿qué sopas tienes?» no borra esa elección. Luego «broaster» y «ajiaco» dejan 2 broaster y 1 ajiaco. El mismo recorrido pasa con otro catálogo. `pregunta-durante-variante` sigue haciendo explícito `frito`.
+5. Hecho en simulación, con el menú de PPP y con un menú ficticio: un «sí» con pollo y sopa abiertos no compra; una cita sin respuesta no elige las dos opciones; un cambio que cabe en dos líneas pregunta cuál; un pago posterior reemplaza al anterior sin tocar el carrito; reiniciar suelta la cantidad pendiente; una nota contradictoria no agrega otro plato. La corrección «mejor dos» también queda en el menú ficticio.
+6. Hecho en simulación, sin marcar los JSON como aprobados: si dicen que un plato es redimido y otro adicional, y no hay código validado, no se descuenta ni se inventa el premio. Lo mismo con un bowl de otro menú. Si la orden de hoy existe, «se demora» usa ese estado y «cancelarlo» no la borra: pide llamar. Si no hay orden, pide el número y no inventa una ETA. `canje-y-adicional` y `postventa-cancelacion` siguen en `automated: false`.
+7. Hecho en simulación, con PPP y otra carta: «otro igual» y «para dos» suben la cantidad de un solo plato. «Lo mismo», «no gracias», «hoy no» y «listo» con elecciones abiertas no cierran ni duplican. «Mañana» no se lee como manzana. «Dos de esos» conserva la lista y deja cantidad 2. «Mitad frito mitad broaster» son dos medios. «Para la mesa» no es domicilio.
 
 Los dos pendientes del JSON son `canje-y-adicional` y `postventa-cancelacion`. No confundir selección de casos con ejecución aprobada.
 
@@ -141,4 +156,6 @@ Sincronizar también el checkout habitual del usuario con fast-forward después 
 
 ## Qué falta para llamarlo vendible
 
-Cerrar los patrones pendientes y probar variantes nuevas con inferencia real dentro del presupuesto; medir fallos por categoría, no solo número de tests. Comprobar a futuro sesiones, reinicios, mensajes repetidos/concurrentes, aislamiento multitenant y recuperación de errores. La verificación de integraciones y piloto operativo vendrá después del foco conversacional acordado. Hoy hay avances desplegados y cobertura gratuita amplia; no una certificación de producto listo para venta.
+Cocina: el usuario la dio por verificada. `cocina-ppp` sigue apuntando a producción, así que `STAGING_ORDER_EVENTS_ALLOW` permanece apagado. Pagos en línea: el usuario ya los recorrió; no reabrir Mercado Pago en este ciclo.
+
+Siguen abiertos: desplegar el trabajo local; un canje con puntos reales de staging (la suite ya cubre premio validado y no validado); un inbound auténtico de Meta; un piloto corto vigilado; y las 12 llamadas de modelo que quedan. No es certificación de venta.

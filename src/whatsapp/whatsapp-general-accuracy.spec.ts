@@ -1,3 +1,4 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
@@ -620,6 +621,56 @@ describe('Historical chat batch: compound preferences and interrupted choices', 
 });
 
 
+describe('Chicken without a cooking style plus soup', () => {
+  it.each([true, false])('keeps both quantities through an interrupting soup question (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Me regalas dos pollos y una sopa');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.replies.at(-1)).toMatch(/frito/i);
+    expect(h.replies.at(-1)).toMatch(/broaster/i);
+    expect(h.replies.at(-1)).toMatch(/sopa/i);
+    const held = structuredClone(h.conv.sessionData.pendingMultiOrder);
+    expect(held?.ambiguous.length).toBeGreaterThanOrEqual(2);
+    await h.send('Que sopas tienes?');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMultiOrder).toEqual(held);
+    expect(h.replies.at(-1)).toMatch(/ajiaco/i);
+    await h.send('Broaster');
+    await h.send('Ajiaco');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 4, qty: 2 }),
+      expect.objectContaining({ id: 38, qty: 1 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+
+  it('keeps both quantities when another catalog also has unnamed chicken and soup', async () => {
+    const menu = [
+      { id: 801, code: 801, name: 'Pollo Frito', categoryName: 'Pollos', price: 30000, hasAttributes: false, attributes: [], availableNow: true },
+      { id: 802, code: 802, name: 'Pollo Broaster', categoryName: 'Pollos', price: 32000, hasAttributes: false, attributes: [], availableNow: true },
+      { id: 803, code: 803, name: 'Sopa De Verduras', categoryName: 'Sopas', price: 8000, hasAttributes: false, attributes: [], availableNow: true },
+      { id: 804, code: 804, name: 'Sopa De Lentejas', categoryName: 'Sopas', price: 8000, hasAttributes: false, attributes: [], availableNow: true },
+    ];
+    const h = harness(menu, false);
+    await h.send('Quiero tres pollos y dos sopas');
+    expect(h.cartRows()).toEqual([]);
+    const held = structuredClone(h.conv.sessionData.pendingMultiOrder);
+    expect(held?.ambiguous.length).toBeGreaterThanOrEqual(2);
+    await h.send('Que sopas tienes?');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMultiOrder).toEqual(held);
+    expect(h.replies.at(-1)).toMatch(/lentejas/i);
+    await h.send('Frito');
+    await h.send('Lentejas');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 801, qty: 3 }),
+      expect.objectContaining({ id: 804, qty: 2 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+});
+
+
 describe('Unavailable dish feedback', () => {
   it.each([true,false])('explains unavailability before offering the menu (agent: %s)', async enabled => {
     for (const message of ['Quiero una mazorca da', 'Quiero una mazorcada']) {
@@ -714,6 +765,37 @@ describe('Image order transcription keeps complete selected cart — offline', (
       expect.objectContaining({ id: 17, qty: 1 }),
       expect.objectContaining({ id: 23, qty: 1 }),
     ]));
+  });
+
+  it.each([true, false])('keeps photo arepas on the chicken, not as a portion (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    const text = h.service.resolveImageOrderText({
+      kind: 'order',
+      textForBot: '1 churrasco 1 arroz con pollo 1 pollo frito, arepas blancas',
+    }, 'Quiero eso', products);
+    expect(text).toBe('1 churrasco 1 arroz con pollo 1 pollo frito, arepas blancas');
+    await h.send(text);
+    expect(h.cartRows().map(row => row.id).sort((a, b) => a - b)).toEqual([1, 17, 23]);
+    expect(h.cartRows().find(row => row.id === 1)?.attrs).toEqual(expect.arrayContaining(['Arepas:Blancas']));
+    expect(h.cartRows().some(row => row.id === 11)).toBe(false);
+  });
+
+  it('uses fried arepas as the chicken option when the photo names them after a comma', async () => {
+    const h = harness(products, false);
+    await h.send('1 churrasco 1 pollo frito, arepas fritas');
+    expect(h.cartRows().find(row => row.id === 1)?.attrs).toEqual(expect.arrayContaining(['Arepas:Fritas']));
+    expect(h.cartRows().some(row => row.id === 11)).toBe(false);
+    expect(h.cartRows().some(row => row.id === 17)).toBe(true);
+  });
+
+  it.each([true, false])('does not reread the photo when the customer says quiero eso (agent=%s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('1 churrasco 1 arroz con pollo 1 pollo frito, arepas blancas');
+    const before = h.cartRows();
+    const reply = await h.send('Quiero eso');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/ya quedó/i);
+    expect(reply).not.toMatch(/porci[oó]n de arepas/i);
   });
 
   it('preserves a multi-product transcription for another restaurant catalog', () => {
@@ -929,5 +1011,327 @@ describe('Multiline orders and quoted — informational controls', () => {
     await h.send('Buenas tardes\nCuánto cuestan dos sopas de ajiaco?\nCalle 10 B #80-20\nTorre 2 apto 301');
     expect(h.cartRows()).toEqual([]);
     expect(h.replies.at(-1)).toMatch(/precio|21[.,]000|10[.,]500/i);
+  });
+});
+
+describe('Reserved turns stay on the open choice — PPP and another menu', () => {
+  const andes = [
+    { id: 910, code: 910, name: 'Pollo Frito Andino', categoryName: 'Pollos', price: 30000, hasAttributes: true, attributes: [{ attributeName: 'Acompanante', options: ['Arroz', 'Papa'] }], availableNow: true },
+    { id: 911, code: 911, name: 'Pollo Broaster Andino', categoryName: 'Pollos', price: 32000, hasAttributes: true, attributes: [{ attributeName: 'Acompanante', options: ['Arroz', 'Papa'] }], availableNow: true },
+    { id: 912, code: 912, name: 'Sopa De Lentejas', categoryName: 'Sopas', price: 8000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 913, code: 913, name: 'Sopa De Verduras', categoryName: 'Sopas', price: 8000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 914, code: 914, name: 'Bowl Andino', categoryName: 'Bowls', price: 18000, hasAttributes: true, attributes: [{ attributeName: 'Base', options: ['Quinoa', 'Arroz'] }], availableNow: true },
+    { id: 915, code: 915, name: 'Bowl Costeno', categoryName: 'Bowls', price: 19000, hasAttributes: true, attributes: [{ attributeName: 'Base', options: ['Quinoa', 'Arroz'] }], availableNow: true },
+  ];
+
+  it.each([true, false])('an ambiguous yes does not buy while chicken and soup are still open (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Me regalas dos pollos y una sopa');
+    const held = structuredClone(h.conv.sessionData.pendingMultiOrder);
+    expect(held?.ambiguous.length).toBeGreaterThanOrEqual(2);
+    const reply = await h.send('Sí');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMultiOrder).toEqual(held);
+    expect(reply).toMatch(/elegir|cu[aá]l|falta/i);
+    await h.send('Broaster');
+    await h.send('Ajiaco');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 4, qty: 2 }),
+      expect.objectContaining({ id: 38, qty: 1 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+
+  it.each([true, false])('an ambiguous yes does not buy while another menu still has two open families (agent: %s)', async enabled => {
+    const h = harness(andes, enabled);
+    await h.send('Quiero dos pollos y una sopa');
+    const held = structuredClone(h.conv.sessionData.pendingMultiOrder);
+    expect(held?.ambiguous.length).toBeGreaterThanOrEqual(2);
+    const reply = await h.send('Sí');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMultiOrder).toEqual(held);
+    expect(reply).toMatch(/elegir|cu[aá]l|falta/i);
+    await h.send('Broaster');
+    await h.send('Lentejas');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 911, qty: 2 }),
+      expect.objectContaining({ id: 912, qty: 1 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+
+  it.each([true, false])('a quoted option without an answer does not pick both presas (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Un cuarto de pollo frito');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('pierna o pechuga');
+    expect(h.cartRows().filter(row => row.id === 3)).toHaveLength(Math.min(1, before.filter(row => row.id === 3).length || 1));
+    expect(h.cartRows()).toHaveLength(1);
+    const presas = h.cartRows().flatMap(row => row.attrs).filter(attr => /^Presa:/i.test(attr));
+    expect(presas.length).toBeLessThanOrEqual(1);
+    expect(reply).not.toMatch(/pierna.*pechuga|pechuga.*pierna/i);
+  });
+
+  it('a quoted option without an answer does not pick both bases in another menu', async () => {
+    const h = harness(andes, false);
+    await h.send('Quiero un Bowl Andino');
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Quinoa o Arroz');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].id).toBe(914);
+    expect(h.cartRows()[0].qty).toBe(before[0]?.qty || 1);
+    const bases = h.cartRows()[0].attrs.filter(attr => /^Base:/i.test(attr));
+    expect(bases).toHaveLength(1);
+    expect(reply).not.toMatch(/quinoa.*arroz|arroz.*quinoa/i);
+  });
+
+  it.each([true, false])('one change that fits two lines asks which line on PPP (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    h.conv.sessionData.cart = [
+      { productId: 1, code: 1, name: '1 Pollo Frito', unitPrice: 41000, quantity: 2, attributes: [{ attributeName: 'Arepas', attributeValue: 'Blancas' }] },
+      { productId: 4, code: 4, name: '1 Pollo Broaster', unitPrice: 43000, quantity: 1, attributes: [{ attributeName: 'Arepas', attributeValue: 'Blancas' }] },
+    ];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Lo quiero con arepas fritas');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]l|qu[eé] (?:pollo|producto|plato)/i);
+    await h.send('El pollo frito');
+    expect(h.cartRows()[0].attrs).toEqual(['Arepas:Fritas']);
+    expect(h.cartRows()[1]).toEqual(before[1]);
+  });
+
+  it('one change that fits two lines asks which line on another menu', async () => {
+    const h = harness(andes, false);
+    h.conv.sessionData.cart = [
+      { productId: 914, code: 914, name: 'Bowl Andino', unitPrice: 18000, quantity: 2, attributes: [{ attributeName: 'Base', attributeValue: 'Arroz' }] },
+      { productId: 915, code: 915, name: 'Bowl Costeno', unitPrice: 19000, quantity: 1, attributes: [{ attributeName: 'Base', attributeValue: 'Arroz' }] },
+    ];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send('Lo quiero con quinoa');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/cu[aá]l|qu[eé] (?:bowl|producto|plato)/i);
+    await h.send('El Bowl Andino');
+    expect(h.cartRows()[0]).toMatchObject({ id: 914, qty: 2, attrs: ['Base:Quinoa'] });
+    expect(h.cartRows()[1]).toEqual(before[1]);
+  });
+
+  it.each([true, false])('a later payment replaces the previous one and keeps the PPP cart (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero un churrasco');
+    await h.send('Para la calle 10 #20-30');
+    await h.send('Pago en efectivo');
+    expect(h.conv.sessionData.paymentMethod).toMatch(/cash|efectivo/i);
+    const cart = structuredClone(h.cartRows());
+    const reply = await h.send('Mejor por transferencia');
+    expect(h.conv.sessionData.paymentMethod).toMatch(/transfer/i);
+    expect(h.cartRows()).toEqual(cart);
+    expect(reply).toMatch(/transfer/i);
+  });
+
+  it('a later payment replaces the previous one and keeps another menu cart', async () => {
+    const h = harness(andes, false);
+    await h.send('Quiero un Bowl Andino');
+    await h.send('Para la calle 10 #20-30');
+    await h.send('Pago en efectivo');
+    expect(h.conv.sessionData.paymentMethod).toMatch(/cash|efectivo/i);
+    const cart = structuredClone(h.cartRows());
+    const reply = await h.send('Mejor por transferencia');
+    expect(h.conv.sessionData.paymentMethod).toMatch(/transfer/i);
+    expect(h.cartRows()).toEqual(cart);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 914, qty: 1 })]);
+    expect(reply).toMatch(/transfer/i);
+  });
+
+  it.each([true, false])('restart drops a pending PPP choice so the next order starts clean (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero dos sopas');
+    expect(h.conv.sessionData.pendingMatch || h.conv.sessionData.pendingMultiOrder).toBeTruthy();
+    await h.send('Reiniciar');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMatch).toBeUndefined();
+    expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();
+    expect(h.conv.sessionData.pendingQuantityHint).toBeUndefined();
+    await h.send('Quiero un ajiaco');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 38, qty: 1 })]);
+  });
+
+  it('restart drops a pending choice on another menu so the next quantity is not inherited', async () => {
+    const h = harness(andes, false);
+    await h.send('Quiero dos bowls');
+    expect(h.conv.sessionData.pendingMatch?.quantity).toBe(2);
+    await h.send('Reiniciar');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingMatch).toBeUndefined();
+    expect(h.conv.sessionData.pendingQuantityHint).toBeUndefined();
+    await h.send('Quiero un Bowl Costeno');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 915, qty: 1 })]);
+  });
+
+  it.each([true, false])('a contradictory salad note does not add a second PPP dish (agent: %s)', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Quiero un churrasco');
+    const reply = await h.send('Sin ensalada y con ensalada');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].id).toBe(17);
+    const note = h.cartRows()[0].note || '';
+    expect(/sin ensalada/i.test(note) && /con ensalada/i.test(note)).toBe(false);
+    expect(reply).toMatch(/ensalada|aclar|cu[aá]l/i);
+  });
+
+  it('a contradictory note does not add a second dish on another menu', async () => {
+    const h = harness(andes, false);
+    await h.send('Quiero un Bowl Andino');
+    const reply = await h.send('Sin cebolla y con cebolla');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].id).toBe(914);
+    const note = h.cartRows()[0].note || '';
+    expect(/sin cebolla/i.test(note) && /con cebolla/i.test(note)).toBe(false);
+    expect(reply).toMatch(/cebolla|aclar|cu[aá]l/i);
+  });
+
+  it('a quantity correction before the choice stays on another menu', async () => {
+    const h = harness(andes, false);
+    await h.send('Quiero tres bowls');
+    await h.send('Mejor dos');
+    await h.send('Costeno');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 915, qty: 2 })]);
+  });
+});
+
+describe('Redemption and a registered order stay uninvented', () => {
+  const andes = [
+    { id: 914, code: 914, name: 'Bowl Andino', categoryName: 'Bowls', price: 18000, hasAttributes: false, attributes: [], availableNow: true },
+    { id: 915, code: 915, name: 'Bowl Costeno', categoryName: 'Bowls', price: 19000, hasAttributes: false, attributes: [], availableNow: true },
+  ];
+
+  it.each([
+    ['Más otro medio pollo', 'No. Es medio pollo redimido más el medio pollo adicional.', products],
+    ['Más otro bowl', 'No. Es un bowl redimido más el bowl adicional.', andes],
+  ])('does not discount %s without a validated code', async (_first, correction, menu) => {
+    const h = harness(menu as never, false);
+    await h.send(_first);
+    const before = structuredClone(h.cartRows());
+    const reply = await h.send(correction);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(h.cartRows().length).toBeLessThanOrEqual(Math.max(before.length, 1));
+    expect(h.cartRows()).toEqual(before);
+    expect(reply).toMatch(/no lo descuento|c[oó]digo/i);
+    expect(reply).not.toMatch(/gratis|\$\s*0|premio se aplicar/i);
+  });
+
+  it('reports a real order and does not cancel it from the chat', async () => {
+    const h = harness(products, false);
+    h.conv.state = 'completed';
+    const cancel = jest.fn();
+    h.service.ordersService = {
+      findTodayOrdersByPhone: async () => [{ dailyOrderNumber: 15, orderStatus: 'inDelivery' }],
+      cancel,
+    };
+    const delay = await h.send('Veci será que se demora');
+    expect(delay).toMatch(/#15/);
+    expect(delay).toMatch(/en camino/i);
+    expect(delay).not.toMatch(/qued[oó] cancelado/i);
+    const reply = await h.send('Me va tocar cancelarlo, me tengo que ir');
+    expect(cancel).not.toHaveBeenCalled();
+    expect(h.conv.state).toBe('completed');
+    expect(reply).toMatch(/no lo cancelo/i);
+    expect(reply).toMatch(/3118866823/);
+    expect(reply).toMatch(/#15/);
+  });
+
+  it.each(['empty', 'error'])('no afirma una orden activa al cancelar sin evidencia: %s', async (scenario) => {
+    const h = harness(products, false);
+    h.conv.state = 'completed';
+    h.service.ordersService = { findTodayOrdersByPhone: async () => {
+      if (scenario === 'error') throw new Error('lookup unavailable');
+      return [];
+    } };
+    const reply = await h.send('Quiero cancelar mi pedido');
+    expect(reply).toMatch(/no pude confirmar una orden activa/i);
+    expect(reply).not.toMatch(/sigue activo|qued[oó] cancelado/i);
+    expect(h.conv.state).toBe('completed');
+  });
+
+  it('consulta, genera el premio, lo aplica y conserva el medio adicional sin gastar dos veces', async () => {
+    const h = harness(products, false);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    let available = 9;
+    const redeem = jest.fn(async () => {
+      if (available < 9) throw new BadRequestException('You need at least 9 points');
+      available -= 9;
+      return { code: 'ABCD2345EFGH', userId: 'test-account', expiresAt: new Date(Date.now() + 86400000) };
+    });
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => available,
+      redeemPointsForVoucher: redeem,
+      validateRedemptionCode: async () => ({ code: 'ABCD2345EFGH', userId: 'test-account', expiresAt: null }),
+    } as never);
+    const help = await h.send('Como puedo redimir mis puntos?');
+    expect(help).toMatch(/9|redimir/i);
+    expect(redeem).not.toHaveBeenCalled();
+    expect(await h.send('redimir')).toMatch(/ABCD2345EFGH/);
+    expect(available).toBe(0);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    await h.send('Un medio pollo broaster');
+    expect(await h.send('Aplicar premio ABCD2345EFGH')).toMatch(/premio/i);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    await h.send('Y otro medio pollo broaster adicional');
+    expect(h.cartRows().reduce((n, row) => n + row.qty, 0)).toBe(2);
+    expect(await h.send('redimir')).toMatch(/al menos 9/i);
+    expect(available).toBe(0);
+    await h.send('quitar el premio');
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(h.cartRows().reduce((n, row) => n + row.qty, 0)).toBe(2);
+    expect(available).toBe(0);
+  });
+
+  it.each(['missing', 'expired', 'used', 'owner'])('rechaza premio %s sin modificar el carrito', async scenario => {
+    const h = harness(products, false);
+    await h.send('Un medio pollo broaster');
+    const before = structuredClone(h.cartRows());
+    h.conv.sessionData.linkedUserId = 'test-account';
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 0,
+      validateRedemptionCode: async () => {
+        if (scenario === 'missing') throw new NotFoundException('Código de premio no encontrado');
+        if (scenario === 'expired') throw new BadRequestException('This redemption code has expired');
+        if (scenario === 'used') throw new ConflictException('This redemption code has already been used');
+        return { code: 'ABCD2345EFGH', userId: 'another-account' };
+      },
+    } as never);
+    const reply = await h.send('Aplicar premio ABCD2345EFGH');
+    expect(reply).toMatch(/no encontrado|venci[oó]|ya fue usado|otra cuenta/i);
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+  });
+
+  it('keeps a validated prize on two paid half chickens without inventing a third', async () => {
+    const h = harness(products, false);
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    await h.send('Un medio pollo broaster');
+    await h.send('Y otro medio pollo broaster adicional');
+    const halves = h.cartRows().filter(row => row.id === 5);
+    expect(halves.reduce((sum, row) => sum + row.qty, 0)).toBe(2);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(h.cartRows().some(row => row.id !== 5)).toBe(false);
+  });
+
+  it('does not zero a bowl from another menu when a prize code is only annotated', async () => {
+    const h = harness(andes, false);
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    await h.send('Quiero un Bowl Andino');
+    await h.send('Y otro Bowl Andino adicional');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 914, qty: 2 })]);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+  });
+
+  it('asks for the order number instead of inventing an ETA when none exists', async () => {
+    const h = harness(products, false);
+    h.conv.state = 'completed';
+    h.service.ordersService = { findTodayOrdersByPhone: async () => [] };
+    const reply = await h.send('Veci será que se demora');
+    expect(reply).toMatch(/n[uú]mero de orden/i);
+    expect(reply).not.toMatch(/35|en camino|ya qued[oó] registrado|ya sali[oó]/i);
+    expect(h.conv.state).toBe('completed');
   });
 });

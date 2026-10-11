@@ -74,6 +74,10 @@ const PHRASE_REWRITES: Array<{
   { re: /\bmedio\s+broster\s+medio\s+frito\b/gi, to: 'pollo mixto medio broaster medio frito' },
   { re: /\bmedio\s+frito\s+medio\s+broaster\b/gi, to: 'pollo mixto medio frito medio broaster' },
   { re: /\bmedio\s+frito\s+medio\s+broster\b/gi, to: 'pollo mixto medio frito medio broaster' },
+  {
+    re: /\bmitad\s+(?:de\s+)?(?:pollo\s+)?(frito|broaster|broster|asado)\s+(?:y\s+)?mitad\s+(?:de\s+)?(?:pollo\s+)?(frito|broaster|broster|asado)\b/gi,
+    to: 'medio $1 y medio $2',
+  },
   { re: /\bcombo\s+(?:de\s+)?pollo\s+mixto\b/gi, to: 'combo pollo mixto' },
   { re: /\bcombo\s+(?:de\s+)?pollo\s+mixt\b/gi, to: 'combo pollo mixto' },
   { re: /\bcombo\s+(?:de\s+)?pollo\s+misto\b/gi, to: 'combo pollo mixto' },

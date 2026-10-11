@@ -501,57 +501,40 @@ export class PointsService {
    * @returns Created redemption prize
    */
   async redeemPointsForVoucher(userId: string): Promise<PointRedemption> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Get available points (not canceled, not redeemed)
-    const availablePoints = await this.getAvailablePoints(userId);
-    
-    if (availablePoints < this.REDEMPTION_POINTS_REQUIRED) {
-      throw new BadRequestException(
-        `You need at least ${this.REDEMPTION_POINTS_REQUIRED} points to redeem. You currently have ${availablePoints} available points.`
-      );
-    }
-
-    // Get the oldest 9 available points (FIFO - First In First Out)
-    const pointsToRedeem = await this.pointsRepo.find({
-      where: {
-        userId,
-        isCanceled: false,
-        isRedeemed: false,
-      },
-      order: { createdAt: 'ASC' },
-      take: this.REDEMPTION_POINTS_REQUIRED,
+    return this.dataSource.transaction(async (manager) => {
+      // Serialize redemptions for this account, including requests from other workers.
+      const user = await manager.getRepository(User).findOne({
+        where: { id: userId }, lock: { mode: 'pessimistic_write' },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      const pointsRepo = manager.getRepository(UserPoints);
+      const redemptionRepo = manager.getRepository(PointRedemption);
+      const pointsToRedeem = await pointsRepo.find({
+        where: { userId, isCanceled: false, isRedeemed: false },
+        order: { createdAt: 'ASC', id: 'ASC' },
+        take: this.REDEMPTION_POINTS_REQUIRED,
+      });
+      if (pointsToRedeem.length < this.REDEMPTION_POINTS_REQUIRED) {
+        throw new BadRequestException(`You need at least ${this.REDEMPTION_POINTS_REQUIRED} points to redeem.`);
+      }
+      let code: string | undefined;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = generatePointCode();
+        if (!(await redemptionRepo.findOne({ where: { code: candidate } }))) {
+          code = candidate;
+          break;
+        }
+      }
+      if (!code) throw new Error('No se pudo generar un código de premio único después de varios intentos');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      const redemption = await redemptionRepo.save(redemptionRepo.create({
+        code, userId, isUsed: false, expiresAt,
+      }));
+      for (const point of pointsToRedeem) point.isRedeemed = true;
+      await pointsRepo.save(pointsToRedeem);
+      return redemption;
     });
-
-    if (pointsToRedeem.length < this.REDEMPTION_POINTS_REQUIRED) {
-      throw new BadRequestException('Not enough available points to redeem');
-    }
-
-    // Mark points as redeemed
-    for (const point of pointsToRedeem) {
-      point.isRedeemed = true;
-      await this.pointsRepo.save(point);
-    }
-
-    // Generate unique redemption code
-    const redemptionCode = await this.generateUniqueRedemptionCode();
-
-    // Create expiration date (30 days from now)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    // Create redemption voucher
-    const redemption = this.redemptionRepo.create({
-      code: redemptionCode,
-      userId,
-      isUsed: false,
-      expiresAt,
-    });
-
-    return await this.redemptionRepo.save(redemption);
   }
 
   /**

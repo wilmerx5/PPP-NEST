@@ -1,7 +1,9 @@
 import {
   coalesceDelayMsForBatch,
   coalesceDelayMsForText,
+  collapseImageBurstReplies,
   isCoalesceableInboundMessage,
+  isImageBurstMessage,
   isQuickCoalesceText,
   mergeCoalescedInboundMessages,
   WHATSAPP_INBOUND_COALESCE_MS,
@@ -96,6 +98,42 @@ describe('whatsapp-inbound-coalesce', () => {
       expect.objectContaining({ messageId: 'wamid.a', text: 'un ajiaco', timestamp: 1 }),
       expect.objectContaining({ messageId: 'wamid.b', text: 'y una pechuga', timestamp: 2 }),
     ]);
+  });
+
+  it('una ráfaga de fotos se resume en un solo mensaje', () => {
+    expect(isImageBurstMessage(textMsg({ text: '🖼️ Imagen', messageType: 'image', mediaId: 'a' }))).toBe(true);
+    expect(isImageBurstMessage(textMsg({ text: 'Mensaje (unsupported)', messageType: 'other' }))).toBe(true);
+    expect(isImageBurstMessage(textMsg({ text: 'un pollo' }))).toBe(false);
+    expect(collapseImageBurstReplies({
+      resolvedOrderImage: true,
+      newerArrived: true,
+      hasCart: true,
+      pending: false,
+      replies: ['Vi en tu foto', 'Listo ✅ foto 1'],
+      summary: 'Carrito completo',
+    })).toEqual([]);
+    expect(collapseImageBurstReplies({
+      resolvedOrderImage: true,
+      newerArrived: false,
+      hasCart: true,
+      pending: false,
+      replies: ['Vi en tu foto', 'Listo ✅ foto 2'],
+      summary: 'Carrito completo',
+    })).toEqual(['Carrito completo']);
+    expect(collapseImageBurstReplies({
+      newerArrived: false,
+      hasCart: false,
+      pending: false,
+      replies: ['No entendí bien tu mensaje'],
+      summary: '',
+    })).toEqual(['No entendí bien tu mensaje']);
+  });
+
+  it.each(['No pude leer el producto de la foto', 'Comprobante recibido'])('conserva %s aunque ya exista carrito', (reply) => {
+    expect(collapseImageBurstReplies({
+      resolvedOrderImage: false, newerArrived: true, hasCart: true,
+      pending: false, replies: [reply], summary: 'Carrito anterior',
+    })).toEqual([reply]);
   });
 
   it('solo coalesces textos sin media', () => {

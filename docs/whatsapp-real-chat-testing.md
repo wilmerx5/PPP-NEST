@@ -54,8 +54,36 @@ Se separan las líneas de dirección del pedido, conservando saltos entre platos
 
 Cobertura: dos sopas + conjunto/unidad + consulta; dos churrascos tres cuartos + sopa + calle/conjunto/unidad; elección de ambas presas; catálogo de bowls conservando dos unidades y nota; consulta de precio multilínea sin compra; tiempo configurado. Modelo, persistencia y transporte simulados; cero llamadas pagadas en esta tanda. Hay doce escenarios del corpus automatizados y dos pendientes: `canje-y-adicional` y `postventa-cancelacion`.
 
+### Seguimientos cortos (2026-10-10)
+
+En la misma suite, una segunda tanda cubre PPP y otra carta. «Otro igual» y «para dos» suben la cantidad cuando hay un solo plato. «Lo mismo», «no gracias», «hoy no», «está bien así» y «listo» con dos elecciones abiertas no cierran ni duplican. «Mañana» no se vuelve gaseosa de manzana. «Dos de esos» deja la lista abierta y anota cantidad 2. «Mitad frito mitad broaster» son dos medios, no un pollo entero. «Para la mesa 4» no es una dirección. Simulación; cero llamadas de inferencia.
+
+### Respuestas cortas ambiguas (2026-10-10)
+
+Nueva suite `whatsapp-ambiguous-turns.spec.ts`, siempre con PPP y con una carta ficticia. «Eso» con carrito vacío no inventa un plato. «Dale» o «ok» con pollo y sopa abiertos no elige el primero. «Quita eso» con dos líneas pregunta cuál. «Cuánto?» con carrito responde el total. «Medio» en el pago no mete un 1/2 pollo. «Como siempre», «espera», «sin» y «cambia» sueltos no alteran el pedido. Cero llamadas de inferencia.
+
+### Canje sin código y cancelación de una orden real (2026-10-10)
+
+«Medio pollo redimido más el medio adicional», y el mismo caso con un bowl de otra carta, no aplica descuento si la sesión no tiene un código validado. El carrito no cambia en esa aclaración. Con una orden de hoy en camino, «¿se demora?» responde el número y el estado reales. «Me va a tocar cancelarlo» no borra esa orden y deja el teléfono del local. Sin orden, pide el número y no inventa minutos ni dice que ya salió. Los dos escenarios del corpus siguen sin automatizar: no hay un canje real ni una cancelación ejecutada. Simulación; cero llamadas de inferencia.
+
+### Turnos reservados en dos cartas (2026-10-10)
+
+Cada recorrido se ejecutó con el menú de PPP y con una carta ficticia (pollos andinos, sopas y bowls). Un «sí» mientras faltan el estilo y la sopa no agrega productos. Citar «pierna o pechuga» o «quinoa o arroz» sin elegir no deja las dos opciones. Si el cambio cabe en dos líneas, el bot pregunta cuál. Cambiar de efectivo a transferencia no toca el carrito. Reiniciar olvida la cantidad pendiente. «Sin ensalada y con ensalada» no crea un segundo plato ni guarda las dos notas. Simulación del router; cero llamadas de inferencia.
+
+### Pollo sin estilo y sopa (2026-10-10)
+
+«Dos pollos y una sopa» no elige ejecutivo ni una sopa al azar. Deja las cantidades en espera y pregunta frito o broaster y el tipo de sopa. Una consulta intermedia («¿qué sopas tienes?») lista la carta sin borrar esa elección. «Broaster» y luego «ajiaco» terminan en 2 de 1 Pollo Broaster y 1 Sopa De Ajiaco. El mismo recorrido, con tres pollos y dos sopas, pasa en un catálogo distinto. `pregunta-durante-variante` sigue nombrando el pollo frito y no cubre este caso. Simulación del router; cero llamadas de inferencia.
+
 ### Sustitución de acompañamiento (2026-10-10)
 
 «Un ejecutivo con pierna pernil de pollo frito y sopa de menudencias» queda en un solo ejecutivo: presa Pierna Pernil y sopa Menudencias, sin agregar la sopa suelta ni dejar Ajiaco por defecto. «Es posible que me cambien el arroz por papa salada?» se guarda como nota, sin vender una porción de papa. «muy muy bien frito» se anexa a esa nota. «además / aparte / y una sopa» conserva la sopa como plato aparte. El mismo criterio se comprobó con un almuerzo de otro catálogo (proteína Res, sopa Lentejas, nota de papa salada y bien asada). Simulación del router; cero llamadas de inferencia.
 
 Verificación de la tanda multilínea: 13 casos focalizados y suite completa 58/58 con 1.307 pruebas, incluyendo 97 en la suite de acertividad; TypeScript sin errores. Las cantidades, atributos y notas se comprueban contra el carrito, no solo por el texto de confirmación. Cero solicitudes de inferencia real; permanecen 8 usadas y 12 disponibles del presupuesto autorizado. Estos resultados no acreditan aún precisión del modelo real ni que los cinco escenarios pendientes estén resueltos.
+
+### Canje y persistencia (2026-10-11)
+
+El router ahora recorre consulta del procedimiento → generar voucher → aplicar código → medio adicional → nuevo canje sin saldo → quitar premio. No se generan descuentos sin validación, ni se quitan platos al quitar el premio. Se rechazan códigos vencidos, usados, desconocidos o de otra cuenta. Tests gratuitos con servicios de puntos simulados.
+
+La generación del backend se prueba por separado con códigos criptográficos reales y repositorios simulados (saldo insuficiente, colisiones y fallos de guardado). Dos integraciones contra MariaDB 10.11 local descartable verifican solicitudes simultáneas y rollback por fallo real de persistencia. No se crearon puntos en cuentas reales ni se confirmó ningún pedido externo. El consumo final del voucher y el descuento de la orden siguen pendientes de validación completa; no se marca todavía el escenario histórico de canje como resuelto.
+
+Para repetir únicamente esa integración usar `test/points-redemption.db.integration-spec.ts`, config `test/jest-whatsapp-db.json`, `WHATSAPP_DB_TEST=1`, host loopback y una base descartable cuyo nombre comience por `ppp_test_whatsapp_`. Nunca usar credenciales de staging/producción: el fixture limpia sus tablas de prueba.
