@@ -2,8 +2,8 @@
   "version": 1,
   "createdOn": "2026-10-11",
   "kind": "Original synthetic patterns; not customer transcripts",
-  "status": "reserved-not-executed",
-  "executionNote": "Not integrated automatically. Bind catalog/seed/media fixtures and explicit per-turn assertions before execution. Never include expectations in model prompts.",
+  "status": "executed-and-promoted-to-development-regressions",
+  "executionNote": "Executed on 2026-10-11 in whatsapp-general-accuracy.spec.ts (Tanda siguiente). First eight-case run: 4 passed, 4 failed. These cases are no longer independent holdouts. Reference purchase/date case binds Bowl Mediterraneo without attributes in the alternate catalog; scoped removal binds Mojarra Frita/Asada; media uses synthetic resolved/unreadable replies. External systems and model mocked. Final validation recorded in agent handoff.",
   "cases": [
     {
       "id": "next-info-plus-independent-order",

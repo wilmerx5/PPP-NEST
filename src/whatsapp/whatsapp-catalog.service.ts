@@ -1650,7 +1650,7 @@ export class WhatsappCatalogService {
       .replace(/^(me\s+(?:regalas|das|traes|pones|mandas)\s+)/i, '')
       .replace(/^(?:reg[aá]lame|reg[aá]la)\s+/i, '')
       .replace(/^(?:para\s+)?(?:pedirte|pedir|encargarte|encargar)\s+(?:por\s+fa|porfa|por\s+favor)?\s*/i, '')
-      .replace(/^(?:pedi|pido|pedimos|quiero|dame|ponme)\s+/i, '')
+      .replace(/^(?:pedi|pido|pedimos|quiero|dame|ponme|agrega|agregame|agrégame|añade|añádeme)\s+/i, '')
       .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '')
       // Cortesía suelta en medio: "…veci me puedes regalar una…"
       .replace(

@@ -1076,8 +1076,21 @@ export class WhatsappOrchestratorService {
       const quantity = this.catalogService.extractQuantityFromSegment(`${referencedOrder[1]} platos`);
       const sourceText = `${quantity} ${product.name}`;
       let next: WhatsappSessionData = {...session,pendingMatch:undefined,pendingAttribute:undefined,pendingQuantityHint:undefined};
-      const day = originalText.match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i)?.[0];
-      if (day) next = this.appendCustomerNote(next, `Fecha solicitada: ${day}`);
+      const scheduleTail = originalText.match(/(?:cajas|porciones|unidades|platos|bowls)\s+(.+)$/i)?.[1]?.replace(/^(?:ser[ií]an|son)\s+/i, '');
+      const schedule = scheduleTail ? parseScheduleRequest(scheduleTail) : null;
+      if (schedule?.clarification) {
+        await this.reply(conv, msg.waId, schedule.clarification);
+        return;
+      }
+      const hasSchedule = !!(schedule?.date || schedule?.time);
+      if (schedule) {
+        const notes = upsertScheduleNotes(next.customerNotes, schedule);
+        if (notes.length > 400) {
+          await this.reply(conv, msg.waId, 'Necesito que resumas las notas del pedido para conservar todas las instrucciones.');
+          return;
+        }
+        next = {...next, customerNotes:notes};
+      }
       const added = this.tryAddProductToCart(next, product, quantity, cfg, undefined, [], {sourceText});
       if (added.blocked) {
         await this.handleCartLimitBlocked(conv, msg.waId, added.blocked, cfg);
@@ -1088,11 +1101,11 @@ export class WhatsappOrchestratorService {
         await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
         await this.reply(conv, msg.waId, `Pediste ${quantity} de ${product.name}.\n\n` +
           this.catalogService.formatProductOptionsPrompt(product, added.missingAttributes) +
-          (day ? '\n\nAnoté la fecha solicitada; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
+          (hasSchedule ? '\n\nAnoté la fecha y el horario solicitados; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
       } else {
         await this.conversationService.saveSession(conv, added.session, 'building_cart');
         await this.reply(conv, msg.waId, this.buildCartAddReply(added.session, this.deliveryFeeFor(added.session,cfg), product.name) +
-          (day ? '\n\nAnoté la fecha solicitada; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
+          (hasSchedule ? '\n\nAnoté la fecha y el horario solicitados; la entrega programada debe confirmarla el local, todavía no está reservada.' : ''));
       }
       return;
     }
@@ -1101,7 +1114,9 @@ export class WhatsappOrchestratorService {
     // Named alternatives are compared with catalog facts, without invented sensory claims.
     if (/\b(?:recomiend|recomend|compar|diferenc)\w*\b/.test(this.normalizeForMatch(originalText)) &&
       /[?¿]|\bestoy entre\b/i.test(originalText)) {
-      const mentioned = products.filter(product => this.catalogService.isCartProductNamedInText(product.name, originalText));
+      const independent = originalText.match(/^(.+?[?])\s*(?:y\s+)?((?:agrega|agregame|agrégame|dame|quiero|ponme)\s+.+)$/i);
+      const comparisonText = independent?.[1] || originalText;
+      const mentioned = products.filter(product => this.catalogService.isCartProductNamedInText(product.name, comparisonText));
       const distinct = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
         this.normalizeForMatch(other.name) !== this.normalizeForMatch(product.name) &&
         this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
@@ -1109,7 +1124,9 @@ export class WhatsappOrchestratorService {
         const facts = distinct.map(product => this.catalogService.formatProductPriceReply(product,{offerAdd:false})).join('\n\n');
         await this.reply(conv, msg.waId, facts + '\n\nEstas son las características registradas en la carta. ¿Cuál prefieres?' +
           (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder ? '\n\n' + this.formatPendingPurchaseReminder(session) : ''));
-        return;
+        if (!independent || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return;
+        text = independent[2];
+        originalText = text;
       }
     }
 
@@ -1159,7 +1176,7 @@ export class WhatsappOrchestratorService {
     }
 
     // Resolve a single named dish before broad substitution/style heuristics consume its notes.
-    const kitchenRequest = splitKitchenPreference(originalText);
+    const kitchenRequest = splitKitchenPreference(text);
     if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isAvailabilityInquiry(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
@@ -12651,6 +12668,8 @@ export class WhatsappOrchestratorService {
 
   /** Separa el pedido del domicilio para matching de producto (audios compuestos). */
   private splitProductAndDelivery(text: string): { productText: string; address: string | null } {
+    // Removing a trailing payment clause can leave a comma after the address.
+    text = text.trim().replace(/[.,;:]+$/, '').trim();
     const address = this.extractDeliveryTail(text);
     if (!address) return { productText: text.trim(), address: null };
 

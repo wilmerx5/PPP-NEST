@@ -2218,3 +2218,134 @@ describe('Álbum — sobre no soportado seguido de foto válida', () => {
     } finally { jest.useRealTimers(); }
   });
 });
+
+describe('Tanda siguiente — intenciones combinadas y recuperación', () => {
+  it('consulta dos pescados y compra solo la bebida independiente', async () => {
+    const h = harness(products,false);
+    await h.send('Me recomiendas mojarra o trucha? Y agrega una limonada natural');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:37,qty:1})]);
+    expect(h.replies.join(' ')).toMatch(/Mojarra/i);
+    expect(h.replies.join(' ')).toMatch(/Trucha/i);
+    expect(h.replies.join(' ')).not.toMatch(/más suave|más tradicional/);
+  });
+  it('anota los dos restantes después de retirar una unidad', async () => {
+    const h = harness(products,false);
+    await h.send('Tres churrascos');
+    await h.send('Quita uno de los churrascos');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2})]);
+    await h.send('Los dos restantes sin ensalada');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:2,note:expect.stringMatching(/sin ensalada/i)})]);
+  });
+  it('conserva cantidad nota dirección y transferencia en un turno', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos arroces con pollo sin ensalada para la carrera 7 20 30, pago por transferencia');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:23,qty:2,note:expect.stringMatching(/sin ensalada/i)})]);
+    expect(h.conv.sessionData.address).toMatch(/7 20 30/);
+    expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.replies.join(' ')).not.toMatch(/algo más/i);
+  });
+  it('consulta el precio mínimo y vuelve a elegir tres broaster', async () => {
+    const h = harness(products,false);
+    await h.send('Tres pollos');
+    const before = structuredClone(h.conv.sessionData);
+    await h.send('Cuál es el más barato?');
+    expect(h.conv.sessionData).toEqual(before);
+    await h.send('Los tres broaster');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:4,qty:3})]);
+  });
+  it('corrige a dos sopas durante pago sin perder la dirección', async () => {
+    const h = harness(products,false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Una sopa de menudencias para la calle 48 sur 87 86');
+    expect(h.conv.state).toBe('awaiting_payment');
+    await h.sendQueued('Perdón, dos sopas, en esa misma dirección');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:20,qty:2})]);
+    expect(h.conv.sessionData.address).toMatch(/48 sur 87 86/);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+  it('compra referida conserva fecha y hora explícitas', async () => {
+    const bowl = {id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+    const h = harness([bowl],false);
+    await h.send('Cuánto cuesta el Bowl Mediterraneo?');
+    expect(h.cartRows()).toEqual([]);
+    await h.send('Quiero esas diez cajas para el 15/10 a las 14:00');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:991,qty:10})]);
+    expect(h.conv.sessionData.address).toBeFalsy();
+    expect(h.conv.sessionData.customerNotes).toMatch(/15\/10/);
+    expect(h.conv.sessionData.customerNotes).toMatch(/14:00/);
+    expect(h.replies.at(-1)).toMatch(/no está reservada/);
+  });
+  it('retira una unidad de una preparación y conserva la otra', async () => {
+    const h = harness(products,false);
+    h.conv.sessionData.cart = [
+      {productId:14,code:14,name:'Mojarra',quantity:2,unitPrice:32000,attributes:[{attributeName:'Seleccion',attributeValue:'Frita'}]},
+      {productId:14,code:14,name:'Mojarra',quantity:3,unitPrice:32000,attributes:[{attributeName:'Seleccion',attributeValue:'Asada'}]},
+    ];
+    await h.send('Quita una de las fritas, las asadas sí las dejo');
+    expect(h.cartRows().find(r=>r.attrs.includes('Seleccion:Frita'))?.qty).toBe(1);
+    expect(h.cartRows().find(r=>r.attrs.includes('Seleccion:Asada'))?.qty).toBe(3);
+    expect(h.cartRows()).toHaveLength(2);
+  });
+  it('conserva la primera foto y muestra el fallo de la segunda', async () => {
+    const h = harness(products,false);
+    h.service.resolveImageMessage = jest.fn()
+      .mockResolvedValueOnce({done:false,text:'Un churrasco'})
+      .mockImplementationOnce(async () => {await h.service.reply(h.conv,'customer','No pude leer tu foto');return {done:true};});
+    await h.sendQueued('',{messageType:'image',mediaId:'valid-photo'});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1})]);
+    await h.sendQueued('',{messageType:'image',mediaId:'unreadable-photo'});
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:17,qty:1})]);
+    expect(h.replies.at(-1)).toMatch(/No pude leer tu foto/);
+  });
+});
+
+describe('Tanda siguiente portable — límites y otro menú', () => {
+  const bowl = {id:991,code:991,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
+  const wrap = {id:992,code:992,name:'Wrap Oriental',price:14000,availableNow:true,attributes:[]};
+  const tea = {id:993,code:993,name:'Te Helado',price:5000,availableNow:true,attributes:[]};
+  it('consulta dos platos de otro menú y compra la bebida explícita', async () => {
+    const h = harness([bowl,wrap,tea],false);
+    await h.send('Me recomiendas Bowl Mediterraneo o Wrap Oriental? Y agrega dos Te Helado');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:993,qty:2})]);
+    expect(h.replies.join(' ')).toMatch(/Bowl Mediterraneo/);
+    expect(h.replies.join(' ')).toMatch(/Wrap Oriental/);
+  });
+  it('compra otro plato con nota dirección y pago sin perder unidades', async () => {
+    const h = harness([bowl],false);
+    Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos bowls mediterraneos sin cebolla para la carrera 7 20 30, pago por transferencia');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:991,qty:2,note:expect.stringMatching(/sin cebolla/i)})]);
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(h.conv.sessionData.address).toMatch(/7 20 30/);
+  });
+  it('corrige cantidad de otro plato sin modificar dirección ni bebida', async () => {
+    const h = harness([bowl,tea],false);
+    await h.send('Un Bowl Mediterraneo y un Te Helado');
+    await h.send('Perdón, dos bowls mediterraneos');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:991,qty:2}),expect.objectContaining({id:993,qty:1})]));
+    expect(h.cartRows()).toHaveLength(2);
+  });
+  it.each(['Quiero esas diez cajas para el 31/02 a las 14:00','Quiero esas diez cajas para el 15/10 a las 25:00'])('fecha u hora inválida no compra: %s', async text => {
+    const h = harness([bowl],false);
+    await h.send('Cuánto cuesta el Bowl Mediterraneo?');
+    const before = structuredClone(h.conv.sessionData);
+    await h.send(text);
+    expect(h.conv.sessionData.cart).toEqual(before.cart);
+    expect(h.conv.sessionData.customerNotes).toEqual(before.customerNotes);
+    expect(h.replies.at(-1)).toMatch(/no es válida/);
+  });
+  it('perdón sin cantidad no corrige ni duplica el pedido', async () => {
+    const h = harness([bowl],false);
+    await h.send('Un Bowl Mediterraneo');
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.send('Perdón, cuánto cuesta el Bowl Mediterraneo?');
+    expect(h.conv.sessionData.cart).toEqual(before);
+  });
+  it('preguntar si agrega bebida no la compra', async () => {
+    const h = harness(products,false);
+    await h.send('Me recomiendas mojarra o trucha? Y puedo agregar una limonada natural?');
+    expect(h.cartRows()).toEqual([]);
+  });
+});
