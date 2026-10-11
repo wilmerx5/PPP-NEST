@@ -24,6 +24,7 @@ const entities = [
     id: { type: Number, primary: true, generated: true }, userId: { type: String },
     code: { type: String, length: 12, unique: true }, isUsed: { type: Boolean, default: false },
     expiresAt: { type: Date, nullable: true },
+    usedAt: { type: Date, nullable: true }, usedInOrderId: { type: Number, nullable: true },
   } }),
 ];
 
@@ -56,6 +57,17 @@ describe('Canje real en MariaDB aislada', () => {
     expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
     expect(await db.getRepository(PointRedemption).count()).toBe(1);
     expect(await service.getAvailablePoints('isolated-account')).toBe(0);
+  });
+  it('dos consumos simultáneos del código lo vinculan a una sola orden', async () => {
+    const voucher = await service.redeemPointsForVoucher('isolated-account');
+    const results = await Promise.allSettled([
+      service.applyRedemptionToOrder(voucher.code, 101), service.applyRedemptionToOrder(voucher.code, 102),
+    ]);
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
+    const used = await db.getRepository(PointRedemption).findOneByOrFail({ code: voucher.code });
+    expect(used.isUsed).toBe(true);
+    expect([101, 102]).toContain(used.usedInOrderId);
   });
   it('un fallo al guardar puntos revierte también el premio ya guardado', async () => {
     await db.query("CREATE TRIGGER reject_redemption_update BEFORE UPDATE ON test_points FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'synthetic persistence failure'");

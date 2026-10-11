@@ -18,7 +18,7 @@ import { BusinessService } from '../business/business.service';
 import { OrdersService } from '../orders/orders.service';
 import { PaymentsService } from '../payments/payments.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
-import { WhatsappPointsService } from './whatsapp-points.service';
+import { WhatsappPointsService, whatsappPrizeDiscount } from './whatsapp-points.service';
 import { WhatsappDeliveryRoutingService } from './whatsapp-delivery-routing.service';
 import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
@@ -4991,6 +4991,7 @@ export class WhatsappOrchestratorService {
           ? ` (ruta ~${Number(session.deliveryDistanceKm).toFixed(1)} km)`
           : '') +
         (session.deliveryOutOfCoverage ? ' [FUERA DE COBERTURA]' : ''),
+      `Descuento de premio: $${Math.round(whatsappPrizeDiscount(session)).toLocaleString('es-CO')}. Total sistema: $${Math.round(subtotal + fee - whatsappPrizeDiscount(session)).toLocaleString('es-CO')}`,
       'Checkout: el sistema pregunta UNA cosa a la vez (nombre → dirección de domicilio → teléfono → pago). Por defecto es *domicilio*; recojo solo si el cliente lo dijo (ej. paso en 15 min). NO inventes ni saltes esos pasos.',
     ];
     if (session.ignorePriorOrderHistory && session.cart.length === 0) {
@@ -6116,7 +6117,7 @@ export class WhatsappOrchestratorService {
       session.orderType === 'delivery' && this.hasResolvedDeliveryFee(session)
         ? deliveryFee
         : 0;
-    const total = subtotal + fee;
+    const total = subtotal + fee - whatsappPrizeDiscount(session);
     return `🛒 ${n} ${n === 1 ? 'ítem' : 'ítems'} · *$${Math.round(total).toLocaleString('es-CO')}*`;
   }
 
@@ -6138,7 +6139,8 @@ export class WhatsappOrchestratorService {
     const feeResolved = this.hasResolvedDeliveryFee(session);
     const fee =
       session.orderType === 'delivery' && feeResolved ? deliveryFee : 0;
-    const total = subtotal + fee;
+    const prizeDiscount = whatsappPrizeDiscount(session);
+    const total = subtotal + fee - prizeDiscount;
     const lines = cart.map((c, i) => {
       const qty = Math.max(1, c.quantity || 1);
       const lineTotal = c.unitPrice * qty;
@@ -6183,6 +6185,7 @@ export class WhatsappOrchestratorService {
       lines.join('\n') +
       `\n────────────\n` +
       `Subtotal $${Math.round(subtotal).toLocaleString('es-CO')}${deliveryBit}\n` +
+      (prizeDiscount ? `Premio −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       `*Total $${Math.round(total).toLocaleString('es-CO')}*` +
       (session.orderType === 'delivery' && session.address?.trim()
         ? `\n📍 ${session.address.trim()}${session.addressConfirmed ? ' ✅' : ''}`
@@ -13185,7 +13188,8 @@ export class WhatsappOrchestratorService {
       0,
     );
     const fee = session.orderType === 'delivery' ? deliveryFee : 0;
-    const total = subtotal + fee;
+    const prizeDiscount = whatsappPrizeDiscount(session);
+    const total = subtotal + fee - prizeDiscount;
     const now = new Date().toLocaleString('es-CO', {
       timeZone: 'America/Bogota',
       dateStyle: 'medium',
@@ -13221,6 +13225,7 @@ export class WhatsappOrchestratorService {
       `🕐 ${now}\n\n` +
       `*Detalle:*\n${items}\n\n` +
       `Subtotal: $${Math.round(subtotal).toLocaleString('es-CO')}\n` +
+      (prizeDiscount ? `Premio: −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       (fee ? `Domicilio: $${Math.round(fee).toLocaleString('es-CO')}\n` : '') +
       `*Total: $${Math.round(total).toLocaleString('es-CO')}*\n\n` +
       `🛵 ${session.orderType === 'pickup' ? 'Recoges en el local' : 'Domicilio'}\n` +

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, DataSource } from 'typeorm';
+import { In, Repository, DataSource, EntityManager } from 'typeorm';
 import * as crypto from 'crypto';
 import { UserPoints } from '../entities/user-points.entity';
 import { PointRedemption } from '../entities/point-redemption.entity';
@@ -568,13 +568,14 @@ export class PointsService {
    * @param code - Redemption code
    * @returns Redemption voucher if valid
    */
-  async validateRedemptionCode(code: string): Promise<PointRedemption> {
+  async validateRedemptionCode(code: string, manager?: EntityManager): Promise<PointRedemption> {
     if (!code || code.length !== 12) {
       throw new BadRequestException('Redemption code must be exactly 12 characters');
     }
 
-    const redemption = await this.redemptionRepo.findOne({
-      where: { code: code.toUpperCase() },
+    const redemption = await (manager?.getRepository(PointRedemption) ?? this.redemptionRepo).findOne({
+      where: { code: code.toUpperCase().trim() },
+      ...(manager ? { lock: { mode: 'pessimistic_write' as const } } : {}),
     });
 
     if (!redemption) {
@@ -600,14 +601,15 @@ export class PointsService {
    * @param orderId - Order ID where the prize is being applied
    * @returns Updated redemption prize
    */
-  async applyRedemptionToOrder(code: string, orderId: number): Promise<PointRedemption> {
-    const redemption = await this.validateRedemptionCode(code);
-
-    redemption.isUsed = true;
-    redemption.usedAt = new Date();
-    redemption.usedInOrderId = orderId;
-
-    return await this.redemptionRepo.save(redemption);
+  async applyRedemptionToOrder(code: string, orderId: number, manager?: EntityManager): Promise<PointRedemption> {
+    const consume = async (transaction: EntityManager) => {
+      const redemption = await this.validateRedemptionCode(code.trim(), transaction);
+      redemption.isUsed = true;
+      redemption.usedAt = new Date();
+      redemption.usedInOrderId = orderId;
+      return transaction.getRepository(PointRedemption).save(redemption);
+    };
+    return manager ? consume(manager) : this.dataSource.transaction(consume);
   }
 
   /**

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PointsService } from '../auth/services/points.service';
-import type { WhatsappCartItem } from './types/whatsapp-session.types';
+import type { WhatsappCartItem, WhatsappSessionData } from './types/whatsapp-session.types';
 import {
   POINTS_REQUIRED_FOR_PRIZE,
   buildPointsOverviewReply,
@@ -16,6 +16,21 @@ const POINT_CODE_CHARSET = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/;
 /** Palabras típicas de pedido — evita confundir "unpollofrito" con código de factura. */
 const ORDER_INTENT_WORD =
   /\b(quiero|quieor|qiero|kiero|dame|ponme|pedir|ordenar|agrega|agregame|un|una|unos|unas|medio|cuarto|entero|combo|pollo|arroz|sopa|ejecutivo|frito|broaster|bandeja|bebida|gaseosa|domicilio|habitacion|habitaci[oó]n)\b/i;
+
+function isPrizeEligibleItem(item: WhatsappCartItem): boolean {
+  return item.code === 2 || item.code === 5;
+}
+
+/** The validated voucher discounts one physical unit, never the whole cart line. */
+export function whatsappPrizeDiscount(session: WhatsappSessionData): number {
+  if (!session.pendingRedemptionCode) return 0;
+  if (session.pendingRedemptionExpiresAt) {
+    const expiry = new Date(session.pendingRedemptionExpiresAt).getTime();
+    if (!Number.isFinite(expiry) || expiry < Date.now()) return 0;
+  }
+  const item = session.cart.find(isPrizeEligibleItem);
+  return item ? Math.max(0, Number(item.unitPrice) || 0) : 0;
+}
 
 @Injectable()
 export class WhatsappPointsService {
@@ -124,7 +139,7 @@ export class WhatsappPointsService {
   }
 
   cartHasHalfChicken(cart: WhatsappCartItem[]): boolean {
-    return cart.some((c) => c.code === 2 || c.code === 5);
+    return cart.some(isPrizeEligibleItem);
   }
 
   async getAvailablePoints(userId: string | null | undefined): Promise<number | null> {

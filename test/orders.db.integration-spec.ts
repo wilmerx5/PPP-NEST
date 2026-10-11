@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { PointsService } from '../src/auth/services/points.service';
+import { PointRedemption } from '../src/auth/entities/point-redemption.entity';
 import { DataSource } from 'typeorm';
 import { OrdersService } from '../src/orders/orders.service';
 import { ProductsService } from '../src/products/products.service';
@@ -34,7 +36,7 @@ if (process.env.WHATSAPP_DB_TEST !== '1' ||
 
 const entities=[Order,OrderItem,OrderItemAttribute,OrderExtra,Product,Category,ProductAttribute,
   ProductVariantStock,ProductSchedule,InventoryGroup,InventoryGroupItem,InventorySelection,
-  InventorySelectionProduct,User,UserPoints,Address,Phone,VerificationToken,WhatsappSettings];
+  InventorySelectionProduct,User,UserPoints,PointRedemption,Address,Phone,VerificationToken,WhatsappSettings];
 function connection() {
   return new DataSource({type:'mariadb',host:process.env.TEST_DB_HOST,port:Number(process.env.TEST_DB_PORT || 3306),
     username:process.env.TEST_DB_USERNAME,password:process.env.TEST_DB_PASSWORD,database:process.env.TEST_DB_DATABASE,
@@ -78,6 +80,7 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     db=connection();await db.initialize();await db.synchronize();otherDb=connection();await otherDb.initialize();
   });
   beforeEach(async()=>{
+    await db.getRepository(PointRedemption).clear();
     await db.getRepository(Order).createQueryBuilder().delete().execute();
     await db.getRepository(InventoryGroup).createQueryBuilder().delete().execute();
     await db.getRepository(Product).createQueryBuilder().delete().execute();
@@ -94,6 +97,75 @@ describe('PPP actual business order, inventory and transaction persistence',()=>
     // restoreAllMocks also removes the fetch boundary; install it for the next case.
     externalFetch=jest.spyOn(global,'fetch').mockImplementation(async()=>{throw new Error('No external provider calls in business DB tests');});});
   afterAll(async()=>{externalFetch?.mockRestore();if(otherDb?.isInitialized)await otherDb.destroy();if(db?.isInitialized)await db.destroy();});
+
+  async function voucherScenario() {
+    let user = await db.getRepository(User).findOneBy({ email: 'redemption-test@example.invalid' });
+    if (!user) user = await db.getRepository(User).save({ email: 'redemption-test@example.invalid', fullName: 'Cuenta aislada' });
+    await db.getRepository(Product).update(2, { code: 5, name: 'Medio sintético', price: 25000 });
+    const points = new PointsService(db.getRepository(UserPoints), db.getRepository(PointRedemption),
+      db.getRepository(User), db.getRepository(Product), db);
+    (orders as any).pointsService = points;
+    (otherOrders as any).pointsService = new PointsService(otherDb.getRepository(UserPoints),
+      otherDb.getRepository(PointRedemption), otherDb.getRepository(User), otherDb.getRepository(Product), otherDb);
+    const voucher = await db.getRepository(PointRedemption).save({ code: 'ABCD2345EFGH', userId: user.id,
+      expiresAt: new Date(Date.now() + 86400000) });
+    return voucher;
+  }
+  it('guarda premio y dos medios; un reintento devuelve la misma orden', async () => {
+    const voucher = await voucherScenario();
+    const request = dto({ redemptionCode: voucher.code, items: [{ productId: 2 }, { productId: 2 }] });
+    const result = await orders.create(request);
+    const order = await saved(result.orderId);
+    expect(order.redemptionCode).toBe(voucher.code);
+    expect(order.items).toHaveLength(2);
+    expect(order.items.map(item => Number(item.unitPrice))).toEqual([25000, 25000]);
+    const summary = await orders.getDailySummary();
+    expect(summary.totals).toMatchObject({ subtotal: 50000, premioDiscounts: 25000, total: 25000 });
+    expect(await db.getRepository(PointRedemption).findOneByOrFail({ id: voucher.id })).toMatchObject({
+      isUsed: true, usedInOrderId: result.orderId,
+    });
+    const retry = await otherOrders.create(request);
+    expect(retry.orderId).toBe(result.orderId);
+    expect(await db.getRepository(Order).count()).toBe(1);
+  });
+  it.each(['missing', 'used', 'expired', 'no-half'])('un premio %s rechaza la orden completa y conserva inventario', async scenario => {
+    const voucher = await voucherScenario();
+    if (scenario === 'used') await db.getRepository(PointRedemption).update(voucher.id, { isUsed: true });
+    if (scenario === 'expired') await db.getRepository(PointRedemption).update(voucher.id, { expiresAt: new Date(Date.now() - 86400000) });
+    await expect(orders.create(dto({ redemptionCode: scenario === 'missing' ? 'EFGH2345ABCD' : voucher.code,
+      items: scenario === 'no-half' ? [{ productId: 1 }] : [{ productId: 1 }, { productId: 2 }],
+    }))).rejects.toThrow();
+    expect(await db.getRepository(Order).count()).toBe(0);
+    expect(await productStock()).toBe(10);
+  });
+  it('dos órdenes simultáneas con el mismo premio solo confirman una', async () => {
+    const voucher = await voucherScenario();
+    const result = await Promise.allSettled([orders.create(dto({ redemptionCode: voucher.code,
+      clientRequestId: 'voucher-A', items: [{ productId: 2 }] })),
+      otherOrders.create(dto({ redemptionCode: voucher.code, clientRequestId: 'voucher-B', items: [{ productId: 2 }] }))]);
+    expect(result.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    expect(await db.getRepository(Order).count()).toBe(1);
+  });
+  it('aplicar un premio a una orden existente conserva el adicional y emite después del guardado', async () => {
+    const voucher = await voucherScenario();
+    const result = await orders.create(dto({ items: [{ productId: 2 }, { productId: 2 }] }));
+    await orders.applyRedemptionVoucher(result.orderId, voucher.code);
+    const order = await saved(result.orderId);
+    expect(order.items).toHaveLength(2);
+    expect(order.redemptionCode).toBe(voucher.code);
+    expect(gateway.emitOrdersUpdates).toHaveBeenCalledTimes(1);
+    await expect(otherOrders.applyRedemptionVoucher(result.orderId, voucher.code)).rejects.toThrow(/already/);
+  });
+  it('si falla guardar el código en la orden revierte orden, premio e inventario', async () => {
+    const voucher = await voucherScenario();
+    await db.query("CREATE TRIGGER fail_voucher_order BEFORE UPDATE ON ppp_orders FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'synthetic voucher order failure'");
+    try {
+      await expect(orders.create(dto({ redemptionCode: voucher.code, items: [{ productId: 1 }, { productId: 2 }] }))).rejects.toThrow();
+      expect(await db.getRepository(Order).count()).toBe(0);
+      expect(await productStock()).toBe(10);
+      expect((await db.getRepository(PointRedemption).findOneByOrFail({ id: voucher.id })).isUsed).toBe(false);
+    } finally { await db.query('DROP TRIGGER fail_voucher_order'); }
+  });
 
   it('persists three physical units with exact notes and attributes on their own rows',async()=>{
     const result=await orders.create(dto({items:[

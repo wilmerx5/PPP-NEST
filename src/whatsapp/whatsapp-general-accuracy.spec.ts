@@ -1314,6 +1314,14 @@ describe('Redemption and a registered order stay uninvented', () => {
     expect(halves.reduce((sum, row) => sum + row.qty, 0)).toBe(2);
     expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
     expect(h.cartRows().some(row => row.id !== 5)).toBe(false);
+    const cartReply = await h.send('ver carrito');
+    expect(cartReply).toMatch(/Premio.*25\.000/);
+    expect(cartReply).toMatch(/Total.*25\.000/);
+    const success = h.service.formatOrderSuccessMessage(h.conv, h.conv.sessionData, { dailyOrderNumber: 1 }, 0);
+    expect(success).toMatch(/Total:.*25\.000/);
+    expect(h.service.formatCartTiny(h.conv.sessionData, 0)).toMatch(/25\.000/);
+    expect(h.service.buildSessionSummary(h.conv, h.conv.sessionData, 0)).toMatch(/Total sistema:.*25\.000/);
+    expect(h.cartRows().reduce((sum, row) => sum + row.qty, 0)).toBe(2);
   });
 
   it('does not zero a bowl from another menu when a prize code is only annotated', async () => {

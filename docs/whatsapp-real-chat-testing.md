@@ -87,3 +87,9 @@ El router ahora recorre consulta del procedimiento → generar voucher → aplic
 La generación del backend se prueba por separado con códigos criptográficos reales y repositorios simulados (saldo insuficiente, colisiones y fallos de guardado). Dos integraciones contra MariaDB 10.11 local descartable verifican solicitudes simultáneas y rollback por fallo real de persistencia. No se crearon puntos en cuentas reales ni se confirmó ningún pedido externo. El consumo final del voucher y el descuento de la orden siguen pendientes de validación completa; no se marca todavía el escenario histórico de canje como resuelto.
 
 Para repetir únicamente esa integración usar `test/points-redemption.db.integration-spec.ts`, config `test/jest-whatsapp-db.json`, `WHATSAPP_DB_TEST=1`, host loopback y una base descartable cuyo nombre comience por `ppp_test_whatsapp_`. Nunca usar credenciales de staging/producción: el fixture limpia sus tablas de prueba.
+
+### Consumo de voucher y total final (2026-10-11)
+
+La creación de la orden ahora consume el voucher en la misma transacción que guarda orden e inventario; no confirma una orden sin premio si falla su aplicación. Reintento idempotente no consume dos veces; dos órdenes distintas compitiendo por el código solo confirman una. Un fallo de guardado devuelve voucher e inventario al estado anterior. Integraciones locales aisladas verifican dos medios físicos a $25.000, subtotal $50.000, premio $25.000 y total $25.000. La aplicación a una orden existente también es transaccional.
+
+La conversación de carrito comprueba cantidad 2 y total neto $25.000, además de total en carrito corto, contexto del agente y mensaje final. Caducidad vencida/mal formada y productos no elegibles no cotizan descuento; cálculo no altera líneas. Inferencia y Meta simulados. Mercado Pago y operación del local no están incluidos.

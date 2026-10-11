@@ -8,6 +8,21 @@ Crear un agente de pedidos fiable y vendible para PPP, reutilizable después en 
 
 Seguir trabajando dentro del alcance autorizado sin pedir permiso otra vez para pruebas gratuitas, correcciones reversibles y despliegues rutinarios de staging. No enviar mensajes a clientes, Meta ni crear pedidos externos por accidente. El usuario autorizó usar su número y reiniciar sus pedidos de prueba, no datos de clientes reales. No inferir que staging está aislado de todas las integraciones: conservar los bloqueos existentes.
 
+## Tanda siguiente: consumo del premio y total de la orden
+
+Verificación: 62/62 suites unitarias y 1.433/1.433 pruebas; TypeScript sin errores. Las cuatro suites DB cubren 92 pruebas: 90 pasaron en la ejecución conjunta; checkout tuvo un timeout de 30 segundos y un fallo posterior de estado. Se repitió esa suite sola, sin cambios de código ni aumento de timeout: 22/22 pasaron. Las otras tres suites habían pasado. Logs `/tmp/ppp-voucher-full.log`, `/tmp/ppp-voucher-db-full.log`, `/tmp/ppp-voucher-checkout-repeat.log`, `/tmp/ppp-voucher-tsc-final.log`. No confundir esta verificación por suites con un único run DB completo verde. Evitar ejecutar simultáneamente Jest unitario completo y Jest DB en este PC: pueden competir por memoria; la causa exacta del timeout no está acreditada por un perfil.
+
+Base de código: `73bf4fc1` (relevo `5ab77b9d`). Se encontró y corrigió que la creación confirmaba la orden antes de aplicar el voucher y ocultaba el error del canje.
+
+- Orden nueva: valida que tenga un medio elegible, consume el voucher dentro de la transacción de orden/inventario y guarda el código antes de commit. Código inválido/usado/vencido rechaza toda la creación. El post-commit ya no aplica premios ni ignora sus errores.
+- Consumo del voucher: bloquea su fila al validar y usar. Dos pedidos distintos no pueden consumirlo a la vez. El método acepta el EntityManager de la orden; una llamada independiente abre su propia transacción.
+- Aplicación a orden existente: bloqueo de orden y voucher, recálculo de puntos y guardado dentro de la misma transacción. Aviso WebSocket solo después del commit.
+- Chat: carrito completo, carrito corto, contexto del agente y respuesta de éxito descuentan una sola unidad elegible. Los precios y cantidades de las líneas no se modifican. No se cotiza descuento si la caducidad está vencida o mal formada.
+- Pruebas reales con MariaDB 10.11 local descartable: voucher con dos medios conserva dos unidades y deja total neto de una; reintento devuelve la orden existente; dos órdenes con el mismo voucher solo crean una; código ausente/usado/vencido o carrito sin medio no crea orden; fallo al guardar el código revierte orden, inventario y consumo. Se verifica también aplicar voucher a una orden existente.
+- Estas pruebas sí usan persistencia real, pero transporte, notificaciones, facturación y proveedores siguen aislados. No prueban operación real del local ni modelo/visión real. No se gastaron llamadas API.
+- Siguiente foco de canje conversacional: código de premio suelto con carrito vacío, generar para usar después, premio recién generado con carrito existente y caducidad antes de confirmar. Después, álbumes con webhooks duplicados/error en una foto, y conversaciones reservadas con modelo real dentro del saldo de 12 llamadas. Fotos originales del usuario siguen sin adjuntarse; no declarar visión real aprobada con transcripciones simuladas.
+- Para Kamppo sigue pendiente parametrizar las reglas históricas de puntos por tenant. Mercado Pago sigue fuera del piloto; su cobro con vouchers no está acreditado por esta tanda.
+
 ## Tanda del 11 de octubre: integración y canjes
 
 Checkout activo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama `staging`, base `a57a2f69`. Se integran los cambios locales de comprensión, ambigüedades y fotos existentes sobre esa base. El estado histórico más abajo corresponde a una tanda anterior y no describe el runtime actual.
@@ -23,7 +38,7 @@ Checkout activo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama `
 - No se generaron códigos en cuentas reales ni en staging, no se enviaron mensajes externos ni se hicieron llamadas pagadas. Presupuesto sigue 8 usadas / 12 restantes.
 - Antes de afirmar vendible: validar modelo real de forma acotada, fotos reales, álbumes con duplicados, identidad de cuenta/canje y descuento/consumo final de premio. Las reglas existentes de puntos usan códigos PPP; su configuración por tenant sigue pendiente para Kamppo.
 
-## Estado verificado al cerrar la última tanda
+## Histórico: tanda multilínea del 10 de octubre
 
 - Rama única de integración y deploy: `staging` en `wilmerx5/PPP-NEST`.
 - Último commit de código desplegado: `06bf8a97` — `Preserve multiline delivery orders and resolve quoted attribute choices`.
@@ -37,7 +52,7 @@ Checkout activo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama `
 
 Checkout de trabajo de este chat: `/home/levi/Documents/Codex/2026-10-09/t/work/PPP-current`.
 
-Checkout habitual del usuario: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, sincronizado con `06bf8a97`. Tiene archivos `dist/` no rastreados: preservarlos. No confundirlo con `/home/levi/Documents/programming/PPP/PPP-NEST`, checkout de Main que no se debe tocar sin una nueva solicitud.
+Checkout habitual del usuario: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`, rama permanente `staging` (revisar HEAD antes de continuar). Tiene archivos `dist/` no rastreados: preservarlos. No confundirlo con `/home/levi/Documents/programming/PPP/PPP-NEST`, checkout de Main que no se debe tocar sin una nueva solicitud.
 
 En el checkout de trabajo, `github` apunta al GitHub real y `origin` es un clon local; consultar `git remote -v` antes de usar comandos. En el checkout habitual y servidor, `origin` apunta al GitHub real. No inventar una rama nueva, no borrar las ramas históricas, no fusionar a Main ni hacer reset forzado sobre cambios ajenos.
 
