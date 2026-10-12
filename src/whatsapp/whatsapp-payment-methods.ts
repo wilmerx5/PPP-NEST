@@ -24,7 +24,7 @@ export const DEFAULT_PAYMENT_METHODS: WhatsappPaymentMethodConfig[] = [
     id: 'cash',
     enabled: true,
     label: 'Contraentrega',
-    keywords: ['contraentrega', 'contra entrega', 'efectivo', 'cash', 'en efectivo'],
+    keywords: ['contraentrega', 'contra entrega', 'efectivo', 'cash', 'en efectivo', 'aca pagamos', 'aqui pagamos'],
     optionText: '*contraentrega* (efectivo al recibir)',
     confirmReply: '',
     flow: 'immediate',

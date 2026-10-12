@@ -11,6 +11,9 @@ describe('named menu dish vs carta link', () => {
     expect(isNamedMenuDishOrderPhrase('ver el menú')).toBe(false);
     expect(isNamedMenuDishOrderPhrase('link del menú')).toBe(false);
     expect(isNamedMenuDishOrderPhrase('dame la carta')).toBe(false);
+    expect(isNamedMenuDishOrderPhrase('quiero el menú')).toBe(false);
+    expect(isNamedMenuDishOrderPhrase('quiero un menú por favor')).toBe(false);
+    expect(isNamedMenuDishOrderPhrase('quiero pedir un menu vegetariano por favor')).toBe(true);
 
     expect(isNamedMenuDishOrderPhrase('quiero el menú especial')).toBe(true);
     expect(isNamedMenuDishOrderPhrase('un menú de la casa')).toBe(true);
