@@ -3252,3 +3252,28 @@ describe('Ráfagas complejas — cantidad, opciones y reintentos',()=>{
     });
   }
 });
+
+
+describe('Ráfagas — bebida incluida y sopa adicional independiente',()=>{
+  const lunch={id:9991,code:9991,name:'Menu Vegetariano',description:'Incluye sopa y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']}]};
+  const soup={id:9992,code:9992,name:'Sopa De Lentejas',price:7000,availableNow:true,attributes:[]};
+  for(const fixture of [
+    {menu:products,id:22,extra:38,dish:'almuerzo ejecutivo',options:'Mondongo pollo frito pierna pernil papa salada',drink:'Y de tomar me puedes enviar limonada?',extraText:'Y una sopa de ajiaco adicional aparte',attrs:['Sopa:Mondongo','Presa:Pierna Pernil','Bebida:Limonada']},
+    {menu:[lunch,soup],id:9991,extra:9992,dish:'menu vegetariano',options:'Sopa de lentejas sin ensalada',drink:'Y de tomar la bebida te',extraText:'Y una sopa de lentejas adicional aparte',attrs:['Sopa:Lentejas','Bebida:Te']},
+  ])for(const qty of [1,2])for(const mode of ['ráfaga','separados']) {
+    it(fixture.dish+' qty='+qty+' '+mode,async()=>{
+      const h=harness(fixture.menu,false);
+      const texts=['Quiero pedir '+(qty===1?'un':'dos')+' '+fixture.dish+' por favor',fixture.options,fixture.drink,fixture.extraText];
+      if(mode==='ráfaga'){
+        jest.useFakeTimers();try{
+          const pending=texts.map((text,index)=>h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'extra-'+index,messageType:'text',text,timestamp:index+1,raw:{}}));
+          await jest.advanceTimersByTimeAsync(3000);await Promise.all(pending);
+          expect(h.replies).toHaveLength(1);
+        }finally{jest.useRealTimers();}
+      }else for(const text of texts)await h.sendQueued(text);
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:fixture.id,qty,attrs:expect.arrayContaining(fixture.attrs)}),expect.objectContaining({id:fixture.extra,qty:1})]));
+      expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+    });
+  }
+});

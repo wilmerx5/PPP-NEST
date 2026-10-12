@@ -1,0 +1,66 @@
+{
+  "status": "development_regressions_passed",
+  "source": "Patrones originales a partir de chats reales, datos ficticios",
+  "runner": "src/whatsapp/whatsapp-general-accuracy.spec.ts describe Ráfagas — bebida incluida y sopa adicional independiente",
+  "log": "/tmp/ppp-burst-extras-approved-targets.log",
+  "paidRequests": 0,
+  "cases": [
+    {
+      "menu": "PPP",
+      "quantity": 1,
+      "mode": "ráfaga",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "PPP",
+      "quantity": 1,
+      "mode": "separados",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "PPP",
+      "quantity": 2,
+      "mode": "ráfaga",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "PPP",
+      "quantity": 2,
+      "mode": "separados",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "sintético",
+      "quantity": 1,
+      "mode": "ráfaga",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "sintético",
+      "quantity": 1,
+      "mode": "separados",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "sintético",
+      "quantity": 2,
+      "mode": "ráfaga",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    },
+    {
+      "menu": "sintético",
+      "quantity": 2,
+      "mode": "separados",
+      "expected": "Un menú con opciones de sopa/bebida y una sopa adicional independiente; conservar cantidades y alcance de notas",
+      "result": "passed"
+    }
+  ],
+  "next": "Añadir pausas e interrupciones; no asumir cobertura de todos los extras"
+}

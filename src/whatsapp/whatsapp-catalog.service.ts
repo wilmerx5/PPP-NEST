@@ -1322,7 +1322,7 @@ export class WhatsappCatalogService {
     const quantity = this.extractQuantityFromSegment(raw);
     if (quantity > 1 || !products.length) return quantity;
     // Catalog vocabulary must also work outside the built-in food glossary.
-    const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).split(/\s+/);
+    const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).replace(/^(?:(?:quiero|pedir|pido|pedimos)\s+)+/, '').split(/\s+/);
     const namedQuantity = this.QTY_WORD_MAP[word];
     if (namedQuantity >= 2 && noun && products.some(product =>
       normalizeText(product.name).split(/\s+/).some(token => token === noun || `${token}s` === noun || `${token}es` === noun || stemLoose(token) === stemLoose(noun)))) {
@@ -2110,6 +2110,15 @@ export class WhatsappCatalogService {
   /** Scope choices to their own dish when a multi-order has a unique owner. */
   orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
     text = expandDistributedVariants(text, products, this);
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const extraIndex = lines.findIndex(line => /^(?:y\s+)?(?:un|una|dos|tres|\d+)\b/i.test(line) && /\b(?:adicional|aparte|extra)\b/i.test(line));
+    if (extraIndex > 0) {
+      const primary = lines.slice(0, extraIndex).join('\n');
+      const host = this.menuDishHost(primary, products);
+      if (host?.id === product.id) return primary;
+      const extra = lines.slice(extraIndex).find(line => this.findProductEmbeddedInMessage(line, products)?.id === product.id);
+      if (extra) return extra;
+    }
     // Preserve modifiers; the general matcher may strip them before splitting.
     const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean);
     const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)|\s+con\s+(?=(?:un[oa]?|\d+|dos|tres|cuatro|cinco)\s+porci[oó]n(?:es)?\b)/i));

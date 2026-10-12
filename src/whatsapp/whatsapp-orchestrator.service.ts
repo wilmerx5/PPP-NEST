@@ -15165,8 +15165,13 @@ export class WhatsappOrchestratorService {
         return true;
       }
     }
+    const kitchenPreference = this.catalogService.extractProductModificationNote(attributeText);
+    const preferenceContainsOption = !!kitchenPreference && products.some(product => product.attributes?.some(attr =>
+      [attr.attributeName, ...attr.options].some(value => value.length >= 3 && this.normalizeForMatch(kitchenPreference).includes(this.normalizeForMatch(value)))));
+    const optionText = (kitchenPreference && !preferenceContainsOption ? attributeText.replace(kitchenPreference, '') : attributeText)
+      .replace(/\b(?:de\s+tomar|me\s+puedes\s+enviar)\b/gi, '');
     const onlyAttrs = this.catalogService.resolveCartAttributeOnlyUpdate(
-      attributeText,
+      optionText,
       session.cart,
       products,
     );
@@ -16473,7 +16478,7 @@ export class WhatsappOrchestratorService {
         item.note ||
         (supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined) ||
         this.catalogService.extractProductModificationNote(noteSource) ||
-        (sourceText && sourceText !== noteSource
+        (!hasOwnedSource && sourceText && sourceText !== noteSource
           ? this.catalogService.extractProductModificationNote(sourceText)
           : undefined) ||
         (carriesSwap && swap
@@ -16745,7 +16750,7 @@ export class WhatsappOrchestratorService {
           // Usar el segmento de comida (sin “con gaseosa”) para no confundir atributos del combo
           const foodAttrText = productAttrOpts
             ? first.segment
-            : `${first.segment} ${text}`;
+            : this.catalogService.orderSegmentForProduct(text, product, products);
           const step = this.catalogService.applyDefaultAttributeStep(
             product,
             this.catalogService.coerceAttributeStep(
