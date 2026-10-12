@@ -1,102 +1,105 @@
-# PPP: plan para piloto y producto comercial
+# PPP: estado y plan para piloto y venta
 
-Estado al 11 de octubre de 2026. Documento de trabajo; no es certificación ni promesa de fecha. Las metas numéricas siguientes son propuestas para PPP, no estándares atribuidos a marcas grandes.
+Actualizado el 12 de octubre de 2026, America/Bogota. Plan de trabajo, no certificación de calidad ni promesa de fecha. Las cifras de aceptación son propuestas para PPP.
 
-## Resultado que buscamos
+## Decisión actual
 
-Un restaurante puede recibir pedidos por WhatsApp, comprobar un resumen fiable y corregirlo, con cantidades, variantes, notas y dirección conservadas. El sistema pregunta cuando falta información y permite atención humana. No promete autonomía total ni acepta políticas comerciales que el negocio no haya configurado.
+Estamos en validación previa a un piloto supervisado. Podemos hacer ensayos controlados de texto con participantes conocidos; todavía no acreditar un lanzamiento autónomo. No necesitamos esperar a cubrir todo el lenguaje para iniciar un piloto acotado, pero sí cerrar los defectos críticos conocidos del alcance, comprobar el canal real y disponer de intervención humana.
 
-Primera oferta: piloto supervisado en PPP, efectivo y transferencia. Segunda oferta: servicio comercial repetible para restaurantes. Kamppo multitenant es una etapa posterior con aislamiento y configuración por negocio acreditados.
+Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
-## Estado verificado y límites
+## Dónde estamos: evidencia y límites
 
-- Último full gratuito: 65 suites y 1.819 pruebas aprobadas; incluye regresiones de cantidades, notas, referencias, ráfagas, pausas y dos catálogos. Gran parte usa modelo, Meta y persistencia simulados.
-- Última tanda: cinco conversaciones aceptadas, dos con inferencia real y tres deterministas; siete llamadas API. No equivale a cinco chats completos con modelo ni a mensajes reales de Meta.
-- Presupuesto acumulado: 40 intentos autorizados, 25 usados, 15 disponibles. Fuente autoritativa: docs/whatsapp-model-budget.json. Cambia con cada intento; comprobar antes de ejecutar.
-- Texto e imágenes: gpt-4.1-2025-04-14 en ambos entornos según última lectura; audio: whisper-1. Mismo modelo no elimina diferencias de código/configuración/catálogo.
-- Staging integra el trabajo y las pruebas: HEAD base3cc51a05. Último código desplegado3a0914cc, saludable. Main publicada5525e502; las tandas posteriores no están promovidas. No acreditar versión de producción solo por Git.
-- PDF privado: índice con24 patrones ejercitados y2 pendientes; las pruebas posteriores cubren partes de esos pendientes. No hemos reproducido todo el PDF con inferencia real.
-- Preflight del canal real aprobó acceso, destinatario e aislamiento; webhookPosts=0. No acreditó una conversación real ni percepción de audio/imágenes.
+- Backend: 65 suites / 1.928 pruebas aprobadas, TypeScript aprobado. Log final /tmp/ppp-compound-catalog-full-stable.log. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
+- Generalización: menús ficticios vegetarianos, marinos y orientales; hamburguesas, pizzas y bowls sin conceptos de ejecutivo/menú. Las últimas dos tandas añadieron39 casos y encontraron errores reales en correcciones y alcance. Esto acredita esos patrones en esos catálogos; no cualquier restaurante ni aislamiento multitenant.
+- Versión validada y desplegada de código: a46e3cb8 en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada12/10 a las11:54 Bogotá. HEAD posterior2feddb72 solo documenta la evidencia; una actualización documental no requiere reconstruir API.
+- Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.
+- Modelo configurado según última lectura: gpt-4.1-2025-04-14 para texto/imágenes en ambos entornos, whisper-1 para audio. No se volvió a verificar configuración efectiva durante la tanda gratuita final.
+- API real: última tanda documentada, cinco conversaciones aceptadas; dos usaron inferencia y tres fueron deterministas, siete solicitudes. No acredita las últimas correcciones desplegadas con inferencia real. Presupuesto vigente40 autorizadas/25usadas/15restantes en docs/whatsapp-model-budget.json; contabilizar cada intento, incluidos fallos/reintentos.
+- Canal: el preflight documentado verificó acceso/destinatario/aislamiento, con webhookPosts=0. No es una prueba de mensajes originados y recibidos por un teléfono.
+- PDF:26 patrones ejercitados en backend, no todos los chats/variantes ni percepción real de los archivos. Audio e imágenes originales siguen pendientes de una evaluación representativa.
 
-## Qué hacen plataformas grandes y qué aplicaremos
+## Qué falta, en orden
 
-[AWS Lex Test Workbench](https://docs.aws.amazon.com/lexv2/latest/dg/test-workbench.html) permite crear conjuntos de referencia a partir de transcripciones, medir intención y datos capturados, y comparar bots antes o después de desplegar. Aplicación PPP: medir el pedido por turno, no solo frases agradables; mantener conjuntos de desarrollo y casos reservados.
+### 1. Cerrar la siguiente tanda gratuita
 
-[Google Dialogflow: test cases](https://docs.cloud.google.com/dialogflow/cx/docs/concept/test-case) guarda expectativas de una conversación y vuelve a comprobarlas tras cambios, incluyendo herramientas y estado. Aplicación PPP: carrito, variantes, dirección, pago, respuesta y llamadas deben tener oráculos explícitos. La redacción puede variar sin cambiar el resultado comercial.
+Responsable: agente. Usar router real con dependencias externas simuladas, carrito/estado/respuesta como oráculos y catálogos PPP y ficticios.
 
-[Intercom: fuentes de conocimiento](https://www.intercom.com/help/en/articles/9440354-knowledge-sources-to-power-ai-agents-and-self-serve-support) organiza información para las respuestas del agente. Aplicación PPP: disponibilidad, precios, tamaños, rendimiento, cambios de acompañamientos y políticas salen del negocio; no de una suposición del modelo.
+1. Opción que no existe: no declarar un cambio ni inventar variante/precio.
+2. Pregunta condicional o de precio: no comprar ni modificar por preguntar «¿se puede con…?» o «¿cuánto cuesta cambiar…?» sin intención de cambio inequívoca.
+3. Cambio durante cierre: modificar dirección, cantidades, notas y opciones conservando los otros datos; recalcular resumen y volver a pedir confirmación cuando corresponda.
+4. Precio y permisos: el contrato del catálogo debe distinguir opción sin recargo, adicional vendible y sustitución que requiere autorización. Cuando falten datos, aclarar o derivar; no inventar equivalencias.
+5. Casos nuevos reservados: otro vocabulario, interrupciones y mezclas no usados para corregir. Un caso usado en desarrollo deja de ser reservado.
 
-[Intercom: colaboración AI-humano](https://www.intercom.com/learning-center/ai-human-collaboration-procedures-handoffs) describe condiciones de transferencia y evaluación de esa colaboración. Aplicación PPP: al pedir una persona o atascarse, conservar contexto y pedido; evitar que el bot siga modificándolo. Estas son prácticas documentadas de proveedores, no conocimiento de la operación interna de todas las marcas.
+Salida: regresiones necesarias verdes, full/TypeScript si se modifica regla compartida, ningún defecto crítico conocido sin resolver dentro del alcance. Un defecto crítico cambia unidades/productos sin autorización, pierde una corrección, inventa un importe o mezcla clientes. No prolongar indefinidamente la fase por añadir variaciones de casos que ya pasan.
 
-## Paso1: cerrar comprensión con evidencia
+### 2. Comprobar el modelo y el canal reales
 
-Responsable principal: agente de desarrollo. Prioridad inmediata; no requiere rehacer integraciones de cocina.
+Responsable: agente; Wilmer ayuda a verificar recepción.
 
-1. Completar reparto atómico de presa/sopa/acompañamiento en dos ejecutivos y ráfaga pedido/dirección/barrio.
-2. Probar invalidación de aclaraciones cuando cambia el carrito, referencias antiguas y cambio de intención.
-3. Mezclar imagen/audio/texto en secuencia; distinguir pedido de foto de menú, consulta y comprobante.
-4. Preparar casos reservados nuevos por patrón y otro catálogo; no incluirlos en prompts ni considerarlos reservados después de corregir con ellos.
-5. Usar las15 llamadas restantes en tandas pequeñas con inferencia real, tope de intentos y parada ante fallo; contabilizar también fallos. No agotar presupuesto para repetir caminos deterministas.
+- Elegir6–8 recorridos cortos: pedido fácil, ejecutivo con componentes, pedido completo largo, aclaración, corrección al cerrar y consulta seguida de compra. Definir resultado esperado antes de ejecutarlos.
+- Usar llamadas restantes en lotes pequeños, un intento por caso y parada ante fallo; nunca asumir que un caso cuesta una llamada. Reservar parte del saldo para diagnóstico. Revisar gratis el fallo antes de repetir.
+- Acreditar qué turnos realmente usaron inferencia. Un runner con agente habilitado que hace0solicitudes solo acredita ruta determinista.
+- Antes de ejecutar el ensayo de11pasos del canal, añadir un límite efectivo de solicitudes: el runner documentado no limita hoy el modelo por sí solo.
+- Probar mensajes auténticos desde el teléfono autorizado y observar recepción/respuesta, ráfaga, reintento y carrito final. No confirmar órdenes externas de prueba sin comprobar aislamiento.
+- Verificar intervención humana: pedir persona, conservar contexto/carrito y comprobar que una persona puede atender. No aprobarlo por el texto de un mensaje automático.
 
-Salida exigida: regresiones gratuitas necesarias verdes, cero defectos críticos conocidos en el alcance del piloto y un informe que distinga simulación, API real y Meta real. Un defecto crítico agrega/quita/cambia unidades o productos sin autorización, pierde una corrección, inventa un precio o mezcla clientes.
+Salida: informe por conversación con resultado comercial, versión, inferencia utilizada y errores. Esta puerta es necesaria antes de admitir clientes del piloto; el resultado gratuito no la sustituye.
 
-## Paso2: validar voz, fotos y el canal
+### 3. Preparar una versión de piloto
 
-Responsables: agente ejecuta; Wilmer aporta archivos y ayuda a observar recepción.
+Responsable: agente prepara; Wilmer decide publicación y operación.
 
-- Recoger3–5 audios originales iniciales y su transcripción esperada, con ruido, pausas, cortesías y correcciones. Añadir más muestras si aparecen fallos; esa pequeña muestra no acredita calidad general.
-- Comparar whisper-1 y candidato gpt-4o-mini-transcribe con los mismos archivos. Puntuar producto, cantidad, opciones, notas y dirección por separado; medir latencia y coste. No cambiar ambos entornos sin comprobar la mejora.
-- Usar imágenes originales seleccionadas y verificar todos los productos, cantidades y opciones; no aceptar carritos truncados.
-- Ejecutar inbound firmado y outbound real únicamente al destinatario autorizado, sin confirmar pedidos. Este método prueba backend y envío Meta; no demuestra que un teléfono origine correctamente el evento. Añadir después mensajes auténticos desde el teléfono.
-- Implementar primero un límite efectivo de inferencia del ensayo en el backend. El runner real de11pasos no limita hoy las llamadas del modelo; no activarlo suponiendo que todo será gratuito.
-- Probar ráfagas, pausa, reintento del mismo ID, recepción concurrente y una sola respuesta útil cuando corresponda.
+- Identificar commit de código/configuración/catálogo/modelos y promover a Main únicamente cuando Wilmer lo solicite. Mantener staging. Después del deploy verificar versión activa y health.
+- Preparar y comprobar reversión a la versión anterior y una forma de pausar el bot/atender manualmente.
+- Validar catálogo, precios, domicilios, valores por defecto y política de cambios del local.
+- Definir horario, persona responsable y cómo recibe las conversaciones que necesitan ayuda.
+- Registrar pedidos intentados, resultado del carrito, tiempo, intervención, costo e incidentes. Sanitizar corpus; no publicar conversaciones privadas.
+- Comprobar una orden controlada extremo a extremo con el local antes de recibir pedidos del piloto. Es una verificación mínima operativa, no una nueva fase de implementación de cocina/pagos.
 
-Salida: informe con archivos/eventos utilizados, resultados por turno, cero duplicados y cart final verificable. No afirmar entrega porque Meta aceptó la petición; comprobar recepción/estado cuando sea posible.
+Salida: versión identificada, canal real acreditado, responsable disponible, resumen confirmable y pausa/reversión comprobadas.
 
-## Paso3: preparar un piloto supervisado
+## Cuándo podemos probar el piloto
 
-Responsables: agente prepara versión y observabilidad; Wilmer define cobertura humana y condiciones comerciales.
+Ensayo controlado: ya podemos organizarlo en staging con mensajes de texto y participantes conocidos, respetando presupuesto/aislamiento; no equivale a atender clientes sin supervisión.
 
-- Promover una versión concreta y validada de staging a Main cuando se solicite; conservar staging. Verificar código/configuración/modelo/catálogo desplegados y disponer de reversión.
-- Definir quién toma conversaciones, horario de atención humana y qué ocurre cuando el bot no está seguro. No inventar teléfono ni prometer tiempos/rendimientos desconocidos.
-- Registrar versión, duración, intentos de modelo, modificaciones de carrito, aclaraciones y motivo de intervención, sin guardar claves ni divulgar datos privados.
-- Antes de cobrar por operación autónoma, hacer una comprobación mínima del pedido extremo a extremo con el local. Cocina dada por observada en la sesión no equivale a una garantía operativa; no reabrir su implementación ahora.
+Piloto real reducido: al terminar las tres puertas anteriores. Propuesta inicial10–20 conversaciones que intenten pedir, durante un horario atendido, revisando todos los pedidos antes de procesarlos. No prometer una fecha hasta verificar modelo/canal y responsable humano. No exige terminar Kamppo ni perfeccionar audio/fotos si esas funciones se derivan de forma comprobada.
 
-Salida: versión identificada, responsable disponible, parada/reversión comprobadas y resumen comercial confirmable.
+Ampliación: si esa primera muestra no presenta incidentes críticos abiertos, ampliar progresivamente hacia100 conversaciones en varios días/horarios. No completar la muestra seleccionando solo éxitos; registrar abandonos, consultas y fallos por separado. Cualquier incidente crítico pausa la ampliación, se corrige, recibe una regresión y se vuelve a comprobar el patrón.
 
-## Paso4: piloto y decisión de venta
+## Cómo decidimos si ya se puede vender
 
-Propuesta inicial: observar100conversaciones que realmente intenten pedir, distribuidas en varios días y horarios. Revisar todas durante el piloto. Incluir casos fáciles y difíciles; registrar consultas y abandonos por separado. No seleccionar solamente éxitos.
+Propuesta para venta asistida, posterior al piloto:
 
-Criterios propuestos para avanzar a venta asistida:
+- Cero incidentes críticos abiertos y revisión de todos los de la muestra. No garantiza ausencia de fallos futuros.
+- Al menos95% de intentos de pedido con resultado correcto contando ayuda humana; informar aparte el porcentaje sin ayuda. Una conversación derivada no es éxito automático.
+- Intervención humana funcional en todas las solicitudes explícitas observadas, con contexto conservado.
+- Medir latencia mediana/p95, repreguntas, abandono, costo por pedido y tiempo humano. Objetivo de texto p95≤15s provisional, pendiente de línea base; no está medido por tests locales.
+- Que el local observe beneficio: menos trabajo o pedidos recuperados. Si aumenta el soporte, revisar alcance antes de vender.
+- Onboarding, mantenimiento de catálogo, soporte, límites de consumo y reversión documentados. Fijar precio usando API, Meta, infraestructura y soporte medidos, sin estimar margen a partir de tests.
 
-- Cero errores críticos sin detectar en la muestra; cualquier incidente pausa expansión, recibe regresión y exige nueva observación focalizada.
-- Al menos95% de pedidos con resultado comercial correcto, incluyendo intervención humana exitosa. Reportar aparte la tasa sin ayuda; no inflar autonomía contando atención humana como bot.
-- Todas las solicitudes explícitas de persona permiten intervención y conservan el contexto. Medir si el humano pudo realmente atender, no solo si apareció un mensaje.
-- Registrar latencia mediana/p95, repreguntas evitables y coste por conversación terminada. Objetivo provisional p95de15segundos para turnos de texto, sujeto a línea base y red; es una meta, no un resultado observado.
-- Medir retorno: tiempo ahorrado al local, pedidos recuperados, abandono y trabajo de soporte. Si solo pasa tests pero aumenta trabajo humano, no ampliar venta.
+No dar un porcentaje de «terminado»: las pruebas locales no equivalen a una tasa de éxito real. El próximo hito relevante es completar pedidos supervisados con clientes, no alcanzar un número mayor de pruebas.
 
-La muestra no demuestra ausencia de fallos futuros. No calcular un porcentaje de «producto terminado» a partir del número de tests. Revisión del piloto decide qué funciones quedan asistidas, cuáles se ofrecen y cuáles se excluyen.
+## Audio, imágenes y Kamppo: ampliaciones posteriores
 
-## Paso5: servicio vendible y Kamppo
+Audio: obtener3–5 originales iniciales y transcripción esperada; medir producto/cantidad/opciones/nota/dirección, costo y latencia. Comparar el modelo actual con candidato antes de cambiar. Esta muestra es inicial, no calidad general.
 
-- Onboarding reproducible: canal, catálogo, variantes, valores por defecto, disponibilidad, domicilios y políticas. Definir quién mantiene esos datos.
-- Condiciones claras: alcance, horario de soporte, consumo incluido/límite, responsabilidad operativa, acceso a conversaciones y procedimiento de baja. No prometer «entiende todo».
-- Propuesta de cobro: instalación/onboarding y mensualidad con consumo acotado. Fijar precio después de medir API, Meta, infraestructura y soporte; no publicar cifras de margen inventadas.
-- Separar reglas generales y contratos de fixtures. Kamppo reutiliza invariantes y suites con adaptadores de catálogo/configuración; no copia nombres/IDs/precios PPP al motor.
-- Antes de varios negocios: pruebas de aislamiento de sesiones, catálogo, precios, credenciales, pedidos, puntos y eventos; ninguna lectura/modificación entre tenants. Dos menús sintéticos solo acreditan portabilidad del lenguaje, no multitenancy operativa.
-- Cada release lleva referencia de código, configuración/modelo, validación, cambios y reversión. Cada incidente pasa al corpus sanitizado; reservar escenarios nuevos para evitar sobreajuste.
+Imágenes: originales con uno/varios productos y capturas de menú frente a carrito. Comprobar cantidades y opciones, no solo nombres. Mezclar texto/foto/audio en secuencia sin perder pedido.
 
-## Lo que necesitamos de Wilmer
+Kamppo: reutilizar reglas y suites con adaptadores de catálogo/configuración. Probar aislamiento de sesiones, precios, credenciales, órdenes, puntos y eventos por tenant antes de varios negocios. Los catálogos ficticios acreditan portabilidad de lenguaje, no multitenancy operativa.
 
-No bloquea continuar simulaciones: audios/imágenes originales; validar políticas de cambios, rendimientos, pedido futuro y abonos; designar atención humana para piloto; observar recepción desde su WhatsApp; autorizar promoción/deploy cuando la versión esté preparada; decidir oferta y precio usando costes medidos.
+## Lo que necesita aportar Wilmer
 
-## Registro y regla de avance
+No bloquea la próxima tanda gratuita. Para iniciar el piloto sí necesitamos:
 
-Relevo técnico: docs/AGENT-HANDOFF-WHATSAPP.md. Próximas tandas: docs/whatsapp-next-batches.md. Fuente PDF sanitizada: scripts/fixtures/whatsapp-pdf-1110-patterns.json. Presupuesto: docs/whatsapp-model-budget.json.
+1. Una persona disponible y un horario de supervisión.
+2. Validación comercial de catálogo, domicilios y cambios permitidos; aclarar cualquier política que no esté representada.
+3. Ayuda para observar mensajes/pedidos auténticos y autorización de promoción de la versión preparada.
 
-Próxima acción concreta: cerrar los dos patrones PDF pendientes gratis, luego un conjunto reservado focalizado con API real y por último canal real con límite de gasto. Actualizar este plan con resultados y denominadores, nunca sustituir «pendiente» por una promesa.
+Audios/imágenes originales son necesarios para ampliar esos canales, no para iniciar un piloto limitado a texto con derivación funcional. No volver a pedir accesos ya autorizados ni credenciales por chat.
 
-## Actualización de evidencia: cierre de patrones de backend
+## Fuentes internas y siguiente acción
 
-Tanda f35636c1, 11 de octubre: cinco nuevas regresiones y full65suites/1.824pruebas aprobado. Los dos patrones PDF que el estado inicial marcaba pendientes ya tienen ejecución de backend: reparto con notas por unidad y ráfaga pedido/dirección/barrio en dos catálogos. Índice26patrones ejercitados. La comprobación con Meta auténtico, percepción de originales y todas variaciones sigue pendiente; no convertir este cierre de backend en aprobación comercial. Staging saludable; Main no promovida. Presupuesto15 disponible, sin gasto nuevo. Próxima acción del plan: conjunto reservado focalizado e instrumentar límite de inferencia en ensayo de canal real.
+Estado: docs/AGENT-HANDOFF-WHATSAPP.md. Tandas: docs/whatsapp-next-batches.md. Presupuesto: docs/whatsapp-model-budget.json. Índice PDF sanitizado: scripts/fixtures/whatsapp-pdf-1110-patterns.json.
+
+Siguiente acción: ejecutar la tanda gratuita de opciones inexistentes/condicionales/cambios durante cierre, luego medir recorridos con inferencia y canal real acotados. Este pedido actualiza el plan; no inicia nuevas llamadas pagadas ni promueve a producción.
