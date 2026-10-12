@@ -317,6 +317,14 @@ function nearDishToken(word: string, tok: string): boolean {
     w.length >= 6 && t.length >= 6 && w.slice(0, 4) === t.slice(0, 4) && tokenEditDistance(w, t) <= 2;
 }
 
+/** "broster" nombra broaster; "fritto" nombra frito. No exige la grafía de la carta. */
+function queryMentionsWord(query: string, word: string): boolean {
+  const n = normalizeText(word);
+  if (!n) return false;
+  if (new RegExp(`\\b${escapeRegExp(n)}\\b`).test(query)) return true;
+  return query.split(/\s+/).some((token) => token.length >= 4 && nearDishToken(token, n));
+}
+
 /** Estilo de cocina / acompañamiento: no sirven solos para “encontrar” un producto. */
 const COOKING_STYLE_TOKENS = new Set([
   'frito',
@@ -1322,7 +1330,7 @@ export class WhatsappCatalogService {
     const quantity = this.extractQuantityFromSegment(raw);
     if (quantity > 1 || !products.length) return quantity;
     // Catalog vocabulary must also work outside the built-in food glossary.
-    const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).replace(/^(?:(?:quiero|pedir|pido|pedimos)\s+)+/, '').split(/\s+/);
+    const [word, noun] = normalizeText(this.cleanOrderSegment(raw)).replace(/^(?:(?:por\s+favor|porfa|quiero|pedir|pido|pedimos)\s+)+/, '').split(/\s+/);
     const namedQuantity = this.QTY_WORD_MAP[word];
     if (namedQuantity >= 2 && noun && products.some(product =>
       normalizeText(product.name).split(/\s+/).some(token => token === noun || `${token}s` === noun || `${token}es` === noun || stemLoose(token) === stemLoose(noun)))) {
@@ -2136,16 +2144,23 @@ export class WhatsappCatalogService {
       !/\b(extra|adicional|porcion)\b/i.test(segment) &&
       (product.attributes?.some(attr => this.pickAttributeOptionFromText(segment, attr)) ||
         /^arepas?\s+aparte\b/.test(normalizeText(segment))))) return text;
-    const named = segments.filter(segment => this.productNameFitsUtterance(product, segment));
+    const named = segments.filter(segment => this.productNameFitsUtterance(product, segment) || this.findProductEmbeddedInMessage(segment, products)?.id === product.id || isNamedMenuDishOrderPhrase(segment) && this.menuDishHost(segment, products)?.id === product.id);
     if (named.length === 1) {
       const following: string[] = [];
       for (const segment of segments.slice(segments.indexOf(named[0])+1)) {
         const q=normalizeText(segment).replace(/^(?:el|la|las|los|sus)\s+/,'');
-        if (!/\b(?:aparte|bolsa|empaque)\b/.test(q) ||
-          !product.attributes?.some(attr=>q.startsWith(normalizeText(attr.attributeName)+' '))) break;
+        if (/^(?:aparte\s+|adicional\s+)?(?:un|una|uno|dos|tres|\d+)\b/.test(q)) {
+          const other = this.findProductEmbeddedInMessage(segment, products);
+          if (other && other.id !== product.id) break;
+        }
+        const isAttribute = !!product.attributes?.some(attr => this.pickAttributeOptionFromText(segment, attr));
+        const isSideNote = /\b(?:sin\s+ensalada|papa\s+salada|yuca\s+frita|papas?\s+saladas?)\b/.test(q);
+        const labeledExtra = /\b(?:aparte|bolsa|empaque)\b/.test(q) &&
+          !!product.attributes?.some(attr=>q.startsWith(normalizeText(attr.attributeName)+' '));
+        if (!isAttribute && !isSideNote && !labeledExtra) break;
         following.push(segment);
       }
-      if (following.length) return [named[0],...following].join('. ');
+      if (following.length) return [named[0],...following].join(', ');
     }
     const owned = segments.filter(segment => {
       const tokens = this.dishContentTokens(normalizeText(segment));
@@ -2173,7 +2188,7 @@ export class WhatsappCatalogService {
       this.extractProductSearchQuery(query) || query,
     );
     const withoutAddress = splitTrailingEmbeddedAddress(raw)?.productText || raw;
-    const clauses = withoutAddress
+    const clauses = withoutAddress.replace(/(\d),\s*(\d)/g, '$1.$2')
       .split(/\s*[,;]\s*|\.\s+|\s+y\s+|\r?\n/)
       .map((s) => normalizeText(s).trim())
       .filter(Boolean);
@@ -3162,14 +3177,24 @@ export class WhatsappCatalogService {
     segment: string,
     host: WhatsappCatalogProduct,
     products: WhatsappCatalogProduct[],
+    fullText = '',
   ): boolean {
     const q = normalizeText(segment).replace(/[?!.]+$/g, '').trim();
     if (!q) return false;
     if (/^(?:y\s+)?(?:un|una|uno|unos|unas|otro|otra|ademas|aparte|\d+)\b/.test(q)) return false;
     if (/\b(?:aparte|adicional|extra|porcion|porciones)\b/.test(q)) return false;
     if (!host?.attributes?.length) return false;
+    if (new RegExp(`\\b${DRINK_ORDER_TOKEN}\\b`, 'i').test(q) && !this.drinkTextMatchesAttribute(host, segment)) return false;
     const named = this.findProductEmbeddedInMessage(segment, products);
-    if (!named || named.id === host.id || this.productNameIsStyleOfHost(host, named)) return true;
+    if (!named || named.id === host.id) return true;
+    if (productLooksLikeNamedMenuDish(named.name)) return false;
+    if (this.productNameIsStyleOfHost(host, named)) {
+      const style = normalizeText(named.name).replace(/^\d+\s+/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const askedApart = new RegExp(
+        `\\by\\s+(?:un|una|uno|dos|tres|\\d+)\\s+${style}\\b|\\b(?:aparte|adicional|extra)\\b.{0,24}${style}\\b|\\b${style}\\b.{0,24}\\b(?:aparte|adicional|extra)\\b`,
+      ).test(normalizeText(fullText || segment));
+      return !askedApart;
+    }
     const choosesHostOption = (host.attributes || []).some((attr) =>
       (attr.options || []).some((option) => {
         const value = normalizeText(option).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3205,6 +3230,39 @@ export class WhatsappCatalogService {
         return true;
       }
       return false;
+    });
+  }
+
+  /**
+   * "sopa de mondongo" dentro del ejecutivo es la sopa del plato,
+   * no el SKU Sopa De Mondongo. "y una sopa aparte" sí se conserva.
+   */
+  private dropOptionsSoldAsSeparateProducts(
+    text: string,
+    products: WhatsappCatalogProduct[],
+    embedded: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] {
+    const host = this.menuDishHost(text, products);
+    if (!host) return embedded;
+    const q = normalizeText(fixCommonOrderTypos(text)).replace(/-/g, ' ');
+    const options = (host.attributes || [])
+      .flatMap((attr) => attr.options || [])
+      .map((option) => normalizeText(option))
+      .filter((option) => option.length >= 4);
+    return embedded.filter((product) => {
+      if (product.id === host.id || productLooksLikeNamedMenuDish(product.name)) return true;
+      const name = normalizeText(product.name);
+      const covered = options.find((option) => {
+        const token = option.split(' ').find((part) => part.length >= 5) || option;
+        return token.length >= 4 && name.includes(token) && q.includes(token);
+      });
+      if (!covered) return true;
+      const token = covered.split(' ').find((part) => part.length >= 5) || covered;
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const separate = new RegExp(
+        `\\b(?:aparte|adicional|extra)\\b.{0,24}\\b${escaped}\\b|\\b${escaped}\\b.{0,24}\\b(?:aparte|adicional|extra)\\b|\\by\\s+(?:un|una|uno|dos|tres|otra|otro)\\s+(?:\\w+\\s+){0,3}${escaped}\\b`,
+      ).test(q);
+      return separate;
     });
   }
 
@@ -3268,7 +3326,7 @@ export class WhatsappCatalogService {
     embedded: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct[] {
     const q = normalizeText(text);
-    if (!this.isEjecutivoLunchOrderPhrase(text) || !/\bejecutivo\b/.test(q)) return embedded;
+    if (!this.isEjecutivoLunchOrderPhrase(text) || !/\bejecutivos?\b/.test(q)) return embedded;
     if (/\b(?:aparte|ademas|adicionalmente|otra)\b/.test(q) || /\by\s+(?:una|uno|dos|tres|otra|otro)\b/.test(q)) {
       return embedded;
     }
@@ -3292,7 +3350,7 @@ export class WhatsappCatalogService {
   isEjecutivoLunchOrderPhrase(text: string): boolean {
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q) return false;
-    if (/\bejecutivo\b/.test(q)) return true;
+    if (/\bejecutivos?\b/.test(q)) return true;
     // "1 almuerzo con pechuga…" sin la palabra ejecutivo (raro, pero pasa)
     return (
       /\balmuerzo\b/.test(q) &&
@@ -3345,19 +3403,19 @@ export class WhatsappCatalogService {
     // "bandeja paisa con frijolitos" no es la bandeja que sí hay
     if (this.uncoveredDishWords(q, pool).length) return null;
 
-    const proteinHints: Array<{ re: RegExp; nameRe: RegExp }> = [
-      { re: /\bpechuga\b/, nameRe: /\bpechuga\b/ },
-      { re: /\bbroaster\b/, nameRe: /\bbroaster\b/ },
-      { re: /\bchurrasco\b/, nameRe: /\bchurrasco\b/ },
-      { re: /\bcostilla/, nameRe: /\bcostilla/ },
-      { re: /\bsobrebarriga\b/, nameRe: /\bsobrebarriga\b/ },
-      { re: /\bfrito\b/, nameRe: /\bfrito\b/ },
-      { re: /\basado\b/, nameRe: /\basado\b/ },
-      { re: /\bpaisa\b/, nameRe: /\bpaisa\b/ },
-      { re: /\bpollo\b/, nameRe: /\bpollo\b/ },
+    const proteinHints: Array<{ re: RegExp; nameRe: RegExp; word: string }> = [
+      { re: /\bpechuga\b/, nameRe: /\bpechuga\b/, word: 'pechuga' },
+      { re: /\bbroaster\b/, nameRe: /\bbroaster\b/, word: 'broaster' },
+      { re: /\bchurrasco\b/, nameRe: /\bchurrasco\b/, word: 'churrasco' },
+      { re: /\bcostilla/, nameRe: /\bcostilla/, word: 'costilla' },
+      { re: /\bsobrebarriga\b/, nameRe: /\bsobrebarriga\b/, word: 'sobrebarriga' },
+      { re: /\bfrito\b/, nameRe: /\bfrito\b/, word: 'frito' },
+      { re: /\basado\b/, nameRe: /\basado\b/, word: 'asado' },
+      { re: /\bpaisa\b/, nameRe: /\bpaisa\b/, word: 'paisa' },
+      { re: /\bpollo\b/, nameRe: /\bpollo\b/, word: 'pollo' },
     ];
     for (const hint of proteinHints) {
-      if (!hint.re.test(q)) continue;
+      if (!hint.re.test(q) && !queryMentionsWord(q, hint.word)) continue;
       const hit = pool.find((p) => hint.nameRe.test(normalizeText(p.name)));
       if (hit) return hit;
     }
@@ -3380,24 +3438,30 @@ export class WhatsappCatalogService {
     );
     if (!ejecutivos.length) return null;
 
-    const proteinHints: Array<{ re: RegExp; nameRe: RegExp }> = [
-      { re: /\bpechuga\b/, nameRe: /\bpechuga\b/ },
-      { re: /\bbroaster\b/, nameRe: /\bbroaster\b/ },
-      { re: /\bchurrasco\b/, nameRe: /\bchurrasco\b/ },
-      { re: /\bcostilla/, nameRe: /\bcostilla/ },
-      { re: /\bsobrebarriga\b/, nameRe: /\bsobrebarriga\b/ },
-      { re: /\bfrito\b/, nameRe: /\bfrito\b/ },
-      { re: /\basado\b/, nameRe: /\basado\b/ },
-      { re: /\bpollo\b/, nameRe: /\bpollo\b/ },
+    const proteinHints: Array<{ re: RegExp; nameRe: RegExp; word: string }> = [
+      { re: /\bpechuga\b/, nameRe: /\bpechuga\b/, word: 'pechuga' },
+      { re: /\bbroaster\b/, nameRe: /\bbroaster\b/, word: 'broaster' },
+      { re: /\bchurrasco\b/, nameRe: /\bchurrasco\b/, word: 'churrasco' },
+      { re: /\bcostilla/, nameRe: /\bcostilla/, word: 'costilla' },
+      { re: /\bsobrebarriga\b/, nameRe: /\bsobrebarriga\b/, word: 'sobrebarriga' },
+      { re: /\bfrito\b/, nameRe: /\bfrito\b/, word: 'frito' },
+      { re: /\basado\b/, nameRe: /\basado\b/, word: 'asado' },
+      { re: /\bpollo\b/, nameRe: /\bpollo\b/, word: 'pollo' },
     ];
     for (const hint of proteinHints) {
-      if (!hint.re.test(q)) continue;
+      const mentioned = hint.re.test(q) || queryMentionsWord(q, hint.word);
+      if (!mentioned) continue;
       const hit = ejecutivos.find((p) => hint.nameRe.test(normalizeText(p.name)));
       if (hit) return hit;
     }
 
-    // "con pechuga" sin SKU "Ejecutivo Con Pechuga" → ejecutivo con attr Presa pechuga
-    if (/\bpechuga\b/.test(q)) {
+    // "con pechuga" sin SKU "Ejecutivo Con Pechuga" → ejecutivo con attr Presa pechuga.
+    // Si ya nombró frito o broaster, no devolver el primer almuerzo que tenga esa presa.
+    const styleNamed =
+      /\b(?:broaster|fritos?|asados?)\b/.test(q) ||
+      queryMentionsWord(q, 'broaster') ||
+      queryMentionsWord(q, 'frito');
+    if (/\bpechugas?\b/.test(q) && !styleNamed) {
       const withPresa = ejecutivos.find((p) =>
         (p.attributes || []).some(
           (a) =>
@@ -3436,7 +3500,7 @@ export class WhatsappCatalogService {
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
     // Dentro de un almuerzo ejecutivo, ajiaco/sopa es atributo, no SKU de sopa
-    if (this.isEjecutivoLunchOrderPhrase(text) && /\bejecutivo\b/.test(normalizeText(text))) {
+    if (this.isEjecutivoLunchOrderPhrase(text) && /\bejecutivos?\b/.test(normalizeText(text))) {
       return null;
     }
     const q = normalizeText(fixCommonOrderTypos(text));
@@ -3649,10 +3713,21 @@ export class WhatsappCatalogService {
    * preferencias del plato, no ítems nuevos.
    */
   extractProductModificationNote(text: string): string | null {
+    const ensureAji = (note: string) =>
+      /\baj[ií]\b/i.test(note) || !/\bcon\s+aj[ií]\b/i.test(text || '') ? note : `${note}, con ají`;
     const preference = splitKitchenPreference(text);
-    if (preference && !this.looksLikeClearlyMultiDishOrder(preference.productText)) {
+    if (
+      preference &&
+      (!this.looksLikeClearlyMultiDishOrder(preference.productText) ||
+        this.isEjecutivoLunchOrderPhrase(text) ||
+        isNamedMenuDishOrderPhrase(text))
+    ) {
+      const extras: string[] = [];
       const condiment = preference.productText.match(/(con\s+aj[ií])(?!\p{L})/iu);
-      return condiment ? `${condiment[1]}, ${preference.note}` : preference.note;
+      if (condiment) extras.push(condiment[1]);
+      const side = preference.productText.match(/\b(papa\s+salada|yuca\s+frita|papas?\s+saladas?)\b/i);
+      if (side) extras.push(side[1]);
+      return ensureAji([...extras, preference.note].join(', '));
     }
     const raw = fixCommonOrderTypos((text || '').trim());
     if (!raw) return null;
@@ -3673,8 +3748,8 @@ export class WhatsappCatalogService {
     const chunks: string[] = [];
     const source = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const patterns = [
-      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?(?:(?:la|el|las|los)\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
-      /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})/gi,
+      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?(?:(?:la|el|las|los)\s+)?[a-záéíóúñ]+(?:\s+(?!y\b)[a-záéíóúñ]+){0,2})/gi,
+      /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+(?!y\b)[a-záéíóúñ]+){0,2})/gi,
       /\b((?:quiero\s+)?(?:mas|más)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,1})/gi,
       /\b((?:cambia(?:r|me)?|cambiar)\s+(?:la\s+|el\s+)?(?:ensalada|papa|papas|yuca|arepa)(?:\s+por\s+[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})?)/gi,
       // "a cambio papa salada" / "a cambio de yuca frita"
@@ -3696,7 +3771,7 @@ export class WhatsappCatalogService {
         if (
           (this.isEjecutivoLunchOrderPhrase(raw) || /\balmuerzo\b/.test(q)) &&
           /^(?:con|mas|más)\b/.test(norm) &&
-          !/\b(?:ensalada|papa|yuca|arepa|aguacate|maduro)\b/.test(norm)
+          !/\b(?:ensalada|papa|yuca|arepa|aguacate|maduro|aji)\b/.test(norm)
         ) {
           continue;
         }
@@ -3715,7 +3790,19 @@ export class WhatsappCatalogService {
         return o !== n && o.includes(n);
       });
     });
-    const noteBody = (dedupedChunks.length ? dedupedChunks : chunks)
+    const compatible = (dedupedChunks.length ? dedupedChunks : chunks).filter((chunk, index, all) => {
+      const norm = normalizeText(chunk);
+      const kind = /^(sin|con)\b/.exec(norm)?.[1];
+      const noun = norm.replace(/^(?:sin|con)\s+(?:la|el|las|los\s+)?/, '').trim();
+      if (!kind || !noun) return true;
+      return !all.slice(0, index).some((previous) => {
+        const other = normalizeText(previous);
+        const otherKind = /^(sin|con)\b/.exec(other)?.[1];
+        const otherNoun = other.replace(/^(?:sin|con)\s+(?:la|el|las|los\s+)?/, '').trim();
+        return !!otherKind && otherKind !== kind && otherNoun === noun;
+      });
+    });
+    const noteBody = compatible
       .map((c) =>
         c
           .replace(/\bmas\b/gi, 'más')
@@ -3744,16 +3831,16 @@ export class WhatsappCatalogService {
       .filter((t) => !this.SIDE_NOTE_TOKENS.has(t) && !this.SIDE_NOTE_TOKENS.has(singularizeEsToken(t)));
 
     // Solo guarniciones / "combo" de contexto → válida como nota
-    if (!mainTokens.length) return noteBody;
+    if (!mainTokens.length) return ensureAji(noteBody);
     if (mainTokens.length === 1 && /^(combo|combos|plato|pedido)$/.test(mainTokens[0])) {
-      return noteBody;
+      return ensureAji(noteBody);
     }
     // Hay un plato principal nombrado + mods → también nota (se asocia al plato)
     if (mainTokens.length >= 1 && mainTokens.length <= 4) {
-      return noteBody;
+      return ensureAji(noteBody);
     }
 
-    return noteBody;
+    return ensureAji(noteBody);
   }
 
   /**
@@ -3918,7 +4005,7 @@ export class WhatsappCatalogService {
       .replace(/\barroz\s+chino\b/g, 'arrozchino');
 
     // Ejecutivo + pechuga/sopa/ajiaco = 1 plato (attrs), no multi
-    if (/\bejecutivo\b/.test(q) || /\balmuerzo\b/.test(q)) {
+    if (/\bejecutivos?\b/.test(q) || /\balmuerzo\b/.test(q)) {
       q = q
         .replace(/\b(?:con|y)\s+sopa(?:\s+de)?\s+\w+/g, ' ')
         .replace(/\bsopa\s+de\s+\w+/g, ' ')
@@ -4703,7 +4790,7 @@ export class WhatsappCatalogService {
       if (!sized.length) return null;
       pool = sized;
     }
-    const product = [...pool].sort(
+    const product = pool.filter(candidate => this.productNameFitsUtterance(candidate, raw)).sort(
       (a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b),
     )[0];
     if (!product) return null;
@@ -5998,7 +6085,7 @@ export class WhatsappCatalogService {
         }
 
         // "ejecutivo con pechuga y sopa de ajiaco" → Ejecutivo…, no Sopa De Ajiaco
-        if (/\bejecutivo\b/.test(q) || (/\balmuerzo\b/.test(q) && /\bejecutivo\b/.test(q))) {
+        if (/\bejecutivos?\b/.test(q) || (/\balmuerzo\b/.test(q) && /\bejecutivos?\b/.test(q))) {
           if (/\bejecutivo\b/.test(name)) score += 100;
           if (/^sopa\b/.test(name) || /\bsopa\s+de\b/.test(name)) score -= 120;
           if (/\bpechuga\b/.test(q) && /\bpechuga\b/.test(name) && /\bejecutivo\b/.test(name)) {
@@ -8072,6 +8159,11 @@ export class WhatsappCatalogService {
    */
   splitMultiProductSegments(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
+    const explicitClauses = (text || '').split(/;\s*|\r?\n+|,\s*(?=(?:un|una|dos|tres|cuatro|cinco|\d+)\s+)|\s+y\s+(?=(?:un|una|dos|tres|cuatro|cinco|\d+)\s+)/i).map(clause => clause.trim()).filter(Boolean);
+    const quantityLead = /^(?:(?:buenas?\s+(?:tardes|noches|dias)|hola)[, ]*)?(?:(?:por\s+favor|porfa|quiero|pedir|agrega)\s+)*(?:un|una|dos|tres|cuatro|cinco|\d+)\s+/i;
+    if (explicitClauses.length >= 2 && explicitClauses.every(clause => quantityLead.test(clause) && !/(?:,\s*|\by\s+)(?:medio|media)\b/i.test(clause) && this.countQuantityMentions(splitTrailingEmbeddedAddress(clause)?.productText || clause) <= 1)) {
+      return explicitClauses.map(clause => clause.replace(/^(?:buenas?\s+(?:tardes|noches|dias)|hola)[, ]*/i, '').trim());
+    }
     // Un plato + "sin X más Y" → un solo segmento.
     // Varias burbujas de un menú ("menu vegetariano" / "lentejas sin ensalada")
     // se parten por línea para no buscar el texto entero como un plato.
@@ -8086,8 +8178,8 @@ export class WhatsappCatalogService {
     // "y además una sopa … aparte" sí es otro plato.
     if (
       !/\n/.test(text || '') &&
-      this.isEjecutivoLunchOrderPhrase(text) &&
-      !/\b(?:aparte|ademas|adicionalmente|otra|y\s+(?:una|uno|dos|tres|otra|otro))\b/.test(normalizeText(text))
+      (this.isEjecutivoLunchOrderPhrase(text) || isNamedMenuDishOrderPhrase(text)) &&
+      !/\b(?:aparte|ademas|adicionalmente|otra|y\s+(?:un|una|uno|dos|tres|otra|otro))\b/.test(normalizeText(text))
     ) {
       const main = this.cleanOrderSegment(text) || (text || '').trim();
       return main ? [main] : [];
@@ -8666,10 +8758,24 @@ export class WhatsappCatalogService {
       }
     }
 
+    const asksSeparateSizedDrink =
+      /\b(?:aparte|adicional|extra)\b/.test(normalizeText(fixCommonOrderTypos(text))) &&
+      this.extractRequestedDrinkVolumeMl(text) != null;
+    if (asksSeparateSizedDrink) {
+      const drinks = products.filter(
+        (product) => product.availableNow !== false && this.isLikelyDrinkProduct(product),
+      );
+      const bottle = this.pickBestDrinkProduct(drinks, text);
+      if (bottle && !embeddedAll.some((product) => product.id === bottle.id)) {
+        embeddedAll.push(bottle);
+      }
+    }
+
     if (embeddedAll.length >= 2) {
       embeddedAll = this.dropEjecutivoAttributeSoups(text, products, embeddedAll);
       embeddedAll = this.dropAttributeSideProducts(text, embeddedAll);
       embeddedAll = this.dropStyleProductsCoveredByMenuDish(text, products, embeddedAll);
+      embeddedAll = this.dropOptionsSoldAsSeparateProducts(text, products, embeddedAll);
     }
 
     if (embeddedAll.length >= 2) {
@@ -8942,7 +9048,7 @@ export class WhatsappCatalogService {
       const existingMenu = [...confident, ...needsAttributes].find((item) =>
         productLooksLikeNamedMenuDish(item.product.name),
       );
-      if (/\n/.test(text) && existingMenu && this.segmentContinuesMenuDish(segment, existingMenu.product, products)) {
+      if (existingMenu && this.segmentContinuesMenuDish(segment, existingMenu.product, products, text)) {
         existingMenu.segment = `${existingMenu.segment} ${segment}`.replace(/\s+/g, ' ').trim();
         const extra = this.extractProductModificationNote(segment);
         if (extra) existingMenu.note = [existingMenu.note, extra].filter(Boolean).join(', ');
@@ -9152,7 +9258,7 @@ export class WhatsappCatalogService {
 
       // Segmentos tipo "ejecutivo / menú especial con…" → SKU envoltorio (no sopa/pollo suelto)
       if (
-        /\bejecutivo\b/.test(segNorm) ||
+        /\bejecutivos?\b/.test(segNorm) ||
         /\balmuerzo\b/.test(segNorm) ||
         isNamedMenuDishOrderPhrase(segment)
       ) {
@@ -9722,6 +9828,25 @@ export class WhatsappCatalogService {
     return identity.length >= 4 && new RegExp(`\\b${escapeRegExp(identity)}\\b`).test(normalizeText(text));
   }
 
+  /** El pedido nombra ese plato aunque un estilo venga en plural o con un typo corto. */
+  orderNamesThisProduct(name: string, text: string): boolean {
+    if (this.isCartProductNamedInText(name, text)) return true;
+    const singular = (text || '').replace(/\b([a-záéíóúüñ]{4,})s\b/gi, '$1');
+    if (singular !== text && this.isCartProductNamedInText(name, singular)) return true;
+    const identity = normalizeText(name).replace(/^(?:\d+(?:\/\d+)?\s+)+/, '').trim();
+    const nameTokens = identity.split(/\s+/).filter(Boolean);
+    const textTokens = normalizeText(text).split(/\s+/).filter(Boolean);
+    if (!nameTokens.length || textTokens.length < nameTokens.length) return false;
+    for (let i = 0; i <= textTokens.length - nameTokens.length; i++) {
+      const aligned = nameTokens.every((part, j) => {
+        const token = textTokens[i + j];
+        return token === part || (token.length >= 4 && part.length >= 4 && nearDishToken(token, part));
+      });
+      if (aligned) return true;
+    }
+    return false;
+  }
+
   resolveCartAttributeOnlyUpdate(
     text: string,
     cart: {
@@ -9948,13 +10073,16 @@ export class WhatsappCatalogService {
         const tail = normalizeText(conMatch[1]);
         for (const opt of attr.options) {
           const o = normalizeText(opt);
-          if (tail.includes(o) || o.includes(tail)) return opt;
+          const wholeOption = new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(tail);
+          if (o.length < 4 ? wholeOption : wholeOption || tail.includes(o) || o.includes(tail)) return opt;
           const tailTokens = tail.split(' ').filter((t) => t.length >= 3);
           for (const tok of tailTokens) {
-            if (o.includes(tok) && tok.length >= 4) return opt;
+            if (o.includes(tok) && tok.length >= 4 && o.length >= 4) return opt;
             if (
               tok.length >= 4 &&
-              o.split(' ').some((part) => part.startsWith(tok) || tok.startsWith(part))
+              o.split(' ').some((part) =>
+                part.length >= 4 && (part.startsWith(tok) || tok.startsWith(part)),
+              )
             ) {
               return opt;
             }
@@ -9967,7 +10095,8 @@ export class WhatsappCatalogService {
       const o = normalizeText(opt);
       if (o.length < 2 || o.length < 3 && (!q.includes(attrName) || !q.split(' ').includes(o))) continue;
       const withoutTrailingS = o.endsWith('s') ? o.slice(0, -1) : '';
-      if (!(q === o || q.includes(o) || (withoutTrailingS.length >= 4 && q.includes(withoutTrailingS)))) continue;
+      const whole = new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(q);
+      if (!(whole || (o.includes(' ') && q.includes(o)) || (withoutTrailingS.length >= 4 && q.includes(withoutTrailingS)))) continue;
       if (rejectsOption) continue;
       // Arepas "Fritas"/"Blancas": exigir arepa cerca, o que digan "arepas fritas"
       if (isArepaAttr && /^(fritas?|blancas?)$/.test(o)) {
@@ -10006,8 +10135,8 @@ export class WhatsappCatalogService {
 
     // Presa: "con pechuga" → "Ala pechuga" (aunque el token pechuga esté en la lista de skip)
     if (/\b(presa|proteina|proteína|corte)\b/.test(attrName) || /\bpechuga\b/.test(attrName)) {
-      if (/\bpechuga\b/.test(q)) {
-        const pechugaOpt = attr.options.find((o) => /\bpechuga\b/.test(normalizeText(o)));
+      if (/\bpechugas?\b/.test(q) || /\balas?\b/.test(q)) {
+        const pechugaOpt = attr.options.find((o) => /\b(?:pechuga|ala)\b/.test(normalizeText(o)));
         if (pechugaOpt) return pechugaOpt;
       }
       if (/\b(pierna|pernil)\b/.test(q)) {
@@ -10077,6 +10206,17 @@ export class WhatsappCatalogService {
           if (re.test(q)) return opt;
         }
       }
+    }
+
+    if (!rejectsOption) {
+      const queryTokens = q.split(/\s+/).filter((token) => token.length >= 7);
+      const fuzzyHits = attr.options.filter((opt) => {
+        const parts = normalizeText(opt).split(/\s+/).filter((part) => part.length >= 7);
+        return queryTokens.some((token) =>
+          parts.some((part) => part !== token && (boundedEditDistance(token, part, 1) ?? 99) <= 1),
+        );
+      });
+      if (fuzzyHits.length === 1) return fuzzyHits[0];
     }
 
     return null;

@@ -1,4 +1,4 @@
-import { fixFuzzyDomicilioTypos } from './whatsapp-message-classify';
+import { fixFuzzyDomicilioTypos, fixFuzzyEjecutivoTypos } from './whatsapp-message-classify';
 
 /**
  * Glosario local PPP: typos, aliases y frases del restaurante.
@@ -161,6 +161,7 @@ const PHRASE_REWRITES: Array<{
 
 const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }> = [
   { re: /\bensladas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
+  { re: /\bensaldas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
   { re: /\bcr[eé]dit\b/gi, to: 'crédito' },
   { re: /\bquieor\b/gi, to: 'quiero' },
   { re: /\bquiiero\b/gi, to: 'quiero' },
@@ -210,7 +211,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },
+  { re: /\ble\s+men[uú]\b/gi, to: 'el menu' },
   { re: /\b(?:roaster|broster|brouster)\b/gi, to: 'broaster' },
+  { re: /\bfrittos?\b/gi, to: 'frito' },
   { re: /\bplacha\b/gi, to: 'plancha' },
   { re: /\brecogo\b/gi, to: 'recojo' },
   { re: /\brecoger\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
@@ -294,6 +297,7 @@ export function applyLocalGlossary(text: string): string {
 
   // Fuzzy: domickio / domicikio / etc. → domicilio (edit distance ≤ 2)
   out = fixFuzzyDomicilioTypos(out);
+  out = fixFuzzyEjecutivoTypos(out);
 
   // Colapsar espacios horizontales, pero conservar saltos de línea (listas WhatsApp)
   return out

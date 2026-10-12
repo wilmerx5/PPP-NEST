@@ -22,6 +22,14 @@ describe('applyLocalGlossary', () => {
     const polloYMedio = applyLocalGlossary('quiero una milanesa, dos churrascos y pollo y medio frito');
     expect(polloYMedio).toMatch(/1 pollo frito y medio pollo frito/i);
     expect(applyLocalGlossary(polloYMedio)).toBe(polloYMedio);
+    expect(applyLocalGlossary('un eejcutivo con pollo')).toMatch(/\bejecutivo\b/);
+    expect(applyLocalGlossary('dos ejecutivos')).toMatch(/\bejecutivos\b/);
+    expect(applyLocalGlossary('dar le menu sin enslada')).toMatch(/el menu sin ensalada/);
+    expect(applyLocalGlossary('un ejemplo')).toMatch(/\bejemplo\b/);
+    expect(applyLocalGlossary('un ejecutvio')).toMatch(/\bejecutivo\b/);
+    expect(applyLocalGlossary('dos eejcutivos')).toMatch(/\bejecutivos\b/);
+    expect(applyLocalGlossary('una ejecucion')).toMatch(/\bejecucion\b/);
+    expect(applyLocalGlossary('sin ensalda')).toMatch(/sin ensalada/);
   });
 
   it('normaliza combo de arroz chino', () => {

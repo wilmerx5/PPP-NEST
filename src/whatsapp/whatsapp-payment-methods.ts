@@ -63,7 +63,7 @@ function slugifyId(raw: string): string {
 /** “mp” no puede coincidir dentro de “Campos”. */
 function keywordAppearsAsWord(text: string, keyword: string): boolean {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(text);
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:[^\\p{L}\\p{N}]|$)`, 'u').test(text);
 }
 
 function normalizeKeyword(s: string): string {

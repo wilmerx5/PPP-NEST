@@ -1164,12 +1164,12 @@ export class WhatsappOrchestratorService {
     // A named meal owns its included soup/drink and preparation notes.
     const namedMeal = this.catalogService.resolveNamedMenuDishProduct(text, products);
     if (businessOpenForBot && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
-      this.catalogService.isCartProductNamedInText(namedMeal.name, text) &&
+      this.catalogService.orderNamesThisProduct(namedMeal.name, text) &&
       !/\by\s+(?:un|una|otro|otra|dos|tres|\d+)\b/i.test(text) &&
       !/\b(?:aparte|adicional|extra|por separado)\b/i.test(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isProductDescriptionInquiry(text)) {
-      if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, splitKitchenPreference(text)?.note)) return;
+      if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, this.catalogService.extractProductModificationNote(text) || undefined)) return;
     }
 
     // An explicit purchase of "those ten boxes" may refer to one discussed product.
@@ -4228,6 +4228,8 @@ export class WhatsappOrchestratorService {
     // "5 pollos" / "cinco gaseosas": aunque el score sea flojo, tratar como pedido con cantidad
     if (
       orderQty >= 2 &&
+      !this.catalogService.isEjecutivoLunchOrderPhrase(text) &&
+      !isNamedMenuDishOrderPhrase(text) &&
       !session.pendingMatch &&
       !session.pendingAttribute &&
       !this.catalogService.isPriceInquiryIntent(text) &&
@@ -5137,7 +5139,8 @@ export class WhatsappOrchestratorService {
     const packCopies = namedPackOrderQuantity(segment || fullText || '', productName);
     if (packCopies != null) return packCopies;
     const rawSeg = this.rawOrderSegmentForQuantity(segment, fullText);
-    const fromSeg = this.catalogService.extractQuantityFromSegment(rawSeg || '');
+    const fromSeg = Math.max(this.catalogService.extractQuantityFromSegment(rawSeg || ''),
+      this.catalogService.extractQuantityFromMessage(rawSeg || '', [{name:productName} as MenuProduct]));
     if (fromSeg >= 2) return Math.min(30, fromSeg);
     const near = this.catalogService.extractQuantityNearProduct(
       fullText || rawSeg || '',
@@ -5806,6 +5809,7 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (this.catalogService.isDishStyleSubstitutionInquiry(text)) return false;
+    if (this.catalogService.isEjecutivoLunchOrderPhrase(text) || isNamedMenuDishOrderPhrase(text)) return false;
     const family = this.catalogService.findProductVariantFamily(text, products);
     if (!family || family.variants.length < 2) return false;
 
@@ -12921,7 +12925,7 @@ export class WhatsappOrchestratorService {
         }
       }
     }
-    let working = original.replace(/\s*\n+\s*/g, ' ');
+    let working = original.replace(/\s*\n+\s*/g, '; ');
     working = working.replace(/^(?:para|pa)\s+(?=(?:medio|media|un|una|dos|tres|el|la)\b)/i, '');
     let phone: string | null = null;
     let customerName: string | null = null;
@@ -13752,11 +13756,12 @@ export class WhatsappOrchestratorService {
       (this.catalogService.productImpliesCombo(product) ? 'combo' : undefined);
     const swap = this.catalogService.swapIntent(text);
     const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
+    const noteSource = this.parseCompoundOrderMessage(text).productText;
     const lineNote = kitchenNote ||
       (carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
-        interpretProductNote(text, [product])?.note ||
-        (supportsCookingTerm(product) ? parseCookingTerm(text)?.note : undefined) ||
-        this.catalogService.extractProductModificationNote(text) || undefined);
+        interpretProductNote(noteSource, [product])?.note ||
+        [supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined,
+          this.catalogService.extractProductModificationNote(noteSource)].filter(Boolean).join('; ') || undefined);
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
       omitSwappedDrink: carriesSwap && this.catalogService.swapRemovesDrink(text),
@@ -16457,11 +16462,12 @@ export class WhatsappOrchestratorService {
               hasOwnedSource ? ownedSource : sourceText);
       const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
       const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
-      const explicit =
-        product.hasAttributes && product.attributes?.length
-          ? this.catalogService.extractExplicitAttributeChoice(attrSource, product) || []
-          : [];
       const swapOpts = {omitSwappedDrink: carriesSwap && !!sourceText && this.catalogService.swapRemovesDrink(sourceText)};
+      const parsedChoices =
+        product.hasAttributes && product.attributes?.length
+          ? this.catalogService.resolveAttributesFromMessage(product, attrSource, [])
+          : null;
+      const explicit = parsedChoices && parsedChoices.status !== 'invalid' ? parsedChoices.attributes : [];
       const filled =
         product.hasAttributes && product.attributes?.length
           ? this.catalogService.fillDefaultAttributes(product, explicit, swapOpts)
@@ -16491,8 +16497,10 @@ export class WhatsappOrchestratorService {
       const noteSource = hasOwnedSource ? ownedSource : item.segment;
       const lineNote =
         item.note ||
-        (supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined) ||
-        this.catalogService.extractProductModificationNote(noteSource) ||
+        [supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined,
+          this.catalogService.extractProductModificationNote(supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.productText || noteSource : noteSource),
+          interpretProductNote(noteSource, [product])?.note,
+          noteSource.match(/\bcon\s+(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=[,;.!]|$)/iu)?.[0]].filter(Boolean).join('; ') ||
         (!hasOwnedSource && sourceText && sourceText !== noteSource
           ? this.catalogService.extractProductModificationNote(sourceText)
           : undefined) ||

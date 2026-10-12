@@ -2156,5 +2156,49 @@
         }
       }
     ]
+  },
+  {
+    "id": "long-complete-order-three-products",
+    "messages": [
+      {
+        "text": "Buenas tardes, por favor quiero dos churrascos 3/4 sin ensalada; un arroz con pollo con harto ají; dos limonadas naturales. Para la calle 12 #34-56 casa 8, pago por transferencia. Muchas gracias",
+        "expect": {
+          "items": {
+            "17": 2,
+            "23": 1,
+            "37": 2
+          },
+          "lines": [
+            {
+              "id": 17,
+              "quantity": 2,
+              "note": [
+                "sin ensalada"
+              ]
+            },
+            {
+              "id": 23,
+              "quantity": 1,
+              "note": [
+                "harto ají"
+              ],
+              "forbidNote": [
+                "sin ensalada"
+              ]
+            },
+            {
+              "id": 37,
+              "quantity": 2
+            }
+          ],
+          "address": "12",
+          "payment": "transfer",
+          "replyForbid": [
+            "no entendí",
+            "no manejamos"
+          ]
+        }
+      }
+    ]
   }
 ]

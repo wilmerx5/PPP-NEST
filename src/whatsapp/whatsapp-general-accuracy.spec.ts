@@ -2535,6 +2535,918 @@ describe('PDF 11/10 — primeros tres chats y equivalentes portables', () => {
   });
 });
 
+describe('Ejecutivo mal escrito sigue siendo un solo almuerzo', () => {
+  const dayMenu = (style: string, id: number) => ({
+    id,
+    code: id,
+    name: `Menu Del Dia Con Pollo ${style}`,
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Pechuga'] },
+      { attributeName: 'Sopa', options: ['Lentejas', 'Verduras'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  });
+  const fiction = [
+    dayMenu('Frito', 8811),
+    dayMenu('Broaster', 8812),
+    {
+      id: 8813,
+      code: 8813,
+      name: '1 Pollo Frito',
+      price: 30000,
+      availableNow: true,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Pan', options: ['Blanco', 'Integral'] }],
+    },
+    { id: 8814, code: 8814, name: 'Sopa De Verduras', price: 8000, availableNow: true, attributes: [] },
+  ];
+
+  function ready(h: ReturnType<typeof harness>) {
+    Object.assign(h.conv.sessionData, {
+      phoneConfirmed: true,
+      contactPhone: h.conv.phoneE164,
+    });
+  }
+
+  it('chat 10:33: eejcutivo frito no compra el pollo ni la sopa sueltos', async () => {
+    const h = harness(products, false);
+    ready(h);
+    await h.sendQueued(
+      'es para pedir un eejcutivo con pollo frito, con papa salada, ala pechuga, sopa de mondongo , me puede dar le menu sin enslada por favor, es para plazuela de san esteban',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining([
+          'Presa:Ala, pechuga',
+          'Sopa:Mondongo',
+          'Bebida:Colombiana',
+        ]),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/papa salada/i);
+    expect(h.conv.sessionData.address).toMatch(/plazuela de san esteban/i);
+    expect(h.conv.sessionData.address).not.toMatch(/ejecutivo|mondongo|ensalada|pollo/i);
+    expect(h.conv.state).toBe('awaiting_payment');
+  });
+
+  it.each([
+    ['ejecutibo con pollo broaster, ala pechuga, sopa de ajiaco, sin ensalada, es para el conjunto los robles', 18, 'Presa:Ala, pechuga', 'Sopa:Ajiaco'],
+    ['ejecutio con pollo frito, pierna pernil, sopa de menudencias, papa salada, es para plazuela de san esteban', 22, 'Presa:Pierna Pernil', 'Sopa:Menudencias'],
+  ])('typo parecido sigue siendo un ejecutivo: %s', async (tail, id, presa, sopa) => {
+    const h = harness(products, false);
+    ready(h);
+    await h.sendQueued(`quiero un ${tail}`);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id,
+        qty: 1,
+        attrs: expect.arrayContaining([presa, sopa, 'Bebida:Colombiana']),
+      }),
+    ]);
+    expect(h.conv.sessionData.address).not.toMatch(/pollo|sopa|ensalada|papa/i);
+  });
+
+  it('y un pollo frito sí se suma; la sopa dicha adentro no', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala pechuga, sopa de mondongo y un pollo frito',
+    );
+    const rows = h.cartRows();
+    expect(rows.map((row) => row.id).sort()).toEqual([1, 22]);
+    expect(rows.find((row) => row.id === 22)?.attrs).toEqual(
+      expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo']),
+    );
+    expect(rows.some((row) => row.id === 45)).toBe(false);
+  });
+
+  it('y una sopa de mondongo aparte sí se cobra sola', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala pechuga y una sopa de mondongo aparte',
+    );
+    expect(h.cartRows().map((row) => row.id).sort()).toEqual([22, 45]);
+  });
+
+  it('otro menú: pechuga y sopa de verduras no compran el pollo ni la sopa sueltos', async () => {
+    const h = harness(fiction, false);
+    ready(h);
+    await h.sendQueued(
+      'es para pedir un menu del dia con pollo frito, con papa salada, pechuga, sopa de verduras, me puede dar le menu sin ensalada por favor, es para plazuela de san esteban',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8811,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/papa salada/i);
+    expect(h.conv.sessionData.address).toMatch(/plazuela de san esteban/i);
+  });
+});
+
+describe('Ejecutivo — bebidas, cantidades y extras parecidos', () => {
+  const day = (style: string, id: number) => ({
+    id,
+    code: id,
+    name: `Menu Del Dia Con Pollo ${style}`,
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Pechuga'] },
+      { attributeName: 'Sopa', options: ['Lentejas', 'Verduras'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  });
+  const fiction = [
+    day('Frito', 8811),
+    day('Broaster', 8812),
+    {
+      id: 8813,
+      code: 8813,
+      name: '1 Pollo Frito',
+      price: 30000,
+      availableNow: true,
+      hasAttributes: true,
+      attributes: [{ attributeName: 'Pan', options: ['Blanco', 'Integral'] }],
+    },
+    { id: 8814, code: 8814, name: 'Sopa De Verduras', price: 8000, availableNow: true, attributes: [] },
+    { id: 8815, code: 8815, name: 'Te Helado', price: 4000, availableNow: true, attributes: [] },
+    { id: 8816, code: 8816, name: 'Sopa De Lentejas', price: 7000, availableNow: true, attributes: [] },
+  ];
+
+  it.each([
+    {
+      text: 'un ejecutivo con pollo frito, ala pechuga, sopa de mondongo y de tomar limonada, sin ensalada',
+      id: 22,
+      attrs: ['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Limonada'],
+      banned: [1, 37, 45, 41],
+    },
+    {
+      text: 'un eejcutivo con pollo broaster, pierna pernil, sopa de ajiaco y coca cola, sin ensalada',
+      id: 18,
+      attrs: ['Presa:Pierna Pernil', 'Sopa:Ajiaco', 'Bebida:Coca Cola'],
+      banned: [4, 38, 95],
+    },
+    {
+      text: 'quiero el menu ejecutivo con pollo frito, pechuga, menudencias y pepsi, papa salada',
+      id: 22,
+      attrs: ['Presa:Ala, pechuga', 'Sopa:Menudencias', 'Bebida:Pepsi'],
+      banned: [1, 20, 8],
+    },
+    {
+      text: 'un ejecutibo con pollo broaster, ala pechuga, sopa de mondongo y quatro, con yuca frita',
+      id: 18,
+      attrs: ['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Quatro'],
+      banned: [4, 45, 41],
+    },
+    {
+      text: 'es para pedir un almuerzo ejecutivo con pollo frito, pierna pernil, sopa de menudencias y la gaseosa, sin ensalda, es para la plazuela de san esteban',
+      id: 22,
+      attrs: ['Presa:Pierna Pernil', 'Sopa:Menudencias', 'Bebida:Colombiana'],
+      banned: [1, 20, 27],
+      address: /plazuela de san esteban/i,
+      note: /sin ensalada/i,
+    },
+  ])('un solo almuerzo: $text', async ({ text, id, attrs, banned, address, note }) => {
+    const h = harness(products, false);
+    Object.assign(h.conv.sessionData, { phoneConfirmed: true, contactPhone: h.conv.phoneE164 });
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id,
+        qty: 1,
+        attrs: expect.arrayContaining(attrs),
+      }),
+    ]);
+    expect(banned.every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+    if (note) expect(h.cartRows()[0].note).toMatch(note);
+    if (address) {
+      expect(h.conv.sessionData.address).toMatch(address);
+      expect(h.conv.sessionData.address).not.toMatch(/ejecutivo|pollo|sopa|ensalada/i);
+    }
+  });
+
+  it('dos eejcutivos son cantidad 2, no dos platos sueltos', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'dos eejcutivos con pollo frito, ala pechuga, sopa de mondongo, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 2,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('otro menú: dos menús del día no compran pollo ni sopa sueltos', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'dos menus del dia con pollo frito, pechuga, sopa de verduras, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8811,
+        qty: 2,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('y un pollo broaster sí se suma; ajiaco y gaseosa no', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo broaster, pierna pernil, sopa de ajiaco, gaseosa y un pollo broaster',
+    );
+    const ids = h.cartRows().map((row) => row.id).sort((a, b) => a - b);
+    expect(ids).toEqual([4, 18]);
+    expect(h.cartRows().find((row) => row.id === 18)?.attrs).toEqual(
+      expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Ajiaco', 'Bebida:Colombiana']),
+    );
+  });
+
+  it('y una limonada natural aparte sí se cobra sola', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala pechuga, sopa de mondongo y una limonada natural aparte',
+    );
+    expect(h.cartRows().map((row) => row.id).sort()).toEqual([22, 37]);
+  });
+
+  it.each([
+    {
+      text: 'un menu del dia con pollo broaster, pechuga, sopa de lentejas y la bebida te, sin ensalada',
+      id: 8812,
+      attrs: ['Corte:Pechuga', 'Sopa:Lentejas', 'Bebida:Te'],
+      banned: [8813, 8816, 8815],
+    },
+    {
+      text: 'quiero un menu del dia con pollo frito, pierna, sopa de verduras y agua, con papa salada',
+      id: 8811,
+      attrs: ['Corte:Pierna', 'Sopa:Verduras', 'Bebida:Agua'],
+      banned: [8813, 8814],
+      note: /papa salada/i,
+    },
+  ])('otro menú, un solo plato: $text', async ({ text, id, attrs, banned, note }) => {
+    const h = harness(fiction, false);
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({ id, qty: 1, attrs: expect.arrayContaining(attrs) }),
+    ]);
+    expect(banned.every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+    if (note) expect(h.cartRows()[0].note).toMatch(note);
+  });
+
+  it('otro menú: y un pollo frito sí; la sopa y el té dichos adentro no', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, pechuga, sopa de verduras, bebida te y un pollo frito',
+    );
+    expect(h.cartRows().map((row) => row.id).sort()).toEqual([8811, 8813]);
+    expect(h.cartRows().find((row) => row.id === 8811)?.attrs).toEqual(
+      expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Te']),
+    );
+  });
+
+  it('otro menú: y un té helado aparte sí se cobra solo', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, pechuga, sopa de lentejas y un te helado aparte',
+    );
+    expect(h.cartRows().map((row) => row.id).sort()).toEqual([8811, 8815]);
+  });
+});
+
+describe('Ejecutivo — arroz, papas, ají y cantidad tres', () => {
+  const day = {
+    id: 8821,
+    code: 8821,
+    name: 'Menu Del Dia Con Pollo Frito',
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Pechuga'] },
+      { attributeName: 'Sopa', options: ['Lentejas', 'Verduras'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  };
+  const fiction = [
+    day,
+    { id: 8822, code: 8822, name: '1 Pollo Frito', price: 30000, availableNow: true, attributes: [] },
+    { id: 8823, code: 8823, name: 'Sopa De Verduras', price: 8000, availableNow: true, attributes: [] },
+    { id: 8826, code: 8826, name: 'Sopa De Lentejas', price: 7000, availableNow: true, attributes: [] },
+    { id: 8824, code: 8824, name: 'Porcion De Arroz', price: 4000, availableNow: true, attributes: [] },
+    { id: 8825, code: 8825, name: 'Porcion De Papa Francesa', price: 4000, availableNow: true, attributes: [] },
+  ];
+
+  it.each([
+    {
+      text: 'el menu ejecutivo con pollo broaster, papas a la francesa, pierna pernil, el arroz, sopa de menudencias y la gaseosa, sin ensalada',
+      id: 18,
+      attrs: ['Presa:Pierna Pernil', 'Sopa:Menudencias', 'Bebida:Colombiana'],
+      banned: [4, 9, 10, 20, 23],
+      note: /sin ensalada/i,
+    },
+    {
+      text: 'un eejcutivo con pollo frito, ala, sopa de ajico, manzana, no quiero ensalada y con aji',
+      id: 22,
+      attrs: ['Presa:Ala, pechuga', 'Sopa:Ajiaco', 'Bebida:Manzana'],
+      banned: [1, 25, 38],
+      note: /aj[ií].*no quiero ensalada|no quiero ensalada.*aj[ií]/i,
+    },
+    {
+      text: 'un ejecutivo con pollo frito, pechuga, sopa de menundencias, limonada, me lo das sin la ensalada',
+      id: 22,
+      attrs: ['Presa:Ala, pechuga', 'Sopa:Menudencias', 'Bebida:Limonada'],
+      banned: [1, 20, 37],
+      note: /sin (?:la )?ensalada/i,
+    },
+  ])('lo que ya trae el almuerzo no se cobra aparte: $text', async ({ text, id, attrs, banned, note }) => {
+    const h = harness(products, false);
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id,
+        qty: 1,
+        attrs: expect.arrayContaining(attrs),
+        note: expect.stringMatching(note),
+      }),
+    ]);
+    expect(banned.every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('tres eejcutivos son cantidad 3', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'tres eejcutivos con pollo broaster, pierna pernil, sopa de mondongos, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 18,
+        qty: 3,
+        attrs: expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('y una sopa de ajiaco adicional sí se cobra sola', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala pechuga y una sopa de ajiaco adicional',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([22, 38]);
+  });
+
+  it('otro menú: arroz y papa francesa dichos adentro no se compran', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, pechuga, sopa de verduras, con arroz y papa francesa, sin ensalada y con aji',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8821,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/aj[ií]/i);
+    expect([8822, 8823, 8824, 8825].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('otro menú: tres menús del día son cantidad 3', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'tres menus del dia con pollo frito, pierna, sopa de lentejas, sin ensalada',
+    );
+    expect([8822, 8823, 8826].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8821,
+        qty: 3,
+        attrs: expect.arrayContaining(['Corte:Pierna', 'Sopa:Lentejas', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+});
+
+describe('Ejecutivo — cantidad cuatro, presa en plural y porción pedida aparte', () => {
+  const day = (style: string, id: number) => ({
+    id,
+    code: id,
+    name: `Menu Del Dia Con Pollo ${style}`,
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Ala'] },
+      { attributeName: 'Sopa', options: ['Verduras', 'Lentejas'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  });
+  const fiction = [
+    day('Frito', 8831),
+    day('Broaster', 8832),
+    { id: 8833, code: 8833, name: '1 Pollo Frito', price: 30000, availableNow: true, attributes: [] },
+    { id: 8834, code: 8834, name: 'Sopa De Lentejas', price: 7000, availableNow: true, attributes: [] },
+    { id: 8835, code: 8835, name: 'Porcion De Papa Francesa', price: 4000, availableNow: true, attributes: [] },
+  ];
+
+  it('cuatro eejcutivos son un solo almuerzo con cantidad 4', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'cuatro eejcutivos con pollo frito, pechugas, sopa de menudensias, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 4,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Menudencias', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('otro menú: cuatro menús no convierten lentejas en té', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'cuatro menus del dia con pollo frito, alas, sopa de lentejas, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8831,
+        qty: 4,
+        attrs: expect.arrayContaining(['Corte:Ala', 'Sopa:Lentejas', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    expect([8833, 8834].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('una porción pedida con “y una” sí se cobra aparte del ejecutivo', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala, sopa de mondongo y una porcion de papa salada',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([8, 22]);
+    expect(h.cartRows().find((row) => row.id === 22)?.attrs).toEqual(
+      expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+    );
+  });
+
+  it('otro menú: una porción dicha aparte no reemplaza el menú', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, ala, sopa de lentejas y una porcion de papa francesa',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([8831, 8835]);
+    expect(h.cartRows().find((row) => row.id === 8831)?.attrs).toEqual(
+      expect.arrayContaining(['Corte:Ala', 'Sopa:Lentejas', 'Bebida:Agua']),
+    );
+  });
+
+  it('dos estilos de ejecutivo quedan en dos líneas', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('un ejecutivo con pollo broaster y un ejecutivo con pollo frito');
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([18, 22]);
+    expect(h.cartRows().every((row) => row.qty === 1)).toBe(true);
+    expect([1, 4].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('otro menú: dos estilos quedan en dos líneas y lentejas no eligen té', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo broaster, sopa de lentejas y un menu del dia con pollo frito, ala',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([8831, 8832]);
+    const broaster = h.cartRows().find((row) => row.id === 8832);
+    const frito = h.cartRows().find((row) => row.id === 8831);
+    expect(broaster?.attrs).toEqual(expect.arrayContaining(['Sopa:Lentejas', 'Bebida:Agua']));
+    expect(frito?.attrs).toEqual(expect.arrayContaining(['Corte:Ala', 'Bebida:Agua']));
+    expect(broaster?.attrs.join(' ')).not.toMatch(/Te/);
+  });
+});
+
+describe('Ejecutivo — estilo mal escrito, cantidad cinco y cambio de sopa', () => {
+  const day = (style: string, id: number) => ({
+    id,
+    code: id,
+    name: `Menu Del Dia Con Pollo ${style}`,
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Pechuga'] },
+      { attributeName: 'Sopa', options: ['Verduras', 'Lentejas'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  });
+  const fiction = [
+    day('Frito', 8841),
+    day('Broaster', 8842),
+    { id: 8843, code: 8843, name: '1 Pollo Frito', price: 30000, availableNow: true, attributes: [] },
+    { id: 8844, code: 8844, name: '1 Pollo Broaster', price: 32000, availableNow: true, attributes: [] },
+    { id: 8845, code: 8845, name: 'Sopa De Lentejas', price: 7000, availableNow: true, attributes: [] },
+    { id: 8846, code: 8846, name: 'Porcion De Papa Francesa', price: 4000, availableNow: true, attributes: [] },
+  ];
+  const steak = {
+    id: 8847,
+    code: 8847,
+    name: 'Menu Del Dia Con Ternera',
+    price: 19000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Sopa', options: ['Tomate', 'Verduras'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  };
+
+  it('broster sigue siendo el ejecutivo broaster, no el pollo suelto', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un eejcutivo con pollo broster, pierna pernil, sopa de mondongo, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 18,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('fritto sigue siendo el ejecutivo frito', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo fritto, pechuga, sopa de ajiaco, sin ensalada',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Ajiaco', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('otro menú: broster y fritto eligen el estilo y lentejas no eligen té', async () => {
+    const broaster = harness(fiction, false);
+    await broaster.sendQueued(
+      'un menu del dia con pollo broster, sopa de lentejas, sin ensalada',
+    );
+    expect(broaster.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8842,
+        qty: 1,
+        attrs: expect.arrayContaining(['Sopa:Lentejas', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    const fried = harness(fiction, false);
+    await fried.sendQueued('un menu del dia con pollo fritto, pechuga, sopa de verduras');
+    expect(fried.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8841,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Agua']),
+      }),
+    ]);
+  });
+
+  it('un broaster y dos fritos quedan en dos líneas', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('un ejecutivo con pollo broaster y dos ejecutivos con pollo frito');
+    expect(h.cartRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 18, qty: 1 }),
+        expect.objectContaining({ id: 22, qty: 2 }),
+      ]),
+    );
+    expect(h.cartRows()).toHaveLength(2);
+    expect([1, 4].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('otro menú: un broaster y dos fritos no compran el pollo suelto', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued('un menu del dia con pollo broaster y dos menus del dia con pollo frito');
+    expect(h.cartRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 8842, qty: 1 }),
+        expect.objectContaining({ id: 8841, qty: 2 }),
+      ]),
+    );
+    expect(h.cartRows()).toHaveLength(2);
+    expect([8843, 8844].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('cambiar la sopa no agrega la sopa suelta', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('un ejecutivo con pollo frito, ala, sopa de ajiaco');
+    await h.sendQueued('la sopa que sea mondongo');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+      }),
+    ]);
+  });
+
+  it('otro menú: cambiar a lentejas no elige el té', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued('un menu del dia con pollo frito, pechuga, sopa de verduras');
+    await h.sendQueued('la sopa que sea lentejas');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8841,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Lentejas', 'Bebida:Agua']),
+      }),
+    ]);
+    expect(h.cartRows().some((row) => row.id === 8845)).toBe(false);
+  });
+
+  it('sin cebolla y sin ensalada quedan las dos notas', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, pierna pernil, sopa de ajiaco, sin cebolla y sin ensalada',
+    );
+    const note = h.cartRows()[0]?.note || '';
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Ajiaco']),
+      }),
+    ]);
+    expect(note).toMatch(/sin cebolla/i);
+    expect(note).toMatch(/sin ensalada/i);
+  });
+
+  it('otro menú: sin cebolla y sin ensalada no compran sopa ni té', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, pechuga, sopa de lentejas, sin cebolla y sin ensalada',
+    );
+    const note = h.cartRows()[0]?.note || '';
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8841,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Lentejas', 'Bebida:Agua']),
+      }),
+    ]);
+    expect(note).toMatch(/sin cebolla/i);
+    expect(note).toMatch(/sin ensalada/i);
+  });
+
+  it('cinco ejecutivos conservan la cantidad y la plazuela', async () => {
+    const h = harness(products, false);
+    Object.assign(h.conv.sessionData, { phoneConfirmed: true, contactPhone: h.conv.phoneE164 });
+    await h.sendQueued(
+      'cinco eejcutivos con pollo frito, ala, sopa de mondongo, sin ensalada, es para plazuela de san esteban',
+    );
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 5,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+    expect(h.conv.sessionData.address).toMatch(/plazuela de san esteban/i);
+    expect(h.conv.sessionData.address).not.toMatch(/ejecutivo|mondongo|ensalada|pollo/i);
+  });
+
+  it('coca cola del almuerzo no compra la botella; la de litro y medio aparte sí', async () => {
+    const included = harness(products, false);
+    await included.sendQueued(
+      'un ejecutivo con pollo frito, ala, sopa de mondongo y de tomar coca cola',
+    );
+    expect(included.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        attrs: expect.arrayContaining(['Bebida:Coca Cola']),
+      }),
+    ]);
+    const bottle = harness(products, false);
+    await bottle.sendQueued(
+      'un ejecutivo con pollo frito, ala, sopa de mondongo y una coca cola de litro y medio aparte',
+    );
+    expect(bottle.cartRows().map((row) => row.id)).toEqual([22]);
+    expect(bottle.conv.sessionData.pendingAttribute?.productId).toBe(95);
+    await bottle.sendQueued('original');
+    expect(bottle.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([22, 95]);
+    expect(bottle.cartRows().find((row) => row.id === 95)?.attrs).toEqual(
+      expect.arrayContaining(['sabor:Original']),
+    );
+  });
+
+  it('yuca frita dicha adentro es nota; la porción pedida aparte sí se cobra', async () => {
+    const note = harness(products, false);
+    await note.sendQueued(
+      'un ejecutivo con pollo broaster, pierna pernil, sopa de ajiaco, con yuca frita',
+    );
+    expect(note.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 18,
+        qty: 1,
+        note: expect.stringMatching(/yuca frita/i),
+      }),
+    ]);
+    const side = harness(products, false);
+    await side.sendQueued(
+      'un ejecutivo con pollo broaster, pierna pernil y una porcion de yuca frita',
+    );
+    expect(side.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([7, 18]);
+  });
+
+  it('otro menú: tomate y ternera no eligen el té', async () => {
+    const h = harness([steak, { id: 8848, code: 8848, name: 'Sopa De Tomate', price: 6000, availableNow: true, attributes: [] }], false);
+    await h.sendQueued('un menu del dia con ternera, sopa de tomate, sin ensalada');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8847,
+        qty: 1,
+        attrs: expect.arrayContaining(['Sopa:Tomate', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('eran tres corrige la cantidad sin perder la sopa', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('un ejecutivo con pollo frito, ala, sopa de mondongo, sin ensalada');
+    await h.sendQueued('eran tres ejecutivos');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 3,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('otro menú: eran tres corrige la cantidad y deja el agua', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued('un menu del dia con pollo frito, pechuga, sopa de lentejas, sin ensalada');
+    await h.sendQueued('eran tres menus');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8841,
+        qty: 3,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Lentejas', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+});
+
+describe('Ejecutivo — porción aparte, cambio de presa y bebida', () => {
+  const day = (style: string, id: number) => ({
+    id,
+    code: id,
+    name: `Menu Del Dia Con Pollo ${style}`,
+    price: 18000,
+    availableNow: true,
+    hasAttributes: true,
+    attributes: [
+      { attributeName: 'Corte', options: ['Pierna', 'Pechuga'] },
+      { attributeName: 'Sopa', options: ['Verduras', 'Lentejas'] },
+      { attributeName: 'Bebida', options: ['Agua', 'Te'] },
+    ],
+  });
+  const fiction = [
+    day('Frito', 8851),
+    day('Broaster', 8852),
+    { id: 8853, code: 8853, name: '1 Pollo Frito', price: 30000, availableNow: true, attributes: [] },
+    { id: 8854, code: 8854, name: 'Sopa De Lentejas', price: 7000, availableNow: true, attributes: [] },
+    { id: 8855, code: 8855, name: 'Porcion De Papa Francesa', price: 4000, availableNow: true, attributes: [] },
+    { id: 8856, code: 8856, name: 'Limonada Natural', price: 5000, availableNow: true, attributes: [] },
+  ];
+
+  it('el almuerzo con limonada y una porción aparte no compra pollo ni sopa ni limonada suelta', async () => {
+    const h = harness(products, false);
+    await h.sendQueued(
+      'un ejecutivo con pollo frito, ala, sopa de mondongo, de tomar limonada, sin ensalada y una porcion de papa salada',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([8, 22]);
+    expect(h.cartRows().find((row) => row.id === 22)).toEqual(
+      expect.objectContaining({
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Limonada']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    );
+    expect([1, 37, 45].every((sku) => !h.cartRows().some((row) => row.id === sku))).toBe(true);
+  });
+
+  it('otro menú: la porción aparte no elige té ni compra el pollo', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued(
+      'un menu del dia con pollo frito, pechuga, sopa de lentejas y una porcion de papa francesa',
+    );
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([8851, 8855]);
+    expect(h.cartRows().find((row) => row.id === 8851)).toEqual(
+      expect.objectContaining({
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Lentejas', 'Bebida:Agua']),
+      }),
+    );
+  });
+
+  it('cambiar la presa y la bebida no compra otro producto', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('un ejecutivo con pollo frito, pierna pernil, sopa de mondongo');
+    await h.sendQueued('la presa que sea ala');
+    await h.sendQueued('la bebida que sea limonada');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo', 'Bebida:Limonada']),
+      }),
+    ]);
+  });
+
+  it('otro menú: cambiar el corte y pedir té deja una sola línea', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued('un menu del dia con pollo frito, pierna, sopa de verduras');
+    await h.sendQueued('el corte que sea pechuga');
+    await h.sendQueued('la bebida que sea te');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8851,
+        qty: 1,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Sopa:Verduras', 'Bebida:Te']),
+      }),
+    ]);
+  });
+
+  it('sin ensalada y con ensalada en el mismo pedido no guarda las dos', async () => {
+    const h = harness(products, false);
+    const reply = await h.sendQueued(
+      'un ejecutivo con pollo frito, ala, sopa de mondongo, sin ensalada y con ensalada',
+    );
+    const note = h.cartRows()[0]?.note || '';
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 1,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Mondongo']),
+      }),
+    ]);
+    expect(/sin ensalada/i.test(note) && /con ensalada/i.test(note)).toBe(false);
+    expect(reply).toMatch(/ensalada|aclar|cu[aá]l/i);
+  });
+
+  it('dos eejcutivos fritto quedan en una línea con la pechuga', async () => {
+    const h = harness(products, false);
+    await h.sendQueued('dos eejcutivos con pollo fritto, pechuga, sin ensalada');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 22,
+        qty: 2,
+        attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Bebida:Colombiana']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+
+  it('otro menú: dos menus fritto quedan en una línea y el agua sigue', async () => {
+    const h = harness(fiction, false);
+    await h.sendQueued('dos menus del dia con pollo fritto, pechuga, sin ensalada');
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 8851,
+        qty: 2,
+        attrs: expect.arrayContaining(['Corte:Pechuga', 'Bebida:Agua']),
+        note: expect.stringMatching(/sin ensalada/i),
+      }),
+    ]);
+  });
+});
+
+
 describe('PDF 11/10 — patrones adicionales y menús ficticios', () => {
   const bowl = {id:8801,code:8801,name:'Bowl Mediterraneo',price:17000,availableNow:true,attributes:[]};
   it.each([
@@ -3371,5 +4283,56 @@ describe('Reparto de menú alternativo — notas y cantidad',()=>{
     const h=harness(menu,false);await h.sendQueued('Quiero dos menu vegetariano');const before=structuredClone(h.conv.sessionData.cart);
     await h.sendQueued('Los quiero 2 con arroz sopa lentejas y sin cebolla y 1 con quinoa sopa calabaza y sin ensalada');
     expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cantidad|repartimos/i);
+  });
+});
+
+
+describe('Reservados de seguimiento — variante y aclaración antes de editar',()=>{
+  it('compra dos mojarras con nota dirección y transferencia sin usar la placa como cantidad',async()=>{
+    const h=harness(products,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('Dos mojarras fritas sin ensalada para la carrera 7 20 30, pago por transferencia');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:14,qty:2,note:expect.stringMatching(/sin ensalada/i),attrs:expect.arrayContaining(['Seleccion:Frita'])})]);
+    expect(h.conv.sessionData.address).toMatch(/7.*20.*30/);expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+    expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+  });
+  const fish={id:9941,code:9941,name:'Pescado Andino',price:20000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Preparacion',options:['Frita','Asada']}]};
+  for(const f of [{menu:products,id:14,name:'Mojarra',attr:'Seleccion',drink:37},{menu:[fish],id:9941,name:'Pescado Andino',attr:'Preparacion',drink:9942}]){
+    it('corrección sin preparación no modifica dos variantes de '+f.name,async()=>{
+      const h=harness(f.menu,false);h.conv.sessionData.cart=[
+        {productId:f.id,code:f.id,name:f.name,unitPrice:20000,quantity:1,note:'sin ensalada',attributes:[{attributeName:f.attr,attributeValue:'Frita'}]},
+        {productId:f.id,code:f.id,name:f.name,unitPrice:20000,quantity:3,note:'bien asado',attributes:[{attributeName:f.attr,attributeValue:'Asada'}]},
+        {productId:f.drink,code:f.drink,name:'Bebida de prueba',unitPrice:4000,quantity:1,attributes:[]},
+      ];const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Perdón, dos '+f.name);
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cu[aá]l|preparaci[oó]n/i);
+    });
+    it('foto ilegible después de nota conserva selección de '+f.name,async()=>{
+      const h=harness(f.menu,false);h.conv.sessionData.cart=[{productId:f.id,code:f.id,name:f.name,unitPrice:20000,quantity:2,note:'sin ensalada',attributes:[{attributeName:f.attr,attributeValue:'Frita'}]}];
+      const before=structuredClone(h.conv.sessionData.cart);h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+      h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue(f.name);h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',reply:'No pude leer la foto'});
+      h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+      await h.sendQueued('',{messageType:'image',mediaId:'late-unreadable'});
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);expect(h.replies[0]).toMatch(/plato.*código/s);
+    });
+  }
+});
+
+
+describe('Pedido completo largo — alcance de cada plato',()=>{
+  it.each(['; ','\n',' y '])('tres productos conservan cantidades notas dirección y pago con separador %j',async sep=>{
+    const h=harness(products,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    const text=['Buenas tardes, por favor quiero dos churrascos 3/4 sin ensalada','un arroz con pollo con harto ají','dos limonadas naturales'].join(sep)+'. Para la calle 12 #34-56 casa 8, pago por transferencia. Muchas gracias';
+    await h.sendQueued(text);
+    expect(h.cartRows()).toHaveLength(3);expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:17,qty:2,note:expect.stringMatching(/sin ensalada/i)}),expect.objectContaining({id:23,qty:1,note:expect.stringMatching(/harto ají/i)}),expect.objectContaining({id:37,qty:2})]));
+    const rice=h.cartRows().find(row=>row.id===23)!;expect(rice.note).not.toMatch(/sin ensalada/i);
+    expect(h.conv.sessionData.address).toMatch(/12.*34-56.*casa 8/i);expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.conv.state).not.toBe('building_cart');
+    expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+  });
+  const menu=[{id:9931,code:9931,name:'Bowl Mediterraneo',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},{id:9932,code:9932,name:'Wrap Oriental',price:16000,availableNow:true,attributes:[]},{id:9933,code:9933,name:'Te Helado',price:4000,availableNow:true,attributes:[]}];
+  it.each(['; ','\n'])('otro catálogo conserva seis unidades en mensaje completo %j',async sep=>{
+    const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued(['Por favor quiero dos bowls mediterraneos con quinoa sin cebolla','dos wrap oriental sin salsa','dos te helado'].join(sep)+'. Para la carrera 9 #20-30 casa 4, pago por transferencia');
+    expect(h.cartRows()).toHaveLength(3);expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:9931,qty:2,attrs:['Base:Quinoa'],note:expect.stringMatching(/sin cebolla/i)}),expect.objectContaining({id:9932,qty:2,note:expect.stringMatching(/sin salsa/i)}),expect.objectContaining({id:9933,qty:2})]));
+    expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.conv.sessionData.address).toMatch(/9.*20-30.*casa 4/i);
   });
 });
