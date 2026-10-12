@@ -3277,3 +3277,33 @@ describe('Ráfagas — bebida incluida y sopa adicional independiente',()=>{
     });
   }
 });
+
+
+describe('Pausas entre mensajes — contexto del menú y adicionales',()=>{
+  const lunch={id:9994,code:9994,name:'Menu Vegetariano',description:'Incluye sopa y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']}]};
+  const soup={id:9995,code:9995,name:'Sopa De Lentejas',price:7000,availableNow:true,attributes:[]};
+  for(const fixture of [
+    {menu:products,id:22,extra:38,dish:'almuerzo ejecutivo',named:'Ejecutivo Con Pollo Frito',options:'Mondongo pollo frito pierna pernil papa salada',drink:'Y de tomar me puedes enviar limonada?',extraText:'Y una sopa de ajiaco adicional aparte',attrs:['Sopa:Mondongo','Presa:Pierna Pernil','Bebida:Limonada']},
+    {menu:[lunch,soup],id:9994,extra:9995,dish:'menu vegetariano',named:'Menu Vegetariano',options:'Sopa de lentejas sin ensalada',drink:'Y de tomar la bebida te',extraText:'Y una sopa de lentejas adicional aparte',attrs:['Sopa:Lentejas','Bebida:Te']},
+  ]){
+    it.each([5000,60000])('pausa %d conserva opciones y separa extra en '+fixture.dish,async delay=>{
+      jest.useFakeTimers();try{
+        const h=harness(fixture.menu,false);let seq=0;
+        const turn=async(text:string)=>{const pending=h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'pause-'+seq++,messageType:'text',text,timestamp:Date.now()/1000,raw:{}});await jest.advanceTimersByTimeAsync(3000);await pending;await jest.advanceTimersByTimeAsync(delay);};
+        await turn('Quiero pedir dos '+fixture.dish+' por favor');await turn(fixture.options);await turn(fixture.drink);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:2,attrs:expect.arrayContaining(fixture.attrs)})]);
+        await turn(fixture.extraText);
+        expect(h.cartRows()).toHaveLength(2);expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:fixture.id,qty:2,attrs:expect.arrayContaining(fixture.attrs)}),expect.objectContaining({id:fixture.extra,qty:1,note:undefined})]));
+      }finally{jest.useRealTimers();}
+    });
+    it('consulta y corrección posterior conservan extra en '+fixture.dish,async()=>{
+      const h=harness(fixture.menu,false);
+      await h.sendQueued('Quiero pedir dos '+fixture.dish+' por favor');await h.sendQueued(fixture.options);await h.sendQueued(fixture.drink);await h.sendQueued(fixture.extraText);
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Cuánto cuesta '+fixture.named+'?');expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued('Perdón, quiero tres '+fixture.named);
+      expect(h.cartRows()).toHaveLength(2);expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:fixture.id,qty:3,attrs:expect.arrayContaining(fixture.attrs)}),expect.objectContaining({id:fixture.extra,qty:1})]));
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+  }
+});
