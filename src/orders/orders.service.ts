@@ -2154,9 +2154,11 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.attributes'],
     });
 
-    if (fullOrder) {
-      const formatted = await this.mapOrderToGroupedFormat(fullOrder);
+    const formatted = fullOrder
+      ? await this.mapOrderToGroupedFormat(fullOrder)
+      : undefined;
 
+    if (formatted && fullOrder) {
       if (dto.printed) {
         this.gateway.emitOrdersUpdates("updated_order_printed", formatted);
 
@@ -2174,6 +2176,7 @@ export class OrdersService {
       success: true,
       message: `Order #${orderId} updated successfully`,
       updatedFields: dto,
+      order: formatted,
     };
   }
 
