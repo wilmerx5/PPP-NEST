@@ -9897,8 +9897,11 @@ export class WhatsappCatalogService {
     // Prefer the most specific explicit identity; ties still require clarification.
     const longestName = Math.max(0, ...scoped.map(hit => normalizeText(hit.itemName).length));
     const specific = scoped.filter(hit => normalizeText(hit.itemName).length === longestName);
+    const remainingIdentityText = specific.length === 1
+      ? normalizeText(text).split(normalizeText(specific[0].itemName).replace(/^(?:\d+(?:\/\d+)?\s+)+/, '')).join(' ') : '';
     const nested = specific.length === 1 && scoped.every(hit =>
-      normalizeText(specific[0].itemName).includes(normalizeText(hit.itemName)));
+      normalizeText(specific[0].itemName).includes(normalizeText(hit.itemName)) &&
+      !this.isCartProductNamedInText(hit.itemName, remainingIdentityText));
     const candidates = nested ? specific : scoped.length ? scoped : mentioned;
     if (candidates.length !== 1) return null;
     const hit = candidates[0];

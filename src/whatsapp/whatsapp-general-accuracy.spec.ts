@@ -4446,6 +4446,15 @@ describe('Compuestos sin envoltorio — otros restaurantes',()=>{
       ]);
       expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
     });
+    it(f.name+' mencionar dos identidades explícitas conserva aclaración',async()=>{
+      const second={...menu[0],id:id+2,code:id+2,name:f.name+' Premium'};
+      const h=harness([...menu,second],false);
+      h.conv.sessionData.cart=[menu[0],second].map(product=>({productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:2,attributes:[{attributeName:f.attr,attributeValue:f.option}]}));
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Mejor con ${f.other} para ${f.name} y ${second.name}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/a cu[aá]l plato/i);
+    });
     it(f.name+' adicional explícito conserva ambos productos',async()=>{
       const h=harness(menu,false);await h.sendQueued(`Quiero dos ${f.name} con ${f.option}; aparte un ${f.side}`);
       expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.option]}),expect.objectContaining({id:id+1,qty:1})]));expect(h.cartRows()).toHaveLength(2);

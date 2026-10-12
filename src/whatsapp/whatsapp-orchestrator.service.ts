@@ -15178,8 +15178,11 @@ export class WhatsappOrchestratorService {
       const scoped = indexes.filter(index => this.catalogService.isCartProductNamedInText(session.cart[index].name, attributeText));
       const longestName = Math.max(0, ...scoped.map(index => this.normalizeForMatch(session.cart[index].name).length));
       const specific = scoped.filter(index => this.normalizeForMatch(session.cart[index].name).length === longestName);
+      const remainingIdentityText = specific.length === 1
+        ? this.normalizeForMatch(attributeText).split(this.normalizeForMatch(session.cart[specific[0]].name).replace(/^(?:\d+(?:\/\d+)?\s+)+/, '')).join(' ') : '';
       const nested = specific.length === 1 && scoped.every(index =>
-        this.normalizeForMatch(session.cart[specific[0]].name).includes(this.normalizeForMatch(session.cart[index].name)));
+        this.normalizeForMatch(session.cart[specific[0]].name).includes(this.normalizeForMatch(session.cart[index].name)) &&
+        !this.catalogService.isCartProductNamedInText(session.cart[index].name, remainingIdentityText));
       if (indexes.length > 1 && !nested) {
         session = {...session, pendingCartAttributeEdit:{sourceText:text, cartSignature:JSON.stringify(session.cart),
           candidates:indexes.map(cartIndex => ({cartIndex,name:session.cart[cartIndex].name}))}};
