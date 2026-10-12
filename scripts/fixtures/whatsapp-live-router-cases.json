@@ -2075,5 +2075,86 @@
         }
       }
     ]
+  },
+  {
+    "id": "pdf-executive-options-extra-after-interruption",
+    "messages": [
+      {
+        "text": "Quiero pedir dos almuerzos ejecutivos por favor",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Mondongo pollo frito pierna pernil papa salada",
+        "expect": {
+          "items": {
+            "22": 2
+          },
+          "attrs": [
+            {
+              "id": 22,
+              "key": "Sopa",
+              "value": "Mondongo"
+            },
+            {
+              "id": 22,
+              "key": "Presa",
+              "value": "Pierna Pernil"
+            }
+          ]
+        }
+      },
+      {
+        "text": "Y de tomar me puedes enviar limonada?",
+        "expect": {
+          "items": {
+            "22": 2
+          },
+          "attrs": [
+            {
+              "id": 22,
+              "key": "Bebida",
+              "value": "Limonada"
+            }
+          ]
+        }
+      },
+      {
+        "text": "Y una sopa de ajiaco adicional aparte",
+        "expect": {
+          "items": {
+            "22": 2,
+            "38": 1
+          },
+          "lines": [
+            {
+              "id": 22,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Sopa",
+                  "value": "Mondongo"
+                },
+                {
+                  "key": "Bebida",
+                  "value": "Limonada"
+                }
+              ],
+              "note": [
+                "papa salada"
+              ]
+            },
+            {
+              "id": 38,
+              "quantity": 1,
+              "forbidNote": [
+                "papa salada"
+              ]
+            }
+          ]
+        }
+      }
+    ]
   }
 ]

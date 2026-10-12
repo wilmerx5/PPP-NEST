@@ -1,25 +1,48 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 20,
-  "usedRequests": 18,
-  "remainingRequests": 2,
+  "authorizedRequests": 40,
+  "usedRequests": 25,
+  "remainingRequests": 15,
   "scope": "Current user-authorized round only; not standing authorization",
-  "acceptedConversations": 11,
+  "acceptedConversations": 13,
   "validationBaseCommit": "a3d54eae",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-12T01:30:01.240Z",
+  "lastAttemptAt": "2026-10-12T01:32:23.907Z",
   "latestEvaluation": {
+    "baseCommit": "b5deeb2d",
+    "includesFixtureChanges": true,
     "model": "gpt-4.1-2025-04-14",
-    "baseCommit": "47de5597",
-    "scope": "Real OpenAI with full router; Meta and persistence isolated",
+    "executed": 5,
+    "accepted": 5,
+    "paidConversations": 2,
+    "deterministicConversations": 3,
     "attemptsThisTurn": 7,
-    "firstRun": "3 attempts; request cap prevented final reply; cart correct; not accepted",
-    "secondRun": "4 attempts; context-question-then-other-purchase accepted",
-    "acceptedThisTurn": 1,
-    "remaining": 2,
-    "logs": [
-      "/tmp/ppp-current-model-api.log",
-      "/tmp/ppp-current-model-api-completion.log"
-    ]
-  }
+    "usedTotal": 25,
+    "remaining": 15,
+    "apiUsage": {
+      "model": "gpt-4.1-2025-04-14",
+      "requests": 7,
+      "successfulResponses": 7,
+      "responsesWithUsage": 7,
+      "usageComplete": true,
+      "uncertainResponses": 0,
+      "transportErrors": {},
+      "promptTokens": 73887,
+      "cachedPromptTokens": 65536,
+      "completionTokens": 160,
+      "httpErrors": {},
+      "providerErrorCodes": {},
+      "estimatedReportedCostUsd": null,
+      "priceDate": null,
+      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+    },
+    "log": "/tmp/ppp-api-additional-round.log"
+  },
+  "authorizationExtensions": [
+    {
+      "date": "2026-10-11",
+      "additionalRequests": 20,
+      "evidence": "User: continua haciendo pruebas, te autorizo 20 llamadas mas"
+    }
+  ]
 }
