@@ -15140,7 +15140,15 @@ export class WhatsappOrchestratorService {
           !['el','la','los','las','ese','esa','del','de'].includes(word));
         const shortChoice = words.length > 0 && words.length <= 6 &&
           words.every(word => /^(?:[a-zñ]+|\d+)$/.test(word));
-        const selected = pendingEdit.candidates.filter(candidate =>
+        const positional = this.normalizeForMatch(text).match(/^(?:el|la)?\s*(primero|primera|segundo|segunda|tercero|tercera|\d{1,2})$/);
+        const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3};
+        const position = positional ? positions[positional[1]] ?? Number(positional[1]) : null;
+        if (position != null && (position < 1 || position > pendingEdit.candidates.length)) {
+          await this.reply(conv, waId, 'Esa opción no está en la lista. ¿A cuál plato le aplico el cambio?\n' +
+            pendingEdit.candidates.map((candidate,index) => `${index+1}. ${candidate.name}`).join('\n'));
+          return true;
+        }
+        const selected = position != null ? [pendingEdit.candidates[position-1]] : pendingEdit.candidates.filter(candidate =>
           shortChoice && words.every(word => this.normalizeForMatch(candidate.name).split(/\s+/).includes(word)));
         if (selected.length === 1) {
           text = selected[0].sourceText
@@ -15154,14 +15162,14 @@ export class WhatsappOrchestratorService {
     const attributeText = text.replace(/\s+y\s+(?:con\s+)?(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}[\p{L}\s-]*[.!]?$/iu, '');
     if (!/[¿?]/.test(text)) {
       const targets = this.catalogService.listCartAttributeOptionsNamedInText(attributeText, session.cart, products);
-      const indexes = [...new Set(targets.map(target => target.cartIndex))];
+      const indexes = [...new Set(targets.map(target => target.cartIndex))].sort((a,b) => a-b);
       const scoped = indexes.filter(index => this.catalogService.isCartProductNamedInText(session.cart[index].name, attributeText));
       if (indexes.length > 1 && scoped.length !== 1) {
         session = {...session, pendingCartAttributeEdit:{sourceText:text, cartSignature:JSON.stringify(session.cart),
           candidates:indexes.map(cartIndex => ({cartIndex,name:session.cart[cartIndex].name}))}};
         await this.conversationService.saveSession(conv, session);
         await this.reply(conv, waId, '¿A cuál plato le aplico ese cambio?\n' +
-          indexes.map(index => `• ${session.cart[index].name}`).join('\n'));
+          indexes.map((index,position) => `${position+1}. ${session.cart[index].name}`).join('\n'));
         return true;
       }
     }

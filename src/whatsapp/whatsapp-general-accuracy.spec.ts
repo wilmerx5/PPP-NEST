@@ -3307,3 +3307,22 @@ describe('Pausas entre mensajes — contexto del menú y adicionales',()=>{
     });
   }
 });
+
+
+describe('Aclaración de cambio — referencia por posición',()=>{
+  const alt=[{id:9971,code:71,name:'Bowl Mediterraneo',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},{id:9972,code:72,name:'Bowl Andino',price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]}];
+  for(const f of [{menu:products,ids:[1,4],names:['1 Pollo Frito','1 Pollo Broaster'],attr:'Arepas',before:'Blancas',after:'Fritas',request:'Lo quiero con arepas fritas y bastante ají'},{menu:alt,ids:[9971,9972],names:['Bowl Mediterraneo','Bowl Andino'],attr:'Base',before:'Arroz',after:'Quinoa',request:'Lo quiero con quinoa y bastante ají'}]){
+    const setup=()=>{const h=harness(f.menu,false);h.conv.sessionData.cart=f.ids.map((productId,index)=>({productId,code:productId,name:f.names[index],unitPrice:18000,quantity:index===0?2:1,attributes:[{attributeName:f.attr,attributeValue:f.before}]}));return h;};
+    it.each([['el primero',0],['el segundo',1],['2',1]])('elige %s sin comprar otro producto en '+f.names[0],async(answer,index)=>{
+      const h=setup();const before=structuredClone(h.cartRows());await h.sendQueued(f.request);expect(h.cartRows()).toEqual(before);
+      await h.sendQueued(String(answer));
+      expect(h.cartRows()).toHaveLength(2);expect(h.cartRows()[Number(index)]).toMatchObject({qty:before[Number(index)].qty,attrs:[f.attr+':'+f.after],note:expect.stringMatching(/bastante ají/i)});
+      expect(h.cartRows()[1-Number(index)]).toEqual(before[1-Number(index)]);
+      expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+    });
+    it('posición inexistente conserva aclaración en '+f.names[0],async()=>{
+      const h=setup();await h.sendQueued(f.request);const before=structuredClone(h.cartRows());await h.sendQueued('el tercero');
+      expect(h.cartRows()).toEqual(before);expect(h.conv.sessionData.pendingCartAttributeEdit).toBeDefined();
+    });
+  }
+});
