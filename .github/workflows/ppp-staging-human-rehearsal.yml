@@ -1,9 +1,6 @@
 name: PPP Staging Human Service Rehearsal
 
 on:
-  push:
-    branches: [fix/whatsapp-regression-baseline]
-    paths: [.github/workflows/ppp-staging-human-rehearsal.yml]
   workflow_dispatch:
     inputs:
       execute:
@@ -21,11 +18,7 @@ concurrency:
 
 jobs:
   human:
-    if: >-
-      github.repository == 'wilmerx5/PPP-NEST' &&
-      github.ref == 'refs/heads/fix/whatsapp-regression-baseline' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.event.before == '86bb5904bfc65ba0789a83e33cf1becee3f296e7'))
+    if: github.repository == 'wilmerx5/PPP-NEST' && github.ref == 'refs/heads/staging' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,7 +32,7 @@ jobs:
         run: node --test scripts/ppp-staging-human-rehearsal.test.cjs
       - name: Execute the bounded human-service rehearsal
         env:
-          STAGING_HUMAN_EXECUTE: ${{ (github.event_name == 'push' || inputs.execute) && 'true' || 'false' }}
+          STAGING_HUMAN_EXECUTE: ${{ inputs.execute && 'true' || 'false' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
           STAGING_WHATSAPP_APP_SECRET: ${{ secrets.STAGING_WHATSAPP_APP_SECRET }}
