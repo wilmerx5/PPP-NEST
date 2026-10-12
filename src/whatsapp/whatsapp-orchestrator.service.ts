@@ -15176,7 +15176,11 @@ export class WhatsappOrchestratorService {
       const targets = this.catalogService.listCartAttributeOptionsNamedInText(attributeText, session.cart, products);
       const indexes = [...new Set(targets.map(target => target.cartIndex))].sort((a,b) => a-b);
       const scoped = indexes.filter(index => this.catalogService.isCartProductNamedInText(session.cart[index].name, attributeText));
-      if (indexes.length > 1 && scoped.length !== 1) {
+      const longestName = Math.max(0, ...scoped.map(index => this.normalizeForMatch(session.cart[index].name).length));
+      const specific = scoped.filter(index => this.normalizeForMatch(session.cart[index].name).length === longestName);
+      const nested = specific.length === 1 && scoped.every(index =>
+        this.normalizeForMatch(session.cart[specific[0]].name).includes(this.normalizeForMatch(session.cart[index].name)));
+      if (indexes.length > 1 && !nested) {
         session = {...session, pendingCartAttributeEdit:{sourceText:text, cartSignature:JSON.stringify(session.cart),
           candidates:indexes.map(cartIndex => ({cartIndex,name:session.cart[cartIndex].name}))}};
         await this.conversationService.saveSession(conv, session);

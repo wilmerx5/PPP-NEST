@@ -4409,3 +4409,55 @@ describe('Generalización por catálogo — opciones incluidas y extras', () => 
     });
   }
 });
+
+describe('Compuestos sin envoltorio — otros restaurantes',()=>{
+  for(const [index,f] of [
+    {name:'Hamburguesa Artesanal',attr:'Queso',option:'Cheddar',other:'Mozzarella',side:'Cheddar'},
+    {name:'Pizza Campestre',attr:'Masa',option:'Delgada',other:'Gruesa',side:'Pan Delgada'},
+    {name:'Bowl Tropical',attr:'Base',option:'Quinoa',other:'Arroz',side:'Quinoa'},
+  ].entries()){
+    const id=12000+index*10;
+    const menu=[{id,code:id,name:f.name,price:21000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.other,f.option]}]},
+      {id:id+1,code:id+1,name:f.side,price:4000,availableNow:true,attributes:[]}];
+    it(f.name+' opción incluida no agrega SKU del componente',async()=>{
+      const h=harness(menu,false);await h.sendQueued(`Quiero dos ${f.name} con ${f.option}, sin cebolla`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.option],note:expect.stringMatching(/sin cebolla/i)})]);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it.each(['; ','\n',' y '])(f.name+' pedido completo con adicional y dirección %j',async sep=>{
+      const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+      await h.sendQueued([`Por favor quiero dos ${f.name} con ${f.option} sin cebolla`,`un ${f.side} aparte`].join(sep)+'. Para la carrera 8 #15-20, pago por transferencia');
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.option],note:expect.stringMatching(/sin cebolla/i)}),expect.objectContaining({id:id+1,qty:1})]));
+      expect(h.conv.sessionData.address).toMatch(/8.*15-20/);expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it(f.name+' aclara cambio compartido y respeta elección del segundo',async()=>{
+      const second={...menu[0],id:id+2,code:id+2,name:f.name+' Premium'};
+      const h=harness([...menu,second],false);
+      h.conv.sessionData.cart=[menu[0],second].map(product=>({productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:2,note:'sin cebolla',attributes:[{attributeName:f.attr,attributeValue:f.option}]}));
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Mejor con ${f.other}`);
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/a cu[aá]l plato/i);
+      await h.sendQueued('el segundo');
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.option],note:'sin cebolla'}),
+        expect.objectContaining({id:id+2,qty:2,attrs:[f.attr+':'+f.other],note:'sin cebolla'}),
+      ]);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it(f.name+' adicional explícito conserva ambos productos',async()=>{
+      const h=harness(menu,false);await h.sendQueued(`Quiero dos ${f.name} con ${f.option}; aparte un ${f.side}`);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.option]}),expect.objectContaining({id:id+1,qty:1})]));expect(h.cartRows()).toHaveLength(2);
+    });
+    it(f.name+' corrección y consulta conservan cantidad y nota',async()=>{
+      const h=harness(menu,false);await h.sendQueued(`Quiero dos ${f.name} con ${f.option}, sin cebolla`);
+      await h.sendQueued(`Mejor con ${f.other}`);
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cuánto cuesta la ${f.name}?`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.other],note:expect.stringMatching(/sin cebolla/i)})]);
+      expect(h.replies.at(-1)).toMatch(/21[.,]?000/);
+    });
+  }
+});

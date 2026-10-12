@@ -9893,7 +9893,13 @@ export class WhatsappCatalogService {
       }
     }
     const scoped = mentioned.filter(hit => this.isCartProductNamedInText(hit.itemName, text));
-    const candidates = scoped.length ? scoped : mentioned;
+    // A longer catalog name may contain another SKU's complete name.
+    // Prefer the most specific explicit identity; ties still require clarification.
+    const longestName = Math.max(0, ...scoped.map(hit => normalizeText(hit.itemName).length));
+    const specific = scoped.filter(hit => normalizeText(hit.itemName).length === longestName);
+    const nested = specific.length === 1 && scoped.every(hit =>
+      normalizeText(specific[0].itemName).includes(normalizeText(hit.itemName)));
+    const candidates = nested ? specific : scoped.length ? scoped : mentioned;
     if (candidates.length !== 1) return null;
     const hit = candidates[0];
 
