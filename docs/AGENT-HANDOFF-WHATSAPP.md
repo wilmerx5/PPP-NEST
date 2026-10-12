@@ -463,3 +463,10 @@ Nuevo escenario versionado pdf-executive-options-extra-after-interruption: dos e
 ## Plan comercial documentado
 
 Leer docs/WHATSAPP-COMMERCIAL-READINESS-PLAN.md: evidencia actual, puertas de piloto/venta, fuentes primarias AWS/Google/Intercom y tareas por responsable. Metas100conversaciones/95%conresultado/p95texto15s son propuestas, no mediciones ni estándares de marcas. Referencia vigente a modelo/presupuesto/commits debe contrastarse antes de usar. La siguiente acción es cerrar patrones PDF pendientes gratis, conjunto reservado focalizado con API y canal real con tope efectivo. No gastar llamadas para documentar.
+
+
+## Cierre de patrones PDF en backend — 2026-10-11
+
+Cinco nuevas regresiones: reparto de ejecutivo con presa/sopa y notas papa salada/sin ensalada por unidad; otro catálogo con base/sopa/notas diferentes; rechazo atómico de suma incompatible; pedido/dirección/barrio en handleIncoming concurrente con una respuesta en PPP/otro menú. Un fallo inicial: nota papa salada perdida (/tmp/ppp-pdf-pending-baseline.log). Se extrae nota por cada parte del reparto, filtra texto ya representado por atributos y conserva nota compartida previa. No autoriza sustituciones comerciales: son solicitudes de cocina.
+
+Seis focalizadas (cinco nuevas+control) aprobadas /tmp/ppp-pdf-distribution-targets.log; TS /tmp/ppp-pdf-distribution-tsc.log aprobado; full65suites/1.824pruebas,210,518s /tmp/ppp-pdf-distribution-full.log. Índice PDF ahora26patrones ejercitados y0 sin ejecución de backend, con verification_pending separado para Meta/percepción/inferencia. No acredita todos los chats del PDF ni todas variaciones. Simulado primero, cero API; quedan15 de40 autorizadas. Main intacta.

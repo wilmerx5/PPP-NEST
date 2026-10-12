@@ -15096,7 +15096,14 @@ export class WhatsappOrchestratorService {
     for (let index = 0; index < parts.length; index++) {
       const attributes = [...(selected.line.attributes || [])].filter(attr => !selected.choices[index]!.some(choice => choice.attributeName === attr.attributeName))
         .concat(selected.choices[index]!);
-      const added = this.tryAddProductToCart(next, selected.product, quantities[index], cfg, selected.line.note, attributes, {sourceText:parts[index]});
+      const partNotes = parts[index].split(/\s+y\s+/i).map(clause =>
+        omitRedundantAttributeNote(this.catalogService.extractProductModificationNote(clause) || undefined, attributes)).filter(Boolean).join('; ');
+      const noteEdit = editScopedCartNote(selected.line.note, {kind:'append',query:'',note:partNotes,preserve:[]});
+      if (noteEdit.blocked) {
+        await this.reply(conv, waId, 'Necesito que resumas las notas para repartir el pedido completo. El carrito sigue igual.');
+        return true;
+      }
+      const added = this.tryAddProductToCart(next, selected.product, quantities[index], cfg, partNotes ? noteEdit.note : selected.line.note, attributes, {sourceText:parts[index]});
       if (added.blocked || added.missingAttributes) {
         await this.reply(conv, waId, added.blocked?.reason || 'Necesito completar las opciones del plato antes de repartirlo. El carrito sigue igual.');
         return true;

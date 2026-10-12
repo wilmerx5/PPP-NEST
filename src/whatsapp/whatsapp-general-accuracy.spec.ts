@@ -3326,3 +3326,50 @@ describe('Aclaración de cambio — referencia por posición',()=>{
     });
   }
 });
+
+
+describe('PDF pendiente — reparto con notas por línea',()=>{
+  it('dos ejecutivos conservan opciones y papa solicitada por separado',async()=>{
+    const h=harness(products,false);await h.sendQueued('Dos menu ejecutivo por favor');await h.sendQueued('Pollo frito');
+    await h.sendQueued('Los quiero 1 con presa pierna pernil sopa ajiaco y papa salada y 1 con presa pechuga sopa mondongo y sin ensalada');
+    expect(h.cartRows()).toHaveLength(2);expect(h.cartRows().every(row=>row.id===22&&row.qty===1)).toBe(true);
+    const first=h.cartRows().find(row=>row.attrs.includes('Sopa:Ajiaco'))!;const second=h.cartRows().find(row=>row.attrs.includes('Sopa:Mondongo'))!;
+    expect(first.attrs).toContain('Presa:Pierna Pernil');expect(first.note).toMatch(/papa salada/i);expect(first.note).not.toMatch(/sin ensalada/i);
+    expect(second.attrs.join(' ')).toMatch(/pechuga/i);expect(second.note).toMatch(/sin ensalada/i);expect(second.note).not.toMatch(/papa salada/i);
+  });
+});
+
+describe('PDF pendiente — pedido dirección barrio en ráfaga',()=>{
+  const bowl={id:9961,code:9961,name:'Bowl Mediterraneo',price:18000,availableNow:true,attributes:[]};
+  for(const f of [{menu:products,id:23,dish:'arroz con pollo'},{menu:[bowl],id:9961,dish:'bowl mediterraneo'}]){
+    it('conserva dos '+f.dish+' y dirección completa con una respuesta',async()=>{
+      jest.useFakeTimers();try{
+        const h=harness(f.menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+        const texts=['Quiero dos '+f.dish,'Para la calle 12 #34-56 casa 8','Barrio Castilla'];
+        const pending=texts.map((text,index)=>h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'address-burst-'+index,messageType:'text',text,timestamp:index+1,raw:{}}));
+        await jest.advanceTimersByTimeAsync(3000);await Promise.all(pending);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:f.id,qty:2})]);
+        expect(h.conv.sessionData.address).toMatch(/12.*34-56.*casa 8.*Castilla/is);expect(h.conv.sessionData.address).not.toMatch(/arroz|bowl/i);
+        expect(h.replies).toHaveLength(1);expect(h.replies[0]).not.toMatch(/no entend[ií]|no manejamos/i);
+      }finally{jest.useRealTimers();}
+    });
+  }
+});
+
+
+describe('Reparto de menú alternativo — notas y cantidad',()=>{
+  const menu=[{id:9951,code:9951,name:'Menu Vegetariano',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']},{attributeName:'Sopa',options:['Lentejas','Calabaza']}]}];
+  it('mantiene notas de cada unidad sin propagarlas',async()=>{
+    const h=harness(menu,false);await h.sendQueued('Quiero dos menu vegetariano');
+    await h.sendQueued('Los quiero 1 con arroz sopa lentejas y sin cebolla y 1 con quinoa sopa calabaza y sin ensalada');
+    expect(h.cartRows()).toHaveLength(2);
+    const a=h.cartRows().find(row=>row.attrs.includes('Base:Arroz'))!;const b=h.cartRows().find(row=>row.attrs.includes('Base:Quinoa'))!;
+    expect(a).toMatchObject({qty:1,note:expect.stringMatching(/sin cebolla/i)});expect(a.note).not.toMatch(/sin ensalada/i);
+    expect(b).toMatchObject({qty:1,note:expect.stringMatching(/sin ensalada/i)});expect(b.note).not.toMatch(/sin cebolla/i);
+  });
+  it('no aplica reparto que excede cantidad existente',async()=>{
+    const h=harness(menu,false);await h.sendQueued('Quiero dos menu vegetariano');const before=structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Los quiero 2 con arroz sopa lentejas y sin cebolla y 1 con quinoa sopa calabaza y sin ensalada');
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/cantidad|repartimos/i);
+  });
+});
