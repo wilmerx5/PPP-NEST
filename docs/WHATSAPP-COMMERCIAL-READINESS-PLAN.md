@@ -96,3 +96,7 @@ No bloquea continuar simulaciones: audios/imágenes originales; validar polític
 Relevo técnico: docs/AGENT-HANDOFF-WHATSAPP.md. Próximas tandas: docs/whatsapp-next-batches.md. Fuente PDF sanitizada: scripts/fixtures/whatsapp-pdf-1110-patterns.json. Presupuesto: docs/whatsapp-model-budget.json.
 
 Próxima acción concreta: cerrar los dos patrones PDF pendientes gratis, luego un conjunto reservado focalizado con API real y por último canal real con límite de gasto. Actualizar este plan con resultados y denominadores, nunca sustituir «pendiente» por una promesa.
+
+## Actualización de evidencia: cierre de patrones de backend
+
+Tanda f35636c1, 11 de octubre: cinco nuevas regresiones y full65suites/1.824pruebas aprobado. Los dos patrones PDF que el estado inicial marcaba pendientes ya tienen ejecución de backend: reparto con notas por unidad y ráfaga pedido/dirección/barrio en dos catálogos. Índice26patrones ejercitados. La comprobación con Meta auténtico, percepción de originales y todas variaciones sigue pendiente; no convertir este cierre de backend en aprobación comercial. Staging saludable; Main no promovida. Presupuesto15 disponible, sin gasto nuevo. Próxima acción del plan: conjunto reservado focalizado e instrumentar límite de inferencia en ensayo de canal real.
