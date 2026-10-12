@@ -3228,3 +3228,27 @@ describe('Ejecutivo en tres mensajes — caso humano reportado',()=>{
     expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
   });
 });
+
+
+describe('Ráfagas complejas — cantidad, opciones y reintentos',()=>{
+  const lunch={id:9981,code:9981,name:'Menu Vegetariano',description:'Incluye sopa y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']}]};
+  for(const fixture of [
+    {menu:products,id:22,dish:'almuerzo ejecutivo',options:'Mondongo pollo frito pierna pernil papa salada',drink:'Y de tomar me puedes enviar limonada?',attrs:['Sopa:Mondongo','Presa:Pierna Pernil','Bebida:Limonada'],note:/papa salada/i},
+    {menu:[lunch],id:9981,dish:'menu vegetariano',options:'Sopa de lentejas sin ensalada',drink:'Y de tomar la bebida te',attrs:['Sopa:Lentejas','Bebida:Te'],note:/sin ensalada/i},
+  ])for(const qty of [1,2])for(const replay of [false,true]) {
+    it('unifica '+fixture.dish+' qty='+qty+' replay='+replay,async()=>{
+      jest.useFakeTimers();
+      try {
+        const h=harness(fixture.menu,false);
+        const texts=['Quiero pedir '+(qty===1?'un':'dos')+' '+fixture.dish+' por favor',fixture.options,fixture.drink];
+        const messages=texts.map((text,index)=>({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'complex-'+index,messageType:'text',text,timestamp:index+1,raw:{}}));
+        if(replay)messages.push({...messages[1]});
+        const pending=messages.map(message=>h.service.handleIncoming(message));
+        await jest.advanceTimersByTimeAsync(3000);await Promise.all(pending);
+        expect(h.replies).toHaveLength(1);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty,attrs:expect.arrayContaining(fixture.attrs),note:expect.stringMatching(fixture.note)})]);
+        expect(h.replies[0]).not.toMatch(/no manejamos|no entend[ií]/i);
+      }finally{jest.useRealTimers();}
+    });
+  }
+});

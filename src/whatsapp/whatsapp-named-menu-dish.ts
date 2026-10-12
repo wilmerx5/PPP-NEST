@@ -70,7 +70,7 @@ export function isNamedMenuDishOrderPhrase(query: string): boolean {
       /\bde\s+la\s+casa\b/.test(q) ||
       /\bdel\s+dia\b/.test(q) ||
       /\bcon\s+\w{3,}/.test(q) ||
-      /\b(?:un|una|el)\s+menu\s+(?!(?:completo|online|digital|por|favor|porfa|gracias)\b)[a-z]{3,}/.test(q)
+      /\b(?:un|una|el|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+menu\s+(?!(?:completo|online|digital|por|favor|porfa|gracias)\b)[a-z]{3,}/.test(q)
     ) {
       return true;
     }
