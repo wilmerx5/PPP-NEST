@@ -1,20 +1,25 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 20,
-  "usedRequests": 11,
-  "remainingRequests": 9,
+  "usedRequests": 18,
+  "remainingRequests": 2,
   "scope": "Current user-authorized round only; not standing authorization",
-  "acceptedConversations": 10,
+  "acceptedConversations": 11,
   "validationBaseCommit": "a3d54eae",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-11T15:18:23.633Z",
+  "lastAttemptAt": "2026-10-12T01:30:01.240Z",
   "latestEvaluation": {
-    "baseCommit": "53e4d1c1",
-    "includesWorkingTree": true,
     "model": "gpt-4.1-2025-04-14",
-    "requests": 3,
-    "automatedAcceptedConversations": 2,
-    "manuallyAcceptedConversations": 1,
-    "manualIssue": "Fish recommendation included unsupported sensory comparison; promoted to regression and corrected without more paid calls."
+    "baseCommit": "47de5597",
+    "scope": "Real OpenAI with full router; Meta and persistence isolated",
+    "attemptsThisTurn": 7,
+    "firstRun": "3 attempts; request cap prevented final reply; cart correct; not accepted",
+    "secondRun": "4 attempts; context-question-then-other-purchase accepted",
+    "acceptedThisTurn": 1,
+    "remaining": 2,
+    "logs": [
+      "/tmp/ppp-current-model-api.log",
+      "/tmp/ppp-current-model-api-completion.log"
+    ]
   }
 }

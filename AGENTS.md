@@ -13,7 +13,7 @@ Antes de continuar el agente de WhatsApp, leer `docs/AGENT-HANDOFF-WHATSAPP.md`:
 - Reproducir fallos con el router completo y dependencias externas simuladas. Comprobar carrito, estado y contenido de respuesta; un carrito correcto no acredita una respuesta clara.
 - Añadir regresiones por comportamiento. Ejecutar las suites afectadas, TypeScript y la suite completa cuando cambien reglas compartidas. Registrar commit, modelo, casos y resultados; no declarar vendible solo porque las pruebas pasan.
 - Las pruebas gratuitas no llaman a OpenAI, Meta ni crean órdenes en sistemas externos. Nunca usar un runner con inferencia por defecto.
-- La autorización de esta sesión fue de 20 solicitudes de modelo: 11 usadas, 9 restantes al 2026-10-11. Ver `docs/whatsapp-model-budget.json` y actualizar cada intento, incluidos fallos/reintentos. No reiniciar el presupuesto al cambiar agente, proceso o rama. Este registro no es permiso permanente para futuras sesiones.
+- La autorización de esta sesión fue de 20 solicitudes de modelo: 18 usadas, 2 restantes al 2026-10-11. Ver `docs/whatsapp-model-budget.json` y actualizar cada intento, incluidos fallos/reintentos. No reiniciar el presupuesto al cambiar agente, proceso o rama. Este registro no es permiso permanente para futuras sesiones.
 - En inferencia real fijar límite explícito al saldo restante, casos focalizados, una repetición y detención ante fallo. Revisar el fallo gratis antes de gastar más. No imprimir credenciales ni subirlas a Git.
 
 ## Staging y despliegue
