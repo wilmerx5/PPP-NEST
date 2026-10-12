@@ -4336,3 +4336,15 @@ describe('Pedido completo largo — alcance de cada plato',()=>{
     expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.conv.sessionData.address).toMatch(/9.*20-30.*casa 4/i);
   });
 });
+
+
+describe('Ejecutivo reportado — Plazuela y typos exactos',()=>{
+  it('ala pechuga y mondongo son opciones de un solo ejecutivo',async()=>{
+    const h=harness(products,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+    await h.sendQueued('es para pedir un eejcutivo con pollo  frito, con papa salada, ala pechuga, sopa de mondongo , me puede dar le menu sin enslada por favor, es para plazuela de san esteban');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:22,qty:1,attrs:expect.arrayContaining(['Presa:Ala, pechuga','Sopa:Mondongo']),note:expect.stringMatching(/sin ensalada/i)})]);
+    expect(h.cartRows()[0].note).toMatch(/papa salada/i);
+    expect(h.conv.sessionData.address).toMatch(/plazuela.*san esteban/i);
+    expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+  });
+});
