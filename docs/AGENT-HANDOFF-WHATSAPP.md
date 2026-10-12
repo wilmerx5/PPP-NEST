@@ -490,3 +490,8 @@ Diferencia entre asistente y bot: interpretar texto y ejecutar una mutación exa
 Regresión con el texto original del usuario (eejcutivo, enslada, ala pechuga, mondongo, papa salada y dirección). Aprobada: una sola línea de ejecutivo frito, cantidad1, Presa Ala, pechuga, Sopa Mondongo, notas sin ensalada/papa salada y dirección conservada. Prueba focalizada1 aprobada /tmp/ppp-exact-executive-plazuela.log, añadida después del full estable1.888; no afirmar full1.889. Backend simulado, cero llamadas pagadas, sin Meta. Implementación ya incluida en8c61b17c.
 
 Despliegue staging verificado 2026-10-12 11:31 Bogotá: checkout3f2862e, API running/healthy, candidata/activa iguales sha256:b19ad6786cf37dac2a8a3b4435aa62c6c149beafd0de58c963568b1b75ddd2f5, endpoint health ok/DB connected/CLOSED. Evidencia /tmp/ppp-long-orders-deploy-verified.log. Main/producción sin cambios.
+
+
+## Generalización por catálogo — 2026-10-12
+
+Base55836de3. Quince regresiones nuevas con tres menús ficticios (vegetariano, marino, oriental): componentes incluidos/dirección, adicional explícito, precio sin compra, corrección conservando cantidad/notas, dos líneas posibles piden aclaración sin mutación. Un fallo nuevo "Mejor con Ternera": no era reconocido como cambio de atributo; se acepta marcador general "mejor", con opción validada por catálogo y objetivo inequívoco. No se codifican Ternera/IDs/nombres de fixtures. Focalizadas23 aprobadas, TS aprobado; full65suites/1.904pruebas126,524s /tmp/ppp-catalog-generalization-full.log. Cero API/Meta,25 usadas/15 restantes. Leer siguiente tanda en docs/whatsapp-next-batches.md: los menús nombrados no acreditan generalización universal, falta probar compuestos sin esos tokens y contrato de inclusión/precios/permisos. Main no recibe cambios.

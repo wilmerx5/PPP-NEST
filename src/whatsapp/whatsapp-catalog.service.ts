@@ -9919,7 +9919,7 @@ export class WhatsappCatalogService {
     }
     leftover = leftover
       .replace(
-        /\b(y|con|de|el|la|lo|los|las|por|favor|porfa|gracias|un|una|para|quiero|dame|ponme|cambia|cambiar|puede|ser|que|sea)\b/g,
+        /\b(y|con|de|el|la|lo|los|las|por|favor|porfa|gracias|un|una|para|quiero|dame|ponme|mejor|cambia|cambiar|puede|ser|que|sea)\b/g,
         ' ',
       )
       .replace(/[,.;:]+/g, ' ')

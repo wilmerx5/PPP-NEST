@@ -4348,3 +4348,64 @@ describe('Ejecutivo reportado — Plazuela y typos exactos',()=>{
     expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
   });
 });
+
+// Catálogos aislados: los nombres/IDs cambian, el comportamiento esperado no.
+describe('Generalización por catálogo — opciones incluidas y extras', () => {
+  const cases = [
+    { host: 'Menu Vegetariano', attr: 'Base', option: 'Quinoa', component: 'Quinoa', other: 'Arroz', soup: 'Calabaza' },
+    { host: 'Menu Marino', attr: 'Preparacion', option: 'Plancha', component: 'Pescado Plancha', other: 'Frita', soup: 'Tomate' },
+    { host: 'Menu Oriental', attr: 'Proteina', option: 'Tofu', component: 'Tofu', other: 'Ternera', soup: 'Lentejas' },
+  ];
+  for (const [index, fixture] of cases.entries()) {
+    const id = 11000 + index * 10;
+    const menu = [
+      { id, code:id, name:fixture.host, price:19000, availableNow:true, hasAttributes:true, attributes:[
+        {attributeName:fixture.attr, options:[fixture.other,fixture.option]},
+        {attributeName:'Sopa', options:['Verduras',fixture.soup]},
+      ] },
+      {id:id+1,code:id+1,name:fixture.component,price:9000,availableNow:true,attributes:[]},
+      {id:id+2,code:id+2,name:'Sopa De '+fixture.soup,price:5000,availableNow:true,attributes:[]},
+    ];
+    it(fixture.host+' mantiene componentes dentro del menú con dirección', async()=>{
+      const h=harness(menu,false);
+      Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+      await h.sendQueued(`Por favor quiero dos ${fixture.host} con ${fixture.option}, sopa de ${fixture.soup}, sin ensalada para la calle 10 #20-30`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2,attrs:expect.arrayContaining([fixture.attr+':'+fixture.option,'Sopa:'+fixture.soup]),note:expect.stringMatching(/sin ensalada/i)})]);
+      expect(h.conv.sessionData.address).toMatch(/10.*20-30/);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it(fixture.host+' una opción compartida pide aclaración y no modifica el carrito', async()=>{
+      const second={...menu[0],id:id+3,code:id+3,name:fixture.host+' Especial'};
+      const h=harness([...menu,second],false);
+      h.conv.sessionData.cart=[menu[0],second].map(product=>({productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:2,note:'sin ensalada',attributes:[{attributeName:fixture.attr,attributeValue:fixture.option},{attributeName:'Sopa',attributeValue:fixture.soup}]}));
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Mejor con ${fixture.other}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/a cu[aá]l plato/i);
+      expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+    });
+    it(fixture.host+' consultar precio no compra el menú', async()=>{
+      const h=harness(menu,false);
+      await h.sendQueued(`Cuánto cuesta el ${fixture.host}?`);
+      expect(h.cartRows()).toEqual([]);
+      expect(h.replies.at(-1)).toMatch(/19[.,]?000/);
+    });
+    it(fixture.host+' corrige una opción sin duplicar ni perder la nota', async()=>{
+      const h=harness(menu,false);
+      await h.sendQueued(`Quiero dos ${fixture.host} con ${fixture.option} y sopa de ${fixture.soup}, sin ensalada`);
+      await h.sendQueued(`Mejor con ${fixture.other}`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2,attrs:expect.arrayContaining([fixture.attr+':'+fixture.other,'Sopa:'+fixture.soup]),note:expect.stringMatching(/sin ensalada/i)})]);
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+    it(fixture.host+' distingue sopa incluida de otra pedida aparte', async()=>{
+      const h=harness(menu,false);
+      await h.sendQueued(`Quiero dos ${fixture.host} con ${fixture.option} y sopa de ${fixture.soup}; aparte una sopa de ${fixture.soup}`);
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({id,qty:2,attrs:expect.arrayContaining([fixture.attr+':'+fixture.option,'Sopa:'+fixture.soup])}),
+        expect.objectContaining({id:id+2,qty:1}),
+      ]));
+      expect(h.replies.at(-1)).not.toMatch(/no entend[ií]|no manejamos/i);
+    });
+  }
+});
