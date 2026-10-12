@@ -4470,3 +4470,70 @@ describe('Compuestos sin envoltorio — otros restaurantes',()=>{
     });
   }
 });
+
+describe('Puerta de piloto — consultas opciones y cierre',()=>{
+  for(const [index,f] of [
+    {name:'Hamburguesa Artesanal',attr:'Queso',first:'Cheddar',next:'Mozzarella',missing:'Roquefort'},
+    {name:'Pizza Campestre',attr:'Masa',first:'Delgada',next:'Gruesa',missing:'Integral'},
+    {name:'Bowl Tropical',attr:'Base',first:'Quinoa',next:'Arroz',missing:'Cuscus'},
+  ].entries()){
+    const id=13000+index*10;
+    const menu=[{id,code:id,name:f.name,price:21000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.first,f.next]}]}];
+    const seed=async(checkout=false)=>{
+      const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+      await h.sendQueued(`Quiero dos ${f.name} con ${f.first} sin cebolla`+(checkout?' para la calle 10 #20-30, pago por transferencia':''));
+      return h;
+    };
+    it(f.name+' pregunta sobre cambio no modifica',async()=>{
+      const h=await seed();const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`¿Se puede con ${f.next}?`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).not.toMatch(/listo.*queda|ya.*cambi|agregu[eé]/i);
+    });
+    it(f.name+' precio de cambio no modifica ni inventa recargo',async()=>{
+      const h=await seed();const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`¿Cuánto cuesta cambiar ${f.attr} a ${f.next}?`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).not.toMatch(/gratis|sin (?:costo|recargo)|recargo.*\$\s*\d/i);
+    });
+    it(f.name+' opción inexistente no se aplica ni se registra como cambio aceptado',async()=>{
+      const h=await seed();const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.attr} a ${f.missing}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/opci[oó]n|prefieres|cu[aá]l|no.*(?:carta|disponible|confirmar|maneja)/i);
+      expect(h.replies.at(-1)).not.toMatch(/listo.*queda|ya.*cambi|agregu[eé]/i);
+      expect(h.replies.at(-1)).toContain(f.first);expect(h.replies.at(-1)).toContain(f.next);
+    });
+    it.each([1,2,3])(f.name+' compra %i unidades sin tomar números de la dirección',async qty=>{
+      const h=harness(menu,false);Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+      await h.sendQueued(`Quiero ${qty} ${f.name} con ${f.first} para la calle 10 #20-30 apartamento 302, pago por transferencia`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty,attrs:[f.attr+':'+f.first]})]);
+      expect(h.conv.sessionData.address).toMatch(/10.*20-30.*302/);expect(h.conv.state).toBe('awaiting_final_confirm');
+    });
+    it(f.name+' consulta condicional durante cierre no autoriza cambio',async()=>{
+      const h=await seed(true);const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Si lo cambio a ${f.next}, cuánto cuesta?`);
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe('awaiting_final_confirm');
+      expect(h.replies.at(-1)).toMatch(/confirm.*restaurante|restaurante.*confirm/i);
+    });
+    it(f.name+' cambia opción durante confirmación conservando dirección pago y nota',async()=>{
+      const h=await seed(true);expect(h.conv.state).toBe('awaiting_final_confirm');
+      await h.sendQueued(`Mejor con ${f.next}`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:2,attrs:[f.attr+':'+f.next],note:expect.stringMatching(/sin cebolla/i)})]);
+      expect(h.conv.sessionData.address).toMatch(/10.*20-30/);expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+      expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.replies.at(-1)).toMatch(/confirmar/i);
+    });
+    it(f.name+' cambia dirección durante pago y mantiene producto y notas',async()=>{
+      const h=await seed(true);h.conv.sessionData.paymentMethod=undefined;h.conv.state='awaiting_payment';const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Cambia la dirección a la carrera 8 #15-20 apartamento 302');
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toMatch(/8.*15-20.*302/);
+      expect(h.replies.at(-1)).toMatch(/c[oó]mo pagas/i);
+    });
+    it(f.name+' corrige cantidad antes de confirmar sin perder selección',async()=>{
+      const h=await seed(true);await h.sendQueued(`Deja solo un ${f.name}`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:1,attrs:[f.attr+':'+f.first],note:expect.stringMatching(/sin cebolla/i)})]);
+      expect(h.conv.sessionData.address).toMatch(/10.*20-30/);expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.conv.state).toBe('awaiting_final_confirm');
+      expect(h.replies.at(-1)).toMatch(/confirmar/i);
+    });
+  }
+});

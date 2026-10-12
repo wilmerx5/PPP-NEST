@@ -1043,6 +1043,25 @@ export class WhatsappOrchestratorService {
       await this.tryHandleScopedCartNote(conv, msg.waId, session, originalText, cfg)) return;
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
+    // Capability and surcharge inquiries are not authorization to edit a cart.
+    const optionInquiryText = this.normalizeForMatch(originalText);
+    const capabilityOnly = /^(?:se puede|puedo|es posible)\s+(?:pedir\s+)?con\s+.+$/.test(optionInquiryText);
+    const surchargeInquiry = /\b(?:cuanto|precio|costo|recargo|vale|cuesta)\b/.test(optionInquiryText) &&
+      /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/.test(optionInquiryText);
+    if (session.cart.length && (capabilityOnly || surchargeInquiry)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const targets = this.catalogService.listCartAttributeOptionsNamedInText(originalText, session.cart, menu);
+      const summaries = [...new Set(targets.map(target => {
+        const product = menu.find(product => product.id === session.cart[target.cartIndex]?.productId);
+        const attr = product?.attributes?.find(attr => attr.attributeName === target.attributeName);
+        return product && attr ? `${product.name}: ${attr.attributeName} — ${attr.options.join(', ')}` : '';
+      }).filter(Boolean))];
+      await this.reply(conv, msg.waId, (summaries.length ? 'Opciones de la carta:\n' + summaries.join('\n') + '\n\n' : '') +
+        (surchargeInquiry ? 'No tengo un recargo de cambio confirmado en la carta; debe confirmarlo el restaurante. El pedido sigue igual.' :
+          summaries.length ? 'Esa opción aparece en la carta. El pedido sigue igual. Para pedir el cambio, indica el plato y la opción.' :
+          'No pude confirmar esa opción para tu pedido. El pedido sigue igual. ¿Qué opción quieres consultar?'));
+      return;
+    }
     const conditionalDrink = originalText.match(/^si\s+tienes\s+(?:por\s+favor\s+)?con\s+(.+?)[,;]?\s+si\s+no\s+con\s+(.+?)[.!?]*$/i);
     if (conditionalDrink && session.cart.length && !session.pendingMatch && !session.pendingAttribute) {
       const menu = await this.catalogService.getMenuProducts();
@@ -5180,11 +5199,12 @@ export class WhatsappOrchestratorService {
       opts?.segment ||
       pm?.needsAttributes?.find((n) => n.productId === product.id)?.segment ||
       pm?.confident?.find((n) => n.productId === product.id)?.segment;
-    const sourceText = opts?.sourceText || segment || session.pendingMatch?.query || '';
+    const sourceText = this.parseCompoundOrderMessage(opts?.sourceText || segment || session.pendingMatch?.query || '').productText;
+    const quantitySegment = segment ? this.parseCompoundOrderMessage(segment).productText : sourceText;
 
-    if (segment || sourceText) {
-      const qty = Math.max(this.quantityForMultiSegment(segment || sourceText, product.name, sourceText),
-        this.catalogService.extractQuantityFromMessage(segment || sourceText, [product]));
+    if (quantitySegment || sourceText) {
+      const qty = Math.max(this.quantityForMultiSegment(quantitySegment || sourceText, product.name, sourceText),
+        this.catalogService.extractQuantityFromMessage(quantitySegment || sourceText, [product]));
       if (qty >= 2) return qty;
       if (segment && this.catalogService.extractQuantityFromSegment(
         this.rawOrderSegmentForQuantity(segment, sourceText),
@@ -15168,6 +15188,25 @@ export class WhatsappOrchestratorService {
             : `${selected[0].name} ${pendingEdit.sourceText}`;
           session = {...session, pendingCartAttributeEdit:undefined};
         }
+      }
+    }
+    const changeQuery = this.normalizeForMatch(text);
+    if (/^(?:cambia|cambiar|cambialo|cambiala)\b/.test(changeQuery)) {
+      const scopedLines = session.cart.filter(line => this.catalogService.isCartProductNamedInText(line.name, text));
+      const candidates = scopedLines.length ? scopedLines : session.cart;
+      const namedAttributes = candidates.flatMap(line => {
+        const product = products.find(product => product.id === line.productId);
+        return (product?.attributes || []).filter(attr =>
+          (` ${changeQuery} `).includes(` ${this.normalizeForMatch(attr.attributeName)} `))
+          .map(attr => ({line,attr}));
+      });
+      const validChoice = namedAttributes.some(({attr}) =>
+        attr.options.some(option => (` ${changeQuery} `).includes(` ${this.normalizeForMatch(option)} `)));
+      if (namedAttributes.length && !validChoice) {
+        await this.reply(conv, waId, 'No pude confirmar esa opción en la carta. El pedido sigue igual.\n\n' +
+          namedAttributes.map(({line,attr}) => `${line.name}: ${attr.attributeName} — ${attr.options.join(', ')}`).join('\n') +
+          '\n\n¿Cuál prefieres?');
+        return true;
       }
     }
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);

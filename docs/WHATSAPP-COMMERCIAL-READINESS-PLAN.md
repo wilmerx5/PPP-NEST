@@ -10,7 +10,7 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 
 ## Dónde estamos: evidencia y límites
 
-- Backend: 65 suites / 1.928 pruebas aprobadas, TypeScript aprobado. Log final /tmp/ppp-compound-catalog-full-stable.log. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
+- Backend: 65 suites / 1.958 pruebas aprobadas, TypeScript aprobado. Log final /tmp/ppp-pilot-gate-full.log. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
 - Generalización: menús ficticios vegetarianos, marinos y orientales; hamburguesas, pizzas y bowls sin conceptos de ejecutivo/menú. Las últimas dos tandas añadieron39 casos y encontraron errores reales en correcciones y alcance. Esto acredita esos patrones en esos catálogos; no cualquier restaurante ni aislamiento multitenant.
 - Versión validada y desplegada de código: a46e3cb8 en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada12/10 a las11:54 Bogotá. HEAD posterior2feddb72 solo documenta la evidencia; una actualización documental no requiere reconstruir API.
 - Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.
@@ -102,4 +102,8 @@ Audios/imágenes originales son necesarios para ampliar esos canales, no para in
 
 Estado: docs/AGENT-HANDOFF-WHATSAPP.md. Tandas: docs/whatsapp-next-batches.md. Presupuesto: docs/whatsapp-model-budget.json. Índice PDF sanitizado: scripts/fixtures/whatsapp-pdf-1110-patterns.json.
 
-Siguiente acción: ejecutar la tanda gratuita de opciones inexistentes/condicionales/cambios durante cierre, luego medir recorridos con inferencia y canal real acotados. Este pedido actualiza el plan; no inicia nuevas llamadas pagadas ni promueve a producción.
+Siguiente acción: medir recorridos con inferencia y canal real acotados; añadir primero un límite efectivo para el ensayo real. La tanda gratuita de opciones inexistentes/consultas/cambios durante cierre está cerrada en su alcance documentado. No promueve automáticamente a producción ni acredita el piloto.
+
+## Cierre de la tanda gratuita previa al piloto — 12/10
+
+30regresiones nuevas;76focalizadas + full65suites/1.958pruebas y TS aprobados. Corregidas preguntas que cambiaban opciones, fuente de cantidad contaminada por dirección y respuesta de opción inexistente que se confundía con plato. Preguntas de recargo sin datos no alteran carrito ni inventan precio; cambios explícitos durante cierre conservan dirección/pago/nota y renuevan resumen. El contrato no contiene tarifas/permisos de sustitución: se deriva su confirmación, no se acredita recargo automático. Cero llamadas pagadas, saldo15. Estado desplegado de esta tanda se registra en el relevo después de verificar servidor. Versión a46e3cb8 en la sección histórica corresponde a la tanda anterior; no confundir con nuevo cierre.
