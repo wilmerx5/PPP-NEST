@@ -12,6 +12,8 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
+  { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
   // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
   { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },
   // "perdon de mango" corrige el pedido; perdón no es el producto.
@@ -230,6 +232,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\b(?:roaster|broster|brouster)\b/gi, to: 'broaster' },
   { re: /\bfrittos?\b/gi, to: 'frito' },
   { re: /\bplacha\b/gi, to: 'plancha' },
+  { re: /\bgritarme\b/gi, to: 'fritarme' },
+  { re: /\bqieceste\s+jugositos?\b/gi, to: 'que esté jugoso' },
+  { re: /\bque\s+este\s+jugositos?\b/gi, to: 'que esté jugoso' },
   { re: /\brecogo\b/gi, to: 'recojo' },
   { re: /\brecoger\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
   { re: /\brecojo\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },

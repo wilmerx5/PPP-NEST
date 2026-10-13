@@ -101,7 +101,7 @@ export function isPostOrderFollowUpIntent(text: string): boolean {
   }
 
   if (
-    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancelar?\s+((el|mi|este)\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
+    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancela(?:r|me)?\s+(?:(?:el|la|mi|este|esta|ese|esa)\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
       t,
     )
   ) {
@@ -357,6 +357,8 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t)) return false;
   if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2) return false;
   if (isCourtesyAffirmation(t)) return false;
+  // Cierre del pedido o consulta de precio, no la identidad del cliente.
+  if (/^(?:asi\s+esta\s+bien|esta\s+bien\s+asi|(?:que\s+)?precio\s+tiene)$/.test(t)) return false;
 
   return true;
 }
@@ -640,6 +642,29 @@ export function isCartItemReplacementIntent(text: string): boolean {
   return !!parseCartItemReplacement(text);
 }
 
+const COOKING_STYLE_WORD =
+  'broaster|frito|frita|asado|asada|plancha|horno|sudado|sudada';
+
+/**
+ * "No era broaster, era frito": el estilo nuevo es el último.
+ * No cubre guarniciones ni un pedido nuevo.
+ */
+export function parseCookingStyleLineCorrection(
+  text: string,
+): { from: string; to: string } | null {
+  const raw = (text || '').trim();
+  if (!raw || raw.length > 120 || /[¿?]/.test(raw)) return null;
+  const match = raw.match(new RegExp(
+    `^(?:(?:perdon|perdona|disculpa|disculpe)(?:me)?[, ]+)?no era (?:el |la |lo |un |una |pollo )?(${COOKING_STYLE_WORD})(?:[, ]+|\\s+)(?:era|es|sino) (?:el |la |lo |un |una |pollo |a la )?(${COOKING_STYLE_WORD})\\b`,
+    'i',
+  ));
+  if (!match) return null;
+  const from = match[1].toLowerCase();
+  const to = match[2].toLowerCase();
+  if (from === to) return null;
+  return { from, to };
+}
+
 /** "2 de cada una" después de una lista de platos. */
 export function parseEachOfQuantity(text: string): number | null {
   const m = (text || '').match(/\b(\d{1,2})\s+de\s+cada\s+(una|uno)\b/i);
@@ -840,14 +865,21 @@ export function isWrongChatApology(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   if (!t) return false;
+  if (/\b(?:telefono|celular|numero)\b/.test(t) && /(?:\d[ -]*){7,}/.test(t)) return false;
   const sorry = /\b(perdon\w*|disculp\w*|sorry)\b/.test(t);
   const confused = /\b(confund\w*|confunci\w*|equivo\w*|enrede)\b/.test(t);
+  const explicitWrongRecipient =
+    /\b(?:me|nos)\s+(?:equivo\w*|confund\w*|confunci\w*)\s+de\s+(?:chat|numero)\b/.test(t) ||
+    /\b(?:numero|chat)\s+equivocado\b/.test(t) ||
+    /\bwrong\s+(?:chat|number)\b/.test(t) ||
+    /\b(?:este|ese|el)\s+mensaje\s+(?:era|es)\s+para\s+(?:otro|otra)\s+(?:chat|numero|tienda|restaurante|negocio)\b/.test(t) ||
+    /\bno\s+era\s+para\s+ustedes\b/.test(t);
+  if (explicitWrongRecipient) return true;
   const thoughtElsewhere =
     /\b(pense|pensaba|crei|creia)\b/.test(t) &&
-    /\b(hablaba|hablando|era|escribia|escribiendo)\b/.test(t);
-  const wrongChat = /\b(otro chat|mal chat|chat equivocado|no era (este|aqui|aca))\b/.test(t);
-  if (thoughtElsewhere) return true;
-  if (wrongChat && (sorry || confused)) return true;
+    /\b(hablaba|hablando|era|escribia|escribiendo)\b/.test(t) &&
+    /\b(?:supermercado|otro\s+chat|otra\s+tienda|otro\s+restaurante|otro\s+numero)\b/.test(t);
+  if (thoughtElsewhere && (sorry || confused || /\b(?:otro|otra)\b/.test(t))) return true;
   if (sorry && confused && /\b(supermercado|chat|numero|restaurante|tienda)\b/.test(t)) return true;
   return false;
 }

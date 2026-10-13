@@ -70,6 +70,8 @@ export type WhatsappSessionData = {
    */
   ignorePriorOrderHistory?: boolean;
   pendingMatch?: {
+    /** A retained browse list after its chosen item was already added. */
+    selectionAdded?: boolean;
     query: string;
     candidates: WhatsappProductCandidate[];
     /** info = eligió variante para ver detalle (no agregar al carrito) */

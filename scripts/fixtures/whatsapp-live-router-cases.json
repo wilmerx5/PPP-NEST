@@ -2200,5 +2200,117 @@
         }
       }
     ]
+  },
+  {
+    "id": "courtesy-wrong-recipient-new-purchase",
+    "messages": [
+      {
+        "text": "Buenas tardes vecino, me hace el favor me manda una libra de arroz, dos aceites y un kilo de azúcar",
+        "expect": {
+          "items": {},
+          "replyForbid": [
+            "me hace",
+            "favor me manda"
+          ]
+        }
+      },
+      {
+        "text": "Disculpa, me equivoqué de chat",
+        "expect": {
+          "items": {},
+          "replyForbid": [
+            "libra de arroz",
+            "aceites",
+            "Entendí varios platos"
+          ]
+        }
+      },
+      {
+        "text": "Ahora sí quiero un churrasco por favor",
+        "expect": {
+          "items": {
+            "17": 1
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "executive-description-interruption-current",
+    "messages": [
+      {
+        "text": "Porfa dos almuerzos ejecutivos",
+        "expect": {
+          "items": {}
+        }
+      },
+      {
+        "text": "Qué trae Ejecutivo Con Pollo Frito?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "Ejecutivo"
+          ]
+        }
+      },
+      {
+        "text": "Mondongo pollo frito pierna pernil papa salada",
+        "expect": {
+          "items": {
+            "22": 2
+          },
+          "attrs": [
+            {
+              "id": 22,
+              "key": "Sopa",
+              "value": "Mondongo"
+            }
+          ]
+        }
+      },
+      {
+        "text": "La bebida limonada",
+        "expect": {
+          "items": {
+            "22": 2
+          },
+          "attrs": [
+            {
+              "id": 22,
+              "key": "Bebida",
+              "value": "Limonada"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "thought-price-keeps-cart-current",
+    "initialCart": [
+      {
+        "id": 1,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Arepas",
+            "attributeValue": "Blancas"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "Pensaba que era más barato, cuánto vale?",
+        "expect": {
+          "items": {
+            "1": 1
+          },
+          "replyForbid": [
+            "no es un pedido ni una dirección"
+          ]
+        }
+      }
+    ]
   }
 ]

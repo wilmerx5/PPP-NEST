@@ -247,6 +247,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
     /^(solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
       t,
     ) ||
+    /^(?:asi\s+esta\s+bien|esta\s+bien\s+asi)$/.test(t) ||
     // "no solo eso" / "no, solo eso" tras ¿Algo más? = eso es todo, no un barrio
     /^no\s+(solo|solamente|unicamente)\s+eso$/.test(t)
   );
