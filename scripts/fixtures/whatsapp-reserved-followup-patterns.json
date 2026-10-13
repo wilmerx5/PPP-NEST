@@ -17,7 +17,8 @@
         "do not buy comparison alternatives",
         "independent drink purchase is handled or explicitly clarified, never silently lost"
       ],
-      "status": "reserved-not-executed"
+      "status": "consumed-development-passed",
+      "evidence": "whatsapp-general-accuracy.spec.ts Reservados aún no corridos"
     },
     {
       "id": "next-comparison-multiline-purchase",
@@ -29,7 +30,8 @@
         "two beverages only",
         "no unintended purchase of compared dishes"
       ],
-      "status": "reserved-not-executed"
+      "status": "consumed-development-passed",
+      "evidence": "whatsapp-general-accuracy.spec.ts Reservados aún no corridos"
     },
     {
       "id": "next-address-note-payment-with-variant",
@@ -68,6 +70,33 @@
         "exactly ten referenced products",
         "date time address and note preserved or unresolved clause explicitly clarified",
         "no reservation claim"
+      ],
+      "status": "consumed-development-passed",
+      "evidence": "whatsapp-general-accuracy.spec.ts Reservados aún no corridos"
+    },
+    {
+      "id": "holdout-second-line-note",
+      "messages": [
+        "Un ramen y un gyoza",
+        "Al segundo quítale la salsa"
+      ],
+      "invariants": [
+        "only the second line changes",
+        "first line stays intact",
+        "no extra dish"
+      ],
+      "status": "reserved-not-executed"
+    },
+    {
+      "id": "holdout-tomorrow-during-open-choice",
+      "messages": [
+        "Un combo de la casa",
+        "Mañana a las 3"
+      ],
+      "invariants": [
+        "open choice stays open",
+        "tomorrow is not a drink or a product",
+        "schedule is stored or asked, never a purchase"
       ],
       "status": "reserved-not-executed"
     },

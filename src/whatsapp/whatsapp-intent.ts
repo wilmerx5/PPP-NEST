@@ -10,6 +10,7 @@ import {
   isConfirmCurrentAddressIntent,
   isDeliveryEtaInquiry,
   isDeliveryRangeQuestion,
+  isWrongChatApology,
 } from './whatsapp-session-intents';
 
 export type WhatsappMessageIntent =
@@ -523,6 +524,7 @@ export function looksLikeAddressOnlyMessage(
 ): boolean {
   const raw = (text || '').trim();
   if (raw.length < 4) return false;
+  if (isWrongChatApology(raw)) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
 
   // Pedido / comida → nunca “solo dirección” (aunque traiga calle al final)

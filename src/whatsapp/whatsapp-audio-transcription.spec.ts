@@ -32,3 +32,24 @@ describe('Audio transcription format and failures — offline',()=>{
     expect(await service.transcribeAudio(Buffer.from('mock-audio'),'audio/ogg')).toBeNull();expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 });
+
+describe('Audio vocabulary and model controls — offline',()=>{
+ const originalFetch=global.fetch;const originalModel=process.env.WHATSAPP_AUDIO_MODEL;
+ beforeEach(()=>{delete process.env.WHATSAPP_AUDIO_MODEL;});
+ afterEach(()=>{global.fetch=originalFetch;if(originalModel===undefined)delete process.env.WHATSAPP_AUDIO_MODEL;else process.env.WHATSAPP_AUDIO_MODEL=originalModel;jest.restoreAllMocks();});
+ const make=()=>new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'fixture-key'})} as never);
+ it('sends bounded catalog spellings without prices or instructions and preserves exact words',async()=>{
+   const transcript='Dos combos de alitas, Pepsi, sin salsa. Para la calle 9.';
+   const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({text:transcript})});global.fetch=fetchMock;
+   expect(await make().transcribeAudio(Buffer.from('fixture'),'audio/ogg',['Alitas Broaster','Pepsi','Quinoa','16000',...Array.from({length:200},(_,i)=>'Nombre Extenso de Producto '+i)])).toBe(transcript);
+   const form=fetchMock.mock.calls[0][1].body as FormData;const prompt=String(form.get('prompt'));
+   expect(prompt).toContain('Alitas Broaster');expect(prompt).toContain('Pepsi');expect(prompt).not.toMatch(/16000/);expect(Buffer.byteLength(prompt,'utf8')).toBeLessThanOrEqual(200);expect(form.get('response_format')).toBe('json');
+   expect(fetchMock).toHaveBeenCalledTimes(1);
+ });
+ it.each(['gpt-4o-mini-transcribe','gpt-4o-transcribe'])('candidate %s is explicit and never retries silently',async model=>{
+   process.env.WHATSAPP_AUDIO_MODEL=model;const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({text:'Un bowl'})});global.fetch=fetchMock;
+   await make().transcribeAudio(Buffer.from('fixture'),'audio/ogg');expect((fetchMock.mock.calls[0][1].body as FormData).get('model')).toBe(model);expect(fetchMock).toHaveBeenCalledTimes(1);
+ });
+ it('unknown model avoids a paid request',async()=>{process.env.WHATSAPP_AUDIO_MODEL='typo-model';const fetchMock=jest.fn();global.fetch=fetchMock;jest.spyOn((make() as any).logger,'error').mockImplementation(()=>undefined);expect(await make().transcribeAudio(Buffer.from('fixture'),'audio/ogg')).toBeNull();expect(fetchMock).not.toHaveBeenCalled();});
+ it('oversized audio avoids paid request',async()=>{const fetchMock=jest.fn();global.fetch=fetchMock;expect(await make().transcribeAudio(Buffer.alloc(25_000_001),'audio/ogg')).toBeNull();expect(fetchMock).not.toHaveBeenCalled();});
+});

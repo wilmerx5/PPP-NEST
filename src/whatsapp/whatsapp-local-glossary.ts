@@ -12,6 +12,8 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // "perdon de mango" corrige el pedido; perdón no es el producto.
+  { re: /^(?:perdon|perdona|disculpa|disculpe|sorry)(?:\s+de)?[\s,]+/i, to: '' },
   // Saludos rotos / typos de arranque
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
   { re: /\bquieres\s+in\b/gi, to: 'quiero un' },
@@ -83,6 +85,16 @@ const PHRASE_REWRITES: Array<{
   { re: /\bcombo\s+(?:de\s+)?pollo\s+misto\b/gi, to: 'combo pollo mixto' },
   { re: /\bsobre\s+barriga\b/gi, to: 'sobrebarriga' },
   { re: /\bsopitas?\b/gi, to: 'sopa' },
+  // Vocativo a mitad de frase: "sopa de ajiaco veci GR" no es un plato llamado veci.
+  { re: /\bveci\b/gi, to: '' },
+  // Tamaño abreviado. "500 gr" sigue siendo peso.
+  { re: /(?<!\d\s)\bgr\b/gi, to: 'grande' },
+  { re: /\bgrandecit[oa]s?\b/gi, to: 'grande' },
+  { re: /\bpequenit[oa]s?\b/gi, to: 'pequeña' },
+  // "bastante ai" / "Aji*" = ají, no otro plato.
+  { re: /\b(?:harto|arto|mucho|mucha|bastante)\s+ai\b/gi, to: 'bastante ají' },
+  { re: /\baji\*+/gi, to: 'ají' },
+  { re: /\bdearroz\b/gi, to: 'de arroz' },
   // "y una menos de una sopita…" = y también una sopa… (evitar "y y una")
   { re: /\by\s+una\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'y una ' },
   { re: /\buna\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'una ' },
@@ -164,6 +176,7 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bensaldas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
   { re: /\bcr[eé]dit\b/gi, to: 'crédito' },
   { re: /\bquieor\b/gi, to: 'quiero' },
+  { re: /\bme\s+condes\b/gi, to: 'quiero' },
   { re: /\bquiiero\b/gi, to: 'quiero' },
   { re: /\bqiero\b/gi, to: 'quiero' },
   { re: /\bkiero\b/gi, to: 'quiero' },

@@ -319,6 +319,7 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'regala',
   ]);
   if (blockedExact.has(t)) return false;
+  if (/^no\s+(?:dame|quiero|regalame|ponme|agrega|cambia)\b/.test(t)) return false;
   // Quantity correction fragments can leak from old model turns into identity.
   if (/^(?:(?:solo|solamente)\s+)?(?:eran?|faltan?|quita|quitar|cambia|cambiar)\b/.test(t)) return false;
   // "Este", "eso" señalan el plato; no son el nombre.
@@ -826,10 +827,36 @@ export function extractCoverageAddressProbe(text: string): string | null {
   return null;
 }
 
+/**
+ * Se equivocó de chat: "perdón, pensé que hablaba con el supermercado".
+ * No es un pedido ni una dirección, aunque nombre un lugar.
+ */
+export function isWrongChatApology(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return false;
+  const sorry = /\b(perdon\w*|disculp\w*|sorry)\b/.test(t);
+  const confused = /\b(confund\w*|confunci\w*|equivo\w*|enrede)\b/.test(t);
+  const thoughtElsewhere =
+    /\b(pense|pensaba|crei|creia)\b/.test(t) &&
+    /\b(hablaba|hablando|era|escribia|escribiendo)\b/.test(t);
+  const wrongChat = /\b(otro chat|mal chat|chat equivocado|no era (este|aqui|aca))\b/.test(t);
+  if (thoughtElsewhere) return true;
+  if (wrongChat && (sorry || confused)) return true;
+  if (sorry && confused && /\b(supermercado|chat|numero|restaurante|tienda)\b/.test(t)) return true;
+  return false;
+}
+
 /** Salir de lista / atributos / multi sin cancelar todo el pedido. */
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();
   if (!t) return false;
+  if (isWrongChatApology(t)) return true;
   // Saludo suelto mientras hay selección pendiente = salir del atrape
   if (
     /^(hola|buenas|buenos\s+dias|buenas\s+tardes|buenas\s+noches|hey|hi)[\s!.?]*$/i.test(

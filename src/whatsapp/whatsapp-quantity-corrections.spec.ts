@@ -26,6 +26,7 @@ function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'
     countInboundMessages: jest.fn(async () => 2),
   };
   service.claimedInboundIdsByWaId = new Map();
+  service.orderCoverageNoticesByWaId = new Map();
   service.settingsService = { getEffectiveConfig: async () => ({ enabled: true, agentV1Enabled: true, ignoreBusinessHours: true, paymentMethods: [] }) };
   service.businessService = { getStatus: async () => ({ isOpen: true }) };
   service.agentService = { runTurn: jest.fn(() => { throw Error('Quantity correction must not call OpenAI'); }) };
@@ -153,7 +154,7 @@ describe('Corrections preserve the rest of an existing cart', () => {
     'Deja solo un ajiaco, los otros dos no', 'Era un pollo, pero agrega dos limonadas'])('leaves other intents to their existing handlers: %s', text => {
     expect(parseCartQuantityCorrection(text)).toBeNull();
   });
-  it.each(['con las arepas fritas', 'Arepas fritas', 'fritas'])('omits a duplicated chosen attribute note: %s', note => {
+  it.each(['con las arepas fritas', 'Arepas fritas', 'fritas', 'con las arepas fritas por'])('omits a duplicated chosen attribute note: %s', note => {
     expect(omitRedundantAttributeNote(note, [{ attributeName: 'Arepas', attributeValue: 'Fritas' }])).toBeUndefined();
   });
   it.each(['arepas aparte', 'con arepas fritas y sin ensalada', 'papas bien crocantes', 'sin arroz',

@@ -57,7 +57,7 @@ export function splitTrailingEmbeddedAddress(
   const casaIdx = lastMatchIndex(raw, /\bcasa\s*\d{1,4}[a-z]?\b/i);
   const complexIdx = lastMatchIndex(
     raw,
-    /\b(?:terrazas?|bosques?|tierras?|villas?|parques?|brisas?|alamedas?|jardines?|ciudadelas?|portales?)\s+(?:de|del|de\s+la)\b/i,
+    /\b(?:terrazas?|bosques?|tierras?|villas?|parques?|brisas?|alamedas?|jardines?|ciudadelas?|portales?|plazuelas?|conjuntos?)\s+(?:de|del|de\s+la|de\s+los|de\s+las)\b/i,
   );
   const streetIdx = lastMatchIndex(raw, STREET_START_RE);
   const zoneIdx = lastMatchIndex(raw, PPP_ZONE_LANDMARK_RE);
@@ -132,5 +132,7 @@ function looksLikeEmbeddedAddress(addr: string): boolean {
     return true;
   }
   if (ADDR_TAIL_HINT_RE.test(a) && /\d/.test(a) && a.split(/\s+/).length >= 2) return true;
+  // "portería de la Alameda": lugar sin número de calle.
+  if (/\bporter[ií]a\b/i.test(a) && a.split(/\s+/).length >= 3) return true;
   return false;
 }

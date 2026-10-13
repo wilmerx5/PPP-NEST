@@ -81,6 +81,11 @@ export type WhatsappSessionData = {
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
   };
+  /**
+   * "Uno con …" y luego "el otro con …" llegan antes de cerrar el plato.
+   * Se reparte cuando el producto ya está en el carrito.
+   */
+  pendingUnitSplit?: string;
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   pendingMultiOrder?: {
     confident: Array<{
@@ -132,6 +137,19 @@ export type WhatsappSessionData = {
   /**
    * Tras cotizar precio (“¿Te lo agrego?”): si responde *sí*, agregar este SKU.
    */
+  /**
+   * El cliente quiere cambiar un acompañamiento que el plato sí trae
+   * por algo que esa sopa o ese plato no incluye. Sí agrega la porción aparte.
+   */
+  pendingSideSwap?: {
+    cartIndex: number;
+    productId: number;
+    removeSide: string;
+    addProductId?: number;
+    addUnitPrice?: number;
+    /** Older pending offers without a signature must be re-confirmed. */
+    cartSignature?: string;
+  };
   pendingAddOffer?: {
     productId: number;
     name: string;

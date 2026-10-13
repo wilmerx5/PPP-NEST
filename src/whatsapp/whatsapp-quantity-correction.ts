@@ -48,7 +48,8 @@ export function correctionMatchesLine(line: WhatsappCartItem, query: string): bo
 /** Omit an attribute-only note; keep packaging instructions and mixed kitchen notes intact. */
 export function omitRedundantAttributeNote(note: string | undefined, attributes: WhatsappCartItem['attributes']): string | undefined {
   if (!note?.trim()) return note;
-  const text = normalizeCorrection(note);
+  const text = normalizeCorrection(note).replace(/\bpor(?:\s+favor)?$/, '').trim();
+  if (!text) return undefined;
   for (const attr of attributes || []) {
     const name = normalizeCorrection(attr.attributeName), value = normalizeCorrection(attr.attributeValue);
     const allowed = new Set(`${name} ${value} con el la los las de al estilo`.split(' '));
