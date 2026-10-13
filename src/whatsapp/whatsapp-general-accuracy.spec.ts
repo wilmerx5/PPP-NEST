@@ -6204,3 +6204,69 @@ describe('Ráfagas mixtas — pedido compuesto y duplicado tardío', () => {
     });
   }
 });
+
+describe('Menús completos — consultas, extras y reinicio básicos', () => {
+  const lunch={id:11101,code:11101,name:'Menu Vegetariano',description:'Incluye sopa y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']}]};
+  const tea={id:11102,code:11102,name:'Te Helado',price:4000,availableNow:true,hasAttributes:false,attributes:[]};
+  for (const f of [
+    {menu:products,id:22,drink:37,name:'Ejecutivo Con Pollo Frito',turns:['Quiero dos almuerzos ejecutivos','Mondongo pollo frito pierna pernil papa salada','La bebida limonada'],extra:'Y una limonada natural adicional aparte'},
+    {menu:[lunch,tea],id:11101,drink:11102,name:'Menu Vegetariano',turns:['Quiero dos menu vegetariano','Sopa de lentejas sin ensalada','La bebida te'],extra:'Y un te helado adicional aparte'},
+  ]) {
+    async function setup() {
+      const h=harness(f.menu,false);
+      for(const text of f.turns) await h.sendQueued(text);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:f.id,qty:2})]);
+      return h;
+    }
+    it('preguntar precio conserva las dos unidades y todas sus opciones: '+f.id, async()=>{
+      const h=await setup(); const before=structuredClone(h.conv.sessionData.cart);
+      const reply=await h.sendQueued('Cuánto cuesta '+f.name+'?');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(reply).toMatch(/\$/);
+      expect(reply).not.toMatch(/agregué|Listo ✅/i);
+    });
+    it('bebida adicional agrega solo una y conserva las incluidas: '+f.id, async()=>{
+      const h=await setup(); const before=structuredClone(h.cartRows()[0]);
+      await h.sendQueued(f.extra);
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([before,expect.objectContaining({id:f.drink,qty:1})]));
+    });
+    it('cambiar cantidad del menú conserva extra independiente: '+f.id, async()=>{
+      const h=await setup(); await h.sendQueued(f.extra);
+      const before=structuredClone(h.cartRows().find(row=>row.id===f.drink));
+      await h.sendQueued('Perdón, quiero tres '+f.name);
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:f.id,qty:3}),before]));
+    });
+    it('reinicio vacía menús, extras y elecciones pendientes: '+f.id, async()=>{
+      const h=await setup(); await h.sendQueued(f.extra);
+      await h.sendQueued('Reiniciar');
+      expect(h.cartRows()).toEqual([]);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+      expect(h.conv.sessionData.pendingMultiOrder).toBeFalsy();
+      expect(h.replies.at(-1)).toMatch(/vaci|reinici|nuevo pedido/i);
+    });
+  }
+});
+
+describe('Ejecutivos plurales — cantidad y contexto de opciones',()=>{
+  for(const [request,qty] of [
+    ['Porfa dos almuerzos ejecutivos',2],
+    ['Tres almuerzos ejecutivo por favor',3],
+    ['Quiero 2 almuerzo ejecutivos',2],
+    ['Me envias 3 ALMUERZOS EJECUTIVOS por favor',3],
+  ] as const) for(const agent of [false,true]) {
+    it(request+' agent='+agent,async()=>{
+      const h=harness(products,agent);
+      await h.sendQueued(request);
+      expect(h.cartRows()).toEqual([]);
+      await h.sendQueued('Mondongo pollo frito pierna pernil papa salada');
+      await h.sendQueued('La bebida limonada');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:22,qty,
+        attrs:expect.arrayContaining(['Sopa:Mondongo','Presa:Pierna Pernil','Bebida:Limonada']),
+        note:expect.stringMatching(/papa salada/i)})]);
+      expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+    });
+  }
+});

@@ -12,6 +12,8 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
+  { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },
   // "perdon de mango" corrige el pedido; perdón no es el producto.
   { re: /^(?:perdon|perdona|disculpa|disculpe|sorry)(?:\s+de)?[\s,]+/i, to: '' },
   // Saludos rotos / typos de arranque
@@ -67,7 +69,7 @@ const PHRASE_REWRITES: Array<{
   },
   { re: /\bpollo\s+a\s+la\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\bpollo\s+ala\s+broaster\b/gi, to: 'pollo broaster' },
-  { re: /\balmuerzo\s+ejecutivo\b/gi, to: 'ejecutivo' },
+  { re: /\balmuerzos?\s+ejecutivos?\b/gi, to: 'ejecutivo' },
   { re: /\b1\s+almuerzo\s+ejecutivo\b/gi, to: '1 ejecutivo' },
   { re: /\bmen[uú]\s+ejecutivo\b/gi, to: 'ejecutivo' },
   { re: /\b1\s+men[uú]\s+ejecutivo\b/gi, to: '1 ejecutivo' },
