@@ -827,8 +827,29 @@ export class WhatsappOrchestratorService {
 
     // A deictic rejection refers to the one unfinished selection, not the confirmed cart.
     const pendingSelection = this.conversationService.getSession(conv);
-    const rejectSelection = /^(?:olvida (?:eso|esa seleccion)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(this.normalizeForMatch(originalText));
-    if (rejectSelection && !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) &&
+    const cancellationText = this.normalizeForMatch(originalText)
+      .replace(/^(?:(?:por favor|porfavor|porfa)\s+)+/, '')
+      .replace(/(?:\s+(?:por favor|porfavor|porfa|muchas gracias|gracias))+$/, '')
+      .replace(/^cansela\b/, 'cancela').replace(/\bselecsion\b/g, 'seleccion');
+    const activeSelection = !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state);
+    if (activeSelection && pendingSelection.pendingCartAttributeEdit) {
+      const stopChange = /^(?:olvida (?:eso|ese cambio|esa seleccion)|cancela (?:ese cambio|esa seleccion))$/.test(cancellationText);
+      const stopAttribute = cancellationText.match(/^no cambies (?:el|la) (.+)$/);
+      const menu = stopAttribute ? await this.catalogService.getMenuProducts() : [];
+      const knownAttribute = !!stopAttribute && menu.some(product =>
+        pendingSelection.cart.some(line => line.productId === product.id) && product.attributes?.some(attr =>
+          this.normalizeForMatch(attr.attributeName) === stopAttribute[1]));
+      if (stopChange || knownAttribute) {
+        const next = { ...pendingSelection, pendingCartAttributeEdit: undefined };
+        await this.conversationService.saveSession(conv, next);
+        await this.reply(conv, msg.waId, 'Cancelé ese cambio. Conservo las opciones y cantidades originales.\n\n' +
+          this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) + '\n\n' +
+          (this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
+        return;
+      }
+    }
+    const rejectSelection = /^(?:olvida (?:eso|esa seleccion)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(cancellationText);
+    if (rejectSelection && activeSelection &&
       !pendingSelection.pendingMultiOrder && (pendingSelection.pendingAttribute || pendingSelection.pendingMatch)) {
       const attribute = pendingSelection.pendingAttribute;
       // Rejecting a combo's beverage may be an option change, rather than abandoning the whole dish.
@@ -1194,6 +1215,13 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryResolvePendingPriceInquiry(conv, msg.waId, session, originalText, cfg)) return;
+    if (session.pendingCartAttributeEdit && !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) && !/[¿?]/.test(originalText)) {
+      const answer = this.normalizeForMatch(originalText);
+      const selection = /^(?:(?:el|la)\s+)?(?:primero|primera|segundo|segunda|tercero|tercera|\d{1,2})$/.test(answer) ||
+        session.pendingCartAttributeEdit.candidates.some(candidate => this.normalizeForMatch(candidate.name) === answer.replace(/^(?:el|la)\s+/, ''));
+      if (selection && await this.tryHandleCartAttributeOptionChange(conv, msg.waId, session, originalText,
+        await this.catalogService.getMenuProducts())) return;
+    }
     // Catalogue questions interrupt data capture before the agent or field parser consumes them.
     if (!['completed', 'closed', 'human', 'human_takeover'].includes(conv.state) &&
       this.catalogService.isComboAvailabilityQuestion(originalText)) {
@@ -11797,6 +11825,7 @@ export class WhatsappOrchestratorService {
 
   private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {
     if (session.pendingPriceInquiry) return 'Para seguir con la consulta, indica el nombre o el número del producto de la lista.';
+    if (session.pendingCartAttributeEdit) return 'Para continuar el cambio, elige el plato:\n' + session.pendingCartAttributeEdit.candidates.map((candidate, index) => `${index + 1}. ${candidate.name}`).join('\n');
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return this.formatPendingPurchaseReminder(session);
     }
@@ -16262,7 +16291,7 @@ export class WhatsappOrchestratorService {
     );
   }
 
-  /** Cambia una opción ya elegida (bebida, arepa, presa) si el cliente nombra otra del mismo atributo. */
+  /** Cambia una opción del catálogo en una línea del carrito, incluida una selección pendiente. */
   private async tryHandleCartAttributeOptionChange(
     conv: WhatsappConversation,
     waId: string,
@@ -16271,6 +16300,8 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
   ): Promise<boolean> {
     if (!session.cart.length) return false;
+    let selectedCartIndex: number | undefined;
+    let selectedSourceText: string | undefined;
     const pendingEdit = session.pendingCartAttributeEdit;
     if (pendingEdit) {
       if (pendingEdit.cartSignature !== JSON.stringify(session.cart)) {
@@ -16292,6 +16323,8 @@ export class WhatsappOrchestratorService {
         const selected = position != null ? [pendingEdit.candidates[position-1]] : pendingEdit.candidates.filter(candidate =>
           shortChoice && words.every(word => this.normalizeForMatch(candidate.name).split(/\s+/).includes(word)));
         if (selected.length === 1) {
+          selectedCartIndex = selected[0].cartIndex;
+          selectedSourceText = selected[0].sourceText || pendingEdit.sourceText;
           text = selected[0].sourceText
             ? `${selected[0].sourceText} ${selected[0].name}`
             : `${selected[0].name} ${pendingEdit.sourceText}`;
@@ -16355,13 +16388,15 @@ export class WhatsappOrchestratorService {
       : this.catalogService.findCartAttributeOptionChange(attributeText, session.cart, products, {
           allowBareOption: resumeCheckout || this.looksLikeBareAttributeChoice(attributeText),
         });
-    const updates = onlyAttrs
-      ? onlyAttrs.updates
-      : change
-        ? [{ attributeName: change.attributeName, attributeValue: change.attributeValue }]
-        : [];
-    const cartIndex = onlyAttrs?.cartIndex ?? change?.cartIndex;
-    const itemName = onlyAttrs?.itemName ?? change?.itemName;
+    const selectedUpdates = selectedCartIndex != null
+      ? this.catalogService.listCartAttributeOptionsNamedInText(selectedSourceText || attributeText, session.cart, products)
+        .filter(update => update.cartIndex === selectedCartIndex) : [];
+    const updates = selectedUpdates.length
+      ? selectedUpdates.map(update => ({attributeName:update.attributeName, attributeValue:update.attributeValue}))
+      : onlyAttrs ? onlyAttrs.updates
+      : change ? [{ attributeName: change.attributeName, attributeValue: change.attributeValue }] : [];
+    const cartIndex = selectedUpdates.length ? selectedCartIndex : onlyAttrs?.cartIndex ?? change?.cartIndex;
+    const itemName = selectedUpdates.length ? session.cart[selectedCartIndex!]?.name : onlyAttrs?.itemName ?? change?.itemName;
     if (cartIndex == null || !itemName || !updates.length) return false;
     const line = session.cart[cartIndex];
     if (!line) return false;

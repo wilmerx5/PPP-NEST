@@ -8165,3 +8165,57 @@ describe('Cancelar selección pendiente — bebida de un plato compuesto necesit
     });
   }
 });
+
+describe('Cancelación con cortesía y typos — selección sin borrar carrito',()=>{
+  for(const drink of ['Bebida De Citricos','Granizado De Frutas'])for(const agent of [false,true])for(const text of ['Por favor, olvida eso','Olvida eso porfa','No quiero esa bebida muchas gracias','Cancela esa selección por favor','Cansela esa seleccion','Cancela esa selecsion']){
+    it(drink+' agent='+agent+' '+text,async()=>{
+      const menu=[{id:14301,code:14301,name:'Sandwich De Verduras',price:14000,availableNow:true,hasAttributes:false,attributes:[]},{id:14302,code:14302,name:drink,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Limon']}]}];
+      const h=harness(menu,false);await h.sendQueued('2 Sandwich De Verduras');h.cfg.agentV1Enabled=agent;
+      h.conv.sessionData.pendingAttribute={productId:14302,name:drink,code:14302,price:7000,attributes:menu[1].attributes,selected:[],quantity:3,sourceText:'3 '+drink};
+      const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued(text);
+      expect(h.conv.sessionData.pendingAttribute).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/cancel[eé].*selecci[oó]n/i);
+    });
+  }
+});
+
+describe('Cancelar edición de sabor — conserva opciones originales',()=>{
+  for(const names of [['Refresco De Frutas','Batido De Avena'],['Yogur Artesanal','Helado Casero']])for(const agent of [false,true])for(const text of ['Olvida ese cambio','Cancela ese cambio por favor','No cambies el sabor']){
+    it(names[0]+' agent='+agent+' '+text,async()=>{
+      const menu=names.map((name,i)=>({id:14401+i,code:14401+i,name,price:7000+i*3000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Limon']}]}));
+      const h=harness(menu,false);await h.sendQueued('2 '+names[0]+' Mango');await h.sendQueued('3 '+names[1]+' Mango');expect(h.cartRows()).toHaveLength(2);h.cfg.agentV1Enabled=agent;
+      const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Cambia el sabor a Limon');expect(h.conv.sessionData.pendingCartAttributeEdit).toBeTruthy();expect(h.conv.sessionData.cart).toEqual(before);
+      const reply=await h.sendQueued(text);expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/cambio|original/i);
+      await h.sendQueued('2');expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued(names[0]+' Limon');expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:14401,qty:2,attrs:expect.arrayContaining(['Sabor:Limon'])}),expect.objectContaining({id:14402,qty:3,attrs:expect.arrayContaining(['Sabor:Mango'])})]));
+    });
+  }
+});
+
+describe('Edición pendiente — otros atributos, consulta y negación',()=>{
+  for(const attribute of ['Preparacion','Coccion'])for(const agent of [false,true])for(const kind of ['cancelar','consulta','no cancelar']){
+    it(attribute+' agent='+agent+' '+kind,async()=>{
+      const menu=['Bowl De Lentejas','Pisto De Verduras'].map((name,i)=>({id:14501+i,code:14501+i,name,price:13000+i*2000,availableNow:true,hasAttributes:true,attributes:[{attributeName:attribute,options:['Suave','Intenso']}]}));
+      const h=harness(menu,false);for(const p of menu)await h.sendQueued('2 '+p.name+' Suave');expect(h.cartRows()).toHaveLength(2);h.cfg.agentV1Enabled=agent;
+      const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Cambia la '+attribute+' a Intenso');expect(h.conv.sessionData.pendingCartAttributeEdit).toBeTruthy();const pending=structuredClone(h.conv.sessionData.pendingCartAttributeEdit);
+      const reply=await h.sendQueued(kind==='cancelar'?'No cambies la '+attribute:kind==='consulta'?'¿Cuánto suma mi pedido?':'No canceles ese cambio');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      if(kind==='cancelar')expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+      else{
+        expect(h.conv.sessionData.pendingCartAttributeEdit).toEqual(pending);
+        if(kind==='consulta'){expect(reply).toMatch(/56[.,]000/);expect(reply).toMatch(/continuar el cambio|elige el plato/i);}
+        await h.sendQueued('2');expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:14501,qty:2,attrs:expect.arrayContaining([attribute+':Suave'])}),expect.objectContaining({id:14502,qty:2,attrs:expect.arrayContaining([attribute+':Intenso'])})]));
+      }
+    });
+  }
+});
+
+describe('Edición por número — nombre del plato no cambia opción solicitada',()=>{
+  for(const names of [['Yogur De Mango','Batido De Mango'],['Tarta De Mango','Helado De Mango']])for(const agent of [false,true]){
+    it(names[0]+' agent='+agent,async()=>{
+      const menu=names.map((name,i)=>({id:14601+i,code:14601+i,name,price:9000+i*3000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Limon']}]}));
+      const h=harness(menu,false);for(const p of menu)await h.sendQueued('2 '+p.name+' Mango');h.cfg.agentV1Enabled=agent;const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Cambia el sabor a Limon');expect(h.conv.sessionData.pendingCartAttributeEdit).toBeTruthy();expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued('2');expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:14601,qty:2,attrs:expect.arrayContaining(['Sabor:Mango'])}),expect.objectContaining({id:14602,qty:2,attrs:expect.arrayContaining(['Sabor:Limon'])})]));
+    });
+  }
+});
