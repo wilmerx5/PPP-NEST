@@ -884,6 +884,22 @@ export function isWrongChatApology(text: string): boolean {
   return false;
 }
 
+/** An explicit new request after a wrong-recipient clause is a separate intent. */
+export function orderAfterWrongChat(text: string): string | null {
+  const starts = (text || '').matchAll(/(?:^|[.!?;\n]\s*|\b(?:pero|but)\s+)(?:(?:ahora|aqu[ií]|ac[aá]|entonces)\s+(?:s[ií]\s+)?)?(quiero|quisiera|dame|reg[aá]lame|ponme|me\s+(?:env[ií]as|mandas|regalas))\b/gi);
+  for (const match of starts) {
+    const verbIndex = (match.index || 0) + match[0].toLowerCase().lastIndexOf(match[1].toLowerCase());
+    if (isWrongChatApology(text.slice(0, verbIndex))) {
+      // Keep information requests as questions, rather than an imperative purchase.
+      return text.slice(verbIndex).trim().replace(
+        /^(?:quiero|quisiera)\s+saber\s+(?=(?:qu[eé]|cu[aá]nto|cu[aá]l|c[oó]mo)\s)/i,
+        '',
+      );
+    }
+  }
+  return null;
+}
+
 /** Salir de lista / atributos / multi sin cancelar todo el pedido. */
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();

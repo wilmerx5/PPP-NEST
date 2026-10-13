@@ -56,6 +56,7 @@ import { composeWhatsappOrderAddress } from './whatsapp-order-address';
 import {
   isAbandonPendingSelectionIntent,
   isWrongChatApology,
+  orderAfterWrongChat,
   isAddressChangeIntent,
   isAddressClarificationIntent,
   isAddressRejectionIntent,
@@ -722,17 +723,26 @@ export class WhatsappOrchestratorService {
         pendingMultiOrder: undefined,
         pendingCompositionAsk: undefined,
         pendingAddOffer: undefined,
+        pendingQuantityHint: undefined,
+        pendingUnitSplit: undefined,
+        pendingSideSwap: undefined,
       };
       await this.conversationService.saveSession(conv, next, 'building_cart');
-      const suffix = next.cart.length
-        ? `\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`
-        : '\n\n¿Qué se te antoja? Escribe el *plato* o el *código*.';
-      await this.reply(
-        conv,
-        msg.waId,
-        `Tranquilo, ese mensaje no es un pedido ni una dirección.${suffix}`,
-      );
-      return;
+      const followup = orderAfterWrongChat(originalText);
+      if (followup) {
+        text = followup;
+        originalText = followup;
+      } else {
+        const suffix = next.cart.length
+          ? `\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`
+          : '\n\n¿Qué se te antoja? Escribe el *plato* o el *código*.';
+        await this.reply(
+          conv,
+          msg.waId,
+          `Tranquilo, ese mensaje no es un pedido ni una dirección.${suffix}`,
+        );
+        return;
+      }
     }
 
     const lower = text.toLowerCase();
