@@ -1596,16 +1596,26 @@ export class WhatsappOrchestratorService {
     const partialNote = parsePartialNote(text);
     if (partialNote && session.cart.length && conv.state === 'building_cart' &&
       !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
-      const line = session.cart[0];
-      if (session.cart.length !== 1 || line.note || partialNote.quantity >= line.quantity ||
+      const targets = partialNote.query
+        ? session.cart.flatMap((line, index) => correctionMatchesLine(line, partialNote.query!) ? [index] : [])
+        : session.cart.length === 1 ? [0] : [];
+      const index = targets.length === 1 ? targets[0] : -1;
+      const line = session.cart[index];
+      if (!line || (!partialNote.query && line.note) || partialNote.quantity >= line.quantity ||
+        (partialNote.total !== undefined && partialNote.total !== line.quantity) ||
         (partialNote.remainder !== undefined && partialNote.quantity + partialNote.remainder !== line.quantity)) {
         await this.reply(conv, msg.waId, '¿De cuál producto y cuántas unidades llevan esa nota? Así conservo las demás como están.');
         return;
       }
-      session = {...session, cart: [
+      const note = editScopedCartNote(line.note, {kind:'append',query:'',note:partialNote.note,preserve:[]});
+      if (note.blocked) {
+        await this.reply(conv, msg.waId, 'La nota es demasiado larga. ¿Puedes resumirla? El carrito sigue igual.');
+        return;
+      }
+      session = {...session, cart: session.cart.flatMap((item, position) => position !== index ? [item] : [
         {...line, quantity: line.quantity - partialNote.quantity},
-        {...line, quantity: partialNote.quantity, note: partialNote.note},
-      ]};
+        {...line, quantity: partialNote.quantity, note: note.note},
+      ])};
       await this.conversationService.saveSession(conv, session);
       await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n¿Algo más?');
       return;

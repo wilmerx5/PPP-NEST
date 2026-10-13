@@ -10,7 +10,7 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 
 ## Dónde estamos: evidencia y límites
 
-- Backend: 66 suites / 2.471 pruebas aprobadas, TypeScript aprobado. Log /tmp/ppp-bulk-scoped-all-final.log, una ejecución completa. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
+- Backend: 66 suites / 2.535 pruebas aprobadas, TypeScript aprobado. Log /tmp/ppp-cuisines-subset-all-final.log, una ejecución completa. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
 - Generalización: menús ficticios vegetarianos, marinos y orientales; hamburguesas, pizzas y bowls sin conceptos de ejecutivo/menú. Las últimas dos tandas añadieron39 casos y encontraron errores reales en correcciones y alcance. Esto acredita esos patrones en esos catálogos; no cualquier restaurante ni aislamiento multitenant.
 - Versión validada y desplegada de código: 90c57dec en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada el 13/10 a las 09:30 Bogotá; una actualización documental posterior no requiere reconstruir API.
 - Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.
@@ -127,3 +127,6 @@ Las tandas se priorizan por cambios accidentales de producto/cantidad, pérdida 
 
 ## Verificación actual13/10
 Conjunto local2335pruebas y TypeScript aprobado. Nuevos bloques:continuidad con consultas,desistimiento,cortesía,reparto de bebidas,corrección de una línea,recogida y cambios de pago,seguimiento posterior y propuestas sin productos disponibles.4recorridos representativos con modelo configurado aceptados (2usaron inferencia real), Meta/DB/órdenes aisladas;10solicitudes nuevas incluyendo ronda limitada y completada. Saldo5, no15. No acredita entrada genuina desde un teléfono ni atención humana operativa. Próximo paso crítico:ensayo supervisado de texto en el canal y medición de carrito/opciones/respuesta, con intervención humana comprobada. Audio/fotos todavía requieren originales para medir percepción. El listado de variantes no se considera una garantía para cualquier restaurante.
+
+
+Tanda13/10:64casos nuevos en ocho menús distintos; exclusión por unidades con producto/total explícitos y controles de incoherencia. Full2535/66yTypeScript aprobado. No acredita percepción real ni cambios de atributo por subconjunto o durante pago. La incidencia de compra+opción+empaque queda pendiente de reproducción aislada.

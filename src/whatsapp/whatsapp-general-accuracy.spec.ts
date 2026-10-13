@@ -7533,3 +7533,63 @@ describe('Pedido grande — edición focal conserva las otras líneas',()=>{
     });
   }
 });
+
+describe('Cocinas variadas — exclusión en algunas unidades conserva el pedido',()=>{
+  const cuisines=[
+    {label:'japonesa',name:'Nigiri De Salmon',other:'Nigiri De Atun',plural:'nigiris de salmon',attr:'Salsa',options:['Soya','Ponzu'],selected:'Ponzu',note:'sin wasabi'},
+    {label:'italiana',name:'Pizza Caprese',other:'Pizza Marinara',plural:'pizzas caprese',attr:'Masa',options:['Delgada','Gruesa'],selected:'Gruesa',note:'sin albahaca'},
+    {label:'árabe',name:'Shawarma De Cordero',other:'Shawarma De Falafel',plural:'shawarmas de cordero',attr:'Pan',options:['Pita','Lavash'],selected:'Lavash',note:'sin cebolla'},
+    {label:'india',name:'Curry De Garbanzos',other:'Curry De Lentejas',plural:'currys de garbanzos',attr:'Picante',options:['Suave','Medio'],selected:'Medio',note:'sin cilantro'},
+    {label:'marina',name:'Ceviche De Camaron',other:'Ceviche De Pescado',plural:'ceviches de camaron',attr:'Acompañamiento',options:['Tostadas','Patacones'],selected:'Patacones',note:'sin tomate'},
+  ];
+  for(const [index,f] of cuisines.entries())for(const agent of [false,true])for(const previousNote of [false,true])for(const format of ['cantidad primero','plato primero']) {
+    it(f.label+' '+format+' nota previa='+previousNote+' agent='+agent,async()=>{
+      const id=12600+index*10;
+      const menu=[
+        {id,code:id,name:f.name,price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:f.options}]},
+        {id:id+1,code:id+1,name:f.other,price:15000,availableNow:true,hasAttributes:false,attributes:[]},
+      ];
+      const h=harness(menu,false);
+      await h.sendQueued('8 '+f.name+' con '+f.selected);
+      await h.sendQueued('3 '+f.other);
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows().find(r=>r.id===id)?.qty).toBe(8);
+      // Add a stored kitchen instruction independently of the subset request.
+      if(previousNote)h.conv.sessionData.cart.find(r=>r.productId===id)!.note='bien empacado';
+      const before=structuredClone(h.cartRows());h.cfg.agentV1Enabled=agent;
+      const message=format==='cantidad primero'?'dos de los ocho '+f.plural+' '+f.note+' y los demás normales':'de los ocho '+f.plural+', dos '+f.note+' y los otros seis normales';
+      await h.sendQueued(message);
+      expect(h.cartRows().filter(r=>r.id!==id)).toEqual(before.filter(r=>r.id!==id));
+      const rows=h.cartRows().filter(r=>r.id===id);
+      expect(rows).toHaveLength(2);
+      expect(rows.reduce((n,r)=>n+r.qty,0)).toBe(8);
+      expect(rows).toEqual(expect.arrayContaining([
+        expect.objectContaining({qty:2,note:expect.stringContaining(f.note),attrs:[f.attr+':'+f.selected]}),
+        expect.objectContaining({qty:6,note:previousNote?'bien empacado':undefined,attrs:[f.attr+':'+f.selected]}),
+      ]));
+      if(previousNote)expect(rows.find(r=>r.qty===2)?.note).toContain('bien empacado');
+      expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+      const split=structuredClone(h.cartRows());await h.sendQueued(message);
+      expect(h.cartRows()).toEqual(split);
+    });
+  }
+});
+
+describe('Otras cocinas — subconjunto incoherente no modifica carrito',()=>{
+  for(const [index,name] of ['Crepe De Champiñones','Pad Thai De Tofu','Lomo Saltado'].entries())for(const agent of [false,true])for(const request of [
+    'nueve de los ocho PLATO sin cilantro y los demás normales',
+    'dos de los siete PLATO sin cilantro y los demás normales',
+    'dos de los ocho PLATO sin cilantro y los otros cinco normales',
+    'dos de los ocho plato inexistente sin cilantro y los demás normales',
+  ]){
+    it(name+' agent='+agent+' '+request,async()=>{
+      const id=12700+index;
+      const h=harness([{id,code:id,name,price:22000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('8 '+name);expect(h.cartRows()).toHaveLength(1);expect(h.cartRows()[0].qty).toBe(8);
+      const before=structuredClone(h.cartRows());h.cfg.agentV1Enabled=agent;
+      await h.sendQueued(request.replace('PLATO',name));
+      expect(h.cartRows()).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/cu[aá]ntas unidades|cu[aá]l producto/i);
+    });
+  }
+});
