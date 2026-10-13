@@ -11150,8 +11150,15 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, check.reason || 'Esa cantidad supera el límite del pedido.');
       return true;
     }
-    await this.conversationService.saveSession(conv, next, 'building_cart');
-    await this.reply(conv, waId, `Listo, corregí la cantidad ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+    const pendingState = ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment'].includes(conv.state)
+      ? conv.state : 'building_cart';
+    await this.conversationService.saveSession(conv, next, pendingState);
+    const followUp = pendingState === 'awaiting_name' ? '¿A nombre de quién dejamos el pedido?'
+      : pendingState === 'awaiting_phone' ? this.buildAskPhoneMessage(conv, next, this.deliveryFeeFor(next, cfg))
+      : pendingState === 'awaiting_address' ? 'Escribe la dirección del domicilio.'
+      : pendingState === 'awaiting_payment' ? buildPaymentOptionsPrompt(cfg.paymentMethods, cfg.paymentInstructions)
+      : this.formatContinueShoppingPrompt(next);
+    await this.reply(conv, waId, `Listo, corregí la cantidad ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${followUp}`);
     return true;
   }
 
@@ -11773,7 +11780,7 @@ export class WhatsappOrchestratorService {
     const t = this.normalizeForMatch(text);
     if (!t || t.length > 50) return false;
     if (/\b(quiero|dame|ponme|agrega)\b/.test(t)) return false;
-    return /^(?:y\s+)?(?:que llevo|que pedido llevo|me repites el pedido|repiteme el pedido|repite el pedido|como va mi pedido)$/.test(t);
+    return /^(?:y\s+)?(?:que llevo|que pedido llevo|que tengo en el carrito|que hay en mi carrito|que tengo pedido|me repites el pedido|repiteme el pedido|repite el pedido|como va mi pedido)$/.test(t);
   }
 
   private looksLikeOrderTotalQuestion(text: string): boolean {

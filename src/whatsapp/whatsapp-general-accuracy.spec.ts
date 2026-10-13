@@ -7924,3 +7924,43 @@ describe('Respuesta corta — lista ambigua necesita elección concreta',()=>{
     });
   }
 });
+
+describe('Interrupciones del checkout — atiende consulta y retoma dato pendiente',()=>{
+  for(const name of ['Curry De Garbanzos','Empanada De Espinaca'])for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment'])for(const question of ['¿Cuánto cuesta '+name+'?','¿Cuánto suma mi pedido?','¿Qué tengo en el carrito?','¿Qué hay en mi carrito?','¿Qué tengo pedido?']){
+    it(name+' '+state+' agent='+agent+' '+question,async()=>{
+      const h=harness([{id:13301,code:13301,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);expect(h.cartRows()).toEqual([expect.objectContaining({id:13301,qty:2})]);
+      h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',deliveryFeeCalculated:2000,paymentMethod:undefined});
+      h.conv.state=state;h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData);const customer=h.conv.customerName;
+      const reply=await h.sendQueued(question);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.customerName).toBe(customer);
+      expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.contactPhone).toBe(before.contactPhone);expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(h.conv.state).toBe(state);
+      expect(reply).toMatch(question.includes('cuesta')?/18[.,]000/:question.includes('suma')?/36[.,]000|38[.,]000/:new RegExp(name,'i'));
+      expect(reply).not.toMatch(/no entend[ií]|no me qued[oó] clar|no manejamos/i);
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+      expect(h.conv.state).not.toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);
+      if(state==='awaiting_payment')expect(h.conv.sessionData.paymentMethod).toBeTruthy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+  for(const name of ['Curry De Garbanzos','Empanada De Espinaca'])for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment']){
+    it(name+' cambia cantidad durante '+state+' agent='+agent,async()=>{
+      const h=harness([{id:13302,code:13302,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});
+      h.conv.state=state;h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData);const customer=h.conv.customerName;
+      const reply=await h.sendQueued('Mejor quiero tres '+name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:13302,qty:3})]);expect(h.conv.customerName).toBe(customer);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.contactPhone).toBe(before.contactPhone);expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(reply).not.toMatch(/no entend[ií]|no me qued[oó] clar|no manejamos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      expect(h.conv.state).toBe(state);
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+      expect(h.conv.state).not.toBe(state);expect(h.cartRows()).toEqual([expect.objectContaining({id:13302,qty:3})]);
+      if(state==='awaiting_name')expect(h.conv.customerName).toBe('Carolina');
+      if(state==='awaiting_phone')expect(h.conv.sessionData.contactPhone).toMatch(/3001234567/);
+      if(state==='awaiting_address')expect(h.conv.sessionData.address).toMatch(/15.*25.*35.*202/);
+      if(state==='awaiting_payment')expect(h.conv.sessionData.paymentMethod).toBeTruthy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
