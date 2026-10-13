@@ -42,6 +42,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Read-only price clarification, separate from an order selection. */
+  pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
   pendingCartAttributeEdit?: {
     sourceText: string;
     cartSignature: string;

@@ -8038,11 +8038,93 @@ describe('Consulta de precio ambigua — aclaración explícita conserva checkou
       Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});h.conv.state=state;
       const before=structuredClone(h.conv.sessionData),customer=h.conv.customerName;
       const question=await h.sendQueued('Que precio tiene');
-      expect(question).toMatch(/cu[aá]l producto/i);expect(question).not.toMatch(/Para seguir/i);expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customer);
+      expect(question).toMatch(/cu[aá]l producto/i);expect(question).not.toMatch(/Para seguir/i);expect({...h.conv.sessionData,pendingPriceInquiry:undefined}).toEqual(before);expect(h.conv.customerName).toBe(customer);
       const price=await h.sendQueued('Quiero saber el precio de '+names[1]);
       expect(price).toMatch(/21[.,]000/);expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customer);
       await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
       expect(h.conv.state).not.toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);
+    });
+  }
+});
+
+describe('Consulta de precio — respuesta abreviada no compra ni consume el campo',()=>{
+  for(const names of [['Sushi Vegetal','Gyozas De Hongos'],['Pasta De Lentejas','Crema De Calabaza']])for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment'])for(const answer of [names[1],'el segundo','2','No importa, olvida la pregunta']){
+    it(names[0]+' '+state+' agent='+agent+' '+answer,async()=>{
+      const menu=names.map((name,i)=>({id:13701+i,code:13701+i,name,price:18000+i*3000,availableNow:true,hasAttributes:false,attributes:[]}));
+      const h=harness(menu,false);for(const name of names)await h.sendQueued('2 '+name);h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});h.conv.state=state;
+      const before=structuredClone(h.conv.sessionData),customer=h.conv.customerName;h.service.ordersService.create=jest.fn();
+      await h.sendQueued('Que precio tiene');const reply=await h.sendQueued(answer);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.customerName).toBe(customer);expect(h.conv.state).toBe(state);expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.conv.sessionData.contactPhone).toBe(before.contactPhone);expect(h.conv.sessionData.address).toBe(before.address);
+      if(answer.startsWith('No importa'))expect(reply).toMatch(/pedido sigue igual/i);else expect(reply).toMatch(/21[.,]000/);
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+      expect(h.conv.state).not.toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Consulta de precio — contexto temporal y respuestas inválidas',()=>{
+  for(const agent of [false,true])for(const answer of ['9','el tercero','otra consulta','repetir','desistir','acción']){
+    it('agent='+agent+' '+answer,async()=>{
+      const menu=[{id:13801,code:13801,name:'Cuscus Vegetal',price:15000,availableNow:true,hasAttributes:false,attributes:[]},{id:13802,code:13802,name:'Tabule Casero',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
+      const h=harness(menu,false);await h.sendQueued('2 Cuscus Vegetal');await h.sendQueued('2 Tabule Casero');h.cfg.agentV1Enabled=agent;
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 9 20 30',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:undefined});h.conv.state='awaiting_payment';
+      const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('Que precio tiene');
+      if(answer==='acción'){
+        await h.sendQueued('Mejor quiero tres Tabule Casero');expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:13802,qty:3})]));
+        await h.sendQueued('Efectivo');expect(h.conv.sessionData.paymentMethod).toBeTruthy();expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();return;
+      }
+      await h.sendQueued(answer==='otra consulta'?'¿Cuánto suma mi pedido?':answer==='repetir'?'Que precio tiene':answer==='desistir'?'No gracias':answer);
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      if(answer==='desistir'){
+        expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();await h.sendQueued('2');expect(h.conv.sessionData.paymentMethod).toBeTruthy();
+      }else{
+        expect(h.conv.sessionData.pendingPriceInquiry).toBeTruthy();const reply=await h.sendQueued('2');expect(reply).toMatch(/19[.,]000/);expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();
+      }
+      expect(h.conv.sessionData.cart).toEqual(before);
+    });
+  }
+});
+
+describe('Consulta de precio — nuevo dato válido termina aclaración',()=>{
+  for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment']){
+    it(state+' agent='+agent,async()=>{
+      const menu=['Burrito Vegetal','Nachos Caseros'].map((name,i)=>({id:13901+i,code:13901+i,name,price:15000+i*3000,availableNow:true,hasAttributes:false,attributes:[]}));
+      const h=harness(menu,false);for(const p of menu)await h.sendQueued('2 '+p.name);h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});h.conv.state=state;const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Que precio tiene');expect(h.conv.sessionData.pendingPriceInquiry).toBeTruthy();
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();expect(h.conv.state).not.toBe(state);
+      if(state==='awaiting_phone')expect(h.conv.sessionData.contactPhone).toMatch(/3001234567/);
+    });
+  }
+});
+
+describe('Resumen de pedido — dirección una sola vez sin perder detalles',()=>{
+  for(const name of ['Pollo Broaster Ficticio','Bowl De Quinoa']){
+    async function setup(){
+      const h=harness([{id:14001,code:14001,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],false);await h.sendQueued('2 '+name);
+      Object.assign(h.conv.sessionData.cart[0],{note:'sin ensalada',attributes:[{attributeName:'Preparacion',attributeValue:'Suave'}]});
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 48 sur 87 86',addressConfirmed:true,deliveryFeeCalculated:6000,deliveryDistanceKm:4.6,phoneConfirmed:true,contactPhone:h.conv.phoneE164});return h;
+    }
+    for(const type of ['delivery','pickup'])for(const payment of [undefined,'cash']){
+      it(name+' resumen '+type+' pago='+payment,async()=>{
+        const h=await setup();h.conv.sessionData.orderType=type as any;h.conv.sessionData.paymentMethod=payment;
+        if(type==='pickup')h.conv.sessionData.address='Recoge en el local';
+        const before=structuredClone(h.conv.sessionData);const reply=h.service.formatOrderSummary(h.conv,h.conv.sessionData,6000,h.cfg.paymentMethods);
+        expect(reply.split(h.conv.sessionData.address).length-1).toBe(1);
+        expect(reply).toContain(name);expect(reply).toMatch(/sin ensalada/);expect(reply).toMatch(/Preparacion: Suave/);expect(reply).toMatch(/36[.,]000/);
+        expect(reply).toMatch(type==='delivery'?/42[.,]000/:/36[.,]000/);expect(reply).toMatch(/Nombre:|Tel[eé]fono:|Pago:/);expect(h.conv.sessionData).toEqual(before);
+      });
+    }
+    it(name+' carrito independiente conserva dirección',async()=>{
+      const h=await setup();const reply=h.service.formatCartOnly(h.conv.sessionData,6000);expect((reply || '').split('Calle 48 sur 87 86').length-1).toBe(1);
+    });
+    it(name+' dirección seguida de pago no repite dirección en prefacio',async()=>{
+      const h=await setup();h.conv.sessionData.address=undefined;h.conv.sessionData.addressConfirmed=false;h.conv.sessionData.paymentMethod=undefined;h.conv.state='awaiting_address';
+      const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Calle 48 sur 87 86');
+      expect((reply || '').split('Calle 48 sur 87 86').length-1).toBe(1);expect(reply).toMatch(/c[oó]mo pagas/i);expect(reply).toMatch(/sin ensalada|Preparacion: Suave/);expect(h.conv.sessionData.cart).toEqual(before);
     });
   }
 });
