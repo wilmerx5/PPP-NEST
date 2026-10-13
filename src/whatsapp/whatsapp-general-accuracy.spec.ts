@@ -7427,3 +7427,65 @@ describe('Desistimiento y compra nueva — mensaje compuesto o ráfaga',()=>{
   }
 
 });
+
+describe('Cambio de intención — descarta propuesta y procesa pedido nuevo',()=>{
+  const other=[
+    {id:12301,code:12301,name:'Taco Al Pastor',price:12000,availableNow:true,hasAttributes:false,attributes:[]},
+    {id:12302,code:12302,name:'Bowl Mediterraneo',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},
+  ];
+  for(const f of [
+    {menu:products,old:'Un pollo frito',oldId:1,fresh:'dos churrascos sin ensalada',freshId:17,note:/sin ensalada/i},
+    {menu:other,old:'Un taco al pastor',oldId:12301,fresh:'dos bowls mediterraneos con quinoa sin cebolla',freshId:12302,note:/sin cebolla/i},
+  ]) for(const lead of ['Olvida lo anterior, mejor quiero ','Eso no, dame ','Déjalo, ahora quiero ']) for(const existing of [false,true]) for(const burst of [false,true]) {
+    it(f.freshId+' '+lead+' previo='+existing+' ráfaga='+burst,async()=>{
+      const h=harness(f.menu,false);
+      if(existing)await h.sendQueued(f.old);
+      const before=structuredClone(h.cartRows());
+      if(existing)expect(before).toEqual([expect.objectContaining({id:f.oldId,qty:1})]);
+      await h.sendQueued('Un kilo de azúcar y dos aceites');
+      expect(h.conv.sessionData.pendingMultiOrder).toBeTruthy();
+      const outputStart=h.replies.length;
+      if(!burst)await h.sendQueued(lead+f.fresh);
+      else{
+        jest.useFakeTimers();try{
+          const texts=[lead.replace(/(?:mejor quiero|dame|ahora quiero)\s*$/,''),'Quiero '+f.fresh];
+          const jobs=texts.map((text,i)=>h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'switch-burst-'+i,messageType:'text',text,timestamp:Date.now()/1000,raw:{}}));
+          await jest.advanceTimersByTimeAsync(4000);await Promise.all(jobs);
+        }finally{jest.useRealTimers();}
+      }
+      expect(h.cartRows()).toHaveLength(before.length+1);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([...before,expect.objectContaining({id:f.freshId,qty:2,note:expect.stringMatching(f.note)})]));
+      if(f.freshId===12302)expect(h.cartRows().find(r=>r.id===f.freshId)?.attrs).toContain('Base:Quinoa');
+      expect(h.conv.sessionData.pendingMultiOrder).toBeFalsy();
+      expect(h.replies.slice(outputStart).join(' ')).not.toMatch(/aceites|az[uú]car|escribe.*s[ií]/i);
+    });
+  }
+});
+
+describe('Pedido grande — conserva unidades y nota al corregir al cerrar',()=>{
+  const other=[
+    {id:12401,code:12401,name:'Taco Al Pastor',price:14000,availableNow:true,hasAttributes:false,attributes:[]},
+    {id:12402,code:12402,name:'Sopa De La Casa',price:9000,availableNow:true,hasAttributes:false,attributes:[]},
+  ];
+  for(const f of [
+    {menu:products,main:'churrascos',side:'sopas de mondongo',mainId:17,sideId:45,note:'sin ensalada'},
+    {menu:other,main:'tacos al pastor',side:'sopas de la casa',mainId:12401,sideId:12402,note:'sin cebolla'},
+  ]) for(const agent of [false,true]) for(const separator of [', ',' y ','\n']) {
+    it(f.mainId+' separador='+JSON.stringify(separator)+' agent='+agent,async()=>{
+      const h=harness(f.menu,agent);
+      Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+      const reply=await h.sendQueued('Hola buenas tardes, me envías por favor 8 '+f.main+' '+f.note+separator+'6 '+f.side+' para la calle 48 sur 87 86');
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({id:f.mainId,qty:8,note:expect.stringContaining(f.note)}),
+        expect.objectContaining({id:f.sideId,qty:6}),
+      ]));
+      expect(h.conv.sessionData.address).toMatch(/48 sur 87 86/i);
+      expect(reply).not.toMatch(/¿.*Algo más|buenas tardes|me envías/i);
+      const before=structuredClone(h.cartRows());
+      await h.sendQueued('Cambia la dirección a calle 12 30 40 apartamento 201');
+      expect(h.cartRows()).toEqual(before);
+      expect(h.conv.sessionData.address).toMatch(/12.*30.*40.*201/i);
+    });
+  }
+});

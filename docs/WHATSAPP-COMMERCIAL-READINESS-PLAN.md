@@ -10,7 +10,7 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 
 ## Dónde estamos: evidencia y límites
 
-- Backend: 66 suites / 2.415 pruebas aprobadas, TypeScript aprobado. Logs /tmp/ppp-apology-all-final.log (47 suites/2.317) y /tmp/ppp-apology-remaining-final.log (19 suites/98), dos ejecuciones complementarias. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
+- Backend: 66 suites / 2.451 pruebas aprobadas, TypeScript aprobado. Log /tmp/ppp-intent-switch-all-final.log, una ejecución completa. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
 - Generalización: menús ficticios vegetarianos, marinos y orientales; hamburguesas, pizzas y bowls sin conceptos de ejecutivo/menú. Las últimas dos tandas añadieron39 casos y encontraron errores reales en correcciones y alcance. Esto acredita esos patrones en esos catálogos; no cualquier restaurante ni aislamiento multitenant.
 - Versión validada y desplegada de código: 6d19d88f en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada el 13/10 a las 08:49 Bogotá; una actualización documental posterior no requiere reconstruir API.
 - Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.

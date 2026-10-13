@@ -634,3 +634,16 @@ Focalizadas: 76/80 aprobadas después de corregir la precondición; las cuatro r
 Aprobación final en dos ejecuciones: WhatsApp 47 suites / 2.317 pruebas (/tmp/ppp-apology-all-final.log) y las restantes 19 suites / 98 pruebas (/tmp/ppp-apology-remaining-final.log). Total 66 suites / 2.415 pruebas, todas aprobadas. TypeScript aprobado /tmp/ppp-apology-tsc-final.log. Fuentes verificadas sin cambios durante la suite contra /tmp/ppp-apology-source-snapshot.json. 80 regresiones nuevas frente a 4eb1d109. No se acreditan nuevas llamadas reales ni recepción desde teléfono.
 
 Publicado y desplegado el código 6d19d88f, verificado 13/10/2026 08:49 Bogotá: running/healthy, imagen activa=candidata sha256:cc3d2a261f44bf7fb69a32a58d234ecc4a3bc7b498193d689cdfaa4678eb34e4, health OK/DB connected/circuit CLOSED. Logs /tmp/ppp-apology-deploy.log y /tmp/ppp-apology-deploy-verified.log. Main intacta. Próxima tanda: cambios de intención sin disculpa (“olvida lo anterior”, “mejor solo…”), consulta seguida de compra y corrección de pedido grande; reservar casos distintos para evaluación. No gastar saldo por rutina.
+
+
+## Tanda 13/10: rechazo de propuesta seguido de compra y pedidos grandes
+
+Base 3fc14067 (documental; código activo 6d19d88f). 24 casos nuevos reproducen que “Olvida lo anterior, mejor quiero…”, “Eso no, dame…” y “Déjalo, ahora quiero…” descartaban también la compra nueva. PPP y carta ficticia, mensaje único/ráfaga, carrito vacío o válido previo acreditado por aserción. Baseline 24/24 fallaron (/tmp/ppp-intent-switch-baseline.log); corrección 24/24 aprobados (/tmp/ppp-intent-switch-recovery.log).
+
+La transición se limita a propuestas aún no aplicadas (pendingMultiOrder o pendingMatch sin selectionAdded). Conserva carrito y deja correcciones de productos ya añadidos en sus handlers existentes. No significa “vaciar todo el carrito” ni cambia el caso de atributos pendientes. No excepciones por SKU/nombre/precio de PPP.
+
+Otros 12 casos: 8 platos principales y 6 sopas, coma/conjunción/salto de línea, agente simulado activo/inactivo, PPP y tacos/sopa ficticios. Productos+dirección saltan a cierre, cambio de dirección conserva 14 unidades y notas. Todos aprobados antes de modificar su ruta: /tmp/ppp-large-switch-baseline.log. Estas pruebas son modelos/Meta/persistencia simulados, no WhatsApp real. TypeScript aprobado /tmp/ppp-intent-switch-tsc.log. Cero nuevas llamadas pagadas; saldo 35/40 usado, 5 restantes.
+
+Suite completa en curso: /tmp/ppp-intent-switch-all-final.log. Snapshot /tmp/ppp-intent-switch-source-snapshot.json; verificar al finalizar. No promover Main ni acreditar despliegue hasta terminar validación.
+
+Resultado final: 66 suites / 2.451 pruebas aprobadas en una única ejecución completa, /tmp/ppp-intent-switch-all-final.log. TypeScript aprobado. Fuentes sin cambios durante validación contra snapshot. 36 regresiones nuevas. Saldo sin cambios. Main intacta.

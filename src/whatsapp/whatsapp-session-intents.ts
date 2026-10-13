@@ -900,6 +900,14 @@ export function orderAfterWrongChat(text: string): string | null {
   return null;
 }
 
+/** A rejected uncommitted proposal may be followed by a fresh explicit request. */
+export function requestAfterRejectedProposal(text: string): string | null {
+  const match = text.trim().match(
+    /^(?:olvida\s+lo\s+anterior|eso\s+no|d[eé]jalo|olv[ií]dalo)\s*[,;.!]?\s*(?:(?:mejor|ahora|entonces)\s+)?((?:quiero|quisiera|dame|reg[aá]lame|ponme)\s+.+)$/is,
+  );
+  return match?.[1]?.trim() || null;
+}
+
 /** Salir de lista / atributos / multi sin cancelar todo el pedido. */
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();

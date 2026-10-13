@@ -57,6 +57,7 @@ import {
   isAbandonPendingSelectionIntent,
   isWrongChatApology,
   orderAfterWrongChat,
+  requestAfterRejectedProposal,
   isAddressChangeIntent,
   isAddressClarificationIntent,
   isAddressRejectionIntent,
@@ -712,6 +713,26 @@ export class WhatsappOrchestratorService {
           (session.cart.length ? 'El pedido sigue igual.' : 'No armé un pedido.'),
       );
       return;
+    }
+
+    const rejectedProposalRequest = requestAfterRejectedProposal(originalText);
+    if (rejectedProposalRequest) {
+      const current = this.conversationService.getSession(conv);
+      // Limit this transition to proposals that have not already changed the cart.
+      // Edits to an existing item still use the normal cart correction handlers.
+      if (current.pendingMultiOrder ||
+          (current.pendingMatch && !current.pendingMatch.selectionAdded)) {
+        await this.conversationService.saveSession(conv, {
+          ...current,
+          pendingMultiOrder: undefined,
+          pendingMatch: undefined,
+          pendingQuantityHint: undefined,
+          pendingUnitSplit: undefined,
+          pendingSideSwap: undefined,
+        }, 'building_cart');
+        text = rejectedProposalRequest;
+        originalText = rejectedProposalRequest;
+      }
     }
 
     if (isWrongChatApology(originalText)) {
