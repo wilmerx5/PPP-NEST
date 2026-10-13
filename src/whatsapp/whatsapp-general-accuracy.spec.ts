@@ -7848,3 +7848,79 @@ describe('Básicos de mostrador — repetir, total, efectivo y local', () => {
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
 });
+
+describe('Datos del cliente — consulta conserva el campo y permite continuarlo',()=>{
+  for(const name of ['Jollof De Verduras','Pastel De Choclo'])for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address'])for(const question of ['¿A qué hora cierran?','¿Dónde queda el local?','¿Aceptan efectivo?']){
+    it(name+' '+state+' agent='+agent+' '+question,async()=>{
+      const h=harness([{id:13201,code:13201,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);expect(h.cartRows()).toHaveLength(1);
+      h.cfg.localContext={restaurantAddress:'Calle 30 40 50'};h.cfg.agentV1Enabled=agent;
+      h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});
+      h.conv.state=state;h.service.ordersService.create=jest.fn();
+      const before=structuredClone(h.conv.sessionData);const customerBefore=h.conv.customerName;
+      const reply=await h.sendQueued(question);
+      expect(h.conv.state).toBe(state);
+      expect(h.conv.customerName).toBe(customerBefore);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);
+      expect(h.conv.sessionData.address).toBe(before.address);
+      expect(h.conv.sessionData.contactPhone).toBe(before.contactPhone);
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(reply).toMatch(question.includes('hora')?/horario|23:59/i:question.includes('Dónde')?/Calle 30 40 50/i:/efectivo|contraentrega/i);
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':'Calle 15 25 35 apartamento 202');
+      expect(h.conv.sessionData.cart).toEqual(before.cart);
+      if(state==='awaiting_name')expect(h.conv.customerName).toBe('Carolina');
+      if(state==='awaiting_phone')expect(h.conv.sessionData.contactPhone).toMatch(/3001234567/);
+      if(state==='awaiting_address')expect(h.conv.sessionData.address).toMatch(/15.*25.*35.*202/);
+      expect(h.conv.state).not.toBe(state);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Negocio cerrado — FAQ usa estado efectivo y conserva carrito',()=>{
+  for(const name of ['Arepa De Reina Pepiada','Samosa De Verduras'])for(const agent of [false,true])for(const question of ['¿Están atendiendo?','¿A qué hora abren?']){
+    it(name+' agent='+agent+' '+question,async()=>{
+      const h=harness([{id:13202,code:13202,name,price:12000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);expect(h.cartRows()).toHaveLength(1);
+      const before=structuredClone(h.conv.sessionData);h.cfg.agentV1Enabled=agent;
+      h.service.businessService.getStatus=jest.fn().mockResolvedValue({isOpen:false,openTime:'09:00',closeTime:'18:00',message:'Cerrado'});
+      const reply=await h.sendQueued(question);
+      expect(h.conv.sessionData).toEqual(before);
+      expect(reply).toMatch(/cerrad/i);expect(reply).toMatch(/09:00.*18:00/);
+      expect(reply).not.toMatch(/estamos atendiendo|estamos abiertos/i);
+    });
+  }
+});
+
+describe('Respuesta corta — sin elección pendiente no inventa otra compra',()=>{
+  for(const name of ['Gyros De Cordero','Croissant De Almendras'])for(const existing of [false,true])for(const text of ['Sí','No','Ok','Gracias']){
+    it(name+' carrito='+existing+' '+text,async()=>{
+      const h=harness([{id:13203,code:13203,name,price:19000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      if(existing)await h.sendQueued('2 '+name);
+      expect(h.cartRows()).toHaveLength(existing?1:0);
+      const before=structuredClone(h.cartRows());h.service.ordersService.create=jest.fn();
+      await h.sendQueued(text);
+      expect(h.cartRows()).toEqual(before);
+      expect(h.conv.sessionData.paymentMethod).toBeFalsy();
+      expect(h.conv.state).not.toBe('completed');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Respuesta corta — lista ambigua necesita elección concreta',()=>{
+  for(const names of [['Bao De Cerdo','Bao De Hongos'],['Crepe Dulce','Crepe Salada']])for(const agent of [false,true])for(const text of ['Sí','Ok']){
+    it(names.join('/')+' agent='+agent+' '+text,async()=>{
+      const menu=names.map((name,index)=>({id:13210+index,code:13210+index,name,price:15000,availableNow:true,hasAttributes:false,attributes:[]}));
+      const h=harness(menu,agent);
+      h.conv.sessionData.pendingMatch={query:'Quiero dos '+names[0].split(' ')[0],intent:'order',quantity:2,candidates:menu};
+      const pending=structuredClone(h.conv.sessionData.pendingMatch);h.service.ordersService.create=jest.fn();
+      await h.sendQueued(text);
+      expect(h.cartRows()).toEqual([]);
+      expect(h.conv.sessionData.pendingMatch).toEqual(pending);
+      expect(h.replies.at(-1)).toMatch(/cu[aá]l|elige|n[uú]mero|opci[oó]n/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
