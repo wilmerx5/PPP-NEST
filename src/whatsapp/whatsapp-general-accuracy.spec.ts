@@ -7964,3 +7964,67 @@ describe('Interrupciones del checkout — atiende consulta y retoma dato pendien
     });
   }
 });
+
+describe('Interrupciones con opciones y varios platos — respuesta más recordatorio',()=>{
+  const menus=[{dish:'Kebab Vegetal',drink:'Te Helado',flavors:['Durazno','Limon']},{dish:'Gofre Salado',drink:'Batido De Avena',flavors:['Cacao','Vainilla']}];
+  for(const f of menus)for(const agent of [false,true]){
+    const menu=[{id:13401,code:13401,name:f.dish,price:16000,availableNow:true,hasAttributes:false,attributes:[]},{id:13402,code:13402,name:f.drink,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:f.flavors}]}];
+    for(const question of ['¿Cuánto suma mi pedido?','¿Qué tengo en el carrito?','¿Aceptan efectivo?','¿Cuánto cuesta '+f.dish+'?']){
+      it(f.drink+' sabor pendiente agent='+agent+' '+question,async()=>{
+        const h=harness(menu,false);await h.sendQueued('2 '+f.dish);
+        h.conv.sessionData.pendingAttribute={productId:13402,name:f.drink,code:13402,price:7000,attributes:menu[1].attributes,selected:[],sourceText:'3 '+f.drink,quantity:3};
+        h.cfg.agentV1Enabled=agent;const before=structuredClone(h.conv.sessionData);
+        const reply=await h.sendQueued(question);
+        expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+        expect(reply).toMatch(question.includes('cuesta')?/16[.,]000/:question.includes('suma')?/32[.,]000/:question.includes('carrito')?/Kebab|Gofre/:/efectivo|contraentrega/i);
+        expect(reply).toMatch(/Sabor|Durazno|Cacao/i);
+        await h.sendQueued(f.flavors[0]);
+        expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:13401,qty:2}),expect.objectContaining({id:13402,qty:3,attrs:expect.arrayContaining(['Sabor:'+f.flavors[0]])})]));
+      });
+      it(f.dish+' selección pendiente agent='+agent+' '+question,async()=>{
+        const candidates=[menu[0],{...menu[0],id:13403,code:13403,name:f.dish+' Especial',price:19000}];
+        const h=harness(candidates,false);h.cfg.agentV1Enabled=agent;
+        h.conv.sessionData.pendingMatch={query:'Quiero dos '+f.dish,intent:'order',quantity:2,candidates};
+        const before=structuredClone(h.conv.sessionData.pendingMatch);const reply=await h.sendQueued(question);
+        expect(h.cartRows()).toEqual([]);expect(h.conv.sessionData.pendingMatch).toEqual(before);
+        expect(reply).toMatch(question.includes('cuesta')?/16[.,]000/:question.includes('suma')?/total|platos/i:question.includes('carrito')?/platos|pedido/i:/efectivo|contraentrega/i);
+        expect(reply).toMatch(/Especial|elige|prefieres/i);
+        await h.sendQueued('2');expect(h.cartRows()).toEqual([expect.objectContaining({id:13403,qty:2})]);
+      });
+    }
+    for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment'])for(const question of ['¿Cuánto suma mi pedido?','¿Qué tengo en el carrito?','¿Aceptan efectivo?','¿Cuánto cuesta '+f.dish+'?']){
+      it(f.dish+' carrito múltiple '+state+' agent='+agent+' '+question,async()=>{
+        const h=harness(menu,false);await h.sendQueued('2 '+f.dish);await h.sendQueued('3 '+f.drink+' '+f.flavors[0]);expect(h.cartRows()).toHaveLength(2);
+        h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+        Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',deliveryFeeCalculated:2000,paymentMethod:undefined});
+        h.conv.state=state;h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData);
+        const reply=await h.sendQueued(question);
+        expect(h.conv.state).toBe(state);expect(h.conv.sessionData).toEqual(before);
+        expect(reply).toMatch(question.includes('cuesta')?/16[.,]000/:question.includes('suma')?/53[.,]000|55[.,]000/:question.includes('carrito')?/Kebab|Gofre/:/efectivo|contraentrega/i);
+        expect(reply).toMatch(state==='awaiting_name'?/nombre/i:state==='awaiting_phone'?/tel[eé]fono|n[uú]mero/i:state==='awaiting_address'?/direcci[oó]n/i:/m[eé]todo.*pago|c[oó]mo pagas/i);
+        await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+        expect(h.conv.state).not.toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Chat arroz paisa — consultas durante nombre y pago sin capturar preguntas como persona',()=>{
+  const fixtures=[{label:'PPP',menu:products,name:'Arroz Paisa'},
+    {label:'Poke',name:'Poke De Tofu',menu:[{id:13501,code:13501,name:'Poke De Tofu',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:13502,code:13502,name:'Combo De Poke De Tofu',price:27000,availableNow:true,hasAttributes:false,attributes:[]}]},
+    {label:'Falafel',name:'Falafel Artesanal',menu:[{id:13503,code:13503,name:'Falafel Artesanal',price:17000,availableNow:true,hasAttributes:false,attributes:[]},{id:13504,code:13504,name:'Combo De Falafel Artesanal',price:24000,availableNow:true,hasAttributes:false,attributes:[]}]}];
+  for(const f of fixtures)for(const agent of [false,true])for(const question of ['Que precio tiene','Y eso qué precio tiene?','Me dices cuánto vale?']){
+    it(f.label+' secuencia completa agent='+agent+' '+question,async()=>{
+      const h=harness(f.menu,false);h.conv.customerName='';await h.sendQueued('Buenas noches');await h.sendQueued('Me regala porfavor un '+f.name);
+      expect(h.cartRows()).toHaveLength(1);const before=structuredClone(h.conv.sessionData.cart);h.cfg.agentV1Enabled=agent;
+      await h.sendQueued('Calle 40f sur #80D - 59');expect(h.conv.state).toBe('awaiting_name');
+      const price=await h.sendQueued(question);
+      expect(h.conv.customerName).toBe('');expect(h.conv.state).toBe('awaiting_name');expect(h.conv.sessionData.cart).toEqual(before);
+      expect(price).toContain(h.service.catalogService.formatMoney(before[0].unitPrice));expect(price).toMatch(/nombre/i);
+      const combo=await h.sendQueued('Pero ese viene en combo o solo ?');
+      expect(combo).toMatch(/combo/i);expect(combo).not.toMatch(/no entend[ií]/i);expect(h.conv.customerName).toBe('');expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued('Carolina Ramirez');expect(h.conv.customerName).toBe('Carolina Ramirez');expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');
+      const again=await h.sendQueued('Que precio tiene');expect(again).toContain(h.service.catalogService.formatMoney(before[0].unitPrice));expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.customerName).toBe('Carolina Ramirez');expect(h.conv.sessionData.cart).toEqual(before);
+    });
+  }
+});

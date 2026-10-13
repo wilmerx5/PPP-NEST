@@ -1173,6 +1173,12 @@ export class WhatsappOrchestratorService {
         '\n\n¿Cuál quieres consultar? Todavía no agregué ningún producto por esta consulta.');
       return;
     }
+    // Catalogue questions interrupt data capture before the agent or field parser consumes them.
+    if (!['completed', 'closed', 'human', 'human_takeover'].includes(conv.state) &&
+      this.catalogService.isComboAvailabilityQuestion(originalText)) {
+      const menu = await this.catalogService.getMenuProducts();
+      if (await this.tryHandleComboAvailabilityQuestion(conv, msg.waId, session, originalText, menu, cfg)) return;
+    }
     if (await this.tryHandleBasicCustomerAside(conv, msg.waId, session, originalText, cfg)) return;
     // Price disputes and references interrupt checkout without authorizing purchases.
     if (session.cart.length &&
@@ -1187,10 +1193,12 @@ export class WhatsappOrchestratorService {
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
       const targets = named ? [named] : sizes.length ? sizes : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
-      await this.reply(conv, msg.waId, targets.length
+      const priceReply = targets.length
         ? targets.map(product => `${product.name}: ${this.catalogService.formatMoney(product.price)} según la carta.`).join('\n') +
           '\n\nEl pedido sigue igual.\n' + this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))
-        : '¿De cuál producto quieres saber el precio? El pedido sigue igual.');
+        : '¿De cuál producto quieres saber el precio? El pedido sigue igual.';
+      const reminder = targets.length ? this.formatInterruptedStepReminder(conv, session) : '';
+      await this.reply(conv, msg.waId, reminder ? `${priceReply}\n\n${reminder}` : priceReply);
       return;
     }
     const asksArrival = /\ben\s+cuanto\s+(?:llega|tarda|demora|viene|est[aá])\b/i.test(originalText);
@@ -9016,18 +9024,17 @@ export class WhatsappOrchestratorService {
       ...(session.pendingMatch?.candidates || []),
     ]);
     if (family && family.variants.length >= 2) {
-      session = {
-        ...session,
-        pendingMatch: { query: family.baseLabel, candidates: family.variants },
-        pendingAttribute: undefined,
-      };
+      // A question about an existing dish does not replace an unfinished choice.
+      if (!session.cart.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+        session = { ...session, pendingMatch: { query: family.baseLabel, candidates: family.variants } };
+      }
       await this.conversationService.saveSession(conv, session);
       await this.reply(
         conv,
         waId,
         `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
           this.catalogService.formatVariantFamilyPrompt(family) +
-          `\n\n_Si quieres el combo, dime *en combo* o el número._`,
+          (session.cart.length ? `\n\nEl pedido sigue igual.${this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''}` : `\n\n_Si quieres el combo, dime *en combo* o el número._`),
       );
       return true;
     }
@@ -9037,7 +9044,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        this.catalogService.formatProductVariantsOverview(product, 'info'),
+        this.catalogService.formatProductVariantsOverview(product, 'info') + (this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''),
       );
       return true;
     }
@@ -9046,7 +9053,7 @@ export class WhatsappOrchestratorService {
     await this.reply(
       conv,
       waId,
-      `Sobre *${product.name}*, en el menú no veo una variante *combo* aparte. Si quieres, te lo agrego tal cual.`,
+      `Sobre *${product.name}*, en el menú no veo una variante *combo* aparte. El pedido sigue igual.` + (this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''),
     );
     return true;
   }
@@ -11710,6 +11717,17 @@ export class WhatsappOrchestratorService {
    * Preguntas de mostrador: repetir el pedido, el total, si reciben efectivo
    * y datos del local que este chat no puede inventar.
    */
+  private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
+      return this.formatPendingPurchaseReminder(session);
+    }
+    if (conv.state === 'awaiting_name') return 'Para seguir, ¿a nombre de quién dejamos el pedido?';
+    if (conv.state === 'awaiting_phone') return 'Para seguir, confirma el teléfono o escribe otro número de contacto.';
+    if (conv.state === 'awaiting_address') return 'Para seguir, escribe la dirección del domicilio.';
+    if (conv.state === 'awaiting_payment') return 'Para seguir, ¿con qué método de pago pagas?';
+    return '';
+  }
+
   private async tryHandleBasicCustomerAside(
     conv: WhatsappConversation,
     waId: string,
@@ -11718,14 +11736,15 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)) return false;
+    const respond = async (body: string) => {
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, waId, reminder ? `${body}\n\n${reminder}` : body);
+    };
     const cartReply = () => this.formatCartOnly(session, this.deliveryFeeFor(session, cfg));
     const same = session.cart.length ? `\n\nEl pedido sigue igual.\n${cartReply()}` : '';
 
     if (this.looksLikeCartRecapQuestion(text)) {
-      await this.reply(
-        conv,
-        waId,
-        session.cart.length
+      await respond(session.cart.length
           ? `Esto es lo que llevas:\n\n${cartReply()}`
           : 'Todavía no hay platos en el pedido. Dime el plato o el código.',
       );
@@ -11734,7 +11753,7 @@ export class WhatsappOrchestratorService {
 
     if (this.looksLikeOrderTotalQuestion(text)) {
       if (!session.cart.length) {
-        await this.reply(conv, waId, 'Todavía no hay platos, así que no hay total.');
+        await respond('Todavía no hay platos, así que no hay total.');
         return true;
       }
       const subtotal = session.cart.reduce(
@@ -11743,10 +11762,7 @@ export class WhatsappOrchestratorService {
       );
       const fee = session.orderType === 'delivery' ? this.deliveryFeeFor(session, cfg) : 0;
       const total = subtotal + fee;
-      await this.reply(
-        conv,
-        waId,
-        `El total del pedido va en *${this.catalogService.formatMoney(total)}*.${same}`,
+      await respond(`El total del pedido va en *${this.catalogService.formatMoney(total)}*.${same}`,
       );
       return true;
     }
@@ -11754,10 +11770,7 @@ export class WhatsappOrchestratorService {
     if (this.looksLikeCashAcceptanceQuestion(text)) {
       const methods = getEnabledPaymentMethods(cfg.paymentMethods || []);
       const cash = methods.find((method) => method.id === 'cash' || method.id === 'contraentrega');
-      await this.reply(
-        conv,
-        waId,
-        (cash
+      await respond((cash
           ? `Sí, *${cash.label || 'efectivo'}* está disponible. Todavía no lo dejo elegido.`
           : 'Te digo las formas de pago cuando cierres el pedido. Todavía no elijo una.') + same,
       );
@@ -11765,10 +11778,7 @@ export class WhatsappOrchestratorService {
     }
 
     if (this.looksLikeVenueFacilityQuestion(text)) {
-      await this.reply(
-        conv,
-        waId,
-        `Eso lo confirma el local. Por este chat armo el pedido.${same}`,
+      await respond(`Eso lo confirma el local. Por este chat armo el pedido.${same}`,
       );
       return true;
     }
