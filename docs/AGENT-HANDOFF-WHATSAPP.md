@@ -788,3 +788,5 @@ Baseline24fallaron/8pasaron /tmp/ppp-selection-cancel-baseline.log;variosfallos 
 Full en curso /tmp/ppp-selection-cancel-full.log;TypeScript /tmp/ppp-selection-cancel-tsc.log;snapshot /tmp/ppp-selection-cancel-source.json.Noeditarfuentes. Mainintacta,ceroAPI35/40usadas5restantes.
 
 Aprobación final:66suites/3175pruebas aprobadas (/tmp/ppp-selection-cancel-full.log),TypeScript aprobado /tmp/ppp-selection-cancel-tsc.log;snapshot sin diferencias.36regresiones nuevas.NoAPI,Mainintacta. Pendiente deploy.
+
+Código553a2087 desplegado/verificado13/10/2026 14:11Bogotá:running/healthy,imagenactiva=candidata sha256:bb3a3fac469fdc35dc6d0c4d85ca189799c5458fff8fc2519d768094ca8135be;healthOK/DBconnected/circuitCLOSED. /tmp/ppp-selection-cancel-deploy.log y /tmp/ppp-selection-cancel-deploy-verified.log. Primera comprobación starting/healthOK;segundahealthy. Mainintacta,modelos/presupuesto sin cambios. Próximo:cortesía/typos,alias de atributos,cancelación de edición de línea existente frente a eliminarla,propuestas múltiples.
