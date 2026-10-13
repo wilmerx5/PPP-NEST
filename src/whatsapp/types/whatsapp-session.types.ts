@@ -95,6 +95,8 @@ export type WhatsappSessionData = {
    */
   pendingUnitSplit?: string;
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
+  /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
+  recentUnavailableOrder?: { items: string[]; expiresAt: number };
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;

@@ -12,7 +12,11 @@ export function namedPackOrderQuantity(text:string,productName:string):number|nu
   const source=normalized(text);
   const namePattern=name.split(' ').map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');
   const match=new RegExp(`\\b${namePattern}\\b`).exec(source);
-  if(!match)return null;
+  if(!match) {
+    const contents=pack[2].split(' ')[0];
+    const requested=new RegExp(`\\b(?:(\\d{1,2})\\s+)?(?:combos?|paquetes?|promociones?)\\s+(?:de\\s+)?${pack[1]}\\s+${contents}\\b`).exec(source);
+    return requested ? Math.max(1,Math.min(30,Number(requested[1] || 1))) : null;
+  }
   const prefix=source.slice(0,match.index).trim();
   const copies=prefix.match(/(?:^|\s)(\d{1,2})\s*(?:(?:paquetes?|combos?|promociones?|unidades?|pedidos?)\s*)?$/);
   return copies ? Math.max(1,Math.min(30,Number(copies[1]))) : 1;

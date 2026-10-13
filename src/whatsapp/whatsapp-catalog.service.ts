@@ -1,3 +1,4 @@
+import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable } from '@nestjs/common';
@@ -9558,6 +9559,22 @@ export class WhatsappCatalogService {
           segWords.length > 0 &&
           segWords.every((w) => addedTokens.some((t) => w === t || nearDishToken(w, t)));
         if (/\bcambia/.test(segN) || touchesChange || onlyTheChange) continue;
+      }
+      // A requested pack size is part of the SKU, not the number of packs.
+      if (/\b(?:combos?|paquetes?|promociones?)\s+(?:de\s+)?(?:dos|tres|cuatro|cinco|[2-9])\b/i.test(segment)) {
+        const packs = products.filter(p => p.availableNow !== false && namedPackOrderQuantity(segment, p.name) != null);
+        if (packs.length > 1) {
+          ambiguous.push({segment, candidates:packs});
+          continue;
+        }
+        if (packs.length === 1) {
+          const product = packs[0];
+          const match = {segment,product,score:100};
+          if (product.hasAttributes && product.attributes?.length) needsAttributes.push(match);
+          else confident.push(match);
+          usedProductIds.add(product.id);
+          continue;
+        }
       }
       const segSwap = this.swapIntent(segment);
       if (segSwap) {

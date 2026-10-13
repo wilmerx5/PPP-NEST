@@ -130,7 +130,7 @@ describe('Acertividad general — chats reales y ediciones', () => {
     const h = harness();
     const first = await h.send('Me vendes 2 costillas\n1 mojarra');
     expect(first).toMatch(/costillas/i);
-    expect(h.conv.sessionData.cart).toEqual([]);
+    expect(h.cartRows()).toContainEqual(expect.objectContaining({id:14,qty:1}));
 
     await h.send('costillas der cerdo');
 
@@ -621,7 +621,7 @@ describe('Historical chat batch: compound preferences and interrupted choices', 
   it.each([true,false])('keeps chicken while a soup question interrupts the purchase (agent: %s)', async enabled => {
     const h = harness(products,enabled);
     await h.send('Me regalas un pollo frito por favor y una sopita');
-    expect(h.conv.sessionData.pendingMultiOrder?.confident).toContainEqual(expect.objectContaining({productId:1}));
+    expect(h.cartRows()).toContainEqual(expect.objectContaining({id:1,qty:1}));
     const pending = structuredClone(h.conv.sessionData.pendingMultiOrder);
     await h.send('Que sopita tienes?');
     expect(h.conv.sessionData.pendingMultiOrder).toEqual(pending);
@@ -2437,9 +2437,9 @@ describe('Mensaje largo — varios platos y dirección juntos', () => {
     const h = harness(products, agent);
     const reply = await h.send('hola me envias por favor un churrasco, una malteada y una sopa de mondongo para la calle 7 #20-30');
     const pending = h.conv.sessionData.pendingMultiOrder;
-    const known = [...(pending?.confident || []), ...(pending?.needsAttributes || [])].map((row) => row.productId);
+    const known = h.cartRows().map(row=>row.id);
     expect(known).toEqual(expect.arrayContaining([17, 45]));
-    expect(pending?.unresolved.join(' ') || reply || '').toMatch(/malteada/i);
+    expect(h.replies.join(' ')).toMatch(/malteada/i);
     expect(reply || '').not.toMatch(/me envias|buenas noches/i);
     expect(h.conv.sessionData.address).toMatch(/calle 7/i);
     await h.send('sí');
@@ -2453,9 +2453,9 @@ describe('Mensaje largo — varios platos y dirección juntos', () => {
     const h = harness(fiction, agent);
     const reply = await h.send('hola me envias por favor un taco al pastor, un helado y una sopa de la casa para la calle 7 #20-30');
     const pending = h.conv.sessionData.pendingMultiOrder;
-    const known = [...(pending?.confident || []), ...(pending?.needsAttributes || [])].map((row) => row.productId);
+    const known = h.cartRows().map(row=>row.id);
     expect(known).toEqual(expect.arrayContaining([9701, 9702]));
-    expect(pending?.unresolved.join(' ') || reply || '').toMatch(/helado/i);
+    expect(h.replies.join(' ')).toMatch(/helado/i);
     expect(reply || '').not.toMatch(/me envias/i);
     expect(h.conv.sessionData.address).toMatch(/calle 7/i);
     await h.send('sí');
@@ -6456,12 +6456,12 @@ describe('El resto sí — confirmación coloquial de lo que sí hay', () => {
   ] as const)('%s agrega solo lo conocido', async (yes, menu, order, id, qty) => {
     const h = harness(menu as typeof products, false);
     await h.sendQueued(order);
-    expect(h.cartRows()).toEqual([]);
-    expect(h.conv.sessionData.pendingMultiOrder?.confident?.length || h.conv.sessionData.pendingMultiOrder?.needsAttributes?.length).toBeGreaterThan(0);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty})]);
+    const before = h.cartRows();
     await h.sendQueued(yes);
     expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty })]);
     expect(h.conv.sessionData.pendingMultiOrder).toBeFalsy();
-    expect(h.cartRows().some((row) => /malteada|helado/i.test(String(row.id)))).toBe(false);
+    expect(h.cartRows()).toEqual(before);
   });
   it.each([
     { menu: products, order: 'Un churrasco y una malteada', id: 17 },
@@ -6469,8 +6469,10 @@ describe('El resto sí — confirmación coloquial de lo que sí hay', () => {
   ])('pedir el faltante por su nombre no lo inventa', async ({ menu, order, id }) => {
     const h = harness(menu as typeof products, false);
     await h.sendQueued(order);
+    const before = h.cartRows();
     const reply = await h.sendQueued(menu === products ? 'sí la malteada' : 'sí el helado');
-    expect(h.cartRows().map((row) => row.id)).not.toContain(id);
+    expect(h.cartRows()).toEqual(before);
+    expect(h.cartRows().map(row=>row.id)).toEqual([id]);
     expect(reply || '').toMatch(/no tenemos|no manejamos|malteada|helado/i);
   });
 });
@@ -8951,4 +8953,209 @@ describe('Calle nueva durante el pago', () => {
     expect(confirmed || '').toMatch(/confirmar/i);
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
+});
+
+describe('Dale, eso está bien — no es un plato', () => {
+  const proposal =
+    'Listo, te armo el combo de pollo frito, combo de pollo broaster, sopa de ajiaco y menudencias. Las sopas van sin arroz, pero solo tenemos yuca frita normal. Las bebidas de los combos son gaseosas, no tenemos jugo Hit para cambiar. ¿Te confirmo con gaseosa?';
+  const ramen = [
+    { id: 15701, code: 15701, name: 'Ramen De Miso', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 15702, code: 15702, name: 'Sopa De Miso', price: 12000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 15703, code: 15703, name: 'Porcion De Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+
+  it.each([false, true])('con el pedido abierto acepta la yuca y no la compra otra vez (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [
+      { productId: 99, code: 99, name: 'Combo De Pollo Frito', unitPrice: 49000, quantity: 1 },
+      { productId: 98, code: 98, name: 'Combo De Pollo Broaster', unitPrice: 50000, quantity: 1 },
+      { productId: 38, code: 38, name: 'Sopa De Ajiaco', unitPrice: 10500, quantity: 1 },
+      { productId: 20, code: 20, name: 'Sopa De Menudencias', unitPrice: 10500, quantity: 1 },
+    ];
+    h.replies.push(proposal);
+    const reply = await h.sendQueued('Dale la yuca frita esta Bien');
+    expect(reply || '').toMatch(/yuca frita/i);
+    expect(reply || '').toMatch(/bebida/i);
+    expect(reply || '').not.toMatch(/no manejamos/i);
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([20, 38, 98, 99]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sin carrito no inventa cantidades desde el texto del bot (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.replies.push(proposal);
+    const reply = await h.sendQueued('Dale la yuca frita esta Bien');
+    expect(reply || '').not.toMatch(/no manejamos/i);
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: true, cart: true },
+    { agent: false, cart: false },
+  ])('en otro menú “el edamame está bien” no es un plato faltante (agent $agent, cart $cart)', async ({ agent, cart }) => {
+    const h = harness(ramen as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    if (cart) {
+      h.conv.sessionData.cart = [
+        { productId: 15701, code: 15701, name: 'Ramen De Miso', unitPrice: 28000, quantity: 1 },
+        { productId: 15702, code: 15702, name: 'Sopa De Miso', unitPrice: 12000, quantity: 1 },
+      ];
+    }
+    h.replies.push(
+      'Listo, te armo el ramen de miso y la sopa de miso. Solo tenemos porcion de edamame, no tenemos te matcha. ¿Te confirmo con te?',
+    );
+    const reply = await h.sendQueued('Dale el edamame esta bien');
+    expect(reply || '').toMatch(/edamame/i);
+    expect(reply || '').not.toMatch(/no manejamos/i);
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual(cart ? [15701, 15702] : []);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Regresión dirección — correcciones completas y demostrativos', () => {
+  const menu = [{id:15801,code:15801,name:'Ravioli De Espinaca',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
+  function ready(agent:boolean) {
+    const h=harness(menu,agent);
+    h.service.ordersService.create=jest.fn();
+    h.conv.sessionData.cart=[{productId:15801,code:15801,name:menu[0].name,quantity:3,unitPrice:19000,attributes:[],note:'sin queso'}];
+    h.conv.sessionData.orderType='delivery';
+    h.conv.sessionData.fulfillmentChosen=true;
+    h.conv.sessionData.address='No, a esta conjunto Residencial bosques De Castilla cada 54';
+    h.conv.sessionData.addressConfirmed=true;
+    h.conv.sessionData.phoneConfirmed=true;
+    h.conv.state='awaiting_payment';
+    return h;
+  }
+  it.each([false,true])('reproduce calle, pago y pregunta copiada (agente %s)',async agent=>{
+    const h=ready(agent); const cart=h.cartRows();
+    await h.sendQueued('Direction: cl 6 bis 69 109');
+    expect(h.conv.sessionData.address).toMatch(/109/);
+    await h.sendQueued('1');
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    await h.sendQueued('Quiero cambiar la direction.');
+    const reply=await h.sendQueued('Claro, ¿cuál es la nueva dirección del domicilio?\ncl 8 bis 70 111');
+    expect(h.conv.sessionData.address).toMatch(/111/);
+    expect(h.conv.sessionData.address).not.toMatch(/109|bosques|cuál|Claro/);
+    expect(reply).toMatch(/111/);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.cartRows()).toEqual(cart);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it.each([false,true].flatMap(agent=>['A una Nueva','No Esa no es la direction es esta','No esa no, es otra','Mejor otra dirección por favor'].map(text=>({agent,text}))))('$text pide calle real (agente $agent)',async({agent,text})=>{
+    const h=ready(agent); h.conv.state='awaiting_address';
+    h.conv.sessionData.lastDeliveryAddress=h.conv.sessionData.address;
+    const cart=h.cartRows();
+    const reply=await h.sendQueued(text);
+    expect(h.conv.sessionData.address).not.toBe('esta');
+    expect(reply).toMatch(/escribe|cu[aá]l|nueva|correcta/i);
+    expect(reply).not.toMatch(/direcci[oó]n actualizada|no me qued[oó] clara/i);
+    const updated=await h.sendQueued('Carrera 81 h 30 25');
+    expect(h.conv.sessionData.address).toMatch(/81.*30.*25/);
+    expect(updated).toMatch(/81/);
+    expect(h.cartRows()).toEqual(cart);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Pedido mixto — compra clara inmediata',()=>{
+ const menu=[
+ {id:15811,code:15811,name:'Hamburguesa Clasica',price:20000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15812,code:15812,name:'Trio De Tacos Al Pastor',price:39000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15813,code:15813,name:'Duo De Tacos Al Pastor',price:29000,availableNow:true,hasAttributes:false,attributes:[]}];
+ it.each([false,true])('añade claro sin sí y conserva selección sin duplicar (agente %s)',async agent=>{
+ const h=harness(menu,agent);
+ const reply=await h.sendQueued('Quiero un pero caliente, una hamburguesa y un combo de tres tacos');
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:15811,qty:1})]));
+ expect(reply).not.toMatch(/escribe.*s[ií].*✅|queda listo cuando/i);
+ if(h.conv.sessionData.pendingMultiOrder?.ambiguous.length) await h.sendQueued('Trio De Tacos Al Pastor');
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:15812,qty:1})]));
+ expect(h.cartRows().filter(r=>r.id===15811)).toHaveLength(1);
+ });
+});
+
+
+describe('Pedido mixto — menús y cantidades de paquetes',()=>{
+ const families=[
+ {name:'Tacos',single:'Hamburguesa Clasica',pack:'Trio De Tacos Al Pastor',request:'combo de tres tacos'},
+ {name:'Gyozas',single:'Ramen Miso',pack:'Trio De Gyozas Vegetales',request:'paquete de tres gyozas'},
+ ];
+ it.each(families.flatMap(family=>[false,true].flatMap(agent=>[1,2,5].map(qty=>({family,agent,qty})))))('$family.name: $qty paquetes y producto claro (agente $agent)',async({family,agent,qty})=>{
+ const menu=[{id:15901,code:15901,name:family.single,price:18000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15902,code:15902,name:family.pack,price:35000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15903,code:15903,name:family.pack.replace('Trio','Duo'),price:25000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ await h.sendQueued(`Quiero dos ${family.single}, ${qty} ${family.request} y un zapato comestible`);
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:15901,qty:2})]));
+ if(h.conv.sessionData.pendingMultiOrder?.ambiguous.length) await h.sendQueued(family.pack);
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:15902,qty})]));
+ const cart=h.cartRows();
+ await h.sendQueued('sí');
+ expect(h.cartRows()).toEqual(cart);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Dirección nueva — tarifa y coordenadas se recalculan',()=>{
+ it.each([false,true])('con pago conserva carrito y reemplaza tarifa vieja (agente %s)',async agent=>{
+ const menu=[{id:15921,code:15921,name:'Curry De Lentejas',price:18000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ Object.assign(h.cfg,{deliveryFeeMode:'distance',restaurantLat:4.6,restaurantLng:-74.1});
+ h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockResolvedValue({ok:true,fee:6000,distanceKm:4.6,source:'google_directions',customer:{lat:4.61,lng:-74.12}})};
+ h.conv.sessionData={cart:[{productId:15921,name:menu[0].name,code:15921,quantity:2,unitPrice:18000,attributes:[],note:'sin picante'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 1 2 3',addressConfirmed:true,phoneConfirmed:true,paymentMethod:'cash',deliveryFeeCalculated:2000,deliveryDistanceKm:1.4,deliveryLat:4.5,deliveryLng:-74.2};
+ h.conv.state='awaiting_final_confirm'; const before=h.cartRows();
+ const reply=await h.sendQueued('Direction: cl 6 bis 69 109');
+ expect(h.service.deliveryRouting.quoteDeliveryFee).toHaveBeenCalledWith(expect.objectContaining({customerAddress:expect.stringMatching(/109/),customerCoords:null}));
+ expect(h.conv.sessionData.deliveryFeeCalculated).toBe(6000);
+ expect(h.conv.sessionData.deliveryDistanceKm).toBe(4.6);
+ expect(h.conv.sessionData.deliveryLat).toBe(4.61);
+ expect(h.conv.sessionData.paymentMethod).toBe('cash');
+ expect(reply).toMatch(/6.000/);expect(reply).toMatch(/109/);
+ expect(h.cartRows()).toEqual(before);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Pedido mixto — dos dudas independientes',()=>{
+ it.each([false,true].flatMap(agent=>['Pizza','Ramen'].map(family=>({agent,family}))))('elegir $family añade esa línea sin esperar la otra (agente $agent)',async({agent,family})=>{
+ const menu=[{id:15931,code:15931,name:family+' Vegetal',price:18000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15932,code:15932,name:family+' De Queso',price:19000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15933,code:15933,name:'Pasta De Setas',price:20000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:15934,code:15934,name:'Pasta De Espinaca',price:21000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],unresolved:['zapato comestible'],ambiguous:[{segment:`Dos ${family}`,candidates:menu.slice(0,2)},{segment:'Tres pastas',candidates:menu.slice(2)}]};
+ await h.sendQueued('1');
+ expect(h.cartRows()).toEqual([expect.objectContaining({id:15931,qty:2})]);
+ expect(h.conv.sessionData.pendingMultiOrder?.ambiguous).toHaveLength(1);
+ await h.sendQueued('1');
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:15931,qty:2}),expect.objectContaining({id:15933,qty:3})]));
+ expect(h.cartRows()).toHaveLength(2);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Aceptación de acompañamiento — bebida sigue pendiente',()=>{
+ it.each([false,true].flatMap(agent=>[{dish:'Combo Vegetal',side:'yuca frita'},{dish:'Menu De Ramen',side:'edamame'}].map(family=>({agent,...family}))))('$side no pierde cantidad ni escoge bebida (agente $agent)',async({agent,dish,side})=>{
+ const menu=[{id:15941,code:15941,name:dish,price:28000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te Verde','Cola']}]},
+ {id:15942,code:15942,name:'Porcion De '+side,price:5000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ h.conv.sessionData.pendingAttribute={productId:15941,name:dish,code:15941,price:28000,attributes:menu[0].attributes!,selected:[],quantity:3,sourceText:`3 ${dish} sin arroz`};
+ h.conv.state='awaiting_attribute';
+ h.replies.push(`Solo tenemos ${side} normal. Falta elegir bebida: Te Verde o Cola. ¿Cuál prefieres?`);
+ const pending=structuredClone(h.conv.sessionData.pendingAttribute);
+ const reply=await h.sendQueued(`Dale la ${side} está bien`);
+ expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+ expect(reply).toMatch(/Te Verde|Cola/);
+ expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+ expect(h.cartRows()).toEqual([]);
+ await h.sendQueued('Cola');
+ expect(h.cartRows()).toEqual([expect.objectContaining({id:15941,qty:3,attrs:expect.arrayContaining(['Bebida:Cola'])})]);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
 });

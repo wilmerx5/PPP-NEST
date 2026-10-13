@@ -804,3 +804,33 @@ Extensión antes del cierre:4pruebas por colisión entre nombre de plato y opci�
 Aprobación final:66suites/3227pruebas,307.352s (/tmp/ppp-cancel-courtesy-edit-full-final.log),TypeScript aprobado /tmp/ppp-cancel-courtesy-edit-tsc-final.log,snapshot sin diferencias.52nuevasregresiones,88focalizadas. Full detenido no aprobado. Mainintacta,ceroAPI35/40usadas5restantes. Pendiente deploy.
 
 Código0508049d desplegado/verificado13/10/2026 14:32Bogotá:running/healthy,imagenactiva=candidata sha256:562082b34bf0942e56e18acbf26d506f092d8405fcad6bc03c16af2e0a4e041d;healthOK/DBconnected/circuitCLOSED. /tmp/ppp-cancel-courtesy-edit-deploy.log y /tmp/ppp-cancel-courtesy-edit-deploy-verified.log. Primera comprobación starting/healthOK;segundahealthy. Mainintacta,ceroAPI:modelos/presupuesto sin cambios. Próximo:sustitución deSKU→opciones pendientes→cancelación/restauración;propuestas múltiples;consulta+acción.
+
+
+## Correcciones de dirección y pedidos mixtos — 13/10/2026, en validación
+
+Se encontró HEAD ac634386 (publicado por otro trabajo concurrente), que ya integraba los 8 casos de sustitución de SKU de esta tarea y nuevos casos de direcciones/ofertas. Se preservó ese trabajo y se revisaron los cambios locales de aceptación de acompañamiento; no reiniciar ni atribuir todos esos cambios a esta tanda.
+
+Fallos observados en chats del usuario:
+- Dirección con texto conversacional guardado (“No, a esta…”); alias Direction durante pago ignorado; pago aplicado a dirección vieja; pregunta copiada antes de calle conservaba la anterior, pese a responder “Dirección lista”. Nueva calle debe reemplazar y volver a cotizar, manteniendo carrito/pago.
+- “A una Nueva”/rechazo de anterior bloqueaba la captura; “es esta” sin destino se guardaba literalmente. Pedir destino concreto, no geocodificar demostrativos.
+- Pedido mixto requería sí para productos ya claros. Añadir lo inequívoco; mantener por separado selección/opciones; excluir desconocidos y evitar duplicarlos con un sí posterior.
+- “Un combo de tres tacos” se interpretó como tres unidades del SKU. Separar cantidad de paquetes y contenido del paquete; conservar ambigüedad entre SKUs con nombres similares.
+- Oferta de dúo→consulta de bebida→sabor perdió SKU y compró botella; corrección en pago ignorada. Ac634386 ya trae pruebas de ese camino y otro menú; comprobarlas en regresión integrada.
+- Aceptación de yuca se trató como plato; no debe aceptar además una sustitución de bebida ni reconstruir cantidades desde la prosa del bot. Se revisaron 6 pruebas locales: sin carrito estructurado se pide platos/cantidades, no se inventan compras.
+- Colmbiana y Cliente Sintético son problemas visibles de presentación/datos; estos chats no prueban su origen. Pendiente auditar datos del catálogo/perfil antes de piloto; no corregir por SKU.
+
+24 regresiones nuevas propias (10 dirección/copiar pregunta/rechazos, 2 pedido mixto, 12 paquetes en tacos/gyozas, cantidades1/2/5, agente simulado activo/inactivo). Baseline inicial10fallaron/2pasaron /tmp/ppp-address-mixed-baseline.log. Dirección10/10 /tmp/ppp-address-sequence-fixed.log; pedido+oferta6/6 /tmp/ppp-mixed-offer-fixed.log. Ampliación detectó6fallos más al reconocer alias de paquete con cantidad numérica;12/12 finales /tmp/ppp-pack-final-target.log. Debug de catálogo eliminado; logs debug no acreditan aprobación.
+
+Full en curso /tmp/ppp-user-chat-full.log, TypeScript /tmp/ppp-user-chat-tsc-final.log, snapshot /tmp/ppp-user-chat-source.json. No editar fuentes hasta terminar. No acreditar pase completo ni desplegar hasta revisar regresiones; la nueva conducta de compra inmediata puede requerir actualizar expectativas antiguas de confirmación, sin ocultar fallos de carrito. Main intacta, cero llamadas API, 35/40 usadas,5restantes.
+
+
+Extensión y regresión integrada:primer full /tmp/ppp-user-chat-full.log terminó con65suites aprobadas y1fallida,3343aprobadas/16fallidas,385.311s. Las16 expectativas iniciales suponían productos claros aún fuera de carrito. Actualizadas a compra inmediata, sin reducir comprobaciones de cantidades ni duplicados. La ejecución focal posterior detectó6fallos reales de respuesta:desconocido omitido en mensaje con domicilio y afirmación del desconocido respondida solo con carrito. Corregidos:avisar exclusión al añadir y guardar recentUnavailableOrder como contexto de consulta por15min, nunca borrador de compra; petición explícita del desconocido conserva carrito y responde sin inventar producto. CampoJSONopcional,no migraciónBD.
+
+10pruebas adicionales propias:2recotización que sustituye tarifa2000/distancia1.4/coordenadas viejas por6000/4.6/coordenadas nuevas conservando cash/cantidad2/nota;4con dos ambigüedades en Pizza/Ramen que materializan primera elección sin esperarsegunda;4aceptación de yuca/edamame con Bebida aún pendiente y cantidad3. Baseline4/4fallaron para dos dudas (/tmp/ppp-mixed-two-ambiguities-baseline.log) y4/4 para aceptación parcial (/tmp/ppp-side-pending-drink-baseline2.log). Primeros intentos de fixture sin atributos y cfg sin campos fallaron compilación;no son prueba de comportamiento. Eliminado helper no usado que reconstruía compras desde prosa del bot. Aceptación exige contexto del último mensaje;con pendingAttribute y sin opción explícita preserva estado y pide opciones reales del producto.
+
+34regresiones propias nuevas en total,6pruebas locales de aceptación revisadas y16expectativasprevias actualizadas.65focalizadas aprobadas /tmp/ppp-user-chat-targets-corrected3.log;45focalizadas trasúltima extensión aprobadas /tmp/ppp-side-mixed-final.log. Esos resultados no acreditan full nuevo.
+
+Full final en curso /tmp/ppp-user-chat-full-final.log;TypeScript /tmp/ppp-user-chat-tsc-approved.log;snapshot /tmp/ppp-user-chat-source-final.json.No editar fuentes hasta terminar. SSHpreflight servidor estaba enac63438,running/healthy;no modificarbin/privado. Mainintacta por esta tarea, ceroAPI35/40usadas5restantes. Pendiente commit/deploy tras fullverde y snapshotválido.
+
+
+Aprobación final de esta tanda:66suites/3369pruebas aprobadas,390.54s (/tmp/ppp-user-chat-full-final.log),TypeScript aprobado /tmp/ppp-user-chat-tsc-approved.log,snapshot final íntegro sin diferencias.34regresiones nuevas propias,6aceptacioneslocales revisadas y16expectativasprevias adaptadas a compra inmediata. El full inicial con16fallos no es aprobación. No llamadas API ni órdenes externas. Pendiente publicar/desplegar exacto código aprobado.

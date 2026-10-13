@@ -28,7 +28,7 @@ export function isAddressRejectionIntent(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\bdirecion\b/g, 'direccion');
+    .replace(/\b(?:direcion|direction)\b/g, 'direccion');
   if (!t || t.length < 8) return false;
   // Si ya trae calle/carrera/#, es cambio con destino, no solo rechazo
   if (
@@ -69,7 +69,7 @@ export function isAddressClarificationIntent(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\bdirecion\b/g, 'direccion');
+    .replace(/\b(?:direcion|direction)\b/g, 'direccion');
   if (!t || t.length < 10) return false;
   if (isAddressRejectionIntent(t)) return false;
   return (
@@ -208,6 +208,8 @@ export function isFreshAddressRequest(text: string): boolean {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[¡!?.…,;:"'`´]+/g, ' ')
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion')
+    .replace(/\b(?:por favor|porfa|gracias)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!t || t.length > 48) return false;
@@ -219,7 +221,8 @@ export function isFreshAddressRequest(text: string): boolean {
     /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?otra\s+direccion$/.test(t) ||
     /^(?:quiero|ponme|mejor)\s+otra\s+direccion$/.test(t) ||
     /^(?:una\s+)?direccion\s+nueva$/.test(t) ||
-    /^nueva\s+direccion$/.test(t)
+    /^nueva\s+direccion$/.test(t) ||
+    /^no\s+esa\s+no(?:\s+es\s+la\s+direccion)?\s+(?:es\s+)?(?:esta|otra)$/.test(t)
   );
 }
 
