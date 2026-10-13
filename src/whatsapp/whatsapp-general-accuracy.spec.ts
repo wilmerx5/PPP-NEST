@@ -6166,3 +6166,41 @@ describe('Equivalencia por catálogo — sin porción inventada',()=>{
     expect(h.replies.at(-1)).toContain('Arroz Chino Con Medio Pollo');expect(h.replies.at(-1)).toContain('Arroz Chino Con Pollo Entero');
   });
 });
+
+describe('Ráfagas mixtas — pedido compuesto y duplicado tardío', () => {
+  const lunch = {id:11001,code:11001,name:'Menu Vegetariano',description:'Incluye sopa y bebida',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']}]};
+  const fixtures = [
+    {menu:products,id:22,turns:['Quiero pedir un almuerzo ejecutivo por favor','Mondongo pollo frito pierna pernil papa salada','Y de tomar me puedes enviar limonada?'],attrs:['Sopa:Mondongo','Presa:Pierna Pernil','Bebida:Limonada'],note:/papa salada/i},
+    {menu:[lunch],id:11001,turns:['Quiero un menu vegetariano','Lentejas sin ensalada','Y la bebida te por favor'],attrs:['Sopa:Lentejas','Bebida:Te'],note:/sin ensalada/i},
+  ];
+  for (const fixture of fixtures) {
+    it.each([0,900,4000,60000])('pausa de %d ms entre pedido y opciones: '+fixture.id,async gap=>{
+      jest.useFakeTimers();
+      try {
+        const h=harness(fixture.menu,false);
+        // Simulate the persistent UNIQUE claim contract, including late replays.
+        const claimed = new Set<string>();
+        const claim = h.service.conversationService.claimInboundMessage;
+        h.service.conversationService.claimInboundMessage = async (params: {waMessageId?:string;body:string}) => {
+          if (params.waMessageId && claimed.has(params.waMessageId)) return null;
+          if (params.waMessageId) claimed.add(params.waMessageId);
+          return claim(params);
+        };
+        const messages=fixture.turns.map((text,index)=>({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'mixed-'+index,messageType:'text',text,timestamp:Date.now()/1000,raw:{}}));
+        const first=h.service.handleIncoming(messages[0]);
+        await jest.advanceTimersByTimeAsync(gap);
+        const rest=[h.service.handleIncoming(messages[1]),h.service.handleIncoming(messages[2])];
+        await jest.advanceTimersByTimeAsync(4000);
+        await Promise.all([first,...rest]);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.id,qty:1,attrs:expect.arrayContaining(fixture.attrs),note:expect.stringMatching(fixture.note)})]);
+        expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+        const before=structuredClone(h.conv.sessionData.cart);
+        const outbound=h.replies.length;
+        const replay=h.service.handleIncoming(messages[1]);
+        await jest.advanceTimersByTimeAsync(4000);await replay;
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.replies).toHaveLength(outbound);
+      } finally {jest.useRealTimers();}
+    });
+  }
+});
