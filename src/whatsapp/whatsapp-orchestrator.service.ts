@@ -825,6 +825,26 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // A deictic rejection refers to the one unfinished selection, not the confirmed cart.
+    const pendingSelection = this.conversationService.getSession(conv);
+    const rejectSelection = /^(?:olvida (?:eso|esa seleccion)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(this.normalizeForMatch(originalText));
+    if (rejectSelection && !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) &&
+      !pendingSelection.pendingMultiOrder && (pendingSelection.pendingAttribute || pendingSelection.pendingMatch)) {
+      const attribute = pendingSelection.pendingAttribute;
+      // Rejecting a combo's beverage may be an option change, rather than abandoning the whole dish.
+      if (/esa bebida/i.test(originalText) && attribute?.attributes.some(attr => /bebida/i.test(attr.attributeName))) {
+        await this.reply(conv, msg.waId, '¿Quieres cambiar la bebida o cancelar el plato pendiente? El carrito sigue igual.');
+        return;
+      }
+      const next = { ...pendingSelection, pendingAttribute: undefined, pendingMatch: undefined,
+        pendingQuantityHint: undefined, pendingUnitSplit: undefined, pendingSideSwap: undefined };
+      await this.conversationService.saveSession(conv, next);
+      await this.reply(conv, msg.waId, 'Cancelé la selección pendiente. Los platos del carrito siguen igual.' +
+        (next.cart.length ? '\n\n' + this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) : '') +
+        '\n\n' + (this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
+      return;
+    }
+
     if (this.isCancelIntent(originalText)) {
       await this.handleCancelRequest(conv, msg.waId, cfg);
       return;

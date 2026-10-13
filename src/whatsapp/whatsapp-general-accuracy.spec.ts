@@ -8128,3 +8128,40 @@ describe('Resumen de pedido — dirección una sola vez sin perder detalles',()=
     });
   }
 });
+
+describe('Cancelar selección pendiente — distingue bebida de pedido completo',()=>{
+  for(const f of [{food:'Arepa De Frijoles',drink:'Infusion Fria',flavors:['Durazno','Limon']},{food:'Tarta De Espinaca',drink:'Smoothie Vegetal',flavors:['Cacao','Vainilla']}])for(const agent of [false,true])for(const pending of ['sabor','producto'])for(const text of ['Olvida eso','No quiero esa bebida','Cancela esa selección','Vacía todo el pedido']){
+    it(f.food+' '+pending+' agent='+agent+' '+text,async()=>{
+      const menu=[{id:14101,code:14101,name:f.food,price:17000,availableNow:true,hasAttributes:false,attributes:[]},{id:14102,code:14102,name:f.drink,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:f.flavors}]},{id:14103,code:14103,name:f.drink+' Especial',price:9000,availableNow:true,hasAttributes:false,attributes:[]}];
+      const h=harness(menu,false);await h.sendQueued('2 '+f.food);h.conv.sessionData.cart[0].note='sin ensalada';
+      if(pending==='sabor')h.conv.sessionData.pendingAttribute={productId:14102,name:f.drink,code:14102,price:7000,attributes:menu[1].attributes,selected:[],quantity:3,sourceText:'3 '+f.drink};
+      else h.conv.sessionData.pendingMatch={query:'3 '+f.drink,intent:'order',quantity:3,candidates:menu.slice(1)};
+      h.cfg.agentV1Enabled=agent;h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData.cart);const name=h.conv.customerName;
+      const reply=await h.sendQueued(text);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.conv.sessionData.pendingMatch).toBeFalsy();
+      expect(h.conv.customerName).toBe(name);expect(h.conv.sessionData.paymentMethod).toBeFalsy();
+      if(text.startsWith('Vacía'))expect(h.cartRows()).toEqual([]);
+      else{
+        expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/pendiente|selecci[oó]n|bebida/i);
+        await h.sendQueued(f.flavors[0]);expect(h.cartRows().some(row=>[14102,14103].includes(row.id))).toBe(false);
+        expect(h.conv.sessionData.cart).toEqual(before);
+      }
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Cancelar selección pendiente — bebida de un plato compuesto necesita aclaración',()=>{
+  for(const agent of [false,true])for(const name of ['Menu De Legumbres','Combo De Falafel']){
+    it(name+' agent='+agent,async()=>{
+      const base={id:14201,code:14201,name:'Ensalada De Quinoa',price:14000,availableNow:true,hasAttributes:false,attributes:[]};
+      const compound={id:14202,code:14202,name,price:23000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sopa',options:['Calabaza','Lentejas']},{attributeName:'Bebida',options:['Agua','Te']} ]};
+      const h=harness([base,compound],false);await h.sendQueued('2 Ensalada De Quinoa');h.cfg.agentV1Enabled=agent;
+      h.conv.sessionData.pendingAttribute={productId:14202,name,code:14202,price:23000,attributes:compound.attributes,selected:[{attributeName:'Sopa',attributeValue:'Lentejas'}],quantity:3,sourceText:'3 '+name};
+      const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued('No quiero esa bebida');
+      expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/cambiar la bebida.*cancelar el plato/i);
+      await h.sendQueued('Cancela esa selección');expect(h.conv.sessionData.pendingAttribute).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(before.cart);
+      await h.sendQueued('Agua');expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+    });
+  }
+});

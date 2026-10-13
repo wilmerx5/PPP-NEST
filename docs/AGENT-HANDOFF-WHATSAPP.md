@@ -778,3 +778,13 @@ Solicitud adicional durantefull:resumir confirmación que repetía3vecesdirecci�
 Cierre integrado:66suites/3139pruebas aprobadas (/tmp/ppp-price-summary-full.log);TypeScript aprobado /tmp/ppp-price-summary-tsc.log;snapshot sin cambios.96nuevas (84contextoprecio+12resumen),más16de tanda anterior ahora incluidas en full. Ejecuciones detenidas no son aprobación. Pendiente deploy. Mainintacta,ceroAPI35/40usadas5restantes.
 
 Código850d7ccc desplegado/verificado13/10/2026 13:59Bogotá:running/healthy,imagenactiva=candidata sha256:459895adfc0ffd376994e675d459e5fc5eaee72c74c7cf68e364bf09ff7a280f;healthOK/DBconnected/circuitCLOSED. /tmp/ppp-price-summary-deploy.log y /tmp/ppp-price-summary-deploy-verified.log. Primera comprobación starting conhealthOK;segundahealthy. Mainintacta,modelos ypresupuesto sin cambios. Siguiente:cancelar elección pendiente frente a vaciar pedido,consulta+acción y referencias vagas/códigos durante consulta de precio. No acreditar bare“no”,typos o todos los ordinales con estos84.
+
+## Cancelación de selección frente a pedido completo — 13/10/2026
+
+Baseacd19ae3,runtime850d7ccc.36regresiones nuevas:32con carrito previo de2platos+nota,pendiente de sabor/producto en2cartas ficticias(Arepa/Infusión y Tarta/Smoothie),agente simulado activo/inactivo. Olvidaeso/noquieroesabebida/cancelaesaselección abandonan selección sin borrar carrito;vacía todo pedido sí limpia. Turno viejo de sabor no revive el producto abandonado.4controles de rechazo a bebida dentro de plato compuesto aclaran cambiar bebida frente a cancelarplato;preservan sopa elegida y cantidad3hasta decisión.
+
+Baseline24fallaron/8pasaron /tmp/ppp-selection-cancel-baseline.log;variosfallos eran de claridad de respuesta,otrosdejaban selecciónactiva. Regla general temprana para cancelación de una selección(no propuestas múltiples ni enlacesMP)antes del agente/cancelación del pedido. Platos compuestos con atributoBebida necesitan aclaración del alcance. No acreditar todos los “olvida” ni cancelación de órdenes registradas.56focalizadas aprobadas(36nuevas+20controles) /tmp/ppp-selection-cancel-expanded.log.
+
+Full en curso /tmp/ppp-selection-cancel-full.log;TypeScript /tmp/ppp-selection-cancel-tsc.log;snapshot /tmp/ppp-selection-cancel-source.json.Noeditarfuentes. Mainintacta,ceroAPI35/40usadas5restantes.
+
+Aprobación final:66suites/3175pruebas aprobadas (/tmp/ppp-selection-cancel-full.log),TypeScript aprobado /tmp/ppp-selection-cancel-tsc.log;snapshot sin diferencias.36regresiones nuevas.NoAPI,Mainintacta. Pendiente deploy.
