@@ -7489,3 +7489,47 @@ describe('Pedido grande — conserva unidades y nota al corregir al cerrar',()=>
     });
   }
 });
+
+describe('Pedido grande — edición focal conserva las otras líneas',()=>{
+  const other=[
+    {id:12501,code:12501,name:'Bowl Andino',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Base',options:['Arroz','Quinoa']}]},
+    {id:12502,code:12502,name:'Wrap Oriental',price:16000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]},
+    {id:12503,code:12503,name:'Te Helado',price:4000,availableNow:true,hasAttributes:false,attributes:[]},
+  ];
+  const fixtures=[
+    {menu:products,order:'8 churrascos y 6 sopas de mondongo y 4 pollos fritos',target:17,quantity:'Deja solo cinco churrascos',note:'Los churrascos sin ensalada por favor',attr:'Los pollos fritos con arepas fritas',attrId:1,attrValue:'Arepas:Fritas',noteValue:/sin ensalada/i},
+    {menu:other,order:'8 bowls andinos con quinoa y 6 wraps orientales con salsa suave y 4 te helado',target:12501,quantity:'Deja solo cinco Bowl Andino',note:'Los bowls andinos sin cebolla por favor',attr:'Los wraps orientales con salsa picante',attrId:12502,attrValue:'Salsa:Picante',noteValue:/sin cebolla/i},
+  ];
+  for(const f of fixtures)for(const agent of [false,true])for(const operation of ['cantidad','nota','atributo']) {
+    it(f.target+' '+operation+' agent='+agent,async()=>{
+      const h=harness(f.menu,false);
+      await h.sendQueued(f.order);
+      expect(h.cartRows()).toHaveLength(3);
+      expect(h.cartRows().reduce((n,r)=>n+r.qty,0)).toBe(18);
+      const before=structuredClone(h.cartRows());
+      h.cfg.agentV1Enabled=agent;
+      await h.sendQueued(operation==='cantidad'?f.quantity:operation==='nota'?f.note:f.attr);
+      expect(h.cartRows()).toHaveLength(before.length);
+      const editedId=operation==='atributo'?f.attrId:f.target;
+      expect(h.cartRows().filter(r=>r.id!==editedId)).toEqual(before.filter(r=>r.id!==editedId));
+      const edited=h.cartRows().find(r=>r.id===editedId)!;
+      if(operation==='cantidad')expect(edited).toEqual({...before.find(r=>r.id===editedId),qty:5});
+      if(operation==='nota')expect(edited).toEqual({...before.find(r=>r.id===editedId),note:expect.stringMatching(f.noteValue)});
+      if(operation==='atributo'){
+        expect(edited.qty).toBe(before.find(r=>r.id===editedId)!.qty);
+        expect(edited.attrs).toContain(f.attrValue);
+      }
+      expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+    });
+  }
+  for(const f of fixtures)for(const agent of [false,true])for(const subset of ['dos sin cebolla y los demás normales','tres sin ensalada y los otros cinco normales']) {
+    it('subconjunto sin producto exige aclaración '+f.target+' agent='+agent+' '+subset,async()=>{
+      const h=harness(f.menu,false);await h.sendQueued(f.order);
+      expect(h.cartRows()).toHaveLength(3);
+      const before=structuredClone(h.cartRows());h.cfg.agentV1Enabled=agent;
+      await h.sendQueued(subset);
+      expect(h.cartRows()).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/cu[aá]l producto/i);
+    });
+  }
+});

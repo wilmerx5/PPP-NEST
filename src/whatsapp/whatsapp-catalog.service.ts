@@ -10349,7 +10349,16 @@ export class WhatsappCatalogService {
   /** Require the dish name itself, not a cooking word borrowed from its side. */
   isCartProductNamedInText(name: string, text: string): boolean {
     const identity = normalizeText(name).replace(/^(?:\d+(?:\/\d+)?\s+)+/, '').trim();
-    return identity.length >= 4 && new RegExp(`\\b${escapeRegExp(identity)}\\b`).test(normalizeText(text));
+    if (identity.length < 4) return false;
+    const normalized = normalizeText(text);
+    if (new RegExp(`\\b${escapeRegExp(identity)}\\b`).test(normalized)) return true;
+    // Exact contiguous identity, allowing grammatical plurals without fuzzy matching.
+    const sameWord = (left: string, right: string | undefined) => !!right &&
+      (left === right || left.length >= 4 && right.length >= 4 &&
+        (left + 's' === right || left + 'es' === right || right + 's' === left || right + 'es' === left));
+    const wanted = identity.split(/\s+/);
+    const words = normalized.split(/\s+/);
+    return words.some((_, index) => wanted.every((token, offset) => sameWord(token, words[index + offset])));
   }
 
   /** El pedido nombra ese plato aunque un estilo venga en plural o con un typo corto. */
@@ -10446,7 +10455,7 @@ export class WhatsappCatalogService {
     // The attribute candidates above must still identify exactly one cart line.
     if (/^(?:el|la|los|las|cambia|cambiar)\b/i.test(q) && !/\b(?:otro|otra|adicional|agrega|dos|tres|\d+)\b/i.test(q)) {
       for (const token of normalizeText(nameWithoutCopies || '').split(/\s+/).filter(token => token.length >= 3)) {
-        leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'g'), ' ');
+        leftover = leftover.replace(new RegExp(`\\b${escapeRegExp(token)}(?:s|es)?\\b`, 'g'), ' ');
       }
       leftover = leftover.replace(/\b(?:del|a)\b/g, ' ');
     }
