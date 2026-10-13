@@ -8028,3 +8028,21 @@ describe('Chat arroz paisa — consultas durante nombre y pago sin capturar preg
     });
   }
 });
+
+describe('Consulta de precio ambigua — aclaración explícita conserva checkout',()=>{
+  for(const names of [['Sushi Vegetal','Gyozas De Hongos'],['Pasta De Lentejas','Crema De Calabaza']])for(const agent of [false,true])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment']){
+    it(names[0]+' '+state+' agent='+agent,async()=>{
+      const menu=names.map((name,i)=>({id:13601+i,code:13601+i,name,price:18000+i*3000,availableNow:true,hasAttributes:false,attributes:[]}));
+      const h=harness(menu,false);for(const name of names)await h.sendQueued('2 '+name);expect(h.cartRows()).toHaveLength(2);
+      h.cfg.agentV1Enabled=agent;h.conv.customerName=state==='awaiting_name'?'':'Carolina';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:state!=='awaiting_phone',contactPhone:state==='awaiting_phone'?undefined:h.conv.phoneE164,address:state==='awaiting_address'?undefined:'Calle 9 20 30',addressConfirmed:state!=='awaiting_address',paymentMethod:undefined});h.conv.state=state;
+      const before=structuredClone(h.conv.sessionData),customer=h.conv.customerName;
+      const question=await h.sendQueued('Que precio tiene');
+      expect(question).toMatch(/cu[aá]l producto/i);expect(question).not.toMatch(/Para seguir/i);expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customer);
+      const price=await h.sendQueued('Quiero saber el precio de '+names[1]);
+      expect(price).toMatch(/21[.,]000/);expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customer);
+      await h.sendQueued(state==='awaiting_name'?'Carolina':state==='awaiting_phone'?'3001234567':state==='awaiting_address'?'Calle 15 25 35 apartamento 202':'Efectivo');
+      expect(h.conv.state).not.toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);
+    });
+  }
+});
