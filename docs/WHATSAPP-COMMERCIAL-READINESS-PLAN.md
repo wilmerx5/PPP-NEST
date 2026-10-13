@@ -10,7 +10,7 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 
 ## Dónde estamos: evidencia y límites
 
-- Backend: 66 suites / 2.717 pruebas aprobadas, TypeScript aprobado. Log /tmp/ppp-everyday-basics-all-accepted.log, una ejecución completa. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
+- Backend: 66 suites / 2.749 pruebas aprobadas, TypeScript aprobado. Log /tmp/ppp-everyday-basics-all-accepted.log, una ejecución completa. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
 - Generalización: menús ficticios vegetarianos, marinos y orientales; hamburguesas, pizzas y bowls sin conceptos de ejecutivo/menú. Las últimas dos tandas añadieron39 casos y encontraron errores reales en correcciones y alcance. Esto acredita esos patrones en esos catálogos; no cualquier restaurante ni aislamiento multitenant.
 - Versión validada y desplegada de código: 352c2997 en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada el 13/10 a las 10:27 Bogotá; una actualización documental posterior no requiere reconstruir API.
 - Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.
@@ -149,4 +149,6 @@ Una misma frase se debe comprobar al armar carrito, elegir opciones, dar nombre/
 Cada fallo básico bloquea la familia correspondiente del piloto hasta reproducirlo,corregirlo y revisar el recorrido. La tanda gratuita acredita reglas y flujo con dependencias simuladas; el piloto todavía requiere canal real y atención humana.
 
 
-Cierre de básicos13/10:84casos nuevos aprobados y full2717/66verde. Se corrigieron servicio durante checkout,ubicación consultada frente a dirección declarada,posibilidad de recogida frente a elección y FAQ seguida de compra. Mantener pendientes negocio cerrado,respuestas cortas y pasos de datos personales:los tres pasos probados no acreditan todos los contextos ni inferencia/canal reales.
+Cierre de básicos13/10:84casos nuevos aprobados y full2749/66verde. Se corrigieron servicio durante checkout,ubicación consultada frente a dirección declarada,posibilidad de recogida frente a elección y FAQ seguida de compra. Mantener pendientes negocio cerrado,respuestas cortas y pasos de datos personales:los tres pasos probados no acreditan todos los contextos ni inferencia/canal reales.
+
+Se integraron32pruebas locales adicionales de resumen,total,pagos consultados,servicios del local y cobertura después de calle; incluidas en el full2749. La tanda de este agente aporta84,la integración aporta116 en total frente a2633. No usar el total de mocks para afirmar cobertura real o venta autónoma.

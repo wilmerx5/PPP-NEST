@@ -540,6 +540,23 @@ export function isUnansweredHumanComplaint(text: string): boolean {
   );
 }
 
+/** "¿sí llegas allá?" sobre la dirección que ya anotamos. No es un pedido. */
+export function isReachSavedAddressQuestion(text: string): boolean {
+  const raw = (text || '').trim();
+  if (raw.length < 8 || raw.length > 70) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!.,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/\b(pollo|pizza|pasta|taco|hamburguesa|sopa|combo|ramen|bowl)\b/.test(t)) return false;
+  return /^(?:y\s+|bueno\s+|ok\s+)?(?:si\s+)?(?:me\s+|nos\s+)?(?:llegas|llega|llegan|cubres|cubre|cubren)\s+(?:hasta\s+|por\s+|a\s+)?(?:alla|ahi|esa(?:\s+direccion)?)\b/.test(
+    t,
+  );
+}
+
 export function isDeliveryCoverageInquiry(text: string): boolean {
   const raw = (text || '').trim().replace(/^(?:quiero|quisiera)\s+saber\s+(?:si\s+)?/i, '');
   if (raw.length < 12) return false;
