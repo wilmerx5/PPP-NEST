@@ -834,3 +834,8 @@ Full final en curso /tmp/ppp-user-chat-full-final.log;TypeScript /tmp/ppp-user-c
 
 
 Aprobación final de esta tanda:66suites/3369pruebas aprobadas,390.54s (/tmp/ppp-user-chat-full-final.log),TypeScript aprobado /tmp/ppp-user-chat-tsc-approved.log,snapshot final íntegro sin diferencias.34regresiones nuevas propias,6aceptacioneslocales revisadas y16expectativasprevias adaptadas a compra inmediata. El full inicial con16fallos no es aprobación. No llamadas API ni órdenes externas. Pendiente publicar/desplegar exacto código aprobado.
+
+
+Código fb70c472 publicado y desplegado en staging13/10/2026 18:50Bogotá. Verificación /tmp/ppp-user-chat-deploy-verified.log:HEADfb70c47,running/healthy,imagenactiva=candidata sha256:f119b95ff8268ec334117f756d476dab99353bd3e45a541bc377b26de6308056;healthok,DBconnected,circuitCLOSED. Deploy /tmp/ppp-user-chat-deploy.log. No tocar orphanmariadb_local ni bin/privado;se preservaron. Main sin cambios por esta tarea. Presupuesto35/40usadas5restantes, ceroAPI esta tanda.
+
+Siguiente tanda:atributos realmente obligatorios sin default al resolver primer/segundo plato de pedido mixto;consultas y correcciones intercaladas entre esas opciones;ráfagas de continuación;aceptaciones parciales sin draft recuperable;errores/tamaño/calidad deaudioSTT separados de interpretación. Los34casos acreditan caminos específicos, no todo lenguaje humano. Las4pruebas de dos dudas y4de acompañamiento con bebida cierran esos casos focales del plan. Revisar datos sintéticos y nombres/opciones del catálogo antes del piloto. No promover Main automáticamente.
