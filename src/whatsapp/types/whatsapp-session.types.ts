@@ -26,6 +26,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Original cart line retained until a variant replacement is complete. */
+  replacement?: { originalLine: WhatsappCartItem };
   /** Explicit correction while the product options are still pending. */
   quantity?: number;
   productId: number;
@@ -82,6 +84,8 @@ export type WhatsappSessionData = {
     quantity?: number;
     /** Explicit quantity replacement before selecting a candidate. */
     correctedQuantity?: number;
+    /** Cart line replaced when the customer picks one of these options. */
+    replacement?: { originalLine: WhatsappCartItem };
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
   };

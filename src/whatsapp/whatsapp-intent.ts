@@ -237,6 +237,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
   if (!t || t.length > 48) return false;
   return (
     /^(asi\s+)?nada\s+mas$/.test(t) ||
+    /^ada\s+mas$/.test(t) ||
     /^(asi\s+)?nomas$/.test(t) ||
     // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
     /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||

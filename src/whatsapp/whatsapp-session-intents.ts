@@ -13,7 +13,8 @@ export function isAddressChangeIntent(text: string): boolean {
       t,
     ) ||
     /\b(la\s+)?(direcci[oó]n|direcion|direction|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
-    /\b(nueva\s+direcci[oó]n|otro\s+domicilio|cambiar\s+domicilio)\b/i.test(t)
+    /\b(nueva\s+direcci[oó]n|otro\s+domicilio|cambiar\s+domicilio)\b/i.test(t) ||
+    /^(?:direcci[oó]n|direccion|direcion|direction|domicilio)\s*:/i.test(t)
   );
 }
 
@@ -197,6 +198,29 @@ export function isReuseLastAddressIntent(text: string): boolean {
     return true;
   }
   return false;
+}
+
+/** "A una nueva" rechaza la dirección guardada y pide escribir otra. No trae la calle. */
+export function isFreshAddressRequest(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!?.…,;:"'`´]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 48) return false;
+  if (/\d/.test(t)) return false;
+  if (/\b(?:calle|carrera|cra|cll|avenida|diagonal|transversal|conjunto|barrio|torre|apto)\b/.test(t)) return false;
+  return (
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?(?:a\s+)?una\s+nueva(?:\s+direccion)?$/.test(t) ||
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?a\s+otra$/.test(t) ||
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?otra\s+direccion$/.test(t) ||
+    /^(?:quiero|ponme|mejor)\s+otra\s+direccion$/.test(t) ||
+    /^(?:una\s+)?direccion\s+nueva$/.test(t) ||
+    /^nueva\s+direccion$/.test(t)
+  );
 }
 
 /**

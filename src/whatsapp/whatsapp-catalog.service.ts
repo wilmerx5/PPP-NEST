@@ -7471,6 +7471,25 @@ export class WhatsappCatalogService {
     };
   }
 
+  /**
+   * "bandeja con pollo" con frito y broaster en la carta no es el frito.
+   * Si el segmento no nombra el estilo, hay que preguntar.
+   */
+  unstatedCookingStyleChoices(
+    segment: string,
+    products: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct[] | null {
+    const family = this.findProductVariantFamily(segment, products);
+    if (!family || family.variants.length < 2) return null;
+    if (this.pickVariantFromFamilyText(segment, family)) return null;
+    if (family.variants.some((p) => normalizeText(p.name) === family.baseKey)) return null;
+    const styled = family.variants.filter((p) =>
+      [...COOKING_STYLE_TOKENS].some((st) => normalizeText(p.name).includes(st)),
+    );
+    if (styled.length < 2) return null;
+    return styled.slice(0, 4);
+  }
+
   pickVariantFromFamilyText(
     text: string,
     family: ProductVariantFamily,
@@ -8264,7 +8283,8 @@ export class WhatsappCatalogService {
     if (sizeOrYieldAsk) return true;
 
     if (/^(quiero|dame|ponme|agrega|agregame|me regalas|me das|voy a pedir)\s/i.test(raw)) {
-      return false;
+      const asksContents = /[¿?]/.test(raw) && /\bcon que (?:viene|va|trae|acompana)\b/.test(q);
+      if (!asksContents) return false;
     }
 
     if (this.isMixtoCompositionInquiry(raw)) return true;
@@ -9401,6 +9421,18 @@ export class WhatsappCatalogService {
     }
 
     if (embeddedAll.length >= 2 && !this.looksLikeClearlyMultiDishOrder(text) && !hasDistributedVariants) {
+      const namesUnstatedStyle = embeddedAll.some((product) => {
+        const base = this.stripCookingStyleTokens(product.name);
+        const siblings = products.filter(
+          (other) => other.availableNow !== false && this.stripCookingStyleTokens(other.name) === base,
+        );
+        if (siblings.length < 2 || !/\bbandeja\b/i.test(product.name)) return false;
+        const styles = [...COOKING_STYLE_TOKENS].filter((style) => normalizeText(product.name).includes(style));
+        return styles.length > 0 && !styles.some((style) => this.queryHasToken(normalizeText(text), style));
+      });
+      if (namesUnstatedStyle) {
+        // "bandeja con pollo" no puede cerrarse en el frito cuando también hay broaster.
+      } else {
       const confident: MultiProductSegmentMatch[] = [];
       const needsAttributes: MultiProductSegmentMatch[] = [];
       for (const product of embeddedAll) {
@@ -9460,6 +9492,7 @@ export class WhatsappCatalogService {
           unresolved: [],
           needsAttributes,
         };
+      }
       }
     }
 
@@ -9571,6 +9604,13 @@ export class WhatsappCatalogService {
       // Plato envoltorio (ejecutivo / menú especial / de la casa…) antes que nombre
       const namedMenuHit = this.resolveNamedMenuDishProduct(segment, products);
       if (namedMenuHit) {
+        const styleOptions = /\bbandeja\b/i.test(segment)
+          ? this.unstatedCookingStyleChoices(segment, products)
+          : null;
+        if (styleOptions) {
+          ambiguous.push({ segment, candidates: styleOptions });
+          continue;
+        }
         if (!usedProductIds.has(namedMenuHit.id)) {
           usedProductIds.add(namedMenuHit.id);
           const match = { segment, product: namedMenuHit, score: 100 };
@@ -9805,6 +9845,13 @@ export class WhatsappCatalogService {
             );
           })();
         if (resolved && !usedProductIds.has(resolved.id)) {
+          const styleOptions = /\bbandeja\b/i.test(segment)
+            ? this.unstatedCookingStyleChoices(segment, products)
+            : null;
+          if (styleOptions) {
+            ambiguous.push({ segment, candidates: styleOptions });
+            continue;
+          }
           if (
             !this.productNameFitsUtterance(resolved, segment) &&
             this.leftoverFoodWords(segment, resolved).length
@@ -10620,6 +10667,18 @@ export class WhatsappCatalogService {
       );
       if (conMatch?.[1]) {
         const tail = normalizeText(conMatch[1]);
+        let best: string | null = null;
+        const keepLonger = (option: string) => {
+          if (!best || normalizeText(option).length > normalizeText(best).length) best = option;
+        };
+        for (const opt of attr.options) {
+          const o = normalizeText(opt);
+          const wholeOption = new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(tail);
+          if ((o.length < 4 && wholeOption) || (o.length >= 4 && tail.includes(o))) {
+            keepLonger(opt);
+          }
+        }
+        if (best && !/\b(?:y|otro|otra)\b/.test(tail)) return best;
         for (const opt of attr.options) {
           const o = normalizeText(opt);
           const wholeOption = new RegExp(`(?:^|\\s)${escapeRegExp(o)}(?:\\s|$)`).test(tail);
@@ -10640,6 +10699,7 @@ export class WhatsappCatalogService {
       }
     }
 
+    let bestOption: string | null = null;
     for (const opt of attr.options) {
       const o = normalizeText(opt);
       if (o.length < 2 || o.length < 3 && (!q.includes(attrName) || !q.split(' ').includes(o))) continue;
@@ -10657,8 +10717,9 @@ export class WhatsappCatalogService {
           continue;
         }
       }
-      return opt;
+      if (!bestOption || o.length > normalizeText(bestOption).length) bestOption = opt;
     }
+    if (bestOption) return bestOption;
 
     const styleAttr =
       /\b(seleccion|preparacion|estilo|coccion|pollo)\b/.test(attrName) &&
