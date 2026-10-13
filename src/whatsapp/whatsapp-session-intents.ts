@@ -541,14 +541,19 @@ export function isUnansweredHumanComplaint(text: string): boolean {
 }
 
 export function isDeliveryCoverageInquiry(text: string): boolean {
-  const raw = (text || '').trim();
+  const raw = (text || '').trim().replace(/^(?:quiero|quisiera)\s+saber\s+(?:si\s+)?/i, '');
   if (raw.length < 12) return false;
+  if (isAddressChangeIntent(raw)) return false;
 
   const orderingFood =
     /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar|un\s+pollo|una\s+sopa|combo\s+de|ejecutivo|arroz\s+con)\b/i.test(
       raw,
     );
   if (orderingFood) return false;
+
+  if (/\b(?:traen|trae|llevan|lleva|env[ií]an|entregan|mandan|llegan|llega)\s+(?:(?:un|el|mi)\s+pedido\s+)?(?:hasta|a|al)\s+\S/i.test(raw)) {
+    return true;
+  }
 
   // FAQ genérica: ¿hacen/tienen (servicio a) domicilio? — sin barrio/calle
   if (
@@ -830,6 +835,7 @@ export function extractCoverageAddressProbe(text: string): string | null {
   if (!raw) return null;
 
   const patterns = [
+    /\b(?:traen|trae|llevan|lleva|env[ií]an|entregan|mandan|llegan|llega)\s+(?:(?:un|el|mi)\s+pedido\s+)?(?:hasta|a|al)\s+(.+?)[\s?!.]*$/i,
     /\b(?:domicilios?|entregas?|env[ií]os?)\s+(?:para|a|en|hasta)\s+(?!domicilio\b)(.+?)[\s?!.]*$/i,
     /\bservicio\s+a\s+domicilio\s+(?:para|en|hasta)\s+(.+?)[\s?!.]*$/i,
     /\b(?:para|a|en|hasta)\s+((?:calle|carrera|cra|cll|dg|diagonal|av\.?|avenida|conjunto|torre|barrio)\b.+?)[\s?!.]*$/i,

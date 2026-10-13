@@ -7593,3 +7593,53 @@ describe('Otras cocinas — subconjunto incoherente no modifica carrito',()=>{
     });
   }
 });
+
+describe('Cocinas nuevas — plato opción y empaque conservan la compra',()=>{
+  const fixtures=[
+    {name:'Moussaka',attr:'Acompañamiento',options:['Patatas','Ensalada'],choice:'Patatas'},
+    {name:'Schnitzel De Cerdo',attr:'Salsa',options:['Champiñones','Mostaza'],choice:'Mostaza'},
+    {name:'Bibimbap',attr:'Arroz',options:['Blanco','Integral'],choice:'Integral'},
+    {name:'Quesadilla De Hongos',attr:'Tortilla',options:['Maiz','Harina'],choice:'Harina'},
+    {name:'Pho De Ternera',attr:'Fideos',options:['Arroz','Huevo'],choice:'Huevo'},
+    {name:'Empanada De Carne',attr:'Cocción',options:['Horno','Frita'],choice:'Horno'},
+  ];
+  for(const [index,f] of fixtures.entries())for(const agent of [false,true])for(const packaging of ['bien empacado','bien empacados','en cajas separadas','']) {
+    it(f.name+' agent='+agent+' '+(packaging||'control sin nota'),async()=>{
+      const id=12800+index;
+      const menu=[{id,code:id,name:f.name,price:23000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:f.options}]}];
+      const h=harness(menu,agent);
+      const reply=await h.sendQueued('8 '+f.name+' con '+f.choice+(packaging?' '+packaging:'')+' por favor');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:8,attrs:[f.attr+':'+f.choice]})]);
+      if(packaging)expect(h.cartRows()[0].note).toContain(packaging);
+      expect(reply).toContain(f.name);
+      expect(reply).not.toMatch(/no manejamos|no entend[ií]|cu[aá]l prefieres/i);
+    });
+  }
+});
+
+describe('Consulta de cobertura — no es dirección ni cierre del pedido',()=>{
+  for(const name of ['Tamales De Elote','Risotto De Setas'])for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const ask of [
+    'Me traen Un pedido hasta El tintal?',
+    'Hacen entregas hasta barrio La Floresta?',
+    'Quiero saber si llegan a Altavista',
+    'Nos llevan un pedido al conjunto Mirador?',
+  ]){
+    it(name+' '+state+' agent='+agent+' '+ask,async()=>{
+      const h=harness([{id:12901,code:12901,name,price:16000,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('n Donde estan ubicados');
+      if(state!=='building_cart'){
+        await h.sendQueued('2 '+name);
+        expect(h.cartRows()).toHaveLength(1);
+        Object.assign(h.conv.sessionData,{address:'Calle 12 30 40',addressConfirmed:true,orderType:'delivery',phoneConfirmed:true,paymentMethod:state==='awaiting_final_confirm'?'cash':undefined});
+      }
+      h.conv.state=state;h.cfg.agentV1Enabled=agent;
+      const before=structuredClone(h.conv.sessionData);
+      const reply=await h.sendQueued(ask);
+      expect(h.conv.sessionData).toEqual(before);
+      expect(h.conv.state).toBe(state);
+      expect(reply).toMatch(/direcci[oó]n|calle|carrera/i);
+      expect(reply).toMatch(/cobertura|confirm|revis|llegamos/i);
+      expect(reply).not.toMatch(/anot[eé]|direcci[oó]n lista|qu[eé] m[aá]s necesitas|s[ií], llegamos|\$2[.,]000|c[oó]mo pagas/i);
+    });
+  }
+});

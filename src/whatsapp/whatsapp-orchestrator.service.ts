@@ -830,6 +830,8 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Coverage is an inquiry even during checkout, before any address mutation.
+    if (await this.tryHandleCoverageInquiry(conv, msg.waId, session, originalText, cfg)) return;
     // Serving yield and deposits are business facts, never inferred from order size.
     const inquiryText = this.normalizeForMatch(originalText);
     if (
@@ -4785,7 +4787,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isLargerPackInquiry(text) &&
       !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
-      !this.looksLikeStandaloneOrderNote(text) &&
+      (!this.looksLikeStandaloneOrderNote(text) ||
+        this.catalogService.namesProductWithAttributeChoice(resolvedMatches[0], text)) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -19228,11 +19231,11 @@ export class WhatsappOrchestratorService {
     if (!isDeliveryCoverageInquiry(text)) return false;
 
     const addr = extractCoverageAddressProbe(text);
-    if (!addr) {
+    if (!addr || !/\d/.test(addr)) {
       await this.reply(
         conv,
         waId,
-        'Claro 🙂 Dime la dirección (calle/carrera o conjunto) y te confirmo si llegamos y cuánto sale el domicilio.',
+        'Para revisar la cobertura, dime la dirección con calle y número. Así te confirmo si llegamos y el costo del domicilio.',
       );
       return true;
     }

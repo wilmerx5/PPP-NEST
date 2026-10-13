@@ -6065,6 +6065,12 @@ export class WhatsappCatalogService {
   }
 
   /** Igual que searchByName pero con score (para priorizar vs categoría). */
+  /** A named catalog dish plus one of its positive choices is more than a side-only note. */
+  namesProductWithAttributeChoice(product: WhatsappCatalogProduct, text: string): boolean {
+    return product.availableNow !== false && this.isCartProductNamedInText(product.name, text) &&
+      !!product.attributes?.some(attribute => this.pickAttributeOptionFromText(text, attribute));
+  }
+
   searchByNameScored(
     query: string,
     products: WhatsappCatalogProduct[],
@@ -6075,7 +6081,8 @@ export class WhatsappCatalogService {
     if (this.isCourtesyOnlyMessage(query) || this.isOffTopicChitchat(query)) return [];
     if (this.isRestaurantLocationInquiry(query)) return [];
     // Guarnición sobre combo ya pedido: no buscar "arepas" como plato nuevo
-    if (this.looksLikeSideModificationNote(query)) return [];
+    if (this.looksLikeSideModificationNote(query) &&
+        !products.some(product => this.namesProductWithAttributeChoice(product, query))) return [];
     // "pollo con arepas fritas" → no rankear Arepa por encima del pollo
     const dropSides = this.hasAccompanimentModifierWithMain(query);
 

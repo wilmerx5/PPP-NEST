@@ -296,6 +296,8 @@ describe('isDeliveryCoverageInquiry (C18)', () => {
   });
 
   it.each([
+    'Actualiza domicilio a Carrera 7 20 30',
+    'El domicilio es Calle 12 30 40',
     'quiero un pollo frito',
     'Me regalas un ejecutivo para Castilla',
     'Buenas noches',
