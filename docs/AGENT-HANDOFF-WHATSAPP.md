@@ -647,3 +647,5 @@ Otros 12 casos: 8 platos principales y 6 sopas, coma/conjunción/salto de línea
 Suite completa en curso: /tmp/ppp-intent-switch-all-final.log. Snapshot /tmp/ppp-intent-switch-source-snapshot.json; verificar al finalizar. No promover Main ni acreditar despliegue hasta terminar validación.
 
 Resultado final: 66 suites / 2.451 pruebas aprobadas en una única ejecución completa, /tmp/ppp-intent-switch-all-final.log. TypeScript aprobado. Fuentes sin cambios durante validación contra snapshot. 36 regresiones nuevas. Saldo sin cambios. Main intacta.
+
+Código 18887d8b publicado y desplegado, verificado 13/10/2026 09:08 Bogotá. Running/healthy; imagen activa=candidata sha256:93a31c11d859b7c6fb73d0b98989649b3d35eb21d3714bee78d87ce0c3b4ab92; health OK, DB connected, circuit CLOSED. Evidencia /tmp/ppp-intent-switch-deploy.log y /tmp/ppp-intent-switch-deploy-verified.log. Próxima tanda: selección ambigua rechazada seguida de otro plato, cantidad/nota por subconjunto en pedido grande y controles de consulta frente a compra. Pendientes de piloto reales permanecen; no acreditados por estos mocks.
