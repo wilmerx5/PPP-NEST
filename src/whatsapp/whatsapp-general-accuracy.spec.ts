@@ -7643,3 +7643,208 @@ describe('Consulta de cobertura — no es dirección ni cierre del pedido',()=>{
     });
   }
 });
+
+describe('Básicos cotidianos — pregunta de servicio conserva pedido y paso',()=>{
+  const questions=[
+    {text:'¿Están atendiendo?',answer:/atendiendo|abiertos|horario/i},
+    {text:'¿A qué hora cierran?',answer:/horario|23:59/i},
+    {text:'¿Dónde queda el local?',answer:/Calle 20 30 40/i},
+    {text:'¿Puedo recoger en el local?',answer:/recoger|recogida|local/i},
+    {text:'¿Tienen domicilio?',answer:/domicilio/i},
+  ];
+  for(const name of ['Estofado Irlandes','Baguette De Jamon'])for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const q of questions){
+    it(name+' '+state+' agent='+agent+' '+q.text,async()=>{
+      const h=harness([{id:13001,code:13001,name,price:14700,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);expect(h.cartRows()).toEqual([expect.objectContaining({id:13001,qty:2})]);
+      h.cfg.brandName='Local Ficticio';h.cfg.localContext={restaurantAddress:'Calle 20 30 40',restaurantCity:'Ciudad Ejemplo'};
+      Object.assign(h.conv.sessionData,{orderType:'delivery',address:'Carrera 8 12 10',addressConfirmed:true,deliveryFeeCalculated:3500,paymentMethod:state==='awaiting_final_confirm'?'cash':undefined});
+      h.cfg.agentV1Enabled=agent;h.conv.state=state;
+      const before=structuredClone(h.conv.sessionData);
+      const reply=await h.sendQueued(q.text);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);
+      expect(h.conv.sessionData.address).toBe(before.address);
+      expect(h.conv.sessionData.orderType).toBe(before.orderType);
+      expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);
+      expect(h.conv.state).toBe(state);
+      expect(reply).toMatch(q.answer);
+      expect(reply).not.toMatch(/no manejamos|no entend[ií]|direcci[oó]n actualizada|c[oó]mo pagas/i);
+    });
+  }
+});
+
+describe('Básicos cotidianos — precio consultado y recogida elegida',()=>{
+  for(const name of ['Estofado Irlandes','Baguette De Jamon'])for(const agent of [false,true]){
+    async function setup(){
+      const h=harness([{id:13002,code:13002,name,price:14700,availableNow:true,hasAttributes:false,attributes:[]}],false);
+      await h.sendQueued('2 '+name);expect(h.cartRows()).toEqual([expect.objectContaining({id:13002,qty:2})]);
+      h.cfg.agentV1Enabled=agent;h.service.ordersService.create=jest.fn();return h;
+    }
+    for(const question of ['Cuánto cuesta PLATO?','Eso cuánto vale?','Me dices el precio?']){
+      it(name+' precio agent='+agent+' '+question,async()=>{
+        const h=await setup();const before=structuredClone(h.cartRows());
+        const reply=await h.sendQueued(question.replace('PLATO',name));
+        expect(h.cartRows()).toEqual(before);
+        expect(reply).toMatch(/14[.,]700|29[.,]400/);
+        expect(reply).not.toMatch(/agregu[eé]|no manejamos|no entend[ií]/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+    it(name+' consultar recogida y elegirla después agent='+agent,async()=>{
+      const h=await setup();Object.assign(h.conv.sessionData,{orderType:'delivery',address:'Carrera 8 12 10',addressConfirmed:true,deliveryFeeCalculated:3500});
+      const before=structuredClone(h.cartRows());
+      await h.sendQueued('¿Puedo recoger en el local?');
+      expect(h.conv.sessionData.orderType).toBe('delivery');
+      await h.sendQueued('Paso a recoger');
+      expect(h.cartRows()).toEqual(before);
+      expect(h.conv.sessionData.orderType).toBe('pickup');
+      expect(h.conv.sessionData.deliveryFeeCalculated).toBe(0);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Básicos cotidianos — pregunta y compra explícita juntas',()=>{
+  for(const name of ['Estofado Irlandes','Baguette De Jamon'])for(const first of ['¿Están abiertos?','¿Dónde queda el local?'])for(const agent of [false,true]){
+    it(first+' Quiero dos '+name+' agent='+agent,async()=>{
+      const h=harness([{id:13003,code:13003,name,price:14700,availableNow:true,hasAttributes:false,attributes:[]}],agent);
+      h.cfg.localContext={restaurantAddress:'Calle 20 30 40'};
+      await h.sendQueued(first+' Quiero dos '+name);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:13003,qty:2})]);
+      expect(h.replies.join(' ')).toMatch(first.includes('abiertos')?/atendiendo|abiertos|horario/i:/Calle 20 30 40/i);
+    });
+  }
+});
+
+describe('Cobertura: la calle responde si llegamos', () => {
+  const pasta = [{
+    id: 12041, code: 12041, name: 'Pasta Carbonara', price: 26000,
+    availableNow: true, hasAttributes: false, attributes: [],
+  }];
+
+  it.each([
+    { menu: products, agent: true, zone: 'hola veci, me traen un pedido hasta el tintal?', street: 'cll 8 92 c 81', follow: 'si llegas alla?' },
+    { menu: products, agent: false, zone: 'hola veci, me traen un pedido hasta el tintal?', street: 'cll 8 92 c 81', follow: 'si llegas alla?' },
+    { menu: pasta, agent: true, zone: 'Hacen entregas hasta barrio La Floresta?', street: 'Carrera 15 45 20', follow: 'si llegan allá?' },
+    { menu: pasta, agent: false, zone: 'Hacen entregas hasta barrio La Floresta?', street: 'Carrera 15 45 20', follow: 'si llegan allá?' },
+  ])('la calle y el sí llegas cotizan el domicilio (agent $agent)', async ({ menu, agent, zone, street, follow }) => {
+    const h = harness(menu as typeof products, agent);
+    const asked = await h.sendQueued(zone);
+    expect(h.conv.sessionData.address || '').toBe('');
+    expect(asked || '').toMatch(/calle y n[uú]mero|direcci[oó]n/i);
+    expect(asked || '').not.toMatch(/\$2[.,]000/);
+
+    const noted = await h.sendQueued(street);
+    expect(h.cartRows()).toHaveLength(0);
+    expect(h.conv.sessionData.address || '').toMatch(/92|15/);
+    expect(noted || '').toMatch(/llegamos/i);
+    expect(noted || '').toMatch(/2[.,]000/);
+    expect(noted || '').not.toMatch(/qu[eé] m[aá]s necesitas/i);
+
+    const again = await h.sendQueued(follow);
+    expect(h.cartRows()).toHaveLength(0);
+    expect(again || '').toMatch(/llegamos/i);
+    expect(again || '').toMatch(/2[.,]000/);
+    expect(again || '').not.toMatch(/^¿Qué se te antoja/);
+  });
+});
+
+describe('Básicos de mostrador — repetir, total, efectivo y local', () => {
+  const ramen = [{
+    id: 13111, code: 13111, name: 'Ramen De Miso', price: 22000,
+    availableNow: true, hasAttributes: false, attributes: [],
+  }];
+  const cases = [
+    { menu: products, order: 'Un churrasco', dish: /churrasco/i, money: /38[.\s]000/, agent: true },
+    { menu: products, order: 'Un churrasco', dish: /churrasco/i, money: /38[.\s]000/, agent: false },
+    { menu: ramen, order: 'Un ramen de miso', dish: /ramen/i, money: /22[.\s]000/, agent: true },
+    { menu: ramen, order: 'Un ramen de miso', dish: /ramen/i, money: /22[.\s]000/, agent: false },
+  ];
+
+  it.each(cases)('qué llevo no agrega otro plato (agent $agent)', async ({ menu, order, dish, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    expect(before).toHaveLength(1);
+    const reply = await h.sendQueued('Qué llevo?');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.paymentMethod).toBeFalsy();
+    expect(reply || '').toMatch(dish);
+    expect(reply || '').toMatch(/llevas|pedido/i);
+    expect(reply || '').not.toMatch(/no manejamos|cu[aá]l prefieres/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(cases)('el total sale del carrito (agent $agent)', async ({ menu, order, money, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Cuánto va el total?');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(money);
+    expect(reply || '').toMatch(/total/i);
+    expect(reply || '').toMatch(/sigue igual/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(cases)('preguntar por efectivo no lo elige (agent $agent)', async ({ menu, order, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Aceptan efectivo?');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.paymentMethod).toBeFalsy();
+    expect(h.conv.state).toBe('building_cart');
+    expect(reply || '').toMatch(/efectivo|contraentrega/i);
+    expect(reply || '').toMatch(/no lo dejo elegido/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(cases)('el parqueadero no es un plato (agent $agent)', async ({ menu, order, dish, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Tienen parqueadero?');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/local/i);
+    expect(reply || '').toMatch(dish);
+    expect(reply || '').not.toMatch(/no manejamos|cu[aá]l prefieres|s[ií], hay parqueadero/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(cases)('me repites el pedido (agent $agent)', async ({ menu, order, dish, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Me repites el pedido');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(dish);
+    expect(reply || '').toMatch(/llevas/i);
+    expect(reply || '').not.toMatch(/cu[aá]l prefieres/i);
+  });
+
+  it.each(cases)('el wifi no se inventa ni se pide (agent $agent)', async ({ menu, order, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Hay wifi?');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/local/i);
+    expect(reply || '').not.toMatch(/s[ií], hay wifi|no manejamos|cu[aá]l prefieres/i);
+  });
+
+  it.each(cases)('cuánto suma usa el carrito (agent $agent)', async ({ menu, order, money, agent }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    const before = h.cartRows();
+    const reply = await h.sendQueued('Cuánto suma?');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(money);
+    expect(reply || '').toMatch(/total/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});

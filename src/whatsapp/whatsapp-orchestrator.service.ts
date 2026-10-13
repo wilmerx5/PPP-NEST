@@ -64,6 +64,7 @@ import {
   isCartItemReplacementIntent,
   isConfirmCurrentAddressIntent,
   isDeliveryCoverageInquiry,
+  isReachSavedAddressQuestion,
   extractCoverageAddressProbe,
   isDeliveryEtaInquiry,
   isDeliveryAvailabilityFaq,
@@ -830,8 +831,37 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A service question and an explicit purchase can share one message.
+    const faqAndPurchase = originalText.match(/^(.+?\?)\s+((?:quiero|quisiera|dame|ponme|me\s+env[ií]as)\s+.+)$/is);
+    if (faqAndPurchase && (this.isBusinessServiceInquiry(faqAndPurchase[1]) ||
+        this.catalogService.isRestaurantLocationInquiry(faqAndPurchase[1]))) {
+      if (this.isBusinessServiceInquiry(faqAndPurchase[1])) {
+        await this.tryHandleBusinessServiceInquiry(conv, msg.waId, faqAndPurchase[1], cfg);
+      } else {
+        await this.reply(conv, msg.waId, this.formatRestaurantLocationReply(cfg));
+      }
+      text = faqAndPurchase[2];
+      originalText = text;
+    }
     // Coverage is an inquiry even during checkout, before any address mutation.
     if (await this.tryHandleCoverageInquiry(conv, msg.waId, session, originalText, cfg)) return;
+    // Service FAQs interrupt checkout without selecting a fulfillment method.
+    if (await this.tryHandleBusinessServiceInquiry(conv, msg.waId, originalText, cfg)) return;
+    const locationFaqText = this.normalizeForMatch(originalText);
+    const explicitLocationQuestion = /[?¿]/.test(originalText) ||
+      /\b(?:donde|como llego|cual es|me das|me pasas|pasame|mandame|enviame|regalame)\b/.test(locationFaqText) ||
+      /^(?:la )?(?:direccion|ubicacion|mapa)(?: del (?:local|restaurante|negocio))?$/.test(locationFaqText);
+    if (explicitLocationQuestion && !isAddressChangeIntent(originalText) &&
+        !this.isAddressOnlyCustomerMessage(originalText) &&
+        this.catalogService.isRestaurantLocationInquiry(originalText)) {
+      await this.reply(conv, msg.waId, this.formatRestaurantLocationReply(cfg));
+      return;
+    }
+    if (/^(?:puedo|podemos|se puede|es posible)\b/.test(this.normalizeForMatch(originalText)) &&
+        this.isPickupIntent(originalText)) {
+      await this.reply(conv, msg.waId, 'Sí, puedes recoger en el local. Si quieres cambiar el pedido a recogida, escribe “paso a recoger”. El pedido sigue igual.');
+      return;
+    }
     // Serving yield and deposits are business facts, never inferred from order size.
     const inquiryText = this.normalizeForMatch(originalText);
     if (
@@ -1143,6 +1173,7 @@ export class WhatsappOrchestratorService {
         '\n\n¿Cuál quieres consultar? Todavía no agregué ningún producto por esta consulta.');
       return;
     }
+    if (await this.tryHandleBasicCustomerAside(conv, msg.waId, session, originalText, cfg)) return;
     // Price disputes and references interrupt checkout without authorizing purchases.
     if (session.cart.length &&
       await this.tryHandleOpenOrderServiceQuestion(conv, msg.waId, session, originalText, cfg)) return;
@@ -3481,6 +3512,30 @@ export class WhatsappOrchestratorService {
     }
 
     if (await this.tryHandleBusinessServiceInquiry(conv, msg.waId, originalText, cfg)) {
+      return;
+    }
+
+    // Calle suelta y “¿sí llegas allá?” se cotizan antes del agente.
+    if (
+      !this.isPickupIntent(originalText) &&
+      !this.isPickupIntent(text) &&
+      looksLikeAddressOnlyMessage(originalText, {
+        compoundAddress: compound.address,
+        compoundProductText: compound.productText,
+      }) &&
+      (await this.tryHandleAddressOnlyWhileBuildingCart(
+        conv,
+        msg.waId,
+        session,
+        originalText,
+        compound,
+        cfg,
+      ))
+    ) {
+      return;
+    }
+
+    if (await this.tryHandleCoverageInquiry(conv, msg.waId, session, originalText, cfg)) {
       return;
     }
 
@@ -11645,6 +11700,107 @@ export class WhatsappOrchestratorService {
   }
 
   /**
+   * Preguntas de mostrador: repetir el pedido, el total, si reciben efectivo
+   * y datos del local que este chat no puede inventar.
+   */
+  private async tryHandleBasicCustomerAside(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (['completed', 'closed', 'human', 'human_takeover'].includes(conv.state)) return false;
+    const cartReply = () => this.formatCartOnly(session, this.deliveryFeeFor(session, cfg));
+    const same = session.cart.length ? `\n\nEl pedido sigue igual.\n${cartReply()}` : '';
+
+    if (this.looksLikeCartRecapQuestion(text)) {
+      await this.reply(
+        conv,
+        waId,
+        session.cart.length
+          ? `Esto es lo que llevas:\n\n${cartReply()}`
+          : 'Todavía no hay platos en el pedido. Dime el plato o el código.',
+      );
+      return true;
+    }
+
+    if (this.looksLikeOrderTotalQuestion(text)) {
+      if (!session.cart.length) {
+        await this.reply(conv, waId, 'Todavía no hay platos, así que no hay total.');
+        return true;
+      }
+      const subtotal = session.cart.reduce(
+        (sum, line) => sum + line.unitPrice * Math.max(1, line.quantity || 1),
+        0,
+      );
+      const fee = session.orderType === 'delivery' ? this.deliveryFeeFor(session, cfg) : 0;
+      const total = subtotal + fee;
+      await this.reply(
+        conv,
+        waId,
+        `El total del pedido va en *${this.catalogService.formatMoney(total)}*.${same}`,
+      );
+      return true;
+    }
+
+    if (this.looksLikeCashAcceptanceQuestion(text)) {
+      const methods = getEnabledPaymentMethods(cfg.paymentMethods || []);
+      const cash = methods.find((method) => method.id === 'cash' || method.id === 'contraentrega');
+      await this.reply(
+        conv,
+        waId,
+        (cash
+          ? `Sí, *${cash.label || 'efectivo'}* está disponible. Todavía no lo dejo elegido.`
+          : 'Te digo las formas de pago cuando cierres el pedido. Todavía no elijo una.') + same,
+      );
+      return true;
+    }
+
+    if (this.looksLikeVenueFacilityQuestion(text)) {
+      await this.reply(
+        conv,
+        waId,
+        `Eso lo confirma el local. Por este chat armo el pedido.${same}`,
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  private looksLikeCartRecapQuestion(text: string): boolean {
+    const t = this.normalizeForMatch(text);
+    if (!t || t.length > 50) return false;
+    if (/\b(quiero|dame|ponme|agrega)\b/.test(t)) return false;
+    return /^(?:y\s+)?(?:que llevo|que pedido llevo|me repites el pedido|repiteme el pedido|repite el pedido|como va mi pedido)$/.test(t);
+  }
+
+  private looksLikeOrderTotalQuestion(text: string): boolean {
+    const t = this.normalizeForMatch(text);
+    if (!t || t.length > 60) return false;
+    if (/\b(pollo|pizza|pasta|taco|churrasco|sopa|ramen|bowl)\b/.test(t)) return false;
+    return /\bcuanto\b/.test(t) && /\b(total|suma)\b/.test(t);
+  }
+
+  private looksLikeCashAcceptanceQuestion(text: string): boolean {
+    const raw = (text || '').trim();
+    const t = this.normalizeForMatch(raw);
+    if (!t || t.length > 70) return false;
+    if (!/\?/.test(raw) && !/^(?:aceptan|reciben|manejan|se puede pagar)/.test(t)) return false;
+    if (/\b(pago en|pago por|pagamos|voy a pagar)\b/.test(t)) return false;
+    return /\b(aceptan|reciben|manejan|se puede pagar|puedo pagar)\b/.test(t) &&
+      /\b(efectivo|contraentrega|transferencia|nequi|tarjeta)\b/.test(t);
+  }
+
+  private looksLikeVenueFacilityQuestion(text: string): boolean {
+    const t = this.normalizeForMatch(text);
+    if (!t || t.length > 70) return false;
+    if (/\b(quiero|dame|ponme|agrega|pedido)\b/.test(t)) return false;
+    return /\b(tienen|hay|manejan)\b/.test(t) && /\b(parqueadero|parqueaderos|wifi|bano|banos|terraza)\b/.test(t);
+  }
+
+  /**
    * Con platos ya pedidos: cotizar el domicilio guardado, anotar la propina
    * o pasar a recoger, sin convertir la frase en otro plato.
    */
@@ -12739,7 +12895,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        `📍 Domicilio anotado: _${session.address}_${feeLine}\n\nDime qué se te antoja y lo armo.`,
+        `✅ Sí, llegamos a _${session.address}_${feeLine}\n\nDime qué se te antoja y lo armo.`,
       );
       return true;
     }
@@ -19177,6 +19333,7 @@ export class WhatsappOrchestratorService {
       return false;
     }
     if (/\b(horario|horarios|abierto|abiertos|abierta|abiertas)\b/.test(t)) return true;
+    if (/\b(?:estan|siguen)\s+atendiendo\b/.test(t)) return true;
     if (/\b(?:a|hasta)\s+que\s+hora\b/.test(t) && /\b(?:cierran|abren|atienden)\b/.test(t)) return true;
     // ¿Tienen (servicio a) domicilio? sin zona concreta
     if (
@@ -19228,6 +19385,19 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    if (isReachSavedAddressQuestion(text)) {
+      const saved = (session.address || '').trim();
+      if (saved && /\d/.test(saved)) {
+        text = `llegan hasta ${saved}`;
+      } else {
+        await this.reply(
+          conv,
+          waId,
+          'Para revisar la cobertura, dime la dirección con calle y número. Así te confirmo si llegamos y el costo del domicilio.',
+        );
+        return true;
+      }
+    }
     if (!isDeliveryCoverageInquiry(text)) return false;
 
     const addr = extractCoverageAddressProbe(text);
