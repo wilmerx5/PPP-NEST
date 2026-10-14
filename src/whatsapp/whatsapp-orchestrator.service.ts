@@ -2160,6 +2160,9 @@ export class WhatsappOrchestratorService {
           session.pendingQuantityHint = undefined;
           await this.conversationService.saveSession(conv, session);
           if (includesOption && tail) {
+            const addedNote = interpretProductNote(tail,[optionProduct!])?.note ||
+              this.catalogService.extractProductModificationNote(tail);
+            if (addedNote) session.pendingAttribute!.sourceText = [session.pendingAttribute!.sourceText,addedNote].filter(Boolean).join(', ');
             // Explicit choices in this turn supersede previously selected defaults.
             const choices = this.catalogService.extractExplicitAttributeChoice(tail,optionProduct!) || [];
             session.pendingAttribute!.selected = (session.pendingAttribute!.selected || []).map(selected =>
@@ -12371,11 +12374,13 @@ export class WhatsappOrchestratorService {
     const label = this.formatCartLineLabel(session.cart[indices[0]]);
     const remaining = session.cart[indices[0]].quantity - (removal?.quantity || session.cart[indices[0]].quantity);
     const changed = remaining > 0 ? {...session,cart:session.cart.map((line,index) => index === indices[0] ? {...line,quantity:remaining} : line)} : this.removeCartLines(session,indices);
+    const keepPending = !!session.pendingAttribute && !indices.some(index => session.cart[index].productId === session.pendingAttribute!.productId);
     const next = { ...changed, pendingCartQuantity: undefined,
-      pendingMatch: undefined, pendingMultiOrder: undefined, pendingAttribute: undefined,
-      pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined };
-    await this.conversationService.saveSession(conv, next, 'building_cart');
-    await this.reply(conv, waId, `Listo, quité ${removal?.quantity ? 'una unidad de ' : ''}${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+      pendingMatch: keepPending ? session.pendingMatch : undefined, pendingMultiOrder: keepPending ? session.pendingMultiOrder : undefined,
+      pendingAttribute: keepPending ? session.pendingAttribute : undefined,
+      pendingQuantityHint: keepPending ? session.pendingQuantityHint : undefined, mpPreferenceId: undefined, awaitingField: undefined };
+    await this.conversationService.saveSession(conv, next, keepPending ? 'awaiting_attribute' : 'building_cart');
+    await this.reply(conv, waId, `Listo, quité ${removal?.quantity ? 'una unidad de ' : ''}${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${keepPending ? this.formatPendingPurchaseReminder(next) : this.formatContinueShoppingPrompt(next)}`);
     return true;
   }
 
@@ -12389,6 +12394,23 @@ export class WhatsappOrchestratorService {
     let correction = parseCartQuantityCorrection(text);
     const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
     const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    const decrement = !/[¿?]/.test(text) && !this.catalogService.isPriceInquiryIntent(text)
+      ? shortText.match(new RegExp(`^${shortAmount}\\s+menos\\s+(?:de|del)\\s+(.+)$`)) ||
+        shortText.match(new RegExp(`^(?:quita|retira)\\s+${shortAmount}\\s+unidades?\\s+(?:de|del)\\s+(.+)$`)) : null;
+    if (!correction && decrement) {
+      const amount = /^\d+$/.test(decrement[1]) ? Number(decrement[1]) : this.catalogService.extractQuantityFromSegment(`${decrement[1]} unidades`);
+      const lines = session.cart.filter(line => correctionMatchesLine(line,decrement[2]));
+      if (lines.length !== 1) {
+        await this.reply(conv,waId,'¿De cuál plato o línea quitamos esas unidades? El carrito sigue igual.');
+        return true;
+      }
+      if (amount < 1 || amount > lines[0].quantity) {
+        await this.reply(conv,waId,'Esa cantidad no se puede quitar de la línea. El carrito sigue igual.');
+        return true;
+      }
+      if (amount === lines[0].quantity) return this.tryHandleScopedCartRemoval(conv,waId,session,`Quita el ${lines[0].name}`,cfg);
+      correction = {quantity:lines[0].quantity - amount,query:decrement[2]};
+    }
     const shortReplace = shortText.match(new RegExp(`^(?:mejor\\s+)?(?:solo|solamente)\\s+${shortAmount}$`));
     const shortAdd = shortText.match(new RegExp(`^(?:(?:agrega|anade|quiero|dame|ponme)\\s+)?${shortAmount}\\s+mas$`));
     if (!correction && (shortReplace || shortAdd) && !/[¿?]/.test(text) &&
@@ -12469,19 +12491,20 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const index = indices[0];
+    const keepPending = !!session.pendingAttribute && session.pendingAttribute.productId !== session.cart[index].productId;
     const next: WhatsappSessionData = { ...session, cart: session.cart.map((line, i) => i === index ?
       { ...line, quantity, note: omitRedundantAttributeNote(line.note, line.attributes) } : line),
-      pendingCartQuantity: undefined, pendingMatch: undefined, pendingAttribute: undefined,
-      pendingMultiOrder: undefined, pendingQuantityHint: undefined, mpPreferenceId: undefined, awaitingField: undefined };
+      pendingCartQuantity: undefined, pendingMatch: keepPending ? session.pendingMatch : undefined, pendingAttribute: keepPending ? session.pendingAttribute : undefined,
+      pendingMultiOrder: keepPending ? session.pendingMultiOrder : undefined, pendingQuantityHint: keepPending ? session.pendingQuantityHint : undefined, mpPreferenceId: undefined, awaitingField: undefined };
     const check = evaluateCartLimits(next.cart, this.toCartLimitsConfig(cfg, next), { orderType: next.orderType });
     if (!check.ok) {
       await this.reply(conv, waId, check.reason || 'Esa cantidad supera el límite del pedido.');
       return true;
     }
-    const pendingState = ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment'].includes(conv.state)
+    const pendingState = keepPending ? 'awaiting_attribute' : ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment'].includes(conv.state)
       ? conv.state : 'building_cart';
     await this.conversationService.saveSession(conv, next, pendingState);
-    const followUp = pendingState === 'awaiting_name' ? '¿A nombre de quién dejamos el pedido?'
+    const followUp = keepPending ? this.formatPendingPurchaseReminder(next) : pendingState === 'awaiting_name' ? '¿A nombre de quién dejamos el pedido?'
       : pendingState === 'awaiting_phone' ? this.buildAskPhoneMessage(conv, next, this.deliveryFeeFor(next, cfg))
       : pendingState === 'awaiting_address' ? 'Escribe la dirección del domicilio.'
       : pendingState === 'awaiting_payment' ? buildPaymentOptionsPrompt(cfg.paymentMethods, cfg.paymentInstructions)

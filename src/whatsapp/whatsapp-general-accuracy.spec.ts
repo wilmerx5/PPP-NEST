@@ -11950,3 +11950,76 @@ describe('Referencia corta de cantidad — solo cuando hay una línea inequívoc
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
 });
+
+
+describe('Decrementos y compra pendiente — edición de una línea sin perder otra', () => {
+  const names=['Sopa De Calabaza','Pizza Rustica','Ramen De Miso'];
+  it.each(names.flatMap(name=>[false,true].flatMap(agent=>['absoluta','quitar'].map(kind=>({name,agent,kind})))))('$name conserva sabor pendiente $kind agent=$agent',async({name,agent,kind})=>{
+    const dish={id:22801,code:3501,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+    const drink={id:22802,code:3502,name:'Jugo Tropical',price:6500,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+    const h=harness([dish,drink] as typeof products,agent);h.service.ordersService.create=jest.fn();
+    h.conv.state='awaiting_attribute';h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'bien caliente'}];
+    h.conv.sessionData.pendingAttribute={productId:drink.id,name:drink.name,code:drink.code,price:drink.price,attributes:drink.attributes,selected:[],quantity:3,sourceText:'3 Jugo Tropical sin hielo'};
+    const pending=structuredClone(h.conv.sessionData.pendingAttribute);
+    const reply=await h.sendQueued(kind==='absoluta'?`Deja solo dos ${name}`:`Quita una ${name}`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:kind==='absoluta'?2:3,note:'bien caliente'})]);
+    expect(h.conv.sessionData.pendingAttribute).toEqual(pending);expect(h.conv.state).toBe('awaiting_attribute');
+    expect(reply||'').toMatch(/sabor|mango|lulo/i);
+    await h.sendQueued('Lulo');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:kind==='absoluta'?2:3}),expect.objectContaining({id:drink.id,qty:3,attrs:['Sabor:Lulo'],note:'sin hielo'})]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it.each(names.flatMap(name=>[false,true].flatMap(agent=>['Dos menos de','Quita dos unidades de'].map(lead=>({name,agent,lead})))))('$lead $name agent=$agent',async({name,agent,lead})=>{
+    const dish={id:22901,code:3601,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+    const h=harness([dish] as typeof products,agent);h.service.ordersService.create=jest.fn();
+    h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'sin cilantro'}];
+    const reply=await h.sendQueued(`${lead} ${name} por favor`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:2,note:'sin cilantro'})]);
+    expect(reply||'').not.toMatch(/no tenemos|no manejamos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Cantidad sabor y nota en un turno — completar la compra pendiente',()=>{
+ it.each(['Jugo Tropical','Gaseosa Artesanal'].flatMap(name=>[false,true].flatMap(agent=>['reemplazar','añadir'].map(kind=>({name,agent,kind})))))('$name $kind agent=$agent',async({name,agent,kind})=>{
+  const drink={id:23001,code:3701,name,price:6500,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+  const h=harness([drink] as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_attribute';
+  h.conv.sessionData.pendingAttribute={productId:drink.id,name,code:drink.code,price:drink.price,attributes:drink.attributes,selected:[],quantity:3,sourceText:`3 ${name} sin azúcar`};
+  const reply=await h.sendQueued(kind==='reemplazar'?'Mejor solo dos con Lulo y sin hielo':'Una más con Lulo y sin hielo');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:drink.id,qty:kind==='reemplazar'?2:4,attrs:['Sabor:Lulo'],note:expect.stringMatching(/sin hielo/i)})]);
+  expect(h.cartRows()[0].note).toMatch(/sin az[uú]car/i);expect(reply||'').toMatch(/sin hielo/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Decrementos — límites, línea completa y ambigüedad',()=>{
+ it.each(['Sopa De Calabaza','Pizza Rustica','Ramen De Miso'].flatMap(name=>[false,true].flatMap(agent=>['cero','exceso','completa','ambigua'].map(kind=>({name,agent,kind})))))('$name $kind agent=$agent',async({name,agent,kind})=>{
+  const dish={id:23101,code:3801,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+  const water={id:23102,code:3802,name:'Agua Mineral',price:3000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish,water] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'sin cilantro'},
+    {productId:water.id,name:water.name,code:water.code,unitPrice:water.price,quantity:2,attributes:[]}];
+  if(kind==='ambigua')h.conv.sessionData.cart.push({productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:3,attributes:[],note:'con cilantro'});
+  const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued(`${kind==='cero'?0:kind==='exceso'?5:kind==='completa'?4:2} menos de ${name}`);
+  if(kind==='completa')expect(h.cartRows()).toEqual([expect.objectContaining({id:water.id,qty:2})]);
+  else {expect(h.conv.sessionData).toEqual(before);expect(reply||'').toMatch(kind==='ambigua'?/cu[aá]l.*plato|cu[aá]l.*l[ií]nea/i:/no.*quitar|cantidad/i);}
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(['Jugo Tropical','Gaseosa Artesanal'].flatMap(name=>[false,true].map(agent=>({name,agent}))))('nota inicial válida $name agent=$agent',async({name,agent})=>{
+  const drink={id:23201,code:3901,name,price:6500,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+  const h=harness([drink] as typeof products,agent);h.conv.state='awaiting_attribute';h.conv.sessionData.pendingAttribute={productId:drink.id,name,code:drink.code,price:drink.price,attributes:drink.attributes,selected:[],quantity:3,sourceText:`3 ${name} sin azúcar`};
+  await h.sendQueued('Lulo');expect(h.cartRows()).toEqual([expect.objectContaining({id:drink.id,qty:3,attrs:['Sabor:Lulo'],note:expect.stringMatching(/sin az[uú]car/i)})]);
+ });
+});
+
+
+describe('Decremento completo — números dentro del nombre son parte del producto',()=>{
+ it.each(['1 Pollo Frito','Dos Empanadas'].flatMap(name=>[false,true].map(agent=>({name,agent}))))('$name agent=$agent',async({name,agent})=>{
+  const dish={id:23301,code:4001,name,price:15000,availableNow:true,hasAttributes:false,attributes:[]};
+  const water={id:23302,code:4002,name:'Agua Mineral',price:3000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish,water] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[]},{productId:water.id,name:water.name,code:water.code,unitPrice:water.price,quantity:2,attributes:[]}];
+  await h.sendQueued(`4 menos de ${name}`);expect(h.cartRows()).toEqual([expect.objectContaining({id:water.id,qty:2})]);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

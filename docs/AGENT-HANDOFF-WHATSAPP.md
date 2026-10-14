@@ -1156,3 +1156,25 @@ Cierre local de cantidades tras cobertura:66 suites/4517 pruebas aprobadas en447
 
 
 Staging verificado el14/10/2026 a las11:59 Bogotá: runtime5654678e, running/healthy, imagen activa=candidata sha256:e75ce770c25c87ce84cca3802dd51e88d220d97a6497cbe7dfc5b81ff19f87c5. HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia /tmp/ppp-after-coverage-deploy.log y /tmp/ppp-after-coverage-verified.log; el primer chequeo Docker starting se completó como healthy antes de cerrar. Main local/servidor49194fec comprobadas intactas.72 regresiones nuevas,66 suites/4517 pruebas,78 focalizadas,24 controles de eliminación y TypeScript aprobados. Fuente estable. Cero API nueva,39/40 usadas,1 restante. Próxima tanda: decremento «dos menos», cantidad con opción/nota nueva, edición de otra línea sin perder compra pendiente.
+
+
+## Decrementos y edición sin perder otra compra — 14/10/2026
+
+64 pruebas nuevas con router real, modelo/Meta/persistencia simulados, cartas ficticias y agente activo/inactivo:
+-12 recorridos con cuatro platos y tres bebidas pendientes de Sabor: corregir cantidad absoluta o quitar una unidad del plato conserva pendingAttribute y estado awaiting_attribute; responder Lulo después añade tres bebidas con nota sin hielo.
+-12 decrementos explícitos («dos menos de PLATO», «quita dos unidades de PLATO») dejan dos de cuatro, conservando nota.
+-8 recorridos de cantidad+sabor+nota en un turno: «Mejor solo dos con Lulo y sin hielo» o «Una más con Lulo y sin hielo»; conservan sin azúcar de la compra inicial y añaden sin hielo, sin duplicar producto.
+-24 controles: cero, quitar más unidades de las anotadas, quitar todas las unidades y referente ambiguo. Conservan otras líneas; rechazan rango/referencia cuando corresponde.
+-4 controles de nota inicial válida al elegir sabor.
+-4 controles de eliminación completa con nombres que incluyen números (1 Pollo Frito, Dos Empanadas). El número del nombre no es la cantidad a retirar.
+
+Baseline válido de32 casos falló32 (/tmp/ppp-decrement-pending-baseline2.log). La primera fixture no compiló por poner note en pendingAttribute, cuyo contrato guarda notas en sourceText; no se acredita ese intento como ejecución de casos. Se ajustó a sourceText. Para la nota inicial se usa «sin azúcar» y controles de selección normal, sin suponer que una nota desconocida está soportada.
+
+Correcciones: los decrementos explícitos se convierten en cantidad absoluta o eliminación completa con las guardas existentes; rechazan negativos/cero/exceso o múltiples líneas posibles. Edición y eliminación de una línea conservan una compra pendiente de atributos de otro SKU, con recordatorio de sabor. Cantidad+sabor ahora incorpora la nota detectada al sourceText de la compra pendiente antes de continuar por el resolver de opciones. No se modificó el modelo ni se aplicaron excepciones PPP.
+
+136 focalizadas aprobadas (/tmp/ppp-decrement-pending-target3.log), TypeScript aprobado (/tmp/ppp-decrement-pending-final2-tsc.log). Global en ejecución /tmp/ppp-decrement-pending-full.log; snapshot src/**/*.ts /tmp/ppp-decrement-pending-source.json. No editar fuentes hasta finalizar y comparar snapshot. Código aún local; runtime staging5654678e. Main49194fec intacta. Cero nuevas llamadas pagadas;39/40 usadas,1 restante.
+
+Límites: conserva otra compra con pendingAttribute de SKU diferente; no acredita edición de una línea frente a otra compra del mismo SKU ni todos los pendingMatch/pendingMulti. Los decrementos cubren las dos formas explícitas, no «menos dos» sin producto ni pedidos colectivos. Pendiente otra muestra independiente y modelo/canal reales; no declarar piloto por conteo.
+
+
+Cierre local de decrementos y compra pendiente:66 suites/4581 pruebas aprobadas en447.724s (/tmp/ppp-decrement-pending-full.log),snapshot src íntegro.64 regresiones nuevas;136 focalizadas y TypeScript aprobados. Pendiente publicar/desplegar. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
