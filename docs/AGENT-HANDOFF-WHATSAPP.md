@@ -1134,3 +1134,22 @@ Cierre local integrado:66 suites /4445 pruebas aprobadas en451.396s (/tmp/ppp-co
 
 
 Publicado staging a7930a70 y API reconstruida. Imagen activa igual a candidata sha256:108c01aa6275a6f1fac55fcfe9d97968ae9c3c523645394d94e15009dcd37681. HTTP3301/api/health ok, DB connected, circuit CLOSED; Docker running/healthy comprobado el14/10/2026 a las11:42 Bogotá. Main servidor49194fec intacta. Evidencia /tmp/ppp-context-integration-deploy.log y /tmp/ppp-context-integration-verified.log.
+
+
+## Cantidades después de cobertura y referencias cortas — 14/10/2026
+
+72 regresiones nuevas, cartas ficticias de sopa/pizza/ramen, agente simulado activo/inactivo y router completo:
+-36 recorridos con cuatro unidades y otro producto: consultar cobertura sin cambiar destino, añadir una, dejar solo una, reconsiderar dos en total, quitar una, consultar precio e hipotético de añadir una. Conservan nota, otro producto y no crean órdenes externas.
+-18 controles de incremento: cero, total mayor de30 y dos líneas del mismo producto con notas distintas. No mutan; rechazan rango o piden precisar la línea.
+-18 referencias cortas: «Mejor solo una» reemplaza cuatro por una, «Una más por favor» incrementa a cinco, dos líneas posibles obligan a aclarar. Se conserva nota y no se invoca orden externa.
+
+Baseline36:18 fallos (/tmp/ppp-after-coverage-baseline.log). «Agrega una más» añadía una segunda línea con nota «más por favor»; «Quita una» borraba toda la línea; un hipotético nombrado perdía el plato. Correcciones: incremento explícito sobre una línea inequívoca usa cantidad absoluta con límites; la eliminación reconoce «una PLATO» como una unidad; la consulta hipotética extrae el nombre sin comprar. Se comprobó que la normalización previa convierte «agrega» a «quiero», por eso el incremento reconoce ambos, solo con «más» explícito.
+
+Baseline de referencias cortas18/18 falló (/tmp/ppp-after-coverage-short-baseline.log). «Solo una» se confundía con variante sin combo; se prioriza exclusivamente la corrección corta de unidades antes de cambio de variante. Si faltan opciones de otra compra, no se asigna esa referencia a un plato del carrito. No inferir el referente entre varias líneas.
+
+78 focalizadas aprobadas (/tmp/ppp-after-coverage-target5.log),24 controles de eliminación aprobados (/tmp/ppp-after-coverage-removal.log),TypeScript aprobado (/tmp/ppp-after-coverage-final2-tsc.log). Global en ejecución /tmp/ppp-after-coverage-full.log, snapshot /tmp/ppp-after-coverage-source.json. No editar src durante la ejecución; comprobar snapshot antes de acreditar. Código local; runtime staging a7930a70, Main49194fec intacta. Cero nuevas solicitudes API;39/40 usadas,1 restante.
+
+Límites: no acredita todas las expresiones de decremento, incrementos compuestos con notas nuevas, selección posterior de la línea ambigua ni nueva inferencia real. Siguiente: «dos menos», incremento/corrección más opción o nota en un turno, conservación de compra pendiente al modificar otra línea y sesión expirada frente a nuevo pedido. No declarar piloto por conteo ni promover Main sin solicitud.
+
+
+Cierre local de cantidades tras cobertura:66 suites/4517 pruebas aprobadas en447.558s (/tmp/ppp-after-coverage-full.log); snapshot íntegro.72 nuevas pruebas;78 focalizadas,24 controles de eliminación y TypeScript aprobados. Pendiente publicación/deploy. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.

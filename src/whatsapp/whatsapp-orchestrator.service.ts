@@ -1418,6 +1418,10 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryResolvePendingPriceInquiry(conv, msg.waId, session, originalText, cfg)) return;
+    // "Solo una" changes units, whereas "solo, sin combo" changes a variant.
+    const shortCartQuantity = /^(?:mejor\s+)?(?:solo|solamente)\s+(?:\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+por\s+favor)?$/.test(this.normalizeForMatch(originalText));
+    if (shortCartQuantity && session.cart.length && !['completed','closed','human','human_takeover'].includes(conv.state) &&
+      await this.tryHandleCartQuantityCorrection(conv,msg.waId,session,originalText,cfg)) return;
     if (session.cart.length && !session.pendingMultiOrder && !/[¿?]/.test(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText) &&
       !/^(?:si\s+(?:lo|la|los|las)|puedo|podria|podr[ií]a|se puede)\b/i.test(originalText.trim()) &&
@@ -1450,7 +1454,8 @@ export class WhatsappOrchestratorService {
     if (session.cart.length && !refersToPendingPrice && !asksModificationPrice && !this.looksLikeDeliveryFeeQuestion(originalText) &&
       (this.catalogService.isPriceInquiryIntent(originalText) || priceComplaint)) {
       const menu = await this.catalogService.getMenuProducts();
-      const named = this.catalogService.findProductEmbeddedInMessage(originalText, menu) ||
+      const hypotheticalAdd = this.normalizeForMatch(originalText).match(/^si\s+(?:agrego|anado|pido|quiero)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)\s+(.+?)\s+(?:mas\s+)?cuanto\s+(?:cuesta|vale|cuestan|valen)$/);
+      const named = this.catalogService.findProductEmbeddedInMessage(hypotheticalAdd?.[1] || originalText, menu) ||
         this.catalogService.resolveSizedChickenProduct(originalText, menu);
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
@@ -12381,7 +12386,46 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    const correction = parseCartQuantityCorrection(text);
+    let correction = parseCartQuantityCorrection(text);
+    const shortText = this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '');
+    const shortAmount = '(\\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    const shortReplace = shortText.match(new RegExp(`^(?:mejor\\s+)?(?:solo|solamente)\\s+${shortAmount}$`));
+    const shortAdd = shortText.match(new RegExp(`^(?:(?:agrega|anade|quiero|dame|ponme)\\s+)?${shortAmount}\\s+mas$`));
+    if (!correction && (shortReplace || shortAdd) && !/[¿?]/.test(text) &&
+      !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      if (session.cart.length !== 1) {
+        await this.reply(conv, waId, '¿De cuál plato o línea quieres cambiar la cantidad? El carrito sigue igual.');
+        return true;
+      }
+      const amountText = (shortReplace || shortAdd)![1];
+      const amount = /^\d+$/.test(amountText) ? Number(amountText)
+        : this.catalogService.extractQuantityFromSegment(`${amountText} unidades`);
+      if (amount < 1 || amount > 30) {
+        await this.reply(conv, waId, 'Dime una cantidad entre 1 y 30. El carrito sigue igual.');
+        return true;
+      }
+      correction = {quantity: amount + (shortAdd ? session.cart[0].quantity : 0), query: session.cart[0].name};
+    }
+    const increment = !this.catalogService.isPriceInquiryIntent(text) && !/[¿?]/.test(text)
+      ? this.normalizeForMatch(text).replace(/\s+(?:por favor|porfa|gracias)$/, '').match(/^(?:agrega|anade|quiero|dame|ponme)\s+(\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+?)\s+mas$/)
+      : null;
+    if (!correction && increment) {
+      const addedQuantity = /^\d+$/.test(increment[1]) ? Number(increment[1])
+        : this.catalogService.extractQuantityFromSegment(`${increment[1]} unidades`);
+      if (addedQuantity < 1 || addedQuantity > 30) {
+        await this.reply(conv, waId, 'Dime una cantidad entre 1 y 30. El carrito sigue igual.');
+        return true;
+      }
+      const matches = session.cart.filter(line => correctionMatchesLine(line, increment[2]));
+      if (matches.length > 1) {
+        await this.reply(conv, waId, '¿A cuál línea del pedido añadimos esas unidades? Dime el plato y sus opciones. El carrito sigue igual.');
+        return true;
+      }
+      if (matches.length === 1) correction = {
+        quantity: matches[0].quantity + addedQuantity,
+        query: increment[2],
+      };
+    }
     const pending = session.pendingCartQuantity;
     const pick = /^\d+$/.test(text.trim()) ? Number(text.trim()) : null;
     if (!correction && !(pending && pick !== null)) return false;

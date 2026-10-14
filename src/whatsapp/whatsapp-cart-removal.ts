@@ -14,7 +14,8 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
   const clauses = text.trim().replace(/[.!]+$/, '').split(/\s*;\s*|\s*,\s*(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)|\s+y\s+(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)/i);
   const match = clauses.shift()?.match(/^(?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?)\s+(?:solamente\s+|solo\s+)?(.+)$/i);
   if (!match) return null;
-  const partial = match[1].match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i);
+  const partial = match[1].match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i) ||
+    match[1].match(/^(?:uno|una|un|1)\s+(.+)$/i);
   const query = (partial?.[1] || match[1]).replace(/\s+(?:por favor|porfa|gracias)$/i, '').replace(/\s+(?:del carrito|de mi pedido|del pedido)$/i, '').trim();
   const normalized = normalizeCorrection(query);
   if (!normalized || query.includes(',') || /\b(?:y|nota|notas|observacion|observaciones|atributo|opcion|sin|no|solo|solamente|todo|carrito|pedido|agrega|pon|cambia|reemplaza|mejor|por)\b/.test(normalized)) return null;
