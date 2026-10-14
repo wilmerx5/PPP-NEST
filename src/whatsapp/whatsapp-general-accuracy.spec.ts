@@ -12091,3 +12091,35 @@ describe('Referente de cantidad — varios agregados o solo compra pendiente',()
   expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Notas como referente — corregir solo la línea indicada',()=>{
+ it.each(['Sopa De Calabaza','Pizza Rustica','Ramen De Miso'].flatMap(name=>[false,true].flatMap(agent=>['sin','con'].map(modifier=>({name,agent,modifier})))))('$name $modifier cilantro agent=$agent',async({name,agent,modifier})=>{
+  const dish={id:23801,code:4501,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+  const water={id:23802,code:4502,name:'Agua Mineral',price:3000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish,water] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'sin cilantro'},
+   {productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:3,attributes:[],note:'con cilantro'},
+   {productId:water.id,name:water.name,code:water.code,unitPrice:water.price,quantity:1,attributes:[]}];
+  const reply=await h.sendQueued(`Deja solo dos ${name} ${modifier} cilantro`);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:modifier==='sin'?2:4,note:'sin cilantro'}),expect.objectContaining({id:dish.id,qty:modifier==='con'?2:3,note:'con cilantro'}),expect.objectContaining({id:water.id,qty:1})]);
+  expect(reply||'').not.toMatch(/no est[aá].*carrito|cu[aá]l.*l[ií]nea/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Referencias por notas — identidad y ambigüedad se conservan',()=>{
+ it.each(['Sopa De Calabaza','Pizza Rustica'].flatMap(name=>[false,true].flatMap(agent=>['identidad','iguales','pendiente'].map(kind=>({name,agent,kind})))))('$name $kind agent=$agent',async({name,agent,kind})=>{
+  const dish={id:23901,code:4601,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+  const water={id:23902,code:4602,name:'Agua Mineral',price:3000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish,water] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'sin cilantro'}];
+  if(kind==='identidad')h.conv.sessionData.cart.push({productId:water.id,name:water.name,code:water.code,unitPrice:water.price,quantity:1,attributes:[],note:`para ${name}`});
+  if(kind==='iguales')h.conv.sessionData.cart.push({productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:3,attributes:[],note:'sin cilantro'});
+  if(kind==='pendiente'){h.conv.state='awaiting_attribute';h.conv.sessionData.pendingAttribute={productId:dish.id,name,code:dish.code,price:dish.price,attributes:[{attributeName:'Salsa',options:['Roja','Verde']}],selected:[],quantity:3,sourceText:`3 ${name} sin cilantro`};}
+  const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued(`Deja solo dos ${name}${kind==='identidad'?'':' sin cilantro'}`);
+  if(kind==='identidad')expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:2,note:'sin cilantro'}),expect.objectContaining({id:water.id,qty:1,note:`para ${name}`})]);
+  else {expect(h.conv.sessionData.cart).toEqual(before.cart);if(kind==='iguales')expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);else {expect(h.conv.sessionData).toEqual(before);expect(reply||'').toMatch(/carrito.*pendiente|pendiente.*carrito/i);}}
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

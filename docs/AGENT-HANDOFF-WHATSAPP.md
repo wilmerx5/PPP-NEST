@@ -1204,3 +1204,26 @@ Cierre local de referentes y listas:66 suites/4631 pruebas aprobadas en446.443s 
 
 
 Staging verificado el14/10/2026 a las12:49 Bogotá: runtime60f17cb9,running/healthy,imagen activa=candidata sha256:c039574e1eb8f1d4a77de21055bb0f00c3749644137aa5625014e242fc6a26db. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-same-product-deploy.log y /tmp/ppp-same-product-verified.log. Main local/servidor49194fec intactas.50 regresiones nuevas;66 suites/4631 pruebas,86 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Próxima prioridad: referentes por notas libres,pendingMatch y multiórdenes con varias necesidades; otra muestra independiente y modelo/canal reales antes de acreditar piloto.
+
+
+## Promoción autorizada a Main — 14/10/2026
+
+El usuario pidió «pasa todos los cambios a main, y continua con las pruebas». Main local/origin se avanzó por fast-forward49194fec→d9241abe; fuente src idéntica al snapshot validado de66 suites/4631 pruebas. Staging se conserva. Producción /var/www/ppp-nest actualizada a d9241abe y reconstruida con compose efectivo docker-compose.yml/proyecto ppp-nest, sin volumen de fuente. Se conservaron adaptación local del compose y backups; imagen anterior preservada como ppp-nest-api:before-main-d9241abe.
+
+Verificación14/10 a las12:53 Bogotá: ppp_nest_api running, imagen activa=ppp-nest-api sha256:6c0e72f8ac8161d610b56b1c10ee446e0c963ed1c747ffeac90c691b4e8d0279. Sin healthcheckDocker; HTTP3000/api/health ok,DB connected,circuit CLOSED. Orquestador compilado idéntico entre prod y staging: sha256551e39ccfbd383e13d0585b9b90792df01163afc573ee93794091fe57f4d4cba. Evidencia /tmp/ppp-main-d9241abe-deploy.log y /tmp/ppp-main-d9241abe-verified.log. No se cambiaron modelos/credenciales ni se ejecutaron órdenes reales. Frontend sin archivos cambiados en esta promoción. Presupuesto39/40,1 restante.
+
+Las pruebas nuevas continúan únicamente en staging. Esta autorización acredita la promoción realizada; no promover automáticamente mejoras posteriores.
+
+
+## Referentes por notas con/sin — tanda posterior a promoción Main
+
+24 regresiones nuevas con cartas sintéticas sopa/pizza/ramen y agente simulado activo/inactivo.12 recorridos corrigen a dos unidades solo la línea «con cilantro» o «sin cilantro»,conservando la otra línea y una bebida.12 controles: una nota que menciona otro producto no cambia la identidad del SKU; dos líneas con la misma nota requieren elegir línea; si carrito y compra pendiente comparten el mismo SKU y nota, se aclara carrito vs pendiente sin mutación.
+
+Baseline12/12 falló (/tmp/ppp-note-reference-baseline.log). correctionMatchesLine no consideraba notas. Corrección: las notas pueden aportar tokens cuando califican el referente con con/sin; exige la polaridad y frase explícitas,no confunde «con cilantro» con «sin cilantro». Sin ese calificador sigue usando identidad/opciones del producto para impedir que una nota con nombre de comida convierta una bebida en ese plato. La comparación con la compra pendiente incluye su nota extraída de sourceText. Sin excepciones de restaurante.
+
+91 focalizadas aprobadas en dos suites (una tercera filtrada quedó skipped: no acreditar esa suite como ejecutada) /tmp/ppp-note-reference-target2.log;TypeScript aprobado /tmp/ppp-note-reference-final-tsc.log. Global en ejecución /tmp/ppp-note-reference-full.log;snapshot /tmp/ppp-note-reference-source.json. No editar src hasta finalizar y comparar snapshot. Main/producción d9241abe ya promovida y verificada;estas nuevas mejoras están solo locales en staging,runtime staging60f17cb9. Cero API nueva;39/40 usadas,1 restante.
+
+Límites: selectores con/sin, no todas las notas libres ni contradicciones o paráfrasis. Pendiente multiorden con varios productos/opciones, muestras independientes y modelo/canal reales. No promover automáticamente esta tanda posterior a Main.
+
+
+Cierre local de notas:66 suites/4655 pruebas aprobadas en443.632s (/tmp/ppp-note-reference-full.log),snapshot íntegro.24 nuevas;91 focalizadas y TypeScript aprobados. Pendiente publicar/deploy staging. Main/producción d9241abe permanecen en promoción anterior. Cero API nueva;39/40 usadas,1 restante.

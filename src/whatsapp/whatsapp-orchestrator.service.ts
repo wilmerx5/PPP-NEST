@@ -12329,7 +12329,8 @@ export class WhatsappOrchestratorService {
   private pendingAttributeMatchesCartQuery(session: WhatsappSessionData, query: string): boolean {
     const pending = session.pendingAttribute;
     return !!pending && correctionMatchesLine({productId:pending.productId,code:pending.code,name:pending.name,
-      quantity:pending.quantity || 1,unitPrice:pending.price,attributes:pending.selected},query);
+      quantity:pending.quantity || 1,unitPrice:pending.price,attributes:pending.selected,
+      note:this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined},query);
   }
 
   private async tryHandleScopedCartRemoval(

@@ -42,8 +42,16 @@ export function correctionMatchesLine(line: WhatsappCartItem, query: string): bo
   // "pollo" names the chicken dish, not the ingredient in "arroz con pollo".
   if (position > 0 && name.slice(0, position).some(w => ['con', 'de', 'en'].includes(w)) &&
     !name.slice(0, position).includes('combo')) return false;
-  const available = normalizeCorrection([line.name, ...(line.attributes || []).map(a => `${a.attributeName} ${a.attributeValue}`)].join(' '))
+  const identity = normalizeCorrection([line.name, ...(line.attributes || []).map(a => `${a.attributeName} ${a.attributeValue}`)].join(' '))
     .split(' ').map(singular);
+  const note = normalizeCorrection(line.note || '');
+  const noteWords = note.split(' ').map(singular);
+  const modifier = normalizeCorrection(query).match(/.*\b(con|sin)\s+(.+)$/);
+  if (modifier && tokens.some(word => !identity.includes(singular(word))) &&
+    !(` ${note} `).includes(` ${modifier[1]} ${modifier[2]} `)) return false;
+  // Notes may qualify the requested line; mentioning a dish inside a note
+  // must not turn a different product into that dish.
+  const available = modifier ? [...identity,...noteWords] : identity;
   return tokens.length > 0 && tokens.every(w => available.includes(singular(w)));
 }
 
