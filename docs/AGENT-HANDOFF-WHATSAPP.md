@@ -1227,3 +1227,6 @@ Límites: selectores con/sin, no todas las notas libres ni contradicciones o par
 
 
 Cierre local de notas:66 suites/4655 pruebas aprobadas en443.632s (/tmp/ppp-note-reference-full.log),snapshot íntegro.24 nuevas;91 focalizadas y TypeScript aprobados. Pendiente publicar/deploy staging. Main/producción d9241abe permanecen en promoción anterior. Cero API nueva;39/40 usadas,1 restante.
+
+
+Staging verificado el14/10/2026 a las13:05 Bogotá: runtime d1467c0f,running/healthy,imagen activa=candidata sha256:acbabb867d0af6f80afd926d24014787ad971516d954f7fa2347766dee79c7f2. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-note-reference-deploy.log y /tmp/ppp-note-reference-verified.log;primer Docker starting confirmado healthy antes del cierre. Main local/origin/producción d9241abe conservan la promoción autorizada anterior;staging preservada y ahora tiene24 regresiones/correcciones posteriores.66 suites/4655 pruebas,91 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Siguiente: selección por referencia después de pedir aclaración,multiorden con varios atributos y muestra independiente/modelo/canal reales.
