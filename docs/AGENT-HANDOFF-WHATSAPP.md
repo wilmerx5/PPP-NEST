@@ -1178,3 +1178,6 @@ Límites: conserva otra compra con pendingAttribute de SKU diferente; no acredit
 
 
 Cierre local de decrementos y compra pendiente:66 suites/4581 pruebas aprobadas en447.724s (/tmp/ppp-decrement-pending-full.log),snapshot src íntegro.64 regresiones nuevas;136 focalizadas y TypeScript aprobados. Pendiente publicar/desplegar. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
+
+
+Staging verificado el14/10/2026 a las12:30 Bogotá: runtime73419c8f, running/healthy, imagen activa=candidata sha256:10a9dee121243376dd52f7f755251aa25f722eed475cbb4c66904201bb720306. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-decrement-pending-deploy.log y /tmp/ppp-decrement-pending-verified.log; primer Docker starting confirmado healthy antes de cerrar. Main local/servidor49194fec intactas.64 regresiones nuevas;66 suites/4581 pruebas,136 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Próxima tanda: edición frente a otra compra del mismo SKU, pendingMatch/pendingMulti y referencias ambiguas con correcciones; no promover Main automáticamente.
