@@ -103,6 +103,8 @@ export type WhatsappSessionData = {
   recentImageCartBefore?: WhatsappCartItem[];
   /** Only image product lines after a successful image turn or correction. */
   recentImageCartSignature?: string;
+  /** Return to the address question after completing an intervening catalog purchase. */
+  pendingCheckoutResume?: 'awaiting_address';
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;

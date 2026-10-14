@@ -472,6 +472,19 @@ export class WhatsappOrchestratorService {
       session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
       await this.conversationService.saveSession(conv, session);
     }
+    if (session.pendingCheckoutResume === 'awaiting_address' && !conv.humanTakeover &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      session = { ...session, pendingCheckoutResume: undefined };
+      await this.conversationService.saveSession(conv, session, 'awaiting_address');
+      if (JSON.stringify(session.cart) !== turn.initialCart) {
+        const cfg = await this.settingsService.getEffectiveConfig();
+        const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+        if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
+        await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
+          '\n\n' + this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
+      }
+      return;
+    }
     // An active delivery address expresses checkout intent. Advance once every selection is resolved.
     if (conv.state !== 'building_cart' || !session.cart.length || session.orderType !== 'delivery' ||
       !session.address?.trim() || !session.addressConfirmed || session.deliveryOutOfCoverage ||
@@ -917,6 +930,17 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Catalog-backed addition commands must reach ordering before checkout captures fields.
+    const addPrefix = /^(?:agr[eé]ga(?:me)?|a[nñ][aá]de(?:me)?|ponme)\s+(?=(?:un|una|unos|unas|otro|otra|dos|tres|cuatro|cinco|\d+)\b)/i;
+    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) &&
+        this.catalogService.findProductEmbeddedInMessage(originalText, await this.catalogService.getMenuProducts())) {
+      text = originalText.replace(addPrefix, 'Quiero ');
+      originalText = text;
+      if (conv.state === 'awaiting_address') {
+        session = { ...session, pendingCheckoutResume: 'awaiting_address' };
+        await this.conversationService.saveSession(conv, session, 'building_cart');
+      }
+    }
     // Resolve photo references before checkout can capture their text as an address.
     if (this.photoSubsetPicks(originalText) && await this.tryApplyPhotoSubset(
       conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg,

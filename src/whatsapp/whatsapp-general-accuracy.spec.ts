@@ -10930,3 +10930,46 @@ describe('Foto — procedencia de cantidades fusionadas',()=>{
  });
 
 });
+
+describe('Agregar productos — no capturar como dirección',()=>{
+ const menus=[['Pizza De Setas','Agua Mineral'],['Bowl De Quinoa','Te Helado']].map((names,index)=>names.map((name,offset)=>({id:19301+index*10+offset,code:19301+index*10+offset,name,price:12000,availableNow:true,hasAttributes:false,attributes:[]})));
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['building_cart','awaiting_address','awaiting_payment'].flatMap(state=>['Agrega un','Añade un','Ponme un','Agrega dos','Agrega otro','Ponme otro'].map(prefix=>({menu,agent,state,prefix}))))))('$prefix en $state (agent $agent)',async({menu,agent,state,prefix})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';h.conv.sessionData.addressConfirmed=true;
+  h.conv.sessionData.cart=[{productId:menu[1].id,code:menu[1].code,name:menu[1].name,unitPrice:12000,quantity:2,attributes:[],note:'sin hielo'}];
+  await h.sendQueued(`${prefix} ${menu[0].name} por favor`);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:menu[1].id,qty:2,note:'sin hielo'}),expect.objectContaining({id:menu[0].id,qty:prefix==='Agrega dos'?2:1})]));
+  expect(h.cartRows()).toHaveLength(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Agregar durante dirección — opción pendiente y regreso',()=>{
+ it.each(['Jugo Natural','Gaseosa Artesanal'].flatMap((name,index)=>[false,true].map(agent=>({name,index,agent}))))('conserva qty y vuelve a dirección: $name (agent $agent)',async({name,index,agent})=>{
+  const product={id:19401+index,code:19401+index,name,price:6000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+  const base={id:19411,code:19411,name:'Pan De Ajo',price:5000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([product,base] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.state='awaiting_address';h.conv.sessionData.address=undefined;
+  h.conv.sessionData.cart=[{productId:base.id,name:base.name,code:base.code,unitPrice:5000,quantity:2,attributes:[],note:'sin queso'}];
+  await h.sendQueued(`Añade dos ${name} por favor`);
+  expect(h.cartRows()).toHaveLength(1);expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);
+  const reply=await h.sendQueued('Mango');
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:base.id,qty:2,note:'sin queso'}),expect.objectContaining({id:product.id,qty:2,attrs:['Sabor:Mango']})]));
+  expect(h.conv.state).toBe('awaiting_address');expect(reply||'').toMatch(/dirección/i);
+  expect(h.conv.sessionData.address).toBeUndefined();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Consultar una adición — no efectuar la compra',()=>{
+ it.each(['Pizza De Setas','Bowl De Quinoa'].flatMap((name,index)=>[false,true].flatMap(agent=>['awaiting_address','awaiting_payment'].map(state=>({name,index,agent,state})))))('$name en $state (agent $agent)',async({name,index,agent,state})=>{
+  const p={id:19501+index,code:19501+index,name,price:17000,availableNow:true,hasAttributes:false,attributes:[]};
+  const base={id:19511,code:19511,name:'Agua Mineral',price:4000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([p,base] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=[{productId:base.id,name:base.name,code:base.code,unitPrice:4000,quantity:2,attributes:[]}];
+  const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued(`Cuánto cuesta añadir otro ${name}?`);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');
+  expect(reply||'').toMatch(/17\.000/);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
