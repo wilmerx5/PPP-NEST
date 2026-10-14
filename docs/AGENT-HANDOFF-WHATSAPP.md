@@ -1153,3 +1153,6 @@ Límites: no acredita todas las expresiones de decremento, incrementos compuesto
 
 
 Cierre local de cantidades tras cobertura:66 suites/4517 pruebas aprobadas en447.558s (/tmp/ppp-after-coverage-full.log); snapshot íntegro.72 nuevas pruebas;78 focalizadas,24 controles de eliminación y TypeScript aprobados. Pendiente publicación/deploy. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
+
+
+Staging verificado el14/10/2026 a las11:59 Bogotá: runtime5654678e, running/healthy, imagen activa=candidata sha256:e75ce770c25c87ce84cca3802dd51e88d220d97a6497cbe7dfc5b81ff19f87c5. HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia /tmp/ppp-after-coverage-deploy.log y /tmp/ppp-after-coverage-verified.log; el primer chequeo Docker starting se completó como healthy antes de cerrar. Main local/servidor49194fec comprobadas intactas.72 regresiones nuevas,66 suites/4517 pruebas,78 focalizadas,24 controles de eliminación y TypeScript aprobados. Fuente estable. Cero API nueva,39/40 usadas,1 restante. Próxima tanda: decremento «dos menos», cantidad con opción/nota nueva, edición de otra línea sin perder compra pendiente.
