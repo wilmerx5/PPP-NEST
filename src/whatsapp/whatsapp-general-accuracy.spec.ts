@@ -11077,3 +11077,37 @@ describe('Negación de atributo — dos platos y selección posterior',()=>{
   expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Códigos explícitos — identidad y reconocimiento parcial',()=>{
+ const menus=['Trio De Tacos','Bowl Especial'].map((name,index)=>[
+  {id:20301+index*10,code:1011+index*10,name,price:39000,availableNow:true,hasAttributes:false,attributes:[]},
+  {id:20302+index*10,code:1012+index*10,name,price:34000,availableNow:true,hasAttributes:false,attributes:[]},
+ ]);
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['building_cart','awaiting_address','awaiting_payment'].map(state=>({menu,agent,state})))))('conserva dos SKU homónimos en $state agent=$agent',async({menu,agent,state})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';
+  await h.sendQueued(`Agrega dos #${menu[0].code} y tres #${menu[1].code}`);
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:menu[0].id,qty:2}),expect.objectContaining({id:menu[1].id,qty:3})]));
+  expect(h.cartRows()).toHaveLength(2);expect(h.conv.sessionData.cart.map(line=>line.unitPrice).sort()).toEqual([34000,39000]);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].map(agent=>({menu,agent}))))('añade el código conocido y explica el desconocido agent=$agent',async({menu,agent})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';h.conv.sessionData.address='Calle 12 #34-56';
+  const reply=await h.sendQueued(`Agrega dos #${menu[0].code} y un #9999`);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[0].id,qty:2})]);
+  expect(reply||'').toMatch(/9999/);expect(reply||'').not.toMatch(/carrito sigue igual/i);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].map(agent=>({menu,agent}))))('consulta de códigos no compra agent=$agent',async({menu,agent})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';h.conv.sessionData.address='Calle 12 #34-56';
+  const before=structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued(`¿Cuánto cuestan código ${menu[0].code} y código ${menu[1].code}?`);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].map(agent=>({menu,agent}))))('códigos sin cantidad son una copia agent=$agent',async({menu,agent})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';
+  await h.sendQueued(`Ponme código ${menu[0].code} y código ${menu[1].code}`);
+  expect(h.cartRows()).toEqual(expect.arrayContaining(menu.map(p=>expect.objectContaining({id:p.id,qty:1}))));
+  expect(h.cartRows()).toHaveLength(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

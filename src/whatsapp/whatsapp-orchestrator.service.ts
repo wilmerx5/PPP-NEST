@@ -946,6 +946,7 @@ export class WhatsappOrchestratorService {
       text = purchaseAndPrice[1].trim();
       originalText = text;
     }
+    let explicitCodeAddition: MultiProductResolveResult | null = null;
     const additionBody = originalText.replace(addPrefix, '');
     const addressAddition = /^(?:un|una|otro|otra|dos|tres|cuatro|cinco|\d+)\s+(?:apartamento|apto|torre|piso|casa|edificio|bloque|interior)\b/i.test(additionBody);
     if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && addressAddition) {
@@ -960,15 +961,19 @@ export class WhatsappOrchestratorService {
       const addressStart = parsedAddition.address ? canonical.toLowerCase().indexOf(parsedAddition.address.toLowerCase()) : -1;
       const codePattern = /(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})\b/gi;
       const codes = [...canonical.matchAll(codePattern)].filter(match => addressStart < 0 || match.index! < addressStart);
+      const codeOrder = codes.length >= 2 ? this.catalogService.resolveMultiProductOrder(canonical, additionMenu) : null;
+      const explicitCodeOrder = codeOrder && codeOrder.segments.length === codes.length &&
+        codeOrder.segments.every(segment => /(?:c[oó]digo\s*#?\s*|#\s*)\d{1,4}[.!]?$/i.test(segment.trim())) ? codeOrder : null;
       const unknownCode = codes.some(match => !this.catalogService.findByCode(Number(match[1]), additionMenu));
       const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(canonical));
       const knownName = this.catalogService.findProductEmbeddedInMessage(canonical, additionMenu) ||
         this.catalogService.searchByNameScored(query, additionMenu, 6).find(hit => hit.score >= 40)?.p;
-      if (unknownCode || (!codes.length && !knownName)) {
+      if ((unknownCode && !explicitCodeOrder?.confident.length && !explicitCodeOrder?.needsAttributes.length) || (!codes.length && !knownName)) {
         await this.reply(conv, msg.waId, 'No encontré ese producto en la carta. El carrito sigue igual. Dime otro producto o pide el menú.');
         return;
       }
-      text = canonical.replace(codePattern, (match, code: string, offset: number) => {
+      explicitCodeAddition = explicitCodeOrder;
+      text = explicitCodeOrder ? canonical : canonical.replace(codePattern, (match, code: string, offset: number) => {
         if (addressStart >= 0 && offset >= addressStart) return match;
         return this.catalogService.findByCode(Number(code), additionMenu)?.name || match;
       });
@@ -1729,11 +1734,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (businessOpenForBot && conv.state === 'awaiting_payment' && /^quiero\b/i.test(originalText) &&
+    if (businessOpenForBot && (conv.state === 'awaiting_payment' || explicitCodeAddition) && /^quiero\b/i.test(originalText) &&
         !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
         !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText)) {
-      const multiAddition = this.catalogService.resolveMultiProductOrder(originalText, products);
-      if (multiAddition && multiAddition.confident.length + multiAddition.needsAttributes.length + multiAddition.ambiguous.length > 1 &&
+      const multiAddition = explicitCodeAddition || this.catalogService.resolveMultiProductOrder(originalText, products);
+      if (multiAddition && multiAddition.confident.length + multiAddition.needsAttributes.length + multiAddition.ambiguous.length + multiAddition.unresolved.length > 1 &&
           await this.tryHandleMultiProductOrder(conv, msg.waId, session, multiAddition, cfg, originalText, products, originalText)) return;
     }
 

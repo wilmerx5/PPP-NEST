@@ -1005,3 +1005,17 @@ Tanda mixta aprobada:66suites/4008pruebas,700.365s (/tmp/ppp-mixed-intents-full.
 
 
 Staging verificado14/10/2026 06:10Bogotá:runtime8d28d37e,running/healthy,imagenactiva=candidata sha256:304d787babc31a609cab5b3a278d25ef492c0196829c5a8a8b23b3ed15ca77e5;HTTP3301/api/healthok,DBconnected,circuitCLOSED. Evidencia /tmp/ppp-mixed-intents-deploy.log y /tmp/ppp-mixed-intents-verified.log. Main49194fec comprobada sin cambios.48regresiones nuevas,66suites/4008pruebas+TypeScript aprobados. CeroAPIpagada. Próxima tanda prioriza títulos repetidos con códigos/precios distintos,mezcla válido+desconocido ynegación sin alternativa clara. Mantener source snapshots ystagingpermanente,no promoverMain automáticamente.
+
+
+## Identidad de códigos repetidos y aceptación parcial — 14/10/2026
+
+24 regresiones nuevas con dos cartas ficticias (Trio De Tacos/Bowl Especial), dos SKU homónimos con códigos y precios distintos, agente simulado activo/inactivo, building_cart/awaiting_address/awaiting_payment. Comprueban IDs, cantidades 2/3 o una copia por omisión, precios 39.000/34.000, dirección conservada, ninguna orden externa y consultas sin compra. Código válido + #9999 añade inmediatamente el válido y explica el desconocido.
+
+Baseline: 16/16 fallaron (/tmp/ppp-code-identity-baseline.log). Primera corrección: 12 pasaron y 4 fallaron porque la ruta de estado de un pedido interceptaba códigos de catálogo en building_cart/awaiting_address (/tmp/ppp-code-identity-target.log); no se añadió un mock para ocultar esa ruta equivocada. Ahora las cláusulas independientes de códigos se resuelven por identidad de catálogo y se procesan por el manejador multi existente antes de checkout/consulta de órdenes, respetando las guardas de negocio y pendientes. La ruta se limita a listas de código y cantidad; dirección, notas y consultas siguen el parser normal. No se sustituyen por nombres estas listas: dos títulos iguales siguen siendo dos productos distintos.
+
+80 focalizadas aprobadas (/tmp/ppp-code-identity-target2.log); TypeScript aprobado (/tmp/ppp-code-identity-tsc.log). Global en ejecución: /tmp/ppp-code-identity-full.log; snapshot de src/**/*.ts: /tmp/ppp-code-identity-source.json. No editar fuentes durante el global. Cambios todavía locales; runtime staging anterior 8d28d37e, Main 49194fec intacta. Cero llamadas pagadas; saldo 36/40 usadas, 4 restantes.
+
+Límites y siguiente tanda: esta corrección acredita listas independientes de códigos explícitos; no acredita un solo código de un título duplicado, listas de códigos combinadas con notas/dirección ni mezcla de código desconocido con productos por nombre. Añadir esas fronteras, atributos obligatorios y producto no disponible, negaciones sin alternativa positiva y «sin» frente a opciones válidas. No declarar piloto aprobado por el conteo de pruebas; siguen pendientes evaluación reservada, inferencia y medios originales representativos.
+
+
+Cierre local de identidad: 66 suites / 4.032 pruebas aprobadas en 534.911 segundos (/tmp/ppp-code-identity-full.log), 80 focalizadas y TypeScript aprobados; snapshot íntegro. 24 regresiones nuevas. Pendiente publicación y despliegue del código validado. Main 49194fec intacta. Cero API pagada; 36/40 usadas, 4 restantes. Negación sin alternativa queda pendiente para siguiente tanda; no se ejecutó ni corrigió en este cierre.
