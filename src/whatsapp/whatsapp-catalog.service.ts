@@ -1742,6 +1742,21 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /** Resolve a culinary synonym only when the configured catalog has one owner. */
+  resolveCatalogAliasText(text: string, products: WhatsappCatalogProduct[]): string {
+    const q = normalizeText(text);
+    if (!/\b(?:maduro con|platano maduro)\b/.test(q)) return text;
+    const available = products.filter(product => product.availableNow !== false);
+    if (available.some(product => /\bmaduro\b/.test(normalizeText(product.name)))) return text;
+    const alias = q.replace(/\bplatano maduro\b/g,'platano').replace(/\bmaduro(?= con\b)/g,'platano');
+    const matches = available.filter(product => {
+      const words = normalizeText(product.name).split(/\s+/).filter(word => !['con','y','de','el','la'].includes(word));
+      return words.includes('platano') && words.length > 1 && words.every(word => (` ${alias} `).includes(` ${word} `));
+    }).sort((a,b)=>b.name.length-a.name.length);
+    if (!matches.length || (matches[1] && matches[0].name.length === matches[1].name.length)) return text;
+    return text.replace(/\bpl[aá]tano\s+maduro\b/gi,'plátano').replace(/\bmaduro(?=\s+con\b)/gi,'plátano');
+  }
+
   /** Limpia ruido coloquial dentro de un segmento de pedido. */
   cleanOrderSegment(segment: string): string {
     return segment

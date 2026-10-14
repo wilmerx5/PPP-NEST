@@ -749,6 +749,9 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
     text = normalizeSpokenOrderCourtesy(text);
+    if (/\b(?:maduro\s+con|pl[aá]tano\s+maduro)\b/i.test(text)) {
+      text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
+    }
     let originalText = text;
 
     if (this.looksLikeHistoricalSurchargeQuestion(originalText)) {
@@ -1379,6 +1382,8 @@ export class WhatsappOrchestratorService {
     // Removing a voucher is not removing a dish; handle it before generic cart edits.
     if (/\bpremio\b/i.test(originalText) && this.pointsHandler.isRemovePremioIntent(originalText) &&
         await this.tryHandlePointsFlow(conv, msg.waId, session, originalText, cfg)) return;
+
+    if (await this.tryContinueOfferedPurchase(conv, msg.waId, session, originalText, cfg)) return;
 
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
@@ -17540,6 +17545,17 @@ export class WhatsappOrchestratorService {
       reply = '¿Qué se te antoja? Dime el plato o el código, o escribe *menú*.';
     }
 
+    // A question about adding a catalog item must retain a structured offer.
+    if (!hasProductiveActions && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        /(?:te lo agrego|te la agrego|quieres.*agreg|te gustaria.*agreg)/.test(this.normalizeForMatch(reply))) {
+      const named = this.productsNamedInReply(reply, products);
+      if (named.length === 1 && !session.cart.some(line => line.productId === named[0].id)) {
+        const product = named[0];
+        session = {...session, productFocus:{productId:product.id,name:product.name},
+          pendingAddOffer:{productId:product.id,name:product.name,code:product.code,price:product.price,
+            quantity:this.catalogService.extractQuantityFromMessage(text),sourceText:text.slice(0,400)}};
+      }
+    }
     reply = withFirstContactDisclaimer(reply);
     await this.conversationService.saveSession(conv, session, 'building_cart');
     await this.reply(conv, msg.waId, reply);
@@ -19338,6 +19354,47 @@ export class WhatsappOrchestratorService {
       '¿Cuál plato quieres? Dime el *nombre* o el *código*. El pedido sigue igual.',
     );
     return true;
+  }
+
+  private async tryContinueOfferedPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.state !== 'building_cart' || session.pendingMatch || session.pendingMultiOrder || /[?¿]/.test(text)) return false;
+    const q = this.normalizeForMatch(text);
+    const amount = q.match(/^(?:de acuerdo\s+)?(?:entonces\s+)?(?:dame|agrega|anade|ponme)\s+(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)(?:\s+por favor)?$/);
+    const normal = /^(?:lo|la) quiero normal\b/.test(q);
+    if (!amount && !normal) return false;
+    const id = session.pendingAddOffer?.productId || ((amount || !session.cart.length) ? session.productFocus?.productId : undefined);
+    if (!id || session.pendingAttribute || (session.pendingAddOffer?.productIds?.length || 0) > 1) return false;
+    const products = await this.catalogService.getMenuProducts();
+    const product = products.find(item => item.id === id && item.availableNow !== false);
+    if (!product) return false;
+    const quantity = amount ? this.catalogService.extractQuantityFromMessage(`${amount[1]} ${product.name}`)
+      : session.pendingAddOffer?.quantity || 1;
+    if (amount && session.cart.some(line => line.productId === product.id)) {
+      const lines = session.cart.filter(line => line.productId === product.id);
+      if (lines.length !== 1 || quantity < 1 || quantity > 30) {
+        await this.reply(conv,waId,'¿A cuál línea le cambiamos la cantidad? El pedido sigue igual.');
+        return true;
+      }
+      const next = {...session,cart:session.cart.map(line => line === lines[0] ? {...line,quantity} : line),pendingCartQuantity:undefined};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,`Listo, ${product.name} ×${quantity}.\n\n${this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))}\n\n${this.formatContinueShoppingPrompt(next)}`);
+      return true;
+    }
+    const parts = text.split(/\s+pero\s+/i);
+    if (normal && parts.length > 1) {
+      session = this.appendCustomerNote(session, `Solicitud adicional para revisar con el local: ${parts.slice(1).join(' pero ')}`);
+    }
+    const next = {...session,pendingAddOffer:{productId:product.id,name:product.name,code:product.code,
+      price:product.price,quantity,sourceText:normal ? `${product.name} ${parts[0]}` : `${quantity} ${product.name}`}};
+    await this.conversationService.saveSession(conv,next);
+    const handled = await this.tryHandlePendingAddOffer(conv,waId,next,'sí',products,cfg);
+    if (handled && normal && parts.length > 1) {
+      await this.reply(conv,waId,'La solicitud adicional quedó anotada para revisar con el local; deben confirmar si se puede y si tiene costo.');
+    }
+    return handled;
   }
 
   private async savePendingAddOffer(

@@ -12957,3 +12957,99 @@ describe('Cortesía y nota — cartas distintas', () => {
     }
   }
 });
+
+
+describe('Maduro y compra después de rendimiento — chat real', () => {
+  it.each([true,false])('disponibilidad alias sin compra agent=%s', async enabled => {
+    const h = harness(products,enabled);
+    const reply = await h.send('Hola buenas tardes tienes maduro con queso y bocadillo');
+    expect(reply).not.toMatch(/no tenemos|no manejamos/i);
+    expect(reply).toMatch(/pl[aá]tano|maduro/i);
+    expect(h.cartRows()).toEqual([]);
+  });
+  it.each([true,false])('oferta rendimiento y compra dos agent=%s', async enabled => {
+    const h = harness(products,enabled);
+    await h.send('Un platano maduro con queso y bocadillo');
+    await h.send("Si por favor, Para cuantas persona's alcanza?");
+    const reply = await h.send('De acuerdo entonces Dame dos');
+    expect(reply).not.toMatch(/no est[aá] en tu carrito|no manejamos/i);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:53,qty:2})]);
+  });
+});
+
+
+describe('Combo pendiente — aclaración larga y extra de acompañamiento', () => {
+  it('no convierte la respuesta al combo en un plato desconocido', async () => {
+    const h = harness(products,true);
+    h.agent.runTurn.mockResolvedValueOnce({reply:'El Combo De Pollo Broaster viene con papa francesa. ¿Te lo agrego con papa salada en vez de papa francesa? ¿Qué bebida prefieres?',actions:{},toolCalls:[]});
+    await h.send('Hola Buenos dias me envias Un combo De Pollo broaster con papas saladas es Para los gemelos');
+    const reply = await h.send('Lo quiero normal con papa Francesa pero que Le agreguen unas Tres papitas saladas asi como siemore me envian');
+    expect(reply).not.toMatch(/no manejamos.*Lo quiero normal/is);
+    const session=h.conv.sessionData;
+    expect(session.cart.some(line=>/combo.*broaster/i.test(line.name)) || /combo.*broaster/i.test(session.pendingAttribute?.name || session.pendingAddOffer?.name || '')).toBe(true);
+    expect(session.cart.filter(line=>/papa salada/i.test(line.name))).toEqual([]);
+    expect(h.conv.state).not.toBe('completed');
+    expect(session.customerNotes).toMatch(/revisar con el local.*Tres papitas/i);
+    expect(h.replies.join('\n')).toMatch(/confirmar si se puede y si tiene costo/i);
+    if (session.pendingAttribute) await h.send('Colombiana');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:98,qty:1})]);
+  });
+});
+
+
+describe('Oferta estructurada — continuidad portable y controles', () => {
+  for (const [i,name] of ['Pizza Rustica','Ramen De Miso','Bowl Andino','Tacos Vegetarianos'].entries()) {
+    const product={...products[0],id:31000+i,code:910+i,name,price:19000+i*1000,hasAttributes:false,attributes:[]};
+    it.each([true,false])(`${name} pregunta de rendimiento conserva oferta y cantidad agent=%s`, async enabled => {
+      const h=harness([product],enabled);
+      h.conv.sessionData.pendingAddOffer={productId:product.id,name,code:product.code,price:product.price,quantity:1,sourceText:name};
+      h.conv.sessionData.productFocus={productId:product.id,name};
+      const before=structuredClone(h.cartRows());
+      await h.send('Para cuantas personas alcanza?');
+      expect(h.cartRows()).toEqual(before);
+      expect(h.conv.sessionData.pendingAddOffer?.productId).toBe(product.id);
+      const reply=await h.send('De acuerdo entonces dame dos');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:2})]);
+      expect(reply).not.toMatch(/no est[aá] en tu carrito|no manejamos/i);
+      expect(h.conv.sessionData.pendingAddOffer).toBeUndefined();
+    });
+    it.each([true,false])(`${name} extra no multiplica plato ni agrega SKU agent=%s`,async enabled=>{
+      const side={...product,id:32000+i,code:920+i,name:'Porcion De Ensalada',price:7000};
+      const h=harness([product,side],enabled);
+      h.conv.sessionData.pendingAddOffer={productId:product.id,name,code:product.code,price:product.price,quantity:2,sourceText:`Dos ${name} sin ensalada`};
+      h.conv.sessionData.productFocus={productId:product.id,name};
+      h.conv.sessionData.address='Calle 10 #20-30';
+      const reply=await h.send('Lo quiero normal pero que le agreguen tres hojitas de ensalada como siempre');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:2})]);
+      expect(h.conv.sessionData.customerNotes).toMatch(/revisar con el local.*tres hojitas/i);
+      expect(h.conv.sessionData.address).toBe('Calle 10 #20-30');
+      expect(reply).not.toMatch(/no manejamos|gratis/i);
+    });
+    it.each([true,false])(`${name} cantidad cambia línea enfocada conservando otra agent=%s`,async enabled=>{
+      const h=harness([product],enabled);
+      h.conv.sessionData.cart=[{productId:product.id,code:product.code,name,quantity:1,unitPrice:product.price,note:'sin cilantro',attributes:[]}];
+      h.conv.sessionData.productFocus={productId:product.id,name};
+      await h.send('Para cuantas personas alcanza?');
+      await h.send('De acuerdo entonces dame dos');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:2,note:'sin cilantro'})]);
+    });
+  }
+  it.each([true,false])('sin foco no inventa compra referencial agent=%s',async enabled=>{
+    const h=harness(products,enabled);
+    await h.send('De acuerdo entonces dame dos');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.state).not.toBe('completed');
+  });
+  it.each([true,false])('oferta múltiple no elige un producto por su cuenta agent=%s',async enabled=>{
+    const h=harness(products,enabled);
+    h.conv.sessionData.pendingAddOffer={productId:17,name:'Churrasco',code:17,price:38000,quantity:1,productIds:[17,23]};
+    await h.send('De acuerdo entonces dame dos');
+    expect(h.cartRows()).toEqual([]);
+  });
+  it('no reescribe un maduro que sí existe en otra carta',()=>{
+    const catalog=new WhatsappCatalogService({} as never);
+    const menu=[{...products[0],name:'Maduro Con Queso'}, {...products[0],id:33001,name:'Platano Con Queso'}];
+    expect(catalog.resolveCatalogAliasText('Tienes maduro con queso',menu)).toBe('Tienes maduro con queso');
+    expect(catalog.resolveCatalogAliasText('Tienes maduro con chocolate',products)).toBe('Tienes maduro con chocolate');
+  });
+});
