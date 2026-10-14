@@ -1060,3 +1060,6 @@ Límites: estos patrones no cubren todas las paráfrasis, precios de opciones ex
 
 
 Cierre local contextual: 66 suites / 4124 pruebas aprobadas en 414.823 segundos (/tmp/ppp-pending-context-full.log), 92 focalizadas y TypeScript final aprobados; snapshot íntegro. 32 regresiones nuevas. Pendiente publicación/despliegue de este código. Main 49194fec intacta; cero llamadas pagadas, 36/40 usadas, 4 restantes.
+
+
+Staging verificado el 14/10/2026 a las 09:15 Bogotá: runtime 7ae76bf3, running/healthy, imagen activa = candidata sha256:f1994453cb9241b51b37367465266803dc894a238241bcab74c7a74948d82548. HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia: /tmp/ppp-pending-context-deploy.log y /tmp/ppp-pending-context-verified.log. Main local y servidor 49194fec comprobadas sin cambios. 32 regresiones nuevas; 66 suites / 4124 pruebas, 92 focalizadas y TypeScript aprobados; fuente íntegra; cero API pagada. La conectividad pendiente anterior queda resuelta. Próxima tanda: sustituir frente a incrementar cantidad, varios atributos, consultas con otro producto y recorridos reservados. Mantener staging; no promover Main automáticamente.
