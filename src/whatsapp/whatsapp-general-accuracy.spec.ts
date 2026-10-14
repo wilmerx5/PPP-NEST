@@ -9159,3 +9159,97 @@ describe('Aceptación de acompañamiento — bebida sigue pendiente',()=>{
  expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Opciones obligatorias — pedido mixto con consultas intercaladas',()=>{
+ const families=[
+ {dish:'Brownie De Cacao',drink:'Jugo Natural',order:'Quiero dos brownies de cacao sin maní y tres jugos naturales sin azúcar',flavors:['Mango','Lulo']},
+ {dish:'Empanada De Setas',drink:'Gaseosa Artesanal',order:'Quiero dos empanadas de setas sin salsa y tres gaseosas artesanales sin hielo',flavors:['Mora','Durazno']},
+ ];
+ it.each(families.flatMap(family=>[false,true].flatMap(agent=>['Cuánto va en total?','Cuánto cuesta el '+family.drink+'?','Qué sabores hay?','Qué sabores tienen?','Cuáles opciones hay?','De qué sabores es?','Me recuerdas los sabores?'].map(query=>({family,agent,query})))))('$family.drink: $query conserva selección y cantidades (agente $agent)',async({family,agent,query})=>{
+ const menu=[{id:16001,code:16001,name:family.dish,price:6000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16002,code:16002,name:family.drink,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:family.flavors}]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ const first=await h.sendQueued(family.order);
+ expect(h.cartRows()).toEqual([expect.objectContaining({id:16001,qty:2})]);
+ expect(first).toMatch(new RegExp(family.flavors.join('|'),'i'));
+ expect(h.conv.sessionData.pendingAttribute?.productId).toBe(16002);
+ const pending=structuredClone(h.conv.sessionData.pendingAttribute);const cart=h.cartRows();
+ const reply=await h.sendQueued(query);
+ expect(reply).toMatch(/total|8.000|Mango|Lulo|Mora|Durazno/i);
+ expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+ expect(h.cartRows()).toEqual(cart);
+ await h.sendQueued(family.flavors[1]);
+ expect(h.cartRows()).toContainEqual(expect.objectContaining({id:16002,qty:3,attrs:[`Sabor:${family.flavors[1]}`]}));
+ expect(h.cartRows().find(r=>r.id===16001)).toEqual(cart[0]);
+ expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Opciones obligatorias — dos bebidas seguidas',()=>{
+ it.each([false,true].flatMap(agent=>[{juice:'Jugo Natural',soda:'Gaseosa Artesanal'},{juice:'Jugo Del Dia',soda:'Gaseosa Frutal'}].flatMap(menuNames=>[{q1:3,q2:2},{q1:2,q2:4}].flatMap(q=>[false,true].map(change=>({agent,...menuNames,...q,change}))))))('$juice y $soda cantidades $q1/$q2 (agente $agent, corrección $change)',async({agent,juice,soda,q1,q2,change})=>{
+ const menu=[{id:16011,code:16011,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16012,code:16012,name:juice,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]},
+ {id:16013,code:16013,name:soda,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mora','Durazno']}]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ await h.sendQueued(`Quiero dos bowl vegetal, ${q1} ${juice} y ${q2} ${soda}`);
+ expect(h.cartRows()).toEqual([expect.objectContaining({id:16011,qty:2})]);
+ expect(h.conv.sessionData.pendingAttribute?.productId).toBe(16012);
+ if(change){ await h.sendQueued(`Mejor que sean ${q1+1} ${juice}`);q1++;expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(q1); }
+ await h.sendQueued('Mango');
+ expect(h.cartRows()).toContainEqual(expect.objectContaining({id:16012,qty:q1,attrs:['Sabor:Mango']}));
+ expect(h.conv.sessionData.pendingAttribute?.productId).toBe(16013);
+ const pending=structuredClone(h.conv.sessionData.pendingAttribute);const cart=h.cartRows();
+ const reply=await h.sendQueued('Qué sabores hay?');
+ expect(reply).toMatch(/Mora/);expect(reply).toMatch(/Durazno/);
+ expect(reply).not.toMatch(/Mango|Lulo/);
+ expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+ expect(h.cartRows()).toEqual(cart);
+ await h.sendQueued('Durazno');
+ expect(h.cartRows()).toContainEqual(expect.objectContaining({id:16013,qty:q2,attrs:['Sabor:Durazno']}));
+ expect(h.cartRows()).toHaveLength(3);
+ expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Opciones obligatorias — cantidad y cancelación durante selección',()=>{
+ const families=[{drink:'Jugo Natural',flavors:['Mango','Lulo']},{drink:'Gaseosa Artesanal',flavors:['Mora','Durazno']}];
+ function setup(drink:string,flavors:string[],agent:boolean){
+ const menu=[{id:16021,code:16021,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16022,code:16022,name:drink,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();return h;
+ }
+ it.each(families.flatMap(family=>[false,true].map(agent=>({...family,agent}))))('$drink cambia tres a cinco sin perder sabor pendiente (agente $agent)',async({drink,flavors,agent})=>{
+ const h=setup(drink,flavors,agent);
+ await h.sendQueued(`Quiero dos bowl vegetal y tres ${drink}`);
+ const cart=h.cartRows();
+ await h.sendQueued(`Mejor que sean cinco ${drink}`);
+ expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(5);
+ const pending=structuredClone(h.conv.sessionData.pendingAttribute);
+ const reply=await h.sendQueued('Me recuerdas los sabores?');
+ expect(reply).toMatch(new RegExp(flavors.join('|'),'i'));
+ expect(h.cartRows()).toEqual(cart);
+ expect(h.conv.sessionData.pendingAttribute).toEqual(pending);
+ await h.sendQueued(flavors[1]);
+ expect(h.cartRows()).toContainEqual(expect.objectContaining({id:16022,qty:5,attrs:[`Sabor:${flavors[1]}`]}));
+ expect(h.cartRows()).toHaveLength(2);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(families.flatMap(family=>[false,true].map(agent=>({...family,agent}))))('$drink se cancela conservando el plato (agente $agent)',async({drink,flavors,agent})=>{
+ const h=setup(drink,flavors,agent);
+ await h.sendQueued(`Quiero dos bowl vegetal y tres ${drink}`);
+ const cart=h.cartRows();
+ await h.sendQueued('Qué sabores hay?');
+ await h.sendQueued('Olvida esa bebida');
+ expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+ expect(h.conv.sessionData.pendingMultiOrder).toBeFalsy();
+ expect(h.cartRows()).toEqual(cart);
+ await h.sendQueued(flavors[0]);
+ expect(h.cartRows()).toEqual(cart);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

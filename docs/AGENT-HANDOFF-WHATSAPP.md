@@ -839,3 +839,19 @@ Aprobación final de esta tanda:66suites/3369pruebas aprobadas,390.54s (/tmp/ppp
 Código fb70c472 publicado y desplegado en staging13/10/2026 18:50Bogotá. Verificación /tmp/ppp-user-chat-deploy-verified.log:HEADfb70c47,running/healthy,imagenactiva=candidata sha256:f119b95ff8268ec334117f756d476dab99353bd3e45a541bc377b26de6308056;healthok,DBconnected,circuitCLOSED. Deploy /tmp/ppp-user-chat-deploy.log. No tocar orphanmariadb_local ni bin/privado;se preservaron. Main sin cambios por esta tarea. Presupuesto35/40usadas5restantes, ceroAPI esta tanda.
 
 Siguiente tanda:atributos realmente obligatorios sin default al resolver primer/segundo plato de pedido mixto;consultas y correcciones intercaladas entre esas opciones;ráfagas de continuación;aceptaciones parciales sin draft recuperable;errores/tamaño/calidad deaudioSTT separados de interpretación. Los34casos acreditan caminos específicos, no todo lenguaje humano. Las4pruebas de dos dudas y4de acompañamiento con bebida cierran esos casos focales del plan. Revisar datos sintéticos y nombres/opciones del catálogo antes del piloto. No promover Main automáticamente.
+
+
+## Opciones obligatorias en pedidos mixtos — 13/10/2026
+
+Base31a0037c;último runtime desplegadofb70c472.52regresiones nuevas propias con2cartas ficticias y agente simulado activo/inactivo:28consultas de precio/total/sabores/opciones mientras hay bebida pendiente;16secuencias con dos bebidas, cantidades3/2 y2/4, incluida corrección solo de la primera;4cambios explícitos tres→cinco con sabor aún pendiente;4cancelaciones locales que conservan plato y no reviven bebida al enviar después su sabor. Router/catalog/guard reales;persistencia,Meta,modelo yórdenes simuladas,ceroAPI.
+
+Baseline inicial /tmp/ppp-required-options-baseline.log:4fallaron/8pasaron. Consulta genérica de sabores caía al modelo (apagado:mock generateTurn inexistente;encendido:respuesta genérica “¿Cuál prefieres?”). Regla temprana responde con opciones del producto pendiente por nombres de atributos del catálogo;no selecciona valor ni consume pedido. Solo preguntas genéricas exactas:nombrar otro producto no se fuerza al actual.
+
+Ampliación /tmp/ppp-required-options-final-targets.log:8fallaron/36pasaron en cantidad/cancelación. Corrección con nombre de bebida no ajustaba cantidad;cancelación local no cubría “olvida esa bebida” y cola multi mantenía duplicado del mismo producto pendiente. Cambio de cantidad actualiza solo pendingAttribute al nombrarlo (o referencia abreviada de cantidad);mantiene cola de otros productos. Cancelación admite cola vacía o que solo contiene el producto actual;con otras dudas pendientes aún no se acredita cancelación selectiva. No cancelar carrito ni perder atributos de plato compuesto. Debug de cola /tmp/ppp-required-cancel-debug.log eliminado del código;no acredita pase.
+
+60focalizadas aprobadas (52nuevas+8controles de sustitución) /tmp/ppp-required-options-approved-targets.log. Full en curso /tmp/ppp-required-options-full.log,TypeScript /tmp/ppp-required-options-tsc.log,snapshot /tmp/ppp-required-options-source.json.Noeditarfuentesdurantefull. Mainintacta,35/40solicitudesusadas5restantes,noAPIesta tanda. Pendientecommit/deploytrasaprobación.
+
+Siguiente:cancelar solo primera bebida cuando quedan otras selecciones;preguntas de otro producto mientras se elige sabor;correcciones de cantidad por referencia abreviada con varios candidatos;notas independientes de cada bebida;ráfagas/retomas con cantidad corregida. No declarar cobertura completa por52casos.
+
+
+Aprobación final:66suites/3421pruebas aprobadas,676.044s (/tmp/ppp-required-options-full.log);TypeScript aprobado (/tmp/ppp-required-options-tsc.log);snapshot íntegro sin diferencias.52regresiones propias nuevas,60focalizadas concontroles. Duración de suite no es medición de latencia del bot. Mainintacta,cero llamadas pagadas,35/40usadas5restantes. Pendiente publicar/desplegar código aprobado.
