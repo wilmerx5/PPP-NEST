@@ -1063,3 +1063,23 @@ Cierre local contextual: 66 suites / 4124 pruebas aprobadas en 414.823 segundos 
 
 
 Staging verificado el 14/10/2026 a las 09:15 Bogotá: runtime 7ae76bf3, running/healthy, imagen activa = candidata sha256:f1994453cb9241b51b37367465266803dc894a238241bcab74c7a74948d82548. HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia: /tmp/ppp-pending-context-deploy.log y /tmp/ppp-pending-context-verified.log. Main local y servidor 49194fec comprobadas sin cambios. 32 regresiones nuevas; 66 suites / 4124 pruebas, 92 focalizadas y TypeScript aprobados; fuente íntegra; cero API pagada. La conectividad pendiente anterior queda resuelta. Próxima tanda: sustituir frente a incrementar cantidad, varios atributos, consultas con otro producto y recorridos reservados. Mantener staging; no promover Main automáticamente.
+
+
+## Reemplazo frente a incremento y atributos en un turno — 14/10/2026
+
+40 regresiones nuevas, con agente simulado activo/inactivo y cartas ficticias:
+- 20 recorridos de Jugo Natural / Gaseosa Artesanal: tres unidades pendientes; «que sean dos» deja dos, «añade dos más» deja cinco, «una más por favor» deja cuatro; reemplazo/incremento con sabor en el mismo turno resuelven cantidad y sabor. Conservan nota «sin hielo», carrito previo de dos Bowl Vegetal y una sola línea de bebida; ninguna orden externa.
+- 4 consultas «si añado dos más cuánto cuestan»: informa $16.000 por las adicionales y $40.000 por cinco unidades, sin modificar las tres pendientes ni el carrito.
+- 8 límites: añadir 28 a las tres pendientes o añadir cero no muta el pedido y aclara el rango 1–30.
+- 8 recorridos Jugo De Avena / Bebida De Citricos: cantidad con Sabor y Endulzante en un turno. La selección explícita Stevia reemplaza Azucar previamente aplicado por defecto; se conserva la nota y se añade una sola línea.
+
+Baseline de 24: 18 fallaron, 6 pasaron (/tmp/ppp-pending-increment-baseline.log). Primera corrección: 64 focalizadas aprobadas (/tmp/ppp-pending-increment-target.log). Límites: 72 aprobadas (/tmp/ppp-pending-increment-final-target.log). La primera fixture multia atributo suponía que Relleno/Salsa obligaban a preguntar: en este catálogo esos atributos se completan por defecto, así que no era una compra pendiente. Se ajustó la fixture a bebidas con Sabor que requiere elección, sin cambiar esa política para hacer pasar un test. Esto deja como frontera de Kamppo configurar obligatoriedad/defaults por catálogo, más allá de inferencias por nombre de atributo/producto.
+
+El recorrido de bebidas con varios atributos reprodujo la retención incorrecta de Endulzante:Azucar pese a pedir Stevia (/tmp/ppp-pending-increment-final3-target.log). Primer intento de mezclar todas las opciones en selected antes del resolver eliminaba la progresión pendiente y falló (/tmp/ppp-pending-increment-final4-target.log). Corrección final: reemplazar solo elecciones ya presentes; los atributos nuevos pasan por el resolver habitual. No se añaden directamente productos ni se bypassan guardas.
+
+96 focalizadas finales aprobadas (/tmp/ppp-pending-increment-final5-target.log); TypeScript aprobado (/tmp/ppp-pending-increment-final2-tsc.log). Global en ejecución: /tmp/ppp-pending-increment-full.log; snapshot src/**/*.ts: /tmp/ppp-pending-increment-source.json. No editar fuentes durante el global. Cambios locales; runtime staging 7ae76bf3, Main 49194fec intacta. Cero API pagada; 36/40 usadas, 4 restantes.
+
+Límites y siguiente: esta tanda acredita la selección de atributos pendiente, no incrementos referidos a varias líneas ya compradas o a todas las compras de una cola. Faltan cantidad+opción inválida, nota nueva con cantidad, referencias «las otras», decrementos y preguntas sobre precios con opciones extra. Priorizar recorridos reservados completos en otras cartas e inferencia focalizada dentro del saldo disponible; no declarar piloto por conteo ni promover Main automáticamente.
+
+
+Cierre local de incremento: 66 suites / 4164 pruebas aprobadas en 764.342 segundos (/tmp/ppp-pending-increment-full.log); 96 focalizadas y TypeScript final aprobados; snapshot íntegro. 40 regresiones nuevas. Pendiente publicar/desplegar esta versión. Main 49194fec intacta; cero API pagada, 36/40 usadas, 4 restantes.

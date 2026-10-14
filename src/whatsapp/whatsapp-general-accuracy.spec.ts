@@ -11233,3 +11233,45 @@ describe('Cantidad pendiente — preguntas, índices y cancelación',()=>{
   expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Cantidad pendiente — reemplazar, incrementar y elegir sabor',()=>{
+ const families=[{name:'Jugo Natural',flavors:['Mango','Lulo']},{name:'Gaseosa Artesanal',flavors:['Mora','Durazno']}];
+ const operations=[{text:'Que sean dos',qty:2},{text:'Añade dos más',qty:5},{text:'Una más por favor',qty:4},{text:'Mejor dos con {flavor}',qty:2},{text:'Añade dos más con {flavor}',qty:5}];
+ it.each(families.flatMap(family=>[false,true].flatMap(agent=>operations.map(operation=>({...family,agent,...operation})))))('$name: $text agent=$agent',async({name,flavors,agent,text,qty})=>{
+  const base={id:21301,code:2001,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]};
+  const drink={id:21302,code:2002,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]};
+  const h=harness([base,drink] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued('Quiero dos Bowl Vegetal');await h.sendQueued(`Quiero tres ${name} sin hielo`);
+  const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text.replace('{flavor}',flavors[1]));
+  if(!text.includes('{flavor}')){expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(qty);expect(h.conv.sessionData.cart).toEqual(before);await h.sendQueued(flavors[1]);}
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:base.id,qty:2}),expect.objectContaining({id:drink.id,qty,attrs:[`Sabor:${flavors[1]}`],note:expect.stringMatching(/sin hielo/i)})]));
+  expect(h.cartRows()).toHaveLength(2);expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(families.flatMap(family=>[false,true].map(agent=>({...family,agent}))))('consulta de incremento no agrega $name agent=$agent',async({name,flavors,agent})=>{
+  const drink={id:21401,code:2101,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]};
+  const h=harness([drink] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued(`Quiero tres ${name}`);
+  const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued('¿Si añado dos más cuánto cuestan?');
+  expect(reply||'').toMatch(/16\.000/);expect(reply||'').toMatch(/40\.000/);
+  expect(h.conv.sessionData).toEqual(before);expect(h.cartRows()).toEqual([]);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Incremento pendiente — límites sin mutación',()=>{
+ it.each(['Jugo Natural','Gaseosa Artesanal'].flatMap(name=>[false,true].flatMap(agent=>['Añade 28 más','Añade 0 más'].map(text=>({name,agent,text})))))('$name $text agent=$agent',async({name,agent,text})=>{
+  const drink={id:21501,code:2201,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+  const h=harness([drink] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued(`Quiero tres ${name} sin hielo`);
+  const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued(text);
+  expect(h.conv.sessionData).toEqual(before);expect(reply||'').toMatch(/entre 1 y 30|pedido sigue igual/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Cantidad y varios atributos — selección en un turno',()=>{
+ it.each(['Jugo De Avena','Bebida De Citricos'].flatMap(name=>[false,true].flatMap(agent=>[false,true].map(increment=>({name,agent,increment})))))('$name incremento=$increment agent=$agent',async({name,agent,increment})=>{
+  const dish={id:21601,code:2301,name,price:28000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']},{attributeName:'Endulzante',options:['Azucar','Stevia']}]};
+  const h=harness([dish] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued('Agrega tres #2301 sin hielo');
+  expect(h.conv.sessionData.pendingAttribute?.productId).toBe(dish.id);expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(3);
+  await h.sendQueued(increment?'Añade dos más con sabor lulo y endulzante stevia':'Mejor dos con sabor lulo y endulzante stevia');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:increment?5:2,attrs:expect.arrayContaining(['Sabor:Lulo','Endulzante:Stevia']),note:expect.stringMatching(/sin hielo/i)})]);
+  expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

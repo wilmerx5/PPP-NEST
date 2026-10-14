@@ -947,6 +947,8 @@ export class WhatsappOrchestratorService {
       originalText = text;
     }
     let explicitCodeAddition: MultiProductResolveResult | null = null;
+    const contextualIncrement = !!session.pendingAttribute && !/[¿?]/.test(originalText) &&
+      /^(?:agrega|agregame|anade|anademe|ponme)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+mas(?:\s+con\s+.+)?(?:\s+por\s+favor)?$/.test(this.normalizeForMatch(originalText));
     const additionBody = originalText.replace(addPrefix, '');
     const addressAddition = /^(?:un|una|otro|otra|dos|tres|cuatro|cinco|\d+)\s+(?:apartamento|apto|torre|piso|casa|edificio|bloque|interior)\b/i.test(additionBody);
     if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && addressAddition) {
@@ -954,7 +956,7 @@ export class WhatsappOrchestratorService {
       text = `Dirección: ${session.address?.trim() ? session.address.trim() + ', ' : ''}${reference}`;
       originalText = text;
     }
-    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && !addressAddition) {
+    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && !addressAddition && !contextualIncrement) {
       const additionMenu = await this.catalogService.getMenuProducts();
       const canonical = originalText.replace(addPrefix, 'Quiero ');
       const parsedAddition = this.parseCompoundOrderMessage(canonical);
@@ -2094,10 +2096,25 @@ export class WhatsappOrchestratorService {
       const correction = correctionText.match(new RegExp(
         `^(?:mejor(?: que sean| solo)?|solo|solo eran|que sean|en vez de eso|cambia la cantidad a)\\s+${quantityToken}(?:\\s+unidades)?(?:\\s+(.+?))?[.!]?$`)) ||
         (replacementQuantity ? [replacementQuantity[0], replacementQuantity[2], replacementQuantity[3]] : null);
+      const increment = correctionText.match(new RegExp(
+        `^(?:(?:agrega|agregame|anade|anademe|ponme)\\s+)?${quantityToken}\\s+mas(?:\\s+(.+?))?[.!]?$`));
+      const change = increment || correction;
       const pendingName = session.pendingAttribute?.name || session.pendingMatch?.query || '';
-      if (correction && (!correction[2] || this.catalogService.isCartProductNamedInText(pendingName,correction[2]))) {
-        const quantity = /^\d+$/.test(correction[1]) ? Number(correction[1]) :
-          this.catalogService.extractQuantityFromSegment(`${correction[1]} unidades`);
+      const optionProduct = session.pendingAttribute ? products.find(product => product.id === session.pendingAttribute?.productId) : undefined;
+      const tail = change?.[2];
+      const optionTail = optionProduct && tail && /^(?:con|sin)\b/.test(tail)
+        ? this.catalogService.resolveAttributesFromMessage(optionProduct,tail,session.pendingAttribute?.selected || []) : null;
+      const includesOption = !!optionTail && optionTail.status !== 'invalid' && optionTail.attributes.length > 0 &&
+        !!(optionProduct && tail && this.catalogService.extractExplicitAttributeChoice(tail,optionProduct)?.length);
+      if (change && (!tail || this.catalogService.isCartProductNamedInText(pendingName,tail) || includesOption)) {
+        const amount = /^\d+$/.test(change[1]) ? Number(change[1]) :
+          this.catalogService.extractQuantityFromSegment(`${change[1]} unidades`);
+        const currentQuantity = session.pendingAttribute?.quantity || session.pendingMatch?.quantity || 1;
+        const quantity = increment ? currentQuantity + amount : amount;
+        if (amount < 1 || quantity < 1 || quantity > 30) {
+          await this.reply(conv, msg.waId, 'La cantidad debe quedar entre 1 y 30 unidades. El pedido sigue igual.\n\n' + this.formatPendingPurchaseReminder(session));
+          return;
+        }
         if (quantity >= 1 && quantity <= 30) {
           if (session.pendingAttribute) session.pendingAttribute.quantity = quantity;
           else if (session.pendingMatch) {
@@ -2106,9 +2123,20 @@ export class WhatsappOrchestratorService {
           }
           session.pendingQuantityHint = undefined;
           await this.conversationService.saveSession(conv, session);
-          await this.reply(conv, msg.waId, `Listo, ${quantity === 1 ? 'será 1 unidad' : `serán ${quantity} unidades`}.\n\n` +
-            this.formatPendingPurchaseReminder(session));
-          return;
+          if (includesOption && tail) {
+            // Explicit choices in this turn supersede previously selected defaults.
+            const choices = this.catalogService.extractExplicitAttributeChoice(tail,optionProduct!) || [];
+            session.pendingAttribute!.selected = (session.pendingAttribute!.selected || []).map(selected =>
+              choices.find(choice => this.normalizeForMatch(choice.attributeName) === this.normalizeForMatch(selected.attributeName)) || selected);
+            await this.conversationService.saveSession(conv, session);
+            // Continue through the normal attribute resolver with the new quantity.
+            text = tail;
+            originalText = tail;
+          } else {
+            await this.reply(conv, msg.waId, `Listo, ${quantity === 1 ? 'será 1 unidad' : `serán ${quantity} unidades`}.\n\n` +
+              this.formatPendingPurchaseReminder(session));
+            return;
+          }
         }
       }
       // Yes alone does not select a SKU or flavor from several choices.
@@ -2434,7 +2462,10 @@ export class WhatsappOrchestratorService {
           .trim();
         const hypotheticalUnits = this.normalizeForMatch(text).match(
           /^(?:si )?(?:mejor )?(?:solo )?(?:pido|pidiera|quiero) (\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) cuanto (?:cuestan|cuesta|valen|vale|salen|sale)$/);
-        const requestedUnits = hypotheticalUnits ? this.catalogService.extractQuantityFromSegment(`${hypotheticalUnits[1]} unidades`) : null;
+        const hypotheticalIncrement = this.normalizeForMatch(text).match(
+          /^si (?:anado|agrego) (\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) mas cuanto (?:cuestan|cuesta|valen|vale|salen|sale)$/);
+        const quotedQuantity = hypotheticalUnits?.[1] || hypotheticalIncrement?.[1];
+        const requestedUnits = quotedQuantity ? this.catalogService.extractQuantityFromSegment(`${quotedQuantity} unidades`) : null;
         const pendingProduct = !priced.length && session.pendingAttribute && (!priceLeftover || requestedUnits != null)
           ? products.find((product) => product.id === session.pendingAttribute?.productId)
           : undefined;
@@ -2446,9 +2477,11 @@ export class WhatsappOrchestratorService {
             : !priced.length && units && units > 1
               ? `\nSon ${units} unidades; el valor de arriba es por una.`
               : '';
+          const incrementNote = hypotheticalIncrement && pendingProduct && requestedUnits != null && units && units + requestedUnits <= 30
+            ? `\nCon esas adicionales serían ${units + requestedUnits} unidades por ${this.catalogService.formatMoney(pendingProduct.price * (units + requestedUnits))}, antes de domicilio.` : '';
           await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(quoted, {
             offerAdd: false,
-          }) + unitNote +
+          }) + unitNote + incrementNote +
             '\n\n' + this.formatPendingPurchaseReminder(session));
           return;
         }
