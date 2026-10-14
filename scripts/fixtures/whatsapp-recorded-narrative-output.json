@@ -1,0 +1,65 @@
+{
+  "model": "gpt-4.1-2025-04-14",
+  "requests": 3,
+  "source": "Isolated full-router model evaluation; no Meta, DB or external order creation",
+  "userMessage": "Veci, me colaboras con el almuerzo: somos tres, pero solo dos van a comer churrasco, el otro quiere arroz con pollo. Para cada uno una limonada natural. Los churrascos tres cuartos y sin ensalada; al arroz, bastante ají.",
+  "agentResult": {
+    "reply": "Listo, te armé el pedido: dos churrascos (tres cuartos y sin ensalada), un arroz con pollo (con bastante ají) y tres limonadas naturales. ¿Quieres agregar algo más o seguimos con el pedido?",
+    "actions": {
+      "addItems": [
+        {
+          "productId": 17,
+          "quantity": 2,
+          "note": "Término tres cuartos, sin ensalada"
+        },
+        {
+          "productId": 23,
+          "quantity": 1,
+          "note": "Bastante ají"
+        },
+        {
+          "productId": 37,
+          "quantity": 3
+        }
+      ]
+    },
+    "toolCalls": [
+      "search_menu",
+      "search_menu",
+      "search_menu",
+      "add_item",
+      "add_item",
+      "add_item"
+    ]
+  },
+  "observedCartBeforeBackendFix": [
+    {
+      "productId": 17,
+      "name": "Churrasco",
+      "code": 17,
+      "unitPrice": 38000,
+      "quantity": 1,
+      "note": "Término tres cuartos, sin ensalada",
+      "attributes": []
+    },
+    {
+      "productId": 23,
+      "name": "Arroz Con Pollo",
+      "code": 23,
+      "unitPrice": 29500,
+      "quantity": 1,
+      "note": "Bastante ají",
+      "attributes": []
+    },
+    {
+      "productId": 37,
+      "name": "Limonada Natural",
+      "code": 37,
+      "unitPrice": 4500,
+      "quantity": 1,
+      "attributes": []
+    }
+  ],
+  "acceptedLiveEvaluation": false,
+  "remainingAuthorizedRequests": 1
+}

@@ -126,8 +126,9 @@ export function isHumanHandoffRequest(text: string): boolean {
   }
 
   if (HUMAN_RE.test(t)) return true;
-  // "persona" singular suelta (no dentro de "personas")
-  if (/\bpersona\b/.test(t) && !/\bpersonas\b/.test(t)) return true;
+  // "por persona" es un reparto, no un pedido de asesor.
+  const withoutPerPerson = t.replace(/\b(?:por|para cada|cada)\s+persona\b/g, ' ');
+  if (/\bpersona\b/.test(withoutPerPerson) && !/\bpersonas\b/.test(withoutPerPerson)) return true;
   return false;
 }
 

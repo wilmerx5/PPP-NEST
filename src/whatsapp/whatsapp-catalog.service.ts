@@ -1142,8 +1142,37 @@ export class WhatsappCatalogService {
     const corrected = this.extractCorrectedQuantityForProduct(raw, productName);
     if (corrected != null) return corrected;
 
-    const segments = this.splitMultiProductSegments(raw);
     const pn = normalizeText(productName);
+    const quantityWord = '(\\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    const diners = normalizeText(raw).match(new RegExp(`\\bsomos\\s+${quantityWord}\\b`));
+    for (const clause of raw.split(/[.,;:\n]+/).map(normalizeText)) {
+      const words = ` ${clause} `;
+      if (!words.includes(` ${pn} `) && !words.includes(` ${pn}s `)) continue;
+      const peopleOrder = clause.trim().match(new RegExp(`^(?:pero\\s+)?(?:solo\\s+)?${quantityWord}\\s+(?:van a comer|quieren|piden)\\b`));
+      if (peopleOrder) return this.extractQuantityFromSegment(`${peopleOrder[1]} unidades`);
+      const eachLead = diners && clause.trim().match(new RegExp(`\\bpara cada uno(?:\\s+de\\s+(?:nosotros|ellos|ustedes))?\\s+${quantityWord}\\b`));
+      const eachTail = diners && clause.trim().match(new RegExp(`\\b${quantityWord}\\b(?:\\s+[a-z0-9]+){1,6}\\s+para cada uno\\b`));
+      const eachWants = diners && clause.trim().match(new RegExp(`\\bcada un[oa]\\s+quiere\\s+${quantityWord}\\b`));
+      const eachPerson = eachLead || eachWants || eachTail;
+      if (eachPerson) {
+        const total = this.extractQuantityFromSegment(`${diners![1]} unidades`) *
+          this.extractQuantityFromSegment(`${eachPerson[1]} unidades`);
+        if (total >= 1 && total <= 30) return total;
+      }
+      if (diners && /^(?:el resto|los demas|los otros)\s+quiere/.test(clause.trim())) {
+        const group = this.extractQuantityFromSegment(`${diners[1]} unidades`);
+        let used = 0;
+        for (const other of raw.split(/[.,;:\n]+/).map(normalizeText)) {
+          if (other.trim() === clause.trim()) continue;
+          const counted = other.trim().match(new RegExp(`^(?:pero\\s+)?(?:solo\\s+)?${quantityWord}\\s+(?:van a comer|quieren|piden)\\b`));
+          if (counted) used += this.extractQuantityFromSegment(`${counted[1]} unidades`);
+          else if (/\bel otro quiere\b/.test(other)) used += 1;
+        }
+        const left = group - used;
+        if (left >= 1 && left <= 30) return left;
+      }
+    }
+    const segments = this.splitMultiProductSegments(raw);
     const tokens = pn
       .split(/\s+/)
       .filter((t) => t.length >= 4 && !this.WEAK_PRODUCT_TOKENS.has(t) && !COOKING_STYLE_TOKENS.has(t));
@@ -3632,6 +3661,7 @@ export class WhatsappCatalogService {
   }
 
   isEjecutivoLunchOrderPhrase(text: string): boolean {
+    if (!isNamedMenuDishOrderPhrase(text)) return false;
     const q = normalizeText(fixCommonOrderTypos(text || ''));
     if (!q) return false;
     if (/\bejecutivos?\b/.test(q)) return true;

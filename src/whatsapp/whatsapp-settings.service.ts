@@ -23,7 +23,7 @@ import {
 } from './whatsapp-human-contact';
 
 const DEFAULT_WELCOME =
-  '¡Hola! 👋 *{brand}*. ¿Qué se te antoja?\nMenú: {menuUrl}';
+  '¡Hola! 👋\nDime el plato o el código y lo armo en *{brand}*.\nMenú: {menuUrl}';
 
 const DEFAULT_AI_DISCLAIMER = WHATSAPP_AI_DISCLAIMER_SAFE;
 

@@ -1,6 +1,6 @@
 # PPP: estado y plan para piloto y venta
 
-Actualizado el 13 de octubre de 2026, America/Bogota. Plan de trabajo, no certificación de calidad ni promesa de fecha. Las cifras de aceptación son propuestas para PPP.
+Actualizado el 14 de octubre de 2026, America/Bogota. Plan de trabajo, no certificación de calidad ni promesa de fecha. Las cifras de aceptación son propuestas para PPP.
 
 ## Decisión actual
 
@@ -8,7 +8,15 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
-## Dónde estamos: evidencia y límites
+## Estado más reciente — 14 de octubre
+
+La evidencia detallada vigente está en `AGENT-HANDOFF-WHATSAPP.md`. Runtime previo comprobado: staging03c89636; Main49194fec intacta. Tanda actual de integración validada localmente: 362 focalizadas, TypeScript y 66 suites/4445 pruebas aprobadas con fuente estable (/tmp/ppp-context-integration-final-full.log). La ejecución global previa detectó14 regresiones y no acredita la versión final. Se corrigieron y se está validando de nuevo; no declarar deploy por publicar una rama.
+
+Evaluación real de un pedido narrado consumió3 solicitudes: el modelo interpretó2 platos/1 plato/3 bebidas, pero el backend guardó1/1/1. Ese ensayo falló. La corrección está cubierta por replay offline de la salida capturada; aún falta otra ejecución representativa real. Solo queda1solicitud autorizada y un turno con herramientas puede necesitar varias. No usar el saldo para repetir a ciegas ni prometer una ronda completa.
+
+Prioridad siguiente: acreditar la tanda integrada, desplegar exclusivamente staging y probar una muestra independiente de pedidos completos/interrupciones. Mantener piloto supervisado por texto y efectivo/transferencia; medios y casos no acreditados requieren asistencia. La consulta de cobertura debe recordar el carrito, cotizar sin cambiar destino y permitir volver al paso pendiente.
+
+## Evidencia histórica y límites
 
 - Backend: 66 suites / 3.227 pruebas aprobadas, TypeScript aprobado. Verificación completa en una ejecución: /tmp/ppp-cancel-courtesy-edit-full-final.log,307.352s. Incluye la tanda de básicos/extras y continuidad con pausas. Incluye cantidades, notas, opciones, correcciones, consultas, ráfagas, referencias, direcciones y pedidos completos. No todas las pruebas son conversaciones; gran parte simula modelo, Meta y persistencia.
 - Tanda posterior de pruebas, sin cambios de runtime:68 casos nuevos; suite general afectada1484/1484 aprobada y TypeScript aprobado. Cubre consultas durante captura de nombre/teléfono/dirección, negocio cerrado y respuestas cortas con/sin elección pendiente en catálogos ficticios. Log /tmp/ppp-fields-closed-short-suite.log. No equivale a una nueva ejecución global ni acredita el modelo real.
@@ -17,7 +25,7 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 - Versión validada y desplegada de código: 0508049d en staging, running/healthy, imagen activa igual a candidata y health ok/DB connected. Verificada el 13/10 a las 14:32 Bogotá; una actualización documental posterior no requiere reconstruir API.
 - Producción: esta última tanda no se promovió. No asumir paridad entre producción y staging por usar el mismo modelo. La versión efectiva de producción debe comprobarse al preparar promoción.
 - Modelo configurado según última lectura: gpt-4.1-2025-04-14 para texto/imágenes en ambos entornos, whisper-1 para audio. No se volvió a verificar configuración efectiva durante la tanda gratuita final.
-- API real: última tanda documentada, cuatro conversaciones aceptadas; dos usaron inferencia y dos fueron deterministas, diez solicitudes incluyendo la ejecución limitada y su continuación. Se evaluaron antes del último ajuste de presentación de propuestas vacías; no acredita todavía la nueva tanda local de desistimiento y compra. Presupuesto vigente40 autorizadas/35usadas/5restantes en docs/whatsapp-model-budget.json; contabilizar cada intento, incluidos fallos/reintentos.
+- API real: última tanda documentada, cuatro conversaciones aceptadas; dos usaron inferencia y dos fueron deterministas, diez solicitudes incluyendo la ejecución limitada y su continuación. Se evaluaron antes del último ajuste de presentación de propuestas vacías; no acredita todavía la nueva tanda local de desistimiento y compra. Presupuesto vigente40 autorizadas/39usadas/1restante en docs/whatsapp-model-budget.json; contabilizar cada intento, incluidos fallos/reintentos.
 - Canal: el preflight documentado verificó acceso/destinatario/aislamiento, con webhookPosts=0. No es una prueba de mensajes originados y recibidos por un teléfono.
 - PDF:26 patrones ejercitados en backend, no todos los chats/variantes ni percepción real de los archivos. Audio e imágenes originales siguen pendientes de una evaluación representativa.
 

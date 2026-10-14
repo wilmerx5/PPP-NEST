@@ -42,6 +42,10 @@ export const MENU_WRAPPER_TOKENS = new Set([
 export function isNamedMenuDishOrderPhrase(query: string): boolean {
   const q = normalizeText(query || '');
   if (!q || q.length < 4) return false;
+  // A meal-planning introduction describes the occasion, not a menu SKU.
+  if (!/\b(?:ejecutivos?|menus?)\b/.test(q) &&
+    /\b(?:almuerzo|comida|cena)\s*:/i.test(query) &&
+    /\b(?:somos|comer|cada\s+uno)\b/.test(q)) return false;
   // Carta / link suelto → no es plato
   if (/^(ver\s+)?(el\s+)?(menus?|carta)(\s+completo)?$/.test(q)) return false;
   if (/\b(link|enlace|url|pagina)\b/.test(q) && /\b(menus?|carta)\b/.test(q)) return false;
