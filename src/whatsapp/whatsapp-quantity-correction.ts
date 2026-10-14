@@ -17,6 +17,8 @@ export function parseCartQuantityCorrection(text: string): { quantity: number; q
   const result = (amount: string, query: string) =>
     /\b(?:no|pero|mas|menos|otros?|resto|igual|conserva|pedido|en vez)\b/.test(query) ? null
       : { quantity: words[amount] ?? Number(amount), query };
+  const reconsidered = t.match(new RegExp(`^mejor (?:quiero|deja|dame)\\s+(${number})\\s+(.+?)(?:\\s+en total)?$`));
+  if (reconsidered) return result(reconsidered[1], reconsidered[2]);
   const apology = t.match(new RegExp(`^(?:perdon|perdona|disculpa|disculpe)\\s+(?:quiero\\s+)?(${number})\\s+(.+?)(?:\\s+en (?:esa|la) misma direccion)?$`));
   if (apology) return result(apology[1], apology[2]);
   let m = t.match(new RegExp(`^(?:(?:solo|solamente|unicamente)\\s+)?(?:era|eran|es|son|queria)\\s+(?:solo\\s+)?(${number})\\s+(.+?)(?:\\s+en total)?$`));
@@ -48,11 +50,12 @@ export function correctionMatchesLine(line: WhatsappCartItem, query: string): bo
 /** Omit an attribute-only note; keep packaging instructions and mixed kitchen notes intact. */
 export function omitRedundantAttributeNote(note: string | undefined, attributes: WhatsappCartItem['attributes']): string | undefined {
   if (!note?.trim()) return note;
-  const text = normalizeCorrection(note);
+  const text = normalizeCorrection(note).replace(/\bpor(?:\s+favor)?$/, '').trim();
+  if (!text) return undefined;
   for (const attr of attributes || []) {
     const name = normalizeCorrection(attr.attributeName), value = normalizeCorrection(attr.attributeValue);
     const allowed = new Set(`${name} ${value} con el la los las de al estilo`.split(' '));
-    if ((text === value || text.split(' ').some(w => name.split(' ').includes(w))) &&
+    if ((text === value || text === `con ${value}` || text.split(' ').some(w => name.split(' ').includes(w))) &&
       value.split(' ').every(w => text.split(' ').includes(w)) && text.split(' ').every(w => allowed.has(w))) return undefined;
   }
   return note;

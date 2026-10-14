@@ -1,4 +1,4 @@
-import { fixFuzzyDomicilioTypos } from './whatsapp-message-classify';
+import { fixFuzzyDomicilioTypos, fixFuzzyEjecutivoTypos } from './whatsapp-message-classify';
 
 /**
  * Glosario local PPP: typos, aliases y frases del restaurante.
@@ -12,6 +12,13 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
+  { re: /^ada\s+mas$/i, to: 'nada mas' },
+  { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
+  // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
+  { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },
+  // "perdon de mango" corrige el pedido; perdón no es el producto.
+  { re: /^(?:perdon|perdona|disculpa|disculpe|sorry)(?:\s+de)?[\s,]+/i, to: '' },
   // Saludos rotos / typos de arranque
   { re: /\bbuena\s+snoches\b/gi, to: 'buenas noches' },
   { re: /\bquieres\s+in\b/gi, to: 'quiero un' },
@@ -65,7 +72,7 @@ const PHRASE_REWRITES: Array<{
   },
   { re: /\bpollo\s+a\s+la\s+broaster\b/gi, to: 'pollo broaster' },
   { re: /\bpollo\s+ala\s+broaster\b/gi, to: 'pollo broaster' },
-  { re: /\balmuerzo\s+ejecutivo\b/gi, to: 'ejecutivo' },
+  { re: /\balmuerzos?\s+ejecutivos?\b/gi, to: 'ejecutivo' },
   { re: /\b1\s+almuerzo\s+ejecutivo\b/gi, to: '1 ejecutivo' },
   { re: /\bmen[uú]\s+ejecutivo\b/gi, to: 'ejecutivo' },
   { re: /\b1\s+men[uú]\s+ejecutivo\b/gi, to: '1 ejecutivo' },
@@ -83,6 +90,16 @@ const PHRASE_REWRITES: Array<{
   { re: /\bcombo\s+(?:de\s+)?pollo\s+misto\b/gi, to: 'combo pollo mixto' },
   { re: /\bsobre\s+barriga\b/gi, to: 'sobrebarriga' },
   { re: /\bsopitas?\b/gi, to: 'sopa' },
+  // Vocativo a mitad de frase: "sopa de ajiaco veci GR" no es un plato llamado veci.
+  { re: /\bveci\b/gi, to: '' },
+  // Tamaño abreviado. "500 gr" sigue siendo peso.
+  { re: /(?<!\d\s)\bgr\b/gi, to: 'grande' },
+  { re: /\bgrandecit[oa]s?\b/gi, to: 'grande' },
+  { re: /\bpequenit[oa]s?\b/gi, to: 'pequeña' },
+  // "bastante ai" / "Aji*" = ají, no otro plato.
+  { re: /\b(?:harto|arto|mucho|mucha|bastante)\s+ai\b/gi, to: 'bastante ají' },
+  { re: /\baji\*+/gi, to: 'ají' },
+  { re: /\bdearroz\b/gi, to: 'de arroz' },
   // "y una menos de una sopita…" = y también una sopa… (evitar "y y una")
   { re: /\by\s+una\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'y una ' },
   { re: /\buna\s+menos\s+de\s+(?:una?\s+)?/gi, to: 'una ' },
@@ -161,8 +178,10 @@ const PHRASE_REWRITES: Array<{
 
 const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }> = [
   { re: /\bensladas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
+  { re: /\bensaldas?\b/gi, to: (m) => (/s$/i.test(m) ? 'ensaladas' : 'ensalada') },
   { re: /\bcr[eé]dit\b/gi, to: 'crédito' },
   { re: /\bquieor\b/gi, to: 'quiero' },
+  { re: /\bme\s+condes\b/gi, to: 'quiero' },
   { re: /\bquiiero\b/gi, to: 'quiero' },
   { re: /\bqiero\b/gi, to: 'quiero' },
   { re: /\bkiero\b/gi, to: 'quiero' },
@@ -210,8 +229,13 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
   { re: /\bped[ií]\b/gi, to: 'pedi' },
   { re: /\bejeuctivo\b/gi, to: 'ejecutivo' },
   { re: /\bejecutvo\b/gi, to: 'ejecutivo' },
+  { re: /\ble\s+men[uú]\b/gi, to: 'el menu' },
   { re: /\b(?:roaster|broster|brouster)\b/gi, to: 'broaster' },
+  { re: /\bfrittos?\b/gi, to: 'frito' },
   { re: /\bplacha\b/gi, to: 'plancha' },
+  { re: /\bgritarme\b/gi, to: 'fritarme' },
+  { re: /\bqieceste\s+jugositos?\b/gi, to: 'que esté jugoso' },
+  { re: /\bque\s+este\s+jugositos?\b/gi, to: 'que esté jugoso' },
   { re: /\brecogo\b/gi, to: 'recojo' },
   { re: /\brecoger\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
   { re: /\brecojo\s+en\s+el\s+local\b/gi, to: 'recojo en el local' },
@@ -294,6 +318,7 @@ export function applyLocalGlossary(text: string): string {
 
   // Fuzzy: domickio / domicikio / etc. → domicilio (edit distance ≤ 2)
   out = fixFuzzyDomicilioTypos(out);
+  out = fixFuzzyEjecutivoTypos(out);
 
   // Colapsar espacios horizontales, pero conservar saltos de línea (listas WhatsApp)
   return out

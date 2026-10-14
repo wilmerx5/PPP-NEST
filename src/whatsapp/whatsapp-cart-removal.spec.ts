@@ -26,6 +26,7 @@ function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'
     countInboundMessages: jest.fn(async () => 2),
   };
   service.claimedInboundIdsByWaId = new Map();
+  service.orderCoverageNoticesByWaId = new Map();
   service.settingsService = { getEffectiveConfig: async () => ({ enabled: true, agentV1Enabled: true, ignoreBusinessHours: true, paymentMethods: [] }) };
   service.businessService = { getStatus: async () => ({ isOpen: true }) };
   service.agentService = { runTurn: jest.fn(() => { throw Error('Quantity correction must not call OpenAI'); }) };

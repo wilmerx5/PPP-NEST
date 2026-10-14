@@ -6,7 +6,7 @@ const { runRehearsal, STEPS } = require('./ppp-staging-human-rehearsal.cjs');
 
 const env = {
   GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'wilmerx5/PPP-NEST',
-  GITHUB_REF: 'refs/heads/fix/whatsapp-regression-baseline', GITHUB_EVENT_NAME: 'workflow_dispatch',
+  GITHUB_REF: 'refs/heads/staging', GITHUB_EVENT_NAME: 'workflow_dispatch',
   STAGING_HUMAN_EXECUTE: 'true', STAGING_ADMIN_EMAIL: 'automation@example.invalid',
   STAGING_ADMIN_PASSWORD: 'synthetic-password', STAGING_WHATSAPP_APP_SECRET: 'synthetic-app-secret',
   STAGING_WHATSAPP_PHONE_NUMBER_ID: '12345', STAGING_WHATSAPP_RECIPIENTS: '573001234567',

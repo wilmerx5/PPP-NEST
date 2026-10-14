@@ -24,7 +24,7 @@ export const DEFAULT_PAYMENT_METHODS: WhatsappPaymentMethodConfig[] = [
     id: 'cash',
     enabled: true,
     label: 'Contraentrega',
-    keywords: ['contraentrega', 'contra entrega', 'efectivo', 'cash', 'en efectivo'],
+    keywords: ['contraentrega', 'contra entrega', 'efectivo', 'cash', 'en efectivo', 'aca pagamos', 'aqui pagamos'],
     optionText: '*contraentrega* (efectivo al recibir)',
     confirmReply: '',
     flow: 'immediate',
@@ -63,7 +63,7 @@ function slugifyId(raw: string): string {
 /** “mp” no puede coincidir dentro de “Campos”. */
 function keywordAppearsAsWord(text: string, keyword: string): boolean {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(text);
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:[^\\p{L}\\p{N}]|$)`, 'u').test(text);
 }
 
 function normalizeKeyword(s: string): string {

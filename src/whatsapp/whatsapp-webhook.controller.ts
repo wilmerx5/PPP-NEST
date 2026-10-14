@@ -11,7 +11,7 @@ import {
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
-import { WhatsappMetaService } from './whatsapp-meta.service';
+import { WhatsappMetaService, type IncomingWhatsappMessage } from './whatsapp-meta.service';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappRateLimitService } from './whatsapp-rate-limit.service';
 import { WhatsappConversationService } from './whatsapp-conversation.service';
@@ -86,6 +86,7 @@ export class WhatsappWebhookController {
     this.orchestrator.registerIncomingBatch?.(messages);
     const limit = Math.max(1, Number(cfg.rateLimitPerMinute) || 25);
 
+    const accepted: IncomingWhatsappMessage[] = [];
     for (const msg of messages) {
       try {
         if (msg.messageId) {
@@ -108,12 +109,18 @@ export class WhatsappWebhookController {
           continue;
         }
 
-        await this.orchestrator.handleIncoming(msg);
+        accepted.push(msg);
       } catch (err) {
         // Meta requiere 200 aunque falle un mensaje
         this.logger.error('[WhatsApp webhook] message error', err);
       }
     }
+
+    // Encolar todos antes de esperar: si se espera el primero, el coalescer
+    // ya respondió y las burbujas siguientes se leen como pedidos aparte.
+    await Promise.all(accepted.map((msg) => this.orchestrator.handleIncoming(msg).catch((err) => {
+      this.logger.error('[WhatsApp webhook] message error', err);
+    })));
     return res.status(200).json({ ok: true });
   }
 }

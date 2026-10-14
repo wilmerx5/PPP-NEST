@@ -1,5 +1,5 @@
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
-import { expandDistributedVariants } from './whatsapp-distributed-variants';
+import { expandDistributedVariants, expandSpokenSameSkuPair } from './whatsapp-distributed-variants';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 const products = JSON.parse(readFileSync(join(__dirname, '../../scripts/fixtures/whatsapp-beta-menu.json'), 'utf8'));
@@ -22,6 +22,26 @@ describe('A grouped quantity describes the total, not the first preparation', ()
   ])('does not invent an expansion when totals, choices or ownership disagree: %s', text => {
     expect(expandDistributedVariants(text, products, catalog)).toBe(text);
   });
+  it('parte dos combos hablados en dos líneas del mismo plato', () => {
+    const text = 'Dos combos de arroz paisa, uno con Colombia y el otro con Coca-Cola';
+    const expanded = expandSpokenSameSkuPair(text, products, catalog);
+    expect(expanded).toMatch(/1 Combo De Arroz Paisa con Colombia y 1 Combo De Arroz Paisa con Coca-Cola/i);
+    const result = catalog.resolveMultiProductOrder(text, products)!;
+    const lines = [...result.confident, ...result.needsAttributes];
+    expect(lines.filter(line => line.product.id === 94)).toHaveLength(2);
+    expect(result.unresolved).toEqual([]);
+  });
+
+  it('parte dos combos de otro restaurante', () => {
+    const pizza = [{ id: 11601, code: 11601, name: 'Combo De Pizza Margarita', price: 28000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Bebida', options: ['Cola', 'Limonada', 'Agua'] }] }];
+    const text = 'Dos combos de pizza margarita, uno con cola y el otro con limonada';
+    const result = catalog.resolveMultiProductOrder(text, pizza as never)!;
+    const lines = [...result.confident, ...result.needsAttributes];
+    expect(lines).toHaveLength(2);
+    expect(lines.every(line => line.product.id === 11601)).toBe(true);
+    expect(result.unresolved).toEqual([]);
+  });
+
   it('keeps a distinct quantity and its note in each distributed preparation', () => {
     const text = 'Tres sobrebarrigas: dos asadas sin ensalada y una en salsa.';
     const product = products.find(p => p.id === 13);

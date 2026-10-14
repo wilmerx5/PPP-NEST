@@ -13,7 +13,8 @@ export function isAddressChangeIntent(text: string): boolean {
       t,
     ) ||
     /\b(la\s+)?(direcci[oó]n|direcion|direction|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
-    /\b(nueva\s+direcci[oó]n|otro\s+domicilio|cambiar\s+domicilio)\b/i.test(t)
+    /\b(nueva\s+direcci[oó]n|otro\s+domicilio|cambiar\s+domicilio)\b/i.test(t) ||
+    /^(?:direcci[oó]n|direccion|direcion|direction|domicilio)\s*:/i.test(t)
   );
 }
 
@@ -27,7 +28,7 @@ export function isAddressRejectionIntent(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\bdirecion\b/g, 'direccion');
+    .replace(/\b(?:direcion|direction)\b/g, 'direccion');
   if (!t || t.length < 8) return false;
   // Si ya trae calle/carrera/#, es cambio con destino, no solo rechazo
   if (
@@ -68,7 +69,7 @@ export function isAddressClarificationIntent(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\bdirecion\b/g, 'direccion');
+    .replace(/\b(?:direcion|direction)\b/g, 'direccion');
   if (!t || t.length < 10) return false;
   if (isAddressRejectionIntent(t)) return false;
   return (
@@ -101,7 +102,7 @@ export function isPostOrderFollowUpIntent(text: string): boolean {
   }
 
   if (
-    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancelar?\s+((el|mi|este)\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
+    /\b(se\s+demora|esta\s+demorado|esta\s+demorada|muy\s+demorado|cuanto\s+(tiempo|se\s+tarda|tarda)|en\s+cuanto\s+(llega|llegaria|llegara)|cuando\s+(llega|sale|salen)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino|debe\s+estar)|nada\s+que\s+llega|van\s+a\s+llegar\s+frias|ya\s+vamos\s+(una\s+hora|para\s+mas)|me\s+tengo\s+que\s+ir|mejor\s+(lo\s+)?cancelo|cancelarl[oa]|va\s+(a\s+)?tocar\s+cancel|cancela(?:r|me)?\s+(?:(?:el|la|mi|este|esta|ese|esa)\s+)?pedido|ya\s+salieron\s+para\s+aca)\b/.test(
       t,
     )
   ) {
@@ -197,6 +198,32 @@ export function isReuseLastAddressIntent(text: string): boolean {
     return true;
   }
   return false;
+}
+
+/** "A una nueva" rechaza la dirección guardada y pide escribir otra. No trae la calle. */
+export function isFreshAddressRequest(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!?.…,;:"'`´]+/g, ' ')
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion')
+    .replace(/\b(?:por favor|porfa|gracias)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 48) return false;
+  if (/\d/.test(t)) return false;
+  if (/\b(?:calle|carrera|cra|cll|avenida|diagonal|transversal|conjunto|barrio|torre|apto)\b/.test(t)) return false;
+  return (
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?(?:a\s+)?una\s+nueva(?:\s+direccion)?$/.test(t) ||
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?a\s+otra$/.test(t) ||
+    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?otra\s+direccion$/.test(t) ||
+    /^(?:quiero|ponme|mejor)\s+otra\s+direccion$/.test(t) ||
+    /^(?:una\s+)?direccion\s+nueva$/.test(t) ||
+    /^nueva\s+direccion$/.test(t) ||
+    /^no\s+esa\s+no(?:\s+es\s+la\s+direccion)?\s+(?:es\s+)?(?:esta|otra)$/.test(t)
+  );
 }
 
 /**
@@ -319,6 +346,7 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'regala',
   ]);
   if (blockedExact.has(t)) return false;
+  if (/^no\s+(?:dame|quiero|regalame|ponme|agrega|cambia)\b/.test(t)) return false;
   // Quantity correction fragments can leak from old model turns into identity.
   if (/^(?:(?:solo|solamente)\s+)?(?:eran?|faltan?|quita|quitar|cambia|cambiar)\b/.test(t)) return false;
   // "Este", "eso" señalan el plato; no son el nombre.
@@ -356,6 +384,8 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   if (/^(pronto\s+pollo(\s+portal)?|ppp\s+pedidos?)$/.test(t)) return false;
   if (/^pedidos?\b/.test(t) && t.split(' ').length <= 2) return false;
   if (isCourtesyAffirmation(t)) return false;
+  // Cierre del pedido o consulta de precio, no la identidad del cliente.
+  if (/^(?:asi\s+esta\s+bien|esta\s+bien\s+asi|(?:que\s+)?precio\s+tiene)$/.test(t)) return false;
 
   return true;
 }
@@ -537,15 +567,37 @@ export function isUnansweredHumanComplaint(text: string): boolean {
   );
 }
 
-export function isDeliveryCoverageInquiry(text: string): boolean {
+/** "¿sí llegas allá?" sobre la dirección que ya anotamos. No es un pedido. */
+export function isReachSavedAddressQuestion(text: string): boolean {
   const raw = (text || '').trim();
+  if (raw.length < 8 || raw.length > 70) return false;
+  const t = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!.,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/\b(pollo|pizza|pasta|taco|hamburguesa|sopa|combo|ramen|bowl)\b/.test(t)) return false;
+  return /^(?:y\s+|bueno\s+|ok\s+)?(?:si\s+)?(?:me\s+|nos\s+)?(?:llegas|llega|llegan|cubres|cubre|cubren)\s+(?:hasta\s+|por\s+|a\s+)?(?:alla|ahi|esa(?:\s+direccion)?)\b/.test(
+    t,
+  );
+}
+
+export function isDeliveryCoverageInquiry(text: string): boolean {
+  const raw = (text || '').trim().replace(/^(?:quiero|quisiera)\s+saber\s+(?:si\s+)?/i, '');
   if (raw.length < 12) return false;
+  if (isAddressChangeIntent(raw)) return false;
 
   const orderingFood =
     /\b(quiero|dame|ponme|regala|pedi|pido|agrega|ordenar|un\s+pollo|una\s+sopa|combo\s+de|ejecutivo|arroz\s+con)\b/i.test(
       raw,
     );
   if (orderingFood) return false;
+
+  if (/\b(?:traen|trae|llevan|lleva|env[ií]an|entregan|mandan|llegan|llega)\s+(?:(?:un|el|mi)\s+pedido\s+)?(?:hasta|a|al)\s+\S/i.test(raw)) {
+    return true;
+  }
 
   // FAQ genérica: ¿hacen/tienen (servicio a) domicilio? — sin barrio/calle
   if (
@@ -637,6 +689,29 @@ export function parseCartItemReplacement(
 
 export function isCartItemReplacementIntent(text: string): boolean {
   return !!parseCartItemReplacement(text);
+}
+
+const COOKING_STYLE_WORD =
+  'broaster|frito|frita|asado|asada|plancha|horno|sudado|sudada';
+
+/**
+ * "No era broaster, era frito": el estilo nuevo es el último.
+ * No cubre guarniciones ni un pedido nuevo.
+ */
+export function parseCookingStyleLineCorrection(
+  text: string,
+): { from: string; to: string } | null {
+  const raw = (text || '').trim();
+  if (!raw || raw.length > 120 || /[¿?]/.test(raw)) return null;
+  const match = raw.match(new RegExp(
+    `^(?:(?:perdon|perdona|disculpa|disculpe)(?:me)?[, ]+)?no era (?:el |la |lo |un |una |pollo )?(${COOKING_STYLE_WORD})(?:[, ]+|\\s+)(?:era|es|sino) (?:el |la |lo |un |una |pollo |a la )?(${COOKING_STYLE_WORD})\\b`,
+    'i',
+  ));
+  if (!match) return null;
+  const from = match[1].toLowerCase();
+  const to = match[2].toLowerCase();
+  if (from === to) return null;
+  return { from, to };
 }
 
 /** "2 de cada una" después de una lista de platos. */
@@ -804,6 +879,7 @@ export function extractCoverageAddressProbe(text: string): string | null {
   if (!raw) return null;
 
   const patterns = [
+    /\b(?:traen|trae|llevan|lleva|env[ií]an|entregan|mandan|llegan|llega)\s+(?:(?:un|el|mi)\s+pedido\s+)?(?:hasta|a|al)\s+(.+?)[\s?!.]*$/i,
     /\b(?:domicilios?|entregas?|env[ií]os?)\s+(?:para|a|en|hasta)\s+(?!domicilio\b)(.+?)[\s?!.]*$/i,
     /\bservicio\s+a\s+domicilio\s+(?:para|en|hasta)\s+(.+?)[\s?!.]*$/i,
     /\b(?:para|a|en|hasta)\s+((?:calle|carrera|cra|cll|dg|diagonal|av\.?|avenida|conjunto|torre|barrio)\b.+?)[\s?!.]*$/i,
@@ -826,10 +902,67 @@ export function extractCoverageAddressProbe(text: string): string | null {
   return null;
 }
 
+/**
+ * Se equivocó de chat: "perdón, pensé que hablaba con el supermercado".
+ * No es un pedido ni una dirección, aunque nombre un lugar.
+ */
+export function isWrongChatApology(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return false;
+  if (/\b(?:telefono|celular|numero)\b/.test(t) && /(?:\d[ -]*){7,}/.test(t)) return false;
+  const sorry = /\b(perdon\w*|disculp\w*|sorry)\b/.test(t);
+  const confused = /\b(confund\w*|confunci\w*|equivo\w*|enrede)\b/.test(t);
+  const explicitWrongRecipient =
+    /\b(?:me|nos)\s+(?:equivo\w*|confund\w*|confunci\w*)\s+de\s+(?:chat|numero)\b/.test(t) ||
+    /\b(?:numero|chat)\s+equivocado\b/.test(t) ||
+    /\bwrong\s+(?:chat|number)\b/.test(t) ||
+    /\b(?:este|ese|el)\s+mensaje\s+(?:era|es)\s+para\s+(?:otro|otra)\s+(?:chat|numero|tienda|restaurante|negocio)\b/.test(t) ||
+    /\bno\s+era\s+para\s+ustedes\b/.test(t);
+  if (explicitWrongRecipient) return true;
+  const thoughtElsewhere =
+    /\b(pense|pensaba|crei|creia)\b/.test(t) &&
+    /\b(hablaba|hablando|era|escribia|escribiendo)\b/.test(t) &&
+    /\b(?:supermercado|otro\s+chat|otra\s+tienda|otro\s+restaurante|otro\s+numero)\b/.test(t);
+  if (thoughtElsewhere && (sorry || confused || /\b(?:otro|otra)\b/.test(t))) return true;
+  if (sorry && confused && /\b(supermercado|chat|numero|restaurante|tienda)\b/.test(t)) return true;
+  return false;
+}
+
+/** An explicit new request after a wrong-recipient clause is a separate intent. */
+export function orderAfterWrongChat(text: string): string | null {
+  const starts = (text || '').matchAll(/(?:^|[.!?;\n]\s*|\b(?:pero|but)\s+)(?:(?:ahora|aqu[ií]|ac[aá]|entonces)\s+(?:s[ií]\s+)?)?(quiero|quisiera|dame|reg[aá]lame|ponme|me\s+(?:env[ií]as|mandas|regalas))\b/gi);
+  for (const match of starts) {
+    const verbIndex = (match.index || 0) + match[0].toLowerCase().lastIndexOf(match[1].toLowerCase());
+    if (isWrongChatApology(text.slice(0, verbIndex))) {
+      // Keep information requests as questions, rather than an imperative purchase.
+      return text.slice(verbIndex).trim().replace(
+        /^(?:quiero|quisiera)\s+saber\s+(?=(?:qu[eé]|cu[aá]nto|cu[aá]l|c[oó]mo)\s)/i,
+        '',
+      );
+    }
+  }
+  return null;
+}
+
+/** A rejected uncommitted proposal may be followed by a fresh explicit request. */
+export function requestAfterRejectedProposal(text: string): string | null {
+  const match = text.trim().match(
+    /^(?:olvida\s+lo\s+anterior|eso\s+no|d[eé]jalo|olv[ií]dalo)\s*[,;.!]?\s*(?:(?:mejor|ahora|entonces)\s+)?((?:quiero|quisiera|dame|reg[aá]lame|ponme)\s+.+)$/is,
+  );
+  return match?.[1]?.trim() || null;
+}
+
 /** Salir de lista / atributos / multi sin cancelar todo el pedido. */
 export function isAbandonPendingSelectionIntent(text: string): boolean {
   const t = text.trim().toLowerCase();
   if (!t) return false;
+  if (isWrongChatApology(t)) return true;
   // Saludo suelto mientras hay selección pendiente = salir del atrape
   if (
     /^(hola|buenas|buenos\s+dias|buenas\s+tardes|buenas\s+noches|hey|hi)[\s!.?]*$/i.test(

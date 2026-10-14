@@ -109,17 +109,26 @@
       "source": "PDF: tercero pasa en 10 mn por el pedido; texto sanitizado",
       "invariant": "Recogida declarada conserva productos, elimina domicilio y guarda tiempo indicado sin prometer preparación.",
       "execution": "Cuarta tanda: mismo recorrido con PPP y catálogo sintético; router real, servicios externos simulados."
-    }
-  ],
-  "pending_not_executed": [
+    },
     {
       "id": "multi-attribute-distribution",
-      "invariant": "Dos ejecutivos diferentes; repartir presa, sopa y papa por línea de forma atómica."
+      "invariant": "Dos ejecutivos diferentes; repartir presa, sopa y papa por línea de forma atómica.",
+      "layer": "full inbound router; model and Meta simulated",
+      "evidence": "whatsapp-general-accuracy.spec.ts: PDF pendiente, Reparto de menú alternativo"
     },
     {
       "id": "rapid-message-burst",
-      "invariant": "Pedido/dirección/barrio consecutivos conservan orden y no duplican respuestas."
+      "invariant": "Pedido/dirección/barrio consecutivos conservan orden y no duplican respuestas.",
+      "layer": "full inbound router; model and Meta simulated",
+      "evidence": "whatsapp-general-accuracy.spec.ts: PDF pendiente, Reparto de menú alternativo"
     }
   ],
-  "test_contract": "docs/whatsapp-test-contract.md"
+  "pending_not_executed": [],
+  "test_contract": "docs/whatsapp-test-contract.md",
+  "verification_pending": [
+    "Meta auténtico para ráfaga pedido/dirección/barrio",
+    "Percepción con archivos originales",
+    "Reparto exacto con modelo real cuando sea necesario"
+  ],
+  "coverage_limit": "26 patrones ejercitados; no representa cada chat completo ni todas sus variaciones"
 }

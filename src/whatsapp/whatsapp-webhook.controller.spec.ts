@@ -77,6 +77,22 @@ describe('WhatsApp webhook authentication before processing', () => {
     expect(orchestrator.registerIncomingBatch.mock.invocationCallOrder[0]).toBeLessThan(orchestrator.handleIncoming.mock.invocationCallOrder[0]);
     expect(orchestrator.handleIncoming).toHaveBeenCalledTimes(1);
     expect(orchestrator.handleIncoming).toHaveBeenCalledWith(message);
+  });
+
+  it('encola las burbujas del mismo aviso antes de esperar la primera', async () => {
+    const messages = [1, 2, 3].map((n) => ({ messageId: `wamid.${n}`, waId: 'synthetic-waid', text: `parte ${n}` }));
+    meta.parseWebhookPayload.mockReturnValue(messages);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    orchestrator.handleIncoming.mockImplementation(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      inFlight -= 1;
+    });
+    await controller.receive({ body: payload, rawBody } as any, signature(), response as any);
+    expect(maxInFlight).toBe(3);
+    expect(orchestrator.handleIncoming).toHaveBeenCalledTimes(3);
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({ ok: true });
   });

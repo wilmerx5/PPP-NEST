@@ -26,6 +26,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Original cart line retained until a variant replacement is complete. */
+  replacement?: { originalLine: WhatsappCartItem };
   /** Explicit correction while the product options are still pending. */
   quantity?: number;
   productId: number;
@@ -42,6 +44,8 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** Read-only price clarification, separate from an order selection. */
+  pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
   pendingCartAttributeEdit?: {
     sourceText: string;
     cartSignature: string;
@@ -70,6 +74,8 @@ export type WhatsappSessionData = {
    */
   ignorePriorOrderHistory?: boolean;
   pendingMatch?: {
+    /** A retained browse list after its chosen item was already added. */
+    selectionAdded?: boolean;
     query: string;
     candidates: WhatsappProductCandidate[];
     /** info = eligió variante para ver detalle (no agregar al carrito) */
@@ -78,10 +84,19 @@ export type WhatsappSessionData = {
     quantity?: number;
     /** Explicit quantity replacement before selecting a candidate. */
     correctedQuantity?: number;
+    /** Cart line replaced when the customer picks one of these options. */
+    replacement?: { originalLine: WhatsappCartItem };
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
   };
+  /**
+   * "Uno con …" y luego "el otro con …" llegan antes de cerrar el plato.
+   * Se reparte cuando el producto ya está en el carrito.
+   */
+  pendingUnitSplit?: string;
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
+  /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
+  recentUnavailableOrder?: { items: string[]; expiresAt: number };
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;
@@ -132,6 +147,19 @@ export type WhatsappSessionData = {
   /**
    * Tras cotizar precio (“¿Te lo agrego?”): si responde *sí*, agregar este SKU.
    */
+  /**
+   * El cliente quiere cambiar un acompañamiento que el plato sí trae
+   * por algo que esa sopa o ese plato no incluye. Sí agrega la porción aparte.
+   */
+  pendingSideSwap?: {
+    cartIndex: number;
+    productId: number;
+    removeSide: string;
+    addProductId?: number;
+    addUnitPrice?: number;
+    /** Older pending offers without a signature must be re-confirmed. */
+    cartSignature?: string;
+  };
   pendingAddOffer?: {
     productId: number;
     name: string;

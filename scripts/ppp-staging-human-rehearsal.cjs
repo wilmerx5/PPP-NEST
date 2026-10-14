@@ -77,8 +77,8 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
     ensure(!STEPS.some(step => /^confirmar$/i.test(step.text.trim())), 'PLAN_MUST_NOT_CONFIRM');
     if (!await check('authorized_context', async () => {
       ensure(env.GITHUB_ACTIONS === 'true' && env.GITHUB_REPOSITORY === 'wilmerx5/PPP-NEST' &&
-        env.GITHUB_REF === 'refs/heads/fix/whatsapp-regression-baseline' &&
-        ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
+        env.GITHUB_REF === 'refs/heads/staging' &&
+        env.GITHUB_EVENT_NAME === 'workflow_dispatch', 'UNAPPROVED_EXECUTION_CONTEXT');
       ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
       ensure(!env.STAGING_HUMAN_EXECUTE || ['true', 'false'].includes(env.STAGING_HUMAN_EXECUTE), 'INVALID_EXECUTION_MODE');
       ensure(['STAGING_ADMIN_EMAIL', 'STAGING_ADMIN_PASSWORD', 'STAGING_WHATSAPP_APP_SECRET',

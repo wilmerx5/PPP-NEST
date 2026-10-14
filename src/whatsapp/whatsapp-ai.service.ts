@@ -215,10 +215,15 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     }
   }
 
-  /** Whisper: nota de voz / audio → texto en español. */
-  async transcribeAudio(buffer: Buffer, mimeType: string): Promise<string | null> {
+  /** Audio → Spanish transcript; one request, with a bounded catalog spelling hint. */
+  async transcribeAudio(buffer: Buffer, mimeType: string, vocabulary: string[] = []): Promise<string | null> {
     const cfg = await this.settingsService.getEffectiveConfig();
-    if (!cfg.openaiApiKey || !buffer.length) return null;
+    if (!cfg.openaiApiKey || !buffer.length || buffer.length > 25_000_000) return null;
+    const model = process.env.WHATSAPP_AUDIO_MODEL?.trim() || 'whisper-1';
+    if (!['whisper-1','gpt-4o-mini-transcribe','gpt-4o-mini-transcribe-2025-12-15','gpt-4o-transcribe'].includes(model)) {
+      this.logger.error('Unsupported WHATSAPP_AUDIO_MODEL configuration');
+      return null;
+    }
 
     const ext = this.audioExtension(mimeType);
     const form = new FormData();
@@ -227,8 +232,19 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
       new Blob([new Uint8Array(buffer)], { type: mimeType || 'audio/ogg' }),
       `audio.${ext}`,
     );
-    form.append('model', 'whisper-1');
+    form.append('model', model);
     form.append('language', 'es');
+    form.append('response_format', 'json');
+    const terms = [...new Set(vocabulary.map(term => term.normalize('NFKC')
+      .replace(/[^\p{L}\s-]/gu,' ').replace(/\s+/g,' ').trim()).filter(Boolean))];
+    let spellingHint = 'Vocabulario: ';
+    // A UTF-8 byte bound below 224 is conservative for Whisper's token window.
+    for (const term of terms) {
+      const next = spellingHint + (spellingHint.endsWith(': ') ? '' : ', ') + term;
+      if (Buffer.byteLength(next,'utf8') > 200) continue;
+      spellingHint = next;
+    }
+    if (spellingHint !== 'Vocabulario: ') form.append('prompt', spellingHint);
 
     try {
       const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -242,8 +258,8 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         this.logger.error(`Whisper error ${res.status}: ${err}`);
         return null;
       }
-      const data = (await res.json()) as { text?: string };
-      const text = (data.text || '').trim();
+      const data = (await res.json()) as { text?: unknown } | null;
+      const text = typeof data?.text === 'string' ? data.text.trim() : '';
       return text || null;
     } catch (err) {
       this.logger.error(`Whisper failed: ${err}`);

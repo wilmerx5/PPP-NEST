@@ -5,6 +5,7 @@ import {
   isPostOrderFollowUpIntent,
   isAddressChangeIntent,
   isReuseLastAddressIntent,
+  isFreshAddressRequest,
   isConfirmCurrentAddressIntent,
   isUsableWhatsappCustomerName,
   isSpecificOrderProgressInquiry,
@@ -87,6 +88,32 @@ describe('isReuseLastAddressIntent (C19)', () => {
       expect(isReuseLastAddressIntent(text)).toBe(false);
     },
   );
+});
+
+describe('isFreshAddressRequest', () => {
+  it.each([
+    'A una Nueva',
+    'una nueva',
+    'una nueva dirección',
+    'otra dirección',
+    'no, a otra',
+    'dirección nueva',
+    'nueva dirección',
+    'quiero otra dirección',
+  ])('pide otra dirección: %s', (text) => {
+    expect(isFreshAddressRequest(text)).toBe(true);
+  });
+
+  it.each([
+    'la misma',
+    'Calle 48 sur 87 86',
+    'Carrera 15 45 20',
+    'a una nueva calle 10',
+    'conjunto Banderas',
+    'otra hamburguesa',
+  ])('no pide solo otra dirección: %s', (text) => {
+    expect(isFreshAddressRequest(text)).toBe(false);
+  });
 });
 
 describe('isConfirmCurrentAddressIntent', () => {
@@ -296,6 +323,8 @@ describe('isDeliveryCoverageInquiry (C18)', () => {
   });
 
   it.each([
+    'Actualiza domicilio a Carrera 7 20 30',
+    'El domicilio es Calle 12 30 40',
     'quiero un pollo frito',
     'Me regalas un ejecutivo para Castilla',
     'Buenas noches',

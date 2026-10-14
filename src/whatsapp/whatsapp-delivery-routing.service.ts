@@ -5,6 +5,8 @@ import {
   type DeliveryFeeTier,
 } from './whatsapp-delivery-fee';
 
+class AmbiguousDeliveryAddressError extends Error {}
+
 export type LatLng = { lat: number; lng: number };
 
 export type DeliveryRouteQuote =
@@ -19,7 +21,7 @@ export type DeliveryRouteQuote =
     }
   | {
       ok: false;
-      reason: 'out_of_coverage' | 'no_api_key' | 'geocode_failed' | 'route_failed' | 'no_restaurant_coords';
+      reason: 'address_ambiguous' | 'out_of_coverage' | 'no_api_key' | 'geocode_failed' | 'route_failed' | 'no_restaurant_coords';
       distanceKm?: number;
       message: string;
     };
@@ -95,11 +97,18 @@ export class WhatsappDeliveryRoutingService {
         };
       }
     } else {
-      const geo = await this.geocodeAddress(params.customerAddress, {
+      let geo: (LatLng & { formatted?: string }) | null;
+      try {
+        geo = await this.geocodeAddress(params.customerAddress, {
         region: params.regionBias || 'co',
         near: params.restaurant,
         maxStraightKm,
-      });
+        });
+      } catch (error) {
+        if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
+        return { ok: false, reason: 'address_ambiguous', message:
+          'No pude identificar con seguridad ese conjunto o lugar. ¿Me compartes la ubicación de WhatsApp o la dirección con calle y número?' };
+      }
       if (!geo) {
         return {
           ok: false,
@@ -172,10 +181,17 @@ export class WhatsappDeliveryRoutingService {
     if (q.length < 4) return null;
 
     const variants = this.geocodeQueryVariants(q);
+    let ambiguous = false;
     for (const variant of variants) {
-      const hit = await this.geocodeOnce(variant, opts);
-      if (hit) return hit;
+      try {
+        const hit = await this.geocodeOnce(variant, opts);
+        if (hit) return hit;
+      } catch (error) {
+        if (!(error instanceof AmbiguousDeliveryAddressError)) throw error;
+        ambiguous = true;
+      }
     }
+    if (ambiguous) throw new AmbiguousDeliveryAddressError();
     return null;
   }
 
@@ -234,13 +250,17 @@ export class WhatsappDeliveryRoutingService {
         return null;
       }
 
+      let uncertain = false;
       for (const result of data.results) {
+        if (!this.resultMatchesNamedPlace(q, result)) { uncertain = true; continue; }
         const accepted = this.acceptGeocodeResult(result, opts.near, opts.maxStraightKm);
         if (accepted) {
           this.geocodeCache.set(cacheKey, { at: Date.now(), value: accepted });
           return accepted;
         }
       }
+
+      if (uncertain) throw new AmbiguousDeliveryAddressError();
 
       this.logQuote({
         source: 'app',
@@ -251,6 +271,7 @@ export class WhatsappDeliveryRoutingService {
       });
       return null;
     } catch (e) {
+      if (e instanceof AmbiguousDeliveryAddressError) throw e;
       this.logQuote({
         source: 'app',
         api: 'geocode',
@@ -263,6 +284,19 @@ export class WhatsappDeliveryRoutingService {
   }
 
   /** Solo Colombia y cerca del restaurante. */
+  private resultMatchesNamedPlace(query: string, result: any): boolean {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const raw = normalize(query).split(',')[0];
+    if (!/\b(?:plazuelas?|conjunto|residencial|urbanizacion|hotel|almacen|edificio)\b/.test(raw)) return true;
+    const ignored = new Set(['plazuela','plazuelas','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
+    const tokens = (raw.match(/[a-z0-9]+/g) || []).filter(token => !ignored.has(token));
+    if (!tokens.length) return false;
+    const candidate = normalize([result.formatted_address || '', result.name || '',
+      ...(result.address_components || []).map((part: any) => part.long_name || '')].join(' '));
+    const words = new Set(candidate.match(/[a-z0-9]+/g) || []);
+    return !result.partial_match && tokens.every(token => words.has(token));
+  }
+
   private acceptGeocodeResult(
     result: any,
     near: LatLng,

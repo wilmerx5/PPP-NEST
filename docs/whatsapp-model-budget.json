@@ -1,20 +1,84 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 20,
-  "usedRequests": 11,
-  "remainingRequests": 9,
+  "authorizedRequests": 40,
+  "usedRequests": 35,
+  "remainingRequests": 5,
   "scope": "Current user-authorized round only; not standing authorization",
-  "acceptedConversations": 10,
-  "validationBaseCommit": "a3d54eae",
+  "acceptedConversations": 17,
+  "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-11T15:18:23.633Z",
+  "lastAttemptAt": "2026-10-13T06:02:20.065Z",
   "latestEvaluation": {
-    "baseCommit": "53e4d1c1",
-    "includesWorkingTree": true,
+    "baseCommit": "faebdb9e",
+    "includesFixtureChanges": true,
+    "includesUncommittedIntegration": true,
     "model": "gpt-4.1-2025-04-14",
-    "requests": 3,
-    "automatedAcceptedConversations": 2,
-    "manuallyAcceptedConversations": 1,
-    "manualIssue": "Fish recommendation included unsupported sensory comparison; promoted to regression and corrected without more paid calls."
-  }
+    "executed": 5,
+    "accepted": 4,
+    "uniqueAccepted": 4,
+    "paidConversations": 2,
+    "deterministicConversations": 2,
+    "attemptsThisTurn": 10,
+    "usedTotal": 35,
+    "remaining": 5,
+    "initialBudgetCappedIncompleteConversation": 1,
+    "apiUsage": {
+      "model": "gpt-4.1-2025-04-14",
+      "requests": 10,
+      "successfulResponses": 10,
+      "responsesWithUsage": 10,
+      "usageComplete": true,
+      "uncertainResponses": 0,
+      "transportErrors": {},
+      "promptTokens": 104108,
+      "cachedPromptTokens": 81408,
+      "completionTokens": 252,
+      "httpErrors": {},
+      "providerErrorCodes": {},
+      "estimatedReportedCostUsd": null,
+      "priceDate": null,
+      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+    },
+    "log": "/tmp/ppp-courtesy-model-completion.log",
+    "initialLog": "/tmp/ppp-courtesy-model-current.log"
+  },
+  "authorizationExtensions": [
+    {
+      "date": "2026-10-11",
+      "additionalRequests": 20,
+      "evidence": "User: continua haciendo pruebas, te autorizo 20 llamadas mas"
+    }
+  ],
+  "evaluationHistory": [
+    {
+      "baseCommit": "b5deeb2d",
+      "includesFixtureChanges": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 5,
+      "accepted": 5,
+      "paidConversations": 2,
+      "deterministicConversations": 3,
+      "attemptsThisTurn": 7,
+      "usedTotal": 25,
+      "remaining": 15,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 7,
+        "successfulResponses": 7,
+        "responsesWithUsage": 7,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 73887,
+        "cachedPromptTokens": 65536,
+        "completionTokens": 160,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "log": "/tmp/ppp-api-additional-round.log"
+    }
+  ]
 }

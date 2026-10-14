@@ -7,6 +7,7 @@ describe('WhatsApp beta — inbound turn lifecycle integration', () => {
     service.outboundCarryByWaId = new Map();
     service.inboundCoalesceByWaId = new Map();
     service.claimedInboundIdsByWaId = new Map();
+  service.orderCoverageNoticesByWaId = new Map();
     service.metaService = { sendText: jest.fn().mockResolvedValue(undefined) };
     service.conversationService = {
       findOrCreateConversation: jest.fn().mockResolvedValue({ id: 17 }),

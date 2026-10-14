@@ -155,3 +155,17 @@ export function fixFuzzyDomicilioTypos(text: string): string {
     return word;
   });
 }
+
+/** "eejcutivo" / "ejecutibo" → ejecutivo, sin volver plural en singular. */
+export function fixFuzzyEjecutivoTypos(text: string): string {
+  return (text || '').replace(/\b[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{8,12}\b/g, (word) => {
+    const n = normalizeWord(word);
+    if (n === 'ejecutivo' || n === 'ejecutivos') return word;
+    if (!/^e/.test(n) || !/jec|ejc|eej|cutiv/.test(n)) return word;
+    const singular = editDistance(n, 'ejecutivo');
+    const plural = editDistance(n, 'ejecutivos');
+    if (plural <= 2 && plural <= singular) return 'ejecutivos';
+    if (singular <= 2) return 'ejecutivo';
+    return word;
+  });
+}

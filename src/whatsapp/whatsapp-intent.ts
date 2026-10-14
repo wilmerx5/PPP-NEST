@@ -10,6 +10,7 @@ import {
   isConfirmCurrentAddressIntent,
   isDeliveryEtaInquiry,
   isDeliveryRangeQuestion,
+  isWrongChatApology,
 } from './whatsapp-session-intents';
 
 export type WhatsappMessageIntent =
@@ -236,6 +237,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
   if (!t || t.length > 48) return false;
   return (
     /^(asi\s+)?nada\s+mas$/.test(t) ||
+    /^ada\s+mas$/.test(t) ||
     /^(asi\s+)?nomas$/.test(t) ||
     // "No, no mas" / "no no más" / "ya no mas" / "no gracias"
     /^(ya\s+)?no(\s+no)?\s+mas$/.test(t) ||
@@ -246,6 +248,7 @@ export function isNothingElseOrderIntent(text: string): boolean {
     /^(solo\s+eso|solamente\s+eso|unicamente\s+eso|no\s+nada\s+mas|asi\s+nomas|ya\s+nada\s+mas|con\s+eso\s+es\s+todo)$/.test(
       t,
     ) ||
+    /^(?:asi\s+esta\s+bien|esta\s+bien\s+asi)$/.test(t) ||
     // "no solo eso" / "no, solo eso" tras ¿Algo más? = eso es todo, no un barrio
     /^no\s+(solo|solamente|unicamente)\s+eso$/.test(t)
   );
@@ -523,6 +526,7 @@ export function looksLikeAddressOnlyMessage(
 ): boolean {
   const raw = (text || '').trim();
   if (raw.length < 4) return false;
+  if (isWrongChatApology(raw)) return false;
   if (looksLikeNonAddressCommand(raw)) return false;
 
   // Pedido / comida → nunca “solo dirección” (aunque traiga calle al final)

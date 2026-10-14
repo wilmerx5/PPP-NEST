@@ -43,13 +43,13 @@ export function isNamedMenuDishOrderPhrase(query: string): boolean {
   const q = normalizeText(query || '');
   if (!q || q.length < 4) return false;
   // Carta / link suelto → no es plato
-  if (/^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?$/.test(q)) return false;
-  if (/\b(link|enlace|url|pagina)\b/.test(q) && /\b(menu|carta)\b/.test(q)) return false;
+  if (/^(ver\s+)?(el\s+)?(menus?|carta)(\s+completo)?$/.test(q)) return false;
+  if (/\b(link|enlace|url|pagina)\b/.test(q) && /\b(menus?|carta)\b/.test(q)) return false;
   if (
     /\b(pasame|pasa|dame|enviame|envia|mandame|manda|comparte|mostrame|muestra|quiero\s+ver|necesito\s+ver)\b/.test(
       q,
     ) &&
-    /\b(el\s+)?(menu|carta)\b/.test(q) &&
+    /\b(el\s+)?(menus?|carta)\b/.test(q) &&
     !/\b(ejecutivo|especial|infantil|familiar|gourmet|economico|chef|promo|bandeja|combo|almuerzo)\b/.test(
       q,
     ) &&
@@ -60,16 +60,17 @@ export function isNamedMenuDishOrderPhrase(query: string): boolean {
     return false;
   }
 
-  if (/\bejecutivo\b/.test(q)) return true;
+  if (/\bejecutivos?\b/.test(q)) return true;
 
-  if (/\bmenu\b/.test(q)) {
+  if (/\bmenus?\b/.test(q)) {
     if (
       /\b(especial(?:es)?|ejecutivo|infantil|familiar|gourmet|economico|completo|chef|promo(?:cion)?)\b/.test(
         q,
       ) ||
       /\bde\s+la\s+casa\b/.test(q) ||
       /\bdel\s+dia\b/.test(q) ||
-      /\bcon\s+\w{3,}/.test(q)
+      /\bcon\s+\w{3,}/.test(q) ||
+      /\b(?:un|una|el|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+menus?\s+(?!(?:completo|online|digital|por|favor|porfa|gracias)\b)[a-z]{3,}/.test(q)
     ) {
       return true;
     }

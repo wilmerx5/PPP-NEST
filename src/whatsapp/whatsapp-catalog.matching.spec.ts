@@ -171,6 +171,23 @@ describe('WhatsappCatalogService matching regressions', () => {
     ).toBe(true);
     expect(catalog.isAvailabilityInquiry('Tienes sopa De mondongo')).toBe(true);
     expect(catalog.isAvailabilityInquiry('No tienes we mondongo')).toBe(true);
+    expect(catalog.isAvailabilityInquiry('do you have some beans or something like that?')).toBe(true);
+    expect(
+      catalog.isAvailabilityInquiry(
+        'thank you so much\nbut do you have some beans or something like that?',
+      ),
+    ).toBe(true);
+    expect(catalog.isCourtesyOnlyMessage('thank you so much')).toBe(true);
+    expect(catalog.isNonOrderChatterSegment('thank you so much')).toBe(true);
+    expect(
+      catalog.resolveMultiProductOrder(
+        'thank you so much\nbut do you have some beans or something like that?',
+        [{ id: 1, code: 1, name: 'Churrasco', price: 1000, availableNow: true, attributes: [] }],
+      ),
+    ).toBeNull();
+    expect(catalog.availabilitySubject('do you have some beans or something like that?')).toMatch(
+      /beans/i,
+    );
     expect(catalog.isAvailabilityInquiry('quiero una sopa de mondongo')).toBe(false);
     expect(catalog.isAvailabilityInquiry('y me vendes un combo de arroz chino')).toBe(false);
     expect(catalog.isAvailabilityInquiry('Me vendes 2 costillas\n1 mojarra')).toBe(false);
