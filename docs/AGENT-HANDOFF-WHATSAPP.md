@@ -1250,3 +1250,6 @@ Límites: aclaración explícita precio por nombre/número/ordinal1–4 y descri
 
 
 Cierre local de nombres y aclaraciones:66 suites/4717 pruebas aprobadas en447.436s (/tmp/ppp-full-menu-names-full.log),snapshot íntegro.62 nuevas;74 focalizadas y TypeScript aprobados. Pendiente publicación/deploy staging. Main/producción d9241abe conservan promoción anterior. Cero API nueva;39/40 usadas,1 restante.
+
+
+Staging verificado el14/10/2026 a las13:29 Bogotá: runtime f9128032,running/healthy,imagen activa=candidata sha256:9863f5a87b6837993fc090ce56962bb19ce428273e9318a98c6afab45f02396b. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-full-menu-names-deploy.log y /tmp/ppp-full-menu-names-verified.log. Main local/producción d9241abe conservan promoción anterior.62 nuevas;66 suites/4717 pruebas,74 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Siguiente: «sí, ese» después de describir una opción,cierre de aclaraciones por nombre/notas,multiorden con varias elecciones,muestra independiente y modelo/canal. No promover esta tanda a Main automáticamente.
