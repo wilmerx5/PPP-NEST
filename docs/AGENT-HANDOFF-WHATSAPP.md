@@ -855,3 +855,6 @@ Siguiente:cancelar solo primera bebida cuando quedan otras selecciones;preguntas
 
 
 Aprobación final:66suites/3421pruebas aprobadas,676.044s (/tmp/ppp-required-options-full.log);TypeScript aprobado (/tmp/ppp-required-options-tsc.log);snapshot íntegro sin diferencias.52regresiones propias nuevas,60focalizadas concontroles. Duración de suite no es medición de latencia del bot. Mainintacta,cero llamadas pagadas,35/40usadas5restantes. Pendiente publicar/desplegar código aprobado.
+
+
+Runtime55c5fd52 publicado/desplegado/verificado13/10/2026 19:13Bogotá:running/healthy,imagenactiva=candidata sha256:37ae6339eb3cd6ed5f619effebcce06281f5e5b4a1646954f426f228f41316cc;healthok,DBconnected,circuitCLOSED. Logs /tmp/ppp-required-options-deploy.log y /tmp/ppp-required-options-deploy-verified.log. Preservados bin/,privados yorphanmariadb_local. Mainintacta,modelos sin cambios,cero llamadas pagadas. Artefactos dist/ ytsbuildinfo locales previos no se incluyeron en commit.
