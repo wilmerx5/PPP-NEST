@@ -1201,3 +1201,6 @@ Límites: referente identificado por nombre/opciones del catálogo; notas libres
 
 
 Cierre local de referentes y listas:66 suites/4631 pruebas aprobadas en446.443s (/tmp/ppp-same-product-full.log),snapshot íntegro.50 regresiones nuevas;86 focalizadas y TypeScript aprobados. Pendiente publicación/deploy staging. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
+
+
+Staging verificado el14/10/2026 a las12:49 Bogotá: runtime60f17cb9,running/healthy,imagen activa=candidata sha256:c039574e1eb8f1d4a77de21055bb0f00c3749644137aa5625014e242fc6a26db. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-same-product-deploy.log y /tmp/ppp-same-product-verified.log. Main local/servidor49194fec intactas.50 regresiones nuevas;66 suites/4631 pruebas,86 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Próxima prioridad: referentes por notas libres,pendingMatch y multiórdenes con varias necesidades; otra muestra independiente y modelo/canal reales antes de acreditar piloto.
