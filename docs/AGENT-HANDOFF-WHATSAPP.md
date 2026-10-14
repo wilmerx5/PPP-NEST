@@ -1230,3 +1230,23 @@ Cierre local de notas:66 suites/4655 pruebas aprobadas en443.632s (/tmp/ppp-note
 
 
 Staging verificado el14/10/2026 a las13:05 Bogotá: runtime d1467c0f,running/healthy,imagen activa=candidata sha256:acbabb867d0af6f80afd926d24014787ad971516d954f7fa2347766dee79c7f2. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-note-reference-deploy.log y /tmp/ppp-note-reference-verified.log;primer Docker starting confirmado healthy antes del cierre. Main local/origin/producción d9241abe conservan la promoción autorizada anterior;staging preservada y ahora tiene24 regresiones/correcciones posteriores.66 suites/4655 pruebas,91 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Siguiente: selección por referencia después de pedir aclaración,multiorden con varios atributos y muestra independiente/modelo/canal reales.
+
+
+## Listas con nombres completos y aclaraciones que continúan — 14/10/2026
+
+62 regresiones nuevas, con router completo/dependencias simuladas y agente activo/inactivo:
+-12 recorridos PPP y cartas sintéticas pizza/ramen: consulta de productos muestra nombre íntegro,precio y código de cada candidato; elección por fila o código termina agregando el SKU correcto ×1. Si falta una opción real (Pollo del combo PPP), se resuelve por el flujo normal, sin saltarla.
+-18 consultas de descripción de opción: «qué trae la opción2»,«qué incluye la segunda»,«cómo es la opción2». Responde catálogo, mantiene carrito vacío y lista original para compra posterior.
+-16 recorridos de precio con otra bebida pendiente: «el precio del segundo»,«precio2»,«el precio de la segunda» o nombre explícito resuelven precio; conservan tres bebidas pendientes, sabor y nota; luego Lulo termina correctamente.
+-16 controles de rango/otras listas activas: consultar opción99 o precio99 no modifica; con lista de precios o sabor simultáneos se aclara la referencia y no se elige por número a ciegas.
+
+Baseline de nombres6/6 falló (/tmp/ppp-full-menu-names-baseline.log): abreviaciones «Combo(con bebida)» indistinguibles y «Porcion De» incompleto. Se usa nombre completo en lista informativa y prompt de variantes. Se conserva orden/IDs/códigos/precios; no cambia selección ni defaults. La primera prueba de compra usaba códigos sintéticos de5 dígitos fuera del formato y suponía que un combo PPP sin tipo de pollo podía añadirse directamente. Se ajustan códigos válidos separados de IDs y se completan atributos requeridos; no se cambia esa política para hacer pasar tests.
+
+Baseline de precio12/12 falló (/tmp/ppp-price-clarification-baseline.log); la etiqueta explícita «precio» permite resolver esa lista aunque haya otra opción abierta, pero números sin etiqueta siguen siendo ambiguos. Baseline de descripción6/6 falló (/tmp/ppp-list-description-baseline.log): se desviaba al handler de pregunta ajena, repetía contexto y no daba descripción. Se agrega ruta de consulta read-only de opción de lista antes de ese handler; valida índice, usa catálogo vigente y no compra ni descarta la lista. No cubre rendimientos/gramos ni inventa esas cifras.
+
+74 focalizadas finales aprobadas (suite general) /tmp/ppp-full-menu-names-target5.log;TypeScript aprobado /tmp/ppp-full-menu-names-final3-tsc.log. Global en ejecución /tmp/ppp-full-menu-names-full.log;snapshot /tmp/ppp-full-menu-names-source.json. No editar src hasta terminar/comparar snapshot. Código local;runtime staging d1467c0f. Main/producción d9241abe intactas. Cero API nueva;39/40 usadas,1 restante.
+
+Límites: aclaración explícita precio por nombre/número/ordinal1–4 y descripción de opción por número/ordinal1–4; no todas las paráfrasis ni respuestas cortas «sí» después de descripción. Sigue pendiente muestra independiente/modelo/canal y multiorden con varias elecciones. No promover automáticamente a Main.
+
+
+Cierre local de nombres y aclaraciones:66 suites/4717 pruebas aprobadas en447.436s (/tmp/ppp-full-menu-names-full.log),snapshot íntegro.62 nuevas;74 focalizadas y TypeScript aprobados. Pendiente publicación/deploy staging. Main/producción d9241abe conservan promoción anterior. Cero API nueva;39/40 usadas,1 restante.

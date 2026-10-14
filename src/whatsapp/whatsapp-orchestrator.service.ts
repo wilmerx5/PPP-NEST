@@ -1418,6 +1418,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryResolvePendingPriceInquiry(conv, msg.waId, session, originalText, cfg)) return;
+    if (await this.tryDescribePendingListOption(conv,msg.waId,session,originalText)) return;
     const pendingQuantityChoice = !!session.pendingAttribute && /^(?:mejor(?: solo)?|solo|que sean|(?:una?|uno|dos|tres|cuatro|cinco) mas)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)?\s*(?:con|sin)\b/.test(this.normalizeForMatch(originalText));
     // "Solo una" changes units, whereas "solo, sin combo" changes a variant.
     const shortCartQuantity = /^(?:mejor\s+)?(?:solo|solamente)\s+(?:\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+por\s+favor)?$/.test(this.normalizeForMatch(originalText));
@@ -10475,16 +10476,12 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    const baseKey = family?.baseKey || '';
     const baseLabel = family?.baseLabel || query;
     const rows = variants.map((p, i) => {
       const desc = (p.description || '').trim();
       const short = desc.length > 140 ? `${desc.slice(0, 139)}…` : desc;
-      const label = baseKey
-        ? this.catalogService.getVariantDisplayLabel(p.name, baseKey)
-        : p.name;
       return (
-        `${this.catalogService.optionNumberEmoji(i + 1)} *${label}* · ${this.catalogService.formatMoney(p.price)}` +
+        `${this.catalogService.optionNumberEmoji(i + 1)} *${p.name}* · ${this.catalogService.formatMoney(p.price)} · *#${p.code}*` +
         (short ? `\n   _${short}_` : '')
       );
     });
@@ -13124,6 +13121,40 @@ export class WhatsappOrchestratorService {
    * Preguntas de mostrador: repetir el pedido, el total, si reciben efectivo
    * y datos del local que este chat no puede inventar.
    */
+  private async tryDescribePendingListOption(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    const pending = session.pendingMatch;
+    if (!pending?.candidates?.length || ['completed','closed','human','human_takeover'].includes(conv.state) ||
+      !this.catalogService.isProductDescriptionInquiry(text)) return false;
+    const normalized = this.normalizeForMatch(text);
+    if (!/\b(?:que trae|que incluye|con que viene|como es|descripcion)\b/.test(normalized)) return false;
+    const number = normalized.match(/\b(?:opcion|numero)\s*(\d{1,2})\b/);
+    const ordinal = normalized.match(/\b(?:el|la)\s+(primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)\b/);
+    const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4};
+    const index = number ? Number(number[1]) : ordinal ? positions[ordinal[1]] : null;
+    if (index === null) return false;
+    if (session.pendingAttribute || session.pendingPriceInquiry || session.pendingCartAttributeEdit || session.pendingCartQuantity || session.pendingCartRemoval) {
+      await this.reply(conv,waId,'Hay varias listas abiertas. ¿Preguntas por un producto de la lista o por una opción pendiente? El pedido sigue igual.');
+      return true;
+    }
+    const candidate = pending.candidates[index - 1];
+    if (!candidate) {
+      await this.reply(conv,waId,`Elige una opción entre 1 y ${pending.candidates.length} para consultar qué trae. El pedido sigue igual.`);
+      return true;
+    }
+    const menu = await this.catalogService.getMenuProducts();
+    const product = menu.find(item => item.id === candidate.id);
+    if (!product) {
+      await this.reply(conv,waId,'Esa opción ya no aparece en la carta. Podemos revisar el menú actualizado. El pedido sigue igual.');
+      return true;
+    }
+    await this.conversationService.saveSession(conv,this.rememberProductFocus(session,product,menu),conv.state);
+    await this.reply(conv,waId,this.catalogService.formatProductPriceReply(product,{offerAdd:false}) +
+      `\n\nSi lo quieres, escribe el código *#${product.code}*.`);
+    return true;
+  }
+
   private async tryResolvePendingPriceInquiry(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, cfg: EffectiveWhatsappConfig,
@@ -13144,9 +13175,11 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, 'Listo, dejo esa consulta. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
       return true;
     }
-    const ordinal = normalized.match(/^(?:el|la)?\s*(primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/);
+    const explicitPrice = normalized.match(/^(?:el\s+)?precio(?:\s+(?:del?|de la))?\s+(.+)$/);
+    const selectionText = explicitPrice?.[1] || normalized;
+    const ordinal = selectionText.match(/^(?:el|la)?\s*(primero|primera|segundo|segunda|tercero|tercera|cuarto|cuarta)$/);
     const positions = { primero: 1, primera: 1, segundo: 2, segunda: 2, tercero: 3, tercera: 3, cuarto: 4, cuarta: 4 };
-    const pick = /^\d{1,2}$/.test(normalized) ? Number(normalized) : ordinal ? positions[ordinal[1]] : null;
+    const pick = /^\d{1,2}$/.test(selectionText) ? Number(selectionText) : ordinal ? positions[ordinal[1]] : null;
     const otherOpenList = !!(
       session.pendingAttribute ||
       session.pendingMatch?.candidates?.length ||
@@ -13156,7 +13189,7 @@ export class WhatsappOrchestratorService {
       session.pendingMultiOrder?.needsAttributes?.length ||
       session.pendingMultiOrder?.ambiguous?.length
     );
-    if (pick !== null && otherOpenList) {
+    if (pick !== null && otherOpenList && !explicitPrice) {
       await this.reply(
         conv,
         waId,
@@ -13165,7 +13198,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const menu = await this.catalogService.getMenuProducts();
-    const name = normalized.replace(/^(?:el|la|del|de la)\s+/, '');
+    const name = selectionText.replace(/^(?:el|la|del|de la)\s+/, '');
     const product = pick !== null ? menu.find(p => p.id === pending.productIds[pick - 1])
       : menu.find(p => pending.productIds.includes(p.id) && this.normalizeForMatch(p.name) === name);
     if (product) {

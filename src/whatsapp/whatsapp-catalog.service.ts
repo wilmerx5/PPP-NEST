@@ -7920,7 +7920,7 @@ export class WhatsappCatalogService {
   formatVariantFamilyPrompt(family: ProductVariantFamily): string {
     const rows = family.variants.map((p, i) => ({
       index: i + 1,
-      label: this.getVariantDisplayLabel(p.name, family.baseKey),
+      label: p.name,
       price: p.price,
       code: p.code,
     }));
