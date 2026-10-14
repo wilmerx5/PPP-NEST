@@ -1131,3 +1131,6 @@ Global integrado inicial: 65 suites aprobadas/1 fallida; 4431 pruebas aprobadas/
 
 
 Cierre local integrado:66 suites /4445 pruebas aprobadas en451.396s (/tmp/ppp-context-integration-final-full.log),362 focalizadas y TypeScript aprobados; snapshot src/**/*.ts íntegro. Son281 nuevas pruebas respecto al último global4164. La primera global integrada falló14 y no se acredita; la ejecución final cubre las regresiones corregidas. Pendiente publicación/despliegue staging. Main49194fec intacta. No se repitió evaluación pagada;39/40 usadas,1 restante.
+
+
+Publicado staging a7930a70 y API reconstruida. Imagen activa igual a candidata sha256:108c01aa6275a6f1fac55fcfe9d97968ae9c3c523645394d94e15009dcd37681. HTTP3301/api/health ok, DB connected, circuit CLOSED; Docker running/healthy comprobado el14/10/2026 a las11:42 Bogotá. Main servidor49194fec intacta. Evidencia /tmp/ppp-context-integration-deploy.log y /tmp/ppp-context-integration-verified.log.

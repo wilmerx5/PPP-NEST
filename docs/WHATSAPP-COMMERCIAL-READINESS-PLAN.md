@@ -10,11 +10,11 @@ Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicil
 
 ## Estado más reciente — 14 de octubre
 
-La evidencia detallada vigente está en `AGENT-HANDOFF-WHATSAPP.md`. Runtime previo comprobado: staging03c89636; Main49194fec intacta. Tanda actual de integración validada localmente: 362 focalizadas, TypeScript y 66 suites/4445 pruebas aprobadas con fuente estable (/tmp/ppp-context-integration-final-full.log). La ejecución global previa detectó14 regresiones y no acredita la versión final. Se corrigieron y se está validando de nuevo; no declarar deploy por publicar una rama.
+La evidencia detallada vigente está en `AGENT-HANDOFF-WHATSAPP.md`. Runtime vigente comprobado el14/10 a las11:42 Bogotá: staging a7930a70, running/healthy, imagen activa igual a candidata y HTTP ok/DB connected. Main49194fec intacta. Tanda actual de integración validada y desplegada en staging: 362 focalizadas, TypeScript y 66 suites/4445 pruebas aprobadas con fuente estable (/tmp/ppp-context-integration-final-full.log). La ejecución global previa detectó14 regresiones y no acredita la versión final. Se corrigieron y la segunda ejecución global pasó; el deploy se comprobó por separado.
 
 Evaluación real de un pedido narrado consumió3 solicitudes: el modelo interpretó2 platos/1 plato/3 bebidas, pero el backend guardó1/1/1. Ese ensayo falló. La corrección está cubierta por replay offline de la salida capturada; aún falta otra ejecución representativa real. Solo queda1solicitud autorizada y un turno con herramientas puede necesitar varias. No usar el saldo para repetir a ciegas ni prometer una ronda completa.
 
-Prioridad siguiente: acreditar la tanda integrada, desplegar exclusivamente staging y probar una muestra independiente de pedidos completos/interrupciones. Mantener piloto supervisado por texto y efectivo/transferencia; medios y casos no acreditados requieren asistencia. La consulta de cobertura debe recordar el carrito, cotizar sin cambiar destino y permitir volver al paso pendiente.
+Prioridad siguiente: probar una muestra independiente de pedidos completos/interrupciones, acreditar modelo/canal y cerrar los defectos críticos del alcance del piloto. Mantener piloto supervisado por texto y efectivo/transferencia; medios y casos no acreditados requieren asistencia. La consulta de cobertura debe recordar el carrito, cotizar sin cambiar destino y permitir volver al paso pendiente.
 
 ## Evidencia histórica y límites
 
