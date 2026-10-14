@@ -9024,31 +9024,38 @@ export class WhatsappCatalogService {
    * Resuelve varios productos nombrados en un solo mensaje.
    * Devuelve null si no parece un pedido multi-ítem.
    */
+  /** Resolve independent code clauses without replacing catalog identity by a name. */
+  resolveExplicitCodeOrder(text: string, products: WhatsappCatalogProduct[]): MultiProductResolveResult | null {
+    if (/[¿?]/.test(text)) return null;
+    const orderText = splitTrailingEmbeddedAddress(text)?.productText || text;
+    const body = orderText.replace(/^(?:quiero|agrega|añade|ponme)\s+/i, '').trim();
+    const clauses = body.split(/\s+y\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo|#))|\s*,\s*(?=(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo|#))/i);
+    const clausePattern = /^(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})(?:\s+((?:sin|con)\s+.+?))?[.!]?$/i;
+    const parsed = clauses.map(clause => clause.trim().match(clausePattern));
+    if (!parsed.length || parsed.some(match => !match || (match[2] &&
+      /\s+y\s+(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/i.test(match[2])))) return null;
+    const result: MultiProductResolveResult = {
+      segments:clauses, confident:[], ambiguous:[], unresolved:[], needsAttributes:[], possibleCustomerNames:[],
+    };
+    for (let index=0; index<clauses.length; index++) {
+      const segment = clauses[index];
+      const product = this.findByCode(Number(parsed[index]![1]), products);
+      if (!product || product.availableNow === false) result.unresolved.push(segment);
+      else {
+        const match = {segment, product, score:100, note:this.extractProductModificationNote(segment) || undefined};
+        if (product.hasAttributes && product.attributes?.length) result.needsAttributes.push(match);
+        else result.confident.push(match);
+      }
+    }
+    return result;
+  }
+
   resolveMultiProductOrder(
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
-    // Explicit codes identify catalog entries even when their display names coincide.
-    // Restrict this path to independent code clauses; addresses, notes and queries
-    // continue through the normal parser.
-    const codeClauses = text.replace(/^(?:quiero|agrega|añade|ponme)\s+/i, '').split(/\s+y\s+|\s*,\s*/i);
-    if (codeClauses.length >= 2 && codeClauses.every(clause =>
-      /^(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)\d{1,4}[.!]?$/i.test(clause.trim()))) {
-      const result: MultiProductResolveResult = {
-        segments: codeClauses, confident: [], ambiguous: [], unresolved: [], needsAttributes: [], possibleCustomerNames: [],
-      };
-      for (const segment of codeClauses) {
-        const code = segment.match(/(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})/i)!;
-        const product = this.findByCode(Number(code[1]), products);
-        if (!product || product.availableNow === false) result.unresolved.push(segment);
-        else {
-          const match = {segment, product, score:100};
-          if (product.hasAttributes && product.attributes?.length) result.needsAttributes.push(match);
-          else result.confident.push(match);
-        }
-      }
-      return result;
-    }
+    const explicitCodes = this.resolveExplicitCodeOrder(text, products);
+    if (explicitCodes) return explicitCodes;
     const spokenPair = expandSpokenSameSkuPair(text, products, this);
     if (spokenPair !== text) {
       const parts = this.splitMultiProductSegments(spokenPair);

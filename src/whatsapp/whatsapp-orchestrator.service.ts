@@ -961,9 +961,7 @@ export class WhatsappOrchestratorService {
       const addressStart = parsedAddition.address ? canonical.toLowerCase().indexOf(parsedAddition.address.toLowerCase()) : -1;
       const codePattern = /(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})\b/gi;
       const codes = [...canonical.matchAll(codePattern)].filter(match => addressStart < 0 || match.index! < addressStart);
-      const codeOrder = codes.length >= 2 ? this.catalogService.resolveMultiProductOrder(canonical, additionMenu) : null;
-      const explicitCodeOrder = codeOrder && codeOrder.segments.length === codes.length &&
-        codeOrder.segments.every(segment => /(?:c[oó]digo\s*#?\s*|#\s*)\d{1,4}[.!]?$/i.test(segment.trim())) ? codeOrder : null;
+      const explicitCodeOrder = codes.length ? this.catalogService.resolveExplicitCodeOrder(canonical, additionMenu) : null;
       const unknownCode = codes.some(match => !this.catalogService.findByCode(Number(match[1]), additionMenu));
       const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(canonical));
       const knownName = this.catalogService.findProductEmbeddedInMessage(canonical, additionMenu) ||
@@ -1738,7 +1736,7 @@ export class WhatsappOrchestratorService {
         !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
         !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText)) {
       const multiAddition = explicitCodeAddition || this.catalogService.resolveMultiProductOrder(originalText, products);
-      if (multiAddition && multiAddition.confident.length + multiAddition.needsAttributes.length + multiAddition.ambiguous.length + multiAddition.unresolved.length > 1 &&
+      if (multiAddition && (explicitCodeAddition || multiAddition.confident.length + multiAddition.needsAttributes.length + multiAddition.ambiguous.length + multiAddition.unresolved.length > 1) &&
           await this.tryHandleMultiProductOrder(conv, msg.waId, session, multiAddition, cfg, originalText, products, originalText)) return;
     }
 
@@ -17360,6 +17358,26 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (!session.cart.length) return false;
     const negativeOption = !/[¿?]/.test(text) && text.match(/^no\s+(?:con\s+)?(.+?),?\s+(?:mejor|sino)\s+(?:con\s+)?(.+)$/i);
+    const rejectedWithoutChoice = !negativeOption && /^no\s+con\s+/i.test(text);
+    const negativeAlternative = negativeOption && /^(?:no|sin)\b/i.test(negativeOption[2]);
+    if (!/[¿?]/.test(text) && (rejectedWithoutChoice || negativeAlternative)) {
+      const rejected = this.normalizeForMatch((negativeOption?.[1] || text.replace(/^no\s+con\s+/i, '')).replace(/\s+por\s+favor[.!]*$/i, '').replace(/[,!.]+$/g, ''));
+      const alternative = negativeOption ? this.normalizeForMatch(negativeOption[2]) : '';
+      const choices = session.cart.flatMap(line => {
+        const product = products.find(product => product.id === line.productId);
+        return (product?.attributes || []).filter(attr => attr.options.some(option =>
+          rejected === `${this.normalizeForMatch(attr.attributeName)} ${this.normalizeForMatch(option)}` ||
+          rejected === this.normalizeForMatch(option)))
+          .map(attr => ({line,attr}));
+      });
+      const configuredAlternative = !!alternative && choices.some(({attr}) => attr.options.some(option =>
+        alternative === this.normalizeForMatch(option)));
+      if (choices.length && !configuredAlternative) {
+        await this.reply(conv, waId, '¿Qué opción prefieres en su lugar? El pedido sigue igual hasta elegirla.\n' +
+          choices.map(({line,attr}) => `${line.name}: ${attr.attributeName} — ${attr.options.join(', ')}`).join('\n'));
+        return true;
+      }
+    }
     if (negativeOption) {
       const namedLines = session.cart.filter(line => this.catalogService.isCartProductNamedInText(line.name, negativeOption[1]));
       text = `cambia ${negativeOption[2]} ${namedLines.map(line => line.name).join(' ')}`.trim();

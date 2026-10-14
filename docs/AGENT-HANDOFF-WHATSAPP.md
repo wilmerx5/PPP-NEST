@@ -1022,3 +1022,19 @@ Cierre local de identidad: 66 suites / 4.032 pruebas aprobadas en 534.911 segund
 
 
 Staging verificado 14/10/2026 07:42 Bogotá: runtime c3589adb, running/healthy, imagen activa = candidata sha256:2db338458820e8d796b352f508c80d6bb09dd33dd4782090f3d6d75d96a31fd2; HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia /tmp/ppp-code-identity-deploy.log y /tmp/ppp-code-identity-verified.log. Main local y servidor 49194fec comprobadas sin cambios. 24 regresiones nuevas, full 66 suites/4032 pruebas y TypeScript aprobados, fuente íntegra. Cero API pagada. Siguiente: código aislado homónimo, listas con notas/dirección, atributos pendientes, negación sin alternativa; no promover Main automáticamente.
+
+
+## Fronteras de código, notas, dirección y negación — 14/10/2026
+
+60 regresiones nuevas con cartas ficticias de pizza/tacos y bowls/bebidas, modelo simulado activo/inactivo. 24 códigos aislados de títulos repetidos (elige cada SKU, cantidad2, precio real, estados building_cart/awaiting_address/awaiting_payment); 4 listas con notas propias por línea; 4 listas con dirección/placa #18-27; 4 rechazos «No con salsa picante»; 8 alternativa «mejor sin picante» disponible/no configurada; 8 SKU homónimos con Salsa y disponible/no disponible; 4 aclaración posterior Salsa Suave preserva cantidad/nota y no se convierte en pago; 4 código con nota y producto por nombre conserva la segunda compra.
+
+Baseline inicial36:32 fallaron4 pasaron (/tmp/ppp-code-boundaries-baseline.log). Primera corrección88 focalizadas aprobadas (/tmp/ppp-code-boundaries-target.log). Negación «sin» adicional8:4 fallaron4 pasaron (/tmp/ppp-negative-sin-baseline.log): nota «sin picante» podía coexistir con Salsa:Picante o volver a pago. Se pide opción válida sin mutar ante rechazo sin alternativa configurada; si la carta tiene Sin Picante se elige esa opción. SKU con atributos/disponibilidad y seguimiento12 aprobados (/tmp/ppp-code-attributes-target.log).
+
+resolveExplicitCodeOrder resuelve códigos a productos sin sustituir identidad por título; admite código único, notas con/sin y separa dirección final antes de resolver. Una cola con «y un/una/dos…» de otro producto vuelve al parser multi normal para no absorber la segunda compra como nota. El orquestador pasa compras explícitas por esta ruta antes de checkout/estado de pedido, con guardas de horario y opciones pendientes; respeta no disponibilidad y usa el guard/carrito existente.
+
+156 focalizadas aprobadas (/tmp/ppp-code-boundaries-final2-target.log); TypeScript aprobado (/tmp/ppp-code-boundaries-final-tsc.log). Global en ejecución /tmp/ppp-code-boundaries-full.log; snapshot src/**/*.ts /tmp/ppp-code-boundaries-source.json. No editar fuentes durante global. Staging desplegado aún c3589adb; cambios locales. Main 49194fec intacta, cero API pagada, 36/40 usadas4restantes.
+
+Límites: no acredita listas arbitrarias mixtas de SKU homónimos por código y productos por nombre, conectores sin cantidad, toda forma de «no/sin», cambio de varios atributos parcialmente negados ni idempotencia de correcciones posteriores. Próxima tanda debe centrarse en opciones pendientes interrumpidas por precio/cambio/negación y regreso al paso, usando recorridos completos reservados de varias cartas. Inferencia y medios reales pendientes; no declarar piloto por conteo ni promover Main automáticamente.
+
+
+Cierre local de fronteras: 66 suites / 4092 pruebas aprobadas en 412.781 segundos (/tmp/ppp-code-boundaries-full.log), 156 focalizadas y TypeScript final aprobados; snapshot íntegro. 60 regresiones nuevas. Pendiente publicar y desplegar código validado. Main 49194fec intacta, cero API pagada; 36/40 usadas4restantes. Siguiente prioridad: interrupciones con opciones pendientes y retorno al mismo producto, variando cartas y preservando cantidades/notas.
