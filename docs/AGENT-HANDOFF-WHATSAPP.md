@@ -1019,3 +1019,6 @@ Límites y siguiente tanda: esta corrección acredita listas independientes de c
 
 
 Cierre local de identidad: 66 suites / 4.032 pruebas aprobadas en 534.911 segundos (/tmp/ppp-code-identity-full.log), 80 focalizadas y TypeScript aprobados; snapshot íntegro. 24 regresiones nuevas. Pendiente publicación y despliegue del código validado. Main 49194fec intacta. Cero API pagada; 36/40 usadas, 4 restantes. Negación sin alternativa queda pendiente para siguiente tanda; no se ejecutó ni corrigió en este cierre.
+
+
+Staging verificado 14/10/2026 07:42 Bogotá: runtime c3589adb, running/healthy, imagen activa = candidata sha256:2db338458820e8d796b352f508c80d6bb09dd33dd4782090f3d6d75d96a31fd2; HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia /tmp/ppp-code-identity-deploy.log y /tmp/ppp-code-identity-verified.log. Main local y servidor 49194fec comprobadas sin cambios. 24 regresiones nuevas, full 66 suites/4032 pruebas y TypeScript aprobados, fuente íntegra. Cero API pagada. Siguiente: código aislado homónimo, listas con notas/dirección, atributos pendientes, negación sin alternativa; no promover Main automáticamente.
