@@ -930,14 +930,31 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    // Catalog-backed addition commands must reach ordering before checkout captures fields.
-    const addPrefix = /^(?:agr[eé]ga(?:me)?|a[nñ][aá]de(?:me)?|ponme)\s+(?=(?:un|una|unos|unas|otro|otra|dos|tres|cuatro|cinco|\d+)\b)/i;
-    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) &&
-        this.catalogService.findProductEmbeddedInMessage(originalText, await this.catalogService.getMenuProducts())) {
-      text = originalText.replace(addPrefix, 'Quiero ');
+    // Explicit product addition commands must reach catalog resolution before checkout fields.
+    const addPrefix = /^(?:agr[eé]ga(?:me)?|a[nñ][aá]de(?:me)?|ponme)\s+(?=(?:(?:un|una|unos|unas|otro|otra|dos|tres|cuatro|cinco|\d+)\b|(?:c[oó]digo\s*#?\s*|#\s*)\d{1,4}\b))/i;
+    const additionBody = originalText.replace(addPrefix, '');
+    const addressAddition = /^(?:un|una|otro|otra|dos|tres|cuatro|cinco|\d+)\s+(?:apartamento|apto|torre|piso|casa|edificio|bloque|interior)\b/i.test(additionBody);
+    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && addressAddition) {
+      const reference = additionBody.replace(/^(?:un|una|otro|otra|dos|tres|cuatro|cinco|\d+)\s+/i, '');
+      text = `Dirección: ${session.address?.trim() ? session.address.trim() + ', ' : ''}${reference}`;
+      originalText = text;
+    }
+    if (addPrefix.test(originalText) && !/[¿?]/.test(originalText) && !addressAddition) {
+      const additionMenu = await this.catalogService.getMenuProducts();
+      const additionCode = this.catalogService.extractCodeFromMessage(additionBody);
+      const codeProduct = additionCode == null ? null : this.catalogService.findByCode(additionCode, additionMenu);
+      const canonical = originalText.replace(addPrefix, 'Quiero ');
+      const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(canonical));
+      const knownName = this.catalogService.findProductEmbeddedInMessage(canonical, additionMenu) ||
+        this.catalogService.searchByNameScored(query, additionMenu, 6).find(hit => hit.score >= 40)?.p;
+      if ((additionCode != null && !codeProduct) || (additionCode == null && !knownName)) {
+        await this.reply(conv, msg.waId, 'No encontré ese producto en la carta. El carrito sigue igual. Dime otro producto o pide el menú.');
+        return;
+      }
+      text = codeProduct ? canonical.replace(/(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})\b/i, codeProduct.name) : canonical;
       originalText = text;
       if (conv.state === 'awaiting_address') {
-        session = { ...session, pendingCheckoutResume: 'awaiting_address' };
+        session = { ...session, pendingCheckoutResume: this.parseCompoundOrderMessage(text).address ? undefined : 'awaiting_address' };
         await this.conversationService.saveSession(conv, session, 'building_cart');
       }
     }
@@ -1600,6 +1617,8 @@ export class WhatsappOrchestratorService {
     const compound = this.parseCompoundOrderMessage(text);
     const earlyMenu = session.cart.length ? await this.catalogService.getMenuProducts() : [];
     const namesLoadedDish = earlyMenu.some((product) => this.normalizeForMatch(product.name) === this.normalizeForMatch(originalText));
+    const namesOrderDish = /^(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
+      !!this.catalogService.findProductEmbeddedInMessage(compound.productText, earlyMenu);
     if (
       session.cart.length > 1 &&
       (await this.tryKeepOnlyNamedCartLine(conv, msg.waId, session, text, earlyMenu, cfg))
@@ -1608,7 +1627,7 @@ export class WhatsappOrchestratorService {
     }
     // Resolve an address-only turn before compound parsing pre-applies it;
     // otherwise the new address looks like an already-confirmed old address.
-    if (session.cart.length && !namesLoadedDish && !this.isPickupIntent(originalText) &&
+    if (session.cart.length && !namesLoadedDish && !namesOrderDish && !this.isPickupIntent(originalText) &&
         this.isAddressOnlyCustomerMessage(originalText, compound) &&
         await this.tryHandleAddressOnlyWhileBuildingCart(conv, msg.waId, session, originalText, compound, cfg)) return;
     session = this.isPickupIntent(originalText) || this.isPickupIntent(text)

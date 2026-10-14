@@ -10973,3 +10973,52 @@ describe('Consultar una adición — no efectuar la compra',()=>{
   expect(reply||'').toMatch(/17\.000/);expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Adiciones — códigos y productos desconocidos',()=>{
+ const menus=[['Pizza De Setas','Agua Mineral'],['Bowl De Quinoa','Te Helado']].map((names,index)=>names.map((name,offset)=>({id:19601+index*10+offset,code:601+index*10+offset,name,price:13000,availableNow:true,hasAttributes:false,attributes:[]})));
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['building_cart','awaiting_address','awaiting_payment'].flatMap(state=>['codigo2','codigo1','codigoSolo','codigoNombre','desconocido1','desconocido2'].map(kind=>({menu,agent,state,kind}))))))('$kind en $state (agent $agent)',async({menu,agent,state,kind})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state=state;
+  h.conv.sessionData.address='Calle 12 #34-56';h.conv.sessionData.addressConfirmed=true;
+  h.conv.sessionData.cart=[{productId:menu[1].id,code:menu[1].code,name:menu[1].name,unitPrice:13000,quantity:2,attributes:[],note:'sin hielo'}];
+  const before=structuredClone(h.conv.sessionData.cart);
+  const text=kind==='codigo2'?`Agrega dos del código ${menu[0].code}`:kind==='codigo1'?`Añade un #${menu[0].code}`:kind==='codigoSolo'?`Agrega #${menu[0].code}`:kind==='codigoNombre'?`Ponme código ${menu[0].code}`:kind==='desconocido1'?'Agrega un pastel lunar':'Añade dos croquetas estelares';
+  const reply=await h.sendQueued(text);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');
+  if(kind.startsWith('codigo'))expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:menu[1].id,qty:2,note:'sin hielo'}),expect.objectContaining({id:menu[0].id,qty:kind==='codigo2'?2:1})]));
+  else {expect(h.conv.sessionData.cart).toEqual(before);expect(reply||'').toMatch(/no (?:tenemos|manejamos|encontré|encontre)|no está|no aparece/i);}
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Adiciones — código inexistente y referencia de domicilio',()=>{
+ const menus=[['Pizza De Setas','Agua Mineral'],['Bowl De Quinoa','Te Helado']].map((names,index)=>names.map((name,offset)=>({id:19701+index*10+offset,code:701+index*10+offset,name,price:13000,availableNow:true,hasAttributes:false,attributes:[]})));
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['building_cart','awaiting_address','awaiting_payment'].map(state=>({menu,agent,state})))))('código desconocido no cambia $state (agent $agent)',async({menu,agent,state})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=[{productId:menu[1].id,name:menu[1].name,code:menu[1].code,unitPrice:13000,quantity:2,attributes:[]}];
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Agrega dos #9999');
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.conv.state).toBe(state);
+  expect(reply||'').toMatch(/no encontré/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['apartamento','torre'].map(place=>({menu,agent,place})))))('$place no se compra como producto (agent $agent)',async({menu,agent,place})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_address';h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=[{productId:menu[1].id,name:menu[1].name,code:menu[1].code,unitPrice:13000,quantity:2,attributes:[]}];
+  const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(`Añade un ${place} #${menu[0].code}`);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.sessionData.address).toContain(place);expect(h.conv.sessionData.address).toContain(String(menu[0].code));
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Adición con dirección — completar sin repetirla',()=>{
+ it.each(['Pizza De Setas','Bowl De Quinoa'].flatMap((name,index)=>[false,true].map(agent=>({name,index,agent}))))('$name (agent $agent)',async({name,index,agent})=>{
+  const p={id:19801+index,code:801+index,name,price:17000,availableNow:true,hasAttributes:false,attributes:[]};
+  const base={id:19811,code:811,name:'Agua Mineral',price:4000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([p,base] as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_address';h.conv.sessionData.address=undefined;
+  h.conv.sessionData.cart=[{productId:base.id,name:base.name,code:base.code,unitPrice:4000,quantity:2,attributes:[]}];
+  const reply=await h.sendQueued(`Añade dos ${name} para la calle 9 #18-27`);
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:base.id,qty:2}),expect.objectContaining({id:p.id,qty:2})]));
+  expect(h.conv.sessionData.address).toMatch(/calle 9.*18-27/i);
+  expect(reply||'').not.toMatch(/escribe.*dirección|dirección correcta|misma dirección|otra dirección/i);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
