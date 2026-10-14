@@ -10854,3 +10854,33 @@ describe('Foto — selección conserva pedidos ajenos y evita líneas ambiguas',
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
 });
+
+describe('Foto — conserva atributos y notas de la línea elegida', () => {
+  it.each(['Pizza Vegetal','Bowl De Quinoa'].flatMap((name,index)=>[false,true].map(agent=>({name,index,agent}))))('conserva opciones de $name (agent $agent)',async({name,index,agent})=>{
+    const id=19101+index;
+    const product={id,code:id,name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+    const h=harness([product] as typeof products,agent);h.service.ordersService.create=jest.fn();
+    h.conv.sessionData.cart=[{productId:id,code:id,name,unitPrice:18000,quantity:3,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}],note:'sin cebolla'}];
+    h.conv.sessionData.recentImageOrder=[{productId:id,name}];
+    h.conv.state=agent?'awaiting_payment':'awaiting_address';
+    h.conv.sessionData.address='Calle 12 #34-56';
+    h.conv.sessionData.paymentMethod='cash';
+    await h.sendQueued('de la foto solo el primero');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:3,note:'sin cebolla',attrs:['Salsa:Picante']})]);
+    expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it.each([false,true])('una opción retirada no se cambia silenciosamente (agent %s)',async(agent)=>{
+    const product={id:19111,code:19111,name:'Wrap De Verduras',price:15000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave']}]};
+    const h=harness([product] as typeof products,agent);h.service.ordersService.create=jest.fn();
+    h.conv.sessionData.cart=[{productId:product.id,code:product.code,name:product.name,unitPrice:15000,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}],note:'sin cebolla'}];
+    h.conv.sessionData.recentImageOrder=[{productId:product.id,name:product.name}];
+    const before=structuredClone(h.conv.sessionData.cart);
+    const reply=await h.sendQueued('de la foto solo el primero');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(reply||'').toMatch(/no pude|opción|opciones|aclar/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+});

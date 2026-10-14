@@ -906,6 +906,10 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Resolve photo references before checkout can capture their text as an address.
+    if (this.photoSubsetPicks(originalText) && await this.tryApplyPhotoSubset(
+      conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg,
+    )) return;
     const pointsNamedMenuOrder = /^(?:quiero|quisiera|dame|agrega|ponme|me\s+env[ií]as|me\s+regalas)\b/i.test(originalText) &&
       !/^(?:quiero|quisiera)\s+(?:ver|saber|consultar)\b/i.test(originalText) &&
       this.pointsHandler.isPointsTopic(originalText) &&
@@ -1631,7 +1635,6 @@ export class WhatsappOrchestratorService {
     if (await this.tryReplaceDeniedCartItem(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryApplySeparatedNumberRoles(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryAskAmbiguousDemonstrativeNote(conv, msg.waId, session, originalText, cfg)) return;
-    if (await this.tryApplyPhotoSubset(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryApplyCompoundKitchenNote(conv, msg.waId, session, originalText, products, cfg)) return;
     if (await this.tryRemoveMostExpensiveLine(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryCancelNamedCartLine(conv, msg.waId, session, originalText, products, cfg)) return;
@@ -18176,14 +18179,24 @@ export class WhatsappOrchestratorService {
       return true;
     }
     let next: WhatsappSessionData = { ...session, cart: session.cart.filter(line => !photoIds.has(line.productId)) };
-    for (const pick of picks) {
+    for (const [position, pick] of picks.entries()) {
       const item = remembered[pick.index - 1];
       const product = products.find((candidate) => candidate.id === item.productId);
       if (!product) {
         await this.reply(conv, waId, 'No tengo la lista de esa foto. Dime los nombres y las cantidades. El pedido sigue igual.');
         return true;
       }
-      const added = this.tryAddProductToCart(next, product, pick.qty, cfg);
+      const existing = session.cart.find(line => line.productId === item.productId);
+      const withdrawn = existing?.attributes?.some(choice => !product.attributes?.some(attribute =>
+        this.normalizeForMatch(attribute.attributeName) === this.normalizeForMatch(choice.attributeName) &&
+        attribute.options.some(option => this.normalizeForMatch(option) === this.normalizeForMatch(choice.attributeValue))));
+      if (withdrawn) {
+        await this.reply(conv, waId, 'Una opción de ese producto ya no está en la carta. Necesito aclararla antes de cambiar la selección de la foto. El pedido sigue igual.');
+        return true;
+      }
+      // An ordinal selects a product; only an explicit count changes its quantity.
+      const quantity = position === 0 ? existing?.quantity || pick.qty : pick.qty;
+      const added = this.tryAddProductToCart(next, product, quantity, cfg, existing?.note, existing?.attributes);
       if (added.blocked || added.missingAttributes || !added.session) {
         await this.reply(conv, waId, `No pude dejar solo esa selección de la foto. El pedido sigue igual.`);
         return true;
