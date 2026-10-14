@@ -10884,3 +10884,49 @@ describe('Foto — conserva atributos y notas de la línea elegida', () => {
   });
 
 });
+
+describe('Foto — procedencia de cantidades fusionadas',()=>{
+ const menus=[['Pizza De Setas','Pan De Ajo','Agua Mineral'],['Bowl De Quinoa','Edamame','Te Helado']].map((names,index)=>names.map((name,offset)=>({id:19201+index*10+offset,code:19201+index*10+offset,name,price:10000,availableNow:true,hasAttributes:false,attributes:[]})));
+ const row=(p:typeof menus[number][number],quantity=1)=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity,attributes:[]});
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['antes','después','ajeno'].map(kind=>({menu,agent,kind})))) )('$kind no pierde unidades independientes (agent $agent)',async({menu,agent,kind})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[row(menu[0],kind==='ajeno'?1:3),row(menu[1])];
+  h.conv.sessionData.recentImageOrder=menu.slice(0,2).map(p=>({productId:p.id,name:p.name}));
+  h.conv.sessionData.recentImageCartBefore=kind==='antes'?[row(menu[0],2)]:[];
+  h.conv.sessionData.recentImageCartSignature=JSON.stringify([row(menu[0],kind==='después'?1:kind==='antes'?3:1),row(menu[1])]);
+  if(kind==='ajeno')h.conv.sessionData.cart.push(row(menu[2],2));
+  const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('de la foto solo el segundo');
+  if(kind==='ajeno')expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[2].id,qty:2}),expect.objectContaining({id:menu[1].id,qty:1})]);
+  else {expect(h.conv.sessionData.cart).toEqual(before);expect(reply||'').toMatch(/antes|después|cambió|aclar/i);}
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['antes','después','sin productos','ilegible'].map(kind=>({menu,agent,kind})))))('captura procedencia en imagen real del router: $kind (agent $agent)',async({menu,agent,kind})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();
+  if(kind==='antes')h.conv.sessionData.cart=[row(menu[0],2)];
+  if(kind==='sin productos'||kind==='ilegible'){
+   h.conv.sessionData.cart=[row(menu[0])];
+   h.conv.sessionData.recentImageOrder=[{productId:menu[0].id,name:menu[0].name}];
+  }
+  h.service.resolveImageMessage=jest.fn().mockResolvedValue({done:kind==='ilegible',text:kind==='sin productos'?'No entendí la foto':`Quiero un ${menu[0].name}`});
+  await h.service.handleIncomingUnlocked({waId:'customer',phoneE164:h.conv.phoneE164,messageId:'synthetic-photo',messageType:'image',mediaId:'mock-photo',raw:{}});
+  if(kind==='sin productos'||kind==='ilegible'){
+   expect(h.conv.sessionData.recentImageOrder).toBeUndefined();
+   expect(h.conv.sessionData.recentImageCartBefore).toBeUndefined();
+   expect(h.conv.sessionData.recentImageCartSignature).toBeUndefined();
+  }else{
+   expect(h.conv.sessionData.recentImageCartBefore).toEqual(kind==='antes'?[row(menu[0],2)]:[]);
+   expect(h.conv.sessionData.recentImageCartSignature).toBe(JSON.stringify(h.conv.sessionData.cart.filter(line=>line.productId===menu[0].id)));
+   if(kind==='después'){
+    await h.sendQueued(`Quiero otro ${menu[0].name}`);
+    expect(h.cartRows().find(line=>line.id===menu[0].id)?.qty).toBe(2);
+   }
+   const before=structuredClone(h.conv.sessionData.cart);
+   const reply=await h.sendQueued('de la foto solo el primero');
+   expect(h.conv.sessionData.cart).toEqual(before);
+   expect(reply||'').toMatch(kind==='antes'?/antes de la foto/i:/después de esa foto/i);
+  }
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+
+});

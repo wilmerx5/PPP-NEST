@@ -466,7 +466,12 @@ export class WhatsappOrchestratorService {
     await this.handleIncomingTurn(msg, turn);
     if (!turn.conv) return;
     const conv = turn.conv;
-    const session = this.conversationService.getSession(conv);
+    let session = this.conversationService.getSession(conv);
+    if (msg.messageType === 'image' && msg.raw?.resolvedOrderImage && session.recentImageOrder?.length) {
+      const ids = new Set(session.recentImageOrder.map(item => item.productId));
+      session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
+      await this.conversationService.saveSession(conv, session);
+    }
     // An active delivery address expresses checkout intent. Advance once every selection is resolved.
     if (conv.state !== 'building_cart' || !session.cart.length || session.orderType !== 'delivery' ||
       !session.address?.trim() || !session.addressConfirmed || session.deliveryOutOfCoverage ||
@@ -573,19 +578,25 @@ export class WhatsappOrchestratorService {
       text = resolved;
       // Sin eco aparte: el siguiente mensaje útil ya responde (menos burbujas / latencia)
     } else if (msg.messageType === 'image' && msg.mediaId) {
+      // A new photo invalidates the previous photo reference, even if unreadable.
+      const priorImageSession = this.conversationService.getSession(conv);
+      await this.conversationService.saveSession(conv, {
+        ...priorImageSession, recentImageOrder: undefined,
+        recentImageCartBefore: undefined, recentImageCartSignature: undefined,
+      });
       const img = await this.resolveImageMessage(msg, logged.id, conv, cfg);
       if (img.done) return;
       msg.raw = { ...(msg.raw || {}), resolvedOrderImage: true };
       text = img.text;
       const imageMenu = await this.catalogService.getMenuProducts();
       const imageItems = this.imageOrderProducts(text, imageMenu);
-      if (imageItems.length) {
-        const imageSession = this.conversationService.getSession(conv);
-        await this.conversationService.saveSession(conv, {
-          ...imageSession,
-          recentImageOrder: imageItems.map((product) => ({ productId: product.id, name: product.name })),
-        });
-      }
+      const imageSession = this.conversationService.getSession(conv);
+      await this.conversationService.saveSession(conv, {
+        ...imageSession,
+        recentImageOrder: imageItems.length ? imageItems.map(product => ({ productId: product.id, name: product.name })) : undefined,
+        recentImageCartBefore: imageItems.length ? structuredClone(imageSession.cart) : undefined,
+        recentImageCartSignature: undefined,
+      });
     } else if (msg.messageType === 'location') {
       const addr = this.formatLocationAddress(msg);
       if (!addr) {
@@ -18172,6 +18183,15 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const photoIds = new Set(remembered.map(item => item.productId));
+    if (session.recentImageCartBefore?.some(line => photoIds.has(line.productId))) {
+      await this.reply(conv, waId, 'Ese producto ya se había pedido antes de la foto. Necesito aclarar qué unidades cambias para conservar las demás. El pedido sigue igual.');
+      return true;
+    }
+    if (session.recentImageCartSignature && session.recentImageCartSignature !==
+        JSON.stringify(session.cart.filter(line => photoIds.has(line.productId)))) {
+      await this.reply(conv, waId, 'El carrito cambió después de esa foto. Dime el producto y la cantidad final para conservar las demás unidades. El pedido sigue igual.');
+      return true;
+    }
     // A photo correction must not replace products ordered independently.
     // Multiple preparations of the same SKU cannot be attributed to the photo safely.
     if (remembered.some(item => session.cart.filter(line => line.productId === item.productId).length > 1)) {
@@ -18203,6 +18223,7 @@ export class WhatsappOrchestratorService {
       }
       next = added.session;
     }
+    next.recentImageCartSignature = JSON.stringify(next.cart.filter(line => photoIds.has(line.productId)));
     await this.conversationService.saveSession(conv, next, 'building_cart');
     await this.reply(
       conv,

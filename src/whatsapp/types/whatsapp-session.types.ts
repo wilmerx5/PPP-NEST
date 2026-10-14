@@ -99,6 +99,10 @@ export type WhatsappSessionData = {
   recentUnavailableOrder?: { items: string[]; expiresAt: number };
   /** Productos reconocidos en la última foto, en el orden en que aparecieron. */
   recentImageOrder?: Array<{ productId: number; name: string }>;
+  /** Snapshot before image additions, used to protect independently ordered units. */
+  recentImageCartBefore?: WhatsappCartItem[];
+  /** Only image product lines after a successful image turn or correction. */
+  recentImageCartSignature?: string;
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;
