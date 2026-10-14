@@ -1038,3 +1038,6 @@ Límites: no acredita listas arbitrarias mixtas de SKU homónimos por código y 
 
 
 Cierre local de fronteras: 66 suites / 4092 pruebas aprobadas en 412.781 segundos (/tmp/ppp-code-boundaries-full.log), 156 focalizadas y TypeScript final aprobados; snapshot íntegro. 60 regresiones nuevas. Pendiente publicar y desplegar código validado. Main 49194fec intacta, cero API pagada; 36/40 usadas4restantes. Siguiente prioridad: interrupciones con opciones pendientes y retorno al mismo producto, variando cartas y preservando cantidades/notas.
+
+
+Publicación/despliegue pendientes por conectividad: código validado guardado en commit local a18070ad. Primer push falló DNS github.com; segundo falló conexión443. SSH76.13.119.125 falló No route to host y reintento Connection timed out. Primer intento de despliegue no accedió al servidor (/tmp/ppp-code-boundaries-deploy.log); no acreditar nueva imagen ni salud. Último staging verificado runtime c3589adb,checkout7802e6a6. Main local comprobada49194fec, sin cambios realizados. Reintentar git push origin staging y SOLO después de éxito deploy de staging api y verificar SHA/imagen/health; conservar dist, bin y volúmenes. Las pruebas completas sí terminaron:66/4092,156focalizadas,TypeScript,snapshot íntegro,ceroAPIpagada.
