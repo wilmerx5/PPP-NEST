@@ -1384,6 +1384,13 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /** "somos tres" a secas cuenta comensales. "tres hamburguesas" sigue siendo un pedido. */
+  private isBareDinerCount(text: string): boolean {
+    return /^(?:somos|seriamos)\s+(?:unas?\s+|como\s+)?(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)$/.test(
+      normalizeText(text || ''),
+    );
+  }
+
   /** Extrae cantidad pedida: "5 pollos", "cinco", "x3", "dos sopas". Default 1. */
   extractQuantityFromMessage(text: string, products: WhatsappCatalogProduct[] = []): number {
     const raw = this.stripDinerCount((text || '').trim());
@@ -1741,6 +1748,7 @@ export class WhatsappCatalogService {
       .replace(/\s+/g, ' ')
       .trim()
       .replace(/^(?:(?:ola|olas|hola|hey|hi|buenas(?:\s+(?:noches|tardes))?|buenos(?:\s+d[ií]as)?|buen\s+d[ií]a)\b[\s,!.-]*)+/i, '')
+      .replace(/^(?:(?:por\s+favor|porfavor|porfa|por\s+fa)\b[\s,!.-]*)+/i, '')
       .replace(/^(?:me\s+)?(?:env[ií]as|env[ií]e|env[ií]ame|m[aá]ndame)\b[\s,!.-]*/i, '')
       .replace(/^(veci(?:no|na)?|amigo|amiga|parce|compadre)[\s,!.-]*/i, '')
       .replace(/^(me\s+puedes\s+(?:enviar|mandar|traer|dar|regalar|poner)\s+)/i, '')
@@ -2886,7 +2894,12 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
-    const tokens = normalizeText(fixCommonOrderTypos(text || ''))
+    if (this.isBareDinerCount(text)) return null;
+    const spoken = normalizeText(fixCommonOrderTypos(text || '')).replace(
+      /\b(?:somos|seriamos)\s+(?:unas?\s+|como\s+)?(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/g,
+      ' ',
+    );
+    const tokens = spoken
       .split(/\s+/)
       .filter((t) => t.length >= 4);
     if (!tokens.length) return null;
@@ -3994,7 +4007,7 @@ export class WhatsappCatalogService {
 
     // "Regálame entonces 1 trucha…" / "me regalas 2 costillas"
     if (
-      /\b(regala(?:me|s|nos)?|me\s+regalas?|enviame|mandame|traeme)\b/.test(q) &&
+      /\b(regala(?:me|s|nos)?|me\s+(?:regalas?|envias|envie)|enviame|mandame|traeme)\b/.test(q) &&
       (FOOD_ORDER_SIGNAL_RE.test(raw) ||
         /\b(\d{1,2}|un|una|dos|tres)\s+(?:de\s+)?[a-z]{3,}/.test(q))
     ) {
@@ -5389,6 +5402,7 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
+    if (this.isBareDinerCount(text)) return null;
     // “¿arroz chino podría ser broaster?” → buscar el plato base, no Broaster suelto
     if (this.isDishStyleSubstitutionInquiry(text)) {
       const baseQ = this.extractBaseDishQueryForStyleSwap(text);
@@ -6109,6 +6123,7 @@ export class WhatsappCatalogService {
   ): Array<{ p: WhatsappCatalogProduct; score: number }> {
     const q = normalizeText(fixCommonOrderTypos(query));
     if (!q || q.length < 2) return [];
+    if (this.isBareDinerCount(q)) return [];
     if (this.isCourtesyOnlyMessage(query) || this.isOffTopicChitchat(query)) return [];
     if (this.isRestaurantLocationInquiry(query)) return [];
     // Guarnición sobre combo ya pedido: no buscar "arepas" como plato nuevo
@@ -9590,6 +9605,7 @@ export class WhatsappCatalogService {
 
     for (const rawSegment of segments) {
       const segment = this.cleanOrderSegment(rawSegment);
+      if (this.isBareDinerCount(segment)) continue;
       const standaloneDrink = this.resolveStandaloneDrinkOrder(segment, products);
       if (standaloneDrink && !usedProductIds.has(standaloneDrink.product.id) &&
         !(swap && this.productIsSwapRemoval(standaloneDrink.product, swap.removed, swap.added))) {

@@ -147,6 +147,8 @@ export type WhatsappSessionData = {
     name: string;
     variantBaseKey?: string;
   };
+  /** Opción de una lista que se acaba de describir. «Sí, ese» compra solo esta. */
+  describedListCandidateId?: number;
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
     cartSignature?: string;

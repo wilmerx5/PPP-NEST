@@ -12187,3 +12187,773 @@ describe('Aclaraciones de listas — fuera de rango y otra selección activa',()
   expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe(state);expect(reply||'').toMatch((kind==='sabor' || kind==='precioDescripcion')?/listas|opci[oó]n pendiente/i:/elige|entre 1 y/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Sí, ese — después de describir la opción', () => {
+  const synthetic = (base: string, id: number) => [
+    { id, code: id - 25000 + 600, name: `${base} Solo`, price: 22000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Porción individual' },
+    { id: id + 1, code: id - 25000 + 601, name: `Combo ${base} Con Pollo`, price: 29000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Incluye pollo y bebida' },
+    { id: id + 2, code: id - 25000 + 602, name: `Combo ${base} Con Costillas`, price: 31000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Incluye costillas y bebida' },
+  ];
+  const cases = [
+    { kind: 'ppp', menu: products, text: 'que arroces maneja' },
+    { kind: 'pizza', menu: synthetic('Pizza Rustica', 25001), text: 'tienen pizza rustica' },
+    { kind: 'ramen', menu: synthetic('Ramen De Miso', 25011), text: 'tienen ramen de miso' },
+    { kind: 'tacos', menu: synthetic('Taco Al Pastor', 25021), text: 'tienen taco al pastor' },
+    { kind: 'burger', menu: synthetic('Hamburguesa De Lentejas', 25031), text: 'tienen hamburguesa de lentejas' },
+    { kind: 'sushi', menu: synthetic('Roll De Salmon', 25041), text: 'tienen roll de salmon' },
+    { kind: 'pasta', menu: synthetic('Pasta Al Pesto', 25051), text: 'tienen pasta al pesto' },
+    { kind: 'bowl', menu: synthetic('Bowl De Quinoa', 25061), text: 'tienen bowl de quinoa' },
+  ];
+  const phrases = ['sí, ese', 'ese mismo', 'dale esa', 'sí', 'sí por favor'];
+
+  it.each(cases.flatMap((item) => phrases.flatMap((phrase) => [false, true].map((agent) => ({ ...item, phrase, agent })))))(
+    '$kind $phrase compra la opción descrita (agent $agent)',
+    async ({ menu, text, phrase, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      await h.sendQueued(text);
+      const candidates = h.conv.sessionData.pendingMatch?.candidates || [];
+      expect(candidates.length).toBeGreaterThanOrEqual(2);
+      const described = candidates[1];
+      const info = await h.sendQueued('¿Qué trae la opción 2?');
+      expect(info || '').toContain(described.name);
+      expect(h.cartRows()).toEqual([]);
+      expect(h.conv.sessionData.productFocus?.productId).toBe(described.id);
+      await h.sendQueued(phrase);
+      for (let step = 0; h.conv.sessionData.pendingAttribute && step < 3; step++) {
+        const pending = h.conv.sessionData.pendingAttribute;
+        expect(pending.productId).toBe(described.id);
+        const remaining = h.service.catalogService.getRemainingAttributes(described, pending.selected);
+        expect(remaining.length).toBeGreaterThan(0);
+        await h.sendQueued(remaining[0].options[0]);
+      }
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: described.id, qty: 1 })]);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('sin descripción no adivina el ese (agent %s)', async (agent) => {
+    const menu = synthetic('Pizza Rustica', 25001);
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued('tienen pizza rustica');
+    expect(h.conv.sessionData.pendingMatch?.candidates?.length).toBeGreaterThanOrEqual(2);
+    await h.sendQueued('sí, ese');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sí sin descripción no compra (agent %s)', async (agent) => {
+    const menu = synthetic('Pizza Rustica', 25001);
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued('tienen pizza rustica');
+    await h.sendQueued('sí');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sí de la dirección no compra la opción descrita (agent %s)', async (agent) => {
+    const menu = synthetic('Pizza Rustica', 25001);
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued('tienen pizza rustica');
+    await h.sendQueued('¿Qué trae la opción 2?');
+    h.conv.state = 'awaiting_address';
+    h.conv.sessionData.address = 'Calle 10 20 30';
+    h.conv.sessionData.addressConfirmed = false;
+    await h.sendQueued('sí');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Cierre de aclaración — nombre o nota elige la línea', () => {
+  const line = (dish: { id: number; code: number; name: string; price: number }, quantity: number, note: string) => ({
+    productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[], note,
+  });
+  const menus = () => {
+    const arroz = products.find((item) => /^arroz paisa$/i.test(item.name));
+    const side = products.find((item) => /limonada natural/i.test(item.name));
+    const synthetic = (name: string, id: number) => ({
+      dish: { id, code: id - 26000 + 700, name, price: 18000 },
+      side: { id: id + 9, code: id - 26000 + 709, name: 'Agua Mineral', price: 3000 },
+      menu: [
+        { id, code: id - 26000 + 700, name, price: 18000, availableNow: true, hasAttributes: false, attributes: [], description: '' },
+        { id: id + 9, code: id - 26000 + 709, name: 'Agua Mineral', price: 3000, availableNow: true, hasAttributes: false, attributes: [], description: '' },
+      ],
+    });
+    return [
+      { kind: 'ppp', dish: arroz!, side: side!, menu: products },
+      { kind: 'pizza', ...synthetic('Pizza Rustica', 26001) },
+      { kind: 'ramen', ...synthetic('Ramen De Miso', 26011) },
+      { kind: 'tacos', ...synthetic('Taco Al Pastor', 26021) },
+      { kind: 'burger', ...synthetic('Hamburguesa De Lentejas', 26031) },
+      { kind: 'sushi', ...synthetic('Roll De Salmon', 26041) },
+      { kind: 'pasta', ...synthetic('Pasta Al Pesto', 26051) },
+      { kind: 'bowl', ...synthetic('Bowl De Quinoa', 26061) },
+    ];
+  };
+
+  it.each(menus().flatMap((item) => ['la sin cilantro', 'con cilantro', 'la segunda'].flatMap((phrase) => [false, true].map((agent) => ({ ...item, phrase, agent })))))(
+    '$kind $phrase deja dos solo en esa línea (agent $agent)',
+    async ({ dish, side, menu, phrase, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [line(dish, 4, 'sin cilantro'), line(dish, 3, 'con cilantro'), line(side, 1, '')];
+      await h.sendQueued(`Deja solo dos ${dish.name}`);
+      expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+      await h.sendQueued(phrase);
+      const sinQty = phrase === 'la sin cilantro' ? 2 : 4;
+      const conQty = phrase === 'la sin cilantro' ? 3 : 2;
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: dish.id, qty: sinQty, note: 'sin cilantro' }),
+        expect.objectContaining({ id: dish.id, qty: conQty, note: 'con cilantro' }),
+        expect.objectContaining({ id: side.id, qty: 1 }),
+      ]);
+      expect(h.conv.sessionData.pendingCartQuantity).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(menus().flatMap((item) => ['sin cilantro', 'sin cebolla'].flatMap((phrase) => [false, true].map((agent) => ({ ...item, phrase, agent })))))(
+    '$kind $phrase no elige si la nota no es única (agent $agent)',
+    async ({ dish, side, menu, phrase, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [line(dish, 4, 'sin cilantro'), line(dish, 3, 'sin cilantro'), line(side, 1, '')];
+      await h.sendQueued(`Deja solo dos ${dish.name}`);
+      const before = structuredClone(h.conv.sessionData.cart);
+      expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+      const reply = await h.sendQueued(phrase);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+      expect(reply || '').toMatch(/n[uú]mero|a cu[aá]l plato|sigue igual/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(menus().flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind quita solo la línea nombrada por la nota (agent $agent)',
+    async ({ dish, side, menu, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [line(dish, 4, 'sin cilantro'), line(dish, 3, 'con cilantro'), line(side, 1, '')];
+      await h.sendQueued(`Quita la ${dish.name}`);
+      expect(h.conv.sessionData.pendingCartRemoval?.options).toHaveLength(2);
+      await h.sendQueued('la con cilantro');
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: dish.id, qty: 4, note: 'sin cilantro' }),
+        expect.objectContaining({ id: side.id, qty: 1 }),
+      ]);
+      expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('Multiórden — varias elecciones en un turno', () => {
+  const families = [
+    { kind: 'pizza', a: 'Pizza Vegetal', b: 'Pizza De Queso', c: 'Pasta De Setas', d: 'Pasta De Espinaca' },
+    { kind: 'ramen', a: 'Ramen Vegetal', b: 'Ramen De Miso', c: 'Gyoza De Setas', d: 'Gyoza De Cerdo' },
+    { kind: 'tacos', a: 'Taco Vegetal', b: 'Taco Al Pastor', c: 'Quesadilla De Setas', d: 'Quesadilla De Pollo' },
+    { kind: 'burger', a: 'Hamburguesa Vegetal', b: 'Hamburguesa De Lentejas', c: 'Papas De Setas', d: 'Papas De Queso' },
+    { kind: 'sushi', a: 'Roll Vegetal', b: 'Roll De Salmon', c: 'Nigiri De Setas', d: 'Nigiri De Atun' },
+    { kind: 'pasta', a: 'Pasta Vegetal', b: 'Pasta Al Pesto', c: 'Lasana De Setas', d: 'Lasana De Carne' },
+    { kind: 'bowl', a: 'Bowl Vegetal', b: 'Bowl De Quinoa', c: 'Wrap De Setas', d: 'Wrap De Pollo' },
+  ];
+  const menuOf = (family: typeof families[number]) => [family.a, family.b, family.c, family.d].map((name, index) => ({
+    id: 27001 + families.indexOf(family) * 10 + index,
+    code: 800 + families.indexOf(family) * 10 + index,
+    name, price: 18000 + index * 1000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+  }));
+
+  it.each(families.flatMap((family) => ['numeros', 'nombres'].flatMap((kind) => [false, true].map((agent) => ({ family, kind, agent })))))(
+    '$family.kind $kind cierra las dos listas (agent $agent)',
+    async ({ family, kind, agent }) => {
+      const menu = menuOf(family);
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.pendingMultiOrder = {
+        confident: [], needsAttributes: [], unresolved: ['zapato comestible'],
+        ambiguous: [
+          { segment: `Dos ${family.a.split(' ')[0]}`, candidates: menu.slice(0, 2) },
+          { segment: 'Tres acompanantes', candidates: menu.slice(2) },
+        ],
+      };
+      await h.sendQueued(kind === 'numeros' ? '1 y 2' : `${menu[0].name} y ${menu[3].name}`);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: menu[0].id, qty: 2 }),
+        expect.objectContaining({ id: menu[3].id, qty: 3 }),
+      ]));
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.conv.sessionData.pendingMultiOrder?.ambiguous?.length || 0).toBe(0);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('ppp elige las dos listas por nombre (agent %s)', async (agent) => {
+    const broaster = products.filter((item) => /broaster/i.test(item.name)).slice(0, 2);
+    const frito = products.filter((item) => /frito/i.test(item.name) && !/broaster/i.test(item.name)).slice(0, 2);
+    expect(broaster).toHaveLength(2);
+    expect(frito).toHaveLength(2);
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.pendingMultiOrder = {
+      confident: [], needsAttributes: [], unresolved: ['zapato comestible'],
+      ambiguous: [
+        { segment: 'Dos pollos', candidates: broaster },
+        { segment: 'Tres pollos', candidates: frito },
+      ],
+    };
+    await h.sendQueued(`${broaster[0].name} y ${frito[1].name}`);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: broaster[0].id, qty: 2 }),
+      expect.objectContaining({ id: frito[1].id, qty: 3 }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(families.slice(0, 4).flatMap((family) => ['Mango y Durazno', 'jugos'].flatMap((phrase) => [false, true].map((agent) => ({ family, phrase, agent })))))(
+    '$family.kind $phrase reparte el sabor (agent $agent)',
+    async ({ family, phrase, agent }) => {
+      const bowl = { id: 27101 + families.indexOf(family), code: 900 + families.indexOf(family), name: family.a, price: 16000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+      const juice = { id: bowl.id + 1, code: bowl.code + 1, name: 'Jugo Natural', price: 8000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Lulo'] }] };
+      const soda = { id: bowl.id + 2, code: bowl.code + 2, name: 'Gaseosa Artesanal', price: 7000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Mora', 'Durazno'] }] };
+      const h = harness([bowl, juice, soda] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      await h.sendQueued(`Quiero dos ${bowl.name}, tres ${juice.name} y dos ${soda.name}`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: bowl.id, qty: 2 })]);
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(juice.id);
+      const answer = phrase === 'jugos' ? `el ${juice.name} Mango y la ${soda.name} Durazno` : phrase;
+      await h.sendQueued(answer);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: bowl.id, qty: 2 }),
+        expect.objectContaining({ id: juice.id, qty: 3, attrs: ['Sabor:Mango'] }),
+        expect.objectContaining({ id: soda.id, qty: 2, attrs: ['Sabor:Durazno'] }),
+      ]));
+      expect(h.cartRows()).toHaveLength(3);
+      expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('Paráfrasis de lista — qué trae y cuánto vale', () => {
+  const synthetic = (base: string, id: number) => [
+    { id, code: id - 28000 + 810, name: `${base} Solo`, price: 22000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Porción individual' },
+    { id: id + 1, code: id - 28000 + 811, name: `Combo ${base} Con Pollo`, price: 29000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Incluye pollo y bebida' },
+    { id: id + 2, code: id - 28000 + 812, name: `Combo ${base} Con Costillas`, price: 31000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[], description: 'Incluye costillas y bebida' },
+  ];
+  const lists = [
+    { kind: 'ppp', menu: products, text: 'que arroces maneja' },
+    { kind: 'pizza', menu: synthetic('Pizza Rustica', 28001), text: 'tienen pizza rustica' },
+    { kind: 'ramen', menu: synthetic('Ramen De Miso', 28011), text: 'tienen ramen de miso' },
+    { kind: 'tacos', menu: synthetic('Taco Al Pastor', 28021), text: 'tienen taco al pastor' },
+    { kind: 'burger', menu: synthetic('Hamburguesa De Lentejas', 28031), text: 'tienen hamburguesa de lentejas' },
+    { kind: 'sushi', menu: synthetic('Roll De Salmon', 28041), text: 'tienen roll de salmon' },
+    { kind: 'pasta', menu: synthetic('Pasta Al Pesto', 28051), text: 'tienen pasta al pesto' },
+    { kind: 'bowl', menu: synthetic('Bowl De Quinoa', 28061), text: 'tienen bowl de quinoa' },
+  ];
+  const questions = ['¿Qué trae la 2?', '¿Qué incluye el 2?', '¿Cómo es 2?'];
+
+  it.each(lists.flatMap((item) => questions.flatMap((question) => [false, true].map((agent) => ({ ...item, question, agent })))))(
+    '$kind $question describe sin comprar (agent $agent)',
+    async ({ menu, text, question, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      await h.sendQueued(text);
+      const options = structuredClone(h.conv.sessionData.pendingMatch);
+      const chosen = options!.candidates[1];
+      const reply = await h.sendQueued(question);
+      expect(reply || '').toContain(chosen.name);
+      expect(reply || '').toContain(chosen.description!);
+      expect(h.cartRows()).toEqual([]);
+      expect(h.conv.sessionData.pendingMatch).toEqual(options);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['Cuánto vale el segundo', 'Cuánto cuesta la 2', 'A cómo está la segunda'].flatMap((phrase) => [false, true].map((agent) => ({ phrase, agent }))))(
+    'ppp $phrase conserva el sabor pendiente (agent $agent)',
+    async ({ phrase, agent }) => {
+      const dish = products.find((item) => /^arroz paisa$/i.test(item.name))!;
+      const side = products.find((item) => /limonada natural/i.test(item.name))!;
+      const drink = products.find((item) => /jugo natural en agua/i.test(item.name))!;
+      const h = harness(products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_attribute';
+      h.conv.sessionData.cart = [
+        { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 4, attributes: [], note: 'sin cilantro' },
+        { productId: side.id, name: side.name, code: side.code, unitPrice: side.price, quantity: 1, attributes: [] },
+      ];
+      h.conv.sessionData.pendingAttribute = {
+        productId: drink.id, name: drink.name, code: drink.code, price: drink.price,
+        attributes: drink.attributes, selected: [], quantity: 3, sourceText: `3 ${drink.name} sin azúcar`,
+      };
+      h.conv.sessionData.pendingPriceInquiry = {
+        productIds: [dish.id, side.id], cartSignature: JSON.stringify(h.conv.sessionData.cart), state: h.conv.state,
+      };
+      const before = structuredClone(h.conv.sessionData);
+      const reply = await h.sendQueued(phrase);
+      expect(reply || '').toContain(side.name);
+      expect(reply || '').toContain(h.service.catalogService.formatMoney(side.price));
+      expect(h.conv.sessionData.cart).toEqual(before.cart);
+      expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+      expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();
+      const flavor = drink.attributes[0].options[1];
+      await h.sendQueued(flavor);
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: dish.id, qty: 4 }),
+        expect.objectContaining({ id: side.id, qty: 1 }),
+        expect.objectContaining({ id: drink.id, qty: 3, attrs: [`${drink.attributes[0].attributeName}:${flavor}`] }),
+      ]);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['Pizza Rustica', 'Ramen De Miso', 'Taco Al Pastor'].flatMap((name) => [false, true].map((agent) => ({ name, agent }))))(
+    '$name cuánto vale el 99 no cambia el pedido (agent $agent)',
+    async ({ name, agent }) => {
+      const dish = { id: 28101, code: 9101, name, price: 10500, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+      const water = { id: 28102, code: 9102, name: 'Agua Mineral', price: 3000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+      const drink = { id: 28103, code: 9103, name: 'Jugo Tropical', price: 6500, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Lulo'] }] };
+      const h = harness([dish, water, drink] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_attribute';
+      h.conv.sessionData.cart = [
+        { productId: dish.id, name, code: dish.code, unitPrice: dish.price, quantity: 1, attributes: [] },
+        { productId: water.id, name: water.name, code: water.code, unitPrice: water.price, quantity: 1, attributes: [] },
+      ];
+      h.conv.sessionData.pendingAttribute = {
+        productId: drink.id, name: drink.name, code: drink.code, price: drink.price,
+        attributes: drink.attributes, selected: [], quantity: 3, sourceText: '3 Jugo Tropical',
+      };
+      h.conv.sessionData.pendingPriceInquiry = {
+        productIds: [dish.id, water.id], cartSignature: JSON.stringify(h.conv.sessionData.cart), state: h.conv.state,
+      };
+      const before = structuredClone(h.conv.sessionData);
+      const reply = await h.sendQueued('Cuánto vale el 99');
+      expect(h.conv.sessionData).toEqual(before);
+      expect(reply || '').toMatch(/n[uú]mero|elige/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('Reparto — varios atributos en cada parte', () => {
+  const families = [
+    { kind: 'pizza', name: 'Pizza Campestre', a: 'Masa', a1: 'Delgada', a2: 'Gruesa', b: 'Queso', b1: 'Mozzarella', b2: 'Vegano' },
+    { kind: 'ramen', name: 'Ramen De La Casa', a: 'Caldo', a1: 'Miso', a2: 'Shoyu', b: 'Proteina', b1: 'Cerdo', b2: 'Tofu' },
+    { kind: 'tacos', name: 'Taco De La Casa', a: 'Tortilla', a1: 'Maiz', a2: 'Harina', b: 'Proteina', b1: 'Pastor', b2: 'Setas' },
+    { kind: 'burger', name: 'Hamburguesa De La Casa', a: 'Pan', a1: 'Brioche', a2: 'Integral', b: 'Proteina', b1: 'Res', b2: 'Lentejas' },
+    { kind: 'sushi', name: 'Roll De La Casa', a: 'Base', a1: 'Arroz', a2: 'Quinoa', b: 'Proteina', b1: 'Salmon', b2: 'Tofu' },
+    { kind: 'pasta', name: 'Pasta De La Casa', a: 'Pasta', a1: 'Spaghetti', a2: 'Penne', b: 'Salsa', b1: 'Pesto', b2: 'Bolognesa' },
+    { kind: 'bowl', name: 'Bowl De La Casa', a: 'Base', a1: 'Arroz', a2: 'Quinoa', b: 'Proteina', b1: 'Pollo', b2: 'Tofu' },
+  ];
+  it.each(families.flatMap((family) => [false, true].map((agent) => ({ family, agent }))))(
+    '$family.kind reparte los dos atributos (agent $agent)',
+    async ({ family, agent }) => {
+      const dish = {
+        id: 29001 + families.indexOf(family), code: 1000 + families.indexOf(family), name: family.name, price: 22000,
+        availableNow: true, hasAttributes: true,
+        attributes: [
+          { attributeName: family.a, options: [family.a1, family.a2] },
+          { attributeName: family.b, options: [family.b1, family.b2] },
+        ],
+      };
+      const h = harness([dish] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [{
+        productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 2,
+        attributes: [
+          { attributeName: family.a, attributeValue: family.a1 },
+          { attributeName: family.b, attributeValue: family.b1 },
+        ],
+        note: 'sin cebolla',
+      }];
+      await h.sendQueued(`Los quiero 1 con ${family.a2} y ${family.b2} y 1 con ${family.a1} y ${family.b1}`);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: dish.id, qty: 1, attrs: expect.arrayContaining([`${family.a}:${family.a2}`, `${family.b}:${family.b2}`]), note: expect.stringMatching(/sin cebolla/i) }),
+        expect.objectContaining({ id: dish.id, qty: 1, attrs: expect.arrayContaining([`${family.a}:${family.a1}`, `${family.b}:${family.b1}`]), note: expect.stringMatching(/sin cebolla/i) }),
+      ]));
+      expect(h.cartRows()).toHaveLength(2);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('ppp reparte presa y sopa (agent %s)', async (agent) => {
+    const dish = products.find((item) => /ejecutivo con pollo frito/i.test(item.name))!;
+    const presa = dish.attributes.find((attr) => /presa/i.test(attr.attributeName))!;
+    const sopa = dish.attributes.find((attr) => /sopa/i.test(attr.attributeName))!;
+    const leftPresa = presa.options.find((option) => /pechuga/i.test(option))!;
+    const rightPresa = presa.options.find((option) => /pierna/i.test(option))!;
+    const leftSopa = sopa.options.find((option) => /mondongo/i.test(option))!;
+    const rightSopa = sopa.options.find((option) => /ajiaco/i.test(option))!;
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [{
+      productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 2,
+      attributes: dish.attributes.map((attr) => ({ attributeName: attr.attributeName, attributeValue: attr.options[0] })),
+      note: 'sin cebolla',
+    }];
+    await h.sendQueued(`Los quiero 1 con ${leftPresa} y ${leftSopa} y 1 con ${rightPresa} y ${rightSopa}`);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: dish.id, qty: 1, attrs: expect.arrayContaining([`${presa.attributeName}:${leftPresa}`, `${sopa.attributeName}:${leftSopa}`]) }),
+      expect.objectContaining({ id: dish.id, qty: 1, attrs: expect.arrayContaining([`${presa.attributeName}:${rightPresa}`, `${sopa.attributeName}:${rightSopa}`]) }),
+    ]));
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Cambio de opción — la nota elige la línea', () => {
+  const families = [
+    { kind: 'pizza', name: 'Pizza Campestre', attr: 'Masa', from: 'Delgada', to: 'Gruesa' },
+    { kind: 'ramen', name: 'Ramen De La Casa', attr: 'Caldo', from: 'Miso', to: 'Shoyu' },
+    { kind: 'tacos', name: 'Taco De La Casa', attr: 'Tortilla', from: 'Maiz', to: 'Harina' },
+    { kind: 'burger', name: 'Hamburguesa De La Casa', attr: 'Pan', from: 'Brioche', to: 'Integral' },
+    { kind: 'sushi', name: 'Roll De La Casa', attr: 'Base', from: 'Arroz', to: 'Quinoa' },
+    { kind: 'pasta', name: 'Pasta De La Casa', attr: 'Pasta', from: 'Spaghetti', to: 'Penne' },
+    { kind: 'bowl', name: 'Bowl De La Casa', attr: 'Base', from: 'Arroz', to: 'Quinoa' },
+  ];
+
+  it.each(families.flatMap((family) => [false, true].map((agent) => ({ family, agent }))))(
+    '$family.kind la nota elige cuál cambia (agent $agent)',
+    async ({ family, agent }) => {
+      const dish = {
+        id: 29101 + families.indexOf(family), code: 1100 + families.indexOf(family), name: family.name, price: 22000,
+        availableNow: true, hasAttributes: true, attributes: [{ attributeName: family.attr, options: [family.from, family.to] }],
+      };
+      const h = harness([dish] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [
+        { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 1, attributes: [{ attributeName: family.attr, attributeValue: family.from }], note: 'sin cilantro' },
+        { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 1, attributes: [{ attributeName: family.attr, attributeValue: family.from }], note: 'con cilantro' },
+      ];
+      const asked = await h.sendQueued(`cambia ${family.attr} a ${family.to}`);
+      expect(asked || '').toMatch(/cu[aá]l plato/i);
+      expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+      await h.sendQueued('la sin cilantro');
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: dish.id, qty: 1, attrs: [`${family.attr}:${family.to}`], note: 'sin cilantro' }),
+        expect.objectContaining({ id: dish.id, qty: 1, attrs: [`${family.attr}:${family.from}`], note: 'con cilantro' }),
+      ]);
+      expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('ppp la nota elige el ejecutivo (agent %s)', async (agent) => {
+    const dish = products.find((item) => /ejecutivo con pollo frito/i.test(item.name))!;
+    const drink = dish.attributes.find((attr) => /bebida/i.test(attr.attributeName))!;
+    const from = drink.options[0];
+    const to = drink.options.find((option) => /pepsi/i.test(option)) || drink.options[1];
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    const baseAttrs = dish.attributes.map((attr) => ({ attributeName: attr.attributeName, attributeValue: attr.options[0] }));
+    h.conv.sessionData.cart = [0, 1].map(() => ({
+      productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 1,
+      attributes: baseAttrs.map((attr) => ({ ...attr })), note: '',
+    }));
+    h.conv.sessionData.cart[0].note = 'sin cilantro';
+    h.conv.sessionData.cart[1].note = 'con cilantro';
+    await h.sendQueued(`cambia la bebida a ${to}`);
+    expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+    await h.sendQueued('la sin cilantro');
+    const rows = h.cartRows();
+    expect(rows.find((row) => row.note === 'sin cilantro')?.attrs).toContain(`${drink.attributeName}:${to}`);
+    expect(rows.find((row) => row.note === 'con cilantro')?.attrs).toContain(`${drink.attributeName}:${from}`);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Nota libre — cierra la aclaración sin con/sin', () => {
+  const families = [
+    { kind: 'pizza', name: 'Pizza Campestre' },
+    { kind: 'ramen', name: 'Ramen De La Casa' },
+    { kind: 'tacos', name: 'Taco De La Casa' },
+    { kind: 'burger', name: 'Hamburguesa De La Casa' },
+    { kind: 'sushi', name: 'Roll De La Casa' },
+    { kind: 'pasta', name: 'Pasta De La Casa' },
+    { kind: 'bowl', name: 'Bowl De La Casa' },
+  ];
+
+  it.each(families.flatMap((family) => [false, true].map((agent) => ({ family, agent }))))(
+    '$family.kind la picante deja dos (agent $agent)',
+    async ({ family, agent }) => {
+      const dish = { id: 29201 + families.indexOf(family), code: 1200 + families.indexOf(family), name: family.name, price: 18000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+      const side = { id: dish.id + 50, code: dish.code + 50, name: 'Agua Mineral', price: 3000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+      const h = harness([dish, side] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [
+        { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 4, attributes: [], note: 'picante' },
+        { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 3, attributes: [], note: 'suave' },
+        { productId: side.id, name: side.name, code: side.code, unitPrice: side.price, quantity: 1, attributes: [], note: '' },
+      ];
+      await h.sendQueued(`Deja solo dos ${dish.name}`);
+      expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+      await h.sendQueued('la picante');
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: dish.id, qty: 2, note: 'picante' }),
+        expect.objectContaining({ id: dish.id, qty: 3, note: 'suave' }),
+        expect.objectContaining({ id: side.id, qty: 1 }),
+      ]);
+      expect(h.conv.sessionData.pendingCartQuantity).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('ppp la picante deja dos arroces (agent %s)', async (agent) => {
+    const dish = products.find((item) => /^arroz paisa$/i.test(item.name))!;
+    const side = products.find((item) => /limonada natural/i.test(item.name))!;
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [
+      { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 4, attributes: [], note: 'picante' },
+      { productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 3, attributes: [], note: 'suave' },
+      { productId: side.id, name: side.name, code: side.code, unitPrice: side.price, quantity: 1, attributes: [], note: '' },
+    ];
+    await h.sendQueued(`Deja solo dos ${dish.name}`);
+    await h.sendQueued('la picante');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: dish.id, qty: 2, note: 'picante' }),
+      expect.objectContaining({ id: dish.id, qty: 3, note: 'suave' }),
+      expect.objectContaining({ id: side.id, qty: 1 }),
+    ]));
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('dos notas iguales no eligen (agent %s)', async (agent) => {
+    const dish = { id: 29301, code: 1301, name: 'Pizza Campestre', price: 18000, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[] };
+    const h = harness([dish] as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [4, 3].map((quantity) => ({
+      productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity, attributes: [], note: 'picante',
+    }));
+    await h.sendQueued(`Deja solo dos ${dish.name}`);
+    const before = structuredClone(h.conv.sessionData.cart);
+    const reply = await h.sendQueued('la picante');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+    expect(reply || '').toMatch(/n[uú]mero|una sola/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Reparto en tres partes', () => {
+  const families = [
+    { kind: 'pizza', name: 'Pizza Campestre', a: 'Masa', options: ['Delgada', 'Gruesa', 'Integral'], b: 'Queso', choices: ['Mozzarella', 'Vegano', 'Azul'] },
+    { kind: 'ramen', name: 'Ramen De La Casa', a: 'Caldo', options: ['Miso', 'Shoyu', 'Tonkotsu'], b: 'Proteina', choices: ['Cerdo', 'Tofu', 'Pollo'] },
+    { kind: 'bowl', name: 'Bowl De La Casa', a: 'Base', options: ['Arroz', 'Quinoa', 'Fideos'], b: 'Proteina', choices: ['Pollo', 'Tofu', 'Res'] },
+  ];
+
+  it.each(families.flatMap((family) => [false, true].map((agent) => ({ family, agent }))))(
+    '$family.kind reparte tres combinaciones (agent $agent)',
+    async ({ family, agent }) => {
+      const dish = {
+        id: 29401 + families.indexOf(family), code: 1400 + families.indexOf(family), name: family.name, price: 22000,
+        availableNow: true, hasAttributes: true,
+        attributes: [
+          { attributeName: family.a, options: family.options },
+          { attributeName: family.b, options: family.choices },
+        ],
+      };
+      const h = harness([dish] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = [{
+        productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 3,
+        attributes: [
+          { attributeName: family.a, attributeValue: family.options[0] },
+          { attributeName: family.b, attributeValue: family.choices[0] },
+        ],
+        note: 'sin cebolla',
+      }];
+      await h.sendQueued(`Los quiero 1 con ${family.options[1]} y ${family.choices[1]} y 1 con ${family.options[2]} y ${family.choices[2]} y 1 con ${family.options[0]} y ${family.choices[0]}`);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ qty: 1, attrs: expect.arrayContaining([`${family.a}:${family.options[1]}`, `${family.b}:${family.choices[1]}`]) }),
+        expect.objectContaining({ qty: 1, attrs: expect.arrayContaining([`${family.a}:${family.options[2]}`, `${family.b}:${family.choices[2]}`]) }),
+        expect.objectContaining({ qty: 1, attrs: expect.arrayContaining([`${family.a}:${family.options[0]}`, `${family.b}:${family.choices[0]}`]) }),
+      ]));
+      expect(h.cartRows()).toHaveLength(3);
+      expect(h.cartRows().every((row) => /sin cebolla/i.test(row.note || ''))).toBe(true);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('ppp reparte tres ejecutivos (agent %s)', async (agent) => {
+    const dish = products.find((item) => /ejecutivo con pollo frito/i.test(item.name))!;
+    const presa = dish.attributes.find((attr) => /presa/i.test(attr.attributeName))!;
+    const sopa = dish.attributes.find((attr) => /sopa/i.test(attr.attributeName))!;
+    const pairs = [
+      { presa: presa.options[0], sopa: sopa.options[0] },
+      { presa: presa.options[1], sopa: sopa.options[2] },
+      { presa: presa.options[0], sopa: sopa.options[1] },
+    ];
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [{
+      productId: dish.id, name: dish.name, code: dish.code, unitPrice: dish.price, quantity: 3,
+      attributes: dish.attributes.map((attr) => ({ attributeName: attr.attributeName, attributeValue: attr.options[0] })),
+      note: 'sin cebolla',
+    }];
+    await h.sendQueued(`Los quiero 1 con ${pairs[1].presa} y ${pairs[1].sopa} y 1 con ${pairs[2].presa} y ${pairs[2].sopa} y 1 con ${pairs[0].presa} y ${pairs[0].sopa}`);
+    for (const pair of pairs) {
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: dish.id, qty: 1, attrs: expect.arrayContaining([`${presa.attributeName}:${pair.presa}`, `${sopa.attributeName}:${pair.sopa}`]) }),
+      ]));
+    }
+    expect(h.cartRows()).toHaveLength(3);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Somos tres no es un plato', () => {
+  const place = (id: number, name: string, price: number) => ({
+    id, code: id, name, price, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+  });
+  const drinkOf = (menu: typeof products, name: RegExp) => menu.find((item) => name.test(item.name))!;
+  const packOf = (menu: typeof products, name: RegExp) => menu.find((item) => name.test(item.name))!;
+
+  it.each([false, true])('ppp: somos tres no pide el paquete de hamburguesas (agent %s)', async (agent) => {
+    const pack = packOf(products, /tres\s+hamburguesas/i);
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued('Somos tres');
+    expect(h.cartRows().some((row) => row.id === pack.id)).toBe(false);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('ppp: somos tres y la bebida no arrastra el paquete (agent %s)', async (agent) => {
+    const drink = drinkOf(products, /^limonada natural$/i);
+    const pack = packOf(products, /tres\s+hamburguesas/i);
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    if (agent) {
+      h.agent.runTurn.mockResolvedValue({
+        reply: 'Listo.',
+        actions: { addItems: [{ productId: drink.id, quantity: 1 }] },
+        toolCalls: ['add_item'],
+      });
+    }
+    const reply = await h.sendQueued('Somos tres y cada uno quiere una Limonada Natural');
+    expect(h.cartRows().some((row) => row.id === pack.id)).toBe(false);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    if (agent) {
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: drink.id, qty: 3 })]);
+    } else {
+      expect(h.cartRows()).toEqual([]);
+      expect(reply || '').toMatch(/cuántas|cuantas|cuál|cual/i);
+    }
+  });
+
+  it('ppp: tres hamburguesas clasicas sigue siendo el paquete', async () => {
+    const pack = packOf(products, /tres\s+hamburguesas/i);
+    const h = harness(products, false);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued('Quiero tres hamburguesas clasicas');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: pack.id, qty: 1 })]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  const fictional = [
+    { kind: 'tacos', pack: place(19101, 'Tres Empanadas De Queso', 18000), drink: place(19102, 'Agua De Coco', 5000), diners: 'Somos tres y cada uno quiere un Agua De Coco', order: 'Quiero tres empanadas de queso', qty: 3 },
+    { kind: 'sushi', pack: place(19111, 'Cuatro Rolls De Atun', 32000), drink: place(19112, 'Te Matcha', 5000), diners: 'Somos cuatro y cada uno quiere un Te Matcha', order: 'Quiero cuatro rolls de atun', qty: 4 },
+    { kind: 'ramen', pack: place(19121, 'Dos Caldos De Miso', 22000), drink: place(19122, 'Te Verde', 4000), diners: 'Somos dos y cada uno quiere un Te Verde', order: 'Quiero dos caldos de miso', qty: 2 },
+    { kind: 'pizza', pack: place(19131, 'Tres Pizzas Rusticas', 36000), drink: place(19132, 'Gaseosa Artesanal', 5000), diners: 'Somos tres y cada uno quiere una Gaseosa Artesanal', order: 'Quiero tres pizzas rusticas', qty: 3 },
+    { kind: 'burger', pack: place(19141, 'Tres Hamburguesas De Lentejas', 30000), drink: place(19142, 'Malteada De Chocolate', 7000), diners: 'Somos tres y cada uno quiere una Malteada De Chocolate', order: 'Quiero tres hamburguesas de lentejas', qty: 3 },
+    { kind: 'pasta', pack: place(19151, 'Tres Pastas Al Pesto', 28000), drink: place(19152, 'Limonada Natural', 4500), diners: 'Somos tres y cada uno quiere una Limonada Natural', order: 'Quiero tres pastas al pesto', qty: 3 },
+    { kind: 'bowl', pack: place(19161, 'Tres Bowls De Quinoa', 27000), drink: place(19162, 'Agua Mineral', 3000), diners: 'Somos tres y cada uno quiere un Agua Mineral', order: 'Quiero tres bowls de quinoa', qty: 3 },
+  ];
+
+  it.each(fictional.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind: el conteo no pide el pack (agent $agent)',
+    async ({ pack, drink, diners, qty, agent }) => {
+      const menu = [pack, drink];
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      if (agent) {
+        h.agent.runTurn.mockResolvedValue({
+          reply: 'Listo.',
+          actions: { addItems: [{ productId: drink.id, quantity: 1 }] },
+          toolCalls: ['add_item'],
+        });
+      }
+      const reply = await h.sendQueued(diners);
+      expect(h.cartRows().some((row) => row.id === pack.id)).toBe(false);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      if (agent) {
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: drink.id, qty })]);
+      } else {
+        expect(h.cartRows()).toEqual([]);
+        expect(reply || '').toMatch(/cuántas|cuantas|cuál|cual/i);
+      }
+    },
+  );
+
+  it.each(fictional.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind: somos a secas no pide el pack (agent $agent)',
+    async ({ pack, drink, agent }) => {
+      const h = harness([pack, drink] as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      await h.sendQueued(`Somos ${pack.name.split(/\s+/)[0].toLowerCase()}`);
+      expect(h.cartRows().some((row) => row.id === pack.id)).toBe(false);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(fictional)('$kind: nombrar el pack sí lo pide', async ({ pack, drink, order }) => {
+    const h = harness([pack, drink] as typeof products, false);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(order);
+    expect(h.cartRows().map((row) => row.id)).toEqual([pack.id]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Aclaración por nota — no invertir con y sin',()=>{
+ it.each(['Sopa De Calabaza','Pizza Rustica'].flatMap(name=>[false,true].flatMap(agent=>['cantidad','quitar'].map(kind=>({name,agent,kind})))))('$name $kind agent=$agent',async({name,agent,kind})=>{
+  const dish={id:26001,code:1701,name,price:10500,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:4,attributes:[],note:'sin cilantro'},
+   {productId:dish.id,name,code:dish.code,unitPrice:dish.price,quantity:3,attributes:[],note:'sin cebolla'}];
+  await h.sendQueued(kind==='cantidad'?`Deja solo dos ${name}`:`Quita ${name}`);
+  const before=structuredClone(h.conv.sessionData);const state=h.conv.state;
+  const reply=await h.sendQueued('El que va con cilantro');expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe(state);expect(reply||'').toMatch(/n[uú]mero|no.*sola.*l[ií]nea|cu[aá]l/i);await h.sendQueued('El que va sin cilantro');
+  expect(h.cartRows()).toEqual(kind==='cantidad'?[expect.objectContaining({id:dish.id,qty:2,note:'sin cilantro'}),expect.objectContaining({id:dish.id,qty:3,note:'sin cebolla'})]:[expect.objectContaining({id:dish.id,qty:3,note:'sin cebolla'})]);
+  expect(h.conv.sessionData.pendingCartQuantity).toBeUndefined();expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Cortesía con porción y nota — cuarto de pollo real', () => {
+  it.each([true, false])('conserva plato y ají tras saludo agent=%s', async enabled => {
+    const h = harness(products, enabled);
+    await h.send('Hola');
+    const reply = await h.send('Por favor me envias Un cuarto De Pollo frito con arto aji');
+    expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+    if (h.conv.sessionData.pendingAttribute) await h.send('Pierna pernil');
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:3,qty:1,note:expect.stringMatching(/harto ají/i)})]);
+    expect(h.conv.state).not.toBe('completed');
+  });
+});
+
+
+describe('Cortesía y nota — cartas distintas', () => {
+  const menus = ['Pizza Rustica', 'Ramen De Miso', 'Bowl Andino', 'Tacos Vegetarianos'];
+  for (const [i, name] of menus.entries()) {
+    for (const prefix of ['Por favor me envias', 'Porfa me envías', 'Por favor mándame']) {
+      it.each([true, false])(`${name} ${prefix} agent=%s`, async enabled => {
+        const menu = [{...products[0],id:30000+i,code:900+i,name,attributes:[],price:17000+i*1000}];
+        const h = harness(menu, enabled);
+        await h.send('Hola');
+        const reply = await h.send(`${prefix} un ${name} con arto aji`);
+        expect(reply).not.toMatch(/no manejamos|no tenemos/i);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:30000+i,qty:1,note:expect.stringMatching(/harto ají/i)})]);
+        expect(h.conv.state).not.toBe('completed');
+      });
+    }
+  }
+});

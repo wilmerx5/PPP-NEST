@@ -1253,3 +1253,24 @@ Cierre local de nombres y aclaraciones:66 suites/4717 pruebas aprobadas en447.43
 
 
 Staging verificado el14/10/2026 a las13:29 Bogotá: runtime f9128032,running/healthy,imagen activa=candidata sha256:9863f5a87b6837993fc090ce56962bb19ce428273e9318a98c6afab45f02396b. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-full-menu-names-deploy.log y /tmp/ppp-full-menu-names-verified.log. Main local/producción d9241abe conservan promoción anterior.62 nuevas;66 suites/4717 pruebas,74 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Siguiente: «sí, ese» después de describir una opción,cierre de aclaraciones por nombre/notas,multiorden con varias elecciones,muestra independiente y modelo/canal. No promover esta tanda a Main automáticamente.
+
+
+## Integración de aclaraciones y pedidos múltiples — 14/10/2026
+
+Se revisaron y conservaron los cambios locales nuevos del usuario: referencia al producto descrito («sí, ese»), selección de líneas por nombre/notas, varias elecciones y atributos en un turno, reparto en dos/tres partes y separación de «somos tres» del nombre de un producto. 386 regresiones focalizadas pasaron con menús PPP y sintéticos, agente activo/inactivo.
+
+La revisión descubrió un fallo de polaridad en la selección por nota: «el que va con cilantro» elegía una línea «sin cilantro» por coincidencia de palabras libres. Ocho regresiones secuenciales fallaron antes de corregirlo. Ahora la referencia conserva con/sin y admite «el que va sin cilantro» para resolver después de rechazar una referencia incorrecta; cubre cantidad y eliminación en sopa/pizza. Evidencia baseline: /tmp/ppp-local-note-polarity-baseline.log.
+
+394 focalizadas finales aprobadas (/tmp/ppp-current-local-batch-final-target.log), TypeScript aprobado (/tmp/ppp-current-local-batch-final-tsc.log). Global en ejecución: /tmp/ppp-current-local-batch-full.log; snapshot: /tmp/ppp-current-local-batch-source.json. No considerar publicado hasta cierre global y verificación del deploy. Main/producción d9241abe permanecen intactas. Cero llamadas API nuevas; 39/40 usadas, una restante.
+
+Estos son recorridos del router con dependencias externas simuladas. Falta validar muestras independientes y el modelo/canal real; no equivalen a comprensión universal ni aprobación comercial. Seguir trabajando en staging; no promover automáticamente a Main.
+
+
+Actualización de validación: la primera global no pasó: 65 suites aprobadas, una fallida; 5107 pruebas aprobadas y cuatro regresiones al resolver un cambio compuesto por nombre. Se conservaba la opción pero se perdía la nota. Ahora se recupera la nota del texto original del cambio pendiente, sin reinterpretar el selector de línea como una modificación nueva. Fuente del primer run intacta.
+
+El usuario aportó «Por favor me envias Un cuarto De Pollo frito con arto aji». Dos recorridos exactos fallaron también en staging local. Se corrige limpieza de cortesía inicial, equivalencia de porciones 1/4 ↔ cuarto / 1/2 ↔ medio para separar notas del producto y reconocimiento de «me envías» como solicitud explícita. No se incluyen productos/códigos PPP en las reglas nuevas. 24 recorridos con pizza, ramen, bowl y tacos ficticios, tres formulaciones de cortesía, también pasan. Antes del último ajuste 16 fallaron porque «me envías» se trataba como consulta.
+
+424 focalizadas aprobadas /tmp/ppp-current-local-batch-target-final2.log. El caso real termina en un cuarto de pollo frito ×1 con nota «con harto ají», tras elegir presa si corresponde. Pendiente nueva global y TypeScript de fuente final; no desplegado todavía. Logs de fallos preservados.
+
+
+Cierre de integración y cortesía: 66 suites/5137 pruebas aprobadas en 478.738s, fuente íntegra (/tmp/ppp-current-local-batch-full-final.log, snapshot final). 420 regresiones nuevas respecto a 4717; 424 focalizadas (incluyen cuatro regresiones históricas), TypeScript aprobado. Pendiente publicar y desplegar staging. Main d9241abe intacta; cero API nueva. Nuevo caso aportado después: alias maduro/plátano y compra «dame dos» después de pregunta de rendimiento; no afirmar corregido por esta tanda.

@@ -10,7 +10,9 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
   const prepared = applyLocalGlossary(source);
   const normalized = normalize(prepared);
   for (const product of [...products].sort((a,b)=>b.name.length-a.name.length)) {
-    const name = normalize(product.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'\\s+');
+    const name = normalize(product.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'\\s+')
+      .replace(/^1\/4/, '(?:1\\s*\\/\\s*4|cuarto(?:\\s+de)?)')
+      .replace(/^1\/2/, '(?:1\\s*\\/\\s*2|medio(?:\\s+de)?)');
     const match = new RegExp(`\\b${name}\\b`,'i').exec(normalized);
     if (!match) continue;
     const tail = normalized.slice(match.index + match[0].length).trim()
