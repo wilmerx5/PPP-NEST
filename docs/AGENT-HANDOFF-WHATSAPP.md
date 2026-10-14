@@ -1274,3 +1274,10 @@ El usuario aportó «Por favor me envias Un cuarto De Pollo frito con arto aji»
 
 
 Cierre de integración y cortesía: 66 suites/5137 pruebas aprobadas en 478.738s, fuente íntegra (/tmp/ppp-current-local-batch-full-final.log, snapshot final). 420 regresiones nuevas respecto a 4717; 424 focalizadas (incluyen cuatro regresiones históricas), TypeScript aprobado. Pendiente publicar y desplegar staging. Main d9241abe intacta; cero API nueva. Nuevo caso aportado después: alias maduro/plátano y compra «dame dos» después de pregunta de rendimiento; no afirmar corregido por esta tanda.
+
+
+Publicada tanda 52e4b9e1 en origin/staging y reconstruida API. Primera comprobación: running/starting, HTTP ok, DB connected, circuit CLOSED, imagen activa=candidata sha256:a538446bd4a71e5c124752bcc6debb475629e810f51682599c4fb630dd55c346. Pendiente confirmar healthy. Evidencia /tmp/ppp-current-local-batch-deploy.log y /tmp/ppp-current-local-batch-verified.log. Main/producción d9241abe intacta.
+
+Siguiente tanda abierta: cuatro tests «Maduro y compra después de rendimiento — chat real» añadidos después de congelar/publicar la fuente validada; todos fallan en /tmp/ppp-maduro-yield-baseline.log. Modificación local de whatsapp-general-accuracy.spec.ts sin publicar. No descartar ni cambiar oráculos para obtener verde. 5137 es el último conjunto validado, no el estado actual con las cuatro nuevas regresiones rojas. SKU53 existe en fixture como Platano Con queso y Bocadillo. Casos: disponibilidad «Hola buenas tardes tienes maduro con queso y bocadillo» debe reconocer sin comprar; luego «Un platano maduro con queso y bocadillo», «Si por favor, Para cuantas persona's alcanza?», «De acuerdo entonces Dame dos» debe conservar referencia y comprar dos, sin inventar rendimiento. Probar también ambigüedad real, otra consulta que cambia foco y catálogos sintéticos.
+
+Staging confirmado running/healthy a las16:41 Bogotá, HTTP ok/DB connected/circuit CLOSED. Runtime52e4b9e1, imagen activa=candidata indicada arriba. No cambios en Main/producción. Siguiente tanda roja permanece local, separada del deploy validado.
