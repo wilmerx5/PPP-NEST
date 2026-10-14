@@ -11022,3 +11022,58 @@ describe('Adición con dirección — completar sin repetirla',()=>{
   expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Adición de varios códigos — cantidades independientes',()=>{
+ const menus=[['Pizza De Setas','Pan De Ajo','Agua Mineral'],['Bowl De Quinoa','Edamame','Te Helado']].map((names,index)=>names.map((name,offset)=>({id:19901+index*10+offset,code:901+index*10+offset,name,price:10000+offset*2000,availableNow:true,hasAttributes:false,attributes:[]})));
+ it.each(menus.flatMap(menu=>[false,true].flatMap(agent=>['building_cart','awaiting_address','awaiting_payment'].flatMap(state=>[false,true].map(explicit=>({menu,agent,state,explicit}))))))('dos códigos en $state explicit=$explicit agent=$agent',async({menu,agent,state,explicit})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=[{productId:menu[2].id,name:menu[2].name,code:menu[2].code,unitPrice:menu[2].price,quantity:1,attributes:[],note:'sin hielo'}];
+  await h.sendQueued(explicit?`Agrega dos #${menu[0].code} y tres #${menu[1].code}`:`Ponme código ${menu[0].code} y código ${menu[1].code}`);
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:menu[0].id,qty:explicit?2:1}),expect.objectContaining({id:menu[1].id,qty:explicit?3:1}),expect.objectContaining({id:menu[2].id,qty:1,note:'sin hielo'})]));
+  expect(h.cartRows()).toHaveLength(3);expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(menus.flatMap(menu=>[false,true].map(agent=>({menu,agent}))))('dos códigos con placa de dirección (agent $agent)',async({menu,agent})=>{
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_address';h.conv.sessionData.address=undefined;
+  h.conv.sessionData.cart=[{productId:menu[2].id,name:menu[2].name,code:menu[2].code,unitPrice:menu[2].price,quantity:1,attributes:[]}];
+  const reply=await h.sendQueued(`Agrega dos #${menu[0].code} y tres #${menu[1].code} para la calle   9 #18-27`);
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:menu[0].id,qty:2}),expect.objectContaining({id:menu[1].id,qty:3}),expect.objectContaining({id:menu[2].id,qty:1})]));
+  expect(h.conv.sessionData.address).toMatch(/calle\s+9.*18-27/i);
+  expect(reply||'').not.toMatch(/no encontré|escribe.*dirección/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+
+});
+
+describe('Compra explícita y consulta de precio — mismo mensaje',()=>{
+ it.each(['Pizza De Setas','Bowl De Quinoa'].flatMap((name,index)=>[false,true].flatMap(agent=>['building_cart','awaiting_payment'].map(state=>({name,index,agent,state})))))('$name en $state agent=$agent',async({name,index,agent,state})=>{
+  const p={id:20001+index,code:951+index,name,price:17000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([p] as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state=state;h.conv.sessionData.address='Calle 12 #34-56';
+  const reply=await h.sendQueued(`Añade dos ${name}; ¿cuánto vale cada uno?`);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:p.id,qty:2})]);expect(reply||'').toMatch(/17\.000/);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Negación de atributo — no añade otro producto',()=>{
+ it.each(['Pizza De Setas','Bowl De Quinoa'].flatMap((name,index)=>[false,true].flatMap(agent=>[false,true].map(query=>({name,index,agent,query})))))('$name query=$query agent=$agent',async({name,index,agent,query})=>{
+  const p={id:20101+index,code:971+index,name,price:17000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  const h=harness([p] as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=[{productId:p.id,name:p.name,code:p.code,unitPrice:17000,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}],note:'sin cebolla'}];
+  const reply=await h.sendQueued(query?'¿Si cambio la salsa picante por suave cuánto cuesta?':'No con salsa picante, mejor con salsa suave');
+  if(query)expect(reply||'').toMatch(/17\.000|precio|costo|carta/i);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:p.id,qty:2,note:'sin cebolla',attrs:[`Salsa:${query?'Picante':'Suave'}`]})]);
+  expect(h.conv.sessionData.address).toBe('Calle 12 #34-56');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Negación de atributo — dos platos y selección posterior',()=>{
+ it.each([['Pizza De Setas','Pizza De Espinaca'],['Bowl De Quinoa','Bowl De Tofu']].flatMap((names,index)=>[false,true].map(agent=>({names,index,agent}))))('elige solo una línea (agent $agent)',async({names,index,agent})=>{
+  const menu=names.map((name,offset)=>({id:20201+index*10+offset,code:981+index*10+offset,name,price:17000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]}));
+  const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';h.conv.sessionData.address='Calle 12 #34-56';
+  h.conv.sessionData.cart=menu.map((p,index)=>({productId:p.id,name:p.name,code:p.code,unitPrice:17000,quantity:index+1,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}],note:'sin cebolla'}));
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('No con salsa picante, mejor con salsa suave');
+  expect(h.conv.sessionData.cart).toEqual(before);expect(reply||'').toMatch(/cuál|cual/i);
+  await h.sendQueued('1');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[0].id,qty:1,attrs:['Salsa:Suave'],note:'sin cebolla'}),expect.objectContaining({id:menu[1].id,qty:2,attrs:['Salsa:Picante'],note:'sin cebolla'})]);
+  expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
