@@ -1418,11 +1418,12 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryResolvePendingPriceInquiry(conv, msg.waId, session, originalText, cfg)) return;
+    const pendingQuantityChoice = !!session.pendingAttribute && /^(?:mejor(?: solo)?|solo|que sean|(?:una?|uno|dos|tres|cuatro|cinco) mas)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)?\s*(?:con|sin)\b/.test(this.normalizeForMatch(originalText));
     // "Solo una" changes units, whereas "solo, sin combo" changes a variant.
     const shortCartQuantity = /^(?:mejor\s+)?(?:solo|solamente)\s+(?:\d{1,4}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+por\s+favor)?$/.test(this.normalizeForMatch(originalText));
     if (shortCartQuantity && session.cart.length && !['completed','closed','human','human_takeover'].includes(conv.state) &&
       await this.tryHandleCartQuantityCorrection(conv,msg.waId,session,originalText,cfg)) return;
-    if (session.cart.length && !session.pendingMultiOrder && !/[¿?]/.test(originalText) &&
+    if (session.cart.length && !pendingQuantityChoice && !session.pendingMultiOrder && !/[¿?]/.test(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) && !this.catalogService.isAvailabilityInquiry(originalText) &&
       !/^(?:si\s+(?:lo|la|los|las)|puedo|podria|podr[ií]a|se puede)\b/i.test(originalText.trim()) &&
       this.catalogService.isVariantPreferenceIntent(originalText)) {
@@ -12324,6 +12325,13 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** The same SKU may exist as a cart line and a separate unresolved purchase. */
+  private pendingAttributeMatchesCartQuery(session: WhatsappSessionData, query: string): boolean {
+    const pending = session.pendingAttribute;
+    return !!pending && correctionMatchesLine({productId:pending.productId,code:pending.code,name:pending.name,
+      quantity:pending.quantity || 1,unitPrice:pending.price,attributes:pending.selected},query);
+  }
+
   private async tryHandleScopedCartRemoval(
     conv: WhatsappConversation,
     waId: string,
@@ -12351,6 +12359,10 @@ export class WhatsappOrchestratorService {
       indices.push(pending.options[pick - 1].cartIndex);
     }
     if (!indices.length) return false;
+    if (removal && this.pendingAttributeMatchesCartQuery(session,removal.query)) {
+      await this.reply(conv,waId,'¿Te refieres al producto del carrito o al que está pendiente de opciones? El pedido sigue igual.');
+      return true;
+    }
     if (conv.state === 'awaiting_mp_payment' && session.mpPreferenceId) {
       await this.reply(conv, waId, 'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');
       return true;
@@ -12374,7 +12386,7 @@ export class WhatsappOrchestratorService {
     const label = this.formatCartLineLabel(session.cart[indices[0]]);
     const remaining = session.cart[indices[0]].quantity - (removal?.quantity || session.cart[indices[0]].quantity);
     const changed = remaining > 0 ? {...session,cart:session.cart.map((line,index) => index === indices[0] ? {...line,quantity:remaining} : line)} : this.removeCartLines(session,indices);
-    const keepPending = !!session.pendingAttribute && !indices.some(index => session.cart[index].productId === session.pendingAttribute!.productId);
+    const keepPending = !!session.pendingAttribute;
     const next = { ...changed, pendingCartQuantity: undefined,
       pendingMatch: keepPending ? session.pendingMatch : undefined, pendingMultiOrder: keepPending ? session.pendingMultiOrder : undefined,
       pendingAttribute: keepPending ? session.pendingAttribute : undefined,
@@ -12466,10 +12478,20 @@ export class WhatsappOrchestratorService {
     if (correction) {
       indices = session.cart.flatMap((line, index) => correctionMatchesLine(line, correction.query) ? [index] : []);
       if (!indices.length) {
+        if (this.pendingAttributeMatchesCartQuery(session,correction.query)) {
+          const next = {...session,pendingAttribute:{...session.pendingAttribute!,quantity}};
+          await this.conversationService.saveSession(conv,next,'awaiting_attribute');
+          await this.reply(conv,waId,`Listo, serán ${quantity} unidades de la compra pendiente.\n\n${this.formatPendingPurchaseReminder(next)}`);
+          return true;
+        }
         await this.reply(conv, waId, 'Ese plato no está en tu carrito. Dime cuál cantidad corregimos.');
         return true;
       }
     } else {
+      if (session.pendingAttribute || session.pendingMatch || session.pendingCartAttributeEdit || session.pendingCartRemoval) {
+        await this.reply(conv,waId,'Hay varias listas abiertas. ¿Ese número corresponde a la cantidad del carrito o a la opción pendiente? El pedido sigue igual.');
+        return true;
+      }
       if (JSON.stringify(session.cart) !== pending!.cartSignature) {
         await this.conversationService.saveSession(conv, { ...session, pendingCartQuantity: undefined });
         await this.reply(conv, waId, 'El carrito cambió. Dime otra vez qué plato y cantidad corregimos.');
@@ -12481,6 +12503,10 @@ export class WhatsappOrchestratorService {
       }
       indices = [pending!.options[pick - 1].cartIndex];
     }
+    if (correction && this.pendingAttributeMatchesCartQuery(session,correction.query)) {
+      await this.reply(conv,waId,'¿Te refieres al producto del carrito o al que está pendiente de opciones? El pedido sigue igual.');
+      return true;
+    }
     if (indices.length > 1) {
       const options = indices.map(cartIndex => ({ cartIndex, label: this.formatCartLineLabel(session.cart[cartIndex]) +
         (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : '') }));
@@ -12491,7 +12517,7 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const index = indices[0];
-    const keepPending = !!session.pendingAttribute && session.pendingAttribute.productId !== session.cart[index].productId;
+    const keepPending = !!session.pendingAttribute;
     const next: WhatsappSessionData = { ...session, cart: session.cart.map((line, i) => i === index ?
       { ...line, quantity, note: omitRedundantAttributeNote(line.note, line.attributes) } : line),
       pendingCartQuantity: undefined, pendingMatch: keepPending ? session.pendingMatch : undefined, pendingAttribute: keepPending ? session.pendingAttribute : undefined,
@@ -13124,6 +13150,8 @@ export class WhatsappOrchestratorService {
       session.pendingAttribute ||
       session.pendingMatch?.candidates?.length ||
       session.pendingCartAttributeEdit ||
+      session.pendingCartQuantity ||
+      session.pendingCartRemoval ||
       session.pendingMultiOrder?.needsAttributes?.length ||
       session.pendingMultiOrder?.ambiguous?.length
     );
@@ -13131,7 +13159,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         waId,
-        'Hay dos listas abiertas. ¿Ese número es para el *precio* o para la *opción* del plato? El pedido sigue igual.',
+        'Hay varias listas abiertas. ¿Ese número es para el *precio* o para la *opción* del plato? El pedido sigue igual.',
       );
       return true;
     }

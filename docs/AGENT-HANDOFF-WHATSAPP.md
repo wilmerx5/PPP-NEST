@@ -1181,3 +1181,23 @@ Cierre local de decrementos y compra pendiente:66 suites/4581 pruebas aprobadas 
 
 
 Staging verificado el14/10/2026 a las12:30 Bogotá: runtime73419c8f, running/healthy, imagen activa=candidata sha256:10a9dee121243376dd52f7f755251aa25f722eed475cbb4c66904201bb720306. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-decrement-pending-deploy.log y /tmp/ppp-decrement-pending-verified.log; primer Docker starting confirmado healthy antes de cerrar. Main local/servidor49194fec intactas.64 regresiones nuevas;66 suites/4581 pruebas,136 focalizadas,TypeScript y snapshot aprobados. Cero API nueva;39/40 usadas,1 restante. Próxima tanda: edición frente a otra compra del mismo SKU, pendingMatch/pendingMulti y referencias ambiguas con correcciones; no promover Main automáticamente.
+
+
+## Mismo SKU en carrito y compra pendiente; listas simultáneas — 14/10/2026
+
+50 regresiones nuevas, router completo y dependencias externas simuladas, tres cartas ficticias y agente activo/inactivo:
+-24 casos de bebida ya agregada ×4 sabor Mango y otra compra del mismo SKU ×3 pendiente: corrección absoluta, quitar una o agregar una más sin opción deben aclarar carrito vs pendiente; «deja solo dos PRODUCTO con Mango» identifica la línea, conserva la compra pendiente y luego permite añadir tres Lulo con la nota inicial.
+-6 controles: «Mejor solo dos con Lulo» modifica únicamente la compra pendiente; conserva los cuatro Mango del carrito y sus notas.
+-8 recorridos de listas abiertas: aclaración de cantidad entre dos líneas, consulta de precio entre dos SKU, con/sin otra bebida pendiente. «2» no se asigna a la lista de precios mientras hay otra selección. El nombre del producto resuelve precio sin alterar la aclaración de cantidad; si queda selección de sabor y cantidad, otro «2» sigue siendo ambiguo. Sin otra selección, «2» corrige la segunda línea y conserva las demás.
+-12 casos de referente: varias líneas del mismo SKU y otra compra pendiente obligan a aclarar sin crear otra lista; si ese SKU solo existe en la compra pendiente, «que sean dos PRODUCTO» modifica su cantidad, conserva el carrito previo y permite completarla.
+
+Baseline30/30 falló (/tmp/ppp-same-product-baseline.log); las correcciones borraban la compra pendiente, y la preferencia «solo» podía cambiar/reemplazar el carrito aunque acompañara una cantidad y una opción de la compra pendiente. Correcciones: cotejar tanto líneas como compra pendiente por nombre/opciones ya seleccionadas; pedir aclaración antes de mutar o abrir una lista si ambos referentes coinciden. Una opción propia del carrito identifica la línea y conserva la compra pendiente incluso siendo el mismo SKU. «Solo + cantidad + opción» no se interpreta como variante solo/combo al corregir la compra pendiente.
+
+La primera ejecución de listas no compiló por un atributo opcional no comprobado; se corrigió la fixture. Resultado integrado posterior:4 fallos/66 aprobadas (/tmp/ppp-same-product-target3.log),todos en precio+aclaración de cantidad sin sabor pendiente: otherOpenList no incluía pendingCartQuantity/removal. Se añaden ambas, y una lista de cantidad no consume números de otra selección activa. Baseline de referente12/12 falló (/tmp/ppp-same-product-referents-baseline.log),por crear lista antes de comprobar la compra pendiente o decir que el producto no estaba en carrito aunque sí se estaba eligiendo. Se corrige la prioridad sin descartar la compra.
+
+86 focalizadas finales aprobadas (/tmp/ppp-same-product-target4.log),TypeScript aprobado (/tmp/ppp-same-product-final-tsc.log). Global en ejecución /tmp/ppp-same-product-full.log; snapshot src/**/*.ts /tmp/ppp-same-product-source.json. No editar src hasta completar y comparar snapshot. Código aún local; runtime staging73419c8f,Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
+
+Límites: referente identificado por nombre/opciones del catálogo; notas libres como selector, pendingMatch con múltiples productos y multiorden con varias necesidades siguen requiriendo otra tanda. No acredita modelo/canal reales ni todas las referencias. Mantener staging; no promover Main ni declarar piloto por conteo.
+
+
+Cierre local de referentes y listas:66 suites/4631 pruebas aprobadas en446.443s (/tmp/ppp-same-product-full.log),snapshot íntegro.50 regresiones nuevas;86 focalizadas y TypeScript aprobados. Pendiente publicación/deploy staging. Main49194fec intacta. Cero API nueva;39/40 usadas,1 restante.
