@@ -5,6 +5,7 @@ describe('Partial exclusions with an unchanged remainder', () => {
     ['Uno sin cebolla y los otros dos normales',1,'sin cebolla',2],
     ['2 sin cilantro y los otros 3 normales',2,'sin cilantro',3],
     ['Una sin salsa y las demás normales',1,'sin salsa',undefined],
+    ['Uno sin cebolla y el otro normal',1,'sin cebolla',1],
   ])('understands quantity groups: %s', (text, quantity, note, remainder) => {
     expect(parsePartialNote(String(text))).toEqual({quantity,note,remainder});
   });

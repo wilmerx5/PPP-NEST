@@ -781,6 +781,19 @@ export function isCartChargeQuestion(text: string): boolean {
     /^(?:[¿?\s]*)(?:y\s+)?(?:cuanto\s+(?:seria|es|vale|sale)|(?:me\s+)?(?:regalas?|confirmas?)\s+(?:porfa\s+)?(?:el\s+)?(?:total|valor\s+del\s+pedido))(?:\s+(?:en\s+total|todo|el\s+pedido))?(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.test(t);
 }
 
+export function isOrderBillRequest(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!.,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 40) return false;
+  if (/\b(?:pizza|pasta|taco|sushi|hamburguesa|bowl|ramen|pollo|churrasco|sopa|yuca|gyoza)\b/.test(t)) return false;
+  return /^(?:y )?(?:cuanto (?:te|les) debo|pasame la cuenta|la cuenta(?: por favor)?|me dices la cuenta|cuanto va(?: el pedido)?)$/.test(t);
+}
+
 /** "Y envias mucho aji, por favor" — nota, no pedido ni nombre. */
 export function looksLikeKitchenSendRequest(text: string): boolean {
   const raw = (text || '').trim();

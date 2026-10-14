@@ -97,6 +97,8 @@ export type WhatsappSessionData = {
   /** Varios platos en un mensaje: confirmar o resolver dudas antes de agregar. */
   /** Read-only context for a follow-up about unavailable items; never a purchase draft. */
   recentUnavailableOrder?: { items: string[]; expiresAt: number };
+  /** Productos reconocidos en la última foto, en el orden en que aparecieron. */
+  recentImageOrder?: Array<{ productId: number; name: string }>;
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;

@@ -858,3 +858,55 @@ Aprobación final:66suites/3421pruebas aprobadas,676.044s (/tmp/ppp-required-opt
 
 
 Runtime55c5fd52 publicado/desplegado/verificado13/10/2026 19:13Bogotá:running/healthy,imagenactiva=candidata sha256:37ae6339eb3cd6ed5f619effebcce06281f5e5b4a1646954f426f228f41316cc;healthok,DBconnected,circuitCLOSED. Logs /tmp/ppp-required-options-deploy.log y /tmp/ppp-required-options-deploy-verified.log. Preservados bin/,privados yorphanmariadb_local. Mainintacta,modelos sin cambios,cero llamadas pagadas. Artefactos dist/ ytsbuildinfo locales previos no se incluyeron en commit.
+
+
+## Promoción autorizada a producción — 13/10/2026 19:29 Bogotá
+
+Usuario pidió desplegar a Main y luego continuar staging. Main49194fec integra stagingb8b497d6 sin conflictos yconserva cambios propios enauth/admin.controller.ts yorders.service.ts.66suites/3421pruebas aprobadas,694.269s (/tmp/ppp-main-required-options-full.log),TypeScript aprobado /tmp/ppp-main-required-options-tsc.log;fuente inmutable /tmp/ppp-main-required-options-source.json. Compilación independiente /tmp/ppp-main-promotion-dist y /tmp/ppp-main-promotion-build.log.
+
+Producción /var/www/ppp-nest,Main49194fec,compose efectivo docker-compose.yml,proyecto ppp-nest,contenedor ppp_nest_api. Compose local adaptado y backups conservados;no sobrescribirlos ni usarcompose staging enproducción. Se construyó con Dockerfile multietapa, sin volumen de fuente encompose efectivo. Running,imagenactiva=ppp-nest-api sha256:38beb7e91d1ab3919b85a662991bf791b74fb27b35295d832f419a978b038cdd;HTTP3000/api/healthOK,DBconnected,circuitCLOSED. Contenedor sinhealthcheckDocker:verHTTP. Dos módulos compilados coinciden byteporbyte concompilación local:orchestrator a6fc0a056221ca02f30207b03f88bbd0ef04e63e0f1daa57be4a26eb9d2e8dc6;AI20677034b5f343566d5fa3bb56bf7e697f47882656a6b37134cbb346f400ce32. Evidencia /tmp/ppp-main-required-options-deploy.log y /tmp/ppp-main-required-options-verified.log. Imagen anterior preservada como ppp-nest-api:before-promotion-49194fec. Sin cambios de modelos/credenciales ni llamadas pagadas.
+
+Staging se conserva yse actualizó porfastforwarda49194fec paraincluir también cambios propiosMain. Trabajar nuevas tandas soloenstaging,no Main. Las próximas correcciones no sepromueven automáticamente. Presupuesto35/40,5restantes. Staging API todavía55c5fd52 hasta siguiente deployaprobado.
+
+
+## Continuación en staging: colas de opciones y puntos — en validación
+
+Tras producción49194fec,staging local avanzó a ese commit. El primer fastforward rechazó artefactos generados locales;se preservaron enstash local edd763f8adb87bd445dc8235e37e17258133e54b (solo12rutasdist/ ytsconfig.build.tsbuildinfo). No aplicar ese stash sobre código actual ni borrarlo por rutina. Main conserva dist/ históricos rastreados,que entraron en staging por integración;Docker compila src/ fresco,no usar esos dist/ como evidencia de runtime. Main quedó intacta después deldeploy.
+
+20regresiones nuevas sobre colas:8cancelar bebida actual cuando quedaotra,8notas independientes entreplato/jugo/gaseosa(con ysin cancelación),4mismoSKUyaen carrito y2solicitudespendientes. Baseline8/8fallaron /tmp/ppp-selective-queue-baseline.log. Corrección cancela primera fila activa, nunca todas las filas delSKU;resuelve siguiente producto porcatálogo,mantiene cantidad/atributos/notas yresto delcarrito.20aprobadas /tmp/ppp-selective-queue-notes.log. Cancelación conserva restricciones deambigüedad/colasdeotros tipos;no acreditar todo “no”.
+
+Usuario añadió compra “medio pollo más pero para pagar con puntos” ypidió buscarhuecos generales.58regresiones nuevasdepuntos:24compra+premio,30consultas específicas/sin cuenta/códigomalformado,4productos conPremioen su nombre. Baseline24/24fallaron /tmp/ppp-points-order-baseline.log;consultas22fallaron/8pasaron /tmp/ppp-points-topic-baseline.log;nombres4/4fallaron /tmp/ppp-points-name-collision-baseline.log. Pago conpuntos se separa depedido explícito yse explica acción concreta(códigoexistente oredimir con9puntos);no canje ni descuentoautomáticos. Se conserva contexto deproducto/conversación;las preguntas de saldo/pago/premio usan textooriginal antesdeETA/captura. Código inválido oausente pidecódigo específico;cuentas no vinculadas reciben siguiente paso,no guía completa. Compra de producto quecontiene Premiono se convierte enayuda deprograma;no quitar palabras queformanpartedelnombre literal delcatálogo.
+
+Parcialesdetectaron6fallos porproductoBowlDelPremio,9porTengoPremio/TodoGratis (esteúltimo seconfundía con progreso depedido),2porBrownieConPremio(stripsecomíanpartedelnombre). Corregidos,103focalizadas aprobadas /tmp/ppp-loyalty-queue-targets-final.log (78nuevas+25controlesdecanje/códigos). NormativaPPPdepuntos(9yproductos elegibles)eslegada enPointsService/PointsHelp;no introducir nuevos IDs/nombres excepcionales en clasificador. FicciónBowl usa código2 delprograma existente;esto no acredita programas de puntos distintos por tenant. ParaKamppo parametrizarpolítica, no copiarPPPcódigoscomoreglaglobal.
+
+Fullen curso /tmp/ppp-loyalty-queue-full.log;TypeScript /tmp/ppp-loyalty-queue-tsc.log;snapshot /tmp/ppp-loyalty-queue-source.json.Noeditarfuenteshasta terminar.78regresiones nuevas. Mainproducción49194fec NOtieneestasúltimascorrecciones,sonsolo staging.35/40llamadasusadas5restantes;ceroAPIpagada,Meta/BD/modelos/órdenes simulados.
+
+Próximos huecos:pedido+códigodepremioenmismomensaje;pedido+redimir explícito;tras generar premio,aplicarlo alpedido solo cuando intención persistida loautorice;cancelación conambigüedadesadicionales;otrosproductos/nombresde12letrasquecolisionancon códigos;programas de puntos de otros tenants;saldo parcial mientrasfaltanopcionesycorrecciones despuésdepremio. Yaexistíancontroles decódigousado/vencido/otrocliente yregistrodefactura:reutilizados, no duplicar ni acreditar pruebas reales decanje.
+
+
+### Revisión global de la tanda de puntos — no desplegar todavía
+
+Primer full:62suites aprobadas/4fallidas;3436pruebas aprobadas/63fallidas,3499total,666.448s (/tmp/ppp-loyalty-queue-full.log).46fallos en notas/eliminaciones/cantidades eran harnesses Object.create sin pointsHandler;se añadió servicio real con dependencia externa simulada a esos tres fixtures.17fallos en ráfagas/pedidos agrupados mostraban interferencia de la ruta nueva de premio en mensajes ordinarios;entrada pointsPurchaseOrderText ahora exige palabra puntos/premio antes de invocarse. No atribuir los63fallos a infraestructura.
+
+Verificación corregida:160casos focalizados aprobados en suite general /tmp/ppp-loyalty-global-fixes.log (los46fallos de fixtures en ese run corresponden a la captura anterior a actualización de esos archivos);después111pruebas aprobadas en las tres suites completas /tmp/ppp-loyalty-fixture-fixes.log. TypeScript aprobado /tmp/ppp-loyalty-fixed-tsc.log. Nueva global pendiente /tmp/ppp-loyalty-fixed-full.log; snapshot /tmp/ppp-loyalty-fixed-source.json. No editar fuentes durante ejecución. Mainproducción49194fec permanece intacta. Correcciones nuevas siguen locales, sin publicar/desplegar hasta full aprobado. CeroAPIpagada.
+
+
+Revisión posterior de árbol pendiente:hay cambios acumulados adicionales conservados en types/session-intents/partial-note,unas1571líneas de fixtures y rutas de autocorrección,imagen parcial,códigos+pedido,alergias,cancelación y cuenta. Todos figuran en snapshot /tmp/ppp-loyalty-fixed-source.json,sin diferencias al comprobarlo;no atribuir toda esa ampliación a las78regresiones iniciales. Presupuesto efectivo docs/whatsapp-model-budget.json:36/40usadas,4restantes;registro de una llamada de consulta de celebración13/10Bogotá,que encontró captura falsa de dirección y fue corregida por trabajo acumulado. No sobrescribir ese registro con el saldo35 anterior. No nuevas llamadas en revisión actual.
+
+Próxima revisión de claridad:tryRemoveMostExpensiveLine ytryApplyAllergyOrder dicen «pedido sigue igual» después de mutación;distinguir «los demás platos se conservan». Añadir caso precio unitario vsimporte de línea,empate del mismoSKUcon notas diferentes,nota parcial junto a autocorrección (hoy queda texto «una sin...» en una línea agrupada),referencias foto caducadas/reinicio,alergia al corregir carrito existente. Estos son huecos de revisión pendientes,no fallos globales acreditados.
+
+
+### Cierre global y protección de selección de foto
+
+Regresión corregida acumulada:66suites/3738pruebas aprobadas,415.197s (/tmp/ppp-loyalty-fixed-full.log),snapshot íntegro /tmp/ppp-loyalty-fixed-source.json. Incluye tandas acumuladas de otros cambios conservados, no solo las78pruebas de puntos/colas. Antes deldeploy se detectó porlectura que tryApplyPhotoSubset vaciaba carrito yborraba productos ajenos a lafoto.8regresiones nuevas con cartas ficticias depizza yramen,agente simulado activo/inactivo:preservar producto externo conqty2ynota;doslíneasdel mismoSKUconnotasdistintas pidenaclaraciónsinmutar. Baseline8fallaron /tmp/ppp-photo-isolation-baseline.log. Corrección conserva líneasconIDsfuera dela lista dela foto;pide aclaración paraSKUconvariaslíneas. No acredita identificación deunidadesdel mismoSKUfusionadasantes/después deimagen ni preservación de notas/opciones deuna solalínea reconstruida:próxima tanda,requiere procedencia deimagen.
+
+92focalizadas aprobadas /tmp/ppp-photo-isolation-targets.log,TypeScript aprobado /tmp/ppp-photo-isolation-tsc.log. Global final /tmp/ppp-photo-isolation-full.log,snapshot /tmp/ppp-photo-isolation-source.json;noeditarfuentesdurantefull.8regresionespropiasadicionales,ceroAPIen esta revisión,presupuestoefectivo36/40y4restantes. Main49194fec intacta;no nueva promoción aproducción.
+
+
+## Estado aprobado para publicar en staging
+
+La regresión final aprobó las 66 suites y 3.746 pruebas en 418,812 segundos (`/tmp/ppp-photo-isolation-full.log`). TypeScript aprobado (`/tmp/ppp-photo-isolation-tsc.log`). La comparación de todas las fuentes contra `/tmp/ppp-photo-isolation-source.json` no encontró diferencias. El conjunto acumula 325 pruebas adicionales respecto de Main49194fec; incluye trabajo previo conservado, no todas son de esta revisión.
+
+El último fallo reproducido fue la eliminación de productos ajenos al seleccionar parte de una foto: ocho casos fallaron antes de la corrección y ahora pasan. Se conservan productos fuera de la foto y se pide aclaración cuando un SKU tiene varias líneas. No se acredita procedencia de cantidades fusionadas del mismo SKU ni conservación de todas las notas/opciones al reconstruir una única línea de la foto; esos casos quedan para la siguiente tanda.
+
+Publicación y despliegue pendientes de verificar. Trabajar sobre staging, conservar Main49194fec y la rama staging. Presupuesto efectivo: 36 solicitudes usadas de 40; quedan 4. Esta revisión no hizo llamadas pagadas ni creó órdenes externas. Próxima tanda: notas/opciones por unidad en correcciones de foto, respuestas claras después de una mutación y referencias con contexto anterior.

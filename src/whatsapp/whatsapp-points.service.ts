@@ -93,6 +93,37 @@ export class WhatsappPointsService {
     return this.hasPointsKeywords(text);
   }
 
+  /** Keep the purchase clause; payment by reward is not a request for the whole guide. */
+  pointsPurchaseOrderText(text: string, protectedProductName?: string): string | null {
+    const raw = (text || '').trim();
+    if (!/^(?:quiero|quisiera|dame|agrega|ponme|me\s+env[ií]as|me\s+regalas)\b/i.test(raw)) return null;
+    if (this.extractPointCodeCandidate(raw) || /\b(?:redimir|redime|canjear|generar|registrar)\b/i.test(raw)) return null;
+    const clause = /\s+(?:pero\s+)?(?:para\s+)?(?:pagar(?:lo|la|los|las)?\s+)?(?:con|usando)\s+(?:mis?\s+|un\s+|el\s+)?(?:puntos|premio)\b/gi;
+    const productStart = protectedProductName ? raw.toLowerCase().indexOf(protectedProductName.toLowerCase()) : -1;
+    const productEnd = productStart >= 0 ? productStart + protectedProductName!.length : -1;
+    let stripped = false;
+    const order = raw.replace(clause, (match, offset: number) => {
+      if (productStart >= 0 && offset >= productStart && offset + match.length <= productEnd) return match;
+      stripped = true;
+      return ' ';
+    }).replace(/\s+/g, ' ').trim();
+    if (!stripped || /^(?:quiero|quisiera|dame|agrega|ponme)(?:\s+(?:pedir|ordenar))?$/i.test(order)) return null;
+    return order;
+  }
+
+  buildRewardOrderReply(available: number | null): string {
+    const action = available == null
+      ? 'Si ya tienes un código de premio, envíamelo. Para generar uno con tus puntos necesitas tu cuenta web vinculada a este celular.'
+      : available < POINTS_REQUIRED_FOR_PRIZE
+        ? `Tienes ${available} puntos; necesitas ${POINTS_REQUIRED_FOR_PRIZE} para generar un premio. Si ya tienes un código de premio, envíamelo.`
+        : `Tienes ${available} puntos. Envíame tu código de premio o escribe *redimir* para generar uno usando ${POINTS_REQUIRED_FOR_PRIZE} puntos.`;
+    return 'Te ayudo con el pedido y revisamos si el premio aplica. ' + action + '\nEl premio cubre una unidad elegible; los demás productos y el domicilio se pagan normalmente.';
+  }
+
+  isRewardPaymentInquiry(text: string): boolean {
+    return this.hasPointsKeywords(text) && /\b(?:pagar|pago|pagarl[oa]s?|gratis|gratuito)\b/i.test(text);
+  }
+
   isBalanceIntent(text: string): boolean {
     return /\b(mis\s+puntos|cu[aá]ntos\s+puntos|saldo\s+de\s+puntos|ver\s+puntos)\b/i.test(text);
   }

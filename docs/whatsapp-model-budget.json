@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 40,
-  "usedRequests": 35,
-  "remainingRequests": 5,
+  "usedRequests": 36,
+  "remainingRequests": 4,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-13T06:02:20.065Z",
+  "lastAttemptAt": "2026-10-14T02:24:07.842Z",
   "latestEvaluation": {
     "baseCommit": "faebdb9e",
     "includesFixtureChanges": true,
@@ -19,8 +19,8 @@
     "paidConversations": 2,
     "deterministicConversations": 2,
     "attemptsThisTurn": 10,
-    "usedTotal": 35,
-    "remaining": 5,
+    "usedTotal": 36,
+    "remaining": 4,
     "initialBudgetCappedIncompleteConversation": 1,
     "apiUsage": {
       "model": "gpt-4.1-2025-04-14",
@@ -50,6 +50,16 @@
     }
   ],
   "evaluationHistory": [
+    {
+      "date": "2026-10-14",
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 1,
+      "note": "Pregunta abierta de celebración, sin pedido. El modelo no agregó platos; el router descartó esa respuesta y guardó una dirección falsa. Quedó corregido en local después de la llamada.",
+      "usedTotal": 36,
+      "remaining": 4
+    },
     {
       "baseCommit": "b5deeb2d",
       "includesFixtureChanges": true,

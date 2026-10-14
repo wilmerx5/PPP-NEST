@@ -9253,3 +9253,1604 @@ describe('Opciones obligatorias — cantidad y cancelación durante selección',
  expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Cancelación selectiva — quedan otras bebidas pendientes',()=>{
+ it.each([false,true].flatMap(agent=>[{juice:'Jugo Natural',soda:'Gaseosa Artesanal'},{juice:'Jugo Del Dia',soda:'Gaseosa Frutal'}].flatMap(family=>['Olvida esa bebida','No quiero esa bebida'].map(cancel=>({agent,...family,cancel})))))('$cancel conserva segunda bebida $soda (agente $agent)',async({agent,juice,soda,cancel})=>{
+ const menu=[{id:16101,code:16101,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16102,code:16102,name:juice,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]},
+ {id:16103,code:16103,name:soda,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mora','Durazno']}]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ await h.sendQueued(`Quiero dos bowl vegetal, tres ${juice} y dos ${soda}`);
+ const cart=h.cartRows();
+ const reply=await h.sendQueued(cancel);
+ expect(h.cartRows()).toEqual(cart);
+ expect(h.conv.sessionData.pendingAttribute?.productId).toBe(16103);
+ expect(reply).toMatch(/cancel|dejamos/i);
+ expect(reply).toMatch(/Mora|Durazno/);
+ await h.sendQueued('Durazno');
+ expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:16101,qty:2}),expect.objectContaining({id:16103,qty:2,attrs:['Sabor:Durazno']})]));
+ expect(h.cartRows()).toHaveLength(2);
+ expect(h.cartRows().some(r=>r.id===16102)).toBe(false);
+ expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Notas por producto — bebidas con selecciones pendientes',()=>{
+ it.each([false,true].flatMap(agent=>[{juice:'Jugo Natural',soda:'Gaseosa Artesanal'},{juice:'Jugo Del Dia',soda:'Gaseosa Frutal'}].flatMap(family=>[false,true].map(cancel=>({agent,...family,cancel})))))('$juice y $soda conservan notas independientes (agente $agent, cancelar $cancel)',async({agent,juice,soda,cancel})=>{
+ const menu=[{id:16111,code:16111,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16112,code:16112,name:juice,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]},
+ {id:16113,code:16113,name:soda,price:7000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mora','Durazno']}]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ await h.sendQueued(`Quiero dos bowl vegetal sin tomate, tres ${juice} sin azúcar y dos ${soda} sin hielo`);
+ if(cancel) await h.sendQueued('Olvida esa bebida');else await h.sendQueued('Mango');
+ await h.sendQueued('Qué sabores hay?');
+ await h.sendQueued('Durazno');
+ const rows=h.cartRows();
+ const clean=(text:string|undefined)=>(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ expect(clean(rows.find(r=>r.id===16111)?.note)).toMatch(/sin tomate/);
+ expect(clean(rows.find(r=>r.id===16111)?.note)).not.toMatch(/azucar|hielo/);
+ expect(clean(rows.find(r=>r.id===16113)?.note)).toMatch(/sin hielo/);
+ expect(clean(rows.find(r=>r.id===16113)?.note)).not.toMatch(/azucar|tomate/);
+ if(!cancel){ expect(clean(rows.find(r=>r.id===16112)?.note)).toMatch(/sin azucar/);expect(clean(rows.find(r=>r.id===16112)?.note)).not.toMatch(/hielo|tomate/); }
+ else expect(rows.some(r=>r.id===16112)).toBe(false);
+ expect(rows.find(r=>r.id===16113)?.qty).toBe(2);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Cancelación selectiva — mismo SKU en carrito y cola',()=>{
+ it.each([false,true].flatMap(agent=>['Olvida esa bebida','No quiero esa bebida'].map(cancel=>({agent,cancel}))))('$cancel elimina una sola solicitud pendiente (agente $agent)',async({agent,cancel})=>{
+ const product={id:16121,code:16121,name:'Jugo Natural',price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+ const h=harness([product],agent);h.service.ordersService.create=jest.fn();
+ h.conv.sessionData.cart=[{productId:16121,code:16121,name:product.name,unitPrice:8000,quantity:1,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}],note:'sin azúcar'}];
+ h.conv.sessionData.pendingAttribute={productId:16121,code:16121,name:product.name,price:8000,attributes:product.attributes,selected:[],quantity:3,sourceText:'Tres Jugo Natural'};
+ h.conv.sessionData.pendingMultiOrder={confident:[],ambiguous:[],unresolved:[],needsAttributes:[{productId:16121,code:16121,name:product.name,price:8000,segment:'Tres Jugo Natural'},{productId:16121,code:16121,name:product.name,price:8000,segment:'Dos Jugo Natural sin hielo'}]};
+ h.conv.state='awaiting_attribute';const before=h.cartRows();
+ await h.sendQueued(cancel);
+ expect(h.cartRows()).toEqual(before);
+ expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);
+ await h.sendQueued('Lulo');
+ expect(h.cartRows()).toContainEqual(before[0]);
+ expect(h.cartRows()).toContainEqual(expect.objectContaining({id:16121,qty:2,attrs:['Sabor:Lulo']}));
+ expect(h.cartRows()).toHaveLength(2);
+ expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Compra con puntos — intención concreta y carrito conservado',()=>{
+ const bowl=[{id:16201,code:2,name:'Bowl Del Premio',price:18000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:16202,code:16202,name:'Tarta De Setas',price:12000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const cases=[{menu:products,text:'Quiero pedir medio Pollo Mas pero Para pagar Con Puntos',code:null},
+ {menu:products,text:'Quiero medio pollo frito para pagar con puntos',code:2},
+ {menu:products,text:'Me envías un medio pollo broaster con mis puntos',code:5},
+ {menu:bowl,text:'Quiero un Bowl Del Premio para pagarlo con puntos',code:2}];
+ it.each(cases.flatMap(c=>[false,true].flatMap(agent=>[null,5,9].map(balance=>({...c,agent,balance})))))('$text, saldo $balance, agente $agent',async({menu,text,code,agent,balance})=>{
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ const redeem=jest.fn();h.service.pointsHandler=new WhatsappPointsService({getAvailablePoints:async()=>balance,redeemPointsForVoucher:redeem} as never);
+ if(balance!==null)h.conv.sessionData.linkedUserId='test-account';
+ const existing=menu===products?menu.find(p=>p.id===17):menu[1];
+ h.conv.sessionData.cart=[{productId:existing.id,code:existing.code,name:existing.name,quantity:2,unitPrice:existing.price,attributes:[],note:'sin ensalada'}];
+ const previous=h.cartRows()[0];
+ const reply=await h.sendQueued(text);
+ expect(h.cartRows()).toContainEqual(previous);
+ expect(h.replies.join(' ')).not.toMatch(/Programa de puntos y premios|Qué platos suman|Cómo acumulas/i);
+ expect(h.replies.join(' ')).toMatch(/premio|puntos/i);
+ if(code!==null){const product=menu.find(p=>p.code===code)!;expect(h.cartRows()).toContainEqual(expect.objectContaining({id:product.id,qty:1}));}
+ else {expect(h.conv.sessionData.pendingMatch?.candidates?.some(p=>[2,5].includes(p.code))).toBe(true);expect(reply).toMatch(/frito|broaster/i);}
+ expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+ expect(redeem).not.toHaveBeenCalled();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Puntos — respuestas específicas sin consumir saldo',()=>{
+ it.each([false,true].flatMap(agent=>[null,5,9].flatMap(balance=>['¿Puedo pagar con mis puntos?','¿Todo el pedido queda gratis con puntos?','Tengo un premio','Quiero ver mis puntos'].map(text=>({agent,balance,text})))))('$text con saldo $balance (agente $agent)',async({agent,balance,text})=>{
+ const h=harness(products,agent);h.service.ordersService.create=jest.fn();
+ const redeem=jest.fn();h.service.pointsHandler=new WhatsappPointsService({getAvailablePoints:async()=>balance,redeemPointsForVoucher:redeem} as never);
+ if(balance!==null)h.conv.sessionData.linkedUserId='test-account';
+ const before=structuredClone(h.conv.sessionData);
+ const reply=await h.sendQueued(text);
+ expect(reply).not.toMatch(/Programa de puntos y premios|Qué platos suman|Cómo acumulas/i);
+ expect(reply!.length).toBeLessThan(650);
+ expect(reply).toMatch(/puntos|premio|cuenta|c[oó]digo/i);
+ expect(h.conv.sessionData).toEqual(before);
+ expect(redeem).not.toHaveBeenCalled();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each([false,true].flatMap(agent=>['premio ABCD2345EFGO','aplicar premio','Quiero redimir mis puntos'].map(text=>({agent,text}))))('$text sin cuenta responde siguiente paso (agente $agent)',async({agent,text})=>{
+ const h=harness(products,agent);h.service.ordersService.create=jest.fn();
+ const validate=jest.fn();const redeem=jest.fn();h.service.pointsHandler=new WhatsappPointsService({validateRedemptionCode:validate,redeemPointsForVoucher:redeem} as never);
+ const before=structuredClone(h.conv.sessionData);
+ const reply=await h.sendQueued(text);
+ expect(reply).not.toMatch(/Programa de puntos y premios|Qué platos suman/i);
+ expect(reply!.length).toBeLessThan(450);
+ expect(h.conv.sessionData).toEqual(before);
+ expect(validate).not.toHaveBeenCalled();expect(redeem).not.toHaveBeenCalled();
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Nombre de plato — premio no es siempre una intención de puntos',()=>{
+ it.each([false,true].flatMap(agent=>['Bowl Del Premio','Brownie Con Premio'].map(name=>({agent,name}))))('compra $name como producto (agente $agent)',async({agent,name})=>{
+ const menu=[{id:16221,code:16221,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+ const reply=await h.sendQueued(`Quiero un ${name}`);
+ expect(h.cartRows()).toEqual([expect.objectContaining({id:16221,qty:1})]);
+ expect(reply).not.toMatch(/Programa de puntos|redimir|código de premio|puntos disponible/i);
+ expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Número tardío — dos listas abiertas no comparten el 2', () => {
+  const juice = { id: 16301, code: 16301, name: 'Jugo De Mango', price: 7000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Maracuya', 'Lulo', 'Mora'] }] };
+  const taco = { id: 16302, code: 16302, name: 'Taco Suave', price: 14000, availableNow: true, hasAttributes: false, attributes: [] };
+  const nachos = { id: 16303, code: 16303, name: 'Nachos Grandes', price: 16000, availableNow: true, hasAttributes: false, attributes: [] };
+
+  it.each([
+    { agent: false, menu: products, sides: ['Quiero un churrasco', 'Quiero una porcion de yuca frita'], drink: 'Quiero un jugo natural en agua', flavor: 'Guanabana', sideIds: [17, 7] },
+    { agent: true, menu: [juice, taco, nachos], sides: ['Quiero un taco suave', 'Quiero unos nachos grandes'], drink: 'Quiero un jugo de mango', flavor: 'Lulo', sideIds: [16302, 16303] },
+  ])('el 2 no elige solo y el sabor nombrado sí cierra el jugo (agent $agent)', async ({ agent, menu, sides, drink, flavor, sideIds }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    for (const side of sides) await h.sendQueued(side);
+    await h.sendQueued(drink);
+    expect(h.conv.sessionData.pendingAttribute).toBeTruthy();
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([...sideIds].sort((a, b) => a - b));
+    const before = structuredClone(h.conv.sessionData.cart);
+    await h.sendQueued('Que precio tiene');
+    expect(h.conv.sessionData.pendingPriceInquiry).toBeTruthy();
+    expect(h.conv.sessionData.pendingAttribute).toBeTruthy();
+    const ambiguous = await h.sendQueued('2');
+    expect(ambiguous || '').toMatch(/precio/i);
+    expect(ambiguous || '').toMatch(/opci[oó]n/i);
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(h.conv.sessionData.pendingPriceInquiry).toBeTruthy();
+    expect(h.conv.sessionData.pendingAttribute).toBeTruthy();
+    const chosen = await h.sendQueued(flavor);
+    expect(h.cartRows().some((row) => (row.attrs || []).some((attr) => attr.includes(flavor)))).toBe(true);
+    expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([...sideIds, h.cartRows().find((row) => (row.attrs || []).some((attr) => attr.includes(flavor)))!.id].sort((a, b) => a - b));
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    expect(chosen || '').not.toMatch(/no manejamos/i);
+  });
+
+  it.each([
+    { agent: true, menu: products, drink: 'Quiero un jugo natural en agua', price: 'Cuánto cuesta el churrasco?', flavor: 'Guanabana', drinkId: 50 },
+    { agent: false, menu: [juice, taco], drink: 'Quiero un jugo de mango', price: 'Cuánto cuesta el taco suave?', flavor: 'Lulo', drinkId: 16301 },
+  ])('una sola lista sigue aceptando el 2 después del precio (agent $agent)', async ({ agent, menu, drink, price, flavor, drinkId }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    await h.sendQueued(drink);
+    expect(h.cartRows()).toEqual([]);
+    const asked = await h.sendQueued(price);
+    expect(asked || '').toMatch(/\$|precio/i);
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingAttribute).toBeTruthy();
+    await h.sendQueued('2');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: drinkId, qty: 1 })]);
+    expect(h.cartRows()[0].attrs?.some((attr) => attr.includes(flavor))).toBe(true);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Autocorrección en el mismo mensaje', () => {
+  const lentil = { id: 16311, code: 16311, name: 'Hamburguesa De Lentejas', price: 18000, availableNow: true, hasAttributes: false, attributes: [] };
+
+  it.each([
+    { agent: false, menu: products, text: 'dos hamburguesas, no, mejor tres; una sin queso', id: 76, note: /una sin queso/i },
+    { agent: true, menu: [lentil], text: 'dos hamburguesas de lentejas, no, mejor tres; una sin cebolla', id: 16311, note: /una sin cebolla/i },
+  ])('la cantidad final es tres y la nota es de una unidad (agent $agent)', async ({ agent, menu, text, id, note }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(text);
+    expect(reply || '').toMatch(note);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 3, note: expect.stringMatching(note) })]);
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Corrección negativa — no dije ese plato', () => {
+  const pastaMenu = [
+    { id: 16401, code: 16401, name: 'Combo De Pasta', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16402, code: 16402, name: 'Ensalada Verde', price: 9000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16403, code: 16403, name: 'Pasta Al Pesto', price: 22000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16404, code: 16404, name: 'Duo De Pastas', price: 40000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const ramenMenu = [
+    { id: 16411, code: 16411, name: 'Combo De Miso', price: 26000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16412, code: 16412, name: 'Combo De Shoyu', price: 27000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16413, code: 16413, name: 'Gyoza', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16414, code: 16414, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number, qty: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: qty, attributes: [],
+  });
+
+  it.each([false, true])('cambia los dos combos por dos tacos y deja la yuca (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [
+      line(99, 'Combo De Pollo Frito', 49000, 2),
+      line(7, 'Porcion De Yuca Frita', 7000, 1),
+    ];
+    const reply = await h.sendQueued('no dije dos combos, dije dos tacos');
+    expect(h.cartRows().find((row) => row.id === 7)).toMatchObject({ qty: 1 });
+    expect(h.cartRows().find((row) => row.id === 70)).toMatchObject({ qty: 2 });
+    expect(h.cartRows().some((row) => [71, 72, 73, 99].includes(row.id))).toBe(false);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(reply || '').toMatch(/Taco Al Pastor/i);
+    expect(reply || '').not.toMatch(/no manejamos/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('cambia el combo de pasta por dos pastas y deja la ensalada (agent %s)', async (agent) => {
+    const h = harness(pastaMenu, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [
+      line(16401, 'Combo De Pasta', 28000, 2),
+      line(16402, 'Ensalada Verde', 9000, 1),
+    ];
+    const reply = await h.sendQueued('no dije dos combos, dije dos pastas');
+    expect(h.cartRows().find((row) => row.id === 16402)).toMatchObject({ qty: 1 });
+    expect(h.cartRows().find((row) => row.id === 16403)).toMatchObject({ qty: 2 });
+    expect(h.cartRows().some((row) => row.id === 16401 || row.id === 16404)).toBe(false);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(reply || '').toMatch(/Pasta Al Pesto/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: true, menu: products, text: 'no dije dos combos, dije dos tacos', extra: line(98, 'Combo De Pollo Broaster', 48000, 2), keep: 7 },
+    { agent: false, menu: ramenMenu, text: 'no dije dos combos, dije dos ramen', extra: line(16412, 'Combo De Shoyu', 27000, 2), keep: 16413 },
+  ])('pregunta cuál combo cuando hay dos y no toca el resto (agent $agent)', async ({ agent, menu, text, extra, keep }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const side = menu === products ? line(7, 'Porcion De Yuca Frita', 7000, 1) : line(16413, 'Gyoza', 8000, 1);
+    const first = menu === products ? line(99, 'Combo De Pollo Frito', 49000, 2) : line(16411, 'Combo De Miso', 26000, 2);
+    h.conv.sessionData.cart = [first, extra, side];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(h.cartRows().find((row) => row.id === keep)?.qty).toBe(1);
+    expect(reply || '').toMatch(/cuál cambio/i);
+    expect(h.conv.sessionData.pendingAttribute).toBeFalsy();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Números con funciones distintas', () => {
+  const ramen = [
+    { id: 16501, code: 16501, name: 'Combo De Tres Ramen', price: 32000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16502, code: 16502, name: 'Ramen Suelto', price: 18000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+
+  it.each([
+    { agent: false, menu: products, text: 'combo de tres tacos, dos unidades, casa 3, pago con 50 mil', ids: [72, 73] },
+    { agent: true, menu: products, text: 'combo de tres tacos, dos unidades, casa 3, pago con 50 mil', ids: [72, 73] },
+    { agent: false, menu: ramen, text: 'combo de tres ramen, dos unidades, casa 3, pago con 50 mil', ids: [16501] },
+    { agent: true, menu: ramen, text: 'combo de tres ramen, dos unidades, casa 3, pago con 50 mil', ids: [16501] },
+  ])('la cantidad es dos y el 3 y el billete no son platos (agent $agent)', async ({ agent, menu, text, ids }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(text);
+    const rows = h.cartRows();
+    if (ids.length > 1) {
+      expect(rows).toEqual([]);
+      expect(h.conv.sessionData.pendingMatch?.quantity).toBe(2);
+      expect(h.conv.sessionData.pendingMatch?.candidates.map((item) => item.id).sort((a, b) => a - b)).toEqual([...ids].sort((a, b) => a - b));
+    } else {
+      expect(rows).toEqual([expect.objectContaining({ id: ids[0], qty: 2 })]);
+    }
+    expect(reply || '').not.toMatch(/no manejamos|Bandeja/i);
+    expect(String(h.conv.sessionData.cashChangeFor || '')).toMatch(/50/);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.sessionData.address || '').toMatch(/casa\s*3/i);
+    expect(h.conv.sessionData.address || '').not.toMatch(/50|pago|unidad|taco|ramen/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Referencia ambigua — esa sin cebolla', () => {
+  const burgers = [
+    { id: 16601, code: 16601, name: 'Hamburguesa De Lentejas', price: 18000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 16602, code: 16602, name: 'Hamburguesa De Garbanzo', price: 17000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, first: line(76, 'Hamburguesa Clasica', 20000), second: line(17, 'Churrasco', 38000) },
+    { agent: true, menu: products, first: line(76, 'Hamburguesa Clasica', 20000), second: line(17, 'Churrasco', 38000) },
+    { agent: false, menu: burgers, first: line(16601, 'Hamburguesa De Lentejas', 18000), second: line(16602, 'Hamburguesa De Garbanzo', 17000) },
+    { agent: true, menu: burgers, first: line(16601, 'Hamburguesa De Lentejas', 18000), second: line(16602, 'Hamburguesa De Garbanzo', 17000) },
+  ])('pregunta cuál plato y no anota al azar (agent $agent)', async ({ agent, menu, first, second }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [first, second];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('esa sin cebolla');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/cuál/i);
+    expect(reply || '').toMatch(new RegExp(first.name, 'i'));
+    expect(reply || '').toMatch(new RegExp(second.name, 'i'));
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, item: line(76, 'Hamburguesa Clasica', 20000) },
+    { agent: true, menu: products, item: line(76, 'Hamburguesa Clasica', 20000) },
+    { agent: false, menu: burgers, item: line(16601, 'Hamburguesa De Lentejas', 18000) },
+    { agent: true, menu: burgers, item: line(16601, 'Hamburguesa De Lentejas', 18000) },
+  ])('con un solo plato la nota sí queda (agent $agent)', async ({ agent, menu, item }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [item];
+    const reply = await h.sendQueued('esa sin cebolla');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: item.productId, qty: 1, note: 'sin cebolla' })]);
+    expect(reply || '').toMatch(/sin cebolla/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Consulta frente a compra — si cambio la bebida', () => {
+  const pizza = [
+    { id: 16701, code: 16701, name: 'Pizza Margarita', price: 28000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Bebida', options: ['Limonada', 'Agua'] }] },
+    { id: 16702, code: 16702, name: 'Ensalada Verde', price: 9000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const drink = (value: string) => [{ attributeName: 'Bebida', attributeValue: value }];
+
+  it.each([false, true])('pregunta el precio y deja la bebida del combo (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [{
+      productId: 99, code: 99, name: 'Combo De Pollo Frito', unitPrice: 49000, quantity: 1,
+      attributes: [...drink('Colombiana'), { attributeName: 'Arepas', attributeValue: 'Blancas' }],
+    }, {
+      productId: 7, code: 7, name: 'Porcion De Yuca Frita', unitPrice: 7000, quantity: 1, attributes: [],
+    }];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('si cambio la bebida cuánto vale');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/recargo de cambio confirmado/i);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(reply || '').not.toMatch(/Listo|agregu[eé]/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('pregunta el precio y deja la bebida de la pizza (agent %s)', async (agent) => {
+    const h = harness(pizza, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [{
+      productId: 16701, code: 16701, name: 'Pizza Margarita', unitPrice: 28000, quantity: 1, attributes: drink('Limonada'),
+    }, {
+      productId: 16702, code: 16702, name: 'Ensalada Verde', unitPrice: 9000, quantity: 1, attributes: [],
+    }];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('si cambio la bebida cuánto vale');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/recargo de cambio confirmado/i);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(h.cartRows().find((row) => row.id === 16702)?.note).toBeUndefined();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Pedido más código de premio', () => {
+  const ramen = [{ id: 16801, code: 16801, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] }];
+  const prizeService = () => {
+    const validate = jest.fn(async () => ({ code: 'ABCD2345EFGH', userId: 'test-account', expiresAt: null }));
+    const redeem = jest.fn();
+    return {
+      validate,
+      redeem,
+      service: new WhatsappPointsService({
+        getAvailablePoints: async () => 0,
+        validateRedemptionCode: validate,
+        redeemPointsForVoucher: redeem,
+      } as never),
+    };
+  };
+
+  it.each([
+    { agent: false, menu: products, text: 'agrega un medio pollo broaster y aplica este premio ABCD2345EFGH', id: 5 },
+    { agent: true, menu: products, text: 'agrega un medio pollo broaster y aplica este premio ABCD2345EFGH', id: 5 },
+    { agent: false, menu: ramen, text: 'agrega un ramen de miso y aplica este premio ABCD2345EFGH', id: 16801 },
+    { agent: true, menu: ramen, text: 'agrega un ramen de miso y aplica este premio ABCD2345EFGH', id: 16801 },
+  ])('conserva la compra y valida el código una vez (agent $agent)', async ({ agent, menu, text, id }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = prizeService();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued(text);
+    expect(h.cartRows().find((row) => row.id === id)).toMatchObject({ qty: 1 });
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(points.validate).toHaveBeenCalledTimes(1);
+    expect(points.redeem).not.toHaveBeenCalled();
+    expect(h.replies.join(' ')).toMatch(/ABCD2345EFGH/);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, item: { productId: 17, code: 17, name: 'Churrasco', unitPrice: 38000, quantity: 1, attributes: [] } },
+    { agent: true, menu: products, item: { productId: 17, code: 17, name: 'Churrasco', unitPrice: 38000, quantity: 1, attributes: [] } },
+    { agent: false, menu: ramen, item: { productId: 16801, code: 16801, name: 'Ramen De Miso', unitPrice: 24000, quantity: 1, attributes: [] } },
+    { agent: true, menu: ramen, item: { productId: 16801, code: 16801, name: 'Ramen De Miso', unitPrice: 24000, quantity: 1, attributes: [] } },
+  ])('una consulta no canjea ni cambia el pedido (agent $agent)', async ({ agent, menu, item }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = prizeService();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    h.conv.sessionData.cart = [item];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('¿aplica este premio ABCD2345EFGH?');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(points.validate).not.toHaveBeenCalled();
+    expect(points.redeem).not.toHaveBeenCalled();
+    expect(reply || '').toMatch(/consulta/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Retransmisión — mismo evento y otro mensaje igual', () => {
+  const ramen = [{ id: 16901, code: 16901, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] }];
+
+  async function turn(h: ReturnType<typeof harness>, messageId: string, text: string) {
+    const pending = h.service.handleIncoming({
+      waId: 'customer',
+      phoneE164: h.conv.phoneE164,
+      messageId,
+      messageType: 'text',
+      text,
+      timestamp: Date.now() / 1000,
+      raw: {},
+    });
+    await jest.advanceTimersByTimeAsync(3000);
+    await pending;
+  }
+
+  it.each([
+    { agent: false, menu: products, text: 'Quiero un churrasco', id: 17 },
+    { agent: true, menu: products, text: 'Quiero un churrasco', id: 17 },
+    { agent: false, menu: ramen, text: 'Quiero un ramen de miso', id: 16901 },
+    { agent: true, menu: ramen, text: 'Quiero un ramen de miso', id: 16901 },
+  ])('el mismo evento no duplica y otro id no borra el plato (agent $agent)', async ({ agent, menu, text, id }) => {
+    jest.useFakeTimers();
+    try {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      const claimed = new Set<string>();
+      let n = 0;
+      h.service.conversationService.claimInboundMessage = async (params: { waMessageId?: string }) => {
+        if (params.waMessageId && claimed.has(params.waMessageId)) return null;
+        if (params.waMessageId) claimed.add(params.waMessageId);
+        n += 1;
+        return { id: n };
+      };
+      await turn(h, 'wamid.same', text);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+      const replies = h.replies.length;
+      await turn(h, 'wamid.same', text);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+      expect(h.replies).toHaveLength(replies);
+      await turn(h, 'wamid.other', text);
+      expect(h.cartRows().find((row) => row.id === id)?.qty).toBeGreaterThanOrEqual(1);
+      expect(h.cartRows().some((row) => row.id === id)).toBe(true);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('Foto — solo el segundo y dos del tercero', () => {
+  const bowls = [
+    { id: 17001, code: 17001, name: 'Bowl De Miso', price: 18000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17002, code: 17002, name: 'Gyoza', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17003, code: 17003, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    {
+      agent: false,
+      menu: products,
+      remembered: [
+        { productId: 17, name: 'Churrasco' },
+        { productId: 7, name: 'Porcion De Yuca Frita' },
+        { productId: 38, name: 'Sopa De Ajiaco' },
+      ],
+      cart: [line(17, 'Churrasco', 38000), line(7, 'Porcion De Yuca Frita', 7000), line(38, 'Sopa De Ajiaco', 10500)],
+      keep: [7, 38],
+      qty: 2,
+    },
+    {
+      agent: true,
+      menu: products,
+      remembered: [
+        { productId: 17, name: 'Churrasco' },
+        { productId: 7, name: 'Porcion De Yuca Frita' },
+        { productId: 38, name: 'Sopa De Ajiaco' },
+      ],
+      cart: [line(17, 'Churrasco', 38000), line(7, 'Porcion De Yuca Frita', 7000), line(38, 'Sopa De Ajiaco', 10500)],
+      keep: [7, 38],
+      qty: 2,
+    },
+    {
+      agent: false,
+      menu: bowls,
+      remembered: [
+        { productId: 17001, name: 'Bowl De Miso' },
+        { productId: 17002, name: 'Gyoza' },
+        { productId: 17003, name: 'Ramen De Miso' },
+      ],
+      cart: [line(17001, 'Bowl De Miso', 18000), line(17002, 'Gyoza', 8000), line(17003, 'Ramen De Miso', 24000)],
+      keep: [17002, 17003],
+      qty: 2,
+    },
+    {
+      agent: true,
+      menu: bowls,
+      remembered: [
+        { productId: 17001, name: 'Bowl De Miso' },
+        { productId: 17002, name: 'Gyoza' },
+        { productId: 17003, name: 'Ramen De Miso' },
+      ],
+      cart: [line(17001, 'Bowl De Miso', 18000), line(17002, 'Gyoza', 8000), line(17003, 'Ramen De Miso', 24000)],
+      keep: [17002, 17003],
+      qty: 2,
+    },
+  ])('deja el segundo y dos del tercero (agent $agent)', async ({ agent, menu, remembered, cart, keep, qty }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.recentImageOrder = remembered;
+    const reply = await h.sendQueued('de la foto solo el segundo y dos del tercero');
+    expect(h.cartRows().map((row) => row.id)).toEqual(keep);
+    expect(h.cartRows()[0].qty).toBe(1);
+    expect(h.cartRows()[1].qty).toBe(qty);
+    expect(reply || '').toMatch(/de la foto/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sin lista de la foto no agrega los platos otra vez (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [line(17, 'Churrasco', 38000)];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('de la foto solo el segundo y dos del tercero');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/no tengo la lista/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Consulta sin pedido — no guarda una dirección falsa', () => {
+  const bowls = [
+    { id: 17401, code: 17401, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  it.each([
+    { agent: false, menu: products },
+    { agent: true, menu: products },
+    { agent: false, menu: bowls },
+    { agent: true, menu: bowls },
+  ])('preguntar por una celebración no arma pedido ni dirección (agent $agent)', async ({ agent, menu }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued('Mi tía cumple años y quiero saber si arman algo especial para celebrar en la mesa, sin pedir todavía');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.address).toBeUndefined();
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(reply || '').not.toMatch(/no manejamos \*mi tía/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Nota con negación — sin picante y ají aparte', () => {
+  const bowls = [
+    { id: 17101, code: 17101, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17102, code: 17102, name: 'Salsa De Aji', price: 2000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, text: 'un churrasco sin picante; el ají aparte', id: 17, banned: 38 },
+    { agent: true, menu: products, text: 'un churrasco sin picante; el ají aparte', id: 17, banned: 38 },
+    { agent: false, menu: bowls, text: 'un ramen de miso sin picante; el ají aparte', id: 17101, banned: 17102 },
+    { agent: true, menu: bowls, text: 'un ramen de miso sin picante; el ají aparte', id: 17101, banned: 17102 },
+  ])('guarda las dos notas y no compra el ají (agent $agent)', async ({ agent, menu, text, id, banned }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1, note: expect.stringMatching(/sin picante/i) })]);
+    expect(h.cartRows()[0].note || '').toMatch(/aj[ií] aparte/i);
+    expect(h.cartRows().some((row) => row.id === banned)).toBe(false);
+    expect(reply || '').toMatch(/sin picante/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(17, 'Churrasco', 38000)], banned: 38 },
+    { agent: true, menu: products, cart: [line(17, 'Churrasco', 38000)], banned: 38 },
+    { agent: false, menu: bowls, cart: [line(17101, 'Ramen De Miso', 24000)], banned: 17102 },
+    { agent: true, menu: bowls, cart: [line(17101, 'Ramen De Miso', 24000)], banned: 17102 },
+  ])('en un pedido ya armado no agrega el ají (agent $agent)', async ({ agent, menu, cart, banned }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    const reply = await h.sendQueued('sin picante; el ají aparte');
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.cartRows()[0].note || '').toMatch(/sin picante/i);
+    expect(h.cartRows()[0].note || '').toMatch(/aj[ií] aparte/i);
+    expect(h.cartRows().some((row) => row.id === banned)).toBe(false);
+    expect(reply || '').toMatch(/nota/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(17, 'Churrasco', 38000)], text: 'Quítale lo picante al churrasco, pero el ají mándamelo en un tarrito aparte', id: 17, banned: 38 },
+    { agent: true, menu: products, cart: [line(17, 'Churrasco', 38000)], text: 'Quítale lo picante al churrasco, pero el ají mándamelo en un tarrito aparte', id: 17, banned: 38 },
+    { agent: false, menu: bowls, cart: [line(17101, 'Ramen De Miso', 24000)], text: 'Quítale lo picante al ramen de miso, pero el ají mándamelo en un tarrito aparte', id: 17101, banned: 17102 },
+    { agent: true, menu: bowls, cart: [line(17101, 'Ramen De Miso', 24000)], text: 'Quítale lo picante al ramen de miso, pero el ají mándamelo en un tarrito aparte', id: 17101, banned: 17102 },
+  ])('una frase distinta conserva las dos notas (agent $agent)', async ({ agent, menu, cart, text, id, banned }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+    expect(h.cartRows()[0].note || '').toMatch(/sin picante/i);
+    expect(h.cartRows()[0].note || '').toMatch(/aj[ií] aparte/i);
+    expect(h.cartRows().some((row) => row.id === banned)).toBe(false);
+    expect(reply || '').toMatch(/sin picante/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Cambio de destino — mejor recojo', () => {
+  const bowls = [
+    { id: 17201, code: 17201, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, item: line(17, 'Churrasco', 38000) },
+    { agent: true, menu: products, item: line(17, 'Churrasco', 38000) },
+    { agent: false, menu: bowls, item: line(17201, 'Ramen De Miso', 24000) },
+    { agent: true, menu: bowls, item: line(17201, 'Ramen De Miso', 24000) },
+  ])('quita el domicilio y conserva comida y pago (agent $agent)', async ({ agent, menu, item }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_address';
+    h.conv.sessionData = {
+      cart: [item],
+      orderType: 'delivery',
+      fulfillmentChosen: true,
+      paymentMethod: 'cash',
+      address: 'Calle 12 34 56',
+      addressConfirmed: false,
+    };
+    const reply = await h.sendQueued('mejor recojo');
+    expect(h.conv.sessionData.orderType).toBe('pickup');
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.sessionData.address || '').toMatch(/recoge en el local/i);
+    expect(h.conv.sessionData.address || '').not.toMatch(/calle 12/i);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: item.productId, qty: 1 })]);
+    expect(h.conv.state).not.toBe('awaiting_address');
+    expect(reply || '').toMatch(/pasas tú|recoge/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Carta que cambia — opción retirada', () => {
+  const flavor = (id: number, name: string, options: string[]) => ({
+    id, code: id, name, price: 18000, availableNow: true, hasAttributes: true,
+    attributes: [{ attributeName: 'Sabor', options }],
+  });
+  const side = (id: number, name: string) => ({
+    id, code: id, name, price: 7000, availableNow: true, hasAttributes: false, attributes: [] as [],
+  });
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+  const pending = (id: number, name: string, options: string[]) => ({
+    productId: id, name, code: id, price: 18000,
+    attributes: [{ attributeName: 'Sabor', options: [...options] }],
+    selected: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, drink: flavor(50, 'Jugo Natural En Agua', ['Mango', 'Lulo']), sideItem: side(7, 'Porcion De Yuca Frita'), shown: ['Mango', 'Guanabana', 'Lulo'], gone: 'Guanabana', kept: 'Lulo' },
+    { agent: true, drink: flavor(50, 'Jugo Natural En Agua', ['Mango', 'Lulo']), sideItem: side(7, 'Porcion De Yuca Frita'), shown: ['Mango', 'Guanabana', 'Lulo'], gone: 'Guanabana', kept: 'Lulo' },
+    { agent: false, drink: flavor(17301, 'Ramen De Miso', ['Miso', 'Tonkotsu']), sideItem: side(17302, 'Edamame'), shown: ['Miso', 'Shoyu', 'Tonkotsu'], gone: 'Shoyu', kept: 'Tonkotsu' },
+    { agent: true, drink: flavor(17301, 'Ramen De Miso', ['Miso', 'Tonkotsu']), sideItem: side(17302, 'Edamame'), shown: ['Miso', 'Shoyu', 'Tonkotsu'], gone: 'Shoyu', kept: 'Tonkotsu' },
+  ])('el número de la opción retirada no cambia el resto (agent $agent)', async ({ agent, drink, sideItem, shown, gone, kept }) => {
+    const h = harness([drink, sideItem] as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_attribute';
+    h.conv.sessionData.cart = [line(sideItem.id, sideItem.name, sideItem.price)];
+    h.conv.sessionData.pendingAttribute = pending(drink.id, drink.name, shown);
+    const reply = await h.sendQueued('2');
+    expect(reply || '').toMatch(new RegExp(gone, 'i'));
+    expect(reply || '').toMatch(/no la apliqu/i);
+    expect(h.cartRows().map((row) => row.id)).toEqual([sideItem.id]);
+    expect(h.conv.sessionData.pendingAttribute?.attributes?.[0].options).not.toContain(gone);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    const follow = await h.sendQueued('2');
+    expect(h.cartRows().find((row) => row.id === drink.id)?.attrs).toContain(`Sabor:${kept}`);
+    expect(h.cartRows().some((row) => row.id === sideItem.id)).toBe(true);
+    expect(follow || '').not.toMatch(new RegExp(gone, 'i'));
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('un plato retirado no se agrega y el acompañamiento queda (agent %s)', async (agent) => {
+    const yuca = side(7, 'Porcion De Yuca Frita');
+    const h = harness([yuca] as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_attribute';
+    h.conv.sessionData.cart = [line(7, 'Porcion De Yuca Frita', 7000)];
+    h.conv.sessionData.pendingAttribute = pending(50, 'Jugo Natural En Agua', ['Mango', 'Guanabana', 'Lulo']);
+    const reply = await h.sendQueued('2');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: 7, qty: 1 })]);
+    expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+    expect(reply || '').toMatch(/ya no está en la carta/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Pedido y redimir en el mismo mensaje', () => {
+  const ramen = [{ id: 17501, code: 17501, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] }];
+  const pointsFor = () => {
+    let balance = 9;
+    const redeem = jest.fn(async () => {
+      balance -= 9;
+      return { code: 'ABCD2345EFGH', expiresAt: null };
+    });
+    return {
+      redeem,
+      service: new WhatsappPointsService({
+        getAvailablePoints: async () => balance,
+        redeemPointsForVoucher: redeem,
+      } as never),
+    };
+  };
+
+  it.each([
+    { agent: false, menu: products, text: 'agrega un medio pollo broaster y quiero redimir mis puntos', id: 5 },
+    { agent: true, menu: products, text: 'agrega un medio pollo broaster y quiero redimir mis puntos', id: 5 },
+    { agent: false, menu: ramen, text: 'agrega un ramen de miso y quiero generar un premio', id: 17501 },
+    { agent: true, menu: ramen, text: 'agrega un ramen de miso y quiero generar un premio', id: 17501 },
+  ])('genera el premio una vez y no lo aplica al plato (agent $agent)', async ({ agent, menu, text, id }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = pointsFor();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued(text);
+    expect(h.cartRows().find((row) => row.id === id)).toMatchObject({ qty: 1 });
+    expect(h.cartRows()).toHaveLength(1);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(points.redeem).toHaveBeenCalledTimes(1);
+    expect(h.replies.join(' ')).toMatch(/premio generado/i);
+    expect(h.replies.join(' ')).toMatch(/no lo apliqué/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sin cuenta anota el plato y no genera el premio (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = pointsFor();
+    h.service.pointsHandler = points.service;
+    const reply = await h.sendQueued('agrega un medio pollo broaster y quiero redimir mis puntos');
+    expect(h.cartRows().find((row) => row.id === 5)).toMatchObject({ qty: 1 });
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(points.redeem).not.toHaveBeenCalled();
+    expect(h.replies.join(' ')).toMatch(/no lo generé/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, item: { productId: 17, code: 17, name: 'Churrasco', unitPrice: 38000, quantity: 1, attributes: [] as [] } },
+    { agent: true, menu: ramen, item: { productId: 17501, code: 17501, name: 'Ramen De Miso', unitPrice: 24000, quantity: 1, attributes: [] as [] } },
+  ])('una consulta no genera el premio ni cambia el pedido (agent $agent)', async ({ agent, menu, item }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = pointsFor();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    h.conv.sessionData.cart = [item];
+    const before = structuredClone(h.cartRows());
+    const reply = await h.sendQueued('¿agrego otro plato y quiero redimir mis puntos?');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(points.redeem).not.toHaveBeenCalled();
+    expect(reply || '').toMatch(/no generé el premio/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, text: 'agrega un medio pollo broaster, quiero redimir y aplicalo a este pedido', id: 5 },
+    { agent: true, menu: products, text: 'agrega un medio pollo broaster, quiero redimir y aplicalo a este pedido', id: 5 },
+    { agent: false, menu: ramen, text: 'agrega un ramen de miso, quiero generar un premio y aplicalo a este pedido', id: 17501 },
+    { agent: true, menu: ramen, text: 'agrega un ramen de miso, quiero generar un premio y aplicalo a este pedido', id: 17501 },
+  ])('solo lo anota si el mismo mensaje lo pide (agent $agent)', async ({ agent, menu, text, id }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = pointsFor();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(points.redeem).toHaveBeenCalledTimes(1);
+    expect(h.replies.join(' ')).toMatch(/lo dejé anotado/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, first: 'agrega un medio pollo broaster y quiero redimir mis puntos', id: 5 },
+    { agent: true, menu: ramen, first: 'agrega un ramen de miso y quiero generar un premio', id: 17501 },
+  ])('un sí después no recupera el código de la respuesta anterior (agent $agent)', async ({ agent, menu, first, id }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const points = pointsFor();
+    h.service.pointsHandler = points.service;
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued(first);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    const reply = await h.sendQueued('sí, aplícalo');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(points.redeem).toHaveBeenCalledTimes(1);
+    expect(reply || '').toMatch(/no apliqué el premio/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Nombre de 12 letras — no es un código', () => {
+  const burgers = [{ id: 17601, code: 17601, name: 'Greenteaburg', price: 22000, availableNow: true, hasAttributes: false, attributes: [] }];
+  const ramen = [{ id: 17602, code: 17602, name: 'Cheddarbugrx', price: 24000, availableNow: true, hasAttributes: false, attributes: [] }];
+
+  it.each([
+    { agent: false, menu: burgers, text: 'Greenteaburg', id: 17601 },
+    { agent: true, menu: burgers, text: 'Greenteaburg', id: 17601 },
+    { agent: false, menu: ramen, text: 'Cheddarbugrx', id: 17602 },
+    { agent: true, menu: ramen, text: 'Cheddarbugrx', id: 17602 },
+  ])('el nombre del plato no se registra como factura (agent $agent)', async ({ agent, menu, text, id }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const validate = jest.fn(async () => { throw new Error('no debe validar el nombre'); });
+    const register = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 0,
+      validateRedemptionCode: validate,
+      registerPointByCode: register,
+    } as never);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(validate).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('un código real sigue siendo código y la sobrebarriga sigue siendo plato (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    const validate = jest.fn(async () => ({ code: 'ABCD2345EFGH', userId: 'test-account', expiresAt: null }));
+    const register = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 0,
+      validateRedemptionCode: validate,
+      registerPointByCode: register,
+    } as never);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    await h.sendQueued('ABCD2345EFGH');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(validate).toHaveBeenCalledTimes(1);
+    expect(register).not.toHaveBeenCalled();
+    await h.sendQueued('Sobrebarriga');
+    const dish = h.cartRows().some((row) => row.id === 13) || h.conv.sessionData.pendingAttribute?.productId === 13;
+    expect(dish).toBe(true);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Saldo parcial — la opción pendiente no se pierde', () => {
+  const ramen = [
+    { id: 17701, code: 17701, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Miso', 'Shoyu'] }] },
+    { id: 17702, code: 17702, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as [],
+  });
+  const pending = (id: number, name: string, options: string[]) => ({
+    productId: id, name, code: id, price: 5000,
+    attributes: [{ attributeName: 'Sabor', options }],
+    selected: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, side: line(7, 'Porcion De Yuca Frita', 7000), open: pending(50, 'Jugo Natural En Agua', ['Mango', 'Guanabana', 'Lulo']) },
+    { agent: true, menu: products, side: line(7, 'Porcion De Yuca Frita', 7000), open: pending(50, 'Jugo Natural En Agua', ['Mango', 'Guanabana', 'Lulo']) },
+    { agent: false, menu: ramen, side: line(17702, 'Edamame', 8000), open: pending(17701, 'Ramen De Miso', ['Miso', 'Shoyu']) },
+    { agent: true, menu: ramen, side: line(17702, 'Edamame', 8000), open: pending(17701, 'Ramen De Miso', ['Miso', 'Shoyu']) },
+  ])('con 4 puntos no gasta y deja la lista abierta (agent $agent)', async ({ agent, menu, side, open }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const redeem = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({
+      getAvailablePoints: async () => 4,
+      redeemPointsForVoucher: redeem,
+    } as never);
+    h.conv.sessionData.linkedUserId = 'test-account';
+    h.conv.state = 'awaiting_attribute';
+    h.conv.sessionData.cart = [side];
+    h.conv.sessionData.pendingAttribute = open;
+    const reply = await h.sendQueued('quiero redimir mis puntos');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: side.productId, qty: 1 })]);
+    expect(h.conv.sessionData.pendingAttribute?.productId).toBe(open.productId);
+    expect(redeem).not.toHaveBeenCalled();
+    expect(reply || '').toMatch(/4/);
+    expect(reply || '').toMatch(/9/);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Corrección después del premio', () => {
+  const bowls = [
+    { id: 17801, code: 17801, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17802, code: 17802, name: 'Ramen De Shoyu', price: 25000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17803, code: 17803, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    {
+      agent: false,
+      menu: products,
+      cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)],
+      text: 'cambia el medio broaster por el medio frito',
+      gone: 5,
+      next: 2,
+      keep: 7,
+    },
+    {
+      agent: true,
+      menu: products,
+      cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)],
+      text: 'cambia el medio broaster por el medio frito',
+      gone: 5,
+      next: 2,
+      keep: 7,
+    },
+    {
+      agent: false,
+      menu: bowls,
+      cart: [line(17801, 'Ramen De Miso', 24000), line(17803, 'Edamame', 8000)],
+      text: 'cambia el ramen de miso por el ramen de shoyu',
+      gone: 17801,
+      next: 17802,
+      keep: 17803,
+    },
+    {
+      agent: true,
+      menu: bowls,
+      cart: [line(17801, 'Ramen De Miso', 24000), line(17803, 'Edamame', 8000)],
+      text: 'cambia el ramen de miso por el ramen de shoyu',
+      gone: 17801,
+      next: 17802,
+      keep: 17803,
+    },
+  ])('cambia el plato y conserva el premio y el acompañamiento (agent $agent)', async ({ agent, menu, cart, text, gone, next, keep }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const redeem = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({ redeemPointsForVoucher: redeem } as never);
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    await h.sendQueued(text);
+    expect(h.cartRows().some((row) => row.id === gone)).toBe(false);
+    expect(h.cartRows().find((row) => row.id === next)?.qty).toBe(1);
+    expect(h.cartRows().find((row) => row.id === keep)?.qty).toBe(1);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Cancelación ambigua — dos platos coinciden', () => {
+  const bowls = [
+    { id: 17901, code: 17901, name: 'Combo De Pasta', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17902, code: 17902, name: 'Combo De Ramen', price: 26000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 17903, code: 17903, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const row = (id: number, name: string, price: number, quantity = 1) => ({
+    productId: id, code: id, name, unitPrice: price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [row(99, 'Combo De Pollo Frito', 49000, 2), row(98, 'Combo De Pollo Broaster', 47000), row(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: true, menu: products, cart: [row(99, 'Combo De Pollo Frito', 49000, 2), row(98, 'Combo De Pollo Broaster', 47000), row(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: false, menu: bowls, cart: [row(17901, 'Combo De Pasta', 28000, 2), row(17902, 'Combo De Ramen', 26000), row(17903, 'Edamame', 8000)] },
+    { agent: true, menu: bowls, cart: [row(17901, 'Combo De Pasta', 28000, 2), row(17902, 'Combo De Ramen', 26000), row(17903, 'Edamame', 8000)] },
+  ])('cancela el combo pregunta cuál y no toca el premio (agent $agent)', async ({ agent, menu, cart }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    const before = h.cartRows();
+    const reply = await h.sendQueued('cancela el combo');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(reply || '').toMatch(/cuál quitamos/i);
+    expect(h.conv.state).not.toBe('closed');
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Bebida de 400 — no va aparte', () => {
+  const bowls = [
+    { id: 18001, code: 18001, name: 'Combo De Ramen', price: 32000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Bebida', options: ['Te Verde', 'Limonada'] }] },
+    { id: 18002, code: 18002, name: 'Te Helado 400ml', price: 6000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Te Verde', 'Matcha'] }] },
+    { id: 18003, code: 18003, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 18004, code: 18004, name: 'Combo De Pasta', price: 30000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Bebida', options: ['Te Verde', 'Limonada'] }] },
+  ];
+  const drink = (id: number, name: string, price: number, flavor: string, flavorName = 'Sabor') => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1,
+    attributes: [{ attributeName: flavorName, attributeValue: flavor }],
+  });
+  const side = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    {
+      agent: false,
+      menu: products,
+      cart: [drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'), drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'), side(7, 'Porcion De Yuca Frita', 7000)],
+      text: 'la gaseosa de 400 no va aparte, es la del combo',
+      host: 99,
+      gone: 28,
+      keep: 7,
+      flavor: 'Bebida:Pepsi',
+    },
+    {
+      agent: true,
+      menu: products,
+      cart: [drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'), drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'), side(7, 'Porcion De Yuca Frita', 7000)],
+      text: 'la gaseosa de 400 no va aparte, es la del combo',
+      host: 99,
+      gone: 28,
+      keep: 7,
+      flavor: 'Bebida:Pepsi',
+    },
+    {
+      agent: false,
+      menu: bowls,
+      cart: [drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'), drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'), side(18003, 'Edamame', 8000)],
+      text: 'el te helado de 400 no va aparte, es la bebida del combo',
+      host: 18001,
+      gone: 18002,
+      keep: 18003,
+      flavor: 'Bebida:Te Verde',
+    },
+    {
+      agent: true,
+      menu: bowls,
+      cart: [drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'), drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'), side(18003, 'Edamame', 8000)],
+      text: 'el te helado de 400 no va aparte, es la bebida del combo',
+      host: 18001,
+      gone: 18002,
+      keep: 18003,
+      flavor: 'Bebida:Te Verde',
+    },
+  ])('pasa el sabor al combo y quita la botella (agent $agent)', async ({ agent, menu, cart, text, host, gone, keep, flavor }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const hostLine = cart[0];
+    hostLine.attributes = [...hostLine.attributes, { attributeName: 'Arepas', attributeValue: 'Blancas' }];
+    h.conv.sessionData.cart = cart;
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows().some((row) => row.id === gone)).toBe(false);
+    expect(h.cartRows().find((row) => row.id === host)?.qty).toBe(1);
+    expect(h.cartRows().find((row) => row.id === host)?.attrs).toEqual(expect.arrayContaining([flavor, 'Arepas:Blancas']));
+    expect(h.cartRows().find((row) => row.id === keep)?.qty).toBe(1);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      agent: false,
+      menu: products,
+      cart: [
+        drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'),
+        drink(98, 'Combo De Pollo Broaster', 50000, 'Manzana', 'Bebida'),
+        drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'),
+        side(7, 'Porcion De Yuca Frita', 7000),
+      ],
+      text: 'la gaseosa de 400 no va aparte, es la del combo',
+    },
+    {
+      agent: true,
+      menu: products,
+      cart: [
+        drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'),
+        drink(98, 'Combo De Pollo Broaster', 50000, 'Manzana', 'Bebida'),
+        drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'),
+        side(7, 'Porcion De Yuca Frita', 7000),
+      ],
+      text: 'la gaseosa de 400 no va aparte, es la del combo',
+    },
+    {
+      agent: false,
+      menu: bowls,
+      cart: [
+        drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'),
+        drink(18004, 'Combo De Pasta', 30000, 'Limonada', 'Bebida'),
+        drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'),
+        side(18003, 'Edamame', 8000),
+      ],
+      text: 'el te helado de 400 no va aparte, es la bebida del combo',
+    },
+    {
+      agent: true,
+      menu: bowls,
+      cart: [
+        drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'),
+        drink(18004, 'Combo De Pasta', 30000, 'Limonada', 'Bebida'),
+        drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'),
+        side(18003, 'Edamame', 8000),
+      ],
+      text: 'el te helado de 400 no va aparte, es la bebida del combo',
+    },
+  ])('con dos platos pregunta cuál y no borra la botella (agent $agent)', async ({ agent, menu, cart, text }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    const before = h.cartRows();
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/más de un plato con bebida/i);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('un sabor que el combo no tiene no quita la botella (agent %s)', async (agent) => {
+    const h = harness(bowls as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [
+      drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'),
+      drink(18002, 'Te Helado 400ml', 6000, 'Matcha'),
+      side(18003, 'Edamame', 8000),
+    ];
+    const before = h.cartRows();
+    const reply = await h.sendQueued('el te helado de 400 no va aparte, es la bebida del combo');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/no está entre las bebidas/i);
+    expect(reply || '').toMatch(/pedido sigue igual/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'), drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'), side(7, 'Porcion De Yuca Frita', 7000)], text: 'la gaseosa de 400 va aparte' },
+    { agent: true, menu: products, cart: [drink(99, 'Combo De Pollo Frito', 49000, 'Colombiana', 'Bebida'), drink(28, 'Gaseosa 400ml', 4000, 'Pepsi'), side(7, 'Porcion De Yuca Frita', 7000)], text: 'la gaseosa de 400 va aparte' },
+    { agent: false, menu: bowls, cart: [drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'), drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'), side(18003, 'Edamame', 8000)], text: 'el te helado de 400 va aparte' },
+    { agent: true, menu: bowls, cart: [drink(18001, 'Combo De Ramen', 32000, 'Limonada', 'Bebida'), drink(18002, 'Te Helado 400ml', 6000, 'Te Verde'), side(18003, 'Edamame', 8000)], text: 'el te helado de 400 va aparte' },
+  ])('si ya está suelta, va aparte no suma otra (agent $agent)', async ({ agent, menu, cart, text }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    const before = h.cartRows();
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/ya está aparte/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Después del premio — dirección, pago y cantidad', () => {
+  const bowls = [
+    { id: 18101, code: 18101, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 18102, code: 18102, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number, quantity = 1) => ({
+    productId: id, code: id, name, unitPrice: price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+  const seed = (agent: boolean, menu: typeof products, cart: ReturnType<typeof line>[]) => {
+    const h = harness(menu, agent);
+    h.service.ordersService.create = jest.fn();
+    const redeem = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({ redeemPointsForVoucher: redeem } as never);
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    return { h, redeem };
+  };
+
+  it.each([
+    { agent: false, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: true, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: false, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)] },
+    { agent: true, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)] },
+  ])('la calle no borra el premio ni el pedido (agent $agent)', async ({ agent, menu, cart }) => {
+    const { h, redeem } = seed(agent, menu as typeof products, cart);
+    h.conv.state = 'awaiting_address';
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, addressConfirmed: false });
+    const before = h.cartRows();
+    await h.sendQueued('Calle 15 25 35');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.address || '').toMatch(/15/);
+    expect(h.conv.sessionData.address || '').toMatch(/25/);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: true, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)] },
+    { agent: false, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)] },
+    { agent: true, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)] },
+  ])('el efectivo no cobra ni pierde el premio (agent $agent)', async ({ agent, menu, cart }) => {
+    const { h, redeem } = seed(agent, menu as typeof products, cart);
+    h.conv.state = 'awaiting_payment';
+    Object.assign(h.conv.sessionData, {
+      orderType: 'delivery', fulfillmentChosen: true, address: 'Calle 15 25 35', addressConfirmed: true,
+    });
+    const before = h.cartRows();
+    await h.sendQueued('efectivo');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)], text: 'deja dos broaster', id: 5, side: 7 },
+    { agent: true, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)], text: 'deja dos broaster', id: 5, side: 7 },
+    { agent: false, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)], text: 'deja dos ramen', id: 18101, side: 18102 },
+    { agent: true, menu: bowls, cart: [line(18101, 'Ramen De Miso', 24000), line(18102, 'Edamame', 8000)], text: 'deja dos ramen', id: 18101, side: 18102 },
+  ])('la cantidad cambia y el premio sigue (agent $agent)', async ({ agent, menu, cart, text, id, side }) => {
+    const { h, redeem } = seed(agent, menu as typeof products, cart);
+    await h.sendQueued(text);
+    expect(h.cartRows().find((row) => row.id === id)?.qty).toBe(2);
+    expect(h.cartRows().find((row) => row.id === side)?.qty).toBe(1);
+    expect(h.cartRows()).toHaveLength(2);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Quitar el premio — la comida se queda', () => {
+  const bowls = [
+    { id: 18201, code: 18201, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Sabor', options: ['Miso', 'Shoyu'] }] },
+    { id: 18202, code: 18202, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity: 1, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)], text: 'quita el premio' },
+    { agent: true, menu: products, cart: [line(5, '1/2 Pollo Broaster', 25000), line(7, 'Porcion De Yuca Frita', 7000)], text: 'quita el premio' },
+    { agent: false, menu: bowls, cart: [line(18201, 'Ramen De Miso', 24000), line(18202, 'Edamame', 8000)], text: 'no uses el premio' },
+    { agent: true, menu: bowls, cart: [line(18201, 'Ramen De Miso', 24000), line(18202, 'Edamame', 8000)], text: 'deja el pedido sin premio' },
+  ])('saca el código y conserva los platos (agent $agent)', async ({ agent, menu, cart, text }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const redeem = jest.fn();
+    h.service.pointsHandler = new WhatsappPointsService({ redeemPointsForVoucher: redeem } as never);
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    const before = h.cartRows();
+    const reply = await h.sendQueued(text);
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(reply || '').toMatch(/quité el premio/i);
+    expect(redeem).not.toHaveBeenCalled();
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('una pregunta no lo quita (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [line(17, 'Churrasco', 38000)];
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    const before = h.cartRows();
+    const reply = await h.sendQueued('¿quito el premio?');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBe('ABCD2345EFGH');
+    expect(reply || '').toMatch(/sigue anotado/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('sin premio anotado no toca el pedido (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [line(17, 'Churrasco', 38000), line(7, 'Porcion De Yuca Frita', 7000)];
+    const before = h.cartRows();
+    const reply = await h.sendQueued('quita el premio');
+    expect(h.cartRows()).toEqual(before);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(reply || '').toMatch(/no hay un premio/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(7, 'Porcion De Yuca Frita', 7000)], pendingId: 50, pendingName: 'Jugo Natural En Agua' },
+    { agent: true, menu: bowls, cart: [line(18202, 'Edamame', 8000)], pendingId: 18201, pendingName: 'Ramen De Miso' },
+  ])('la lista abierta sigue después de quitar el premio (agent $agent)', async ({ agent, menu, cart, pendingId, pendingName }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_attribute';
+    h.conv.sessionData.cart = cart;
+    h.conv.sessionData.pendingRedemptionCode = 'ABCD2345EFGH';
+    h.conv.sessionData.pendingAttribute = {
+      productId: pendingId, code: pendingId, name: pendingName, price: 5000,
+      attributes: [{ attributeName: 'Sabor', options: ['Mango', 'Lulo'] }], selected: [], quantity: 1,
+    };
+    const reply = await h.sendQueued('quita el premio');
+    expect(h.cartRows()).toEqual(cart.map((item) => ({ id: item.productId, qty: 1, note: undefined, attrs: [] })));
+    expect(h.conv.sessionData.pendingAttribute?.productId).toBe(pendingId);
+    expect(h.conv.sessionData.pendingRedemptionCode).toBeFalsy();
+    expect(h.conv.state).toBe('awaiting_attribute');
+    expect(reply || '').toMatch(/quité el premio/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Uno sin cebolla y el otro normal', () => {
+  const bowls = [
+    { id: 18301, code: 18301, name: 'Ramen De Miso', price: 24000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 18302, code: 18302, name: 'Edamame', price: 8000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const line = (id: number, name: string, price: number, quantity: number) => ({
+    productId: id, code: id, name, unitPrice: price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+
+  it.each([
+    { agent: false, menu: products, item: line(17, 'Churrasco', 38000, 2) },
+    { agent: true, menu: products, item: line(17, 'Churrasco', 38000, 2) },
+    { agent: false, menu: bowls, item: line(18301, 'Ramen De Miso', 24000, 2) },
+    { agent: true, menu: bowls, item: line(18301, 'Ramen De Miso', 24000, 2) },
+  ])('parte la línea en una con nota y otra normal (agent $agent)', async ({ agent, menu, item }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = [item];
+    await h.sendQueued('uno sin cebolla y el otro normal');
+    const rows = h.cartRows().filter((row) => row.id === item.productId);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.qty).sort()).toEqual([1, 1]);
+    expect(rows.filter((row) => /sin cebolla/i.test(row.note || ''))).toHaveLength(1);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { agent: false, menu: products, cart: [line(17, 'Churrasco', 38000, 2), line(7, 'Porcion De Yuca Frita', 7000, 1)] },
+    { agent: true, menu: products, cart: [line(17, 'Churrasco', 38000, 2), line(7, 'Porcion De Yuca Frita', 7000, 1)] },
+    { agent: false, menu: bowls, cart: [line(18301, 'Ramen De Miso', 24000, 2), line(18302, 'Edamame', 8000, 1)] },
+    { agent: true, menu: bowls, cart: [line(18301, 'Ramen De Miso', 24000, 2), line(18302, 'Edamame', 8000, 1)] },
+  ])('con dos platos pregunta cuál y no parte ninguno (agent $agent)', async ({ agent, menu, cart }) => {
+    const h = harness(menu as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.sessionData.cart = cart;
+    const before = h.cartRows();
+    const reply = await h.sendQueued('uno sin cebolla y el otro normal');
+    expect(h.cartRows()).toEqual(before);
+    expect(reply || '').toMatch(/cuál producto/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('La cuenta — varios restaurantes', () => {
+  const dish = (id: number, name: string, price: number, quantity = 1) => ({
+    id, code: id, name, price, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+    cart: { productId: id, code: id, name, unitPrice: price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[] },
+  });
+  const restaurants = [
+    { kind: 'ppp', menu: products, lines: [dish(17, 'Churrasco', 38000), dish(7, 'Porcion De Yuca Frita', 7000)], text: 'cuánto te debo' },
+    { kind: 'pizza', menu: [dish(18401, 'Pizza Margarita', 28000), dish(18402, 'Ensalada Verde', 8000)], lines: [dish(18401, 'Pizza Margarita', 28000), dish(18402, 'Ensalada Verde', 8000)], text: 'pásame la cuenta' },
+    { kind: 'sushi', menu: [dish(18411, 'Roll De Salmon', 22000), dish(18412, 'Sopa Miso', 7000)], lines: [dish(18411, 'Roll De Salmon', 22000, 2)], text: 'la cuenta por favor' },
+    { kind: 'tacos', menu: [dish(18421, 'Taco Al Pastor', 16000), dish(18422, 'Guacamole', 5000)], lines: [dish(18421, 'Taco Al Pastor', 16000, 3)], text: 'cuánto les debo' },
+    { kind: 'burger', menu: [dish(18431, 'Hamburguesa De Lentejas', 18000), dish(18432, 'Papas Gajo', 6000)], lines: [dish(18431, 'Hamburguesa De Lentejas', 18000), dish(18432, 'Papas Gajo', 6000)], text: 'me dices la cuenta' },
+    { kind: 'pasta', menu: [dish(18441, 'Pasta Al Pesto', 26000), dish(18442, 'Pan De Ajo', 4000)], lines: [dish(18441, 'Pasta Al Pesto', 26000)], text: 'cuánto va el pedido' },
+    { kind: 'bowl', menu: [dish(18451, 'Bowl De Quinoa', 19000), dish(18452, 'Agua De Coco', 5000)], lines: [dish(18451, 'Bowl De Quinoa', 19000, 2)], text: 'cuánto te debo' },
+    { kind: 'ramen', menu: [dish(18461, 'Ramen De Miso', 24000), dish(18462, 'Gyoza', 9000)], lines: [dish(18461, 'Ramen De Miso', 24000), dish(18462, 'Gyoza', 9000)], text: 'pásame la cuenta' },
+  ];
+
+  it.each(restaurants.flatMap((place) => [false, true].map((agent) => ({ ...place, agent }))))(
+    '$kind dice el total y no cambia el pedido (agent $agent)',
+    async ({ menu, lines, text, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = lines.map((item) => item.cart);
+      const before = h.cartRows();
+      const total = lines.reduce((sum, item) => sum + item.price * item.cart.quantity, 0);
+      const reply = await h.sendQueued(text);
+      expect(h.cartRows()).toEqual(before);
+      expect(reply || '').toMatch(new RegExp(total.toLocaleString('es-CO').replace(/\./g, '\\.')));
+      expect(reply || '').toMatch(/pedido sigue igual/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['pizza', 'sushi', 'tacos', 'pasta', 'bowl', 'ramen', 'burger'].flatMap((kind) => [false, true].map((agent) => ({ kind, agent }))))(
+    '$kind sin platos no inventa un total (agent $agent)',
+    async ({ kind, agent }) => {
+      const place = restaurants.find((item) => item.kind === kind)!;
+      const h = harness(place.menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      const reply = await h.sendQueued(place.text);
+      expect(h.cartRows()).toEqual([]);
+      expect(reply || '').toMatch(/no hay total/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('Alergia — el ingrediente no se compra', () => {
+  const place = (id: number, name: string, price: number) => ({
+    id, code: id, name, price, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+  });
+  const cases = [
+    { kind: 'ppp', menu: products, text: 'Soy alérgico a la yuca. Un churrasco', host: 17, banned: 7, qty: 1, label: /yuca/i },
+    { kind: 'pizza', menu: [place(18501, 'Pizza Margarita', 28000), place(18502, 'Aceitunas', 4000)], text: 'Soy alérgico a las aceitunas. Una pizza margarita', host: 18501, banned: 18502, qty: 1, label: /aceitunas/i },
+    { kind: 'sushi', menu: [place(18511, 'Roll De Salmon', 22000), place(18512, 'Jengibre', 3000)], text: 'Soy alérgico al jengibre. Un roll de salmón', host: 18511, banned: 18512, qty: 1, label: /jengibre/i },
+    { kind: 'tacos', menu: [place(18521, 'Taco Al Pastor', 16000), place(18522, 'Cilantro', 2000)], text: 'Mi hijo tiene alergia al cilantro. Dos tacos al pastor', host: 18521, banned: 18522, qty: 2, label: /cilantro/i },
+    { kind: 'burger', menu: [place(18531, 'Hamburguesa De Lentejas', 18000), place(18532, 'Queso', 3000)], text: 'Soy alérgico al queso. Una hamburguesa de lentejas', host: 18531, banned: 18532, qty: 1, label: /queso/i },
+    { kind: 'pasta', menu: [place(18541, 'Pasta Al Pesto', 26000), place(18542, 'Pan De Trigo', 4000)], text: 'Soy celíaco. Una pasta al pesto', host: 18541, banned: 18542, qty: 1, label: /gluten/i },
+    { kind: 'bowl', menu: [place(18551, 'Bowl De Quinoa', 19000), place(18552, 'Mani', 3000)], text: 'Soy alérgico al maní. Un bowl de quinoa', host: 18551, banned: 18552, qty: 1, label: /mani/i },
+    { kind: 'ramen', menu: [place(18561, 'Ramen De Miso', 24000), place(18562, 'Huevo', 2000)], text: 'Soy alérgico al huevo. Un ramen de miso', host: 18561, banned: 18562, qty: 1, label: /huevo/i },
+  ];
+
+  it.each(cases.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind anota el plato y no compra el alérgeno (agent $agent)',
+    async ({ menu, text, host, banned, qty, label, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      const reply = await h.sendQueued(text);
+      expect(h.cartRows().find((row) => row.id === host)?.qty).toBe(qty);
+      expect(h.cartRows().some((row) => row.id === banned)).toBe(false);
+      expect(h.cartRows()).toHaveLength(1);
+      expect(h.cartRows()[0].note || '').toMatch(/alergia/i);
+      expect(reply || '').toMatch(label);
+      expect(reply || '').toMatch(/no puedo garantizar/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(cases.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind sin alergia real sí deja el plato (agent $agent)',
+    async ({ menu, host, banned, qty, agent, kind }) => {
+      const order = kind === 'tacos' ? 'Dos tacos al pastor' : kind === 'ppp' ? 'Un churrasco' : kind === 'pizza' ? 'Una pizza margarita' : kind === 'sushi' ? 'Un roll de salmón' : kind === 'burger' ? 'Una hamburguesa de lentejas' : kind === 'pasta' ? 'Una pasta al pesto' : kind === 'bowl' ? 'Un bowl de quinoa' : 'Un ramen de miso';
+      const text = kind === 'pasta' ? `No soy celíaco. ${order}` : `No soy alérgico. ${order}`;
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      await h.sendQueued(text);
+      expect(h.cartRows().find((row) => row.id === host)?.qty).toBe(qty);
+      expect(h.cartRows().some((row) => row.id === banned)).toBe(false);
+      expect(h.cartRows()[0]?.note || '').not.toMatch(/alergia/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('Quita el más caro — varios restaurantes', () => {
+  const place = (id: number, name: string, price: number) => ({
+    id, code: id, name, price, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+  });
+  const line = (id: number, name: string, price: number, quantity = 1) => ({
+    productId: id, code: id, name, unitPrice: price, quantity, attributes: [] as { attributeName: string; attributeValue: string }[],
+  });
+  const cases = [
+    { kind: 'ppp', menu: products, cart: [line(17, 'Churrasco', 38000), line(38, 'Sopa De Ajiaco', 10500), line(7, 'Porcion De Yuca Frita', 7000)], gone: 17, text: 'quita el más caro' },
+    { kind: 'pizza', menu: [place(18601, 'Pizza Margarita', 28000), place(18602, 'Ensalada Verde', 8000)], cart: [line(18601, 'Pizza Margarita', 28000), line(18602, 'Ensalada Verde', 8000)], gone: 18601, text: 'saca el más caro' },
+    { kind: 'sushi', menu: [place(18611, 'Roll De Salmon', 22000), place(18612, 'Gyoza', 9000)], cart: [line(18611, 'Roll De Salmon', 22000, 2), line(18612, 'Gyoza', 9000)], gone: 18611, text: 'quita el más caro' },
+    { kind: 'tacos', menu: [place(18621, 'Taco Al Pastor', 16000), place(18622, 'Guacamole', 5000)], cart: [line(18621, 'Taco Al Pastor', 16000, 3), line(18622, 'Guacamole', 5000)], gone: 18621, text: 'elimina el más caro' },
+    { kind: 'burger', menu: [place(18631, 'Hamburguesa De Lentejas', 18000), place(18632, 'Papas Gajo', 6000)], cart: [line(18631, 'Hamburguesa De Lentejas', 18000), line(18632, 'Papas Gajo', 6000)], gone: 18631, text: 'quita el más caro' },
+    { kind: 'pasta', menu: [place(18641, 'Pasta Al Pesto', 26000), place(18642, 'Pan De Ajo', 4000)], cart: [line(18641, 'Pasta Al Pesto', 26000), line(18642, 'Pan De Ajo', 4000)], gone: 18641, text: 'saca el más caro' },
+    { kind: 'bowl', menu: [place(18651, 'Bowl De Quinoa', 19000), place(18652, 'Agua De Coco', 5000)], cart: [line(18651, 'Bowl De Quinoa', 19000, 2), line(18652, 'Agua De Coco', 5000)], gone: 18651, text: 'quita el más caro' },
+    { kind: 'ramen', menu: [place(18661, 'Ramen De Miso', 24000), place(18662, 'Edamame', 8000)], cart: [line(18661, 'Ramen De Miso', 24000), line(18662, 'Edamame', 8000)], gone: 18661, text: 'elimina el más caro' },
+  ];
+
+  it.each(cases.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind quita solo el de mayor valor (agent $agent)',
+    async ({ menu, cart, gone, text, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = cart;
+      const reply = await h.sendQueued(text);
+      expect(h.cartRows().some((row) => row.id === gone)).toBe(false);
+      expect(h.cartRows()).toHaveLength(cart.length - 1);
+      expect(reply || '').toMatch(/quité/i);
+      expect(reply || '').toMatch(/pedido sigue igual/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { kind: 'pizza', menu: [place(18601, 'Pizza Margarita', 20000), place(18603, 'Calzone', 20000), place(18602, 'Ensalada Verde', 5000)], cart: [line(18601, 'Pizza Margarita', 20000), line(18603, 'Calzone', 20000), line(18602, 'Ensalada Verde', 5000)] },
+    { kind: 'ramen', menu: [place(18661, 'Ramen De Miso', 24000), place(18663, 'Ramen De Shoyu', 24000), place(18662, 'Edamame', 8000)], cart: [line(18661, 'Ramen De Miso', 24000), line(18663, 'Ramen De Shoyu', 24000), line(18662, 'Edamame', 8000)] },
+  ].flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind empate pregunta cuál y no borra (agent $agent)',
+    async ({ menu, cart, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.sessionData.cart = cart;
+      const before = h.cartRows();
+      const reply = await h.sendQueued('quita el más caro');
+      expect(h.cartRows()).toEqual(before);
+      expect(reply || '').toMatch(/precio más alto/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['sushi', 'tacos', 'pasta', 'bowl'].flatMap((kind) => [false, true].map((agent) => ({ kind, agent }))))(
+    '$kind sin platos no inventa uno (agent $agent)',
+    async ({ kind, agent }) => {
+      const item = cases.find((row) => row.kind === kind)!;
+      const h = harness(item.menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      const reply = await h.sendQueued('quita el más caro');
+      expect(h.cartRows()).toEqual([]);
+      expect(reply || '').toMatch(/no hay platos/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+
+describe('Foto — selección conserva pedidos ajenos y evita líneas ambiguas', () => {
+  const make = (id: number, name: string) => ({id,code:id,name,price:12000,availableNow:true,hasAttributes:false,attributes:[]});
+  const menus = [
+    ['Pizza De Setas','Pan De Ajo','Ensalada Verde','Agua Mineral'],
+    ['Roll De Aguacate','Gyoza Vegetal','Ramen De Miso','Te Helado'],
+  ].map((names,index)=>names.map((name,offset)=>make(19001+index*10+offset,name)));
+  const row = (product: ReturnType<typeof make>,quantity=1,note?:string) => ({productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity,attributes:[],...(note?{note}:{})});
+  it.each(menus.flatMap((menu)=>[false,true].map(agent=>({menu,agent}))))('conserva producto ajeno a la foto (agent $agent)',async({menu,agent})=>{
+    const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();
+    const extra=row(menu[3],2,'sin azúcar');
+    h.conv.sessionData.cart=[extra,...menu.slice(0,3).map(product=>row(product))];
+    h.conv.sessionData.recentImageOrder=menu.slice(0,3).map(product=>({productId:product.id,name:product.name}));
+    await h.sendQueued('de la foto solo el segundo y dos del tercero');
+    expect(h.conv.sessionData.cart.find(item=>item.productId===menu[3].id)).toEqual(extra);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[3].id,qty:2,note:'sin azúcar'}),expect.objectContaining({id:menu[1].id,qty:1}),expect.objectContaining({id:menu[2].id,qty:2})]);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it.each(menus.flatMap((menu)=>[false,true].map(agent=>({menu,agent}))))('dos líneas del mismo producto piden aclaración (agent $agent)',async({menu,agent})=>{
+    const h=harness(menu as typeof products,agent);h.service.ordersService.create=jest.fn();
+    h.conv.sessionData.cart=[row(menu[0]),row(menu[1],1,'sin ajo'),row(menu[1],2,'con salsa'),row(menu[2]),row(menu[3])];
+    h.conv.sessionData.recentImageOrder=menu.slice(0,3).map(product=>({productId:product.id,name:product.name}));
+    const before=structuredClone(h.conv.sessionData.cart);
+    const reply=await h.sendQueued('de la foto solo el segundo y dos del tercero');
+    expect(h.conv.sessionData.cart).toEqual(before);
+    expect(reply||'').toMatch(/varias líneas|cuál|aclar/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});

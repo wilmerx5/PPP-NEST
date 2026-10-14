@@ -23,8 +23,11 @@ export function parsePartialNote(text: string): { quantity: number; note: string
     return {quantity, total, query, note, ...(remainder === undefined ? {} : {remainder})};
   }
   const match = normalized.match(/^(\w+)\s+(sin\s+.+?)\s+y\s+(?:los|las)\s+(?:(?:otros|otras)\s+(\w+)|(?:demas|resto))\s+normales?$/);
-  if (!match || match[2].length > 200 || /\b(?:agrega|quita|cambia|reemplaza|pero|si)\b/.test(match[2])) return null;
-  const quantity = count(match[1]); const remainder = match[3] ? count(match[3]) : undefined;
-  if (!quantity || (match[3] && !remainder)) return null;
-  return { quantity, note: match[2], remainder };
+  if (match && match[2].length <= 200 && !/\b(?:agrega|quita|cambia|reemplaza|pero|si)\b/.test(match[2])) {
+    const quantity = count(match[1]); const remainder = match[3] ? count(match[3]) : undefined;
+    if (quantity && (!match[3] || remainder)) return { quantity, note: match[2], remainder };
+  }
+  const other = normalized.match(/^(\w+)\s+(sin\s+.+?)\s+y\s+el\s+otro\s+normal$/);
+  if (!other || count(other[1]) !== 1 || other[2].length > 200 || /\b(?:agrega|quita|cambia|reemplaza|pero|si)\b/.test(other[2])) return null;
+  return { quantity: 1, note: other[2], remainder: 1 };
 }

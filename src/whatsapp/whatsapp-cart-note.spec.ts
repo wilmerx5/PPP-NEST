@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
+import { WhatsappPointsService } from './whatsapp-points.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 
@@ -138,6 +139,7 @@ describe('Quoted purchase context through the inbound router', () => {
 function harness(cart: WhatsappSessionData['cart'] = [line(17, 3, 'sin ensalada'), line(14, 2),
   line(1, 3, 'arepas aparte', [{ attributeName: 'Arepas', attributeValue: 'Fritas' }])]) {
   const service = Object.create(WhatsappOrchestratorService.prototype) as any;
+  service.pointsHandler = new WhatsappPointsService({} as never);
   service.catalogService = new WhatsappCatalogService({} as never);
   service.catalogService.getMenuProducts = jest.fn(async () => products);
   let session: WhatsappSessionData = { cart, orderType: 'pickup' };
