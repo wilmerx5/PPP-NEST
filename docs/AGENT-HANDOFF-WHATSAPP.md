@@ -1083,3 +1083,6 @@ Límites y siguiente: esta tanda acredita la selección de atributos pendiente, 
 
 
 Cierre local de incremento: 66 suites / 4164 pruebas aprobadas en 764.342 segundos (/tmp/ppp-pending-increment-full.log); 96 focalizadas y TypeScript final aprobados; snapshot íntegro. 40 regresiones nuevas. Pendiente publicar/desplegar esta versión. Main 49194fec intacta; cero API pagada, 36/40 usadas, 4 restantes.
+
+
+Staging verificado el 14/10/2026 a las 09:40 Bogotá: runtime 03c89636, running/healthy, imagen activa = candidata sha256:41513d66d09e395c088280a63a5762d05c7a133e4927f774ca7511be474d3a1d. HTTP3301/api/health ok, DB connected, circuit CLOSED. Evidencia: /tmp/ppp-pending-increment-deploy.log y /tmp/ppp-pending-increment-verified.log. Main local y servidor 49194fec comprobadas sin cambios. 40 regresiones nuevas; 66 suites / 4164 pruebas, 96 focalizadas y TypeScript aprobados; snapshot íntegro. Cero API pagada. Próxima prioridad: recorridos completos reservados de otras cartas y evaluación focalizada con modelo real dentro de las 4 solicitudes restantes; no convertir el conteo en aprobación de piloto. Mantener staging, no promover Main automáticamente.
