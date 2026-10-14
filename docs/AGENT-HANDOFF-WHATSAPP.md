@@ -1041,3 +1041,22 @@ Cierre local de fronteras: 66 suites / 4092 pruebas aprobadas en 412.781 segundo
 
 
 Publicación/despliegue pendientes por conectividad: código validado guardado en commit local a18070ad. Primer push falló DNS github.com; segundo falló conexión443. SSH76.13.119.125 falló No route to host y reintento Connection timed out. Primer intento de despliegue no accedió al servidor (/tmp/ppp-code-boundaries-deploy.log); no acreditar nueva imagen ni salud. Último staging verificado runtime c3589adb,checkout7802e6a6. Main local comprobada49194fec, sin cambios realizados. Reintentar git push origin staging y SOLO después de éxito deploy de staging api y verificar SHA/imagen/health; conservar dist, bin y volúmenes. Las pruebas completas sí terminaron:66/4092,156focalizadas,TypeScript,snapshot íntegro,ceroAPIpagada.
+
+
+## Recuperación de conectividad y cantidad contextual pendiente — 14/10/2026
+
+La publicación pendiente se completó: origin/staging 1b87be04, runtime de código a18070ad desplegado y verificado el 14/10/2026 a las 09:03 Bogotá. Contenedor running/healthy; imagen activa = candidata sha256:b6ff1404d9bbaac4684699de4a008200faec67da445130679311ce5fd63bf61c. HTTP 3301/api/health ok, DB connected, circuit CLOSED. Evidencia: /tmp/ppp-code-boundaries-retry-deploy.log y /tmp/ppp-code-boundaries-retry-verified.log. Main del servidor 49194fec comprobada intacta. Esto cierra el bloqueo de red anterior; las nuevas correcciones de cantidad todavía no están desplegadas.
+
+32 regresiones nuevas:
+- 24 recorridos con Jugo Natural / Gaseosa Artesanal, agente simulado activo/inactivo, compra por nombre/código y nota «sin hielo», consulta de precio antes de «Mejor solo dos» / «Que sean dos por favor» / «En vez de tres quiero dos», consulta de sabores y selección final. Verifican carrito previo conservado, cantidad 2, opción y nota correctas, una sola línea añadida y ninguna orden externa.
+- 4 controles: «si mejor solo pido dos cuánto cuestan» cotiza $16.000 para dos unidades sin cambiar las tres pendientes; responder «2» elige el segundo sabor y mantiene cantidad 3.
+- 4 cancelaciones después de corregir cantidad: enviar un sabor después no reactiva la compra.
+
+Baseline: 24/24 fallaron por cantidad contextual no actualizada (/tmp/ppp-pending-context-baseline.log). Primera corrección: 84 focalizadas aprobadas (/tmp/ppp-pending-context-target.log). Controles adicionales: 2 fallos / 90 aprobadas (/tmp/ppp-pending-context-final-target.log). La consulta hipotética sin repetir el producto iba al modelo legacy con agente apagado; con agente activo consultaba al modelo sin cotización determinista. Se amplía la guarda de precio pendiente para ese patrón breve y se contesta con precio/cantidad de catálogo sin mutar la compra. No se añadió un mock para ocultar esa falta de ruta.
+
+92 focalizadas finales aprobadas (/tmp/ppp-pending-context-final2-target.log); TypeScript aprobado (/tmp/ppp-pending-context-final-tsc.log). Global en ejecución: /tmp/ppp-pending-context-full.log; snapshot de src/**/*.ts: /tmp/ppp-pending-context-source.json. No editar fuentes durante el global. Cambios locales; staging runtime a18070ad, Main 49194fec intacta. Cero API pagada; 36/40 usadas, 4 restantes.
+
+Límites: estos patrones no cubren todas las paráfrasis, precios de opciones extra, corrección simultánea de cantidad+sabor, cambio a un nuevo SKU durante selección, referencias a varias compras pendientes ni evaluación con audio original. Siguiente: comparar cambio de cantidad frente a «otra/una más», resolver varios atributos y cotizaciones hipotéticas con otro producto nombrado. Crear recorridos reservados de varias cartas; luego inferencia/medios representativos dentro del saldo. No declarar piloto por conteo ni promover Main automáticamente.
+
+
+Cierre local contextual: 66 suites / 4124 pruebas aprobadas en 414.823 segundos (/tmp/ppp-pending-context-full.log), 92 focalizadas y TypeScript final aprobados; snapshot íntegro. 32 regresiones nuevas. Pendiente publicación/despliegue de este código. Main 49194fec intacta; cero llamadas pagadas, 36/40 usadas, 4 restantes.

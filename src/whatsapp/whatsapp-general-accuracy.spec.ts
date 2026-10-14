@@ -11189,3 +11189,47 @@ describe('Código con nota y producto por nombre — no consumir la otra compra'
   expect(h.cartRows()).toHaveLength(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Opciones pendientes — precio y cantidad sin repetir el producto',()=>{
+ const families=[{name:'Jugo Natural',flavors:['Mango','Lulo']},{name:'Gaseosa Artesanal',flavors:['Mora','Durazno']}];
+ it.each(families.flatMap(family=>[false,true].flatMap(agent=>[false,true].flatMap(code=>['Mejor solo dos','Que sean dos por favor','En vez de tres quiero dos'].map(change=>({...family,agent,code,change}))))))('$name code=$code cambio=$change agent=$agent',async({name,flavors,agent,code,change})=>{
+  const base={id:21001,code:1701,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]};
+  const drink={id:21002,code:1702,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]};
+  const h=harness([base,drink] as typeof products,agent);h.service.ordersService.create=jest.fn();
+  await h.sendQueued('Quiero dos Bowl Vegetal');
+  await h.sendQueued(code?'Agrega tres #1702 sin hielo':`Quiero tres ${name} sin hielo`);
+  expect(h.conv.sessionData.pendingAttribute?.productId).toBe(drink.id);expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(3);
+  const pending=structuredClone(h.conv.sessionData.pendingAttribute);const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('¿Cuánto cuesta cada uno?');
+  expect(reply||'').toMatch(/8\.000/);expect(h.conv.sessionData.pendingAttribute).toEqual(pending);expect(h.conv.sessionData.cart).toEqual(before);
+  await h.sendQueued(change);
+  expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);expect(h.conv.sessionData.cart).toEqual(before);
+  const optionsReply=await h.sendQueued('¿Qué sabores hay?');expect(optionsReply||'').toMatch(new RegExp(flavors.join('|'),'i'));
+  await h.sendQueued(flavors[1]);
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:base.id,qty:2}),expect.objectContaining({id:drink.id,qty:2,attrs:[`Sabor:${flavors[1]}`],note:expect.stringMatching(/sin hielo/i)})]));
+  expect(h.cartRows()).toHaveLength(2);expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Cantidad pendiente — preguntas, índices y cancelación',()=>{
+ const families=[{name:'Jugo Natural',flavors:['Mango','Lulo']},{name:'Gaseosa Artesanal',flavors:['Mora','Durazno']}];
+ it.each(families.flatMap(family=>[false,true].map(agent=>({...family,agent}))))('consulta hipotética y opción 2 no cambian cantidad $name agent=$agent',async({name,flavors,agent})=>{
+  const drink={id:21101,code:1801,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]};
+  const h=harness([drink] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued(`Quiero tres ${name} sin hielo`);
+  const pending=structuredClone(h.conv.sessionData.pendingAttribute);const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('¿Si mejor solo pido dos cuánto cuestan?');
+  expect(reply||'').toMatch(/16\.000/);expect(reply||'').toMatch(/pedido sigue igual/i);
+  expect(h.conv.sessionData.pendingAttribute).toEqual(pending);expect(h.conv.sessionData.cart).toEqual(before);
+  await h.sendQueued('2');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:drink.id,qty:3,attrs:[`Sabor:${flavors[1]}`],note:expect.stringMatching(/sin hielo/i)})]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(families.flatMap(family=>[false,true].map(agent=>({...family,agent}))))('cancelar tras cantidad corregida no reactiva $name agent=$agent',async({name,flavors,agent})=>{
+  const base={id:21201,code:1901,name:'Bowl Vegetal',price:16000,availableNow:true,hasAttributes:false,attributes:[]};
+  const drink={id:21202,code:1902,name,price:8000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:flavors}]};
+  const h=harness([base,drink] as typeof products,agent);h.service.ordersService.create=jest.fn();await h.sendQueued('Quiero dos Bowl Vegetal');
+  const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued(`Quiero tres ${name}`);await h.sendQueued('Mejor solo dos');
+  expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);await h.sendQueued('Cancela esa selección');await h.sendQueued(flavors[0]);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.pendingAttribute).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

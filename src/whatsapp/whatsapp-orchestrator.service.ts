@@ -2086,9 +2086,14 @@ export class WhatsappOrchestratorService {
     const singlePendingPurchase = session.pendingAttribute ||
       (!session.pendingMultiOrder && session.pendingMatch?.intent === 'order');
     if (singlePendingPurchase) {
-      const correction = this.normalizeForMatch(originalText).match(
-        /^(?:mejor(?: que sean)?|solo|solo eran|que sean|en vez de eso|cambia la cantidad a)\s+(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)(?:\s+unidades)?(?:\s+(.+?))?[.!]?$/,
-      );
+      const correctionText = this.normalizeForMatch(originalText)
+        .replace(/\s+(?:por favor|porfa|gracias)[.!]?$/, '');
+      const quantityToken = '(\\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+      const replacementQuantity = correctionText.match(new RegExp(
+        `^en vez de ${quantityToken} (?:quiero|que sean|prefiero) ${quantityToken}(?:\\s+(.+?))?[.!]?$`));
+      const correction = correctionText.match(new RegExp(
+        `^(?:mejor(?: que sean| solo)?|solo|solo eran|que sean|en vez de eso|cambia la cantidad a)\\s+${quantityToken}(?:\\s+unidades)?(?:\\s+(.+?))?[.!]?$`)) ||
+        (replacementQuantity ? [replacementQuantity[0], replacementQuantity[2], replacementQuantity[3]] : null);
       const pendingName = session.pendingAttribute?.name || session.pendingMatch?.query || '';
       if (correction && (!correction[2] || this.catalogService.isCartProductNamedInText(pendingName,correction[2]))) {
         const quantity = /^\d+$/.test(correction[1]) ? Number(correction[1]) :
@@ -2427,15 +2432,20 @@ export class WhatsappOrchestratorService {
         const priceLeftover = this.catalogService.stripPriceInquiryNoise(text)
           .replace(/[^\p{L}\p{N}\s]+/gu, '')
           .trim();
-        const pendingProduct = !priced.length && session.pendingAttribute && !priceLeftover
+        const hypotheticalUnits = this.normalizeForMatch(text).match(
+          /^(?:si )?(?:mejor )?(?:solo )?(?:pido|pidiera|quiero) (\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) cuanto (?:cuestan|cuesta|valen|vale|salen|sale)$/);
+        const requestedUnits = hypotheticalUnits ? this.catalogService.extractQuantityFromSegment(`${hypotheticalUnits[1]} unidades`) : null;
+        const pendingProduct = !priced.length && session.pendingAttribute && (!priceLeftover || requestedUnits != null)
           ? products.find((product) => product.id === session.pendingAttribute?.productId)
           : undefined;
         const quoted = priced.length ? priced : pendingProduct ? [pendingProduct] : [];
         if (quoted.length) {
           const units = session.pendingAttribute?.quantity;
-          const unitNote = !priced.length && units && units > 1
-            ? `\nSon ${units} unidades; el valor de arriba es por una.`
-            : '';
+          const unitNote = pendingProduct && requestedUnits != null && requestedUnits >= 1 && requestedUnits <= 30
+            ? `\nPara ${requestedUnits} unidades serían ${this.catalogService.formatMoney(pendingProduct.price * requestedUnits)}, antes de domicilio. El pedido sigue igual.`
+            : !priced.length && units && units > 1
+              ? `\nSon ${units} unidades; el valor de arriba es por una.`
+              : '';
           await this.reply(conv, msg.waId, this.catalogService.formatMultiProductPriceReply(quoted, {
             offerAdd: false,
           }) + unitNote +
