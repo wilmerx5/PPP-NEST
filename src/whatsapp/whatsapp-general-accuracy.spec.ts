@@ -7020,7 +7020,8 @@ describe('Corrección de una sola línea: estilo y bebida', () => {
     expect(h.conv.sessionData.address || '').toBe(address);
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
     expect(reply || '').toMatch(/colombiana/i);
-    expect(reply || '').not.toMatch(/coca-cola|coca cola/i);
+    expect(reply || '').toMatch(/Carrito/i);
+    expect((reply || '').split('🛒').slice(1).join('🛒')).not.toMatch(/coca-cola|coca cola/i);
   });
 
   it('en la pizzería quita la cola y deja la limonada', async () => {
@@ -13052,4 +13053,138 @@ describe('Oferta estructurada — continuidad portable y controles', () => {
     expect(catalog.resolveCatalogAliasText('Tienes maduro con queso',menu)).toBe('Tienes maduro con queso');
     expect(catalog.resolveCatalogAliasText('Tienes maduro con chocolate',products)).toBe('Tienes maduro con chocolate');
   });
+});
+
+
+describe('Contrato de continuidad — conversación completa y atributo pendiente',()=>{
+ const menus=[{name:'Jugo De La Selva',desc:'Preparado con agua y fruta',attr:'Sabor',values:['Lulo','Mango']},{name:'Jugo De La Huerta',desc:'Preparado con agua y fruta',attr:'Sabor',values:['Fresa','Maracuya']}];
+ for(const [i,m] of menus.entries()) {
+  const dish={id:34000+i,code:930+i,name:m.name,description:m.desc,price:22000,availableNow:true,hasAttributes:true,attributes:[{attributeName:m.attr,options:m.values}]};
+  it.each([true,false])(`${m.name} consulta aclaración nota y respuesta agent=%s`,async enabled=>{
+   const h=harness([dish],enabled);h.service.ordersService.create=jest.fn();h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
+   h.conv.customerName='';
+   await h.sendQueued('Hola');
+   await h.sendQueued(`Quiero dos #${dish.code}`);
+   expect(h.cartRows()).toEqual([]);
+   expect(h.conv.sessionData.pendingAttribute).toMatchObject({productId:dish.id,quantity:2});
+   const before=structuredClone(h.conv.sessionData.pendingAttribute);
+   const price=await h.sendQueued('¿Cuánto vale cada uno?');
+   expect(price||'').toMatch(/22[.,]000/);
+   expect(h.cartRows()).toEqual([]);
+   expect(h.conv.sessionData.pendingAttribute).toEqual(before);
+   const reply=await h.sendQueued('Lo quiero normal pero sin azúcar por favor');
+   expect(reply||'').not.toMatch(/no manejamos|no tenemos/i);
+   expect(h.conv.sessionData.pendingAttribute).toMatchObject({productId:dish.id,quantity:2});
+   expect(h.cartRows()).toEqual([]);
+   await h.sendQueued(m.values[1]);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:2,attrs:[`${m.attr}:${m.values[1]}`],note:expect.stringMatching(/sin azúcar/i)})]);
+   const address=await h.sendQueued('Es para la calle 21 #34-56');
+   expect(address||'').toMatch(/nombre/i);
+   expect(h.conv.state).toBe('awaiting_name');
+   const nameQuestion=await h.sendQueued('¿Cuánto cuesta el pedido?');
+   expect(nameQuestion||'').toMatch(/46[.,]000/);
+   expect(h.conv.customerName).toBe('');
+   expect(h.conv.state).toBe('awaiting_name');
+   await h.sendQueued('Ana Maria Perez');
+   expect(h.conv.customerName).toBe('Ana Maria Perez');
+   expect(h.conv.state).toBe('awaiting_payment');
+   const cart=structuredClone(h.cartRows());
+   const total=await h.sendQueued('¿Cuánto suma todo?');
+   expect(total||'').toMatch(/46[.,]000/);
+   expect(h.cartRows()).toEqual(cart);
+   await h.sendQueued('Pago en efectivo');
+   expect(h.conv.state).toBe('awaiting_final_confirm');
+   expect(h.conv.sessionData.paymentMethod).toBe('cash');
+   expect(h.cartRows()).toEqual(cart);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});
+
+
+describe('Código de producto y número de pedido — intenciones distintas',()=>{
+ const dish={id:35001,code:941,name:'Pizza Rustica',price:22000,availableNow:true,hasAttributes:false,attributes:[]};
+ it.each([true,false].flatMap(agent=>['Quiero dos #941','Dame un #941','Quiero dos #942'].map(text=>({agent,text}))))('$text agent=$agent',async({agent,text})=>{
+  const h=harness([dish],agent);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);h.service.ordersService.create=jest.fn();
+  const reply=await h.sendQueued(text);
+  expect(h.service.ordersService.findTodayOrdersByPhone).not.toHaveBeenCalled();
+  if(text.endsWith('942')){expect(h.cartRows()).toEqual([]);expect(reply||'').not.toMatch(/pedido de hoy|estado de tu pedido/i);}
+  else expect(h.cartRows()).toEqual([expect.objectContaining({id:dish.id,qty:text.includes('dos')?2:1})]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each([true,false])('pregunta de estado con el mismo número sigue siendo consulta agent=%s',async agent=>{
+  const h=harness([dish],agent);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  const reply=await h.sendQueued('¿Cómo va mi pedido #941?');
+  expect(h.cartRows()).toEqual([]);
+  expect(h.service.ordersService.findTodayOrdersByPhone).toHaveBeenCalled();
+  expect(reply||'').toMatch(/pedido|n[uú]mero/i);
+ });
+});
+
+
+describe('Corrección referencial — la bebida era del combo',()=>{
+ const menus=[{label:'ppp',combo:products.find(p=>p.id===97),drink:products.find(p=>p.id===34),choice:'Coca Cola'},{label:'vegetal',combo:{id:36001,code:951,name:'Combo Vegetal',price:25000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Lulo','Mango']}]},drink:{id:36002,code:952,name:'Jugo Tropical',price:6000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Lulo','Mango']}]},choice:'Mango'}];
+ for(const m of menus) it.each([true,false].flatMap(agent=>[0,2].map(existing=>({agent,existing}))))(`${m.label} conserva bebida anterior=$existing agent=$agent`,async({agent,existing})=>{
+  const menu=m.label==='ppp'?products:[m.combo,m.drink];const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:m.combo.id,name:m.combo.name,code:m.combo.code,unitPrice:m.combo.price,quantity:1,attributes:[{attributeName:'Bebida',attributeValue:m.label==='ppp'?'Colombiana':'Lulo'}],note:'sin cebolla'}];
+  if(existing)h.conv.sessionData.cart.push({productId:m.drink.id,name:m.drink.name,code:m.drink.code,unitPrice:m.drink.price,quantity:existing,attributes:[{attributeName:'Sabor',attributeValue:m.choice}]});
+  const before=structuredClone(h.cartRows());
+  await h.sendQueued(`Agrega una #${m.drink.code} con ${m.choice}`);
+  const reply=await h.sendQueued('Pero me refiero a la gaseosa del combo');
+  expect(reply||'').not.toMatch(/si es as[ií]|quieres cambiar|dime y lo ajusto/i);
+  expect(h.cartRows().find(r=>r.id===m.combo.id)).toMatchObject({qty:1,attrs:expect.arrayContaining([`Bebida:${m.choice}`]),note:'sin cebolla'});
+  const drinks=h.cartRows().filter(r=>r.id===m.drink.id);expect(drinks).toHaveLength(existing?1:0);
+  if(existing)expect(drinks[0]).toEqual(before[1]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Corrección de bebida — no deshacer sin evidencia única',()=>{
+ it.each([true,false].flatMap(agent=>['sin historial','carrito cambiado','dos combos'].map(kind=>({agent,kind}))))('$kind agent=$agent',async({agent,kind})=>{
+  const h=harness(products,agent);
+  const combo={productId:97,name:'Combo Arroz Chino Con Medio Pollo',code:97,unitPrice:50000,quantity:1,attributes:[{attributeName:'Bebida',attributeValue:'Colombiana'},{attributeName:'Pollo',attributeValue:'Broaster'}]};
+  const before=[combo];
+  if(kind==='dos combos')before.push({...combo,productId:98,name:'Combo De Pollo Broaster',code:98});
+  h.conv.sessionData.cart=[...before,{productId:34,name:'Gaseosa Coca Cola 400ml',code:34,unitPrice:4500,quantity:1,attributes:[{attributeName:'Sabor',attributeValue:'Coca Cola'}]}];
+  if(kind!=='sin historial')h.conv.sessionData.lastDrinkAddition={productId:34,beforeCart:structuredClone(before),cartSignature:kind==='carrito cambiado'?'old signature':JSON.stringify(h.conv.sessionData.cart)};
+  const original=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued('Pero me refiero a la gaseosa del combo');
+  expect(h.conv.sessionData).toEqual(original);
+  expect(reply||'').toMatch(/aclar|qué sabor|cu[aá]l combo/i);
+ });
+});
+
+
+describe('Eliminación por fila — interrumpe captura sin consumir dirección',()=>{
+ const cases=['Quita la 2','Elimina el item 2','Borra el segundo'];
+ for(const state of ['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'])for(const text of cases)it.each([true,false])(`${state} ${text} agent=%s`,async agent=>{
+  const menu=[{id:37001,code:961,name:'Pizza Rustica',price:22000,availableNow:true,hasAttributes:false,attributes:[]},{id:37002,code:962,name:'Jugo De Mango',price:6500,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state=state;h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[],note:p.id===37001?'sin cebolla':undefined}));
+  h.conv.sessionData.orderType='delivery';h.conv.sessionData.address=state==='awaiting_address'?'Conjunto Residencial Bandera':'Calle 21 #34-56';h.conv.sessionData.addressConfirmed=state!=='awaiting_address';
+  if(state==='awaiting_name')h.conv.customerName='';
+  if(state==='awaiting_final_confirm')h.conv.sessionData.paymentMethod='cash';
+  const originalAddress=h.conv.sessionData.address;
+  const reply=await h.sendQueued(text);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:37001,qty:1,note:'sin cebolla'})]);
+  expect(h.conv.sessionData.address).toBe(originalAddress);
+  expect(h.conv.state).toBe(state);
+  expect(reply||'').toMatch(/quit[eé]|elimin|retir/i);
+  expect(reply||'').toMatch(state==='awaiting_address'?/direcci[oó]n|ubicaci[oó]n/i:state==='awaiting_name'?/nombre/i:state==='awaiting_phone'?/tel[eé]fono/i:state==='awaiting_final_confirm'?/confirmar/i:/pago|pagas/i);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Fila inválida u otra lista — no consume dirección ni quita plato',()=>{
+ it.each([true,false].flatMap(agent=>['Quita la 0','Quita la 99','otra lista'].map(text=>({agent,text}))))('$text agent=$agent',async({agent,text})=>{
+  const h=harness(products,agent);h.conv.state='awaiting_address';h.conv.sessionData.address='Conjunto Prueba';
+  h.conv.sessionData.cart=[{productId:97,name:'Combo Arroz Chino Con Medio Pollo',code:97,unitPrice:50000,quantity:1,attributes:[]}];
+  if(text==='otra lista')h.conv.sessionData.pendingAttribute={productId:28,name:'Gaseosa 400ml',code:28,price:4000,attributes:[{attributeName:'Sabor',options:['Colombiana','Pepsi']}],selected:[],quantity:2};
+  const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued(text==='otra lista'?'Quita la 1':text);
+  expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_address');
+  expect(reply||'').toMatch(/no existe|otra lista/i);
+ });
 });

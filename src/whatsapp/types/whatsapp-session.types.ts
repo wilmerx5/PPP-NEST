@@ -44,6 +44,9 @@ export type WhatsappPendingAttribute = {
 };
 
 export type WhatsappSessionData = {
+  /** One reversible drink addition, valid only while the cart signature matches. */
+  lastDrinkAddition?: { productId: number; beforeCart: WhatsappCartItem[]; cartSignature: string };
+
   /** Read-only price clarification, separate from an order selection. */
   pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
   pendingCartAttributeEdit?: {
