@@ -1340,3 +1340,8 @@ Consolidación siguiente, acotada: representar la pregunta activa con tipo/ID de
 
 
 Cierre local final de contrato:66 suites/5233 pruebas aprobadas en784.833s (/tmp/ppp-continuity-contract-full-final2.log), fuente íntegra (snapshot final2).62 regresiones nuevas respecto a5171;101 focalizadas en dos suites y TypeScript final4 aprobados. Se conservó sin cambios el test histórico de invalidar snapshot de pago viejo. Pendiente publicación/deploy staging. Main/producción d9241abe intacta. Agente activado en ambos por env true. Cero API nueva,39/40 utilizadas/una restante.
+
+
+Staging publicado y verificado14/10/2026 a las18:02 Bogotá:runtime f7be1f7d,running/healthy,imagen activa=candidata sha256:a9e076dc312db43cf38cfc2e87ccc350b6a663e5f4e940ca727c95ec01e65682. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-continuity-contract-deploy.log y /tmp/ppp-continuity-contract-verified.log. Main local/producción d9241abe intacta. No cambió modelo ni se desactivó agente. Código final:66 suites/5233,101 focalizadas,TypeScript y fuente íntegra aprobados. Cero API nueva;39/40 utilizadas/una restante. Archivo de presupuesto no modificado.
+
+La reversión automática solo aplica a una última adición registrada por esta versión y firma intacta. Conversaciones históricas sin ese registro necesitan aclaración; eliminación explícita por fila sigue disponible. Pendientes de consolidación: referencia temporal/cantidad en correcciones de varios combos, oráculos de retorno completo al teléfono, cambios de foco e intención común con catálogo/config por tenant. Falta muestra independiente de modelo/canal; estos casos se usaron para ajustar código. No promover automáticamente a Main ni eliminar staging.
