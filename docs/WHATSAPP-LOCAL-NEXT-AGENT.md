@@ -1,3 +1,9 @@
+## Desplegado y verificado — completitud de herramientas, 15/10 18:08 Bogotá
+
+Código d120b267 en staging; running/healthy,imagen activa=candidate sha256:02b77d77d7ff1fda7eb477dae589a2a64979c71de052f5b2b567f39a74ba8e3a. Verificado2026-10-15T23:08:44.976Z:healthOK,DBconnected,circuitCLOSED,binding compilado y cuatro modelos sin cambios. Global57suites/5541tests más complemento19/98,total76/5639 en dos ejecuciones disjuntas con fuente intacta; TypeScript aprobado. Main intacta. Informe durable whatsapp-tool-completeness-validation-1510.json. Logs /tmp/ppp-completeness-{full,complement,deploy,deploy-verified,deploy-health}.log.
+
+Próxima tanda: conversación nueva en otra carta, con opción incluida, consulta intercalada y corrección durante checkout; definir esperado antes de inferencia. El ensayo japonés fue retest de desarrollo, no holdout ni canal real. Presupuesto145/141/4; para una conversación nueva completa asignar primero tope operativo suficiente bajo autorización moderada vigente, mantener contador acumulado/espejo y stop-first-failure. Comprobar recepción real de fotos y audio original como puertas separadas del piloto. Corregir redacción de ejemplos PPP en carta ficticia cuando se trabaje el resumen. No repetir toda la global solo por este cierre documental.
+
 ## Cierre global de completitud — 15/10
 
 57suites WhatsApp/5541tests y19suites complementarias/98tests aprobadas en dos ejecuciones disjuntas con la misma fuente intacta: total76suites/5639tests. TypeScript aprobado. La conversación real de cuatro turnos pasó con6solicitudes. Código listo para desplegar en staging; ver informe whatsapp-tool-completeness-validation-1510.json.

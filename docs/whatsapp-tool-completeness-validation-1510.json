@@ -429,5 +429,19 @@
       "passed": 5639
     }
   },
-  "sourceUnchangedDuringTests": true
+  "sourceUnchangedDuringTests": true,
+  "deployment": {
+    "environment": "staging",
+    "codeCommit": "d120b267",
+    "verifiedAt": "2026-10-15T23:08:44.976Z",
+    "status": "running",
+    "health": "healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:02b77d77d7ff1fda7eb477dae589a2a64979c71de052f5b2b567f39a74ba8e3a",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "compiledCompletenessBinding": true,
+    "modelsUnchanged": true,
+    "mainModified": false
+  }
 }
