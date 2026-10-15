@@ -307,7 +307,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
   "textForBot": "pedido en lenguaje natural si hay producto/código",
   "reply": "opcional"
 }
-Si hay un CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
+Si hay UN producto seleccionado con CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
 Si es un carrito o lista de pedido, incluye TODOS sus productos seleccionados, uno por línea, con su cantidad explícita y sus notas. No reduzcas el pedido al primer producto. No confundas precios, códigos o números del nombre con cantidades. En una carta con varias opciones sin selección, pide cuál quiere; no conviertas toda la carta en un pedido.
 Menú referencia:\n${input.menuSummary.slice(0, 4000)}`
       : `Eres el asistente de un restaurante (WhatsApp).
@@ -325,11 +325,11 @@ Reglas:
 - order: pide comida, foto de carta/menú, pantalla con plato, captura con CÓDIGO y nombre visibles.
   visibleText = transcribe título, código, precio si se ven.
   textForBot = lo que el cliente querría escribir ("código 28", "28", "medio pollo frito", nombre del plato).
-  Si ves un número de código claro (ej. cód. 12, #28, código 5) → SIEMPRE kind=order e inclúyelo en textForBot.
+  Si ves un número de código claro (ej. cód. 12, #28, código 5) en UN producto seleccionado → kind=order e inclúyelo en textForBot. Varios códigos en tarjetas con botón Añadir no constituyen una selección.
   Si la imagen muestra UN producto del menú con título legible → kind=order (NO unclear).
 - other / unclear: si no hay texto legible o si hay varias opciones de carta sin una selección identificable.
 - No inventes productos fuera del menú.
-- Si es un carrito o lista de pedido, textForBot incluye TODOS los productos seleccionados, uno por línea, con cantidades explícitas y notas. Nunca reduzcas una lista al primer producto. Los precios y códigos no son cantidades. Si solo se ve una carta con varias opciones sin selección, kind=unclear y pregunta cuál quiere. No agregues toda la carta.
+- Si es un carrito o lista de pedido, textForBot incluye TODOS los productos seleccionados, uno por línea, con cantidades explícitas y notas. Nunca reduzcas una lista al primer producto. Los precios y códigos no son cantidades. Si solo se ve una carta con varias opciones sin selección, kind=unclear, textForBot vacío, conserva TODOS los nombres legibles en visibleText y pregunta cuál quiere. No agregues toda la carta.
 Menú (referencia):
 ${input.menuSummary.slice(0, 6000)}`;
 

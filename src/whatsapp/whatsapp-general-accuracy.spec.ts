@@ -4178,7 +4178,7 @@ describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
     h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
     await h.sendQueued(caption,{messageType:'image',mediaId:'mock-unreadable'});
     expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies).toHaveLength(1);
-    expect(h.replies[0]).toMatch(/Vi tu foto.*plato.*código/s);expect(h.replies[0]).toMatch(/llámanos/i);
+    expect(h.replies[0]).toMatch(/foto.*plato/s);expect(h.replies[0]).not.toMatch(/llámanos|3118866823|asesor/i);
     expect(h.replies[0]).not.toMatch(/no entend[ií]|me lo aclaras/i);
   });
   it('descarga de foto fallida usa una aclaración específica sin compra',async()=>{
@@ -14308,5 +14308,31 @@ describe('Audio de GPT Transcribe — replay completo de entrada',()=>{
   h.service.aiService.transcribeAudio=jest.fn().mockResolvedValue(null);
   await h.sendQueued('',{messageType:'audio',mediaId:'synthetic-silence',mimeType:'audio/ogg'});
   expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/audio|escrib/i);
+ });
+});
+
+
+describe('Carta legible no seleccionada conserva reconocimiento y permite seguir comprando',()=>{
+ it.each([
+  ['Churrasco\nArroz Con Pollo', products],
+  ['Bowl Solar\nRamen Lunar', [
+   {id:8801,code:8801,name:'Bowl Solar',price:15000,attributes:[]},
+   {id:8802,code:8802,name:'Ramen Lunar',price:18000,attributes:[]},
+  ]],
+ ])('nombra las opciones sin comprarlas ni derivar a humano: %s',async(visibleText, menu)=>{
+  const h=harness(menu as any,false);
+  const selected=(menu as any[])[0];
+  h.conv.sessionData.cart=[{productId:selected.id,code:selected.code,name:selected.name,unitPrice:selected.price,quantity:2,note:'salsa aparte',attributes:[]}];
+  const before=structuredClone(h.conv.sessionData);
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});
+  h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('fixture');
+  h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',visibleText,reply:'Llama a un asesor'});
+  h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+  await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-menu'},'1',h.conv,h.cfg);
+  expect(h.conv.sessionData).toEqual(before);
+  expect(h.service.aiService.analyzeOrderImage).toHaveBeenCalledTimes(1);
+  expect(h.replies.at(-1)).toMatch(/cuál o cuáles.*cuántas/i);
+  for(const name of (visibleText as string).split('\n'))expect(h.replies.at(-1)).toContain(name);
+  expect(h.replies.at(-1)).not.toMatch(/asesor|llama|no entend/i);
  });
 });

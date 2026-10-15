@@ -1,5 +1,13 @@
 # Continuación local de PPP WhatsApp
 
+## En validación: foto de carta con varias opciones (15/10)
+
+Reporte humano posterior al cambio de modelo: primer carrito fotografiado conserva tres productos y variantes; segunda foto de cuatro tarjetas de carta termina en «Vi tu foto… llámanos». La captura permite observar la respuesta, pero no demuestra que Luna no leyera los nombres: no tenemos aquí la imagen original aislada ni la salida cruda de ese request.
+
+Cambio local: conservar OCR de varias opciones como reconocimiento sin compra; nombrar opciones reconocidas en catálogo y preguntar cuáles/cantidades. No repetir OCR si ya hay al menos dos opciones reconocidas. Foto ilegible o descarga fallida solicita nombre/reenvío sin ofrecer teléfono inmediatamente. Comprobantes mantienen aviso de verificación. Se elimina contradicción de prompt «código implica SIEMPRE pedido» cuando hay varias tarjetas sin selección. No se cambia modelo ni Main.
+
+Validación focal inicial:12tests aprobados (2nuevos PPP+catálogo ficticio y10existentes), /tmp/ppp-menu-image-focused.log. TypeScript sin errores /tmp/ppp-menu-image-tsc.log. La ejecución de la suite general completa se interrumpió voluntariamente para acotar a los caminos de medios afectados; no cuenta como global aprobada. Primera tanda de medios:147verdes/7fallos de redacción al desaparecer «cuál plato/código», sin fallos de carrito; se conserva la pregunta específica junto al reenvío, sin contacto telefónico. /tmp/ppp-menu-image-media-regressions.log. Regresión final aprobada:4suites/156tests de medios,3998ajenos omitidos por filtro,en63.887s, /tmp/ppp-menu-image-media-final.log. TypeScript final aprobado /tmp/ppp-menu-image-final-tsc.log. No es una nueva global. Los2casos nuevos ahora parten de carrito con cantidad/nota y comprueban sesión idéntica. Cero inferencia/API pagada en esta corrección. Presupuesto135/131/4 sin cambios. Aún no desplegado.
+
 ## Tanda vigente: visión y audio desplegados (15/10)
 
 Seleccionados y validados localmente Luna para visión/clasificación/respaldo y GPT-Transcribe para audio; Sol sigue como agente. **Activos en staging, código a591d1f4**, verificados 2026-10-15T18:15:50.795454+00:00: running/healthy, imagen coincide con candidate, HTTP200/DBconnected, variables y bindings compilados comprobados. Main intacta. Ver `docs/WHATSAPP-MEDIA-MODELS.md` y `docs/whatsapp-media-model-validation-1510.json`.

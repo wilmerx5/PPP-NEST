@@ -10916,7 +10916,8 @@ export class WhatsappOrchestratorService {
 
       let orderText = this.resolveImageOrderText(analysis, caption, products);
 
-      if (!orderText && (analysis.kind === 'unclear' || analysis.kind === 'other')) {
+      if (!orderText && !this.imageMenuChoicesReply(analysis, products) &&
+          (analysis.kind === 'unclear' || analysis.kind === 'other')) {
         analysis = await this.aiService.analyzeOrderImage({
           buffer,
           mimeType: msg.mimeType || mimeType,
@@ -10951,17 +10952,11 @@ export class WhatsappOrchestratorService {
         loggedMessageId,
         captionRaw || '🖼️ Imagen',
       );
-      const vague = this.isVagueImageCaption(caption);
-      const fallback = (analysis.reply || this.aiService.imageFallbackReply()).replace(
-        /\*ASESOR\*/gi,
-        `*${WhatsappOrchestratorService.HUMAN_CONTACT_PHONE}*`,
-      );
       await this.reply(
         conv,
         msg.waId,
-        vague
-          ? 'Vi tu foto 👀 Escribe el *plato* o el *código*.\n' + this.humanPhoneHint()
-          : fallback,
+        this.imageMenuChoicesReply(analysis, products) ||
+          'No alcancé a identificar con seguridad lo que quieres de la foto. ¿Cuál plato o código quieres pedir? También puedes enviar una foto más cercana.',
       );
       return { done: true };
     } catch (err) {
@@ -10973,11 +10968,19 @@ export class WhatsappOrchestratorService {
           ? 'No pude abrir tu foto del comprobante (a veces Meta la deja caducar).\n' +
               'Mándala de nuevo por aquí.\n' +
               this.humanPhoneHint()
-          : 'No pude leer la imagen. Escribe el *plato* o el *código*.\n' +
-              this.humanPhoneHint(),
+          : 'No pude leer la imagen. ¿Puedes enviarla de nuevo más cerca o escribir el plato que quieres?',
       );
       return { done: true };
     }
+  }
+
+  /** Recognition is not purchase intent: a multi-option menu needs a selection. */
+  private imageMenuChoicesReply(analysis: WhatsappImageAnalysis, products: MenuProduct[]): string | null {
+    if (analysis.kind !== 'unclear' && analysis.kind !== 'other') return null;
+    const visible = this.catalogService.findAllProductsEmbeddedInMessage(analysis.visibleText || '', products);
+    const names = [...new Set(visible.map(product => product.name))];
+    if (names.length < 2) return null;
+    return `Veo estas opciones en tu foto: ${names.slice(0, 6).join(', ')}. ¿Cuál o cuáles quieres y cuántas unidades?`;
   }
 
   /** Tras pedido cerrado o pago por transferencia: la foto suele ser comprobante. */
