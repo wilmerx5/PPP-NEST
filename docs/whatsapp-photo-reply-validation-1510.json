@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-15",
+  "baseCommit": "a60f4fc6",
+  "status": "validated_awaiting_staging_deploy",
+  "mainModified": false,
+  "newTests": 33,
+  "newTestFamilies": {
+    "conditionalPurchaseAndScope": 13,
+    "checkoutContinuityFourTurns": 6,
+    "publicImageQueueAndMetaSendBoundary": 12,
+    "imageReplyReleaseWithPendingText": 2
+  },
+  "focused": {
+    "finalSelected": {
+      "suites": 5,
+      "passed": 56,
+      "log": "/tmp/ppp-photo-reply-final-targets.log"
+    },
+    "compatibility": {
+      "suites": 5,
+      "passed": 133,
+      "log": "/tmp/ppp-photo-reply-compat-targets.log"
+    },
+    "overlapWarning": "Runs overlap; do not sum pass counts."
+  },
+  "fullSuite": {
+    "status": "passed",
+    "log": "/tmp/ppp-photo-reply-approved-full.log",
+    "sourceSnapshot": "/tmp/ppp-photo-reply-approved-source.json",
+    "snapshotSha256": "5c192bb07da8d19acb99d025efeae5fb48b2bc5f9ae238c18beb7e3712f5a443",
+    "whatsapp": {
+      "suites": 57,
+      "tests": 5527,
+      "seconds": 473.292
+    },
+    "complementary": {
+      "suites": 19,
+      "tests": 98,
+      "seconds": 7.323,
+      "log": "/tmp/ppp-photo-reply-complement.log"
+    },
+    "totalSuites": 76,
+    "totalTests": 5625,
+    "sourceIntactAfterBoth": true,
+    "executionNote": "Two disjoint executions against the same frozen source, not one invocation."
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-photo-reply-approved-tsc.log"
+  },
+  "externalEffects": {
+    "paidModelRequests": 0,
+    "metaMessagesSent": 0,
+    "ordersCreated": 0,
+    "mapsRequests": 0,
+    "stagingReadOnlyInspection": true
+  },
+  "deliverySemantics": [
+    "Only newer actual photos supersede an image acknowledgement.",
+    "Repeated waId/messageId reuse a transient ticket; database UNIQUE remains authoritative.",
+    "Album envelopes in the same batch may be ignored before or after a real image, scoped by waId.",
+    "A completed photo response bypasses text coalescing carry.",
+    "Two distinct photo halves yield one final cart; duplicate retries do not mutate or re-acknowledge."
+  ],
+  "limitations": [
+    "Provider and Meta are mocked; no new customer-photo perception comparison.",
+    "No per-message trace proves which mechanism caused the reported screenshot.",
+    "Temporary retry cache does not prove durable delivery after restart, expiry or across workers.",
+    "A prior full run was interrupted after a proof mock exposed an unnecessary empty-OCR catalog lookup; it is not a pass."
+  ],
+  "budgetUnchanged": {
+    "operationalCap": 135,
+    "used": 131,
+    "remaining": 4
+  }
+}

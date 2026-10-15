@@ -14363,3 +14363,70 @@ describe('Foto de carta — cantidades explícitas y excepciones de intención',
   expect(result.done).toBe(false);expect(result.text).toContain('Ramen Lunar');expect(h.replies.join(' ')).not.toMatch(/comprobante/);
  });
 });
+
+/** Sequential contracts: real router/tools/guard, provider and side effects mocked. */
+describe('Tanda de continuidad — paquete condicional, consulta y cambio en checkout',()=>{
+ const fictional=[{id:97601,code:97601,name:'Pack De Gyozas',description:'Seis gyozas vegetales',price:23000,attributes:[],hasAttributes:false,availableNow:true}];
+ const taco=products.find((p:any)=>p.code===71);
+ for(const fixture of [{kind:'PPP',menu:products,product:taco},{kind:'japonés',menu:fictional,product:fictional[0]}]){
+  it.each(['awaiting_name','awaiting_address','awaiting_payment'])('$state conserva consulta y edición: '+fixture.kind,async state=>{
+   const h=harness(fixture.menu,true);h.service.ordersService.create=jest.fn();
+   h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+   const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+   const beforeFetch=globalThis.fetch;const fetchMock=jest.fn().mockRejectedValue(new Error('Unexpected provider call in isolated sequential test'))
+    .mockResolvedValueOnce(response({content:null,tool_calls:[{id:'one-package',type:'function',function:{name:'add_item',arguments:JSON.stringify({productId:fixture.product.id,quantity:1})}}]}))
+    .mockResolvedValueOnce(response({content:'No tenemos flan. Agregué un '+fixture.product.name+'.'}));globalThis.fetch=fetchMock;
+   try{
+    await h.sendQueued(`Buenas noches, por favor me envías un ${fixture.product.name}. Si no venden flan, no incluyas postre ni lo reemplaces.`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.product.id,qty:1})]);expect(h.replies.at(-1)).toMatch(/no tenemos flan/i);
+    h.conv.state=state;if(state==='awaiting_name')h.conv.customerName='';
+    const oldName=h.conv.customerName;const before=structuredClone(h.conv.sessionData.cart);
+    const total=await h.sendQueued('Antes de seguir, cuánto vale todo eso?');
+    expect(total||'').toContain(fixture.product.price.toLocaleString('es-CO'));
+    expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.customerName).toBe(oldName);expect(h.conv.state).toBe(state);
+    await h.sendQueued('Deja solo dos '+fixture.product.name);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.product.id,qty:2})]);expect(h.conv.customerName).toBe(oldName);
+    expect(h.conv.state).toBe(state);
+    const revised=await h.sendQueued('Una pregunta, cuánto cuesta todo esto?');
+    expect(revised||'').toContain((2*fixture.product.price).toLocaleString('es-CO'));
+    expect(h.cartRows()).toEqual([expect.objectContaining({id:fixture.product.id,qty:2})]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   }finally{globalThis.fetch=beforeFetch;}
+  });
+ }
+});
+
+/** Exercise the public webhook entry, queue, persistent dedup contract and Meta send boundary. */
+describe('Foto responde sin texto posterior — entrega de salida',()=>{
+ const fictitious=Array.from({length:6},(_,i)=>({id:97801+i,code:7801+i,name:['Ramen Huerto','Bowl Estrella','Gyozas Verdes','Sopa Lunar','Tofu Dorado','Te Jazmin'][i],price:17000,attributes:[],hasAttributes:false,availableNow:true}));
+ const ppp=products.filter((p:any)=>[17,23,38,61,62,37].includes(p.code));
+ for(const f of [{name:'PPP',menu:products,chosen:ppp},{name:'otra carta',menu:fictitious,chosen:fictitious}]){
+  it.each(['sola','duplicada en lote','duplicada en otro webhook','duplicada después de responder','dos fotos distintas','sobre posterior'])('foto %s sin necesitar hola: '+f.name,async mode=>{
+   jest.useFakeTimers();try{
+    const h=harness(f.menu,false);const claimed=new Set<string>();const claim=h.service.conversationService.claimInboundMessage;
+    h.service.conversationService.claimInboundMessage=async(params:any)=>{if(claimed.has(params.waMessageId))return null;claimed.add(params.waMessageId);return claim(params);};
+    const order=f.chosen.map((p:any)=>`1 x ${p.name} (código ${p.code}), ${(p.attributes||[]).map((attr:any)=>attr.options[0]).join(', ')}`).join('\n');
+    h.service.resolveImageMessage=jest.fn().mockResolvedValue({done:false,text:order});
+    if(mode==='dos fotos distintas'){const lines=order.split('\n');h.service.resolveImageMessage.mockResolvedValueOnce({done:false,text:lines.slice(0,3).join('\n')}).mockResolvedValueOnce({done:false,text:lines.slice(3).join('\n')});}
+    h.service.metaService.sendText=jest.fn().mockImplementation(async(_waId:string,body:string)=>{h.replies.push(body);return 'outbound-fixture';});
+    h.service.sendReplyNow=WhatsappOrchestratorService.prototype['sendReplyNow'].bind(h.service);
+    h.service.conversationService.logMessage=jest.fn().mockResolvedValue(undefined);
+    h.service.conversationService.touchOutbound=jest.fn().mockResolvedValue(undefined);
+    const photo={waId:'customer',phoneE164:h.conv.phoneE164,messageId:'photo-alone',messageType:'image',mediaId:'fixture-image',raw:{}};
+    const second=mode==='sobre posterior'?{...photo,messageId:'album-envelope',messageType:'other',mediaId:undefined}:{...photo,messageId:mode==='dos fotos distintas'?'second-photo':photo.messageId,mediaId:mode==='dos fotos distintas'?'fixture-second-image':photo.mediaId,raw:{}};
+    h.service.registerIncomingBatch(mode==='duplicada en lote'||mode==='sobre posterior'||mode==='dos fotos distintas'?[photo,second]:[photo]);
+    const first=h.service.handleIncoming(photo);const jobs=[first];
+    if(mode==='duplicada en otro webhook'){await jest.advanceTimersByTimeAsync(100);h.service.registerIncomingBatch([second]);jobs.push(h.service.handleIncoming(second));}
+    else if(mode==='duplicada después de responder'){await jest.advanceTimersByTimeAsync(3000);await first;jobs.push(h.service.handleIncoming(second));}
+    else if(mode!=='sola')jobs.push(h.service.handleIncoming(second));
+    await jest.advanceTimersByTimeAsync(10000);await Promise.all(jobs);
+    expect(f.chosen).toHaveLength(6);expect(h.cartRows()).toHaveLength(6);expect(h.cartRows().every(row=>row.qty===1)).toBe(true);
+    expect(h.service.resolveImageMessage).toHaveBeenCalledTimes(mode==='dos fotos distintas'?2:1);
+    expect(h.service.metaService.sendText).toHaveBeenCalledTimes(1);
+    expect(h.replies.some(body=>/carrito/i.test(body)&&/algo más/i.test(body))).toBe(true);
+    for(const p of f.chosen)expect(h.replies.join('\n')).toContain(p.name);
+    expect(h.service.outboundHoldByWaId.size).toBe(0);expect(h.service.outboundCarryByWaId.size).toBe(0);
+   }finally{jest.useRealTimers();}
+  });
+ }
+});

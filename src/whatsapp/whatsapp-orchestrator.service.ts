@@ -183,6 +183,9 @@ export class WhatsappOrchestratorService {
   private readonly imageBurstSeq = new Map<string, number>();
   private readonly latestImageTicketByWaId = new Map<string, number>();
   private readonly registeredBurstTickets = new WeakMap<IncomingWhatsappMessage, number>();
+  private readonly registeredAlbumEnvelopes = new WeakSet<IncomingWhatsappMessage>();
+  /** A retry is not a new photo. Persistent UNIQUE claims still own deduplication. */
+  private readonly recentBurstMessageTickets = new Map<string, {ticket:number; expiresAt:number}>();
   /**
    * Durante un turno: acumula replies. Si llega otro texto a mitad de proceso,
    * se conservan (carry) y se envían con el siguiente flush — no se descartan.
@@ -211,14 +214,31 @@ export class WhatsappOrchestratorService {
 
   /** Register a webhook batch before serial processing so an album envelope can see its photos. */
   registerIncomingBatch(messages: IncomingWhatsappMessage[]): void {
+    const imageKeys = new Set(messages.filter(msg=>msg.messageType==='image' && msg.mediaId)
+      .map(msg=>(msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown'));
     for (const msg of messages) {
       if (!isImageBurstMessage(msg) || this.registeredBurstTickets.has(msg)) continue;
       const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
-      const ticket = (this.imageBurstSeq.get(key) || 0) + 1;
-      this.imageBurstSeq.set(key,ticket);
-      this.registeredBurstTickets.set(msg,ticket);
-      if (msg.messageType === 'image' && msg.mediaId) this.latestImageTicketByWaId.set(key,ticket);
+      this.registeredBurstTickets.set(msg,this.registerImageBurstTicket(key,msg));
+      if (msg.messageType !== 'image' && imageKeys.has(key)) this.registeredAlbumEnvelopes.add(msg);
     }
+  }
+
+  private registerImageBurstTicket(key: string, msg: IncomingWhatsappMessage): number {
+    const now = Date.now();
+    const messageKey = msg.messageId ? JSON.stringify([key,msg.messageId]) : null;
+    const prior = messageKey ? this.recentBurstMessageTickets.get(messageKey) : undefined;
+    if (prior && prior.expiresAt > now) return prior.ticket;
+    // Bound transient bookkeeping; no cart mutations or DB claim decisions here.
+    for (const [id,record] of this.recentBurstMessageTickets) {
+      if (record.expiresAt > now && this.recentBurstMessageTickets.size < 4096) break;
+      this.recentBurstMessageTickets.delete(id);
+    }
+    const ticket = (this.imageBurstSeq.get(key) || 0) + 1;
+    this.imageBurstSeq.set(key,ticket);
+    if (msg.messageType === 'image' && msg.mediaId) this.latestImageTicketByWaId.set(key,ticket);
+    if (messageKey) this.recentBurstMessageTickets.set(messageKey,{ticket,expiresAt:now+5*60_000});
+    return ticket;
   }
 
   async handleIncoming(msg: IncomingWhatsappMessage): Promise<void> {
@@ -226,13 +246,11 @@ export class WhatsappOrchestratorService {
 
     if (isImageBurstMessage(msg)) {
       const registered = this.registeredBurstTickets.get(msg);
-      const ticket = registered || (this.imageBurstSeq.get(key) || 0) + 1;
+      const ticket = registered || this.registerImageBurstTicket(key,msg);
       this.registeredBurstTickets.delete(msg);
-      if (!registered) {
-        this.imageBurstSeq.set(key,ticket);
-        if (msg.messageType === 'image' && msg.mediaId) this.latestImageTicketByWaId.set(key,ticket);
-      }
-      msg = { ...msg, raw: { ...(msg.raw || {}), imageBurstTicket: ticket, resolvedOrderImage: false } };
+      const albumEnvelope = this.registeredAlbumEnvelopes.has(msg);
+      this.registeredAlbumEnvelopes.delete(msg);
+      msg = { ...msg, raw: { ...(msg.raw || {}), imageBurstTicket: ticket, imageAlbumEnvelope: albumEnvelope, resolvedOrderImage: false } };
     }
 
     // Media / ubicación: no fusionar (cada uno es un turno propio).
@@ -301,8 +319,9 @@ export class WhatsappOrchestratorService {
       : '';
     const next = collapseImageBurstReplies({
       resolvedOrderImage: msg.raw?.resolvedOrderImage === true && fresh.state === 'building_cart',
-      unsupportedEnvelopeSupersededByImage: msg.messageType === 'other' && (this.latestImageTicketByWaId?.get(key) || 0) > ticket,
-      newerArrived: (this.imageBurstSeq.get(key) || 0) > ticket,
+      unsupportedEnvelopeSupersededByImage: (msg.messageType === 'other' || msg.messageType === 'sticker') &&
+        (msg.raw?.imageAlbumEnvelope === true || (this.latestImageTicketByWaId?.get(key) || 0) > ticket),
+      newerArrived: (this.latestImageTicketByWaId?.get(key) || 0) > ticket,
       hasCart: session.cart.length > 0,
       pending: !!(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder),
       replies: this.outboundHoldByWaId.get(key) || [],
@@ -315,6 +334,7 @@ export class WhatsappOrchestratorService {
     key: string,
     conv: WhatsappConversation,
     waId: string,
+    releaseImmediately = false,
   ): Promise<void> {
     const buffered = this.outboundHoldByWaId.get(key);
     this.outboundHoldByWaId.delete(key);
@@ -332,7 +352,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
-    if (this.hasInboundCoalescePending(key)) {
+    if (!releaseImmediately && this.hasInboundCoalescePending(key)) {
       // No descartar (ej. precio de pollo + "y dos sopas"): conservar para el siguiente flush
       const prev = this.outboundCarryByWaId.get(key) || [];
       this.outboundCarryByWaId.set(key, [...prev, ...buffered]);
@@ -455,7 +475,8 @@ export class WhatsappOrchestratorService {
       // Un turno no está completado hasta finalizar también sus respuestas.
       // Si Meta falla al enviarlas, dejar failed para revisión y NO reejecutar
       // ciegamente las mutaciones del carrito o la creación de la orden.
-      await this.flushOrDiscardOutboundHold(key, conv, msg.waId);
+      // A completed photo must reply without waiting for another text bubble.
+      await this.flushOrDiscardOutboundHold(key, conv, msg.waId, msg.messageType === 'image');
       succeeded = true;
     } finally {
       this.orderCoverageNoticesByWaId.delete(key);
@@ -10912,7 +10933,7 @@ export class WhatsappOrchestratorService {
       const isProof = (result: WhatsappImageAnalysis) =>
         result.kind === 'payment_proof' ||
         (proofCtx && result.kind !== 'order' && !asksForFood &&
-          this.catalogService.findAllProductsEmbeddedInMessage(result.visibleText || '', products).length < 2 &&
+          (!result.visibleText?.trim() || this.catalogService.findAllProductsEmbeddedInMessage(result.visibleText, products).length < 2) &&
           (result.kind === 'unclear' || result.kind === 'other' || this.isVagueImageCaption(caption)));
       const treatAsProof = isProof(analysis);
 

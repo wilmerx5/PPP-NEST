@@ -50,3 +50,20 @@ describe('Sobre no soportado de un álbum', () => {
     expect(service.outboundHoldByWaId.get('test')).toEqual(expected);
   });
 });
+
+describe('La respuesta final de una foto no depende del siguiente texto',()=>{
+ it.each([false,true])('liberación inmediata de media=%s ante un texto aún agrupándose',async releaseImmediately=>{
+  const service=Object.create(WhatsappOrchestratorService.prototype) as any;
+  service.outboundHoldByWaId=new Map([['test',['Carrito de la foto\n¿Algo más?']]]);
+  service.outboundCarryByWaId=new Map();
+  service.inboundCoalesceByWaId=new Map([['test',{pending:[{text:'hola'}]}]]);
+  service.logger={log:jest.fn()};service.sendReplyNow=jest.fn().mockResolvedValue(undefined);
+  await service.flushOrDiscardOutboundHold('test',{id:1},'test',releaseImmediately);
+  if(releaseImmediately){
+   expect(service.sendReplyNow).toHaveBeenCalledWith({id:1},'test','Carrito de la foto\n¿Algo más?');
+   expect(service.outboundCarryByWaId.has('test')).toBe(false);
+  }else{
+   expect(service.sendReplyNow).not.toHaveBeenCalled();expect(service.outboundCarryByWaId.get('test')).toEqual(['Carrito de la foto\n¿Algo más?']);
+  }
+ });
+});

@@ -1370,7 +1370,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           this.catalogService.isPriceInquiryIntent?.(ctx.userMessage || '') ||
           this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
           this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
-        if (asked) {
+        const conditionalPurchase = asked ? this.catalogService.conditionalPurchaseText(ctx.userMessage || '', ctx.products) : null;
+        if (asked && !(conditionalPurchase && this.catalogService.productNameFitsUtterance(product, conditionalPurchase))) {
           return JSON.stringify({
             ok: false,
             error: 'question_not_order',

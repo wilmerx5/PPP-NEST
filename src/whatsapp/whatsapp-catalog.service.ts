@@ -2252,12 +2252,18 @@ export class WhatsappCatalogService {
   /** Inventory conditions modify a purchase; the semantic agent must own the
    * whole message before a simple multi-item parser can consume only its prefix. */
   requiresConditionalOrderInterpretation(text: string, products: WhatsappCatalogProduct[]): boolean {
-    const condition = /\bsi\s+(?:no\s+)?(?:hay|tienen|tienes|quedan?|est[aá]n?\s+disponibles?)\b/i.exec(text);
-    if (!condition || condition.index === 0) return false;
+    return this.conditionalPurchaseText(text, products) !== null;
+  }
+
+  /** Purchase evidence before the inventory clause; later questions are not purchases. */
+  conditionalPurchaseText(text: string, products: WhatsappCatalogProduct[]): string | null {
+    const condition = /\bsi\s+(?:no\s+)?(?:hay|tienen|tienes|venden|manejan|ofrecen|quedan?|est[aá]n?\s+disponibles?)\b/i.exec(text);
+    if (!condition || condition.index === 0) return null;
     const purchase = text.slice(0, condition.index);
-    if (this.isAvailabilityInquiry(purchase) || this.isPriceInquiryIntent(purchase) || this.isProductDescriptionInquiry(purchase)) return false;
-    return products.some(product => this.productNameFitsUtterance(product, purchase)) &&
+    if (this.isAvailabilityInquiry(purchase) || this.isPriceInquiryIntent(purchase) || this.isProductDescriptionInquiry(purchase)) return null;
+    const ordered = products.some(product => this.productNameFitsUtterance(product, purchase)) &&
       /\b(?:quiero|necesito|dame|reg[aá]lame|env[ií]ame|m[aá]ndame|me\s+(?:mandas|env[ií]as)|un[oa]?|dos|tres|\d+)\b/i.test(purchase);
+    return ordered ? purchase : null;
   }
 
   /** Scope choices to their own dish when a multi-order has a unique owner. */

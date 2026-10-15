@@ -1,6 +1,6 @@
 # PPP: estado y plan para piloto y venta
 
-Actualizado el 14 de octubre de 2026, America/Bogota. Plan de trabajo, no certificación de calidad ni promesa de fecha. Las cifras de aceptación son propuestas para PPP.
+Actualizado el 15 de octubre de 2026, America/Bogota. Plan de trabajo, no certificación de calidad ni promesa de fecha. Las cifras de aceptación son propuestas para PPP.
 
 ## Decisión actual
 
@@ -8,7 +8,22 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
-## Estado más reciente — 14 de octubre
+## Actualización vigente — 15 de octubre
+
+Staging integra los modelos nuevos: agente Sol, visión/clasificación Luna y audio GPT-Transcribe. Los resultados y costos medidos están en `WHATSAPP-MEDIA-MODELS.md`; no inferir precisión acústica de clientes a partir de voz sintética ni paridad con Main. Fotos de carta se añaden completas por solicitud expresa del usuario, con una unidad por defecto y prioridad del pie que selecciona/consulta. Este contrato reemplaza el anterior «carta sin selección pregunta cuáles».
+
+Prioridad inmediata: publicar, tras global íntegra, la respuesta de fotos sin texto posterior y la corrección de compra de un paquete con condición de inventario. Validación detallada y estado real en `WHATSAPP-LOCAL-NEXT-AGENT.md`; el historial inferior tiene cifras y modelos antiguos, no es configuración vigente. Las33regresiones nuevas quedaron verificadas:76suites/5625tests aprobados con fuente intacta (57suites WhatsApp más19complementarias, ejecuciones disjuntas) y TypeScript. Pendiente deploy en este punto documental; esta evidencia no sustituye el reenvío real de la foto ni acredita aceptación de piloto.
+
+Siguientes puertas, en orden:
+1. Reenvío humano de la foto original en staging sin «hola» posterior: carrito completo, respuesta emitida y sin repetición de productos. Comprobar también foto seguida de nota y dos fotos de un mismo pedido. Reservar pruebas de retry tras reinicio/caducidad y recuperación de envío para la fiabilidad durable; la caché temporal no la demuestra. El transporte mock no acredita recepción en WhatsApp.
+2. Muestra acotada de conversaciones nuevas con el modelo real, resultado esperado definido antes de ejecutar: pedido largo, consulta intercalada, cambio absoluto de cantidad y sustitución. Registrar por turno si hubo inferencia, carrito/respuesta, tiempo y costo. Una conversación usada para corregir deja de ser reservada.
+3. Medición por pedido y tenant de tokens/cache/razonamiento/audio/reintentos, más Meta y mapas. Aún no existe una distribución representativa de costo ni p50/p95 que permita prometer una suscripción ilimitada rentable.
+4. Piloto supervisado de alcance acordado con efectivo/transferencia: ningún defecto crítico conocido sin resolver o contención explícita; persona disponible y revisión de incidencias. No promover a Main sin petición de Wilmer.
+
+Presupuesto operativo vigente135/131usadas/4restantes; autorización de inferencia moderada persiste, pero esta tanda es gratuita. No sustituir pruebas de canal por más variaciones de Jest ni declarar vendible por su contador. Las lecturas/estados de producción del historial no se han verificado de nuevo en esta tanda.
+
+## Historial — estado del 14 de octubre
+
 
 La evidencia detallada vigente está en `AGENT-HANDOFF-WHATSAPP.md`. Main/producción permanecen en d9241abe. Nueva tanda validada y desplegada en staging runtime f7be1f7d:66 suites/5233 pruebas,101 focalizadas en dos suites y TypeScript aprobados, fuente intacta (/tmp/ppp-continuity-contract-full-final2.log).62 regresiones nuevas incluyen conversaciones completas con producto/opción/precio/nota/dirección/nombre/total/efectivo, compra por código frente a consulta de pedido, corrección de bebida incluida con reversión segura de la última bebida añadida y eliminación por fila durante captura de datos/pago/confirmación. Fila inválida, otra lista activa, firma de carrito obsoleta o varios combos no autorizan mutaciones por suposición.
 

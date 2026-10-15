@@ -273,3 +273,39 @@ describe('Agent language boundaries with PPP menu', () => {
     expect(result.actions.addItems).toEqual([{productId:38,quantity:2},{productId:20,quantity:2}]);
   });
 });
+
+// Inventory conditions do not erase an explicit purchase in the preceding clause.
+describe('Compra de un paquete con condición de inventario — dos catálogos',()=>{
+ const fictional=[{id:97501,code:97501,name:'Pack De Gyozas',description:'Seis gyozas vegetales',price:23000,attributes:[],availableNow:true}];
+ const taco=products.find((p:any)=>p.code===71);
+ for(const fixture of [{menu:products,product:taco},{menu:fictional,product:fictional[0]}]){
+  const localCatalog=new WhatsappCatalogService({} as never);
+  const localAgent=new WhatsappAgentService({} as never,localCatalog);
+  function execute(text:string){
+   const actions:AiOrderAction={};
+   const result=JSON.parse((localAgent as any).executeTool('add_item',{productId:fixture.product.id,quantity:1},{
+    products:fixture.menu,byId:new Map(fixture.menu.map((p:any)=>[p.id,p])),actions,userMessage:text,
+    cart:[],setNeedsAttr:()=>{},setLookupOrder:()=>{},setLookupDeliveryTime:()=>{},
+   }));return{result,actions};
+  }
+  it.each(['hay','tienen','venden'])('acepta una compra con condición «si no %s» en '+fixture.product.name,verb=>{
+   const text=`Buenas noches, por favor me envías un ${fixture.product.name}. Si no ${verb} flan, no incluyas postre ni lo reemplaces.`;
+   const {result,actions}=execute(text);
+   expect(result.error || result.ok).toBe(true);expect(actions.addItems).toEqual([expect.objectContaining({productId:fixture.product.id,quantity:1})]);
+  });
+  it('la condición no autoriza comprar un producto que solo se consulta: '+fixture.product.name,()=>{
+   const dessert={id:97599,code:97599,name:'Flan Artesanal',price:7000,attributes:[],availableNow:true};
+   const menu=[...fixture.menu,dessert];const actions:AiOrderAction={};
+   const result=JSON.parse((localAgent as any).executeTool('add_item',{productId:dessert.id,quantity:1},{
+    products:menu,byId:new Map(menu.map((p:any)=>[p.id,p])),actions,
+    userMessage:`Me envías un ${fixture.product.name}. Si tienen Flan Artesanal, cuánto cuesta?`,
+    cart:[],setNeedsAttr:()=>{},setLookupOrder:()=>{},setLookupDeliveryTime:()=>{},
+   }));
+   expect(result.error).toBe('question_not_order');expect(actions.addItems).toBeUndefined();
+  });
+  it('una consulta de disponibilidad con condición no autoriza compra: '+fixture.product.name,()=>{
+   const {result,actions}=execute(`¿Tienen ${fixture.product.name}? Si no hay, ¿qué otras opciones ofrecen?`);
+   expect(result.error).toBe('question_not_order');expect(actions.addItems).toBeUndefined();
+  });
+ }
+});

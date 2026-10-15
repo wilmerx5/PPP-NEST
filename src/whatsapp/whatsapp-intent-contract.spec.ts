@@ -167,6 +167,9 @@ describe('Ruta semántica para condiciones de inventario',()=>{
  const menu=[{id:99301,code:99301,name:'Bowl Andino',price:18000,attributes:[],hasAttributes:false,availableNow:true}];
  it.each([
   'Quiero un bowl andino. Si no hay torta, omítela.',
+  'Por favor, me envías un bowl andino. Si no venden flan, no lo reemplaces.',
+  'Un bowl andino; si no manejan postres, solo el bowl.',
+  'Me mandas un bowl andino; si ofrecen torta, me dices.',
   'Me mandas un bowl andino y si no tienen postre no lo reemplaces',
   'Un bowl andino; si queda limonada, me dices',
   'Necesito dos bowls andinos, si no está disponible el postre, solo lo demás',
