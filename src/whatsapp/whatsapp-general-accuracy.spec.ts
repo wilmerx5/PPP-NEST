@@ -13644,3 +13644,41 @@ describe('Preferencias de pollo — variantes y consultas no compran',()=>{
   expect(reply||'').toContain('6.800');expect(h.cartRows()).toEqual([]);expect(h.conv.state).toBe('building_cart');expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Contrato de turno — replays capturados y consulta intercalada',()=>{
+ it.each(['office','narrative'])('conserva propuesta, etapas y resultado del replay %s',async(kind)=>{
+  const filename=kind==='office'?'whatsapp-recorded-office-output.json':'whatsapp-recorded-narrative-output.json';
+  const recorded=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/'+filename),'utf8'));
+  const menu=kind==='office'?JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8')):products;
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockResolvedValue(recorded.agentResult);
+  await h.sendQueued(recorded.userMessage);
+  const decisions=h.service.turnTelemetry.getRecentDecisions(1);expect(decisions).toHaveLength(1);
+  const decision=decisions[0];expect(decision.failed).toBe(false);
+  expect(decision.stages.map(stage=>stage.stage)).toEqual(['proposed','catalog_validated','reconciled','prepared']);
+  const wanted=recorded.agentResult.actions.addItems.map(item=>({productId:item.productId,quantity:item.quantity})).sort((a,b)=>a.productId-b.productId);
+  expect(decision.observedUnitDelta).toEqual(wanted);
+  expect(decision.unitComparison.status).toBe('matches');
+  expect(h.cartRows().map(row=>({productId:row.id,quantity:row.qty})).sort((a,b)=>a.productId-b.productId)).toEqual(wanted);
+  const previous=structuredClone(h.conv.sessionData.cart);const modelCalls=h.agent.runTurn.mock.calls.length;
+  const reply=await h.sendQueued(kind==='office'?'Cuánto cuesta cada bowl?':'Cuánto cuesta el churrasco?');
+  const inquiry=h.service.turnTelemetry.getRecentDecisions(1)[0];
+  expect(inquiry.before.cart).toEqual(inquiry.after.cart);expect(inquiry.observedUnitDelta).toEqual([]);
+  expect(inquiry.stages).toEqual([]);expect(h.conv.sessionData.cart).toEqual(previous);
+  expect(inquiry.inquiries).toEqual([{kind:'price',productIds:[kind==='office'?501:17]}]);
+  expect(h.agent.runTurn.mock.calls.length).toBe(modelCalls);expect(reply||'').toMatch(/18.700|38.000/);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it('un diagnóstico roto no rompe una respuesta válida',async()=>{
+  const h=harness(products,false);h.service.turnTelemetry.recordDecision=()=>{throw Error('diagnostic failed');};
+  const reply=await h.sendQueued('Quiero una limonada natural');
+  expect(h.cartRows()).toHaveLength(1);expect(reply||'').toMatch(/Limonada Natural/i);
+ });
+ it('registra el error del turno sin sustituirlo',async()=>{
+  const h=harness(products,false);const error=new Error('original turn failure');
+  h.service.handleIncomingTurn=async(_msg,turn)=>{turn.conv=h.conv;const {beginTurnDecision}=require('./whatsapp-turn-decision');turn.decision=beginTurnDecision(h.conv.state,h.conv.sessionData);throw error;};
+  await expect(h.sendQueued('mensaje')).rejects.toBe(error);
+  expect(h.service.turnTelemetry.getRecentDecisions(1)[0].failed).toBe(true);
+ });
+});

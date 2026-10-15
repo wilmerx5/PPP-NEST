@@ -2,6 +2,10 @@
 
 Estado verificado al 14/10/2026, 22:34 Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
 
+## Procedimiento vigente: entregas locales acumuladas
+
+El usuario pidió no desplegar por cada ajuste. La entrega actual consolida contratos localmente y NO debe desplegarse automáticamente. Se puede publicar trabajo validado en la rama staging sin reconstruir el servidor. El runtime verificado que se enumera abajo sigue siendo el anterior hasta un deploy explícito de una entrega acumulada.
+
 ## Objetivo y alcance autorizado
 
 Crear un chatbot vendible con piloto supervisado, empezando en PPP y posteriormente adaptándolo a Kamppo multitenant. Prioridad del usuario: entender mensajes humanos, typos, notas, cantidades, opciones, pedidos largos, ráfagas, correcciones e interrupciones. No dedicar esta fase a cocina, impresoras o Mercado Pago. Piloto con efectivo y transferencia. El usuario pide continuar corrigiendo y probando staging, preservar esa rama y no publicar nuevas mejoras en Main sin solicitud.

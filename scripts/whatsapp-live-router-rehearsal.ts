@@ -102,7 +102,7 @@ function harness(scenario:Scenario) {
     const beforeReplies=replies.length;
     history.push('Cliente: '+text);
     await service.handleIncomingUnlocked({waId:conv.waId,phoneE164:conv.phoneE164,messageId:`synthetic-${count}`,messageType:'text',text,raw:{}});
-    return {session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults)};
+    return {session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults),decisions:service.turnTelemetry.getRecentDecisions(1)};
   };
   return {send};
 }

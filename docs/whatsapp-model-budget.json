@@ -1,8 +1,8 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 50,
+  "authorizedRequests": 60,
   "usedRequests": 50,
-  "remainingRequests": 0,
+  "remainingRequests": 10,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
@@ -53,6 +53,12 @@
       "additionalRequests": 10,
       "evidence": "User: continua, si quieres autoriza ams llaamadas",
       "executionLimit": "Agent limits this extension to 10 requests, one repetition, stop on failure"
+    },
+    {
+      "date": "2026-10-14",
+      "additionalRequests": 10,
+      "evidence": "User: te autorizo a añadir mas llamadas , continua con el plan",
+      "executionLimit": "10 requests maximum; one repetition; stop at first failing conversation"
     }
   ],
   "evaluationHistory": [

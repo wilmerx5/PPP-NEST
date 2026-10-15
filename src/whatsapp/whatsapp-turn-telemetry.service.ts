@@ -1,3 +1,4 @@
+import type { TurnDecision } from './whatsapp-turn-decision';
 import { Injectable, Logger } from '@nestjs/common';
 
 export type WhatsappTurnPath = 'rules' | 'ai_legacy' | 'agent_v1' | 'hybrid';
@@ -33,6 +34,17 @@ export class WhatsappTurnTelemetryService {
   /** Ring buffer en memoria para debug admin (últimos N). */
   private readonly recent: WhatsappTurnTelemetryEvent[] = [];
   private readonly maxRecent = 100;
+  private readonly decisions: TurnDecision[] = [];
+
+  /** Diagnostic memory only: no extra production logs or external telemetry requests. */
+  recordDecision(decision: TurnDecision): void {
+    this.decisions.push(structuredClone(decision));
+    if (this.decisions.length > this.maxRecent) this.decisions.shift();
+  }
+
+  getRecentDecisions(limit = 10): TurnDecision[] {
+    return structuredClone(this.decisions.slice(-Math.max(1, Math.min(limit, this.maxRecent))));
+  }
 
   record(event: Omit<WhatsappTurnTelemetryEvent, 'at'> & { at?: string }): void {
     const full: WhatsappTurnTelemetryEvent = {
