@@ -1,26 +1,24 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 145,
-  "usedRequests": 141,
+  "authorizedRequests": 158,
+  "usedRequests": 154,
   "remainingRequests": 4,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T23:00:20.613Z",
+  "lastAttemptAt": "2026-10-15T23:13:48.390Z",
   "latestEvaluation": {
     "date": "2026-10-15",
-    "baseCommit": "ff730c46",
-    "includesWorkingTreeCompletenessFix": true,
+    "baseCommit": "ba8d1faa",
     "model": "gpt-6.1-sol",
-    "scope": "Four-turn synthetic office development retest through isolated full router",
-    "requests": 6,
-    "httpSuccessful": 6,
-    "acceptedConversations": 1,
-    "incompleteConversations": 0,
+    "requests": 13,
+    "httpSuccessful": 13,
+    "acceptedConversations": 0,
     "budgetExhausted": false,
-    "estimatedReportedCostUsd": 0.045018199999999994,
-    "report": "docs/whatsapp-tool-completeness-validation-1510.json"
+    "scope": "New falafel checkout case stopped on discarded answer; development retest stopped on ignored attribute edit. Offline continuation only after fixes.",
+    "estimatedReportedCostUsd": 0.0552688,
+    "report": "docs/whatsapp-checkout-tools-validation-1510.json"
   },
   "authorizationExtensions": [
     {
@@ -598,6 +596,18 @@
       "authorization": "Standing user authorization for moderate paid validation; user asks to continue plan",
       "operationalBatchExtension": 10,
       "note": "Agent-selected ceiling for completing the office four-turn development retest after offline completeness correction. Stop first failure. Not a numeric limit dictated by user."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "Standing human authorization for moderate API validation; user asks to continue",
+      "operationalBatchExtension": 8,
+      "note": "Agent-selected 12-request headroom including remaining4 for new eight-turn falafel checkout case. Stop first failure. Retain cumulative attempts; not a human-quoted numeric cap."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "Standing user authorization to continue moderate real-model validation",
+      "operationalBatchExtension": 5,
+      "note": "Agent-selected 12-request development retest after free reproduction and fix of discarded checkout answer; stop first failure, no reset of cumulative attempts."
     }
   ]
 }

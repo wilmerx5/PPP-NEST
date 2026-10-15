@@ -783,7 +783,8 @@ export function isCartChargeQuestion(text: string): boolean {
     const preface = t.slice(0,aggregate.index).replace(/^[¿?\s,]+|[¿?\s,]+$/g,'').trim();
     if (!preface || /^(?:(?:antes de (?:seguir|continuar|confirmar)|una (?:duda|pregunta)|disculpa|oye|y|por favor|porfa)[\s,¿?]*)+$/.test(preface)) return true;
   }
-  return /^(?:[¿?\s]*)(?:y\s+)?cuanto\s+(?:suma|(?:es|seria|vale|sale)\s+el\s+total)[?¿.!\s]*$/.test(t) ||
+  return /^(?:[¿?\s]*)(?:y\s+)?(?:cual\s+es|cuanto\s+(?:es|seria|vale|sale))\s+el\s+total(?:\s+(?:con|incluyendo)\s+(?:el\s+)?(?:domicilio|envio))?(?:\s+por\s+favor)?[?¿.!\s]*$/.test(t) ||
+    /^(?:[¿?\s]*)(?:y\s+)?cuanto\s+(?:suma|(?:es|seria|vale|sale)\s+el\s+total)[?¿.!\s]*$/.test(t) ||
     /\b(cobrando|me cobran)\b/.test(t) ||
     /^(?:[¿?\s]*)cuanto(?:\s+vale|\s+es|\s+seria|\s+sale|\s+cuesta)?(?:\s+(?:en\s+total|todo|el\s+pedido))?[?¿.!\s]*$/.test(t) ||
     /^(?:[¿?\s]*)(?:me\s+)?confirmas?\s+(?:el\s+)?(?:tiempo\s+y\s+(?:el\s+)?valor|valor\s+y\s+(?:el\s+)?tiempo)(?:\s+por\s+favor|\s+porfa)?[?¿.!\s]*$/.test(t) ||

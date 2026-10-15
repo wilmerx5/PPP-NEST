@@ -1,0 +1,1088 @@
+{
+  "baseCommit": "ba8d1faa",
+  "includesWorkingTreeCheckoutFixes": true,
+  "sourcePrice": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+  "scope": "Actual Sol Responses inference; isolated router/DB/Meta/maps/payments. No external orders.",
+  "requestsTotal": 13,
+  "estimatedReportedCostUsd": 0.0552688,
+  "acceptedCompleteConversations": 0,
+  "runs": [
+    {
+      "name": "initial_new_case",
+      "independentFirstAttempt": true,
+      "requests": 5,
+      "apiUsage": {
+        "model": "gpt-6.1-sol",
+        "requests": 5,
+        "successfulResponses": 5,
+        "responsesWithUsage": 5,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 45861,
+        "cachedPromptTokens": 27044,
+        "completionTokens": 239,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.0427284,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "accepted": false,
+      "problems": [
+        "turn_2:reply_missing_any"
+      ],
+      "requestTimingsMs": [
+        2454,
+        2812,
+        2732,
+        6165,
+        2780
+      ],
+      "turns": [
+        {
+          "text": "Buenas tardes, me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor",
+          "state": "building_cart",
+          "replies": [
+            "Listo ✅ *Combo De Falafel ×2*, *Hummus Clasico*\n📝 _Sin tomate_\n\n¿*Algo más*?"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": null,
+          "latencyMs": 8379,
+          "agentResults": [
+            {
+              "reply": "Listo, agregué 2 combos de falafel con té frío, sin tomate ($29.000 cada uno), y 1 hummus clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "resolve_multi_order",
+              "args": {
+                "text": "me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor"
+              },
+              "result": {
+                "ok": true,
+                "confident": [
+                  {
+                    "segment": "dos Combo De Falafel con Te Frio",
+                    "id": 8921,
+                    "code": 8921,
+                    "name": "Combo De Falafel",
+                    "price": 29000,
+                    "category": null,
+                    "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                    "hasAttributes": true,
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "options": [
+                          "Limonada",
+                          "Te Frio"
+                        ]
+                      }
+                    ],
+                    "score": 100,
+                    "quantity": 2,
+                    "selectedAttributes": {
+                      "status": "complete",
+                      "attributes": [
+                        {
+                          "attributeName": "Bebida",
+                          "attributeValue": "Te Frio"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "segment": "Hummus Clasico",
+                    "id": 8922,
+                    "code": 8922,
+                    "name": "Hummus Clasico",
+                    "price": 9000,
+                    "category": null,
+                    "description": "Crema de garbanzos con tahini y pan pita",
+                    "hasAttributes": false,
+                    "attributes": [],
+                    "score": 100,
+                    "quantity": 1,
+                    "selectedAttributes": {
+                      "status": "complete",
+                      "attributes": []
+                    }
+                  }
+                ],
+                "needsAttributes": [],
+                "ambiguous": [],
+                "unresolved": [
+                  "sin tomate"
+                ],
+                "completeness": "requires_review",
+                "unaccountedMentions": [],
+                "hint": "Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas \"sí\" a la vez. add_item solo de confident/needsAttributes con productId."
+              }
+            },
+            {
+              "origin": "model_call",
+              "name": "add_item",
+              "args": {
+                "productId": 8921,
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Te Frio"
+                  }
+                ]
+              },
+              "result": {
+                "ok": true,
+                "added": {
+                  "id": 8921,
+                  "code": 8921,
+                  "name": "Combo De Falafel",
+                  "price": 29000,
+                  "category": null,
+                  "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                  "hasAttributes": true,
+                  "attributes": [
+                    {
+                      "attributeName": "Bebida",
+                      "options": [
+                        "Limonada",
+                        "Te Frio"
+                      ]
+                    }
+                  ]
+                },
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Te Frio"
+                  }
+                ],
+                "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+              }
+            },
+            {
+              "origin": "model_call",
+              "name": "add_item",
+              "args": {
+                "productId": 8922,
+                "quantity": 1
+              },
+              "result": {
+                "ok": true,
+                "added": {
+                  "id": 8922,
+                  "code": 8922,
+                  "name": "Hummus Clasico",
+                  "price": 9000,
+                  "category": null,
+                  "description": "Crema de garbanzos con tahini y pan pita",
+                  "hasAttributes": false,
+                  "attributes": []
+                },
+                "quantity": 1,
+                "note": null,
+                "attributes": null,
+                "hint": null
+              }
+            }
+          ]
+        },
+        {
+          "text": "Es para la calle 18 sur 70 25",
+          "state": "awaiting_payment",
+          "replies": [
+            "🚚 Domicilio: *$2.000*\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* ×2 · $29.000 c/u → *$58.000*\n   _Bebida: Te Frio_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $67.000 · Dom. $2.000\n*Total $69.000*\n\n🛵 Tipo: Domicilio\n👤 Nombre: Cliente Sintético\n📍 Dirección: calle 18 sur 70 25\n📞 Teléfono: 300 000 0001\n💳 Pago: (pendiente)\n\n¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": "calle 18 sur 70 25",
+          "latencyMs": 25,
+          "agentResults": [
+            {
+              "reply": "Listo, agregué 2 combos de falafel con té frío, sin tomate ($29.000 cada uno), y 1 hummus clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            }
+          ],
+          "toolTrace": []
+        },
+        {
+          "text": "Antes de pagar, el combo trae papas o se cobran aparte?",
+          "state": "awaiting_payment",
+          "replies": [
+            "¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": "calle 18 sur 70 25",
+          "latencyMs": 9060,
+          "agentResults": [
+            {
+              "reply": "Listo, agregué 2 combos de falafel con té frío, sin tomate ($29.000 cada uno), y 1 hummus clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            },
+            {
+              "reply": "Sí, las papas ya están incluidas, no se cobran aparte. El combo trae seis falafel con pan pita, papas y bebida de 400 ml.",
+              "actions": {},
+              "toolCalls": [
+                "search_menu"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "search_menu",
+              "args": {
+                "query": "Qué incluye Combo De Falafel, trae papas o se cobran aparte?"
+              },
+              "result": {
+                "ok": true,
+                "query": "Qué incluye Combo De Falafel, trae papas o se cobran aparte?",
+                "mode": "similar_offer",
+                "results": [
+                  {
+                    "id": 8921,
+                    "code": 8921,
+                    "name": "Combo De Falafel",
+                    "price": 29000,
+                    "category": null,
+                    "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                    "hasAttributes": true,
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "options": [
+                          "Limonada",
+                          "Te Frio"
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "hint": "El cliente no nombró ese plato: solo una palabra que aparece dentro del nombre. Di que no lo ofrecemos, con la palabra que él dijo, y lista results (nombre y precio) como alternativa. NO add_item."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "development_retest_after_answer_fix",
+      "independentFirstAttempt": false,
+      "requests": 8,
+      "apiUsage": {
+        "model": "gpt-6.1-sol",
+        "requests": 8,
+        "successfulResponses": 8,
+        "responsesWithUsage": 8,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 74136,
+        "cachedPromptTokens": 73164,
+        "completionTokens": 328,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.012540400000000002,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "accepted": false,
+      "problems": [
+        "turn_3:cart",
+        "turn_3:attributes"
+      ],
+      "requestTimingsMs": [
+        2338,
+        2826,
+        2108,
+        2354,
+        1863,
+        1498,
+        2068,
+        2292
+      ],
+      "turns": [
+        {
+          "text": "Buenas tardes, me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor",
+          "state": "building_cart",
+          "replies": [
+            "Listo ✅ *Combo De Falafel ×2*, *Hummus Clasico*\n📝 _Sin tomate_\n\n¿*Algo más*?"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": null,
+          "latencyMs": 7599,
+          "agentResults": [
+            {
+              "reply": "¡Listo! Agregué dos Combo De Falafel con té frío y sin tomate ($29.000 cada uno), y un Hummus Clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "resolve_multi_order",
+              "args": {
+                "text": "me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor"
+              },
+              "result": {
+                "ok": true,
+                "confident": [
+                  {
+                    "segment": "dos Combo De Falafel con Te Frio",
+                    "id": 8921,
+                    "code": 8921,
+                    "name": "Combo De Falafel",
+                    "price": 29000,
+                    "category": null,
+                    "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                    "hasAttributes": true,
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "options": [
+                          "Limonada",
+                          "Te Frio"
+                        ]
+                      }
+                    ],
+                    "score": 100,
+                    "quantity": 2,
+                    "selectedAttributes": {
+                      "status": "complete",
+                      "attributes": [
+                        {
+                          "attributeName": "Bebida",
+                          "attributeValue": "Te Frio"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "segment": "Hummus Clasico",
+                    "id": 8922,
+                    "code": 8922,
+                    "name": "Hummus Clasico",
+                    "price": 9000,
+                    "category": null,
+                    "description": "Crema de garbanzos con tahini y pan pita",
+                    "hasAttributes": false,
+                    "attributes": [],
+                    "score": 100,
+                    "quantity": 1,
+                    "selectedAttributes": {
+                      "status": "complete",
+                      "attributes": []
+                    }
+                  }
+                ],
+                "needsAttributes": [],
+                "ambiguous": [],
+                "unresolved": [
+                  "sin tomate"
+                ],
+                "completeness": "requires_review",
+                "unaccountedMentions": [],
+                "hint": "Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas \"sí\" a la vez. add_item solo de confident/needsAttributes con productId."
+              }
+            },
+            {
+              "origin": "model_call",
+              "name": "add_item",
+              "args": {
+                "productId": 8921,
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Te Frio"
+                  }
+                ]
+              },
+              "result": {
+                "ok": true,
+                "added": {
+                  "id": 8921,
+                  "code": 8921,
+                  "name": "Combo De Falafel",
+                  "price": 29000,
+                  "category": null,
+                  "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                  "hasAttributes": true,
+                  "attributes": [
+                    {
+                      "attributeName": "Bebida",
+                      "options": [
+                        "Limonada",
+                        "Te Frio"
+                      ]
+                    }
+                  ]
+                },
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Te Frio"
+                  }
+                ],
+                "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+              }
+            },
+            {
+              "origin": "model_call",
+              "name": "add_item",
+              "args": {
+                "productId": 8922,
+                "quantity": 1
+              },
+              "result": {
+                "ok": true,
+                "added": {
+                  "id": 8922,
+                  "code": 8922,
+                  "name": "Hummus Clasico",
+                  "price": 9000,
+                  "category": null,
+                  "description": "Crema de garbanzos con tahini y pan pita",
+                  "hasAttributes": false,
+                  "attributes": []
+                },
+                "quantity": 1,
+                "note": null,
+                "attributes": null,
+                "hint": null
+              }
+            }
+          ]
+        },
+        {
+          "text": "Es para la calle 18 sur 70 25",
+          "state": "awaiting_payment",
+          "replies": [
+            "🚚 Domicilio: *$2.000*\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* ×2 · $29.000 c/u → *$58.000*\n   _Bebida: Te Frio_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $67.000 · Dom. $2.000\n*Total $69.000*\n\n🛵 Tipo: Domicilio\n👤 Nombre: Cliente Sintético\n📍 Dirección: calle 18 sur 70 25\n📞 Teléfono: 300 000 0001\n💳 Pago: (pendiente)\n\n¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": "calle 18 sur 70 25",
+          "latencyMs": 25,
+          "agentResults": [
+            {
+              "reply": "¡Listo! Agregué dos Combo De Falafel con té frío y sin tomate ($29.000 cada uno), y un Hummus Clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            }
+          ],
+          "toolTrace": []
+        },
+        {
+          "text": "Antes de pagar, el combo trae papas o se cobran aparte?",
+          "state": "awaiting_payment",
+          "replies": [
+            "Sí, las papas ya están incluidas, no se cobran aparte. Cada combo trae seis falafel con pan pita, papas y bebida de 400 ml.\n\nPara seguir, ¿con qué método de pago pagas?"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            }
+          ],
+          "address": "calle 18 sur 70 25",
+          "latencyMs": 4295,
+          "agentResults": [
+            {
+              "reply": "¡Listo! Agregué dos Combo De Falafel con té frío y sin tomate ($29.000 cada uno), y un Hummus Clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            },
+            {
+              "reply": "Sí, las papas ya están incluidas, no se cobran aparte. Cada combo trae seis falafel con pan pita, papas y bebida de 400 ml.",
+              "actions": {},
+              "toolCalls": [
+                "search_menu"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "search_menu",
+              "args": {
+                "query": "Qué incluye Combo De Falafel, trae papas o se cobran aparte"
+              },
+              "result": {
+                "ok": true,
+                "query": "Qué incluye Combo De Falafel, trae papas o se cobran aparte",
+                "mode": "similar_offer",
+                "results": [
+                  {
+                    "id": 8921,
+                    "code": 8921,
+                    "name": "Combo De Falafel",
+                    "price": 29000,
+                    "category": null,
+                    "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                    "hasAttributes": true,
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "options": [
+                          "Limonada",
+                          "Te Frio"
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "hint": "El cliente no nombró ese plato: solo una palabra que aparece dentro del nombre. Di que no lo ofrecemos, con la palabra que él dijo, y lista results (nombre y precio) como alternativa. NO add_item."
+              }
+            }
+          ]
+        },
+        {
+          "text": "Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida",
+          "state": "awaiting_payment",
+          "replies": [
+            "Listo, agregué *Limonada Natural ×2* ✅\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* ×2 · $29.000 c/u → *$58.000*\n   _Bebida: Te Frio_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n*3.* *Limonada Natural* ×2 · $6.000 c/u → *$12.000*\n────────────\nSubtotal $79.000 · Dom. $2.000\n*Total $81.000*\n\n🛵 Tipo: Domicilio\n👤 Nombre: Cliente Sintético\n📍 Dirección: calle 18 sur 70 25\n📞 Teléfono: 300 000 0001\n💳 Pago: (pendiente)\n\n¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+          ],
+          "cart": [
+            {
+              "productId": 8921,
+              "name": "Combo De Falafel",
+              "code": 8921,
+              "unitPrice": 29000,
+              "quantity": 2,
+              "note": "Sin tomate",
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "attributeValue": "Te Frio"
+                }
+              ]
+            },
+            {
+              "productId": 8922,
+              "name": "Hummus Clasico",
+              "code": 8922,
+              "unitPrice": 9000,
+              "quantity": 1,
+              "attributes": []
+            },
+            {
+              "productId": 8923,
+              "name": "Limonada Natural",
+              "code": 8923,
+              "unitPrice": 6000,
+              "quantity": 2,
+              "attributes": []
+            }
+          ],
+          "address": "calle 18 sur 70 25",
+          "latencyMs": 6079,
+          "agentResults": [
+            {
+              "reply": "¡Listo! Agregué dos Combo De Falafel con té frío y sin tomate ($29.000 cada uno), y un Hummus Clásico ($9.000). ¿Algo más?",
+              "actions": {
+                "addItems": [
+                  {
+                    "productId": 8921,
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ]
+                  },
+                  {
+                    "productId": 8922,
+                    "quantity": 1
+                  }
+                ]
+              },
+              "toolCalls": [
+                "resolve_multi_order",
+                "add_item",
+                "add_item"
+              ],
+              "purchaseAttempts": [
+                {
+                  "productId": 8921,
+                  "accepted": true
+                },
+                {
+                  "productId": 8922,
+                  "accepted": true
+                }
+              ]
+            },
+            {
+              "reply": "Sí, las papas ya están incluidas, no se cobran aparte. Cada combo trae seis falafel con pan pita, papas y bebida de 400 ml.",
+              "actions": {},
+              "toolCalls": [
+                "search_menu"
+              ],
+              "purchaseAttempts": []
+            },
+            {
+              "reply": "Listo, cambié la bebida de los dos combos por limonada, sin agregar otra bebida. Se mantiene la nota de sin tomate.",
+              "actions": {
+                "updateAttributes": [
+                  {
+                    "productId": 8921,
+                    "cartLineIndex": 0,
+                    "attributeName": "Bebida",
+                    "attributeValue": "Limonada"
+                  }
+                ]
+              },
+              "toolCalls": [
+                "get_cart",
+                "set_attribute"
+              ],
+              "purchaseAttempts": []
+            }
+          ],
+          "toolTrace": [
+            {
+              "origin": "model_call",
+              "name": "get_cart",
+              "args": {},
+              "result": {
+                "ok": true,
+                "lines": [
+                  {
+                    "productId": 8921,
+                    "name": "Combo De Falafel",
+                    "quantity": 2,
+                    "note": "Sin tomate",
+                    "attributes": [
+                      {
+                        "attributeName": "Bebida",
+                        "attributeValue": "Te Frio"
+                      }
+                    ],
+                    "cartLineIndex": 0
+                  },
+                  {
+                    "productId": 8922,
+                    "name": "Hummus Clasico",
+                    "quantity": 1,
+                    "attributes": [],
+                    "cartLineIndex": 1
+                  }
+                ],
+                "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+              }
+            },
+            {
+              "origin": "model_call",
+              "name": "set_attribute",
+              "args": {
+                "productId": 8921,
+                "cartLineIndex": 0,
+                "attributeName": "Bebida",
+                "attributeValue": "Limonada"
+              },
+              "result": {
+                "ok": true,
+                "productId": 8921,
+                "itemName": "Combo De Falafel",
+                "attributeName": "Bebida",
+                "attributeValue": "Limonada",
+                "hint": "Cambio aceptado. Confírmalo en una frase. No agregues otro plato."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "findings": [
+    "Model correctly answered included-side question; backend placedOrderOnly discarded reply",
+    "Model correctly called set_attribute for hosted beverage; backend ignored edit and added standalone drinks",
+    "Free sequential test found keep-only path deleting explicitly retained hummus",
+    "Free sequential test found stripped correction prefix passed to model and unrecognized aggregate total with delivery"
+  ],
+  "freeValidation": {
+    "newTests": 41,
+    "coverage": "8 read-only across two menus/four checkout steps;4 evidence controls;16 edits;4 invalid edits;1 six-turn continuation;8 aggregate inquiry positives/negatives",
+    "baseline": "8 read-only failed. Initial16-edit run failed:8 attributes were dropped;8 quantity cases initially had an incorrect mandatory-agent assertion. Removing it exposed deletion of retained line. No claim of16 independent production defects.",
+    "continuation": "Simulated model actions after captured correct initial cart. Not real-model continuation or channel acceptance.",
+    "globalStatus": "passed",
+    "sourceSnapshot": "/tmp/ppp-checkout-tools-source.json",
+    "typescript": {
+      "passed": true,
+      "log": "/tmp/ppp-checkout-tools-tsc.log"
+    },
+    "complement": {
+      "suites": 19,
+      "passed": 98,
+      "seconds": 6.84,
+      "log": "/tmp/ppp-checkout-tools-complement.log"
+    },
+    "targeted": {
+      "firstRun32Passed": "/tmp/ppp-checkout-tools-final-targets.log",
+      "continuationAndTotals9Passed": "/tmp/ppp-falafel-free-continuation.log",
+      "note": "Final global covers all41 new tests; do not add counts from overlapping targeted development runs."
+    },
+    "global": {
+      "suites": 57,
+      "passed": 5582,
+      "seconds": 470.548,
+      "log": "/tmp/ppp-checkout-tools-full.log"
+    },
+    "combinedDisjointTotals": {
+      "suites": 76,
+      "passed": 5680
+    },
+    "sourceUnchangedDuringValidation": true
+  },
+  "limitations": [
+    "No accepted complete eight-turn model conversation yet",
+    "Retest warm cache cost is not representative of cold real customer traffic",
+    "No original audio/image or WhatsApp channel validation",
+    "No per-tenant profitability or p95 inference from two partial runs"
+  ]
+}

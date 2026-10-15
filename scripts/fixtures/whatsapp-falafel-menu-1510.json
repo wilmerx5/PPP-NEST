@@ -1,0 +1,40 @@
+[
+  {
+    "id": 8921,
+    "code": 8921,
+    "name": "Combo De Falafel",
+    "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+    "price": 29000,
+    "availableNow": true,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Bebida",
+        "options": [
+          "Limonada",
+          "Te Frio"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 8922,
+    "code": 8922,
+    "name": "Hummus Clasico",
+    "description": "Crema de garbanzos con tahini y pan pita",
+    "price": 9000,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  },
+  {
+    "id": 8923,
+    "code": 8923,
+    "name": "Limonada Natural",
+    "description": "Vaso de limonada de 400ml",
+    "price": 6000,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  }
+]

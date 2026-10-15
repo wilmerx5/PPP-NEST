@@ -12063,6 +12063,8 @@ export class WhatsappOrchestratorService {
     if (session.cart.length < 2) return false;
     const spoken = this.normalizeForMatch(text);
     if (!/\bsolo\s+(?:una|un|el|la|ese|esa)\b/.test(spoken)) return false;
+    // A scoped quantity change explicitly retaining another line is not keep-only.
+    if (/\b(?:queda[n]?|sigue[n]?)\s+igual(?:es)?\b|\bno\s+(?:cambies|toques|quites)\b/.test(spoken)) return false;
     const cartProducts = session.cart
       .map((line) => products.find((product) => product.id === line.productId))
       .filter((product): product is MenuProduct => !!product);
@@ -17107,7 +17109,7 @@ export class WhatsappOrchestratorService {
     });
 
     const agent = await this.agentService.runTurn({
-      userMessage: text,
+      userMessage: params.placedOrderOnly ? originalText || text : text,
       cart: session.cart.map((c) => ({
         productId: c.productId,
         name: c.name,
@@ -17221,6 +17223,52 @@ export class WhatsappOrchestratorService {
         latencyMs: Date.now() - started,
         userTextPreview: originalText || text,
       });
+      return true;
+    }
+
+    // Checkout routing must not discard an answered catalog/cart consultation.
+    // No action is applied here: preserve the pending field and current order.
+    const readOnlyTools = ['search_menu', 'get_cart', 'resolve_multi_order'];
+    if (params.placedOrderOnly && !agent.error && agentReply &&
+      !Object.keys(agent.actions || {}).length && !agent.needsAttributeProductId &&
+      agent.toolCalls?.length && agent.toolCalls.every(tool => readOnlyTools.includes(tool)) &&
+      !/\b(?:qu[eé] se te antoja|dime el plato|no entend[ií])\b/i.test(agentReply)) {
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      const answer = agentReply + (reminder ? `\n\n${reminder}` : '');
+      await this.reply(conv, msg.waId, answer);
+      this.turnTelemetry.record({path:'agent_v1',outcome:'replied',waId:msg.waId,
+        conversationId:conv.id,toolCalls:agent.toolCalls,latencyMs:Date.now()-started,
+        userTextPreview:originalText || text,replyPreview:answer,warnings:['checkout_readonly_tool_answer']});
+      return true;
+    }
+
+    // Existing-line edits from validated tools own the turn; do not reinterpret
+    // a hosted option as a new product after the agent has already changed it.
+    const editKeys = Object.keys(agent.actions || {});
+    const checkoutEdit = editKeys.length > 0 && editKeys.every(key =>
+      ['updateAttributes', 'updateCartLines'].includes(key));
+    if (params.placedOrderOnly && !agent.error && checkoutEdit &&
+      agent.toolCalls?.some(tool => ['set_attribute', 'update_item'].includes(tool)) &&
+      agent.toolCalls.every(tool => [...readOnlyTools, 'set_attribute', 'update_item'].includes(tool))) {
+      const guarded = this.actionGuard.sanitize({actions:agent.actions,products,
+        businessOpen:businessOpenForBot,allowMercadoPago:!!cfg.allowMercadoPago,paymentMethods:cfg.paymentMethods});
+      if (guarded.blockedClosed) return false;
+      const before = JSON.stringify(session.cart);
+      const applied = await this.applyActions(conv,session,guarded.actions,products,cfg,originalText || text,params.decision);
+      if (applied.limitBlocked) {
+        await this.handleCartLimitBlocked(conv,msg.waId,applied.limitBlocked,cfg);
+        return true;
+      }
+      const changed = JSON.stringify(applied.session.cart) !== before;
+      if (changed) await this.conversationService.saveSession(conv,applied.session,conv.state);
+      const reminder = this.formatInterruptedStepReminder(conv,changed ? applied.session : session);
+      const answer = changed
+        ? 'Listo, actualicé el pedido ✅\n\n' + this.formatCartOnly(applied.session,this.deliveryFeeFor(applied.session,cfg))
+        : 'No pude aplicar ese cambio con seguridad. ¿Qué plato y opción o cantidad quieres cambiar? El pedido sigue igual.';
+      await this.reply(conv,msg.waId,answer + (reminder ? `\n\n${reminder}` : ''));
+      this.turnTelemetry.record({path:'agent_v1',outcome:changed?'order_progress':'replied',waId:msg.waId,
+        conversationId:conv.id,toolCalls:agent.toolCalls,latencyMs:Date.now()-started,
+        warnings:[changed?'checkout_tool_edit_applied':'checkout_tool_edit_not_applied']});
       return true;
     }
 

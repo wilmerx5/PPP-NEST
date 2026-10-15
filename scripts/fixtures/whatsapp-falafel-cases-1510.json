@@ -1,0 +1,154 @@
+[
+  {
+    "id": "fresh-falafel-checkout-interruptions-1510",
+    "messages": [
+      {
+        "text": "Buenas tardes, me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor",
+        "expect": {
+          "items": {
+            "8921": 2,
+            "8922": 1
+          },
+          "attrs": [
+            {
+              "id": 8921,
+              "key": "Bebida",
+              "value": "Te Frio"
+            }
+          ],
+          "lines": [
+            {
+              "id": 8921,
+              "quantity": 2,
+              "note": [
+                "sin tomate"
+              ]
+            },
+            {
+              "id": 8922,
+              "quantity": 1,
+              "forbidNote": [
+                "sin tomate"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Es para la calle 18 sur 70 25",
+        "expect": {
+          "items": {
+            "8921": 2,
+            "8922": 1
+          },
+          "address": "18 sur 70 25",
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de pagar, el combo trae papas o se cobran aparte?",
+        "expect": {
+          "items": {
+            "8921": 2,
+            "8922": 1
+          },
+          "replyAny": [
+            "inclu",
+            "viene con",
+            "trae papas",
+            "acompañado"
+          ],
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida",
+        "expect": {
+          "items": {
+            "8921": 2,
+            "8922": 1
+          },
+          "attrs": [
+            {
+              "id": 8921,
+              "key": "Bebida",
+              "value": "Limonada"
+            }
+          ],
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Deja solo un Combo De Falafel, el hummus queda igual",
+        "expect": {
+          "items": {
+            "8921": 1,
+            "8922": 1
+          },
+          "lines": [
+            {
+              "id": 8921,
+              "quantity": 1,
+              "note": [
+                "sin tomate"
+              ],
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Limonada"
+                }
+              ]
+            },
+            {
+              "id": 8922,
+              "quantity": 1
+            }
+          ],
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Cuál es el total con domicilio?",
+        "expect": {
+          "items": {
+            "8921": 1,
+            "8922": 1
+          },
+          "replyAll": [
+            "40.000"
+          ],
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Dirección: calle 19 sur 70 28",
+        "expect": {
+          "items": {
+            "8921": 1,
+            "8922": 1
+          },
+          "address": "19 sur 70 28",
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Pago por transferencia",
+        "expect": {
+          "items": {
+            "8921": 1,
+            "8922": 1
+          },
+          "payment": "transfer",
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

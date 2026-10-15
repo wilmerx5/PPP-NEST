@@ -14471,3 +14471,95 @@ describe('Foto seguida de consulta, eliminación y cantidad durante pago — dos
   expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Respuesta de consulta respaldada por herramienta durante checkout',()=>{
+ const menus=[
+  [{id:8921,code:8921,name:'Combo De Falafel',description:'Falafel con pan pita, papas y bebida incluida',price:29000,availableNow:true,hasAttributes:false,attributes:[]}],
+  [{id:8931,code:8931,name:'Caja De Onigiris',description:'Tres onigiris acompañados con ensalada y té',price:24000,availableNow:true,hasAttributes:false,attributes:[]}],
+ ];
+ for(const menu of menus)for(const state of ['awaiting_payment','awaiting_name','awaiting_phone','awaiting_final_confirm']){
+  it(menu[0].name+' conserva respuesta y paso '+state,async()=>{
+   const h=harness(menu,true);h.conv.state=state;h.conv.customerName=state==='awaiting_name'?'':'Ana';
+   h.conv.sessionData={cart:[{productId:menu[0].id,name:menu[0].name,code:menu[0].code,unitPrice:menu[0].price,quantity:2,note:'sin cebolla',attributes:[]}],orderType:'delivery',address:'Calle 18 sur 70 25',addressConfirmed:true,phoneConfirmed:true};
+   const before=structuredClone(h.conv.sessionData);
+   const answer='Sí, el acompañamiento está incluido en el precio. '+menu[0].description;
+   h.agent.runTurn.mockResolvedValue({reply:answer,actions:{},toolCalls:['search_menu']});
+   const reply=await h.send('Antes de pagar, ese plato trae acompañamiento o se cobra aparte?');
+   expect(h.agent.runTurn).toHaveBeenCalled();expect(reply).toContain(answer);expect(reply).toMatch(state==='awaiting_final_confirm'?/escribe confirmar/i:/Para seguir/i);
+   expect(h.conv.state).toBe(state);expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.customerName).toBe(state==='awaiting_name'?'':'Ana');expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+  });
+ }
+});
+
+describe('Consulta de checkout — no publicar respuestas sin evidencia o con cambios',()=>{
+ const menu=[{id:8941,code:8941,name:'Caja De Dumplings',description:'Dumplings con ensalada',price:22000,availableNow:true,hasAttributes:false,attributes:[]}];
+ it.each([
+  {toolCalls:[],actions:{}},
+  {toolCalls:['add_item'],actions:{}},
+  {toolCalls:['search_menu'],actions:{addItems:[{productId:8941,quantity:1}]}},
+  {toolCalls:['search_menu'],actions:{},error:'openai_timeout'},
+ ])('no acredita una respuesta con %j',async result=>{
+  const h=harness(menu,true);h.conv.state='awaiting_payment';h.conv.customerName='Ana';
+  h.conv.sessionData={cart:[{productId:8941,name:menu[0].name,code:8941,unitPrice:22000,quantity:1,attributes:[]}],orderType:'delivery',address:'Calle 18 sur 70 25',addressConfirmed:true,phoneConfirmed:true};
+  const before=structuredClone(h.conv.sessionData.cart);
+  h.agent.runTurn.mockResolvedValue({reply:'RESPUESTA NO ACREDITADA',...result});
+  const reply=await h.send('Antes de pagar, ese plato trae acompañamiento o se cobra aparte?');
+  expect(reply).not.toContain('RESPUESTA NO ACREDITADA');expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');
+ });
+});
+
+describe('Herramientas de edición durante checkout — conservar opciones y cantidades',()=>{
+ for(const name of ['Combo De Falafel','Caja De Onigiris'])for(const state of ['awaiting_payment','awaiting_name','awaiting_phone','awaiting_final_confirm'])for(const edit of ['attribute','quantity']){
+  it(name+' '+state+' '+edit,async()=>{
+   const menu=[{id:8951,code:8951,name,description:'Con acompañamiento y bebida',price:29000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Limonada','Te Frio']}]},{id:8952,code:8952,name:'Hummus Clasico',price:9000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,true);h.conv.state=state;h.conv.customerName=state==='awaiting_name'?'':'Ana';
+   h.conv.sessionData={cart:[{productId:8951,name,code:8951,unitPrice:29000,quantity:2,note:'sin tomate',attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]},{productId:8952,name:'Hummus Clasico',code:8952,unitPrice:9000,quantity:1,attributes:[]}],orderType:'delivery',address:'Calle 18 sur 70 25',addressConfirmed:true,phoneConfirmed:true};
+   const before=structuredClone(h.conv.sessionData);
+   const actions=edit==='attribute'?{updateAttributes:[{productId:8951,cartLineIndex:0,attributeName:'Bebida',attributeValue:'Limonada'}]}:{updateCartLines:[{productId:8951,cartLineIndex:0,quantity:1}]};
+   h.agent.runTurn.mockResolvedValue({reply:'Listo, ajustado.',actions,toolCalls:['get_cart',edit==='attribute'?'set_attribute':'update_item']});
+   const reply=await h.send(edit==='attribute'?'Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida':`Deja solo un ${name}, el hummus queda igual`);
+   if(edit==='attribute')expect(h.agent.runTurn).toHaveBeenCalled();expect(h.conv.state).toBe(state);expect(h.conv.sessionData.cart).toHaveLength(2);
+   expect(h.conv.sessionData.cart[0].quantity).toBe(edit==='quantity'?1:2);expect(h.conv.sessionData.cart[0].attributes).toEqual([{attributeName:'Bebida',attributeValue:edit==='attribute'?'Limonada':'Te Frio'}]);
+   expect(h.conv.sessionData.cart[0].note).toBe('sin tomate');expect(h.conv.sessionData.cart[1]).toEqual(before.cart[1]);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(reply).toContain(name);
+  });
+ }
+});
+
+describe('Edición de checkout — identidad y opciones inválidas no permiten otra compra',()=>{
+ it.each([
+  {updateAttributes:[{productId:8961,cartLineIndex:3,attributeName:'Bebida',attributeValue:'Limonada'}]},
+  {updateAttributes:[{productId:8961,cartLineIndex:0,attributeName:'Bebida',attributeValue:'Chocolate'}]},
+  {updateCartLines:[{productId:8961,cartLineIndex:3,quantity:1}]},
+  {updateCartLines:[{productId:8961,cartLineIndex:0,quantity:0}]},
+ ])('conserva carrito ante %j',async actions=>{
+  const menu=[{id:8961,code:8961,name:'Combo De Falafel',price:29000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te Frio','Limonada']}]},{id:8962,code:8962,name:'Limonada Natural',price:6000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,true);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.conv.sessionData={cart:[{productId:8961,name:menu[0].name,code:8961,unitPrice:29000,quantity:2,attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]}],orderType:'delivery',address:'Calle 18 sur 70 25',addressConfirmed:true};
+  const before=structuredClone(h.conv.sessionData.cart);
+  h.agent.runTurn.mockResolvedValue({reply:'Ya lo cambié.',actions,toolCalls:['get_cart',actions.updateAttributes?'set_attribute':'update_item']});
+  const reply=await h.send('Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida');
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');expect(reply).toMatch(/no pude aplicar/i);expect(reply).not.toContain('Ya lo cambié');
+ });
+});
+
+describe('Falafel — continuación aislada del ensayo real, sin más inferencia',()=>{
+ it('consulta, cambia bebida, reduce cantidad, corrige dirección y elige transferencia',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-falafel-menu-1510.json'),'utf8'));
+  const h=harness(menu,true);h.conv.state='awaiting_payment';h.conv.customerName='Ana';
+  h.service.deliveryRouting.quoteDeliveryFee=jest.fn().mockResolvedValue({ok:false,reason:'no_api_key',message:'Tarifa fija sintética'});h.service.ordersService.create=jest.fn();
+  h.conv.sessionData={cart:[{productId:8921,name:'Combo De Falafel',code:8921,unitPrice:29000,quantity:2,note:'sin tomate',attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]},{productId:8922,name:'Hummus Clasico',code:8922,unitPrice:9000,quantity:1,attributes:[]}],orderType:'delivery',address:'calle 18 sur 70 25',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,deliveryFeeCalculated:2000};
+  h.agent.runTurn.mockImplementation(async input=>input.userMessage.includes('cobran aparte')?{reply:'Sí, las papas están incluidas en el combo.',actions:{},toolCalls:['search_menu']}:input.userMessage.toLowerCase().includes('cámbiame')?{reply:'Listo.',actions:{updateAttributes:[{productId:8921,cartLineIndex:0,attributeName:'Bebida',attributeValue:'Limonada'}]},toolCalls:['get_cart','set_attribute']}:input.userMessage.toLowerCase().includes('deja solo')?{reply:'Listo.',actions:{updateCartLines:[{productId:8921,cartLineIndex:0,quantity:1}]},toolCalls:['get_cart','update_item']}:{reply:'',actions:{},toolCalls:[]});
+  expect(await h.send('Antes de pagar, el combo trae papas o se cobran aparte?')).toMatch(/incluidas/);
+  await h.send('Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida');
+  expect(h.cartRows()).toHaveLength(2);expect(h.cartRows()[0].attrs).toContain('Bebida:Limonada');
+  await h.send('Deja solo un Combo De Falafel, el hummus queda igual');
+  expect(h.cartRows().map(row=>row.qty)).toEqual([1,1]);expect(h.cartRows()[0].note).toBe('sin tomate');
+  expect(await h.send('Cuál es el total con domicilio?')).toContain('40.000');
+  await h.send('Dirección: calle 19 sur 70 28');expect(h.conv.sessionData.address).toContain('19 sur 70 28');
+  await h.send('Pago por transferencia');expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.cartRows()).toHaveLength(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Total con envío — alcance de consulta sin compras hipotéticas',()=>{
+ it.each(['Cuál es el total con domicilio?','Cuánto es el total incluyendo el envío?','Cuál es el total por favor','Y cuánto sería el total con el domicilio?'])('reconoce %s',text=>expect(isCartChargeQuestion(text)).toBe(true));
+ it.each(['Cuál es el total si agrego un combo?','Cuál es el total con domicilio y agrega dos jugos','Cuánto sale el total de un combo?','El total con papas cuesta más?'])('no consume otra intención: %s',text=>expect(isCartChargeQuestion(text)).toBe(false));
+});

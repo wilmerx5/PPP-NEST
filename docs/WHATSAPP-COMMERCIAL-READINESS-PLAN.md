@@ -8,6 +8,12 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
+## Checkout: nueva muestra y costo — 15/10
+
+La carta nueva de falafel reveló que placedOrderOnly descartaba una respuesta correcta del modelo durante pago y luego una edición de bebida incluida. No se aceptó el recorrido: primera muestra5solicitudes,retest8,ambos detenidos al primer fallo.USD0.0552688estimados en total de esta tanda. El menor costo del retest se debe al cache observado; no equivale a un promedio representativo de producción. Correcciones generales y41pruebas nuevas con continuación gratuita; global en curso. Evidencia whatsapp-checkout-tools-validation-1510.json.
+
+Siguiente puerta: terminar global, publicar lote en staging y validar el recorrido completo con inferencia bajo tope suficiente, además del canal. El ensayo fallido ya no es muestra reservada. Antes de fijar suscripción medir conversaciones que compran y que abandonan, rondas/cache/reintentos y costos de terceros. USD0.045de la tanda anterior fue TOTALpor6solicitudes: a ese costo observado1000recorridos idénticos≈USD45soloIA. No prometer volumen ilimitado con esa única muestra.
+
 ## Completitud: avance del 15/10, siguiente tanda
 
 El ensayo de oficina ya completó los cuatro turnos con el modelo real: una conversación de desarrollo aceptada,6solicitudesHTTP200,notas/cantidades correctas y totales80000→75000. La herramienta ahora separa la compra de la consulta condicional y no declara «Multi claro» como garantía de completitud. Evidencia en whatsapp-tool-completeness-validation-1510.json; gasto estimadoUSD0.0450182,excluye transporte/infraestructura/impuestos. Es una observación, no distribución de costo ni prueba de rentabilidad. Tope operativo145/141/4. Validación global cerrada:76suites/5639tests en dos ejecuciones disjuntas con fuente intacta y TypeScript aprobado. Código d120b267 desplegado en staging; ver estado del contenedor en el relevo vigente. Main intacta.
