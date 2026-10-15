@@ -1,7 +1,7 @@
 {
   "date": "2026-10-15",
   "baseCommit": "a60f4fc6",
-  "status": "validated_awaiting_staging_deploy",
+  "status": "deployed_staging",
   "mainModified": false,
   "newTests": 33,
   "newTestFamilies": {
@@ -72,5 +72,25 @@
     "operationalCap": 135,
     "used": 131,
     "remaining": 4
+  },
+  "deployment": {
+    "codeCommit": "df0560fa",
+    "verifiedAt": "2026-10-15T22:26:33.992Z",
+    "imageId": "sha256:633726eda3263be9bdc2301bd47e7d6fe513eb490fcfa20d20a491a29e751225",
+    "candidateMatchesRuntime": true,
+    "running": true,
+    "healthy": true,
+    "httpHealth": "ok",
+    "db": "connected",
+    "compiledBindings": {
+      "photoRelease": true,
+      "dedupTickets": true,
+      "albumEnvelopes": true,
+      "conditionalProductScope": true
+    },
+    "modelsUnchanged": true,
+    "log": "/tmp/ppp-photo-reply-deploy.log",
+    "verificationLog": "/tmp/ppp-photo-reply-deploy-verified.log",
+    "manualOriginalPhotoRetest": "pending"
   }
 }
