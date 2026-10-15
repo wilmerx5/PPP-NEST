@@ -3,7 +3,7 @@
   "baseCommit": "a1bcfd0f",
   "includesWorkingChanges": true,
   "selection": "gpt-6.1-sol",
-  "selectionStatus": "selected_for_staging_validation_not_yet_deployed",
+  "selectionStatus": "selected_and_deployed_staging_validation",
   "caveats": [
     "Small development sample, not a statistical quality ranking or holdout score",
     "Sources differ across runs because bridge and backend failures were corrected offline",
@@ -311,5 +311,23 @@
         }
       ]
     }
-  ]
+  ],
+  "deployment": {
+    "codeCommit": "fd4c2f0c",
+    "verifiedAt": "2026-10-15T17:35:34.124427+00:00",
+    "healthHttp": 200,
+    "database": "connected",
+    "containerHealth": "healthy",
+    "activeImage": "sha256:f6f7018334d68df7205e390c1a3d15b2a44bebcfab4b2ea0c60d4eb56f35cea8",
+    "activeImageMatchesCandidate": true,
+    "agentModel": "gpt-6.1-sol",
+    "productionChanged": false
+  },
+  "offlineValidation": {
+    "suites": 74,
+    "tests": 5562,
+    "elapsedSeconds": 851.419,
+    "sourceUnchanged": true,
+    "typeScriptPassed": true
+  }
 }

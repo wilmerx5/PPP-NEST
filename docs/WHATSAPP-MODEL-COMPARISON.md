@@ -4,7 +4,7 @@
 
 Modelo elegido para la etapa de calidad del agente de pedidos: **gpt-6.1-sol**, esfuerzo low, Responses API, salida máxima 3000 tokens por propuesta (incluye razonamiento), deadline original del turno 25 segundos. No se amplió el plazo para disimular lentitud. Selección reversible por `WHATSAPP_AGENT_MODEL`; si no existe, se usa el ajuste compartido anterior. No hay un ganador estadístico: la muestra es pequeña y de desarrollo. Luna sigue siendo candidato de costo para una comparación más amplia.
 
-El despliegue y activación siguen pendientes de la global final al escribir este apartado. Revisar el estado vigente del relevo antes de asumir que ya están activos. No se cambia Main/producción en esta tanda.
+**Desplegado y activado en staging:** código fd4c2f0c, verificado 2026-10-15T17:35:34.124427+00:00. Contenedor running/healthy, imagen activa coincide con candidate (`sha256:f6f7018334d68df7205e390c1a3d15b2a44bebcfab4b2ea0c60d4eb56f35cea8`), /api/health HTTP200 y DB connected. WHATSAPP_AGENT_MODEL=gpt-6.1-sol y módulo Responses disponible. No se cambia Main/producción en esta tanda. No se envió WhatsApp real ni se confirmó una orden externa.
 
 ## Evidencia de modelos reales y costos
 
@@ -51,3 +51,5 @@ Fuentes: https://developers.openai.com/api/docs/guides/migrate-to-responses ; ht
 La conservación de frases de indisponibilidad es una corrección intermedia del render, no una solución semántica completa. Próxima evolución: representar pendientes/ausencias con evidencia de catálogo en un contrato estructurado y renderizarlos junto con los efectos aplicados; no depender indefinidamente del orden de palabras de la respuesta del modelo. Evitar nuevas excepciones por nombres de platos o restaurantes.
 
 Para repetir la comparación, ejecutar el runner aislado con clave privada, `WHATSAPP_BETA_LIVE=1`, modelo y tope explícitos, fixtures versionados y STOP_ON_FAILURE=1. Debe estar ausente WHATSAPP_AGENT_MODEL en el entorno del runner para no sobreescribir el candidato. No introducir claves en comandos, repositorio ni reportes. El presupuesto y su espejo se registran antes de cada intento y se sincronizan al cerrar la ejecución.
+
+Validación final:74suites/5562tests aprobados en851.419s, fuente src/scripts intacta.40tests más que a1bcfd0f incluyendo cambios locales previos. TypeScript aprobado; evidencia `/tmp/ppp-model-integration-final-full.log` y `/tmp/ppp-model-integration-tsc.log`. Primera global interrumpida para corregir render, no acreditada. Deploy `/tmp/ppp-sol-staging-deploy.log`. Imagen anterior conservada en el servidor como `ppp-nest-staging:pre-sol-fd4c2f0c`; backup de entorno privado e ignorado por Git `.env.staging.pre-sol-fd4c2f0c`. No eliminar datos ni volúmenes para rollback.

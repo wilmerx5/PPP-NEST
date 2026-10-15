@@ -9,38 +9,27 @@
   "includesCompoundEditWorkingTree": true,
   "lastAttemptAt": "2026-10-15T17:15:25.627Z",
   "latestEvaluation": {
-    "baseCommit": "e4bfe289",
-    "includesUncommittedNarrativeRouting": true,
-    "model": "gpt-4.1-2025-04-14",
-    "executed": 1,
-    "accepted": 0,
-    "attemptsThisTurn": 3,
-    "usedTotal": 39,
-    "remaining": 1,
-    "apiUsage": {
-      "model": "gpt-4.1-2025-04-14",
-      "requests": 3,
-      "successfulResponses": 3,
-      "responsesWithUsage": 3,
-      "usageComplete": true,
-      "uncertainResponses": 0,
-      "transportErrors": {},
-      "promptTokens": 32927,
-      "cachedPromptTokens": 21376,
-      "completionTokens": 212,
-      "httpErrors": {},
-      "providerErrorCodes": {},
-      "estimatedReportedCostUsd": null,
-      "priceDate": null,
-      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
-    },
-    "modelInterpretedQuantitiesCorrectly": true,
-    "backendChangedQuantitiesToOne": true,
-    "offlineCorrectionPendingValidation": false,
-    "report": "/tmp/ppp-reserved-model-report.json",
-    "offlineReplayValidated": true,
-    "offlineValidationReport": "/tmp/ppp-context-integration-final-full.log",
-    "liveCorrectionRetested": false
+    "date": "2026-10-15",
+    "model": "gpt-6.1-sol",
+    "modelsCompared": [
+      "gpt-4.1-2025-04-14",
+      "gpt-6.1-sol",
+      "gpt-6-luna"
+    ],
+    "acceptedCompleteSolConversations": 2,
+    "independentHoldoutConversationsPassed": 0,
+    "attemptsThisTurn": 38,
+    "usedTotal": 115,
+    "remaining": 4,
+    "report": "docs/whatsapp-model-comparison-1510.json",
+    "estimatedReportedTokensCostAllRunsUsd": 0.125462,
+    "deployedStagingCode": "fd4c2f0c",
+    "notes": [
+      "Development conversations; not a statistical model ranking",
+      "Luna visible response failures traced to backend rendering, not incorrect cart/model reply",
+      "One pre-network bridge preparation attempt counted; no absent usage assumed zero",
+      "No real Meta, payments, maps or external orders"
+    ]
   },
   "authorizationExtensions": [
     {

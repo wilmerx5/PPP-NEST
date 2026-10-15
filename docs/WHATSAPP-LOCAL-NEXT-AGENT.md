@@ -8,7 +8,7 @@ Transporte Responses para GPT-6, compatibilidad anterior conservada, rollback po
 
 Presupuesto actual:119top operativo/115intentos usados/4restantes;38intentos en la tanda, uno antes de red por preparación defectuosa. Suma sobre tokens reportados USD0.125462, no factura. Registro y espejo sincronizados. No confundir estos topes elegidos por agente con cifras del usuario. No Meta/pagos/mapas/órdenes externos; solo inferencia real y router aislado.
 
-Deploy y activación de Sol pendientes al escribir esta entrada; ver comprobación posterior antes de asumir runtime actualizado. Main intacta. Visión todavía usa ajuste compartido gpt-4.1; voz runtime whisper-1. Retirada de GPT-4.1 NO queda completamente resuelta hasta migrar visión/clasificación. Latencia inicial Sol14.9–17.7s en los recorridos aprobados, mejora pendiente.
+**Sol activo en staging, código fd4c2f0c**, verificado 2026-10-15T17:35:34.124427+00:00: running/healthy, imagen coincide con candidate, healthHTTP200/DBconnected y WHATSAPP_AGENT_MODEL=gpt-6.1-sol. Main intacta. Visión todavía usa ajuste compartido gpt-4.1; voz runtime whisper-1. Retirada de GPT-4.1 NO queda completamente resuelta hasta migrar visión/clasificación. Latencia inicial Sol14.9–17.7s en los recorridos aprobados, mejora pendiente.
 
 Próximo: fuente idéntica por candidato, más conversaciones no inspeccionadas, contrato estructurado de ausentes (render regex solo intermedio), compra simple de paquete con condición capturada como pregunta, reducir rondas/latencia, evaluar medios por separado. No declarar vendible por tests verdes ni que Sol es superior a Luna por fallos del backend.
 
