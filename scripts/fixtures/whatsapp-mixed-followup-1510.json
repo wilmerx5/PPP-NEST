@@ -1,0 +1,81 @@
+[
+  {
+    "id": "fresh-mixed-option-note-correction-1510",
+    "evaluationStatus": "development_retest_passed_after_pre_model_failure",
+    "messages": [
+      {
+        "text": "Me mandas un wrap vegetariano con yogur y un bowl andino. Si no tienen brownie, omítelo, no quiero otro postre.",
+        "expect": {
+          "items": {
+            "501": 1,
+            "502": 1
+          },
+          "attrs": [
+            {
+              "id": 502,
+              "key": "Salsa",
+              "value": "Yogur"
+            }
+          ],
+          "replyAll": [
+            "brownie"
+          ],
+          "replyAny": [
+            "no tenemos",
+            "no manejamos",
+            "no hay",
+            "no está",
+            "no aparece",
+            "no contamos"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "El wrap mejor con tahini y sin cebolla; el bowl déjalo como estaba.",
+        "expect": {
+          "items": {
+            "501": 1,
+            "502": 1
+          },
+          "lines": [
+            {
+              "id": 501,
+              "quantity": 1,
+              "forbidNote": [
+                "cebolla"
+              ]
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Tahini"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de seguir, cuánto cuesta todo el pedido?",
+        "expect": {
+          "items": {
+            "501": 1,
+            "502": 1
+          },
+          "replyAll": [
+            "33.600"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

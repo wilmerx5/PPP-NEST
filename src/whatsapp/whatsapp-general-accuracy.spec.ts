@@ -14097,3 +14097,96 @@ describe('Tamaño de paquete conserva ambigüedades reales',()=>{
   const result=h.service.catalogService.resolveMultiProductOrder(query+' y un agua mineral',menu);expect(result.ambiguous).toHaveLength(0);expect(result.confident.map(p=>p.product.id)).toEqual([91001,91004]);
  });
 });
+
+
+describe('Fallo técnico después de editar una línea aceptada',()=>{
+ const menus=[
+  {kind:'vegetal',menu:JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8')),edit:502,keep:501,text:'Al wrap sin cebolla; los bowls normales.'},
+  {kind:'otra carta',menu:[{id:99001,code:99001,name:'Roll Vegetariano',price:18000,availableNow:true,attributes:[],hasAttributes:false},{id:99002,code:99002,name:'Bowl De Arroz',price:15000,availableNow:true,attributes:[],hasAttributes:false}],edit:99001,keep:99002,text:'Al roll sin cebolla; los bowls normales.'},
+ ];
+ it.each(menus.flatMap(menu=>['timeout','http500','empty','blank'].map(failure=>({...menu,failure}))))('$kind conserva el cambio y muestra el carrito ante $failure',async({menu,edit,keep,text,failure})=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[keep,edit].map(id=>{const p=menu.find(p=>p.id===id);return {productId:id,name:p.name,code:p.code,unitPrice:p.price,quantity:id===keep?2:1,attributes:id===502?[{attributeName:'Salsa',attributeValue:'Yogur'}]:[]};});
+  h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const original=globalThis.fetch;const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:[{id:'accepted-edit',type:'function',function:{name:'update_item',arguments:JSON.stringify({productId:edit,cartLineIndex:1,note:'sin cebolla'})}}]}));
+  if(failure==='timeout')fetchMock.mockRejectedValue(Object.assign(new Error('synthetic timeout'),{name:'TimeoutError'}));
+  else if(failure==='http500')fetchMock.mockResolvedValueOnce({ok:false,status:500,json:async()=>({error:{code:'server_error'}})});
+  else if(failure==='blank')fetchMock.mockResolvedValueOnce(response({content:''}));
+  else fetchMock.mockResolvedValueOnce({ok:true,json:async()=>({choices:[]})});
+  globalThis.fetch=fetchMock;
+  try{
+   const reply=await h.sendQueued(text);expect(fetchMock).toHaveBeenCalledTimes(failure==='timeout'?4:2);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:keep,qty:2}),expect.objectContaining({id:edit,qty:1,note:'sin cebolla'})]);
+   expect(h.cartRows()[0].note||'').not.toMatch(/cebolla/i);
+   expect(reply||'').toMatch(/se guardaron|guardados/i);expect(reply||'').toMatch(/carrito/i);expect(reply||'').toMatch(/sin cebolla/i);
+   expect(reply||'').not.toMatch(/no pude procesar|me lo repites|confirmado|pedido enviado/i);
+   expect(h.conv.state).toBe('building_cart');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=original;}
+ });
+});
+
+
+describe('Pedido parcialmente válido — rechazo de una línea conserva las demás',()=>{
+ const vegetal=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ const japonesa=[{id:99101,code:99101,name:'Bowl De Arroz',price:17000,description:'Arroz y vegetales',hasAttributes:false,attributes:[],availableNow:true},{id:99102,code:99102,name:'Roll Vegetariano',price:18000,description:'Vegetales y aguacate',hasAttributes:false,attributes:[],availableNow:true},{id:99103,code:99103,name:'Te De Jazmin',price:5000,description:'Agua y té',hasAttributes:false,attributes:[],availableNow:true}];
+ const cases=[
+  {kind:'vegetal',menu:vegetal,keep:501,reject:502,drink:503,text:'Quiero dos bowls andinos, un wrap vegetariano con camarones y dos limonadas de hierbabuena sin azúcar.',missing:'wrap vegetariano con camarones'},
+  {kind:'japonesa',menu:japonesa,keep:99101,reject:99102,drink:99103,text:'Quiero dos bowls de arroz, un roll vegetariano con camarones y dos te de jazmin sin azúcar.',missing:'roll vegetariano con camarones'},
+ ];
+ it.each(cases)('$kind sí permite ingredientes confirmados en la receta',async({kind,menu,keep,reject,drink,text})=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  const reply=await h.sendQueued(text.replace('camarones',kind==='vegetal'?'hummus':'aguacate'));
+  expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[keep,2],[reject,1],[drink,2]].sort());
+  expect(reply||'').not.toMatch(/no tenemos|no manejamos|no pude añadir/i);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(cases)('$kind entrada completa conserva productos válidos e informa el rechazado',async({menu,keep,reject,drink,text})=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  const reply=await h.sendQueued(text);
+  expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[keep,2],[drink,2]].sort());
+  expect(h.cartRows().some(row=>row.id===reject)).toBe(false);
+  expect(h.cartRows().find(row=>row.id===drink)?.note||'').toMatch(/sin az[uú]car/i);
+  expect(reply||'').toMatch(/camarones/i);expect(h.conv.sessionData.address).toBeUndefined();
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each(cases.flatMap(item=>[false,true].map(failsAfterTools=>({...item,failsAfterTools}))))('$kind conserva cantidades y notas; falla final=$failsAfterTools',async({menu,keep,reject,drink,text,missing,failsAfterTools})=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  const agent=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);h.service.agentService=agent;
+  const run=jest.spyOn(agent,'runTurn');
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const args=[{productId:keep,quantity:2},{productId:reject,quantity:1},{productId:drink,quantity:2,note:'sin azúcar'}];
+  const original=globalThis.fetch;const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:args.map((arg,index)=>({id:'partial-'+index,type:'function',function:{name:'add_item',arguments:JSON.stringify(arg)}}))}));
+  if(failsAfterTools)fetchMock.mockRejectedValue(Object.assign(new Error('synthetic timeout'),{name:'TimeoutError'}));
+  else fetchMock.mockResolvedValueOnce(response({content:'No manejamos '+missing+'. Agregué los demás productos.'}));
+  globalThis.fetch=fetchMock;
+  try{
+   const handled=await h.service.tryHandleAgentV1({conv:h.conv,msg:{waId:'customer',phoneE164:h.conv.phoneE164,messageId:'partial-boundary',messageType:'text',text,raw:{}},session:h.conv.sessionData,text,originalText:text,products:menu,cfg:h.cfg,status:{isOpen:true,message:'Abierto'},businessOpenForBot:true});
+   expect(handled).toBe(true);const reply=h.replies.at(-1);expect(fetchMock).toHaveBeenCalledTimes(failsAfterTools?4:2);
+   expect((await run.mock.results[0].value).purchaseAttempts).toEqual([{productId:keep,accepted:true},{productId:reject,accepted:false,reason:'dish_not_on_menu'},{productId:drink,accepted:true}]);
+   expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[keep,2],[drink,2]].sort());
+   expect(h.cartRows().find(row=>row.id===drink)?.note||'').toMatch(/sin az[uú]car/i);
+   expect(h.cartRows().find(row=>row.id===keep)?.note||'').not.toMatch(/az[uú]car|camarones/i);
+   expect(h.conv.sessionData.address).toBeUndefined();expect(h.conv.state).toBe('building_cart');
+   expect(reply||'').not.toMatch(/no pude procesar|me lo repites|pedido confirmado|pedido enviado/i);
+   if(failsAfterTools)expect(reply||'').toMatch(/guardados[\s\S]*carrito/i);
+   else expect(reply||'').toContain(missing);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=original;}
+ });
+});
+
+
+describe('Condición de inventario se interpreta antes del parser parcial',()=>{
+ it('conserva ambos platos y la respuesta de ausencia sin convertir instrucciones en productos',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+  const source=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-mixed-followup-1510.json'),'utf8'))[0].messages[0].text;
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockResolvedValue({reply:'No tenemos brownie.',actions:{addItems:[{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Yogur'}]},{productId:501,quantity:1}]},toolCalls:['add_item','add_item'],purchaseAttempts:[{productId:502,accepted:true},{productId:501,accepted:true}]});
+  const reply=await h.sendQueued(source);expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
+  expect(h.agent.runTurn.mock.calls[0][0].userMessage).toBe(source);
+  expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[501,1],[502,1]]);
+  expect(reply||'').toMatch(/no tenemos brownie/i);expect(reply||'').not.toMatch(/no manejamos.*om[ií]telo|no manejamos.*postre/i);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

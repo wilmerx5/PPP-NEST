@@ -1,0 +1,256 @@
+{
+  "id": "fresh-mixed-option-note-correction-1510",
+  "model": "gpt-4.1-2025-04-14",
+  "source": "Synthetic isolated full router; inspected development retest, not holdout",
+  "requests": 3,
+  "turns": [
+    {
+      "text": "Me mandas un wrap vegetariano con yogur y un bowl andino. Si no tienen brownie, omítelo, no quiero otro postre.",
+      "toolTrace": [
+        {
+          "origin": "model_call",
+          "name": "search_menu",
+          "args": {
+            "query": "wrap vegetariano"
+          },
+          "result": {
+            "ok": true,
+            "query": "wrap vegetariano",
+            "mode": "product_match",
+            "results": [
+              {
+                "id": 502,
+                "code": 502,
+                "name": "Wrap Vegetariano",
+                "price": 14900,
+                "category": null,
+                "description": "Tortilla, vegetales y hummus",
+                "hasAttributes": true,
+                "attributes": [
+                  {
+                    "attributeName": "Salsa",
+                    "options": [
+                      "Tahini",
+                      "Yogur",
+                      "Sin salsa"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": 504,
+                "code": 504,
+                "name": "Trio De Wraps",
+                "price": 39000,
+                "category": null,
+                "description": "Paquete con tres wraps vegetarianos",
+                "hasAttributes": false,
+                "attributes": []
+              }
+            ],
+            "hint": "Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan \"¿tienen?\", di que sí y ofrece agregarlo. No digas que no hay ese producto si está en results."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "search_menu",
+          "args": {
+            "query": "bowl andino"
+          },
+          "result": {
+            "ok": true,
+            "query": "bowl andino",
+            "mode": "product_match",
+            "results": [
+              {
+                "id": 501,
+                "code": 501,
+                "name": "Bowl Andino",
+                "price": 18700,
+                "category": null,
+                "description": "Quinua, garbanzos y vegetales asados",
+                "hasAttributes": false,
+                "attributes": []
+              }
+            ],
+            "hint": "Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan \"¿tienen?\", di que sí y ofrece agregarlo. No digas que no hay ese producto si está en results."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "search_menu",
+          "args": {
+            "query": "brownie"
+          },
+          "result": {
+            "ok": true,
+            "query": "brownie",
+            "results": [],
+            "hint": "Sin coincidencias. Si pidió un plato, di que por ahora no lo manejamos y ofrece el link del menú. Si no es un pedido (queja, saludo, pregunta), respóndelo en una frase. NO set_address si no es un lugar. NO trates la frase completa como nombre de plato."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 502,
+            "quantity": 1,
+            "attributes": [
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Yogur"
+              }
+            ]
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 502,
+              "code": 502,
+              "name": "Wrap Vegetariano",
+              "price": 14900,
+              "category": null,
+              "description": "Tortilla, vegetales y hummus",
+              "hasAttributes": true,
+              "attributes": [
+                {
+                  "attributeName": "Salsa",
+                  "options": [
+                    "Tahini",
+                    "Yogur",
+                    "Sin salsa"
+                  ]
+                }
+              ]
+            },
+            "quantity": 1,
+            "note": "con yogur",
+            "attributes": [
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Yogur"
+              }
+            ],
+            "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 501,
+            "quantity": 1
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 501,
+              "code": 501,
+              "name": "Bowl Andino",
+              "price": 18700,
+              "category": null,
+              "description": "Quinua, garbanzos y vegetales asados",
+              "hasAttributes": false,
+              "attributes": []
+            },
+            "quantity": 1,
+            "note": null,
+            "attributes": null,
+            "hint": null
+          }
+        }
+      ],
+      "cart": [
+        {
+          "productId": 502,
+          "name": "Wrap Vegetariano",
+          "code": 502,
+          "unitPrice": 14900,
+          "quantity": 1,
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "attributeValue": "Yogur"
+            }
+          ]
+        },
+        {
+          "productId": 501,
+          "name": "Bowl Andino",
+          "code": 501,
+          "unitPrice": 18700,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "state": "building_cart",
+      "replies": [
+        "Listo, te agregué el wrap vegetariano con yogur y el bowl andino. Por ahora no manejamos brownie, así que no lo incluyo. ¿Quieres algo más?\n\nListo ✅ *Wrap Vegetariano*, *Bowl Andino*\n\n¿*Algo más*?"
+      ]
+    },
+    {
+      "text": "El wrap mejor con tahini y sin cebolla; el bowl déjalo como estaba.",
+      "toolTrace": [],
+      "cart": [
+        {
+          "productId": 502,
+          "name": "Wrap Vegetariano",
+          "code": 502,
+          "unitPrice": 14900,
+          "quantity": 1,
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "attributeValue": "Tahini"
+            }
+          ],
+          "note": "sin cebolla"
+        },
+        {
+          "productId": 501,
+          "name": "Bowl Andino",
+          "code": 501,
+          "unitPrice": 18700,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "state": "building_cart",
+      "replies": [
+        "Listo ✅ *Wrap Vegetariano* queda con *Salsa: Tahini · Nota: sin cebolla*.\n\n¿*Algo más*?"
+      ]
+    },
+    {
+      "text": "Antes de seguir, cuánto cuesta todo el pedido?",
+      "toolTrace": [],
+      "cart": [
+        {
+          "productId": 502,
+          "name": "Wrap Vegetariano",
+          "code": 502,
+          "unitPrice": 14900,
+          "quantity": 1,
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "attributeValue": "Tahini"
+            }
+          ],
+          "note": "sin cebolla"
+        },
+        {
+          "productId": 501,
+          "name": "Bowl Andino",
+          "code": 501,
+          "unitPrice": 18700,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "state": "building_cart",
+      "replies": [
+        "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Wrap Vegetariano* · *$14.900*\n   _Salsa: Tahini_\n   📝 _sin cebolla_\n*2.* *Bowl Andino* · *$18.700*\n────────────\nSubtotal $33.600 · Dom. según dir.\n*Total $33.600*\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*)."
+      ]
+    }
+  ]
+}

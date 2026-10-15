@@ -3872,6 +3872,17 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // Conditional purchases need one interpretation of the whole utterance,
+    // before the deterministic multi-item shortcuts can consume a partial order.
+    if (cfg.agentV1Enabled && conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      this.catalogService.requiresConditionalOrderInterpretation(originalText, products)) {
+      if (await this.tryHandleAgentV1({decision:turn.decision,conv,msg,session,text:originalText,originalText,
+        products,cfg,status,businessOpenForBot,prependFirstContactDisclaimer:isFirstInbound})) return;
+      await this.reply(conv,msg.waId,'No pude completar ese pedido con su condición. Revisa el carrito antes de volver a intentarlo:\n\n' +
+        this.formatCartOnly(this.conversationService.getSession(conv),this.deliveryFeeFor(session,cfg)));
+      return;
+    }
+
     // Varios platos en un mensaje se arman aquí, también con el agente encendido.
     // Si no, "me vendes 2 costillas / 1 mojarra" se queda solo con la mojarra.
     if (
@@ -16938,6 +16949,7 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
     actions?: { addItems?: { productId: number }[] },
+    rejectedProductIds: readonly number[] = [],
   ): boolean {
     const multi = this.catalogService.resolveMultiProductOrder(text, products);
     if (!multi) return false;
@@ -16947,7 +16959,7 @@ export class WhatsappOrchestratorService {
       (c) => !this.catalogService.isLikelyDrinkProduct(c.product),
     );
     if (!expected.length) return false;
-    return expected.some((c) => !added.has(c.product.id));
+    return expected.some((c) => !added.has(c.product.id) && !rejectedProductIds.includes(c.product.id));
   }
 
   private nestWouldAddDirectDishOrder(text: string, products: MenuProduct[]): boolean {
@@ -17199,7 +17211,7 @@ export class WhatsappOrchestratorService {
     if (
       agent.error === 'no_openai_key' ||
       agent.error === 'openai_401' ||
-      agent.error === 'empty_reply'
+      (agent.error === 'empty_reply' && !Object.keys(agent.actions || {}).length)
     ) {
       this.turnTelemetry.record({
         path: 'agent_v1',
@@ -17398,10 +17410,26 @@ export class WhatsappOrchestratorService {
       guarded.actions?.removeProductIds?.length || guarded.actions?.clearCart ||
       (session.cart.length && guarded.actions?.setCustomerNotes));
     this.stripHostedDrinkAdds(text, products, guarded.actions);
+    // Rejected attempts are not forgotten dishes. Keep the independently
+    // accepted batch; never reconstruct a rejected SKU through the old parser.
+    const acceptedAttempts = agent.purchaseAttempts?.filter(attempt => attempt.accepted);
+    const validatedToolActions = !editsExistingCart &&
+      hasCompleteToolPurchaseEvidence(acceptedAttempts, guarded.actions?.addItems);
+    const acceptedIds = new Set((acceptedAttempts || []).map(attempt => attempt.productId));
+    const rejectedProductIds = validatedToolActions ? [...new Set((agent.purchaseAttempts || [])
+      .filter(attempt => !attempt.accepted && !acceptedIds.has(attempt.productId))
+      .map(attempt => attempt.productId))] : [];
+    const unappliedToolLines = rejectedProductIds.flatMap(id => {
+      const product = products.find(candidate => candidate.id === id);
+      if (!product) return [];
+      const fragment = this.catalogService.orderSegmentForProduct(text, product, products).trim();
+      return [`No pude añadir *${fragment || product.name}* como lo pediste.`];
+    });
+
     // Solo si Nest resolvió el pedido completo y el agente se dejó un plato
     // (combo + sopas, y agregó la gaseosa suelta). Si Nest duda o no encuentra
     // un nombre, se queda la lectura del agente: no la reemplaza la lista vieja.
-    if (!editsExistingCart && this.agentDroppedResolvedDish(text, products, guarded.actions)) {
+    if (!editsExistingCart && this.agentDroppedResolvedDish(text, products, guarded.actions, rejectedProductIds)) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',
@@ -17415,8 +17443,6 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    const validatedToolActions = !editsExistingCart &&
-      hasCompleteToolPurchaseEvidence(agent.purchaseAttempts,guarded.actions?.addItems);
     const intentMisses = validatedToolActions ? [] :
       this.reconcileAgentAddsWithUtterance(text, products, guarded.actions, !editsExistingCart);
     captureActionDecision(params.decision,'reconciled',guarded.actions);
@@ -17454,6 +17480,7 @@ export class WhatsappOrchestratorService {
       });
       return true;
     }
+    const cartBeforeAgentActions = JSON.stringify(session.cart);
     const applied = await this.applyActions(
       conv,
       session,
@@ -17479,6 +17506,30 @@ export class WhatsappOrchestratorService {
         userTextPreview: text,
         warnings: guarded.warnings,
       });
+      return true;
+    }
+
+    // A tool may succeed before the provider fails to compose its final reply.
+    // Report the applied cart rather than asking the customer to repeat an edit.
+    const technicalReplyFailure = !!agent.error && (
+      ['exception', 'openai_timeout', 'empty_message', 'empty_reply', 'max_iterations'].includes(agent.error) ||
+      /^openai_\d{3}$/.test(agent.error)
+    );
+    if (technicalReplyFailure && JSON.stringify(session.cart) !== cartBeforeAgentActions) {
+      const state = session.cart.length ? conv.state : 'building_cart';
+      await this.conversationService.saveSession(conv, session, state);
+      const reminder = session.cart.length
+        ? this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)
+        : this.formatContinueShoppingPrompt(session);
+      const recoveryReply = 'La respuesta se interrumpió. Estos cambios sí quedaron guardados:\n\n' +
+        this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
+        (unappliedToolLines.length ? '\n\n' + unappliedToolLines.join('\n') : '') +
+        '\n\nRevisa el carrito antes de continuar.' + (reminder ? '\n\n' + reminder : '');
+      await this.reply(conv, msg.waId, withFirstContactDisclaimer(recoveryReply));
+      this.turnTelemetry.record({path:'agent_v1',outcome:'order_progress',waId:msg.waId,
+        conversationId:conv.id,toolCalls:agent.toolCalls,latencyMs:Date.now()-started,
+        userTextPreview:text,replyPreview:recoveryReply,
+        warnings:[...(guarded.warnings || []),'agent_reply_failed_after_cart_change',agent.error!]});
       return true;
     }
 
@@ -17665,7 +17716,7 @@ export class WhatsappOrchestratorService {
         .split('\n')
         .map((line) => line.trim())
         .find((line) => /no (?:te ofrecemos|tenemos|manejamos)\b/i.test(line));
-      const misses = [missLine, ...intentMisses].filter(Boolean);
+      const misses = [missLine, ...intentMisses, ...unappliedToolLines].filter(Boolean);
       reply = misses.length ? `${misses.join('\n')}\n\n${cartReply}` : cartReply;
     } else if (guarded.actions?.updateAttributes?.length) {
       reply =

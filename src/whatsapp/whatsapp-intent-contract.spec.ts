@@ -141,3 +141,42 @@ describe('Unavailable reply respects the whole-message intent',()=>{
   expect(catalog.isAvailabilityInquiry(text)).toBe(true);expect(catalog.unavailableAskReply(text,menu)||'').toMatch(/no tenemos/i);
  });
 });
+
+
+describe('Ingredientes confirmados por la descripción del plato',()=>{
+ const menus=[
+  {id:99201,code:99201,name:'Wrap Del Chef',price:15000,description:'Tortilla con hummus y vegetales',hasAttributes:false,attributes:[],availableNow:true,ingredient:'hummus'},
+  {id:99202,code:99202,name:'Roll De La Casa',price:18000,description:'Arroz con aguacate y algas',hasAttributes:false,attributes:[],availableNow:true,ingredient:'aguacate'},
+ ];
+ it.each(menus)('$name acepta receta confirmada sin inventar un producto',product=>{
+  const source='Quiero un '+product.name+' con '+product.ingredient;
+  expect(catalog.uncoveredWordsAnchoredByProduct(source,product,[product])).toEqual([]);
+  const result=JSON.parse(agent.executeTool('add_item',{productId:product.id,quantity:1},context(source,[product])));
+  expect(result.ok).toBe(true);expect(result.quantity).toBe(1);
+ });
+ it.each(menus)('$name rechaza ingrediente que no aparece en su receta',product=>{
+  const source='Quiero un '+product.name+' con camarones';
+  expect(catalog.uncoveredWordsAnchoredByProduct(source,product,[product])).toContain('camarones');
+  const ctx=context(source,[product]);const result=JSON.parse(agent.executeTool('add_item',{productId:product.id,quantity:1},ctx));
+  expect(result.ok).toBe(false);expect(result.error).toBe('dish_not_on_menu');expect(ctx.actions).toEqual({});
+ });
+});
+
+
+describe('Ruta semántica para condiciones de inventario',()=>{
+ const menu=[{id:99301,code:99301,name:'Bowl Andino',price:18000,attributes:[],hasAttributes:false,availableNow:true}];
+ it.each([
+  'Quiero un bowl andino. Si no hay torta, omítela.',
+  'Me mandas un bowl andino y si no tienen postre no lo reemplaces',
+  'Un bowl andino; si queda limonada, me dices',
+  'Necesito dos bowls andinos, si no está disponible el postre, solo lo demás',
+ ])('delega una compra con condición: %s',text=>expect(catalog.requiresConditionalOrderInterpretation(text,menu)).toBe(true));
+ it.each([
+  'Si no hay torta, qué me recomiendas?',
+  'Tienen bowl andino? Si no hay, qué otra cosa ofrecen?',
+  'Cuánto cuesta el bowl andino? Si hay postre, cuánto vale?',
+  'Quiero un bowl andino sin cebolla',
+  'Si por favor',
+  'Gracias, si no hay problema',
+ ])('no convierte consulta ni confirmación en compra: %s',text=>expect(catalog.requiresConditionalOrderInterpretation(text,menu)).toBe(false));
+});

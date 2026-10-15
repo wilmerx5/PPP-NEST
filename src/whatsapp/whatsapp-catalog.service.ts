@@ -2221,7 +2221,7 @@ export class WhatsappCatalogService {
       // A generic token (sopa/pollo/arroz) in another dish is not this line.
       const anchor = products?.length ? this.bestClauseCoverage(tokens, products) : null;
       if (anchor && !anchor.products.some(p => p.id === product.id)) continue;
-      const best = this.bestClauseCoverage(tokens, [product]);
+      const best = this.bestClauseCoverage(tokens, [product], { includeDescription: true });
       if (best) out.push(...best.leftover);
     }
     return [...new Set(out)];
@@ -2247,6 +2247,17 @@ export class WhatsappCatalogService {
         .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cc|l|lt|lts|litros?)\b/gi, ' ');
     }
     return dishQuery;
+  }
+
+  /** Inventory conditions modify a purchase; the semantic agent must own the
+   * whole message before a simple multi-item parser can consume only its prefix. */
+  requiresConditionalOrderInterpretation(text: string, products: WhatsappCatalogProduct[]): boolean {
+    const condition = /\bsi\s+(?:no\s+)?(?:hay|tienen|tienes|quedan?|est[aá]n?\s+disponibles?)\b/i.exec(text);
+    if (!condition || condition.index === 0) return false;
+    const purchase = text.slice(0, condition.index);
+    if (this.isAvailabilityInquiry(purchase) || this.isPriceInquiryIntent(purchase) || this.isProductDescriptionInquiry(purchase)) return false;
+    return products.some(product => this.productNameFitsUtterance(product, purchase)) &&
+      /\b(?:quiero|necesito|dame|reg[aá]lame|env[ií]ame|m[aá]ndame|me\s+(?:mandas|env[ií]as)|un[oa]?|dos|tres|\d+)\b/i.test(purchase);
   }
 
   /** Scope choices to their own dish when a multi-order has a unique owner. */
@@ -9588,6 +9599,8 @@ export class WhatsappCatalogService {
           confident.push(match);
         }
       }
+      const unsupportedSegments: string[] = [];
+      this.rejectUnsupportedResolvedModifiers(confident, needsAttributes, products, unsupportedSegments);
       this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
       const beforeDrop = confident.length + needsAttributes.length;
       this.dropLooserContainedMatches(confident, needsAttributes, text);
@@ -9596,12 +9609,12 @@ export class WhatsappCatalogService {
         const only = confident[0] || needsAttributes[0];
         if (only) only.segment = text;
       }
-      if (resolvedCount >= 2 || (beforeDrop > resolvedCount && resolvedCount >= 1)) {
+      if (resolvedCount >= 2 || (beforeDrop > resolvedCount && resolvedCount >= 1) || (resolvedCount > 0 && unsupportedSegments.length > 0)) {
         return {
           segments,
           confident,
           ambiguous: [],
-          unresolved: [],
+          unresolved: unsupportedSegments,
           needsAttributes,
         };
       }
@@ -10134,6 +10147,7 @@ export class WhatsappCatalogService {
       }
     }
 
+    this.rejectUnsupportedResolvedModifiers(confident, needsAttributes, products, unresolved);
     this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
     this.dropLooserContainedMatches(confident, needsAttributes, text);
     const leftover = unresolved.filter(
@@ -10167,6 +10181,26 @@ export class WhatsappCatalogService {
       needsAttributes,
       possibleCustomerNames: names,
     };
+  }
+
+  /** Use the same recipe check as add_item before a deterministic multi-add. */
+  private rejectUnsupportedResolvedModifiers(
+    confident: MultiProductSegmentMatch[],
+    needsAttributes: MultiProductSegmentMatch[],
+    products: WhatsappCatalogProduct[],
+    unresolved: string[],
+  ): void {
+    for (const matches of [confident, needsAttributes]) for (let index = matches.length - 1; index >= 0; index--) {
+      const item = matches[index];
+      // Explicit additions only; a recorded substitution follows its own contract.
+      if (!/\bcon\b/i.test(item.segment) || item.note && this.swapIntent(item.segment)) continue;
+      // A name/option-only catalog record is not a complete recipe. Do not
+      // reinterpret its existing side/preparation choices as absent ingredients.
+      if (!item.product.description?.trim()) continue;
+      if (!this.uncoveredWordsAnchoredByProduct(item.segment, item.product, products).length) continue;
+      matches.splice(index, 1);
+      if (!unresolved.includes(item.segment)) unresolved.push(item.segment);
+    }
   }
 
   /**

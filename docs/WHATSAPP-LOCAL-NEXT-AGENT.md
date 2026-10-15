@@ -2,6 +2,27 @@
 
 Estado local actualizado al 15/10/2026. Última verificación del runtime:14/10/2026,22:34Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
 
+## Tanda actual: recuperación técnica y compras condicionales (base 931c6a4e)
+
+Bloque validado: **70 suites / 5.522 pruebas aprobadas**,31regresiones nuevas frente a931c6a4e,en486.72s. Fuente intacta y TypeScript sin errores. Publicado solo en rama staging,sin deploy ni cambios aMain. Evidencia: `/tmp/ppp-technical-mixed-approved-full.log`. TypeScript: `/tmp/ppp-technical-mixed-approved-final-tsc.log`; snapshot de src/scripts TS: `/tmp/ppp-technical-mixed-approved-source.json`. Snapshot comparado e idéntico al finalizar. No deploy ni Main.
+
+Cambios comprobados focalmente:
+
+- Si una acción modificó el carrito y después falló la respuesta del proveedor, mostrar el carrito aplicado y pedir revisión. Se prueba timeout sostenido con sus tres reintentos, HTTP500, mensaje inexistente y contenido vacío. La respuesta no debe pedir repetir un cambio ya aplicado ni confirmar una orden externa.
+- Un lote con compras aceptadas y otros SKUs rechazados conserva las aceptadas. El rechazo no se interpreta como producto olvidado ni se reconstruye desde el parser viejo. Se muestra qué fragmento no se añadió. No demuestra completitud del mensaje entero; el seguimiento de rechazos por ID todavía no distingue una variante rechazada y otra aceptada del mismo SKU.
+- La ruta rápida de multi-producto comprobará modificadores explícitos en fichas con descripción de receta usando la misma validación que add_item. Las fichas sin descripción conservan la ruta anterior: ausencia de metadatos no demuestra ausencia de ingrediente. La descripción también cuenta como receta confirmada. Sustituciones registradas conservan su propio contrato. Falta ampliar ingredientes sin «con» y aclaraciones posteriores.
+- Una compra con condición de inventario pasa al agente antes del parser de varios platos, solo en building_cart, con agente activo y sin pendientes. El texto entero llega al modelo. Una consulta o un «sí» aislado no activan esta ruta; si no se resuelve, no se consume parcialmente mediante el atajo viejo. No se ha migrado todo el router a un único intérprete.
+
+Modelo real: fixture nuevo `whatsapp-mixed-followup-1510.json` falló antes del modelo (0requests): omitió bowl y trató instrucciones como platos ausentes. Tras diagnóstico y regresión gratuita pasó los 3turnos con gpt-4.1-2025-04-14 en 3requests:wrap Yogur+bowl,ausencia brownie,cambio a Tahini+sin cebolla solo wrap,total33.600. Es reensayo de desarrollo, no holdout. Informe `/tmp/ppp-fresh-mixed-correction-retest-live.json`; captura sintética versionada `whatsapp-recorded-conditional-correction-output.json`. Fallos técnicos se simularon gratis; no se provocaron errores pagados artificialmente. No acredita WhatsApp/voz/fotos reales.
+
+La primera global falló4regresiones (5518/5522pasaron,854.863s):se habían tratado fichas sin descripción como recetas completas. Se corrigió la frontera por disponibilidad de datos y se mantienen los4oráculos originales.35focalizadas en3suites aprobadas tras reparación;global definitiva aprobada5522/5522. No usar la global fallida como aprobación. El modelo se ensayó antes de este último ajuste de fichas sin descripción;su carta sí tenía descripciones.
+
+Presupuesto actual: topes elegidos por agente bajo autorización continuada del usuario,80acumuladas/77usadas/3restantes. Esta tanda gastó3requests;0el fallo inicial determinista. Registro y espejo sincronizados. No atribuir al usuario un límite numérico que no expresó.
+
+Próximo: identidad por línea para rechazos de variantes del mismo SKU;aclaración persistente de la línea no añadida;API401 tras acción aceptada (su fallback anterior sigue distinto);más mensajes no inspeccionados;replay de chats reales y piloto supervisado. Mantener abiertos esos límites aunque la global pase.
+
+## Historial de tandas anteriores
+
 ## Tanda vigente (15/10): destinatarios, línea normal y paquetes
 
 Base647a3739. Usuario autorizó más inferencia y recargó saldo tras HTTP429. Tanda operativa elegida por el agente:15requests adicionales;14consumidas (incluye1rechazada por saldo),1restante;acumulado75/74/1. No es límite numérico dictado por el usuario ni autorización permanente. Contadores y espejo privados sincronizados.
