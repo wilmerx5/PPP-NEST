@@ -1084,5 +1084,19 @@
     "Retest warm cache cost is not representative of cold real customer traffic",
     "No original audio/image or WhatsApp channel validation",
     "No per-tenant profitability or p95 inference from two partial runs"
-  ]
+  ],
+  "deployment": {
+    "environment": "staging",
+    "codeCommit": "dc14fa05",
+    "verifiedAt": "2026-10-15T23:27:33.213Z",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:44dc6086afb6af33e7d61262e605c248c33f8b7343f11ea85f60d6b89326dfa4",
+    "activeEqualsCandidate": true,
+    "compiledReadAnswerAndEditBindings": true,
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "modelsUnchanged": true,
+    "mainModified": false
+  }
 }
