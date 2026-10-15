@@ -1,7 +1,7 @@
 {
   "date": "2026-10-15",
   "baseCommit": "307ecd16",
-  "status": "validated_awaiting_staging_deploy",
+  "status": "deployed_staging",
   "newTests": 11,
   "paidEvaluation": {
     "model": "gpt-6.1-sol",
@@ -87,5 +87,18 @@
     "Coverage/completeness contract in resolve_multi_order; do not claim multi clear while omitting a requested drink.",
     "Fewer lookup rounds, then a fresh complete model conversation under an explicitly allocated new operational cap.",
     "Representative WhatsApp/audio/image and per-order/per-tenant costs before commercial acceptance."
-  ]
+  ],
+  "deployment": {
+    "codeCommit": "1e90c7c1",
+    "verifiedAt": "2026-10-15T22:47:46.222Z",
+    "imageId": "sha256:ff5b88658257d3b4e906e6a9cb43137abf1493077909b4bb72c84417193e8603",
+    "candidateMatchesRuntime": true,
+    "running": true,
+    "healthy": true,
+    "db": "connected",
+    "compiledPackingNotes": true,
+    "modelsUnchanged": true,
+    "log": "/tmp/ppp-office-packaging-deploy.log",
+    "verificationLog": "/tmp/ppp-office-packaging-deploy-verified.log"
+  }
 }

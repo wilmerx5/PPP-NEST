@@ -14,7 +14,7 @@ Nueva muestra real aislada con Sol:4HTTP200,acciones correctas para6ítems/notas
 
 El modelo hizo búsquedas para recuperar un té que resolve_multi_order había omitido mientras anunciaba «Multi claro». Siguiente mejora arquitectónica: devolver cobertura explícita por producto y ausencias/pendientes estructurados, no más excepciones por nombres ni solo ampliar frases del render. Medir reducción de rondas y validar una conversación completa antes de considerar superada esa puerta.
 
-La nueva tanda gratuita sí detectó y corrigió notas explícitas de empaque («salsa aparte»,«cubiertos aparte») perdidas en filas fotografiadas.11regresiones nuevas cubren esas notas, continuidad en pago con2menús y recuperación de acciones capturadas. La corrección de cantidad de la continuación usa una respuesta de herramienta simulada, no otra respuesta de Sol. Estado de global/despliegue en WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-office-packaging-validation-1510.json. No elevar esta tanda a aceptación comercial.
+La nueva tanda gratuita sí detectó y corrigió notas explícitas de empaque («salsa aparte»,«cubiertos aparte») perdidas en filas fotografiadas.11regresiones nuevas cubren esas notas, continuidad en pago con2menús y recuperación de acciones capturadas. La corrección de cantidad de la continuación usa una respuesta de herramienta simulada, no otra respuesta de Sol. Cierre:76suites/5636tests aprobados con fuente intacta en2ejecuciones disjuntas,TypeScript aprobado; staging1e90c7c1 desplegado y healthy,Main intacta. Evidencia en WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-office-packaging-validation-1510.json. No elevar esta tanda a aceptación comercial.
 
 ## Actualización vigente — 15 de octubre
 
