@@ -13265,3 +13265,50 @@ describe('Consulta intercalada — una corrección explícita reemplaza la aclar
   await h.sendQueued('3105550199');expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+
+describe('Evaluación real oficina — referencias de precio y contexto narrativo',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ const recorded=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-recorded-office-output.json'),'utf8'));
+ it.each(['Hola! somos varios en la oficina:','Buenas, somos varias en el taller:','Somos seis en la reunión:'])('no ofrece el contexto como platos: %s',async(prefix)=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();h.agent.runTurn.mockResolvedValue(recorded.agentResult);
+  const reply=await h.sendQueued(prefix+' para Lina van 2 bowls andinos, para Oscar un trio de wraps y para la reunion tres limonadas de hierbabuena. Eso es todo por ahora, gracias.');
+  expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:501,qty:2}),expect.objectContaining({id:504,qty:1}),expect.objectContaining({id:503,qty:3})]));expect(h.cartRows()).toHaveLength(3);
+  expect(reply||'').not.toMatch(/no tenemos|no manejamos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ for(const agent of [false,true])for(const family of ['Bowl','Wrap'])for(const query of ['Cuánto cuesta cada','Qué precio tiene el']){
+  it('consulta '+family+' '+query+' agente='+agent,async()=>{
+   const fixture=[{id:27901,code:27901,name:family+' De Setas',price:18700,availableNow:true,hasAttributes:false,attributes:[]},{id:27902,code:27902,name:'Agua Mineral',price:6000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(fixture as typeof products,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_payment';
+   h.conv.sessionData={cart:fixture.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:2,attributes:[]})),orderType:'delivery',address:'Calle 12 34 56',addressConfirmed:true};const before=structuredClone(h.conv.sessionData);
+   const reply=await h.sendQueued(query+' '+family.toLowerCase()+'?');
+   expect(reply||'').toContain('18.700');expect(reply||'').toMatch(/cómo pagas|como pagas|método de pago/i);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+ it.each([false,true])('dos bowls no elige primero, cotiza ambos sin mutar agente=%s',async(agent)=>{
+  const fixture=['Bowl De Setas','Bowl De Quinoa','Agua Mineral'].map((name,i)=>({id:27911+i,code:27911+i,name,price:18000+i*1000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(fixture as typeof products,agent);h.conv.sessionData.cart=fixture.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('Cuánto cuesta cada bowl?');expect(reply||'').toMatch(/Bowl De Setas:.*18.000/);expect(reply||'').toMatch(/Bowl De Quinoa:.*19.000/);expect(h.conv.sessionData.cart).toEqual(before);
+ });
+ it('un producto ajeno después del contexto conserva el aviso y no lo compra',async()=>{
+  const h=harness(menu,true);h.agent.runTurn.mockResolvedValue(recorded.agentResult);
+  const reply=await h.sendQueued('Hola! somos varios en la oficina: para Lina van 2 bowls andinos, para Oscar un trio de wraps y para la reunion tres limonadas de hierbabuena y un detergente.');
+  expect(reply||'').toMatch(/detergente/i);expect(h.cartRows().map(r=>r.id).sort()).toEqual([501,503,504]);
+ });
+});
+
+
+describe('Disculpa de otro negocio — nueva compra explícita en el mismo mensaje',()=>{
+ it.each(['Uy perdon era otro negocio.','Disculpa, era para otra tienda.'])('reconoce destinatario equivocado: %s',text=>expect(isWrongChatApology(text)).toBe(true));
+ it.each(['Perdón era otro combo, quiero cambiar la bebida','Disculpa, la sopa era para otra persona'])('no cancela una corrección del pedido: %s',text=>expect(isWrongChatApology(text)).toBe(false));
+ for(const agent of [false,true])for(const dish of ['Sopa De Zapallo','Pasta De Setas'])for(const prefix of ['Uy perdon era otro negocio. Ahora sí quisiera','Disculpa, era para otra tienda. Pero quiero']){
+  it('abandona propuesta y compra '+dish+' agente='+agent+' '+prefix,async()=>{
+   const fixture=[{id:28001,code:28001,name:dish,price:17000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(fixture as typeof products,agent);h.service.ordersService.create=jest.fn();
+   h.conv.sessionData.pendingMultiOrder={confident:[],ambiguous:[],needsAttributes:[],unresolved:['detergente','bolsas de hielo']};
+   h.agent.runTurn.mockResolvedValue({reply:'Listo.',actions:{addItems:[{productId:28001,quantity:1}]},toolCalls:['add_item']});
+   const reply=await h.sendQueued(prefix+' una '+dish.toLowerCase());
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:28001,qty:1})]);expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(reply||'').toMatch(new RegExp(dish,'i'));expect(reply||'').not.toMatch(/detergente|bolsas de hielo/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});

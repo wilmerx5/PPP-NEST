@@ -786,7 +786,9 @@ export class WhatsappOrchestratorService {
       }
     }
 
-    if (isWrongChatApology(originalText)) {
+    // Courtesy normalization can remove the apology that identifies a wrong recipient.
+    const wrongChatSource = isWrongChatApology(originalText) ? originalText : inboundText;
+    if (isWrongChatApology(wrongChatSource)) {
       const session = this.conversationService.getSession(conv);
       const next = {
         ...session,
@@ -800,10 +802,10 @@ export class WhatsappOrchestratorService {
         pendingSideSwap: undefined,
       };
       await this.conversationService.saveSession(conv, next, 'building_cart');
-      const followup = orderAfterWrongChat(originalText);
+      const followup = orderAfterWrongChat(wrongChatSource);
       if (followup) {
-        text = followup;
-        originalText = followup;
+        text = applyLocalGlossary(followup);
+        originalText = text;
       } else {
         const suffix = next.cart.length
           ? `\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`
@@ -1526,7 +1528,13 @@ export class WhatsappOrchestratorService {
         this.catalogService.resolveSizedChickenProduct(originalText, menu);
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
-      const targets = named ? [named] : sizes.length ? sizes : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
+      // A short family reference can identify cart products without their full title.
+      // Match complete words (including regular plurals), never a substring or the first row.
+      const priceWords = this.normalizeForMatch(this.catalogService.stripPriceInquiryNoise(originalText))
+        .split(/\s+/).filter(word => word && !/^(cada|uno|una|unidad|el|la|los|las|de|del|por|favor|y|un|tiene|tienen)$/.test(word));
+      const familyTargets = priceWords.length ? menu.filter(product => ids.has(product.id) && priceWords.every(word =>
+        this.normalizeForMatch(product.name).split(/\s+/).some(nameWord => nameWord === word || nameWord+'s' === word || nameWord+'es' === word))) : [];
+      const targets = named ? [named] : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
       if (session.pendingPriceInquiry) delete session.pendingPriceInquiry;
       const priceCandidates = menu.filter(product => ids.has(product.id));
       if (!targets.length && priceCandidates.length > 1 &&
@@ -16807,7 +16815,16 @@ export class WhatsappOrchestratorService {
     }
     const ids = new Set(kept.map((item) => item.productId));
     const swapBlob = this.normalizeForMatch(`${swap?.removed || ''} ${swap?.added || ''}`);
-    for (const seg of this.catalogService.splitMultiProductSegments(text)) {
+    // A delimited group/location preamble describes the customers, not an SKU.
+    // Keep it if the catalog recognizes a product there; leave purchase clauses intact.
+    const preamble = text.match(/^([^:]{1,120}):\s*/);
+    const contextOnly = preamble && /^(?:(?:hola|buenas(?: tardes|noches)?|buenos dias) )?somos (?:varios|varias|\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) en (?:la |el |una? )?[^:]+$/.test(this.normalizeForMatch(preamble[1])) &&
+      !products.some(product => this.catalogService.productNameFitsUtterance(product,preamble[1]));
+    const segmentText = contextOnly ? text.slice(preamble[0].length).replace(
+      /\bpara\s+([A-ZÁÉÍÓÚÑ][\p{L}]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}]+)?)\s+(?:van\s+)?(?=(?:un|una|dos|tres|cuatro|cinco|\d{1,2})\b)/gu,
+      (clause,recipient:string) => products.some(product => this.catalogService.productNameFitsUtterance(product,recipient)) ? clause : '',
+    ) : text;
+    for (const seg of this.catalogService.splitMultiProductSegments(segmentText)) {
       const groupContext = /\bsomos\s+(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(text);
       const structuralClause = this.normalizeForMatch(seg);
       if (groupContext && /^(?:somos\s+(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)|(?:para\s+)?cada(?:\s+un[oa])?(?:\s+de\s+nosotr[oa]s)?(?:\s+quiere)?|quiere)$/.test(structuralClause)) continue;

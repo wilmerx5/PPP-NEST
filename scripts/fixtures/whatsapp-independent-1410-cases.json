@@ -1,0 +1,117 @@
+[
+  {
+    "id": "independent-narrative-office-lunch",
+    "messages": [
+      {
+        "text": "Hola! somos varios en la oficina: para Lina van 2 bowls andinos, para Oscar un trio de wraps y para la reunion tres limonadas de hierbabuena. Eso es todo por ahora, gracias.",
+        "expect": {
+          "items": {
+            "501": 2,
+            "504": 1,
+            "503": 3
+          },
+          "orderCount": 0,
+          "replyForbid": [
+            "No tenemos",
+            "No manejamos"
+          ]
+        }
+      },
+      {
+        "text": "Cuánto cuesta cada bowl?",
+        "expect": {
+          "items": {
+            "501": 2,
+            "504": 1,
+            "503": 3
+          },
+          "replyAll": [
+            "18.700"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "independent-wrap-inquiry-checkout",
+    "messages": [
+      {
+        "text": "Antes de pedir, el wrap vegetariano lleva hummus?",
+        "expect": {
+          "items": {},
+          "replyAll": [
+            "hummus"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Listo me llevo dos wraps vegetarianos con salsa tahini, para la calle 12 34 56",
+        "expect": {
+          "items": {
+            "502": 2
+          },
+          "attrs": [
+            {
+              "id": 502,
+              "key": "Salsa",
+              "value": "Tahini"
+            }
+          ],
+          "address": "12 34 56",
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Espérate, antes de pagar cuánto es todo con el domicilio?",
+        "expect": {
+          "items": {
+            "502": 2
+          },
+          "replyAll": [
+            "31.800"
+          ],
+          "state": "awaiting_payment",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Por transferencia entonces",
+        "expect": {
+          "items": {
+            "502": 2
+          },
+          "payment": "transfer",
+          "state": "awaiting_final_confirm",
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "independent-unknown-request-recovery",
+    "messages": [
+      {
+        "text": "Buenas! me mandas detergente y dos bolsas de hielo porfa? creo que este era el mercado",
+        "expect": {
+          "items": {},
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Uy perdon era otro negocio. Ahora sí quisiera una sopa de zapallo",
+        "expect": {
+          "items": {
+            "505": 1
+          },
+          "replyAll": [
+            "Zapallo"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

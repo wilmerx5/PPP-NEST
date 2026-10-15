@@ -1,0 +1,29 @@
+{
+  "model": "gpt-4.1-2025-04-14",
+  "userMessage": "Hola! somos varios en la oficina: para Lina van 2 bowls andinos, para Oscar un trio de wraps y para la reunion tres limonadas de hierbabuena. Eso es todo por ahora, gracias.",
+  "agentResult": {
+    "reply": "Listo, agregué 2 bowls andinos para Lina, un trío de wraps para Oscar y 3 limonadas de hierbabuena para la reunión. ¿Algo más que quieras sumar antes de finalizar?",
+    "actions": {
+      "addItems": [
+        {
+          "productId": 501,
+          "quantity": 2
+        },
+        {
+          "productId": 504,
+          "quantity": 1
+        },
+        {
+          "productId": 503,
+          "quantity": 3
+        }
+      ]
+    },
+    "toolCalls": [
+      "add_item",
+      "add_item",
+      "add_item"
+    ]
+  },
+  "note": "Synthetic evaluation captured 2026-10-14; now a development regression, not an independent holdout"
+}

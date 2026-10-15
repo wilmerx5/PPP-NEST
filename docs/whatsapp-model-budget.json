@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 40,
-  "usedRequests": 39,
-  "remainingRequests": 1,
+  "authorizedRequests": 50,
+  "usedRequests": 50,
+  "remainingRequests": 0,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-14T14:52:54.765Z",
+  "lastAttemptAt": "2026-10-15T00:43:01.475Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -47,6 +47,12 @@
       "date": "2026-10-11",
       "additionalRequests": 20,
       "evidence": "User: continua haciendo pruebas, te autorizo 20 llamadas mas"
+    },
+    {
+      "date": "2026-10-14",
+      "additionalRequests": 10,
+      "evidence": "User: continua, si quieres autoriza ams llaamadas",
+      "executionLimit": "Agent limits this extension to 10 requests, one repetition, stop on failure"
     }
   ],
   "evaluationHistory": [
@@ -123,6 +129,110 @@
       },
       "log": "/tmp/ppp-courtesy-model-completion.log",
       "initialLog": "/tmp/ppp-courtesy-model-current.log"
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "56db5fb5",
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "planned": 3,
+      "requests": 2,
+      "usedTotal": 41,
+      "remaining": 9,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 2,
+        "successfulResponses": 2,
+        "responsesWithUsage": 2,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 17952,
+        "cachedPromptTokens": 8704,
+        "completionTokens": 119,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-independent-1410-model-report.json",
+      "findings": [
+        "Model correctly extracted 2 bowls, 1 packaged trio, 3 beverages; backend emitted nonfood misses for narrative preamble",
+        "Partial family price question unnecessarily asks which product despite unique bowl in cart"
+      ],
+      "liveCorrectionRetested": false
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "56db5fb5",
+      "includesUncommittedOfficeCorrection": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 3,
+      "accepted": 2,
+      "requests": 6,
+      "usedTotal": 47,
+      "remaining": 3,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 6,
+        "successfulResponses": 6,
+        "responsesWithUsage": 6,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 53793,
+        "cachedPromptTokens": 38784,
+        "completionTokens": 242,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-independent-1410-retest-report.json",
+      "developmentRetestAccepted": 1,
+      "independentAccepted": 1,
+      "independentFailed": 1,
+      "findings": [
+        "Office narrative corrected and model retest passed",
+        "New wrap inquiry, attribute/address purchase, total interruption and transfer passed",
+        "Wrong-recipient apology plus explicit new purchase replayed unresolved off-menu proposal; backend did not call model on correction turn"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "56db5fb5",
+      "includesUncommittedRecoveryCorrection": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 1,
+      "developmentRetest": true,
+      "requests": 3,
+      "usedTotal": 50,
+      "remaining": 0,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 3,
+        "successfulResponses": 3,
+        "responsesWithUsage": 3,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 26453,
+        "cachedPromptTokens": 25856,
+        "completionTokens": 77,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-independent-1410-recovery-live-report.json",
+      "findings": [
+        "Wrong-recipient apology plus new explicit purchase accepted after correction; no external order created"
+      ]
     }
   ]
 }

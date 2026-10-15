@@ -938,6 +938,7 @@ export function isWrongChatApology(text: string): boolean {
     /\b(?:este|ese|el)\s+mensaje\s+(?:era|es)\s+para\s+(?:otro|otra)\s+(?:chat|numero|tienda|restaurante|negocio)\b/.test(t) ||
     /\bno\s+era\s+para\s+ustedes\b/.test(t);
   if (explicitWrongRecipient) return true;
+  if (sorry && /\bera\s+(?:para\s+)?(?:otro|otra)\s+(?:negocio|tienda|restaurante|chat|numero)\b/.test(t)) return true;
   const thoughtElsewhere =
     /\b(pense|pensaba|crei|creia)\b/.test(t) &&
     /\b(hablaba|hablando|era|escribia|escribiendo)\b/.test(t) &&
