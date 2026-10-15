@@ -1,0 +1,175 @@
+[
+  {
+    "id": "contract-holdout-two-lines-and-beverage-reference",
+    "messages": [
+      {
+        "text": "Hola, ayúdame con dos wraps vegetarianos con salsa tahini y sin cebolla; además una limonada de hierbabuena sin azúcar.",
+        "expect": {
+          "items": {
+            "502": 2,
+            "503": 1
+          },
+          "lines": [
+            {
+              "id": 502,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Tahini"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ],
+              "forbidNote": [
+                "azúcar"
+              ]
+            },
+            {
+              "id": 503,
+              "quantity": 1,
+              "note": [
+                "sin azúcar"
+              ],
+              "forbidNote": [
+                "cebolla"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "La bebida, cuánto cuesta?",
+        "expect": {
+          "items": {
+            "502": 2,
+            "503": 1
+          },
+          "replyAll": [
+            "6.800"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Para los wraps mejor salsa yogur, la limonada déjala como está",
+        "expect": {
+          "items": {
+            "502": 2,
+            "503": 1
+          },
+          "lines": [
+            {
+              "id": 502,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Yogur"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ]
+            },
+            {
+              "id": 503,
+              "quantity": 1,
+              "note": [
+                "sin azúcar"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "contract-holdout-same-product-distinct-choices",
+    "messages": [
+      {
+        "text": "Quiero dos wraps vegetarianos con salsa tahini y un wrap vegetariano con salsa yogur, empacados separados por favor.",
+        "expect": {
+          "items": {
+            "502": 3
+          },
+          "lines": [
+            {
+              "id": 502,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Tahini"
+                }
+              ]
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Yogur"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Cuánto vale todo?",
+        "expect": {
+          "items": {
+            "502": 3
+          },
+          "replyAll": [
+            "44.700"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "El de yogur sin cebolla, los otros normales",
+        "expect": {
+          "items": {
+            "502": 3
+          },
+          "lines": [
+            {
+              "id": 502,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Tahini"
+                }
+              ],
+              "forbidNote": [
+                "sin cebolla"
+              ]
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Yogur"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

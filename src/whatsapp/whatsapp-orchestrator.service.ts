@@ -1592,7 +1592,9 @@ export class WhatsappOrchestratorService {
       const priceWords = this.normalizeForMatch(this.catalogService.stripPriceInquiryNoise(originalText))
         .split(/\s+/).filter(word => word && !/^(cada|uno|una|unidad|el|la|los|las|de|del|por|favor|y|un|tiene|tienen)$/.test(word));
       const familyTargets = priceWords.length ? menu.filter(product => ids.has(product.id) && priceWords.every(word =>
-        this.normalizeForMatch(product.name).split(/\s+/).some(nameWord => nameWord === word || nameWord+'s' === word || nameWord+'es' === word))) : [];
+        /^(bebida|bebidas|refresco|refrescos)$/.test(word)
+          ? this.catalogService.isLikelyDrinkProduct(product)
+          : this.normalizeForMatch(product.name).split(/\s+/).some(nameWord => nameWord === word || nameWord+'s' === word || nameWord+'es' === word))) : [];
       const targets = named ? [named] : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
       if (session.pendingPriceInquiry) delete session.pendingPriceInquiry;
       const priceCandidates = menu.filter(product => ids.has(product.id));

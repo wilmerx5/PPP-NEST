@@ -44,9 +44,9 @@ git rev-parse --short origin/staging
 - Agente activo en staging y producción en última comprobación de env: `WHATSAPP_AGENT_V1=true`. Esto no demuestra que todos los turnos lleguen al modelo: muchos handlers deterministas interceptan antes.
 - Jest simula modelo/Meta/persistencia/órdenes. El runner real usa router y modelo real, pero también aísla Meta, persistencia, cotización y órdenes. No equivale a WhatsApp real ni acredita percepción de audio/foto.
 
-## Presupuesto: agotado
+## Presupuesto vigente
 
-**50 autorizadas / 50 usadas / 0 restantes.** No hacer más inferencias pagadas sin nueva autorización del usuario. Continuar trabajo gratuito. No resetear contadores al cambiar agente o proceso.
+**60 autorizadas / 52 usadas / 8 restantes.** Extensión del usuario vigente; detener ante fallo y diagnosticar gratis antes de reensayar. No resetear contadores al cambiar agente o proceso.
 
 La última tanda usó11 solicitudes:10 adicionales autorizadas por «continua, si quieres autoriza ams llaamadas» y1 pendiente anterior. Cada intento se contabilizó antes de red, incluidos fallos. Fuente de saldo: campos superiores de `docs/whatsapp-model-budget.json`; `evaluationHistory` registra los ensayos recientes. `latestEvaluation` conserva una evaluación histórica y no reemplaza el saldo actual.
 
@@ -79,7 +79,7 @@ Informes: `/tmp/ppp-independent-1410-model-report.json` (2 solicitudes, fallo), 
 
 El usuario pidió dejar de avanzar mediante parches de frases. Tras la tanda local de cocina/cierre/listas, el siguiente trabajo principal es trazar desvíos y extraer un contrato común de intención/referencias/acciones/consultas, validar contra catálogo y aplicar cambios de sesión de forma coherente. El modelo ya propone acciones estructuradas: investigar reinterpretaciones posteriores antes de añadir otro parser. Migrar una familia acotada con comparación de recorridos, sin reescribir todo ni activar inferencia para cada turno sin medir costo/latencia. Las preguntas pendientes son contexto, no un bloqueo.
 
-Los casos usados para corregir son regresiones, no medida de generalización; reservar conversaciones nuevas y catálogos distintos. Presupuesto agotado: continuar gratis. Ver la entrada «Cambio de prioridad pedido por el usuario: generalización» al final del historial.
+Los casos usados para corregir son regresiones, no medida de generalización; reservar conversaciones nuevas y catálogos distintos. Saldo vigente arriba; el último fallo nuevo debe diagnosticarse gratis antes de reensayar. Ver la entrada «Cambio de prioridad pedido por el usuario: generalización» al final del historial.
 
 ## Familias pendientes para comprobar dentro de la consolidación
 
@@ -127,7 +127,7 @@ npx jest --runInBand --silent > /tmp/ppp-next-full.log 2>&1
 git diff --check
 ```
 
-No regenerar dist/tsbuildinfo con compilación normal si no se necesita; respetar archivos ajenos. No repetir matriz MariaDB si no cambian esquema/transacciones. Captura de modelos: `scripts/whatsapp-live-router-rehearsal.ts` exige flag live/key, presupuesto compartido válido y límite; leerlo antes de usarlo. Actualmente el presupuesto impide nuevas inferencias.
+No regenerar dist/tsbuildinfo con compilación normal si no se necesita; respetar archivos ajenos. No repetir matriz MariaDB si no cambian esquema/transacciones. Captura de modelos: `scripts/whatsapp-live-router-rehearsal.ts` exige flag live/key, presupuesto compartido válido y límite; leerlo antes de usarlo. El presupuesto compartido impide superar el saldo vigente.
 
 ## Deploy autorizado: solo staging
 
@@ -145,4 +145,21 @@ Producción: `/var/www/ppp-nest`, container `ppp_nest_api`, puerto3000; conserva
 
 Piloto supervisado pequeño, no venta autónoma certificada. Aceptar solo cuando preguntas no muten pedido/datos, correcciones se apliquen y retomen el paso pendiente, precios provengan de catálogo/cotización, ambigüedad no adivine y fallos críticos tengan contención humana. Falta evidencia de medios/canal y muestra independiente más amplia. Kamppo requiere además separación de catálogo/configuración y claves de sesión por tenant; menús ficticios no prueban aislamiento multitenant.
 
-Primera acción del siguiente agente: comprobar checkout/HEAD, leer el último cierre verificado y presupuesto agotado; trazar gratuitamente una compra con atributos/notas y consulta intercalada para extraer el contrato común. El cierre largo tiene correcciones validadas y desplegadas en d1c7d8fc; no duplicar esos casos ni dar por probado el retorno tras varios turnos de opciones. No necesita gastar API ni preguntar nuevamente por rama.
+Primera acción del siguiente agente: comprobar checkout/HEAD, leer el último cierre verificado y presupuesto vigente; reproducir gratis el fallo de validación por línea de la última evaluación narrativo/oficina. La primera extracción de contrato ya está en6daf557b. El cierre largo tiene correcciones validadas y desplegadas en d1c7d8fc; no duplicar esos casos ni dar por probado el retorno tras varios turnos de opciones. No necesita gastar API ni preguntar nuevamente por rama.
+
+
+## Última evaluación local (prioridad vigente)
+
+Base6daf557b,contrato local69suites/5372tests aprobado antes de ajuste de referencia de bebida. El ajuste y10regresiones aprobaron69suites/5382tests en806.44s;fuente src+scripts intacta.14focalizadas y TypeScript aprobados;log /tmp/ppp-price-class-full.log. No se despliega.
+
+Nuevo caso narrativo de oficina en scripts/fixtures/whatsapp-contract-independent-office-1410.json falló:2bowls+doswraps con salsas distintas quedan1bowl+1wrap. Dos llamadas pagadas;saldo52/60usadas,8restantes. Reproducción gratuita demuestra que add_item rechaza acciones correctas por palabras gramáticas «cada»/«pero». Los argumentos reales del modelo no se capturaron;no atribuirle una propuesta correcta sin prueba. El fallback también pierde cantidades/variantes. Prioridad:contrato de evidencia por línea y contención de fallback;no seguir gastando ni sumando frases al azar. Ver diagnóstico y límites al final de AGENT-HANDOFF-WHATSAPP.md. Referencia de bebida corregida es un bloque distinto;no afirmar que arregla este pedido narrativo.
+
+
+### Criterios del próximo bloque (antes de más API)
+
+1. Reproducir gratis el fixture narrativo completo con propuesta estructurada conocida, tool add_item y router. Exigir2bowls,1wrapTahini,1wrapYogur;notas y atributos por fila;no añadir bebidas negadas. No basta assert de IDs agregados.
+2. Definir evidencia por línea:fragmento del mensaje original,SKU autorizado,cantidad y opciones propuestas. No aceptar fragmentos inventados ni usar la selección de un fragmento para eludir una pregunta/no-compra o un ingrediente realmente ajeno al plato.
+3. Separar tres resultados de validación:aceptado,ambiguo/no respaldado,rechazado por contradicción explícita de catálogo. Una palabra gramatical sobrante no es evidencia de un producto inexistente. No resolver incertidumbre sumando una compra parcial sin avisar.
+4. Pruebas negativas:arroz con mariscos cuando no existe;combo frente a sus componentes;negación de bebida;dos variantes del mismoSKU;producto realmente inexistente entre otros válidos;consulta de precio/ingredientes sin compra;opción no permitida;contradicción de cantidades. Usar más de una carta ficticia.
+5. Respuesta derivada del resultado aplicado:si faltan líneas,explicar cuál falta y conservar pedido previo;si hay opciones distintas,no fusionarlas;si no hubo aplicación,no afirmar añadido. Distinguir faltantes del pedido nuevo de filas preexistentes.
+6. Congelar fuente y aprobar focalizadas,TypeScript/global antes de repetir modelo. Reensayo del caso ya visto es regresión;reservar otro caso nuevo independiente. Máximo8solicitudes restantes y detener primer fallo. No desplegar hasta entrega acumulada explícita.

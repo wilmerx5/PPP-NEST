@@ -13682,3 +13682,34 @@ describe('Contrato de turno — replays capturados y consulta intercalada',()=>{
   expect(h.service.turnTelemetry.getRecentDecisions(1)[0].failed).toBe(true);
  });
 });
+
+
+describe('Referencia de precio por clase de catálogo',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ for(const agent of [false,true])for(const question of ['La bebida, cuánto cuesta?','Cuánto vale el refresco?','Qué precio tienen las bebidas?'])it(question+' agent='+agent,async()=>{
+  const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=menu.filter(p=>[502,503].includes(p.id)).map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:p.id===502?2:1,attributes:[]}));
+  const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued(question);
+  expect(reply||'').toContain('6.800');expect(reply||'').not.toMatch(/cu[aá]l producto/i);
+  expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.service.turnTelemetry.getRecentDecisions(1)[0].inquiries).toEqual([{kind:'price',productIds:[503]}]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each([false,true])('dos bebidas cotizan ambas sin incluir el combo ni elegir la última agent=%s',async(agent)=>{
+  const mixed=[...menu,{id:610,code:610,name:'Agua Mineral',price:4100,description:'Botella',attributes:[],hasAttributes:false,availableNow:true},
+   {id:611,code:611,name:'Combo Vegetariano',price:25000,description:'Incluye bebida',attributes:[{attributeName:'Bebida',options:['Agua','Limonada']}],hasAttributes:true,availableNow:true}];
+  const h=harness(mixed,agent);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=mixed.filter(p=>[503,610,611].includes(p.id)).map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Cuánto valen las bebidas?');
+  expect(reply||'').toContain('6.800');expect(reply||'').toContain('4.100');
+  expect(h.service.turnTelemetry.getRecentDecisions(1)[0].inquiries).toEqual([{kind:'price',productIds:[503,610]}]);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each([false,true])('una consulta sin clase sigue siendo ambigua agent=%s',async(agent)=>{
+  const h=harness(menu,agent);
+  h.conv.sessionData.cart=menu.filter(p=>[502,503].includes(p.id)).map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Cuánto cuesta cada uno?');
+  expect(reply||'').toMatch(/cu[aá]l producto/i);expect(h.conv.sessionData.cart).toEqual(before);
+ });
+});

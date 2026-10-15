@@ -1,0 +1,56 @@
+[
+  {
+    "id": "independent-office-roles-and-choices",
+    "messages": [
+      {
+        "text": "Somos cuatro en la oficina. A Daniela y a Camilo mándales un bowl andino a cada uno; para mí un wrap vegetariano con tahini y para Sara otro wrap vegetariano pero con yogur. No agregues bebidas todavía.",
+        "expect": {
+          "items": {
+            "501": 2,
+            "502": 2
+          },
+          "lines": [
+            {
+              "id": 501,
+              "quantity": 2
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Tahini"
+                }
+              ]
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Yogur"
+                }
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de seguir, cuánto vale todo eso?",
+        "expect": {
+          "items": {
+            "501": 2,
+            "502": 2
+          },
+          "replyAll": [
+            "67.200"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

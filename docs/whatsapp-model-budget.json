@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 60,
-  "usedRequests": 50,
-  "remainingRequests": 10,
+  "usedRequests": 52,
+  "remainingRequests": 8,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T00:43:01.475Z",
+  "lastAttemptAt": "2026-10-15T04:12:59.011Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -238,6 +238,72 @@
       "report": "/tmp/ppp-independent-1410-recovery-live-report.json",
       "findings": [
         "Wrong-recipient apology plus new explicit purchase accepted after correction; no external order created"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "6daf557b",
+      "includesUncommittedPriceClassCorrection": false,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 0,
+      "usedTotal": 52,
+      "remaining": 8,
+      "report": "/tmp/ppp-turn-contract-live-report.json",
+      "findings": [
+        "initial reference failure",
+        "No model invoked: deterministic routes handled every turn; not real-model validation"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "6daf557b",
+      "includesUncommittedPriceClassCorrection": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 2,
+      "accepted": 2,
+      "requests": 0,
+      "usedTotal": 52,
+      "remaining": 8,
+      "report": "/tmp/ppp-price-class-live-report.json",
+      "findings": [
+        "development retest and distinct-choice case",
+        "No model invoked: deterministic routes handled every turn; not real-model validation"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "baseCommit": "6daf557b",
+      "includesUncommittedPriceClassCorrection": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 2,
+      "usedTotal": 52,
+      "remaining": 8,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 2,
+        "successfulResponses": 2,
+        "responsesWithUsage": 2,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 17947,
+        "cachedPromptTokens": 8832,
+        "completionTokens": 159,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-independent-office-contract-live-report.json",
+      "findings": [
+        "Independent office order failed: required 2 bowls and 2 distinct wraps, cart had 1 bowl and 1 wrap",
+        "Agent tool calls rejected before applying actions; deterministic fallback also lost quantities and variants",
+        "Stop paid inference and reproduce tool guard rejection without network before another attempt"
       ]
     }
   ]
