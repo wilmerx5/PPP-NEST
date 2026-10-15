@@ -8,6 +8,7 @@ export function isNewOpenAiTokenModel(model: string): boolean {
   const m = (model || '').trim().toLowerCase();
   return (
     /^gpt-5/.test(m) ||
+    /^gpt-6-luna(?:-|$)/.test(m) ||
     /^o1/.test(m) ||
     /^o3/.test(m) ||
     /^o4/.test(m) ||
@@ -35,6 +36,7 @@ export function applyOpenAiChatCompat(
 ): Record<string, unknown> {
   const model = opts.model || String(body.model || 'gpt-4o-mini');
   body.model = model;
+  if (/^gpt-6-luna(?:-|$)/i.test(model)) body.reasoning_effort = 'none';
 
   const maxOut = opts.maxOutputTokens;
   if (maxOut != null && maxOut > 0) {

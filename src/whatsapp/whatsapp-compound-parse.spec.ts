@@ -453,3 +453,13 @@ describe('pickProductNamedInLastOffer', () => {
     expect(pickProductNamedInLastOffer('una limonada', offer, products)).toBeNull();
   });
 });
+
+describe('Código de catálogo explícito no es un número de orden',()=>{
+ it.each(['2 x Pollo Frito (código #1), arepas fritas','1 x Ramen De Miso (cód. #801)','2 x Ensalada (codigo: #18)\n3 x Té (código 19)'])('no consulta pedidos existentes: %s',text=>{
+  expect(extractDailyOrderNumberHint(text)).toBeNull();expect(isSpecificOrderProgressInquiry(text)).toBe(false);
+ });
+ it('mantiene el número de pedido cuando también menciona un código de producto',()=>{
+  expect(extractDailyOrderNumberHint('Cómo va mi pedido #15 con el código #1?')).toBe(15);
+  expect(isSpecificOrderProgressInquiry('Cómo va mi pedido #15 con el código #1?')).toBe(true);
+ });
+});

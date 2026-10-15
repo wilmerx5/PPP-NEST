@@ -1,0 +1,50 @@
+[
+  {
+    "id": "actual-synthetic-asr-wings-to-order",
+    "evaluationStatus": "development_media_transcript",
+    "messages": [
+      {
+        "text": "Me hace el favor, me envía un combo de alitas con gaseosa Pepsi para el conjunto residencial Pio XII. Muchas gracias.",
+        "expect": {
+          "items": {
+            "75": 1
+          },
+          "attrs": [
+            {
+              "id": 75,
+              "key": "Bebida",
+              "value": "Pepsi"
+            }
+          ],
+          "address": "Pio",
+          "orderCount": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "actual-synthetic-asr-substitution-to-order",
+    "evaluationStatus": "development_media_transcript",
+    "messages": [
+      {
+        "text": "Me hace el favor, me envía un combo frito a cambio de la gaseosa, un madurito con bocadillo y queso. Muchas gracias.",
+        "expect": {
+          "items": {
+            "99": 1
+          },
+          "lines": [
+            {
+              "id": 99,
+              "quantity": 1,
+              "note": [
+                "bocadillo",
+                "queso"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

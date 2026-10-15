@@ -1,5 +1,15 @@
 # Continuación local de PPP WhatsApp
 
+## Tanda en cierre: visión y audio vigentes (15/10)
+
+Seleccionados y validados localmente Luna para visión/clasificación/respaldo y GPT-Transcribe para audio; Sol sigue como agente. **Nuevos overrides aún no desplegados** al escribir esta entrada. Ver `docs/WHATSAPP-MEDIA-MODELS.md` y `docs/whatsapp-media-model-validation-1510.json`.
+
+16 solicitudes reales aprobadas sobre medios sintéticos:6imágenes,5audios (incluye ruido/silencio),4clasificaciones,1saludo.35segundos reportados para ASR; costo estimado combinado USD0.004503. Carritos de visión PPP+japonés y2audios capturados pasan replay completo gratis; no afirmar voz real de clientes ni superioridad acústica frente a Whisper. Dos replays de texto usaron0nuevas llamadas de modelo (exit1 del runner por exigir alguna llamada, no por fallar los escenarios).
+
+192controles focalizados y6replays completos aprobados; TypeScript sin errores. Global definitiva aprobada: **76suites/5582tests**,20regresiones nuevas frente a23642b84,en826.223s. Fuente final intacta. Evidencia: `/tmp/ppp-media-model-final-full.log`; snapshot `/tmp/ppp-media-model-final-source.json`. TypeScript aprobado: /tmp/ppp-media-model-final-tsc.log. Publicar y activar en staging los overrides VISION/ASSIST=gpt-6-luna y AUDIO=gpt-transcribe, conservando AGENT=gpt-6.1-sol. Main intacta. Presupuesto135tope/131usadas/4restantes, registro+espejo sincronizados; no más llamadas pagadas necesarias para cerrar este bloque.
+
+Se corrigieron códigos de catálogo confundidos con órdenes y filas anotadas cuya identidad explícita se volvía ambigua. Fuente general, sin excepciones de IDs de PPP. Los archivos de medios exactos y hashes están versionados bajo scripts/fixtures/media-models-1510. No tomar el conteo global anterior como validación de estos cambios hasta que termine la nueva global.
+
 ## Tanda vigente: reemplazo de modelo (15/10)
 
 **Sol (`gpt-6.1-sol`) elegido para validación de calidad en staging.** Código integrado y validado: **74 suites / 5.562 pruebas aprobadas**,40 más que a1bcfd0f (incluye cambios locales previos conservados),851.419s. TypeScript aprobado. Snapshot src/scripts intacto; global definitiva `/tmp/ppp-model-integration-final-full.log`, snapshot `/tmp/ppp-model-integration-source.json`, TypeScript `/tmp/ppp-model-integration-tsc.log`. Una global anterior fue interrumpida para corregir render; no cuenta como aprobada.

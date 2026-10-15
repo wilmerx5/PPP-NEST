@@ -1479,10 +1479,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         // Search and purchase must agree on the host of an included drink.
         // A shortened named pack may omit a catalog qualifier; the drink SKU
         // found elsewhere in the sentence is not evidence against its host.
-        const requestedDrinkHost = this.catalogService.hostedMenuDrink(ctx.userMessage || '', ctx.products);
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
-          requestedDrinkHost?.product.id !== product.id &&
-          !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
+          !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '') &&
+          this.catalogService.hostedMenuDrink(ctx.userMessage || '', ctx.products)?.product.id !== product.id) {
           const multi = this.catalogService.resolveMultiProductOrder?.(ctx.userMessage || '',ctx.products);
           const namedProducts = multi ? [...multi.confident,...multi.needsAttributes].map(item=>item.product) : [];
           const alreadyAdded = new Set((ctx.actions.addItems || []).map(item=>item.productId));

@@ -60,3 +60,16 @@ describe('Image extraction completeness and latency — offline',()=>{
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 });
+
+describe('Independent vision model selection',()=>{
+ const fetchBefore=global.fetch;const modelBefore=process.env.WHATSAPP_VISION_MODEL;
+ afterEach(()=>{global.fetch=fetchBefore;if(modelBefore===undefined)delete process.env.WHATSAPP_VISION_MODEL;else process.env.WHATSAPP_VISION_MODEL=modelBefore;});
+ it('uses Luna with no reasoning, JSON and the explicit existing cap, leaving other workloads alone',async()=>{
+  process.env.WHATSAPP_VISION_MODEL='gpt-6-luna';
+  const mock=jest.fn().mockResolvedValue({ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({kind:'order',textForBot:'Dos ramen de miso'})}}]})});global.fetch=mock;
+  const service=new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'offline',openaiModel:'gpt-4.1-2025-04-14'})} as never);
+  expect(await service.analyzeOrderImage({buffer:Buffer.from('fixture'),mimeType:'image/png',menuSummary:'Ramen de miso'})).toMatchObject({kind:'order',textForBot:'Dos ramen de miso'});
+  const body=JSON.parse(mock.mock.calls[0][1].body);expect(body).toMatchObject({model:'gpt-6-luna',reasoning_effort:'none',max_completion_tokens:700,response_format:{type:'json_object'}});
+  expect(body).not.toHaveProperty('max_tokens');expect(body).not.toHaveProperty('temperature');
+ });
+});

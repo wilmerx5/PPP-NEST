@@ -9125,6 +9125,29 @@ export class WhatsappCatalogService {
     if (/[¿?]/.test(text)) return null;
     const orderText = splitTrailingEmbeddedAddress(text)?.productText || text;
     const body = orderText.replace(/^(?:quiero|agrega|añade|ponme)\s+/i, '').trim();
+    // Selected cart rows may carry an explicit code after their label (OCR or text).
+    // Resolve that identity before a shortened name becomes a family ambiguity.
+    const annotatedRows = body.split(/\r?\n/).map(row => row.trim()).filter(Boolean);
+    const rowPattern = /^(\d{1,2})\s*[x×]\s*(.+?)\s*\(c[oó]d(?:igo)?\.?\s*#?\s*(\d{1,4})\)\s*[,;:]?\s*(.*)$/i;
+    const annotated = annotatedRows.map(row => row.match(rowPattern));
+    if (annotated.length >= 2 && annotated.every(Boolean) && annotated.every(row =>
+      !/c[oó]d(?:igo)?\.?\s*#?\s*\d|\b\d{1,2}\s*[x×]\s*|\by\s+(?:un[oa]?|dos|tres|cuatro|cinco)\b/i.test(row![4]))) {
+      const result: MultiProductResolveResult = {segments:[],confident:[],ambiguous:[],unresolved:[],needsAttributes:[],possibleCustomerNames:[]};
+      for (let i=0; i<annotated.length; i++) {
+        const match = annotated[i]!;
+        const product = this.findByCode(Number(match[3]),products);
+        if (Number(match[1]) < 1 || !product || product.availableNow===false || !this.productNameFitsUtterance(product,match[2])) {
+          result.unresolved.push(annotatedRows[i]); continue;
+        }
+        const segment = `${match[1]} ${product.name} ${match[4]}`.trim();
+        result.segments.push(segment);
+        const note = joinKitchenNotes(this.extractProductModificationNote(segment),peelSupportedCookingTerm(segment,product)?.note);
+        const resolved = {segment,product,score:100,note:note || undefined};
+        if (product.hasAttributes && product.attributes?.length) result.needsAttributes.push(resolved);
+        else result.confident.push(resolved);
+      }
+      return result;
+    }
     const clauses = body.split(/\s+y\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo|#))|\s*,\s*(?=(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo|#))/i);
     const clausePattern = /^(?:(?:un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d{1,2})\s+)?(?:del?\s+)?(?:c[oó]digo\s*#?\s*|#\s*)(\d{1,4})(?:\s+((?:sin|con)\s+.+?))?[.!]?$/i;
     const parsed = clauses.map(clause => clause.trim().match(clausePattern));

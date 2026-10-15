@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 119,
-  "usedRequests": 115,
+  "authorizedRequests": 135,
+  "usedRequests": 131,
   "remainingRequests": 4,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T17:15:25.627Z",
+  "lastAttemptAt": "2026-10-15T17:56:28.327Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "model": "gpt-6.1-sol",
@@ -512,6 +512,23 @@
         "One adapter preparation attempt counted before network; later corrected round replay offline",
         "Stopped runs at first failure, diagnosed backend/adapter without more inference; no Meta or external orders"
       ]
+    },
+    {
+      "date": "2026-10-15",
+      "models": [
+        "gpt-6-luna",
+        "gpt-transcribe"
+      ],
+      "requests": 16,
+      "usedTotal": 131,
+      "remaining": 4,
+      "report": "docs/whatsapp-media-model-validation-1510.json",
+      "findings": [
+        "6 actual vision extractions, 5 ASR fixtures including noisy speech and silence, 4 classifications and 1 greeting generation passed. All synthetic inputs.",
+        "Both captured voice transcripts passed the isolated full router with zero additional inference calls.",
+        "Vision captures passed cart replay after correcting catalog-code/order-ID confusion and selected-row identity.",
+        "Estimated API cost USD0.004503 from actual usage, not invoice or subscription profitability."
+      ]
     }
   ],
   "authorizationHistory": [
@@ -550,6 +567,12 @@
       "authorization": "User-authorized comparison of replacement models",
       "operationalBatchExtension": 4,
       "note": "Agent reserves 9 remaining requests to compare Luna on identical corrected source without truncating a tool loop; stop first failure."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "User explicitly requests paid validation and replacement of vision/audio with current models, including costs",
+      "operationalBatchExtension": 16,
+      "note": "Agent-selected 20-call headroom including prior remaining4; synthetic fixtures, stop on failure, no Meta or external orders."
     }
   ]
 }

@@ -14256,3 +14256,57 @@ describe('Acuse de compra conserva indisponibilidad con distintos órdenes de pa
   expect(h.cartRows()).toEqual([expect.objectContaining({id:501,qty:1})]);
  });
 });
+
+describe('Medios de modelos nuevos — replay de extracción real sobre fixtures sintéticos',()=>{
+ const captures=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-media-model-output-1510.json'),'utf8')).results;
+ it.each([
+  {kind:'PPP',id:'cart',menu:products,expected:[{id:1,qty:2},{id:17,qty:1},{id:38,qty:2}]},
+  {kind:'otra carta',id:'japan',menu:[{id:801,code:801,name:'Ramen De Miso',description:'Caldo de miso y fideos',price:24000,attributes:[],hasAttributes:false,availableNow:true},{id:802,code:802,name:'Maki Vegetal',price:18000,attributes:[],hasAttributes:false,availableNow:true},{id:803,code:803,name:'Té De Jazmín',price:5000,attributes:[],hasAttributes:false,availableNow:true}],expected:[{id:801,qty:2},{id:802,qty:1},{id:803,qty:3}]}
+ ])('carrito completo desde visión: $kind',async({id,menu,expected})=>{
+  const h=harness(menu,false);h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);const analysis=captures.find(r=>r.kind==='images'&&r.id===id).output;
+  const text=h.service.resolveImageOrderText(analysis,'Esto por favor',menu);
+  expect(text).toBeTruthy();await h.sendQueued(text);
+  if(!h.cartRows().length)throw Error('Vision replay: '+JSON.stringify({text,replies:h.replies,state:h.conv.state}));
+  expect(h.cartRows().map(row=>({id:row.id,qty:row.qty})).sort((a,b)=>a.id-b.id)).toEqual(expected);
+  if(id==='cart'){
+   expect(h.cartRows().find(row=>row.id===1)?.attrs).toContain('Arepas:Fritas');
+   expect(h.cartRows().find(row=>row.id===17)?.note).toMatch(/3\/4|tres cuartos/i);
+   expect(h.cartRows().find(row=>row.id===38)?.note).toMatch(/sin arroz/i);
+  }else{
+   expect(h.cartRows().find(row=>row.id===801)?.note).toMatch(/sin cebolla/i);
+   expect(h.cartRows().find(row=>row.id===803)?.note).toMatch(/sin az[uú]car/i);
+  }
+ });
+ it('carta sin selección no compra y comprobante no se transforma en pedido',()=>{
+  const h=harness(products,false);
+  for(const id of ['menu','receipt']){
+   const analysis=captures.find(r=>r.kind==='images'&&r.id===id).output;
+   if(id==='menu')expect(h.service.resolveImageOrderText(analysis,'',products)).toBeNull();
+   else expect(analysis).toMatchObject({kind:'payment_proof',textForBot:''});
+  }
+  expect(h.cartRows()).toEqual([]);
+ });
+});
+
+describe('Audio de GPT Transcribe — replay completo de entrada',()=>{
+ const captures=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-media-model-output-1510.json'),'utf8')).results;
+ it.each([{id:'wings',productId:75},{id:'swap',productId:99}])('$id no pierde el plato principal ni vende la bebida incluida aparte',async({id,productId})=>{
+  const h=harness(products,false);
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('fixture-audio'),mimeType:'audio/ogg'});
+  h.service.aiService.transcribeAudio=jest.fn().mockResolvedValue(captures.find(r=>r.kind==='audios'&&r.id===id).output);
+  h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+  h.service.deliveryRouting.quoteDeliveryFee=jest.fn().mockResolvedValue({ok:false,reason:'no_api_key',message:'Synthetic fixed delivery'});
+  await h.sendQueued('',{messageType:'audio',mediaId:'synthetic-audio',mimeType:'audio/ogg'});
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:productId,qty:1})]);
+  if(id==='wings')expect(h.cartRows()[0].attrs).toContain('Bebida:Pepsi');
+  else expect(h.cartRows()[0].note).toMatch(/bocadillo.*queso/i);
+  expect(h.service.aiService.transcribeAudio).toHaveBeenCalledTimes(1);
+ });
+ it('silencio conserva carrito y pide repetir sin inventar pedido',async()=>{
+  const h=harness(products,false);await h.sendQueued('Dos churrascos');const before=structuredClone(h.conv.sessionData.cart);
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('fixture-silence'),mimeType:'audio/ogg'});
+  h.service.aiService.transcribeAudio=jest.fn().mockResolvedValue(null);
+  await h.sendQueued('',{messageType:'audio',mediaId:'synthetic-silence',mimeType:'audio/ogg'});
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toMatch(/audio|escrib/i);
+ });
+});

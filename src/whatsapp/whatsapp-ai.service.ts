@@ -61,7 +61,7 @@ Responde SOLO JSON:
 }`;
 
     const history = this.toChatMessages(input.recentMessages || []).slice(-4);
-    const model = cfg.openaiModel || 'gpt-4o-mini';
+    const model = process.env.WHATSAPP_ASSIST_MODEL?.trim() || cfg.openaiModel || 'gpt-4o-mini';
     const body = applyOpenAiChatCompat(
       {
         model,
@@ -86,6 +86,7 @@ Responde SOLO JSON:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(12_000),
       });
       if (!res.ok) {
         const err = await res.text();
@@ -156,7 +157,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     ];
 
     try {
-      const model = cfg.openaiModel || 'gpt-4o-mini';
+      const model = process.env.WHATSAPP_ASSIST_MODEL?.trim() || cfg.openaiModel || 'gpt-4o-mini';
       const temp = input.conversational
         ? Math.min(1.2, (cfg.aiTemperature ?? 0.2) + 0.25)
         : cfg.aiTemperature ?? 0.2;
@@ -176,6 +177,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(12_000),
       });
 
       if (!res.ok) {
@@ -220,7 +222,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     const cfg = await this.settingsService.getEffectiveConfig();
     if (!cfg.openaiApiKey || !buffer.length || buffer.length > 25_000_000) return null;
     const model = process.env.WHATSAPP_AUDIO_MODEL?.trim() || 'whisper-1';
-    if (!['whisper-1','gpt-4o-mini-transcribe','gpt-4o-mini-transcribe-2025-12-15','gpt-4o-transcribe'].includes(model)) {
+    if (!['gpt-transcribe','whisper-1','gpt-4o-mini-transcribe','gpt-4o-mini-transcribe-2025-12-15','gpt-4o-transcribe'].includes(model)) {
       this.logger.error('Unsupported WHATSAPP_AUDIO_MODEL configuration');
       return null;
     }
@@ -233,8 +235,11 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
       `audio.${ext}`,
     );
     form.append('model', model);
-    form.append('language', 'es');
-    form.append('response_format', 'json');
+    if (model === 'gpt-transcribe') form.append('languages[]', 'es');
+    else {
+      form.append('language', 'es');
+      form.append('response_format', 'json');
+    }
     const terms = [...new Set(vocabulary.map(term => term.normalize('NFKC')
       .replace(/[^\p{L}\s-]/gu,' ').replace(/\s+/g,' ').trim()).filter(Boolean))];
     let spellingHint = 'Vocabulario: ';
@@ -245,6 +250,9 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
       spellingHint = next;
     }
     if (spellingHint !== 'Vocabulario: ') form.append('prompt', spellingHint);
+    if (model === 'gpt-transcribe') for (const term of terms.slice(0, 30)) {
+      form.append('keywords[]', term.slice(0, 80));
+    }
 
     try {
       const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -254,15 +262,14 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
         signal: AbortSignal.timeout(45_000),
       });
       if (!res.ok) {
-        const err = await res.text();
-        this.logger.error(`Whisper error ${res.status}: ${err}`);
+        this.logger.error(`Audio transcription HTTP ${res.status}: model=${model}`);
         return null;
       }
       const data = (await res.json()) as { text?: unknown } | null;
       const text = typeof data?.text === 'string' ? data.text.trim() : '';
       return text || null;
     } catch (err) {
-      this.logger.error(`Whisper failed: ${err}`);
+      this.logger.error(`Audio transcription failed: model=${model} error=${(err as Error)?.name || 'Error'}`);
       return null;
     }
   }
@@ -303,7 +310,7 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
 Si hay un CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
 Si es un carrito o lista de pedido, incluye TODOS sus productos seleccionados, uno por línea, con su cantidad explícita y sus notas. No reduzcas el pedido al primer producto. No confundas precios, códigos o números del nombre con cantidades. En una carta con varias opciones sin selección, pide cuál quiere; no conviertas toda la carta en un pedido.
 Menú referencia:\n${input.menuSummary.slice(0, 4000)}`
-      : `Eres el asistente de un restaurante de pollo asado (WhatsApp).
+      : `Eres el asistente de un restaurante (WhatsApp).
 Analizas UNA imagen del cliente. Responde SOLO JSON:
 {
   "kind": "order" | "payment_proof" | "other" | "unclear",
@@ -333,7 +340,7 @@ ${input.menuSummary.slice(0, 6000)}`;
         : 'Analiza la imagen del cliente.';
 
     try {
-      const model = cfg.openaiModel || 'gpt-4o-mini';
+      const model = process.env.WHATSAPP_VISION_MODEL?.trim() || cfg.openaiModel || 'gpt-4o-mini';
       const body = applyOpenAiChatCompat(
         {
           model,

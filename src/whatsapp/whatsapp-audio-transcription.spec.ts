@@ -53,3 +53,19 @@ describe('Audio vocabulary and model controls — offline',()=>{
  it('unknown model avoids a paid request',async()=>{process.env.WHATSAPP_AUDIO_MODEL='typo-model';const fetchMock=jest.fn();global.fetch=fetchMock;jest.spyOn((make() as any).logger,'error').mockImplementation(()=>undefined);expect(await make().transcribeAudio(Buffer.from('fixture'),'audio/ogg')).toBeNull();expect(fetchMock).not.toHaveBeenCalled();});
  it('oversized audio avoids paid request',async()=>{const fetchMock=jest.fn();global.fetch=fetchMock;expect(await make().transcribeAudio(Buffer.alloc(25_000_001),'audio/ogg')).toBeNull();expect(fetchMock).not.toHaveBeenCalled();});
 });
+
+describe('GPT Transcribe file contract',()=>{
+ const fetchBefore=global.fetch;const modelBefore=process.env.WHATSAPP_AUDIO_MODEL;
+ afterEach(()=>{global.fetch=fetchBefore;if(modelBefore===undefined)delete process.env.WHATSAPP_AUDIO_MODEL;else process.env.WHATSAPP_AUDIO_MODEL=modelBefore;});
+ it('uses supported context/language fields, preserving quantities, corrections and address verbatim',async()=>{
+  process.env.WHATSAPP_AUDIO_MODEL='gpt-transcribe';
+  const text='Me envías dos combos de alitas, no, tres, con Pepsi para la carrera ochenta y uno.';
+  const mock=jest.fn().mockResolvedValue({ok:true,json:async()=>({text,languages:[{code:'es'}]})});global.fetch=mock;
+  const service=new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'offline'})} as never);
+  expect(await service.transcribeAudio(Buffer.from('fixture'),'audio/ogg',['Alitas Broaster','Pepsi','4000'])).toBe(text);
+  const form=mock.mock.calls[0][1].body as FormData;
+  expect(form.get('model')).toBe('gpt-transcribe');expect(form.getAll('languages[]')).toEqual(['es']);
+  expect(form.getAll('keywords[]')).toEqual(['Alitas Broaster','Pepsi']);
+  expect(form.has('language')).toBe(false);expect(form.has('response_format')).toBe(false);expect(mock).toHaveBeenCalledTimes(1);
+ });
+});

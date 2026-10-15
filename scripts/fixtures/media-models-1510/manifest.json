@@ -1,0 +1,150 @@
+{
+  "images": [
+    {
+      "id": "single",
+      "kind": "order",
+      "terms": [
+        "98"
+      ],
+      "file": "scripts/fixtures/media-models-1510/single.png",
+      "sha256": "ab6d56afd7630b78422a51a611be39e1b38dc95b1f40d892bb5341b6b0d49d00"
+    },
+    {
+      "id": "cart",
+      "kind": "order",
+      "terms": [
+        "pollo",
+        "churrasco",
+        "ajiaco",
+        "2"
+      ],
+      "file": "scripts/fixtures/media-models-1510/cart.png",
+      "sha256": "ca726e4ef8d0261a9a5cb22593891b06669baa4ab880462a674f78b41b66903f"
+    },
+    {
+      "id": "japan",
+      "kind": "order",
+      "terms": [
+        "ramen",
+        "maki",
+        "jazm",
+        "2",
+        "3"
+      ],
+      "file": "scripts/fixtures/media-models-1510/japan.png",
+      "sha256": "fd233cb6dc5b48ad19763459619e664393a37ed01a627ebf315c1c3f9a30df14"
+    },
+    {
+      "id": "menu",
+      "kind": "unclear",
+      "terms": [],
+      "file": "scripts/fixtures/media-models-1510/menu.png",
+      "sha256": "e527ff5031f588d1ea2ec27442e41d73061c7952fbf2fa3fb36bdc1bc139cd54"
+    },
+    {
+      "id": "receipt",
+      "kind": "payment_proof",
+      "terms": [],
+      "file": "scripts/fixtures/media-models-1510/receipt.png",
+      "sha256": "a0dfaf215dc079851c2c879db4d0f801a899fe71e7ef4e5f5d801c0bc60b75ec"
+    },
+    {
+      "id": "large",
+      "kind": "order",
+      "file": "scripts/fixtures/media-models-1510/large.png",
+      "terms": [
+        "ramen",
+        "persona 9"
+      ],
+      "sha256": "9be7a23599118a2a3cecb5b5057a3d598fb3232af2dc05ba33dc9b3429e47d12"
+    }
+  ],
+  "audios": [
+    {
+      "id": "wings",
+      "text": "Me hace el favor, me envía un combo de alitas con gaseosa Pepsi para el conjunto residencial Pío doce. Muchas gracias.",
+      "terms": [
+        "combo",
+        "alitas",
+        "pepsi",
+        "pío"
+      ],
+      "file": "scripts/fixtures/media-models-1510/wings.ogg",
+      "sha256": "48ae1128f5fe2960a376018fbc181aef5682f89f3f59ffc7725d33027cad9061"
+    },
+    {
+      "id": "swap",
+      "text": "Me hace el favor, me envía un combo frito, a cambio de la gaseosa un madurito con bocadillo y queso. Muchas gracias.",
+      "terms": [
+        "combo",
+        "frito",
+        "cambio",
+        "gaseosa",
+        "bocadillo",
+        "queso"
+      ],
+      "file": "scripts/fixtures/media-models-1510/swap.ogg",
+      "sha256": "997eb8cc3ee48d0a33389d9732ba402383ac3c3a4e974820dae97f32896dcee9"
+    },
+    {
+      "id": "japan",
+      "text": "Dos ramen de miso, uno sin cebolla y otro normal, y tres tés sin azúcar. Para la calle nueve número veinte treinta.",
+      "terms": [
+        "dos",
+        "miso",
+        "sin cebolla",
+        "normal",
+        "tres",
+        "azúcar"
+      ],
+      "file": "scripts/fixtures/media-models-1510/japan.ogg",
+      "sha256": "566066d2ca65b1082bafb1cbe3fccc0255c341f242b54d7497df6c540b91417d"
+    },
+    {
+      "id": "wings-noise",
+      "file": "scripts/fixtures/media-models-1510/wings-noise.ogg",
+      "terms": [
+        "combo",
+        "alitas",
+        "pepsi",
+        "pio"
+      ],
+      "sha256": "b47f8a31a41a314960090a58ec03962677eb7697f11bf8f0dd5c913c77ca0e04"
+    },
+    {
+      "id": "silence",
+      "file": "scripts/fixtures/media-models-1510/silence.ogg",
+      "terms": [],
+      "empty": true,
+      "sha256": "2972bd2d38795896e20682aa9122149310f70f08711afb121846a4aaba32da52"
+    }
+  ],
+  "classifications": [
+    {
+      "id": "greeting",
+      "text": "Hola, buenas tardes",
+      "intent": "chitchat"
+    },
+    {
+      "id": "mixed-order",
+      "text": "Me envías dos ramen de miso sin cebolla para la calle 9 #20-30",
+      "intent": "order"
+    },
+    {
+      "id": "price",
+      "text": "Antes de pagar, cuánto vale el pedido?",
+      "intent": "question"
+    },
+    {
+      "id": "address",
+      "text": "Calle 48 sur 87 86",
+      "intent": "address"
+    }
+  ],
+  "generations": [
+    {
+      "id": "legacy-greeting",
+      "text": "Hola buenas tardes"
+    }
+  ]
+}

@@ -1,0 +1,358 @@
+{
+  "provenance": "Synthetic rendered images and offline Spanish eSpeak recordings; actual API extraction. Not customer media.",
+  "visionModel": "gpt-6-luna",
+  "audioModel": "gpt-transcribe",
+  "results": [
+    {
+      "id": "single",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 2603,
+      "output": {
+        "kind": "order",
+        "textForBot": "código 98",
+        "visibleText": "Combo De Pollo Broaster\nCódigo #98\nPapa francesa, yuca, arepa y bebida 1.5L\n$55.000\nAñadir",
+        "reply": ""
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 2601,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 1578,
+            "completion_tokens": 73,
+            "total_tokens": 1651,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cart",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 2237,
+      "output": {
+        "kind": "order",
+        "textForBot": "2 x Pollo Frito (código #1), arepas fritas\n1 x Churrasco (código #17), término 3/4\n2 x Sopa De Ajiaco (código #38), sin arroz",
+        "visibleText": "Tu pedido — productos seleccionados\n\n2 x 1 Pollo Frito — código #1\nArepas fritas\n\n1 x Churrasco — código #17\nTérmino 3/4\n\n2 x Sopa De Ajiaco — código #38\nSin arroz\n\nTotal $141.000"
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 2236,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 1578,
+            "completion_tokens": 148,
+            "total_tokens": 1726,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "japan",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 2355,
+      "output": {
+        "kind": "order",
+        "textForBot": "2 x Ramen De Miso (código 801), sin cebolla\n1 x Maki Vegetal (código 802)\n3 x Té De Jazmín (código 803), sin azúcar",
+        "visibleText": "Tu pedido — seleccionado\n2 x Ramen De Miso — código #801\nSin cebolla\n1 x Maki Vegetal — código #802\n3 x Té De Jazmín — código #803\nSin azúcar"
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 2354,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 1578,
+            "completion_tokens": 119,
+            "total_tokens": 1697,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "menu",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 1562,
+      "output": {
+        "kind": "unclear",
+        "textForBot": "",
+        "visibleText": "MENÚ — elige lo que te guste\nRamen De Miso #801 — $24.000\nMaki Vegetal #802 — $18.000\nTé De Jazmín #803 — $5.000",
+        "reply": "¿Cuál de estas opciones te gustaría pedir?"
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 1561,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 1578,
+            "completion_tokens": 91,
+            "total_tokens": 1669,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "receipt",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 2218,
+      "output": {
+        "kind": "payment_proof",
+        "textForBot": "",
+        "visibleText": "COMPROBANTE DE TRANSFERENCIA\nNequi\nEstado: enviada\nValor: $50.000\nReferencia de prueba: SIMULADA\nNo es un pedido de comida",
+        "reply": "Recibimos el comprobante. Gracias."
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 2217,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 1578,
+            "completion_tokens": 82,
+            "total_tokens": 1660,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "wings",
+      "kind": "audios",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 2133,
+      "durationSeconds": 7.973375,
+      "estimatedAudioCostUsd": 0.0006,
+      "output": "Me hace el favor, me envía un combo de alitas con gaseosa Pepsi para el conjunto residencial Pio XII. Muchas gracias.",
+      "requests": [
+        {
+          "endpoint": "audio/transcriptions",
+          "status": 200,
+          "latencyMs": 2037,
+          "model": null,
+          "usage": {
+            "type": "duration",
+            "seconds": 8
+          }
+        }
+      ],
+      "reportedSeconds": 8,
+      "audioCostBasis": "provider_duration"
+    },
+    {
+      "id": "swap",
+      "kind": "audios",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 1752,
+      "durationSeconds": 7.924708,
+      "estimatedAudioCostUsd": 0.0006,
+      "output": "Me hace el favor, me envía un combo frito a cambio de la gaseosa, un madurito con bocadillo y queso. Muchas gracias.",
+      "requests": [
+        {
+          "endpoint": "audio/transcriptions",
+          "status": 200,
+          "latencyMs": 1671,
+          "model": null,
+          "usage": {
+            "type": "duration",
+            "seconds": 8
+          }
+        }
+      ],
+      "reportedSeconds": 8,
+      "audioCostBasis": "provider_duration"
+    },
+    {
+      "id": "japan",
+      "kind": "audios",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 993,
+      "durationSeconds": 7.423417,
+      "estimatedAudioCostUsd": 0.0006,
+      "output": "Dos ramen de miso, uno sin cebolla y otro normal, y tres tés sin azúcar, para la calle nueve número veinte treinta.",
+      "requests": [
+        {
+          "endpoint": "audio/transcriptions",
+          "status": 200,
+          "latencyMs": 913,
+          "model": null,
+          "usage": {
+            "type": "duration",
+            "seconds": 8
+          }
+        }
+      ],
+      "reportedSeconds": 8,
+      "audioCostBasis": "provider_duration"
+    },
+    {
+      "id": "wings-noise",
+      "kind": "audios",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 1609,
+      "durationSeconds": 7.973375,
+      "estimatedAudioCostUsd": 0.0006,
+      "output": "Me hace el favor, me envía un combo de alitas con gaseosa Pepsi para el conjunto residencial Pionote. Muchas gracias.",
+      "requests": [
+        {
+          "endpoint": "audio/transcriptions",
+          "status": 200,
+          "latencyMs": 1505,
+          "model": null,
+          "usage": {
+            "type": "duration",
+            "seconds": 8
+          }
+        }
+      ],
+      "reportedSeconds": 8,
+      "audioCostBasis": "provider_duration"
+    },
+    {
+      "id": "silence",
+      "kind": "audios",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 837,
+      "durationSeconds": 3.0065,
+      "estimatedAudioCostUsd": 0.000225,
+      "output": null,
+      "requests": [
+        {
+          "endpoint": "audio/transcriptions",
+          "status": 200,
+          "latencyMs": 756,
+          "model": null,
+          "usage": {
+            "type": "duration",
+            "seconds": 3
+          }
+        }
+      ],
+      "reportedSeconds": 3,
+      "audioCostBasis": "provider_duration"
+    },
+    {
+      "id": "large",
+      "kind": "images",
+      "accepted": true,
+      "problems": [],
+      "latencyMs": 5454,
+      "output": {
+        "kind": "order",
+        "textForBot": "1 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 1\n2 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 2\n3 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 3\n1 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 4\n2 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 5\n3 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 6\n1 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 7\n2 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 8\n3 x Ramen De Miso (código 801) — sin cebolla, salsa aparte, para persona 9",
+        "visibleText": "Tu pedido — seleccionado\n1 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 1\n2 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 2\n3 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 3\n1 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 4\n2 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 5\n3 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 6\n1 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 7\n2 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 8\n3 x Ramen De Miso — código #801\nNota: sin cebolla, salsa aparte, para persona 9"
+      },
+      "requests": [
+        {
+          "endpoint": "chat/completions",
+          "status": 200,
+          "latencyMs": 5451,
+          "model": "gpt-6-luna",
+          "usage": {
+            "prompt_tokens": 2925,
+            "completion_tokens": 501,
+            "total_tokens": 3426,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "visionUsage": {
+    "model": "gpt-6-luna",
+    "requests": 5,
+    "successfulResponses": 5,
+    "responsesWithUsage": 5,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 7890,
+    "cachedPromptTokens": 0,
+    "completionTokens": 513,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": 0.0010455,
+    "priceDate": "2026-10-15",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  }
+}
