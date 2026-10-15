@@ -1,0 +1,433 @@
+{
+  "baseCommit": "ff730c46",
+  "includesWorkingTreeCompletenessFix": true,
+  "kind": "development_retest_not_holdout",
+  "model": "gpt-6.1-sol",
+  "provider": "actual Responses API",
+  "transports": "isolated mocks; no Meta, maps, payments or external orders",
+  "acceptedConversations": 1,
+  "turnCount": 4,
+  "notesManuallyVerified": true,
+  "sourcePrice": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+  "reportedCostUsd": 0.045018199999999994,
+  "apiUsage": {
+    "model": "gpt-6.1-sol",
+    "requests": 6,
+    "successfulResponses": 6,
+    "responsesWithUsage": 6,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 55706,
+    "cachedPromptTokens": 36602,
+    "completionTokens": 315,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": 0.045018199999999994,
+    "priceDate": "2026-10-15",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  },
+  "requestTimingsMs": [
+    3701,
+    2847,
+    2770,
+    1545,
+    2269,
+    2205
+  ],
+  "turns": [
+    {
+      "text": "Buenas noches, para la oficina me envías un Pack De Gyozas sin cebolla, dos Ramen De Miso y tres Te De Jazmin sin azúcar. Si no venden flan, no lo cambien por otro postre. Gracias.",
+      "latencyMs": 9701,
+      "cart": [
+        {
+          "productId": 8813,
+          "name": "Pack De Gyozas",
+          "code": 8813,
+          "unitPrice": 23000,
+          "quantity": 1,
+          "note": "Sin cebolla",
+          "attributes": []
+        },
+        {
+          "productId": 8814,
+          "name": "Ramen De Miso",
+          "code": 8814,
+          "unitPrice": 21000,
+          "quantity": 2,
+          "attributes": []
+        },
+        {
+          "productId": 8815,
+          "name": "Te De Jazmin",
+          "code": 8815,
+          "unitPrice": 5000,
+          "quantity": 3,
+          "note": "Sin azúcar",
+          "attributes": []
+        }
+      ],
+      "replies": [
+        "Por ahora no manejamos flan y no agregué otro postre en su lugar.\n\nListo ✅ *Pack De Gyozas*, *Ramen De Miso ×2*, *Te De Jazmin ×3*\n📝 _Sin cebolla_\n📝 _Sin azúcar_\n\n¿*Algo más*?"
+      ],
+      "tools": [
+        {
+          "origin": "model_call",
+          "name": "resolve_multi_order",
+          "args": {
+            "text": "Buenas noches, para la oficina me envías un Pack De Gyozas sin cebolla, dos Ramen De Miso y tres Te De Jazmin sin azúcar. Si no venden flan, no lo cambien por otro postre. Gracias."
+          },
+          "result": {
+            "ok": true,
+            "confident": [
+              {
+                "segment": "Pack De Gyozas sin cebolla",
+                "id": 8813,
+                "code": 8813,
+                "name": "Pack De Gyozas",
+                "price": 23000,
+                "category": null,
+                "description": "Seis gyozas vegetales con repollo y cebolla",
+                "hasAttributes": false,
+                "attributes": [],
+                "score": 534,
+                "quantity": 1,
+                "selectedAttributes": {
+                  "status": "complete",
+                  "attributes": []
+                }
+              },
+              {
+                "segment": "dos Ramen De Miso",
+                "id": 8814,
+                "code": 8814,
+                "name": "Ramen De Miso",
+                "price": 21000,
+                "category": null,
+                "description": "Caldo de miso con tofu y fideos",
+                "hasAttributes": false,
+                "attributes": [],
+                "score": 100,
+                "quantity": 2,
+                "selectedAttributes": {
+                  "status": "complete",
+                  "attributes": []
+                }
+              },
+              {
+                "segment": "tres Te De Jazmin sin azúcar.",
+                "id": 8815,
+                "code": 8815,
+                "name": "Te De Jazmin",
+                "price": 5000,
+                "category": null,
+                "description": "Té de jazmín preparado al momento",
+                "hasAttributes": false,
+                "attributes": [],
+                "score": 100,
+                "quantity": 1,
+                "selectedAttributes": {
+                  "status": "complete",
+                  "attributes": []
+                }
+              }
+            ],
+            "needsAttributes": [],
+            "ambiguous": [],
+            "unresolved": [
+              "oficina me envías"
+            ],
+            "completeness": "requires_review",
+            "unaccountedMentions": [],
+            "hint": "Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas \"sí\" a la vez. add_item solo de confident/needsAttributes con productId."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 8813,
+            "quantity": 1,
+            "note": "Sin cebolla"
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 8813,
+              "code": 8813,
+              "name": "Pack De Gyozas",
+              "price": 23000,
+              "category": null,
+              "description": "Seis gyozas vegetales con repollo y cebolla",
+              "hasAttributes": false,
+              "attributes": []
+            },
+            "quantity": 1,
+            "note": "Sin cebolla",
+            "attributes": null,
+            "hint": null
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 8814,
+            "quantity": 2
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 8814,
+              "code": 8814,
+              "name": "Ramen De Miso",
+              "price": 21000,
+              "category": null,
+              "description": "Caldo de miso con tofu y fideos",
+              "hasAttributes": false,
+              "attributes": []
+            },
+            "quantity": 2,
+            "note": null,
+            "attributes": null,
+            "hint": null
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 8815,
+            "quantity": 3,
+            "note": "Sin azúcar"
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 8815,
+              "code": 8815,
+              "name": "Te De Jazmin",
+              "price": 5000,
+              "category": null,
+              "description": "Té de jazmín preparado al momento",
+              "hasAttributes": false,
+              "attributes": []
+            },
+            "quantity": 3,
+            "note": "Sin azúcar",
+            "attributes": null,
+            "hint": null
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "search_menu",
+          "args": {
+            "query": "flan"
+          },
+          "result": {
+            "ok": true,
+            "query": "flan",
+            "results": [],
+            "hint": "Sin coincidencias. Si pidió un plato, di que por ahora no lo manejamos y ofrece el link del menú. Si no es un pedido (queja, saludo, pregunta), respóndelo en una frase. NO set_address si no es un lugar. NO trates la frase completa como nombre de plato."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Antes de seguir, cuánto vale todo eso?",
+      "latencyMs": 8,
+      "cart": [
+        {
+          "productId": 8813,
+          "name": "Pack De Gyozas",
+          "code": 8813,
+          "unitPrice": 23000,
+          "quantity": 1,
+          "note": "Sin cebolla",
+          "attributes": []
+        },
+        {
+          "productId": 8814,
+          "name": "Ramen De Miso",
+          "code": 8814,
+          "unitPrice": 21000,
+          "quantity": 2,
+          "attributes": []
+        },
+        {
+          "productId": 8815,
+          "name": "Te De Jazmin",
+          "code": 8815,
+          "unitPrice": 5000,
+          "quantity": 3,
+          "note": "Sin azúcar",
+          "attributes": []
+        }
+      ],
+      "replies": [
+        "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Pack De Gyozas* · *$23.000*\n   📝 _Sin cebolla_\n*2.* *Ramen De Miso* ×2 · $21.000 c/u → *$42.000*\n*3.* *Te De Jazmin* ×3 · $5.000 c/u → *$15.000*\n   📝 _Sin azúcar_\n────────────\nSubtotal $80.000 · Dom. según dir.\n*Total $80.000*\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*)."
+      ],
+      "tools": []
+    },
+    {
+      "text": "Deja solo dos Te De Jazmin, no dos más",
+      "latencyMs": 6246,
+      "cart": [
+        {
+          "productId": 8813,
+          "name": "Pack De Gyozas",
+          "code": 8813,
+          "unitPrice": 23000,
+          "quantity": 1,
+          "note": "Sin cebolla",
+          "attributes": []
+        },
+        {
+          "productId": 8814,
+          "name": "Ramen De Miso",
+          "code": 8814,
+          "unitPrice": 21000,
+          "quantity": 2,
+          "attributes": []
+        },
+        {
+          "productId": 8815,
+          "name": "Te De Jazmin",
+          "code": 8815,
+          "unitPrice": 5000,
+          "quantity": 2,
+          "note": "Sin azúcar",
+          "attributes": []
+        }
+      ],
+      "replies": [
+        "Listo, quedan solo dos Te De Jazmin sin azúcar; lo demás sigue igual."
+      ],
+      "tools": [
+        {
+          "origin": "model_call",
+          "name": "get_cart",
+          "args": {},
+          "result": {
+            "ok": true,
+            "lines": [
+              {
+                "productId": 8813,
+                "name": "Pack De Gyozas",
+                "quantity": 1,
+                "note": "Sin cebolla",
+                "attributes": [],
+                "cartLineIndex": 0
+              },
+              {
+                "productId": 8814,
+                "name": "Ramen De Miso",
+                "quantity": 2,
+                "attributes": [],
+                "cartLineIndex": 1
+              },
+              {
+                "productId": 8815,
+                "name": "Te De Jazmin",
+                "quantity": 3,
+                "note": "Sin azúcar",
+                "attributes": [],
+                "cartLineIndex": 2
+              }
+            ],
+            "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "update_item",
+          "args": {
+            "productId": 8815,
+            "cartLineIndex": 2,
+            "quantity": 2
+          },
+          "result": {
+            "ok": true,
+            "productId": 8815,
+            "cartLineIndex": 2,
+            "hint": "Cambio aceptado. Conserva las otras líneas."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Una pregunta, cuánto cuesta todo esto?",
+      "latencyMs": 9,
+      "cart": [
+        {
+          "productId": 8813,
+          "name": "Pack De Gyozas",
+          "code": 8813,
+          "unitPrice": 23000,
+          "quantity": 1,
+          "note": "Sin cebolla",
+          "attributes": []
+        },
+        {
+          "productId": 8814,
+          "name": "Ramen De Miso",
+          "code": 8814,
+          "unitPrice": 21000,
+          "quantity": 2,
+          "attributes": []
+        },
+        {
+          "productId": 8815,
+          "name": "Te De Jazmin",
+          "code": 8815,
+          "unitPrice": 5000,
+          "quantity": 2,
+          "note": "Sin azúcar",
+          "attributes": []
+        }
+      ],
+      "replies": [
+        "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Pack De Gyozas* · *$23.000*\n   📝 _Sin cebolla_\n*2.* *Ramen De Miso* ×2 · $21.000 c/u → *$42.000*\n*3.* *Te De Jazmin* ×2 · $5.000 c/u → *$10.000*\n   📝 _Sin azúcar_\n────────────\nSubtotal $75.000 · Dom. según dir.\n*Total $75.000*\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*)."
+      ],
+      "tools": []
+    }
+  ],
+  "limitations": [
+    "One previously seen development case, not independent acceptance sample",
+    "Two total inquiries handled without inference",
+    "No channel delivery, original audio or image benchmark",
+    "Cost excludes Meta, maps, infrastructure, taxes; no profitability claim"
+  ],
+  "sourceSnapshot": "/tmp/ppp-completeness-source.json",
+  "tests": {
+    "agent": {
+      "suites": 2,
+      "passed": 82,
+      "log": "/tmp/ppp-completeness-agents.log"
+    },
+    "typescript": {
+      "passed": true,
+      "log": "/tmp/ppp-completeness-tsc.log"
+    },
+    "complement": {
+      "suites": 19,
+      "passed": 98,
+      "seconds": 6.304,
+      "log": "/tmp/ppp-completeness-complement.log"
+    },
+    "whatsapp": {
+      "status": "passed",
+      "suites": 57,
+      "passed": 5541,
+      "seconds": 493.304,
+      "log": "/tmp/ppp-completeness-full.log"
+    },
+    "combinedDisjointTotals": {
+      "suites": 76,
+      "passed": 5639
+    }
+  },
+  "sourceUnchangedDuringTests": true
+}

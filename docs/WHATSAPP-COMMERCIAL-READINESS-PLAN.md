@@ -8,6 +8,12 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
+## Completitud: avance del 15/10, siguiente tanda
+
+El ensayo de oficina ya completó los cuatro turnos con el modelo real: una conversación de desarrollo aceptada,6solicitudesHTTP200,notas/cantidades correctas y totales80000→75000. La herramienta ahora separa la compra de la consulta condicional y no declara «Multi claro» como garantía de completitud. Evidencia en whatsapp-tool-completeness-validation-1510.json; gasto estimadoUSD0.0450182,excluye transporte/infraestructura/impuestos. Es una observación, no distribución de costo ni prueba de rentabilidad. Tope operativo145/141/4. Validación global y despliegue de esta corrección pendientes al escribir; Main intacta.
+
+Siguiente: cerrar la global, integrar en staging; luego una muestra nueva de otra carta con consulta intercalada, opción incluida y corrección durante checkout. Mantener los oráculos definidos antes de ejecutar, distinguir pruebas gratuitas/modelo/canal y detenerse al primer fallo. No gastar las cuatro solicitudes restantes en una conversación que probablemente necesite más: reservar un tope suficiente antes de comenzar. Las pruebas de WhatsApp original y audio real siguen siendo otra puerta del piloto.
+
 ## Seguimiento de costo y completitud — 15/10, posterior a la corrección de fotos
 
 Nueva muestra real aislada con Sol:4HTTP200,acciones correctas para6ítems/notas,pero sin respuesta final porque el runner alcanzó el tope de4. Resultado incompleto; no aceptado como conversaciónE2E. Costo parcial USD0.0234683 y11.828s para el turno interrumpido; no extrapolar a precio/latencia de un pedido terminado. Presupuesto operativo135/135/0; no es una nueva limitación dictada por el usuario. Las cifras anteriores de4solicitudes disponibles son históricas.

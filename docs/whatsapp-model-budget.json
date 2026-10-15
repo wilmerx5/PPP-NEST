@@ -1,51 +1,26 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 135,
-  "usedRequests": 135,
-  "remainingRequests": 0,
-  "scope": "Current user-authorized round only; not standing authorization",
+  "authorizedRequests": 145,
+  "usedRequests": 141,
+  "remainingRequests": 4,
+  "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T22:31:50.832Z",
+  "lastAttemptAt": "2026-10-15T23:00:20.613Z",
   "latestEvaluation": {
     "date": "2026-10-15",
-    "baseCommit": "307ecd16",
+    "baseCommit": "ff730c46",
+    "includesWorkingTreeCompletenessFix": true,
     "model": "gpt-6.1-sol",
-    "scope": "One synthetic four-turn scenario attempted through isolated full router; only first turn ran before request cap.",
-    "requests": 4,
-    "httpSuccessful": 4,
-    "acceptedConversations": 0,
-    "incompleteConversations": 1,
-    "budgetExhausted": true,
-    "initialCartCorrect": true,
-    "notesCorrect": true,
-    "estimatedPartialCostUsd": 0.0234683,
-    "usage": {
-      "model": "gpt-6.1-sol",
-      "requests": 4,
-      "successfulResponses": 4,
-      "responsesWithUsage": 4,
-      "usageComplete": true,
-      "uncertainResponses": 0,
-      "transportErrors": {},
-      "promptTokens": 36512,
-      "cachedPromptTokens": 27103,
-      "completionTokens": 194,
-      "reasoningTokens": 0,
-      "httpErrors": {},
-      "providerErrorCodes": {},
-      "estimatedReportedCostUsd": 0.0234683,
-      "priceDate": "2026-10-15",
-      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
-    },
-    "reportFixture": "scripts/fixtures/whatsapp-sol-office-conditional-capture-1510.json",
-    "limitations": [
-      "Not an approved end-to-end conversation.",
-      "Final model answer and remaining turns were not obtained in the paid run.",
-      "Offline continuation uses a simulated update tool result; it is not another Sol response.",
-      "No WhatsApp, maps or external orders."
-    ]
+    "scope": "Four-turn synthetic office development retest through isolated full router",
+    "requests": 6,
+    "httpSuccessful": 6,
+    "acceptedConversations": 1,
+    "incompleteConversations": 0,
+    "budgetExhausted": false,
+    "estimatedReportedCostUsd": 0.045018199999999994,
+    "report": "docs/whatsapp-tool-completeness-validation-1510.json"
   },
   "authorizationExtensions": [
     {
@@ -617,6 +592,12 @@
       "authorization": "User explicitly requests paid validation and replacement of vision/audio with current models, including costs",
       "operationalBatchExtension": 16,
       "note": "Agent-selected 20-call headroom including prior remaining4; synthetic fixtures, stop on failure, no Meta or external orders."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "Standing user authorization for moderate paid validation; user asks to continue plan",
+      "operationalBatchExtension": 10,
+      "note": "Agent-selected ceiling for completing the office four-turn development retest after offline completeness correction. Stop first failure. Not a numeric limit dictated by user."
     }
   ]
 }

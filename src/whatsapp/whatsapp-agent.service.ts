@@ -1275,7 +1275,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       case 'resolve_multi_order': {
         const raw = String(args.text || '').trim();
         if (!raw) return JSON.stringify({ ok: false, error: 'text vacío' });
-        const multi = this.catalogService.resolveMultiProductOrder(raw, ctx.products);
+        const purchaseScope = this.catalogService.conditionalPurchaseText?.(raw, ctx.products) || raw;
+        const multi = this.catalogService.resolveMultiProductOrder(purchaseScope, ctx.products);
         if (!multi) {
           return JSON.stringify({
             ok: false,
@@ -1283,6 +1284,16 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             hint: 'No parece multi-pedido. Usa search_menu por plato.',
           });
         }
+        // A successful parse is not a completeness guarantee. Expose catalog
+        // mentions omitted by the parser without promoting them to purchases:
+        // they may be included accompaniments or questions in a later clause.
+        const represented = new Set([
+          ...multi.confident.map(c => c.product.id),
+          ...multi.needsAttributes.map(c => c.product.id),
+          ...multi.ambiguous.flatMap(c => c.candidates.map(p => p.id)),
+        ]);
+        const unaccountedMentions = (this.catalogService.findAllProductsEmbeddedInMessage?.(purchaseScope, ctx.products) || [])
+          .filter(product => !represented.has(product.id));
         const card = (p: WhatsappCatalogProduct) => this.productCard(p);
         return JSON.stringify({
           ok: true,
@@ -1303,11 +1314,15 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             candidates: a.candidates.map(card),
           })),
           unresolved: multi.unresolved,
+          completeness: 'requires_review',
+          unaccountedMentions: unaccountedMentions.map(card),
           hint:
             multi.ambiguous.length || multi.unresolved.length
               ? 'Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas "sí" a la vez. ' +
                 'add_item solo de confident/needsAttributes con productId.'
-              : 'Multi claro. add_item por cada confident (y needsAttributes con defaults del sistema). Reply corto o vacío.',
+              : 'Revisa el mensaje completo y unaccountedMentions antes de finalizar: el parser puede omitir productos. ' +
+                'Una mención puede ser acompañamiento o consulta, no una compra. Usa search_menu para resolver lo omitido; ' +
+                'add_item solo de productos pedidos y conserva cantidades y notas.',
         });
       }
       case 'add_item': {

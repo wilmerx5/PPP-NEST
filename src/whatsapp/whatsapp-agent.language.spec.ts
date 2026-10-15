@@ -309,3 +309,34 @@ describe('Compra de un paquete con condición de inventario — dos catálogos',
   });
  }
 });
+
+describe('Multi-order tool completeness contract', () => {
+  const officeMenu = JSON.parse(readFileSync(join(__dirname, '../../scripts/fixtures/whatsapp-sol-office-menu-1510.json'), 'utf8'));
+  function resolve(text: string, menu = officeMenu) {
+    const actions: AiOrderAction = {};
+    const result = JSON.parse((agent as any).executeTool('resolve_multi_order', {text}, {
+      products: menu, byId: new Map(menu.map(p => [p.id, p])), actions, userMessage: text,
+      cart: [], setNeedsAttr: () => {},
+    }));
+    return {result, actions};
+  }
+  it.each([
+    'Un Pack De Gyozas, dos Ramen De Miso y tres Te De Jazmin sin azúcar',
+    'Buenas noches, para la oficina me envías un Pack De Gyozas sin cebolla, dos Ramen De Miso y tres Te De Jazmin sin azúcar. Si no venden flan, no lo cambien por otro postre. Gracias.',
+  ])('does not promise exhaustive interpretation: %s', text => {
+    const {result, actions} = resolve(text);
+    expect(result.ok).toBe(true);
+    expect(result.completeness).toBe('requires_review');
+    expect(result.hint).not.toContain('Multi claro');
+    expect(actions).toEqual({});
+    const accounted = [...result.confident, ...result.needsAttributes, ...result.unaccountedMentions];
+    expect(accounted.some(p => p.id === 8815)).toBe(true);
+  });
+  it('does not treat a product mentioned only in a conditional availability question as an omitted purchase', () => {
+    const menu = [...officeMenu, {id:8816, code:8816, name:'Flan De Coco', price:6000, attributes:[], availableNow:true}];
+    const {result, actions} = resolve('Quiero un Pack De Gyozas y dos Ramen De Miso. Si tienen Flan De Coco, cuánto cuesta?', menu);
+    expect(result.ok).toBe(true);
+    expect(result.unaccountedMentions.some(p => p.id === 8816)).toBe(false);
+    expect(actions).toEqual({});
+  });
+});

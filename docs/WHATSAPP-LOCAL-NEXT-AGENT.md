@@ -1,3 +1,19 @@
+## Cierre global de completitud — 15/10
+
+57suites WhatsApp/5541tests y19suites complementarias/98tests aprobadas en dos ejecuciones disjuntas con la misma fuente intacta: total76suites/5639tests. TypeScript aprobado. La conversación real de cuatro turnos pasó con6solicitudes. Código listo para desplegar en staging; ver informe whatsapp-tool-completeness-validation-1510.json.
+
+## Actualización 15/10: conversación completa y completitud de herramientas
+
+Cambio local aún sin desplegar al escribir esta entrada. resolve_multi_order analiza la compra previa a una condición con conditionalPurchaseText; devuelve completeness=requires_review y menciones no contabilizadas como pistas, nunca compras automáticas. El té del caso de oficina ahora aparece en el resultado del parser; no se necesitan las búsquedas de té observadas en la captura anterior. No afirmar reducción estadística de costo/rondas: la ejecución anterior quedó incompleta.
+
+Validación real de desarrollo: cuatro turnos completos aceptados, seis solicitudes HTTP200 a Sol/Responses, cero errores de agente/proveedor. Gyozas1 sin cebolla,ramen2,té3 sin azúcar; consulta total80000; corrección absoluta té2 conservando nota; total75000. Dos consultas de total deterministas. Respuestas y notas revisadas además de los oráculos automáticos. Tiempo inicial9701ms y corrección6246ms; solicitudes3701,2847,2770,1545,2269,2205ms. Costo estimadoUSD0.0450182 a tarifas oficiales estándar, sin Meta/mapas/infraestructura/impuestos. Una sola conversación previamente usada en desarrollo; no holdout ni validación del canal. Evidencia durable docs/whatsapp-tool-completeness-validation-1510.json. El ejemplo de ayuda de cantidades del resumen todavía menciona ajiaco/menudencias en la carta ficticia: oportunidad de redacción, no pérdida del pedido.
+
+Tope operativo ampliado por el agente bajo autorización humana vigente:145acumuladas/141usadas/4restantes; espejo privado sincronizado antes de red y después del informe. No se reiniciaron contadores. Clave temporal eliminada tras el ensayo. Suites del agente82tests/2suites y TypeScript aprobados. Complemento19suites/98tests aprobado. Global WhatsApp en curso; no declarar desplegado hasta verificar cierre y contenedor. Main intacta.
+
+## Avance local 15 octubre, 17:54 Bogotá: completitud de resolve_multi_order
+
+Cambio local, todavía sin desplegar: la herramienta analiza el tramo de compra previo a una consulta condicional usando conditionalPurchaseText. Esto recupera el té omitido en el caso de oficina capturado con Sol. Devuelve completeness=requires_review y unaccountedMentions como información, nunca como autorización automática de compra; elimina la afirmación «Multi claro». Tres contratos nuevos cubren pedido simple, pedido con postre condicional y consulta de producto disponible que no debe añadirse. Suites de agente y TypeScript pasan; evidencia /tmp/ppp-completeness-agents.log y /tmp/ppp-completeness-tsc.log. No hubo llamadas pagadas. Pendiente validar suite WhatsApp global antes de integrar/desplegar; luego medir conversación completa con modelo real, con presupuesto acotado. Main y servidor sin cambios en esta tanda.
+
 # Continuación local de PPP WhatsApp
 
 ## Desplegado: notas explícitas de foto y evaluación real acotada (15/10)
