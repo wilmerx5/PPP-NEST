@@ -1,6 +1,6 @@
 # Continuación local de PPP WhatsApp
 
-Estado verificado al 14/10/2026, 19:59 Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
+Estado verificado al 14/10/2026, 22:34 Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
 
 ## Objetivo y alcance autorizado
 
@@ -12,7 +12,7 @@ No declarar vendible por cantidad de tests ni asignar un porcentaje inventado. L
 
 - Repo de trabajo: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`.
 - Rama permanente: `staging`; remoto `https://github.com/wilmerx5/PPP-NEST.git`.
-- HEAD local/remoto al escribir este relevo: `2739cb38` (documentación). Código desplegado: `350c4d2b`.
+- Código verificado desplegado: `d1c7d8fc`; puede haber un commit posterior solo de documentación. Comprobar HEAD local/remoto antes de editar.
 - Main local: `/home/levi/Documents/programming/PPP/PPP-NEST`, rama `Main`, `d9241abe`; producción también `d9241abe`. Ambos se verificaron intactos.
 - `/home/levi/Documents/Codex/2026-10-09/t` es la carpeta del chat, NO el checkout activo. Hay copias antiguas en `work/`; no editar esas copias ni usarlas para desplegar.
 - Leer `AGENTS.md`, este documento, el final del historial y `docs/whatsapp-model-budget.json`. Revisar status, fetch y comparar HEAD antes de editar. Si aparecen cambios ajenos, preservarlos.
@@ -31,11 +31,11 @@ git rev-parse --short origin/staging
 
 ## Estado aprobado y límites de la evidencia
 
-- Global final: **67 suites / 5.291 tests aprobados**, 929.017 s.
-- 26 regresiones nuevas en la última tanda, 76 focalizadas aprobadas y TypeScript sin errores. Fuente congelada y snapshot idéntico al finalizar.
-- Logs locales: `/tmp/ppp-office-recovery-full.log`, `/tmp/ppp-office-recovery-focused-final.log`, `/tmp/ppp-office-recovery-tsc-final.log`, `/tmp/ppp-office-recovery-source.json`.
-- Staging: `350c4d2b`, running/healthy; imagen activa y candidate iguales: `sha256:e8f462ea9bd145db22c6bbc3622a1018a04dbad12f659381194a2ee3e6c5255f`. HTTP health ok, DB connected, circuit CLOSED.
-- Deploy/health: `/tmp/ppp-office-recovery-deploy.log`, `/tmp/ppp-office-recovery-verified-final.log`. `/tmp` puede desaparecer: el resumen verificado está en Git.
+- Global final: **67 suites / 5.353 tests aprobados**, 869.815 s.
+- 62 regresiones nuevas en la última tanda (incluye cambios locales preexistentes), 88 focalizadas aprobadas y TypeScript sin errores. Fuente congelada y snapshot idéntico al finalizar.
+- Logs locales: `/tmp/ppp-kitchen-local-full.log`, `/tmp/ppp-kitchen-local-final2.log`, `/tmp/ppp-kitchen-local-tsc-final.log`, `/tmp/ppp-kitchen-local-source.json`.
+- Staging: `d1c7d8fc`, running/healthy; imagen activa y candidate iguales: `sha256:667de89f18c7ce63f0573a6284ac2b0fad2b11433051cd8b11c9373702f150e0`. HTTP health ok, DB connected, circuit CLOSED.
+- Deploy/health: `/tmp/ppp-kitchen-local-deploy.log`, `/tmp/ppp-kitchen-local-verified-final.log`. `/tmp` puede desaparecer: el resumen verificado está en Git.
 - Modelo de texto real de esta tanda: **gpt-4.1-2025-04-14**, usando configuración privada de staging. No cambiar modelos por intuición ni afirmar una comparación nueva con producción; releer configuración si es necesario.
 - Agente activo en staging y producción en última comprobación de env: `WHATSAPP_AGENT_V1=true`. Esto no demuestra que todos los turnos lleguen al modelo: muchos handlers deterministas interceptan antes.
 - Jest simula modelo/Meta/persistencia/órdenes. El runner real usa router y modelo real, pero también aísla Meta, persistencia, cotización y órdenes. No equivale a WhatsApp real ni acredita percepción de audio/foto.
@@ -141,4 +141,4 @@ Producción: `/var/www/ppp-nest`, container `ppp_nest_api`, puerto3000; conserva
 
 Piloto supervisado pequeño, no venta autónoma certificada. Aceptar solo cuando preguntas no muten pedido/datos, correcciones se apliquen y retomen el paso pendiente, precios provengan de catálogo/cotización, ambigüedad no adivine y fallos críticos tengan contención humana. Falta evidencia de medios/canal y muestra independiente más amplia. Kamppo requiere además separación de catálogo/configuración y claves de sesión por tenant; menús ficticios no prueban aislamiento multitenant.
 
-Primera acción del siguiente agente: comprobar checkout/HEAD, leer el último cierre verificado y presupuesto agotado; trazar gratuitamente una compra con atributos/notas y consulta intercalada para extraer el contrato común. El cierre largo tiene correcciones locales validadas en la tanda posterior; revisar su estado final de deploy antes de duplicarlo. No necesita gastar API ni preguntar nuevamente por rama.
+Primera acción del siguiente agente: comprobar checkout/HEAD, leer el último cierre verificado y presupuesto agotado; trazar gratuitamente una compra con atributos/notas y consulta intercalada para extraer el contrato común. El cierre largo tiene correcciones validadas y desplegadas en d1c7d8fc; no duplicar esos casos ni dar por probado el retorno tras varios turnos de opciones. No necesita gastar API ni preguntar nuevamente por rama.
