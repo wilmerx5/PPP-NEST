@@ -1,14 +1,14 @@
 # Continuación local de PPP WhatsApp
 
-## Tanda en cierre: visión y audio vigentes (15/10)
+## Tanda vigente: visión y audio desplegados (15/10)
 
-Seleccionados y validados localmente Luna para visión/clasificación/respaldo y GPT-Transcribe para audio; Sol sigue como agente. **Nuevos overrides aún no desplegados** al escribir esta entrada. Ver `docs/WHATSAPP-MEDIA-MODELS.md` y `docs/whatsapp-media-model-validation-1510.json`.
+Seleccionados y validados localmente Luna para visión/clasificación/respaldo y GPT-Transcribe para audio; Sol sigue como agente. **Activos en staging, código a591d1f4**, verificados 2026-10-15T18:15:50.795454+00:00: running/healthy, imagen coincide con candidate, HTTP200/DBconnected, variables y bindings compilados comprobados. Main intacta. Ver `docs/WHATSAPP-MEDIA-MODELS.md` y `docs/whatsapp-media-model-validation-1510.json`.
 
 16 solicitudes reales aprobadas sobre medios sintéticos:6imágenes,5audios (incluye ruido/silencio),4clasificaciones,1saludo.35segundos reportados para ASR; costo estimado combinado USD0.004503. Carritos de visión PPP+japonés y2audios capturados pasan replay completo gratis; no afirmar voz real de clientes ni superioridad acústica frente a Whisper. Dos replays de texto usaron0nuevas llamadas de modelo (exit1 del runner por exigir alguna llamada, no por fallar los escenarios).
 
-192controles focalizados y6replays completos aprobados; TypeScript sin errores. Global definitiva aprobada: **76suites/5582tests**,20regresiones nuevas frente a23642b84,en826.223s. Fuente final intacta. Evidencia: `/tmp/ppp-media-model-final-full.log`; snapshot `/tmp/ppp-media-model-final-source.json`. TypeScript aprobado: /tmp/ppp-media-model-final-tsc.log. Publicar y activar en staging los overrides VISION/ASSIST=gpt-6-luna y AUDIO=gpt-transcribe, conservando AGENT=gpt-6.1-sol. Main intacta. Presupuesto135tope/131usadas/4restantes, registro+espejo sincronizados; no más llamadas pagadas necesarias para cerrar este bloque.
+192controles focalizados y6replays completos aprobados; TypeScript sin errores. Global definitiva aprobada: **76suites/5582tests**,20regresiones nuevas frente a23642b84,en826.223s. Fuente final intacta. Evidencia: `/tmp/ppp-media-model-final-full.log`; snapshot `/tmp/ppp-media-model-final-source.json`. TypeScript aprobado: /tmp/ppp-media-model-final-tsc.log. Activos en staging los overrides VISION/ASSIST=gpt-6-luna y AUDIO=gpt-transcribe, conservando AGENT=gpt-6.1-sol. Main intacta. Presupuesto135tope/131usadas/4restantes, registro+espejo sincronizados; no más llamadas pagadas necesarias para cerrar este bloque.
 
-Se corrigieron códigos de catálogo confundidos con órdenes y filas anotadas cuya identidad explícita se volvía ambigua. Fuente general, sin excepciones de IDs de PPP. Los archivos de medios exactos y hashes están versionados bajo scripts/fixtures/media-models-1510. No tomar el conteo global anterior como validación de estos cambios hasta que termine la nueva global.
+Se corrigieron códigos de catálogo confundidos con órdenes y filas anotadas cuya identidad explícita se volvía ambigua. Fuente general, sin excepciones de IDs de PPP. Los archivos de medios exactos y hashes están versionados bajo scripts/fixtures/media-models-1510. La nueva global pasó con snapshot intacto:76suites/5582tests;20regresiones nuevas. Próximo: pruebas humanas con fotos/audios originales y medición por tenant para Kamppo.
 
 ## Tanda vigente: reemplazo de modelo (15/10)
 

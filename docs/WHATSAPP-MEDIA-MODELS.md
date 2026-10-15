@@ -1,6 +1,6 @@
 # Modelos de medios y costos — 15/10/2026
 
-Selección: Sol sigue como agente de pedidos; Luna para visión, clasificación y respaldo JSON; GPT-Transcribe para archivos de voz. Validación local y global aprobadas:76suites/5582tests en826.223s,20regresiones nuevas, fuente intacta y TypeScript sin errores. Deploy pendiente al escribir este encabezado. Revisar la comprobación final del relevo antes de asumir activación.
+Selección: Sol sigue como agente de pedidos; Luna para visión, clasificación y respaldo JSON; GPT-Transcribe para archivos de voz. Validación local y global aprobadas:76suites/5582tests en826.223s,20regresiones nuevas, fuente intacta y TypeScript sin errores. **Desplegado y verificado en staging**, código a591d1f4, 2026-10-15T18:15:50.795454+00:00: running/healthy, imagen activa coincide con candidate, healthHTTP200/DBconnected y cuatro roles efectivos correctos. Main intacta. Revisar la comprobación final del relevo antes de asumir activación.
 
 ## Evidencia y alcance
 
@@ -28,10 +28,12 @@ Sol sigue siendo la partida a medir: los dos recorridos previos costaron aproxim
 
 ## Activación y prueba manual
 
-Después de global aprobada, staging usará WHATSAPP_AGENT_MODEL=gpt-6.1-sol, WHATSAPP_VISION_MODEL=gpt-6-luna, WHATSAPP_ASSIST_MODEL=gpt-6-luna y WHATSAPP_AUDIO_MODEL=gpt-transcribe. Guardar entorno previo para rollback; Main no se cambia. El ajuste DB histórico no se modifica: los overrides de las cuatro cargas definen los modelos efectivos. Retirar un override vuelve al ajuste anterior, que puede estar deprecado; no hacerlo sin revisar.
+Staging usa WHATSAPP_AGENT_MODEL=gpt-6.1-sol, WHATSAPP_VISION_MODEL=gpt-6-luna, WHATSAPP_ASSIST_MODEL=gpt-6-luna y WHATSAPP_AUDIO_MODEL=gpt-transcribe. Guardar entorno previo para rollback; Main no se cambia. El ajuste DB histórico no se modifica: los overrides de las cuatro cargas definen los modelos efectivos. Retirar un override vuelve al ajuste anterior, que puede estar deprecado; no hacerlo sin revisar.
 
 Prueba humana: foto real de carrito con cantidades y notas; audio natural de combo de alitas con bebida/dirección; audio con sustitución y cortesías. Revisar carrito, no solo transcripción. Usar staging, no confirmar pedidos externos. Si falla, conservar el original para distinguir percepción de interpretación.
 
 Fuentes oficiales consultadas: https://developers.openai.com/api/docs/models/gpt-transcribe ; https://developers.openai.com/api/docs/guides/speech-to-text ; https://developers.openai.com/api/docs/models/gpt-6-luna ; https://developers.openai.com/api/docs/deprecations . Los modelos elegidos son vigentes y no tienen retirada anunciada en la documentación consultada; ningún proveedor garantiza que nunca cambien.
 
 Evidencia final: /tmp/ppp-media-model-final-full.log, /tmp/ppp-media-model-final-source.json, /tmp/ppp-media-model-final-tsc.log. No se editó código/tests durante la global.
+
+Deploy verificado: `/tmp/ppp-media-model-deploy.log` y `/tmp/ppp-media-model-deploy-verified.json`. Bindings compilados de visión/assist/audio comprobados además de variables de entorno. Imagen anterior `ppp-nest-staging:pre-media-a591d1f4` y entorno privado `.env.staging.pre-media-a591d1f4` conservados para rollback. Solo documentación posterior al código no requiere reconstrucción.

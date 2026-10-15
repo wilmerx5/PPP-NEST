@@ -1,5 +1,7 @@
 # Reemplazo de modelo: selección y validación, 15/10/2026
 
+Actualización posterior: visión/assist Luna y audio GPT-Transcribe ya activos en staging; ver [validación de medios](WHATSAPP-MEDIA-MODELS.md). Las referencias a GPT-4.1/Whisper abajo describen la primera etapa, anterior a esta migración.
+
 ## Decisión
 
 Modelo elegido para la etapa de calidad del agente de pedidos: **gpt-6.1-sol**, esfuerzo low, Responses API, salida máxima 3000 tokens por propuesta (incluye razonamiento), deadline original del turno 25 segundos. No se amplió el plazo para disimular lentitud. Selección reversible por `WHATSAPP_AGENT_MODEL`; si no existe, se usa el ajuste compartido anterior. No hay un ganador estadístico: la muestra es pequeña y de desarrollo. Luna sigue siendo candidato de costo para una comparación más amplia.

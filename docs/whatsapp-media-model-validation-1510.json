@@ -9,7 +9,7 @@
     "assist": "gpt-6-luna",
     "audio": "gpt-transcribe"
   },
-  "status": "validated_pending_staging_deploy",
+  "status": "deployed_staging_ready_for_manual_media_tests",
   "actualRequests": 16,
   "providerReportedAudioSeconds": 35,
   "estimatedAudioUsd": 0.002625,
@@ -555,5 +555,25 @@
     "elapsedSeconds": 826.223,
     "sourceUnchanged": true,
     "typeScriptPassed": true
+  },
+  "deployment": {
+    "verifiedAt": "2026-10-15T18:15:50.795454+00:00",
+    "codeCommit": "a591d1f4",
+    "containerStatus": "running",
+    "containerHealth": "healthy",
+    "activeImage": "sha256:bfaab606ce3368506a38f9208a0d8ef59f4e40ce096aecbbc849bc26d1e79d75",
+    "activeImageMatchesCandidate": true,
+    "httpStatus": 200,
+    "healthStatus": "ok",
+    "database": "connected",
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe",
+      "visionBinding": true,
+      "assistBinding": true,
+      "audioBinding": true
+    }
   }
 }

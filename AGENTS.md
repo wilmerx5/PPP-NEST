@@ -3,7 +3,7 @@
 Antes de continuar el agente de WhatsApp, leer `docs/AGENT-HANDOFF-WHATSAPP.md`: estado verificado, próximos casos, rutas, presupuesto compartido y despliegue. Revisar también el estado actual del repositorio; el relevo se actualiza por tanda y sus límites deben comprobarse contra el código actual.
 
 ## Rama y colaboración
-- Agente de pedidos en staging: `WHATSAPP_AGENT_MODEL=gpt-6.1-sol` (Responses); visión/clasificación conservan su ajuste compartido y audio es independiente. Ver `docs/WHATSAPP-MODEL-COMPARISON.md` antes de cambiar modelos o interpretar resultados. No copiar el override al entorno del runner al comparar candidatos.
+- Modelos activos de staging: `WHATSAPP_AGENT_MODEL=gpt-6.1-sol` (Responses), `WHATSAPP_VISION_MODEL=gpt-6-luna`, `WHATSAPP_ASSIST_MODEL=gpt-6-luna`, `WHATSAPP_AUDIO_MODEL=gpt-transcribe`. Ver `docs/WHATSAPP-MEDIA-MODELS.md` para evidencia y costos; no usar el ajuste DB histórico para inferir los modelos efectivos. Ver `docs/WHATSAPP-MODEL-COMPARISON.md` antes de cambiar modelos o interpretar resultados. No copiar el override al entorno del runner al comparar candidatos.
 - La rama permanente de integración y pruebas es `staging` en `wilmerx5/PPP-NEST`; no usar las ramas históricas como fuente de deploy.
 - Antes de editar: leer estas instrucciones, revisar `git status`, traer `origin/staging` y comparar el HEAD. Preservar cambios ajenos y archivos privados.
 - Trabajar y publicar sobre `staging`. No crear nuevas ramas por rutina. No cambiar `Main`, fusionar a producción ni eliminar ramas sin solicitud del usuario.

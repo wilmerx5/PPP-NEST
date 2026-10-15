@@ -10,25 +10,30 @@
   "lastAttemptAt": "2026-10-15T17:56:28.327Z",
   "latestEvaluation": {
     "date": "2026-10-15",
-    "model": "gpt-6.1-sol",
-    "modelsCompared": [
-      "gpt-4.1-2025-04-14",
-      "gpt-6.1-sol",
-      "gpt-6-luna"
-    ],
-    "acceptedCompleteSolConversations": 2,
-    "independentHoldoutConversationsPassed": 0,
-    "attemptsThisTurn": 38,
-    "usedTotal": 115,
+    "selectedModels": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe",
+      "visionBinding": true,
+      "assistBinding": true,
+      "audioBinding": true
+    },
+    "actualRequests": 16,
+    "usedTotal": 131,
     "remaining": 4,
-    "report": "docs/whatsapp-model-comparison-1510.json",
-    "estimatedReportedTokensCostAllRunsUsd": 0.125462,
-    "deployedStagingCode": "fd4c2f0c",
+    "acceptedSyntheticMediaCases": 11,
+    "acceptedAssistCases": 5,
+    "estimatedReportedCostUsd": 0.004503,
+    "providerReportedAudioSeconds": 35,
+    "report": "docs/whatsapp-media-model-validation-1510.json",
+    "deployedStagingCode": "a591d1f4",
     "notes": [
-      "Development conversations; not a statistical model ranking",
-      "Luna visible response failures traced to backend rendering, not incorrect cart/model reply",
-      "One pre-network bridge preparation attempt counted; no absent usage assumed zero",
-      "No real Meta, payments, maps or external orders"
+      "Synthetic images and eSpeak voices; no original customer audio benchmark or WER claim",
+      "Both full audio transcript replays accepted with zero new inference requests",
+      "One media preflight failed locally before network because requested cap exceeded remaining; no extra debit",
+      "No Meta, payments, maps or external orders; Main untouched",
+      "Subscription profitability not established without per-tenant traffic and full cost accounting"
     ]
   },
   "authorizationExtensions": [
