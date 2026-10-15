@@ -17095,6 +17095,22 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    // A rejected purchase is not an invitation to rebuild it through another parser.
+    // Preserve the existing order; the model may have failed validation rather than recognition.
+    if (!agent.actions?.requestHuman && !agent.lookupDeliveryTime && !agent.lookupPlacedOrder &&
+      !params.placedOrderOnly && !params.readOnlyAside &&
+      agent.purchaseAttempts?.some(attempt => !attempt.accepted) &&
+      !agent.purchaseAttempts.some(attempt => attempt.accepted) && !agent.actions?.addItems?.length) {
+      const names = [...new Set(agent.purchaseAttempts.map(attempt =>
+        products.find(product => product.id === attempt.productId)?.name).filter(Boolean))];
+      const answer = 'Necesito aclarar '+(names.length ? names.join(', ') : 'los productos de este pedido')+
+        ' antes de agregarlos. ¿Me indicas la cantidad y las opciones de cada uno? Tu pedido sigue igual.';
+      await this.reply(conv,msg.waId,answer);
+      this.turnTelemetry.record({path:'agent_v1',outcome:'replied',waId:msg.waId,conversationId:conv.id,
+        toolCalls:agent.toolCalls,latencyMs:Date.now()-started,warnings:['all_purchase_tools_rejected']});
+      return true;
+    }
+
     const comesWith = this.catalogService.comesWithOffer(originalText || text, products);
     if (comesWith) {
       await this.reply(conv, msg.waId, comesWith.reply);
@@ -17168,6 +17184,17 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
+    let reply = (agent.reply || '').trim();
+    const withFirstContactDisclaimer = (body: string): string => {
+      if (!params.prependFirstContactDisclaimer) return body;
+      const d = this.buildAiDisclaimerMessage(cfg).trim();
+      if (!d) return body;
+      // Evitar duplicar si el modelo ya lo metió
+      if (body.includes(d) || /con gusto te atiendo/i.test(body)) return body;
+      return `${d}\n\n${body}`;
+    };
+
+
     const guarded = this.actionGuard.sanitize({
       actions: agent.actions,
       products,
@@ -17197,6 +17224,23 @@ export class WhatsappOrchestratorService {
       });
       return true;
     }
+
+    if (guarded.actions?.requestHuman) {
+      reply = this.humanContactMessage();
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(conv, msg.waId, withFirstContactDisclaimer(reply));
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'handoff',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        replyPreview: reply,
+      });
+      return true;
+    }
+
 
     if (looksLikeClearCartMessage(originalText || text) && guarded.actions) {
       guarded.actions.clearCart = true;
@@ -17538,30 +17582,6 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
-    let reply = (agent.reply || '').trim();
-    const withFirstContactDisclaimer = (body: string): string => {
-      if (!params.prependFirstContactDisclaimer) return body;
-      const d = this.buildAiDisclaimerMessage(cfg).trim();
-      if (!d) return body;
-      // Evitar duplicar si el modelo ya lo metió
-      if (body.includes(d) || /con gusto te atiendo/i.test(body)) return body;
-      return `${d}\n\n${body}`;
-    };
-    if (guarded.actions?.requestHuman) {
-      reply = this.humanContactMessage();
-      await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, msg.waId, withFirstContactDisclaimer(reply));
-      this.turnTelemetry.record({
-        path: 'agent_v1',
-        outcome: 'handoff',
-        waId: msg.waId,
-        conversationId: conv.id,
-        toolCalls: agent.toolCalls,
-        latencyMs: Date.now() - started,
-        replyPreview: reply,
-      });
-      return true;
-    }
 
     // Abrir flujo de attrs si el agente encontró el plato pero faltan opciones
     if (agent.needsAttributeProductId) {

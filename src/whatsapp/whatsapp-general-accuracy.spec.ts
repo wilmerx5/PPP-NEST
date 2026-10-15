@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { WhatsappOrchestratorService } from './whatsapp-orchestrator.service';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
+import { WhatsappAgentService } from './whatsapp-agent.service';
 import { WhatsappActionGuardService } from './whatsapp-action-guard.service';
 import { WhatsappPointsService } from './whatsapp-points.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
@@ -13711,5 +13712,82 @@ describe('Referencia de precio por clase de catálogo',()=>{
   h.conv.sessionData.cart=menu.filter(p=>[502,503].includes(p.id)).map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));
   const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Cuánto cuesta cada uno?');
   expect(reply||'').toMatch(/cu[aá]l producto/i);expect(h.conv.sessionData.cart).toEqual(before);
+ });
+});
+
+
+describe('Herramientas de compra rechazadas — no reconstruir un pedido distinto',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ const scenario=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-contract-independent-office-1410.json'),'utf8'))[0];
+ for(const preexisting of [false,true])for(const error of [undefined,'exception','max_iterations'])it('rechazo total conserva carrito previo='+preexisting+' error='+error,async()=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  if(preexisting)h.conv.sessionData.cart=[{productId:503,code:503,name:menu.find(p=>p.id===503).name,unitPrice:6800,quantity:2,attributes:[],note:'sin azúcar'}];
+  const before=structuredClone(h.conv.sessionData.cart);
+  h.agent.runTurn.mockResolvedValue({reply:'Por ahora no manejamos cada ni pero',actions:{},toolCalls:['add_item','add_item','add_item'],error,
+   purchaseAttempts:[{productId:501,accepted:false,reason:'dish_not_on_menu'},{productId:502,accepted:false,reason:'dish_not_on_menu'},{productId:502,accepted:false,reason:'dish_not_on_menu'}]});
+  const reply=await h.sendQueued(scenario.messages[0].text);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(h.conv.sessionData.cart).toEqual(before);
+  expect(h.conv.state).toBe('building_cart');expect(reply||'').toMatch(/necesito aclarar/i);expect(reply||'').toMatch(/Bowl Andino/);expect(reply||'').toMatch(/Wrap Vegetariano/);
+  expect(reply||'').not.toMatch(/no manejamos|cada ni pero|Listo|agregu[eé]/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  expect(h.service.turnTelemetry.getRecentDecisions(1)[0].observedUnitDelta).toEqual([]);
+ });
+});
+
+
+describe('Herramientas de compra — un rechazo seguido de éxito',()=>{
+ it('conserva la compra exitosa sin bloquearla por un intento anterior',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+  const recorded=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-recorded-office-output.json'),'utf8'));
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockResolvedValue({...recorded.agentResult,purchaseAttempts:[{productId:999999,accepted:false,reason:'purchase_rejected'},...recorded.agentResult.actions.addItems.map(item=>({productId:item.productId,accepted:true}))]});
+  const reply=await h.sendQueued(recorded.userMessage);
+  expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[501,2],[503,3],[504,1]]);
+  expect(reply||'').not.toMatch(/necesito aclarar/i);expect(reply||'').toContain('96.800');
+  expect(h.conv.state).toBe('awaiting_payment');
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Herramientas de compra — proveedor simulado y router real',()=>{
+ it('el rechazo real del catálogo no llega al fallback que perdía cantidades',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+  const source=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-contract-independent-office-1410.json'),'utf8'))[0].messages[0].text;
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  const originalFetch=globalThis.fetch;
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const args=[{productId:501,quantity:2},{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Tahini'}]},{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Yogur'}]}];
+  const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:args.map((arg,index)=>({id:'offline-tool-'+index,type:'function',function:{name:'add_item',arguments:JSON.stringify(arg)}}))}))
+   .mockResolvedValueOnce(response({content:'Por ahora no manejamos cada ni pero.'}));
+  globalThis.fetch=fetchMock;
+  try{
+   const reply=await h.sendQueued(source);
+   expect(fetchMock).toHaveBeenCalledTimes(2);expect(h.cartRows()).toEqual([]);
+   expect(h.conv.state).toBe('building_cart');expect(reply||'').toMatch(/necesito aclarar/i);
+   expect(reply||'').not.toMatch(/no manejamos|Listo/);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=originalFetch;}
+ });
+});
+
+describe('Herramientas rechazadas — prioridades de atención y consulta',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ const source=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-contract-independent-office-1410.json'),'utf8'))[0].messages[0].text;
+ it.each(['human','delivery','placed'])('el rechazo no oculta la solicitud %s',async(kind)=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=[{productId:503,code:503,name:'Limonada De Hierbabuena',unitPrice:6800,quantity:2,attributes:[],note:'sin azúcar'}];
+  const before=structuredClone(h.conv.sessionData.cart);
+  h.service.humanContactMessage=jest.fn().mockReturnValue('Un asesor puede ayudarte por teléfono.');
+  h.service.tryHandleDeliveryEtaInquiry=jest.fn().mockResolvedValue(true);
+  h.service.replyOrderProgressOrAskNumber=jest.fn().mockResolvedValue(true);
+  h.agent.runTurn.mockResolvedValue({reply:'Consulta',actions:kind==='human'?{requestHuman:true}:{},
+   ...(kind==='delivery'?{lookupDeliveryTime:true}:kind==='placed'?{lookupPlacedOrder:{orderNumber:17}}:{}),
+   toolCalls:['add_item'],purchaseAttempts:[{productId:501,accepted:false,reason:'dish_not_on_menu'}]});
+  const reply=await h.sendQueued(source);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(h.conv.sessionData.cart).toEqual(before);
+  expect(reply||'').not.toMatch(/necesito aclarar/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(kind==='human')expect(h.service.humanContactMessage).toHaveBeenCalledTimes(1);
+  if(kind==='delivery')expect(h.service.tryHandleDeliveryEtaInquiry).toHaveBeenCalledTimes(1);
+  if(kind==='placed')expect(h.service.replyOrderProgressOrAskNumber).toHaveBeenCalledTimes(1);
  });
 });

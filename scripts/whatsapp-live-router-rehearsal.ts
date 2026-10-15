@@ -90,7 +90,15 @@ function harness(scenario:Scenario) {
     findUserByPhone:async()=>null,
   };
   const agent=new WhatsappAgentService(settings,catalog);
-  const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);agentResults.push({reply:result.reply,actions:result.actions,toolCalls:result.toolCalls});if(result.error)agentErrors.push(result.error);return result;};
+  // Isolated synthetic harness only: retain actual tool input/output, never headers or credentials.
+  const toolTrace:Array<{origin:string;name:string;args:unknown;result:unknown}>=[];
+  const toolAgent=agent as any;const execute=toolAgent.executeTool.bind(agent);
+  toolAgent.executeTool=(name:string,args:unknown,ctx:unknown)=>{
+    const result=execute(name,args,ctx);
+    toolTrace.push({origin:(ctx as {diagnosticOrigin?:string}).diagnosticOrigin || 'internal',name,args:structuredClone(args),result:JSON.parse(result)});
+    return result;
+  };
+  const run=agent.runTurn.bind(agent);agent.runTurn=async input=>{agentTurns++;const result=await run(input);agentResults.push({reply:result.reply,actions:result.actions,toolCalls:result.toolCalls,purchaseAttempts:result.purchaseAttempts});if(result.error)agentErrors.push(result.error);return result;};
   const service=new WhatsappOrchestratorService(settings,{sendText:async()=>{throw Error('Meta must stay isolated');}} as never,
     catalog,new WhatsappAiService(settings),conversations,{getStatus:async()=>({isOpen:true,message:'Abierto',openTime:'00:00',closeTime:'23:59'})} as never,
     {create:async(dto:any)=>{orders.push(structuredClone(dto));return {id:orders.length,dailyOrderNumber:orders.length};}} as never,
@@ -100,9 +108,10 @@ function harness(scenario:Scenario) {
   service.reply=async(_conv:any,_waId:string,body:string)=>{replies.push(body);history.push('Bot: '+body);};
   const send=async(text:string)=>{
     const beforeReplies=replies.length;
+    const beforeTools=toolTrace.length;
     history.push('Cliente: '+text);
     await service.handleIncomingUnlocked({waId:conv.waId,phoneE164:conv.phoneE164,messageId:`synthetic-${count}`,messageType:'text',text,raw:{}});
-    return {session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults),decisions:service.turnTelemetry.getRecentDecisions(1)};
+    return {toolTrace:structuredClone(toolTrace.slice(beforeTools)),session:structuredClone(conv.sessionData),state:conv.state,replies:replies.slice(beforeReplies),orders:structuredClone(orders),agentTurns,agentErrors:[...agentErrors],agentResults:structuredClone(agentResults),decisions:service.turnTelemetry.getRecentDecisions(1)};
   };
   return {send};
 }

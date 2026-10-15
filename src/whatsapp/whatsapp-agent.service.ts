@@ -44,6 +44,8 @@ export type AgentV1TurnResult = {
   /** Pregunta cuánto tarda un domicilio en general. Nest usa el tiempo de la config. */
   lookupDeliveryTime?: boolean;
   toolCalls: string[];
+  /** Per-turn tool outcomes; no customer text or options. */
+  purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string}>;
   error?: string;
 };
 
@@ -523,6 +525,7 @@ export class WhatsappAgentService {
     }
     const actions: AiOrderAction = {};
     const toolCalls: string[] = [];
+    const purchaseAttempts: NonNullable<AgentV1TurnResult['purchaseAttempts']> = [];
     let retriedUnappliedOrder = false;
     let retriedIncompleteOrder = false;
     let retriedConciseReply = false;
@@ -659,6 +662,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             reply: `Tuve un problema técnico. ${contactHelp}`,
             actions,
             toolCalls,
+            purchaseAttempts,
             error: `openai_${res.status}`,
           };
         }
@@ -675,6 +679,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             reply: 'No pude procesar tu mensaje. ¿Me lo repites con el plato o código?',
             actions,
             toolCalls,
+            purchaseAttempts,
             error: 'empty_message',
           };
         }
@@ -699,7 +704,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             [...addedIds].every(id=>multi.confident.some(item=>item.product.id===id))
             ? multi.confident.filter(item=>!addedIds.has(item.product.id)).filter(item=> {
               const probe = JSON.parse(this.executeTool('add_item',{productId:item.product.id},{
-                products:input.products,byId,actions:{},cart:input.cart,userMessage:input.userMessage,
+                products:input.products,byId,actions:{},cart:input.cart,userMessage:input.userMessage,diagnosticOrigin:'validation_probe',
                 menuConceptGroups:input.menuConceptGroups,setNeedsAttr:()=>undefined,
               }));
               return probe.ok===true;
@@ -713,7 +718,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               continue;
             }
             return {reply:'Falta revisar '+missing.map(item=>item.product.name).join(', ')+'. Te ayudo a completar el pedido.',
-              actions,toolCalls,error:'incomplete_multi_order'};
+              actions,toolCalls,purchaseAttempts,error:'incomplete_multi_order'};
           }
           const claimsOrderAdded = /\b(?:he agregado|he añadido|agregu[eé]|añad[ií]|voy a agregar)(?![\p{L}\p{N}_])/iu.test(reply);
           if (!retriedUnappliedOrder && !actions.addItems?.length && claimsOrderAdded &&
@@ -734,6 +739,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             reply,
             actions,
             toolCalls,
+            purchaseAttempts,
             needsAttributeProductId,
             lookupPlacedOrder,
             lookupDeliveryTime,
@@ -751,6 +757,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             args = {};
           }
           const toolResult = this.executeTool(name, args, {
+            diagnosticOrigin:'model_call',
             products: input.products,
             byId,
             actions,
@@ -767,6 +774,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               lookupDeliveryTime = true;
             },
           });
+          if (name === 'add_item' && purchaseAttempts.length < 100) {
+            const outcome = JSON.parse(toolResult) as {ok?:boolean;error?:string};
+            purchaseAttempts.push({productId:Number(args.productId),accepted:outcome.ok === true,
+              ...(!outcome.ok ? {reason: typeof outcome.error === 'string' && /^[a-z_]+$/.test(outcome.error)
+                ? outcome.error : 'purchase_rejected'} : {})});
+          }
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -781,6 +794,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           'Estoy armando tu pedido. ¿Me confirmas el plato (nombre o código) o escribes *menú*?',
         actions,
         toolCalls,
+        purchaseAttempts,
         needsAttributeProductId,
         lookupPlacedOrder,
         lookupDeliveryTime,
@@ -795,6 +809,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         reply: `No pude procesar tu mensaje. ${contactHelp}`,
         actions,
         toolCalls,
+        purchaseAttempts,
         error: name==='TimeoutError' ? 'openai_timeout' : 'exception',
       };
     }
@@ -850,6 +865,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       products: WhatsappCatalogProduct[];
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
+      diagnosticOrigin?: 'model_call' | 'validation_probe';
       userMessage?: string;
       cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
