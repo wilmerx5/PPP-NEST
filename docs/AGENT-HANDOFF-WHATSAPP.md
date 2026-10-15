@@ -1,6 +1,6 @@
 # Relevo del agente: PPP WhatsApp
 
-Actualizado el 11 de octubre de 2026, hora de Bogotá. Leer este documento y `AGENTS.md` antes de ejecutar pruebas, editar o desplegar. Es un estado de trabajo, no evidencia de que el producto ya sea vendible.
+Punto de entrada actualizado al 14 de octubre de 2026: leer primero [Continuación local](WHATSAPP-LOCAL-NEXT-AGENT.md) y `AGENTS.md`. Este archivo conserva historial con estados y presupuestos antiguos; usar el relevo breve y las entradas finales para el estado vigente. No es evidencia de que el producto ya sea vendible.
 
 ## Detección de medios y diferencia Main/staging
 
