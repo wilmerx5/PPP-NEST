@@ -10791,7 +10791,7 @@ export class WhatsappOrchestratorService {
   ): string | null {
     // Vision produces an order utterance, not raw menu OCR. Keep every line,
     // quantity and modifier for the normal router instead of selecting its first SKU.
-    // Do not do this with visibleText: a menu photo may list unselected products.
+    // Image-only menu photos are purchase input under the restaurant photo flow.
     const proposedOrder = analysis.textForBot?.trim();
     // A customer's explicit caption remains usable when vision is uncertain.
     if (analysis.kind === 'unclear' || analysis.kind === 'other') {
@@ -10799,8 +10799,22 @@ export class WhatsappOrchestratorService {
       const selected = caption && (this.catalogService.findProductEmbeddedInMessage(caption, products) ||
         (captionCode != null && this.catalogService.findByCode(captionCode, products)));
       if (selected) return caption!.trim();
-      // Raw OCR of a multi-option menu is not a product selection.
-      if (this.catalogService.findAllProductsEmbeddedInMessage(analysis.visibleText || '', products).length >= 2) return null;
+      const visible = this.catalogService.findAllProductsEmbeddedInMessage(analysis.visibleText || '', products);
+      // Questions and explicit exclusions must not buy every visible card.
+      const consultation = /[?¿]|\b(?:cu[aá]nto|precio|qu[eé]\s+(?:trae|incluye)|solo\s+(?:ver|consultar|consulto|preguntar|pregunto)|no\s+(?:agreg\w*|a[ñn]ad\w*|quiero))\b/i.test(caption || '');
+      const restricted = /\b(?:solo|solamente|excepto|menos|derecha|izquierda|primero|segundo)\b/i.test(caption || '');
+      if (visible.length >= 2 && !consultation && !restricted) {
+        return visible.map(product => {
+          const row = (analysis.visibleText || '').split(/\r?\n/).find(line => {
+            const hits = this.catalogService.findAllProductsEmbeddedInMessage(line, products);
+            return hits.length === 1 && hits[0].id === product.id;
+          });
+          // Only explicit count markers, never prices or the "1" in a SKU name.
+          const quantity = row?.match(/^\s*(\d{1,3})\s*[x×]\s+/i)?.[1] || '1';
+          return `${quantity} x ${product.name} (código ${product.code})`;
+        }).join('\n');
+      }
+      if (visible.length >= 2) return null;
     }
     if (analysis.kind === 'unclear' && !proposedOrder) return null;
     if (analysis.kind === 'order' && proposedOrder) {
@@ -10898,6 +10912,7 @@ export class WhatsappOrchestratorService {
       const isProof = (result: WhatsappImageAnalysis) =>
         result.kind === 'payment_proof' ||
         (proofCtx && result.kind !== 'order' && !asksForFood &&
+          this.catalogService.findAllProductsEmbeddedInMessage(result.visibleText || '', products).length < 2 &&
           (result.kind === 'unclear' || result.kind === 'other' || this.isVagueImageCaption(caption)));
       const treatAsProof = isProof(analysis);
 

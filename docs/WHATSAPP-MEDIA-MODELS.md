@@ -1,3 +1,5 @@
+> Actualización de flujo 15/10: el usuario pidió que una foto de carta añada TODOS los productos legibles sin confirmar selección; una unidad por defecto y cantidades/opciones explícitas conservadas. Pie que consulta o restringe selección tiene prioridad. Comprobantes no compran. Los resultados históricos «carta sin selección no compra» de esta página corresponden al contrato anterior; no deben restaurarse como comportamiento actual. Cambios y validación final en `WHATSAPP-LOCAL-NEXT-AGENT.md`. Modelos sin cambios.
+
 # Modelos de medios y costos — 15/10/2026
 
 Selección: Sol sigue como agente de pedidos; Luna para visión, clasificación y respaldo JSON; GPT-Transcribe para archivos de voz. Validación local y global aprobadas:76suites/5582tests en826.223s,20regresiones nuevas, fuente intacta y TypeScript sin errores. **Desplegado y verificado en staging**, código a591d1f4, 2026-10-15T18:15:50.795454+00:00: running/healthy, imagen activa coincide con candidate, healthHTTP200/DBconnected y cuatro roles efectivos correctos. Main intacta. Revisar la comprobación final del relevo antes de asumir activación.

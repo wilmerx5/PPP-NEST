@@ -1,5 +1,11 @@
 # Continuación local de PPP WhatsApp
 
+## Cambio de producto solicitado: foto de carta añade todos (15/10)
+
+El usuario pidió explícitamente volver al comportamiento de añadir TODOS los productos reconocidos en una foto, sin preguntar cuál/cuáles. Una unidad por defecto; conservar cantidades/atributos/notas cuando visión los entrega. El texto acompañante que elige un subconjunto o solo consulta tiene prioridad; comprobantes no son pedidos. Esto reemplaza intencionalmente el contrato anterior de «varias tarjetas sin selección no compran», no un fallo que deba restaurarse.
+
+Trabajo sobre staging, sin cambiar modelos ni Main. Actualizados prompt normal/OCR y compatibilidad con respuestas históricas unclear+OCR de varios productos, usando catálogo genérico y códigos etiquetados. Ver pruebas de foto PPP+menú ficticio y carritos/atributos existentes. Primera tanda:357tests/4suites aprobados, /tmp/ppp-photo-autoadd.log. Tras ampliar6productos/cantidades/exclusiones:163verdes+1rojo («No agregues nada»), /tmp/ppp-photo-autoadd-final.log; se amplía la negación a sus formas verbales sin tocar oráculos. Regresión final aprobada:4suites/164tests de medios,3998omitidos ajenos al filtro,en65.177s, /tmp/ppp-photo-autoadd-approved.log. TypeScript aprobado /tmp/ppp-photo-autoadd-approved-tsc.log. No es una nueva global. Pendiente despliegue. Hay8regresiones nuevas además de adaptar los contratos anteriores al comportamiento solicitado. Cero llamadas pagadas en este bloque por ahora.
+
 ## En validación: foto de carta con varias opciones (15/10)
 
 Reporte humano posterior al cambio de modelo: primer carrito fotografiado conserva tres productos y variantes; segunda foto de cuatro tarjetas de carta termina en «Vi tu foto… llámanos». La captura permite observar la respuesta, pero no demuestra que Luna no leyera los nombres: no tenemos aquí la imagen original aislada ni la salida cruda de ese request.

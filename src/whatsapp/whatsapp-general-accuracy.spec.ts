@@ -763,12 +763,12 @@ describe('Image order transcription keeps complete selected cart — offline', (
       .toBe('Tres churrascos 3/4 sin ensalada');
   });
 
-  it('does not turn a menu with no selection into the first product', () => {
+  it('turns a readable menu into every product, never just the first', () => {
     const h = harness();
     expect(h.service.resolveImageOrderText({
       kind: 'unclear', textForBot: '', visibleText: '1 Pollo Frito\nChurrasco\nArroz Con Pollo',
       reply: '¿Cuál de los platos de la carta quieres?',
-    }, 'Esto', products)).toBeNull();
+    }, 'Esto', products)).toBe('1 x 1 Pollo Frito (código 1)\n1 x Churrasco (código 17)\n1 x Arroz Con Pollo (código 23)');
   });
 
   it.each([true, false])('adds missing products without repeating the existing chicken (agent=%s)', async enabled => {
@@ -4215,8 +4215,8 @@ describe('Aclaración de medios — sin repetir el fallback genérico',()=>{
 
 describe('Imagen de carta — selección explícita frente a OCR ambiguo',()=>{
   const analysis={kind:'unclear',textForBot:'',visibleText:'Churrasco\nArroz Con Pollo'};
-  it('no compra el primer plato de una carta sin selección aunque no haya reply',()=>{
-    const h=harness(products,false);expect(h.service.resolveImageOrderText(analysis,'Esto',products)).toBeNull();expect(h.cartRows()).toEqual([]);
+  it('incluye todos los platos de una carta sin selección aunque no haya reply',()=>{
+    const h=harness(products,false);expect(h.service.resolveImageOrderText(analysis,'Esto',products)).toBe('1 x Churrasco (código 17)\n1 x Arroz Con Pollo (código 23)');expect(h.cartRows()).toEqual([]);
   });
   it('respeta la selección y cantidad del pie en una carta con varios platos',async()=>{
     const h=harness(products,false);const text=h.service.resolveImageOrderText(analysis,'Dos churrascos',products);
@@ -14281,7 +14281,7 @@ describe('Medios de modelos nuevos — replay de extracción real sobre fixtures
   const h=harness(products,false);
   for(const id of ['menu','receipt']){
    const analysis=captures.find(r=>r.kind==='images'&&r.id===id).output;
-   if(id==='menu')expect(h.service.resolveImageOrderText(analysis,'',products)).toBeNull();
+   if(id==='menu')expect(h.service.resolveImageOrderText(analysis,'¿Cuánto cuestan?',products)).toBeNull();
    else expect(analysis).toMatchObject({kind:'payment_proof',textForBot:''});
   }
   expect(h.cartRows()).toEqual([]);
@@ -14312,14 +14312,15 @@ describe('Audio de GPT Transcribe — replay completo de entrada',()=>{
 });
 
 
-describe('Carta legible no seleccionada conserva reconocimiento y permite seguir comprando',()=>{
+describe('Foto de carta añade todos los productos reconocidos sin pedir selección',()=>{
  it.each([
   ['Churrasco\nArroz Con Pollo', products],
+  [Array.from({length:6},(_,i)=>`Plato Solar ${i+1}`).join('\n'), Array.from({length:6},(_,i)=>({id:8901+i,code:8901+i,name:`Plato Solar ${i+1}`,price:15000,attributes:[]}))],
   ['Bowl Solar\nRamen Lunar', [
    {id:8801,code:8801,name:'Bowl Solar',price:15000,attributes:[]},
    {id:8802,code:8802,name:'Ramen Lunar',price:18000,attributes:[]},
   ]],
- ])('nombra las opciones sin comprarlas ni derivar a humano: %s',async(visibleText, menu)=>{
+ ])('añade todas las opciones y conserva el carrito anterior: %s',async(visibleText, menu)=>{
   const h=harness(menu as any,false);
   const selected=(menu as any[])[0];
   h.conv.sessionData.cart=[{productId:selected.id,code:selected.code,name:selected.name,unitPrice:selected.price,quantity:2,note:'salsa aparte',attributes:[]}];
@@ -14328,11 +14329,37 @@ describe('Carta legible no seleccionada conserva reconocimiento y permite seguir
   h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('fixture');
   h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'unclear',textForBot:'',visibleText,reply:'Llama a un asesor'});
   h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
-  await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-menu'},'1',h.conv,h.cfg);
+  const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'mock-menu'},'1',h.conv,h.cfg);
+  expect(result.done).toBe(false);
   expect(h.conv.sessionData).toEqual(before);
+  await h.sendQueued(result.text);
   expect(h.service.aiService.analyzeOrderImage).toHaveBeenCalledTimes(1);
-  expect(h.replies.at(-1)).toMatch(/cuál o cuáles.*cuántas/i);
+  expect(h.replies.at(-1)).toMatch(/algo más/i);
+  expect(h.conv.sessionData.cart).toEqual(expect.arrayContaining([expect.objectContaining({note:'salsa aparte',quantity:2})]));
+  expect(h.conv.sessionData.cart.reduce((sum,row)=>sum+row.quantity,0)).toBe(2+(visibleText as string).split('\n').length);
   for(const name of (visibleText as string).split('\n'))expect(h.replies.at(-1)).toContain(name);
   expect(h.replies.at(-1)).not.toMatch(/asesor|llama|no entend/i);
+ });
+});
+
+
+describe('Foto de carta — cantidades explícitas y excepciones de intención',()=>{
+ const menu=[{id:9101,code:9101,name:'Ramen Lunar',price:18000,attributes:[]},{id:9102,code:9102,name:'Bowl Solar',price:15000,attributes:[]}];
+ const analysis={kind:'unclear',textForBot:'',visibleText:'3 x Ramen Lunar $18.000 #9101\nBowl Solar $15.000 #9102'};
+ it('no usa precios, códigos o nombres como cantidades al añadir todas las tarjetas',async()=>{
+  const h=harness(menu,false);const text=h.service.resolveImageOrderText(analysis,undefined,menu);
+  await h.sendQueued(text);expect(h.cartRows()).toEqual([expect.objectContaining({id:9101,qty:3}),expect.objectContaining({id:9102,qty:1})]);
+ });
+ it.each(['¿Cuánto cuestan?','Solo quiero ver','El segundo','Solo el de la derecha','No agregues nada'])('no compra toda la carta cuando el pie restringe o consulta: %s',caption=>{
+  const h=harness(menu,false);expect(h.service.resolveImageOrderText(analysis,caption,menu)).toBeNull();expect(h.cartRows()).toEqual([]);
+ });
+ it('una carta reconocida con pago pendiente no se recibe como comprobante',async()=>{
+  const h=harness(menu,false);h.conv.sessionData.paymentMethod='nequi';
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('fixture'),mimeType:'image/jpeg'});
+  h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('fixture');
+  h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue(analysis);
+  h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);
+  const result=await h.service.resolveImageMessage({waId:'customer',messageType:'image',mediaId:'fixture'},'1',h.conv,h.cfg);
+  expect(result.done).toBe(false);expect(result.text).toContain('Ramen Lunar');expect(h.replies.join(' ')).not.toMatch(/comprobante/);
  });
 });
