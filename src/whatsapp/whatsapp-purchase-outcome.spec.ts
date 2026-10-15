@@ -6,7 +6,7 @@ import {WhatsappCatalogService} from './whatsapp-catalog.service';
 /** Real tool validation, synthetic provider responses; no network or order transport. */
 describe('Purchase tool outcomes across model iterations',()=>{
  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
- const source=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-contract-independent-office-1410.json'),'utf8'))[0].messages[0].text;
+ const source='Quiero dos bowls andinos con camarones y dos wraps vegetarianos con camarones.';
  const originalFetch=globalThis.fetch;
  afterEach(()=>{globalThis.fetch=originalFetch;jest.restoreAllMocks();});
  const input=(text=source)=>({userMessage:text,sessionSummary:'Carrito vacío',recentMessages:[],businessRulesBlock:'',brandName:'Carta de prueba',products:menu,cart:[]});

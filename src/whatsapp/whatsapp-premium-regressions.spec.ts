@@ -145,6 +145,13 @@ describe('Observed live AI regressions', () => {
     expect(actions.addItems[0].note).toBe('sin ensalada, más yuca');
     expect(actions.addItems[0].note).not.toMatch(/arepas/);
   });
+  it('keeps joined preferences on their own repeated-SKU clause',()=>{
+    const actions:any={};const ctx={products,byId:new Map(products.map(p=>[p.id,p])),actions,
+      userMessage:'Un arroz con pollo sin ensalada y más yuca y otro arroz con pollo sin cilantro',setNeedsAttr:()=>undefined};
+    for(const note of ['sin ensalada','sin cilantro'])expect(JSON.parse((agent as any).executeTool('add_item',{productId:23,quantity:1,note},ctx)).ok).toBe(true);
+    expect(actions.addItems[0].note).toMatch(/sin ensalada/);expect(actions.addItems[0].note).toMatch(/m[aá]s yuca/);expect(actions.addItems[0].note).not.toMatch(/sin cilantro/);
+    expect(actions.addItems[1].note).toBe('sin cilantro');
+  });
   it('keeps a requested substitution through an incorrect follow-up tool edit', () => {
     const actions: any = {};
     const ctx = {products,byId:new Map(products.map(p=>[p.id,p])),actions,cart:[],

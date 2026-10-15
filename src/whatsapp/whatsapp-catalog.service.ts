@@ -2258,7 +2258,8 @@ export class WhatsappCatalogService {
       if (extra) return extra;
     }
     // Preserve modifiers; the general matcher may strip them before splitting.
-    const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean);
+    const clauses = text.split(/;\s*|\.\s+|\r?\n+/).filter(Boolean)
+      .flatMap(clause => clause.split(/\s+y\s+(?=para\s+(?:[\p{L}]+\s+){1,3}(?:un[oa]?|otr[oa]|dos|tres|\d+)\b)/iu));
     const explicitSegments = clauses.flatMap(clause => clause.split(/(?:\s+y\s+|,\s*)(?=(?:(?:aparte|adem[aá]s)\s+)?(?:otr[oa]s?|un[oa]?s?|\d+|dos|tres|cuatro|cinco)\b)|\s+con\s+(?=(?:un[oa]?|\d+|dos|tres|cuatro|cinco)\s+porci[oó]n(?:es)?\b)/i));
     const segments = explicitSegments.length > 1 ? explicitSegments : this.splitMultiProductSegments(text);
     if (segments.length < 2) return text;
@@ -2337,6 +2338,8 @@ export class WhatsappCatalogService {
 
   private dishContentTokens(clause: string): string[] {
     const skip = new Set([
+      // Function words express distribution/contrast; they are not dish ingredients.
+      'cada', 'pero', 'aunque', 'mientras', 'entonces', 'todavia', 'ni',
       'con',
       'de',
       'del',

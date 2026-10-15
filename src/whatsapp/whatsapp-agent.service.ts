@@ -1,3 +1,4 @@
+import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable, Logger } from '@nestjs/common';
 import { condimentIntensityNote, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
@@ -866,6 +867,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       byId: Map<number, WhatsappCatalogProduct>;
       actions: AiOrderAction;
       diagnosticOrigin?: 'model_call' | 'validation_probe';
+      /** Replacement inherits the old line's units unless the caller explicitly changed them. */
+      preserveReplacementQuantity?: boolean;
       userMessage?: string;
       cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
@@ -1313,7 +1316,25 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         }
         const normalizeOption = (value:string) => value.toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-        const sourceForOptions = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) || ctx.userMessage || '';
+        const exactName = normalizeOption(product.name);
+        const negatedName = new RegExp('\\b(?:no (?:quiero|agregues|incluyas|pongas|anadas|me envies)|sin) (?:un[oa]? |el |la )?'+exactName+'\\b');
+        if (negatedName.test(normalizeOption(ctx.userMessage || ''))) {
+          return JSON.stringify({ok:false,error:'explicitly_negated_product',
+            hint:'El cliente excluyó este producto. No lo agregues ni lo declares ausente del menú.'});
+        }
+        const scopedChoices = Array.isArray(args.attributes)
+          ? [...args.attributes as Array<{attributeName:string;attributeValue:string}>] : [];
+        // The existing note-to-option protocol is also scope evidence: "Asada"
+        // selects its own clause before validating a second variant of the same SKU.
+        if (typeof args.note === 'string') for (const definition of product.attributes || []) {
+          const value = normalizeOption(args.note).replace(normalizeOption(definition.attributeName)+' ', '');
+          const option = definition.options.find(candidate=>normalizeOption(candidate)===value);
+          if(option && !scopedChoices.some(choice=>choice.attributeName.toLowerCase()===definition.attributeName.toLowerCase())) {
+            scopedChoices.push({attributeName:definition.attributeName,attributeValue:option});
+          }
+        }
+        const scopedSource = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products,scopedChoices) || ctx.userMessage || '';
+        const sourceForOptions = scopedSource;
         const optionText = ' '+normalizeOption(sourceForOptions)+' ';
         const familyToken = normalizeOption(product.name).split(' ')[0];
         for (const definition of product.attributes || []) {
@@ -1323,6 +1344,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           const mentioned = [...new Set(siblingOptions)].filter(option=>optionText.includes(' '+normalizeOption(option)+' '));
           const specific = mentioned.filter(option=>!mentioned.some(other=>normalizeOption(other).length>normalizeOption(option).length &&
             (' '+normalizeOption(other)+' ').includes(' '+normalizeOption(option)+' ')));
+          if (normalizeOption(ctx.userMessage || '').split(exactName).length > 2 &&
+            specific.filter(option=>this.catalogService.matchAttributeOptionValue(option,definition.options)).length > 1 &&
+            !scopedChoices.some(choice=>choice.attributeName.toLowerCase()===definition.attributeName.toLowerCase())) {
+            return JSON.stringify({ok:false,error:'variant_scope_required',
+              hint:'Hay varias opciones explícitas de este producto. Usa una llamada por grupo, con sus atributos y cantidad; no combines variantes con un valor predeterminado.'});
+          }
           const unsupported = specific.find(option=>!this.catalogService.matchAttributeOptionValue(option,definition.options));
           if (unsupported) return JSON.stringify({ok:false,error:'requested_option_not_in_this_sku',
             attributeName:definition.attributeName,requestedOption:unsupported,
@@ -1341,7 +1368,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               'Es una pregunta sobre el menú. Responde con lo que devolvió search_menu. No agregues al carrito.',
           });
         }
-        const ownedText = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
+        const ownedText = scopedSource;
         const wrapper = ownedText.match(/\b(ejecutivos?|combos?)\b/i)?.[1];
         if (wrapper && /pollo/i.test(product.name) && !new RegExp(wrapper.replace(/s$/i, ''), 'i').test(product.name)) {
           return JSON.stringify({ok:false,error:'different_presentation',
@@ -1363,7 +1390,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             hint:'Pregunta si quiere frito o broaster; no elijas una preparación por tu cuenta.'});
         }
         const uncovered = this.catalogService.uncoveredWordsAnchoredByProduct(
-          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '',
+          ownedText,
           product,
           ctx.products,
         );
@@ -1392,7 +1419,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             /\b(?:aparte|adicional|extra)\b/i.test(segment) &&
             this.catalogService.productNameFitsUtterance?.(product, segment));
         const separateQuantity = /\by\s+(?:\d+|un[ao]|dos|tres)\b/.test(txt) &&
-          this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '',product,ctx.products) !== ctx.userMessage;
+          ownedText !== ctx.userMessage;
         const sourceSwap = this.catalogService.swapIntent(ctx.userMessage || '');
         const swapHost = sourceSwap && this.catalogService.mostSpecificNamedProduct(
           this.catalogService.dishTextBeforeSwap(ctx.userMessage || ''), ctx.products);
@@ -1451,21 +1478,42 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             pendingRequestedProducts:missingProducts.map(item=>this.productCard(item)),
             hint:'Ese SKU no corresponde al plato nombrado. Revisa pendingRequestedProducts y busca cada plato faltante; conserva lo ya agregado. No inventes IDs ni afirmes cambios rechazados.'});
         }
-        const quantity = Math.min(10, Math.max(1, Number(args.quantity) || 1));
-        const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
-        let note = args.note != null ? String(args.note).trim().slice(0, 200) :
-          this.catalogService.extractProductModificationNote(source) || undefined;
+        const proposedQuantity = Number(args.quantity);
+        let quantity = Math.min(10, Math.max(1, Number.isFinite(proposedQuantity) ? proposedQuantity : 1));
+        const source = ownedText;
+        // Validate literal counts here once. Distributed quantities belong to the
+        // semantic proposal: "one for each person" is not one unit in total.
+        if (!ctx.preserveReplacementQuantity && !/\b(?:cada|por persona)\b|c\/u/i.test(source)) {
+          const literal = namedPackOrderQuantity(source, product.name) ??
+            this.catalogService.extractQuantityNearProduct(source, product.name);
+          if (literal != null) quantity = Math.min(10, Math.max(1, literal));
+        }
+        const modelNote = args.note != null ? String(args.note).trim().slice(0, 200) : '';
+        const repeatedSku = normalizeOption(source).split(normalizeOption(product.name)).length > 2;
+        const preferenceSource = modelNote && repeatedSku
+          ? source.split(/(?:\s+y\s+|[,;]\s*)(?=(?:(?:el|la)\s+)?(?:otr[oa]|un[oa]?|uno|\d+)\b)/i)
+            .find(piece => normalizeOption(piece).includes(normalizeOption(modelNote))) || ''
+          : source;
+        let note = modelNote ||
+          this.catalogService.extractProductModificationNote(preferenceSource) || undefined;
         const sourceNote = joinKitchenNotes(
-          peelSupportedCookingTerm(source, product)?.note,
-          interpretProductNote(source, [product])?.note,
-          this.catalogService.extractProductModificationNote(source),
-          condimentIntensityNote(source),
+          peelSupportedCookingTerm(preferenceSource, product)?.note,
+          interpretProductNote(preferenceSource, [product])?.note,
+          this.catalogService.extractProductModificationNote(preferenceSource),
+          condimentIntensityNote(preferenceSource),
         );
         if (!note && sourceNote) note = sourceNote;
+        const foreignKitchenNote = !!modelNote && !!sourceNote && source.toLowerCase().includes(modelNote.toLowerCase()) && sourceNote.split(',')
+          .map(part => part.trim()).filter(Boolean)
+          .some(part => !modelNote.toLowerCase().includes(part.toLowerCase()));
+        if (foreignKitchenNote && Number.isInteger(proposedQuantity) && proposedQuantity >= 1 && proposedQuantity <= quantity) {
+          quantity = proposedQuantity;
+        }
         // Retain additional kitchen preferences even when the model supplied
-        // only the first one. Scope them to this dish, never the entire order.
+        // only the first one. A note already scoped to one line does not absorb the other line.
         if (sourceNote && note) {
           for (const part of sourceNote.split(',').map(s => s.trim()).filter(Boolean)) {
+            if (modelNote && preferenceSource && !normalizeOption(preferenceSource).includes(normalizeOption(part))) continue;
             if (!note.toLowerCase().includes(part.toLowerCase())) note = `${note}, ${part}`.slice(0, 200);
           }
         }
@@ -1504,9 +1552,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         // Una elección escrita por el cliente prevalece sobre la propuesta
         // del modelo y sobre los valores por defecto del catálogo.
         if (product.attributes?.length && ctx.userMessage?.trim()) {
-          const attributeSource = this.catalogService.orderSegmentForProduct?.(
-            ctx.userMessage, product, ctx.products, attributes,
-          ) || ctx.userMessage;
+          const attributeSource = scopedSource;
           const parsed = this.catalogService.resolveAttributesFromMessage(
             product, attributeSource, [],
           );
@@ -1687,7 +1733,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           const result = JSON.parse(this.executeTool('add_item', {
             productId:args.newProductId, quantity:args.quantity ?? line.quantity ?? 1,
             note:typeof args.note === 'string' ? args.note : line.note, attributes:args.attributes,
-          },ctx));
+          },{...ctx,preserveReplacementQuantity:args.quantity === undefined}));
           if (!result.ok) return JSON.stringify(result);
           removeLine();
           const replacement = this.toolCartView(ctx).find(c=>c.pendingAddIndex === ctx.actions.addItems!.length-1);

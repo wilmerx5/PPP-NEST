@@ -96,3 +96,33 @@ describe('Catalog intent contracts without paid inference', () => {
     expect((wrong.actions as any).addItems).toBeUndefined();
   });
 });
+
+
+describe('Accepted tool quantity and variant evidence',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ it('corrects a conflicting literal quantity before returning the accepted tool result',()=>{
+  const ctx=context('Quiero dos bowls andinos',menu);const result=JSON.parse(agent.executeTool('add_item',{productId:501,quantity:8},ctx));
+  expect(result.ok).toBe(true);expect(result.quantity).toBe(2);expect((ctx.actions as any).addItems[0].quantity).toBe(2);
+ });
+ it.each(['No quiero una Limonada De Hierbabuena','No agregues Limonada De Hierbabuena','Sin Limonada De Hierbabuena'])('rejects an explicitly excluded catalog product: %s',text=>{
+  const ctx=context(text,menu);expect(JSON.parse(agent.executeTool('add_item',{productId:503,quantity:1},ctx)).error).toBe('explicitly_negated_product');expect((ctx.actions as any).addItems).toBeUndefined();
+ });
+ it('does not merge two explicit options into a default when the model omitted attributes',()=>{
+  const ctx=context('Un wrap vegetariano con tahini y para Sara otro wrap vegetariano pero con yogur',menu);
+  expect(JSON.parse(agent.executeTool('add_item',{productId:502,quantity:2},ctx)).error).toBe('variant_scope_required');expect((ctx.actions as any).addItems).toBeUndefined();
+ });
+ it.each(['Quiero un bowl andino con camarones','Un wrap vegetariano pero con camarones'])('keeps unavailable-ingredient validation despite grammar filtering: %s',text=>{
+  const id=text.includes('bowl')?501:502;const ctx=context(text,menu);
+  expect(JSON.parse(agent.executeTool('add_item',{productId:id,quantity:1},ctx)).error).toBe('dish_not_on_menu');expect((ctx.actions as any).addItems).toBeUndefined();
+ });
+});
+
+
+describe('Literal quantities cannot inflate through a kitchen note',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ it.each(['sin cebolla','sin ensalada'])('retains two units when the proposed eight has note %s',note=>{
+  const ctx=context('Quiero dos bowls andinos sin cebolla y sin ajo',menu);
+  const result=JSON.parse(agent.executeTool('add_item',{productId:501,quantity:8,note},ctx));
+  expect(result.ok).toBe(true);expect(result.quantity).toBe(2);expect((ctx.actions as any).addItems[0].quantity).toBe(2);
+ });
+});

@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 60,
-  "usedRequests": 52,
-  "remainingRequests": 8,
+  "usedRequests": 56,
+  "remainingRequests": 4,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T04:12:59.011Z",
+  "lastAttemptAt": "2026-10-15T05:26:10.981Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -304,6 +304,92 @@
         "Independent office order failed: required 2 bowls and 2 distinct wraps, cart had 1 bowl and 1 wrap",
         "Agent tool calls rejected before applying actions; deterministic fallback also lost quantities and variants",
         "Stop paid inference and reproduce tool guard rejection without network before another attempt"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "8dc95443",
+      "includesUncommittedAcceptedToolPlan": true,
+      "developmentRetest": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 2,
+      "usedTotal": 54,
+      "remaining": 6,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 2,
+        "successfulResponses": 2,
+        "responsesWithUsage": 2,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 18132,
+        "cachedPromptTokens": 8832,
+        "completionTokens": 156,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-accepted-plan-live-report.json",
+      "findings": [
+        "Distributed purchase correct: 2 bowls, 1 Tahini wrap, 1 Yogur wrap; no drinks added",
+        "Aggregate price preface failed before model: asked for a product instead of total"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "8dc95443",
+      "includesUncommittedAcceptedToolPlan": true,
+      "developmentRetest": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 2,
+      "usedTotal": 56,
+      "remaining": 4,
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 2,
+        "successfulResponses": 2,
+        "responsesWithUsage": 2,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 18132,
+        "cachedPromptTokens": 17152,
+        "completionTokens": 156,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": null,
+        "priceDate": null,
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "report": "/tmp/ppp-accepted-plan-retest-live-report.json",
+      "findings": [
+        "Distributed purchase correct: 2 bowls, 1 Tahini wrap, 1 Yogur wrap; no drinks added",
+        "Aggregate price preface passed without cart changes"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "8dc95443",
+      "includesUncommittedIntegration": true,
+      "independentFirstAttempt": true,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 0,
+      "usedTotal": 56,
+      "remaining": 4,
+      "report": "/tmp/ppp-integrated-independent-live-report.json",
+      "findings": [
+        "First mixed available/unavailable case intercepted by deterministic unavailableAskReply; agentTurns0, no network calls",
+        "Availability condition inside a purchase treated as whole-message inquiry; valid lines lost",
+        "Inspected case now development regression; diagnose without more paid inference"
       ]
     }
   ]

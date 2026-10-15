@@ -233,7 +233,8 @@ describe('Cross-stage correction matrix', () => {
     expect(h.conv.sessionData.customerNotes).toBe('Llamar al llegar');
     expect(h.conv.sessionData.paymentMethod).toBe(payment);
     expect(h.conv.sessionData.cashChangeFor).toBe(payment === 'cash' ? 'cambio de 100000' : undefined);
-    expect(h.conv.state).toBe(payment ? 'awaiting_final_confirm' : 'awaiting_payment');
+    const pendingStep = state === 'awaiting_name' ? 'awaiting_name' : state === 'awaiting_phone' ? 'awaiting_phone' : payment ? 'awaiting_final_confirm' : 'awaiting_payment';
+    expect(h.conv.state).toBe(pendingStep);
   });
 });
 

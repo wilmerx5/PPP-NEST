@@ -1,6 +1,12 @@
 # Continuación local de PPP WhatsApp
 
-Estado verificado al 14/10/2026, 22:34 Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
+Estado local actualizado al 15/10/2026. Última verificación del runtime:14/10/2026,22:34Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
+
+## Último bloque local (15/10): reparto y lote aceptado
+
+El caso narrativo ya pasa completo con modelo real:2bowls+wrapTahini+wrapYogur y consulta total67.200.4requests esta ronda,56usadas/4restantes. Es reensayo de desarrollo del caso conocido,no holdout nuevo. También pasa gratis con otra carta ficticia y notas separadas. Se conserva un lote íntegramente aceptado por herramientas sin volver a interpretar cantidades/opciones en reconciliación/planner. Se mantienen catálogo,límites y legacy para lotes mixtos/duplicados/notas sin distinta opción. Ver límites al final del handoff largo.
+
+La primera global falló y su fuente cambió por ediciones concurrentes;no usarla como validación. El usuario confirmó que terminó de editar y autorizó integrar. Global definitiva aprobada70suites/5456tests en476.716s (/tmp/ppp-integrated-approved-full.log),snapshot src+scripts /tmp/ppp-integrated-approved-source.json intacto.146focalizadas+77router+82contratos y TypeScript aprobados. TypeScript aprobado. Source congelada,sin deploy ni cambios a Main. Próximo paso:completitud del mensaje entero,productos ausentes y lotes mixtos;repartos con pronombres y notas distintas de mismoSKU sin variar atributos. No reabrir el caso oficina como si siguiera rechazado ni reducir sus oráculos. Captura real sintética versionada:whatsapp-recorded-distributed-output.json.
 
 ## Procedimiento vigente: entregas locales acumuladas
 
@@ -46,7 +52,7 @@ git rev-parse --short origin/staging
 
 ## Presupuesto vigente
 
-**60 autorizadas / 52 usadas / 8 restantes.** Extensión del usuario vigente; detener ante fallo y diagnosticar gratis antes de reensayar. No resetear contadores al cambiar agente o proceso.
+**60 autorizadas / 56 usadas / 4 restantes.** Extensión del usuario vigente; detener ante fallo y diagnosticar gratis antes de reensayar. No resetear contadores al cambiar agente o proceso.
 
 La última tanda usó11 solicitudes:10 adicionales autorizadas por «continua, si quieres autoriza ams llaamadas» y1 pendiente anterior. Cada intento se contabilizó antes de red, incluidos fallos. Fuente de saldo: campos superiores de `docs/whatsapp-model-budget.json`; `evaluationHistory` registra los ensayos recientes. `latestEvaluation` conserva una evaluación histórica y no reemplaza el saldo actual.
 
@@ -170,3 +176,9 @@ Nuevo caso narrativo de oficina en scripts/fixtures/whatsapp-contract-independen
 Nueva entrega local después de66be665a:purchaseAttempts distingue intento rechazado/aceptado sin PII. Si todos los add_item fallan y no hay adiciones aceptadas,el router conserva carrito y pide aclaración;ya no reconstruye el pedido erróneo por fallback. Un intento posterior exitoso sigue permitido. Runner sintético captura argumentos/resultados por turno y distingue model_call de validation_probe.15focalizadas y TypeScript aprobados;global definitiva70suites/5397tests aprobada en795.382s (/tmp/ppp-rejected-tools-approved-full.log),snapshot src+scripts intacto. La primera global se interrumpió por ajuste de prioridades y no se cuenta como resultado. Atención humana validada y consultas de pedido/ETA tienen prioridad;conservan carrito preexistente. Sin requests nuevas,saldo8,sin deploy. Ver límites de casos mixtos y próxima evidencia por línea al final del handoff largo. El pedido narrativo NO está aprobado como compra completa;no reducir su oráculo.
 
 Último cierre local:contención y trazas validadas70/5397,sin deploy y sin nueva API. Empezar por la validación de evidencia por línea pendiente,conservar el oráculo completo del fixture de oficina y usar diagnóstico gratuito antes de las8solicitudes restantes.
+
+Las entradas previas de contención/rechazo de oficina describen el estado anterior. El bloque15/10 de arriba y el final del handoff largo los sustituyen para la prioridad y el presupuesto vigentes.
+
+Integración15/10:conservar nuevas familias de notas distintas/dirección que mantiene paso pendiente. Se corrigieron herencia de cantidad en reemplazos y opciones dadas como nota;dobles de pruebas actualizados. Fuente congelada para global definitiva. Consultar el cierre más reciente del handoff largo antes de publicar;56/60usadas,4restantes,sin deploy.
+
+Punto validado15/10:70/5456,59pruebas nuevas incluyendo integración ajena.149contratos+32router+TypeScript aprobados. Nuevo caso mixto falló antes del modelo0requests porque unavailableAskReply ignoraba isAvailabilityInquiry=false. Es el siguiente bloque;ver evidencia al final del handoff. No declarar que todo el agente está cerrado ni contar fixture nuevo como aprobado.

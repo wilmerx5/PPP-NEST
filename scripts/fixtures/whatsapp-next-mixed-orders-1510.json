@@ -1,0 +1,162 @@
+[
+  {
+    "id": "next-mixed-unavailable-and-scoped-note",
+    "messages": [
+      {
+        "text": "Me ayudas con el almuerzo: dos bowls andinos, un wrap vegetariano con salsa yogur y un brownie. Si no hay brownie, deja solo lo demás.",
+        "expect": {
+          "items": {
+            "501": 2,
+            "502": 1
+          },
+          "attrs": [
+            {
+              "id": 502,
+              "key": "Salsa",
+              "value": "Yogur"
+            }
+          ],
+          "replyAny": [
+            "no tenemos",
+            "no manejamos",
+            "no está",
+            "no hay",
+            "no aparece",
+            "no lo tenemos",
+            "no lo manejamos",
+            "no contamos",
+            "no tengo"
+          ],
+          "orderCount": 0,
+          "replyAll": [
+            "brownie"
+          ]
+        }
+      },
+      {
+        "text": "Al wrap sin cebolla; los bowls normales.",
+        "expect": {
+          "items": {
+            "501": 2,
+            "502": 1
+          },
+          "lines": [
+            {
+              "id": 501,
+              "quantity": 2,
+              "forbidNote": [
+                "cebolla"
+              ]
+            },
+            {
+              "id": 502,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Salsa",
+                  "value": "Yogur"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      }
+    ],
+    "evaluationStatus": "inspected_failed_before_model"
+  },
+  {
+    "id": "next-recipient-notes-with-another-dish",
+    "messages": [
+      {
+        "text": "Para Camila y Diego, una sopa de zapallo para cada uno. A la de Diego no le pongan cilantro; la de Camila normal. Además un bowl andino.",
+        "expect": {
+          "items": {
+            "505": 2,
+            "501": 1
+          },
+          "lines": [
+            {
+              "id": 505,
+              "quantity": 1,
+              "note": [
+                "cilantro"
+              ]
+            },
+            {
+              "id": 505,
+              "quantity": 1,
+              "forbidNote": [
+                "cilantro"
+              ]
+            },
+            {
+              "id": 501,
+              "quantity": 1,
+              "forbidNote": [
+                "cilantro"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de confirmar, cuánto vale todo eso?",
+        "expect": {
+          "items": {
+            "505": 2,
+            "501": 1
+          },
+          "replyAll": [
+            "37.100"
+          ],
+          "orderCount": 0
+        }
+      }
+    ],
+    "evaluationStatus": "not_executed"
+  },
+  {
+    "id": "next-pack-and-absolute-drink-correction",
+    "messages": [
+      {
+        "text": "Para compartir, un trío de wraps y dos limonadas de hierbabuena, ambas sin azúcar.",
+        "expect": {
+          "items": {
+            "504": 1,
+            "503": 2
+          },
+          "lines": [
+            {
+              "id": 504,
+              "quantity": 1
+            },
+            {
+              "id": 503,
+              "quantity": 2,
+              "note": [
+                "sin azúcar"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Mejor tres limonadas en total, no tres más; el trío déjalo.",
+        "expect": {
+          "items": {
+            "504": 1,
+            "503": 3
+          },
+          "orderCount": 0
+        }
+      }
+    ],
+    "evaluationStatus": "not_executed"
+  }
+]

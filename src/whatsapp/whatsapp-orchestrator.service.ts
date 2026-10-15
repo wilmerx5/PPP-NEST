@@ -1,5 +1,5 @@
 import { beginTurnDecision, captureInquiryDecision, captureActionDecision, capturePurchaseDecision, finishTurnDecision, type TurnDecisionFrame } from './whatsapp-turn-decision';
-import { prepareValidatedPurchases } from './whatsapp-purchase-plan';
+import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './whatsapp-purchase-plan';
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
@@ -1312,10 +1312,11 @@ export class WhatsappOrchestratorService {
       }
       const subtotal = session.cart.reduce((sum, line) => sum + line.unitPrice * Math.max(1, line.quantity || 1), 0);
       const total = subtotal + (session.orderType === 'delivery' ? this.deliveryFeeFor(session, cfg) : 0);
+      const reminder = this.formatInterruptedStepReminder(conv, session);
       await this.reply(
         conv,
         msg.waId,
-        `El total del pedido va en *${this.catalogService.formatMoney(total)}*. El pedido sigue igual.\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}`,
+        `El total del pedido va en *${this.catalogService.formatMoney(total)}*. El pedido sigue igual.\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}${reminder ? `\n\n${reminder}` : ''}`,
       );
       return;
     }
@@ -5675,6 +5676,7 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
     sourceText = '',
     decision?:TurnDecisionFrame,
+    validatedToolActions = false,
   ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck }> {
     if (!actions) return { session };
     let next = { ...session };
@@ -5773,7 +5775,7 @@ export class WhatsappOrchestratorService {
 
     if (actions.addItems?.length) {
       const purchasePlan = prepareValidatedPurchases({additions:actions.addItems,products,sourceText,
-        forcedQty:sourceText ? this.resolveOrderQuantity(next,sourceText) : 1,
+        forcedQty:sourceText ? this.resolveOrderQuantity(next,sourceText) : 1,validatedToolActions,
         catalog:this.catalogService,resolveQuantity:evidence=>this.resolveAddItemQuantity(evidence)});
       capturePurchaseDecision(decision,purchasePlan);
       const deferredNeedsAttrs: Array<{
@@ -7964,9 +7966,13 @@ export class WhatsappOrchestratorService {
       if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
     } else {
       const cart = this.consolidateCart(session.cart);
+      const used = new Set<number>();
       for (const name of names) {
         const baseNorm = this.normalizeForMatch(name.replace(/\s*×\s*\d+\s*$/, '').trim());
-        const hit = cart.find((c) => this.normalizeForMatch(c.name) === baseNorm);
+        const index = cart.findIndex((c, position) => !used.has(position) && this.normalizeForMatch(c.name) === baseNorm);
+        if (index < 0) continue;
+        used.add(index);
+        const hit = cart[index];
         if (hit?.note?.trim()) head += `\n📝 _${hit.note.trim()}_`;
       }
     }
@@ -11299,12 +11305,29 @@ export class WhatsappOrchestratorService {
     );
     const fee = await this.ensureDeliveryFeeQuoted(next, cfg);
     next = fee.session;
-    await this.conversationService.saveSession(conv, next, 'building_cart');
+    const keepStep =
+      conv.state === 'awaiting_name' ? 'awaiting_name'
+      : conv.state === 'awaiting_phone' && !next.phoneConfirmed ? 'awaiting_phone'
+      : (conv.state === 'awaiting_payment' || conv.state === 'awaiting_final_confirm') && !next.paymentMethod
+        ? 'awaiting_payment'
+      : conv.state === 'awaiting_final_confirm' && next.paymentMethod
+        ? 'awaiting_final_confirm'
+      : null;
+    await this.conversationService.saveSession(conv, next, keepStep || 'building_cart');
     const feeLine = fee.blocked
       ? `\n\n${fee.blocked}`
       : fee.notice
         ? `\n\n${fee.notice}`
         : '';
+    if (!fee.blocked && keepStep) {
+      const reminder = this.formatInterruptedStepReminder(conv, next);
+      await this.reply(
+        conv,
+        waId,
+        `Listo, dirección actualizada:\n📍 _${next.address}_${feeLine}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}${reminder ? `\n\n${reminder}` : ''}`,
+      );
+      return true;
+    }
     if (!fee.blocked && next.cart.length &&
         !next.pendingAttribute && !next.pendingMatch && !next.pendingMultiOrder) {
       await this.tryConfirmOrder(conv, waId, next, {
@@ -14399,13 +14422,18 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!session.cart.length || !isCartChargeQuestion(text)) return false;
+    if (session.pendingCompositionAsk) {
+      session = { ...session, pendingCompositionAsk: undefined };
+      await this.conversationService.saveSession(conv, session);
+    }
     const timeReply = /\btiempo\b/i.test(text)
       ? `\n\n${cfg.localContext?.deliveryTimeNote?.trim() ? `Tiempo estimado: ${cfg.localContext.deliveryTimeNote.trim()}.` : 'El equipo debe confirmar el tiempo estimado de entrega.'}`
       : '';
+    const reminder = this.formatInterruptedStepReminder(conv, session);
     await this.reply(
       conv,
       waId,
-      `Esto es lo que va en el pedido:\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}${timeReply}\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*).`,
+      `Esto es lo que va en el pedido:\n\n${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}${timeReply}\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*).${reminder ? `\n\n${reminder}` : ''}`,
     );
     return true;
   }
@@ -17385,7 +17413,10 @@ export class WhatsappOrchestratorService {
       return false;
     }
 
-    const intentMisses = this.reconcileAgentAddsWithUtterance(text, products, guarded.actions, !editsExistingCart);
+    const validatedToolActions = !editsExistingCart &&
+      hasCompleteToolPurchaseEvidence(agent.purchaseAttempts,guarded.actions?.addItems);
+    const intentMisses = validatedToolActions ? [] :
+      this.reconcileAgentAddsWithUtterance(text, products, guarded.actions, !editsExistingCart);
     captureActionDecision(params.decision,'reconciled',guarded.actions);
     if (
       !editsExistingCart && !guarded.actions?.addItems?.length &&
@@ -17429,6 +17460,7 @@ export class WhatsappOrchestratorService {
       cfg,
       text,
       params.decision,
+      validatedToolActions,
     );
     session = applied.session;
 
@@ -17621,11 +17653,12 @@ export class WhatsappOrchestratorService {
         .filter(Boolean) as string[];
       // Una sola burbuja del sistema (evita "añadí… ¿pasamos a tu nombre?" del LLM).
       // Si el agente dijo que un plato no está, esa frase se queda.
-      const cartReply = this.buildCartAddReply(
-        session,
-        fee,
-        addedNames.length ? addedNames : 'ítems',
-      );
+      const distinctVariants = validatedToolActions &&
+        new Set(guarded.actions.addItems.map(item=>item.productId)).size < guarded.actions.addItems.length;
+      // A name-only acknowledgement cannot distinguish two options/notes of the same SKU.
+      const cartReply = distinctVariants
+        ? this.formatCartOnly(session,fee)+'\n\n¿*Algo más*?'
+        : this.buildCartAddReply(session,fee,addedNames.length ? addedNames : 'ítems');
       const missLine = agentReply
         .split('\n')
         .map((line) => line.trim())
@@ -20137,14 +20170,17 @@ export class WhatsappOrchestratorService {
         ? this.catalogService.orderSegmentForProduct(sourceText, product, products, segmentChoices)
         : rawSegment;
       const hasOwnedSource = !!ownedSource && ownedSource !== sourceText;
-      const attrSource = hasOwnedSource ? ownedSource : [item.segment, sourceText].filter(Boolean).join(' ');
+      // Two lines of the same SKU each own their clause. The whole message would copy the first quantity and drop the second note.
+      const sameSkuSiblings = pending.confident.filter(c => c.productId === product.id).length > 1;
+      const lineSource = sameSkuSiblings ? item.segment : (hasOwnedSource ? ownedSource : item.segment);
+      const attrSource = sameSkuSiblings || hasOwnedSource ? lineSource : [item.segment, sourceText].filter(Boolean).join(' ');
       const qty =
         sourceText &&
         this.catalogService.askedForOneComboEach(sourceText) &&
         /\bcombo\b/i.test(product.name)
           ? 1
-          : this.quantityForMultiSegment(hasOwnedSource ? ownedSource : item.segment, product.name,
-              hasOwnedSource ? ownedSource : sourceText);
+          : this.quantityForMultiSegment(lineSource, product.name,
+              sameSkuSiblings || hasOwnedSource ? lineSource : sourceText);
       const swap = sourceText ? this.catalogService.swapIntent(sourceText) : null;
       const carriesSwap = !!swap && this.catalogService.productCarriesMention(product, swap.removed);
       const swapOpts = {omitSwappedDrink: carriesSwap && !!sourceText && this.catalogService.swapRemovesDrink(sourceText)};
@@ -20179,7 +20215,7 @@ export class WhatsappOrchestratorService {
         };
         continue;
       }
-      const noteSource = hasOwnedSource ? ownedSource : item.segment;
+      const noteSource = lineSource;
       const lineNote =
         item.note ||
         [peelSupportedCookingTerm(noteSource, product)?.note,
@@ -20187,14 +20223,14 @@ export class WhatsappOrchestratorService {
           interpretProductNote(noteSource, [product])?.note,
           condimentIntensityNote(noteSource),
           noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=(?:\s+(?:por favor|porfa|gracias))?(?:[,;.!]|$))/iu)?.[0]].filter(Boolean).join('; ') ||
-        (!hasOwnedSource && sourceText && sourceText !== noteSource
+        (!sameSkuSiblings && !hasOwnedSource && sourceText && sourceText !== noteSource
           ? this.catalogService.extractProductModificationNote(sourceText)
           : undefined) ||
         (carriesSwap && swap
           ? this.catalogService.swapChangeNote(swap.removed, swap.added)
           : undefined);
       const attempt = this.tryAddProductToCart(next, product, qty, cfg, lineNote, attrs, {
-        sourceText: hasOwnedSource ? ownedSource : sourceText,
+        sourceText: sameSkuSiblings || hasOwnedSource ? lineSource : sourceText,
         ...swapOpts,
       });
       if (attempt.missingAttributes) {

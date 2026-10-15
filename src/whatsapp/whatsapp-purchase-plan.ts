@@ -18,7 +18,8 @@ export type PurchasePlanDiagnostic = {
     | 'duplicate_proposals_merged'
     | 'purchase_filtered_as_side'
     | 'legacy_side_fallback'
-    | 'quantity_recomputed';
+    | 'quantity_recomputed'
+    | 'validated_tool_purchase_preserved';
   productId: number;
   proposedQuantity?: number;
   resolvedQuantity?: number;
@@ -57,6 +58,7 @@ export function prepareValidatedPurchases(input: {
   products: WhatsappCatalogProduct[];
   sourceText?: string;
   forcedQty: number;
+  validatedToolActions?: boolean;
   catalog: PurchaseCatalog;
   resolveQuantity: (evidence: PurchaseQuantityEvidence) => number;
 }): PurchasePlan {
@@ -70,6 +72,18 @@ export function prepareValidatedPurchases(input: {
   } = input;
   const diagnostics: PurchasePlanDiagnostic[] = [];
   const lines: PreparedPurchase[] = [];
+  // The tool already validated SKU, quantity, options and scoped notes. Do not
+  // reinterpret its complete accepted plan with a second language parser.
+  if (input.validatedToolActions) {
+    for (const item of additions) {
+      const product = products.find(candidate => candidate.id === item.productId);
+      if (!product) continue;
+      lines.push({product,quantity:item.quantity ?? 1,note:item.note,
+        attributes:structuredClone(item.attributes)});
+      diagnostics.push({code:'validated_tool_purchase_preserved',productId:item.productId});
+    }
+    return {lines,diagnostics};
+  }
   const multiQtyOrder =
     additions.length > 1 ||
     (!!sourceText &&
@@ -261,4 +275,32 @@ export function prepareValidatedPurchases(input: {
     });
   }
   return { lines, diagnostics };
+}
+
+function purchaseNoteKey(note?: string | null): string {
+  return (note || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Opt in only for a complete accepted batch; legacy/mixed/rejected proposals keep their existing path.
+ * Same SKU and options stay distinct when every line has its own note. A blank note beside a noted twin stays legacy. */
+export function hasCompleteToolPurchaseEvidence(
+ attempts: readonly {productId:number;accepted:boolean}[] | undefined,
+ additions: AiOrderAction['addItems'],
+): boolean {
+ if (!attempts?.length || !additions?.length || attempts.length!==additions.length || attempts.some(a=>!a.accepted)) return false;
+ const remaining=attempts.map(a=>a.productId);
+ const signatures=new Set<string>();
+ const notesByVariant=new Map<string,string[]>();
+ for(const item of additions){
+  const attrs=(item.attributes||[]).map(a=>[a.attributeName,a.attributeValue]).sort();
+  const note=purchaseNoteKey(item.note);
+  const variant=JSON.stringify([item.productId,attrs]);
+  const signature=JSON.stringify([item.productId,attrs,note]);
+  if(signatures.has(signature))return false;signatures.add(signature);
+  notesByVariant.set(variant,[...(notesByVariant.get(variant)||[]),note]);
+  if(!Number.isInteger(item.quantity) || item.quantity!<1 || item.quantity!>10)return false;
+  const index=remaining.indexOf(item.productId);if(index<0)return false;remaining.splice(index,1);
+ }
+ for(const notes of notesByVariant.values()) if(notes.length>1 && notes.some(note=>!note)) return false;
+ return remaining.length===0;
 }

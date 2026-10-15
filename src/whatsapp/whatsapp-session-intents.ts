@@ -774,6 +774,14 @@ export function isCartChargeQuestion(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+  // Aggregate references can follow a conversational preface. Restrict the
+  // preface so a purchase, hypothetical change or product-specific question
+  // is never swallowed as a read-only cart total.
+  const aggregate = /\bcuanto\s+(?:vale|cuesta|sale|suma|es|seria)\s+(?:todo(?:\s+(?:eso|esto|el\s+pedido))?|el\s+pedido(?:\s+completo)?|el\s+total)(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.exec(t);
+  if (aggregate) {
+    const preface = t.slice(0,aggregate.index).replace(/^[¿?\s,]+|[¿?\s,]+$/g,'').trim();
+    if (!preface || /^(?:(?:antes de (?:seguir|continuar|confirmar)|una (?:duda|pregunta)|disculpa|oye|y|por favor|porfa)[\s,¿?]*)+$/.test(preface)) return true;
+  }
   return /^(?:[¿?\s]*)(?:y\s+)?cuanto\s+(?:suma|(?:es|seria|vale|sale)\s+el\s+total)[?¿.!\s]*$/.test(t) ||
     /\b(cobrando|me cobran)\b/.test(t) ||
     /^(?:[¿?\s]*)cuanto(?:\s+vale|\s+es|\s+seria|\s+sale|\s+cuesta)?(?:\s+(?:en\s+total|todo|el\s+pedido))?[?¿.!\s]*$/.test(t) ||

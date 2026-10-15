@@ -1,0 +1,200 @@
+{
+  "model": "gpt-4.1-2025-04-14",
+  "date": "2026-10-15",
+  "baseCommit": "8dc95443",
+  "includesUncommittedAcceptedToolPlan": true,
+  "note": "Synthetic development retest of an inspected failing case; not an independent holdout. Tool args are actual captured model calls, not guessed. No Meta/DB/order side effects.",
+  "userMessage": "Somos cuatro en la oficina. A Daniela y a Camilo mándales un bowl andino a cada uno; para mí un wrap vegetariano con tahini y para Sara otro wrap vegetariano pero con yogur. No agregues bebidas todavía.",
+  "agentResult": {
+    "reply": "Listo, agregué 2 bowls andinos (para Daniela y Camilo), un wrap vegetariano con tahini y otro con yogur (para ti y para Sara). ¿Quieres agregar algo más o seguimos con el pedido así?",
+    "actions": {
+      "addItems": [
+        {
+          "productId": 501,
+          "quantity": 2
+        },
+        {
+          "productId": 502,
+          "quantity": 1,
+          "note": "con tahini",
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "attributeValue": "Tahini"
+            }
+          ]
+        },
+        {
+          "productId": 502,
+          "quantity": 1,
+          "note": "pero con yogur",
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "attributeValue": "Yogur"
+            }
+          ]
+        }
+      ]
+    },
+    "toolCalls": [
+      "add_item",
+      "add_item",
+      "add_item"
+    ],
+    "purchaseAttempts": [
+      {
+        "productId": 501,
+        "accepted": true
+      },
+      {
+        "productId": 502,
+        "accepted": true
+      },
+      {
+        "productId": 502,
+        "accepted": true
+      }
+    ]
+  },
+  "toolTrace": [
+    {
+      "origin": "model_call",
+      "name": "add_item",
+      "args": {
+        "productId": 501,
+        "quantity": 2
+      },
+      "result": {
+        "ok": true,
+        "added": {
+          "id": 501,
+          "code": 501,
+          "name": "Bowl Andino",
+          "price": 18700,
+          "category": null,
+          "description": "Quinua, garbanzos y vegetales asados",
+          "hasAttributes": false,
+          "attributes": []
+        },
+        "quantity": 2,
+        "note": null,
+        "attributes": null,
+        "hint": null
+      }
+    },
+    {
+      "origin": "model_call",
+      "name": "add_item",
+      "args": {
+        "productId": 502,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Tahini"
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "added": {
+          "id": 502,
+          "code": 502,
+          "name": "Wrap Vegetariano",
+          "price": 14900,
+          "category": null,
+          "description": "Tortilla, vegetales y hummus",
+          "hasAttributes": true,
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "options": [
+                "Tahini",
+                "Yogur",
+                "Sin salsa"
+              ]
+            }
+          ]
+        },
+        "quantity": 1,
+        "note": "con tahini",
+        "attributes": [
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Tahini"
+          }
+        ],
+        "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+      }
+    },
+    {
+      "origin": "model_call",
+      "name": "add_item",
+      "args": {
+        "productId": 502,
+        "quantity": 1,
+        "attributes": [
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Yogur"
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "added": {
+          "id": 502,
+          "code": 502,
+          "name": "Wrap Vegetariano",
+          "price": 14900,
+          "category": null,
+          "description": "Tortilla, vegetales y hummus",
+          "hasAttributes": true,
+          "attributes": [
+            {
+              "attributeName": "Salsa",
+              "options": [
+                "Tahini",
+                "Yogur",
+                "Sin salsa"
+              ]
+            }
+          ]
+        },
+        "quantity": 1,
+        "note": "pero con yogur",
+        "attributes": [
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Yogur"
+          }
+        ],
+        "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+      }
+    }
+  ],
+  "followup": {
+    "text": "Antes de seguir, cuánto vale todo eso?",
+    "replies": [
+      "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Bowl Andino* ×2 · $18.700 c/u → *$37.400*\n*2.* *Wrap Vegetariano* · *$14.900*\n   _Salsa: Tahini_\n*3.* *Wrap Vegetariano* · *$14.900*\n   _Salsa: Yogur_\n   📝 _pero con yogur_\n────────────\nSubtotal $67.200 · Dom. según dir.\n*Total $67.200*\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*)."
+    ]
+  },
+  "apiUsage": {
+    "model": "gpt-4.1-2025-04-14",
+    "requests": 2,
+    "successfulResponses": 2,
+    "responsesWithUsage": 2,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 18132,
+    "cachedPromptTokens": 17152,
+    "completionTokens": 156,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": null,
+    "priceDate": null,
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  }
+}

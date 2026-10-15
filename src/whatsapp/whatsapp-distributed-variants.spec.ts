@@ -48,4 +48,30 @@ describe('A grouped quantity describes the total, not the first preparation', ()
     expect(catalog.orderSegmentForProduct(text, product, products, [{ attributeName: 'Seleccion', attributeValue: 'Asada' }])).toMatch(/^2 Sobrebarriga asadas sin ensalada$/);
     expect(catalog.orderSegmentForProduct(text, product, products, [{ attributeName: 'Seleccion', attributeValue: 'En Salsa' }])).toMatch(/^1 Sobrebarriga en salsa\.?$/);
   });
+
+  it('parte dos notas distintas del mismo plato sin cambiar la opción', () => {
+    const text = 'Quiero dos sopas de ajiaco, una sin cebolla y la otra sin ensalada';
+    const expanded = expandSpokenSameSkuPair(text, products, catalog);
+    expect(expanded).toMatch(/1 Sopa De Ajiaco sin cebolla y 1 Sopa De Ajiaco sin ensalada/i);
+    const result = catalog.resolveMultiProductOrder(text, products)!;
+    const lines = [...result.confident, ...result.needsAttributes];
+    expect(lines.map(line => line.product.id)).toEqual([38, 38]);
+    expect(lines[0].segment).toMatch(/sin cebolla/i);
+    expect(lines[0].segment).not.toMatch(/sin ensalada/i);
+    expect(lines[1].segment).toMatch(/sin ensalada/i);
+    expect(lines[1].segment).not.toMatch(/sin cebolla/i);
+    expect(result.unresolved).toEqual([]);
+  });
+
+  it('parte dos notas en un menú sin atributos', () => {
+    const soup = [{ id: 44001, code: 44001, name: 'Sopa De Tomate', price: 9000, availableNow: true, hasAttributes: false, attributes: [] }];
+    const text = 'Quiero dos sopas de tomate, una sin cebolla y la otra sin ensalada';
+    const result = catalog.resolveMultiProductOrder(text, soup as never)!;
+    const lines = [...result.confident, ...result.needsAttributes];
+    expect(lines).toHaveLength(2);
+    expect(lines.every(line => line.product.id === 44001)).toBe(true);
+    expect(lines[0].segment).toMatch(/sin cebolla/i);
+    expect(lines[1].segment).toMatch(/sin ensalada/i);
+    expect(result.unresolved).toEqual([]);
+  });
 });

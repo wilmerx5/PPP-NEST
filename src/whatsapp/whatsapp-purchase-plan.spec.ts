@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
-import { prepareValidatedPurchases } from './whatsapp-purchase-plan';
+import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './whatsapp-purchase-plan';
 
 const menu = JSON.parse(
   readFileSync(
@@ -147,4 +147,30 @@ describe('Purchase plan contract — no transport or session writes', () => {
     expect(prepare([]).lines).toEqual([]);
     expect(prepare([{ productId: 99999, quantity: 4 }]).lines).toEqual([]);
   });
+});
+
+
+describe('Accepted tool purchase boundary',()=>{
+ const additions=[{productId:501,quantity:2},{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Tahini'}]},{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Yogur'}]}];
+ const attempts=additions.map(item=>({productId:item.productId,accepted:true}));
+ it('requires matching accepted outcomes for every action and distinct variant signatures',()=>{
+  expect(hasCompleteToolPurchaseEvidence(attempts,additions)).toBe(true);
+  expect(hasCompleteToolPurchaseEvidence(undefined,additions)).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence([...attempts,{productId:999,accepted:false}],additions)).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence(attempts.slice(1),additions)).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence(attempts,[...additions.slice(0,2),{productId:999,quantity:1}])).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[additions[0],additions[0]])).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[{...additions[0],note:'sin cebolla'},{...additions[0],note:'sin ensalada'}])).toBe(true);
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[{...additions[0],note:'Sin Cebolla'},{...additions[0],note:'sin cebolla'}])).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[additions[0],{...additions[0],note:'sin cebolla'}])).toBe(false);
+ });
+ it.each([undefined,0,11,1.5,NaN])('does not opt in with an invalid quantity %s',quantity=>{
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true}],[{productId:501,quantity}])).toBe(false);
+ });
+ it('preserves tool quantities and choices without invoking a second text parser',()=>{
+  const resolveQuantity=jest.fn(()=>99);const before=structuredClone(additions);
+  const result=prepare(additions,{validatedToolActions:true,sourceText:'Relato con reparto',resolveQuantity});
+  expect(resolveQuantity).not.toHaveBeenCalled();expect(result.lines.map(line=>[line.product.id,line.quantity,line.attributes])).toEqual(additions.map(item=>[item.productId,item.quantity,item.attributes]));
+  expect(result.diagnostics.every(d=>d.code==='validated_tool_purchase_preserved')).toBe(true);expect(additions).toEqual(before);
+ });
 });
