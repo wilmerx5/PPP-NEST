@@ -13999,3 +13999,101 @@ describe('Pedido mixto — condición de disponibilidad no bloquea la compra',()
   }finally{globalThis.fetch=original;}
  });
 });
+
+
+describe('Reparto entre destinatarios conserva el pedido completo',()=>{
+ it.each([
+  {kind:'vegetal',menu:JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8')),soup:505,other:501,text:'Para Camila y Diego, una sopa de zapallo para cada uno. A la de Diego no le pongan cilantro; la de Camila normal. Además un bowl andino.'},
+  {kind:'otra carta',menu:[{id:88001,code:88001,name:'Crema De Calabaza',price:8000,availableNow:true,hasAttributes:false,attributes:[]},{id:88002,code:88002,name:'Ensalada Campestre',price:13000,availableNow:true,hasAttributes:false,attributes:[]}],soup:88001,other:88002,text:'Para Laura y Pablo, una crema de calabaza para cada uno. A la de Pablo no le pongan cilantro; la de Laura normal. Además una ensalada campestre.'}
+ ])('$kind no inventa dirección ni rechaza el último plato',async({menu,soup,other,text})=>{
+  const h=harness(menu,true);h.conv.sessionData.orderType='delivery';h.service.ordersService.create=jest.fn();
+  h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const args=[{productId:soup,quantity:1},{productId:soup,quantity:1,note:'sin cilantro'},{productId:other,quantity:1}];
+  const original=globalThis.fetch;const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:args.map((arg,index)=>({id:'recipient-'+index,type:'function',function:{name:'add_item',arguments:JSON.stringify(arg)}}))})).mockResolvedValueOnce(response({content:'Listo, una normal y otra sin cilantro, más el otro plato.'}));globalThis.fetch=fetchMock;
+  try{
+   const reply=await h.sendQueued(text);
+   expect(h.conv.sessionData.address).toBeUndefined();
+   expect(h.conv.customerName).toBe('Wilmer');
+   const rows=h.cartRows();expect(rows).toHaveLength(3);
+   expect(rows.filter(row=>row.id===soup).map(row=>row.qty)).toEqual([1,1]);
+   expect(rows.filter(row=>row.id===soup&&/cilantro/i.test(row.note||''))).toHaveLength(1);
+   expect(rows.find(row=>row.id===other)).toEqual(expect.objectContaining({qty:1}));
+   expect(rows.find(row=>row.id===other)?.note||'').not.toMatch(/cilantro/i);
+   expect(reply||'').not.toMatch(/no tenemos|no manejamos|Camila|Diego|Laura|Pablo/i);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=original;}
+ });
+});
+
+
+describe('Destino frente a reparto de comensales',()=>{
+ it.each([
+  'Una sopa para cada uno',
+  'Dos bowls para cada una. Además un wrap vegetariano',
+  'Una crema por persona',
+  'Un almuerzo para cada quien',
+  'Una sopa de zapallo para cada uno. A la de Ana no le pongan cilantro',
+  'Una limonada por comensal',
+  'Una sopa para cada uno. A la  de Ana no le pongan cilantro',
+  'Una sopa para cada uno. En la de Luis sin cebolla',
+ ])('no trata el reparto como domicilio: %s',text=>{
+  const h=harness();expect(h.service.extractDeliveryTail(text)).toBeNull();
+ });
+ it.each([
+  ['Una sopa para cada uno, para la calle 8 20 30','calle 8 20 30'],
+  ['Una sopa de ajiaco para el hospital de Kennedy','hospital de Kennedy'],
+  ['Dos bowls para la carrera 15 45 20','carrera 15 45 20'],
+ ])('conserva destino explícito: %s',(text,address)=>{
+  const h=harness();expect(h.service.extractDeliveryTail(text)?.toLowerCase()).toContain(address.toLowerCase());
+ });
+});
+
+
+describe('Paquetes y cantidades absolutas con notas conservadas',()=>{
+ const fictional=[{id:89001,code:89001,name:'Duo De Onigiris',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:89002,code:89002,name:'Te De Jazmin',price:5000,availableNow:true,hasAttributes:false,attributes:[]}];
+ const menus=[
+  {kind:'vegetal',menu:JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8')),pack:504,drink:503,order:'Para compartir, un trío de wraps y dos limonadas de hierbabuena, ambas sin azúcar.',query:'limonadas'},
+  {kind:'japonesa',menu:fictional,pack:89001,drink:89002,order:'Un duo de onigiris y dos te de jazmin, ambos sin azúcar.',query:'te de jazmin'},
+  {kind:'ppp',menu:products,pack:71,drink:37,order:'Un duo de tacos con colombiana y dos limonadas naturales, ambas sin azúcar.',query:'limonadas'}
+ ];
+ it.each(menus.flatMap(menu=>['Mejor tres {drink} en total, no tres más; el paquete déjalo.','Que sean 3 {drink} en total; conserva lo demás.'].map(change=>({...menu,change:change.replace('{drink}',menu.query)}))))('$kind: $change',async({kind,menu,pack,drink,order,change})=>{
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const args=[{productId:pack,quantity:1},{productId:drink,quantity:2,note:'sin azúcar'}];
+  const original=globalThis.fetch;const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:args.map((arg,index)=>({id:'pack-'+index,type:'function',function:{name:'add_item',arguments:JSON.stringify(arg)}}))})).mockResolvedValueOnce(response({content:'Listo, un paquete y dos bebidas sin azúcar.'}));globalThis.fetch=fetchMock;
+  try{
+   await h.sendQueued(order);expect(h.cartRows().map(row=>[row.id,row.qty]).sort((a,b)=>a[0]-b[0])).toEqual([[pack,1],[drink,2]].sort((a,b)=>a[0]-b[0]));
+   expect(h.cartRows().find(row=>row.id===drink)?.note||'').toMatch(/sin az[uú]car/i);
+   fetchMock.mockResolvedValueOnce(response({content:null,tool_calls:[{id:'absolute',type:'function',function:{name:'update_item',arguments:JSON.stringify({productId:drink,cartLineIndex:h.cartRows().findIndex(row=>row.id===drink),quantity:3})}}]})).mockResolvedValueOnce(response({content:'Listo, tres bebidas en total; el paquete sigue igual.'}));
+   const reply=await h.sendQueued(change);
+   expect(h.cartRows().map(row=>[row.id,row.qty]).sort((a,b)=>a[0]-b[0])).toEqual([[pack,1],[drink,3]].sort((a,b)=>a[0]-b[0]));
+   expect(h.cartRows().find(row=>row.id===drink)?.note||'').toMatch(/sin az[uú]car/i);
+   expect(h.cartRows().find(row=>row.id===pack)?.note||'').not.toMatch(/az[uú]car/i);
+   expect(reply||'').not.toMatch(/no manejamos|no tenemos|no pude/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=original;}
+ });
+});
+
+
+describe('Tamaño de paquete conserva ambigüedades reales',()=>{
+ it.each([
+  {name:'Trio De Tacos Al Pastor',query:'Un trio de tacos',other:'Duo De Tacos Al Pastor'},
+  {name:'Duo De Onigiris De Salmon',query:'Un duo de onigiris',other:'Trio De Onigiris De Salmon'},
+ ])('$query aclara solo si hay dos SKUs del mismo tamaño',({name,query,other})=>{
+  const item=(id:number,name:string)=>({id,code:id,name,price:20000,hasAttributes:false,attributes:[],availableNow:true});
+  const menu=[item(91001,name),item(91002,name),item(91003,other),item(91004,'Agua Mineral')];
+  const h=harness(menu,true);const result=h.service.catalogService.resolveMultiProductOrder(query+' y un agua mineral',menu);
+  expect(result.ambiguous).toHaveLength(1);expect(result.ambiguous[0].candidates.map(p=>p.id)).toEqual([91001,91002]);
+  expect(result.confident.map(p=>p.product.id)).toEqual([91004]);
+ });
+ it.each([
+  {name:'Duo De Tacos Al Pastor',query:'Un duo de tacos',other:'Trio De Tacos Al Pastor'},
+  {name:'Trio De Onigiris De Salmon',query:'Un trio de onigiris',other:'Duo De Onigiris De Salmon'},
+ ])('$query resuelve un único tamaño de paquete',({name,query,other})=>{
+  const item=(id:number,name:string)=>({id,code:id,name,price:20000,hasAttributes:false,attributes:[],availableNow:true});
+  const menu=[item(91001,name),item(91002,other),item(91004,'Agua Mineral')];const h=harness(menu,true);
+  const result=h.service.catalogService.resolveMultiProductOrder(query+' y un agua mineral',menu);expect(result.ambiguous).toHaveLength(0);expect(result.confident.map(p=>p.product.id)).toEqual([91001,91004]);
+ });
+});

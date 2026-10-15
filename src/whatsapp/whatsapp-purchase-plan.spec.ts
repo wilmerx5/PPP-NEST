@@ -162,7 +162,7 @@ describe('Accepted tool purchase boundary',()=>{
   expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[additions[0],additions[0]])).toBe(false);
   expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[{...additions[0],note:'sin cebolla'},{...additions[0],note:'sin ensalada'}])).toBe(true);
   expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[{...additions[0],note:'Sin Cebolla'},{...additions[0],note:'sin cebolla'}])).toBe(false);
-  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[additions[0],{...additions[0],note:'sin cebolla'}])).toBe(false);
+  expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true},{productId:501,accepted:true}],[additions[0],{...additions[0],note:'sin cebolla'}])).toBe(true);
  });
  it.each([undefined,0,11,1.5,NaN])('does not opt in with an invalid quantity %s',quantity=>{
   expect(hasCompleteToolPurchaseEvidence([{productId:501,accepted:true}],[{productId:501,quantity}])).toBe(false);

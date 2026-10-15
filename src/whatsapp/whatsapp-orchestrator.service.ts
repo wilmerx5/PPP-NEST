@@ -15493,8 +15493,8 @@ export class WhatsappOrchestratorService {
       /\b(?:enviar|mandar|llevar|traer)\s+a\s+domicilio\s+(?:a|en|para)\s+(.+)$/is,
       /\b(?:enviar|mandar|llevar|traer|domicilio)\s+(?:a|en|para)\s+(.+)$/is,
       /\ben\b\s+(?:la\s+|el\s+)?((?:calle|carrera|cra|cll|av\.?|avenida|habitaci[oó]n|apto|apartamento|torre|barrio|hospital|conjunto|urbanizaci[oó]n)\b.+)$/is,
-      /\ba la\b\s+(.+)$/is,
-      /\ben la\b\s+(.+)$/is,
+      /\ba la\b\s+(?!\s*de\b)(.+)$/is,
+      /\ben la\b\s+(?!\s*de\b)(.+)$/is,
     ];
     for (const re of endPatterns) {
       const m = raw.match(re);
@@ -15538,6 +15538,8 @@ export class WhatsappOrchestratorService {
       const addr = this.normalizeDeliveryAddress(cand);
       if (!addr || addr.length < 3) continue;
       if (parseScheduleRequest(addr)) continue;
+      // Recipient distribution is not a destination, even when more order clauses follow.
+      if (/^(?:cada\s+(?:un[oa]|quien)|por\s+(?:persona|comensal))\b/i.test(addr)) continue;
       if (this.isPickupOnlyDeliveryClause(addr)) continue;
       if (isDeliveryLogisticsFluff(addr)) continue;
       // A requested date or diner count is not a delivery address.

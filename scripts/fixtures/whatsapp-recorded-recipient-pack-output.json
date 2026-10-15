@@ -1,0 +1,528 @@
+[
+  {
+    "id": "next-mixed-unavailable-and-scoped-note",
+    "model": "gpt-4.1-2025-04-14",
+    "source": "real configured model; synthetic isolated router; development retest",
+    "requests": 5,
+    "turns": [
+      {
+        "text": "Me ayudas con el almuerzo: dos bowls andinos, un wrap vegetariano con salsa yogur y un brownie. Si no hay brownie, deja solo lo demás.",
+        "toolTrace": [
+          {
+            "origin": "model_call",
+            "name": "search_menu",
+            "args": {
+              "query": "bowl andino"
+            },
+            "result": {
+              "ok": true,
+              "query": "bowl andino",
+              "mode": "product_match",
+              "results": [
+                {
+                  "id": 501,
+                  "code": 501,
+                  "name": "Bowl Andino",
+                  "price": 18700,
+                  "category": null,
+                  "description": "Quinua, garbanzos y vegetales asados",
+                  "hasAttributes": false,
+                  "attributes": []
+                }
+              ],
+              "hint": "Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan \"¿tienen?\", di que sí y ofrece agregarlo. No digas que no hay ese producto si está en results."
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "search_menu",
+            "args": {
+              "query": "wrap vegetariano"
+            },
+            "result": {
+              "ok": true,
+              "query": "wrap vegetariano",
+              "mode": "product_match",
+              "results": [
+                {
+                  "id": 502,
+                  "code": 502,
+                  "name": "Wrap Vegetariano",
+                  "price": 14900,
+                  "category": null,
+                  "description": "Tortilla, vegetales y hummus",
+                  "hasAttributes": true,
+                  "attributes": [
+                    {
+                      "attributeName": "Salsa",
+                      "options": [
+                        "Tahini",
+                        "Yogur",
+                        "Sin salsa"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": 504,
+                  "code": 504,
+                  "name": "Trio De Wraps",
+                  "price": 39000,
+                  "category": null,
+                  "description": "Paquete con tres wraps vegetarianos",
+                  "hasAttributes": false,
+                  "attributes": []
+                }
+              ],
+              "hint": "Hay coincidencia fuerte de producto. Si lo pide, add_item en este turno con defaults; no pidas otra confirmación. Si preguntan \"¿tienen?\", di que sí y ofrece agregarlo. No digas que no hay ese producto si está en results."
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "search_menu",
+            "args": {
+              "query": "brownie"
+            },
+            "result": {
+              "ok": true,
+              "query": "brownie",
+              "results": [],
+              "hint": "Sin coincidencias. Si pidió un plato, di que por ahora no lo manejamos y ofrece el link del menú. Si no es un pedido (queja, saludo, pregunta), respóndelo en una frase. NO set_address si no es un lugar. NO trates la frase completa como nombre de plato."
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 501,
+              "quantity": 2
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 501,
+                "code": 501,
+                "name": "Bowl Andino",
+                "price": 18700,
+                "category": null,
+                "description": "Quinua, garbanzos y vegetales asados",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 2,
+              "note": null,
+              "attributes": null,
+              "hint": null
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 502,
+              "quantity": 1,
+              "attributes": [
+                {
+                  "attributeName": "Salsa",
+                  "attributeValue": "Yogur"
+                }
+              ]
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 502,
+                "code": 502,
+                "name": "Wrap Vegetariano",
+                "price": 14900,
+                "category": null,
+                "description": "Tortilla, vegetales y hummus",
+                "hasAttributes": true,
+                "attributes": [
+                  {
+                    "attributeName": "Salsa",
+                    "options": [
+                      "Tahini",
+                      "Yogur",
+                      "Sin salsa"
+                    ]
+                  }
+                ]
+              },
+              "quantity": 1,
+              "note": "con salsa yogur",
+              "attributes": [
+                {
+                  "attributeName": "Salsa",
+                  "attributeValue": "Yogur"
+                }
+              ],
+              "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+            }
+          }
+        ],
+        "cart": [
+          {
+            "productId": 501,
+            "name": "Bowl Andino",
+            "code": 501,
+            "unitPrice": 18700,
+            "quantity": 2,
+            "attributes": []
+          },
+          {
+            "productId": 502,
+            "name": "Wrap Vegetariano",
+            "code": 502,
+            "unitPrice": 14900,
+            "quantity": 1,
+            "attributes": [
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Yogur"
+              }
+            ]
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "Listo, te ayudo con el almuerzo: agregué dos bowls andinos y un wrap vegetariano con salsa yogur. Por ahora no manejamos brownie, pero si quieres puedes mirar el menú aquí: https://prontopolloportal.com/menu\n\nListo ✅ *Bowl Andino ×2*, *Wrap Vegetariano*\n\n¿*Algo más*?"
+        ]
+      },
+      {
+        "text": "Al wrap sin cebolla; los bowls normales.",
+        "toolTrace": [
+          {
+            "origin": "model_call",
+            "name": "update_item",
+            "args": {
+              "productId": 502,
+              "cartLineIndex": 1,
+              "note": "sin cebolla"
+            },
+            "result": {
+              "ok": true,
+              "productId": 502,
+              "cartLineIndex": 1,
+              "hint": "Cambio aceptado. Conserva las otras líneas."
+            }
+          }
+        ],
+        "cart": [
+          {
+            "productId": 501,
+            "name": "Bowl Andino",
+            "code": 501,
+            "unitPrice": 18700,
+            "quantity": 2,
+            "attributes": []
+          },
+          {
+            "productId": 502,
+            "name": "Wrap Vegetariano",
+            "code": 502,
+            "unitPrice": 14900,
+            "quantity": 1,
+            "attributes": [
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Yogur"
+              }
+            ],
+            "note": "sin cebolla"
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "Perfecto, el wrap vegetariano va sin cebolla y los bowls andinos quedan normales. ¿Te gustaría agregar algo más?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "next-recipient-notes-with-another-dish",
+    "model": "gpt-4.1-2025-04-14",
+    "source": "real configured model; synthetic isolated router; development retest",
+    "requests": 2,
+    "turns": [
+      {
+        "text": "Para Camila y Diego, una sopa de zapallo para cada uno. A la de Diego no le pongan cilantro; la de Camila normal. Además un bowl andino.",
+        "toolTrace": [
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 505,
+              "quantity": 1,
+              "note": "sin cilantro"
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 505,
+                "code": 505,
+                "name": "Sopa De Zapallo",
+                "price": 9200,
+                "category": null,
+                "description": "Zapallo y caldo vegetal",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 1,
+              "note": "sin cilantro",
+              "attributes": null,
+              "hint": null
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 505,
+              "quantity": 1
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 505,
+                "code": 505,
+                "name": "Sopa De Zapallo",
+                "price": 9200,
+                "category": null,
+                "description": "Zapallo y caldo vegetal",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 1,
+              "note": null,
+              "attributes": null,
+              "hint": null
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 501,
+              "quantity": 1
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 501,
+                "code": 501,
+                "name": "Bowl Andino",
+                "price": 18700,
+                "category": null,
+                "description": "Quinua, garbanzos y vegetales asados",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 1,
+              "note": null,
+              "attributes": null,
+              "hint": null
+            }
+          }
+        ],
+        "cart": [
+          {
+            "productId": 505,
+            "name": "Sopa De Zapallo",
+            "code": 505,
+            "unitPrice": 9200,
+            "quantity": 1,
+            "note": "sin cilantro",
+            "attributes": []
+          },
+          {
+            "productId": 505,
+            "name": "Sopa De Zapallo",
+            "code": 505,
+            "unitPrice": 9200,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 501,
+            "name": "Bowl Andino",
+            "code": 501,
+            "unitPrice": 18700,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "🛒 *Carrito*\n*1.* *Sopa De Zapallo* · *$9.200*\n   📝 _sin cilantro_\n*2.* *Sopa De Zapallo* · *$9.200*\n*3.* *Bowl Andino* · *$18.700*\n────────────\nSubtotal $37.100 · Dom. según dir.\n*Total $37.100*\n\n¿*Algo más*?"
+        ]
+      },
+      {
+        "text": "Antes de confirmar, cuánto vale todo eso?",
+        "toolTrace": [],
+        "cart": [
+          {
+            "productId": 505,
+            "name": "Sopa De Zapallo",
+            "code": 505,
+            "unitPrice": 9200,
+            "quantity": 1,
+            "note": "sin cilantro",
+            "attributes": []
+          },
+          {
+            "productId": 505,
+            "name": "Sopa De Zapallo",
+            "code": 505,
+            "unitPrice": 9200,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 501,
+            "name": "Bowl Andino",
+            "code": 501,
+            "unitPrice": 18700,
+            "quantity": 1,
+            "attributes": []
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Sopa De Zapallo* · *$9.200*\n   📝 _sin cilantro_\n*2.* *Sopa De Zapallo* · *$9.200*\n*3.* *Bowl Andino* · *$18.700*\n────────────\nSubtotal $37.100 · Dom. según dir.\n*Total $37.100*\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*)."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "next-pack-and-absolute-drink-correction",
+    "model": "gpt-4.1-2025-04-14",
+    "source": "real configured model; synthetic isolated router; development retest",
+    "requests": 4,
+    "turns": [
+      {
+        "text": "Para compartir, un trío de wraps y dos limonadas de hierbabuena, ambas sin azúcar.",
+        "toolTrace": [
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 504,
+              "quantity": 1
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 504,
+                "code": 504,
+                "name": "Trio De Wraps",
+                "price": 39000,
+                "category": null,
+                "description": "Paquete con tres wraps vegetarianos",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 1,
+              "note": null,
+              "attributes": null,
+              "hint": null
+            }
+          },
+          {
+            "origin": "model_call",
+            "name": "add_item",
+            "args": {
+              "productId": 503,
+              "quantity": 2,
+              "note": "sin azúcar"
+            },
+            "result": {
+              "ok": true,
+              "added": {
+                "id": 503,
+                "code": 503,
+                "name": "Limonada De Hierbabuena",
+                "price": 6800,
+                "category": null,
+                "description": "Limón, agua y hierbabuena",
+                "hasAttributes": false,
+                "attributes": []
+              },
+              "quantity": 2,
+              "note": "sin azúcar",
+              "attributes": null,
+              "hint": null
+            }
+          }
+        ],
+        "cart": [
+          {
+            "productId": 504,
+            "name": "Trio De Wraps",
+            "code": 504,
+            "unitPrice": 39000,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 503,
+            "name": "Limonada De Hierbabuena",
+            "code": 503,
+            "unitPrice": 6800,
+            "quantity": 2,
+            "note": "sin azúcar",
+            "attributes": []
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "Listo ✅ *Trio De Wraps*, *Limonada De Hierbabuena ×2*\n📝 _sin azúcar_\n\n¿*Algo más*?"
+        ]
+      },
+      {
+        "text": "Mejor tres limonadas en total, no tres más; el trío déjalo.",
+        "toolTrace": [
+          {
+            "origin": "model_call",
+            "name": "update_item",
+            "args": {
+              "productId": 503,
+              "cartLineIndex": 1,
+              "quantity": 3,
+              "note": "sin azúcar"
+            },
+            "result": {
+              "ok": true,
+              "productId": 503,
+              "cartLineIndex": 1,
+              "hint": "Cambio aceptado. Conserva las otras líneas."
+            }
+          }
+        ],
+        "cart": [
+          {
+            "productId": 504,
+            "name": "Trio De Wraps",
+            "code": 504,
+            "unitPrice": 39000,
+            "quantity": 1,
+            "attributes": []
+          },
+          {
+            "productId": 503,
+            "name": "Limonada De Hierbabuena",
+            "code": 503,
+            "unitPrice": 6800,
+            "quantity": 3,
+            "note": "sin azúcar",
+            "attributes": []
+          }
+        ],
+        "state": "building_cart",
+        "replies": [
+          "Listo, te dejo el trío de wraps y ajusté a tres limonadas de hierbabuena, todas sin azúcar. ¿Te gustaría agregar algo más?"
+        ]
+      }
+    ]
+  }
+]

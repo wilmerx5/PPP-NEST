@@ -9,6 +9,11 @@ describe('Catalog names containing a pack count',()=>{
     ['Un dúo de bebidas naturales','Duo De Bebidas Naturales',1],
     ['Dos dúos de bebidas naturales','Duo De Bebidas Naturales',2],
     ['Quiero tres pollos fritos','1 Pollo Frito',null],
+    ['Un duo de tacos con colombiana','Duo De Tacos Al Pastor',1],
+    ['Dos duos de tacos','Duo De Tacos Al Pastor',2],
+    ['Un trio de tacos','Duo De Tacos Al Pastor',null],
+    ['Un trio de tacos','Trio De Tacos Al Pastor',1],
+    ['Somos un duo y queremos un taco','Duo De Tacos Al Pastor',null],
     ['Quiero seis arepas doradas','Tres Arepas Doradas',null],
   ])('%s / %s -> %s',(message,name,quantity)=>expect(namedPackOrderQuantity(String(message),String(name))).toBe(quantity));
 });

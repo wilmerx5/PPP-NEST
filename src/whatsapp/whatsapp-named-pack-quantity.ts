@@ -15,7 +15,12 @@ export function namedPackOrderQuantity(text:string,productName:string):number|nu
   if(!match) {
     const contents=pack[2].split(' ')[0];
     const requested=new RegExp(`\\b(?:(\\d{1,2})\\s+)?(?:combos?|paquetes?|promociones?)\\s+(?:de\\s+)?${pack[1]}\\s+${contents}\\b`).exec(source);
-    return requested ? Math.max(1,Math.min(30,Number(requested[1] || 1))) : null;
+    if (requested) return Math.max(1,Math.min(30,Number(requested[1] || 1)));
+    // An explicit duo/trio can omit the remaining catalog qualifier. The caller
+    // must still resolve multiple matching SKUs as an ambiguity.
+    const shorthand = /\b(?:d[uú]os?|tr[ií]os?)\b/i.test(text)
+      ? new RegExp(`\\b(?:(\\d{1,2})\\s+)?${pack[1]}\\s+${contents}\\b`).exec(source) : null;
+    return shorthand ? Math.max(1,Math.min(30,Number(shorthand[1] || 1))) : null;
   }
   const prefix=source.slice(0,match.index).trim();
   const copies=prefix.match(/(?:^|\s)(\d{1,2})\s*(?:(?:paquetes?|combos?|promociones?|unidades?|pedidos?)\s*)?$/);

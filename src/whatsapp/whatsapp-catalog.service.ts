@@ -1172,6 +1172,10 @@ export class WhatsappCatalogService {
         if (left >= 1 && left <= 30) return left;
       }
     }
+    // Keep a literal immediately attached to the full catalog name before a
+    // search-oriented splitter strips conversational words or modifiers.
+    const attached = normalizeText(raw).match(new RegExp(`\\b${quantityWord}\\s+(?:de\\s+)?${escapeRegExp(pn)}\\b`));
+    if (attached) return this.extractQuantityFromSegment(`${attached[1]} unidades`);
     const segments = this.splitMultiProductSegments(raw);
     const tokens = pn
       .split(/\s+/)
@@ -9669,7 +9673,7 @@ export class WhatsappCatalogService {
         if (/\bcambia/.test(segN) || touchesChange || onlyTheChange) continue;
       }
       // A requested pack size is part of the SKU, not the number of packs.
-      if (/\b(?:combos?|paquetes?|promociones?)\s+(?:de\s+)?(?:dos|tres|cuatro|cinco|[2-9])\b/i.test(segment)) {
+      if (/\b(?:combos?|paquetes?|promociones?)\s+(?:de\s+)?(?:dos|tres|cuatro|cinco|[2-9])\b|\b(?:d[uú]os?|tr[ií]os?)\s+(?:de\s+)?/i.test(segment)) {
         const packs = products.filter(p => p.availableNow !== false && namedPackOrderQuantity(segment, p.name) != null);
         if (packs.length > 1) {
           ambiguous.push({segment, candidates:packs});

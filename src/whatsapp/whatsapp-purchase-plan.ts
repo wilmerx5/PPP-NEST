@@ -282,7 +282,8 @@ function purchaseNoteKey(note?: string | null): string {
 }
 
 /** Opt in only for a complete accepted batch; legacy/mixed/rejected proposals keep their existing path.
- * Same SKU and options stay distinct when every line has its own note. A blank note beside a noted twin stays legacy. */
+ * Same SKU and options stay distinct for different notes, including one normal line.
+ * Identical SKU/options/note signatures still reject duplicate proposals. */
 export function hasCompleteToolPurchaseEvidence(
  attempts: readonly {productId:number;accepted:boolean}[] | undefined,
  additions: AiOrderAction['addItems'],
@@ -290,17 +291,13 @@ export function hasCompleteToolPurchaseEvidence(
  if (!attempts?.length || !additions?.length || attempts.length!==additions.length || attempts.some(a=>!a.accepted)) return false;
  const remaining=attempts.map(a=>a.productId);
  const signatures=new Set<string>();
- const notesByVariant=new Map<string,string[]>();
  for(const item of additions){
   const attrs=(item.attributes||[]).map(a=>[a.attributeName,a.attributeValue]).sort();
   const note=purchaseNoteKey(item.note);
-  const variant=JSON.stringify([item.productId,attrs]);
   const signature=JSON.stringify([item.productId,attrs,note]);
   if(signatures.has(signature))return false;signatures.add(signature);
-  notesByVariant.set(variant,[...(notesByVariant.get(variant)||[]),note]);
   if(!Number.isInteger(item.quantity) || item.quantity!<1 || item.quantity!>10)return false;
   const index=remaining.indexOf(item.productId);if(index<0)return false;remaining.splice(index,1);
  }
- for(const notes of notesByVariant.values()) if(notes.length>1 && notes.some(note=>!note)) return false;
  return remaining.length===0;
 }

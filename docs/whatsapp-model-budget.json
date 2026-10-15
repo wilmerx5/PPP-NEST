@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 60,
-  "usedRequests": 60,
-  "remainingRequests": 0,
+  "authorizedRequests": 75,
+  "usedRequests": 74,
+  "remainingRequests": 1,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T12:08:47.705Z",
+  "lastAttemptAt": "2026-10-15T13:52:26.800Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -410,6 +410,87 @@
         "Hard request cap exhausted before final second-turn response; agent_error, not accepted as complete conversation",
         "No more paid calls authorized; continue free regression and full validation"
       ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "647a3739",
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 2,
+      "accepted": 1,
+      "requests": 7,
+      "usedTotal": 67,
+      "remaining": 5,
+      "report": "/tmp/ppp-next-notes-live-report.json",
+      "findings": [
+        "Mixed unavailable purchase and scoped-note conversation passed complete in 5 requests (development retest)",
+        "New recipient-note case failed in 2 requests: model called correct 3 additions, backend rejected bowl and extracted recipient instruction as address",
+        "Stopped first failure; free diagnosis of delivery extraction and accepted plan normal/noted variants"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "647a3739",
+      "includesUncommittedRecipientFix": true,
+      "independentFirstAttempt": false,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 2,
+      "usedTotal": 69,
+      "remaining": 3,
+      "report": "/tmp/ppp-recipient-retest-live-report.json",
+      "findings": [
+        "Recipient normal/noted siblings plus third dish and total 37100 passed",
+        "Development retest; not an independent new evaluation"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "647a3739",
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 1,
+      "usedTotal": 70,
+      "remaining": 5,
+      "report": "/tmp/ppp-pack-absolute-live-report.json",
+      "findings": [
+        "HTTP429 credit_balance_exhausted on first request; no model response",
+        "Stopped immediately, no inference retry; pack scenario remains unmeasured with real model",
+        "Continue free provider-simulated tests; account refill needed for real inference"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "647a3739",
+      "includesUncommittedPackFix": true,
+      "independentFirstAttempt": false,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 4,
+      "usedTotal": 74,
+      "remaining": 1,
+      "report": "/tmp/ppp-pack-after-refill-live.json",
+      "findings": [
+        "After user refilled provider credit, pack purchase and absolute drink correction passed both turns",
+        "1 trio SKU, 2 drinks without sugar -> 3 drinks total, note retained",
+        "Case inspected via free tests before successful inference; development evaluation, not holdout"
+      ]
+    }
+  ],
+  "authorizationHistory": [
+    {
+      "date": "2026-10-15",
+      "authorization": "User explicitly authorizes further paid inference to continue making the agent functional",
+      "operationalBatchCap": 12,
+      "note": "12 is an agent-selected bounded batch, not a numeric limit quoted from the user; stop on first failure and diagnose offline."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "Same explicit user authorization for further paid inference",
+      "operationalBatchExtension": 3,
+      "note": "Agent adds 3 to leave 6-call headroom for two-turn pack evaluation; avoids artificial truncation mid-tool loop, stops first failure."
     }
   ]
 }

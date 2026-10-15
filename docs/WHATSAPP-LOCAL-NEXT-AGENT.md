@@ -2,6 +2,20 @@
 
 Estado local actualizado al 15/10/2026. Última verificación del runtime:14/10/2026,22:34Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
 
+## Tanda vigente (15/10): destinatarios, línea normal y paquetes
+
+Base647a3739. Usuario autorizó más inferencia y recargó saldo tras HTTP429. Tanda operativa elegida por el agente:15requests adicionales;14consumidas (incluye1rechazada por saldo),1restante;acumulado75/74/1. No es límite numérico dictado por el usuario ni autorización permanente. Contadores y espejo privados sincronizados.
+
+Tres conversaciones completas pasaron con gpt-4.1-2025-04-14 en simulador de router aislado:mixto+productoausente+notadirigida (5requests);sopa normal+misma sopa sincilantro+tercerplato+total37.100 (retest2);trío1+dosbebidas sinazúcar→tresen total (4). El primer intento independiente de destinatarios falló con2requests:modelo propuso las3líneas bien,backend rechazó bowl al tratar «para cada uno…»/«a la de [persona]…» como dirección. Corregido gratis y reensayado. Paquetes no cuenta como holdout:tuvo pruebas gratuitas antes de la llamada exitosa. Capturas sintéticas versionadas scripts/fixtures/whatsapp-recorded-recipient-pack-output.json;ninguno acredita audios/fotos ni transporte WhatsApp real.
+
+Cambios:reparto de comensales no se guarda como dirección;«a la de…»/«en la de…» son referencias anafóricas;línea normal+gemelo connota distinta pueden preservar lote validado (duplicados idénticos siguen rechazados);cantidad literal unida al nombre completo se lee antes de limpieza para búsqueda,después del cálculo de comensales;duo/trio abreviados conservan tamaño de paquete y aclaran si variosSKUs coinciden. Sin nombres/IDs/precios PPP codificados en producción.
+
+Pruebas focalizadas:132contratos en5suites;38focalizadas en3suites y4controles de ambigüedad. Cierre validado:70suites/5491tests en490.707s,28regresiones nuevas frente a647a3739. Global /tmp/ppp-recipient-pack-full.log,snapshot src+scripts /tmp/ppp-recipient-pack-source.json intacto,TypeScript /tmp/ppp-recipient-pack-final-tsc.log sin errores. Publicado solo en rama staging;no deploy/Main.
+
+Próximo bloque:recuperación tras fallo técnico después de tools aceptadas;mensajes con aceptados/rechazados y completitud total;más destinatarios/pronombres y correcciones que cambian una de varias líneas iguales. Antes de piloto:replay de chats reales sin mutaciones inesperadas,ensayos nuevos no inspeccionados con catálogo PPP+yotro,familias de interrupciones en cada estado, y muestra supervisada en WhatsApp. Mantener todos los hallazgos rojos abiertos aunque la global pase. Voz real sigue pendiente de audios originales;no pedir al usuario repetir casos que ya entregó ni afirmar que transcripción mide voz.
+
+## Historial anterior (supeditado a la tanda vigente)
+
 ## Último bloque local (15/10): reparto y lote aceptado
 
 El caso narrativo ya pasa completo con modelo real:2bowls+wrapTahini+wrapYogur y consulta total67.200.4requests en ese bloque. Presupuesto actual:60usadas/0restantes tras el reensayo mixto posterior. Es reensayo de desarrollo del caso conocido,no holdout nuevo. También pasa gratis con otra carta ficticia y notas separadas. Se conserva un lote íntegramente aceptado por herramientas sin volver a interpretar cantidades/opciones en reconciliación/planner. Se mantienen catálogo,límites y legacy para lotes mixtos/duplicados/notas sin distinta opción. Ver límites al final del handoff largo.
