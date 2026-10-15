@@ -6773,6 +6773,9 @@ export class WhatsappCatalogService {
     products: WhatsappCatalogProduct[],
     menuUrl?: string | null,
   ): string | null {
+    // A formatter must not override the message's purchase/query classification.
+    // In particular, an availability condition inside an order is not the whole intent.
+    if (!this.isAvailabilityInquiry(text)) return null;
     const subject = this.availabilitySubject(text);
     if (!subject || this.menuMentionsSubject(subject, products)) return null;
     const menu = (menuUrl || '').trim();

@@ -13973,3 +13973,29 @@ describe('Mismo plato con notas distintas', () => {
     expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
 });
+
+
+describe('Pedido mixto — condición de disponibilidad no bloquea la compra',()=>{
+ it('conserva platos reconocidos, informa el ausente y aplica una nota solo al wrap',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+  const scenario=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-next-mixed-orders-1510.json'),'utf8'))[0];
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.service.agentService=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const args=[{productId:501,quantity:2},{productId:502,quantity:1,attributes:[{attributeName:'Salsa',attributeValue:'Yogur'}]}];
+  const original=globalThis.fetch;const fetchMock=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:args.map((arg,index)=>({id:'mixed-'+index,type:'function',function:{name:'add_item',arguments:JSON.stringify(arg)}}))}))
+   .mockResolvedValueOnce(response({content:'No tenemos brownie. Agregué los platos disponibles.'}))
+   .mockResolvedValueOnce(response({content:null,tool_calls:[{id:'scoped-note',type:'function',function:{name:'update_item',arguments:JSON.stringify({productId:502,cartLineIndex:1,note:'sin cebolla'})}}]}))
+   .mockResolvedValueOnce(response({content:'Listo, el wrap sin cebolla; los bowls siguen normales.'}));globalThis.fetch=fetchMock;
+  try{
+   const reply=await h.sendQueued(scenario.messages[0].text);expect(fetchMock).toHaveBeenCalledTimes(2);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:501,qty:2}),expect.objectContaining({id:502,qty:1,attrs:['Salsa:Yogur']})]);
+   expect(reply||'').toMatch(/no tenemos brownie/i);expect(h.conv.state).toBe('building_cart');
+   await h.sendQueued(scenario.messages[1].text);expect(fetchMock).toHaveBeenCalledTimes(4);
+   expect(h.cartRows().find(row=>row.id===501)).toEqual(expect.objectContaining({qty:2}));
+   expect(h.cartRows().find(row=>row.id===501)?.note||'').not.toMatch(/cebolla/i);
+   expect(h.cartRows().find(row=>row.id===502)).toEqual(expect.objectContaining({qty:1,attrs:['Salsa:Yogur'],note:expect.stringMatching(/sin cebolla/i)}));
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }finally{globalThis.fetch=original;}
+ });
+});

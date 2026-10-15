@@ -126,3 +126,18 @@ describe('Literal quantities cannot inflate through a kitchen note',()=>{
   expect(result.ok).toBe(true);expect(result.quantity).toBe(2);expect((ctx.actions as any).addItems[0].quantity).toBe(2);
  });
 });
+
+
+describe('Unavailable reply respects the whole-message intent',()=>{
+ const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+ it.each([
+  'Me ayudas con el almuerzo: dos bowls andinos, un wrap vegetariano con salsa yogur y un brownie. Si no hay brownie, deja solo lo demás.',
+  'Quiero dos bowls y un wrap. Si no tienen brownie, solo lo demás.',
+  'Me regalas dos pollos y una sopa, si no hay postre déjalo.',
+ ])('does not turn a purchase into an unavailable-category answer: %s',text=>{
+  expect(catalog.isAvailabilityInquiry(text)).toBe(false);expect(catalog.unavailableAskReply(text,menu)).toBeNull();
+ });
+ it.each(['Tienen brownie?','Venden brownies?','Hay brownie?'])('keeps a genuine availability denial: %s',text=>{
+  expect(catalog.isAvailabilityInquiry(text)).toBe(true);expect(catalog.unavailableAskReply(text,menu)||'').toMatch(/no tenemos/i);
+ });
+});

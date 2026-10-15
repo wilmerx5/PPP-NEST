@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 60,
-  "usedRequests": 56,
-  "remainingRequests": 4,
+  "usedRequests": 60,
+  "remainingRequests": 0,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T05:26:10.981Z",
+  "lastAttemptAt": "2026-10-15T12:08:47.705Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -390,6 +390,25 @@
         "First mixed available/unavailable case intercepted by deterministic unavailableAskReply; agentTurns0, no network calls",
         "Availability condition inside a purchase treated as whole-message inquiry; valid lines lost",
         "Inspected case now development regression; diagnose without more paid inference"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "81b4fd13",
+      "includesUncommittedAvailabilityGuard": true,
+      "independentFirstAttempt": false,
+      "model": "gpt-4.1-2025-04-14",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 4,
+      "usedTotal": 60,
+      "remaining": 0,
+      "report": "/tmp/ppp-mixed-conditional-live-report.json",
+      "findings": [
+        "First turn passed: 2 bowls, 1 wrap Yogur, explicit unavailable brownie reply",
+        "Second turn model update_item targets only wrap; cart note correct, bowls unchanged",
+        "Hard request cap exhausted before final second-turn response; agent_error, not accepted as complete conversation",
+        "No more paid calls authorized; continue free regression and full validation"
       ]
     }
   ]
