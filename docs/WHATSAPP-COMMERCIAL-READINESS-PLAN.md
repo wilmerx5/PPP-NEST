@@ -354,3 +354,20 @@ Tanda mixta aprobada:66suites/4008pruebas,700.365s (/tmp/ppp-mixed-intents-full.
 
 
 Staging verificado14/10/2026 06:10Bogotá:runtime8d28d37e,running/healthy,imagenactiva=candidata sha256:304d787babc31a609cab5b3a278d25ef492c0196829c5a8a8b23b3ed15ca77e5;HTTP3301/api/healthok,DBconnected,circuitCLOSED. Evidencia /tmp/ppp-mixed-intents-deploy.log y /tmp/ppp-mixed-intents-verified.log. Main49194fec comprobada sin cambios.48regresiones nuevas,66suites/4008pruebas+TypeScript aprobados. CeroAPIpagada. Próxima tanda prioriza títulos repetidos con códigos/precios distintos,mezcla válido+desconocido ynegación sin alternativa clara. Mantener source snapshots ystagingpermanente,no promoverMain automáticamente.
+
+
+## Continuidad de consultas: siguiente puerta de aceptación — 14/10/2026
+
+Estado de esta tanda:32 nuevas regresiones,114 focalizadas y TypeScript aprobados; global pendiente en /tmp/ppp-dialogue-context-full.log. Sin llamadas pagadas. Main d9241abe sin cambios; staging desplegado previo f7be1f7d. Referencias compartidas para composición/rendimiento y aclaraciones que retoman teléfono; no implica consolidación de todos los handlers.
+
+Orden siguiente de trabajo:
+1. Referencias entre listas y carrito: «la segunda», «quita esa», misma numeración en elección y pago; no interpretar una lista diferente ni borrar por adivinación.
+2. Varios combos: cambio de bebida/presa de uno, luego otro, con preguntas intercaladas; conservar las demás líneas y revertir solo una adición equivocada comprobable.
+3. Contradicciones: «normal, pero sin…», «no esa, la otra», nota frente a opción pagada; no inventar precio ni regalar extras.
+4. Cambio de familia y abandono: descartar foco obsoleto sin perder carrito/datos confirmados y retomar paso pendiente.
+5. Evaluación independiente: conversaciones no utilizadas para ajustar código, con modelo real y audios/fotos representativos. El saldo actual de1 llamada no alcanza para validar recorridos con herramientas; no gastarla como sustituto de evaluación completa.
+
+Piloto supervisado: no añadir/quitar/cambiar cantidades ni datos por una consulta; consultas deben contestarse y retomar el dato pendiente; precio exclusivamente desde catálogo/cotización; ambigüedad pide aclaración; ningún fallo crítico conocido sin contención humana. Los conteos de Jest acreditan regresiones concretas, no comprensión universal ni aislamiento multitenant de Kamppo.
+
+
+Cierre local de referencias:67 suites/5265 pruebas aprobadas en774.521s (/tmp/ppp-dialogue-context-full.log), fuente íntegra contra /tmp/ppp-dialogue-context-source.json.32 nuevas regresiones,114 focalizadas y TypeScript final aprobados. Pendiente deploy staging;Main d9241abe intacta. Cero API nueva;39/40 usadas,1 restante.

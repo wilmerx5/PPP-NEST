@@ -13188,3 +13188,80 @@ describe('Fila inválida u otra lista — no consume dirección ni quita plato',
   expect(reply||'').toMatch(/no existe|otra lista/i);
  });
 });
+
+
+describe('Teléfono pendiente — resolver consulta y completar checkout',()=>{
+ const menus=[{id:38001,code:971,name:'Pizza De Setas',description:'Incluye setas y queso',price:17000,availableNow:true,hasAttributes:false,attributes:[]},{id:38002,code:972,name:'Bowl De Quinoa',description:'Incluye quinoa y verduras',price:17000,availableNow:true,hasAttributes:false,attributes:[]}];
+ for(const dish of menus)for(const question of ['¿Cuánto suma todo?','¿Qué trae ese plato?','Me pueden comprar unas pilas?'])it.each([false,true])(`${dish.name} ${question} agent=%s`,async agent=>{
+  const h=harness([dish],agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_phone';
+  h.conv.sessionData.cart=[{productId:dish.id,name:dish.name,code:dish.code,unitPrice:dish.price,quantity:3,attributes:[],note:'sin cebolla'}];
+  h.conv.sessionData.orderType='delivery';h.conv.sessionData.address='Calle 21 #34-56';h.conv.sessionData.addressConfirmed=true;h.conv.sessionData.deliveryFeeCalculated=2000;
+  const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued(question);
+  expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_phone');
+  expect(reply||'').toMatch(/tel[eé]fono|n[uú]mero|contacto/i);
+  if(question.includes('suma'))expect(reply||'').toMatch(/53[.,]000/);
+  if(question.includes('trae'))expect(reply||'').toMatch(dish.id===38001?/setas.*queso/i:/quinoa.*verduras/i);
+  if(question.includes('pilas'))expect(reply||'').toMatch(/pilas/i);
+  await h.sendQueued('310 555 0199');
+  expect(h.conv.sessionData.phoneConfirmed).toBe(true);expect(h.conv.sessionData.contactPhone).toBe('+573105550199');
+  expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before.cart);
+  await h.sendQueued('Pago por Nequi');
+  expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+  expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Consulta referencial — aclarar sin comprar y volver al teléfono',()=>{
+ const menu=[{id:39001,code:981,name:'Pizza De Setas',description:'Incluye setas y queso',price:17000,availableNow:true,hasAttributes:false,attributes:[]},{id:39002,code:982,name:'Bowl De Quinoa',description:'Incluye quinoa y verduras',price:17000,availableNow:true,hasAttributes:false,attributes:[]}];
+ for(const answer of ['Bowl De Quinoa','2','el segundo','¿Cuánto suma todo?','3105550199'])it.each([false,true])(`${answer} agent=%s`,async agent=>{
+  const h=harness(menu,agent);h.service.ordersService.create=jest.fn();h.conv.state='awaiting_phone';
+  h.conv.sessionData.cart=menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));
+  h.conv.sessionData.address='Calle 21 #34-56';h.conv.sessionData.addressConfirmed=true;h.conv.sessionData.deliveryFeeCalculated=2000;h.conv.sessionData.orderType='delivery';
+  const cart=structuredClone(h.cartRows());
+  const ask=await h.sendQueued('¿Qué trae ese plato?');
+  expect(ask||'').toMatch(/de qué plato/i);expect(h.conv.sessionData.pendingCompositionAsk).toMatchObject({resumeState:'awaiting_phone',productIds:menu.map(p=>p.id)});expect(h.cartRows()).toEqual(cart);
+  if(answer==='2')h.service.catalogService.getMenuProducts.mockResolvedValue([...menu].reverse());
+  const reply=await h.sendQueued(answer);
+  expect(h.cartRows()).toEqual(cart);expect(h.conv.sessionData.pendingCompositionAsk).toBeUndefined();
+  if(answer==='3105550199'){expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.contactPhone).toBe('+573105550199');}
+  else {
+   expect(h.conv.state).toBe('awaiting_phone');expect(reply||'').toMatch(/tel[eé]fono|n[uú]mero/i);
+   if(answer.includes('suma'))expect(reply||'').toMatch(/36[.,]000/);else expect(reply||'').toMatch(/quinoa.*verduras/i);
+   expect(reply||'').not.toMatch(/te lo agrego/i);
+   await h.sendQueued('3105550199');expect(h.conv.state).toBe('awaiting_payment');
+  }
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+
+describe('Referencia activa — la compra pendiente manda sobre un foco viejo',()=>{
+ it.each([false,true])('consulta no cambia compra ni selecciona el foco anterior agent=%s',async agent=>{
+  const food={id:40001,code:991,name:'Pizza De Setas',description:'Con setas y queso',price:17000,availableNow:true,hasAttributes:false,attributes:[]};
+  const drink={id:40002,code:992,name:'Jugo Tropical',description:'Con agua y fruta',price:6000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Mango','Lulo']}]};
+  const h=harness([food,drink],agent);h.conv.state='awaiting_attribute';
+  h.conv.sessionData.productFocus={productId:food.id,name:food.name};
+  h.conv.sessionData.pendingAttribute={productId:drink.id,name:drink.name,code:drink.code,price:drink.price,quantity:3,attributes:drink.attributes,selected:[],sourceText:'Tres jugos tropicales sin hielo'};
+  const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued('¿Qué incluye eso?');
+  expect(reply||'').toMatch(/agua.*fruta/i);expect(reply||'').not.toMatch(/setas|queso/i);expect(h.conv.sessionData).toEqual(before);
+  await h.sendQueued('Lulo');expect(h.cartRows()).toEqual([expect.objectContaining({id:drink.id,qty:3,attrs:['Sabor:Lulo'],note:expect.stringMatching(/sin hielo/i)})]);
+ });
+});
+
+
+describe('Consulta intercalada — una corrección explícita reemplaza la aclaración',()=>{
+ it.each([false,true])('quitar por nombre retoma teléfono sin resolver la consulta vieja agent=%s',async agent=>{
+  const menu=[{id:41001,code:993,name:'Pizza De Setas',description:'Con setas y queso',price:17000,availableNow:true,hasAttributes:false,attributes:[]},{id:41002,code:994,name:'Bowl De Quinoa',description:'Con quinoa y verduras',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_phone';h.service.ordersService.create=jest.fn();
+  h.conv.sessionData.cart=menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}));
+  h.conv.sessionData.address='Calle 21 #34-56';h.conv.sessionData.addressConfirmed=true;h.conv.sessionData.deliveryFeeCalculated=2000;h.conv.sessionData.orderType='delivery';
+  await h.sendQueued('¿Qué trae ese plato?');expect(h.conv.sessionData.pendingCompositionAsk).toBeDefined();
+  const reply=await h.sendQueued('Quita el bowl de quinoa');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:41001,qty:1})]);expect(h.conv.state).toBe('awaiting_phone');expect(h.conv.sessionData.pendingCompositionAsk).toBeUndefined();
+  expect(reply||'').toMatch(/quit[eé].*bowl/i);expect(reply||'').toMatch(/tel[eé]fono|n[uú]mero/i);
+  await h.sendQueued('3105550199');expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

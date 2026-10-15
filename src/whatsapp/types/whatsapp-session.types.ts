@@ -190,6 +190,9 @@ export type WhatsappSessionData = {
    */
   pendingCompositionAsk?: {
     originalText: string;
+    /** A read-only interruption must return to the original data/option step. */
+    resumeState?: string;
+    productIds?: number[];
   };
   /**
    * Pedimos el # de orden (estado / demora sin contexto).

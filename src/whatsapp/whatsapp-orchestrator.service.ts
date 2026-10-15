@@ -1,3 +1,4 @@
+import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
@@ -1113,8 +1114,8 @@ export class WhatsappOrchestratorService {
       const named = mentioned.filter(product => !mentioned.some(other => other.id !== product.id &&
         this.normalizeForMatch(other.name) !== this.normalizeForMatch(product.name) &&
         this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
-      const contextId = session.pendingAttribute?.productId || session.productFocus?.productId ||
-        (session.cart.length === 1 ? session.cart[0].productId : undefined);
+      const references = dialogueProductReferences(session);
+      const contextId = references.length === 1 ? references[0] : undefined;
       const product = named.length === 1 ? named[0] : !named.length && contextId
         ? menu.find(product => product.id === contextId) : undefined;
       if (product && named.length === 1) {
@@ -1404,6 +1405,43 @@ export class WhatsappOrchestratorService {
       }
     }
     if (await this.tryContinueOfferedPurchase(conv, msg.waId, session, originalText, cfg)) return;
+
+    if (session.pendingCompositionAsk?.resumeState) {
+      const inquiryMenu = await this.catalogService.getMenuProducts();
+      const namedReply = this.catalogService.findProductEmbeddedInMessage(originalText,inquiryMenu);
+      const namesCatalogProduct = !!namedReply && this.catalogService.productNameFitsUtterance(namedReply,originalText);
+      const differentIntent = this.catalogService.isPriceInquiryIntent(originalText) ||
+        this.catalogService.isAvailabilityInquiry(originalText) || this.catalogService.looksLikeExplicitAddProductRequest(originalText) ||
+        !!parseScopedCartRemoval(originalText) || !!parseCartQuantityCorrection(originalText) || !!parseScopedCartNote(originalText) ||
+        isAddressChangeIntent(originalText) || (!namesCatalogProduct && looksLikeAddressOnlyMessage(originalText)) ||
+        /^(?:pago|pagare|voy a pagar|prefiero pagar|quiero pagar)\b/.test(this.normalizeForMatch(originalText)) ||
+        (conv.state === 'awaiting_phone' && this.looksLikePhoneNumber(originalText)) ||
+        (/[?¿]/.test(originalText) && !this.isProductCompositionQuestion(originalText));
+      if (!differentIntent) {
+        if (await this.tryResolvePendingCompositionAsk(
+            conv,msg.waId,session,originalText,inquiryMenu,cfg)) return;
+        await this.reply(conv,msg.waId,'No me quedó claro qué plato quieres consultar. Dime su nombre, o responde el dato pendiente para continuar.');
+        return;
+      }
+      session = {...session,pendingCompositionAsk:undefined};
+      await this.conversationService.saveSession(conv,session);
+    }
+    const referentialComposition = /^(?:y )?(?:que trae|que incluye|que lleva|con que viene|con que va)(?: (?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?)?$/.test(this.normalizeForMatch(originalText));
+    if (referentialComposition) {
+      const menu = await this.catalogService.getMenuProducts();
+      const references = dialogueProductReferences(session);
+      const candidates = menu.filter(product => references.includes(product.id) && product.availableNow !== false);
+      const reminder = this.formatInterruptedStepReminder(conv,session);
+      if (candidates.length === 1) {
+        const body = this.buildProductCompositionReply(originalText,candidates[0],cfg,session,{offerAdd:false});
+        await this.reply(conv,msg.waId,body+(reminder ? `\n\n${reminder}` : ''));
+      } else {
+        await this.conversationService.saveSession(conv,{...session,pendingCompositionAsk:{originalText,resumeState:conv.state,productIds:candidates.map(product=>product.id)}},conv.state);
+        await this.reply(conv,msg.waId,'¿De qué plato quieres saber? Dime el nombre.'+
+          (candidates.length ? '\n'+candidates.map(product=>`• ${product.name}`).join('\n') : ''));
+      }
+      return;
+    }
 
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
@@ -10667,9 +10705,26 @@ export class WhatsappOrchestratorService {
 
     if (isAbandonPendingSelectionIntent(text)) {
       session = { ...session, pendingCompositionAsk: undefined };
-      await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, waId, 'Listo, lo dejamos pasar 👍 ¿Qué se te antoja?');
+      await this.conversationService.saveSession(conv, session, ask.resumeState || 'building_cart');
+      await this.reply(conv, waId, ask.resumeState
+        ? 'Listo, dejamos esa consulta.\n\n'+this.formatInterruptedStepReminder(conv,session)
+        : 'Listo, lo dejamos pasar 👍 ¿Qué se te antoja?');
       return true;
+    }
+
+    if (ask.resumeState && ask.productIds?.length) {
+      const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3};
+      const ordinal = this.normalizeForMatch(text).match(/^(?:(?:el|la) )?(\d{1,2}|primero|primera|segundo|segunda|tercero|tercera)$/);
+      if (ordinal) {
+        const index = (positions[ordinal[1]] || Number(ordinal[1]))-1;
+        const product = index >= 0 ? products.find(item=>item.id===ask.productIds?.[index] && item.availableNow!==false) : undefined;
+        if (!product) {await this.reply(conv,waId,'Esa opción no está en la consulta. Dime el nombre del plato.');return true;}
+        session = {...this.rememberProductFocus(session,product,products),pendingCompositionAsk:undefined};
+        await this.conversationService.saveSession(conv,session,ask.resumeState);
+        await this.reply(conv,waId,this.buildProductCompositionReply(ask.originalText,product,cfg,session,{offerAdd:false})+
+          '\n\n'+this.formatInterruptedStepReminder(conv,session));
+        return true;
+      }
     }
 
     // Sigue siendo pregunta genérica sin plato
@@ -10713,12 +10768,10 @@ export class WhatsappOrchestratorService {
       ...this.rememberProductFocus(session, product, products),
       pendingCompositionAsk: undefined,
     };
-    await this.conversationService.saveSession(conv, session, 'building_cart');
-    await this.reply(
-      conv,
-      waId,
-      this.buildProductCompositionReply(ask.originalText, product, cfg),
-    );
+    await this.conversationService.saveSession(conv, session, ask.resumeState || 'building_cart');
+    const body = this.buildProductCompositionReply(ask.originalText,product,cfg,session,{offerAdd:!ask.resumeState});
+    const reminder = ask.resumeState ? this.formatInterruptedStepReminder(conv,session) : '';
+    await this.reply(conv,waId,body+(reminder ? `\n\n${reminder}` : ''));
     return true;
   }
 
@@ -17004,7 +17057,7 @@ export class WhatsappOrchestratorService {
       const fallback = offMenuQuery
         ? `No tengo autorización para comprar *${offMenuQuery}* por fuera de la carta. Solo te ofrezco lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`
         : `Eso no lo resuelvo por este chat. Solo armo lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`;
-      let answer = agentReply || fallback;
+      let answer = offMenuQuery ? fallback : agentReply || fallback;
       const reminder = this.formatInterruptedStepReminder(conv,session);
       if (reminder) answer += `\n\n${reminder}`;
       if (params.prependFirstContactDisclaimer) {

@@ -1345,3 +1345,19 @@ Cierre local final de contrato:66 suites/5233 pruebas aprobadas en784.833s (/tmp
 Staging publicado y verificado14/10/2026 a las18:02 Bogotá:runtime f7be1f7d,running/healthy,imagen activa=candidata sha256:a9e076dc312db43cf38cfc2e87ccc350b6a663e5f4e940ca727c95ec01e65682. HTTP3301/api/health ok,DB connected,circuit CLOSED. Evidencia /tmp/ppp-continuity-contract-deploy.log y /tmp/ppp-continuity-contract-verified.log. Main local/producción d9241abe intacta. No cambió modelo ni se desactivó agente. Código final:66 suites/5233,101 focalizadas,TypeScript y fuente íntegra aprobados. Cero API nueva;39/40 utilizadas/una restante. Archivo de presupuesto no modificado.
 
 La reversión automática solo aplica a una última adición registrada por esta versión y firma intacta. Conversaciones históricas sin ese registro necesitan aclaración; eliminación explícita por fila sigue disponible. Pendientes de consolidación: referencia temporal/cantidad en correcciones de varios combos, oráculos de retorno completo al teléfono, cambios de foco e intención común con catálogo/config por tenant. Falta muestra independiente de modelo/canal; estos casos se usaron para ajustar código. No promover automáticamente a Main ni eliminar staging.
+
+
+## Referencias de consulta y retorno al teléfono — 14/10/2026
+
+Tanda en validación global. Nuevo módulo whatsapp-dialogue-context.ts reúne referencias de producto para consultas de composición y rendimiento: opción pendiente, candidatos, oferta, foco y carrito. Conserva todos los candidatos y no elige el primero cuando hay ambigüedad. Extracción acotada a estas consultas; otros handlers todavía tienen resolución propia, no afirmar consolidación completa.
+
+32 casos nuevos:6 unitarios y26 recorridos de router con cartas ficticias (pizza/bowl/jugo), agente activo/inactivo. Consulta del precio, composición o favor externo mientras falta teléfono conserva pedido/dato pendiente; teléfono → transferencia → confirmación sin crear orden. Consulta ambigua mantiene IDs de la lista aunque el catálogo cambie de orden; nombre/ordinal aclara sin comprar. Otra consulta, teléfono o eliminación explícita sustituye la aclaración y retoma checkout. La opción de compra pendiente prevalece sobre foco viejo.
+
+Encontrado: la heurística amplia de lugar interpretaba Bowl De Quinoa como dirección durante una aclaración; se prioriza coincidencia del catálogo y se usa la detección estricta de dirección en ese camino. Los favores externos detectados usan rechazo canónico y recordatorio, sin aceptar una respuesta ajena del stub del agente. No afirmar fallo observado del modelo real: son pruebas con modelo simulado. La primera fixture del total carecía de cotización de domicilio; se corrigió la fixture, no la política de precios.
+
+114 focalizadas finales aprobadas en2 suites (/tmp/ppp-dialogue-context-focused-final3.log). TypeScript final aprobado (/tmp/ppp-dialogue-context-tsc-final.log). Global en /tmp/ppp-dialogue-context-full.log; snapshot /tmp/ppp-dialogue-context-source.json. Fuente congelada. No desplegado aún; runtime anterior f7be1f7d, Main d9241abe. Cero API nueva;39/40 usadas,1 restante.
+
+Pendientes: referencia numérica entre lista de consulta y filas del carrito, cambios de familia que invalidan foco, notas/opciones contradictorias, varios combos y percepciones de audio/foto. No certificar producto vendible por conteos; falta muestra independiente con modelo/canal reales. Mantener piloto supervisado.
+
+
+Cierre local de referencias:67 suites/5265 pruebas aprobadas en774.521s (/tmp/ppp-dialogue-context-full.log), fuente íntegra contra /tmp/ppp-dialogue-context-source.json.32 nuevas regresiones,114 focalizadas y TypeScript final aprobados. Pendiente deploy staging;Main d9241abe intacta. Cero API nueva;39/40 usadas,1 restante.
