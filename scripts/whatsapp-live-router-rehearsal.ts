@@ -34,8 +34,10 @@ const usage = new BetaApiUsage();
 const originalFetch = globalThis.fetch;
 const requestIntervalMs = Math.max(0,Math.min(5000,Number(process.env.WHATSAPP_BETA_REQUEST_INTERVAL_MS ?? 1500)));
 let lastRequestStart=0;
+const responsesApi = /^gpt-6(?:[.-]|$)/i.test(model);
+const requestTimings:number[]=[];
 globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
-  if (args[0] !== 'https://api.openai.com/v1/chat/completions') throw Error('Only isolated OpenAI inference is permitted');
+  if (!['https://api.openai.com/v1/chat/completions','https://api.openai.com/v1/responses'].includes(String(args[0]))) throw Error('Only isolated OpenAI inference is permitted');
   const delay=Math.max(0,requestIntervalMs-(Date.now()-lastRequestStart));
   if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
   if (usage.requests >= maxRequests) {
@@ -53,7 +55,9 @@ globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
   lastRequestStart=Date.now();
   usage.requests++;
   try {
+    const started=Date.now();
     const response = await originalFetch(...args);
+    requestTimings.push(Date.now()-started);
     let body:unknown; try { body = await response.clone().json(); } catch { /* Account for missing usage. */ }
     usage.record(response.status, body);
     return response;
@@ -125,7 +129,7 @@ async function main(){
     for(let i=0;i<scenario.messages.length;i++){
       const step=scenario.messages[i];
       try {
-        const actual=await h.send(step.text);turns.push({text:step.text,...actual});
+        const started=Date.now();const actual=await h.send(step.text);turns.push({text:step.text,latencyMs:Date.now()-started,...actual});
         const expected=step.expect;
         if(expected.items){const items:Record<string,number>={};for(const line of actual.session.cart)items[line.productId]=(items[line.productId]||0)+line.quantity;
           if(JSON.stringify(Object.entries(items).sort())!==JSON.stringify(Object.entries(expected.items).sort()))problems.push(`turn_${i}:cart`);}
@@ -150,7 +154,7 @@ async function main(){
     }
     results.push({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore,turns});
     console.log(JSON.stringify({id:scenario.id,repetition,accepted:!problems.length,problems,requests:usage.requests-requestsBefore}));
-    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,maxRequests,budgetExhausted,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
+    mkdirSync('tmp',{recursive:true});writeFileSync('tmp/whatsapp-live-router-report.json',JSON.stringify({model,endpoint:responsesApi?'responses':'chat/completions',requestTimings,maxRequests,budgetExhausted,planned:cases.length*repeats,results,apiUsage:usage.summary(model)},null,2));
     if(stopOnFailure && problems.length)break outer;
   }
   const accepted=results.filter(r=>r.accepted).length;

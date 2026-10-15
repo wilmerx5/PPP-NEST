@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 80,
-  "usedRequests": 77,
-  "remainingRequests": 3,
+  "authorizedRequests": 119,
+  "usedRequests": 115,
+  "remainingRequests": 4,
   "scope": "Current user-authorized round only; not standing authorization",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T14:17:29.057Z",
+  "lastAttemptAt": "2026-10-15T17:15:25.627Z",
   "latestEvaluation": {
     "baseCommit": "e4bfe289",
     "includesUncommittedNarrativeRouting": true,
@@ -508,6 +508,21 @@
         "Complete 3-turn development retest passed: conditional unavailable dessert, 2 valid dishes, option+note only wrap, aggregate total 33600",
         "Failures after accepted tools tested via simulated provider, not induced paid network failures"
       ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "a1bcfd0f",
+      "includesWorkingChanges": true,
+      "requests": 38,
+      "usedTotal": 115,
+      "remaining": 4,
+      "report": "docs/whatsapp-model-comparison-1510.json",
+      "findings": [
+        "Selected Sol for quality-stage staging validation; two complete three-turn conversations passed across two catalogs",
+        "Compared Luna; observed backend rendering failure despite correct model reply/cart. Not proof Sol is more accurate",
+        "One adapter preparation attempt counted before network; later corrected round replay offline",
+        "Stopped runs at first failure, diagnosed backend/adapter without more inference; no Meta or external orders"
+      ]
     }
   ],
   "authorizationHistory": [
@@ -528,6 +543,24 @@
       "authorization": "Continuing explicit user authorization to use moderate paid inference; user has refilled credit",
       "operationalBatchExtension": 5,
       "note": "Agent-selected 6-request cap including previous remaining 1 for a fresh conversation; stop first failure. Not a user-quoted numeric allowance."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "User explicitly requests choosing a replacement model now and validating costs and responses",
+      "operationalBatchExtension": 27,
+      "note": "Agent-selected 30-request headroom including prior remaining 3; stop each run on first failure, offline diagnosis before retry. Not a numeric user limit."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "Continuing explicit request to choose replacement and validate costs/responses",
+      "operationalBatchExtension": 8,
+      "note": "Agent extends bounded comparison by 8 attempts after offline bridge/guard diagnosis; 12 remain. Stop first failure. Not a user-quoted number."
+    },
+    {
+      "date": "2026-10-15",
+      "authorization": "User-authorized comparison of replacement models",
+      "operationalBatchExtension": 4,
+      "note": "Agent reserves 9 remaining requests to compare Luna on identical corrected source without truncating a tool loop; stop first failure."
     }
   ]
 }

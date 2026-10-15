@@ -14163,7 +14163,7 @@ describe('Pedido parcialmente válido — rechazo de una línea conserva las dem
   try{
    const handled=await h.service.tryHandleAgentV1({conv:h.conv,msg:{waId:'customer',phoneE164:h.conv.phoneE164,messageId:'partial-boundary',messageType:'text',text,raw:{}},session:h.conv.sessionData,text,originalText:text,products:menu,cfg:h.cfg,status:{isOpen:true,message:'Abierto'},businessOpenForBot:true});
    expect(handled).toBe(true);const reply=h.replies.at(-1);expect(fetchMock).toHaveBeenCalledTimes(failsAfterTools?4:2);
-   expect((await run.mock.results[0].value).purchaseAttempts).toEqual([{productId:keep,accepted:true},{productId:reject,accepted:false,reason:'dish_not_on_menu'},{productId:drink,accepted:true}]);
+   expect((await run.mock.results[0].value).purchaseAttempts).toEqual([{productId:keep,accepted:true},{productId:reject,accepted:false,reason:'dish_not_on_menu',uncoveredWords:['camarones']},{productId:drink,accepted:true}]);
    expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[keep,2],[drink,2]].sort());
    expect(h.cartRows().find(row=>row.id===drink)?.note||'').toMatch(/sin az[uú]car/i);
    expect(h.cartRows().find(row=>row.id===keep)?.note||'').not.toMatch(/az[uú]car|camarones/i);
@@ -14188,5 +14188,71 @@ describe('Condición de inventario se interpreta antes del parser parcial',()=>{
   expect(h.cartRows().map(row=>[row.id,row.qty]).sort()).toEqual([[501,1],[502,1]]);
   expect(reply||'').toMatch(/no tenemos brownie/i);expect(reply||'').not.toMatch(/no manejamos.*om[ií]telo|no manejamos.*postre/i);
   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Rechazo de una variante — el mismo plato aceptado se conserva', () => {
+  const cases = [
+    { kind: 'ppp', menu: products, id: 12, name: 'Trucha', attribute: 'Seleccion', accepted: 'Frita', text: 'Quiero una trucha frita y otra trucha con camarones' },
+    { kind: 'carta', menu: [{ id: 45001, code: 45001, name: 'Arepa De Queso', price: 8000, description: 'Maiz y queso', availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Salsa', options: ['Hogao', 'Sin salsa'] }] }], id: 45001, name: 'Arepa De Queso', attribute: 'Salsa', accepted: 'Hogao', text: 'Quiero una arepa de queso con hogao y otra arepa de queso con camarones' },
+  ];
+  it.each(cases)('$kind conserva la variante válida y recuerda la que faltó', async ({ menu, id, attribute, accepted, text }) => {
+    const h = harness(menu as typeof products, true);
+    h.service.ordersService.create = jest.fn();
+    const agent = new WhatsappAgentService({ getEffectiveConfig: async () => ({ openaiApiKey: 'offline-key', openaiModel: 'gpt-4.1-2025-04-14', systemPrompt: '', localContext: {} }) } as never, h.service.catalogService);
+    h.service.agentService = agent;
+    const response = (message: unknown) => ({ ok: true, json: async () => ({ choices: [{ message }] }) });
+    const args = [
+      { productId: id, quantity: 1, attributes: [{ attributeName: attribute, attributeValue: accepted }] },
+      { productId: id, quantity: 1 },
+    ];
+    const original = globalThis.fetch;
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce(response({ content: null, tool_calls: args.map((arg, index) => ({ id: 'variant-' + index, type: 'function', function: { name: 'add_item', arguments: JSON.stringify(arg) } })) }))
+      .mockResolvedValueOnce(response({ content: 'Agregué una y la otra no está.' }));
+    globalThis.fetch = fetchMock;
+    try {
+      const handled = await h.service.tryHandleAgentV1({ conv: h.conv, msg: { waId: 'customer', phoneE164: h.conv.phoneE164, messageId: 'variant-boundary', messageType: 'text', text, raw: {} }, session: h.conv.sessionData, text, originalText: text, products: menu, cfg: h.cfg, status: { isOpen: true, message: 'Abierto' }, businessOpenForBot: true });
+      expect(handled).toBe(true);
+      const rows = h.cartRows().filter((row) => row.id === id);
+      expect(rows).toEqual([expect.objectContaining({ qty: 1, attrs: [`${attribute}:${accepted}`] })]);
+      expect(rows[0].note || '').not.toMatch(/camarones/i);
+      expect(h.replies.at(-1) || '').toMatch(/camarones/i);
+      expect(h.replies.at(-1) || '').toMatch(/resto del pedido/i);
+      expect(h.conv.sessionData.recentUnavailableOrder?.items.join(' ')).toMatch(/camarones/i);
+      const follow = await h.sendQueued('¿Y los camarones sí los tienen?');
+      expect(h.cartRows().filter((row) => row.id === id)).toEqual(rows);
+      expect(follow || '').toMatch(/camarones/i);
+      expect(follow || '').not.toMatch(/agregu[eé]|listo ✅/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    } finally { globalThis.fetch = original; }
+  });
+});
+
+describe('Interrupción de precio con preámbulo conserva referencia y pedido',()=>{
+ for(const prefix of ['Antes de seguir,','Antes de continuar,','Tengo una duda,','Disculpa,']) {
+  it.each([
+   {kind:'PPP',menu:products,ids:[71,38],family:'sopa',target:38,price:'10.500'},
+   {kind:'otra carta',menu:JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8')),ids:[505,501],family:'bowl',target:501,price:'18.700'}
+  ])(prefix+' $kind responde precio de familia sin volver a preguntar',async({menu,ids,family,price})=>{
+   const h=harness(menu,false);
+   h.conv.sessionData.cart=ids.map(id=>{const p=menu.find(p=>p.id===id)!;return {productId:p.id,name:p.name,code:p.code,quantity:2,unitPrice:p.price,attributes:[]};});
+   const before=JSON.stringify(h.conv.sessionData.cart);
+   const reply=await h.sendQueued(`${prefix} cuánto vale cada ${family}?`);
+   expect(reply).toContain(price);expect(reply).not.toMatch(/de cu[aá]l producto/i);
+   expect(JSON.stringify(h.conv.sessionData.cart)).toBe(before);expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();
+  });
+ }
+});
+
+describe('Acuse de compra conserva indisponibilidad con distintos órdenes de palabras',()=>{
+ it.each(['No tenemos flan.','El flan no lo manejamos.','Flan no hay por ahora.','Por ahora no contamos con flan.','El flan no está disponible.'])('%s',async explanation=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-alternate-menu.json'),'utf8'));
+  const h=harness(menu,true);
+  h.service.agentService.runTurn.mockResolvedValue({reply:explanation,actions:{addItems:[{productId:501,quantity:1}]},toolCalls:['add_item'],purchaseAttempts:[{productId:501,accepted:true}]});
+  const text='Quiero un bowl andino. Si no tienen flan, omítelo.';
+  const handled=await h.service.tryHandleAgentV1({conv:h.conv,msg:{waId:'customer',phoneE164:h.conv.phoneE164,messageId:'render-miss',messageType:'text',text,raw:{}},session:h.conv.sessionData,text,originalText:text,products:menu,cfg:h.cfg,status:{isOpen:true,message:'Abierto'},businessOpenForBot:true});
+  expect(handled).toBe(true);expect(h.replies.at(-1)).toContain(explanation);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:501,qty:1})]);
  });
 });

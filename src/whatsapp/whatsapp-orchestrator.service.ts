@@ -17419,12 +17419,22 @@ export class WhatsappOrchestratorService {
     const rejectedProductIds = validatedToolActions ? [...new Set((agent.purchaseAttempts || [])
       .filter(attempt => !attempt.accepted && !acceptedIds.has(attempt.productId))
       .map(attempt => attempt.productId))] : [];
-    const unappliedToolLines = rejectedProductIds.flatMap(id => {
-      const product = products.find(candidate => candidate.id === id);
-      if (!product) return [];
-      const fragment = this.catalogService.orderSegmentForProduct(text, product, products).trim();
-      return [`No pude añadir *${fragment || product.name}* como lo pediste.`];
-    });
+    const sameSkuRejections = validatedToolActions ? (agent.purchaseAttempts || []).flatMap(attempt => {
+      if (attempt.accepted || !acceptedIds.has(attempt.productId)) return [];
+      const detail = [...(attempt.uncoveredWords || []), attempt.requestedOption].filter((word): word is string => !!word);
+      const product = products.find(candidate => candidate.id === attempt.productId);
+      if (!product || !detail.length) return [];
+      return [{detail: [...new Set(detail)].join(' '), name: product.name}];
+    }) : [];
+    const unappliedToolLines = [
+      ...rejectedProductIds.flatMap(id => {
+        const product = products.find(candidate => candidate.id === id);
+        if (!product) return [];
+        const fragment = this.catalogService.orderSegmentForProduct(text, product, products).trim();
+        return [`No pude añadir *${fragment || product.name}* como lo pediste.`];
+      }),
+      ...sameSkuRejections.map(item => `No pude añadir *${item.name}* con *${item.detail}*. El resto del pedido sí quedó.`),
+    ];
 
     // Solo si Nest resolvió el pedido completo y el agente se dejó un plato
     // (combo + sopas, y agregó la gaseosa suelta). Si Nest duda o no encuentra
@@ -17492,6 +17502,12 @@ export class WhatsappOrchestratorService {
       validatedToolActions,
     );
     session = applied.session;
+    if (sameSkuRejections.length) {
+      session = {...session, recentUnavailableOrder: {
+        items: [...new Set(sameSkuRejections.map(item => item.detail))],
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }};
+    }
 
     if (applied.limitBlocked) {
       await this.conversationService.saveSession(conv, session);
@@ -17715,7 +17731,7 @@ export class WhatsappOrchestratorService {
       const missLine = agentReply
         .split('\n')
         .map((line) => line.trim())
-        .find((line) => /no (?:te ofrecemos|tenemos|manejamos)\b/i.test(line));
+        .find((line) => /\bno (?:(?:lo|la|los|las) )?(?:te ofrecemos|tenemos|manejamos|hay|contamos|est[aá](?:n)? disponible(?:s)?)\b/i.test(line));
       const misses = [missLine, ...intentMisses, ...unappliedToolLines].filter(Boolean);
       reply = misses.length ? `${misses.join('\n')}\n\n${cartReply}` : cartReply;
     } else if (guarded.actions?.updateAttributes?.length) {

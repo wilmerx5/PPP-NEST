@@ -1,0 +1,315 @@
+{
+  "date": "2026-10-15",
+  "baseCommit": "a1bcfd0f",
+  "includesWorkingChanges": true,
+  "selection": "gpt-6.1-sol",
+  "selectionStatus": "selected_for_staging_validation_not_yet_deployed",
+  "caveats": [
+    "Small development sample, not a statistical quality ranking or holdout score",
+    "Sources differ across runs because bridge and backend failures were corrected offline",
+    "Luna final failure was visible response rendering; its model reply and cart were correct",
+    "luna-first counted one preparation failure before network as uncertain; no missing usage is assumed zero",
+    "Estimated reported token cost excludes Meta, maps, voice, images, account pricing, taxes and other charges",
+    "No production settings or external orders changed"
+  ],
+  "runs": [
+    {
+      "label": "luna-first",
+      "model": "gpt-6-luna",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6-luna",
+        "requests": 3,
+        "successfulResponses": 2,
+        "responsesWithUsage": 2,
+        "usageComplete": false,
+        "uncertainResponses": 1,
+        "transportErrors": {
+          "transport_error": 1
+        },
+        "promptTokens": 17824,
+        "cachedPromptTokens": 8789,
+        "completionTokens": 70,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.0010263899999999999,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "fresh-mixed-option-note-correction-1510",
+          "accepted": false,
+          "problems": [
+            "turn_0:cart",
+            "turn_0:attributes",
+            "turn_0:agent_error",
+            "turn_0:reply_missing_any",
+            "turn_0:reply_missing_fact"
+          ],
+          "requests": 3,
+          "turnLatencyMs": [
+            5844
+          ]
+        }
+      ]
+    },
+    {
+      "label": "luna-retest",
+      "model": "gpt-6-luna",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6-luna",
+        "requests": 4,
+        "successfulResponses": 4,
+        "responsesWithUsage": 4,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 36497,
+        "cachedPromptTokens": 36036,
+        "completionTokens": 184,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00049846,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "fresh-mixed-option-note-correction-1510",
+          "accepted": false,
+          "problems": [
+            "turn_0:reply_missing_any",
+            "turn_0:reply_missing_fact"
+          ],
+          "requests": 4,
+          "turnLatencyMs": [
+            17795
+          ]
+        }
+      ]
+    },
+    {
+      "label": "sol-first",
+      "model": "gpt-6.1-sol",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6.1-sol",
+        "requests": 6,
+        "successfulResponses": 6,
+        "responsesWithUsage": 6,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 55377,
+        "cachedPromptTokens": 45780,
+        "completionTokens": 204,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.025812,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "fresh-mixed-option-note-correction-1510",
+          "accepted": true,
+          "problems": [],
+          "requests": 6,
+          "turnLatencyMs": [
+            14866,
+            36,
+            19
+          ]
+        }
+      ]
+    },
+    {
+      "label": "baseline",
+      "model": "gpt-4.1-2025-04-14",
+      "endpoint": "chat/completions",
+      "apiUsage": {
+        "model": "gpt-4.1-2025-04-14",
+        "requests": 3,
+        "successfulResponses": 3,
+        "responsesWithUsage": 3,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 27759,
+        "cachedPromptTokens": 17920,
+        "completionTokens": 171,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.030006,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "fresh-mixed-option-note-correction-1510",
+          "accepted": true,
+          "problems": [],
+          "requests": 3,
+          "turnLatencyMs": [
+            4735,
+            22,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "label": "sol-ppp",
+      "model": "gpt-6.1-sol",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6.1-sol",
+        "requests": 6,
+        "successfulResponses": 6,
+        "responsesWithUsage": 6,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 67076,
+        "cachedPromptTokens": 54977,
+        "completionTokens": 355,
+        "reasoningTokens": 10,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.033245699999999996,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "model-comparison-ppp-combo-soups-interruption",
+          "accepted": false,
+          "problems": [
+            "turn_0:cart",
+            "turn_0:variant_lines",
+            "turn_0:attributes"
+          ],
+          "requests": 6,
+          "turnLatencyMs": [
+            21139
+          ]
+        }
+      ]
+    },
+    {
+      "label": "luna-ppp",
+      "model": "gpt-6-luna",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6-luna",
+        "requests": 4,
+        "successfulResponses": 4,
+        "responsesWithUsage": 4,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 43341,
+        "cachedPromptTokens": 32006,
+        "completionTokens": 212,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00155956,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "model-comparison-ppp-combo-soups-interruption",
+          "accepted": false,
+          "problems": [
+            "turn_1:reply_missing_fact"
+          ],
+          "requests": 4,
+          "turnLatencyMs": [
+            13870,
+            31
+          ]
+        }
+      ]
+    },
+    {
+      "label": "sol-integrated-ppp",
+      "model": "gpt-6.1-sol",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6.1-sol",
+        "requests": 7,
+        "successfulResponses": 7,
+        "responsesWithUsage": 7,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 75662,
+        "cachedPromptTokens": 64365,
+        "completionTokens": 352,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.0325505,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "model-comparison-ppp-combo-soups-interruption",
+          "accepted": true,
+          "problems": [],
+          "requests": 7,
+          "turnLatencyMs": [
+            17687,
+            29,
+            6450
+          ]
+        }
+      ]
+    },
+    {
+      "label": "luna-integrated-ppp",
+      "model": "gpt-6-luna",
+      "endpoint": "responses",
+      "apiUsage": {
+        "model": "gpt-6-luna",
+        "requests": 5,
+        "successfulResponses": 5,
+        "responsesWithUsage": 5,
+        "usageComplete": true,
+        "uncertainResponses": 0,
+        "transportErrors": {},
+        "promptTokens": 54279,
+        "cachedPromptTokens": 53171,
+        "completionTokens": 241,
+        "reasoningTokens": 0,
+        "httpErrors": {},
+        "providerErrorCodes": {},
+        "estimatedReportedCostUsd": 0.00076301,
+        "priceDate": "2026-10-15",
+        "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+      },
+      "results": [
+        {
+          "id": "model-comparison-ppp-combo-soups-interruption",
+          "accepted": false,
+          "problems": [
+            "turn_0:reply_missing_fact"
+          ],
+          "requests": 5,
+          "turnLatencyMs": [
+            18970
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -6646,6 +6646,8 @@ export class WhatsappCatalogService {
   /** Quita muletillas de consulta de precio para buscar el producto. */
   stripPriceInquiryNoise(text: string): string {
     return text
+      // Discourse prefixes frame a question; they are not product identifiers.
+      .replace(/^\s*(?:antes\s+de\s+(?:seguir|continuar)|(?:tengo\s+)?una\s+(?:duda|pregunta)|disculp[ae]|perd[oó]n)\s*[,;:]?\s*/i, '')
       .replace(
         /\b(cu[aá]nto vale[n]?|cu[aá]nto cuesta[n]?|cu[aá]nto sale[n]?|cu[aá]nto est[aá]|cu[aá]nto cobran|cu[aá]nto ser[ií]a|cu[aá]nto costar[ií]a|a cu[aá]nto|a c[oó]mo|qu[eé] precio|q precio|precio de(l| la| los| las)?|precio tiene|precio por|valor de(l| la| los| las)?|cu[aá]nto me sale|me costar[ií]a|qu[eé] cuesta[n]?|q cuesta[n]?|qu[eé] vale[n]?|q vale[n]?)\b/gi,
         ' ',

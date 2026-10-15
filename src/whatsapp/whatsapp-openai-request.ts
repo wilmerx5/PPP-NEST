@@ -1,6 +1,7 @@
 /** Non-streaming inference only. No output is applied and no cart tool runs here. */
 export async function requestWhatsappInference(body: string, apiKey: string, options: {
   fetcher?: typeof fetch;
+  api?: 'chat/completions' | 'responses';
   wait?: (ms: number) => Promise<void>;
   random?: () => number;
   timeoutMs?: number;
@@ -15,7 +16,7 @@ export async function requestWhatsappInference(body: string, apiKey: string, opt
     if (remaining <= 0) throw new Error('openai_request_deadline');
     let response:Response;
     try {
-      response = await fetcher('https://api.openai.com/v1/chat/completions', {
+      response = await fetcher(options.api === 'responses' ? 'https://api.openai.com/v1/responses' : 'https://api.openai.com/v1/chat/completions', {
         method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},
         body,signal:AbortSignal.timeout(Math.min(remaining,options.attemptTimeoutMs ?? 12000)),
       });

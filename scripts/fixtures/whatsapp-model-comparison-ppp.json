@@ -1,0 +1,84 @@
+[
+  {
+    "id": "model-comparison-ppp-combo-soups-interruption",
+    "evaluationStatus": "new_first_attempt_before_outputs",
+    "messages": [
+      {
+        "text": "Buenas, para hoy me mandas un dúo de tacos con Coca Cola Zero y dos sopas de ajiaco sin arroz. Si no venden flan, no lo reemplaces.",
+        "expect": {
+          "items": {
+            "71": 1,
+            "38": 2
+          },
+          "attrs": [
+            {
+              "id": 71,
+              "key": "Bebida",
+              "value": "Coca Cola Zero"
+            }
+          ],
+          "lines": [
+            {
+              "id": 71,
+              "quantity": 1
+            },
+            {
+              "id": 38,
+              "quantity": 2,
+              "note": [
+                "sin arroz"
+              ]
+            }
+          ],
+          "replyAll": [
+            "flan"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de seguir, cuánto vale cada sopa?",
+        "expect": {
+          "items": {
+            "71": 1,
+            "38": 2
+          },
+          "replyAll": [
+            "10.500"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "La bebida del dúo mejor Pepsi, las sopas déjalas igual.",
+        "expect": {
+          "items": {
+            "71": 1,
+            "38": 2
+          },
+          "attrs": [
+            {
+              "id": 71,
+              "key": "Bebida",
+              "value": "Pepsi"
+            }
+          ],
+          "lines": [
+            {
+              "id": 71,
+              "quantity": 1
+            },
+            {
+              "id": 38,
+              "quantity": 2,
+              "note": [
+                "sin arroz"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

@@ -1,5 +1,19 @@
 # Continuación local de PPP WhatsApp
 
+## Tanda vigente: reemplazo de modelo (15/10)
+
+**Sol (`gpt-6.1-sol`) elegido para validación de calidad en staging.** Código integrado y validado: **74 suites / 5.562 pruebas aprobadas**,40 más que a1bcfd0f (incluye cambios locales previos conservados),851.419s. TypeScript aprobado. Snapshot src/scripts intacto; global definitiva `/tmp/ppp-model-integration-final-full.log`, snapshot `/tmp/ppp-model-integration-source.json`, TypeScript `/tmp/ppp-model-integration-tsc.log`. Una global anterior fue interrumpida para corregir render; no cuenta como aprobada.
+
+Transporte Responses para GPT-6, compatibilidad anterior conservada, rollback por WHATSAPP_AGENT_MODEL. Sol pasó dos conversaciones completas de3turnos con PPP+yotra carta, tokens reportados USD0.025812 y USD0.0325505. No son holdouts ni un ranking estadístico. Luna propuso carrito/respuesta correctos; el backend descartó formulaciones de indisponibilidad. Ver [comparación y plan](WHATSAPP-MODEL-COMPARISON.md) y `whatsapp-model-comparison-1510.json`. Se corrigieron guardia de bebida incluida, preámbulo de precio y render; no excepciones de platos en producción.
+
+Presupuesto actual:119top operativo/115intentos usados/4restantes;38intentos en la tanda, uno antes de red por preparación defectuosa. Suma sobre tokens reportados USD0.125462, no factura. Registro y espejo sincronizados. No confundir estos topes elegidos por agente con cifras del usuario. No Meta/pagos/mapas/órdenes externos; solo inferencia real y router aislado.
+
+Deploy y activación de Sol pendientes al escribir esta entrada; ver comprobación posterior antes de asumir runtime actualizado. Main intacta. Visión todavía usa ajuste compartido gpt-4.1; voz runtime whisper-1. Retirada de GPT-4.1 NO queda completamente resuelta hasta migrar visión/clasificación. Latencia inicial Sol14.9–17.7s en los recorridos aprobados, mejora pendiente.
+
+Próximo: fuente idéntica por candidato, más conversaciones no inspeccionadas, contrato estructurado de ausentes (render regex solo intermedio), compra simple de paquete con condición capturada como pregunta, reducir rondas/latencia, evaluar medios por separado. No declarar vendible por tests verdes ni que Sol es superior a Luna por fallos del backend.
+
+## Historial anterior
+
 Estado local actualizado al 15/10/2026. Última verificación del runtime:14/10/2026,22:34Bogotá. Este es el punto de entrada breve; el historial completo está en `AGENT-HANDOFF-WHATSAPP.md`. Las secciones antiguas de ese historial no representan el presupuesto ni el despliegue actual.
 
 ## Tanda actual: recuperación técnica y compras condicionales (base 931c6a4e)

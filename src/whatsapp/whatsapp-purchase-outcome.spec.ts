@@ -18,16 +18,16 @@ describe('Purchase tool outcomes across model iterations',()=>{
    .mockResolvedValueOnce(response({content:'Necesito aclarar el pedido.'}));globalThis.fetch=fetchMock;
   const result=await make().runTurn(input());
   expect(result.actions.addItems).toBeUndefined();expect(result.purchaseAttempts).toEqual([
-   {productId:501,accepted:false,reason:'dish_not_on_menu'},
-   {productId:502,accepted:false,reason:'dish_not_on_menu'},
-   {productId:502,accepted:false,reason:'dish_not_on_menu'}]);
+   {productId:501,accepted:false,reason:'dish_not_on_menu',uncoveredWords:['camarones']},
+   {productId:502,accepted:false,reason:'dish_not_on_menu',uncoveredWords:['camarones']},
+   {productId:502,accepted:false,reason:'dish_not_on_menu',uncoveredWords:['camarones']}]);
   expect(fetchMock).toHaveBeenCalledTimes(2);
   expect(JSON.stringify(result.purchaseAttempts)).not.toMatch(/Daniela|Camilo|Sara|Tahini|Yogur|offline-key/);
  });
  it('retains rejected outcomes when the next model response is malformed',async()=>{
   globalThis.fetch=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:[call(501,2)]})).mockResolvedValueOnce(response(undefined));
   const result=await make().runTurn(input());expect(result.error).toBe('empty_message');
-  expect(result.purchaseAttempts).toEqual([{productId:501,accepted:false,reason:'dish_not_on_menu'}]);
+  expect(result.purchaseAttempts).toEqual([{productId:501,accepted:false,reason:'dish_not_on_menu',uncoveredWords:['camarones']}]);
  });
  it('records acceptance and a duplicate rejection separately',async()=>{
   globalThis.fetch=jest.fn().mockResolvedValueOnce(response({content:null,tool_calls:[call(503,1),call(503,1)]})).mockResolvedValueOnce(response({content:'Listo.'}));

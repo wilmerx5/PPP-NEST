@@ -9,6 +9,7 @@ import {
 } from './whatsapp-catalog.service';
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
+import { WhatsappResponsesBridge } from './whatsapp-responses-bridge';
 import { requestWhatsappInference } from './whatsapp-openai-request';
 import { catalogAccompanimentReply } from './whatsapp-product-composition';
 import { resolveConceptBrowseForAgent } from './whatsapp-menu-concepts';
@@ -45,8 +46,8 @@ export type AgentV1TurnResult = {
   /** Pregunta cuánto tarda un domicilio en general. Nest usa el tiempo de la config. */
   lookupDeliveryTime?: boolean;
   toolCalls: string[];
-  /** Per-turn tool outcomes; no customer text or options. */
-  purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string}>;
+  /** Per-turn tool outcomes. Rejected lines may name the missing token, never the customer message. */
+  purchaseAttempts?: Array<{productId:number;accepted:boolean;reason?:string;uncoveredWords?:string[];requestedOption?:string}>;
   error?: string;
 };
 
@@ -627,7 +628,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       { role: 'user', content: input.userMessage },
     ];
 
-    const model = cfg.openaiModel || 'gpt-4o-mini';
+    const model = process.env.WHATSAPP_AGENT_MODEL?.trim() || cfg.openaiModel || 'gpt-4o-mini';
+    const responsesBridge = /^gpt-6(?:[.-]|$)/i.test(model) ? new WhatsappResponsesBridge() : null;
     const turnDeadline = Date.now()+25000;
 
     try {
@@ -650,8 +652,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           },
         );
 
-        const res = await requestWhatsappInference(JSON.stringify(body),cfg.openaiApiKey,
-          {timeoutMs:Math.min(20000,turnDeadline-Date.now())});
+        const prepared = responsesBridge?.prepare(body);
+        const res = await requestWhatsappInference(JSON.stringify(prepared?.body || body),cfg.openaiApiKey,
+          {api:prepared ? 'responses' : 'chat/completions',timeoutMs:Math.min(20000,turnDeadline-Date.now())});
 
         if (!res.ok) {
           let code='unclassified';
@@ -668,7 +671,8 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           };
         }
 
-        const data = (await res.json()) as {
+        const raw = await res.json();
+        const data = (prepared ? prepared.accept(raw) : raw) as {
           choices?: {
             message?: ChatMessage;
             finish_reason?: string;
@@ -776,10 +780,16 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             },
           });
           if (name === 'add_item' && purchaseAttempts.length < 100) {
-            const outcome = JSON.parse(toolResult) as {ok?:boolean;error?:string};
+            const outcome = JSON.parse(toolResult) as {ok?:boolean;error?:string;uncoveredWords?:unknown;requestedOption?:unknown};
+            const uncoveredWords = Array.isArray(outcome.uncoveredWords)
+              ? outcome.uncoveredWords.filter((word): word is string => typeof word === 'string' && word.length > 0 && word.length <= 40).slice(0, 4)
+              : [];
+            const requestedOption = typeof outcome.requestedOption === 'string' ? outcome.requestedOption.trim().slice(0, 40) : '';
             purchaseAttempts.push({productId:Number(args.productId),accepted:outcome.ok === true,
               ...(!outcome.ok ? {reason: typeof outcome.error === 'string' && /^[a-z_]+$/.test(outcome.error)
-                ? outcome.error : 'purchase_rejected'} : {})});
+                ? outcome.error : 'purchase_rejected'} : {}),
+              ...(uncoveredWords.length ? {uncoveredWords} : {}),
+              ...(requestedOption ? {requestedOption} : {})});
           }
           messages.push({
             role: 'tool',
@@ -1466,7 +1476,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const uniqueBareDish = !!bareName && ctx.products.filter(candidate =>
           candidate.availableNow !== false && candidate.name.toLowerCase().startsWith(bareName.toLowerCase())).length === 1 &&
           this.catalogService.productNameFitsUtterance?.({...product,name:bareName},ctx.userMessage || '');
+        // Search and purchase must agree on the host of an included drink.
+        // A shortened named pack may omit a catalog qualifier; the drink SKU
+        // found elsewhere in the sentence is not evidence against its host.
+        const requestedDrinkHost = this.catalogService.hostedMenuDrink(ctx.userMessage || '', ctx.products);
         if (requested && requested.id !== product.id && explicitCode !== product.code &&
+          requestedDrinkHost?.product.id !== product.id &&
           !uniqueBareDish && !this.catalogService.productNameFitsUtterance?.(product, ctx.userMessage || '')) {
           const multi = this.catalogService.resolveMultiProductOrder?.(ctx.userMessage || '',ctx.products);
           const namedProducts = multi ? [...multi.confident,...multi.needsAttributes].map(item=>item.product) : [];
@@ -1604,6 +1619,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               String(choice.attributeValue || ''), declared.options);
             if (!matched) {
               return JSON.stringify({ ok: false, error: 'invalid_attribute_option',
+                requestedOption: String(choice.attributeValue || '').trim().slice(0, 40),
                 hint: 'No reemplaces una elección inválida por la opción predeterminada. Aclara con el cliente.',
                 attribute: declared.attributeName, options: declared.options });
             }
