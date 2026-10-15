@@ -8,7 +8,7 @@ import { WhatsappPointsService } from './whatsapp-points.service';
 import { WhatsappTurnTelemetryService } from './whatsapp-turn-telemetry.service';
 import type { WhatsappSessionData } from './types/whatsapp-session.types';
 import { DEFAULT_PAYMENT_METHODS } from './whatsapp-payment-methods';
-import { looksLikeAddressOnlyMessage } from './whatsapp-intent';
+import { isHypotheticalOrderQuestion, looksLikeAddressOnlyMessage, orderBeforeCheckoutClose } from './whatsapp-intent';
 import { isWrongChatApology } from './whatsapp-session-intents';
 
 const products = JSON.parse(
@@ -13311,4 +13311,336 @@ describe('Disculpa de otro negocio — nueva compra explícita en el mismo mensa
    expect(h.cartRows()).toEqual([expect.objectContaining({id:28001,qty:1})]);expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(reply||'').toMatch(new RegExp(dish,'i'));expect(reply||'').not.toMatch(/detergente|bolsas de hielo/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
   });
  }
+});
+
+describe('Cierre de compra dentro de un mensaje largo', () => {
+  const place = (id: number, name: string, price: number) => ({
+    id, code: id, name, price, availableNow: true, hasAttributes: false, attributes: [] as { attributeName: string; options: string[] }[],
+  });
+  const delivery = (h: ReturnType<typeof harness>) => {
+    h.conv.sessionData.orderType = 'delivery';
+    h.conv.sessionData.fulfillmentChosen = false;
+    h.service.ordersService.create = jest.fn();
+  };
+
+  it('separa el pedido del cierre', () => {
+    expect(orderBeforeCheckoutClose('Quiero dos limonadas. Eso es todo por ahora, gracias')).toBe('Quiero dos limonadas');
+    expect(orderBeforeCheckoutClose('Calle 80 nada mas')).toBeNull();
+    expect(isHypotheticalOrderQuestion('Si pido dos limonadas, eso es todo')).toBe(true);
+  });
+
+  it.each([false, true])('ppp pide la dirección al cerrar el pedido (agent %s)', async (agent) => {
+    const drink = products.find((item: { name: string }) => /^limonada natural$/i.test(item.name));
+    const soup = products.find((item: { name: string }) => /^sopa de ajiaco$/i.test(item.name));
+    const h = harness(products, agent);
+    delivery(h);
+    const reply = await h.sendQueued('Quiero dos limonadas naturales y una sopa de ajiaco. Eso es todo por ahora, gracias');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: drink.id, qty: 2 }),
+      expect.objectContaining({ id: soup.id, qty: 1 }),
+    ]));
+    expect(h.conv.state).toBe('awaiting_address');
+    expect(reply || '').toMatch(/direcci[oó]n/i);
+    expect(reply || '').not.toMatch(/algo más/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['solo eso', 'nada más'])('ppp cierra con «%s»', async (close) => {
+    const drink = products.find((item: { name: string }) => /^limonada natural$/i.test(item.name));
+    const soup = products.find((item: { name: string }) => /^sopa de ajiaco$/i.test(item.name));
+    const h = harness(products, false);
+    delivery(h);
+    const reply = await h.sendQueued(`Quiero dos limonadas naturales y una sopa de ajiaco, ${close}`);
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: drink.id, qty: 2 }),
+      expect.objectContaining({ id: soup.id, qty: 1 }),
+    ]));
+    expect(h.conv.state).toBe('awaiting_address');
+    expect(reply || '').toMatch(/direcci[oó]n/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  const fictional = [
+    { kind: 'pizza', a: place(30101, 'Pizza Rustica', 28000), b: place(30102, 'Gaseosa Artesanal', 5000), text: 'Quiero dos pizzas rusticas y una gaseosa artesanal. Eso es todo por ahora, gracias', qtyA: 2, qtyB: 1 },
+    { kind: 'ramen', a: place(30111, 'Ramen De Miso', 24000), b: place(30112, 'Te Verde', 4000), text: 'Quiero tres ramen de miso y dos te verde, solo eso', qtyA: 3, qtyB: 2 },
+    { kind: 'bowl', a: place(30121, 'Bowl De Quinoa', 19000), b: place(30122, 'Agua Mineral', 3000), text: 'Quiero un bowl de quinoa y dos aguas minerales, nada más', qtyA: 1, qtyB: 2 },
+  ];
+
+  it.each(fictional.flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind cierra el pedido largo (agent $agent)',
+    async ({ a, b, text, qtyA, qtyB, agent }) => {
+      const h = harness([a, b] as typeof products, agent);
+      delivery(h);
+      const reply = await h.sendQueued(text);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: a.id, qty: qtyA }),
+        expect.objectContaining({ id: b.id, qty: qtyB }),
+      ]));
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(reply || '').toMatch(/direcci[oó]n/i);
+      expect(reply || '').not.toMatch(/algo más/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('la opción pendiente se resuelve antes del cierre', async () => {
+    const juice = products.find((item: { name: string }) => /jugo natural en agua/i.test(item.name));
+    const h = harness(products, false);
+    delivery(h);
+    const reply = await h.sendQueued('Quiero un jugo natural en agua y una limonada natural. Eso es todo');
+    expect(h.conv.state).not.toBe('awaiting_address');
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    expect(reply || '').toMatch(/sabor|cu[aá]l/i);
+    expect(h.cartRows().some((row) => row.id === juice.id && !(row.attrs || []).some((attr) => /sabor/i.test(attr)))).toBe(false);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('si pido no compra ni cierra (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    delivery(h);
+    const reply = await h.sendQueued('Si pido dos limonadas naturales y una sopa de ajiaco, eso es todo');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.state).toBe('building_cart');
+    expect(reply || '').toMatch(/consulta|no anot/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it('nada más en medio del pedido no cierra la compra', async () => {
+    const soup = products.find((item: { name: string }) => /^sopa de ajiaco$/i.test(item.name));
+    const drink = products.find((item: { name: string }) => /^limonada natural$/i.test(item.name));
+    const h = harness(products, false);
+    delivery(h);
+    await h.sendQueued('Quiero una sopa de ajiaco nada más de cilantro y una limonada natural');
+    expect(h.cartRows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: soup.id, qty: 1 }),
+      expect.objectContaining({ id: drink.id, qty: 1 }),
+    ]));
+    expect(h.conv.state).toBe('building_cart');
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it('calle 80 nada más no pide la dirección de cierre', async () => {
+    const h = harness(products, false);
+    delivery(h);
+    await h.sendQueued('Calle 80 nada mas');
+    expect(h.cartRows()).toEqual([]);
+    expect(h.conv.state).not.toBe('awaiting_payment');
+    expect(h.conv.state).not.toBe('awaiting_final_confirm');
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it('con dirección y pago sigue a la confirmación sin crear la orden', async () => {
+    const drink = products.find((item: { name: string }) => /^limonada natural$/i.test(item.name));
+    const h = harness(products, false);
+    h.service.ordersService.create = jest.fn();
+    Object.assign(h.conv.sessionData, {
+      orderType: 'delivery',
+      fulfillmentChosen: true,
+      address: 'Calle 10 20 30',
+      addressConfirmed: true,
+      deliveryFeeCalculated: 2000,
+      phoneConfirmed: true,
+      contactPhone: h.conv.phoneE164,
+      paymentMethod: 'cash',
+    });
+    const reply = await h.sendQueued('Quiero dos limonadas naturales. Eso es todo por ahora, gracias');
+    expect(h.cartRows()).toEqual([expect.objectContaining({ id: drink.id, qty: 2 })]);
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+    expect(reply || '').toMatch(/confirmar/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Pedido de pollo con nota de cocina', () => {
+  const phrase = 'quiero dos pollos bien fritos,  con las arepas fritas y arto aji por favor';
+
+  it.each([false, true])('dos pollos bien fritos con arepas y arto ají (agent %s)', async (agent) => {
+    const h = harness(products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(phrase);
+    expect(reply || '').not.toMatch(/no manejamos/i);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 1,
+        qty: 2,
+        attrs: expect.arrayContaining(['Arepas:Fritas']),
+        note: expect.stringMatching(/bien frito/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/(?:harto|arto).*aj[ií]/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('la misma frase en otra carta deja el pollo y el ají (agent %s)', async (agent) => {
+    const chicken = {
+      id: 501, code: 501, name: 'Pollo Frito', categoryName: 'Pollos', price: 36000,
+      availableNow: true, hasAttributes: true, attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'Fritas'] }],
+    };
+    const soup = {
+      id: 502, code: 502, name: 'Sopa De Tomate', categoryName: 'Sopas', price: 9000,
+      availableNow: true, hasAttributes: false, attributes: [],
+    };
+    const h = harness([chicken, soup] as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(phrase);
+    expect(reply || '').not.toMatch(/no manejamos|no tenemos/i);
+    expect(h.cartRows()).toEqual([
+      expect.objectContaining({
+        id: 501,
+        qty: 2,
+        attrs: expect.arrayContaining(['Arepas:Fritas']),
+        note: expect.stringMatching(/bien frito/i),
+      }),
+    ]);
+    expect(h.cartRows()[0].note).toMatch(/(?:harto|arto).*aj[ií]/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Consulta abierta y carrito en otro orden', () => {
+  const fictional = [
+    { id: 42001, code: 42001, name: 'Pizza De Setas', description: 'Incluye setas y queso', price: 17000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 42002, code: 42002, name: 'Bowl De Quinoa', description: 'Incluye quinoa y verduras', price: 19000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const cases = () => {
+    const drink = products.find((item: { name: string }) => /^limonada natural$/i.test(item.name));
+    const soup = products.find((item: { name: string }) => /^sopa de ajiaco$/i.test(item.name));
+    return [
+      { kind: 'carta', menu: fictional, lines: fictional },
+      { kind: 'ppp', menu: products, lines: [drink, soup] },
+    ];
+  };
+
+  it.each(cases().flatMap((item) => [false, true].flatMap((agent) => ['awaiting_phone', 'awaiting_payment'].flatMap((state) =>
+    ['Quita la 2', 'Quita la segunda', 'esa no'].map((text) => ({ ...item, agent, state, text }))))))(
+    '$kind $state $text no mueve el carrito (agent $agent)',
+    async ({ menu, lines, agent, state, text }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = state;
+      h.conv.sessionData.orderType = 'delivery';
+      h.conv.sessionData.address = 'Calle 21 #34-56';
+      h.conv.sessionData.addressConfirmed = true;
+      h.conv.sessionData.deliveryFeeCalculated = 2000;
+      h.conv.sessionData.phoneConfirmed = state === 'awaiting_payment';
+      h.conv.sessionData.paymentMethod = state === 'awaiting_payment' ? 'cash' : undefined;
+      h.conv.sessionData.cart = lines.map((line) => ({
+        productId: line.id, name: line.name, code: line.code, unitPrice: line.price, quantity: 1, attributes: [],
+      }));
+      h.conv.sessionData.pendingCompositionAsk = {
+        originalText: '¿Qué trae ese plato?',
+        resumeState: state,
+        productIds: [lines[1].id, lines[0].id],
+      };
+      const before = structuredClone(h.conv.sessionData);
+      const reply = await h.sendQueued(text);
+      expect(h.cartRows()).toEqual(before.cart.map((line) => expect.objectContaining({ id: line.productId, qty: line.quantity })));
+      expect(h.conv.state).toBe(state);
+      expect(h.conv.sessionData.pendingCompositionAsk).toBeDefined();
+      expect(reply || '').toMatch(/nombre|otra lista|no est[aá]|cu[aá]l/i);
+      expect(reply || '').not.toMatch(/quit[eé]|agregu[eé]|listo ✅/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(cases().flatMap((item) => [false, true].map((agent) => ({ ...item, agent }))))(
+    '$kind la segunda consulta el plato de la lista, no la fila del carrito (agent $agent)',
+    async ({ menu, lines, agent }) => {
+      const h = harness(menu as typeof products, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_phone';
+      h.conv.sessionData.orderType = 'delivery';
+      h.conv.sessionData.address = 'Calle 21 #34-56';
+      h.conv.sessionData.addressConfirmed = true;
+      h.conv.sessionData.deliveryFeeCalculated = 2000;
+      h.conv.sessionData.cart = lines.map((line) => ({
+        productId: line.id, name: line.name, code: line.code, unitPrice: line.price, quantity: 1, attributes: [],
+      }));
+      h.conv.sessionData.pendingCompositionAsk = {
+        originalText: '¿Qué trae ese plato?',
+        resumeState: 'awaiting_phone',
+        productIds: [lines[1].id, lines[0].id],
+      };
+      const reply = await h.sendQueued('la segunda');
+      expect(h.cartRows().map((row) => row.id)).toEqual(lines.map((line) => line.id));
+      expect(h.conv.state).toBe('awaiting_phone');
+      expect(h.conv.sessionData.pendingCompositionAsk).toBeUndefined();
+      expect(reply || '').toMatch(new RegExp(lines[0].name.split(/\s+/)[0], 'i'));
+      expect(reply || '').toMatch(/tel[eé]fono|n[uú]mero/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])('la opción retirada no salta a otra fila (agent %s)', async (agent) => {
+    const h = harness(fictional as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_payment';
+    h.conv.sessionData.orderType = 'delivery';
+    h.conv.sessionData.address = 'Calle 21 #34-56';
+    h.conv.sessionData.addressConfirmed = true;
+    h.conv.sessionData.deliveryFeeCalculated = 2000;
+    h.conv.sessionData.phoneConfirmed = true;
+    h.conv.sessionData.paymentMethod = 'transfer';
+    h.conv.sessionData.cart = fictional.map((line) => ({
+      productId: line.id, name: line.name, code: line.code, unitPrice: line.price, quantity: 1, attributes: [],
+    }));
+    h.conv.sessionData.pendingCompositionAsk = {
+      originalText: '¿Qué trae ese plato?',
+      resumeState: 'awaiting_payment',
+      productIds: [fictional[0].id, 99999],
+    };
+    const reply = await h.sendQueued('2');
+    expect(h.cartRows().map((row) => row.id)).toEqual([42001, 42002]);
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(h.conv.sessionData.paymentMethod).toBe('transfer');
+    expect(h.conv.sessionData.pendingCompositionAsk).toBeDefined();
+    expect(reply || '').toMatch(/no est[aá] en la consulta/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('una pregunta de precio no quita ni cobra (agent %s)', async (agent) => {
+    const h = harness(fictional as typeof products, agent);
+    h.service.ordersService.create = jest.fn();
+    h.conv.state = 'awaiting_payment';
+    h.conv.sessionData.orderType = 'delivery';
+    h.conv.sessionData.address = 'Calle 21 #34-56';
+    h.conv.sessionData.addressConfirmed = true;
+    h.conv.sessionData.deliveryFeeCalculated = 2000;
+    h.conv.sessionData.phoneConfirmed = true;
+    h.conv.sessionData.cart = fictional.map((line) => ({
+      productId: line.id, name: line.name, code: line.code, unitPrice: line.price, quantity: 1, attributes: [],
+    }));
+    h.conv.sessionData.pendingCompositionAsk = {
+      originalText: '¿Qué trae ese plato?',
+      resumeState: 'awaiting_payment',
+      productIds: [fictional[1].id, fictional[0].id],
+    };
+    const reply = await h.sendQueued('¿Cuánto suma todo?');
+    expect(h.cartRows().map((row) => row.id)).toEqual([42001, 42002]);
+    expect(h.conv.state).toBe('awaiting_payment');
+    expect(reply || '').toMatch(/36[.,]000|c[oó]mo pagas|m[eé]todo de pago/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Preferencias de pollo — variantes y consultas no compran',()=>{
+ for(const agent of [false,true])for(const phrase of [
+  'Quiero dos pollos muy bien fritos con arepas fritas y arto aji',
+  'Me regalas dos pollos bien fritos con las arepas fritas y mucho aji por favor',
+  'Dos pollos fritos con arepas fritas, sin ensalada y bastante aji',
+ ])it(phrase+' agente='+agent,async()=>{
+  const h=harness(products,agent);h.service.ordersService.create=jest.fn();
+  const reply=await h.sendQueued(phrase);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:1,qty:2,attrs:expect.arrayContaining(['Arepas:Fritas']),note:expect.stringMatching(/aj[ií]/i)})]);
+  if(/bien fritos/i.test(phrase))expect(h.cartRows()[0].note).toMatch(/bien frit/i);
+  if(/sin ensalada/i.test(phrase))expect(h.cartRows()[0].note).toMatch(/sin ensalada/i);
+  expect(reply||'').not.toMatch(/no manejamos|no tenemos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ it.each([false,true])('hipótesis de precio se responde sin compra agente=%s',async(agent)=>{
+  const fixture=[{id:43101,code:43101,name:'Limonada De Hierbabuena',description:'Agua, limón y hierbabuena',price:6800,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(fixture as typeof products,agent);h.service.ordersService.create=jest.fn();
+  const reply=await h.sendQueued('Si pido una limonada de hierbabuena, cuánto cuesta?');
+  expect(reply||'').toContain('6.800');expect(h.cartRows()).toEqual([]);expect(h.conv.state).toBe('building_cart');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
 });

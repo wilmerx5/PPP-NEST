@@ -1,8 +1,8 @@
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
-import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
+import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable } from '@nestjs/common';
-import { interpretProductNote } from './whatsapp-product-intent';
+import { condimentIntensityNote, interpretProductNote, joinKitchenNotes, stripNonDishKitchenWords } from './whatsapp-product-intent';
 import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
@@ -2107,6 +2107,7 @@ export class WhatsappCatalogService {
     query = splitKitchenPreference(query)?.productText || query;
     if (supportsCookingTerm({name:query})) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, products)?.productText || query;
+    query = stripNonDishKitchenWords(query);
     const leftover: string[] = [];
     const unknown: string[] = [];
     let anchored = false;
@@ -2226,6 +2227,7 @@ export class WhatsappCatalogService {
     query = splitKitchenPreference(query)?.productText || query;
     if (supportsCookingTerm(product)) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, [product])?.productText || query;
+    query = stripNonDishKitchenWords(query);
     // Fulfillment and a matching serving/bottle size describe the order;
     // they are not unavailable ingredients ("sobrebarriga para llevar").
     let dishQuery = query.replace(/\bpara\s+llevar\b|\b(?:paso|voy)\s+a\s+recoger\b/gi, ' ');
@@ -4053,6 +4055,17 @@ export class WhatsappCatalogService {
       /\b(?:un|una|el|la|los|las)\s+(?:platano|plato|pollo|sopa|bandeja|mojarra|churrasco|hamburguesa|arepa|combo|ejecutivo|arroz|costilla|pechuga|alitas?|sobrebarriga|mondongo|ajiaco|bebida|gaseosa|jugo|limonada|broaster|frito|trucha|bagre|pescado)\b/.test(
         q,
       ) || /\b(?:un|una)\s+plato\b/.test(q)
+    );
+  }
+
+  /** Cocción, ají y las demás preferencias del mismo plato, sin tapar una con otra. */
+  orderKitchenNote(text: string, product: { id: number; name: string; categoryName?: string }): string | undefined {
+    const peeled = peelSupportedCookingTerm(text, product);
+    return joinKitchenNotes(
+      peeled?.note,
+      interpretProductNote(text, [product])?.note,
+      this.extractProductModificationNote(text),
+      condimentIntensityNote(text),
     );
   }
 
@@ -10256,6 +10269,7 @@ export class WhatsappCatalogService {
     const q = normalizeText(text || '');
     if (!q || !/\bcon\b/.test(q)) return null;
     if (this.looksLikeSideModificationNote(text)) return null;
+    if (/\b(?:quiero|quisiera|dame|ponme|m[aá]ndame|env[ií]ame|reg[aá]lame|pido|pidiera)\b/.test(q)) return null;
     const noise = new Set([
       'tiene', 'tienen', 'tienes', 'hay', 'alguna', 'algun', 'alguno', 'algo',
       'unas', 'unos', 'una', 'uno', 'por', 'favor', 'porfa',
@@ -10264,7 +10278,7 @@ export class WhatsappCatalogService {
       .split(' ')
       .filter((t) => t && !noise.has(t))
       .join(' ');
-    const match = cleaned.match(/\b([a-z]{4,})\s+con\s+([a-z]{3,})\b/);
+    const match = cleaned.match(/\b([a-z]{4,})\s+con\s+(?:(?:la|el|las|los|un|una|unos|unas)\s+)?([a-z]{3,})\b/);
     if (!match?.[1] || !match?.[2]) return null;
     const head = singularizeEsToken(match[1]);
     const inclusion = singularizeEsToken(match[2]);

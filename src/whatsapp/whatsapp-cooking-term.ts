@@ -8,6 +8,15 @@ export function parseCookingTerm(text: string): {note: string; productText: stri
     /termino medio/.test(term) ? 'término medio' : term;
   return {note,productText:(text.slice(0,match.index)+' '+text.slice(match.index+match[0].length)).replace(/\s+/g,' ').trim()};
 }
+export function peelSupportedCookingTerm(
+  text: string,
+  product?: {name: string; categoryName?: string},
+): {note: string; productText: string} | null {
+  const parsed = parseCookingTerm(text);
+  if (!parsed || !supportsCookingTerm(product || {name: text}, parsed.note)) return null;
+  return parsed;
+}
+
 export function supportsCookingTerm(product: {name: string; categoryName?: string}, note?: string): boolean {
   const text = `${product.name} ${product.categoryName || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const asked = (note || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');

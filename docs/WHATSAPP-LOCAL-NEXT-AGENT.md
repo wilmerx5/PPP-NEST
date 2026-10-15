@@ -71,7 +71,13 @@ Informes: `/tmp/ppp-independent-1410-model-report.json` (2 solicitudes, fallo), 
 
 **Los3 casos ya se ejecutaron; oficina y recuperación se usaron para corregir. No llamarlos holdouts nuevos ni reutilizarlos como prueba de generalización.** Una muestra independiente pasó sin ajustes; esto no acredita cobertura global ni piloto autónomo.
 
-## Próximos pasos en orden
+## Prioridad nueva del usuario: consolidar comprensión
+
+El usuario pidió dejar de avanzar mediante parches de frases. Tras la tanda local de cocina/cierre/listas, el siguiente trabajo principal es trazar desvíos y extraer un contrato común de intención/referencias/acciones/consultas, validar contra catálogo y aplicar cambios de sesión de forma coherente. El modelo ya propone acciones estructuradas: investigar reinterpretaciones posteriores antes de añadir otro parser. Migrar una familia acotada con comparación de recorridos, sin reescribir todo ni activar inferencia para cada turno sin medir costo/latencia. Las preguntas pendientes son contexto, no un bloqueo.
+
+Los casos usados para corregir son regresiones, no medida de generalización; reservar conversaciones nuevas y catálogos distintos. Presupuesto agotado: continuar gratis. Ver la entrada «Cambio de prioridad pedido por el usuario: generalización» al final del historial.
+
+## Familias pendientes para comprobar dentro de la consolidación
 
 ### 1. Cierre de compra dentro de un mensaje largo (primera tanda gratuita)
 
@@ -135,4 +141,4 @@ Producción: `/var/www/ppp-nest`, container `ppp_nest_api`, puerto3000; conserva
 
 Piloto supervisado pequeño, no venta autónoma certificada. Aceptar solo cuando preguntas no muten pedido/datos, correcciones se apliquen y retomen el paso pendiente, precios provengan de catálogo/cotización, ambigüedad no adivine y fallos críticos tengan contención humana. Falta evidencia de medios/canal y muestra independiente más amplia. Kamppo requiere además separación de catálogo/configuración y claves de sesión por tenant; menús ficticios no prueban aislamiento multitenant.
 
-Primera acción del siguiente agente: comprobar checkout limpio y HEAD, leer presupuesto agotado y comenzar baseline gratuito de cierre de compra en mensaje largo. No necesita gastar API ni preguntar nuevamente por rama.
+Primera acción del siguiente agente: comprobar checkout/HEAD, leer el último cierre verificado y presupuesto agotado; trazar gratuitamente una compra con atributos/notas y consulta intercalada para extraer el contrato común. El cierre largo tiene correcciones locales validadas en la tanda posterior; revisar su estado final de deploy antes de duplicarlo. No necesita gastar API ni preguntar nuevamente por rama.

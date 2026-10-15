@@ -11,6 +11,6 @@ export function splitKitchenPreference(source: string): {productText: string; no
   const phrase = '[\\p{L}]+(?:\\s+[\\p{L}]+){0,2}';
   const packaging = '(?:bien\\s+empacad[oa]s?|en\\s+(?:cajas?|bolsas?|empaques?)\\s+separad[oa]s?)';
   const sinPhrase = `(?:sin\\s+${phrase}|${packaging})`;
-  const preference = new RegExp(`^${sinPhrase}(?:(?:,\\s*|\\s+y\\s+)${sinPhrase})*(?:(?:,\\s*|\\s+y\\s+)(?:en\\s+vez\\s+de\\s+${phrase}\\s+)?(?:m[aá]s|h?arto|con\\s+(?:m[aá]s|extra|h?arto))\\s+${phrase})?$`, 'iu');
+  const preference = new RegExp(`^${sinPhrase}(?:(?:,\\s*|\\s+y\\s+)${sinPhrase})*(?:(?:,\\s*|\\s+y\\s+)(?:en\\s+vez\\s+de\\s+${phrase}\\s+)?(?:m[aá]s|h?arto|much[oa]|bastante|poc[oa]|extra|con\\s+(?:m[aá]s|extra|h?arto|much[oa]|bastante|poc[oa]))\\s+${phrase})?$`, 'iu');
   return preference.test(note) ? {productText, note:note.replace(/\s+y\s+(?=(?:m[aá]s|con\s+))/ig, ', ')} : null;
 }

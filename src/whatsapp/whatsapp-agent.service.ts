@@ -1,6 +1,6 @@
-import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
+import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable, Logger } from '@nestjs/common';
-import { interpretProductNote } from './whatsapp-product-intent';
+import { condimentIntensityNote, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
 import {
   WhatsappCatalogService,
@@ -1439,7 +1439,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const source = this.catalogService.orderSegmentForProduct?.(ctx.userMessage || '', product, ctx.products) || ctx.userMessage || '';
         let note = args.note != null ? String(args.note).trim().slice(0, 200) :
           this.catalogService.extractProductModificationNote(source) || undefined;
-        const sourceNote = (supportsCookingTerm(product) ? parseCookingTerm(source)?.note : undefined) || interpretProductNote(source, [product])?.note || this.catalogService.extractProductModificationNote(source);
+        const sourceNote = joinKitchenNotes(
+          peelSupportedCookingTerm(source, product)?.note,
+          interpretProductNote(source, [product])?.note,
+          this.catalogService.extractProductModificationNote(source),
+          condimentIntensityNote(source),
+        );
         if (!note && sourceNote) note = sourceNote;
         // Retain additional kitchen preferences even when the model supplied
         // only the first one. Scope them to this dish, never the entire order.

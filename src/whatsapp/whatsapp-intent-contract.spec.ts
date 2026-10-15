@@ -81,4 +81,18 @@ describe('Catalog intent contracts without paid inference', () => {
     expect(JSON.parse(agent.executeTool('add_item',{productId:23},ctx)).ok).toBe(false);
     expect((ctx.actions as any).addItems).toBeUndefined();
   });
+  it('treats bien frito and arto aji as chicken notes, not a missing dish', () => {
+    const source = 'quiero dos pollos bien fritos,  con las arepas fritas y arto aji por favor';
+    const chicken = products.find((item) => item.id === 1);
+    expect(catalog.uncoveredDishWords(source, products)).toEqual([]);
+    expect(catalog.uncoveredWordsAnchoredByProduct(source, chicken, products)).toEqual([]);
+    const ctx = context(source);
+    const added = JSON.parse(agent.executeTool('add_item', { productId: 1, quantity: 2 }, ctx));
+    expect(added.ok).toBe(true);
+    expect((ctx.actions as any).addItems[0].note).toMatch(/bien frito/i);
+    expect((ctx.actions as any).addItems[0].note).toMatch(/(?:harto|arto).*aj[ií]/i);
+    const wrong = context(source);
+    expect(JSON.parse(agent.executeTool('add_item', { productId: 4, quantity: 2 }, wrong)).ok).toBe(false);
+    expect((wrong.actions as any).addItems).toBeUndefined();
+  });
 });

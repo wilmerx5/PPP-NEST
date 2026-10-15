@@ -255,6 +255,33 @@ export function isNothingElseOrderIntent(text: string): boolean {
   );
 }
 
+/** «Si pido…» pregunta; no autoriza anotar ni cerrar la compra. */
+export function isHypotheticalOrderQuestion(text: string): boolean {
+  const t = normalizeIntentText(text);
+  if (!t) return false;
+  return /\b(?:y\s+)?si\s+(?:pido|pidiera|pidieramos|encargara|encargo)\b/.test(t);
+}
+
+/**
+ * Pedido largo que termina cerrando: devuelve solo la parte del pedido.
+ * El mensaje entero («eso es todo») lo cubre isNothingElseOrderIntent.
+ * «Calle 80 nada más» sigue siendo dirección.
+ */
+export function orderBeforeCheckoutClose(text: string): string | null {
+  const raw = (text || '').replace(/\s+/g, ' ').trim();
+  if (!raw || raw.length < 12 || raw.length > 600 || /[?¿]/.test(raw)) return null;
+  if (isNothingElseOrderIntent(raw) || isHypotheticalOrderQuestion(raw)) return null;
+  const tail =
+    /(?:[,.]|\s)+(?:y\s+)?(?:ya\s+)?(?:con\s+eso\s+es\s+todo|eso\s+es\s+todo(?:\s+por\s+ahora)?|s[oó]lo\s+eso|solamente\s+eso|[uú]nicamente\s+eso|nada\s+m[aá]s|ya\s+es\s+todo|as[ií]\s+nada\s+m[aá]s)(?:\s*,?\s*(?:gracias|por\s+ahora|por\s+favor|porfa))*\s*[.!]?\s*$/i;
+  const match = tail.exec(raw);
+  if (!match || match.index < 3) return null;
+  const order = raw.slice(0, match.index).replace(/[\s,.;:]+$/g, '').trim();
+  if (order.length < 3) return null;
+  const norm = normalizeIntentText(order);
+  if (/^(?:calle|cll|carrera|cra|kra|diagonal|transversal|avenida|av)\b/.test(norm)) return null;
+  return order;
+}
+
 /**
  * Respuesta corta a “¿Algo más?” → cerrar carrito.
  * No usar en awaiting_address (un “no” puede rechazar domicilio sugerido).

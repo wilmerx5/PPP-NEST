@@ -2,9 +2,9 @@ import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
-import {parseCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
+import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
-import { interpretProductNote } from './whatsapp-product-intent';
+import { condimentIntensityNote, interpretProductNote } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
@@ -44,6 +44,8 @@ import {
   isNothingElseOrderIntent,
   isDeclineMoreItemsIntent,
   isFinishCheckoutIntent,
+  isHypotheticalOrderQuestion,
+  orderBeforeCheckoutClose,
   isUpcomingAddressIntent,
   PPP_ZONE_LANDMARK_RE,
   FOOD_ORDER_SIGNAL_RE,
@@ -463,7 +465,7 @@ export class WhatsappOrchestratorService {
   }
 
   private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
-    const turn: {conv?: WhatsappConversation; initialCart?: string; purchasePriceQuestion?: boolean} = {};
+    const turn: {conv?: WhatsappConversation; initialCart?: string; purchasePriceQuestion?: boolean; closePurchase?: boolean} = {};
     await this.handleIncomingTurn(msg, turn);
     if (!turn.conv) return;
     const conv = turn.conv;
@@ -494,6 +496,18 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n' +
         (this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)));
     }
+    // «…eso es todo» al final de un pedido largo cierra la compra. Una opción
+    // pendiente se resuelve antes; no se crea la orden desde aquí.
+    if (turn.closePurchase && conv.state === 'building_cart' && session.cart.length &&
+      !conv.humanTakeover &&
+      !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+      !session.pendingAddOffer && !session.pendingCartQuantity && !session.pendingCartRemoval &&
+      !session.pendingCompositionAsk) {
+      const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+      if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
+      await this.tryConfirmOrder(conv, msg.waId, session);
+      return;
+    }
     // An active delivery address expresses checkout intent. Advance once every selection is resolved.
     if (conv.state !== 'building_cart' || !session.cart.length || session.orderType !== 'delivery' ||
       !session.address?.trim() || !session.addressConfirmed || session.deliveryOutOfCoverage ||
@@ -508,7 +522,7 @@ export class WhatsappOrchestratorService {
   }
 
   private async handleIncomingTurn(msg: IncomingWhatsappMessage,
-    turn: {conv?: WhatsappConversation; initialCart?: string; purchasePriceQuestion?: boolean}): Promise<void> {
+    turn: {conv?: WhatsappConversation; initialCart?: string; purchasePriceQuestion?: boolean; closePurchase?: boolean}): Promise<void> {
     this.orderCoverageNoticesByWaId.delete(msg.waId);
     const cfg = await this.settingsService.getEffectiveConfig();
     const conv = await this.conversationService.findOrCreateConversation(msg.waId, msg.phoneE164);
@@ -754,6 +768,21 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    if (isHypotheticalOrderQuestion(originalText) &&
+      !this.catalogService.isPriceInquiryIntent(originalText) &&
+      !this.catalogService.isProductDescriptionInquiry(originalText) &&
+      !this.catalogService.isAvailabilityInquiry(originalText)) {
+      const session = this.conversationService.getSession(conv);
+      const same = session.cart.length ? ' El pedido sigue igual.' : '';
+      await this.reply(conv, msg.waId, `Eso es una consulta. No anoté productos.${same}`);
+      return;
+    }
+    const orderBeforeClose = orderBeforeCheckoutClose(originalText);
+    if (orderBeforeClose) {
+      turn.closePurchase = true;
+      text = orderBeforeClose;
+      originalText = orderBeforeClose;
+    }
 
     if (this.looksLikeHistoricalSurchargeQuestion(originalText)) {
       const session = this.conversationService.getSession(conv);
@@ -1409,6 +1438,12 @@ export class WhatsappOrchestratorService {
     if (await this.tryContinueOfferedPurchase(conv, msg.waId, session, originalText, cfg)) return;
 
     if (session.pendingCompositionAsk?.resumeState) {
+      const rowRemoval = parseScopedCartRemoval(originalText);
+      const rowReference = rowRemoval && /^(?:(?:el|la)\s+)?(?:(?:item|producto|fila)\s+)?(?:\d{1,2}|primero|primera|segundo|segunda|tercero|tercera)$/.test(this.normalizeForMatch(rowRemoval.query));
+      if (rowReference) {
+        await this.reply(conv, msg.waId, 'Hay otra lista pendiente. Dime el nombre del producto que quitamos del carrito. El pedido sigue igual.');
+        return;
+      }
       const inquiryMenu = await this.catalogService.getMenuProducts();
       const namedReply = this.catalogService.findProductEmbeddedInMessage(originalText,inquiryMenu);
       const namesCatalogProduct = !!namedReply && this.catalogService.productNameFitsUtterance(namedReply,originalText);
@@ -2941,9 +2976,7 @@ export class WhatsappOrchestratorService {
             product,
             addQty,
             cfg,
-            interpretProductNote(pa.sourceText || '', [product])?.note ||
-              (supportsCookingTerm(product) ? parseCookingTerm(pa.sourceText || '')?.note : undefined) ||
-              this.catalogService.extractProductModificationNote(pa.sourceText || '') || undefined,
+            this.catalogService.orderKitchenNote(pa.sourceText || '', product),
             step.attributes,
             attrOpts,
           );
@@ -5274,7 +5307,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = (supportsCookingTerm(embeddedProduct) ? parseCookingTerm(text)?.note : undefined) || interpretProductNote(text, [embeddedProduct])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = this.catalogService.orderKitchenNote(text, embeddedProduct);
       const embeddedAdd = this.tryAddProductToCart(
         session,
         embeddedProduct,
@@ -5477,7 +5510,7 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      const lineNote = (supportsCookingTerm(one) ? parseCookingTerm(text)?.note : undefined) || interpretProductNote(text, [one])?.note || this.catalogService.extractProductModificationNote(text) || undefined;
+      const lineNote = this.catalogService.orderKitchenNote(text, one);
       const added = this.tryAddProductToCart(session, one, namedPackOrderQuantity(originalText, one.name) ?? orderQty, cfg, lineNote, undefined, {
         sourceText: text,
       });
@@ -12500,7 +12533,7 @@ export class WhatsappOrchestratorService {
     const row = removal?.query && this.normalizeForMatch(removal.query).match(/^(?:(?:el|la)\s+)?(?:(?:item|producto|fila)\s+)?(\d{1,2}|primero|primera|segundo|segunda|tercero|tercera)$/);
     const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3};
     const rowNumber = row ? positions[row[1]] || Number(row[1]) : null;
-    if (rowNumber != null && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingPriceInquiry || session.pendingCartQuantity || session.pendingCartAttributeEdit || pending)) {
+    if (rowNumber != null && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingPriceInquiry || session.pendingCartQuantity || session.pendingCartAttributeEdit || session.pendingCompositionAsk || pending)) {
       await this.reply(conv,waId,'Hay otra lista pendiente. Dime el nombre del producto que quitamos del carrito. El pedido sigue igual.');
       return true;
     }
@@ -16557,9 +16590,7 @@ export class WhatsappOrchestratorService {
     const noteSource = this.parseCompoundOrderMessage(text).productText;
     const lineNote = kitchenNote ||
       (carriesSwap && swap ? this.catalogService.swapChangeNote(swap.removed, swap.added) :
-        interpretProductNote(noteSource, [product])?.note ||
-        [supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined,
-          this.catalogService.extractProductModificationNote(noteSource)].filter(Boolean).join('; ') || undefined);
+        this.catalogService.orderKitchenNote(noteSource, product));
     const attrOpts = {
       ...(variantIntent ? { variantIntent } : {}),
       omitSwappedDrink: carriesSwap && this.catalogService.swapRemovesDrink(text),
@@ -20175,10 +20206,11 @@ export class WhatsappOrchestratorService {
       const noteSource = hasOwnedSource ? ownedSource : item.segment;
       const lineNote =
         item.note ||
-        [supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.note : undefined,
-          this.catalogService.extractProductModificationNote(supportsCookingTerm(product) ? parseCookingTerm(noteSource)?.productText || noteSource : noteSource),
+        [peelSupportedCookingTerm(noteSource, product)?.note,
+          this.catalogService.extractProductModificationNote(peelSupportedCookingTerm(noteSource, product)?.productText || noteSource),
           interpretProductNote(noteSource, [product])?.note,
-          noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=[,;.!]|$)/iu)?.[0]].filter(Boolean).join('; ') ||
+          condimentIntensityNote(noteSource),
+          noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=(?:\s+(?:por favor|porfa|gracias))?(?:[,;.!]|$))/iu)?.[0]].filter(Boolean).join('; ') ||
         (!hasOwnedSource && sourceText && sourceText !== noteSource
           ? this.catalogService.extractProductModificationNote(sourceText)
           : undefined) ||
