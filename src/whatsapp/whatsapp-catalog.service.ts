@@ -9147,7 +9147,12 @@ export class WhatsappCatalogService {
         }
         const segment = `${match[1]} ${product.name} ${match[4]}`.trim();
         result.segments.push(segment);
-        const note = joinKitchenNotes(this.extractProductModificationNote(segment),peelSupportedCookingTerm(segment,product)?.note);
+        // OCR cart rows already delimit metadata. Keep explicit packing notes
+        // even without "con", while attribute labels remain attribute input.
+        const packing = match[4].split(/[;,]/).map(part=>part.trim()
+          .replace(/^(?:notas?|observaci[oó]n(?:es)?)\s*:\s*/i,''))
+          .filter(part=>/\baparte\b/i.test(part) && !part.includes(':'));
+        const note = joinKitchenNotes(this.extractProductModificationNote(segment),peelSupportedCookingTerm(segment,product)?.note,...packing);
         const resolved = {segment,product,score:100,note:note || undefined};
         if (product.hasAttributes && product.attributes?.length) result.needsAttributes.push(resolved);
         else result.confident.push(resolved);

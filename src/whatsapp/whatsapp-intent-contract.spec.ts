@@ -183,3 +183,16 @@ describe('Ruta semántica para condiciones de inventario',()=>{
   'Gracias, si no hay problema',
  ])('no convierte consulta ni confirmación en compra: %s',text=>expect(catalog.requiresConditionalOrderInterpretation(text,menu)).toBe(false));
 });
+
+describe('Notas explícitas de empaque en filas de carrito fotografiado',()=>{
+ const menu=[{id:8901,code:8901,name:'Bowl Lunar',price:18000,attributes:[],hasAttributes:false,availableNow:true},{id:8902,code:8902,name:'Ramen Verde',price:21000,attributes:[],hasAttributes:false,availableNow:true}];
+ it.each(['salsa aparte','cubiertos aparte','aderezo aparte','Notas: la salsa aparte','Observación: aderezo aparte'])('conserva %s sin convertirlo en producto o cantidad',note=>{
+  const result=catalog.resolveExplicitCodeOrder(`2 x Bowl Lunar (código 8901), ${note}\n3 x Ramen Verde (código 8902)`,menu);
+  expect(result?.confident).toHaveLength(2);expect(result?.confident[0].note).toMatch(/aparte/i);
+  expect(result?.confident[1].note).toBeUndefined();expect(result?.unresolved).toEqual([]);
+ });
+ it('no transforma etiquetas de opciones en notas de cocina',()=>{
+  const result=catalog.resolveExplicitCodeOrder('1 x Bowl Lunar (código 8901), Salsa: Aparte\n1 x Ramen Verde (código 8902)',menu);
+  expect(result?.confident[0].note).toBeUndefined();
+ });
+});

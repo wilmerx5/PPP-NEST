@@ -8,6 +8,14 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
+## Seguimiento de costo y completitud — 15/10, posterior a la corrección de fotos
+
+Nueva muestra real aislada con Sol:4HTTP200,acciones correctas para6ítems/notas,pero sin respuesta final porque el runner alcanzó el tope de4. Resultado incompleto; no aceptado como conversaciónE2E. Costo parcial USD0.0234683 y11.828s para el turno interrumpido; no extrapolar a precio/latencia de un pedido terminado. Presupuesto operativo135/135/0; no es una nueva limitación dictada por el usuario. Las cifras anteriores de4solicitudes disponibles son históricas.
+
+El modelo hizo búsquedas para recuperar un té que resolve_multi_order había omitido mientras anunciaba «Multi claro». Siguiente mejora arquitectónica: devolver cobertura explícita por producto y ausencias/pendientes estructurados, no más excepciones por nombres ni solo ampliar frases del render. Medir reducción de rondas y validar una conversación completa antes de considerar superada esa puerta.
+
+La nueva tanda gratuita sí detectó y corrigió notas explícitas de empaque («salsa aparte»,«cubiertos aparte») perdidas en filas fotografiadas.11regresiones nuevas cubren esas notas, continuidad en pago con2menús y recuperación de acciones capturadas. La corrección de cantidad de la continuación usa una respuesta de herramienta simulada, no otra respuesta de Sol. Estado de global/despliegue en WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-office-packaging-validation-1510.json. No elevar esta tanda a aceptación comercial.
+
 ## Actualización vigente — 15 de octubre
 
 Staging integra los modelos nuevos: agente Sol, visión/clasificación Luna y audio GPT-Transcribe. Los resultados y costos medidos están en `WHATSAPP-MEDIA-MODELS.md`; no inferir precisión acústica de clientes a partir de voz sintética ni paridad con Main. Fotos de carta se añaden completas por solicitud expresa del usuario, con una unidad por defecto y prioridad del pie que selecciona/consulta. Este contrato reemplaza el anterior «carta sin selección pregunta cuáles».

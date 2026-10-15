@@ -14430,3 +14430,44 @@ describe('Foto responde sin texto posterior — entrega de salida',()=>{
   });
  }
 });
+
+describe('Sol real — continuación tras el tope del ensayo, sin más inferencia',()=>{
+ it('conserva unidades y notas capturadas, responde total y corrige cantidad',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-sol-office-menu-1510.json'),'utf8'));
+  const scenario=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-sol-office-cases-1510.json'),'utf8'))[0];
+  const captured=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-sol-office-conditional-capture-1510.json'),'utf8')).results[0].turns[0];
+  const h=harness(menu,true);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockResolvedValueOnce({...captured.agentResults[0],error:'exception'}).mockResolvedValueOnce({reply:'Listo, quedan dos tés en total.',actions:{updateCartLines:[{productId:8815,cartLineIndex:2,quantity:2}]},toolCalls:['update_item']});
+  await h.sendQueued(scenario.messages[0].text);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:8813,qty:1,note:expect.stringMatching(/sin cebolla/i)}),expect.objectContaining({id:8814,qty:2}),expect.objectContaining({id:8815,qty:3,note:expect.stringMatching(/sin az[uú]car/i)})]);
+  expect(h.replies.at(-1)).toMatch(/interrumpi[oó]|guardados/i);
+  await h.sendQueued(scenario.messages[1].text);expect(h.replies.at(-1)).toContain('80.000');
+  await h.sendQueued(scenario.messages[2].text);expect(h.cartRows().find(row=>row.id===8815)).toMatchObject({qty:2,note:expect.stringMatching(/sin az[uú]car/i)});
+  expect(h.cartRows().find(row=>row.id===8813)).toMatchObject({qty:1,note:expect.stringMatching(/sin cebolla/i)});
+  await h.sendQueued(scenario.messages[3].text);expect(h.replies.at(-1)).toContain('75.000');
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(2);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Foto seguida de consulta, eliminación y cantidad durante pago — dos menús',()=>{
+ const alternate=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-sol-office-menu-1510.json'),'utf8'));
+ const examples=[{name:'PPP',menu:products,ids:[17,23,38]},{name:'japonés',menu:alternate,ids:[8813,8814,8815]}];
+ for(const f of examples)it.each([false,true])('conserva notas y retoma el pago, agente=%s: '+f.name,async enabled=>{
+  const h=harness(f.menu,enabled);const selected=f.ids.map(id=>f.menu.find((p:any)=>p.id===id));
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('synthetic-photo'),mimeType:'image/png'});
+  h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('fixture-menu');
+  h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'order',textForBot:selected.map((p:any,i:number)=>`${[2,1,3][i]} x ${p.name} (código ${p.code})${i===0?', salsa aparte':''}`).join('\n')});
+  h.service.conversationService.updateMessageBody=jest.fn().mockResolvedValue(undefined);h.service.ordersService.create=jest.fn();
+  await h.sendQueued('',{messageType:'image',mediaId:'fixture-photo'});
+  expect(h.cartRows().map(row=>({id:row.id,qty:row.qty}))).toEqual(f.ids.map((id,i)=>({id,qty:[2,1,3][i]})));
+  h.conv.state='awaiting_payment';h.conv.sessionData.phoneConfirmed=true;
+  const before=structuredClone(h.conv.sessionData.cart);
+  await h.sendQueued('Antes de pagar, cuánto cuesta '+selected[0].name+'?');
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).toContain(selected[0].price.toLocaleString('es-CO'));expect(h.conv.state).toBe('awaiting_payment');
+  await h.sendQueued('Quita '+selected[1].name);expect(h.cartRows().map(row=>row.id)).toEqual([f.ids[0],f.ids[2]]);
+  await h.sendQueued('Deja solo tres '+selected[0].name);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:f.ids[0],qty:3,note:expect.stringMatching(/salsa aparte/i)}),expect.objectContaining({id:f.ids[2],qty:3})]);
+  await h.sendQueued('Antes de seguir, cuánto vale todo eso?');expect(h.replies.at(-1)).toContain((3*selected[0].price+3*selected[2].price).toLocaleString('es-CO'));
+  expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

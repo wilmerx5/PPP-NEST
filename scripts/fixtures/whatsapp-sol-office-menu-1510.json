@@ -1,0 +1,32 @@
+[
+  {
+    "id": 8813,
+    "code": 8813,
+    "name": "Pack De Gyozas",
+    "description": "Seis gyozas vegetales con repollo y cebolla",
+    "price": 23000,
+    "attributes": [],
+    "hasAttributes": false,
+    "availableNow": true
+  },
+  {
+    "id": 8814,
+    "code": 8814,
+    "name": "Ramen De Miso",
+    "description": "Caldo de miso con tofu y fideos",
+    "price": 21000,
+    "attributes": [],
+    "hasAttributes": false,
+    "availableNow": true
+  },
+  {
+    "id": 8815,
+    "code": 8815,
+    "name": "Te De Jazmin",
+    "description": "Té de jazmín preparado al momento",
+    "price": 5000,
+    "attributes": [],
+    "hasAttributes": false,
+    "availableNow": true
+  }
+]

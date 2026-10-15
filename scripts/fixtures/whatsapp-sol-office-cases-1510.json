@@ -1,0 +1,64 @@
+[
+  {
+    "id": "fresh-office-conditional-correction-1510",
+    "messages": [
+      {
+        "text": "Buenas noches, para la oficina me envías un Pack De Gyozas sin cebolla, dos Ramen De Miso y tres Te De Jazmin sin azúcar. Si no venden flan, no lo cambien por otro postre. Gracias.",
+        "expect": {
+          "items": {
+            "8813": 1,
+            "8814": 2,
+            "8815": 3
+          },
+          "replyAny": [
+            "no tenemos flan",
+            "no manejamos flan",
+            "flan no",
+            "no hay flan",
+            "no vendemos flan"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de seguir, cuánto vale todo eso?",
+        "expect": {
+          "items": {
+            "8813": 1,
+            "8814": 2,
+            "8815": 3
+          },
+          "replyAll": [
+            "80.000"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Deja solo dos Te De Jazmin, no dos más",
+        "expect": {
+          "items": {
+            "8813": 1,
+            "8814": 2,
+            "8815": 2
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Una pregunta, cuánto cuesta todo esto?",
+        "expect": {
+          "items": {
+            "8813": 1,
+            "8814": 2,
+            "8815": 2
+          },
+          "replyAll": [
+            "75.000"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

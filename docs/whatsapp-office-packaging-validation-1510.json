@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-15",
+  "baseCommit": "307ecd16",
+  "status": "validated_awaiting_staging_deploy",
+  "newTests": 11,
+  "paidEvaluation": {
+    "model": "gpt-6.1-sol",
+    "requests": 4,
+    "successfulHttpResponses": 4,
+    "acceptedConversations": 0,
+    "status": "incomplete_due_to_explicit_runner_cap",
+    "firstTurnLatencyMs": 11828,
+    "requestsMs": [
+      3951,
+      2807,
+      2249,
+      2476
+    ],
+    "correctInitialCart": {
+      "8813": 1,
+      "8814": 2,
+      "8815": 3
+    },
+    "notesCorrect": true,
+    "usage": {
+      "model": "gpt-6.1-sol",
+      "requests": 4,
+      "successfulResponses": 4,
+      "responsesWithUsage": 4,
+      "usageComplete": true,
+      "uncertainResponses": 0,
+      "transportErrors": {},
+      "promptTokens": 36512,
+      "cachedPromptTokens": 27103,
+      "completionTokens": 194,
+      "reasoningTokens": 0,
+      "httpErrors": {},
+      "providerErrorCodes": {},
+      "estimatedReportedCostUsd": 0.0234683,
+      "priceDate": "2026-10-15",
+      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+    },
+    "estimatedPartialCostUsd": 0.0234683,
+    "notACompleteConversationCost": true,
+    "pricingSource": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+    "fixture": "scripts/fixtures/whatsapp-sol-office-conditional-capture-1510.json"
+  },
+  "offlineValidation": {
+    "focusedPassed": 11,
+    "suites": 2,
+    "log": "/tmp/ppp-office-photo-packaging-final-targets.log",
+    "scope": [
+      "Captured initial actions retained through interrupted-reply recovery.",
+      "Subsequent quantity tool action is simulated, not obtained from the paid model.",
+      "Two catalogs x agent enabled/disabled: photo, price, removal, quantity, total while awaiting payment.",
+      "Explicit packing metadata retained; attribute labels are not notes."
+    ]
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-office-packaging-full.log",
+    "snapshot": "/tmp/ppp-office-packaging-source.json",
+    "tsc": "/tmp/ppp-office-packaging-final-tsc.log",
+    "whatsappSuites": 57,
+    "whatsappTests": 5538,
+    "whatsappSeconds": 468.21,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 6.225,
+    "complementLog": "/tmp/ppp-office-packaging-complement.log",
+    "totalSuites": 76,
+    "totalTests": 5636,
+    "sourceIntactAfterBoth": true,
+    "executionNote": "Two disjoint executions, same frozen source.",
+    "typescriptPassed": true
+  },
+  "mainModified": false,
+  "modelConfigurationChanged": false,
+  "externalOrdersCreated": 0,
+  "metaMessagesSent": 0,
+  "budget": {
+    "operationalCap": 135,
+    "used": 135,
+    "remaining": 0
+  },
+  "next": [
+    "Coverage/completeness contract in resolve_multi_order; do not claim multi clear while omitting a requested drink.",
+    "Fewer lookup rounds, then a fresh complete model conversation under an explicitly allocated new operational cap.",
+    "Representative WhatsApp/audio/image and per-order/per-tenant costs before commercial acceptance."
+  ]
+}
