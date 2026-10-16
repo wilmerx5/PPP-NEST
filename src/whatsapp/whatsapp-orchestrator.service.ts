@@ -11584,6 +11584,7 @@ export class WhatsappOrchestratorService {
     if (/\b(?:quiero|dame|ponme|agrega|pideme|codigo)\b/.test(said)) return null;
     if (this.catalogService.isPriceInquiryIntent(text)) return null;
     if (this.catalogService.findProductEmbeddedInMessage(text, products)) return null;
+    if (this.catalogService.productFullyNamedIn(text, products)) return null;
     const rules: Array<[RegExp, string]> = [
       [/\b(?:venden|comercializan)\s+([a-z0-9 ]{3,40})$/, ''],
       [/\baceptan\s+(?:mascotas|perros|gatos)\b/, 'mascotas'],
@@ -11608,7 +11609,7 @@ export class WhatsappOrchestratorService {
     }
     const isQuestion = /[¿?]/.test(text);
     const asksMutation = /\b(?:cambi\w*|agrega\w*|anade\w*|quita\w*|elimina\w*|borra\w*|envia\w*|manda\w*|regala\w*|confirm\w*|cancel\w*|pagar\w*|pago|direccion|telefono|nombre)\b/.test(said);
-    const foodContext = /\b(?:sopa|arroz|papa|pollo|bebida|gaseosa|acompan\w*|ingrediente\w*|alerg\w*|mani)\b/.test(said);
+    const foodContext = /\b(?:sopas?|arroz|papas?|pollo|bebida|gaseosa|acompan\w*|ingrediente\w*|alerg\w*|mani)\b/.test(said);
     if (isQuestion && !asksMutation && !foodContext && !this.pointsHandler.isPointsTopic(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text,products)) return 'esa consulta';

@@ -14563,3 +14563,74 @@ describe('Total con envío — alcance de consulta sin compras hipotéticas',()=
  it.each(['Cuál es el total con domicilio?','Cuánto es el total incluyendo el envío?','Cuál es el total por favor','Y cuánto sería el total con el domicilio?'])('reconoce %s',text=>expect(isCartChargeQuestion(text)).toBe(true));
  it.each(['Cuál es el total si agrego un combo?','Cuál es el total con domicilio y agrega dos jugos','Cuánto sale el total de un combo?','El total con papas cuesta más?'])('no consume otra intención: %s',text=>expect(isCartChargeQuestion(text)).toBe(false));
 });
+
+describe('Pregunta descriptiva del plato nombrado — responde desde la descripción',()=>{
+ const falafel={id:8921,code:8921,name:'Combo De Falafel',price:29000,description:'Seis falafel con pan pita, papas y bebida incluida de 400ml',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Limonada','Te Frio']}]};
+ const cases=[
+  {kind:'carta',menu:[falafel,{id:8922,code:8922,name:'Falafel Solo',price:12000,description:'Seis falafel',availableNow:true,hasAttributes:false,attributes:[]}],id:8921,text:'Qué incluye Combo De Falafel, trae papas o se cobran aparte?'},
+  {kind:'ppp',menu:products,id:94,text:'El combo de arroz paisa trae papas o se cobran aparte?'},
+ ];
+ it.each(cases)('$kind sin agente no niega el plato ni agrega',async({menu,text})=>{
+  const h=harness(menu as typeof products,false);
+  const reply=await h.sendQueued(text)||'';
+  expect(reply).not.toMatch(/no te ofrecemos|no lo ofrecemos|no tenemos/i);
+  expect(h.cartRows()).toEqual([]);
+ });
+ it.each(cases)('$kind con agente: search_menu entrega el plato, no similar_offer',async({menu,id,text})=>{
+  const h=harness(menu as typeof products,true);
+  const agent=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService);
+  h.service.agentService=agent;
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const original=globalThis.fetch;
+  const fetchMock=jest.fn()
+   .mockResolvedValueOnce(response({content:null,tool_calls:[{id:'desc-0',type:'function',function:{name:'search_menu',arguments:JSON.stringify({query:text})}}]}))
+   .mockResolvedValueOnce(response({content:'Sí, el combo trae papas incluidas.'}));
+  globalThis.fetch=fetchMock;
+  const telemetry=jest.spyOn(h.service.turnTelemetry,'record');
+  try{
+   await h.service.tryHandleAgentV1({conv:h.conv,msg:{waId:'customer',phoneE164:h.conv.phoneE164,messageId:'desc-q',messageType:'text',text,raw:{}},session:h.conv.sessionData,text,originalText:text,products:menu,cfg:h.cfg,status:{isOpen:true,message:'Abierto'},businessOpenForBot:true});
+   const body=JSON.parse(fetchMock.mock.calls[1][1].body);
+   const tool=JSON.parse(body.messages.find((m:any)=>m.role==='tool').content);
+   expect(tool.mode).not.toBe('similar_offer');
+   expect(JSON.stringify(tool)).toContain(String(id));
+   expect(h.cartRows()).toEqual([]);
+   expect(telemetry.mock.calls.flatMap(([entry]:any)=>entry.warnings||[])).not.toContain('off_menu_question');
+   expect(h.replies.at(-1)).toMatch(/papas incluidas/);
+  }finally{globalThis.fetch=original;}
+ });
+});
+
+describe('Pregunta descriptiva con el nombre completo — responde desde la descripción',()=>{
+ const falafel=[{id:8921,code:8921,name:'Combo De Falafel',price:29000,description:'Seis falafel con pan pita, papas y bebida incluida de 400ml',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Limonada','Te Frio']}]}];
+ const cases=[
+  {kind:'carta',menu:falafel,id:8921,text:'Qué incluye Combo De Falafel, trae papas o se cobran aparte?'},
+  {kind:'ppp',menu:products,id:94,text:'El combo de arroz paisa trae papas o se cobran aparte?'},
+ ];
+ it.each(cases)('$kind agente apagado no dice que no lo ofrecemos',async({menu,text})=>{
+  const h=harness(menu as typeof products,false);
+  const reply=await h.sendQueued(text)||'';
+  expect(reply).not.toMatch(/no te ofrecemos|no lo ofrecemos|no tenemos/i);
+  expect(h.cartRows()).toEqual([]);
+ });
+ it.each(cases)('$kind agente encendido recibe el plato nombrado, no similar_offer',async({menu,id,text})=>{
+  const h=harness(menu as typeof products,true);
+  const agent=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'offline-key',openaiModel:'gpt-4.1-2025-04-14',systemPrompt:'',localContext:{}})} as never,h.service.catalogService) as any;
+  const results:string[]=[];const exec=agent.executeTool.bind(agent);
+  agent.executeTool=(...a:unknown[])=>{const r=exec(...a);if(a[0]==='search_menu')results.push(r);return r;};
+  h.service.agentService=agent;
+  const response=(message:unknown)=>({ok:true,json:async()=>({choices:[{message}]})});
+  const original=globalThis.fetch;
+  globalThis.fetch=jest.fn()
+   .mockResolvedValueOnce(response({content:null,tool_calls:[{id:'desc-0',type:'function',function:{name:'search_menu',arguments:JSON.stringify({query:text})}}]}))
+   .mockResolvedValueOnce(response({content:'Sí, trae papas incluidas.'})) as never;
+  try{
+   const handled=await h.service.tryHandleAgentV1({conv:h.conv,msg:{waId:'customer',phoneE164:h.conv.phoneE164,messageId:'desc-question',messageType:'text',text,raw:{}},session:h.conv.sessionData,text,originalText:text,products:menu,cfg:h.cfg,status:{isOpen:true,message:'Abierto'},businessOpenForBot:true});
+   expect(handled).toBe(true);
+   expect(results.length).toBe(1);
+   const result=JSON.parse(results[0]);
+   expect(result.mode).not.toBe('similar_offer');
+   expect(results[0]).toContain(String(id));
+   expect(h.cartRows()).toEqual([]);
+  }finally{globalThis.fetch=original;}
+ });
+});

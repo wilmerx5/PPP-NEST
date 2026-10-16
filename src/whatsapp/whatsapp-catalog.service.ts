@@ -3011,6 +3011,22 @@ export class WhatsappCatalogService {
     return nameTokens.every((tok) => words.some((w) => nearDishToken(w, tok)));
   }
 
+  /** Todas las palabras del nombre aparecen en el mensaje, aunque la extracción recorte prefijos como “combo de”. */
+  productFullyNamedIn(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct | null {
+    const spoken = new Set(normalizeText(text || '').split(/[^a-z0-9]+/).filter(Boolean));
+    let best: WhatsappCatalogProduct | null = null;
+    let bestLen = 0;
+    for (const product of products) {
+      if (product.availableNow === false) continue;
+      const words = normalizeText(product.name).split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+      if (words.length && words.every((w) => spoken.has(w)) && words.length > bestLen) {
+        best = product;
+        bestLen = words.length;
+      }
+    }
+    return best;
+  }
+
   /**
    * El cliente dijo una palabra que está dentro de un nombre más largo
    * ("leche" en "Jugo Natural En Leche") y no nombró ese plato.
@@ -3032,6 +3048,7 @@ export class WhatsappCatalogService {
     const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     const tokens = this.dishContentTokens(asked).filter((t) => t.length >= 4 && !generic.has(t));
     if (!tokens.length) return [];
+    if (this.productFullyNamedIn(text, products)) return [];
     const hits: WhatsappCatalogProduct[] = [];
     for (const product of products) {
       if (product.availableNow === false) continue;
