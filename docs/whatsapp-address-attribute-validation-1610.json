@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "195d0f44",
+  "scope": "Configured attribute correction while awaiting a delivery address preserves pending address step",
+  "newTests": 32,
+  "baseline": {
+    "failed": 24,
+    "passed": 0,
+    "scope": "Initial 24 positive cases, before address-followup and ambiguity controls",
+    "log": "/tmp/ppp-address-attribute-baseline.log"
+  },
+  "targeted": {
+    "passed": 279,
+    "newTests": 32,
+    "existingControls": 247,
+    "log": "/tmp/ppp-address-attribute-affected.log",
+    "note": "An additional exact full-cart equality assertion was added before source freeze and is covered by global run"
+  },
+  "coverage": {
+    "positiveAndStreetFollowup": 24,
+    "invalidOptionThenCorrection": 4,
+    "ambiguousHostThenNumericSelection": 4,
+    "menus": [
+      "Combo De Falafel/Bebida",
+      "Bowl De Tofu/Salsa",
+      "Pita De Lentejas/Pita De Setas",
+      "Calzone De Verduras/Calzone De Setas"
+    ],
+    "addressKinds": [
+      "missing address",
+      "unconfirmed named location",
+      "last saved address with current address missing"
+    ],
+    "agent": "simulated enabled/disabled"
+  },
+  "oracles": [
+    "Only configured selected attribute changes; quantity, price and note preserved",
+    "Current address and previous address remain unchanged during edit",
+    "No automatic address confirmation or old-address reuse",
+    "Address remains pending; no return to more-shopping question",
+    "Subsequent street accepted and checkout resumes payment (delivery quotation mocked)",
+    "Unknown option does not mutate cart; valid followup works",
+    "Ambiguous host prompts choice; numeric2 changes selected host only, not address or payment",
+    "No external order creation"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-address-attribute-tsc-final.log"
+  },
+  "limitations": [
+    "No model/channel acceptance or geocoding accuracy measurement",
+    "Configured attribute edits only; product replacement/addition not newly implemented by this change",
+    "Other checkout states retain existing behavior",
+    "Invalid option asks for a valid option before resuming address"
+  ],
+  "next": [
+    "Product replacement while address is pending",
+    "Clarify conditional-scope ambiguity and its followup",
+    "Standalone cart edits with conjunctions in product names"
+  ],
+  "global": {
+    "status": "passed",
+    "whatsappSuites": 57,
+    "whatsappTests": 6168,
+    "whatsappSeconds": 1062.216,
+    "log": "/tmp/ppp-address-attribute-full.log",
+    "snapshot": "/tmp/ppp-address-attribute-source.json",
+    "sourceUnchanged": true,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 19.504,
+    "complementLog": "/tmp/ppp-address-attribute-complement.log",
+    "totalSuites": 76,
+    "totalTests": 6266,
+    "disjointRunsSameFrozenSource": true,
+    "previousTimedOutFamily": "Passed in this complete run with unchanged timeout"
+  },
+  "deployment": {
+    "codeCommit": "8b9c6e72",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T15:53:30.368Z",
+    "image": "sha256:73d838629335129a73433f00078a5976fdc5a2b13fee56bd7b9a89514a141a6a",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-address-attribute-deploy.log",
+      "/tmp/ppp-address-attribute-deploy-verified.log"
+    ]
+  }
+}

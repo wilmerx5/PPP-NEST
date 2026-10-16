@@ -1,3 +1,15 @@
+## Atributos mientras espera dirección — 16/10
+
+Código 8b9c6e72, solo staging. Reproducción inicial: 24/24 fallidas; se actualizaba el atributo pero el manejador devolvía la conversación a building_cart y preguntaba «¿algo más?». Ahora mantiene awaiting_address y confirma el atributo con recordatorio de dirección. No confirma ni reutiliza automáticamente el domicilio anterior. Se reutiliza la resolución por catálogo; no hay excepciones por producto/restaurante.
+
+32 pruebas nuevas gratuitas: 24 recorridos en dos cartas ficticias (falafel/bebida y tofu/salsa), agente simulado habilitado/deshabilitado, cambio explícito/referencia corta, dirección ausente/lugar no confirmado/dirección anterior guardada, y calle enviada después. Se conserva precio, cantidad, nota y direcciones; la calle posterior retoma pago con cotización simulada. Cuatro opciones inexistentes seguidas de corrección válida y cuatro elecciones entre dos platos en cartas de pita y calzone: «2» cambia solo el seleccionado, sin ser dirección ni método de pago.
+
+279 focalizadas aprobadas (32 nuevas y 247 controles), TypeScript aprobado. Se añadió una aserción adicional de igualdad completa del carrito antes de congelar fuente, cubierta por global. Global: 57 suites/6168 pruebas WhatsApp en 1062.216 s + 19 suites/98 complementarias en 19.504 s = 76 suites/6266 pruebas, en dos ejecuciones disjuntas con fuente congelada verificada. La familia del timeout anterior pasó en esta ejecución completa sin cambiar su timeout; conservar su incidencia histórica.
+
+Evidencia: docs/whatsapp-address-attribute-validation-1610.json; logs /tmp/ppp-address-attribute-{baseline,targets,expanded,affected,full,complement,tsc-final,deploy,deploy-verified}.log. Cero API/Meta/mapas/órdenes externas; presupuesto 183/178/5 intacto. Desplegado y verificado running/healthy; imagen activa=candidate sha256:73d838629335129a73433f00078a5976fdc5a2b13fee56bd7b9a89514a141a6a. Health OK, DB connected y circuit CLOSED en 2026-10-16T15:53:30.368Z; bindings compilados verificados. Modelos Sol 6.1/Luna/Luna/GPT Transcribe intactos. Main conserva 1a2b2e23; no se reconstruyó producción.
+
+Siguiente: reemplazo de producto mientras falta dirección; aclarar alcance condicional ambiguo y su seguimiento; nombres con conjunciones en ediciones solas. Límite: este cambio corrige atributos configurados, no implementa sustituciones completas de producto ni mide geocodificación, modelo o canal real. Opción inválida pide elegir una válida antes de retomar dirección. No repetir global por cierre documental.
+
 ## Recargo frente a total después de editar — 16/10
 
 Código c133e557, solo staging. Se reutiliza un detector de consulta de recargo en el clasificador de totales, las consultas de opciones y los mensajes con dos intenciones. «Quita una sopa y dime cuánto me cobran por cambiar la bebida» aplica únicamente la eliminación y explica que no hay recargo confirmado; consultar el cambio no autoriza cambiar la opción. Se conserva la respuesta al retomar checkout.
