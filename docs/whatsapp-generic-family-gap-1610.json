@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-16",
+  "status": "open: exploratory evidence, not counted as accepted regression tests",
+  "baseCommit": "eb79316f",
+  "environment": "Full router with model/external dependencies mocked; menuConceptGroups empty; agent disabled for exact observations below",
+  "menu": [
+    {
+      "id": 21201,
+      "code": 21201,
+      "name": "Sopa De Calabaza",
+      "price": 10000
+    },
+    {
+      "id": 21202,
+      "code": 21202,
+      "name": "Sopa De Hongos",
+      "price": 13000
+    },
+    {
+      "id": 21203,
+      "code": 21203,
+      "name": "Pizza Personal",
+      "price": 16000
+    },
+    {
+      "id": 21204,
+      "code": 21204,
+      "name": "Pizza Mediana",
+      "price": 19000
+    }
+  ],
+  "availability": "All availableNow true, hasAttributes false, attributes empty",
+  "initialCheckout": {
+    "state": "awaiting_payment",
+    "orderType": "delivery",
+    "address": "Calle 12 30 45",
+    "addressConfirmed": true,
+    "deliveryFeeCalculated": 3000
+  },
+  "initialCart": [
+    {
+      "productId": 21201,
+      "quantity": 3,
+      "unitPrice": 10000,
+      "note": "sin cebolla"
+    },
+    {
+      "productId": 21201,
+      "quantity": 1,
+      "unitPrice": 10000,
+      "note": "sin sal"
+    }
+  ],
+  "setupMessage": "Cambia Sopa De Calabaza por Sopa De Hongos",
+  "observations": [
+    {
+      "message": "Cuánto vale una pizza?",
+      "observed": "Quotes Sopa De Calabaza at10000 and cart total instead of clarifying pizza presentation",
+      "expected": "Use named catalog family pizza, quote/clarify available presentations; do not answer soup price"
+    },
+    {
+      "message": "Quiero una pizza",
+      "observed": "Por ahora no manejamos pizza although Pizza Personal and Pizza Mediana exist",
+      "expected": "Clarify available pizza presentation without falsely declaring unavailable or changing soup cart"
+    }
+  ],
+  "logs": [
+    "/tmp/ppp-catalog-selection-baseline.log",
+    "/tmp/ppp-catalog-selection-diagnosis.log"
+  ],
+  "probeCount": 16,
+  "note": "Initial exploratory16 cases did not produce expected catalog list; two exact pizza observations inspected. Do not present this as model/API evidence or a fixed behavior. Next agent should materialize focused regressions, inspect catalog-family matching and price referent priority, and verify across fictional menus without hardcoded family exceptions."
+}

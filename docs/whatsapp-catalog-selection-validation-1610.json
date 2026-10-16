@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "eb79316f",
+  "scope": "Ambiguous short answer across a cart edit and catalog price/variant context requires a full product name; stale replacement cleared after another committed change",
+  "newTests": 64,
+  "baseline": {
+    "failed": 16,
+    "passed": 0,
+    "log": "/tmp/ppp-catalog-selection-baseline-conflict.log",
+    "reason": "Numeric2 executed old soup replacement while a price/variant question was pending"
+  },
+  "expandedFollowupBaseline": {
+    "failed": 24,
+    "passed": 24,
+    "log": "/tmp/ppp-catalog-selection-expanded.log",
+    "reason": "After full variant name resolved, stale original replacement metadata remained"
+  },
+  "targeted": {
+    "passed": 362,
+    "newTests": 64,
+    "existingControls": 298,
+    "log": "/tmp/ppp-catalog-selection-affected.log"
+  },
+  "coverage": {
+    "mixedContexts": 48,
+    "singleListNumericControls": 16,
+    "menus": [
+      "Soup+Combo De Pizza/Personal/Mediana",
+      "Soup+Combo De Bowl/Personal/Grande"
+    ],
+    "states": [
+      "awaiting_address",
+      "awaiting_payment"
+    ],
+    "agent": "simulated enabled/disabled",
+    "ambiguousAnswers": [
+      "2",
+      "la segunda",
+      "dos"
+    ],
+    "followups": [
+      "Full catalog name quotes only, retains uncommitted cart edit",
+      "Full variant name replaces combo only; original soup lines retained",
+      "Single active catalog list still accepts numeric2"
+    ]
+  },
+  "oracles": [
+    "Ambiguous short selection leaves full session unchanged",
+    "No accidental old replacement, add, payment selection or order creation",
+    "Full name resolves price without purchase",
+    "Full variant name updates intended combo only with notes/quantity and catalog price",
+    "Next checkout state preserved after explicit variant choice",
+    "Changed cart invalidates old replacement snapshot; stale metadata retired without another edit",
+    "Uncontested numeric list answer remains valid"
+  ],
+  "changes": [
+    "Early short-answer guard for cart-edit context plus catalog/price/attribute/category/composition context",
+    "Post-turn stale pendingCartReplacement cleanup when cart signature differs"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-catalog-selection-tsc.log"
+  },
+  "limitations": [
+    "No paid model/channel/geocoding acceptance",
+    "Crossed price and combo/standalone variant contexts only; guard has additional conservative keys but not all combinations newly tested",
+    "No arbitrary free-form clarification/disambiguation guarantees",
+    "Generic unconfigured menu-family probe revealed separate unresolved behavior; not part of accepted64 cases"
+  ],
+  "next": [
+    "Reproduce and fix generic catalog-family query/price subject gap from exploratory probe",
+    "Atomic replacement while building cart",
+    "Conditional scope ambiguity and followup"
+  ],
+  "global": {
+    "status": "passed",
+    "whatsappSuites": 57,
+    "whatsappTests": 6504,
+    "whatsappSeconds": 851.522,
+    "log": "/tmp/ppp-catalog-selection-full.log",
+    "snapshot": "/tmp/ppp-catalog-selection-source.json",
+    "sourceUnchanged": true,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 10.898,
+    "complementLog": "/tmp/ppp-catalog-selection-complement.log",
+    "totalSuites": 76,
+    "totalTests": 6602,
+    "disjointRunsSameFrozenSource": true
+  },
+  "deployment": {
+    "codeCommit": "5b7cc5ad",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T19:30:03.646Z",
+    "image": "sha256:f4cfd24244fdc92ab80981df3c6713cefe5c63411a20f38bc8506e796c3a0209",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-catalog-selection-deploy.log",
+      "/tmp/ppp-catalog-selection-deploy-verified.log"
+    ]
+  }
+}
