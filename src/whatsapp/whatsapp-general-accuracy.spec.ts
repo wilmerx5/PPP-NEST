@@ -15922,3 +15922,86 @@ describe('Prioridad de aclaraciones — orden inverso, consultas y sesiones anti
     });
   }
 });
+
+describe('Catálogo intercalado — número no pertenece al reemplazo anterior', () => {
+  for (const f of [
+    { id: 21201, old: 'Sopa De Calabaza', next: 'Sopa De Hongos', combo: 'Combo De Pizza', a: 'Pizza Personal', b: 'Pizza Mediana' },
+    { id: 21211, old: 'Sopa De Lentejas', next: 'Sopa De Tomate', combo: 'Combo De Bowl', a: 'Bowl Personal', b: 'Bowl Grande' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_address', 'awaiting_payment']) for (const mode of ['precio', 'variante']) for (const selection of ['2', 'la segunda', 'dos']) {
+    it(`${f.combo}, agente ${agent}, ${state}, lista ${mode}, respuesta ${selection}`, async () => {
+      const menu = [f.old, f.next, f.a, f.b, f.combo].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: 10000 + index * 3000, availableNow: true, hasAttributes: false, attributes: [] }));
+      const h = harness(menu, agent);
+      h.conv.state = state;
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: state === 'awaiting_payment' ? 'Calle 12 30 45' : undefined,
+        addressConfirmed: state === 'awaiting_payment', deliveryFeeCalculated: state === 'awaiting_payment' ? 3000 : null,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164,
+        cart: [menu[0], menu[0], menu[4]].map((p, index) => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price,
+          quantity: index ? 1 : 3, note: index ? 'sin sal' : 'sin cebolla', attributes: [] })) });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+      expect(h.conv.sessionData.pendingCartReplacement?.options).toHaveLength(2);
+      await h.sendQueued(mode === 'precio' ? 'Qué precio tiene?' : 'Lo quiero solo');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      if (mode === 'precio') expect(h.conv.sessionData.pendingPriceInquiry?.productIds).toHaveLength(2);
+      else expect(h.conv.sessionData.pendingMatch?.replacement?.originalLine).toEqual(before[2]);
+      const pending = structuredClone(h.conv.sessionData);
+      await h.sendQueued(selection);
+      expect(h.conv.sessionData).toEqual(pending);
+      expect(h.replies.at(-1)).toMatch(/listas|selecciones|nombre.*opción|nombre.*producto/i);
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.sendQueued(mode === 'precio' ? f.combo : f.b);
+      expect(h.conv.sessionData.cart.slice(0, 2)).toEqual(before.slice(0, 2));
+      if (mode === 'precio') {
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.sessionData.pendingPriceInquiry).toBeUndefined();
+        expect(h.conv.sessionData.pendingCartReplacement).toEqual(pending.pendingCartReplacement);
+        expect(h.replies.at(-1)).toMatch(/22[.,]000/);
+      } else {
+        expect(h.conv.sessionData.cart).toHaveLength(3);
+        expect(h.conv.sessionData.cart[2]).toMatchObject({ productId: f.id + 3, quantity: 1, unitPrice: 19000, note: 'sin sal' });
+        expect(h.conv.sessionData.pendingCartReplacement).toBeUndefined();
+        expect(h.conv.sessionData.pendingMatch?.replacement).toBeUndefined();
+      }
+      expect(h.conv.sessionData.pendingCheckoutResume).toBeUndefined();
+      expect(h.conv.state).toBe(state);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Catálogo sin conflicto — un número conserva su función', () => {
+  for (const f of [
+    { id: 21301, soup: 'Sopa De Calabaza', combo: 'Combo De Pizza', a: 'Pizza Personal', b: 'Pizza Mediana' },
+    { id: 21311, soup: 'Sopa De Lentejas', combo: 'Combo De Bowl', a: 'Bowl Personal', b: 'Bowl Grande' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_address', 'awaiting_payment']) for (const mode of ['precio', 'variante']) {
+    it(`${f.combo}, agente ${agent}, ${state}, solo lista ${mode}`, async () => {
+      const menu = [f.soup, f.combo, f.a, f.b].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: 10000 + index * 3000, availableNow: true, hasAttributes: false, attributes: [] }));
+      const h = harness(menu, agent);
+      h.conv.state = state;
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: state === 'awaiting_payment' ? 'Calle 12 30 45' : undefined,
+        addressConfirmed: state === 'awaiting_payment', deliveryFeeCalculated: state === 'awaiting_payment' ? 3000 : null,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164,
+        cart: menu.slice(0, 2).map(p => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price, quantity: 1, note: 'sin sal', attributes: [] })) });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(mode === 'precio' ? 'Qué precio tiene?' : 'Lo quiero solo');
+      const chosenId = mode === 'precio' ? h.conv.sessionData.pendingPriceInquiry?.productIds[1] : h.conv.sessionData.pendingMatch?.candidates[1]?.id;
+      expect(chosenId).toBeTruthy();
+      await h.sendQueued('2');
+      if (mode === 'precio') {
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.replies.at(-1)).toContain(menu.find(p => p.id === chosenId)!.name);
+      } else {
+        expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+        expect(h.conv.sessionData.cart[1]).toMatchObject({ productId: chosenId, quantity: 1, note: 'sin sal' });
+      }
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.replies.at(-1)).not.toMatch(/varias listas pendientes/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

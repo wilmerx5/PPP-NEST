@@ -511,6 +511,12 @@ export class WhatsappOrchestratorService {
       const conv = turn.conv;
       let session = this.conversationService.getSession(conv);
       session = await this.retireSupersededCartSelections(conv, msg.waId, session, turn.initialCartEditSelections);
+      // A later committed change invalidates a replacement's original-line
+      // snapshot. Retire its stale prompt without touching any cart product.
+      if (session.pendingCartReplacement && session.pendingCartReplacement.cartSignature !== JSON.stringify(session.cart)) {
+        session = { ...session, pendingCartReplacement: undefined };
+        await this.conversationService.saveSession(conv, session);
+      }
       if (msg.messageType === 'image' && msg.raw?.resolvedOrderImage && session.recentImageOrder?.length) {
         const ids = new Set(session.recentImageOrder.map(item => item.productId));
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
@@ -1058,6 +1064,15 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Cart edits and catalogue/variant questions can legitimately coexist.
+    // A short selection has no unique owner; a full product/option name does.
+    const shortSelection = /^(?:\d{1,2}|uno|una|dos|tres|(?:el |la )?(?:primero|primera|segundo|segunda|tercero|tercera))$/i.test(originalText.trim());
+    if (shortSelection && CART_EDIT_SELECTION_KEYS.some(key => session[key]) &&
+        (session.pendingMatch || session.pendingPriceInquiry || session.pendingAttribute ||
+          session.pendingCategoryBrowse || session.pendingCompositionAsk)) {
+      await this.reply(conv, msg.waId, 'Hay varias listas pendientes. Escribe el nombre completo del producto u opción que estás eligiendo. Para cambiar el carrito, indica el producto y el cambio completo. El pedido sigue igual.');
+      return;
+    }
     // Older persisted sessions may contain conflicting lists. A bare number
     // has no reliable owner; require a fresh, explicit instruction instead.
     if (CART_EDIT_SELECTION_KEYS.filter(key => session[key]).length > 1) {
