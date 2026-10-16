@@ -1048,7 +1048,8 @@ export class WhatsappOrchestratorService {
       const unknownCode = codes.some(match => !this.catalogService.findByCode(Number(match[1]), additionMenu));
       const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(canonical));
       const knownName = this.catalogService.findProductEmbeddedInMessage(canonical, additionMenu) ||
-        this.catalogService.searchByNameScored(query, additionMenu, 6).find(hit => hit.score >= 40)?.p;
+        this.catalogService.searchByNameScored(query, additionMenu, 6).find(hit => hit.score >= 40)?.p ||
+        this.catalogService.resolveStandaloneDrinkOrder(canonical, additionMenu)?.product;
       if ((unknownCode && !explicitCodeOrder?.confident.length && !explicitCodeOrder?.needsAttributes.length) || (!codes.length && !knownName)) {
         await this.reply(conv, msg.waId, 'No encontré ese producto en la carta. El carrito sigue igual. Dime otro producto o pide el menú.');
         return;
@@ -4604,7 +4605,8 @@ export class WhatsappOrchestratorService {
         (looksSpecificDish &&
           (this.catalogService.isStrongProductMatch(earlyScored) ||
             earlyScored[0]?.score >= 40 ||
-            !!this.catalogService.findProductEmbeddedInMessage(text, products)));
+            !!this.catalogService.findProductEmbeddedInMessage(text, products))) ||
+        !!this.catalogService.resolveStandaloneDrinkOrder(text, products);
       if (!hasConcreteProduct) {
         const categorySwitch = await this.tryHandleCategoryBrowse(
           conv,
@@ -8356,13 +8358,10 @@ export class WhatsappOrchestratorService {
     session = added.session;
     await this.conversationService.saveSession(conv, session, 'building_cart');
     const qtyNote = qty > 1 ? ` _(x${qty})_` : '';
-    const flavor = attributes.map((a) => a.attributeValue).filter(Boolean).join(', ');
     await this.reply(
       conv,
       waId,
-      this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`, {
-        extraLine: flavor ? `_${flavor}_` : undefined,
-      }),
+      this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`),
     );
     return true;
   }
@@ -12636,7 +12635,12 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const label = this.formatCartLineLabel(session.cart[indices[0]]);
-    const remaining = session.cart[indices[0]].quantity - (removal?.quantity || session.cart[indices[0]].quantity);
+    const current = session.cart[indices[0]].quantity;
+    if (removal?.target !== undefined && (removal.target >= current || (removal.quantity && current - removal.quantity !== removal.target))) {
+      await this.reply(conv, waId, `Tienes *${session.cart[indices[0]].name}* ×${current}. ¿Cuántas dejamos en total? El carrito sigue igual.`);
+      return true;
+    }
+    const remaining = removal?.target ?? current - (removal?.quantity || current);
     const changed = remaining > 0 ? {...session,cart:session.cart.map((line,index) => index === indices[0] ? {...line,quantity:remaining} : line)} : this.removeCartLines(session,indices);
     const keepPending = !!session.pendingAttribute;
     const resumeCheckout = changed.cart.length > 0 && !session.mpPreferenceId && ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
@@ -12647,7 +12651,7 @@ export class WhatsappOrchestratorService {
       lastDrinkAddition:undefined, awaitingField: resumeCheckout && conv.state !== 'awaiting_final_confirm' ? session.awaitingField : undefined };
     const reminder = resumeCheckout ? this.formatInterruptedStepReminder(conv,next) : '';
     await this.conversationService.saveSession(conv, next, keepPending ? 'awaiting_attribute' : resumeCheckout ? conv.state : 'building_cart');
-    await this.reply(conv, waId, `Listo, quité ${removal?.quantity ? 'una unidad de ' : ''}${label}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${keepPending ? this.formatPendingPurchaseReminder(next) : reminder || this.formatContinueShoppingPrompt(next)}`);
+    await this.reply(conv, waId, `Listo, ${removal?.target !== undefined && remaining > 0 ? `quedan ${remaining} de *${session.cart[indices[0]].name}*` : `quité ${removal?.quantity ? 'una unidad de ' : ''}${label}`}.\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${keepPending ? this.formatPendingPurchaseReminder(next) : reminder || this.formatContinueShoppingPrompt(next)}`);
     return true;
   }
 
@@ -16286,7 +16290,8 @@ export class WhatsappOrchestratorService {
   }
 
   private stripCashChangePhrases(text: string): string {
-    return text
+    const rest = text
+      .replace(/\b(?:pago|pagar[eé]|pagamos|cancelo|voy a pagar)\s+(?:en|con)\s+efectivo\b/gi, '')
       .replace(new RegExp(
         String.raw`\b(?:pago|pagar[eé]|pagamos|cancelo|efectivo)\s+(?:con\s+)?(?:un\s+billete\s+de\s+)?\$?\s*${this.CASH_CHANGE_AMOUNT}`,
         'gi',
@@ -16312,6 +16317,10 @@ export class WhatsappOrchestratorService {
       .replace(/\s+(por favor|porfa|pf|gracias)[\s!.?]*$/gi, '')
       .replace(/^[,.\s\-–—]+|[,.\s\-–—]+$/g, '')
       .trim();
+    const cashOnly = new Set(['y', 'yo', 'te', 'le', 'un', 'una', 'el', 'la', 'de', 'en', 'con', 'efectivo', 'llevo', 'tengo',
+      'doy', 'pago', 'billete', 'plata', 'cash', 'entonces', 'listo', 'ok', 'bueno']);
+    const words = this.normalizeForMatch(rest).split(/[^a-z0-9]+/).filter(Boolean);
+    return words.length && words.every((word) => cashOnly.has(word)) ? '' : rest;
   }
 
   private formatInlineNoteAck(

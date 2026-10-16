@@ -9,9 +9,15 @@ export function isKeepCartRefusal(text: string): boolean {
 }
 
 /** Only a single explicit dish removal, optionally followed by preservation clauses. */
-export function parseScopedCartRemoval(text: string): { query: string; preserve: string[]; quantity?: number } | null {
+export function parseScopedCartRemoval(text: string): { query: string; preserve: string[]; quantity?: number; target?: number } | null {
   if (!text.trim() || text.length > 350 || /[¿?]/.test(text)) return null;
-  const clauses = text.trim().replace(/[.!]+$/, '').split(/\s*;\s*|\s*,\s*(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)|\s+y\s+(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)/i);
+  const finalCount = text.trim().replace(/[.!]+$/, '').match(/^(.+?)\s*(?:,\s*|\s+)(?:y\s+)?(?:que\s+(?:sean|queden|quede)|deja(?:me)?(?:\s+solo)?)\s+(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)$/i);
+  const countWords: Record<string, number> = {una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+  const target = finalCount ? countWords[finalCount[2].toLowerCase()] ?? Number(finalCount[2]) : undefined;
+  const clauses = (finalCount?.[1] || text.trim()).replace(/[.!]+$/, '')
+    .replace(/^(?:(?:mejor|entonces|bueno|ok|okay|listo|ah|oye|ay|perd[oó]n|disculpa)\s*,?\s+)+/i, '')
+    .replace(/^\S+/, (verb) => verb.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    .split(/\s*;\s*|\s*,\s*(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)|\s+y\s+(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)/i);
   const match = clauses.shift()?.match(/^(?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?)\s+(?:solamente\s+|solo\s+)?(.+)$/i);
   if (!match) return null;
   const partial = match[1].match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i) ||
@@ -27,7 +33,7 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
     if (/\b(?:agrega|anade|pon|cambia|reemplaza|quita|elimina|retira|borra)\b/.test(normalizeCorrection(keep[1]))) return null;
     preserve.push(...keep[1].replace(/\s+(?:igual|como est[aá]n|por favor|porfa)$/i, '').split(/\s*,\s*|\s+y\s+/i));
   }
-  return { query, preserve, ...(partial ? {quantity:1} : {}) };
+  return { query, preserve, ...(partial ? {quantity:1} : {}), ...(target !== undefined ? {target} : {}) };
 }
 
 export function preservedRemovalConflict(line: WhatsappCartItem, preserve: string[]): boolean {

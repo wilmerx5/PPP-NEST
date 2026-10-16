@@ -14696,8 +14696,74 @@ describe('Nombres hermanos — la palabra distintiva dicha decide el plato',()=>
   expect(reply).not.toMatch(forbid);
   expect(h.cartRows()).toEqual(before);
  });
+ it.each([
+  {kind:'pizzería',menu:pizzas,text:'agrégame una gaseosa sprite',id:9304,attr:'Sabor:Sprite'},
+  {kind:'pizzería solo sabor',menu:pizzas,text:'agrégame una sprite',id:9304,attr:'Sabor:Sprite'},
+  {kind:'ppp',menu:products,text:'agrégame una quatro',id:34,attr:'Sabor:Quatro'},
+ ].flatMap(c=>[{...c,agent:false},{...c,agent:true}]))('$kind: “agrégame” con sabor de bebida sí agrega (agente=$agent)',async({menu,text,id,attr,agent})=>{
+  const h=harness(menu as typeof products,agent);
+  const reply=await h.sendQueued(text)||'';
+  expect(reply).not.toMatch(/No encontré ese producto/);
+  if(agent && !h.cartRows().length) expect(h.service.agentService.runTurn).toHaveBeenCalled();
+  else expect(h.cartRows()).toEqual([expect.objectContaining({id,qty:1,attrs:[attr]})]);
+ });
  it('PPP: nombres idénticos siguen preguntando',()=>{
   const multi=new WhatsappCatalogService({} as never).resolveMultiProductOrder('quiero un trio de tacos y una sopa de ajiaco',products);
   expect(multi?.ambiguous.map(a=>a.candidates.map(p=>p.id).sort())).toEqual([[72,73]]);
+ });
+});
+
+describe('Quitar con muletilla, verbo con tilde o cantidad final nunca agrega', () => {
+ const pizzas=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-pizza-menu-1510.json'),'utf8'));
+ const menus: Array<[string, any[], string, number]> = [
+  ['pizzería', pizzas, 'empanada de carne', 9303],
+  ['PPP', products, 'arroz con pollo', 23],
+ ];
+ const phrasings = (dish: string) => [
+  [`mejor quita una ${dish}`, 2], [`quítame una ${dish}`, 2], [`sácame una ${dish}`, 2], [`bueno, quita una ${dish}`, 2],
+  [`mejor quita una ${dish}, que sean 2`, 2], [`quita una ${dish} que sean dos`, 2], [`mejor que sean 2 ${dish}`, 2],
+ ] as Array<[string, number]>;
+ for (const [label, menu, dish, id] of menus) {
+  for (const agent of [false, true]) {
+   it.each(phrasings(dish))(`${label} agente ${agent ? 'on' : 'off'}: %s`, async (text, qty) => {
+    const h = harness(menu, agent);
+    await h.sendQueued(`quiero 3 ${dish}`);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id, qty:3})]);
+    await h.sendQueued(text);
+    expect(h.cartRows()).toEqual([expect.objectContaining({id, qty})]);
+   });
+  }
+  it(`${label}: cantidad final que no cuadra pregunta y no cambia`, async () => {
+   const h = harness(menu, false);
+   await h.sendQueued(`quiero 3 ${dish}`);
+   const reply = await h.sendQueued(`quita una ${dish}, que sean 3`);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id, qty:3})]);
+   expect(reply).toMatch(/Cuántas dejamos/);
+  });
+ }
+});
+
+describe('Pago en efectivo con billete no es nota de cocina', () => {
+ const pizzas=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-pizza-menu-1510.json'),'utf8'));
+ const cases=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-pizza-cases-1510.json'),'utf8'));
+ it('pizzería: el caso congelado llega a 50.000 sin notas inventadas ni líneas repetidas', async () => {
+  const h = harness(pizzas, false);
+  h.conv.sessionData.orderType = 'delivery';
+  const replies: string[] = [];
+  for (const m of cases[0].messages.slice(0, 6)) replies.push(await h.sendQueued(m.text) || '');
+  expect(h.cartRows()).toEqual([
+   expect.objectContaining({id:9301, qty:1, note:undefined}), expect.objectContaining({id:9302, qty:1, note:undefined}),
+   expect.objectContaining({id:9303, qty:2, note:undefined}), expect.objectContaining({id:9304, qty:1, note:undefined, attrs:['Sabor:Sprite']}),
+  ]);
+  expect((h.conv.sessionData as any).paymentMethod).toBe('cash');
+  expect((h.conv.sessionData as any).cashChangeFor).toMatch(/100/);
+  expect(replies[2]).not.toMatch(/\n_Sprite_/);
+  expect(replies[5]).not.toMatch(/📝/);
+ });
+ it('PPP: "pago en efectivo, llevo billete de 50" en el pedido tampoco deja nota', async () => {
+  const h = harness(products, false);
+  await h.sendQueued('quiero un arroz con pollo');
+  await h.sendQueued('pago en efectivo, llevo billete de 50');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:23, note:undefined})]);
  });
 });

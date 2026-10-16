@@ -10,7 +10,8 @@ export const normalizeCorrection = (text: string) => text.toLowerCase().normaliz
 export function parseCartQuantityCorrection(text: string): { quantity: number; query: string } | null {
   if (/[¿?]/.test(text)) return null;
   const t = normalizeCorrection(text).replace(/\s+(?:por favor|porfa|gracias)$/, '')
-    .replace(new RegExp(`( en total) no (?:${number}) mas$`), '$1');
+    .replace(new RegExp(`( en total) no (?:${number}) mas$`), '$1')
+    .replace(/^(?:(?:mejor|entonces|bueno|ok|okay|listo|ah|oye)\s+)+(?=(?:deja|que (?:sean|queden|quede))\b)/, '');
   if (/\b(?:y|ademas|tambien|nada mas|quita|borra|vacia|solo quiero|solo pedi|solo te pedi)\b/.test(t)) return null;
   // "Para la calle 48 sur 87 86" es domicilio. El último número no es una cantidad.
   if (/\b(?:calle|carrera|cra|cll|avenida|av|diagonal|diag|dg|transversal|tv|autopista)\b/.test(t) && /\d/.test(t)) return null;
