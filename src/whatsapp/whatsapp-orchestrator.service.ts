@@ -1160,7 +1160,11 @@ export class WhatsappOrchestratorService {
     // A delimited factual question and an independent cart correction are two
     // intents. Answer only the question, then route the untouched correction
     // through existing cart handlers (including their ambiguity safeguards).
-    const inquiryAndEdit = originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
+    const editAndTotal = originalText.match(/^(.+?)(?:\s*;\s*|\s+y\s+)((?:(?:dime|me dices|me confirmas)\s+)?[¿?]?(?:cu[aá]nto\b|(?:el\s+)?total\b|la\s+cuenta\b).*)$/is);
+    const totalQuery = editAndTotal?.[2].replace(/^(?:dime|me dices|me confirmas)\s+/i, '') || '';
+    const asksEditedTotal = !!editAndTotal && (isCartChargeQuestion(totalQuery) || isOrderBillRequest(totalQuery) ||
+      /^(?:cuanto queda(?: en total)?|(?:el )?total)(?: por favor)?$/.test(this.normalizeForMatch(totalQuery)));
+    const inquiryAndEdit = (asksEditedTotal ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
       originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
     let independentEdit = inquiryAndEdit?.[2] || '';
     // Existing parsers conservatively reject "y" as a second instruction.
@@ -1174,6 +1178,12 @@ export class WhatsappOrchestratorService {
     if (inquiryAndEdit && !/^(?:y )?si\b/.test(this.normalizeForMatch(inquiryAndEdit[1])) && session.cart.length &&
       !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
       (parseScopedCartRemoval(independentEdit) || parseCartQuantityCorrection(independentEdit))) {
+      // For "edit, then tell me the total", the edit handlers already render
+      // the resulting cart and total. Never quote the pre-edit amount first.
+      if (asksEditedTotal) {
+        if (await this.tryHandleScopedCartRemoval(conv, msg.waId, session, independentEdit, cfg)) return;
+        if (await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, independentEdit, cfg)) return;
+      }
       const inquiry = inquiryAndEdit[1];
       let answer: string | undefined;
       if (this.looksLikeDeliveryFeeQuestion(inquiry)) {

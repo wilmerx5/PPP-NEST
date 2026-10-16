@@ -1,0 +1,132 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "1a2b2e23",
+  "mainPromotion": {
+    "oldMain": "d9241abe",
+    "newMain": "1a2b2e23",
+    "method": "fast-forward",
+    "localMainUpdated": true,
+    "originMainUpdated": true,
+    "priorValidatedTests": 6035,
+    "stagingBranchPreserved": true,
+    "productionServerRebuilt": false,
+    "laterStageBatchNotIncluded": true
+  },
+  "scope": "Cart edit before aggregate total inquiry, quote only the resulting cart",
+  "newTests": 40,
+  "baseline": {
+    "failed": 28,
+    "passed": 8,
+    "log": "/tmp/ppp-edit-then-total-baseline.log",
+    "scope": "36 initial unique-line cases; ambiguity controls added later"
+  },
+  "targeted": {
+    "passed": 172,
+    "newTests": 40,
+    "existingControls": 132,
+    "log": "/tmp/ppp-edit-then-total-targets.log"
+  },
+  "coverage": {
+    "uniqueLine": {
+      "cases": 36,
+      "menus": [
+        "Enchiladas De Frijol/Guacamole",
+        "Udon De Verduras/Onigiri De Setas"
+      ],
+      "states": [
+        "building_cart with confirmed address",
+        "awaiting_name",
+        "awaiting_payment"
+      ],
+      "agent": [
+        "disabled",
+        "enabled with simulated model"
+      ],
+      "edits": [
+        "Remove one unit",
+        "Set absolute quantity2",
+        "Remove whole line"
+      ],
+      "queries": [
+        "dime cuánto queda",
+        "cuánto vale todo?",
+        "dime el total por favor"
+      ]
+    },
+    "ambiguousLine": {
+      "cases": 4,
+      "menus": [
+        "Arepa De Setas",
+        "Tortilla De Espinaca"
+      ],
+      "behavior": "Ask which line; numeric2 removes selected line and does not set payment"
+    }
+  },
+  "oracles": [
+    "Cart correction happens before total",
+    "Quantity, notes and unrelated line checked",
+    "Old total not sent as current amount",
+    "Delivery fee3000 retained",
+    "Customer name not replaced by query",
+    "Resume name/payment or advance ready cart to payment",
+    "Ambiguity does not mutate cart or quote a new total",
+    "No external order creation"
+  ],
+  "changes": [
+    "Detect bounded edit-then-total shape",
+    "Reuse existing removal and quantity handlers to render resulting cart",
+    "Reuse known-name protection and ambiguity safeguards; no new session schema"
+  ],
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-edit-then-total-tsc.log"
+  },
+  "complement": {
+    "suites": 19,
+    "tests": 98,
+    "seconds": 11.748,
+    "log": "/tmp/ppp-edit-then-total-complement.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-edit-then-total-full.log",
+    "sourceSnapshot": "/tmp/ppp-edit-then-total-source.json",
+    "whatsappSuites": 57,
+    "whatsappTests": 5977,
+    "whatsappSeconds": 873.549,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "totalSuites": 76,
+    "totalTests": 6075,
+    "disjointRunsSameFrozenSource": true,
+    "sourceUnchanged": true
+  },
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "operationalCap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "deployment": {
+    "status": "pending",
+    "mainReceivesNewBatch": false
+  },
+  "limitations": [
+    "Controlled mock tests; no new model/channel measurement",
+    "Known delivery fee fixture; not new routing/coverage validation",
+    "Attribute changes plus questions and conditional action scopes remain future work",
+    "Standalone names with conjunctions remain future coverage"
+  ],
+  "next": [
+    "Question plus attribute edit",
+    "Cost-conditioned edit plus another independent edit",
+    "Standalone edits containing conjunction in complete product name",
+    "Short reference after question and edit mention different products",
+    "Negative boundary: quita una unidad y dime cuánto me cobran por cambiar la bebida — surcharge inquiry is not aggregate cart total"
+  ],
+  "remoteCi": {
+    "verified": false,
+    "reason": "GitHub CLI not authenticated; local validated source and successful fast-forward/push are the integration evidence"
+  }
+}

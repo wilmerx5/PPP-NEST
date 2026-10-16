@@ -1,3 +1,13 @@
+## Main integrada y nueva tanda de staging — 16/10
+
+Solicitud del usuario: integrar todo en Main y continuar probando en staging. Main local (/home/levi/Documents/programming/PPP/PPP-NEST) y origin/Main avanzaron por fast-forward de d9241abe a 1a2b2e23, sin conflictos ni cambios exclusivos de Main. Ese corte estaba validado con 6035 pruebas. Staging se conserva; no se reconstruyó el servidor de producción. GitHub CLI no tenía sesión para consultar CI remoto: no afirmar CI remoto verde. La integración se acredita con push correcto y fuente idéntica al corte validado.
+
+Después se trabajó solo en staging: «quita una unidad y dime cuánto queda», «deja dos y cuánto vale todo» y eliminación de línea seguida de solicitud de total. Baseline: 28 fallidas/8 aprobadas en 36 casos. Ahora se aplica la edición por los manejadores existentes y se muestra el carrito resultante; no se cotiza primero el importe anterior. Se añaden cuatro casos de mismo producto con notas distintas: aclarar línea, recibir «2», retirar esa línea y conservar pago pendiente.
+
+40 pruebas nuevas en cartas ficticias: 36 combinaciones de dos cartas, tres estados y agente simulado habilitado/deshabilitado; cuatro de ambigüedad en otras dos cartas. 172 focalizadas aprobadas (40 nuevas + 132 controles), TypeScript aprobado. Global: 57 suites/5977 pruebas WhatsApp en 873.549 s + 19 suites/98 complementarias en 11.748 s = 76 suites/6075 pruebas, en dos ejecuciones disjuntas con fuente congelada y verificada. Evidencia: docs/whatsapp-edit-then-total-validation-1610.json; logs /tmp/ppp-edit-then-total-{baseline,targets,full,complement,tsc}.log. Cero API/Meta/mapas/órdenes externas; presupuesto 183/178/5 intacto. Pendiente desplegar este lote en staging; Main sigue en 1a2b2e23 y no recibe esta tanda posterior.
+
+Siguiente: consulta más cambio de atributo; condición con edición independiente; nombres con conjunciones en ediciones solas; referencias cortas después de mencionar dos productos. Control de límite: «quita una unidad y dime cuánto me cobran por cambiar la bebida» pregunta un recargo, no el total agregado. El nuevo bloque valida totales con tarifa de domicilio ya conocida, no cotización geográfica ni inferencia/canal real. No repetir global por cierre documental.
+
 ## Consulta y edición independientes — 16/10
 
 72 pruebas nuevas en dos cartas ficticias, con agente simulado habilitado/deshabilitado, carrito abierto y pago pendiente. Consultas de domicilio, composición o precio seguidas de quitar una unidad o dejar una cantidad exacta. Tres formas: signos de pregunta, conjunción sin signos y punto y coma. Se conservan notas, dirección y la otra línea. El nombre «Ramen De Hongos y Miso» no se divide como dos instrucciones en este camino.

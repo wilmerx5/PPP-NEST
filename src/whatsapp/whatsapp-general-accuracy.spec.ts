@@ -15096,3 +15096,79 @@ describe('Consulta y edición independientes — ambas intenciones se resuelven'
     }
   }
 });
+
+describe('Edición seguida de total — cotiza el carrito corregido', () => {
+  const fixtures = [
+    { id: 19401, name: 'Enchiladas De Frijol', price: 19000, other: 'Guacamole', otherPrice: 8000 },
+    { id: 19411, name: 'Udon De Verduras', price: 22000, other: 'Onigiri De Setas', otherPrice: 7000 },
+  ];
+  for (const f of fixtures) for (const state of ['building_cart', 'awaiting_name', 'awaiting_payment']) for (const agent of [false, true]) {
+    for (const edit of ['quitar una', 'dejar dos', 'quitar línea']) {
+      it(`${f.name}, ${state}, agente ${agent}, ${edit}`, async () => {
+        const menu = [
+          { id: f.id, code: f.id, name: f.name, price: f.price, hasAttributes: false, attributes: [], availableNow: true },
+          { id: f.id + 1, code: f.id + 1, name: f.other, price: f.otherPrice, hasAttributes: false, attributes: [], availableNow: true },
+        ];
+        const h = harness(menu, agent);
+        h.service.ordersService.create = jest.fn();
+        h.conv.state = state;
+        h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          contactPhone: h.conv.phoneE164, phoneConfirmed: true, deliveryFeeCalculated: 3000,
+          cart: menu.map((p, index) => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price,
+            quantity: index ? 1 : 3, note: index ? 'aparte' : 'sin cebolla', attributes: [] })),
+        });
+        const beforeOther = structuredClone(h.conv.sessionData.cart[1]);
+        const remaining = edit === 'quitar línea' ? 0 : 2;
+        const request = edit === 'quitar una' ? `Quita una de las ${f.name} y dime cuánto queda`
+          : edit === 'dejar dos' ? `Deja solo dos ${f.name} y cuánto vale todo?`
+          : `Quita las ${f.name}; dime el total por favor`;
+        await h.sendQueued(request);
+        const changed = h.cartRows().find(row => row.id === f.id);
+        if (remaining) expect(changed).toMatchObject({ qty: remaining, note: 'sin cebolla' });
+        else expect(changed).toBeUndefined();
+        expect(h.conv.sessionData.cart.find(line => line.productId === f.id + 1)).toEqual(beforeOther);
+        expect(h.conv.state).toBe(state === 'building_cart' ? 'awaiting_payment' : state);
+        expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+        expect(h.conv.sessionData.address).toBe('Calle 12 30 45');
+        const reply = h.replies.join('\n');
+        const total = remaining * f.price + f.otherPrice + 3000;
+        expect(reply).toMatch(new RegExp('Total[^\\n]*'+total.toLocaleString('es-CO').replace(/\./g, '[.,]'), 'i'));
+        expect(reply).not.toContain((3 * f.price + f.otherPrice + 3000).toLocaleString('es-CO'));
+        expect(reply).toMatch(state === 'awaiting_name' ? /nombre/i : /pagas|método de pago/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Edición seguida de total — aclara la línea antes de cotizar', () => {
+  for (const f of [{ id: 19501, name: 'Arepa De Setas', price: 15000 }, { id: 19511, name: 'Tortilla De Espinaca', price: 17000 }]) {
+    it.each([false, true])(`${f.name}, agente %s`, async agent => {
+      const menu = [{ id: f.id, code: f.id, name: f.name, price: f.price, availableNow: true, hasAttributes: false, attributes: [] }];
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_payment';
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+        cart: ['sin cebolla', 'sin tomate'].map((note, index) => ({ productId: f.id, code: f.id, name: f.name,
+          unitPrice: f.price, quantity: index ? 2 : 3, note, attributes: [] })),
+      });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Quita las ${f.name} y dime cuánto queda`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartRemoval?.options).toHaveLength(2);
+      expect(h.replies.at(-1)).toMatch(/cuál línea/i);
+      expect(h.replies.at(-1)).not.toMatch(/total/i);
+      await h.sendQueued('2');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: f.id, qty: 3, note: 'sin cebolla' })]);
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.conv.state).toBe('awaiting_payment');
+      const total = 3 * f.price + 3000;
+      expect(h.replies.at(-1)).toMatch(new RegExp('Total[^\\n]*'+total.toLocaleString('es-CO').replace(/\./g, '[.,]'), 'i'));
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
