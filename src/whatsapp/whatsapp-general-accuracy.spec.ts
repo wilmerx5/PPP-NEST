@@ -14646,3 +14646,21 @@ describe('Pregunta descriptiva con el nombre completo — responde desde la desc
   }finally{globalThis.fetch=original;}
  });
 });
+
+describe('“una X y otra X” — cada mención es una unidad',()=>{
+ const arepa=[{id:45001,code:45001,name:'Arepa De Queso',price:8000,description:'Maiz y queso',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Hogao','Sin salsa']}]}];
+ it.each([
+  {kind:'ppp idéntica',menu:products,text:'Quiero una trucha frita y otra trucha frita',id:12,lines:[{qty:2,attrs:['Seleccion:Frita']}]},
+  {kind:'ppp sin atributo',menu:products,text:'Quiero un churrasco y otro churrasco',id:17,lines:[{qty:2}]},
+  {kind:'carta idéntica',menu:arepa,text:'Quiero una arepa de queso con hogao y otra arepa de queso con hogao',id:45001,lines:[{qty:2,attrs:['Salsa:Hogao']}]},
+  {kind:'carta variantes',menu:arepa,text:'Quiero una arepa de queso con hogao y otra arepa de queso sin salsa',id:45001,lines:[{qty:1,attrs:['Salsa:Hogao']},{qty:1,attrs:['Salsa:Sin salsa']}]},
+ ].flatMap(c=>[{...c,agent:false},{...c,agent:true}]))('$kind agente=$agent',async({menu,text,id,lines,agent})=>{
+  const h=harness(menu as typeof products,agent);
+  const reply=await h.sendQueued(text)||'';
+  const rows=h.cartRows().filter(r=>r.id===id).map(r=>({qty:r.qty,...(r.attrs?.length?{attrs:r.attrs}:{})}));
+  expect(rows.sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))).toEqual(lines);
+  expect(h.cartRows().every(r=>!r.note)).toBe(true);
+  expect(reply).toMatch(/Listo/);
+ });
+});
+

@@ -10252,7 +10252,22 @@ export class WhatsappCatalogService {
       if (unresolved.includes(segment)) continue;
       if (lines.some((line) => normalizeText(line.segment).includes(norm))) continue;
       const product = lines.map((line) => line.product).find((p) => this.productNameFitsUtterance(p, segment));
-      if (product && this.uncoveredWordsAnchoredByProduct(segment, product, products).length) unresolved.push(segment);
+      if (!product) continue;
+      if (this.uncoveredWordsAnchoredByProduct(segment, product, products).length) {
+        unresolved.push(segment);
+        continue;
+      }
+      // Solo “otra/otro X” es otra unidad; “la trucha sin limón” puede referirse a la misma.
+      if (!/^otr[oa]\s/i.test(segment.trim())) continue;
+      const line = { segment, product, score: 100 };
+      if (!product.attributes?.length) {
+        confident.push(line);
+        continue;
+      }
+      const parsed = this.resolveAttributesFromMessage(product, segment, []);
+      if (parsed.status === 'invalid') unresolved.push(segment);
+      else if (parsed.status === 'complete') confident.push(line);
+      else needsAttributes.push(line);
     }
   }
 

@@ -2126,7 +2126,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isAvailabilityInquiry(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
       !this.catalogService.isProductDescriptionInquiry(originalText) &&
-      !this.catalogService.looksLikeClearlyMultiDishOrder(kitchenRequest.productText)) {
+      !this.catalogService.looksLikeClearlyMultiDishOrder(kitchenRequest.productText) &&
+      !this.multiResolvesSeveralLines(originalText, products)) {
       const hits = this.catalogService.searchByNameScored(kitchenRequest.productText, products, 4);
       const sized = this.catalogService.resolveSizedChickenProduct(kitchenRequest.productText, products);
       const selected = sized || (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) ? hits[0].p : undefined);
@@ -11583,6 +11584,12 @@ export class WhatsappOrchestratorService {
   private multiResolvesMenuLines(text: string, products: MenuProduct[]): boolean {
     const multi = this.catalogService.resolveMultiProductOrder(text, products);
     return !!multi && multi.unresolved.length > 0 && multi.confident.length + multi.needsAttributes.length > 0;
+  }
+
+  /** “una X con A y otra X sin B”: la nota final no es de un solo plato. */
+  private multiResolvesSeveralLines(text: string, products: MenuProduct[]): boolean {
+    const multi = this.catalogService.resolveMultiProductOrder(text, products);
+    return !!multi && multi.confident.length + multi.needsAttributes.length >= 2;
   }
 
   private randomAsideLabel(text: string, products: MenuProduct[]): string | null {
