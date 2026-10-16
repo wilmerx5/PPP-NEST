@@ -68,8 +68,30 @@
     "sourceUnchanged": true
   },
   "deployment": {
-    "status": "pending",
-    "productionChanged": false
+    "status": "verified",
+    "codeCommit": "70541c2d",
+    "verifiedAt": "2026-10-16T06:19:02.307Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:18fd402e393f709ebc4f03a3574197c60dcdb42b43dd7ad806d28c093301d6c5",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledConditionalGuardVerified": true,
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "productionChanged": false,
+    "logs": [
+      "/tmp/ppp-conditional-cost-deploy.log",
+      "/tmp/ppp-conditional-cost-deploy-verified.log"
+    ]
   },
   "limits": [
     "Controlled mock conversation tests; no new real-model or channel acceptance",
