@@ -1,24 +1,24 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 183,
-  "usedRequests": 166,
-  "remainingRequests": 17,
+  "usedRequests": 170,
+  "remainingRequests": 13,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-16T00:35:11.690Z",
+  "lastAttemptAt": "2026-10-16T02:14:58.419Z",
   "latestEvaluation": {
     "date": "2026-10-15",
-    "baseCommit": "c5e0e873",
+    "baseCommit": "4fc3c579",
     "model": "gpt-6.1-sol",
-    "requests": 12,
-    "httpSuccessful": 12,
+    "requests": 4,
+    "httpSuccessful": 4,
     "acceptedConversations": 1,
     "budgetExhausted": false,
-    "scope": "Development retest of full 8-turn falafel checkout; accepted all turns, stop-on-failure not triggered. Not a holdout.",
-    "estimatedReportedCostUsd": 0.08931539999999999,
-    "report": "docs/whatsapp-falafel-retest-1510.json"
+    "scope": "Development retest (not independent) of fresh-pizza-mixed-edits-1510, 6 turns; accepted, total 50.000, no invented notes. Not a holdout.",
+    "estimatedReportedCostUsd": 0.0416464,
+    "report": "tmp/whatsapp-live-router-report.json"
   },
   "authorizationExtensions": [
     {
@@ -61,6 +61,12 @@
       "additionalRequests": 0,
       "evidence": "Within existing cap (17 remaining); user: continua",
       "executionLimit": "15 requests maximum; development retest of fresh-pizza-mixed-edits-1510 after lasagna-focus and note fixes; one repetition; stop at first failure; model gpt-6.1-sol"
+    },
+    {
+      "date": "2026-10-15",
+      "additionalRequests": 0,
+      "evidence": "Within existing cap (17 remaining); user: continua",
+      "executionLimit": "15 requests maximum; development retest (not independent) of fresh-pizza-mixed-edits-1510 after removal/cash-note/drink fixes; one repetition; stop at first failure; model gpt-6.1-sol; code 4fc3c579"
     }
   ],
   "evaluationHistory": [
@@ -602,6 +608,27 @@
       "usedTotal": 166,
       "remaining": 17,
       "note": "Retest pizza tras fix de nombres hermanos: turno 0 pasa (pero nota truncada con borde relleno de); turno 1 pregunta por lasagna respondida con la empanada (foco anterior). Sin llamadas al modelo. Ambos corregidos en local."
+    },
+    {
+      "date": "2026-10-15",
+      "model": "gpt-6.1-sol",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 0,
+      "usedTotal": 166,
+      "remaining": 17,
+      "note": "Retest pizza tras foco de lasagna y notas: turnos 0-1 pasan; turno 2 'agrégame una gaseosa sprite' no agrega (cart/attributes). Sin llamadas al modelo. Corregido en 4fc3c579 junto con quitar con muletilla (turno 3) y nota de pago (turno 5) hallados offline."
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "4fc3c579",
+      "model": "gpt-6.1-sol",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 4,
+      "usedTotal": 170,
+      "remaining": 13,
+      "note": "Pizza 6 turnos aceptado (desarrollo, no independiente): quitar con muletilla deja 2 empanadas, gaseosa sprite agregada, efectivo con billete de 100 sin nota de cocina. Lasagna responde con la ficha (pan de ajo en description), sin un sí/no explícito."
     }
   ],
   "authorizationHistory": [
