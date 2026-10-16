@@ -1,3 +1,11 @@
+## Desplegado — carta incompleta, 15/10 22:48 Bogotá
+
+Código4fdd17d6 en staging;running/healthy verificado2026-10-16T03:48:17.907Z. Imagen activa=candidate sha256:311bbf3490b354f59ea68567a71568c4adaf6167c285c0dfc83ffc5adeea7ed5;healthOK,DBconnected,circuitCLOSED. Bindings compilados:unknownPolicy,unknownRendering,numericPresentation. Modelos efectivos sin cambios:Sol6.1/Luna/Luna/GPTTranscribe. Main intacta.
+
+57suites WhatsApp/5731tests en522.301s +19complementarias/98tests en6.511s:76suites/5829tests en dos ejecuciones disjuntas con fuente intacta contra /tmp/ppp-incomplete-menu-source-closed.json. TypeScript y46focalizadas aprobados (42nuevas+4compatibilidad). Las dos ejecuciones globales anteriores se interrumpieron para ampliar controles y NO se suman. Logs /tmp/ppp-incomplete-menu-{full-closed,complement-closed,tsc,final-targets,deploy,deploy-verified,deploy-health}.log. Informe durable docs/whatsapp-incomplete-menu-validation-1510.json. CeroAPI pagada/Meta/mapas/órdenes externas. Presupuesto183/178/5 intacto. No repetir global por este cierre documental.
+
+Siguiente tanda:referencias cortas a un plato con datos incompletos («¿y ese trae salsa?»),descripción explícitamente negativa frente a desconocida,opciones ofrecidas frente a ingredientes incluidos y consultas sobre cambios sin precio/autorización. Definir oráculos antes de modelo real. El nuevo prompt no tiene nueva inferencia real;las regresiones prueban router/estado/respuesta y contrato de herramientas con dependencias simuladas. Comparación léxica conservadora de detalle,no prueba semántica ni de alérgenos. No volver a gastar en falafel/pizza por relevo histórico:ya se validaron en desarrollo. Canal/audio original y costo por tenant siguen pendientes.
+
 ## Cierre aprobado — carta incompleta
 
 57suites WhatsApp/5731tests +19suites complementarias/98tests:76suites/5829tests en dos ejecuciones disjuntas con fuente intacta. TypeScript aprobado,46focalizadas (42nuevas+4existentes). Presupuesto183/178/5 intacto,ceroAPI nueva. Fuente congelada verificada contra /tmp/ppp-incomplete-menu-source-closed.json. Logs /tmp/ppp-incomplete-menu-{full-closed,complement-closed,tsc,final-targets}.log. Se publica lote en staging;falta verificar despliegue. No declarar validado con modelo/canal real.

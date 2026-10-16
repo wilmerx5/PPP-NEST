@@ -63,5 +63,23 @@
   "combinedDisjointTotals": {
     "suites": 76,
     "passed": 5829
+  },
+  "deployment": {
+    "environment": "staging",
+    "codeCommit": "4fdd17d6",
+    "verifiedAt": "2026-10-16T03:48:17.907Z",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:311bbf3490b354f59ea68567a71568c4adaf6167c285c0dfc83ffc5adeea7ed5",
+    "activeImageEqualsCandidate": true,
+    "compiledBindings": {
+      "unknownPolicy": true,
+      "unknownRendering": true,
+      "numericPresentation": true
+    },
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "modelsUnchanged": true,
+    "mainModified": false
   }
 }

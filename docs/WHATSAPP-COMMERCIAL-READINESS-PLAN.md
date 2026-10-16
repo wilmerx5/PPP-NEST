@@ -8,11 +8,11 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
-## Carta incompleta e interrupciones — tanda actual
+## Carta incompleta e interrupciones — lote validado
 
 42regresiones nuevas gratuitas y4controles existentes aprobados,TypeScript aprobado. Global cerrada:76suites/5829tests en dos ejecuciones disjuntas con fuente intacta. Contrato del agente y product_info/composition ya indican que dato ausente no equivale a ausencia del ingrediente y que opciones son alternativas. Consultas descriptivas con nombres completos durante checkout responden sin consumir nombre,dirección o pago;varios platos conservan su descripción individual y los tamaños numéricos no se mezclan. El render conserva datos positivos y señala detalle no confirmado;comparación léxica conservadora,no garantía semántica ni de alérgenos.
 
-Se validó continuidad de pregunta→total→cantidad→total→efectivo en2cartas con agente simulado activo/inactivo,sin crear pedidos. Cero llamadas pagadas en esta tanda,presupuesto183/178/5 intacto. Dos ejecuciones previas interrumpidas para ampliar controles no cuentan como aprobadas. Evidencia whatsapp-incomplete-menu-validation-1510.json. Después del cierre:referencias cortas a productos,negativos explícitos de la carta frente a detalles desconocidos y consultas de cambios sin precio autorizado;definir muestra nueva antes de inferencia. La modificación del prompt aún no tiene nueva validación con modelo real.
+Se validó continuidad de pregunta→total→cantidad→total→efectivo en2cartas con agente simulado activo/inactivo,sin crear pedidos. Cero llamadas pagadas en esta tanda,presupuesto183/178/5 intacto. Dos ejecuciones previas interrumpidas para ampliar controles no cuentan como aprobadas. Evidencia whatsapp-incomplete-menu-validation-1510.json. Después del cierre:referencias cortas a productos,negativos explícitos de la carta frente a detalles desconocidos y consultas de cambios sin precio autorizado;definir muestra nueva antes de inferencia. Código4fdd17d6 publicado y desplegado en staging;verificación efectiva en el relevo vigente. La modificación del prompt aún no tiene nueva validación con modelo real.
 
 ## Estado integrado — 15/10 22:14 Bogotá
 
