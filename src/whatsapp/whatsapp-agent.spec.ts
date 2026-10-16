@@ -67,6 +67,7 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     swapIntent: (_text: string) => null,
     hostedMenuDrink: () => null,
     similarNamedProducts: () => [],
+    productFullyNamedIn: () => null,
     resolveStandaloneDrinkOrder: () => null,
     shouldOfferMenuDrinks: () => false,
     menuDrinkProducts: () => [],

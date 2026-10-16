@@ -960,6 +960,20 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           });
         }
 
+        const describedProduct = this.catalogService.productFullyNamedIn(query, ctx.products);
+        if (describedProduct && (this.catalogService.isProductDescriptionInquiry(query) ||
+          this.catalogService.isProductDescriptionInquiry(ctx.userMessage || ''))) {
+          return JSON.stringify({
+            ok: true,
+            query,
+            mode: 'product_info',
+            product: this.productCard(describedProduct),
+            hint:
+              'Pregunta sobre un plato que sí está en la carta. Responde con su description y attributes: ' +
+              'lo que aparece ahí viene incluido; lo que no aparece, di que no lo trae. NO add_item. No digas que no lo manejamos.',
+          });
+        }
+
         const similars = this.catalogService.similarNamedProducts(query, ctx.products);
         if (similars.length) {
           return JSON.stringify({

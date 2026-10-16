@@ -170,16 +170,21 @@ describe('Pregunta descriptiva que nombra el plato completo',()=>{
  it.each([
   ['Qué incluye Combo De Falafel, trae papas o se cobran aparte?',fictional,8921],
   ['Qué incluye Combo De Falafel, trae papas o se cobran aparte',fictional,8921],
+  ['Combo De Falafel qué incluye, trae papas o se cobran aparte',fictional,8921],
   ['El combo de arroz paisa trae papas o se cobran aparte?',products,94],
   ['Qué trae la hamburguesa clasica?',products,76],
  ])('%s no ofrece el mismo plato como similar',(query,menu,id)=>{
   expect(catalog.similarNamedProducts(query,menu).map(p=>p.id)).not.toContain(id);
   const ctx=context(query,menu);
   const result=JSON.parse(agent.executeTool('search_menu',{query},ctx));
-  expect(result.mode).not.toBe('similar_offer');
-  expect(JSON.stringify(result.results||result.product||[])).toContain(String(id));
-  expect(result.hint||'').not.toMatch(/no lo ofrecemos/i);
+  expect(result.mode).toBe('product_info');
+  expect(result.product.id).toBe(id);
+  expect(result.hint||'').not.toMatch(/no lo ofrecemos|no las manejamos/i);
   expect((ctx.actions as any).addItems).toBeUndefined();
+ });
+ it.each([['Quiero un Combo De Falafel sin papas',fictional],['Me das un combo de arroz paisa',products]])
+ ('%s es pedido, no ficha descriptiva',(query,menu)=>{
+  expect(JSON.parse(agent.executeTool('search_menu',{query},context(query,menu))).mode).not.toBe('product_info');
  });
  it.each([['Tienen falafel de garbanzo?',fictional],['Quiero una Leche por favor',[{id:8923,code:8923,name:'Jugo Natural En Leche',price:7000,hasAttributes:false,attributes:[],availableNow:true}]]])
  ('%s sigue ofreciendo similares cuando el plato no fue nombrado',(query,menu)=>{
