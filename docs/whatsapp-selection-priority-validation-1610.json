@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "20ddb70c",
+  "scope": "Newest numbered cart-edit clarification supersedes older uncommitted edits; duplicate-SKU attribute selection does not reopen ambiguity",
+  "newTests": 64,
+  "baseline": {
+    "failed": 24,
+    "passed": 0,
+    "log": "/tmp/ppp-selection-priority-baseline.log",
+    "reason": "Old replacement remains pending after opening quantity/attribute/removal list"
+  },
+  "selectionBaseline": {
+    "failed": 24,
+    "passed": 0,
+    "log": "/tmp/ppp-selection-priority-baseline-selection.log",
+    "reason": "Following numeric2 changed old replacement product rather than newest requested edit",
+    "sameCasesAsBaseline": true
+  },
+  "targeted": {
+    "passed": 360,
+    "newTests": 64,
+    "existingControls": 296,
+    "log": "/tmp/ppp-selection-priority-affected.log"
+  },
+  "coverage": {
+    "replacementThenAnotherCartEdit": 24,
+    "anotherCartEditThenReplacement": 24,
+    "factualQueryRetainsPendingReplacement": 8,
+    "legacyOverlapRequiresFreshInstruction": 8,
+    "menus": [
+      "Pizza De Setas/Pizza Margarita/Bowl De Tofu",
+      "Ramen De Miso/Ramen De Shoyu/Combo De Falafel"
+    ],
+    "states": [
+      "awaiting_address",
+      "awaiting_payment"
+    ],
+    "agent": "simulated enabled/disabled",
+    "newSelections": [
+      "quantity",
+      "configured attribute",
+      "removal",
+      "replacement"
+    ]
+  },
+  "oracles": [
+    "Original cart preserved when opening a clarification",
+    "Exactly the newly opened cart-edit list remains active",
+    "Response explicitly says older selection/replacement was not applied",
+    "Numeric2 affects only selected line of newest list",
+    "Old replacement products are unchanged when newer side edit is selected",
+    "Reverse order selects replacement without applying old side edit",
+    "Duplicate SKU lines with different notes update only chosen index",
+    "Factual fee query retains old replacement and numeric followup works",
+    "Legacy overlap cannot assign a number to an arbitrary list; explicit repeat recovers",
+    "Address/payment step resumes without choosing payment accidentally",
+    "No external order creation"
+  ],
+  "changes": [
+    "Snapshot four cart-edit selection payloads at turn start",
+    "Retire older pending cart edits only when exactly one active list is newly opened/changed",
+    "Prepend retirement notice to held clarification response",
+    "Ambiguous persisted overlap blocks bare number; explicit edit clears conflicting old selections",
+    "Skip ambiguity re-opening after validated attribute cart-index choice"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-selection-priority-tsc-final.log"
+  },
+  "limitations": [
+    "No paid inference or real-channel acceptance",
+    "Priority scope is four numbered cart-edit lists; catalog browsing/price/variant/composition lists not newly generalized",
+    "Both/new multiple lists in one turn without a unique newest signature remain conservative; no arbitrary winner",
+    "Newly successful edit without a new clarification and old stale pending metadata is separate followup",
+    "Only address/payment states newly crossed in this family; other state controls are inherited"
+  ],
+  "next": [
+    "Atomic replacement while building cart",
+    "Extend clarification ownership to catalog/variant/composition lists with behavior tests",
+    "Old pending clarification after a newer immediate successful edit",
+    "Conditional scope ambiguity and followup"
+  ],
+  "global": {
+    "status": "passed",
+    "whatsappSuites": 57,
+    "whatsappTests": 6440,
+    "whatsappSeconds": 860.562,
+    "log": "/tmp/ppp-selection-priority-full.log",
+    "snapshot": "/tmp/ppp-selection-priority-source.json",
+    "sourceUnchanged": true,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 10.819,
+    "complementLog": "/tmp/ppp-selection-priority-complement.log",
+    "totalSuites": 76,
+    "totalTests": 6538,
+    "disjointRunsSameFrozenSource": true
+  },
+  "deployment": {
+    "codeCommit": "54622c88",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T19:06:21.079Z",
+    "image": "sha256:b511ee97550ea81642f2d4e950d8f5b389623444f26485b76458d939a5aa8505",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-selection-priority-deploy.log",
+      "/tmp/ppp-selection-priority-deploy-verified.log"
+    ]
+  }
+}
