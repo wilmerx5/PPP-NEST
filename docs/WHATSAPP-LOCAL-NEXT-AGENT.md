@@ -1,3 +1,11 @@
+## Desplegado — referencias cortas, 16/10 00:42 Bogotá
+
+Código44b28dea en staging;running/healthy verificado2026-10-16T05:42:23.689Z. Imagen activa=candidate sha256:6c374af03033833e04b5b51dd1a8033416449210d262dabde154bbe506f1df63;healthOK,DBconnected,circuitCLOSED. Bindings shortReferences/otherAnchor compilados. Modelos efectivos iguales:Sol6.1/Luna/Luna/GPTTranscribe. Main intacta.
+
+57suites WhatsApp/5765tests en513.161s +19complementarias/98tests en6.477s:76suites/5863tests en dos ejecuciones disjuntas con fuente intacta contra /tmp/ppp-short-references-source.json. TypeScript y62focalizadas aprobados (34nuevas+28compatibilidad). Logs /tmp/ppp-short-references-{full,complement,tsc,final-targets,deploy,deploy-verified}.log. Informe durable docs/whatsapp-short-references-validation-1610.json. CeroAPI nueva/Meta/mapas/órdenes externas;presupuesto183/178/5 intacto. No repetir global por este cierre documental.
+
+Siguiente familia:sustituciones y recargos consultados frente a autorizados. Preguntar «se puede cambiar X por Y/cuánto cuesta» no debe mutar carrito,prometer gratuidad o inventar permisos;solo aplicar cuando catálogo/política e intención lo autorizan. Probar cartas distintas y regreso al dato pendiente;oráculos antes de inferencia. También quedan mensajes compuestos con consulta+acción simultánea. Esta tanda valida referencias descriptivas calificadas,no selección desnuda «el otro» ni todo el lenguaje. Canal/audio original y costo por tenant siguen separados;no repetir falafel/pizza ya medidos por relevo histórico.
+
 ## Cierre global aprobado — referencias cortas, 16/10
 
 57suites WhatsApp/5765tests +19complementarias/98tests: total76suites/5863tests en dos ejecuciones disjuntas con fuente intacta. TypeScript y62focalizadas aprobados (34nuevas+28compatibilidad). CeroAPI nueva;presupuesto183/178/5 intacto. Se publica lote en staging;falta verificar despliegue. Evidencia durable whatsapp-short-references-validation-1610.json.

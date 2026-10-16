@@ -65,5 +65,22 @@
   "combinedDisjointTotals": {
     "suites": 76,
     "passed": 5863
+  },
+  "deployment": {
+    "environment": "staging",
+    "codeCommit": "44b28dea",
+    "verifiedAt": "2026-10-16T05:42:23.689Z",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:6c374af03033833e04b5b51dd1a8033416449210d262dabde154bbe506f1df63",
+    "activeImageEqualsCandidate": true,
+    "compiledBindings": {
+      "shortReferences": true,
+      "otherAnchor": true
+    },
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "modelsUnchanged": true,
+    "mainModified": false
   }
 }
