@@ -15052,3 +15052,47 @@ describe('Cambios condicionados por costo — no asumir autorización incondicio
     });
   }
 });
+
+describe('Consulta y edición independientes — ambas intenciones se resuelven', () => {
+  const fixtures = [
+    { id: 19301, name: 'Sopa De Calabaza', description: 'Calabaza y crema vegetal', other: 'Pan De Semillas' },
+    { id: 19311, name: 'Ramen De Hongos y Miso', description: 'Hongos y fideos de trigo', other: 'Gyozas Vegetales' },
+  ];
+  for (const f of fixtures) for (const agent of [false, true]) for (const state of ['building_cart', 'awaiting_payment']) {
+    const menu = [
+      { id: f.id, code: f.id, name: f.name, description: f.description, price: 18000, availableNow: true, hasAttributes: false, attributes: [] },
+      { id: f.id + 1, code: f.id + 1, name: f.other, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    for (const kind of ['domicilio', 'composición', 'precio']) for (const form of ['pregunta', 'sin signos', 'punto y coma']) {
+      it(`${f.name}, ${state}, agente ${agent}, ${kind}, ${form}`, async () => {
+        const h = harness(menu, agent);
+        h.service.ordersService.create = jest.fn();
+        h.conv.state = state;
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          contactPhone: h.conv.phoneE164, phoneConfirmed: true, deliveryFeeCalculated: 2000,
+          cart: menu.map((p, index) => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price,
+            quantity: index ? 1 : 3, note: index ? 'aparte' : 'sin cebolla', attributes: [] })),
+        });
+        const beforeOther = structuredClone(h.conv.sessionData.cart[1]);
+        const question = kind === 'domicilio' ? '¿Cuánto vale el domicilio?'
+          : kind === 'composición' ? `¿Qué trae ${f.name}?` : `¿Cuánto cuesta ${f.name}?`;
+        const bareQuestion = question.replace(/[¿?]/g, '');
+        const compound = form === 'pregunta' ? `${question} Y quita una de las ${f.name}`
+          : form === 'sin signos' ? `${bareQuestion} y deja solo dos ${f.name}`
+          : `${bareQuestion}; aparte quita una de las ${f.name}`;
+        await h.sendQueued(compound);
+        expect(h.cartRows()[0]).toEqual(expect.objectContaining({ id: f.id, qty: 2, note: 'sin cebolla' }));
+        expect(h.conv.sessionData.cart[1]).toEqual(beforeOther);
+        expect(h.conv.state).toBe('awaiting_payment');
+        expect(h.conv.sessionData.address).toBe('Calle 12 30 45');
+        const reply = h.replies.join('\n');
+        expect(reply).toMatch(new RegExp(f.name+'[\\s\\S]*×2', 'i'));
+        expect(reply.split('🛒').at(-1)).not.toMatch(/×3/);
+        expect(reply).toMatch(kind === 'domicilio' ? /domicilio.*2[.,]000/i : kind === 'composición' ? new RegExp(f.description, 'i') : /precio de.*18[.,]000.*por unidad/i);
+        expect(reply).toMatch(/pagas|método de pago/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});

@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "ae5888d6",
+  "scope": "Two independent intents in a delimited message: factual inquiry followed by cart removal/absolute quantity correction",
+  "newTests": 72,
+  "baseline": {
+    "failed": 24,
+    "passed": 0,
+    "log": "/tmp/ppp-independent-intents-baseline.log",
+    "scope": "Initial question-mark plus removal matrix; later delimiter and quantity variants were added during development"
+  },
+  "targeted": {
+    "passed": 172,
+    "newTests": 72,
+    "existingControls": 100,
+    "log": "/tmp/ppp-independent-intents-targets-final.log"
+  },
+  "coverage": {
+    "fictionalMenus": [
+      "Sopa De Calabaza/Pan De Semillas",
+      "Ramen De Hongos y Miso/Gyozas Vegetales"
+    ],
+    "inquiries": [
+      "delivery charge already resolved",
+      "full named product composition",
+      "full named product unit price"
+    ],
+    "forms": [
+      "Question mark plus Y and removal",
+      "No punctuation plus y and absolute quantity",
+      "Semicolon plus aparte and removal"
+    ],
+    "states": [
+      "building_cart with confirmed delivery address, advances to payment",
+      "awaiting_payment, remains pending payment"
+    ],
+    "agent": [
+      "disabled",
+      "enabled with simulated model"
+    ],
+    "oracles": [
+      "Only intended line becomes quantity2 from3",
+      "Unrelated line unchanged",
+      "Notes retained",
+      "Address retained",
+      "Inquiry answered even when checkout replaces intermediate replies",
+      "Final cart excludes stale quantity3",
+      "No external order created"
+    ]
+  },
+  "changes": [
+    "Separate supported factual inquiry from a recognizable cart edit",
+    "Reuse existing scoped removal and quantity correction safety checks",
+    "Protect conjunction inside complete known cart names for conservative parsers",
+    "Retain factual answer as checkout preface when intermediate outbound hold is replaced"
+  ],
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-independent-intents-tsc.log"
+  },
+  "complement": {
+    "suites": 19,
+    "tests": 98,
+    "seconds": 12.939,
+    "log": "/tmp/ppp-independent-intents-complement.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-independent-intents-full.log",
+    "sourceSnapshot": "/tmp/ppp-independent-intents-source.json",
+    "whatsappSuites": 57,
+    "whatsappTests": 5937,
+    "whatsappSeconds": 896.193,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "totalSuites": 76,
+    "totalTests": 6035,
+    "sourceUnchanged": true,
+    "disjointRunsSameFrozenSource": true
+  },
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "operationalCap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "deployment": {
+    "status": "pending",
+    "productionChanged": false
+  },
+  "limitations": [
+    "Controlled mock tests; not new paid model or WhatsApp channel acceptance",
+    "Only inquiry-first supported shapes with removal or absolute quantity correction",
+    "Conjunction protection requires a full known cart name; not proof of all typo variants",
+    "Ambiguous/multi-subject inquiries and more than two actions require further coverage",
+    "Cost-conditioned clause plus independent edit remains next family",
+    "Known-name conjunction protection is validated in the mixed-intent path; standalone edits remain future coverage"
+  ],
+  "nextFamily": {
+    "examples": [
+      "Si es gratis cambia la bebida; aparte quita una sopa",
+      "Cuánto cuesta el bowl? Y cambia la bebida por agua",
+      "Quita una sopa y dime cuánto queda en total"
+    ],
+    "oracles": [
+      "Unknown cost must not authorize dependent edit",
+      "Independent authorized edits must not be lost",
+      "Final total must reflect accepted edits",
+      "Pending checkout should remain resumable"
+    ]
+  },
+  "developmentNotes": [
+    "Building-cart seed with confirmed delivery address legitimately advances to payment under existing policy; test oracle corrected to preserve that behavior",
+    "Partial-removal acknowledgment labels the original line quantity; stale quantity assertion applies to final cart block, not that acknowledgment"
+  ]
+}

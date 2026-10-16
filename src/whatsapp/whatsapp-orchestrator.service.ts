@@ -155,6 +155,7 @@ type InboundTurnContext = {
   conv?: WhatsappConversation;
   initialCart?: string;
   purchasePriceQuestion?: boolean;
+  independentInquiryAnswer?: string;
   closePurchase?: boolean;
   decision?: TurnDecisionFrame;
 };
@@ -552,7 +553,7 @@ export class WhatsappOrchestratorService {
       const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
       // Production holds replies until the turn is complete: replace the shopping prompt with checkout.
       if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
-      await this.tryConfirmOrder(conv,msg.waId,session);
+      await this.tryConfirmOrder(conv,msg.waId,session,{preface:turn.independentInquiryAnswer});
     } catch (error) {
       failed = true;
       throw error;
@@ -1156,6 +1157,55 @@ export class WhatsappOrchestratorService {
     if (!rewardPurchaseText && !orderAndPrize && !pointsNamedMenuOrder && (this.pointsHandler.isRewardPaymentInquiry(originalText) ||
         this.pointsHandler.isPremioApplyIntent(originalText) || this.pointsHandler.isBalanceIntent(originalText)) &&
         await this.tryHandlePointsFlow(conv,msg.waId,session,originalText,cfg)) return;
+    // A delimited factual question and an independent cart correction are two
+    // intents. Answer only the question, then route the untouched correction
+    // through existing cart handlers (including their ambiguity safeguards).
+    const inquiryAndEdit = originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
+      originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
+    let independentEdit = inquiryAndEdit?.[2] || '';
+    // Existing parsers conservatively reject "y" as a second instruction.
+    // Inside a complete known cart name it is identity, not an instruction.
+    for (const line of [...session.cart].sort((a, b) => b.name.length - a.name.length)) {
+      if (!/\s+y\s+/i.test(line.name)) continue;
+      const escaped = line.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      independentEdit = independentEdit.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'giu'),
+        name => name.replace(/\s+y\s+/gi, ' '));
+    }
+    if (inquiryAndEdit && !/^(?:y )?si\b/.test(this.normalizeForMatch(inquiryAndEdit[1])) && session.cart.length &&
+      !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
+      (parseScopedCartRemoval(independentEdit) || parseCartQuantityCorrection(independentEdit))) {
+      const inquiry = inquiryAndEdit[1];
+      let answer: string | undefined;
+      if (this.looksLikeDeliveryFeeQuestion(inquiry)) {
+        if (session.orderType === 'pickup') {
+          answer = 'Este pedido es para recoger; no lleva costo de domicilio.';
+        } else if (!session.address?.trim() || !session.addressConfirmed) {
+          answer = 'Para cotizar el domicilio necesito la dirección.';
+        } else {
+          const quoted = await this.ensureDeliveryFeeQuoted(session, cfg);
+          session = quoted.session;
+          await this.conversationService.saveSession(conv, session);
+          answer = quoted.blocked || `El domicilio queda en *${this.catalogService.formatMoney(this.deliveryFeeFor(session, cfg))}*.`;
+        }
+      } else {
+        const menu = await this.catalogService.getMenuProducts();
+        const named = menu.filter(product => this.catalogService.productFullyNamedIn(inquiry, [product]));
+        // Multiple named subjects need clarification; do not silently choose one.
+        if (named.length === 1 && this.catalogService.isPriceInquiryIntent(inquiry)) {
+          answer = `El precio de *${named[0].name}* es *${this.catalogService.formatMoney(named[0].price)}* por unidad.`;
+        } else if (named.length === 1 && this.catalogService.isProductDescriptionInquiry(inquiry)) {
+          answer = this.buildProductCompositionReply(inquiry, named[0], cfg, session, { offerAdd: false });
+        }
+      }
+      if (answer) {
+        turn.independentInquiryAnswer = answer;
+        await this.reply(conv, msg.waId, answer);
+        if (await this.tryHandleScopedCartRemoval(conv, msg.waId, session, independentEdit, cfg)) return;
+        if (await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, independentEdit, cfg)) return;
+        text = independentEdit;
+        originalText = text;
+      }
+    }
     // A service question and an explicit purchase can share one message.
     const faqAndPurchase = originalText.match(/^(.+?\?)\s+((?:quiero|quisiera|dame|ponme|me\s+env[ií]as)\s+.+)$/is);
     if (faqAndPurchase && (this.isBusinessServiceInquiry(faqAndPurchase[1]) ||

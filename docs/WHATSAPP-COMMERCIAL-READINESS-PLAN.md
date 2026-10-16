@@ -1,3 +1,13 @@
+## Consulta y edición independientes — 16/10
+
+72 pruebas nuevas en dos cartas ficticias, con agente simulado habilitado/deshabilitado, carrito abierto y pago pendiente. Consultas de domicilio, composición o precio seguidas de quitar una unidad o dejar una cantidad exacta. Tres formas: signos de pregunta, conjunción sin signos y punto y coma. Se conservan notas, dirección y la otra línea. El nombre «Ramen De Hongos y Miso» no se divide como dos instrucciones en este camino.
+
+El fallo inicial se reprodujo en 24/24 casos: se perdía una intención. También se comprobó que el cierre automático podía borrar la respuesta a la consulta; ahora se conserva como prefacio del resumen. Si ya hay dirección confirmada, el carrito puede avanzar al pago conforme a la política existente; estando en pago, retoma ese paso. Se reutilizan los manejadores de eliminación y cantidad, con sus comprobaciones de ambigüedad.
+
+Validación: 172 focalizadas aprobadas (72 nuevas + 100 controles), TypeScript y 57 suites/5937 pruebas WhatsApp en 896.193 s + 19 suites/98 complementarias en 12.939 s: 76 suites/6035 pruebas en dos ejecuciones disjuntas con fuente congelada y verificada. Evidencia: docs/whatsapp-independent-intents-validation-1610.json; logs /tmp/ppp-independent-intents-{baseline,targets-final,full,complement,tsc}.log. Cero llamadas API, Meta, mapas u órdenes externas; presupuesto 183/178/5 intacto. Pendiente desplegar este lote; Main intacta.
+
+Siguiente: orden inverso («quita una sopa y dime cuánto queda»), consulta más cambio de atributo y condición con otra edición independiente («si es gratis cambia la bebida; aparte quita una sopa»). Verificar total posterior a cambios, alcance de la condición y reanudación del checkout. Añadir también nombres con conjunciones en ediciones solas y referencias cortas tras dos intenciones. Esta tanda no acredita todos esos casos, todas las variantes con typos ni precisión del modelo/canal real. No repetir global por cierre documental.
+
 ## Condiciones de costo — 16/10
 
 60 pruebas nuevas gratuitas:56 combinaciones en bowls/raviolis,compra/pago,agente simulado habilitado/deshabilitado y7formas de condición;4recorridos autorizan después un cambio explícito. Baseline inicial:32fallidas/4aprobadas;fallaba la respuesta (precio base,producto inexistente o pago repetido),sin mutación de carrito observada. No confundir con la tanda anterior que sí detectó cambios de atributos. Ahora se conserva el pedido ante costo desconocido y se retoma el dato pendiente. No se promete gratuidad por existir una opción.
