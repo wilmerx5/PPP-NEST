@@ -16005,3 +16005,115 @@ describe('Catálogo sin conflicto — un número conserva su función', () => {
     });
   }
 });
+
+
+describe('catalog prefix families across fictional restaurants', () => {
+  for (const family of ['Pizza', 'Bowl', 'Crepe', 'Ramen']) {
+    for (const enabled of [true, false]) {
+      const menu = [
+        { id: 24101, code: 24101, name: 'Sopa De Calabaza', price: 10000, availableNow: true, hasAttributes: false, attributes: [] },
+        ...['Personal', 'Mediana'].map((size, i) => ({ id: 24102+i, code: 24102+i, name: `${family} ${size}`, price: 16000+i*3000, availableNow: true, hasAttributes: false, attributes: [] })),
+      ];
+      for (const action of ['price', 'purchase']) {
+        it(`${family} ${action} interrupts a pending replacement safely, agent ${enabled}`, async () => {
+          const expandedMenu = [...menu, { ...menu[0], id: 24104, code: 24104, name: 'Sopa De Hongos', price: 13000 }];
+          const h = harness(expandedMenu, enabled);
+          h.conv.state = 'awaiting_payment';
+          Object.assign(h.conv.sessionData, {
+            orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+            phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+            cart: ['sin cebolla', 'sin sal'].map(note => ({ productId: 24101, code: 24101, name: menu[0].name, unitPrice: 10000, quantity: 2, note, attributes: [] })),
+          });
+          await h.sendQueued('Cambia Sopa De Calabaza por Sopa De Hongos');
+          expect(h.conv.sessionData.pendingCartReplacement).toBeDefined();
+          const before = structuredClone(h.conv.sessionData.cart);
+          const offset = h.replies.length;
+          await h.sendQueued(action === 'price' ? `Cuánto vale una ${family.toLowerCase()}?` : `Quiero una ${family.toLowerCase()}`);
+          expect(h.replies.slice(offset).join(' ')).toContain(`${family} Personal`);
+          expect(h.replies.slice(offset).join(' ')).toContain(`${family} Mediana`);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          if (action === 'purchase') {
+            await h.sendQueued('2');
+            expect(h.conv.sessionData.cart).toEqual(before);
+            expect(h.replies.at(-1)).toMatch(/nombre completo/);
+            await h.sendQueued(`${family} Mediana`);
+            expect(h.cartRows()).toEqual([
+              expect.objectContaining({ id: 24101, qty: 2 }),
+              expect.objectContaining({ id: 24101, qty: 2 }),
+              expect.objectContaining({ id: 24103, qty: 1 }),
+            ]);
+            expect(h.conv.state).toBe('awaiting_payment');
+          }
+        });
+      }
+      it(`${family} order preserves three units and resolves selection, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        await h.sendQueued(`Quiero tres ${family.toLowerCase()}`);
+        expect(h.conv.sessionData.cart).toEqual([]);
+        expect(h.replies.join(' ')).toContain(`${family} Personal`);
+        expect(h.replies.join(' ')).toContain(`${family} Mediana`);
+        expect(h.replies.join(' ')).not.toMatch(/no manejamos/i);
+        await h.sendQueued('2');
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 24103, qty: 3 })]);
+      });
+      it(`${family} singular order opens presentations, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        await h.sendQueued(`Quiero una ${family.toLowerCase()}`);
+        expect(h.conv.sessionData.cart).toEqual([]);
+        expect(h.replies.join(' ')).toContain(`${family} Personal`);
+        expect(h.replies.join(' ')).toContain(`${family} Mediana`);
+        await h.sendQueued('2');
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 24103, qty: 1 })]);
+      });
+      it(`${family} empty cart price remains a consultation, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        await h.sendQueued(`Cuánto vale una ${family.toLowerCase()}?`);
+        expect(h.replies.join(' ')).toMatch(new RegExp(`${family} Personal.*16[.,]000`, 's'));
+        expect(h.replies.join(' ')).toMatch(new RegExp(`${family} Mediana.*19[.,]000`, 's'));
+        expect(h.conv.sessionData.cart).toEqual([]);
+      });
+      it(`${family} checkout purchase resolves family and resumes payment, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        h.conv.state = 'awaiting_payment';
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+          cart: [{ productId: 24101, code: 24101, name: menu[0].name, unitPrice: 10000, quantity: 2, attributes: [] }],
+        });
+        await h.sendQueued(`Quiero una ${family.toLowerCase()}`);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 24101, qty: 2 })]);
+        expect(h.replies.join(' ')).toContain(`${family} Mediana`);
+        await h.sendQueued(`${family} Mediana`);
+        expect(h.cartRows()).toEqual([
+          expect.objectContaining({ id: 24101, qty: 2 }),
+          expect.objectContaining({ id: 24103, qty: 1 }),
+        ]);
+        expect(h.conv.state).toBe('awaiting_payment');
+      });
+      it(`${family} exact SKU and deictic price keep their scope, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        await h.sendQueued(`Quiero una ${family} Mediana`);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 24103, qty: 1 })]);
+        await h.sendQueued('Cuánto vale?');
+        expect(h.replies.at(-1)).toMatch(/19[.,]000/);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 24103, qty: 1 })]);
+      });
+      it(`${family} explicit price subject overrides soup cart, agent ${enabled}`, async () => {
+        const h = harness(menu, enabled);
+        h.conv.state = 'awaiting_payment';
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+          cart: [{ productId: 24101, code: 24101, name: menu[0].name, unitPrice: 10000, quantity: 2, attributes: [] }],
+        });
+        const before = structuredClone(h.conv.sessionData.cart);
+        await h.sendQueued(`Cuánto vale una ${family.toLowerCase()}?`);
+        const answer = h.replies.join(' ');
+        expect(answer).toMatch(new RegExp(`${family} Personal.*16[.,]000`, 's'));
+        expect(answer).toMatch(new RegExp(`${family} Mediana.*19[.,]000`, 's'));
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.state).toBe('awaiting_payment');
+      });
+    }
+  }
+});

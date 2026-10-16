@@ -1613,6 +1613,23 @@ export class WhatsappCatalogService {
     return products.find((p) => p.code === code) ?? null;
   }
 
+  /** Conservative catalog prefix lookup: an incomplete dish name names its presentations,
+   * not an ingredient anywhere in an unrelated dish. Exact SKU names retain their route. */
+  findCatalogPrefixCandidates(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] {
+    const stripped = this.stripAvailabilityInquiryNoise(this.stripPriceInquiryNoise(text));
+    const query = normalizeText(this.stripQuantityFromSearchQuery(this.extractProductSearchQuery(stripped)))
+      .replace(/^(?:un|una|unos|unas|el|la|los|las)\s+/i, '').trim();
+    if (!/^[\p{L}]+(?:\s+[\p{L}]+){0,2}$/u.test(query)) return [];
+    const words = query.split(/\s+/).map(singularizeEsToken);
+    if (!words.some(word => word.length >= 3 && !this.WEAK_PRODUCT_TOKENS.has(word))) return [];
+    const available = products.filter(product => product.availableNow !== false);
+    if (available.some(product => normalizeText(product.name) === query)) return [];
+    return available.filter(product => {
+      const nameWords = normalizeText(product.name).split(/\s+/).map(singularizeEsToken);
+      return nameWords.length > words.length && words.every((word, i) => nameWords[i] === word);
+    });
+  }
+
   /**
    * Quita muletillas y la parte de domicilio ("… para calle 10") para buscar producto.
    */

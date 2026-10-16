@@ -1810,6 +1810,7 @@ export class WhatsappOrchestratorService {
       const hypotheticalAdd = this.normalizeForMatch(originalText).match(/^si\s+(?:agrego|anado|pido|quiero)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco)\s+(.+?)\s+(?:mas\s+)?cuanto\s+(?:cuesta|vale|cuestan|valen)$/);
       const named = this.catalogService.findProductEmbeddedInMessage(hypotheticalAdd?.[1] || originalText, menu) ||
         this.catalogService.resolveSizedChickenProduct(originalText, menu);
+      const catalogFamily = named ? [] : this.catalogService.findCatalogPrefixCandidates(originalText, menu);
       const sizes = named ? [] : this.catalogService.chickenStyleChoicesForSegment(originalText, menu) || [];
       const ids = new Set(session.cart.map(line => line.productId));
       // A short family reference can identify cart products without their full title.
@@ -1820,7 +1821,7 @@ export class WhatsappOrchestratorService {
         /^(bebida|bebidas|refresco|refrescos)$/.test(word)
           ? this.catalogService.isLikelyDrinkProduct(product)
           : this.normalizeForMatch(product.name).split(/\s+/).some(nameWord => nameWord === word || nameWord+'s' === word || nameWord+'es' === word))) : [];
-      const targets = named ? [named] : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
+      const targets = named ? [named] : catalogFamily.length ? catalogFamily : sizes.length ? sizes : familyTargets.length ? familyTargets : ids.size === 1 ? menu.filter(product => ids.has(product.id)) : [];
       if (session.pendingPriceInquiry) delete session.pendingPriceInquiry;
       const priceCandidates = menu.filter(product => ids.has(product.id));
       if (!targets.length && priceCandidates.length > 1 &&
@@ -2326,6 +2327,13 @@ export class WhatsappOrchestratorService {
         }
       }
     }
+
+    // A catalog family is a valid purchase even before its presentation is known.
+    // Use the original request: downstream cleanup can remove "quiero una".
+    if (businessOpenForBot && ['building_cart', 'awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
+        !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        this.catalogService.findCatalogPrefixCandidates(originalText, products).length >= 2 &&
+        await this.tryHandleGenericProductOrder(conv, msg.waId, session, originalText, products)) return;
 
     // A concrete unavailable request deserves an explicit answer before the generic menu nudge.
     // "y dame por favor una malteada" is still one dish: the lead and the courtesy are not the name.
@@ -7018,7 +7026,8 @@ export class WhatsappOrchestratorService {
     const family = this.catalogService.findProductVariantFamily(text, products);
     if (family && this.catalogService.pickVariantFromFamilyText(text, family)) return false;
     const scored = this.catalogService.searchByNameScored(query, products, 8);
-    const candidates = family?.variants || scored
+    const prefixCandidates = this.catalogService.findCatalogPrefixCandidates(text, products);
+    const candidates = family?.variants || (prefixCandidates.length >= 2 ? prefixCandidates : null) || scored
       .filter(hit => hit.score >= 60 && hit.score >= (scored[0]?.score || 0) - 12)
       .map(hit => hit.p);
     const available = candidates.filter(p => p.availableNow !== false);
@@ -7027,6 +7036,8 @@ export class WhatsappOrchestratorService {
       ...session,
       pendingMatch: { query: text, candidates: available, intent: 'order', quantity },
       pendingQuantityHint: { query, quantity },
+      ...(['awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)
+        ? { pendingCheckoutResume: conv.state as WhatsappSessionData['pendingCheckoutResume'] } : {}),
     };
     await this.conversationService.saveSession(conv, session, 'building_cart');
     await this.reply(conv, waId,
@@ -19238,6 +19249,14 @@ export class WhatsappOrchestratorService {
       this.catalogService.stripPriceInquiryNoise(text) || text,
     );
     if (corrected && corrected !== text) text = corrected;
+    const prefixProducts = askedPrice ? this.catalogService.findCatalogPrefixCandidates(text, products) : [];
+    if (prefixProducts.length >= 2) {
+      await this.savePendingAddOffer(conv, prefixProducts[0], this.catalogService.extractQuantityFromMessage(text), {
+        sourceText: text, productIds: prefixProducts.map(product => product.id),
+      });
+      await this.reply(conv, waId, this.catalogService.formatMultiProductPriceReply(prefixProducts));
+      return true;
+    }
     const unavailable = this.catalogService.unavailableAskReply(text, products, cfg.menuUrl);
     if (unavailable) {
       await this.reply(conv, waId, unavailable);

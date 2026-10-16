@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "83720b88",
+  "scope": "Conservative catalog name-prefix families for purchases and explicit price subjects, without restaurant-specific names",
+  "newTests": 64,
+  "baseline": {
+    "failed": 10,
+    "passed": 6,
+    "log": "/tmp/ppp-prefix-baseline.log",
+    "note": "Initial16 actual router regressions; later matrix expanded to64, not64 baseline failures"
+  },
+  "targeted": {
+    "passed": 64,
+    "log": "/tmp/ppp-prefix-target-final.log"
+  },
+  "coverage": {
+    "menus": [
+      "Pizza Personal/Mediana",
+      "Bowl Personal/Mediana",
+      "Crepe Personal/Mediana",
+      "Ramen Personal/Mediana"
+    ],
+    "agent": "simulated enabled/disabled",
+    "cases": [
+      "one unit opens presentation list and numeric selection",
+      "three units preserved after numeric selection",
+      "empty cart explicit price remains consultation",
+      "explicit family price overrides soup cart during payment",
+      "checkout addition resumes payment preserving existing soup",
+      "exact SKU and deictic price retain their scope",
+      "price with pending soup replacement preserves cart",
+      "purchase with pending replacement rejects ambiguous numeric choice and accepts full name"
+    ]
+  },
+  "limits": [
+    "Only conservative normalized name prefixes with available presentations; not arbitrary semantic synonym matching",
+    "Existing pending attribute/multiorder/selection paths are not generalized by this change",
+    "Unknown explicit price subjects outside matching prefix may still fall back to cart; requires separate regression family",
+    "Building-cart atomic replacements and ambiguous conditional scope remain open",
+    "Mocks do not establish real-model or WhatsApp recognition accuracy",
+    "Quantity tests use normalized singular family names; irregular/plural spelling variants need a separate full-router matrix (legacy singularization remains unchanged)"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "validationStatus": "Full source frozen verification passed; not yet deployed",
+  "logs": {
+    "full": "/tmp/ppp-prefix-full.log",
+    "complement": "/tmp/ppp-prefix-complement.log",
+    "typescript": "/tmp/ppp-prefix-tsc-final.log",
+    "sourceSnapshot": "/tmp/ppp-prefix-source.json"
+  },
+  "fullResult": "57 passed, 57 total\nTests:       6568 passed, 6568 total\nSnapshots:   0 total\nTime:        960.32 s",
+  "complementResult": "19 suites / 98 tests passed",
+  "typescript": "passed",
+  "sourceSnapshotVerified": true
+}
