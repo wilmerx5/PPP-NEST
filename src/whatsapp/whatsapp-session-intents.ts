@@ -657,6 +657,7 @@ const CART_SWAP_DISH_TOKEN =
  */
 export function parseCartItemReplacement(
   text: string,
+  allowCatalogTarget = false,
 ): { removeQuery: string; addQuery: string } | null {
   const raw = (text || '').trim();
   if (!raw || raw.length < 12) return null;
@@ -675,14 +676,14 @@ export function parseCartItemReplacement(
       .replace(/\s+/g, ' ')
       .trim();
     const addQuery = m[2]
-      .replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, '')
+      .replace(allowCatalogTarget ? /^(el|la|los|las)\s+/i : /^(el|la|los|las|un|una|unos|unas)\s+/i, '')
       .replace(/\s+/g, ' ')
       .trim();
     if (removeQuery.length < 3 || addQuery.length < 3) continue;
     if (CART_SWAP_SIDE_ONLY.test(removeQuery) || CART_SWAP_SIDE_ONLY.test(addQuery)) {
       continue;
     }
-    if (!CART_SWAP_DISH_TOKEN.test(addQuery)) continue;
+    if (!allowCatalogTarget && !CART_SWAP_DISH_TOKEN.test(addQuery)) continue;
     return { removeQuery, addQuery };
   }
   return null;

@@ -153,6 +153,12 @@ export type WhatsappSessionData = {
   /** Opción de una lista que se acaba de describir. «Sí, ese» compra solo esta. */
   describedListCandidateId?: number;
   /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
+  /** A replacement needs one original cart line; choosing it must not delete it alone. */
+  pendingCartReplacement?: {
+    cartSignature: string;
+    options: Array<{ cartIndex: number; label: string }>;
+    addQuery: string;
+  };
   pendingCartRemoval?: {
     cartSignature?: string;
     options: Array<{ cartIndex: number; label: string }>;

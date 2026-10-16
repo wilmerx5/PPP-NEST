@@ -15517,3 +15517,151 @@ describe('Atributos y dirección pendiente — opción inválida o plato ambiguo
     });
   }
 });
+
+describe('Reemplazo de plato con dirección pendiente — mantiene checkout', () => {
+  const fixtures = [
+    { id: 20401, old: 'Pizza De Setas', next: 'Pizza Margarita', side: 'Agua Mineral' },
+    { id: 20411, old: 'Ramen De Miso', next: 'Ramen De Shoyu', side: 'Te Verde' },
+  ];
+  for (const f of fixtures) for (const agent of [false, true]) for (const kind of ['sin dirección', 'lugar pendiente', 'dirección anterior']) {
+    for (const wording of ['cambia', 'no quiero']) {
+      it(`${f.old}, agente ${agent}, ${kind}, ${wording}`, async () => {
+        const menu = [f.old, f.next, f.side].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+          price: index === 0 ? 24000 : index === 1 ? 22000 : 5000, availableNow: true, hasAttributes: false, attributes: [] }));
+        const h = harness(menu, agent);
+        h.conv.state = 'awaiting_address';
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, { orderType: 'delivery', addressConfirmed: false, deliveryFeeCalculated: null,
+          address: kind === 'lugar pendiente' ? 'Conjunto Los Pinos' : undefined,
+          lastDeliveryAddress: kind === 'dirección anterior' ? 'Calle 12 30 45' : undefined,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164,
+          cart: [menu[0], menu[2]].map((p, index) => ({ productId: p.id, code: p.code, name: p.name,
+            unitPrice: p.price, quantity: 1, note: index ? 'sin hielo' : undefined, attributes: [] })) });
+        const before = structuredClone(h.conv.sessionData);
+        await h.sendQueued(wording === 'cambia' ? `Cambia la ${f.old} por ${f.next}` : `No quiero ${f.old}, quiero ${f.next}`);
+        expect(h.conv.sessionData.cart).toHaveLength(2);
+        expect(h.conv.sessionData.cart).toContainEqual(before.cart[1]);
+        expect(h.conv.sessionData.cart).toContainEqual(expect.objectContaining({ productId: f.id + 1, quantity: 1, unitPrice: 22000 }));
+        expect(h.conv.sessionData.cart.some(line => line.productId === f.id)).toBe(false);
+        expect(h.conv.state).toBe('awaiting_address');
+        expect(h.conv.sessionData.address).toBe(before.address);
+        expect(h.conv.sessionData.lastDeliveryAddress).toBe(before.lastDeliveryAddress);
+        expect(h.conv.sessionData.addressConfirmed).toBe(false);
+        expect(h.replies.at(-1)).toMatch(/dirección/i);
+        expect(h.replies.at(-1)).not.toMatch(/algo más|cómo pagas/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        h.service.ensureDeliveryFeeQuoted = jest.fn(async (session: WhatsappSessionData) => ({
+          session: { ...session, addressConfirmed: true, deliveryFeeCalculated: 2000 },
+        }));
+        await h.sendQueued('Calle 23 45 67');
+        expect(h.conv.sessionData.address).toMatch(/calle 23 45 67/i);
+        expect(h.conv.state).toBe('awaiting_payment');
+        expect(h.conv.sessionData.cart.some(line => line.productId === f.id + 1)).toBe(true);
+        expect(h.replies.at(-1)).toMatch(/pagas|pago/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Reemplazo pendiente de dirección — atomicidad y aclaraciones', () => {
+  for (const f of [
+    { id: 20501, old: 'Pizza De Setas', next: 'Pizza Margarita', side: 'Agua Mineral' },
+    { id: 20511, old: 'Ramen De Miso', next: 'Ramen De Shoyu', side: 'Te Verde' },
+  ]) for (const agent of [false, true]) {
+    const seed = (opts = { unavailable: false, duplicate: false }) => {
+      const menu = [f.old, f.next, f.side].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: index === 0 ? 24000 : index === 1 ? 22000 : 5000, availableNow: !(opts.unavailable && index === 1), hasAttributes: false, attributes: [] }));
+      const h = harness(menu, agent);
+      h.conv.state = 'awaiting_address';
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: undefined, addressConfirmed: false,
+        cart: [menu[0], ...(opts.duplicate ? [menu[0]] : []), menu[2]].map((p, index) => ({
+          productId: p.id, code: p.code, name: p.name, unitPrice: p.price, quantity: index ? 1 : 3,
+          note: index ? 'sin sal' : 'sin cebolla', attributes: [] })) });
+      return h;
+    };
+    it.each(['desconocido', 'agotado', 'consulta', 'condicionado'])(`${f.old}, agente ${agent}, %s conserva carrito`, async kind => {
+      const h = seed({ unavailable: kind === 'agotado', duplicate: false });
+      const before = structuredClone(h.conv.sessionData.cart);
+      const text = kind === 'desconocido' ? `Cambia ${f.old} por Platillo Inventado`
+        : kind === 'consulta' ? `¿Puedo cambiar ${f.old} por ${f.next}?`
+        : kind === 'condicionado' ? `Cambia ${f.old} por ${f.next} solo si no cuesta más`
+        : `Cambia ${f.old} por ${f.next}`;
+      await h.sendQueued(text);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.conv.sessionData.address).toBeUndefined();
+      expect(h.replies.at(-1)).toMatch(/dirección/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+    it.each(['implícita', 'dos', 'una'])(`${f.old}, agente ${agent}, cantidad %s`, async kind => {
+      const h = seed();
+      const side = structuredClone(h.conv.sessionData.cart[1]);
+      await h.sendQueued(`Cambia ${f.old} por ${kind === 'dos' ? 'dos ' : kind === 'una' ? 'una ' : ''}${f.next}`);
+      expect(h.conv.sessionData.cart[1]).toEqual(side);
+      expect(h.conv.sessionData.cart[0]).toMatchObject({ productId: f.id + 1, unitPrice: 22000,
+        quantity: kind === 'dos' ? 2 : kind === 'una' ? 1 : 3, note: 'sin cebolla' });
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.replies.at(-1)).toMatch(/dirección/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+    it.each(['elige', 'cancela', 'desactualizada'])(`${f.old}, agente ${agent}, línea ambigua %s`, async kind => {
+      const h = seed({ unavailable: false, duplicate: true });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartReplacement?.options).toHaveLength(2);
+      expect(h.conv.state).toBe('awaiting_address');
+      if (kind === 'desactualizada') h.conv.sessionData.cart[0].quantity = 4;
+      await h.sendQueued(kind === 'cancela' ? 'Cancela ese cambio' : '2');
+      if (kind === 'elige') {
+        expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+        expect(h.conv.sessionData.cart[1]).toMatchObject({ productId: f.id + 1, quantity: 1 });
+        expect(h.conv.sessionData.cart[2]).toEqual(before[2]);
+      } else if (kind === 'cancela') expect(h.conv.sessionData.cart).toEqual(before);
+      else expect(h.conv.sessionData.cart).toEqual([{ ...before[0], quantity: 4 }, ...before.slice(1)]);
+      expect(h.conv.sessionData.pendingCartReplacement).toBeUndefined();
+      expect(h.conv.sessionData.address).toBeUndefined();
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Reemplazo con sabor pendiente — conserva original hasta resolver', () => {
+  for (const f of [
+    { id: 20601, old: 'Batido De Banano', next: 'Jugo Natural', flavor: 'Mango', other: 'Lulo' },
+    { id: 20611, old: 'Te Helado', next: 'Limonada Frutal', flavor: 'Fresa', other: 'Maracuya' },
+  ]) for (const agent of [false, true]) for (const cancel of [false, true]) {
+    it(`${f.old}, agente ${agent}, cancelar ${cancel}`, async () => {
+      const menu = [
+        { id: f.id, code: f.id, name: f.old, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+        { id: f.id + 1, code: f.id + 1, name: f.next, price: 9000, availableNow: true, hasAttributes: true,
+          attributes: [{ attributeName: 'Sabor', options: [f.flavor, f.other] }] },
+      ];
+      const h = harness(menu, agent);
+      h.conv.state = 'awaiting_address';
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: undefined, addressConfirmed: false,
+        cart: [{ productId: f.id, code: f.id, name: f.old, unitPrice: 6000, quantity: 3, note: 'sin hielo', attributes: [] }] });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.old} por dos ${f.next}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute?.replacement?.originalLine).toEqual(before[0]);
+      expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);
+      expect(h.replies.at(-1)).toMatch(/sabor|elige|opción/i);
+      await h.sendQueued(cancel ? 'Cancela ese cambio' : f.flavor);
+      if (cancel) expect(h.conv.sessionData.cart).toEqual(before);
+      else expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({ productId: f.id + 1, quantity: 2,
+        unitPrice: 9000, note: 'sin hielo', attributes: [{ attributeName: 'Sabor', attributeValue: f.flavor }] })]);
+      expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+      expect(h.conv.sessionData.pendingCheckoutResume).toBeUndefined();
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.conv.sessionData.address).toBeUndefined();
+      expect(h.replies.at(-1)).toMatch(/dirección/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

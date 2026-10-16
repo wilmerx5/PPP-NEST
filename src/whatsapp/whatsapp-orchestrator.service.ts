@@ -1035,7 +1035,9 @@ export class WhatsappOrchestratorService {
           }
         }
       }
-      await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : undefined);
+      const resumeAddress = !nextPrompt && next.pendingCheckoutResume === 'awaiting_address';
+      if (resumeAddress) next = { ...next, pendingCheckoutResume: undefined };
+      await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : resumeAddress ? 'awaiting_address' : undefined);
       await this.reply(conv, msg.waId, (replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
         (next.cart.length ? '\n\n' + this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) : '') +
         '\n\n' + (nextPrompt || this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
@@ -1048,6 +1050,12 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A product replacement interrupts address collection; never feed it to
+    // the address/name handlers or remove the original before validation.
+    if (conv.state === 'awaiting_address' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        await this.tryHandleAtomicCartReplacement(conv, msg.waId, session, originalText,
+          await this.catalogService.getMenuProducts(), cfg)) return;
+
     // Explicit product addition commands must reach catalog resolution before checkout fields.
     const addPrefix = /^(?:agr[eé]ga(?:me)?|a[nñ][aá]de(?:me)?|ponme)\s+(?=(?:(?:un|una|unos|unas|otro|otra|dos|tres|cuatro|cinco|\d+)\b|(?:c[oó]digo\s*#?\s*|#\s*)\d{1,4}\b))/i;
     const purchaseAndPrice = originalText.match(/^(.+?);\s*[¿?]*(?:cu[aá]nto\s+(?:vale|cuesta|sale))\s+(?:cada\s+(?:uno|una|unidad))[?!.\s]*$/i);
@@ -6302,7 +6310,7 @@ export class WhatsappOrchestratorService {
       const edited = note?.trim() ? editScopedCartNote(replacement.originalLine.note, {kind:'append',query:'',note,preserve:[]}) : {note:replacement.originalLine.note,blocked:false};
       if (edited.blocked) return {session,blocked:{ok:false,reason:'Necesito que resumas las notas para conservar el cambio completo.'}};
       const nextLine: WhatsappCartItem = {productId:product.id,name:product.name,code:product.code,
-        unitPrice:product.price,quantity:session.pendingAttribute?.quantity || replacement.originalLine.quantity,
+        unitPrice:product.price,quantity,
         note:omitRedundantAttributeNote(edited.note,selected),attributes:selected};
       const next = {...session,cart:session.cart.map((line,index) => index === matches[0] ? nextLine : line),
         productFocus:{productId:product.id,name:product.name}};
@@ -12052,6 +12060,84 @@ export class WhatsappOrchestratorService {
     });
     if (menuHits.length !== 1 || menuHits[0].id === [...distinct][0]) return null;
     return { removeQuery, addQuery };
+  }
+
+  private async tryHandleAtomicCartReplacement(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingCartReplacement;
+    const cancellation = /^(?:cancela|olvida) (?:ese|el) cambio[.!]*$/i.test(text.trim());
+    if (pending && cancellation) {
+      await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: undefined });
+      await this.reply(conv, waId, 'Cancelé ese cambio. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
+      return true;
+    }
+    const parsed = !/[¿?]/.test(text) ? parseCartItemReplacement(text, true) : null;
+    const pick = /^\d{1,2}$/.test(text.trim()) ? Number(text.trim()) : null;
+    if (!parsed && !(pending && pick !== null)) return false;
+    if (pending && !parsed && pending.cartSignature !== JSON.stringify(session.cart)) {
+      await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: undefined });
+      await this.reply(conv, waId, 'El carrito cambió. Dime otra vez qué plato reemplazamos.');
+      return true;
+    }
+    const match = parsed ? this.matchCartItemsForRemoval(parsed.removeQuery, session, products) : null;
+    const addQuery = parsed?.addQuery || pending!.addQuery;
+    if (match?.kind === 'none') {
+      await this.reply(conv, waId, 'No encontré ese plato en tu carrito. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
+      return true;
+    }
+    const matchedIndices = match?.kind === 'ambiguous'
+      ? session.cart.flatMap((line, index) => match.options.some(o => {
+          const candidate = session.cart[o.cartIndex];
+          return line.productId === candidate.productId && JSON.stringify(line.attributes || []) === JSON.stringify(candidate.attributes || []);
+        }) ? [index] : [])
+      : match?.kind === 'single' ? match.indices : null;
+    const options = matchedIndices ? matchedIndices.map(cartIndex => ({ cartIndex,
+      label: this.formatCartLineLabel(session.cart[cartIndex]) + (session.cart[cartIndex].note ? ` · ${session.cart[cartIndex].note}` : ''),
+    })) : pending!.options;
+    // Full catalog identity wins; an unknown or ambiguous replacement cannot
+    // delete the original or silently select the first search result.
+    const named = products.filter(p => p.availableNow !== false && this.catalogService.productFullyNamedIn(addQuery, [p]));
+    const exact = named.filter(p => this.normalizeForMatch(p.name) === this.normalizeForMatch(addQuery));
+    const targets = exact.length ? exact : named;
+    if (targets.length !== 1) {
+      await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: undefined });
+      await this.reply(conv, waId, (targets.length ? 'Hay varias opciones; dime el nombre completo del reemplazo.' : 'No encontré ese reemplazo en la carta.') +
+        ' El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
+      return true;
+    }
+    if ((parsed && options.length !== 1) || (!parsed && (!pick || pick > options.length))) {
+      await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: {
+        cartSignature: JSON.stringify(session.cart), options, addQuery,
+      } });
+      await this.reply(conv, waId, '¿Cuál línea reemplazamos?\n\n' + options.map((o, i) => `${i + 1}. ${o.label}`).join('\n') + '\n\nEscribe el número. El pedido sigue igual.');
+      return true;
+    }
+    const original = session.cart[options[parsed ? 0 : pick! - 1].cartIndex];
+    const product = targets[0];
+    const replacement = { originalLine: structuredClone(original) };
+    const base = { ...session, pendingCartReplacement: undefined };
+    const quantity = /^(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\b/i.test(addQuery)
+      ? this.catalogService.extractQuantityFromMessage(addQuery) : original.quantity;
+    const added = this.tryAddProductToCart(base, product, quantity, cfg, undefined, undefined, { sourceText: addQuery, replacement });
+    if (added.blocked) {
+      await this.reply(conv, waId, 'No pude completar el reemplazo. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
+      return true;
+    }
+    if (added.missingAttributes) {
+      const next = this.buildPendingAttributeSession(base, product, added.missingAttributes, { sourceText: addQuery, replacement });
+      next.pendingAttribute!.quantity = quantity;
+      next.pendingCheckoutResume = 'awaiting_address';
+      await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+      await this.reply(conv, waId, 'Para completar el reemplazo, elige la opción. El plato original se conserva mientras tanto.\n\n' +
+        this.catalogService.formatProductOptionsPrompt(product, added.missingAttributes));
+      return true;
+    }
+    await this.conversationService.saveSession(conv, added.session, 'awaiting_address');
+    await this.reply(conv, waId, `Listo, cambié *${original.name}* por *${product.name}*.\n\n` +
+      this.formatCartOnly(added.session, this.deliveryFeeFor(added.session, cfg)) + '\n\n' + this.formatInterruptedStepReminder(conv, added.session));
+    return true;
   }
 
   /**
