@@ -86,8 +86,30 @@
     "remaining": 5
   },
   "deployment": {
-    "status": "pending",
-    "productionChanged": false
+    "status": "verified",
+    "codeCommit": "f2b883f1",
+    "verifiedAt": "2026-10-16T13:39:01.849Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:d7003d7bbf6678aeb34993bbf2d03fd9d224e0f5172d869bfecec1e0acd29161",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledInquirySplitAndCheckoutPrefaceVerified": true,
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "productionChanged": false,
+    "logs": [
+      "/tmp/ppp-independent-intents-deploy.log",
+      "/tmp/ppp-independent-intents-deploy-verified.log"
+    ]
   },
   "limitations": [
     "Controlled mock tests; not new paid model or WhatsApp channel acceptance",
