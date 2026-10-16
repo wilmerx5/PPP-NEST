@@ -96,8 +96,30 @@
     "remaining": 5
   },
   "deployment": {
-    "status": "pending",
-    "mainChanged": false
+    "status": "verified",
+    "codeCommit": "2ec8d86d",
+    "verifiedAt": "2026-10-16T14:59:33.034Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:f93638e7eb333bcc8b5ca6e38114819dc0469759b0847414dd0d4810dcc5281c",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledClauseSplitterVerified": true,
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-conditional-independent-deploy.log",
+      "/tmp/ppp-conditional-independent-deploy-verified.log"
+    ]
   },
   "limitations": [
     "Mock router tests, no new model/channel precision measurement",
