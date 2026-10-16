@@ -512,16 +512,18 @@ export class WhatsappOrchestratorService {
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
         await this.conversationService.saveSession(conv, session);
       }
-      if (session.pendingCheckoutResume === 'awaiting_address' && !conv.humanTakeover &&
+      if (session.pendingCheckoutResume && !conv.humanTakeover &&
           !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+        const resumeState = session.pendingCheckoutResume;
         session = { ...session, pendingCheckoutResume: undefined };
-        await this.conversationService.saveSession(conv, session, 'awaiting_address');
+        await this.conversationService.saveSession(conv, session, resumeState);
         if (JSON.stringify(session.cart) !== turn.initialCart) {
           const cfg = await this.settingsService.getEffectiveConfig();
           const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
           if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
           await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) +
-            '\n\n' + this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg)));
+            '\n\n' + (resumeState === 'awaiting_address' ? this.buildAskAddressMessage(session, this.deliveryFeeFor(session, cfg))
+              : this.formatInterruptedStepReminder(conv, session)));
         }
         return;
       }
@@ -1035,9 +1037,9 @@ export class WhatsappOrchestratorService {
           }
         }
       }
-      const resumeAddress = !nextPrompt && next.pendingCheckoutResume === 'awaiting_address';
-      if (resumeAddress) next = { ...next, pendingCheckoutResume: undefined };
-      await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : resumeAddress ? 'awaiting_address' : undefined);
+      const resumeState = !nextPrompt ? next.pendingCheckoutResume : undefined;
+      if (resumeState) next = { ...next, pendingCheckoutResume: undefined };
+      await this.conversationService.saveSession(conv, next, nextPrompt ? 'awaiting_attribute' : resumeState);
       await this.reply(conv, msg.waId, (replacing ? 'Cancelé ese cambio. Conservo el producto original y el resto del carrito.' : 'Cancelé la selección pendiente. Los platos del carrito siguen igual.') +
         (next.cart.length ? '\n\n' + this.formatCartOnly(next, this.deliveryFeeFor(next, cfg)) : '') +
         '\n\n' + (nextPrompt || this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)));
@@ -1050,9 +1052,9 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    // A product replacement interrupts address collection; never feed it to
-    // the address/name handlers or remove the original before validation.
-    if (conv.state === 'awaiting_address' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+    // A product replacement interrupts checkout; never feed it to field
+    // handlers or remove the original before validating the replacement.
+    if (['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         await this.tryHandleAtomicCartReplacement(conv, msg.waId, session, originalText,
           await this.catalogService.getMenuProducts(), cfg)) return;
 
@@ -12066,6 +12068,7 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    const resumeState = conv.state as NonNullable<WhatsappSessionData['pendingCheckoutResume']>;
     const pending = session.pendingCartReplacement;
     const cancellation = /^(?:cancela|olvida) (?:ese|el) cambio[.!]*$/i.test(text.trim());
     if (pending && cancellation) {
@@ -12076,6 +12079,10 @@ export class WhatsappOrchestratorService {
     const parsed = !/[¿?]/.test(text) ? parseCartItemReplacement(text, true) : null;
     const pick = /^\d{1,2}$/.test(text.trim()) ? Number(text.trim()) : null;
     if (!parsed && !(pending && pick !== null)) return false;
+    if (session.mpPreferenceId) {
+      await this.reply(conv, waId, 'Ya hay un enlace de pago para este pedido. El restaurante debe revisar ese pago antes de cambiarlo. El carrito sigue igual.');
+      return true;
+    }
     if (pending && !parsed && pending.cartSignature !== JSON.stringify(session.cart)) {
       await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: undefined });
       await this.reply(conv, waId, 'El carrito cambió. Dime otra vez qué plato reemplazamos.');
@@ -12128,13 +12135,13 @@ export class WhatsappOrchestratorService {
     if (added.missingAttributes) {
       const next = this.buildPendingAttributeSession(base, product, added.missingAttributes, { sourceText: addQuery, replacement });
       next.pendingAttribute!.quantity = quantity;
-      next.pendingCheckoutResume = 'awaiting_address';
+      next.pendingCheckoutResume = resumeState;
       await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
       await this.reply(conv, waId, 'Para completar el reemplazo, elige la opción. El plato original se conserva mientras tanto.\n\n' +
         this.catalogService.formatProductOptionsPrompt(product, added.missingAttributes));
       return true;
     }
-    await this.conversationService.saveSession(conv, added.session, 'awaiting_address');
+    await this.conversationService.saveSession(conv, added.session, resumeState);
     await this.reply(conv, waId, `Listo, cambié *${original.name}* por *${product.name}*.\n\n` +
       this.formatCartOnly(added.session, this.deliveryFeeFor(added.session, cfg)) + '\n\n' + this.formatInterruptedStepReminder(conv, added.session));
     return true;

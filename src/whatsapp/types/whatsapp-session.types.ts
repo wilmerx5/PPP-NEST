@@ -106,8 +106,8 @@ export type WhatsappSessionData = {
   recentImageCartBefore?: WhatsappCartItem[];
   /** Only image product lines after a successful image turn or correction. */
   recentImageCartSignature?: string;
-  /** Return to the address question after completing an intervening catalog purchase. */
-  pendingCheckoutResume?: 'awaiting_address';
+  /** Resume the interrupted checkout field after a catalog purchase or replacement. */
+  pendingCheckoutResume?: 'awaiting_address' | 'awaiting_name' | 'awaiting_phone' | 'awaiting_payment' | 'awaiting_final_confirm';
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;
@@ -152,13 +152,13 @@ export type WhatsappSessionData = {
   };
   /** Opción de una lista que se acaba de describir. «Sí, ese» compra solo esta. */
   describedListCandidateId?: number;
-  /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   /** A replacement needs one original cart line; choosing it must not delete it alone. */
   pendingCartReplacement?: {
     cartSignature: string;
     options: Array<{ cartIndex: number; label: string }>;
     addQuery: string;
   };
+  /** El cliente pidió quitar algo ambiguo: elige línea del carrito por número. */
   pendingCartRemoval?: {
     cartSignature?: string;
     options: Array<{ cartIndex: number; label: string }>;

@@ -15665,3 +15665,134 @@ describe('Reemplazo con sabor pendiente — conserva original hasta resolver', (
     });
   }
 });
+
+describe('Reemplazo atómico durante checkout — conserva el dato pendiente', () => {
+  for (const f of [
+    { id: 20701, old: 'Pizza De Setas', next: 'Pizza Margarita', side: 'Agua Mineral' },
+    { id: 20711, old: 'Ramen De Miso', next: 'Ramen De Shoyu', side: 'Te Verde' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm']) {
+    for (const kind of ['cambia', 'no quiero', 'desconocido', 'agotado']) {
+      it(`${f.old}, agente ${agent}, ${state}, ${kind}`, async () => {
+        const menu = [f.old, f.next, f.side].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+          price: index === 0 ? 24000 : index === 1 ? 22000 : 5000, availableNow: !(kind === 'agotado' && index === 1), hasAttributes: false, attributes: [] }));
+        const h = harness(menu, agent);
+        h.conv.state = state;
+        h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          deliveryFeeCalculated: 3000, phoneConfirmed: state !== 'awaiting_phone', contactPhone: h.conv.phoneE164,
+          paymentMethod: state === 'awaiting_final_confirm' ? 'cash' : undefined,
+          cart: [menu[0], menu[2]].map((p, index) => ({ productId: p.id, code: p.code, name: p.name,
+            unitPrice: p.price, quantity: index ? 1 : 3, note: index ? 'sin hielo' : 'sin cebolla', attributes: [] })) });
+        const before = structuredClone(h.conv.sessionData);
+        await h.sendQueued(kind === 'no quiero' ? `No quiero ${f.old}, quiero dos ${f.next}`
+          : `Cambia ${f.old} por dos ${kind === 'desconocido' ? 'Platillo Inventado' : f.next}`);
+        if (kind === 'desconocido' || kind === 'agotado') expect(h.conv.sessionData.cart).toEqual(before.cart);
+        else expect(h.conv.sessionData.cart).toEqual([
+          expect.objectContaining({ productId: f.id + 1, quantity: 2, unitPrice: 22000, note: 'sin cebolla' }), before.cart[1],
+        ]);
+        expect(h.conv.state).toBe(state);
+        expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+        expect(h.conv.sessionData.address).toBe(before.address);
+        expect(h.conv.sessionData.addressConfirmed).toBe(true);
+        expect(h.conv.sessionData.deliveryFeeCalculated).toBe(3000);
+        expect(h.conv.sessionData.phoneConfirmed).toBe(before.phoneConfirmed);
+        expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);
+        expect(h.replies.at(-1)).toMatch(state === 'awaiting_name' ? /nombre/i : state === 'awaiting_phone' ? /teléfono/i : state === 'awaiting_payment' ? /pagas|pago/i : /confirmar/i);
+        expect(h.replies.at(-1)).not.toMatch(/algo más/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        if (kind === 'cambia' || kind === 'no quiero') {
+          const changedCart = structuredClone(h.conv.sessionData.cart);
+          if (state === 'awaiting_name') {
+            await h.sendQueued('Laura Gomez');
+            expect(h.conv.customerName).toBe('Laura Gomez');
+            expect(h.conv.state).toBe('awaiting_payment');
+          } else if (state === 'awaiting_payment') {
+            await h.sendQueued('1');
+            expect(h.conv.state).toBe('awaiting_final_confirm');
+            expect(h.replies.at(-1)).toMatch(/confirmar/i);
+          }
+          expect(h.conv.sessionData.cart).toEqual(changedCart);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        }
+      });
+    }
+  }
+});
+
+describe('Reemplazo en checkout — sabor o línea pendientes', () => {
+  for (const f of [
+    { id: 20801, old: 'Batido De Banano', next: 'Jugo Natural', flavor: 'Mango', other: 'Lulo' },
+    { id: 20811, old: 'Te Helado', next: 'Limonada Frutal', flavor: 'Fresa', other: 'Maracuya' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm']) {
+    for (const scenario of ['sabor completo', 'sabor cancelado', 'línea elegida', 'línea cancelada']) {
+      it(`${f.old}, agente ${agent}, ${state}, ${scenario}`, async () => {
+        const lineChoice = scenario.startsWith('línea');
+        const cancel = scenario.endsWith('cancelado') || scenario.endsWith('cancelada');
+        const menu = [
+          { id: f.id, code: f.id, name: f.old, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+          { id: f.id + 1, code: f.id + 1, name: f.next, price: 9000, availableNow: true, hasAttributes: true,
+            attributes: [{ attributeName: 'Sabor', options: [f.flavor, f.other] }] },
+        ];
+        const h = harness(menu, agent);
+        h.conv.state = state;
+        h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          deliveryFeeCalculated: 3000, phoneConfirmed: state !== 'awaiting_phone', contactPhone: h.conv.phoneE164,
+          paymentMethod: state === 'awaiting_final_confirm' ? 'cash' : undefined,
+          cart: (lineChoice ? [0, 1] : [0]).map(index => ({ productId: f.id, code: f.id, name: f.old,
+            unitPrice: 6000, quantity: index ? 1 : 3, note: index ? 'sin azúcar' : 'sin hielo', attributes: [] })) });
+        const before = structuredClone(h.conv.sessionData);
+        await h.sendQueued(`Cambia ${f.old} por dos ${f.next}${lineChoice ? ' con ' + f.flavor : ''}`);
+        expect(h.conv.sessionData.cart).toEqual(before.cart);
+        if (lineChoice) {
+          expect(h.conv.sessionData.pendingCartReplacement?.options).toHaveLength(2);
+          expect(h.conv.state).toBe(state);
+        } else {
+          expect(h.conv.sessionData.pendingAttribute?.quantity).toBe(2);
+          expect(h.conv.sessionData.pendingCheckoutResume).toBe(state);
+        }
+        await h.sendQueued(cancel ? 'Cancela ese cambio' : lineChoice ? '2' : f.flavor);
+        if (cancel) expect(h.conv.sessionData.cart).toEqual(before.cart);
+        else {
+          const index = lineChoice ? 1 : 0;
+          expect(h.conv.sessionData.cart[index]).toMatchObject({ productId: f.id + 1, quantity: 2,
+            unitPrice: 9000, note: before.cart[index].note, attributes: [{ attributeName: 'Sabor', attributeValue: f.flavor }] });
+          if (lineChoice) expect(h.conv.sessionData.cart[0]).toEqual(before.cart[0]);
+        }
+        expect(h.conv.state).toBe(state);
+        expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+        expect(h.conv.sessionData.address).toBe(before.address);
+        expect(h.conv.sessionData.phoneConfirmed).toBe(before.phoneConfirmed);
+        expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);
+        expect(h.conv.sessionData.pendingAttribute).toBeUndefined();
+        expect(h.conv.sessionData.pendingCartReplacement).toBeUndefined();
+        expect(h.conv.sessionData.pendingCheckoutResume).toBeUndefined();
+        expect(h.replies.at(-1)).toMatch(state === 'awaiting_name' ? /nombre/i : state === 'awaiting_phone' ? /teléfono/i : state === 'awaiting_payment' ? /pagas|pago/i : /confirmar/i);
+        expect(h.replies.at(-1)).not.toMatch(/algo más/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Reemplazo atómico — enlace de pago existente protege el carrito', () => {
+  for (const name of ['Pizza De Setas', 'Ramen De Miso']) for (const agent of [false, true]) for (const state of ['awaiting_payment', 'awaiting_final_confirm']) {
+    it(`${name}, agente ${agent}, ${state}`, async () => {
+      const menu = [name, 'Ensalada Del Huerto'].map((productName, index) => ({ id: 20901 + index, code: 20901 + index, name: productName,
+        price: 20000, availableNow: true, hasAttributes: false, attributes: [] }));
+      const h = harness(menu, agent);
+      h.conv.state = state;
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { mpPreferenceId: 'test-payment-reference', cart: [{ productId: menu[0].id,
+        code: menu[0].code, name, unitPrice: 20000, quantity: 1, attributes: [] }] });
+      const before = structuredClone(h.conv.sessionData);
+      await h.sendQueued(`Cambia ${name} por Ensalada Del Huerto`);
+      expect(h.conv.sessionData).toEqual(before);
+      expect(h.conv.state).toBe(state);
+      expect(h.replies.at(-1)).toMatch(/enlace de pago.*restaurante.*revisar/is);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
