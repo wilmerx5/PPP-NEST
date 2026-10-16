@@ -1,3 +1,17 @@
+## Reemplazo de producto mientras falta dirección — 16/10
+
+Código 1e2e6097, solo staging. Baseline inicial: 24/24 fallidas; «cambia» podía reemplazar pero volver a comprar, y «no quiero X, quiero Y» podía quedar atrapado en dirección. El camino nuevo valida el reemplazo contra el catálogo antes de sustituir la línea, conserva el resto y retoma awaiting_address. La gramática admite nombres del catálogo sin ampliar la lista histórica de palabras de PPP en otros caminos. No se elimina el original si el destino es desconocido o agotado.
+
+72 pruebas nuevas gratuitas. 24 recorridos en pizza/ramen, ambos modos de agente simulado, «cambia»/«no quiero», dirección ausente/lugar sin confirmar/dirección anterior, y calle posterior que retoma pago con cotización simulada. 16 controles de destino desconocido/agotado, consulta y condición de costo; 12 de cantidad implícita y explícita; 12 de original ambiguo con elección, cancelación o carrito cambiado; ocho de sabor obligatorio en jugo/limonada, completar o cancelar conservando el original. La primera ampliación mostró cuatro fallos de respuesta al cancelar: el estado se restauraba, pero decía «algo más». Ahora se restaura dirección antes de componer esa respuesta. El insertador de reemplazos respeta la cantidad validada recibida, en lugar de imponer la anterior.
+
+313 focalizadas aprobadas (72 nuevas y 241 controles), TypeScript aprobado. Global: 57 suites/6240 pruebas WhatsApp en 521.241 s + 19 suites/98 complementarias en 6.592 s = 76 suites/6338 pruebas, dos ejecuciones disjuntas sobre fuente congelada verificada. Evidencia: docs/whatsapp-address-replacement-validation-1610.json. Logs /tmp/ppp-address-replacement-{baseline,targets,expanded,final-cases,affected-final,full,complement,tsc-final,deploy,deploy-verified}.log. Cero API/Meta/mapas/órdenes externas; presupuesto 183/178/5 intacto.
+
+Desplegado y verificado running/healthy, imagen activa=candidate sha256:307a7ed888621316e46a16e46381b61e528b441c836431b62a83030ac264f513. Health OK, DB connected y circuit CLOSED en 2026-10-16T16:14:53.416Z; helper atómico y cancelación compilados verificados. Modelos Sol 6.1/Luna/Luna/GPT Transcribe intactos. Main conserva 1a2b2e23; no se reconstruyó producción.
+
+Límites: el nuevo camino atómico se habilita mientras falta dirección; no declarar corregidos los caminos históricos de reemplazo en pago/nombre/otros estados. Requiere identidad completa de destino en catálogo; destinos desconocidos o múltiples piden repetir el nombre. La aclaración del original admite número, cancelación y firma del carrito; no agrega toda aclaración libre. No acredita modelo/canal/mapa real ni todas las instrucciones compuestas.
+
+Siguiente: reproducir y extender garantías atómicas a otros pasos de checkout; prioridad cuando se abre otra lista durante un reemplazo pendiente (evitar que un número seleccione una lista anterior); consulta/instrucción extra junto al reemplazo; alcance condicional ambiguo y seguimiento; conjunciones en nombres de producto. No repetir global por cierre documental.
+
 ## Atributos mientras espera dirección — 16/10
 
 Código 8b9c6e72, solo staging. Reproducción inicial: 24/24 fallidas; se actualizaba el atributo pero el manejador devolvía la conversación a building_cart y preguntaba «¿algo más?». Ahora mantiene awaiting_address y confirma el atributo con recordatorio de dirección. No confirma ni reutiliza automáticamente el domicilio anterior. Se reutiliza la resolución por catálogo; no hay excepciones por producto/restaurante.

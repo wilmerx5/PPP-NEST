@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "eb14d587",
+  "scope": "Atomic product replacement while awaiting delivery address, with original-line clarification and pending flavor completion/cancellation",
+  "newTests": 72,
+  "baseline": {
+    "failed": 24,
+    "passed": 0,
+    "scope": "Initial positive replacement matrix before conservative and flavor followups",
+    "log": "/tmp/ppp-address-replacement-baseline.log"
+  },
+  "intermediateFlavorRecheck": {
+    "failed": 4,
+    "passed": 68,
+    "reason": "Cancel preserved original cart and restored state but still emitted more-shopping prompt",
+    "log": "/tmp/ppp-address-replacement-final-cases.log"
+  },
+  "targeted": {
+    "passed": 313,
+    "newTests": 72,
+    "existingControls": 241,
+    "log": "/tmp/ppp-address-replacement-affected-final.log"
+  },
+  "coverage": {
+    "positiveReplacementAndStreetFollowup": 24,
+    "conservativeControls": 16,
+    "quantityControls": 12,
+    "ambiguousOriginalSelectCancelStale": 12,
+    "requiredFlavorCompleteOrCancel": 8,
+    "menus": [
+      "Pizza De Setas/Pizza Margarita",
+      "Ramen De Miso/Ramen De Shoyu",
+      "Batido De Banano/Jugo Natural",
+      "Te Helado/Limonada Frutal"
+    ],
+    "agent": "simulated enabled/disabled",
+    "states": [
+      "awaiting_address",
+      "awaiting_attribute with address resume marker"
+    ]
+  },
+  "oracles": [
+    "Replacement validates target before original line removal",
+    "Unknown and unavailable targets preserve cart",
+    "Capability question and cost condition do not authorize replacement",
+    "Independent side line unchanged",
+    "Replacement price comes from current catalog",
+    "Implicit quantity retained; explicit1/2 respected",
+    "Quantity and kitchen notes preserved while completing flavor",
+    "Ambiguous original asks numbered line without changing cart",
+    "Numeric selection is not address or payment",
+    "Changed cart invalidates old clarification signature",
+    "Cancel retains original product and resumes pending address",
+    "Next street accepted; checkout resumes payment with mocked geography",
+    "No external order creation"
+  ],
+  "changes": [
+    "Catalog-validated grammar option without expanding default legacy keyword parser",
+    "Atomic replacement path before address capture, scoped to awaiting_address",
+    "Signature-bound pendingCartReplacement retains addition query through old-line clarification",
+    "Reuse existing replacement context for cart limits and required attributes",
+    "Replacement insertion uses validated requested quantity",
+    "Cancellation restores address step before composing reply"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-address-replacement-tsc-final.log"
+  },
+  "limitations": [
+    "No paid inference/channel or map precision measurement",
+    "New atomic entry path is enabled only while awaiting address; legacy replacement paths in other states are not claimed fixed",
+    "Target requires complete catalog identity; unknown or multiple target identities ask for restatement",
+    "Original-line numeric clarification supported; arbitrary free-form clarification is not added here",
+    "Unrelated additional instructions in a replacement message are not newly guaranteed"
+  ],
+  "next": [
+    "Extend atomic replacement guarantees to other pending checkout states after reproducing their behavior",
+    "Conditional scope ambiguity with followup",
+    "Standalone correction with conjunction in product names",
+    "Mixed replacement plus unrelated query or extra instruction",
+    "Clarification priority when another list opens during a pending replacement; avoid numeric answers selecting an older list"
+  ],
+  "global": {
+    "status": "passed",
+    "whatsappSuites": 57,
+    "whatsappTests": 6240,
+    "whatsappSeconds": 521.241,
+    "log": "/tmp/ppp-address-replacement-full.log",
+    "snapshot": "/tmp/ppp-address-replacement-source.json",
+    "sourceUnchanged": true,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 6.592,
+    "complementLog": "/tmp/ppp-address-replacement-complement.log",
+    "totalSuites": 76,
+    "totalTests": 6338,
+    "disjointRunsSameFrozenSource": true
+  },
+  "deployment": {
+    "codeCommit": "1e2e6097",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T16:14:53.416Z",
+    "image": "sha256:307a7ed888621316e46a16e46381b61e528b441c836431b62a83030ac264f513",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-address-replacement-deploy.log",
+      "/tmp/ppp-address-replacement-deploy-verified.log"
+    ]
+  }
+}
