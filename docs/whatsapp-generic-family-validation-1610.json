@@ -47,7 +47,7 @@
     "used": 178,
     "remaining": 5
   },
-  "validationStatus": "Full source frozen verification passed; not yet deployed",
+  "validationStatus": "Verified and deployed to staging only",
   "logs": {
     "full": "/tmp/ppp-prefix-full.log",
     "complement": "/tmp/ppp-prefix-complement.log",
@@ -57,5 +57,30 @@
   "fullResult": "57 passed, 57 total\nTests:       6568 passed, 6568 total\nSnapshots:   0 total\nTime:        960.32 s",
   "complementResult": "19 suites / 98 tests passed",
   "typescript": "passed",
-  "sourceSnapshotVerified": true
+  "sourceSnapshotVerified": true,
+  "deployment": {
+    "codeCommit": "d410291e",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T20:29:59.375186+00:00",
+    "image": "sha256:f81a5e34f651f892b9d4ce2150e1a6edd0e98af35bbb04850a0199c3bebbe64e",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "productionRebuilt": false,
+    "logs": [
+      "/tmp/ppp-final-family-deploy.log",
+      "/tmp/ppp-final-family-deploy-verified.json"
+    ]
+  }
 }

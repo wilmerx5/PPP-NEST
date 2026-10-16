@@ -1,6 +1,6 @@
 {
   "date": "2026-10-16",
-  "status": "open: exploratory evidence, not counted as accepted regression tests",
+  "status": "Resolved for available catalog name-prefix families; original exploratory observations preserved",
   "baseCommit": "eb79316f",
   "environment": "Full router with model/external dependencies mocked; menuConceptGroups empty; agent disabled for exact observations below",
   "menu": [
@@ -69,5 +69,12 @@
     "/tmp/ppp-catalog-selection-diagnosis.log"
   ],
   "probeCount": 16,
-  "note": "Initial exploratory16 cases did not produce expected catalog list; two exact pizza observations inspected. Do not present this as model/API evidence or a fixed behavior. Next agent should materialize focused regressions, inspect catalog-family matching and price referent priority, and verify across fictional menus without hardcoded family exceptions."
+  "note": "Initial exploratory16 cases did not produce expected catalog list; two exact pizza observations inspected. Do not present this as model/API evidence or a fixed behavior. Next agent should materialize focused regressions, inspect catalog-family matching and price referent priority, and verify across fictional menus without hardcoded family exceptions.",
+  "resolution": {
+    "prefixCodeCommit": "620c982b",
+    "deployedCodeCommit": "d410291e",
+    "newFamilyTests": 64,
+    "evidence": "docs/whatsapp-generic-family-validation-1610.json",
+    "limits": "Conservative catalog prefixes, not arbitrary synonym/fuzzy family understanding; unknown explicit price subjects and plural forms remain separate work"
+  }
 }
