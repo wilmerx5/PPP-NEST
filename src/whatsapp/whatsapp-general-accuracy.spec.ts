@@ -14901,3 +14901,60 @@ describe('Consulta de presentación numérica — no mezclar tamaños hermanos',
   const reply=await h.send(text);expect(reply).toContain(name);expect(reply).not.toContain(other);expect(h.conv.state).toBe('awaiting_payment');expect(h.cartRows()).toHaveLength(1);
  });
 });
+
+describe('Referencias cortas de composición — foco, ambigüedad y el otro',()=>{
+ const menus=[
+  [{id:9801,code:9801,name:'Bowl De Lentejas',description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9802,code:9802,name:'Pasta De Hongos',description:'Sin salsa de ajo',price:23000,availableNow:true,hasAttributes:false,attributes:[]}],
+  [{id:9811,code:9811,name:'Caja De Dumplings',description:'Con ensalada',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9812,code:9812,name:'Pack De Onigiris',description:'Sin salsa de ajo',price:23000,availableNow:true,hasAttributes:false,attributes:[]}],
+ ];
+ function seed(menu:any[],agent:boolean,state='awaiting_payment',focus?:number){
+  const h=harness(menu,agent);h.conv.state=state;h.conv.customerName='Ana';h.conv.sessionData={cart:menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,note:'bolsa aparte',attributes:[]})),orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true,...(focus?{productFocus:{productId:focus,name:menu.find(p=>p.id===focus).name}}:{})};return h;
+ }
+ for(const menu of menus)for(const agent of [false,true]){
+  for(const state of ['building_cart','awaiting_payment'])for(const text of ['Y ese trae salsa de ajo?','Ese incluye queso?']){
+   it(menu[0].name+' '+state+' '+text+' agent='+agent,async()=>{
+    const h=seed(menu,agent,state,menu[0].id);const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send(text);
+    expect(reply).toContain(menu[0].name);expect(reply).not.toContain(menu[1].name);expect(reply).toMatch(/no tengo ese detalle confirmado/i);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);
+   });
+  }
+  it(menu[0].name+' aclara y conserva consulta al elegir nombre agent='+agent,async()=>{
+   const h=seed(menu,agent);const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send('Y ese trae salsa de ajo?');
+   expect(reply).toMatch(/de qu[eé] plato/i);expect(h.conv.sessionData.pendingCompositionAsk?.originalText).toContain('salsa');
+   const answer=await h.send(menu[1].name);expect(answer).toContain(menu[1].name);expect(answer).toContain('Sin salsa de ajo');expect(answer).not.toMatch(/no tengo ese detalle confirmado/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.pendingCompositionAsk).toBeUndefined();
+  });
+  it(menu[0].name+' el otro se refiere al único distinto del foco agent='+agent,async()=>{
+   const h=seed(menu,agent,'awaiting_payment',menu[0].id);const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send('Y el otro trae salsa de ajo?');
+   expect(reply).toContain(menu[1].name);expect(reply).toContain('Sin salsa de ajo');expect(reply).not.toContain(menu[0].name);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);
+  });
+ }
+ it.each([false,true])('el otro sin foco no adivina agent=%s',async agent=>{
+  const h=seed(menus[0],agent);const reply=await h.send('Y el otro trae salsa de ajo?');expect(reply).toMatch(/de qu[eé] plato/i);expect(h.cartRows()).toHaveLength(2);expect(h.conv.state).toBe('awaiting_payment');
+ });
+});
+
+describe('Referencia al plato — ingrediente vendible no cambia el sujeto',()=>{
+ it.each([false,true])('salsa vendible agent=%s',async agent=>{
+  const menu=[{id:9821,code:9821,name:'Bowl De Lentejas',description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9822,code:9822,name:'Salsa De Ajo',description:'Porción adicional',price:3000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.conv.sessionData={cart:[{productId:9821,name:menu[0].name,code:9821,unitPrice:21000,quantity:1,attributes:[]}],productFocus:{productId:9821,name:menu[0].name},orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+  const reply=await h.send('Y ese trae salsa de ajo?');expect(reply).toContain('Bowl De Lentejas');expect(reply).toMatch(/no tengo ese detalle confirmado/i);expect(reply).not.toMatch(/Porción adicional|\$3\.000/i);expect(h.cartRows()).toHaveLength(1);expect(h.conv.state).toBe('awaiting_payment');
+ });
+ it.each([false,true])('el otro pasa a ser referencia actual agent=%s',async agent=>{
+  const menu=[{id:9831,code:9831,name:'Bowl De Lentejas',description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9832,code:9832,name:'Pasta De Hongos',description:'Sin salsa de ajo',price:23000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.conv.sessionData={cart:menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]})),productFocus:{productId:9831,name:menu[0].name},orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+  await h.send('El otro trae salsa de ajo?');const reply=await h.send('Y ese incluye queso?');expect(reply).toContain('Pasta De Hongos');expect(reply).not.toContain('Bowl De Lentejas');expect(reply).toMatch(/no tengo ese detalle confirmado/i);expect(h.cartRows()).toHaveLength(2);expect(h.conv.state).toBe('awaiting_payment');
+ });
+});
+
+describe('Referencias — pregunta activa y otros múltiples',()=>{
+ it.each([false,true])('otro ambiguo y elección 2 no es pago agent=%s',async agent=>{
+  const menu=['Bowl De Lentejas','Pasta De Hongos','Caja De Dumplings'].map((name,i)=>({id:9841+i,code:9841+i,name,description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.conv.sessionData={cart:menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]})),productFocus:{productId:9841,name:menu[0].name},orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send('El otro trae salsa de ajo?');expect(reply).toMatch(/de qu[eé] plato/i);expect(h.conv.sessionData.pendingCompositionAsk?.productIds).toEqual([9842,9843]);
+  const answer=await h.send('2');expect(answer).toContain('Caja De Dumplings');expect(answer).toMatch(/no tengo ese detalle confirmado/i);expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);
+ });
+ it.each([false,true])('el plato pendiente prevalece sobre foco anterior agent=%s',async agent=>{
+  const menu=[{id:9851,code:9851,name:'Bowl De Lentejas',description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9852,code:9852,name:'Caja De Dumplings',description:'Sin salsa de ajo',price:23000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Limonada']}]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_attribute';h.conv.sessionData={cart:[{productId:9851,name:menu[0].name,code:9851,unitPrice:21000,quantity:1,attributes:[]}],productFocus:{productId:9851,name:menu[0].name},pendingAttribute:{productId:9852,name:menu[1].name,code:9852,price:23000,quantity:2,sourceText:'dos cajas',attributes:menu[1].attributes,selected:[]},orderType:'delivery'};
+  const before=structuredClone(h.conv.sessionData);const reply=await h.send('Y ese trae salsa de ajo?');expect(reply).toContain('Caja De Dumplings');expect(reply).toContain('Sin salsa de ajo');expect(reply).not.toContain('Bowl De Lentejas');expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_attribute');
+ });
+});

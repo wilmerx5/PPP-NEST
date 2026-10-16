@@ -1512,9 +1512,12 @@ export class WhatsappOrchestratorService {
       session = {...session,pendingCompositionAsk:undefined};
       await this.conversationService.saveSession(conv,session);
     }
+    const referenceText = this.normalizeForMatch(originalText);
+    const shortDetailReference = /^(?:y )?(?:(?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?|(?:el otro|la otra)(?: plato|producto|combo|opcion)?) (?:trae|incluye|lleva)(?: .+)?$/.test(referenceText) &&
+      !/\b(?:agrega\w*|anade\w*|quita\w*|cambia\w*|quiero|dame|envia\w*)\b/.test(referenceText);
     // A fully named factual inquiry must not be swallowed by the pending
     // checkout field. The renderer reports missing descriptions as unknown.
-    if (['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
+    if (!shortDetailReference && ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
       this.catalogService.isProductDescriptionInquiry(originalText) &&
       !this.catalogService.looksLikeExplicitAddProductRequest(originalText)) {
       const menu = await this.catalogService.getMenuProducts();
@@ -1538,14 +1541,26 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
-    const referentialComposition = /^(?:y )?(?:que trae|que incluye|que lleva|con que viene|con que va)(?: (?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?)?$/.test(this.normalizeForMatch(originalText));
+    const referentialComposition = shortDetailReference || /^(?:y )?(?:que trae|que incluye|que lleva|con que viene|con que va)(?: (?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?)?$/.test(referenceText);
     if (referentialComposition) {
       const menu = await this.catalogService.getMenuProducts();
-      const references = dialogueProductReferences(session);
+      let references = dialogueProductReferences(session);
+      const asksOther = /^(?:y )?(?:el otro|la otra)\b/.test(referenceText);
+      const hasPendingProduct = !!(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingAddOffer);
+      const otherHasAnchor = asksOther && !!session.productFocus &&
+        session.cart.some(line => line.productId === session.productFocus!.productId) && !hasPendingProduct;
+      if (asksOther && !hasPendingProduct) {
+        references = [...new Set(session.cart.map(line => line.productId))]
+          .filter(id => !otherHasAnchor || id !== session.productFocus!.productId);
+      }
       const candidates = menu.filter(product => references.includes(product.id) && product.availableNow !== false);
       const reminder = this.formatInterruptedStepReminder(conv,session);
       captureInquiryDecision(turn.decision,'composition',candidates.map(product=>product.id));
-      if (candidates.length === 1) {
+      if (candidates.length === 1 && (!asksOther || otherHasAnchor)) {
+        if (asksOther) {
+          session = this.rememberProductFocus(session,candidates[0],menu);
+          await this.conversationService.saveSession(conv,session,conv.state);
+        }
         const body = this.buildProductCompositionReply(originalText,candidates[0],cfg,session,{offerAdd:false});
         await this.reply(conv,msg.waId,body+(reminder ? `\n\n${reminder}` : ''));
       } else {

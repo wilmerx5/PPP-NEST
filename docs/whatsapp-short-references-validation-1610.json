@@ -1,0 +1,69 @@
+{
+  "baseCommit": "e092e9f4",
+  "scope": "Short composition references through full router; external services and agent simulated",
+  "newTests": 34,
+  "targeted": {
+    "passed": 62,
+    "existingControls": 28,
+    "log": "/tmp/ppp-short-references-final-targets.log"
+  },
+  "baseline": {
+    "failed": 22,
+    "passed": 4,
+    "newCasesInInitialRun": 26,
+    "log": "/tmp/ppp-short-references-baseline.log"
+  },
+  "coverage": [
+    "16 focal details across2menus,2states,agent on/off",
+    "4 ambiguous referents clarified by name,retain original ingredient question",
+    "4 unique-other references",
+    "2 other references without focus clarify",
+    "2 catalog ingredient products do not steal host reference",
+    "2 successive other→this references retain current focus",
+    "2 three-item carts clarify other and numeric choice does not select payment",
+    "2 pending product overrides old focus without consuming options"
+  ],
+  "changes": [
+    "Recognize qualified demonstrative composition references",
+    "Preserve pending purchase priority",
+    "Resolve other only with an existing cart focus and exactly one available alternative",
+    "Persist focus when explicitly discussing the other product",
+    "Route short references before matching a sellable ingredient name"
+  ],
+  "apiRequests": 0,
+  "budgetUnchanged": {
+    "operationalCap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-short-references-tsc.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-short-references-full.log",
+    "snapshot": "/tmp/ppp-short-references-source.json",
+    "suites": 57,
+    "passed": 5765,
+    "seconds": 513.161,
+    "sourceUnchanged": true
+  },
+  "limitations": [
+    "No provider, Meta or original media validation",
+    "Qualified descriptive references only; bare other may still be purchase selection",
+    "Unpriced substitutions and multiple simultaneous intents require another family",
+    "Catalog description evidence remains conservative lexical matching"
+  ],
+  "mainModified": false,
+  "complement": {
+    "suites": 19,
+    "passed": 98,
+    "seconds": 6.477,
+    "log": "/tmp/ppp-short-references-complement.log"
+  },
+  "combinedDisjointTotals": {
+    "suites": 76,
+    "passed": 5863
+  }
+}

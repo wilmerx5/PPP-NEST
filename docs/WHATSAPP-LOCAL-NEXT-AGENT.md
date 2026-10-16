@@ -1,3 +1,15 @@
+## Cierre global aprobado — referencias cortas, 16/10
+
+57suites WhatsApp/5765tests +19complementarias/98tests: total76suites/5863tests en dos ejecuciones disjuntas con fuente intacta. TypeScript y62focalizadas aprobados (34nuevas+28compatibilidad). CeroAPI nueva;presupuesto183/178/5 intacto. Se publica lote en staging;falta verificar despliegue. Evidencia durable whatsapp-short-references-validation-1610.json.
+
+## Tanda actual local — referencias cortas, 16/10
+
+Basee092e9f4,staging.34tests nuevos y28compatibilidad pasan (62focalizados),TypeScript aprobado. Baseline inicial26casos:22fallidos/4verdes;los8controles finales se añadieron antes de global. Global en curso /tmp/ppp-short-references-full.log,snapshot /tmp/ppp-short-references-source.json. No modificar fuente hasta cerrar.
+
+Cambios generales:«y ese trae salsa» conserva el plato referido;un ingrediente vendible no roba el sujeto. «El otro trae…» solo se resuelve con foco real en carrito,sin compra pendiente,y una única alternativa disponible. Varios otros/sin ancla aclaran;no se elige el primero. La aclaración retiene la pregunta original y restaura el paso de pago;un número de esa aclaración no es selección de pago. Tras hablar del otro se guarda ese foco. Las compras pendientes prevalecen sobre foco anterior. Sin IDs/recetas/nombres particulares en código productivo.
+
+CeroAPI/Meta/mapas/órdenes externas en esta tanda;presupuesto183/178/5 intacto. Modelos/Main sin cambios. Evidencia docs/whatsapp-short-references-validation-1610.json. Próximas familias:consultas de cambios/sustituciones sin precio/autorización y mensajes de varios actos simultáneos;referencia «el otro» sin predicado puede ser selección de compra y no se reinterpreta aquí. No afirmar que se cubrió todo el lenguaje ni precisión semántica/alérgenos. Esperar global íntegra antes de publicar/desplegar.
+
 ## Desplegado — carta incompleta, 15/10 22:48 Bogotá
 
 Código4fdd17d6 en staging;running/healthy verificado2026-10-16T03:48:17.907Z. Imagen activa=candidate sha256:311bbf3490b354f59ea68567a71568c4adaf6167c285c0dfc83ffc5adeea7ed5;healthOK,DBconnected,circuitCLOSED. Bindings compilados:unknownPolicy,unknownRendering,numericPresentation. Modelos efectivos sin cambios:Sol6.1/Luna/Luna/GPTTranscribe. Main intacta.

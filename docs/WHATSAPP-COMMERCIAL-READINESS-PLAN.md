@@ -8,6 +8,12 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
+## Referencias cortas — 16/10, lote validado
+
+34regresiones nuevas y28controles existentes aprobados,TypeScript aprobado. «Ese trae…» conserva el plato;«el otro trae…» usa una única alternativa cuando hay ancla segura o aclara. Ingredientes vendibles no cambian el sujeto;una aclaración no consume el pago ni las opciones de un producto pendiente. Global aprobada:76suites/5863tests en dos ejecuciones disjuntas con fuente intacta. Cero llamadas pagadas y presupuesto183/178/5 intacto;Main/modelos sin cambios. Evidencia whatsapp-short-references-validation-1610.json.
+
+Siguiente:sustituciones,recargos y cambios consultados sin autorizar compra;después una muestra nueva con modelo real,resultado esperado fijado antes y tope suficiente. Las pruebas actuales acreditan router/estado/respuesta con dependencias simuladas,no recepción por WhatsApp ni comprensión de todo mensaje compuesto.
+
 ## Carta incompleta e interrupciones — lote validado
 
 42regresiones nuevas gratuitas y4controles existentes aprobados,TypeScript aprobado. Global cerrada:76suites/5829tests en dos ejecuciones disjuntas con fuente intacta. Contrato del agente y product_info/composition ya indican que dato ausente no equivale a ausencia del ingrediente y que opciones son alternativas. Consultas descriptivas con nombres completos durante checkout responden sin consumir nombre,dirección o pago;varios platos conservan su descripción individual y los tamaños numéricos no se mezclan. El render conserva datos positivos y señala detalle no confirmado;comparación léxica conservadora,no garantía semántica ni de alérgenos.
