@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "1b601ce0",
+  "scope": "Surcharge inquiries versus aggregate totals alongside independent removal or absolute quantity correction",
+  "newTests": 39,
+  "baseline": {
+    "failed": 34,
+    "passed": 5,
+    "log": "/tmp/ppp-surcharge-baseline.log"
+  },
+  "targeted": {
+    "passed": 371,
+    "new": 39,
+    "existingControls": 332,
+    "log": "/tmp/ppp-surcharge-affected.log"
+  },
+  "coverage": {
+    "routerCases": 32,
+    "classifierControls": 7,
+    "menus": [
+      "Combo De Wraps/Sopa De Hongos",
+      "Combo De Bao/Edamame"
+    ],
+    "states": [
+      "awaiting_name",
+      "awaiting_payment"
+    ],
+    "orders": [
+      "question first",
+      "edit first"
+    ],
+    "edits": [
+      "remove one",
+      "set quantity to two"
+    ],
+    "agent": "simulated enabled/disabled"
+  },
+  "oracles": [
+    "Only the independent side quantity changes 3→2",
+    "Parent attributes, price, quantity and note remain unchanged",
+    "Unknown surcharge explicitly acknowledged",
+    "No unchanged-order claim after accepted edit",
+    "Pending state and customer name retained",
+    "No external order creation",
+    "Aggregate charge questions remain recognized"
+  ],
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-surcharge-tsc.log"
+  },
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "limitations": [
+    "No paid inference or real WhatsApp channel acceptance",
+    "No merchant surcharge policy added",
+    "Two intents and existing supported correction grammar only",
+    "New-address interruption and conditional scope followup remain separate work",
+    "One global test timed out; all80 cases in its family passed isolated without source or timeout changes. This does not prove absence of timing flakiness."
+  ],
+  "next": [
+    "Attribute correction while awaiting new address",
+    "Clarify ambiguous scope of conditional edits",
+    "Standalone edits with conjunctions in product names"
+  ],
+  "global": {
+    "status": "one timeout; isolated family rerun passed; not an all-green single global run",
+    "whatsappSuites": 57,
+    "passedSuites": 56,
+    "whatsappPassedTests": 6135,
+    "whatsappFailedTests": 1,
+    "whatsappTotalTests": 6136,
+    "seconds": 1049.324,
+    "log": "/tmp/ppp-surcharge-full.log",
+    "sourceUnchanged": true,
+    "snapshot": "/tmp/ppp-surcharge-source.json",
+    "failure": "Desistimiento y compra nueva — 17 Aquí quiero previo=true rafagaCompleta agent=false exceeded5000ms",
+    "recheck": {
+      "passed": 80,
+      "seconds": 115.54,
+      "log": "/tmp/ppp-surcharge-timeout-recheck.log",
+      "testTimeoutUnchanged": true
+    },
+    "complement": {
+      "suites": 19,
+      "tests": 98,
+      "seconds": 22.832,
+      "log": "/tmp/ppp-surcharge-complement.log"
+    },
+    "uniqueTestsExercised": 6234,
+    "overlappingRetestCountsNotAdded": true
+  },
+  "deployment": {
+    "codeCommit": "c133e557",
+    "status": "verified running/healthy",
+    "verifiedAt": "2026-10-16T15:30:59.705Z",
+    "image": "sha256:d7d341e31e6c0fc19145f02b9c5ef8a96456c1e093150d93d741f2c25435eee2",
+    "activeImageEqualsCandidate": true,
+    "compiledBindingsVerified": true,
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-surcharge-deploy.log",
+      "/tmp/ppp-surcharge-deploy-verified.log",
+      "/tmp/ppp-surcharge-health.log"
+    ]
+  }
+}

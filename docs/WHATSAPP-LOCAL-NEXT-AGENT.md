@@ -1,3 +1,13 @@
+## Recargo frente a total después de editar — 16/10
+
+Código c133e557, solo staging. Se reutiliza un detector de consulta de recargo en el clasificador de totales, las consultas de opciones y los mensajes con dos intenciones. «Quita una sopa y dime cuánto me cobran por cambiar la bebida» aplica únicamente la eliminación y explica que no hay recargo confirmado; consultar el cambio no autoriza cambiar la opción. Se conserva la respuesta al retomar checkout.
+
+39 pruebas nuevas: 32 recorridos en dos cartas ficticias (wraps/bebida y bao/salsa), nombre/pago pendientes, agente simulado habilitado/deshabilitado, ambos órdenes y eliminación/cantidad; siete controles de clasificación. Baseline: 34 fallidas/5 aprobadas. Final: 39 nuevas y 371 focalizadas aprobadas; TypeScript aprobado. Suite global: 56/57 suites, 6135 aprobadas y UNA prueba antigua de ráfagas con timeout de5000ms (1049.324s). Repetición aislada de su familia: 80/80 aprobadas en115.54s, sin cambiar fuente ni timeout. Complementarias:19 suites/98 pruebas aprobadas en22.832s. Fuente congelada verificada. No afirmar una ejecución global completamente verde ni sumar retests superpuestos;6234 casos únicos ejercitados, con la incidencia temporal conservada.
+
+Evidencia: docs/whatsapp-surcharge-vs-total-validation-1610.json; logs /tmp/ppp-surcharge-{baseline,targets,affected,full,complement,tsc,timeout-recheck}.log. Cero API/Meta/mapas/órdenes externas; presupuesto183/178/5 intacto. Desplegado y verificado running/healthy, imagen activa=candidate sha256:d7d341e31e6c0fc19145f02b9c5ef8a96456c1e093150d93d741f2c25435eee2, health OK/DB connected/circuit CLOSED en2026-10-16T15:30:59.705Z, bindings compilados verificados. Modelos Sol6.1/Luna/Luna/GPT Transcribe intactos. Main conserva1a2b2e23; producción no reconstruida.
+
+Siguiente: cambios de atributos mientras espera dirección nueva; aclarar alcance condicional ambiguo; nombres con conjunciones en ediciones solas. Investigar estabilidad temporal de la familia de ráfagas si vuelve a ocurrir; no aumentar timeout por rutina ni repetir toda la suite solo por docs. Estas pruebas no acreditan modelo/canal real ni política comercial de recargos.
+
 ## Condición de costo y otra acción independiente — 16/10
 
 64 pruebas nuevas gratuitas. Baseline inicial: 48 fallidas/12 aprobadas; la condición de costo retenía también una eliminación o corrección de cantidad expresamente independiente. Ahora se separan exactamente dos cláusulas con marcador reconocido («y aparte», salto de línea «Aparte», «; además», «y además»), se conserva el cambio condicionado y se delega la otra acción a los manejadores existentes. No se inventa el recargo ni se afirma que todo el pedido sigue igual tras editarlo.
