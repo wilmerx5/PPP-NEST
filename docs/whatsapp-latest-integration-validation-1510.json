@@ -67,5 +67,20 @@
     "suites": 76,
     "passed": 5787
   },
-  "testOnlyWhitespaceAfterValidation": "Removed one extra blank line at EOF of whatsapp-general-accuracy.spec.ts; production source unchanged."
+  "testOnlyWhitespaceAfterValidation": "Removed one extra blank line at EOF of whatsapp-general-accuracy.spec.ts; production source unchanged.",
+  "deployment": {
+    "environment": "staging",
+    "codeCommit": "03c994d7",
+    "verifiedAt": "2026-10-16T03:14:34.463Z",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:c74e7e23c80dddfe211b7102e31bce609d41ca128086d06ebbb9872e793df8c8",
+    "activeImageEqualsCandidate": true,
+    "compiledSpellingAndProductInfoBindings": true,
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "modelsUnchanged": true,
+    "mainModified": false
+  },
+  "integrationNote": "Commit0525f6eb recorded the already-frozen spelling/combo source during validation; final hash comparison confirmed no source-byte changes during checks.03c994d7 records validation/docs and EOF-only spec cleanup."
 }

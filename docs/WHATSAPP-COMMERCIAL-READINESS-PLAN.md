@@ -8,6 +8,12 @@ Estamos en validación previa a un piloto supervisado. Las correcciones del chat
 
 Primer alcance propuesto: PPP, pedidos inmediatos por texto, catálogo y domicilios configurados, efectivo y transferencia. Audio, fotos, reservas, abonos, redenciones y sustituciones con recargo quedan asistidos o fuera del alcance hasta acreditar su recorrido. Excluir una función requiere explicar esa limitación al cliente y ofrecer atención humana comprobada; no basta escribirlo en este documento.
 
+## Estado integrado — 15/10 22:14 Bogotá
+
+Staging03c994d7 desplegado y healthy;Main intacta.76suites/5787tests en dos ejecuciones disjuntas con fuente intacta y TypeScript aprobado. Se consolidó el trabajo local posterior:descripciones,foco de productos hermanos,otra unidad/variante,retiradas con cantidad final,notas de pago,ortografía de carta y combo nombrado. El relevo anterior estaba desactualizado:falafel8turnos reales ya aprobado (12solicitudes,USD0.0893154),pizza6turnos real aprobado (4solicitudes,USD0.0416464);ambos retests de desarrollo,no holdouts. Fuentes en whatsapp-latest-integration-validation-1510.json y ledger. No extrapolar costos de esas muestras ni caché a rentabilidad.
+
+Siguiente mejora de comprensión:la ausencia de un ingrediente/opción en description no acredita que no lo traiga;corregir contrato product_info y probar catálogos incompletos antes de una nueva muestra pagada. Canal y audio original siguen separados. Un ensayo redundante propio se interrumpió al detectar fuente/ledger avanzados:8intentos contados,costo desconocido,sin resultado aceptado. No se hicieron más llamadas tras congelar fuente con el usuario;evitar esa repetición actualizando relevo antes de inferencia. Presupuesto183/178/5.
+
 ## Checkout: nueva muestra y costo — 15/10
 
 La carta nueva de falafel reveló que placedOrderOnly descartaba una respuesta correcta del modelo durante pago y luego una edición de bebida incluida. No se aceptó el recorrido: primera muestra5solicitudes,retest8,ambos detenidos al primer fallo.USD0.0552688estimados en total de esta tanda. El menor costo del retest se debe al cache observado; no equivale a un promedio representativo de producción. Correcciones generales y41pruebas nuevas con continuación gratuita; global aprobada:76suites/5680tests en dos ejecuciones disjuntas con fuente intacta y TypeScript. Código dc14fa05 publicado en staging; ver verificación efectiva de despliegue en relevo vigente. Evidencia whatsapp-checkout-tools-validation-1510.json.
