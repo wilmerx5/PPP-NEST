@@ -769,8 +769,16 @@ export function parseQtyDishCorrection(text: string): { qty: number; dish: strin
   return lines;
 }
 
+/** A question about a change fee is not a request for the cart total. */
+export function isChangeSurchargeInquiry(text: string): boolean {
+  const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /\b(?:cuanto|precio|costo|recargo|vale|cuesta)\b/.test(t) &&
+    /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/.test(t);
+}
+
 /** "¿cuánto me están cobrando?" pregunta por el carrito, no por la carta. */
 export function isCartChargeQuestion(text: string): boolean {
+  if (isChangeSurchargeInquiry(text)) return false;
   const t = (text || '')
     .toLowerCase()
     .normalize('NFD')

@@ -15377,3 +15377,48 @@ describe('Condición más eliminación ambigua — elegir línea no autoriza cam
     });
   }
 });
+
+describe('Recargo consultado y edición independiente — no confundir con total', () => {
+  for (const f of [
+    { id: 20101, name: 'Combo De Wraps', side: 'Sopa De Hongos', attr: 'Bebida', first: 'Te', next: 'Agua' },
+    { id: 20111, name: 'Combo De Bao', side: 'Edamame', attr: 'Salsa', first: 'Soja', next: 'Teriyaki' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_name', 'awaiting_payment']) {
+    for (const order of ['primero', 'después']) for (const kind of ['quitar', 'cantidad']) {
+      it(`${f.name}, ${agent}, ${state}, consulta ${order}, ${kind}`, async () => {
+        const menu = [
+          { id: f.id, code: f.id, name: f.name, price: 21000, availableNow: true, hasAttributes: true,
+            attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] },
+          { id: f.id + 1, code: f.id + 1, name: f.side, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+        ];
+        const h = harness(menu, agent);
+        h.conv.state = state;
+        h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+          cart: [{ productId: f.id, code: f.id, name: f.name, unitPrice: 21000, quantity: 2, note: 'sin cebolla',
+            attributes: [{ attributeName: f.attr, attributeValue: f.first }] },
+            { productId: f.id + 1, code: f.id + 1, name: f.side, unitPrice: 6000, quantity: 3, note: 'aparte', attributes: [] }],
+        });
+        const host = structuredClone(h.conv.sessionData.cart[0]);
+        const edit = kind === 'quitar' ? `Quita una de las ${f.side}` : `Deja solo dos ${f.side}`;
+        const inquiry = `cuánto me cobran por cambiar ${f.attr} a ${f.next}`;
+        await h.sendQueued(order === 'primero' ? `¿${inquiry}? ${edit}` : `${edit} y dime ${inquiry}`);
+        expect(h.conv.sessionData.cart[0]).toEqual(host);
+        expect(h.cartRows()[1]).toMatchObject({ id: f.id + 1, qty: 2, note: 'aparte' });
+        expect(h.conv.state).toBe(state);
+        expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+        expect(h.replies.join('\n')).toMatch(/no tengo.*recargo.*confirmado/i);
+        expect(h.replies.join('\n')).not.toMatch(/el pedido sigue igual/);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+  it.each(['Cuánto me cobran por cambiar la bebida', 'Cuánto me están cobrando por el cambio', 'Qué recargo tiene sustituir la salsa'])('no clasifica recargo como total: %s', text => {
+    expect(isCartChargeQuestion(text)).toBe(false);
+  });
+  it.each(['Cuánto me están cobrando', 'Cuánto me cobran', 'Cuál es el total', 'Cuánto vale todo eso'])('conserva total: %s', text => {
+    expect(isCartChargeQuestion(text)).toBe(true);
+  });
+});

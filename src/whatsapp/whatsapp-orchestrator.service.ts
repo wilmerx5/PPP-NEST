@@ -92,6 +92,7 @@ import {
   parseQtyDishCorrection,
   isCartChargeQuestion,
   isCostConditionalRequest,
+  isChangeSurchargeInquiry,
   splitCostConditionFromIndependentAction,
   isOrderBillRequest,
   looksLikeKitchenSendRequest,
@@ -1175,7 +1176,8 @@ export class WhatsappOrchestratorService {
     const totalQuery = editAndTotal?.[2].replace(/^(?:dime|me dices|me confirmas)\s+/i, '') || '';
     const asksEditedTotal = !!editAndTotal && (isCartChargeQuestion(totalQuery) || isOrderBillRequest(totalQuery) ||
       /^(?:cuanto queda(?: en total)?|(?:el )?total)(?: por favor)?$/.test(this.normalizeForMatch(totalQuery)));
-    const inquiryAndEdit = (asksEditedTotal ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
+    const asksChangeSurcharge = !!editAndTotal && isChangeSurchargeInquiry(totalQuery);
+    const inquiryAndEdit = ((asksEditedTotal || asksChangeSurcharge) ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
       originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|cambia(?:me)?|sustituye|reemplaza|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
     let independentEdit = inquiryAndEdit?.[2] || '';
     // Existing parsers conservatively reject "y" as a second instruction.
@@ -1200,7 +1202,9 @@ export class WhatsappOrchestratorService {
       }
       const inquiry = inquiryAndEdit[1];
       let answer: string | undefined;
-      if (this.looksLikeDeliveryFeeQuestion(inquiry)) {
+      if (isChangeSurchargeInquiry(inquiry)) {
+        answer = 'No tengo un recargo de cambio confirmado en la carta; debe confirmarlo el restaurante. No apliqué el cambio consultado.';
+      } else if (this.looksLikeDeliveryFeeQuestion(inquiry)) {
         if (session.orderType === 'pickup') {
           answer = 'Este pedido es para recoger; no lleva costo de domicilio.';
         } else if (!session.address?.trim() || !session.addressConfirmed) {
@@ -1663,8 +1667,7 @@ export class WhatsappOrchestratorService {
     // Capability and surcharge inquiries are not authorization to edit a cart.
     const optionInquiryText = this.normalizeForMatch(originalText);
     const capabilityOnly = /^(?:se puede|puedo|podria|es posible)\s+(?:(?:pedir\s+)?con\s+|(?:cambiar|sustituir|reemplazar)\s+).+$/.test(optionInquiryText);
-    const surchargeInquiry = /\b(?:cuanto|precio|costo|recargo|vale|cuesta)\b/.test(optionInquiryText) &&
-      /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/.test(optionInquiryText);
+    const surchargeInquiry = isChangeSurchargeInquiry(originalText);
     if (session.cart.length && (capabilityOnly || surchargeInquiry)) {
       const menu = await this.catalogService.getMenuProducts();
       const targets = this.catalogService.listCartAttributeOptionsNamedInText(originalText, session.cart, menu);
