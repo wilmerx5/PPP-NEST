@@ -109,8 +109,31 @@
     "remaining": 5
   },
   "deployment": {
-    "status": "pending",
-    "mainReceivesNewBatch": false
+    "status": "verified",
+    "codeCommit": "bbbeee9a",
+    "verifiedAt": "2026-10-16T14:02:48.190Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:9bc6973940d13945d0614badc71287c40b33121197d0708726944168f0c5cd4f",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledEditThenTotalVerified": true,
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainReceivesNewBatch": false,
+    "productionServerRebuilt": false,
+    "logs": [
+      "/tmp/ppp-edit-then-total-deploy.log",
+      "/tmp/ppp-edit-then-total-deploy-verified.log"
+    ]
   },
   "limitations": [
     "Controlled mock tests; no new model/channel measurement",
