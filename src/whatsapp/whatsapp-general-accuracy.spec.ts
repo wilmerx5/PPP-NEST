@@ -14958,3 +14958,41 @@ describe('Referencias — pregunta activa y otros múltiples',()=>{
   const before=structuredClone(h.conv.sessionData);const reply=await h.send('Y ese trae salsa de ajo?');expect(reply).toContain('Caja De Dumplings');expect(reply).toContain('Sin salsa de ajo');expect(reply).not.toContain('Bowl De Lentejas');expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_attribute');
  });
 });
+
+describe('Consulta de sustitución — retoma el dato pendiente sin editar', () => {
+  const fixtures = [
+    { id: 19101, name: 'Bowl De Garbanzos', attr: 'Base', options: ['Arroz', 'Quinoa'] },
+    { id: 19102, name: 'Pasta Del Huerto', attr: 'Salsa', options: ['Tomate', 'Pesto'] },
+  ];
+  for (const f of fixtures) {
+    for (const state of ['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment', 'awaiting_final_confirm']) {
+      for (const questionKind of ['opción', 'recargo', 'cambiar', 'reemplazar']) {
+        it(`${f.name}: ${state}, consulta de ${questionKind}`, async () => {
+          const menu = [{ ...f, code: f.id, price: 23000, availableNow: true, hasAttributes: true,
+            attributes: [{ attributeName: f.attr, options: f.options }] }];
+          const h = harness(menu, false);
+          h.conv.state = state;
+          h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+          Object.assign(h.conv.sessionData, {
+            orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+            contactPhone: h.conv.phoneE164, phoneConfirmed: true, deliveryFeeCalculated: 2000,
+            ...(state === 'awaiting_final_confirm' ? { paymentMethod: 'cash' } : {}),
+            cart: [{ productId: f.id, code: f.id, name: f.name, quantity: 2, unitPrice: 23000,
+              note: 'sin cebolla', attributes: [{ attributeName: f.attr, attributeValue: f.options[0] }] }],
+          });
+          const before = structuredClone(h.conv.sessionData);
+          const question = questionKind === 'recargo' ? `¿Cuánto cuesta cambiar ${f.attr} a ${f.options[1]}?`
+            : questionKind === 'cambiar' ? `¿Puedo cambiar ${f.options[0]} por ${f.options[1]}?`
+            : questionKind === 'reemplazar' ? `¿Es posible reemplazar ${f.options[0]} por ${f.options[1]}?`
+            : `¿Se puede con ${f.options[1]}?`;
+          const reply = await h.sendQueued(question);
+          expect(h.conv.sessionData).toEqual(before);
+          expect(h.conv.state).toBe(state);
+          expect(reply).not.toMatch(/gratis|sin recargo|ya.*cambi|agregué/i);
+          expect(reply).toMatch(state === 'awaiting_name' ? /nombre/i : state === 'awaiting_phone' ? /teléfono/i : state === 'awaiting_address' ? /dirección/i : state === 'awaiting_payment' ? /pagas|pago|contraentrega|transferencia/i : /confirmar/i);
+          if (questionKind === 'recargo') expect(reply).toMatch(/recargo.*confirmado/i);
+        });
+      }
+    }
+  }
+});

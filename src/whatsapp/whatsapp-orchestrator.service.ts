@@ -1571,6 +1571,28 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Capability and surcharge inquiries are not authorization to edit a cart.
+    const optionInquiryText = this.normalizeForMatch(originalText);
+    const capabilityOnly = /^(?:se puede|puedo|podria|es posible)\s+(?:(?:pedir\s+)?con\s+|(?:cambiar|sustituir|reemplazar)\s+).+$/.test(optionInquiryText);
+    const surchargeInquiry = /\b(?:cuanto|precio|costo|recargo|vale|cuesta)\b/.test(optionInquiryText) &&
+      /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/.test(optionInquiryText);
+    if (session.cart.length && (capabilityOnly || surchargeInquiry)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const targets = this.catalogService.listCartAttributeOptionsNamedInText(originalText, session.cart, menu);
+      const summaries = [...new Set(targets.map(target => {
+        const product = menu.find(product => product.id === session.cart[target.cartIndex]?.productId);
+        const attr = product?.attributes?.find(attr => attr.attributeName === target.attributeName);
+        return product && attr ? `${product.name}: ${attr.attributeName} — ${attr.options.join(', ')}` : '';
+      }).filter(Boolean))];
+      const reminder = this.formatInterruptedStepReminder(conv, session);
+      await this.reply(conv, msg.waId, (summaries.length ? 'Opciones de la carta:\n' + summaries.join('\n') + '\n\n' : '') +
+        (surchargeInquiry ? 'No tengo un recargo de cambio confirmado en la carta; debe confirmarlo el restaurante. El pedido sigue igual.' :
+          summaries.length ? 'Esa opción aparece en la carta. El pedido sigue igual. Para pedir el cambio, indica el plato y la opción.' :
+          'No pude confirmar esa opción para tu pedido. El pedido sigue igual. ¿Qué opción quieres consultar?') +
+        (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
+
     // Resolve scoped quantity changes before extracting names/addresses or asking the model.
     // A correction refers to an existing cart line, even while a variant list is open.
     if (session.cart.length === 1 && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
@@ -1774,25 +1796,6 @@ export class WhatsappOrchestratorService {
     }
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
-    // Capability and surcharge inquiries are not authorization to edit a cart.
-    const optionInquiryText = this.normalizeForMatch(originalText);
-    const capabilityOnly = /^(?:se puede|puedo|es posible)\s+(?:pedir\s+)?con\s+.+$/.test(optionInquiryText);
-    const surchargeInquiry = /\b(?:cuanto|precio|costo|recargo|vale|cuesta)\b/.test(optionInquiryText) &&
-      /\b(?:cambiar|cambio|sustituir|reemplazar|extra|adicional)\b/.test(optionInquiryText);
-    if (session.cart.length && (capabilityOnly || surchargeInquiry)) {
-      const menu = await this.catalogService.getMenuProducts();
-      const targets = this.catalogService.listCartAttributeOptionsNamedInText(originalText, session.cart, menu);
-      const summaries = [...new Set(targets.map(target => {
-        const product = menu.find(product => product.id === session.cart[target.cartIndex]?.productId);
-        const attr = product?.attributes?.find(attr => attr.attributeName === target.attributeName);
-        return product && attr ? `${product.name}: ${attr.attributeName} — ${attr.options.join(', ')}` : '';
-      }).filter(Boolean))];
-      await this.reply(conv, msg.waId, (summaries.length ? 'Opciones de la carta:\n' + summaries.join('\n') + '\n\n' : '') +
-        (surchargeInquiry ? 'No tengo un recargo de cambio confirmado en la carta; debe confirmarlo el restaurante. El pedido sigue igual.' :
-          summaries.length ? 'Esa opción aparece en la carta. El pedido sigue igual. Para pedir el cambio, indica el plato y la opción.' :
-          'No pude confirmar esa opción para tu pedido. El pedido sigue igual. ¿Qué opción quieres consultar?'));
-      return;
-    }
     const conditionalDrink = originalText.match(/^si\s+tienes\s+(?:por\s+favor\s+)?con\s+(.+?)[,;]?\s+si\s+no\s+con\s+(.+?)[.!?]*$/i);
     if (conditionalDrink && session.cart.length && !session.pendingMatch && !session.pendingAttribute) {
       const menu = await this.catalogService.getMenuProducts();

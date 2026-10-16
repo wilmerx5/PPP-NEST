@@ -1,3 +1,7 @@
+## Consultas de cambios y recargos — 16/10
+
+40 regresiones nuevas en dos cartas ficticias y cinco pasos de checkout;74 focalizadas aprobadas. «¿Puedo cambiar X por Y?» llegaba a mutar atributos: se resuelve ahora antes de las ediciones. Consultas conservan sesión y retoman nombre/teléfono/dirección/pago/confirmación. No se inventa recargo ni gratuidad. Global:57 suites/5805 pruebas WhatsApp +19/98 complementarias =76/5903 en ejecuciones disjuntas con fuente congelada;TypeScript aprobado. Cero API nueva;183/178/5 intacto. Evidencia:whatsapp-swap-inquiries-validation-1610.json. Pendiente despliegue;Main intacta. Siguiente:mensajes mixtos de consulta+acción,condicionales y autorizaciones con límites;no asumir permiso de sustitución por existir una opción.
+
 ## Desplegado — referencias cortas, 16/10 00:42 Bogotá
 
 Código44b28dea en staging;running/healthy verificado2026-10-16T05:42:23.689Z. Imagen activa=candidate sha256:6c374af03033833e04b5b51dd1a8033416449210d262dabde154bbe506f1df63;healthOK,DBconnected,circuitCLOSED. Bindings shortReferences/otherAnchor compilados. Modelos efectivos iguales:Sol6.1/Luna/Luna/GPTTranscribe. Main intacta.

@@ -1,0 +1,85 @@
+{
+  "baseCommit": "5ee5d588",
+  "date": "2026-10-16",
+  "scope": "Substitution capability and surcharge inquiries preserve cart and resume pending checkout step",
+  "newTests": 40,
+  "baseline": {
+    "initial": {
+      "failed": 10,
+      "passed": 2
+    },
+    "expanded": {
+      "failed": 17,
+      "passed": 7
+    },
+    "logs": [
+      "/tmp/ppp-swap-resume-baseline.log",
+      "/tmp/ppp-swap-resume-expanded-baseline.log"
+    ]
+  },
+  "targeted": {
+    "passed": 74,
+    "existingControls": 34,
+    "log": "/tmp/ppp-swap-resume-targets.log"
+  },
+  "coverage": {
+    "menus": [
+      "Bowl De Garbanzos",
+      "Pasta Del Huerto"
+    ],
+    "states": [
+      "awaiting_name",
+      "awaiting_phone",
+      "awaiting_address",
+      "awaiting_payment",
+      "awaiting_final_confirm"
+    ],
+    "questions": [
+      "Se puede con",
+      "Cuánto cuesta cambiar",
+      "Puedo cambiar X por Y",
+      "Es posible reemplazar X por Y"
+    ]
+  },
+  "changes": [
+    "Route capability and surcharge questions before cart mutation paths",
+    "Recognize capability requests with cambiar/sustituir/reemplazar",
+    "Append pending checkout reminder without changing session"
+  ],
+  "global": {
+    "whatsappSuites": 57,
+    "whatsappTests": 5805,
+    "whatsappSeconds": 516.981,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 6.656,
+    "totalSuites": 76,
+    "totalTests": 5903,
+    "disjointRunsSameFrozenSource": true,
+    "sourceSnapshot": "/tmp/ppp-swap-resume-source.json",
+    "logs": [
+      "/tmp/ppp-swap-resume-full.log",
+      "/tmp/ppp-swap-resume-complement.log"
+    ]
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-swap-resume-tsc.log"
+  },
+  "apiRequests": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "limitations": [
+    "Mock router tests; no real model, Meta, maps or external orders",
+    "No proof of general language coverage",
+    "Mixed action and inquiry turns remain next family",
+    "Catalog attribute availability does not establish free substitutions"
+  ],
+  "deployment": {
+    "status": "pending",
+    "productionChanged": false
+  }
+}
