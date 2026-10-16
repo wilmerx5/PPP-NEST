@@ -14996,3 +14996,59 @@ describe('Consulta de sustitución — retoma el dato pendiente sin editar', () 
     }
   }
 });
+
+describe('Cambios condicionados por costo — no asumir autorización incondicional', () => {
+  const fixtures = [
+    { id: 19201, name: 'Bowl De Frijoles', attr: 'Base', first: 'Arroz', next: 'Quinoa' },
+    { id: 19202, name: 'Raviolis Del Huerto', attr: 'Salsa', first: 'Tomate', next: 'Pesto' },
+  ];
+  for (const f of fixtures) {
+    const menu = [{ id: f.id, code: f.id, name: f.name, price: 24000, availableNow: true,
+      hasAttributes: true, attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] }];
+    const seed = (agent: boolean, state: string) => {
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = state;
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 2000,
+        cart: [{ productId: f.id, code: f.id, name: f.name, quantity: 2, unitPrice: 24000,
+          note: 'sin cebolla', attributes: [{ attributeName: f.attr, attributeValue: f.first }] }],
+      });
+      return h;
+    };
+    for (const agent of [false, true]) for (const state of ['building_cart', 'awaiting_payment']) {
+      for (const text of [
+        `Si no cuesta más, cambia ${f.attr} a ${f.next}`,
+        `Cambia ${f.attr} a ${f.next} solo si no tiene recargo`,
+        `Si cobran menos de 3000 por el cambio, pon ${f.next}`,
+        `Si no cobran extra, lo quiero con ${f.next}`,
+        `Si es gratis, cambia ${f.attr} a ${f.next}`,
+        `Pon ${f.next} solo si queda al mismo precio`,
+        `Si el cambio no tiene recargo, cambia ${f.attr} a ${f.next}`,
+      ]) {
+        it(`${f.name}, ${state}, agente ${agent}: ${text}`, async () => {
+          const h = seed(agent, state);
+          const before = structuredClone(h.conv.sessionData);
+          const reply = await h.sendQueued(text);
+          expect(h.conv.sessionData).toEqual(before);
+          expect(h.conv.state).toBe(state);
+          expect(reply).toMatch(/no tengo.*(?:costo|recargo).*confirmado/i);
+          expect(reply).toMatch(/pedido sigue igual/i);
+          expect(reply).not.toMatch(/Listo|agregué|queda con/i);
+          if (state === 'awaiting_payment') expect(reply).toMatch(/pagas|método de pago/i);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        });
+      }
+    }
+    it.each([false, true])(`${f.name}: puede autorizar el cambio después de consultar (agente %s)`, async agent => {
+      const h = seed(agent, 'building_cart');
+      await h.sendQueued(`Si no cuesta más, cambia ${f.attr} a ${f.next}`);
+      await h.sendQueued(`Mejor con ${f.next}`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: f.id, qty: 2,
+        note: expect.stringMatching(/sin cebolla/i), attrs: [`${f.attr}:${f.next}`] })]);
+      expect(h.replies.at(-1)).toMatch(new RegExp(f.next, 'i'));
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

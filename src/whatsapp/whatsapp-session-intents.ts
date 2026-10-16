@@ -1186,3 +1186,11 @@ export function resolvePendingListOrMenuCode(opts: {
   if (codeHit || bareNum > candidates.length) return 'menu_code';
   return null;
 }
+
+/** An edit authorized only under an unverified price condition is not a plain edit. */
+export function isCostConditionalRequest(text: string): boolean {
+  const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const action = /\b(?:cambia(?:r|lo|la|me)?|sustituye|sustituir|reemplaza(?:r)?|pon(?:me|lo|la)?|agrega(?:r|me)?|anade|quiero|dame|pide|pedir)\b/.test(t);
+  if (!action) return false;
+  return /\b(?:solo |solamente |unicamente )?si\s+(?:el cambio\s+)?(?:no\s+(?:(?:me |nos )?(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren|tiene|hay|lleva|genera|aumenta))[^,;.]{0,70}\b(?:mas|extra|adicional|costo|recargo|precio)|(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren)\s+(?:menos de|hasta|como maximo|maximo)\b|(?:es|sale|queda)\s+(?:gratis|sin (?:costo|recargo)|al mismo precio)\b)/.test(t);
+}

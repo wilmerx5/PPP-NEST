@@ -1,0 +1,106 @@
+{
+  "baseCommit": "a1861b32",
+  "date": "2026-10-16",
+  "scope": "Cost-conditioned edits across two fictional menus, building cart and payment, agent enabled/disabled with model simulated",
+  "newTests": 60,
+  "baseline": {
+    "failed": 32,
+    "passed": 4,
+    "log": "/tmp/ppp-conditional-cost-baseline.log",
+    "scope": "Initial four cost conditions, not the later three added variants",
+    "observedFailures": [
+      "Responded with base product price instead of conditional change cost",
+      "Treated recargo or conditional utterance as unavailable product",
+      "Returned payment prompt without answering condition"
+    ],
+    "cartMutationObservedInBaseline": false
+  },
+  "targeted": {
+    "passed": 134,
+    "existingControls": 74,
+    "log": "/tmp/ppp-conditional-cost-targets.log"
+  },
+  "coverage": [
+    "56 conditional turns:2menus,2states,2agentsettings,7forms",
+    "4 sequential controls:an explicit subsequent option change works and retains quantity/note",
+    "Conditional prefixes and suffixes",
+    "Unknown surcharge, same price, free change and numeric maximum"
+  ],
+  "changes": [
+    "Recognize cost-conditioned action separately from unconditional cart edits",
+    "Resolve condition before product, price, attribute and checkout paths",
+    "No mutation or promised surcharge when policy is unknown",
+    "Resume pending checkout step"
+  ],
+  "externalCalls": {
+    "openai": 0,
+    "meta": 0,
+    "maps": 0,
+    "externalOrders": 0
+  },
+  "budgetUnchanged": {
+    "operationalCap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-conditional-cost-tsc.log"
+  },
+  "complement": {
+    "suites": 19,
+    "tests": 98,
+    "seconds": 12.108,
+    "log": "/tmp/ppp-conditional-cost-complement.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-conditional-cost-full.log",
+    "sourceSnapshot": "/tmp/ppp-conditional-cost-source.json",
+    "whatsappSuites": 57,
+    "whatsappTests": 5865,
+    "whatsappSeconds": 910.845,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "totalSuites": 76,
+    "totalTests": 5963,
+    "disjointRunsSameFrozenSource": true,
+    "sourceUnchanged": true
+  },
+  "deployment": {
+    "status": "pending",
+    "productionChanged": false
+  },
+  "limits": [
+    "Controlled mock conversation tests; no new real-model or channel acceptance",
+    "No substitution surcharge policy added; catalog options do not authorize free swaps",
+    "A conditional turn with independent additional actions remains future work; do not claim clause-level resolution",
+    "No general Spanish language completeness claim"
+  ],
+  "next": [
+    {
+      "family": "Independent query plus cart edit",
+      "examples": [
+        "Cuánto vale el domicilio? Y quita una sopa",
+        "Qué trae el bowl? Deja solo dos raviolis"
+      ],
+      "oracles": [
+        "Answer inquiry and apply only stated cart edit",
+        "Do not turn question into note/name/address",
+        "Preserve remaining attributes and checkout state"
+      ]
+    },
+    {
+      "family": "Scope of cost condition",
+      "examples": [
+        "Si es gratis cambia la bebida; aparte quita una sopa",
+        "Si el total queda por debajo de 50000 agrega otro, si no deja así"
+      ],
+      "oracles": [
+        "Do not strip condition and execute unconditionally",
+        "Clarify uncertain scope before mutation",
+        "Do not silently lose independent authorized actions"
+      ]
+    }
+  ]
+}

@@ -91,6 +91,7 @@ import {
   parseQtyMenuCodeLines,
   parseQtyDishCorrection,
   isCartChargeQuestion,
+  isCostConditionalRequest,
   isOrderBillRequest,
   looksLikeKitchenSendRequest,
   productNamesMentionedInOffer,
@@ -815,6 +816,18 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    // Do not strip the condition and execute an otherwise recognizable option.
+    // Attribute availability does not establish a substitution surcharge policy.
+    if (isCostConditionalRequest(originalText)) {
+      const current = this.conversationService.getSession(conv);
+      const reminder = this.formatInterruptedStepReminder(conv, current);
+      await this.reply(conv, msg.waId,
+        'No tengo un costo o recargo del cambio confirmado en la carta. No apliqué el cambio condicionado; debe confirmar ese costo el restaurante. ' +
+        (current.cart.length ? 'El pedido sigue igual.' : 'No agregué productos.') +
+        (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
+
     if (isHypotheticalOrderQuestion(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
       !this.catalogService.isProductDescriptionInquiry(originalText) &&
