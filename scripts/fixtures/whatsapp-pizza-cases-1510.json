@@ -1,0 +1,13 @@
+[
+  {
+    "id": "fresh-pizza-mixed-edits-1510",
+    "messages": [
+      {"text":"hola buenas, quiero una pizza hawaiana con borde relleno de queso y una pizza de pepperoni con borde tradicional, y 3 empanadas de carne","expect":{"items":{"9301":1,"9302":1,"9303":3},"attrs":[{"id":9301,"key":"Borde","value":"Relleno De Queso"},{"id":9302,"key":"Borde","value":"Tradicional"}],"orderCount":0}},
+      {"text":"una pregunta, la lasagna trae pan o es aparte?","expect":{"items":{"9301":1,"9302":1,"9303":3},"replyAny":["pan de ajo","incluye","trae pan","viene con"],"replyForbid":["no manejamos","no tenemos"],"orderCount":0}},
+      {"text":"agrégame una gaseosa sprite","expect":{"items":{"9301":1,"9302":1,"9303":3,"9304":1},"attrs":[{"id":9304,"key":"Sabor","value":"Sprite"}],"orderCount":0}},
+      {"text":"mejor quita una empanada, que sean 2","expect":{"items":{"9301":1,"9302":1,"9303":2,"9304":1},"orderCount":0}},
+      {"text":"es para la carrera 7 # 45-12 apto 301","expect":{"items":{"9301":1,"9302":1,"9303":2,"9304":1},"address":"carrera 7","state":"awaiting_payment","orderCount":0}},
+      {"text":"pago en efectivo, llevo billete de 100","expect":{"items":{"9301":1,"9302":1,"9303":2,"9304":1},"payment":"cash","cashContains":"100","replyAll":["50.000"],"orderCount":0}}
+    ]
+  }
+]

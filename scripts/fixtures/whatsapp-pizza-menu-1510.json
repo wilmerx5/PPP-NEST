@@ -1,0 +1,7 @@
+[
+  {"id":9301,"code":9301,"name":"Pizza Personal Hawaiana","description":"Queso mozzarella, jamón y piña","price":18000,"availableNow":true,"hasAttributes":true,"attributes":[{"attributeName":"Borde","options":["Tradicional","Relleno De Queso"]}]},
+  {"id":9302,"code":9302,"name":"Pizza Personal Pepperoni","description":"Queso mozzarella y pepperoni","price":19000,"availableNow":true,"hasAttributes":true,"attributes":[{"attributeName":"Borde","options":["Tradicional","Relleno De Queso"]}]},
+  {"id":9303,"code":9303,"name":"Empanada De Carne","description":"Empanada frita de carne con papa","price":3500,"availableNow":true,"hasAttributes":false,"attributes":[]},
+  {"id":9304,"code":9304,"name":"Gaseosa 400ml","description":"Gaseosa personal","price":4000,"availableNow":true,"hasAttributes":true,"attributes":[{"attributeName":"Sabor","options":["Coca Cola","Sprite"]}]},
+  {"id":9305,"code":9305,"name":"Lasagna Bolognesa","description":"Carne en salsa bolognesa, queso gratinado y pan de ajo","price":24000,"availableNow":true,"hasAttributes":false,"attributes":[]}
+]
