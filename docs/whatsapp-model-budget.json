@@ -43,6 +43,24 @@
       "additionalRequests": 25,
       "evidence": "User chose: Subir el tope de presupuesto y correr el retest real de 8 turnos del falafel (gasta API); cap +25 llamadas (158 a 183), parada en el primer fallo",
       "executionLimit": "25 requests maximum; case fresh-falafel-checkout-interruptions-1510; one repetition; stop at first failure; model gpt-6.1-sol; local commit c5e0e873"
+    },
+    {
+      "date": "2026-10-15",
+      "additionalRequests": 0,
+      "evidence": "Within existing cap (17 remaining); user: continua",
+      "executionLimit": "15 requests maximum; fresh case fresh-pizza-mixed-edits-1510 frozen in 39c06901 before first run; independent first attempt; one repetition; stop at first failure; model gpt-6.1-sol; code 09663118"
+    },
+    {
+      "date": "2026-10-15",
+      "additionalRequests": 0,
+      "evidence": "Within existing cap (17 remaining); user: continua",
+      "executionLimit": "15 requests maximum; development retest (not independent) of fresh-pizza-mixed-edits-1510 after sibling-name fix; one repetition; stop at first failure; model gpt-6.1-sol"
+    },
+    {
+      "date": "2026-10-15",
+      "additionalRequests": 0,
+      "evidence": "Within existing cap (17 remaining); user: continua",
+      "executionLimit": "15 requests maximum; development retest of fresh-pizza-mixed-edits-1510 after lasagna-focus and note fixes; one repetition; stop at first failure; model gpt-6.1-sol"
     }
   ],
   "evaluationHistory": [
@@ -563,6 +581,27 @@
       "usedTotal": 166,
       "remaining": 17,
       "note": "Falafel 8 turnos aceptado (desarrollo, no holdout). Turno 2 search_menu devolvió not_on_menu para pregunta descriptiva; el modelo respondió bien desde description."
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "09663118",
+      "model": "gpt-6.1-sol",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 0,
+      "usedTotal": 166,
+      "remaining": 17,
+      "note": "Muestra nueva pizza (independiente, congelada 39c06901) falla turno 0 sin llamar al modelo: reglas declaran ambiguas Pizza Hawaiana/Pepperoni aunque el cliente nombró cada una; solo agrega empanadas. Defecto determinista."
+    },
+    {
+      "date": "2026-10-15",
+      "model": "gpt-6.1-sol",
+      "executed": 1,
+      "accepted": 0,
+      "requests": 0,
+      "usedTotal": 166,
+      "remaining": 17,
+      "note": "Retest pizza tras fix de nombres hermanos: turno 0 pasa (pero nota truncada con borde relleno de); turno 1 pregunta por lasagna respondida con la empanada (foco anterior). Sin llamadas al modelo. Ambos corregidos en local."
     }
   ],
   "authorizationHistory": [
