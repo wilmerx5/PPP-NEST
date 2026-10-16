@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "620c982b",
+  "scope": "Explicit purchase of multiple option groups inherits one offered product; validates full distribution before committing cart",
+  "newTests": 48,
+  "baseline": {
+    "failed": 16,
+    "passed": 0,
+    "log": "/tmp/ppp-offer-split-baseline.log"
+  },
+  "initialImplementationCheck": "First target run stopped on TypeScript optional attributes narrowing; no behavioral tests ran in that invocation; fixed closure narrowing",
+  "coverage": {
+    "products": [
+      "Coca Cola 1.5L (Original/Zero)",
+      "Helado Artesanal (Vainilla/Chocolate)",
+      "Te Artesanal (Caliente/Frio)",
+      "Arepa Rellena (Queso/Hongos)"
+    ],
+    "agent": "simulated enabled/disabled",
+    "cases": [
+      "Dame dos Original y dos Zero",
+      "Dame dos con Original y dos con Zero",
+      "numeric1 +3",
+      "unknown option retains original cart and clarifies all options",
+      "split purchase during payment retains unrelated soup/note and payment step",
+      "Stale productFocus without active offer clarifies product and never purchases",
+      "All outbound messages checked for false unavailable warning",
+      "Read-cart follow-up retains full cart and quantities without duplication"
+    ]
+  },
+  "oracles": [
+    "four units in separate attribute groups",
+    "catalog prices, subtotal32000 for four8000units",
+    "no second option treated as missing dish",
+    "no redundant yes confirmation",
+    "unrelated cart and payment state preserved"
+  ],
+  "limits": [
+    "Strict explicit purchase grammar,2..6 groups, up to30 total units",
+    "Unknown option keeps complete split uncommitted and requests clarification",
+    "Pending multi-product selection or replacement is not guessed",
+    "No real inference, Meta or audio recognition evidence",
+    "Requires active pending offer or pending attributes; stale productFocus only clarifies",
+    "Read-cart follow-up checks unchanged stored cart; fake agent does not establish fluent real-model cart response"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "validationStatus": "Final source frozen verification passed; deploy pending",
+  "logs": {
+    "targeted": "/tmp/ppp-offer-split-target-complete-final.log",
+    "full": "/tmp/ppp-final-family-full.log",
+    "complement": "/tmp/ppp-final-family-complement.log",
+    "typescript": "/tmp/ppp-final-family-tsc.log"
+  },
+  "realChatClarification": "User later showed cart with two Original and two Zero. In that real conversation, contradictory reply is evidenced; permanent loss of Zero is not established. Synthetic initial16 failures describe mock-router reproduction only.",
+  "nextChecks": [
+    "Reading cart after split must not add the groups again",
+    "Deduplicate repeated semantically equivalent kitchen notes (separate family)"
+  ],
+  "interruptedGlobal": {
+    "log": "/tmp/ppp-offer-split-full.log",
+    "exit": 130,
+    "reason": "Stopped deliberately after code review found stale productFocus could authorize buying option groups of a prior combo; not a passed global, source not edited until process exited"
+  },
+  "targetedControlAdjustment": "An intermediate follow-up test wrongly required fake agent default reply to render32000;8 failed for mock response while cart stayed unchanged. Kept no-duplication and no-false-warning oracles; initial purchase reply still verifies32000.",
+  "targeted": {
+    "passed": 162,
+    "newInThisRecord": 48,
+    "log": "/tmp/ppp-final-family-targets.log"
+  },
+  "finalGlobal": {
+    "whatsappSuites": 57,
+    "whatsappTests": 6666,
+    "seconds": 669.187,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 15.862,
+    "totalDisjointSuites": 76,
+    "totalDisjointTests": 6764,
+    "sameFrozenSourceVerified": true,
+    "typescript": "passed",
+    "logs": {
+      "whatsapp": "/tmp/ppp-final-family-full.log",
+      "complement": "/tmp/ppp-final-family-complement.log",
+      "typescript": "/tmp/ppp-final-family-tsc.log",
+      "source": "/tmp/ppp-final-family-source.json"
+    }
+  }
+}

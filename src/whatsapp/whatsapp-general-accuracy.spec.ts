@@ -16117,3 +16117,189 @@ describe('catalog prefix families across fictional restaurants', () => {
     }
   }
 });
+
+
+describe('offered product purchase split across attribute options', () => {
+  for (const [name, attribute, options] of [
+    ['Coca Cola 1.5L', 'Sabor', ['Original', 'Zero']],
+    ['Helado Artesanal', 'Sabor', ['Vainilla', 'Chocolate']],
+    ['Te Artesanal', 'Temperatura', ['Caliente', 'Frio']],
+    ['Arepa Rellena', 'Relleno', ['Queso', 'Hongos']],
+  ] as const) {
+    for (const enabled of [true, false]) {
+      for (const mode of ['unknown', 'checkout', 'numeric', 'staleFocus']) {
+        it(`${name} split boundary ${mode}, agent ${enabled}`, async () => {
+          const menu = [
+            { id: 25101, code: 25101, name, price: 8000, availableNow: true, hasAttributes: true,
+              attributes: [{ attributeName: attribute, options: [...options] }] },
+            { id: 25102, code: 25102, name: 'Sopa De Lentejas', price: 12000, availableNow: true, hasAttributes: false, attributes: [] },
+          ];
+          const h = harness(menu, enabled);
+          await h.sendQueued(`Tienes ${name}?`);
+          h.conv.sessionData.cart = [{ productId: 25102, code: 25102, name: menu[1].name, unitPrice: 12000, quantity: 1, note: 'sin sal', attributes: [] }];
+          const before = structuredClone(h.conv.sessionData.cart);
+          if (mode === 'staleFocus') {
+            delete h.conv.sessionData.pendingAddOffer;
+            delete h.conv.sessionData.pendingAttribute;
+            h.conv.sessionData.productFocus = { productId: 25101, name };
+          }
+          if (mode === 'checkout') {
+            h.conv.state = 'awaiting_payment';
+            Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+              phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000 });
+          }
+          await h.sendQueued(mode === 'unknown' ? `Dame dos ${options[0]} y dos Misterioso` :
+            mode === 'numeric' ? `Dame 1 ${options[0]} y 3 ${options[1]}` : `Dame dos ${options[0]} y dos ${options[1]}`);
+          if (mode === 'staleFocus') {
+            expect(h.conv.sessionData.cart).toEqual(before);
+            expect(h.replies.at(-1)).toMatch(/de qu[eé] producto/i);
+          } else if (mode === 'unknown') {
+            expect(h.conv.sessionData.cart).toEqual(before);
+            expect(h.replies.at(-1)).toMatch(/aclara todas las opciones/i);
+          } else {
+            expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+            expect(h.cartRows().slice(1)).toEqual([
+              expect.objectContaining({ id: 25101, qty: mode === 'numeric' ? 1 : 2, attrs: [`${attribute}:${options[0]}`] }),
+              expect.objectContaining({ id: 25101, qty: mode === 'numeric' ? 3 : 2, attrs: [`${attribute}:${options[1]}`] }),
+            ]);
+            if (mode === 'checkout') expect(h.conv.state).toBe('awaiting_payment');
+          }
+          expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+        });
+      }
+      for (const withCon of [true, false]) {
+        it(`${name} buys two of each offered option, con ${withCon}, agent ${enabled}`, async () => {
+          const menu = [{ id: 25101, code: 25101, name, price: 8000, availableNow: true,
+            hasAttributes: true, attributes: [{ attributeName: attribute, options: [...options] }] }];
+          const h = harness(menu, enabled);
+          await h.sendQueued(`Tienes ${name}?`);
+          expect(h.conv.sessionData.cart).toEqual([]);
+          const replyOffset = h.replies.length;
+          await h.sendQueued(`Dame dos ${withCon ? 'con ' : ''}${options[0]} y dos ${withCon ? 'con ' : ''}${options[1]}`);
+          expect(h.cartRows()).toEqual([
+            expect.objectContaining({ id: 25101, qty: 2, attrs: [`${attribute}:${options[0]}`] }),
+            expect.objectContaining({ id: 25101, qty: 2, attrs: [`${attribute}:${options[1]}`] }),
+          ]);
+          expect(h.conv.sessionData.cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)).toBe(32000);
+          expect(h.replies.at(-1)).toMatch(/32[.,]000/);
+          expect(h.replies.at(-1)).toContain(options[0]);
+          expect(h.replies.at(-1)).toContain(options[1]);
+          expect(h.replies.slice(replyOffset).join(' ')).not.toMatch(/no manejamos|no tenemos|escribe s[ií]/i);
+          const confirmedCart = structuredClone(h.conv.sessionData.cart);
+          await h.sendQueued('ver carrito');
+          expect(h.conv.sessionData.cart).toEqual(confirmedCart);
+          expect(h.replies.slice(replyOffset).join(' ')).not.toMatch(/no manejamos|no tenemos/i);
+          expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();
+        });
+      }
+    }
+  }
+});
+
+
+describe('two family units with distinct preparations and shared options', () => {
+  for (const enabled of [true, false]) {
+    for (const mode of ['mismatch', 'unknownShared', 'checkout', 'reverse']) {
+      it(`family distribution boundary ${mode}, agent ${enabled}`, async () => {
+        const menu = ['Miso', 'Shoyu'].map((variant, index) => ({ id: 26201+index, code: 26201+index, name: `Ramen ${variant}`, price: 20000+index*2000,
+          availableNow: true, hasAttributes: true, attributes: [
+            { attributeName: 'Tamano', options: ['Grande', 'Chico'] },
+            { attributeName: 'Caldo', options: ['Vegetal', 'Cerdo'] },
+            { attributeName: 'Bebida', options: ['Te', 'Agua'] },
+          ] }));
+        const other = { id: 26203, code: 26203, name: 'Ensalada De Pepino', price: 7000, availableNow: true, hasAttributes: false, attributes: [] };
+        const h = harness([...menu, other], enabled);
+        h.conv.sessionData.cart = [{ productId: other.id, code: other.code, name: other.name, quantity: 1, unitPrice: other.price, note: 'sin sal', attributes: [] }];
+        const before = structuredClone(h.conv.sessionData.cart);
+        if (mode === 'checkout') {
+          h.conv.state = 'awaiting_payment';
+          Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+            phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000 });
+        }
+        const message = mode === 'reverse' ? 'Me das dos ramen uno con shoyu chico y otro miso grande ambos con caldo vegetal y te bajita de azucar' :
+          `Me das ${mode === 'mismatch' ? 'tres' : 'dos'} ramen uno con miso grande y otro shoyu chico ambos con caldo vegetal y ${mode === 'unknownShared' ? 'kombucha' : 'te'} bajita de azucar`;
+        await h.sendQueued(message);
+        if (mode === 'mismatch' || mode === 'unknownShared') {
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.replies.at(-1)).toMatch(/necesito aclarar/i);
+        } else {
+          expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+          expect(h.cartRows().slice(1).map(line => [line.id, line.qty])).toEqual(mode === 'reverse' ? [[26202, 1], [26201, 1]] : [[26201, 1], [26202, 1]]);
+          if (mode === 'checkout') expect(h.conv.state).toBe('awaiting_payment');
+        }
+      });
+    }
+    for (const greeting of ['', 'Hola buenas tardes\n\n']) {
+      it(`real executive split, greeting ${!!greeting}, agent ${enabled}`, async () => {
+        const h = harness(products, enabled);
+        await h.sendQueued(greeting + 'Me das dos almuerzos ejecutivo uno con Pollo frito pierna pernil y Otro pechuga Ala broaster ambos con ajiaco y limonada bajita De azucar');
+        expect(h.cartRows()).toEqual([
+          expect.objectContaining({ id: 22, qty: 1, attrs: expect.arrayContaining(['Presa:Pierna Pernil', 'Sopa:Ajiaco', 'Bebida:Limonada']) }),
+          expect.objectContaining({ id: 18, qty: 1, attrs: expect.arrayContaining(['Presa:Ala, pechuga', 'Sopa:Ajiaco', 'Bebida:Limonada']) }),
+        ]);
+        for (const line of h.conv.sessionData.cart) expect(line.note).toMatch(/bajita.*az[uú]car/i);
+        expect(h.replies.join(' ')).not.toMatch(/no manejamos|no tenemos/i);
+        const before = structuredClone(h.conv.sessionData.cart);
+        for (const followup of ['Es uno con Pollo frito y Otro con Pollo broaster', 'Si', 'Perfecto seria eso']) {
+          await h.sendQueued(followup);
+          expect(h.conv.sessionData.cart).toEqual(before);
+        }
+      });
+      it(`fictional ramen split, greeting ${!!greeting}, agent ${enabled}`, async () => {
+        const menu = ['Miso', 'Shoyu'].map((variant, index) => ({ id: 26101+index, code: 26101+index, name: `Ramen ${variant}`, price: 20000+index*2000,
+          availableNow: true, hasAttributes: true, attributes: [
+            { attributeName: 'Tamano', options: ['Grande', 'Chico'] },
+            { attributeName: 'Caldo', options: ['Vegetal', 'Cerdo'] },
+            { attributeName: 'Bebida', options: ['Te', 'Agua'] },
+          ] }));
+        const h = harness(menu, enabled);
+        await h.sendQueued(greeting + 'Me das dos ramen uno con miso grande y otro shoyu chico ambos con caldo vegetal y te bajita de azucar');
+        expect(h.cartRows()).toEqual([
+          expect.objectContaining({ id: 26101, qty: 1, attrs: expect.arrayContaining(['Tamano:Grande', 'Caldo:Vegetal', 'Bebida:Te']) }),
+          expect.objectContaining({ id: 26102, qty: 1, attrs: expect.arrayContaining(['Tamano:Chico', 'Caldo:Vegetal', 'Bebida:Te']) }),
+        ]);
+        for (const line of h.conv.sessionData.cart) expect(line.note).toMatch(/bajita.*az[uú]car/i);
+      });
+    }
+  }
+});
+
+
+describe('cart inspection interrupts pending checkout field', () => {
+  for (const state of ['awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm']) {
+    for (const enabled of [true, false]) {
+      for (const question of ['Me dejas ver cuales son los tres items', 'Muestrame el pedido', 'ver carrito']) {
+        it(`${state} answers ${question}, agent ${enabled}`, async () => {
+          const h = harness(products, enabled);
+          h.conv.state = state;
+          Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Altavista', lastDeliveryAddress: 'Altavista',
+            addressConfirmed: false, contactPhone: h.conv.phoneE164, phoneConfirmed: state !== 'awaiting_phone', deliveryFeeCalculated: 2000,
+            cart: [{ productId: 22, code: 22, name: 'Ejecutivo Con Pollo Frito', unitPrice: 24000, quantity: 2, note: 'sin sal', attributes: [{ attributeName: 'Bebida', attributeValue: 'Limonada' }] }] });
+          if (state === 'awaiting_name') h.conv.customerName = '';
+          const before = structuredClone(h.conv.sessionData);
+          await h.sendQueued(question);
+          expect(h.conv.sessionData).toEqual(before);
+          expect(h.conv.state).toBe(state);
+          expect(h.replies.join(' ')).toContain('Ejecutivo Con Pollo Frito');
+          expect(h.replies.join(' ')).toMatch(/48[.,]000/);
+          expect(h.replies.join(' ')).not.toMatch(/no me qued[oó] clara la direcci[oó]n/i);
+        });
+      }
+    }
+  }
+  for (const enabled of [true, false]) {
+    for (const confirmation of ['Si Para Altavista', 'Sí para Altavista']) {
+      it(`saved place confirmation ${confirmation}, agent ${enabled}`, async () => {
+        const h = harness(products, enabled);
+        h.conv.state = 'awaiting_address';
+        Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Altavista', lastDeliveryAddress: 'Altavista', addressConfirmed: false,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 2000,
+          cart: [{ productId: 22, code: 22, name: 'Ejecutivo Con Pollo Frito', unitPrice: 24000, quantity: 1, attributes: [] }] });
+        h.service.ensureDeliveryFeeQuoted = jest.fn(async (session: WhatsappSessionData) => ({ session: { ...session, addressConfirmed: true, deliveryFeeCalculated: 2000 } }));
+        await h.sendQueued(confirmation);
+        expect(h.conv.sessionData.address).toBe('Altavista');
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 22, qty: 1 })]);
+      });
+    }
+  }
+});

@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "620c982b",
+  "scope": "Two unit-specific presentations within catalog family retain shared attributes and kitchen notes; cart inquiry interrupts checkout; affirmative destination prefix is stripped",
+  "newTests": 50,
+  "familyBaseline": {
+    "failed": 8,
+    "passed": 0,
+    "log": "/tmp/ppp-family-split-baseline.log"
+  },
+  "familyCoverage": [
+    "Exact user executive order with/without greeting, simulated agent on/off",
+    "Different fictional ramen presentations with per-unit size and shared broth/drink",
+    "Quantity mismatch and unsupported shared option retain unrelated cart",
+    "Checkout and reverse presentation order",
+    "Correction restatement, yes, and closure preserve already correct two-unit cart"
+  ],
+  "cartInspectionCoverage": [
+    "Address/name/phone/payment/final confirmation pending",
+    "Three paraphrases including exact customer request to see the three items",
+    "Agent enabled/disabled; full session and state unchanged",
+    "Saved place confirmation with accented/unaccented Si Para prefix"
+  ],
+  "realChatEvidence": [
+    "Initial reply incorrectly split family order into standalone products",
+    "Follow-ups eventually left three executives instead of two; third had default Colombiana",
+    "Cart inspection was consumed by address step",
+    "Affirmative destination prefix persisted as address text"
+  ],
+  "limits": [
+    "Structured two-unit family grammar; not arbitrary narrated orders",
+    "Preventive replay starts with corrected first turn; does not establish automatic repair of previously corrupted production cart",
+    "Real-model action/claim consistency remains separate from router mocks"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "validationStatus": "Final source frozen verification passed; deploy pending",
+  "cartInspectionBaseline": {
+    "failed": 32,
+    "passed": 2,
+    "log": "/tmp/ppp-cart-inspection-baseline.log"
+  },
+  "targeted": {
+    "passed": 162,
+    "newInThisRecord": 50,
+    "otherNewControls": 112,
+    "log": "/tmp/ppp-final-family-targets.log"
+  },
+  "sugarNoteFix": "Resolve notes per conjunction clause inside the already selected product, avoiding multi-dish rejection of a shared beverage preference",
+  "logs": {
+    "full": "/tmp/ppp-final-family-full.log",
+    "complement": "/tmp/ppp-final-family-complement.log",
+    "typescript": "/tmp/ppp-final-family-tsc.log",
+    "source": "/tmp/ppp-final-family-source.json"
+  },
+  "finalGlobal": {
+    "whatsappSuites": 57,
+    "whatsappTests": 6666,
+    "seconds": 669.187,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 15.862,
+    "totalDisjointSuites": 76,
+    "totalDisjointTests": 6764,
+    "sameFrozenSourceVerified": true,
+    "typescript": "passed",
+    "logs": {
+      "whatsapp": "/tmp/ppp-final-family-full.log",
+      "complement": "/tmp/ppp-final-family-complement.log",
+      "typescript": "/tmp/ppp-final-family-tsc.log",
+      "source": "/tmp/ppp-final-family-source.json"
+    }
+  }
+}
