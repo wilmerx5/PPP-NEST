@@ -1,3 +1,17 @@
+## Reemplazo atómico en nombre, teléfono, pago y confirmación — 16/10
+
+Código 0986bfcc, solo staging. Baseline: 52 fallidas/12 aprobadas en los 64 casos iniciales. El manejador atómico antes limitado a dirección ahora se ejecuta también en awaiting_name, awaiting_phone, awaiting_payment y awaiting_final_confirm. El marcador pendingCheckoutResume conserva el paso exacto cuando faltan opciones; completar o cancelar retoma ese paso y su pregunta, sin volver por defecto a dirección o «algo más». Un enlace de pago existente bloquea la mutación del carrito.
+
+136 pruebas nuevas gratuitas: 64 de reemplazo directo/destino desconocido/agotado, 32 de sabor obligatorio completado/cancelado, 32 de línea original ambigua elegida/cancelada y ocho de enlace de pago existente. Cartas ficticias de pizza, ramen, jugo y limonada; cuatro estados; agente simulado habilitado/deshabilitado. Se conserva otra línea, notas, nombre, dirección, tarifa, confirmación de teléfono y pago elegido. Se respeta cantidad explícita y precio de catálogo. Seguimientos de nombre y elección de pago avanzan con el carrito corregido; no se crean órdenes automáticamente.
+
+403 focalizadas aprobadas (136 nuevas y 267 controles), TypeScript aprobado. Global: 57 suites/6376 pruebas WhatsApp en 821.271 s + 19 suites/98 complementarias en 6.889 s = 76 suites/6474 pruebas, dos ejecuciones disjuntas con fuente congelada verificada. Evidencia: docs/whatsapp-checkout-replacement-validation-1610.json; logs /tmp/ppp-checkout-replacement-{baseline,targets,expanded,affected,full,complement,tsc-final,deploy,deploy-verified}.log. Cero API/Meta/mapas/órdenes externas; presupuesto 183/178/5 intacto.
+
+Desplegado y verificado running/healthy, imagen activa=candidate sha256:e7c753a56e5ac19f2efe831e05ca32efdd920803ff3dbde844896308d97d711a. Health OK, DB connected y circuit CLOSED en 2026-10-16T18:42:38.594Z; restauración de estado y gate compilados verificados. Modelos Sol 6.1/Luna/Luna/GPT Transcribe intactos. No se modificó Main ni se reconstruyó producción.
+
+Límites: no habilita nuevos cambios en completed/human/awaiting_mp_payment; no declarar corregidos los reemplazos históricos en building_cart. Identidad de destino, aclaración numérica y firma de carrito conservan límites de la tanda anterior. No acredita modelo/canal/mapa real ni toda combinación de instrucciones o listas abiertas.
+
+Siguiente prioridad: cuando un reemplazo pide elegir línea y se abre después otra lista, evitar que «2» seleccione una lista anterior. Reproducir interrupciones/consultas durante esa aclaración antes de cambiar prioridades. Luego validar y extender reemplazo atómico a building_cart; alcance condicional ambiguo con seguimiento; reemplazo junto a otra consulta/instrucción. No repetir global por cierre documental.
+
 ## Reemplazo de producto mientras falta dirección — 16/10
 
 Código 1e2e6097, solo staging. Baseline inicial: 24/24 fallidas; «cambia» podía reemplazar pero volver a comprar, y «no quiero X, quiero Y» podía quedar atrapado en dirección. El camino nuevo valida el reemplazo contra el catálogo antes de sustituir la línea, conserva el resto y retoma awaiting_address. La gramática admite nombres del catálogo sin ampliar la lista histórica de palabras de PPP en otros caminos. No se elimina el original si el destino es desconocido o agotado.
