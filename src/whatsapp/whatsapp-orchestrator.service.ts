@@ -9577,6 +9577,11 @@ export class WhatsappOrchestratorService {
     if (scored.length >= 1 && this.catalogService.isStrongProductMatch(scored)) {
       return [scored[0].p];
     }
+    const distinctlyNamed = this.catalogService.candidateNamedByDistinctToken(
+      stripped || text,
+      products.filter((product) => product.availableNow !== false),
+    );
+    if (distinctlyNamed) return [distinctlyNamed];
 
     return focusedEarly ? [focusedEarly] : [];
   }
@@ -11599,6 +11604,7 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.isPriceInquiryIntent(text)) return null;
     if (this.catalogService.findProductEmbeddedInMessage(text, products)) return null;
     if (this.catalogService.productFullyNamedIn(text, products)) return null;
+    if (this.catalogService.candidateNamedByDistinctToken(text, products.filter((p) => p.availableNow !== false))) return null;
     const rules: Array<[RegExp, string]> = [
       [/\b(?:venden|comercializan)\s+([a-z0-9 ]{3,40})$/, ''],
       [/\baceptan\s+(?:mascotas|perros|gatos)\b/, 'mascotas'],

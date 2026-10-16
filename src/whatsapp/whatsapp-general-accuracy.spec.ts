@@ -14682,6 +14682,19 @@ describe('Nombres hermanos — la palabra distintiva dicha decide el plato',()=>
   const reply=await h.sendQueued(text)||'';
   expect(h.cartRows().map(r=>({id:r.id,qty:r.qty,...(r.attrs?.length?{attrs:r.attrs}:{})})).sort((a,b)=>a.id-b.id)).toEqual(rows);
   expect(reply).not.toMatch(/cuál te gusta/i);
+  expect(h.cartRows().every(r=>!r.note)).toBe(true);
+ });
+ it.each([
+  {kind:'pizzería',menu:pizzas,order:'quiero 3 empanadas de carne',ask:'una pregunta, la lasagna trae pan o es aparte?',want:/Lasagna Bolognesa/,forbid:/Empanada De Carne/},
+  {kind:'ppp',menu:products,order:'quiero una sopa de ajiaco',ask:'una pregunta, la sobrebarriga trae arroz o es aparte?',want:/Sobrebarriga/,forbid:/Sopa De Ajiaco/},
+ ].flatMap(c=>[{...c,agent:false},{...c,agent:true}]))('$kind: preguntar por otro plato no responde con el último conversado (agente=$agent)',async({menu,order,ask,want,forbid,agent})=>{
+  const h=harness(menu as typeof products,agent);
+  await h.sendQueued(order);
+  const before=h.cartRows();
+  const reply=await h.sendQueued(ask)||'';
+  expect(reply).toMatch(want);
+  expect(reply).not.toMatch(forbid);
+  expect(h.cartRows()).toEqual(before);
  });
  it('PPP: nombres idénticos siguen preguntando',()=>{
   const multi=new WhatsappCatalogService({} as never).resolveMultiProductOrder('quiero un trio de tacos y una sopa de ajiaco',products);

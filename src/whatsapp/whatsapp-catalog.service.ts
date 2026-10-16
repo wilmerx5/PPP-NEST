@@ -10250,7 +10250,7 @@ export class WhatsappCatalogService {
   }
 
   /** “pizza hawaiana …” frente a Pizza Personal Hawaiana / Pizza Personal Pepperoni: solo un nombre lleva la palabra dicha. */
-  private candidateNamedByDistinctToken(
+  candidateNamedByDistinctToken(
     segment: string,
     candidates: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {

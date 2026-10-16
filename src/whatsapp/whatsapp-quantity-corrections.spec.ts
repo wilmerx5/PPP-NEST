@@ -163,4 +163,11 @@ describe('Corrections preserve the rest of an existing cart', () => {
     'con las arepas blancas', 'las arepas fritas aparte'])('keeps meaningful or differing kitchen notes: %s', note => {
     expect(omitRedundantAttributeNote(note, [{ attributeName: 'Arepas', attributeValue: 'Fritas' }])).toBe(note);
   });
+  it.each(['con borde relleno de', 'con borde relleno de queso', 'borde relleno'])('omits a truncated restatement of a multiword option: %s', note => {
+    expect(omitRedundantAttributeNote(note, [{ attributeName: 'Borde', attributeValue: 'Relleno De Queso' }])).toBeUndefined();
+  });
+  it.each(['sin queso', 'con borde relleno de queso y bien tostada', 'relleno de queso aparte', 'con borde tradicional'])
+  ('keeps notes that add or contradict the multiword option: %s', note => {
+    expect(omitRedundantAttributeNote(note, [{ attributeName: 'Borde', attributeValue: 'Relleno De Queso' }])).toBe(note);
+  });
 });

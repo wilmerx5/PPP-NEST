@@ -63,8 +63,11 @@ export function omitRedundantAttributeNote(note: string | undefined, attributes:
   for (const attr of attributes || []) {
     const name = normalizeCorrection(attr.attributeName), value = normalizeCorrection(attr.attributeValue);
     const allowed = new Set(`${name} ${value} con el la los las de al estilo`.split(' '));
-    if ((text === value || text === `con ${value}` || text.split(' ').some(w => name.split(' ').includes(w))) &&
-      value.split(' ').every(w => text.split(' ').includes(w)) && text.split(' ').every(w => allowed.has(w))) return undefined;
+    const words = text.split(' ');
+    const namesAttribute = words.some(w => name.split(' ').includes(w));
+    const restatesValue = value.split(' ').every(w => words.includes(w)) ||
+      (namesAttribute && value.split(' ').some(w => w.length >= 4 && words.includes(w)));
+    if ((text === value || text === `con ${value}` || namesAttribute) && restatesValue && words.every(w => allowed.has(w))) return undefined;
   }
   return note;
 }
