@@ -15269,3 +15269,111 @@ describe('Consulta más atributo — aclara el producto sin elegir pago', () => 
     });
   }
 });
+
+describe('Condición de costo y acción independiente — conserva alcance', () => {
+  const fixtures = [
+    { id: 19801, name: 'Combo De Arepas', attr: 'Bebida', first: 'Te', next: 'Agua', side: 'Torta De Yuca' },
+    { id: 19811, name: 'Combo De Gyozas', attr: 'Salsa', first: 'Soja', next: 'Teriyaki', side: 'Ensalada De Pepino' },
+  ];
+  for (const f of fixtures) {
+    const menu = [
+      { id: f.id, code: f.id, name: f.name, price: 21000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] },
+      { id: f.id + 1, code: f.id + 1, name: f.side, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const seed = (agent: boolean, state = 'awaiting_payment') => {
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = state;
+      h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+        cart: [{ productId: f.id, code: f.id, name: f.name, unitPrice: 21000, quantity: 2, note: 'sin cebolla',
+          attributes: [{ attributeName: f.attr, attributeValue: f.first }] },
+          { productId: f.id + 1, code: f.id + 1, name: f.side, unitPrice: 6000, quantity: 3, note: 'aparte', attributes: [] }],
+      });
+      return h;
+    };
+    const conditioned = `Si es gratis, cambia ${f.attr} de ${f.name} a ${f.next}`;
+    for (const agent of [false, true]) for (const state of ['building_cart', 'awaiting_name', 'awaiting_payment']) {
+      for (const order of ['condición primero', 'acción primero']) for (const kind of ['quitar', 'cantidad']) {
+        it(`${f.name}, ${state}, agente ${agent}, ${order}, ${kind}`, async () => {
+          const h = seed(agent, state);
+          const host = structuredClone(h.conv.sessionData.cart[0]);
+          const action = kind === 'quitar' ? `Quita una de las ${f.side}` : `Deja solo dos ${f.side}`;
+          const constraint = kind === 'quitar' ? conditioned : order === 'condición primero'
+            ? `Cambia ${f.attr} de ${f.name} a ${f.next} solo si no cuesta más`
+            : `Si cobran menos de 3000 por el cambio, pon ${f.attr} de ${f.name} a ${f.next}`;
+          const text = order === 'condición primero'
+            ? kind === 'quitar' ? `${constraint} y aparte ${action}` : `${constraint}\nAparte ${action}`
+            : kind === 'quitar' ? `${action}; además, ${constraint}` : `${action} y además ${constraint}`;
+          await h.sendQueued(text);
+          expect(h.conv.sessionData.cart[0]).toEqual(host);
+          expect(h.cartRows()[1]).toMatchObject({ id: f.id + 1, qty: 2, note: 'aparte', attrs: [] });
+          expect(h.conv.state).toBe(state === 'building_cart' ? 'awaiting_payment' : state);
+          expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+          expect(h.conv.sessionData.address).toBe('Calle 12 30 45');
+          const reply = h.replies.join('\n');
+          expect(reply).toMatch(/no tengo.*(?:costo|recargo).*confirmado/i);
+          expect(reply).not.toMatch(/el pedido sigue igual|ya.*cambi|sin recargo/i);
+          expect(reply).toMatch(new RegExp(f.side+'[\\s\\S]*×2', 'i'));
+          expect(reply).toMatch(state === 'awaiting_name' ? /nombre/i : /pagas|método de pago/i);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        });
+      }
+    }
+    for (const agent of [false, true]) for (const tail of [
+      ` y quita una de las ${f.side}`,
+      `; quita una de las ${f.side}`,
+      `; aparte si hay descuento, quita una de las ${f.side}`,
+    ]) {
+      it(`${f.name}: alcance no autorizado ${tail}, agente ${agent}`, async () => {
+        const h = seed(agent);
+        const before = structuredClone(h.conv.sessionData.cart);
+        await h.sendQueued(conditioned + tail);
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.state).toBe('awaiting_payment');
+        expect(h.replies.at(-1)).toMatch(/no tengo.*(?:costo|recargo).*confirmado/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Condición más eliminación ambigua — elegir línea no autoriza cambio condicionado', () => {
+  for (const f of [
+    { id: 19901, name: 'Combo De Wraps', attr: 'Bebida', first: 'Te', next: 'Agua', side: 'Sopa De Hongos' },
+    { id: 19911, name: 'Combo De Bao', attr: 'Salsa', first: 'Soja', next: 'Teriyaki', side: 'Edamame' },
+  ]) {
+    it.each([false, true])(`${f.name}, agente %s`, async agent => {
+      const menu = [
+        { id: f.id, code: f.id, name: f.name, price: 21000, availableNow: true, hasAttributes: true,
+          attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] },
+        { id: f.id + 1, code: f.id + 1, name: f.side, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+      ];
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_payment';
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+        cart: [{ productId: f.id, code: f.id, name: f.name, unitPrice: 21000, quantity: 2, note: 'sin cebolla',
+          attributes: [{ attributeName: f.attr, attributeValue: f.first }] },
+          ...['sin sal', 'sin limón'].map((note, index) => ({ productId: f.id + 1, code: f.id + 1, name: f.side,
+            unitPrice: 6000, quantity: index ? 2 : 3, note, attributes: [] }))],
+      });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Si es gratis cambia ${f.attr} a ${f.next}; aparte quita las ${f.side}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartRemoval?.options).toHaveLength(2);
+      expect(h.replies.at(-1)).toMatch(/cuál línea/i);
+      expect(h.replies.join('\n')).toMatch(/no tengo.*(?:costo|recargo).*confirmado/i);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart).toEqual(before.slice(0, 2));
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.conv.state).toBe('awaiting_payment');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "7464b82d",
+  "scope": "Recognized cost-conditioned attribute request plus explicitly independent removal or quantity correction",
+  "newTests": 64,
+  "baseline": {
+    "failed": 48,
+    "passed": 12,
+    "scope": "Initial semicolon-marker matrix before natural-language separator variants and ambiguity followups",
+    "log": "/tmp/ppp-conditional-independent-baseline.log"
+  },
+  "targeted": {
+    "passed": 164,
+    "existingControls": 100,
+    "log": "/tmp/ppp-conditional-independent-targets-final.log"
+  },
+  "coverage": {
+    "positive": 48,
+    "conservativeScopeControls": 12,
+    "ambiguousRemovalFollowups": 4,
+    "menus": [
+      "Combo De Arepas/Torta De Yuca",
+      "Combo De Gyozas/Ensalada De Pepino",
+      "Combo De Wraps/Sopa De Hongos",
+      "Combo De Bao/Edamame"
+    ],
+    "states": [
+      "building_cart with confirmed address",
+      "awaiting_name",
+      "awaiting_payment"
+    ],
+    "model": "simulated enabled/disabled",
+    "conditions": [
+      "if free",
+      "only if no extra cost",
+      "if less than3000"
+    ],
+    "markers": [
+      "y aparte",
+      "newline Aparte",
+      "semicolon además",
+      "y además"
+    ],
+    "orders": [
+      "condition first",
+      "independent action first"
+    ]
+  },
+  "oracles": [
+    "Conditioned parent cart line remains exactly unchanged",
+    "Only independent quantity changes3→2",
+    "No global unchanged-order claim after accepted edit",
+    "Cost uncertainty retained through automatic checkout",
+    "Notes/address/name retained",
+    "Unknown price-bound number not used as quantity",
+    "Plain y/semicolon or another condition does not authorize independent execution",
+    "Ambiguous removal remains pending, numeric2 selects line and does not set payment or apply held attribute",
+    "No external order creation"
+  ],
+  "changes": [
+    "Split exactly two clauses only at explicit independence marker",
+    "Require exactly one recognized cost-conditioned clause",
+    "Reject additional conditions/questions/multiple clauses in independent action",
+    "Reuse existing cart removal/quantity safeguards in active conversations",
+    "Preserve cost notice as checkout preface"
+  ],
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-conditional-independent-tsc.log"
+  },
+  "complement": {
+    "suites": 19,
+    "tests": 98,
+    "seconds": 11.707,
+    "log": "/tmp/ppp-conditional-independent-complement.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-conditional-independent-full.log",
+    "snapshot": "/tmp/ppp-conditional-independent-source.json",
+    "whatsappSuites": 57,
+    "whatsappTests": 6097,
+    "whatsappSeconds": 876.626,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "totalSuites": 76,
+    "totalTests": 6195,
+    "sourceUnchanged": true,
+    "disjointRunsSameFrozenSource": true
+  },
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "deployment": {
+    "status": "pending",
+    "mainChanged": false
+  },
+  "limitations": [
+    "Mock router tests, no new model/channel precision measurement",
+    "Only recognized cost conditions and two explicit clauses",
+    "Independent new-product additions and attribute edits not implemented here",
+    "Ambiguous scope conservatively preserves cart; no new scope-clarification followup state",
+    "No merchant surcharge policy introduced"
+  ],
+  "next": [
+    "Surcharge inquiry versus aggregate total after an edit",
+    "Clarify ambiguous conditional scope and correctly handle followup",
+    "Independent attribute edit/addition alongside a held conditional request",
+    "Attribute correction while awaiting a new address"
+  ]
+}

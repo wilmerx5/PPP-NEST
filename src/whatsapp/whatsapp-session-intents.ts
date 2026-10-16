@@ -1194,3 +1194,16 @@ export function isCostConditionalRequest(text: string): boolean {
   if (!action) return false;
   return /\b(?:solo |solamente |unicamente )?si\s+(?:el cambio\s+)?(?:no\s+(?:(?:me |nos )?(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren|tiene|hay|lleva|genera|aumenta))[^,;.]{0,70}\b(?:mas|extra|adicional|costo|recargo|precio)|(?:cuesta|vale|sale|cobran?|cobras|cobre|cobren)\s+(?:menos de|hasta|como maximo|maximo)\b|(?:es|sale|queda)\s+(?:gratis|sin (?:costo|recargo)|al mismo precio)\b)/.test(t);
 }
+
+/** Only an explicit independence marker separates an action from a price condition. */
+export function splitCostConditionFromIndependentAction(text: string): { condition: string; action: string } | null {
+  const clauses = text.split(/(?:;|\n|\s+y)\s*(?:aparte|adem[aá]s|independientemente)\s*[,;:]?\s+/i).map(part => part.trim());
+  if (clauses.length !== 2 || clauses.some(part => !part)) return null;
+  const conditioned = clauses.map(isCostConditionalRequest);
+  if (conditioned.filter(Boolean).length !== 1) return null;
+  const conditionIndex = conditioned[0] ? 0 : 1;
+  const action = clauses[1 - conditionIndex];
+  const normalized = action.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/[¿?;\n]/.test(action) || /\b(?:si|cuando|a menos que|siempre que)\b/.test(normalized)) return null;
+  return { condition: clauses[conditionIndex], action };
+}

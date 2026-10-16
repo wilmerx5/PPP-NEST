@@ -92,6 +92,7 @@ import {
   parseQtyDishCorrection,
   isCartChargeQuestion,
   isCostConditionalRequest,
+  splitCostConditionFromIndependentAction,
   isOrderBillRequest,
   looksLikeKitchenSendRequest,
   productNamesMentionedInOffer,
@@ -821,9 +822,19 @@ export class WhatsappOrchestratorService {
     // Attribute availability does not establish a substitution surcharge policy.
     if (isCostConditionalRequest(originalText)) {
       const current = this.conversationService.getSession(conv);
+      const independent = splitCostConditionFromIndependentAction(originalText);
+      const conditionNotice = 'No tengo un costo o recargo del cambio confirmado en la carta. No apliqué el cambio condicionado; debe confirmar ese costo el restaurante.';
+      if (independent && current.cart.length && !conv.humanTakeover &&
+        !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
+        (parseScopedCartRemoval(independent.action) || parseCartQuantityCorrection(independent.action))) {
+        turn.independentInquiryAnswer = conditionNotice;
+        await this.reply(conv, msg.waId, conditionNotice);
+        if (await this.tryHandleScopedCartRemoval(conv, msg.waId, current, independent.action, cfg)) return;
+        if (await this.tryHandleCartQuantityCorrection(conv, msg.waId, current, independent.action, cfg)) return;
+      }
       const reminder = this.formatInterruptedStepReminder(conv, current);
       await this.reply(conv, msg.waId,
-        'No tengo un costo o recargo del cambio confirmado en la carta. No apliqué el cambio condicionado; debe confirmar ese costo el restaurante. ' +
+        conditionNotice + ' ' +
         (current.cart.length ? 'El pedido sigue igual.' : 'No agregué productos.') +
         (reminder ? `\n\n${reminder}` : ''));
       return;
