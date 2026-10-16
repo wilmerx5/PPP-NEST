@@ -86,8 +86,30 @@
     "disjointRunsSameFrozenSource": true
   },
   "deployment": {
-    "status": "pending",
-    "mainChanged": false
+    "status": "verified",
+    "codeCommit": "c54dbbdd",
+    "verifiedAt": "2026-10-16T14:37:42.219Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:7c17765e65f1fb73d37329da039a9101e339f409c191c2a0fd59945e4f2b36b0",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledAttributeGateVerified": true,
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "mainChanged": false,
+    "logs": [
+      "/tmp/ppp-query-attribute-deploy.log",
+      "/tmp/ppp-query-attribute-deploy-verified.log"
+    ]
   },
   "limitations": [
     "Mock full-router tests; no new model or channel measurement",
