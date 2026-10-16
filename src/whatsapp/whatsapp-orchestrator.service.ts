@@ -18485,6 +18485,7 @@ export class WhatsappOrchestratorService {
         return true;
       }
     }
+    const awaitingAddress = conv.state === 'awaiting_address';
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
     const attributeText = text.replace(/\s+y\s+(?:con\s+)?(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}[\p{L}\s-]*[.!]?$/iu, '');
     if (!/[¿?]/.test(text)) {
@@ -18560,10 +18561,15 @@ export class WhatsappOrchestratorService {
     const note = noteClauses.length ? noteEdit.note : line.note;
     const cart = session.cart.map((item, i) => (i === cartIndex ? { ...item, attributes, note } : item));
     session = { ...session, cart, pendingAttribute: undefined, pendingMatch: undefined };
-    await this.conversationService.saveSession(conv, session, 'building_cart');
+    await this.conversationService.saveSession(conv, session, awaitingAddress ? 'awaiting_address' : 'building_cart');
     const summary = updates
       .map((u) => `${u.attributeName}: ${u.attributeValue}`)
       .join(' · ') + (noteClauses.length ? ` · Nota: ${note}` : '');
+    // Editing an option does not accept a saved address or restart shopping.
+    if (awaitingAddress) {
+      await this.reply(conv, waId, `Listo ✅ *${itemName}* queda con *${summary}*.\n\n${this.formatInterruptedStepReminder(conv, session)}`);
+      return true;
+    }
     if (resumeCheckout) {
       await this.tryConfirmOrder(conv,waId,session,{preface:`Listo ✅ *${itemName}* queda con *${summary}*.`});
       return true;

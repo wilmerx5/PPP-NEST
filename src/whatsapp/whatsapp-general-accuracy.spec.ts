@@ -15422,3 +15422,98 @@ describe('Recargo consultado y edición independiente — no confundir con total
     expect(isCartChargeQuestion(text)).toBe(true);
   });
 });
+
+describe('Atributos mientras espera dirección — retoma el domicilio pendiente', () => {
+  for (const f of [
+    { id: 20201, name: 'Combo De Falafel', attr: 'Bebida', before: 'Te Verde', after: 'Agua Mineral' },
+    { id: 20211, name: 'Bowl De Tofu', attr: 'Salsa', before: 'Soja', after: 'Teriyaki' },
+  ]) for (const agent of [false, true]) for (const addressKind of ['sin dirección', 'lugar no confirmado', 'dirección anterior']) {
+    for (const wording of ['explícito', 'referencia']) {
+      it(`${f.name}, agente ${agent}, ${addressKind}, ${wording}`, async () => {
+        const menu = [
+          { id: f.id, code: f.id, name: f.name, price: 21000, availableNow: true, hasAttributes: true,
+            attributes: [{ attributeName: f.attr, options: [f.before, f.after] }] },
+          { id: f.id + 1, code: f.id + 1, name: f.after, price: 5000, availableNow: true, hasAttributes: false, attributes: [] },
+        ];
+        const h = harness(menu, agent);
+        h.conv.state = 'awaiting_address';
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, {
+          orderType: 'delivery', address: addressKind === 'lugar no confirmado' ? 'Conjunto Los Pinos' : undefined,
+          lastDeliveryAddress: addressKind === 'dirección anterior' ? 'Calle 12 30 45' : undefined,
+          addressConfirmed: false, deliveryFeeCalculated: null,
+          phoneConfirmed: true, contactPhone: h.conv.phoneE164,
+          cart: [{ productId: f.id, code: f.id, name: f.name, unitPrice: 21000, quantity: 2, note: 'sin cebolla',
+            attributes: [{ attributeName: f.attr, attributeValue: f.before }] }],
+        });
+        const before = structuredClone(h.conv.sessionData);
+        await h.sendQueued(wording === 'explícito' ? `Cambia ${f.attr} de ${f.name} a ${f.after}` : `Lo quiero con ${f.after} por favor`);
+        expect(h.cartRows()).toEqual([{ id: f.id, qty: 2, note: 'sin cebolla', attrs: [`${f.attr}:${f.after}`] }]);
+        expect(h.conv.sessionData.cart).toEqual([{ ...before.cart[0], attributes: [{ attributeName: f.attr, attributeValue: f.after }] }]);
+        expect(h.conv.state).toBe('awaiting_address');
+        expect(h.conv.sessionData.address).toBe(before.address);
+        expect(h.conv.sessionData.lastDeliveryAddress).toBe(before.lastDeliveryAddress);
+        expect(h.conv.sessionData.addressConfirmed).toBe(false);
+        expect(h.conv.sessionData.deliveryFeeCalculated).toBeNull();
+        const reply = h.replies.at(-1) || '';
+        expect(reply).toContain(f.after);
+        expect(reply).toMatch(/dirección/i);
+        expect(reply).not.toMatch(/algo más|cómo pagas|confirmar\./i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        // Geography is simulated; the real router must accept the next street
+        // rather than keep treating subsequent turns as product options.
+        h.service.ensureDeliveryFeeQuoted = jest.fn(async (session: WhatsappSessionData) => ({
+          session: { ...session, addressConfirmed: true, deliveryFeeCalculated: 2000 },
+        }));
+        await h.sendQueued('Calle 23 45 67');
+        expect(h.conv.sessionData.address).toMatch(/calle 23 45 67/i);
+        expect(h.conv.sessionData.addressConfirmed).toBe(true);
+        expect(h.cartRows()[0].attrs).toEqual([`${f.attr}:${f.after}`]);
+        expect(h.conv.state).toBe('awaiting_payment');
+        expect(h.replies.at(-1)).toMatch(/pagas|pago/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Atributos y dirección pendiente — opción inválida o plato ambiguo', () => {
+  for (const f of [
+    { id: 20301, name: 'Pita De Lentejas', other: 'Pita De Setas', attr: 'Salsa', first: 'Yogur', next: 'Ajo' },
+    { id: 20311, name: 'Calzone De Verduras', other: 'Calzone De Setas', attr: 'Queso', first: 'Mozzarella', next: 'Provolone' },
+  ]) for (const agent of [false, true]) for (const kind of ['inválida', 'ambigua']) {
+    it(`${f.name}, agente ${agent}, ${kind}`, async () => {
+      const menu = [f.name, f.other].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: 21000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] }));
+      const h = harness(menu, agent);
+      h.conv.state = 'awaiting_address';
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: undefined, addressConfirmed: false,
+        cart: menu.map(p => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price, quantity: 1,
+          note: 'sin cebolla', attributes: [{ attributeName: f.attr, attributeValue: f.first }] })) });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(kind === 'inválida' ? `Cambia ${f.attr} de ${f.name} a Inventada` : `Cambia ${f.attr} a ${f.next}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.conv.sessionData.address).toBeUndefined();
+      if (kind === 'ambigua') {
+        expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+        await h.sendQueued('2');
+        expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+        expect(h.cartRows()[1].attrs).toEqual([`${f.attr}:${f.next}`]);
+        expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      } else {
+        expect(h.replies.at(-1)).toMatch(/no pude confirmar.*opción/i);
+        await h.sendQueued(`Cambia ${f.attr} de ${f.name} a ${f.next}`);
+        expect(h.conv.sessionData.cart[1]).toEqual(before[1]);
+        expect(h.cartRows()[0].attrs).toEqual([`${f.attr}:${f.next}`]);
+      }
+      expect(h.conv.state).toBe('awaiting_address');
+      expect(h.conv.sessionData.address).toBeUndefined();
+      expect(h.replies.at(-1)).toMatch(/dirección/i);
+      expect(h.replies.at(-1)).not.toMatch(/algo más/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
