@@ -762,6 +762,9 @@ export class WhatsappOrchestratorService {
     // El saludo se arma con el texto de entrada: "veci" no es un plato, pero sí el tono.
     const inboundText = text;
     text = applyLocalGlossary(text);
+    if (!['awaiting_name', 'awaiting_address', 'awaiting_phone'].includes(conv.state || '')) {
+      text = this.catalogService.alignMenuSpelling(text, await this.catalogService.getMenuProducts());
+    }
     text = text.replace(/^(?:s[ií][,\s]+)?(?:reg[aá]lame|reg[aá]leme|me\s+regalas?)\s+(?=(?:un|una|dos|tres|cuatro|\d+)\b)/i, 'Quiero ');
     if (text.includes('\n') && !['completed', 'closed', 'human'].includes(conv.state || '')) {
       const current = this.conversationService.getSession(conv);
@@ -10110,6 +10113,7 @@ export class WhatsappOrchestratorService {
     if (family && family.variants.length >= 2) {
       let picked =
         this.catalogService.pickVariantFromFamilyText(text, family) ||
+        (hint === 'combo' && this.catalogService.productImpliesCombo(product) ? product : null) ||
         (hint === 'combo'
           ? family.variants.find((p) => /\bcombo\b/.test(p.name.toLowerCase())) || null
           : hint === 'solo'

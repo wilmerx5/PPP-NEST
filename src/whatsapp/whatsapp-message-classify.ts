@@ -113,7 +113,7 @@ function normalizeWord(w: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-function editDistance(a: string, b: string): number {
+export function editDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;

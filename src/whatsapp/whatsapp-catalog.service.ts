@@ -7,6 +7,7 @@ import { ProductsService } from '../products/products.service';
 import type { WhatsappProductCandidate } from './types/whatsapp-session.types';
 import { findByMenuConcept, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
+import { editDistance } from './whatsapp-message-classify';
 import { expandDistributedVariants, expandSpokenSameSkuPair } from './whatsapp-distributed-variants';
 import { splitTrailingEmbeddedAddress } from './whatsapp-compound-parse';
 import {
@@ -3025,6 +3026,27 @@ export class WhatsappCatalogService {
       }
     }
     return best;
+  }
+
+  /** A long word the menu never uses, one spelling slip away from exactly one menu word ("milanesa" / "Milensa"). */
+  alignMenuSpelling(text: string, products: WhatsappCatalogProduct[]): string {
+    const live = products.filter((product) => product.availableNow !== false);
+    const known = new Set(live.flatMap((product) => normalizeText([product.name, product.description || '',
+      ...(product.attributes || []).flatMap((attr) => [attr.attributeName, ...attr.options])].join(' ')).split(/[^a-z0-9]+/)));
+    const names = [...new Set(live.flatMap((product) => normalizeText(product.name).split(/[^a-z0-9]+/)))].filter((word) => word.length >= 7);
+    if (!names.length) return text;
+    return text.replace(/[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]{7,}/g, (raw) => {
+      const word = normalizeText(raw);
+      if (known.has(word)) return raw;
+      const singular = word.length >= 8 && word.endsWith('s') && !known.has(word.slice(0, -1)) ? word.slice(0, -1) : word;
+      const skeleton = (value: string) => value.replace(/[aeiou]/g, '');
+      const close = names.filter((name) => {
+        if (name.slice(0, 3) !== singular.slice(0, 3) || name.startsWith(singular) || singular.startsWith(name)) return false;
+        const distance = editDistance(singular, name);
+        return (distance <= 2 && skeleton(singular) === skeleton(name)) || (distance === 1 && singular.length >= 8);
+      });
+      return close.length === 1 ? close[0] : raw;
+    });
   }
 
   /**
@@ -7683,21 +7705,21 @@ export class WhatsappCatalogService {
       );
       if (combos.length === 1) return combos[0];
       if (combos.length > 1) {
-        const withQueryTok = combos.filter((p) => {
-          const toks = normalizeText(p.name)
-            .split(/\s+/)
-            .filter(
-              (t) =>
-                t.length >= 4 &&
-                !/\b(combo|completo|completa|gaseosa|bebida)\b/.test(t) &&
-                !COOKING_STYLE_TOKENS.has(t),
-            );
-          return toks.some((t) => this.queryHasToken(q, t));
-        });
+        const nameToks = (p: WhatsappCatalogProduct) => normalizeText(p.name)
+          .split(/\s+/)
+          .filter(
+            (t) =>
+              t.length >= 4 &&
+              !/\b(combo|completo|completa|gaseosa|bebida)\b/.test(t) &&
+              !COOKING_STYLE_TOKENS.has(t),
+          );
+        const fit = (p: WhatsappCatalogProduct) =>
+          nameToks(p).reduce((score, t) => score + (this.queryHasToken(q, t) ? 1 : -1), 0);
+        const withQueryTok = combos.filter((p) => nameToks(p).some((t) => this.queryHasToken(q, t)));
         if (withQueryTok.length === 1) return withQueryTok[0];
         if (withQueryTok.length > 1) {
           return [...withQueryTok].sort(
-            (a, b) => normalizeText(b.name).length - normalizeText(a.name).length,
+            (a, b) => fit(b) - fit(a) || normalizeText(b.name).length - normalizeText(a.name).length,
           )[0];
         }
       }

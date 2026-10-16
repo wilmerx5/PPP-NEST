@@ -14767,3 +14767,67 @@ describe('Pago en efectivo con billete no es nota de cocina', () => {
   expect(h.cartRows()).toEqual([expect.objectContaining({id:23, note:undefined})]);
  });
 });
+
+describe('Errores de escritura en la carta o del cliente — el plato que sí existe', () => {
+ const pizzas=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-pizza-menu-1510.json'),'utf8'));
+ const typoMenu = [
+  {id:9501,code:9501,name:'Lomo Saltedo',description:'Lomo de res, cebolla, tomate y papas',price:22000,availableNow:true,hasAttributes:false,attributes:[]},
+  {id:9502,code:9502,name:'Perro Caliente',description:'Salchicha americana',price:12000,availableNow:true,hasAttributes:false,attributes:[]},
+ ];
+ const cases: Array<[string, any[], string, number, number]> = [
+  ['PPP', products, 'quiero una milanesa', 62, 1],
+  ['PPP', products, 'una milanesa de pollo', 62, 1],
+  ['PPP', products, '2 milanesas', 62, 2],
+  ['pizzería', pizzas, 'una lasagna boloñesa', 9305, 1],
+  ['ficticio', typoMenu, 'quiero un lomo saltado', 9501, 1],
+ ];
+ for (const agent of [false, true]) {
+  it.each(cases.map(([label, menu, text, id, qty]) => [`${label}: ${text}`, menu, text, id, qty] as const))(`agente ${agent ? 'on' : 'off'} %s`, async (_title, menu, text, id, qty) => {
+   const h = harness(menu, agent);
+   await h.sendQueued(text);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id, qty})]);
+  });
+  it(`PPP agente ${agent ? 'on' : 'off'}: milanesa junto a otro plato no se reporta como faltante`, async () => {
+   const h = harness(products, agent);
+   const reply = await h.sendQueued('dame una milanesa y un arroz chino');
+   expect(h.cartRows().map(row => row.id).sort((a, b) => a - b)).toEqual([26, 62]);
+   expect(reply).not.toMatch(/no manejamos/i);
+  });
+ }
+ it('solo corrige palabras largas con una única palabra cercana en la carta', () => {
+  const catalog = new WhatsappCatalogService({} as never);
+  expect(catalog.alignMenuSpelling('cuanto cuesta, gracias por favor', products)).toBe('cuanto cuesta, gracias por favor');
+  expect(catalog.alignMenuSpelling('quiero una pizza margarita', pizzas)).toBe('quiero una pizza margarita');
+  expect(catalog.alignMenuSpelling('un pollo broster', products)).toBe('un pollo broaster');
+  expect(catalog.alignMenuSpelling('bien empacado, a Almacén Metro Bandera', products)).toBe('bien empacado, a Almacén Metro Bandera');
+  expect(catalog.alignMenuSpelling('las empanadas bien empacados', pizzas)).toBe('las empanadas bien empacados');
+  const twins = [{...typoMenu[0], name:'Costilla Ahumada'}, {...typoMenu[1], name:'Costella Picante'}];
+  expect(catalog.alignMenuSpelling('quiero costilla', twins)).toBe('quiero costilla');
+  expect(catalog.alignMenuSpelling('quiero costalla', twins)).toBe('quiero costalla');
+ });
+});
+
+describe('Combo nombrado entero — gana el combo cuyas palabras dijo el cliente', () => {
+ const burgers = [
+  {id:9601,code:9601,name:'Hamburguesa Doble',description:'',price:20000,availableNow:true,hasAttributes:false,attributes:[]},
+  {id:9602,code:9602,name:'Combo Hamburguesa Doble Con Papas',description:'Con gaseosa',price:26000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Cola','Naranja']}]},
+  {id:9603,code:9603,name:'Combo Hamburguesa Doble Con Aros De Cebolla Gratinados',description:'Con gaseosa',price:29000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Cola','Naranja']}]},
+ ];
+ const cases: Array<[string, any[], string, number]> = [
+  ['PPP', products, 'quiero un combo arroz chino medio pollo', 97],
+  ['PPP', products, 'quiero un combo arroz chino con costillas', 85],
+  ['ficticio', burgers, 'quiero un combo hamburguesa doble papas', 9602],
+  ['ficticio', burgers, 'quiero un combo hamburguesa doble aros de cebolla', 9603],
+ ];
+ for (const agent of [false, true]) {
+  it.each(cases.map(([label, menu, text, id]) => [`${label}: ${text}`, menu, text, id] as const))(`agente ${agent ? 'on' : 'off'} %s`, async (_title, menu, text, id) => {
+   const h = harness(menu, agent);
+   await h.sendQueued(text);
+   const session = h.conv.sessionData as any;
+   const chosen = session.pendingAttribute?.productId ?? h.cartRows()[0]?.id;
+   if (agent && chosen === undefined) expect(h.agent.runTurn).toHaveBeenCalled();
+   else expect(chosen).toBe(id);
+  });
+ }
+});
+
