@@ -14830,4 +14830,3 @@ describe('Combo nombrado entero — gana el combo cuyas palabras dijo el cliente
   });
  }
 });
-

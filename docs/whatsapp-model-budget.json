@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 183,
-  "usedRequests": 170,
-  "remainingRequests": 13,
+  "usedRequests": 178,
+  "remainingRequests": 5,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-16T02:14:58.419Z",
+  "lastAttemptAt": "2026-10-16T03:01:02.446Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "baseCommit": "4fc3c579",
@@ -629,6 +629,18 @@
       "usedTotal": 170,
       "remaining": 13,
       "note": "Pizza 6 turnos aceptado (desarrollo, no independiente): quitar con muletilla deja 2 empanadas, gaseosa sprite agregada, efectivo con billete de 100 sin nota de cocina. Lasagna responde con la ficha (pan de ajo en description), sin un sí/no explícito."
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "d95cc942",
+      "model": "gpt-6.1-sol",
+      "requests": 8,
+      "usedBefore": 170,
+      "usedAfter": 178,
+      "accepted": 0,
+      "status": "interrupted_not_accepted",
+      "report": "docs/whatsapp-latest-integration-validation-1510.json",
+      "note": "Runner launched after stale expected-budget assertion failed because shell did not stop. Source and ledger had advanced from prior chat state; interrupted only own preload process. No complete provider usage report emitted, cost unknown; do not treat unreported usage as free. No reset of counters."
     }
   ],
   "authorizationHistory": [

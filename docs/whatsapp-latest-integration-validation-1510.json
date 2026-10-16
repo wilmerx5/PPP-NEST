@@ -1,0 +1,71 @@
+{
+  "baseCommit": "d95cc942",
+  "includesPreviouslyUncommittedChanges": true,
+  "upstreamCommitsPendingBeforeIntegration": 11,
+  "scope": "Frozen source validation after user confirmed other editor stopped",
+  "focused": {
+    "passed": 22,
+    "log": "/tmp/ppp-latest-changes-targets.log",
+    "sourceUnchanged": true
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-latest-changes-tsc.log"
+  },
+  "global": {
+    "status": "passed",
+    "sourceSnapshot": "/tmp/ppp-latest-integration-source.json",
+    "log": "/tmp/ppp-latest-integration-full.log",
+    "suites": 57,
+    "passed": 5689,
+    "seconds": 580.499,
+    "sourceUnchangedDuringValidation": true
+  },
+  "priorEvidence": {
+    "falafel": {
+      "accepted": true,
+      "turns": 8,
+      "requests": 12,
+      "estimatedCostUsd": 0.08931539999999999,
+      "kind": "development retest, not holdout",
+      "report": "docs/whatsapp-falafel-retest-1510.json"
+    },
+    "pizza": {
+      "accepted": true,
+      "turns": 6,
+      "requests": 4,
+      "estimatedCostUsd": 0.0416464,
+      "kind": "development retest; ledger evidence, raw report in tmp not durable fixture",
+      "commit": "d95cc942"
+    }
+  },
+  "interruptedRun": {
+    "observedHead": "d95cc942",
+    "expectedHeadFromPreviousTurn": "b5891c35",
+    "expectedUsedRequests": 154,
+    "committedUsedRequestsAtObservedHead": 170,
+    "observedUsedAfterStop": 178,
+    "status": "interrupted_not_accepted",
+    "completeReportAvailable": false,
+    "providerUsageAndCost": "unknown; no usage report was emitted before interruption",
+    "reason": "Source/budget advanced since previous turn; budget assertion failed but shell continued. Stopped only process using /tmp/ppp-falafel-preload.cjs. Removed private key file.",
+    "scope": "Do not overwrite new agent evaluation or roll back shared ledger."
+  },
+  "reviewRemaining": [
+    "search_menu product_info hint currently treats absence from description as proof not included. Prefer explicit unknown when catalog is incomplete; not evidence an actual customer answer failed.",
+    "Durable cost/sample and handoff freshness should prevent redundant inference",
+    "Original audio/image and WhatsApp channel acceptance remain separate"
+  ],
+  "noAdditionalPaidCallsAfterUserConfirmedFreeze": true,
+  "mainModified": false,
+  "complement": {
+    "suites": 19,
+    "passed": 98,
+    "seconds": 9.105
+  },
+  "combinedDisjointTotals": {
+    "suites": 76,
+    "passed": 5787
+  },
+  "testOnlyWhitespaceAfterValidation": "Removed one extra blank line at EOF of whatsapp-general-accuracy.spec.ts; production source unchanged."
+}
