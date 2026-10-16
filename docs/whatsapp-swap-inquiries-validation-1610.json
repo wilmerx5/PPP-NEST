@@ -79,7 +79,30 @@
     "Catalog attribute availability does not establish free substitutions"
   ],
   "deployment": {
-    "status": "pending",
-    "productionChanged": false
+    "status": "verified",
+    "codeCommit": "00a8dfea",
+    "verifiedAt": "2026-10-16T05:57:05.114Z",
+    "container": "ppp-staging-api-1",
+    "state": "running/healthy",
+    "activeImageEqualsCandidate": true,
+    "image": "sha256:6e17051913b8bc70ef577990a7725b8581ec6d07b3c24fb194ca99d42a0a14a8",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "models": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    },
+    "compiledCapabilityGuardVerified": true,
+    "productionChanged": false,
+    "logs": [
+      "/tmp/ppp-swap-resume-deploy.log",
+      "/tmp/ppp-swap-resume-deploy-verified.log",
+      "/tmp/ppp-swap-resume-health.log"
+    ]
   }
 }
