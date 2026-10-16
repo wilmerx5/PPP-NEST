@@ -14664,3 +14664,27 @@ describe('“una X y otra X” — cada mención es una unidad',()=>{
  });
 });
 
+
+describe('Nombres hermanos — la palabra distintiva dicha decide el plato',()=>{
+ const pizzas=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-pizza-menu-1510.json'),'utf8'));
+ const crepes=[
+  {id:9401,code:9401,name:'Crepe Dulce Nutella',price:14000,description:'Crepe con nutella y helado de vainilla',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Topping',options:['Fresas','Banano']}]},
+  {id:9402,code:9402,name:'Crepe Dulce Arequipe',price:13000,description:'Crepe con arequipe y helado de vainilla',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Topping',options:['Fresas','Banano']}]},
+ ];
+ const cases=[
+  {kind:'pizzería',menu:pizzas,text:'hola buenas, quiero una pizza hawaiana con borde relleno de queso y una pizza de pepperoni con borde tradicional, y 3 empanadas de carne',
+   rows:[{id:9301,qty:1,attrs:['Borde:Relleno De Queso']},{id:9302,qty:1,attrs:['Borde:Tradicional']},{id:9303,qty:3}]},
+  {kind:'crepería',menu:crepes,text:'quiero una crepe de nutella con fresas y una crepe de arequipe con banano',
+   rows:[{id:9401,qty:1,attrs:['Topping:Fresas']},{id:9402,qty:1,attrs:['Topping:Banano']}]},
+ ];
+ it.each(cases.flatMap(c=>[{...c,agent:false},{...c,agent:true}]))('$kind agente=$agent',async({menu,text,rows,agent})=>{
+  const h=harness(menu as typeof products,agent);
+  const reply=await h.sendQueued(text)||'';
+  expect(h.cartRows().map(r=>({id:r.id,qty:r.qty,...(r.attrs?.length?{attrs:r.attrs}:{})})).sort((a,b)=>a.id-b.id)).toEqual(rows);
+  expect(reply).not.toMatch(/cuál te gusta/i);
+ });
+ it('PPP: nombres idénticos siguen preguntando',()=>{
+  const multi=new WhatsappCatalogService({} as never).resolveMultiProductOrder('quiero un trio de tacos y una sopa de ajiaco',products);
+  expect(multi?.ambiguous.map(a=>a.candidates.map(p=>p.id).sort())).toEqual([[72,73]]);
+ });
+});

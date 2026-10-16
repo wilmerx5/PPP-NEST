@@ -10139,7 +10139,18 @@ export class WhatsappCatalogService {
         continue;
       }
 
-      if (uniqueScored.length >= 2 && uniqueScored[0].score >= 35) {
+      const distinctlyNamed = uniqueScored.length >= 2 && uniqueScored[0].score >= 35
+        ? this.candidateNamedByDistinctToken(segment, uniqueScored.slice(0, 6).map((x) => x.p))
+        : null;
+      if (distinctlyNamed && !usedProductIds.has(distinctlyNamed.id) &&
+        !this.leftoverFoodWords(segment, distinctlyNamed).length) {
+        usedProductIds.add(distinctlyNamed.id);
+        const match = { segment, product: distinctlyNamed, score: uniqueScored[0].score };
+        if (distinctlyNamed.hasAttributes && distinctlyNamed.attributes?.length) {
+          if (this.extractExplicitAttributeChoice(segment, distinctlyNamed)) confident.push(match);
+          else needsAttributes.push(match);
+        } else confident.push(match);
+      } else if (uniqueScored.length >= 2 && uniqueScored[0].score >= 35) {
         ambiguous.push({
           segment,
           candidates: this.dedupeProductsById(uniqueScored.slice(0, 6).map((x) => x.p)).slice(0, 4),
@@ -10236,6 +10247,21 @@ export class WhatsappCatalogService {
       needsAttributes,
       possibleCustomerNames: names,
     };
+  }
+
+  /** “pizza hawaiana …” frente a Pizza Personal Hawaiana / Pizza Personal Pepperoni: solo un nombre lleva la palabra dicha. */
+  private candidateNamedByDistinctToken(
+    segment: string,
+    candidates: WhatsappCatalogProduct[],
+  ): WhatsappCatalogProduct | null {
+    const said = normalizeText(segment);
+    const tokensOf = (p: WhatsappCatalogProduct) =>
+      normalizeText(p.name).split(/[^a-z0-9]+/).filter((t) => t.length >= 4 && !this.WEAK_PRODUCT_TOKENS.has(t));
+    const named = candidates.filter((candidate) => {
+      const others = new Set(candidates.filter((p) => p.id !== candidate.id).flatMap(tokensOf));
+      return tokensOf(candidate).some((t) => !others.has(t) && this.queryHasToken(said, t));
+    });
+    return named.length === 1 ? named[0] : null;
   }
 
   /** “una trucha frita y otra trucha con camarones”: el segundo plato no se descarta en silencio por repetir SKU. */
