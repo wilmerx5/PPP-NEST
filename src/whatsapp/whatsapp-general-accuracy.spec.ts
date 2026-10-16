@@ -15172,3 +15172,100 @@ describe('Edición seguida de total — aclara la línea antes de cotizar', () =
     });
   }
 });
+
+describe('Consulta más edición de atributo — conserva ambas intenciones', () => {
+  const fixtures = [
+    { id: 19601, name: 'Bowl De Tofu', description: 'Tofu con verduras y arroz', attr: 'Salsa', first: 'Soja', next: 'Teriyaki', missing: 'Mostaza' },
+    { id: 19611, name: 'Combo De Falafel', description: 'Falafel con ensalada y bebida', attr: 'Bebida', first: 'Te', next: 'Agua', missing: 'Chocolate' },
+  ];
+  for (const f of fixtures) {
+    const menu = [
+      { id: f.id, code: f.id, name: f.name, description: f.description, price: 21000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] },
+      { id: f.id + 1, code: f.id + 1, name: f.next, price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    ];
+    const seed = (agent: boolean, state = 'awaiting_payment') => {
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = state;
+      h.conv.customerName = state === 'awaiting_name' ? '' : 'Ana';
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+        cart: [{ productId: f.id, code: f.id, name: f.name, unitPrice: 21000, quantity: 2, note: 'sin cebolla',
+          attributes: [{ attributeName: f.attr, attributeValue: f.first }] },
+          { productId: f.id + 1, code: f.id + 1, name: f.next, unitPrice: 6000, quantity: 1, note: 'aparte', attributes: [] }],
+      });
+      return h;
+    };
+    for (const agent of [false, true]) for (const state of ['building_cart', 'awaiting_name', 'awaiting_payment']) {
+      for (const kind of ['composición', 'precio']) for (const form of ['pregunta', 'sin signos']) {
+        it(`${f.name}, ${state}, agente ${agent}, ${kind}, ${form}`, async () => {
+          const h = seed(agent, state);
+          const other = structuredClone(h.conv.sessionData.cart[1]);
+          const question = kind === 'composición' ? `¿Qué trae ${f.name}?` : `¿Cuánto cuesta ${f.name}?`;
+          const query = form === 'pregunta' ? question : question.replace(/[¿?]/g, '');
+          await h.sendQueued(`${query} y cambia ${f.attr} de ${f.name} a ${f.next}`);
+          expect(h.cartRows()[0]).toMatchObject({ id: f.id, qty: 2, note: 'sin cebolla', attrs: [`${f.attr}:${f.next}`] });
+          expect(h.conv.sessionData.cart[0].unitPrice).toBe(21000);
+          expect(h.conv.sessionData.cart[1]).toEqual(other);
+          expect(h.cartRows()).toHaveLength(2);
+          expect(h.conv.state).toBe(state === 'building_cart' ? 'awaiting_payment' : state);
+          expect(h.conv.customerName).toBe(state === 'awaiting_name' ? '' : 'Ana');
+          expect(h.conv.sessionData.address).toBe('Calle 12 30 45');
+          const reply = h.replies.join('\n');
+          expect(reply).toMatch(kind === 'composición' ? new RegExp(f.description, 'i') : /precio de.*21[.,]000.*por unidad/i);
+          expect(reply).toMatch(new RegExp(f.next, 'i'));
+          expect(reply).toMatch(state === 'awaiting_name' ? /nombre/i : /pagas|método de pago/i);
+          expect(reply).not.toMatch(/gratis|sin recargo/i);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        });
+      }
+    }
+    it.each([false, true])(`${f.name}: opción inexistente no muta (agente %s)`, async agent => {
+      const h = seed(agent);
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`¿Qué trae ${f.name}? Y cambia ${f.attr} de ${f.name} a ${f.missing}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.join('\n')).toContain(f.description);
+      expect(h.replies.at(-1)).toMatch(/no pude confirmar|no.*opción/i);
+      expect(h.conv.state).toBe('awaiting_payment');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('Consulta más atributo — aclara el producto sin elegir pago', () => {
+  for (const f of [
+    { id: 19701, name: 'Pita De Lentejas', other: 'Pita De Setas', attr: 'Salsa', first: 'Yogur', next: 'Ajo' },
+    { id: 19711, name: 'Calzone De Verduras', other: 'Calzone De Setas', attr: 'Queso', first: 'Mozzarella', next: 'Provolone' },
+  ]) {
+    it.each([false, true])(`${f.name}, agente %s`, async agent => {
+      const menu = [f.name, f.other].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: 21000, availableNow: true, hasAttributes: true,
+        attributes: [{ attributeName: f.attr, options: [f.first, f.next] }] }));
+      const h = harness(menu, agent);
+      h.service.ordersService.create = jest.fn();
+      h.conv.state = 'awaiting_payment';
+      Object.assign(h.conv.sessionData, {
+        orderType: 'delivery', address: 'Calle 12 30 45', addressConfirmed: true,
+        phoneConfirmed: true, contactPhone: h.conv.phoneE164, deliveryFeeCalculated: 3000,
+        cart: menu.map((p, index) => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price,
+          quantity: index + 1, note: index ? 'sin tomate' : 'sin cebolla',
+          attributes: [{ attributeName: f.attr, attributeValue: f.first }] })),
+      });
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`¿Cuánto vale el domicilio? Y cambia ${f.attr} a ${f.next}`);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartAttributeEdit?.candidates).toHaveLength(2);
+      expect(h.replies.join('\n')).toMatch(/domicilio.*3[.,]000/i);
+      expect(h.replies.at(-1)).toMatch(/cuál plato/i);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+      expect(h.cartRows()[1]).toMatchObject({ id: f.id + 1, qty: 2, note: 'sin tomate', attrs: [`${f.attr}:${f.next}`] });
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.conv.state).toBe('awaiting_payment');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

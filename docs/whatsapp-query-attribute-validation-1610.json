@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "3cad0af8",
+  "scope": "Factual inquiry followed by an explicit configured cart-attribute edit",
+  "newTests": 56,
+  "baseline": {
+    "failed": 52,
+    "passed": 0,
+    "scope": "48 direct cases plus4 invalid-option cases; ambiguity followups added later",
+    "log": "/tmp/ppp-query-attribute-baseline.log"
+  },
+  "targeted": {
+    "passed": 156,
+    "existingControls": 100,
+    "log": "/tmp/ppp-query-attribute-targets-final.log"
+  },
+  "coverage": {
+    "positive": 48,
+    "invalidOption": 4,
+    "ambiguousProductThenNumericChoice": 4,
+    "menus": [
+      "Bowl De Tofu/Salsa",
+      "Combo De Falafel/Bebida",
+      "Pitas/Salsa",
+      "Calzones/Queso"
+    ],
+    "inquiries": [
+      "product description",
+      "unit price",
+      "cached delivery charge in ambiguity controls"
+    ],
+    "states": [
+      "building_cart with confirmed address",
+      "awaiting_name",
+      "awaiting_payment"
+    ],
+    "forms": [
+      "question marks",
+      "unpunctuated query joined by y"
+    ],
+    "model": "simulated, enabled/disabled"
+  },
+  "oracles": [
+    "Inquiry response retained through checkout",
+    "Only selected attribute changes",
+    "Quantity, notes, price, address and unrelated line retained",
+    "Option word that is also a sellable product is not separately added",
+    "Invalid option preserves cart",
+    "Ambiguous product prompts selection and numeric2 is not payment",
+    "No free substitution promise or external order"
+  ],
+  "changes": [
+    "Permit explicit non-interrogative attribute edits in compound-intent route",
+    "Reuse existing catalog-based attribute handler and ambiguity checks",
+    "Keep capability, price and cost-conditioned requests outside attribute-action gate"
+  ],
+  "apiRequests": 0,
+  "externalMetaMapsOrders": 0,
+  "budgetUnchanged": {
+    "cap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-query-attribute-tsc.log"
+  },
+  "complement": {
+    "suites": 19,
+    "tests": 98,
+    "seconds": 12.027,
+    "log": "/tmp/ppp-query-attribute-complement.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-query-attribute-full.log",
+    "snapshot": "/tmp/ppp-query-attribute-source.json",
+    "whatsappSuites": 57,
+    "whatsappTests": 6033,
+    "whatsappSeconds": 901.821,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "totalSuites": 76,
+    "totalTests": 6131,
+    "sourceUnchanged": true,
+    "disjointRunsSameFrozenSource": true
+  },
+  "deployment": {
+    "status": "pending",
+    "mainChanged": false
+  },
+  "limitations": [
+    "Mock full-router tests; no new model or channel measurement",
+    "Does not cover all pending states or all typos",
+    "Conditioned edit plus independent action remains next family",
+    "No new substitution price policy or delivery geocoding validation"
+  ],
+  "next": [
+    "Cost-conditioned edit plus independent cart action",
+    "Surcharge inquiry versus aggregate total after removal",
+    "Attribute changes while waiting for a new address",
+    "Standalone edits with conjunction inside product name"
+  ]
+}

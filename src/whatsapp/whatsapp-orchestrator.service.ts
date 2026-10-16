@@ -1165,7 +1165,7 @@ export class WhatsappOrchestratorService {
     const asksEditedTotal = !!editAndTotal && (isCartChargeQuestion(totalQuery) || isOrderBillRequest(totalQuery) ||
       /^(?:cuanto queda(?: en total)?|(?:el )?total)(?: por favor)?$/.test(this.normalizeForMatch(totalQuery)));
     const inquiryAndEdit = (asksEditedTotal ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
-      originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
+      originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|cambia(?:me)?|sustituye|reemplaza|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
     let independentEdit = inquiryAndEdit?.[2] || '';
     // Existing parsers conservatively reject "y" as a second instruction.
     // Inside a complete known cart name it is identity, not an instruction.
@@ -1175,9 +1175,12 @@ export class WhatsappOrchestratorService {
       independentEdit = independentEdit.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'giu'),
         name => name.replace(/\s+y\s+/gi, ' '));
     }
+    const independentAttributeEdit = /^(?:cambia(?:me)?|sustituye|reemplaza)\s+/.test(this.normalizeForMatch(independentEdit)) &&
+      !/[¿?]/.test(independentEdit) && !this.catalogService.isPriceInquiryIntent(independentEdit) &&
+      !isCostConditionalRequest(independentEdit);
     if (inquiryAndEdit && !/^(?:y )?si\b/.test(this.normalizeForMatch(inquiryAndEdit[1])) && session.cart.length &&
       !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
-      (parseScopedCartRemoval(independentEdit) || parseCartQuantityCorrection(independentEdit))) {
+      (parseScopedCartRemoval(independentEdit) || parseCartQuantityCorrection(independentEdit) || independentAttributeEdit)) {
       // For "edit, then tell me the total", the edit handlers already render
       // the resulting cart and total. Never quote the pre-edit amount first.
       if (asksEditedTotal) {
@@ -1212,6 +1215,8 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, msg.waId, answer);
         if (await this.tryHandleScopedCartRemoval(conv, msg.waId, session, independentEdit, cfg)) return;
         if (await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, independentEdit, cfg)) return;
+        if (independentAttributeEdit && await this.tryHandleCartAttributeOptionChange(
+          conv, msg.waId, session, independentEdit, await this.catalogService.getMenuProducts())) return;
         text = independentEdit;
         originalText = text;
       }

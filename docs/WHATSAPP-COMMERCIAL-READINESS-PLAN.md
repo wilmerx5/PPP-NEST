@@ -1,3 +1,11 @@
+## Consulta seguida de cambio de atributo — 16/10
+
+56 pruebas nuevas gratuitas: 48 combinaciones de dos cartas (Bowl De Tofu/Salsa y Combo De Falafel/Bebida), tres estados, agente simulado habilitado/deshabilitado, dos consultas y dos formas de separarlas; cuatro opciones inexistentes; cuatro recorridos de ambigüedad en pitas/salsa y calzones/queso. Baseline inicial: 52 fallidas/0 aprobadas. Se responde la consulta y se aplica solo el cambio explícito con los manejadores existentes. No se agrega el producto suelto aunque el valor de la opción también sea vendible. Se conservan notas, cantidad, precio, dirección y la otra línea; las opciones inexistentes no mutan el carrito. Una lista de productos pendientes consume «2» como producto, no como pago.
+
+156 focalizadas aprobadas (56 nuevas + 100 controles), TypeScript aprobado. Global: 57 suites/6033 pruebas WhatsApp en 901.821 s + 19 suites/98 complementarias en 12.027 s = 76 suites/6131 pruebas en ejecuciones disjuntas con fuente congelada y comprobada. Evidencia: docs/whatsapp-query-attribute-validation-1610.json. Logs: /tmp/ppp-query-attribute-{baseline,targets-final,full,complement,tsc}.log. Cero API/Meta/mapas/órdenes externas; presupuesto 183/178/5 intacto. Pendiente desplegar este lote en staging. Main local/remoto conserva 1a2b2e23; no se reconstruyó producción.
+
+Siguiente bloque: condición de costo con otra acción independiente, y límite entre recargo y total agregado («quita una unidad y dime cuánto cobran por cambiar la bebida»). Añadir cambios de atributos mientras espera nueva dirección y nombres con conjunciones en ediciones solas. Esta tanda no acredita todas las variantes con typos, todos los pasos pendientes ni inferencia/canal real. No repetir global por cierre documental.
+
 ## Main integrada y nueva tanda de staging — 16/10
 
 Solicitud del usuario: integrar todo en Main y continuar probando en staging. Main local (/home/levi/Documents/programming/PPP/PPP-NEST) y origin/Main avanzaron por fast-forward de d9241abe a 1a2b2e23, sin conflictos ni cambios exclusivos de Main. Ese corte estaba validado con 6035 pruebas. Staging se conserva; no se reconstruyó el servidor de producción. GitHub CLI no tenía sesión para consultar CI remoto: no afirmar CI remoto verde. La integración se acredita con push correcto y fuente idéntica al corte validado.
