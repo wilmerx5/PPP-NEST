@@ -1,0 +1,67 @@
+{
+  "baseCommit": "05720e94",
+  "scope": "Generic catalog completeness and factual interruptions; full router, transports/model simulated",
+  "newTests": 42,
+  "targetedIncludingCompatibility": 46,
+  "baseline": {
+    "failed": 10,
+    "passed": 4,
+    "log": "/tmp/ppp-incomplete-menu-baseline.log",
+    "note": "Four empty-description building-cart cases already reported missing details; initial overly narrow wording assertion corrected before counting baseline."
+  },
+  "coverage": [
+    "24 empty-description cases:2menus x agent enabled/disabled x6states",
+    "2 product_info contracts for empty/partial description, unlisted details unknown and attribute options alternatives",
+    "8 partial-description queries preserve facts/cart/state",
+    "4 follow-up conversations:unknown detail,total,quantity,total,cash; no orders created",
+    "2 multiple named dishes, each retaining its own description or missing-data statement",
+    "2 numeric presentation controls:quarter vs half chicken and boxes6 vs12"
+  ],
+  "changes": [
+    "Remove absent-description implies exclusion instructions from agent and tool hints",
+    "Expose informationPolicy in product_info and composition tool results",
+    "Fully named factual questions interrupt checkout without mutating pending data/cart or invoking model",
+    "Render unknown detail as unconfirmed when queried words are not documented; retain known description",
+    "Answer multiple distinct fully named products, remove contained parent-name matches"
+  ],
+  "limitations": [
+    "Deterministic detail check compares normalized words; not a semantic proof of ingredients or allergen safety",
+    "No live inference or original media/channel validation in this round",
+    "No automatic changes authorized by composition queries",
+    "Two earlier global runs interrupted for multi-dish and numeric-presentation controls; neither counted as passed."
+  ],
+  "apiRequests": 0,
+  "budgetUnchanged": {
+    "operationalCap": 183,
+    "used": 178,
+    "remaining": 5
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-incomplete-menu-tsc.log"
+  },
+  "targeted": {
+    "passed": 46,
+    "log": "/tmp/ppp-incomplete-menu-final-targets.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-incomplete-menu-full-closed.log",
+    "snapshot": "/tmp/ppp-incomplete-menu-source-closed.json",
+    "suites": 57,
+    "passed": 5731,
+    "seconds": 522.301,
+    "sourceUnchanged": true
+  },
+  "mainModified": false,
+  "complement": {
+    "suites": 19,
+    "passed": 98,
+    "seconds": 6.511,
+    "log": "/tmp/ppp-incomplete-menu-complement-closed.log"
+  },
+  "combinedDisjointTotals": {
+    "suites": 76,
+    "passed": 5829
+  }
+}

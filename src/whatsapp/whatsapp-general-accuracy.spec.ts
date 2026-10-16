@@ -14830,3 +14830,74 @@ describe('Combo nombrado entero — gana el combo cuyas palabras dijo el cliente
   });
  }
 });
+
+describe('Carta incompleta — descripción desconocida no significa producto inexistente',()=>{
+ for(const name of ['Bowl De Lentejas','Pasta De Hongos'])for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment','awaiting_name','awaiting_phone','awaiting_address','awaiting_final_confirm']){
+  it(name+' '+state+' agent='+agent,async()=>{
+   const menu=[{id:9701,code:9701,name,description:'',price:21000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Limonada']}] }];
+   const h=harness(menu,agent);h.conv.state=state;h.conv.customerName=state==='awaiting_name'?'':'Ana';
+   h.conv.sessionData={cart:[{productId:9701,name,code:9701,unitPrice:21000,quantity:2,note:'bolsa aparte',attributes:[{attributeName:'Bebida',attributeValue:'Agua'}]}],productFocus:{productId:9701,name},orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+   const before=structuredClone(h.conv.sessionData.cart);
+   const reply=await h.send('Qué trae '+name+'?');
+   expect(reply).toMatch(/no.*(?:detalle|detalla|confirmad|registrad)/i);expect(reply).not.toMatch(/no tenemos|no manejamos|no lo trae/i);
+   expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);expect(h.conv.customerName).toBe(state==='awaiting_name'?'':'Ana');
+  });
+ }
+});
+
+describe('Información del menú — contrato abierto frente a datos no documentados',()=>{
+ it.each(['','Con papas y ensalada'])('no convierte descripción %j en lista exhaustiva',description=>{
+  const menu=[{id:9711,code:9711,name:'Combo De Falafel',description,price:29000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Agua','Limonada']}]}];
+  const catalog=new WhatsappCatalogService({} as never);const agent=new WhatsappAgentService({} as never,catalog) as any;
+  const result=JSON.parse(agent.executeTool('search_menu',{query:'Qué incluye Combo De Falafel?'},{products:menu,userMessage:'Qué incluye Combo De Falafel?',actions:{},cart:[]}));
+  expect(result.mode).toBe('product_info');expect(result.informationPolicy).toEqual({unlistedDetails:'unknown',optionsAreAlternatives:true});
+  expect(result.hint).not.toContain('lo que no aparece, di que no lo trae');expect(result.hint).toMatch(/no est[aá] confirmado/i);
+ });
+});
+
+describe('Carta parcial — ingrediente no documentado conserva consulta y cierre',()=>{
+ for(const name of ['Bowl De Lentejas','Pasta De Hongos'])for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment']){
+  it(name+' '+state+' agent='+agent,async()=>{
+   const menu=[{id:9721,code:9721,name,description:'Con arroz y ensalada',price:21000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.conv.state=state;h.conv.customerName='Ana';h.conv.sessionData={cart:[{productId:9721,name,code:9721,unitPrice:21000,quantity:2,note:'bolsa aparte',attributes:[]}],productFocus:{productId:9721,name},orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+   const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send('El '+name+' trae salsa de ajo?');
+   expect(reply).toMatch(/no tengo ese detalle confirmado/i);expect(reply).toContain('arroz');expect(reply).not.toMatch(/no lo trae|no tenemos|no manejamos/i);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);
+   const known=await h.send('Qué trae '+name+'?');expect(known).toContain('arroz');expect(known).not.toMatch(/no tengo ese detalle confirmado/i);
+  });
+ }
+});
+
+describe('Después de un dato desconocido — precio, cantidad y pago siguen funcionando',()=>{
+ for(const name of ['Bowl De Lentejas','Pasta De Hongos'])for(const agent of [false,true]){
+  it(name+' agent='+agent,async()=>{
+   const menu=[{id:9731,code:9731,name,description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.service.ordersService.create=jest.fn();
+   h.conv.sessionData={cart:[{productId:9731,name,code:9731,unitPrice:21000,quantity:2,note:'bolsa aparte',attributes:[]}],orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,deliveryFeeCalculated:2000};
+   const reply=await h.send('El '+name+' trae salsa de ajo?');expect(reply).toMatch(/no tengo ese detalle confirmado/i);expect(reply).toMatch(/pago|pagas/i);
+   const total=await h.send('Cuánto vale todo?');expect(total).toContain('44.000');expect(h.conv.state).toBe('awaiting_payment');
+   await h.send('Deja solo un '+name);expect(h.cartRows()).toEqual([expect.objectContaining({id:9731,qty:1,note:'bolsa aparte'})]);
+   const newTotal=await h.send('Cuál es el total con domicilio?');expect(newTotal).toContain('23.000');
+   await h.send('Efectivo');expect(h.conv.sessionData.paymentMethod).toBe('cash');expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.cartRows()[0].note).toBe('bolsa aparte');
+  });
+ }
+});
+
+describe('Consulta múltiple con carta incompleta — cada plato conserva su evidencia',()=>{
+ it.each([false,true])('pago agent=%s',async agent=>{
+  const menu=[{id:9741,code:9741,name:'Bowl De Lentejas',description:'Con arroz',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9742,code:9742,name:'Pasta De Hongos',description:'',price:23000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.customerName='Ana';h.conv.sessionData={cart:menu.map(p=>({productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]})),orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.send('Qué trae Bowl De Lentejas y Pasta De Hongos?');
+  expect(reply).toContain('Bowl De Lentejas');expect(reply).toContain('Pasta De Hongos');expect(reply).toContain('arroz');expect(reply).toMatch(/no tengo el detalle/i);expect(reply).toMatch(/pagas/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);
+ });
+});
+
+describe('Consulta de presentación numérica — no mezclar tamaños hermanos',()=>{
+ it.each([
+  {menu:products,text:'Qué trae 1/4 Pollo Frito?',name:'1/4 Pollo Frito',other:'1/2 Pollo Frito'},
+  {menu:[{id:9751,code:9751,name:'Caja 6 Dumplings',description:'Con ensalada',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:9752,code:9752,name:'Caja 12 Dumplings',description:'Con arroz',price:39000,availableNow:true,hasAttributes:false,attributes:[]}],text:'Qué trae Caja 6 Dumplings?',name:'Caja 6 Dumplings',other:'Caja 12 Dumplings'},
+ ])('$name en pago',async({menu,text,name,other})=>{
+  const h=harness(menu,true);h.conv.state='awaiting_payment';h.conv.customerName='Ana';
+  const p=menu.find(p=>p.name===name)!;h.conv.sessionData={cart:[{productId:p.id,name:p.name,code:p.code,unitPrice:p.price,quantity:1,attributes:[]}],orderType:'delivery',address:'Calle 12 30 45',addressConfirmed:true};
+  const reply=await h.send(text);expect(reply).toContain(name);expect(reply).not.toContain(other);expect(h.conv.state).toBe('awaiting_payment');expect(h.cartRows()).toHaveLength(1);
+ });
+});

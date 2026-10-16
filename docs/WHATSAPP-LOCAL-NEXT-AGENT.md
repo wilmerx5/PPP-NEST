@@ -1,3 +1,15 @@
+## Cierre aprobado — carta incompleta
+
+57suites WhatsApp/5731tests +19suites complementarias/98tests:76suites/5829tests en dos ejecuciones disjuntas con fuente intacta. TypeScript aprobado,46focalizadas (42nuevas+4existentes). Presupuesto183/178/5 intacto,ceroAPI nueva. Fuente congelada verificada contra /tmp/ppp-incomplete-menu-source-closed.json. Logs /tmp/ppp-incomplete-menu-{full-closed,complement-closed,tsc,final-targets}.log. Se publica lote en staging;falta verificar despliegue. No declarar validado con modelo/canal real.
+
+## Tanda actual local — carta incompleta e interrupciones, 15/10
+
+Base05720e94,staging.42tests nuevos gratuitos y4compatibilidad pasan,TypeScript aprobado.24casos de descripción vacía (2cartas,agente on/off,6estados),2contratos de herramienta,8consultas de dato ausente de descripción parcial,4continuaciones hasta efectivo,2consultas de varios platos y2controles de presentación numérica. Baseline10fallidos/4verdes;los4ya decían «No tengo el detalle» y no eran defectos. Dos ejecuciones globales se interrumpieron para añadir consulta múltiple y presentación numérica;no contarlas como aprobadas. Global cerrada en curso /tmp/ppp-incomplete-menu-full-closed.log,snapshot /tmp/ppp-incomplete-menu-source-closed.json.
+
+Cambios generales:se elimina instrucción que deducía ausencia por no aparecer en description;informationPolicy declara unlistedDetails=unknown y optionsAreAlternatives=true en product_info/composition. Preguntas descriptivas con nombres completos se responden antes del parser de datos de checkout,sin mutar estado/carrito. Varios productos se responden por separado;subnombres contenidos se descartan. Render de detalle ausente conserva description y aclara que no está confirmado. Es comparación léxica conservadora,no entendimiento semántico ni certificación de alérgenos. Los atributos son alternativas,no todos incluidos ni cambios gratuitos.
+
+CeroAPI/Meta/mapas/órdenes externas en esta tanda;presupuesto183/178/5 intacto. Modelos/Main sin cambios. Evidencia durable docs/whatsapp-incomplete-menu-validation-1510.json. Esperar global íntegra antes de publicar/desplegar. Próximos:preguntas cortas referenciales con conocimiento incompleto,detalles explícitamente negativos frente a desconocidos y sustituciones/costos no autorizados;preparar muestra nueva antes de inferencia. No repetir falafel/pizza ya validados en desarrollo.
+
 ## Estado vigente — staging integrado, 15/10 22:14 Bogotá
 
 Código03c994d7 desplegado;running/healthy verificado2026-10-16T03:14:34.463Z. Imagen activa=candidate sha256:c74e7e23c80dddfe211b7102e31bce609d41ca128086d06ebbb9872e793df8c8;healthOK,DBconnected,circuitCLOSED. Bindings de ortografía/product_info compilados y modelos efectivos sin cambios:agenteSol6.1,visión/assistLuna,audioGPTTranscribe. Main intacta. Se publicaron los11commits pendientes previos y el último lote de ortografía/combo.0525f6eb registró esa fuente ya congelada durante la validación; hashes prueban fuente idéntica durante las pruebas.03c994d7 añade informe,ledger/relevo y limpieza de EOF del spec.

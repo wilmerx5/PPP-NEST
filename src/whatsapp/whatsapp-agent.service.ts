@@ -550,6 +550,7 @@ Reglas:
 - Si search_menu trae mode="semantic_filter": filtra candidates por significado (ej. carne ≠ mojarra ≠ pollo) y ofrece 2–4. No inventes platos fuera de candidates.
 - Si mode="category_clean" o concept: ofrece 2–4 en tono natural. NUNCA digas "no encontré X en el menú".
 - Si mode="cooking_style_browse": el cliente pidió una *preparación* (sudado, frito, asado…). Lista cada result (nombre y precio): pollo, pescado, porciones y bandeja si están. No te quedes en dos porciones del mismo plato. Si no hay ese estilo, dilo y menciona availableStyles. PROHIBIDO dump de todas las categorías.
+- Una descripción puede ser incompleta: que un detalle no aparezca NO confirma que el plato no lo traiga. Di que ese dato no está confirmado. Las opciones de atributos son alternativas para elegir, no todos los extras incluidos. No prometas sustituciones, gratuidad ni rendimientos sin datos explícitos.
 - El menú que devuelve search_menu es la única fuente de verdad. Tú analizas, comparas y respondes. No inventes platos, precios ni ingredientes.
 - En consultas generales como "¿qué hay para almorzar?" o "¿tienen carne?", ofrece 2–3 nombres y precios. No añadas ingredientes ni acompañamientos que el cliente no preguntó.
 - Si preguntan qué incluye cada plato, conserva su description individual. No atribuyas a todos el acompañamiento de uno: churrasco y costillas pueden traer cosas distintas. Solo afirma un acompañamiento compartido cuando la carta lo confirma para CADA plato mencionado; si no hay descripción, no inventes.
@@ -587,8 +588,8 @@ Reglas:
 - Si mode="style_alternatives": ese estilo no está en el plato. Di que no lo tenemos (las palabras del cliente) y lista results (nombre y precio). NO add_item.
 - Si mode="not_on_menu": uncoveredWords no están en la carta. NO agregues el parecido. Di que no lo manejamos con las palabras del cliente. Si results trae platos, menciónalos (nombre y precio) como lo que sí hay.
 - Si mode="category_browse" trae missing: primero di que no tenemos ese plato (el valor de missing) y después lista results como alternativas. Si no trae missing, lista cada result con nombre y precio; description solo si preguntó por composición. No agregues uno solo.
-- Si mode="availability" o un product_match: lista cada result con nombre y precio; description solo si preguntó por composición. Si el cliente nombró algo que ese plato no trae (nombre, descripción o atributos), dilo primero: no lo ofrecemos en el momento, y results es la alternativa. No lo confirmes como si fuera el plato pedido.
-- Si mode="composition": qué lleva sale de description y attributes. Cita la description completa; no la reduzcas a un atributo. Si preguntan si incluye algo y otro result de esa familia sí lo trae, di que este no y ese sí. NO add_item.
+- Si mode="availability" o un product_match: lista cada result con nombre y precio; description solo si preguntó por composición. Si el catálogo confirma que el producto solicitado no está disponible, dilo y ofrece results como alternativa. Un detalle ausente de la descripción no acredita falta de disponibilidad ni una composición negativa.
+- Si mode="composition": qué lleva sale de description y attributes. Cita la description completa; no la reduzcas a un atributo. Si otro result confirma ese detalle, puedes mencionarlo; no deduzcas que el primero no lo trae solo porque su descripción no lo menciona. NO add_item.
 - Si ofreces cambiar el plato del carrito por un combo, di qué incluye con la description de ese combo, completa. No te quedes en la arepa o la bebida si la description nombra otros acompañamientos.
 - Si search_menu no trae el plato: di con calidez "Por ahora no manejamos X" o "Ese no lo tenemos en la carta" y ofrece el link del menú.
   PROHIBIDO "No veo", "No encontré", "No aparece" (suena seco).
@@ -968,9 +969,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             query,
             mode: 'product_info',
             product: this.productCard(describedProduct),
+            informationPolicy: { unlistedDetails: 'unknown', optionsAreAlternatives: true },
             hint:
               'Pregunta sobre un plato que sí está en la carta. Responde con su description y attributes: ' +
-              'lo que aparece ahí viene incluido; lo que no aparece, di que no lo trae. NO add_item. No digas que no lo manejamos.',
+              'Una descripción puede ser parcial: si un detalle no aparece, di que no está confirmado; no afirmes que no lo trae. ' +
+              'Los atributos ofrecen alternativas, no todas las opciones juntas ni cambios gratuitos. NO add_item. No digas que no lo manejamos.',
           });
         }
 
@@ -1171,10 +1174,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
               query,
               mode: 'composition',
               focusId: focus?.id ?? null,
+              informationPolicy: { unlistedDetails: 'unknown', optionsAreAlternatives: true },
               results: variants.slice(0, 12).map((p) => this.productCard(p)),
               hint:
                 'Qué lleva se responde con description y attributes, no con el título. ' +
-                'Si preguntan si incluye algo, mira TODOS los results: di si el plato (focusId) lo trae y, si otro de la familia sí lo trae en la descripción o en un atributo, menciónalo. NO add_item.',
+                'Si la descripción confirma el detalle, explícalo; si no lo documenta, di que no está confirmado. ' +
+                'Las opciones son alternativas, no ingredientes incluidos simultáneamente. No deduzcas ausencias comparando hermanos. NO add_item.',
             });
           }
         }

@@ -1512,6 +1512,32 @@ export class WhatsappOrchestratorService {
       session = {...session,pendingCompositionAsk:undefined};
       await this.conversationService.saveSession(conv,session);
     }
+    // A fully named factual inquiry must not be swallowed by the pending
+    // checkout field. The renderer reports missing descriptions as unknown.
+    if (['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state) &&
+      this.catalogService.isProductDescriptionInquiry(originalText) &&
+      !this.catalogService.looksLikeExplicitAddProductRequest(originalText)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const numericParts = (value: string) => (value.match(/\d+(?:\s*\/\s*\d+)?/g) || []).map(part => part.replace(/\s/g,''));
+      const requestedNumbers = new Set(numericParts(originalText));
+      const fullNames = menu.filter(product => this.catalogService.productFullyNamedIn(originalText,[product]) &&
+        numericParts(product.name).every(part => requestedNumbers.has(part)));
+      const wordsOf = (name: string) => this.normalizeForMatch(name).split(/[^a-z0-9]+/).filter(word => word.length >= 3);
+      const named = fullNames.filter(product => !fullNames.some(other => other.id !== product.id &&
+        wordsOf(other.name).length > wordsOf(product.name).length &&
+        wordsOf(product.name).every(word => wordsOf(other.name).includes(word))));
+      if (named.length) {
+        const reminder = this.formatInterruptedStepReminder(conv, session);
+        captureInquiryDecision(turn.decision,'composition',named.map(product => product.id));
+        const body = named.map(product => {
+          let question = this.normalizeForMatch(originalText);
+          for (const other of named) if (other.id !== product.id) question = question.split(this.normalizeForMatch(other.name)).join(' ');
+          return this.buildProductCompositionReply(question,product,cfg,session,{offerAdd:false});
+        }).join('\n\n');
+        await this.reply(conv,msg.waId,body + (reminder ? `\n\n${reminder}` : ''));
+        return;
+      }
+    }
     const referentialComposition = /^(?:y )?(?:que trae|que incluye|que lleva|con que viene|con que va)(?: (?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?)?$/.test(this.normalizeForMatch(originalText));
     if (referentialComposition) {
       const menu = await this.catalogService.getMenuProducts();
@@ -9649,6 +9675,19 @@ export class WhatsappOrchestratorService {
       let msg = this.catalogService.formatProductPriceReply(product, {
         offerAdd: opts?.offerAdd !== false && !alreadyInCart,
       });
+      // A short description is positive evidence only; an unlisted ingredient
+      // is unknown, not proof that the dish excludes it.
+      const detailAsk = q.match(/\b(?:trae|incluye|lleva)\s+(.+?)[?¿.!]*$/)?.[1];
+      if (detailAsk && product.description?.trim()) {
+        const requested = detailAsk.split(this.normalizeForMatch(product.name)).join(' ')
+          .split(/[^a-z0-9]+/).filter(word => word.length >= 3 &&
+            !['que','con','del','los','las','una','uno','ese','esa','este','esta','eso','esto','plato','producto','combo','cobra','cobran','aparte','incluido','incluida','favor','porfa','gracias'].includes(word));
+        const evidence = new Set(this.normalizeForMatch(`${product.name} ${product.description}`)
+          .split(/[^a-z0-9]+/).map(word => word.replace(/s$/, '')));
+        if (requested.some(word => !evidence.has(word.replace(/s$/, '')))) {
+          msg = 'No tengo ese detalle confirmado en la carta. Esto es lo que sí describe:\n\n' + msg;
+        }
+      }
       if (alreadyInCart) {
         msg += '\n\n_Ya lo tienes en el carrito._';
       }
