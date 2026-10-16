@@ -1,24 +1,24 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 158,
-  "usedRequests": 154,
-  "remainingRequests": 4,
+  "authorizedRequests": 183,
+  "usedRequests": 166,
+  "remainingRequests": 17,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-15T23:13:48.390Z",
+  "lastAttemptAt": "2026-10-16T00:35:11.690Z",
   "latestEvaluation": {
     "date": "2026-10-15",
-    "baseCommit": "ba8d1faa",
+    "baseCommit": "c5e0e873",
     "model": "gpt-6.1-sol",
-    "requests": 13,
-    "httpSuccessful": 13,
-    "acceptedConversations": 0,
+    "requests": 12,
+    "httpSuccessful": 12,
+    "acceptedConversations": 1,
     "budgetExhausted": false,
-    "scope": "New falafel checkout case stopped on discarded answer; development retest stopped on ignored attribute edit. Offline continuation only after fixes.",
-    "estimatedReportedCostUsd": 0.0552688,
-    "report": "docs/whatsapp-checkout-tools-validation-1510.json"
+    "scope": "Development retest of full 8-turn falafel checkout; accepted all turns, stop-on-failure not triggered. Not a holdout.",
+    "estimatedReportedCostUsd": 0.08931539999999999,
+    "report": "docs/whatsapp-falafel-retest-1510.json"
   },
   "authorizationExtensions": [
     {
@@ -37,6 +37,12 @@
       "additionalRequests": 10,
       "evidence": "User: te autorizo a añadir mas llamadas , continua con el plan",
       "executionLimit": "10 requests maximum; one repetition; stop at first failing conversation"
+    },
+    {
+      "date": "2026-10-15",
+      "additionalRequests": 25,
+      "evidence": "User chose: Subir el tope de presupuesto y correr el retest real de 8 turnos del falafel (gasta API); cap +25 llamadas (158 a 183), parada en el primer fallo",
+      "executionLimit": "25 requests maximum; case fresh-falafel-checkout-interruptions-1510; one repetition; stop at first failure; model gpt-6.1-sol; local commit c5e0e873"
     }
   ],
   "evaluationHistory": [
@@ -546,6 +552,17 @@
         "No Meta, payments, maps or external orders; Main untouched",
         "Subscription profitability not established without per-tenant traffic and full cost accounting"
       ]
+    },
+    {
+      "date": "2026-10-15",
+      "baseCommit": "c5e0e873",
+      "model": "gpt-6.1-sol",
+      "executed": 1,
+      "accepted": 1,
+      "requests": 12,
+      "usedTotal": 166,
+      "remaining": 17,
+      "note": "Falafel 8 turnos aceptado (desarrollo, no holdout). Turno 2 search_menu devolvió not_on_menu para pregunta descriptiva; el modelo respondió bien desde description."
     }
   ],
   "authorizationHistory": [

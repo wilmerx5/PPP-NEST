@@ -1,0 +1,573 @@
+{
+  "baseCommit": "c5e0e873",
+  "scope": "Development retest (not holdout) of fresh-falafel-checkout-interruptions-1510, real gpt-6.1-sol via Responses; isolated router/DB/Meta/payments; no external orders.",
+  "accepted": true,
+  "problems": [],
+  "requests": 12,
+  "apiUsage": {
+    "model": "gpt-6.1-sol",
+    "requests": 12,
+    "successfulResponses": 12,
+    "responsesWithUsage": 12,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 112615,
+    "cachedPromptTokens": 73834,
+    "completionTokens": 437,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": 0.08931539999999999,
+    "priceDate": "2026-10-15",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  },
+  "requestTimingsMs": [
+    3502,
+    2979,
+    2272,
+    2394,
+    2176,
+    2000,
+    2515,
+    1955,
+    3333,
+    2400,
+    2269,
+    4317
+  ],
+  "finding": "Turn 2 search_menu returned not_on_menu for a descriptive question naming Combo De Falafel; the model answered correctly from description anyway.",
+  "turns": [
+    {
+      "text": "Buenas tardes, me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor",
+      "replies": [
+        "Listo ✅ *Combo De Falafel ×2*, *Hummus Clasico*\n📝 _Sin tomate_\n\n¿*Algo más*?"
+      ],
+      "state": "building_cart",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 2,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Te Frio"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": [
+        {
+          "origin": "model_call",
+          "name": "resolve_multi_order",
+          "args": {
+            "text": "me envías dos Combo De Falafel con Te Frio, sin tomate, y un Hummus Clasico por favor"
+          },
+          "result": {
+            "ok": true,
+            "confident": [
+              {
+                "segment": "dos Combo De Falafel con Te Frio",
+                "id": 8921,
+                "code": 8921,
+                "name": "Combo De Falafel",
+                "price": 29000,
+                "category": null,
+                "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                "hasAttributes": true,
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "options": [
+                      "Limonada",
+                      "Te Frio"
+                    ]
+                  }
+                ],
+                "score": 100,
+                "quantity": 2,
+                "selectedAttributes": {
+                  "status": "complete",
+                  "attributes": [
+                    {
+                      "attributeName": "Bebida",
+                      "attributeValue": "Te Frio"
+                    }
+                  ]
+                }
+              },
+              {
+                "segment": "Hummus Clasico",
+                "id": 8922,
+                "code": 8922,
+                "name": "Hummus Clasico",
+                "price": 9000,
+                "category": null,
+                "description": "Crema de garbanzos con tahini y pan pita",
+                "hasAttributes": false,
+                "attributes": [],
+                "score": 100,
+                "quantity": 1,
+                "selectedAttributes": {
+                  "status": "complete",
+                  "attributes": []
+                }
+              }
+            ],
+            "needsAttributes": [],
+            "ambiguous": [],
+            "unresolved": [
+              "sin tomate"
+            ],
+            "completeness": "requires_review",
+            "unaccountedMentions": [],
+            "hint": "Hay dudas: pregunta UNA sola cosa (número/nombre) por ambiguous; no digas \"sí\" a la vez. add_item solo de confident/needsAttributes con productId."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 8921,
+            "quantity": 2,
+            "note": "Sin tomate",
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Te Frio"
+              }
+            ]
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 8921,
+              "code": 8921,
+              "name": "Combo De Falafel",
+              "price": 29000,
+              "category": null,
+              "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+              "hasAttributes": true,
+              "attributes": [
+                {
+                  "attributeName": "Bebida",
+                  "options": [
+                    "Limonada",
+                    "Te Frio"
+                  ]
+                }
+              ]
+            },
+            "quantity": 2,
+            "note": "Sin tomate",
+            "attributes": [
+              {
+                "attributeName": "Bebida",
+                "attributeValue": "Te Frio"
+              }
+            ],
+            "hint": "Agregado con opciones por defecto. El cliente puede pedir cambiar (ej. arepas fritas)."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "add_item",
+          "args": {
+            "productId": 8922,
+            "quantity": 1
+          },
+          "result": {
+            "ok": true,
+            "added": {
+              "id": 8922,
+              "code": 8922,
+              "name": "Hummus Clasico",
+              "price": 9000,
+              "category": null,
+              "description": "Crema de garbanzos con tahini y pan pita",
+              "hasAttributes": false,
+              "attributes": []
+            },
+            "quantity": 1,
+            "note": null,
+            "attributes": null,
+            "hint": null
+          }
+        }
+      ]
+    },
+    {
+      "text": "Es para la calle 18 sur 70 25",
+      "replies": [
+        "🚚 Domicilio: *$2.000*\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* ×2 · $29.000 c/u → *$58.000*\n   _Bebida: Te Frio_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $67.000 · Dom. $2.000\n*Total $69.000*\n\n🛵 Tipo: Domicilio\n👤 Nombre: Cliente Sintético\n📍 Dirección: calle 18 sur 70 25\n📞 Teléfono: 300 000 0001\n💳 Pago: (pendiente)\n\n¿Cómo pagas?\n1. *contraentrega* (efectivo al recibir)\n2. *transferencia* (Nequi / llave / banco)"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 2,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Te Frio"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": []
+    },
+    {
+      "text": "Antes de pagar, el combo trae papas o se cobran aparte?",
+      "replies": [
+        "Sí, las papas ya están incluidas, no se cobran aparte. El combo trae seis falafel con pan pita, papas y bebida de 400 ml.\n\nPara seguir, ¿con qué método de pago pagas?"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 2,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Te Frio"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": [
+        {
+          "origin": "model_call",
+          "name": "search_menu",
+          "args": {
+            "query": "Combo De Falafel qué incluye, trae papas o se cobran aparte"
+          },
+          "result": {
+            "ok": true,
+            "query": "Combo De Falafel qué incluye, trae papas o se cobran aparte",
+            "mode": "not_on_menu",
+            "uncoveredWords": [
+              "incluye",
+              "trae",
+              "papas",
+              "cobran"
+            ],
+            "results": [
+              {
+                "id": 8921,
+                "code": 8921,
+                "name": "Combo De Falafel",
+                "price": 29000,
+                "category": null,
+                "description": "Seis falafel con pan pita, papas y bebida incluida de 400ml",
+                "hasAttributes": true,
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "options": [
+                      "Limonada",
+                      "Te Frio"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "hint": "El menú no cubre: incluye, trae, papas, cobran. NO add_item. Responde tú: esas palabras no las manejamos. Si results trae platos, son lo más cercano: menciónalos (nombre y precio) como lo que sí hay, sin decir que son el plato pedido."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Cámbiame la bebida de los dos combos por limonada, no agregues otra bebida",
+      "replies": [
+        "Listo, actualicé el pedido ✅\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* ×2 · $29.000 c/u → *$58.000*\n   _Bebida: Limonada_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $67.000 · Dom. $2.000\n*Total $69.000*\n📍 calle 18 sur 70 25 ✅\n\nPara seguir, ¿con qué método de pago pagas?"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 2,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Limonada"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": [
+        {
+          "origin": "model_call",
+          "name": "get_cart",
+          "args": {},
+          "result": {
+            "ok": true,
+            "lines": [
+              {
+                "productId": 8921,
+                "name": "Combo De Falafel",
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Te Frio"
+                  }
+                ],
+                "cartLineIndex": 0
+              },
+              {
+                "productId": 8922,
+                "name": "Hummus Clasico",
+                "quantity": 1,
+                "attributes": [],
+                "cartLineIndex": 1
+              }
+            ],
+            "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "set_attribute",
+          "args": {
+            "productId": 8921,
+            "cartLineIndex": 0,
+            "attributeName": "Bebida",
+            "attributeValue": "Limonada"
+          },
+          "result": {
+            "ok": true,
+            "productId": 8921,
+            "itemName": "Combo De Falafel",
+            "attributeName": "Bebida",
+            "attributeValue": "Limonada",
+            "hint": "Cambio aceptado. Confírmalo en una frase. No agregues otro plato."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Deja solo un Combo De Falafel, el hummus queda igual",
+      "replies": [
+        "Listo, actualicé el pedido ✅\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* · *$29.000*\n   _Bebida: Limonada_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $38.000 · Dom. $2.000\n*Total $40.000*\n📍 calle 18 sur 70 25 ✅\n\nPara seguir, ¿con qué método de pago pagas?"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 1,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Limonada"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": [
+        {
+          "origin": "model_call",
+          "name": "get_cart",
+          "args": {},
+          "result": {
+            "ok": true,
+            "lines": [
+              {
+                "productId": 8921,
+                "name": "Combo De Falafel",
+                "quantity": 2,
+                "note": "Sin tomate",
+                "attributes": [
+                  {
+                    "attributeName": "Bebida",
+                    "attributeValue": "Limonada"
+                  }
+                ],
+                "cartLineIndex": 0
+              },
+              {
+                "productId": 8922,
+                "name": "Hummus Clasico",
+                "quantity": 1,
+                "attributes": [],
+                "cartLineIndex": 1
+              }
+            ],
+            "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+          }
+        },
+        {
+          "origin": "model_call",
+          "name": "update_item",
+          "args": {
+            "productId": 8921,
+            "cartLineIndex": 0,
+            "quantity": 1
+          },
+          "result": {
+            "ok": true,
+            "productId": 8921,
+            "cartLineIndex": 0,
+            "hint": "Cambio aceptado. Conserva las otras líneas."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Cuál es el total con domicilio?",
+      "replies": [
+        "Esto es lo que va en el pedido:\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* · *$29.000*\n   _Bebida: Limonada_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $38.000 · Dom. $2.000\n*Total $40.000*\n📍 calle 18 sur 70 25 ✅\n\nSi algo no es, dime cómo queda (ej. *2 de ajiaco y 2 de menudencias*).\n\nPara seguir, ¿con qué método de pago pagas?"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 1,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Limonada"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": []
+    },
+    {
+      "text": "Dirección: calle 19 sur 70 28",
+      "replies": [
+        "Listo, dirección actualizada:\n📍 _calle 19 sur 70 28_\n\n🚚 Domicilio: *$2.000*\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* · *$29.000*\n   _Bebida: Limonada_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $38.000 · Dom. $2.000\n*Total $40.000*\n📍 calle 19 sur 70 28 ✅\n\nPara seguir, ¿con qué método de pago pagas?"
+      ],
+      "state": "awaiting_payment",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 1,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Limonada"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": []
+    },
+    {
+      "text": "Pago por transferencia",
+      "replies": [
+        "Perfecto, queda como *transferencia*.\n\nTe pasamos los datos de cuenta en el local / por aquí.\n\nCuando pagues puedes mandar el comprobante por aquí.\n\n🛒 *Carrito*\n*1.* *Combo De Falafel* · *$29.000*\n   _Bebida: Limonada_\n   📝 _Sin tomate_\n*2.* *Hummus Clasico* · *$9.000*\n────────────\nSubtotal $38.000 · Dom. $2.000\n*Total $40.000*\n\n🛵 Tipo: Domicilio\n👤 Nombre: Cliente Sintético\n📍 Dirección: calle 19 sur 70 28\n📞 Teléfono: 300 000 0001\n💳 Pago: Transferencia\n\nSi está bien, escribe *confirmar*."
+      ],
+      "state": "awaiting_final_confirm",
+      "cart": [
+        {
+          "productId": 8921,
+          "name": "Combo De Falafel",
+          "code": 8921,
+          "unitPrice": 29000,
+          "quantity": 1,
+          "note": "Sin tomate",
+          "attributes": [
+            {
+              "attributeName": "Bebida",
+              "attributeValue": "Limonada"
+            }
+          ]
+        },
+        {
+          "productId": 8922,
+          "name": "Hummus Clasico",
+          "code": 8922,
+          "unitPrice": 9000,
+          "quantity": 1,
+          "attributes": []
+        }
+      ],
+      "toolTrace": []
+    }
+  ]
+}
