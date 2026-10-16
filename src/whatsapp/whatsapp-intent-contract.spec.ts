@@ -187,6 +187,23 @@ describe('Pregunta descriptiva que nombra el plato completo',()=>{
  });
 });
 
+describe('“y otra <plato>” es otra línea; “y otra igual” no',()=>{
+ const arepa=[{id:45001,code:45001,name:'Arepa De Queso',price:8000,description:'Maiz y queso',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Hogao','Sin salsa']}]}];
+ it.each([
+  ['Quiero una arepa de queso con hogao y otra arepa de queso con camarones',arepa,['Quiero una arepa de queso con hogao','otra arepa de queso con camarones']],
+  ['Quiero una trucha frita y otra trucha con camarones',products,['Quiero una trucha frita','otra trucha con camarones']],
+ ])('%s',(text,menu,segments)=>{
+  expect(catalog.splitMultiProductSegments(text)).toEqual(segments);
+  const multi=catalog.resolveMultiProductOrder(text,menu);
+  expect(multi?.confident).toHaveLength(1);
+  expect(multi?.unresolved).toEqual([segments[1]]);
+ });
+ it.each(['Una limonada y otra de mango','Un churrasco y otro igual','Una arepa de queso y otra con hogao'])
+ ('%s no parte por “otra” elíptica',text=>{
+  expect(catalog.splitMultiProductSegments(text).some(s=>/^Quiero|^Una |^Un /.test(s))).toBe(false);
+ });
+});
+
 describe('Ruta semántica para condiciones de inventario',()=>{
  const menu=[{id:99301,code:99301,name:'Bowl Andino',price:18000,attributes:[],hasAttributes:false,availableNow:true}];
  it.each([

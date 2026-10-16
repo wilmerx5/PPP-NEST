@@ -8751,8 +8751,9 @@ export class WhatsappCatalogService {
    */
   splitMultiProductSegments(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
-    const explicitClauses = (text || '').split(/;\s*|\r?\n+|,\s*(?=(?:un|una|dos|tres|cuatro|cinco|\d+)\s+)|\s+y\s+(?=(?:un|una|dos|tres|cuatro|cinco|\d+)\s+)/i).map(clause => clause.trim()).filter(Boolean);
-    const quantityLead = /^(?:(?:buenas?\s+(?:tardes|noches|dias)|hola)[, ]*)?(?:(?:por\s+favor|porfa|quiero|pedir|agrega)\s+)*(?:un|una|dos|tres|cuatro|cinco|\d+)\s+/i;
+    const namedOther = 'otr[oa]\\s+(?!(?:de|con|sin|igual|mas|más|para|por|asi|así)\\b)[a-záéíóúñ]{3,}';
+    const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
+    const quantityLead = new RegExp(`^(?:(?:buenas?\\s+(?:tardes|noches|dias)|hola)[, ]*)?(?:(?:por\\s+favor|porfa|quiero|pedir|agrega)\\s+)*(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther})`, 'i');
     if (explicitClauses.length >= 2 && explicitClauses.every(clause => quantityLead.test(clause) && !/(?:,\s*|\by\s+)(?:medio|media)\b/i.test(clause) && this.countQuantityMentions(splitTrailingEmbeddedAddress(clause)?.productText || clause) <= 1)) {
       return explicitClauses.map(clause => clause.replace(/^(?:buenas?\s+(?:tardes|noches|dias)|hola)[, ]*/i, '').trim());
     }
@@ -10200,6 +10201,7 @@ export class WhatsappCatalogService {
       }
     }
 
+    this.keepUnsupportedSameDishSegments(segments, confident, needsAttributes, products, unresolved);
     this.rejectUnsupportedResolvedModifiers(confident, needsAttributes, products, unresolved);
     this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
     this.dropLooserContainedMatches(confident, needsAttributes, text);
@@ -10234,6 +10236,24 @@ export class WhatsappCatalogService {
       needsAttributes,
       possibleCustomerNames: names,
     };
+  }
+
+  /** “una trucha frita y otra trucha con camarones”: el segundo plato no se descarta en silencio por repetir SKU. */
+  private keepUnsupportedSameDishSegments(
+    segments: string[],
+    confident: MultiProductSegmentMatch[],
+    needsAttributes: MultiProductSegmentMatch[],
+    products: WhatsappCatalogProduct[],
+    unresolved: string[],
+  ): void {
+    const lines = [...confident, ...needsAttributes];
+    for (const segment of segments) {
+      const norm = normalizeText(segment);
+      if (unresolved.includes(segment)) continue;
+      if (lines.some((line) => normalizeText(line.segment).includes(norm))) continue;
+      const product = lines.map((line) => line.product).find((p) => this.productNameFitsUtterance(p, segment));
+      if (product && this.uncoveredWordsAnchoredByProduct(segment, product, products).length) unresolved.push(segment);
+    }
   }
 
   /** Use the same recipe check as add_item before a deterministic multi-add. */

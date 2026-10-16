@@ -5197,7 +5197,8 @@ export class WhatsappOrchestratorService {
         !this.catalogService.isAvailabilityInquiry(text) &&
         !this.catalogService.isProductDescriptionInquiry(text) &&
         !this.catalogService.isPriceInquiryIntent(text) &&
-        this.catalogService.uncoveredDishWords(dishQuery, products).length
+        this.catalogService.uncoveredDishWords(dishQuery, products).length &&
+        !this.multiResolvesMenuLines(originalText || text, products)
       ) {
         await this.reply(
           conv,
@@ -11578,6 +11579,12 @@ export class WhatsappOrchestratorService {
   }
 
   /** Pregunta que no pide un plato: el agente la contesta y el carrito no se reimprime. */
+  /** Parte del mensaje sí es de la carta: no se niega el pedido completo. */
+  private multiResolvesMenuLines(text: string, products: MenuProduct[]): boolean {
+    const multi = this.catalogService.resolveMultiProductOrder(text, products);
+    return !!multi && multi.unresolved.length > 0 && multi.confident.length + multi.needsAttributes.length > 0;
+  }
+
   private randomAsideLabel(text: string, products: MenuProduct[]): string | null {
     if (text.length > 140 || this.offMenuErrandQuery(text, products)) return null;
     const said = this.normalizeForMatch(text);
@@ -20572,7 +20579,7 @@ export class WhatsappOrchestratorService {
       multi.needsAttributes.length > 0 && multi.ambiguous.length === 0;
     session = {...session,recentUnavailableOrder: multi.unresolved.length ? {items:[...multi.unresolved],expiresAt:Date.now()+15*60*1000} : undefined};
     const missNote = multi.unresolved.length
-      ? `Por ahora no manejamos: _${multi.unresolved.join(' · ')}_.\n\n`
+      ? `Por ahora no manejamos: _${multi.unresolved.map((item) => item.replace(/^(?:otr[oa]|un[oa]?)\s+/i, '')).join(' · ')}_.\n\n`
       : '';
 
     const drinkFirstFoodPending =

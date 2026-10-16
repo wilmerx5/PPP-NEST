@@ -14227,6 +14227,18 @@ describe('Rechazo de una variante — el mismo plato aceptado se conserva', () =
       expect(h.service.ordersService.create).not.toHaveBeenCalled();
     } finally { globalThis.fetch = original; }
   });
+  it.each(cases)('$kind sin agente conserva la variante válida y avisa la que faltó', async ({ menu, id, name, attribute, accepted, text }) => {
+    const h = harness(menu as typeof products, false);
+    h.service.ordersService.create = jest.fn();
+    const reply = await h.sendQueued(text) || '';
+    const rows = h.cartRows().filter((row) => row.id === id);
+    expect(rows).toEqual([expect.objectContaining({ qty: 1, attrs: [`${attribute}:${accepted}`] })]);
+    expect(rows[0].note || '').not.toMatch(/camarones/i);
+    expect(reply).toMatch(new RegExp(`no manejamos: _${name.toLowerCase()} con camarones_`, 'i'));
+    expect(reply).toMatch(new RegExp(`Listo ✅ \\*${name}\\*`));
+    expect(reply).not.toMatch(/no entend/i);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('Interrupción de precio con preámbulo conserva referencia y pedido',()=>{
