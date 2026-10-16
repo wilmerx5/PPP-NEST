@@ -15796,3 +15796,129 @@ describe('Reemplazo atómico — enlace de pago existente protege el carrito', (
     });
   }
 });
+
+describe('Listas sucesivas — nueva aclaración sustituye reemplazo sin aplicarlo', () => {
+  for (const f of [
+    { id: 21001, old: 'Pizza De Setas', next: 'Pizza Margarita', side: 'Bowl De Tofu', attr: 'Salsa', first: 'Soja', last: 'Teriyaki' },
+    { id: 21011, old: 'Ramen De Miso', next: 'Ramen De Shoyu', side: 'Combo De Falafel', attr: 'Bebida', first: 'Te', last: 'Agua' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_address', 'awaiting_payment']) {
+    for (const kind of ['cantidad', 'atributo', 'eliminación']) {
+      it(`${f.old}, agente ${agent}, ${state}, segunda lista ${kind}`, async () => {
+        const menu = [f.old, f.next, f.side].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+          price: index === 2 ? 12000 : 22000, availableNow: true, hasAttributes: index === 2,
+          attributes: index === 2 ? [{ attributeName: f.attr, options: [f.first, f.last] }] : [] }));
+        const h = harness(menu, agent);
+        h.conv.state = state;
+        h.service.ordersService.create = jest.fn();
+        Object.assign(h.conv.sessionData, { orderType: 'delivery', address: state === 'awaiting_payment' ? 'Calle 12 30 45' : undefined,
+          addressConfirmed: state === 'awaiting_payment', deliveryFeeCalculated: state === 'awaiting_payment' ? 3000 : null,
+          cart: [menu[0], menu[0], menu[2], menu[2]].map((p, index) => ({ productId: p.id, code: p.code, name: p.name,
+            unitPrice: p.price, quantity: index % 2 ? 1 : 3, note: index % 2 ? 'sin sal' : 'sin cebolla',
+            attributes: p.hasAttributes ? [{ attributeName: f.attr, attributeValue: f.first }] : [] })) });
+        const before = structuredClone(h.conv.sessionData.cart);
+        await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+        expect(h.conv.sessionData.pendingCartReplacement?.options).toHaveLength(2);
+        await h.sendQueued(kind === 'cantidad' ? `Deja solo dos ${f.side}` : kind === 'atributo' ? `Cambia ${f.attr} a ${f.last}` : `Quita el ${f.side}`);
+        expect(h.conv.sessionData.cart).toEqual(before);
+        const clarification = h.replies.at(-1) || '';
+        expect(h.conv.sessionData[kind === 'cantidad' ? 'pendingCartQuantity' : kind === 'atributo' ? 'pendingCartAttributeEdit' : 'pendingCartRemoval']).toBeTruthy();
+        await h.sendQueued('2');
+        expect(h.conv.sessionData.cart.slice(0, 2)).toEqual(before.slice(0, 2));
+        expect(h.conv.sessionData.cart[2]).toEqual(before[2]);
+        if (kind === 'atributo') expect(h.replies.at(-1)).toContain(f.last);
+        expect(h.conv.sessionData.pendingCartReplacement).toBeUndefined();
+        expect(clarification).toMatch(/reemplazo anterior.*sin aplicar/is);
+        if (kind === 'eliminación') expect(h.conv.sessionData.cart).toHaveLength(3);
+        else {
+          expect(h.conv.sessionData.cart).toHaveLength(4);
+          expect(h.conv.sessionData.cart[3]).toEqual(kind === 'cantidad' ? { ...before[3], quantity: 2 }
+            : { ...before[3], attributes: [{ attributeName: f.attr, attributeValue: f.last }] });
+        }
+        expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+        expect(h.conv.state).toBe(state);
+        expect(h.replies.at(-1)).toMatch(state === 'awaiting_address' ? /dirección/i : /pagas|pago/i);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('Prioridad de aclaraciones — orden inverso, consultas y sesiones antiguas', () => {
+  for (const f of [
+    { id: 21101, old: 'Pizza De Setas', next: 'Pizza Margarita', side: 'Bowl De Tofu', attr: 'Salsa', first: 'Soja', last: 'Teriyaki' },
+    { id: 21111, old: 'Ramen De Miso', next: 'Ramen De Shoyu', side: 'Combo De Falafel', attr: 'Bebida', first: 'Te', last: 'Agua' },
+  ]) for (const agent of [false, true]) for (const state of ['awaiting_address', 'awaiting_payment']) {
+    const seed = () => {
+      const menu = [f.old, f.next, f.side].map((name, index) => ({ id: f.id + index, code: f.id + index, name,
+        price: index === 2 ? 12000 : 22000, availableNow: true, hasAttributes: index === 2,
+        attributes: index === 2 ? [{ attributeName: f.attr, options: [f.first, f.last] }] : [] }));
+      const h = harness(menu, agent);
+      h.conv.state = state;
+      h.service.ordersService.create = jest.fn();
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', address: state === 'awaiting_payment' ? 'Calle 12 30 45' : undefined,
+        addressConfirmed: state === 'awaiting_payment', deliveryFeeCalculated: state === 'awaiting_payment' ? 3000 : null,
+        cart: [menu[0], menu[0], menu[2], menu[2]].map((p, index) => ({ productId: p.id, code: p.code, name: p.name,
+          unitPrice: p.price, quantity: index % 2 ? 1 : 3, note: index % 2 ? 'sin sal' : 'sin cebolla',
+          attributes: p.hasAttributes ? [{ attributeName: f.attr, attributeValue: f.first }] : [] })) });
+      return h;
+    };
+    for (const kind of ['cantidad', 'atributo', 'eliminación']) {
+      it(`${f.old}, agente ${agent}, ${state}, primero ${kind} luego reemplazo`, async () => {
+        const h = seed();
+        const before = structuredClone(h.conv.sessionData.cart);
+        await h.sendQueued(kind === 'cantidad' ? `Deja solo dos ${f.side}` : kind === 'atributo' ? `Cambia ${f.attr} a ${f.last}` : `Quita el ${f.side}`);
+        const key = kind === 'cantidad' ? 'pendingCartQuantity' : kind === 'atributo' ? 'pendingCartAttributeEdit' : 'pendingCartRemoval';
+        expect(h.conv.sessionData[key]).toBeTruthy();
+        await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+        expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.conv.sessionData[key]).toBeUndefined();
+        expect(h.conv.sessionData.pendingCartReplacement?.options).toHaveLength(2);
+        expect(h.replies.at(-1)).toMatch(/selección anterior.*sin aplicar/is);
+        await h.sendQueued('2');
+        expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+        expect(h.conv.sessionData.cart[1]).toMatchObject({ productId: f.id + 1, quantity: 1, note: 'sin sal' });
+        expect(h.conv.sessionData.cart.slice(2)).toEqual(before.slice(2));
+        expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+        expect(h.conv.state).toBe(state);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+    it(`${f.old}, agente ${agent}, ${state}, consulta no abre lista nueva`, async () => {
+      const h = seed();
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+      const pending = structuredClone(h.conv.sessionData.pendingCartReplacement);
+      await h.sendQueued('¿Cuánto vale el domicilio?');
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingCartReplacement).toEqual(pending);
+      expect(h.replies.at(-1)).not.toMatch(/anterior.*sin aplicar/is);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart[0]).toEqual(before[0]);
+      expect(h.conv.sessionData.cart[1]).toMatchObject({ productId: f.id + 1, quantity: 1 });
+      expect(h.conv.sessionData.cart.slice(2)).toEqual(before.slice(2));
+      expect(h.conv.state).toBe(state);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+    it(`${f.old}, agente ${agent}, ${state}, dos listas guardadas requieren instrucción nueva`, async () => {
+      const h = seed();
+      const before = structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued(`Cambia ${f.old} por ${f.next}`);
+      const prior = structuredClone(h.conv.sessionData.pendingCartReplacement);
+      await h.sendQueued(`Deja solo dos ${f.side}`);
+      h.conv.sessionData.pendingCartReplacement = prior; // persisted legacy overlap, no reliable chronological owner
+      const both = structuredClone(h.conv.sessionData);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData).toEqual(both);
+      expect(h.replies.at(-1)).toMatch(/más de una selección pendiente/i);
+      await h.sendQueued(`Deja solo dos ${f.side}`);
+      expect(h.conv.sessionData.pendingCartReplacement).toBeUndefined();
+      expect(h.conv.sessionData.pendingCartQuantity?.options).toHaveLength(2);
+      await h.sendQueued('2');
+      expect(h.conv.sessionData.cart.slice(0, 3)).toEqual(before.slice(0, 3));
+      expect(h.conv.sessionData.cart[3]).toEqual({ ...before[3], quantity: 2 });
+      expect(h.conv.state).toBe(state);
+      expect(h.conv.sessionData.paymentMethod).toBeUndefined();
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});

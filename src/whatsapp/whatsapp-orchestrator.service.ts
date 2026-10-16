@@ -153,9 +153,12 @@ type EffectiveWhatsappConfig = Awaited<
   ReturnType<WhatsappSettingsService['getEffectiveConfig']>
 >;
 
+const CART_EDIT_SELECTION_KEYS = ['pendingCartReplacement', 'pendingCartQuantity', 'pendingCartAttributeEdit', 'pendingCartRemoval'] as const;
+
 type InboundTurnContext = {
   conv?: WhatsappConversation;
   initialCart?: string;
+  initialCartEditSelections?: Record<string, string | undefined>;
   purchasePriceQuestion?: boolean;
   independentInquiryAnswer?: string;
   closePurchase?: boolean;
@@ -507,6 +510,7 @@ export class WhatsappOrchestratorService {
       if (!turn.conv) return;
       const conv = turn.conv;
       let session = this.conversationService.getSession(conv);
+      session = await this.retireSupersededCartSelections(conv, msg.waId, session, turn.initialCartEditSelections);
       if (msg.messageType === 'image' && msg.raw?.resolvedOrderImage && session.recentImageOrder?.length) {
         const ids = new Set(session.recentImageOrder.map(item => item.productId));
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
@@ -648,6 +652,8 @@ export class WhatsappOrchestratorService {
     try { turn.decision = beginTurnDecision(conv.state,this.conversationService.getSession(conv)); }
     catch { /* Observability must not become another routing gate. */ }
     turn.initialCart = JSON.stringify(this.conversationService.getSession(conv).cart);
+    const initialSession = this.conversationService.getSession(conv);
+    turn.initialCartEditSelections = Object.fromEntries(CART_EDIT_SELECTION_KEYS.map(key => [key, JSON.stringify(initialSession[key])]));
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
@@ -1052,6 +1058,19 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // Older persisted sessions may contain conflicting lists. A bare number
+    // has no reliable owner; require a fresh, explicit instruction instead.
+    if (CART_EDIT_SELECTION_KEYS.filter(key => session[key]).length > 1) {
+      if (/^(?:[0-9]{1,2}|(?:el|la)\s+(?:primero|primera|segundo|segunda|tercero|tercera))$/i.test(originalText.trim())) {
+        await this.reply(conv, msg.waId, 'Hay más de una selección pendiente. Escribe el producto y el cambio completo para elegir la lista correcta. El pedido sigue igual.');
+        return;
+      }
+      if (/^(?:cambia(?:me)?|reemplaza(?:me)?|deja(?:me)?|quita(?:me)?|retira(?:me)?|elimina(?:me)?|no quiero)\b/i.test(originalText.trim())) {
+        session = { ...session, pendingCartReplacement: undefined, pendingCartQuantity: undefined,
+          pendingCartAttributeEdit: undefined, pendingCartRemoval: undefined };
+        await this.conversationService.saveSession(conv, session);
+      }
+    }
     // A product replacement interrupts checkout; never feed it to field
     // handlers or remove the original before validating the replacement.
     if (['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
@@ -12064,6 +12083,31 @@ export class WhatsappOrchestratorService {
     return { removeQuery, addQuery };
   }
 
+  /** A newly opened cart-edit list owns the next numbered answer. Retire
+   * older uncommitted edits without changing their original cart lines. */
+  private async retireSupersededCartSelections(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    initial: InboundTurnContext['initialCartEditSelections'],
+  ): Promise<WhatsappSessionData> {
+    if (!initial || conv.humanTakeover ||
+        ['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state)) return session;
+    const active = CART_EDIT_SELECTION_KEYS.filter(key => session[key]);
+    const opened = active.filter(key => JSON.stringify(session[key]) !== initial[key]);
+    if (active.length < 2 || opened.length !== 1) return session;
+    const keep = opened[0];
+    const retired = active.filter(key => key !== keep);
+    const next = { ...session };
+    for (const key of retired) delete next[key];
+    await this.conversationService.saveSession(conv, next);
+    const notice = retired.includes('pendingCartReplacement')
+      ? 'El reemplazo anterior quedó sin aplicar. Seguimos con esta nueva selección.'
+      : 'La selección anterior quedó sin aplicar. Seguimos con esta nueva selección.';
+    const hold = this.outboundHoldByWaId.get(waId.trim());
+    if (hold?.length) hold[0] = `${notice}\n\n${hold[0]}`;
+    else await this.reply(conv, waId, notice);
+    return next;
+  }
+
   private async tryHandleAtomicCartReplacement(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
@@ -18581,7 +18625,7 @@ export class WhatsappOrchestratorService {
     const awaitingAddress = conv.state === 'awaiting_address';
     const resumeCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state);
     const attributeText = text.replace(/\s+y\s+(?:con\s+)?(?:harto|arto|mucho|mucha|bastante|extra|poco|poca)\s+\p{L}[\p{L}\s-]*[.!]?$/iu, '');
-    if (!/[¿?]/.test(text)) {
+    if (selectedCartIndex == null && !/[¿?]/.test(text)) {
       const targets = this.catalogService.listCartAttributeOptionsNamedInText(attributeText, session.cart, products);
       const indexes = [...new Set(targets.map(target => target.cartIndex))].sort((a,b) => a-b);
       const scoped = indexes.filter(index => this.catalogService.isCartProductNamedInText(session.cart[index].name, attributeText));
