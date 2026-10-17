@@ -4108,6 +4108,10 @@ export class WhatsappCatalogService {
   }
 
   isLikelyDrinkProduct(product: WhatsappCatalogProduct): boolean {
+    // Category metadata can identify beverages whose names are outside the food
+    // glossary. Require the category head: "combos con bebidas" is still food.
+    const category = normalizeText(product.categoryName || '');
+    if (/^(?:bebidas?|gaseosas?|jugos?|zumos?|infusiones|tes|refrescos?)(?:\s|$)/.test(category)) return true;
     // A main dish that includes a drink in its description is still food.
     const hay = normalizeText(`${product.name} ${product.categoryName || ''}`);
     return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon|colombiana|tea|pola)\b/.test(

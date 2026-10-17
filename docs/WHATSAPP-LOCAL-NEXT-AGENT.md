@@ -1,3 +1,15 @@
+## Edición de carrito + compra pendiente — validado, despliegue en preparación — 17/10/2026
+
+Sobre84f3a2fc, solo staging.74 casos nuevos:64 recorridos con dos pendientes sembrados (eliminación +opciones o lista de compra, dos cartas ficticias, agente simulado on/off); cuatro recorridos abren ambos pendientes mediante mensajes al router; seis controles de categoría. Los68 recorridos llegan a una única orden simulada y verifican unidades/notas. Una referencia vaga o consulta de cancelación no elige dueño; «cancela el cambio del carrito» retira solo la edición; «cancela la compra pendiente» conserva la eliminación. «No quites nada» mantiene su alcance específico.
+
+Baseline40:32 fallidos/8 verdes; ampliación64:56 fallidos/8 verdes. Después del ajuste, dos recorridos naturales fallaban con infusión: isLikelyDrinkProduct no reconocía categorías Bebidas/Jugos/Refrescos en plural. Ahora usa cabeza de categoría para vocabulario ajeno; no convierte «Combos con bebidas» en bebida. Cuatro controles positivos fallaban antes; dos negativos ya pasaban. No sumar reruns como tests únicos.
+
+246 focalizadas de general accuracy y51 controles adicionales en tres suites, TypeScript,72 contratos Node y global77 suites/7812 Jest aprobados (1046.426s).354 hashes iguales antes/después. Informe docs/whatsapp-pending-owner-validation-1710.json, logs /tmp/ppp-pending-owner-*. Cero API/Meta/órdenes externas,181/183 intacto. Main sin cambios. Se prepara un solo deploy del lote acumulado desde1c4d98a9; no tratar esta entrada como evidencia de deploy hasta cierre posterior. Preflight remoto28ec484e healthy; bin/ sin seguimiento se conserva.
+
+Límites: nuevas continuaciones completas cubren eliminación +pendingAttribute/pendingMatch de compra; no acreditan otras ediciones, ofertas, sustituciones de acompañamiento, varias compras pendientes ni multicolas. La pregunta de dueño protege estructuras adicionales, pero deben probarse sus continuaciones y los textos ofrecidos antes de prometer cancelación explícita universal. No es undo de ediciones ya aplicadas ni inferencia real nueva.
+
+Siguiente: propiedad de pendingAddOffer/pendingSideSwap/multi y varias compras pendientes; listas informativas frente a compra; contraste real acotado después del deploy, registrando saldo antes de red (dos solicitudes restantes), sin confirmar órdenes externas. No declarar vendible por número de pruebas.
+
 ## Consulta de cancelación + compra independiente — validado, SIN desplegar — 17/10/2026
 
 Sobre4fc04402, solo staging. 70 casos nuevos:56 recorridos de consulta/negación/condición +compra independiente (dos cartas ficticias, carrito/pago y agente simulado on/off, siete formas con/sin puntuación);10 controles de alcance o eliminación independiente; cuatro cantidades por vocabulario de catálogo durante pago. Los56 recorridos conservan la fila inicial con nota, añaden exactamente dos unidades y terminan con una única orden simulada de tres unidades.

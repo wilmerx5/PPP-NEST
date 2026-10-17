@@ -17874,3 +17874,84 @@ describe('Catalog based quantity during payment',()=>{
   expect(h.cartRows()).toEqual([expect.objectContaining({id:59301,qty:1}),expect.objectContaining({id:59302,qty:2})]);
  });
 });
+
+
+describe('Cart edit and purchase selection withdrawal ownership',()=>{
+ const fixtures=[{dish:'Taco De Setas',drink:'Jugo Tropical',flavors:['Mango','Lulo'],variants:['Infusion De Menta','Infusion De Hibisco']},{dish:'Crepe De Espinaca',drink:'Infusion Helada',flavors:['Limon','Hibisco'],variants:['Batido De Fresa','Batido De Banano']}];
+ for(const f of fixtures)for(const agent of [true,false])for(const selection of ['attribute','match'] as const){
+  function setup(){
+   const menu=[{id:60101,code:961,name:f.dish,price:18000,availableNow:true,hasAttributes:false,attributes:[]},{id:60102,code:962,name:f.drink,price:6000,categoryName:'Bebidas',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:f.flavors}]},...f.variants.map((name,i)=>({id:60103+i,code:963+i,name,price:6500,availableNow:true,hasAttributes:false,attributes:[]}))];
+   const h=harness(menu,agent);h.conv.state=selection==='attribute'?'awaiting_attribute':'building_cart';
+   Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,pendingCheckoutResume:'awaiting_payment',cart:['sin cilantro','con cilantro'].map(note=>({productId:60101,code:961,name:f.dish,unitPrice:18000,quantity:1,attributes:[],note}))});
+   h.conv.sessionData.pendingCartRemoval={cartSignature:JSON.stringify(h.conv.sessionData.cart),options:h.conv.sessionData.cart.map((line,i)=>({cartIndex:i,label:`${f.dish} · ${line.note}`}))};
+   if(selection==='attribute')h.conv.sessionData.pendingAttribute={productId:60102,code:962,name:f.drink,price:6000,quantity:2,attributes:menu[1].attributes,selected:[],sourceText:'dos '+f.drink+' sin hielo'};
+   else h.conv.sessionData.pendingMatch={query:'dos bebidas',candidates:menu.slice(2),intent:'order',quantity:2,note:'sin hielo'};
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:6010,dailyOrderNumber:60});
+   h.service.ordersService.cancel=jest.fn();
+   return {h,key:selection==='attribute'?'pendingAttribute':'pendingMatch',choice:selection==='attribute'?f.flavors[1]:f.variants[1],chosenId:selection==='attribute'?60102:60104};
+  }
+  if(selection==='attribute')it('opens both selections through router '+f.dish+' agent='+agent,async()=>{
+   const {h,choice,chosenId}=setup();h.conv.state='awaiting_payment';
+   h.conv.sessionData.pendingCartRemoval=undefined;h.conv.sessionData.pendingAttribute=undefined;h.conv.sessionData.pendingCheckoutResume=undefined;
+   const cart=structuredClone(h.conv.sessionData.cart);
+   await h.sendQueued('Quita el '+f.dish);
+   expect(h.conv.sessionData.pendingCartRemoval).toBeDefined();
+   await h.sendQueued('Agrega dos '+f.drink+' sin hielo');
+   expect(h.conv.sessionData.pendingCartRemoval).toBeDefined();expect(h.conv.sessionData.pendingAttribute).toMatchObject({productId:60102,quantity:2});
+   const before=structuredClone(h.conv.sessionData);
+   await h.sendQueued('Olvida ese cambio');expect(h.conv.sessionData).toEqual(before);
+   await h.sendQueued('Cancela el cambio del carrito');expect(h.conv.sessionData.cart).toEqual(cart);
+   await h.sendQueued(choice);
+   expect(h.cartRows().find(row=>row.id===chosenId)).toMatchObject({qty:2,note:expect.stringMatching(/sin hielo/i)});
+   await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(4);
+  });
+  it.each(['Olvida ese cambio','Déjalo como estaba','Cancela ese cambio','Cancela esa selección','¿Puedo cancelar ese cambio?'])('%s '+f.dish+' '+selection+' agent='+agent,async phrase=>{
+   const {h,choice,chosenId}=setup();const before=structuredClone(h.conv.sessionData);const state=h.conv.state;
+   const response=await h.sendQueued(phrase);
+   expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe(state);
+   expect(response||'').toMatch(/varias|varios|cu[aá]l/i);expect(response||'').toMatch(/compra|producto|selecci[oó]n/i);
+   expect(response||'').toMatch(/carrito/i);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.service.ordersService.cancel).not.toHaveBeenCalled();
+   await h.sendQueued('Cancela el cambio del carrito');
+   expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(before.cart);
+   await h.sendQueued(choice);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:60101,qty:1,note:'sin cilantro'}),expect.objectContaining({id:60101,qty:1,note:'con cilantro'}),expect.objectContaining({id:chosenId,qty:2,note:expect.stringMatching(/sin hielo/i)})]);
+   await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(4);
+  });
+  it.each(['No quites nada','Cancela el cambio del carrito'])('explicit edit withdrawal %s keeps purchase '+f.dish+' '+selection+' agent='+agent,async phrase=>{
+   const {h,key,choice,chosenId}=setup();const pending=structuredClone((h.conv.sessionData as any)[key]);const cart=structuredClone(h.conv.sessionData.cart);
+   await h.sendQueued(phrase);
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();expect((h.conv.sessionData as any)[key]).toEqual(pending);
+   await h.sendQueued(choice);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:60101,qty:1,note:'sin cilantro'}),expect.objectContaining({id:60101,qty:1,note:'con cilantro'}),expect.objectContaining({id:chosenId,qty:2,note:expect.stringMatching(/sin hielo/i)})]);
+   await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(4);
+  });
+  it('explicit purchase withdrawal keeps removal '+f.dish+' '+selection+' agent='+agent,async()=>{
+   const {h,key}=setup();const removal=structuredClone(h.conv.sessionData.pendingCartRemoval);const cart=structuredClone(h.conv.sessionData.cart);
+   await h.sendQueued('Cancela la compra pendiente');
+   expect((h.conv.sessionData as any)[key]).toBeUndefined();expect(h.conv.sessionData.pendingCartRemoval).toEqual(removal);expect(h.conv.sessionData.cart).toEqual(cart);
+   expect(h.replies.at(-1)).toMatch(/cu[aá]l l[ií]nea quitamos/i);
+   await h.sendQueued('la con cilantro');
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:60101,qty:1,note:'sin cilantro'})]);
+   await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(1);
+  });
+ }
+});
+
+
+describe('Beverage category preserves explicit flavor choice',()=>{
+ const catalog=new WhatsappCatalogService({} as never);
+ it.each(['Bebidas','Bebidas calientes','Jugos','Refrescos'])('catalog category %s requires flavor even for unfamiliar name',categoryName=>{
+  const product={id:60201,code:951,name:'Especial Del Dia',price:5000,categoryName,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Flor De Jamaica','Tamarindo']}]};
+  expect(catalog.isLikelyDrinkProduct(product)).toBe(true);
+  expect(catalog.fillDefaultAttributes(product,[])).toEqual([]);
+ });
+ it.each(['Platos','Combos con bebidas'])('food category %s is not a beverage category',categoryName=>{
+  const product={id:60202,code:952,name:'Especial Del Dia',price:20000,categoryName,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Suave','Picante']}]};
+  expect(catalog.isLikelyDrinkProduct(product)).toBe(false);
+ });
+});

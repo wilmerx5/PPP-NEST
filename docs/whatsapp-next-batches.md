@@ -1,3 +1,13 @@
+## Propiedad de selección pendiente — validado; deploy agrupado en preparación — 17/10/2026
+
+Ver docs/whatsapp-pending-owner-validation-1710.json:74 casos nuevos,68 recorridos completos con orden simulada;246 focalizadas +51 controles de catálogo/agente; global77 suites/7812 Jest, TypeScript y72 contratos Node verdes. Sin inferencia181/183. No atribuirlo al runtime hasta verificar el deploy del lote acumulado.
+
+Siguiente por riesgo:
+1. Cart-edit junto a pendingAddOffer/pendingSideSwap/multi; varias compras pendientes a la vez. Referencia vaga no elige dueño; no ofrecer una orden de retirada que no tenga ruta para esa estructura. Empezar por contrato y reproducción gratuita.
+2. pendingMatch informativo no es una compra; comprobar que consultar y retirar un cambio no elimine información ajena ni compre por accidente.
+3. Completar otras ediciones (cantidad/opción/reemplazo) con selecciones independientes. Solo eliminación quedó acreditada por los nuevos chats completos.
+4. Después del deploy, contraste real acotado por contador operativo antes de red; quedan dos. No lanzar full histórico ni confirmar/cancelar órdenes externas.
+
 ## Mensajes mixtos de cancelación y acción independiente — 17/10/2026
 
 Validado SIN desplegar. docs/whatsapp-mixed-cancel-validation-1710.json:70 casos nuevos (56 recorridos hasta orden simulada,10 de alcance/eliminación, cuatro cantidades por catálogo en pago);145 focalizadas,77 suites/7738 Jest, TypeScript y72 contratos Node verdes. Global inicial interrumpida para ampliar pruebas; solo final acredita aceptación. Cero inferencia;181/183 intacto. Último runtime verificado1c4d98a9; agrupar cambios antes del siguiente deploy.

@@ -1199,6 +1199,19 @@ export class WhatsappOrchestratorService {
     const activeSelection = !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state);
     const pendingEdits = CART_EDIT_SELECTION_KEYS.filter(key => !!pendingSelection[key]);
     const cancellationAside = pendingCartEditCancellationAside(originalText);
+    const pendingPurchaseSelection = !!pendingSelection.pendingAttribute ||
+      (!!pendingSelection.pendingMatch && pendingSelection.pendingMatch.intent !== 'info') ||
+      !!pendingSelection.pendingMultiOrder || !!pendingSelection.pendingAddOffer || !!pendingSelection.pendingSideSwap;
+    const explicitCartWithdrawal = /^(?:cancela|olvida) el cambio del carrito$/.test(cancellationText);
+    const explicitPurchaseWithdrawal = /^(?:cancela|olvida) la compra pendiente$/.test(cancellationText);
+    const vagueWithdrawal = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio|olvida eso|(?:cancela|olvida) esa seleccion)$/.test(cancellationText);
+    if (activeSelection && pendingSelection.cart.length && pendingEdits.length && pendingPurchaseSelection &&
+        (vagueWithdrawal || cancellationAside)) {
+      await this.reply(conv, msg.waId, 'Hay varias selecciones pendientes. ¿Te refieres al cambio del carrito o a la compra pendiente? No he retirado ninguna.\n\n' +
+        'Escribe «cancela el cambio del carrito» o «cancela la compra pendiente». El pedido sigue igual.');
+      return;
+    }
+
     if (activeSelection && pendingSelection.cart.length && pendingEdits.length && cancellationAside) {
       const notice = {
         retain: 'De acuerdo, mantengo el cambio pendiente. No he modificado el pedido.',
@@ -1210,7 +1223,7 @@ export class WhatsappOrchestratorService {
       return;
     }
     const withdrawRemoval = isKeepCartRefusal(cancellationText) && !!pendingSelection.pendingCartRemoval;
-    const withdrawEdit = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
+    const withdrawEdit = explicitCartWithdrawal || /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
     if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (withdrawRemoval || withdrawEdit)) {
       if (!withdrawRemoval && pendingEdits.length > 1) {
         await this.reply(conv,msg.waId,'Hay varios cambios pendientes. ¿Cuál cancelamos: quitar, cantidad, opciones o reemplazo? El pedido sigue igual.');
@@ -1241,7 +1254,7 @@ export class WhatsappOrchestratorService {
       }
     }
     const replacing = pendingSelection.pendingAttribute?.replacement || pendingSelection.pendingMatch?.replacement;
-    const rejectSelection = (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(cancellationText);
+    const rejectSelection = explicitPurchaseWithdrawal || (!!replacing && /^(?:olvida ese cambio|cancela ese cambio)$/.test(cancellationText)) || /^(?:olvida (?:eso|esa seleccion|esa bebida)|no quiero (?:ese producto|ese plato|esa bebida)|cancela (?:esa seleccion|ese producto))$/.test(cancellationText);
     const currentQueue = pendingSelection.pendingMultiOrder;
     const queuedAttributeCancellation = !!pendingSelection.pendingAttribute && !!currentQueue &&
       !currentQueue.confident.length && !currentQueue.ambiguous.length && !currentQueue.unresolved.length &&

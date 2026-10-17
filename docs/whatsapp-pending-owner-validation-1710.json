@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-17",
+  "base": "84f3a2fc",
+  "branch": "staging",
+  "newTests": 74,
+  "matrix": {
+    "seededCompleteJourneys": 64,
+    "routerOpenedBothSelectionsCompleteJourneys": 4,
+    "beverageCategoryControls": 6,
+    "fictionalMenus": 2,
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "purchaseSelectionTypes": [
+      "pendingAttribute",
+      "pendingMatch"
+    ]
+  },
+  "baseline": {
+    "initialSubset": {
+      "failed": 32,
+      "passed": 8,
+      "log": "/tmp/ppp-pending-owner-baseline-1710.log"
+    },
+    "expandedSubset": {
+      "failed": 56,
+      "passed": 8,
+      "log": "/tmp/ppp-pending-owner-expanded-baseline-1710.log"
+    },
+    "naturalOpeningAfterOwnershipFix": {
+      "failed": 2,
+      "passed": 66,
+      "log": "/tmp/ppp-pending-owner-natural-targets-1710.log"
+    },
+    "beverageCategoriesBeforeFix": {
+      "failed": 4,
+      "passed": 2,
+      "log": "/tmp/ppp-pending-owner-category-baseline-1710.log"
+    },
+    "note": "Runs overlap. Do not sum failures as unique tests. Natural infusión failure exposed missing plural beverage-category recognition."
+  },
+  "behavior": [
+    "Vague edit withdrawal with independent purchase selection asks ownership without session/cart mutation.",
+    "Explicit cart-change withdrawal preserves pending purchase; explicit purchase withdrawal preserves cart removal.",
+    "After clarification, complete original checkout once with exactly expected units and notes.",
+    "Beverage category head recognizes unfamiliar product names, retains required flavor selection; combos con bebidas stays food."
+  ],
+  "targeted": {
+    "generalAccuracyPassed": 246,
+    "log": "/tmp/ppp-pending-owner-expanded-targets-1710.log",
+    "additionalCatalogueAndAgentPassed": 51,
+    "additionalSuites": 3,
+    "additionalLog": "/tmp/ppp-pending-owner-catalog-controls-1710.log"
+  },
+  "global": {
+    "suites": 77,
+    "passed": 7812,
+    "seconds": 1046.426,
+    "log": "/tmp/ppp-pending-owner-global-1710.log",
+    "unchangedSourceFiles": 354,
+    "snapshot": "/tmp/ppp-pending-owner-source-1710.json"
+  },
+  "typecheck": {
+    "passed": true,
+    "log": "/tmp/ppp-pending-owner-tsc-1710.log"
+  },
+  "nodeContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-pending-owner-contracts-1710.log"
+  },
+  "paidCalls": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": "181/183 unchanged; two requests remain under operational ceiling.",
+  "deployment": {
+    "status": "pending",
+    "preflightHead": "28ec484e",
+    "preflightImage": "sha256:c31c61825b25e339eee4f70f83e928adb44ca6e56204db1c21e3a4e24b271f0e",
+    "untrackedServerBinPreserved": true
+  },
+  "limits": [
+    "64 trajectories start with both pending structures seeded; four open both through router. Not real Meta delivery or live model inference.",
+    "New complete journeys focus on cart removal plus attribute/match purchase selection. Other cart edits/offers/side swaps/multi queues and multiple purchase owners need separate complete journeys.",
+    "No history-based undo of an already applied edit. No external cancellation or confirmation."
+  ],
+  "next": [
+    "Ownership with pendingAddOffer/pendingSideSwap/multi queues and several purchase owners; avoid promising an unsupported cancellation scope.",
+    "Information-only pendingMatch plus cart edit; distinguish read-only focus from a purchase.",
+    "Bounded real-model and channel contrast after deployment; reserve budget before network, no external order confirmation."
+  ]
+}
