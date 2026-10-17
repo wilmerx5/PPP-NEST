@@ -1,6 +1,6 @@
 ## Siguiente puerta tras ráfagas completas — 17/10/2026
 
-Tanda en validación: 12 recorridos completos por la cola pública (dos cartas ficticias, agente simulado on/off, confirmación con pausas 0/400/3400ms); 24 cruces de consulta de total + eliminación de fila en ambos órdenes; 16 controles de alcance de vaciado. Evidencia vigente `whatsapp-complete-burst-validation-1710.json`. La primera reproducción de ocho cruces vació todo el carrito: no era problema del modelo sino alcance de reglas. No acreditar el despliegue hasta cerrar global y verificación efectiva.
+Tanda validada y desplegada como77b2bf9f: 12 recorridos completos por la cola pública (dos cartas ficticias, agente simulado on/off, confirmación con pausas 0/400/3400ms); 24 cruces de consulta de total + eliminación de fila en ambos órdenes; 16 controles de alcance de vaciado. Evidencia vigente `whatsapp-complete-burst-validation-1710.json`. La primera reproducción de ocho cruces vació todo el carrito: no era problema del modelo sino alcance de reglas. Global77 suites/7364 pruebas aprobadas; despliegue y salud verificados en el informe.
 
 Próximas tandas por riesgo, sin multiplicar combinaciones que no cambien comportamiento:
 1. Consulta + edición ambigua en ráfaga: dos líneas del mismo SKU con notas distintas, eliminar por nombre; debe pedir dueño y conservar ambas hasta aclarar. Probar selección posterior y consulta de precio entre medias.

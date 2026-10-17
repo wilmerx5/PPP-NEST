@@ -1,7 +1,7 @@
 {
   "date": "2026-10-17",
   "baseCommit": "0038e6a6",
-  "status": "Frozen-source global validation passed; deployment pending",
+  "status": "Validated, published and deployed only to staging",
   "newCases": {
     "completeJourneys": 12,
     "inquiryAndRemovalBursts": 24,
@@ -76,5 +76,34 @@
     "Model, persistence, maps, Meta and order side effects simulated",
     "Cases use two precise intentions separated by newline or punctuation; not arbitrary multi-intent language coverage",
     "Does not prove original Meta inbound or live concurrency under load"
-  ]
+  ],
+  "codeCommit": "77b2bf9f554df632a61d004ea7cc87e156f98e4e",
+  "deployment": {
+    "verifiedAt": "2026-10-17T20:54:07.225505+00:00",
+    "head": "77b2bf9f554df632a61d004ea7cc87e156f98e4e",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:39ef240160c273132c5699e6b556428762f70cb2a5cfff9189a1281c227562dd",
+    "candidateMatches": true,
+    "compiled": {
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    }
+  },
+  "rollbackTag": "ppp-nest-staging:rollback-before-77b2bf9f"
 }
