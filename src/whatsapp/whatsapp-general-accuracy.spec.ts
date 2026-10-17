@@ -16785,3 +16785,48 @@ describe('side swap across every dish in the cart', () => {
   }
 });
 
+
+describe('a whole yes answers the final order summary', () => {
+  const fictional = [
+    { id: 31401, code: 31401, name: 'Arepa Rellena', price: 9000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31402, code: 31402, name: 'Jugo Natural', price: 5000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Sabor', options: ['Mora', 'Lulo'] }] },
+  ];
+  const atSummary = (menu: any[], productId: number, enabled: boolean) => {
+    const h = harness(menu as any, enabled);
+    h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 999, orderNumber: 'X1' });
+    const product = menu.find((p: any) => p.id === productId);
+    h.conv.sessionData.cart = [{ productId, code: productId, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, address: 'Calle 9 20 30', addressConfirmed: true,
+      phoneConfirmed: true, contactPhone: h.conv.phoneE164, paymentMethod: 'contraentrega', notesCollected: true, deliveryFeeCalculated: 2000 });
+    h.conv.customerName = 'Yordan silva';
+    h.conv.state = 'awaiting_final_confirm';
+    return h;
+  };
+  for (const enabled of [true, false]) {
+    for (const [label, menu, id] of [['PPP', products, 35], ['fictional', fictional, 31401]] as const) {
+      for (const text of ['Si Señor', 'Si', 'sí, así está bien', 'claro que sí', 'si confirmo']) {
+        it(`${label} "${text}" confirms the order, agent ${enabled}`, async () => {
+          const h = atSummary(menu as any, id, enabled);
+          await h.sendQueued(text);
+          expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+          expect(h.replies.join(' ')).toMatch(/pedido qued[oó] registrado/i);
+        });
+      }
+      for (const text of ['no', 'Señor', 'si pero cambia la direccion']) {
+        it(`${label} "${text}" does not confirm, agent ${enabled}`, async () => {
+          const h = atSummary(menu as any, id, enabled);
+          await h.sendQueued(text);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        });
+      }
+    }
+    it(`fictional "si, agrégame un jugo natural" adds the drink, agent ${enabled}`, async () => {
+      const h = atSummary(fictional, 31401, enabled);
+      await h.sendQueued('si, agrégame un jugo natural');
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      expect(h.replies.join(' ')).not.toMatch(/No tenemos/i);
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(31402);
+    });
+  }
+});

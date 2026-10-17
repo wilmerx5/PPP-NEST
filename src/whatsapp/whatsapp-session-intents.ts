@@ -409,6 +409,28 @@ export function isCourtesyAffirmation(text: string): boolean {
   );
 }
 
+/**
+ * “Sí señor” / “sí, así está bien” / “claro que sí” answering the order summary.
+ * Only a whole yes: “sí pero sin cebolla” is not a confirmation.
+ */
+export function isFinalConfirmAffirmation(text: string): boolean {
+  const t = (text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¡!?.…,;:"'`´👍🙏✅]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 50) return false;
+  const rest = t
+    .replace(/\b(?:senor(?:a|ita)?|joven|amig[oa]|vecin[oa]|veci|don|dona|herman[oa]|parce|mi amor|mija|mijo|por favor|porfa|porfis|gracias|muchas gracias|pues)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!rest) return false;
+  return /^(?:(?:si+|sip|sep|claro(?: que si)?|correcto|exacto|perfecto|listo|dale|de una|ok|okay|vale|bueno|confirmo|confirmado|(?:asi )?esta bien|asi esta|todo (?:esta )?bien|todo correcto) )+$/.test(`${rest} `);
+}
+
 /** “¿Cuánto demora?” / “en cuánto llega?” — ETA de domicilio. */
 export function isDeliveryEtaInquiry(text: string): boolean {
   const raw = (text || '').trim();

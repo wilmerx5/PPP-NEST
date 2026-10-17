@@ -84,6 +84,7 @@ import {
   isSpecificOrderProgressInquiry,
   extractDailyOrderNumberHint,
   isCourtesyAffirmation,
+  isFinalConfirmAffirmation,
   isUsableWhatsappCustomerName,
   parseCartItemReplacement,
   parseCookingStyleLineCorrection,
@@ -834,6 +835,15 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
     text = normalizeSpokenOrderCourtesy(text);
+    // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
+    if (conv.state === 'awaiting_final_confirm' && isFinalConfirmAffirmation(text)) {
+      const current = this.conversationService.getSession(conv);
+      if (current.cart.length && !current.pendingAttribute && !current.pendingMatch && !current.pendingAddOffer &&
+        !current.pendingSideSwap && !current.pendingMultiOrder && !current.pendingCartReplacement) text = 'confirmar';
+    } else if (conv.state === 'awaiting_final_confirm') {
+      // "si, agrégame una gaseosa" is the addition, not a product named "si".
+      text = text.replace(/^\s*(?:s[ií]+|claro|dale|ok)\s*[,.]?\s+(?=(?:agr[eé]ga|p[oó]n|d[aá]me|quiero|tambi[eé]n)\w*\b)/i, '');
+    }
     if (/\b(?:maduro\s+con|pl[aá]tano\s+maduro)\b/i.test(text)) {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
     }
