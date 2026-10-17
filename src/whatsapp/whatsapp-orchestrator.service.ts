@@ -951,6 +951,16 @@ export class WhatsappOrchestratorService {
       .replace(/^(?:y\s+)?a\s*parte\s+((?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s.+?)[.!\s]*$/i, 'agrégame $1 aparte')
       .replace(/^(?:y\s+)?(?:agr[eé]gale|añ[aá]dele|anadele|s[uú]male|incl[uú]yele|adem[aá]s|tambi[eé]n)\s+(?=(?:un|una|unos|unas|el|la|los|las|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i, 'agrégame ')
       .replace(/^(?:y\s+)?(?:p[oó]nle|m[eé]tele|[eé]chale)\s+(?=(?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s)/i, 'agrégame ');
+    // A whole affirmation cannot choose a cart line or approve an unresolved edit.
+    if (!['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
+        (isFinalConfirmAffirmation(text) || this.isConfirmKeyword(text))) {
+      const current = this.conversationService.getSession(conv);
+      const editReminder = this.formatPendingCartEditReminder(current);
+      if (current.cart.length && editReminder) {
+        await this.reply(conv,msg.waId,editReminder);
+        return;
+      }
+    }
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
     if (conv.state === 'awaiting_final_confirm' && isFinalConfirmAffirmation(text)) {
@@ -9107,6 +9117,13 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Applies also when confirmation is requested by another route/tool.
+    const editReminder = this.formatPendingCartEditReminder(session);
+    if (editReminder) {
+      await say(editReminder);
+      return;
+    }
+
     const limitsCfg = this.toCartLimitsConfig(cfg, session);
     const maxCheck = evaluateCartLimits(session.cart, limitsCfg, {
       orderType: session.orderType,
@@ -12509,8 +12526,9 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingCartReplacement;
     const cancellation = /^(?:cancela|olvida) (?:ese|el) cambio[.!]*$/i.test(text.trim());
     if (pending && cancellation) {
-      await this.conversationService.saveSession(conv, { ...session, pendingCartReplacement: undefined });
-      await this.reply(conv, waId, 'Cancelé ese cambio. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, session));
+      const next = { ...session, pendingCartReplacement: undefined };
+      await this.conversationService.saveSession(conv, next);
+      await this.reply(conv, waId, 'Cancelé ese cambio. El pedido sigue igual.\n\n' + this.formatInterruptedStepReminder(conv, next));
       return true;
     }
     const parsed = !/[¿?]/.test(text) ? parseCartItemReplacement(text, true) : null;
@@ -14193,9 +14211,32 @@ export class WhatsappOrchestratorService {
     await clear(); return false;
   }
 
+  private formatPendingCartEditReminder(session: WhatsappSessionData): string {
+    const keys = CART_EDIT_SELECTION_KEYS.filter(key => !!session[key]);
+    if (!keys.length) return '';
+    if (keys.length > 1 || session.pendingPriceInquiry || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) {
+      return 'Hay varias selecciones pendientes. Dime el cambio completo, con el nombre y la nota del plato. El pedido sigue igual.';
+    }
+    const key = keys[0];
+    const edit = session[key]!;
+    if (edit.cartSignature && edit.cartSignature !== JSON.stringify(session.cart)) {
+      return 'El carrito cambió. Dime otra vez cuál plato y qué cambio hacemos antes de confirmar.';
+    }
+    const question = {
+      pendingCartRemoval: 'Para continuar, ¿cuál línea quitamos?',
+      pendingCartQuantity: 'Para continuar el cambio de cantidad, elige la línea:',
+      pendingCartReplacement: 'Para continuar el reemplazo, elige la línea:',
+      pendingCartAttributeEdit: 'Para continuar el cambio, elige el plato:',
+    }[key];
+    const labels = 'candidates' in edit ? edit.candidates.map(option => option.name) : edit.options.map(option => option.label);
+    return question + '\n' + labels.map((label,index) => `${index + 1}. ${label}`).join('\n') +
+      '\nEscribe el número o identifica la línea por su nota. El pedido sigue igual.';
+  }
+
   private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {
     if (session.pendingPriceInquiry) return 'Para seguir con la consulta, indica el nombre o el número del producto de la lista.';
-    if (session.pendingCartAttributeEdit) return 'Para continuar el cambio, elige el plato:\n' + session.pendingCartAttributeEdit.candidates.map((candidate, index) => `${index + 1}. ${candidate.name}`).join('\n');
+    const editReminder = this.formatPendingCartEditReminder(session);
+    if (editReminder) return editReminder;
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return this.formatPendingPurchaseReminder(session);
     }

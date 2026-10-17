@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "22a21ce2",
+  "status": "Final frozen-source validation passed; deployment pending",
+  "newCases": {
+    "checkoutRemovalContinuations": 48,
+    "confirmationBoundaryGuards": 16,
+    "uniqueTotal": 64
+  },
+  "scope": "Seeded existing checkout with duplicate SKU rows, distinct notes and unrelated side; readonly interruptions, nonselecting affirmation, explicit selection and mocked order continuation",
+  "fixtures": [
+    "Crepe De Espinaca / Porcion De Pan",
+    "Bowl De Garbanzos / Porcion De Totopos",
+    "Gyoza De Hongos for direct central guard"
+  ],
+  "axes": {
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "checkoutStates": [
+      "awaiting_payment",
+      "awaiting_final_confirm"
+    ],
+    "selection": [
+      "2",
+      "la con cilantro"
+    ],
+    "nonselectingAffirmations": [
+      "Si",
+      "confirmar",
+      "listo"
+    ]
+  },
+  "baseline": {
+    "initial16WithoutAffirmation": "passed, /tmp/ppp-sku-inquiry-baseline-1710.log",
+    "expanded16": "failed, /tmp/ppp-sku-affirmation-baseline-1710.log",
+    "failures": {
+      "awaitingPaymentMisleadingPrompt": 8,
+      "awaitingFinalConfirmedBeforeSelection": 8
+    },
+    "note": "Do not add initial and expanded reruns as unique cases; no external order created"
+  },
+  "fixes": [
+    "A whole affirmation/confirm command cannot approve an unresolved cart edit",
+    "Central tryConfirmOrder guard blocks forced confirmation for removal, quantity, replacement or attribute clarification",
+    "Shared reminder prioritizes actual edit and preserves labels; multiple lists and stale cart signatures request a complete clarification instead of offering a misleading checkout step",
+    "Replacement cancellation renders the newly saved session, avoiding stale cancelled selection in the response"
+  ],
+  "targeted": {
+    "passed": 172,
+    "newUnique": 64,
+    "log": "/tmp/ppp-pending-edits-final-targets-1710.log",
+    "note": "64 new +108 existing basic/burst/replacement controls; reruns not counted twice"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-pending-edits-final-tsc-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-pending-edits-final-global-1710.log",
+    "snapshot": "/tmp/ppp-pending-edits-final-source-1710.json",
+    "suites": 77,
+    "tests": 7428,
+    "seconds": 599.005,
+    "filesHashed": 354,
+    "sourceUnchanged": true,
+    "runnerContracts": 72,
+    "runnerLog": "/tmp/ppp-pending-edits-contracts-1710.log"
+  },
+  "apiRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainModified": false,
+  "limits": [
+    "Removal cases start from seeded checkout, not initial natural-language purchase",
+    "Other edit kinds are direct central-boundary tests, not full natural-language journeys",
+    "Persistence, model, maps, Meta and order creation mocked; no live inference or real concurrency claim"
+  ],
+  "failedGlobal": {
+    "log": "/tmp/ppp-pending-edits-global-1710.log",
+    "suitesPassed": 76,
+    "suitesFailed": 1,
+    "testsPassed": 7412,
+    "testsFailed": 16,
+    "seconds": 592.707,
+    "accepted": false,
+    "cause": "Replacement cancellation persisted cleared pending but rendered reminder from old session. New shared reminder exposed stale response. Fixed rendering to use the same next session as saveSession."
+  }
+}
