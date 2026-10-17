@@ -17761,3 +17761,37 @@ describe('nonoperative cancellation language preserves pending edit',()=>{
     });
   }
 });
+
+
+describe('Whole order cancellation inquiries preserve checkout', () => {
+ for (const dish of [
+ {id:59001,code:991,name:'Bowl De Lentejas',price:18000,availableNow:true,hasAttributes:false,attributes:[]},
+ {id:59002,code:992,name:'Crepe De Setas',price:23000,availableNow:true,hasAttributes:false,attributes:[]}
+ ]) {
+ for (const agent of [true,false]) for (const state of ['building_cart','awaiting_payment','awaiting_final_confirm','completed'] as const)
+ it.each(['¿Puedo cancelar el pedido?','¿Cómo puedo cancelar el pedido?','Si llega tarde, quiero cancelar el pedido','No canceles el pedido'])('%s '+state+' agent='+agent, async text => {
+  const h=harness([dish],agent);
+  h.conv.state=state;
+  h.conv.sessionData.cart=[{productId:dish.id,name:dish.name,code:dish.code,unitPrice:dish.price,quantity:2,attributes:[],note:'sin sal'}];
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  h.service.ordersService.cancel=jest.fn();
+  const before=structuredClone(h.cartRows());
+  const reply=await h.sendQueued(text);
+  expect(h.cartRows()).toEqual(before);
+  expect(h.conv.state).toBe(state);
+  expect(h.service.ordersService.cancel).not.toHaveBeenCalled();
+  expect(reply||'').not.toMatch(/qued[oó] cancelado|armamos otro/i);
+  expect(reply||'').toMatch(/cancel|conserv|mantengo/i);
+ });
+ }
+ it.each([true,false].flatMap(agent=>['Cancela el pedido','Quiero cancelar el pedido'].map(text=>({agent,text}))))('explicit draft cancellation $text agent=$agent',async ({agent,text})=>{
+  const dish={id:59003,code:993,name:'Ensalada De Quinoa',price:19000,availableNow:true,hasAttributes:false,attributes:[]};
+  const h=harness([dish],agent);
+  h.conv.sessionData.cart=[{productId:dish.id,name:dish.name,code:dish.code,unitPrice:dish.price,quantity:1,attributes:[]}];
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  const reply=await h.sendQueued(text);
+  expect(h.cartRows()).toEqual([]);
+  expect(reply||'').toMatch(/qued[oó] cancelado/i);
+ });
+
+});

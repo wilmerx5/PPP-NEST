@@ -1,3 +1,13 @@
+## Cancelación del pedido completo — validado, pendiente de despliegue — 17/10/2026
+
+Ver docs/whatsapp-whole-cancel-validation-1710.json:68 casos nuevos;83 focalizadas,77 suites/7668 Jest, TypeScript y72 contratos Node verdes. Código nuevo en staging; runtime todavía1c4d98a9. No reconstruir por rutina: agrupar siguiente ajuste. Cero inferencia;181/183 intacto.
+
+Siguiente por riesgo:
+1. Consulta o condición de cancelación + compra/cambio independiente en el mismo turno. No basta preservar todo si pierde la acción positiva; definir salida y estado antes de implementar.
+2. Una edición cart-edit junto a compra/sustitución pendiente: referencia vaga no elige dueño por orden de campos. Resolver explícitamente y retomar flujo.
+3. Continuaciones naturales de cantidad/opciones/reemplazo; no confundir matriz sembrada con chat completo.
+4. Contraste modelo/canal limitado al saldo operativo restante, contabilizado antes de red. No confirmar ni cancelar órdenes externas.
+
 ## Lenguaje de cancelación que no es una orden — 17/10/2026
 
 Tanda validada y desplegada como 1c4d98a9: docs/whatsapp-cancel-language-validation-1710.json. 88 casos nuevos (72 de nueve formas no operativas y16 controles afirmativos, dos cartas, pago/confirmación y agente simulado on/off);356 focalizadas pasan; global final 77 suites/7600 pruebas, TypeScript y72 contratos Node aprobados, despliegue y salud verificados. Baseline48 fallos:44 respuestas que ignoraban la intención y cuatro pérdidas de estado final; el carrito y la edición estaban conservados antes de esas aserciones. No acreditar que el bot hubiera cancelado todo ni que72 casos fueran rojos inicialmente.

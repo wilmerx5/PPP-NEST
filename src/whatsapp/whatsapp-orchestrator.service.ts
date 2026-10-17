@@ -1129,6 +1129,24 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Discussing cancellation is not an instruction to discard a draft.
+    // Keep this before post-order reopening as the question concerns the current order.
+    const wholeCancellationAside = this.wholeOrderCancellationAside(originalText);
+    if (wholeCancellationAside) {
+      const current = this.conversationService.getSession(conv);
+      const registered = ['completed', 'closed'].includes(conv.state);
+      const answer = wholeCancellationAside === 'retain'
+        ? 'De acuerdo, conservo el pedido. No he cancelado nada.'
+        : wholeCancellationAside === 'conditional'
+          ? 'No he cancelado nada: esa condición todavía no está confirmada.'
+          : registered
+            ? 'Si el pedido ya está registrado, debes coordinar la cancelación con el local. ' + this.humanContactMessage()
+            : 'Mientras el pedido no esté registrado, puedes descartarlo escribiendo «cancela el pedido». No he cancelado nada.';
+      await this.reply(conv, msg.waId, answer + (!registered ? '\n\n' +
+        (this.formatInterruptedStepReminder(conv, current) || this.formatContinueShoppingPrompt(current)) : ''));
+      return;
+    }
+
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
@@ -13792,6 +13810,16 @@ export class WhatsappOrchestratorService {
     const redeemed = /\b(redimid[oa]s?|canjead[oa]s?|canje)\b/.test(t);
     const extra = /\b(adicional|aparte|otro|otra|mas)\b/.test(t);
     return redeemed && extra;
+  }
+
+  private wholeOrderCancellationAside(text: string): 'retain' | 'question' | 'conditional' | null {
+    const t = this.normalizeForMatch(text).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const target = '(?:(?:el|mi|este|ese) )?pedido';
+    if (new RegExp(`^no (?:me )?(?:canceles|anules|quiero cancelar|quiero anular) ${target}$`).test(t)) return 'retain';
+    if (new RegExp(`^(?:puedo|se puede|como puedo|es posible|podria) (?:cancelar|anular) ${target}$`).test(t)) return 'question';
+    if (new RegExp(`^(?:solo |solamente )?si .+ (?:quiero )?(?:cancelar|anular) ${target}$`).test(t) &&
+        !/\b(?:aparte|ademas|agrega|dame|ponme)\b/.test(t)) return 'conditional';
+    return null;
   }
 
   private isCancelIntent(text: string): boolean {

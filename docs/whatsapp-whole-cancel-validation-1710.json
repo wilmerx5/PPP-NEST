@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-17",
+  "base": "28ec484e",
+  "branch": "staging",
+  "scope": "Whole order cancellation inquiry, negation and condition preserves checkout; explicit cancellation unchanged",
+  "newTests": 68,
+  "baseline": {
+    "tests": 16,
+    "failed": 16,
+    "draftErased": 12,
+    "replyInadequate": 4,
+    "log": "/tmp/ppp-whole-cancel-baseline-1710.log"
+  },
+  "targeted": {
+    "passed": 83,
+    "log": "/tmp/ppp-whole-cancel-accepted-targets-1710.log"
+  },
+  "global": {
+    "suites": 77,
+    "passed": 7668,
+    "seconds": 997.846,
+    "log": "/tmp/ppp-whole-cancel-global-1710.log",
+    "unchangedSourceFiles": 354,
+    "snapshot": "/tmp/ppp-whole-cancel-source-1710.json"
+  },
+  "typecheck": {
+    "passed": true,
+    "log": "/tmp/ppp-whole-cancel-final-tsc-1710.log"
+  },
+  "nodeContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-whole-cancel-contracts-1710.log"
+  },
+  "authoringErrors": "Two intermediate targeted runs did not compile: duplicate variable name then missing required fixture code. Corrected before accepted run; not product failures. Initial tsc also saw missing fixture code; final tsc passed.",
+  "matrix": "Two fictional catalogues; building_cart, awaiting_payment, awaiting_final_confirm, completed; simulated agent enabled/disabled. Four messages x 16 combinations =64; four explicit draft cancellation controls.",
+  "paidCalls": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "deployment": "Not deployed. Runtime remains 1c4d98a9. Main untouched.",
+  "limits": [
+    "Narrow complete utterances only; mixed question plus independent action not accredited.",
+    "Seeded states; no new full end-to-end order journey or real registered order cancelled.",
+    "No genuine audio/image/model/channel inference in this batch."
+  ],
+  "next": [
+    "Independent positive action alongside cancellation question/condition.",
+    "One cart edit plus pending purchase/replacement: ambiguous ownership.",
+    "Bounded real-model contrast with ledger before network; two remaining under current operational ceiling."
+  ]
+}
