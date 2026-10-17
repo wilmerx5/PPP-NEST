@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "0038e6a6",
+  "status": "Frozen-source global validation passed; deployment pending",
+  "newCases": {
+    "completeJourneys": 12,
+    "inquiryAndRemovalBursts": 24,
+    "clearScopeUnitCases": 12,
+    "fragmentedExplicitClearControls": 4,
+    "total": 52
+  },
+  "catalogs": [
+    "Crepe De Espinaca with included drink, Porcion De Pan",
+    "Bowl De Garbanzos with included sauce, Porcion De Totopos"
+  ],
+  "simulatedAgentModes": [
+    true,
+    false
+  ],
+  "confirmationGapMs": [
+    0,
+    400,
+    3400
+  ],
+  "journeyChecks": [
+    "greeting",
+    "purchase fragments with included option and kitchen note",
+    "delivery setup",
+    "total inquiry during payment",
+    "cash payment",
+    "fragmented affirmative plus courtesy",
+    "one mocked order preserving note, attributes, delivery address and fee",
+    "trailing courtesy preserves completed"
+  ],
+  "baseline": {
+    "inquiryRemovalFailures": 8,
+    "log": "/tmp/ppp-price-remove-burst-baseline-1710.log",
+    "finding": "Whole-message clear fallback joined todo in price query to quita in another bubble; erased complete cart in either order",
+    "authoringErrors": "Early complete-journey assertions expected quantity on order DTO and quote helper invocation. Actual DTO expands one item per unit, fixed delivery mode does not invoke routing helper. Corrected test assertions, not product defects."
+  },
+  "fixScope": [
+    "Loose clear verb/target fallback now requires both within same punctuation/newline clause; direct explicit full-clear syntax and fragmented full clear remain valid",
+    "Existing inquiry-and-edit route recognizes newline separation in either order; applies unambiguous removal and renders resulting total without stale pre-removal quote",
+    "Aggregate total inquiry accepts antes de pagar preface"
+  ],
+  "targeted": {
+    "passed": 61,
+    "log": "/tmp/ppp-complete-burst-final-targets-1710.log",
+    "newUniqueCases": 52,
+    "note": "61 includes existing controls; do not sum retests as unique cases"
+  },
+  "interruptedGlobal": {
+    "log": "/tmp/ppp-complete-burst-global-1710.log",
+    "accepted": false,
+    "reason": "Stopped own run before final refinement preserving full-clear commands split across bubbles"
+  },
+  "finalGlobal": {
+    "status": "passed",
+    "log": "/tmp/ppp-complete-burst-final-global-1710.log",
+    "snapshot": "/tmp/ppp-complete-burst-final-source-1710.json",
+    "suites": 77,
+    "tests": 7364,
+    "seconds": 597.447,
+    "sourceUnchanged": true,
+    "filesHashed": 354,
+    "typescriptPassed": true,
+    "typescriptLog": "/tmp/ppp-complete-burst-final-tsc-1710.log",
+    "runnerContracts": 72,
+    "runnerLog": "/tmp/ppp-complete-burst-contracts-1710.log"
+  },
+  "apiRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainModified": false,
+  "limits": [
+    "Model, persistence, maps, Meta and order side effects simulated",
+    "Cases use two precise intentions separated by newline or punctuation; not arbitrary multi-intent language coverage",
+    "Does not prove original Meta inbound or live concurrency under load"
+  ]
+}

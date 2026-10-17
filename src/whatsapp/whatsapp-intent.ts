@@ -38,6 +38,9 @@ function normalizeIntentText(text: string): string {
 
 /** Vaciar / limpiar carrito o pedido en armado (imperativo y typos comunes). */
 export function looksLikeClearCartMessage(text: string): boolean {
+  // Words from independent bubbles/questions must not combine into an erase
+  // command: "cuánto vale todo?" + "quita el item dos" only removes one row.
+  const clauses = text.split(/[\r\n?!;]+/).map(part => part.trim()).filter(Boolean);
   const t = normalizeIntentText(text);
   if (!t) return false;
 
@@ -63,7 +66,10 @@ export function looksLikeClearCartMessage(text: string): boolean {
   if (new RegExp(`\\b${clearVerb}\\s+${clearTarget}\\b`).test(t)) {
     return true;
   }
-  if (new RegExp(`\\b${clearVerb}\\b`).test(t) && /\b(todo|carrito|pedido|orden)\b/.test(t)) {
+  if (clauses.some(part => {
+    const clause = normalizeIntentText(part);
+    return new RegExp(`\\b${clearVerb}\\b`).test(clause) && /\b(todo|carrito|pedido|orden)\b/.test(clause);
+  })) {
     return true;
   }
 

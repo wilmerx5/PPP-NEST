@@ -1400,12 +1400,12 @@ export class WhatsappOrchestratorService {
     // A delimited factual question and an independent cart correction are two
     // intents. Answer only the question, then route the untouched correction
     // through existing cart handlers (including their ambiguity safeguards).
-    const editAndTotal = originalText.match(/^(.+?)(?:\s*;\s*|\s+y\s+)((?:(?:dime|me dices|me confirmas)\s+)?[¿?]?(?:cu[aá]nto\b|(?:el\s+)?total\b|la\s+cuenta\b).*)$/is);
-    const totalQuery = editAndTotal?.[2].replace(/^(?:dime|me dices|me confirmas)\s+/i, '') || '';
+    const editAndTotal = originalText.match(/^(.+?)(?:\s*[;\n]\s*|\s+y\s+)((?:(?:dime|me dices|me confirmas|antes de pagar)\s*,?\s+)?[¿?]?(?:cu[aá]nto\b|(?:el\s+)?total\b|la\s+cuenta\b).*)$/is);
+    const totalQuery = editAndTotal?.[2].replace(/^(?:dime|me dices|me confirmas|antes de pagar)\s*,?\s+/i, '').replace(/[;\n]\s*$/, '') || '';
     const asksEditedTotal = !!editAndTotal && (isCartChargeQuestion(totalQuery) || isOrderBillRequest(totalQuery) ||
       /^(?:cuanto queda(?: en total)?|(?:el )?total)(?: por favor)?$/.test(this.normalizeForMatch(totalQuery)));
     const asksChangeSurcharge = !!editAndTotal && isChangeSurchargeInquiry(totalQuery);
-    const inquiryAndEdit = ((asksEditedTotal || asksChangeSurcharge) ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
+    const inquiryAndEdit = ((asksEditedTotal || asksChangeSurcharge) ? [originalText, totalQuery, editAndTotal![1]] : null) || originalText.match(/^(.+?[?;\n])\s*(?:(?:y|adem[aá]s|aparte)\s+)?(.+)$/is) ||
       originalText.match(/^(.+?)\s+(?:y|adem[aá]s|aparte)\s+((?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?|cambia(?:me)?|sustituye|reemplaza|deja(?:me)?|que|del?|para|solo|mejor|no|era|eran|es|son|quer[ií]a)\s+.+)$/is);
     let independentEdit = inquiryAndEdit?.[2] || '';
     // Existing parsers conservatively reject "y" as a second instruction.
@@ -1424,7 +1424,7 @@ export class WhatsappOrchestratorService {
       (parseScopedCartRemoval(independentEdit) || parseCartQuantityCorrection(independentEdit) || independentAttributeEdit)) {
       // For "edit, then tell me the total", the edit handlers already render
       // the resulting cart and total. Never quote the pre-edit amount first.
-      if (asksEditedTotal) {
+      if (asksEditedTotal || isCartChargeQuestion(inquiryAndEdit[1].replace(/[;\n]\s*$/, '')) || isOrderBillRequest(inquiryAndEdit[1])) {
         if (await this.tryHandleScopedCartRemoval(conv, msg.waId, session, independentEdit, cfg)) return;
         if (await this.tryHandleCartQuantityCorrection(conv, msg.waId, session, independentEdit, cfg)) return;
       }

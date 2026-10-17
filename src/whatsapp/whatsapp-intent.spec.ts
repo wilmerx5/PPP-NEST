@@ -347,3 +347,23 @@ describe('CRA with house number # (menu code trap)', () => {
     ).toBe('address');
   });
 });
+
+
+describe('clear-cart scope across independent questions and commands',()=>{
+  for(const separator of ['\n','? ', '; '])for(const reverse of [true,false]){
+    it(`does not combine total question and row removal (${JSON.stringify(separator)}, reverse ${reverse})`,()=>{
+      const clauses=['Cuanto vale todo','Quita el item dos'];if(reverse)clauses.reverse();
+      expect(looksLikeClearCartMessage(clauses.join(separator))).toBe(false);
+    });
+    it(`still recognizes explicit full clearing (${JSON.stringify(separator)}, reverse ${reverse})`,()=>{
+      const clauses=['Cuanto vale todo','Vacia el carrito'];if(reverse)clauses.reverse();
+      expect(looksLikeClearCartMessage(clauses.join(separator))).toBe(true);
+    });
+  }
+});
+
+describe('full clear command may itself be fragmented',()=>{
+  it.each(['Quita\ntodo','Vacia\nel carrito','Borra\nel pedido','Carrito\nvacio'])('%s',text=>{
+    expect(looksLikeClearCartMessage(text)).toBe(true);
+  });
+});

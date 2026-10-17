@@ -1,3 +1,16 @@
+## Siguiente puerta tras ráfagas completas — 17/10/2026
+
+Tanda en validación: 12 recorridos completos por la cola pública (dos cartas ficticias, agente simulado on/off, confirmación con pausas 0/400/3400ms); 24 cruces de consulta de total + eliminación de fila en ambos órdenes; 16 controles de alcance de vaciado. Evidencia vigente `whatsapp-complete-burst-validation-1710.json`. La primera reproducción de ocho cruces vació todo el carrito: no era problema del modelo sino alcance de reglas. No acreditar el despliegue hasta cerrar global y verificación efectiva.
+
+Próximas tandas por riesgo, sin multiplicar combinaciones que no cambien comportamiento:
+1. Consulta + edición ambigua en ráfaga: dos líneas del mismo SKU con notas distintas, eliminar por nombre; debe pedir dueño y conservar ambas hasta aclarar. Probar selección posterior y consulta de precio entre medias.
+2. Operaciones de alcance distinto: eliminar una unidad frente a una línea completa; cantidad repartida por atributo; conservar productos ajenos. Preservar el total correcto durante pago/confirmación.
+3. Cambios de decisión: no eliminar, no cancelar, cambiar de dirección y luego corregirla; no ejecutar verbos citados en una pregunta. Separar instrucciones afirmativas de hipótesis/condiciones.
+4. Contraste vivo nuevo con catálogo ficticio y proveedor, contador de solicitudes antes de red, parada al primer fallo. Techo operativo restante2 no basta automáticamente para una conversación con bucles de herramientas: presupuestar explícitamente sin reiniciar contadores. No llamar al proveedor para fallos que ya son deterministas.
+5. Canal: ráfaga firmada de varios IDs, persistencia exactamente una vez y respuesta Meta entregada, conservando protección de actividad humana. La prueba menu-only entregada no acredita una conversación de pedido ni ráfagas. No ejecutar full histórico sin acotar inferencia; no confirmar órdenes externas.
+
+Criterio de avance: carrito, estado, respuesta y DTO de orden coherentes en cada turno; no basta verificar el carrito final. Mantener prueba básica recurrente y modelos efectivos iguales entre entornos cuando se promocione explícitamente. Main no se modifica por estas tandas.
+
 ## Control recurrente de conversaciones básicas — 17/10/2026
 
 Petición vigente del usuario: repasar chats completos sencillos durante el desarrollo, además de las familias complejas. Repetir este control cuando cambie la lógica de intenciones, direcciones o checkout. No ejecutar una global por cambios exclusivamente documentales.

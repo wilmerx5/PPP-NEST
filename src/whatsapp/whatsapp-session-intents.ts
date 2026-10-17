@@ -815,7 +815,7 @@ export function isCartChargeQuestion(text: string): boolean {
   const aggregate = /\bcuanto\s+(?:vale|cuesta|sale|suma|es|seria)\s+(?:todo(?:\s+(?:eso|esto|el\s+pedido))?|el\s+pedido(?:\s+completo)?|el\s+total)(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.exec(t);
   if (aggregate) {
     const preface = t.slice(0,aggregate.index).replace(/^[¿?\s,]+|[¿?\s,]+$/g,'').trim();
-    if (!preface || /^(?:(?:antes de (?:seguir|continuar|confirmar)|una (?:duda|pregunta)|disculpa|oye|y|por favor|porfa)[\s,¿?]*)+$/.test(preface)) return true;
+    if (!preface || /^(?:(?:antes de (?:seguir|continuar|confirmar|pagar)|una (?:duda|pregunta)|disculpa|oye|y|por favor|porfa)[\s,¿?]*)+$/.test(preface)) return true;
   }
   return /^(?:[¿?\s]*)(?:y\s+)?(?:cual\s+es|cuanto\s+(?:es|seria|vale|sale))\s+el\s+total(?:\s+(?:con|incluyendo)\s+(?:el\s+)?(?:domicilio|envio))?(?:\s+por\s+favor)?[?¿.!\s]*$/.test(t) ||
     /^(?:[¿?\s]*)(?:y\s+)?cuanto\s+(?:suma|(?:es|seria|vale|sale)\s+el\s+total)[?¿.!\s]*$/.test(t) ||

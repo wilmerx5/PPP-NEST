@@ -17499,3 +17499,68 @@ describe('concrete delivery setup after a basic order', () => {
     });
   }
 });
+
+/** Complete journeys through the public queue; maps, model and order side effects isolated. */
+describe('complete basic journeys with fragmented confirmations',()=>{
+  const fixtures=[
+    {name:'Crepe De Espinaca',attr:'Bebida',values:['Agua','Hibisco']},
+    {name:'Bowl De Garbanzos',attr:'Salsa',values:['Suave','Picante']},
+  ];
+  for(const f of fixtures)for(const enabled of [true,false])for(const gap of [0,400,3400]) {
+    it(`${f.name}, agent ${enabled}, confirmation gap ${gap}ms`,async()=>{
+      jest.useFakeTimers();
+      try{
+        const menu=[{id:40101,code:40101,name:f.name,price:19000,description:'Incluye acompañamiento',availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:f.values}]}];
+        const h=harness(menu,enabled);let sequence=0;
+        Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+        h.service.ordersService.create=jest.fn().mockResolvedValue({id:1001,dailyOrderNumber:1});
+        h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:true,deliveryFeeCalculated:2000}}));
+        const burst=async(texts:string[],spacing=0)=>{
+          const jobs:Promise<unknown>[]=[];
+          for(const text of texts){jobs.push(h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:`complete-burst-${sequence++}`,messageType:'text',text,timestamp:Math.floor(Date.now()/1000),raw:{}}));if(spacing)await jest.advanceTimersByTimeAsync(spacing);}
+          await jest.advanceTimersByTimeAsync(10000);await Promise.all(jobs);
+        };
+        await burst(['Hola buenas tardes']);
+        await burst([`Quiero un ${f.name}`,`Con ${f.values[1]}`, 'Sin cebolla por favor']);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:40101,qty:1,attrs:[`${f.attr}:${f.values[1]}`],note:expect.stringMatching(/sin cebolla/i)})]);
+        await burst(['Para domicilio Calle 12 34 56']);expect(h.conv.state).toBe('awaiting_payment');
+        const before=structuredClone(h.conv.sessionData.cart);
+        await burst(['Antes de pagar cuanto vale todo?']);
+        expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);
+        expect(h.replies.at(-1)).toMatch(/21[.,]000/);
+        await burst(['Pago contraentrega']);expect(h.conv.state).toBe('awaiting_final_confirm');
+        await burst(['Si','Señor'],gap);
+        expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+        const order=h.service.ordersService.create.mock.calls[0][0];
+        expect(order.orderType).toBe('delivery');expect(order.items).toHaveLength(1);
+        expect(order.items[0]).toMatchObject({productId:40101,note:expect.stringMatching(/sin cebolla/i)});
+        expect(order.items[0].attributes).toContainEqual({attributeName:f.attr,attributeValue:f.values[1]});
+        await burst(['No señor así está bien','Muchas gracias']);
+        expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+        expect(order.deliveryFee).toBe(2000);expect(order.address).toMatch(/Calle 12 34 56/i);
+      }finally{jest.useRealTimers();}
+    });
+  }
+});
+
+describe('payment interruption burst combines inquiry and cart change',()=>{
+  for(const f of [{dish:'Crepe De Espinaca',side:'Porcion De Pan'},{dish:'Bowl De Garbanzos',side:'Porcion De Totopos'}])for(const enabled of [true,false])for(const reverse of [true,false])for(const inquiry of ['Antes de pagar cuanto vale todo?','Cuanto cuesta todo;','Cuanto vale todo']){
+    it(`${f.dish}, agent ${enabled}, reverse ${reverse}, ${inquiry}`,async()=>{
+      jest.useFakeTimers();try{
+        const menu=[{id:40201,code:40201,name:f.dish,price:19000,availableNow:true,attributes:[]},{id:40202,code:40202,name:f.side,price:6000,availableNow:true,attributes:[]}];
+        const h=harness(menu,enabled);
+        Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+        await h.sendQueued(`Quiero un ${f.dish} y una ${f.side}`);
+        expect(h.cartRows()).toHaveLength(2);
+        await h.sendQueued('Para domicilio Calle 12 34 56');expect(h.conv.state).toBe('awaiting_payment');
+        const texts=[inquiry,'Quita el item dos'];if(reverse)texts.reverse();
+        const jobs=texts.map((text,i)=>h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:`price-remove-${i}`,messageType:'text',text,timestamp:Math.floor(Date.now()/1000),raw:{}}));
+        await jest.advanceTimersByTimeAsync(10000);await Promise.all(jobs);
+        expect(h.cartRows()).toEqual([expect.objectContaining({id:40201,qty:1})]);
+        expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.customerName).toBe('Wilmer');
+        expect(h.replies.at(-1)).toMatch(/21[.,]000/);
+        expect(h.replies.at(-1)).not.toMatch(/no manejamos|no entend[ií]/i);
+      }finally{jest.useRealTimers();}
+    });
+  }
+});
