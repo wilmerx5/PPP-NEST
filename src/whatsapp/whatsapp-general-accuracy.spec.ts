@@ -17374,7 +17374,7 @@ describe('pilot menu interruptions and fragmented confirmation', () => {
   const menu = [{id:35101,code:35101,name:'Bowl De Lentejas',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
   for (const enabled of [true,false]) {
     for (const text of ['Hola, ¿tienes la carta por favor?', 'Buenas tardes, ¿me compartes el menú, gracias?', '¿Tienen carta porfa?']) {
-      for (const state of ['building_cart','awaiting_payment']) {
+      for (const state of ['building_cart','awaiting_name','awaiting_address','awaiting_attribute','awaiting_payment','awaiting_final_confirm']) {
         it(`menu request ${text}, ${state}, agent ${enabled}`,async()=>{
           const h=harness(menu,enabled);
           (h.cfg as any).menuLinkMessage='Menú: https://example.test/menu';

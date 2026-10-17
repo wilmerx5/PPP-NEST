@@ -1,3 +1,23 @@
+## Cierre de validación integral — 17/10/2026
+
+Estado vigente: código `0f98eb1e`, ya observado en el checkout del servidor y con funciones compiladas `isPoliteMenuLinkRequest` / `isFinalConfirmAffirmation` presentes. Modelos efectivos por env del contenedor: gpt-6.1-sol / gpt-6-luna / gpt-6-luna / gpt-transcribe. No se reconstruyó por el cierre documental ni se tocó Main.
+
+La ampliación de los tests encontró **10 fallos/4 verdes**: peticiones de carta con signos/cortesías y durante pago. Se corrigió la normalización y se responde a una petición completa y estricta del menú antes de consumir datos de checkout, sin mutar sesión, retomando el paso pendiente. Se conservan controles de «menú ejecutivo» como producto. Nuevos controles: tres peticiones en seis estados, agente simulado on/off; «Si» seguido de «Señor» crea exactamente una orden simulada y luego responde cortesía, sin carrito ni «algo más». No acredita aún concurrencia real de esos dos mensajes.
+
+**Global final: 58 suites WhatsApp / 7161 pruebas + 19 suites complementarias / 98 pruebas = 77 suites / 7259 pruebas disjuntas; TypeScript aprobado.** 335 hashes de src/scripts idénticos antes/después. El HEAD avanzó durante la suite porque otro editor publicó el mismo cambio como 0f98eb1e, pero la fuente congelada no cambió. El único cambio local de fuente restante amplía estados del test y está incluido en la global. Logs `/tmp/ppp-pilot-frozen-{full,complement,tsc}-1710.log`; snapshot `/tmp/ppp-pilot-freeze-1710.json`; evidencia durable `docs/whatsapp-pilot-audit-1710.json`. Global WhatsApp 607.672 s, complementarias 12.347 s. Cero inferencia pagada, Meta u órdenes externas.
+
+Siguiente: verificar conversaciones nuevas completas con modelo real/canal aislado, empezando por menú durante checkout y confirmación fragmentada; revisar estado persistido si un resumen final vuelve a building_cart. Después piloto supervisado con operador, métricas y reversión. La global verde acredita regresiones simuladas, no ausencia de errores del modelo/canal real ni autorización de órdenes externas. No repetir global por este cierre documental. Las entradas inferiores conservan historia y pueden declarar pendientes ya resueltos.
+
+## Auditoría vigente — 17/10/2026
+
+Esta entrada sustituye el estado pendiente del 16/10 que se conserva debajo como historial. HEAD local/origin observado `5449973f`: 14 commits posteriores a ef9b2821. En servidor `/opt/ppp-staging` HEAD `5449973f`; contenedor running/healthy, imagen `sha256:8bfadde3cc95a7e92d483c0b51ea0d1d41959ef06a149b96617250dfda4e3ef7`. Inspección de checkout/contenedor, no comparación completa de módulos compilados ni auditoría fresca de producción/modelos.
+
+Pruebas ejecutadas en esta auditoría: **423 focalizadas aprobadas**, 5294 omitidas por filtro, 5717 totales en general-accuracy; TypeScript sin errores. Incluyen audio principal/cortes/adicionales y recuperación por sabor, antes pendientes, además de cortesías, eliminación de línea, bebida aparte, direcciones y cierre. Estas dos familias ya no deben anunciarse como rojas basándose en el relevo viejo. No se ejecutó global de la fuente actual. Los 6764 tests históricos no validan automáticamente estos 14 commits nuevos.
+
+Quedan cambios locales ajenos preservados en general-accuracy y orchestrator para pedir carta con cortesía («Hola buenas tardes tienes la carta por favor»); sus pruebas pasan en este run, pero el cambio no está publicado/desplegado. La corrección de confirmaciones «Si / Señor / No señor así está bien» tiene pruebas por estado y continuaciones; antes de cerrar el caso real revisar también ráfaga, estado persistido y recepción/envío, no solo sesión inicial simulada.
+
+Siguiente puerta al piloto: integrar/revisar corrección local de carta; congelar candidato y global; conversaciones nuevas completas con modelo real y canal aislado (confirmación fragmentada, cambios, medios y consultas intermedias); observación de piloto supervisado y reversión. Cero llamadas pagadas, Meta u órdenes externas en esta auditoría. No se modificó Main. Evidencia durable: `docs/whatsapp-pilot-audit-1710.json`; logs `/tmp/ppp-pilot-audit-1710-{targets,tsc}.log`.
+
 > Plan de continuación detallado vigente: [PPP hasta piloto, 16/10](WHATSAPP-PILOT-HANDOFF-2026-10-16.md). Leer antes de retomar; distingue fuente desplegada de trabajo local pendiente.
 
 ## Tanda local en curso: opción incluida y adicional — 16/10

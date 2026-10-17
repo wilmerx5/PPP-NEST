@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-17",
+  "scope": "Read-only code and deployment audit; isolated targeted regression run; no paid inference or deploy",
+  "localHead": "5449973f",
+  "localUncommitted": [
+    "src/whatsapp/whatsapp-general-accuracy.spec.ts",
+    "src/whatsapp/whatsapp-orchestrator.service.ts"
+  ],
+  "newCommitsSincePreviousHandoff": 14,
+  "targeted": {
+    "passed": 423,
+    "skipped": 5294,
+    "totalInSpec": 5717,
+    "seconds": 73.239,
+    "log": "/tmp/ppp-pilot-audit-1710-targets.log",
+    "externalDependencies": "simulated"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-pilot-audit-1710-tsc.log"
+  },
+  "serverObserved": {
+    "checkoutHead": "5449973f",
+    "container": "ppp-staging-api-1",
+    "status": "running healthy",
+    "image": "sha256:8bfadde3cc95a7e92d483c0b51ea0d1d41959ef06a149b96617250dfda4e3ef7",
+    "limits": "Checkout and container inspected; no full compiled-source equality, effective model audit, or external order validation in this audit",
+    "laterCheckoutHead": "0f98eb1e",
+    "compiledBindings": {
+      "isPoliteMenuLinkRequest": true,
+      "isFinalConfirmAffirmation": true
+    },
+    "effectiveEnvironmentModels": {
+      "agent": "gpt-6.1-sol",
+      "vision": "gpt-6-luna",
+      "assist": "gpt-6-luna",
+      "audio": "gpt-transcribe"
+    }
+  },
+  "openGates": [
+    "Independent full conversations with real model and isolated WhatsApp channel",
+    "Persisted state and concurrent burst verification for the reported confirmation failure",
+    "Supervised pilot with operator, metrics, rollback and operational validation before real orders"
+  ],
+  "apiRequests": 0,
+  "mainModified": false,
+  "finalValidation": {
+    "codeCommit": "0f98eb1e",
+    "sourceSnapshot": "/tmp/ppp-pilot-freeze-1710.json",
+    "sourceHashesUnchanged": true,
+    "filesHashed": 335,
+    "whatsappSuites": 58,
+    "whatsappTests": 7161,
+    "whatsappSeconds": 607.672,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 12.347,
+    "totalDisjointSuites": 77,
+    "totalDisjointTests": 7259,
+    "typescriptPassed": true,
+    "logs": {
+      "whatsapp": "/tmp/ppp-pilot-frozen-full-1710.log",
+      "complement": "/tmp/ppp-pilot-frozen-complement-1710.log",
+      "typescript": "/tmp/ppp-pilot-frozen-tsc-1710.log"
+    }
+  },
+  "followup": {
+    "baseline": {
+      "failed": 10,
+      "passed": 4,
+      "log": "/tmp/ppp-pilot-menu-baseline.log"
+    },
+    "fix": "Strict full-message polite menu request before checkout routing; punctuation normalization; no session mutation; pending step reminder",
+    "finalCoverage": "Three polite menu requests across six draft states, simulated agent on/off; Si then Señor creates exactly one mocked order. Includes prior local PPP/fictional menu checks and executive-menu negative controls. All included in final global run.",
+    "initialTargeted": {
+      "passed": 34,
+      "log": "/tmp/ppp-pilot-menu-targets.log",
+      "limit": "Before widening from two states to six; final expanded cases validated by global run"
+    },
+    "concurrentCommit": "Another editor committed the same runtime patch and initial tests as 0f98eb1e while this run was active. HEAD changed, but all 335 src/scripts hashes remained identical to the frozen candidate. Remaining local source change only broadens test states."
+  }
+}
