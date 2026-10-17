@@ -1,7 +1,7 @@
 {
   "date": "2026-10-17",
   "baseCommit": "7c804911",
-  "status": "Final frozen-source validation passed; deployment pending",
+  "status": "Validated, published and deployed only to staging",
   "newCases": 88,
   "axes": {
     "menus": [
@@ -92,5 +92,42 @@
     "exitCode": 130,
     "accepted": false,
     "reason": "Stopped own run to add and fix affirmative-withdrawal controls before final validation"
-  }
+  },
+  "codeCommit": "1c4d98a9e60bfdf1a5f77933cb328354489ee72c",
+  "deployment": {
+    "verifiedAt": "2026-10-17T22:01:51.460579+00:00",
+    "head": "1c4d98a9e60bfdf1a5f77933cb328354489ee72c",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:c31c61825b25e339eee4f70f83e928adb44ca6e56204db1c21e3a4e24b271f0e",
+    "candidateMatches": true,
+    "compiled": {
+      "affirmativePrefixPreserved": true,
+      "cancellationAsideKinds": true,
+      "explicitWithdrawalNotAside": true,
+      "asideRoute": true,
+      "withdrawalScope": true,
+      "multipleEditWithdrawalGuard": true,
+      "pendingEditReminder": true,
+      "centralEditGuard": true,
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    }
+  },
+  "rollbackTag": "ppp-nest-staging:rollback-before-1c4d98a9"
 }

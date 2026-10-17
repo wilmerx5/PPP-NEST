@@ -1,6 +1,6 @@
 ## Lenguaje de cancelación que no es una orden — 17/10/2026
 
-Tanda en validación: docs/whatsapp-cancel-language-validation-1710.json. 88 casos nuevos (72 de nueve formas no operativas y16 controles afirmativos, dos cartas, pago/confirmación y agente simulado on/off);356 focalizadas pasan. Baseline48 fallos:44 respuestas que ignoraban la intención y cuatro pérdidas de estado final; el carrito y la edición estaban conservados antes de esas aserciones. No acreditar que el bot hubiera cancelado todo ni que72 casos fueran rojos inicialmente.
+Tanda validada y desplegada como 1c4d98a9: docs/whatsapp-cancel-language-validation-1710.json. 88 casos nuevos (72 de nueve formas no operativas y16 controles afirmativos, dos cartas, pago/confirmación y agente simulado on/off);356 focalizadas pasan; global final 77 suites/7600 pruebas, TypeScript y72 contratos Node aprobados, despliegue y salud verificados. Baseline48 fallos:44 respuestas que ignoraban la intención y cuatro pérdidas de estado final; el carrito y la edición estaban conservados antes de esas aserciones. No acreditar que el bot hubiera cancelado todo ni que72 casos fueran rojos inicialmente.
 
 Siguiente por riesgo:
 0. Revisar cobertura de preguntas sobre cancelar el pedido completo (antes/después de registrar): preguntar «¿puedo cancelar el pedido?» no debe ejecutar cancelación. La búsqueda textual inicial no encontró recorridos con esa frase; auditar las suites antes de afirmar ausencia total. Probar con órdenes y efectos externos simulados, sin cancelar pedidos reales.
