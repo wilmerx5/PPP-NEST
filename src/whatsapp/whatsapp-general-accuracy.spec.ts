@@ -8858,6 +8858,7 @@ describe('Bandeja — el número elige una y “solo la broaster” quita el res
       burgerAsk: 'La hamburguesa',
       burgerPick: '76',
       burgerId: 76,
+      burgerDrink: 'coca cola',
       address: 'No, a esta conjunto Residencial bosques De Castilla cada 54',
       place: /bosques/i,
       street: /carrera\s+54/,
@@ -8873,12 +8874,13 @@ describe('Bandeja — el número elige una y “solo la broaster” quita el res
       burgerAsk: 'Una hamburguesa sencilla',
       burgerPick: '1',
       burgerId: 15535,
+      burgerDrink: undefined,
       address: 'No, al conjunto Mirador cada 12',
       place: /mirador/i,
       street: /carrera\s+12/,
       agent: true,
     },
-  ])('elige una variante y deja solo esa al corregir (agent $agent)', async ({ menu, order, familyIds, keep, kept, sideIds, burgerAsk, burgerPick, burgerId, address, place, street, agent }) => {
+  ])('elige una variante y deja solo esa al corregir (agent $agent)', async ({ menu, order, familyIds, keep, kept, sideIds, burgerAsk, burgerPick, burgerId, burgerDrink, address, place, street, agent }) => {
     const h = harness(menu as typeof products, agent);
     h.service.ordersService.create = jest.fn();
     const asked = await h.sendQueued(order);
@@ -8894,7 +8896,11 @@ describe('Bandeja — el número elige una y “solo la broaster” quita el res
     expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();
     expect(h.conv.sessionData.pendingMatch).toBeUndefined();
     await h.sendQueued(burgerAsk);
-    await h.sendQueued(burgerPick);
+    const picked = await h.sendQueued(burgerPick);
+    if (burgerDrink) {
+      expect(picked || '').toMatch(/Bebida/);
+      await h.sendQueued(burgerDrink);
+    }
     expect(h.cartRows().map((row) => row.id).sort((a, b) => a - b)).toEqual([kept, burgerId].sort((a, b) => a - b));
     h.conv.sessionData.orderType = 'delivery';
     h.conv.sessionData.fulfillmentChosen = true;
@@ -16880,5 +16886,139 @@ describe('closing an order with vocatives and a "no" that answers ¿Algo más?',
         expect(h.service.ordersService.create).not.toHaveBeenCalled();
       });
     }
+  }
+});
+
+describe('the included drink is asked after a pick from a list', () => {
+  const fictional = [
+    { id: 31701, code: 31701, name: 'Combo Burger Sencillo', price: 15000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Limonada', 'Naranjada'] }] },
+    { id: 31702, code: 31702, name: 'Combo Burger Doble', price: 21000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Limonada', 'Naranjada'] }] },
+  ];
+  const withList = (menu: any[], ids: number[], query: string, enabled: boolean) => {
+    const h = harness(menu as any, enabled);
+    h.conv.sessionData.pendingMatch = { query, intent: 'order', candidates: menu.filter((p: any) => ids.includes(p.id)) } as any;
+    h.conv.state = 'building_cart';
+    return h;
+  };
+  const cases = [
+    { label: 'PPP', menu: products, ids: [76, 77, 78], query: 'hamburguesa', first: 76, other: 'coca cola', otherValue: 'Coca Cola', named: 'hamburguesa con pepsi', namedValue: 'Pepsi' },
+    { label: 'fictional', menu: fictional, ids: [31701, 31702], query: 'combo burger', first: 31701, other: 'naranjada', otherValue: 'Naranjada', named: 'combo burger con naranjada', namedValue: 'Naranjada' },
+  ];
+  for (const enabled of [false, true]) {
+    for (const c of cases) {
+      it(`${c.label}: picking "1" asks the drink, then keeps the answer, agent ${enabled}`, async () => {
+        const h = withList(c.menu as any, c.ids, c.query, enabled);
+        await h.sendQueued('1');
+        expect(h.cartRows()).toEqual([]);
+        expect(h.conv.sessionData.pendingAttribute?.productId).toBe(c.first);
+        expect(h.replies.at(-1)).toMatch(/Bebida/);
+        await h.sendQueued(c.other);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: c.first, attrs: expect.arrayContaining([`Bebida:${c.otherValue}`]) })]);
+      });
+      it(`${c.label}: a drink named with the dish is kept without asking, agent ${enabled}`, async () => {
+        const h = withList(c.menu as any, c.ids, c.named, enabled);
+        await h.sendQueued('1');
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: c.first, attrs: expect.arrayContaining([`Bebida:${c.namedValue}`]) })]);
+      });
+    }
+    it(`fictional: a dish asked by name keeps the first drink, agent false`, async () => {
+      const h = harness(fictional as any, false);
+      await h.sendQueued('un combo burger doble');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 31702, attrs: ['Bebida:Limonada'] })]);
+    });
+  }
+});
+
+describe('an unpicked list is recalled before the final summary', () => {
+  const fictional = [
+    { id: 31601, code: 31601, name: 'Arepa Rellena', price: 9000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31602, code: 31602, name: 'Batido De Fresa', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31603, code: 31603, name: 'Batido De Mango', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const cases = [
+    { label: 'PPP', menu: products, dish: 35, list: [50, 51] },
+    { label: 'fictional', menu: fictional, dish: 31601, list: [31602, 31603] },
+  ];
+  const ready = (menu: any[], dish: number, list: number[], enabled: boolean) => {
+    const h = harness(menu as any, enabled);
+    h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 999, orderNumber: 'X1' });
+    const product = menu.find((p: any) => p.id === dish);
+    h.conv.sessionData.cart = [{ productId: dish, code: dish, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, address: 'Calle 9 20 30', addressConfirmed: true,
+      phoneConfirmed: true, contactPhone: h.conv.phoneE164, paymentMethod: 'contraentrega', notesCollected: true, deliveryFeeCalculated: 2000,
+      pendingMatch: { query: 'jugo', intent: 'order', candidates: menu.filter((p: any) => list.includes(p.id)) } });
+    h.conv.customerName = 'Yordan silva';
+    h.conv.state = 'building_cart';
+    return h;
+  };
+  const names = (menu: any[], list: number[]) => list.map((id) => menu.find((p: any) => p.id === id).name);
+  for (const enabled of [false, true]) {
+    for (const c of cases) {
+      it(`${c.label}: the summary lists the unpicked options and "confirmar" still confirms, agent ${enabled}`, async () => {
+        const h = ready(c.menu as any, c.dish, c.list, enabled);
+        await h.sendQueued('eso es todo');
+        expect(h.conv.state).toBe('awaiting_final_confirm');
+        expect(h.replies.at(-1)).toMatch(/Quedó sin elegir/);
+        for (const name of names(c.menu as any, c.list)) expect(h.replies.at(-1)).toContain(name);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        await h.sendQueued('confirmar');
+        expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      });
+      it(`${c.label}: a bare "si" asks which option instead of confirming, agent ${enabled}`, async () => {
+        const h = ready(c.menu as any, c.dish, c.list, enabled);
+        await h.sendQueued('eso es todo');
+        await h.sendQueued('si');
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        expect(h.replies.at(-1)).toMatch(/¿Cuál agrego\?/);
+      });
+      it(`${c.label}: "lo dejamos" drops the list and the next yes confirms, agent ${enabled}`, async () => {
+        const h = ready(c.menu as any, c.dish, c.list, enabled);
+        await h.sendQueued('eso es todo');
+        await h.sendQueued('lo dejamos');
+        expect(h.replies.at(-1)).toMatch(/Si está bien, escribe \*confirmar\*/);
+        expect(h.cartRows().map((row) => row.id)).toEqual([c.dish]);
+        await h.sendQueued('si');
+        expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      });
+      it(`${c.label}: a flavor shared by several options asks which one, agent ${enabled}`, async () => {
+        if (c.label !== 'PPP') return;
+        const h = ready(c.menu as any, c.dish, c.list, enabled);
+        await h.sendQueued('eso es todo');
+        await h.sendQueued('el de mango');
+        expect(h.replies.at(-1)).toMatch(/¿En cuál\?/);
+        expect(h.cartRows().map((row) => row.id)).toEqual([c.dish]);
+      });
+      it(`${c.label}: declining the list before closing leaves no reminder, agent ${enabled}`, async () => {
+        const h = ready(c.menu as any, c.dish, c.list, enabled);
+        await h.sendQueued('no gracias');
+        await h.sendQueued('eso es todo');
+        expect(h.replies.join('\n')).not.toMatch(/Quedó sin elegir/);
+      });
+    }
+    it(`fictional: "2" adds that option and shows the summary again, agent ${enabled}`, async () => {
+      const h = ready(fictional as any, 31601, [31602, 31603], enabled);
+      await h.sendQueued('eso es todo');
+      await h.sendQueued('2');
+      expect(h.cartRows().map((row) => row.id)).toEqual([31601, 31603]);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      expect(h.replies.at(-1)).toMatch(/Si está bien, escribe \*confirmar\*/);
+    });
+    it(`fictional: a named option adds it, agent ${enabled}`, async () => {
+      const h = ready(fictional as any, 31601, [31602, 31603], enabled);
+      await h.sendQueued('eso es todo');
+      await h.sendQueued('el de fresa');
+      expect(h.cartRows().map((row) => row.id)).toEqual([31601, 31602]);
+    });
+    it(`PPP: "1" asks the juice flavor and the answer joins the order, agent ${enabled}`, async () => {
+      const h = ready(products as any, 35, [50, 51], enabled);
+      await h.sendQueued('eso es todo');
+      await h.sendQueued('1');
+      expect(h.conv.sessionData.pendingAttribute?.productId).toBe(50);
+      await h.sendQueued('lulo');
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({ id: 50, attrs: ['Sabor:Lulo'] })]));
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
   }
 });

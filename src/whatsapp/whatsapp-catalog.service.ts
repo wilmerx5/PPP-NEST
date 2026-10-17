@@ -8188,7 +8188,7 @@ export class WhatsappCatalogService {
   fillDefaultAttributes(
     product: WhatsappCatalogProduct,
     alreadySelected: { attributeName: string; attributeValue: string }[] = [],
-    opts?: { variantIntent?: 'combo' | 'solo'; omitSwappedDrink?: boolean },
+    opts?: { variantIntent?: 'combo' | 'solo'; omitSwappedDrink?: boolean; askIncludedDrink?: boolean },
   ): { attributeName: string; attributeValue: string }[] {
     if (!product.hasAttributes || !product.attributes?.length) {
       return [...alreadySelected];
@@ -8200,7 +8200,7 @@ export class WhatsappCatalogService {
       const next = remaining[0];
       if (!next?.options?.length) break;
       // A juice flavor is a customer choice, not a kitchen garnish default.
-      if (this.requiresExplicitAttributeChoice(product, next)) break;
+      if (this.requiresExplicitAttributeChoice(product, next, opts)) break;
       // La opción 1 se aplica a atributos faltantes, incluso al estilo.
       // Las elecciones explícitas del cliente ya están en selected y NO se pisan.
       // Mostrar la opción aplicada en el resumen para facilitar cambios.
@@ -8213,10 +8213,16 @@ export class WhatsappCatalogService {
     return selected;
   }
 
-  requiresExplicitAttributeChoice(product: WhatsappCatalogProduct, attribute: {attributeName: string; options: string[]}): boolean {
+  requiresExplicitAttributeChoice(
+    product: WhatsappCatalogProduct,
+    attribute: {attributeName: string; options: string[]},
+    opts?: { askIncludedDrink?: boolean },
+  ): boolean {
     if (attribute.options.length <= 1) return false;
     const name = normalizeText(attribute.attributeName);
-    return this.isLikelyDrinkProduct(product) && name === 'sabor';
+    if (this.isLikelyDrinkProduct(product) && name === 'sabor') return true;
+    // A dish picked from a list never had its included drink mentioned.
+    return !!opts?.askIncludedDrink && /^(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(name);
   }
 
   /**

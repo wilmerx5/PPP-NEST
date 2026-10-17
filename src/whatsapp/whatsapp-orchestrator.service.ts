@@ -163,6 +163,7 @@ type InboundTurnContext = {
   conv?: WhatsappConversation;
   initialCart?: string;
   initialCartEditSelections?: Record<string, string | undefined>;
+  initialPendingMatch?: NonNullable<WhatsappSessionData['droppedPick']>;
   purchasePriceQuestion?: boolean;
   independentInquiryAnswer?: string;
   closePurchase?: boolean;
@@ -206,6 +207,8 @@ export class WhatsappOrchestratorService {
   private readonly outboundCarryByWaId = new Map<string, string[]>();
   /** Cobertura fallida en un pedido: se pega a la respuesta del plato, no la reemplaza. */
   private readonly orderCoverageNoticesByWaId = new Map<string, string>();
+  /** Conversations whose current turn declined the open product list. */
+  private readonly declinedListTurns = new Set<string>();
 
   constructor(
     private readonly settingsService: WhatsappSettingsService,
@@ -521,6 +524,7 @@ export class WhatsappOrchestratorService {
         session = { ...session, pendingCartReplacement: undefined };
         await this.conversationService.saveSession(conv, session);
       }
+      session = await this.rememberDroppedPick(conv, session, turn.initialPendingMatch, msg.text || '');
       if (msg.messageType === 'image' && msg.raw?.resolvedOrderImage && session.recentImageOrder?.length) {
         const ids = new Set(session.recentImageOrder.map(item => item.productId));
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
@@ -576,11 +580,87 @@ export class WhatsappOrchestratorService {
       failed = true;
       throw error;
     } finally {
+      if (turn.conv) this.declinedListTurns?.delete(String(turn.conv.id));
       try {
         if (turn.conv && turn.decision) this.turnTelemetry.recordDecision?.(
           finishTurnDecision(turn.decision,turn.conv.state,this.conversationService.getSession(turn.conv),failed));
       } catch { /* Diagnostics must not break a reply or replace the original error. */ }
     }
+  }
+
+  /** An order list still waiting for a pick, unless one of its products is already in the cart. */
+  private openOrderList(session: WhatsappSessionData): WhatsappSessionData['droppedPick'] {
+    const list = session.pendingMatch;
+    if (!list || list.intent === 'info' || list.selectionAdded || list.replacement || (list.candidates?.length || 0) < 2) return undefined;
+    if (session.cart.some(line => list.candidates.some(candidate => candidate.id === line.productId))) return undefined;
+    return { query: list.query, candidates: list.candidates };
+  }
+
+  /** The summary recalled an unpicked list: a row picks from it, a decline drops it. */
+  private async tryAnswerRecalledPick(
+    conv: WhatsappConversation,
+    waId: string,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const session = this.conversationService.getSession(conv);
+    const list = session.droppedPick?.shown ? this.openOrderList(session) : undefined;
+    if (!list) return false;
+    const said = this.normalizeForMatch(text);
+    if (/^(?:no|nada|ninguno|ninguna|mejor no|(?:lo|la|los|las) dejamos|dejal[oa]s?|asi (?:esta|no mas|nomas)|sin (?:el |la )?\w+)\b/.test(said) &&
+      !/\b(?:agreg|pon|quiero|dame|cambi)\w*/.test(said)) {
+      const next = { ...session, pendingMatch: undefined, droppedPick: undefined };
+      await this.conversationService.saveSession(conv, next, 'awaiting_final_confirm');
+      await this.reply(conv, waId,
+        `${this.formatOrderSummary(conv, next, this.deliveryFeeFor(next, cfg), cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`);
+      return true;
+    }
+    const row = this.catalogService.extractListPickNumber(text);
+    const picksRow = row != null && row >= 1 && row <= list.candidates.length;
+    const short = said.split(' ').length <= 5;
+    const picksName = short && !!this.catalogService.pickFromCandidateList(text, list.candidates as MenuProduct[]);
+    const products = await this.catalogService.getMenuProducts();
+    let pickText = text;
+    if (!picksRow && !picksName) {
+      const words = ` ${said} `;
+      const byOption = short ? list.candidates.filter(candidate => (candidate.attributes || []).some(attribute =>
+        attribute.options.some(option => words.includes(` ${this.normalizeForMatch(option)} `)))) : [];
+      if (!byOption.length) return false;
+      if (byOption.length > 1) {
+        await this.reply(conv, waId,
+          `¿En cuál?\n${byOption.map(candidate => `${list.candidates.indexOf(candidate) + 1}. *${candidate.name}*`).join('\n')}\n` +
+          `Escribe el número, o *confirmar* para seguir sin él.`);
+        return true;
+      }
+      pickText = `${byOption[0].name} ${text}`;
+    }
+    const picked = await this.tryResolvePendingMatchPick(conv, waId, { ...session, droppedPick: undefined }, pickText, products, cfg);
+    const after = this.conversationService.getSession(conv);
+    if (picked && after.pendingMatch?.selectionAdded) {
+      await this.conversationService.saveSession(conv, { ...after, pendingMatch: undefined });
+    }
+    return picked;
+  }
+
+  /** A list the customer moved past without picking or declining is recalled before the summary. */
+  private async rememberDroppedPick(
+    conv: WhatsappConversation,
+    session: WhatsappSessionData,
+    list: InboundTurnContext['initialPendingMatch'],
+    text: string,
+  ): Promise<WhatsappSessionData> {
+    if (!list || session.droppedPick || session.pendingMatch || session.pendingAttribute || conv.humanTakeover) return session;
+    if (session.cart.some(line => list.candidates.some(candidate => candidate.id === line.productId))) return session;
+    if (!this.normalizeForMatch(text) || this.declinesList(text)) return session;
+    session = { ...session, droppedPick: list };
+    await this.conversationService.saveSession(conv, session);
+    return session;
+  }
+
+  private declinesList(text: string): boolean {
+    const said = this.normalizeForMatch(text);
+    return /^(?:no|nada|ninguno|ninguna|mejor no|olvid\w*|dej\w*|cancel\w*|quit\w*|sin)\b/.test(said) ||
+      /\b(?:olvida\w*|no quiero|ya no|dejalo|dejala|quitalo|quitala|sin (?:el|la|los|las))\b/.test(said);
   }
 
   private async handleIncomingTurn(msg: IncomingWhatsappMessage,
@@ -664,6 +744,8 @@ export class WhatsappOrchestratorService {
     turn.initialCart = JSON.stringify(this.conversationService.getSession(conv).cart);
     const initialSession = this.conversationService.getSession(conv);
     turn.initialCartEditSelections = Object.fromEntries(CART_EDIT_SELECTION_KEYS.map(key => [key, JSON.stringify(initialSession[key])]));
+    turn.initialPendingMatch = this.openOrderList(initialSession);
+    if (turn.initialPendingMatch && this.declinesList(msg.text || '')) this.declinedListTurns?.add(String(conv.id));
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
@@ -835,10 +917,17 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
     text = normalizeSpokenOrderCourtesy(text);
+    if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
     if (conv.state === 'awaiting_final_confirm' && isFinalConfirmAffirmation(text)) {
       const current = this.conversationService.getSession(conv);
-      if (current.cart.length && !current.pendingAttribute && !current.pendingMatch && !current.pendingAddOffer &&
+      const recalled = current.droppedPick?.shown ? this.openOrderList(current) : undefined;
+      if (recalled) {
+        await this.reply(conv, msg.waId,
+          `¿Cuál agrego?\n${recalled.candidates.slice(0, 6).map((candidate, index) => `${index + 1}. *${candidate.name}*`).join('\n')}\n` +
+          `Escribe el número, o *confirmar* para seguir sin él.`);
+        return;
+      } else if (current.cart.length && !current.pendingAttribute && !current.pendingMatch && !current.pendingAddOffer &&
         !current.pendingSideSwap && !current.pendingMultiOrder && !current.pendingCartReplacement) text = 'confirmar';
     } else if (conv.state === 'awaiting_final_confirm') {
       // "si, agrégame una gaseosa" is the addition, not a product named "si".
@@ -7802,7 +7891,7 @@ export class WhatsappOrchestratorService {
 
     if (chosen.hasAttributes && chosen.attributes?.length) {
       if (
-        await this.handleProductWithVariants(conv, waId, session, chosen, attrSourceText, cfg, pending.note)
+        await this.handleProductWithVariants(conv, waId, session, chosen, attrSourceText, cfg, pending.note, {askIncludedDrink: true})
       ) {
         await this.applyStashedUnitSplit(conv, waId, products, cfg);
         return true;
@@ -9050,7 +9139,12 @@ export class WhatsappOrchestratorService {
     const canSkipFinal =
       this.isReadyToConfirm(session, conv) &&
       (!!opts?.skipFinalConfirm || paymentIsMercadoPago);
-    if (conv.state !== 'awaiting_final_confirm' && !canSkipFinal) {
+    const remembered = session.droppedPick;
+    const dropped = remembered?.shown || this.declinedListTurns?.has(String(conv.id)) ? undefined : this.openOrderList(session) ||
+      (remembered && !session.cart.some(line => remembered.candidates.some(candidate => candidate.id === line.productId))
+        ? remembered : undefined);
+    const recallPick = !!dropped;
+    if (conv.state !== 'awaiting_final_confirm' && (!canSkipFinal || recallPick)) {
       if (
         session.pendingRedemptionCode &&
         !this.pointsHandler.cartHasHalfChicken(session.cart)
@@ -9063,10 +9157,22 @@ export class WhatsappOrchestratorService {
         );
         return;
       }
+      if (dropped) {
+        session = {
+          ...session,
+          droppedPick: { ...dropped, shown: true },
+          pendingMatch: { query: dropped.query, candidates: dropped.candidates, intent: 'order' },
+        };
+      } else if (this.declinedListTurns?.has(String(conv.id)) && this.openOrderList(session)) {
+        session = { ...session, pendingMatch: undefined };
+      }
       await this.conversationService.saveSession(conv, session, 'awaiting_final_confirm');
+      const recall = dropped
+        ? `Quedó sin elegir:\n${dropped.candidates.slice(0, 6).map((candidate, index) => `${index + 1}. *${candidate.name}*`).join('\n')}\n` +
+          `¿Lo agregamos o lo dejamos? Escribe el número, o *confirmar* para seguir sin él.`
+        : 'Si está bien, escribe *confirmar*.';
       await say(
-        `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n` +
-          `Si está bien, escribe *confirmar*.`,
+        `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\n${recall}`,
       );
       return;
     }
@@ -17114,6 +17220,7 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
     kitchenNote?: string,
+    fillOpts?: { askIncludedDrink?: boolean },
   ): Promise<boolean> {
     if (!product.hasAttributes || !product.attributes?.length) return false;
 
@@ -17136,7 +17243,7 @@ export class WhatsappOrchestratorService {
     // Un "complete" que solo trae las arepas deja la bebida pendiente; hay que rellenarla.
     const spoken =
       stepRaw.status === 'complete' || stepRaw.status === 'partial' ? stepRaw.attributes : [];
-    const defaults = this.catalogService.fillDefaultAttributes(product, spoken, attrOpts);
+    const defaults = this.catalogService.fillDefaultAttributes(product, spoken, {...attrOpts, ...fillOpts});
     // Preserve unresolved cooking choices while allowing included drinks to default.
     const prefilled = defaults.filter(attribute => this.normalizeForMatch(attribute.attributeName) !== 'pollo' ||
       spoken.some(selected => this.normalizeForMatch(selected.attributeName) === 'pollo'));
