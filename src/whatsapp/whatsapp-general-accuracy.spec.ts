@@ -16830,3 +16830,55 @@ describe('a whole yes answers the final order summary', () => {
     });
   }
 });
+
+describe('closing an order with vocatives and a "no" that answers ¿Algo más?', () => {
+  const fictional = [
+    { id: 31501, code: 31501, name: 'Empanada De Carne', price: 3000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const atSummary = (menu: any[], productId: number, enabled: boolean) => {
+    const h = harness(menu as any, enabled);
+    h.service.ordersService.create = jest.fn().mockResolvedValue({ id: 999, orderNumber: 'X1' });
+    const product = menu.find((p: any) => p.id === productId);
+    h.conv.sessionData.cart = [{ productId, code: productId, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, address: 'Calle 9 20 30', addressConfirmed: true,
+      phoneConfirmed: true, contactPhone: h.conv.phoneE164, paymentMethod: 'contraentrega', notesCollected: true, deliveryFeeCalculated: 2000 });
+    h.conv.customerName = 'Yordan silva';
+    h.conv.state = 'awaiting_final_confirm';
+    return h;
+  };
+  for (const enabled of [true, false]) {
+    for (const [label, menu, id] of [['PPP', products, 35], ['fictional', fictional, 31501]] as const) {
+      for (const text of ['No señor asi esta bien', 'no veci, así está bien gracias', 'No señora eso es todo']) {
+        it(`${label} "${text}" at the summary confirms, agent ${enabled}`, async () => {
+          const h = atSummary(menu as any, id, enabled);
+          await h.sendQueued(text);
+          expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+        });
+      }
+      for (const text of ['Señor', 'Gracias señor muy amable']) {
+        it(`${label} "${text}" after confirming is a courtesy, agent ${enabled}`, async () => {
+          const h = atSummary(menu as any, id, enabled);
+          await h.sendQueued('Si');
+          await h.sendQueued(text);
+          expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+          expect(h.replies.at(-1)).toMatch(/Con gusto/);
+        });
+      }
+      it(`${label} "No señor no quiero" at the summary does not confirm, agent ${enabled}`, async () => {
+        const h = atSummary(menu as any, id, enabled);
+        await h.sendQueued('No señor no quiero');
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+      it(`${label} "No señor asi esta bien" while building moves to checkout, agent ${enabled}`, async () => {
+        const h = harness(menu as any, enabled);
+        h.service.ordersService.create = jest.fn();
+        const product = (menu as any[]).find((p: any) => p.id === id);
+        h.conv.sessionData.cart = [{ productId: id, code: id, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+        await h.sendQueued('No señor asi esta bien');
+        expect(h.conv.state).not.toBe('building_cart');
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id, qty: 1 })]);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      });
+    }
+  }
+});

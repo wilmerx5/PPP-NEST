@@ -581,7 +581,7 @@ export class WhatsappCatalogService {
       return false;
     }
     if (
-      /^(gracias|muchas\s+gracias|mil\s+gracias|te\s+agradezco|thanks|thank\s+you(?:\s+so\s+much)?|thanks\s+a\s+lot|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de\s+nada|con\s+gusto|entendido|claro|okey|okis)([\s!.?]|$)/.test(
+      /^(gracias|muchas\s+gracias|mil\s+gracias|te\s+agradezco|thanks|thank\s+you(?:\s+so\s+much)?|thanks\s+a\s+lot|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de\s+nada|con\s+gusto|entendido|claro|okey|okis|senor(?:a|ita)?|veci(?:n[oa])?|joven|muy\s+amable)([\s!.?]|$)/.test(
         q,
       ) &&
       !/\b(quiero|dame|ponme|agrega|pedir|ordenar|codigo|menu|carta|have|beans|pollo|sopa)\b/.test(q)
@@ -589,7 +589,7 @@ export class WhatsappCatalogService {
       // Solo cortesía si al quitar muletillas no queda nada con sentido de pedido
       const stripped = q
         .replace(
-          /\b(gracias|muchas|mil|te|agradezco|thanks|thank|you|so|much|a|lot|very|really|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de|nada|con|gusto|entendido|claro|okey|okis|si|sí|por|favor|porfa|please)\b/g,
+          /\b(gracias|muchas|mil|te|agradezco|thanks|thank|you|so|much|a|lot|very|really|ty|ok|okay|oki|dale|listo|perfecto|genial|super|excelente|vale|va|bien|bueno|de|nada|con|gusto|entendido|claro|okey|okis|si|sí|por|favor|porfa|please|senor|senora|senorita|veci|vecino|vecina|joven|muy|amable|amables)\b/g,
           ' ',
         )
         .replace(/[!.?]+/g, ' ')

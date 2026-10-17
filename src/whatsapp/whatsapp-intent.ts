@@ -240,8 +240,22 @@ export function isDeliveryLogisticsFluff(text: string): boolean {
 
 /** “Así nada más” / “eso es todo” → cierre de pedido, no dirección. */
 export function isNothingElseOrderIntent(text: string): boolean {
-  const t = normalizeIntentText(text);
-  if (!t || t.length > 48) return false;
+  const said = normalizeIntentText(text);
+  if (!said || said.length > 64) return false;
+  // "No señor, así está bien" answers "¿Algo más?": drop the vocative and that "no".
+  const core = withoutVocatives(said);
+  const unprefixed = core.replace(/^no\s+(?=(?:asi|esta|eso|es|solo|solamente|nada|con|ya)\b)/, '');
+  return [said, core, unprefixed].some((t) => !!t && t.length <= 48 && nothingElsePhrase(t));
+}
+
+function withoutVocatives(t: string): string {
+  return t
+    .replace(/\b(?:senor(?:a|ita)?|veci(?:n[oa])?|joven|amig[oa]|don|dona|herman[oa]|parce|mi\s+amor|mij[oa]|por\s+favor|porfa|muchas\s+gracias|gracias|pues)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function nothingElsePhrase(t: string): boolean {
   return (
     /^(asi\s+)?nada\s+mas$/.test(t) ||
     /^ada\s+mas$/.test(t) ||
@@ -293,9 +307,10 @@ export function orderBeforeCheckoutClose(text: string): string | null {
  * No usar en awaiting_address (un “no” puede rechazar domicilio sugerido).
  */
 export function isDeclineMoreItemsIntent(text: string): boolean {
-  const t = normalizeIntentText(text);
-  if (!t || t.length > 12) return false;
+  const said = normalizeIntentText(text);
   if (isNothingElseOrderIntent(text)) return true;
+  const t = said && said.length <= 24 ? withoutVocatives(said) : '';
+  if (!t || t.length > 12) return false;
   return /^(no|nop|nel|nope|no\s+mas|nomas)$/.test(t);
 }
 
