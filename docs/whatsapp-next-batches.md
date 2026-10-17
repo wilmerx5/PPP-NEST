@@ -1,6 +1,6 @@
 ## Tras retirar una edición pendiente — 17/10/2026
 
-Tanda en validación: docs/whatsapp-withdraw-edit-validation-1710.json,84 nuevos casos:72 continuaciones naturales desde checkout ya sembrado y12 controles con varias ediciones sembradas. Baseline56 fallos/16 verdes;268 focalizadas pasan después del ajuste. Solo se cancela la intención pendiente, conservando el carrito; no hay historial de deshacer cambios ya aplicados.
+Tanda validada y desplegada como 22042562: docs/whatsapp-withdraw-edit-validation-1710.json, 84 nuevos casos: 72 continuaciones naturales desde checkout ya sembrado y 12 controles con varias ediciones sembradas. Baseline56 fallos/16 verdes;268 focalizadas pasan después del ajuste. Global final: 77 suites/7512 pruebas aprobadas; despliegue y salud verificados. Solo se cancela la intención pendiente, conservando el carrito; no hay historial de deshacer cambios ya aplicados.
 
 Siguiente:
 1. Condiciones y negaciones alrededor de la renuncia: no cancelar por una pregunta, frase citada o «no canceles ese cambio». Comprobar datos y respuesta, no solo estado.
