@@ -1,3 +1,19 @@
+> Plan de continuación detallado vigente: [PPP hasta piloto, 16/10](WHATSAPP-PILOT-HANDOFF-2026-10-16.md). Leer antes de retomar; distingue fuente desplegada de trabajo local pendiente.
+
+## Tanda local en curso: opción incluida y adicional — 16/10
+
+**Trabajo local sin publicar ni desplegar**, sobre ef9b2821. No confundir con el despliegue d410291e descrito debajo. Main intacto.
+
+Reproducción: tras hamburguesa ya añadida con nota sin cebolla, «Con gaseosa coca cola y una adicionales De papa a la francesa» compraba una bebida independiente. Ahora se valida el dueño único por atributos del catálogo y una porción adicional identificada sin ambigüedad; se cambia la opción y se añade la porción. Se conserva la nota. Alcance inicial building_cart sin selecciones pendientes; no afirmar cubiertos todavía varios dueños, adicional con opciones pendientes o todos los sinónimos de adicionales. Catálogos ficticios hamburguesa/bowl y prueba con carta PPP. La prueba del chat empieza desde la hamburguesa previamente aceptada: no acredita el saludo/compra inicial con el agente simulado.
+
+Además: confirmaciones de dirección «a la misma», con direction/direcion; destino conocido por repartidores pide referencia del cliente sin convertir a recogida; consulta de tiempo en carrito abierto precede a aclaraciones de precio y retoma el paso pendiente. Confirmación + tiempo sin pago no crea orden.
+
+Validación focalizada final: `/tmp/ppp-mixed-option-target.log`, **38 aprobadas**, 5274 omitidas por filtro. 105 controles de intención existentes aprobados en dos suites (`/tmp/ppp-mixed-option-related.log`). TypeScript `/tmp/ppp-current-checkout-tsc.log` aprobado. No validación global de esta fuente ni despliegue. Las nuevas regresiones de audio con instrucciones de corte y búsqueda de sabores por atributos siguen ROJAS (12 casos): no desplegar hasta resolver y ejecutar global. Baselines `/tmp/ppp-spoken-destination-baseline.log`, `/tmp/ppp-arrival-attribute-baseline.log`. No sumar runs solapados como casos distintos.
+
+Audio original: una reproducción pagada con gpt-transcribe devolvió correctamente pollo bien dorado, pechugas partidas en cuatro, arepa frita y tres porciones de cada acompañamiento. Coincide con la transcripción almacenada del original: el fallo acreditado fue interpretación, no STT. Reportes privados `/tmp/ppp-original-audio-result.json` y `/tmp/ppp-original-audio-stored.json`. Una llamada HTTP200, 21 s facturables reportados; costo estimado $0.001575, no factura. Presupuesto compartido **183/179/4**, espejo privado sincronizado. Credencial temporal eliminada. Audios de tiempo almacenados también eran claros. No se enviaron mensajes Meta ni órdenes externas.
+
+Siguiente: cerrar audio principal + acompañamientos sin usar número de cortes como cantidad; recuperación de producto por sabor configurado en catálogo (jugo/helado/infusión); extender edición incluida + adicional a otras formulaciones y varios candidatos sin compras accidentales. Después congelar fuente, ejecutar 57 suites WhatsApp y 19 complementarias, registrar evidencia, publicar/desplegar únicamente staging.
+
 ## Familias, repartos de opciones y consultas del carrito — 16/10
 
 Estado vigente: código **d410291e** (incluye 620c982b), publicado y desplegado solo en staging. Esta entrada sustituye la prioridad anterior de familia genérica. Main no se modificó ni producción se reconstruyó.

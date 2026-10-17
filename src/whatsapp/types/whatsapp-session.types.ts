@@ -91,6 +91,8 @@ export type WhatsappSessionData = {
     replacement?: { originalLine: WhatsappCartItem };
     /** Otros platos del mismo mensaje, se agregan al elegir esta lista. */
     alsoAdd?: Array<{ productId: number; segment: string }>;
+    /** Preparation the customer gave for the dish still being chosen. */
+    note?: string;
   };
   /**
    * "Uno con …" y luego "el otro con …" llegan antes de cerrar el plato.
@@ -120,6 +122,7 @@ export type WhatsappSessionData = {
     ambiguous: Array<{
       segment: string;
       candidates: WhatsappProductCandidate[];
+      note?: string;
     }>;
     needsAttributes: Array<{
       segment: string;

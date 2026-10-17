@@ -749,11 +749,12 @@ describe('WhatsApp chat regressions (prod-hardening)', () => {
       );
       expect(scored.some((x) => /arepa/i.test(x.p.name))).toBe(false);
 
+      // "fritas" belongs to the arepas: frito and broaster both offer that option.
       const embedded = catalog.findProductEmbeddedInMessage(text, pppMenu);
-      expect(embedded?.name).toMatch(/Pollo Frito/i);
-      expect(catalog.isLikelySideOnlyProduct(embedded!)).toBe(false);
+      expect(embedded == null || !catalog.isLikelySideOnlyProduct(embedded)).toBe(true);
+      const chicken = pppMenu.find((p: { name: string }) => p.name === '1 Pollo Frito')!;
 
-      const attrs = catalog.resolveAttributesFromMessage(embedded!, text, []);
+      const attrs = catalog.resolveAttributesFromMessage(chicken, text, []);
       expect(attrs.status).toBe('complete');
       if (attrs.status === 'complete') {
         expect(attrs.attributes.some((a) => /fritas/i.test(a.attributeValue))).toBe(true);

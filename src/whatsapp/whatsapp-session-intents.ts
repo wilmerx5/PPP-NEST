@@ -178,8 +178,11 @@ export function isReuseLastAddressIntent(text: string): boolean {
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion')
+    .replace(/[,;]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t || t.length > 40) return false;
+  if (/^(?:(?:si|claro|correcto|dale)\s+)?(?:(?:a|para)\s+)?la\s+misma(?:\s+(?:direccion|ubicacion|casa))?(?:\s+(?:por favor|porfa|gracias))?[.!?]*$/.test(t)) return true;
   if (
     /^(si|sep|ok|okay|dale|listo|correcto|exacto|esa|esa misma|confirmo|esta bien|estan bien|todo bien|asi esta bien|de acuerdo)([\s!.?]*|(\s+por\s+fa(vor|fa)?[\s!.?]*))$/i.test(
       t,
@@ -236,7 +239,7 @@ export function isConfirmCurrentAddressIntent(text: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\bdirecion\b/g, 'direccion')
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion')
     .replace(/[¡!?.]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();

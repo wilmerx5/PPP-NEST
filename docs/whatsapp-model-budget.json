@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 183,
-  "usedRequests": 178,
-  "remainingRequests": 5,
+  "usedRequests": 179,
+  "remainingRequests": 4,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-16T03:01:02.446Z",
+  "lastAttemptAt": "2026-10-16T20:40:12.779Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "baseCommit": "4fc3c579",
@@ -704,5 +704,15 @@
       "operationalBatchExtension": 5,
       "note": "Agent-selected 12-request development retest after free reproduction and fix of discarded checkout answer; stop first failure, no reset of cumulative attempts."
     }
-  ]
+  ],
+  "originalAudioValidation": {
+    "file": "WhatsApp Ptt 2026-10-16 at 3.23.18 PM.ogg",
+    "model": "gpt-transcribe",
+    "maxRequests": 1,
+    "status": "http200_transcript_received",
+    "reportedSeconds": 21,
+    "estimatedAudioCostUsd": 0.0015749999999999998,
+    "report": "/tmp/ppp-original-audio-result.json",
+    "note": "Original supplied customer audio; one replay with fixture vocabulary, prior WhatsApp STT and session context not yet retrieved"
+  }
 }
