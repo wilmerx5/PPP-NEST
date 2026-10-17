@@ -177,6 +177,8 @@ export type WhatsappSessionData = {
     cartIndex: number;
     productId: number;
     removeSide: string;
+    /** "en todos los platos": every line that carries the side. */
+    cartIndexes?: number[];
     addProductId?: number;
     addUnitPrice?: number;
     /** Older pending offers without a signature must be re-confirmed. */

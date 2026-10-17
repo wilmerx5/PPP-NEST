@@ -2645,6 +2645,10 @@ export class WhatsappCatalogService {
     removed: string;
     added: string;
     separate: WhatsappCatalogProduct | null;
+    /** Every cart line the change applies to; one unless "en todos los platos". */
+    cartIndexes: number[];
+    /** Several dishes carry the side and the customer named none of them. */
+    ambiguous?: boolean;
   } | null {
     const phrases = this.sideSwapPhrases(text);
     if (!phrases || !cart.length) return null;
@@ -2652,6 +2656,7 @@ export class WhatsappCatalogService {
       'para', 'por', 'una', 'uno', 'unas', 'unos', 'con', 'del', 'que', 'viene',
       'esta', 'este', 'solo', 'nada', 'quiero', 'cambiar', 'puedes', 'favor',
       'porfa', 'original', 'acompanamiento', 'acompanado', 'acompanada',
+      'todo', 'toda', 'cada', 'plato', 'pedido',
     ]);
     const tokensOf = (phrase: string) =>
       normalizeText(phrase)
@@ -2687,8 +2692,26 @@ export class WhatsappCatalogService {
             new RegExp(`(?:^|\\s)${escapeRegExp(token)}(?:\\s|$)`).test(said),
         ),
     );
+    const everyDish = /\btod[oa]s\b|\bcada\s+(?:uno|una|plato)\b/.test(said);
+    if (everyDish && !named.length && hosts.length >= 2) {
+      const removed = removedTokens.find((token) => hosts.every((row) => carries(row.host, token)));
+      const added = addedTokens.find((token) => hosts.every((row) => !carries(row.host, token)));
+      if (!removed || !added) return null;
+      const hostIds = new Set(hosts.map((row) => row.host.id));
+      const separate = this.productsForSwapAddition(added, products).find((p) => !hostIds.has(p.id)) || null;
+      return { cartIndex: hosts[0].cartIndex, host: hosts[0].host, removed, added, separate,
+        cartIndexes: hosts.map((row) => row.cartIndex) };
+    }
     const focused = hosts.filter((row) => row.host.id === focusProductId);
     const pool = named.length ? named : focused.length === 1 ? focused : hosts;
+    if (pool.length > 1 && pool === hosts && new Set(hosts.map((row) => row.host.id)).size > 1) {
+      const removed = removedTokens.find((token) => hosts.every((row) => carries(row.host, token)));
+      const added = addedTokens.find((token) => hosts.every((row) => !carries(row.host, token)));
+      if (removed && added) {
+        return { cartIndex: hosts[0].cartIndex, host: hosts[0].host, removed, added, separate: null,
+          cartIndexes: hosts.map((row) => row.cartIndex), ambiguous: true };
+      }
+    }
     if (pool.length !== 1) return null;
     const chosen = pool[0];
     const removed = removedTokens.find((token) => carries(chosen.host, token));
@@ -2699,7 +2722,7 @@ export class WhatsappCatalogService {
     const separate =
       this.productsForSwapAddition(added, products).find((p) => p.id !== chosen.host.id) ||
       null;
-    return { cartIndex: chosen.cartIndex, host: chosen.host, removed, added, separate };
+    return { cartIndex: chosen.cartIndex, host: chosen.host, removed, added, separate, cartIndexes: [chosen.cartIndex] };
   }
 
   private sideSwapPhrases(text: string): { removed: string; added: string } | null {
@@ -2751,6 +2774,9 @@ export class WhatsappCatalogService {
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct | null {
     const q = (text || '').trim();
+    // "Por favor me cambiar…" names no dish at all.
+    const filler = new Set(['por', 'favor', 'porfa', 'porfavor', 'plis', 'quiero', 'dame', 'deme', 'pero', 'para', 'que', 'los', 'las', 'una', 'uno', 'unos', 'unas', 'del', 'tambien', 'todo', 'todos', 'todas', 'cada', 'plato', 'platos']);
+    if (!normalizeText(q).split(/\s+/).some((t) => t.length >= 3 && !filler.has(t))) return null;
     const generic = new Set(['pollo', 'carne', 'arroz', 'sopa', 'bebida', 'gaseosa', 'natural']);
     const weight = (p: WhatsappCatalogProduct) =>
       normalizeText(p.name)
@@ -2793,7 +2819,7 @@ export class WhatsappCatalogService {
   swapIntent(text: string): { removed: string; added: string } | null {
     const q = normalizeText(text || '');
     const m = q.match(
-      /\bcambia(?:r|me|le|les|melo|melas)?\s+(.+?)\s+\bpor\b\s+(.+)/,
+      /\bcambia(?:r(?:le|les|lo|la|los|las|me)?|me|le|les|melo|melas)?\s+(.+?)\s+\bpor\b\s+(.+)/,
     ) || q.match(/\ba cambio de\s+(.+?)\s+(?:un|una)\s+(.+)/);
     if (!m?.[1] || !m?.[2]) return null;
     const added = m[2].split(/\s*[,.;]\s*|\s+y\s+(?=(?:un|una|otro|otra|dos|tres|\d+)\b)|\s+pero\b/)[0].trim();

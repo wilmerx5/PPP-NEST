@@ -16716,3 +16716,72 @@ describe('product names that contain "y" stay one product', () => {
   }
 });
 
+
+describe('side swap across every dish in the cart', () => {
+  const line = (id: number, name: string, qty = 1, attributes: any[] = []) =>
+    ({ productId: id, code: id, name, unitPrice: 30000, quantity: qty, attributes });
+  const pppCart = () => [line(14, 'Mojarra', 2, [{ attributeName: 'Seleccion', attributeValue: 'Frita' }]), line(17, 'Churrasco'),
+    line(35, 'Arroz Paisa'), line(76, 'Hamburguesa Clasica', 1, [{ attributeName: 'Bebida', attributeValue: 'Coca Cola' }])];
+  const fictional = [
+    { id: 31301, code: 31301, name: 'Trucha', price: 32000, availableNow: true, hasAttributes: false, description: 'Con arroz, ensalada y papa', attributes: [] },
+    { id: 31302, code: 31302, name: 'Lomo Fino', price: 36000, availableNow: true, hasAttributes: false, description: 'Con papa y ensalada', attributes: [] },
+    { id: 31303, code: 31303, name: 'Perro Caliente', price: 15000, availableNow: true, hasAttributes: false, description: 'Con papas', attributes: [] },
+    { id: 31304, code: 31304, name: 'Porcion De Platano', price: 5000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const fictionalCart = () => [line(31301, 'Trucha'), line(31302, 'Lomo Fino', 2), line(31303, 'Perro Caliente')];
+  for (const enabled of [true, false]) {
+    it(`PPP original conversation never adds a dish, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = [...pppCart(), line(95, 'Coca Cola 1.5L', 1, [{ attributeName: 'sabor', attributeValue: 'Original' }])] as any;
+      await h.sendQueued('Por favor me cambiar la ensalada por yuca en todos los Platos');
+      expect(h.cartRows().map((r: any) => r.id)).toEqual([14, 17, 35, 76, 95]);
+      expect(h.replies.join(' ')).toMatch(/Mojarra\* ×2 y \*Churrasco/);
+      expect(h.replies.join(' ')).toMatch(/3 porciones/);
+      await h.sendQueued('si');
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: 14, qty: 2, note: 'Sin ensalada' }),
+        expect.objectContaining({ id: 17, qty: 1, note: 'Sin ensalada' }),
+        expect.objectContaining({ id: 35, note: undefined }),
+        expect.objectContaining({ id: 76, note: undefined }),
+        expect.objectContaining({ id: 95 }),
+        expect.objectContaining({ id: 7, qty: 3 }),
+      ]);
+    });
+    it(`PPP several dishes and no scope asks which one, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = pppCart() as any;
+      await h.sendQueued('cámbiame la ensalada por yuca');
+      expect(h.cartRows().map((r: any) => [r.id, r.note])).toEqual([[14, undefined], [17, undefined], [35, undefined], [76, undefined]]);
+      expect(h.replies.join(' ')).toMatch(/¿En cuál plato/);
+    });
+    it(`PPP naming one dish changes only that line, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = pppCart() as any;
+      await h.sendQueued('cámbiale la ensalada al churrasco por yuca');
+      await h.sendQueued('si');
+      expect(h.cartRows().map((r: any) => [r.id, r.qty, r.note])).toEqual(
+        [[14, 2, undefined], [17, 1, 'Sin ensalada'], [35, 1, undefined], [76, 1, undefined], [7, 1, undefined]]);
+    });
+    it(`fictional every dish swap, decline and the suggested wording, agent ${enabled}`, async () => {
+      const h = harness(fictional as any, enabled);
+      h.conv.sessionData.cart = fictionalCart() as any;
+      await h.sendQueued('a todos los platos cambiarles la ensalada por platano');
+      expect(h.replies.join(' ')).toMatch(/Trucha\* y \*Lomo Fino\* ×2/);
+      await h.sendQueued('no');
+      expect(h.cartRows().map((r: any) => [r.id, r.note])).toEqual([[31301, undefined], [31302, undefined], [31303, undefined]]);
+      const g = harness(fictional as any, enabled);
+      g.conv.sessionData.cart = fictionalCart() as any;
+      await g.sendQueued('cámbiale ensalada por platano en todos los platos');
+      await g.sendQueued('si');
+      expect(g.cartRows().map((r: any) => [r.id, r.qty, r.note])).toEqual(
+        [[31301, 1, 'Sin ensalada'], [31302, 2, 'Sin ensalada'], [31303, 1, undefined], [31304, 3, undefined]]);
+    });
+    it(`PPP new dish with a swap is still an order, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = [line(35, 'Arroz Paisa')] as any;
+      await h.sendQueued('un churrasco pero cámbiame la ensalada por yuca');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 35 }), expect.objectContaining({ id: 17, qty: 1 })]);
+    });
+  }
+});
+

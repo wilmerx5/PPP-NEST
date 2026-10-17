@@ -2198,6 +2198,11 @@ export class WhatsappOrchestratorService {
           await this.tryHandleMultiProductOrder(conv, msg.waId, session, multiAddition, cfg, originalText, products, originalText)) return;
     }
 
+    // "me cambias la ensalada por yuca en todos los platos" edits the cart; "un churrasco pero cámbiame…" orders.
+    if (session.cart.length && this.catalogService.swapIntent(originalText) &&
+      !/\b(?:un|una|uno|dos|tres|cuatro|cinco|\d+)\s+\S/i.test(originalText.split(/\bc[aá]mbia/i)[0] || '') &&
+      await this.tryHandleUnincludedSideSwap(conv, msg.waId, session, originalText, products)) return;
+
     if (businessOpenForBot && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       this.catalogService.swapIntent(originalText) && !this.catalogService.isPriceInquiryIntent(originalText) &&
       !this.catalogService.isAvailabilityInquiry(originalText)) {
@@ -21711,14 +21716,20 @@ export class WhatsappOrchestratorService {
         return true;
       }
       const cfg = await this.settingsService.getEffectiveConfig();
-      const noteEdit = editScopedCartNote(line.note,{kind:'append',query:'',note:`Sin ${pending.removeSide}`,preserve:[]});
-      if (noteEdit.blocked) {
-        await this.reply(conv,waId,'Necesito que resumas la nota antes de aplicar el cambio. El pedido sigue igual.');
-        return true;
+      const indexes = pending.cartIndexes?.length ? pending.cartIndexes : [pending.cartIndex];
+      const notes = new Map<number, string | undefined>();
+      for (const index of indexes) {
+        const noteEdit = editScopedCartNote(session.cart[index]?.note,{kind:'append',query:'',note:`Sin ${pending.removeSide}`,preserve:[]});
+        if (noteEdit.blocked) {
+          await this.reply(conv,waId,'Necesito que resumas la nota antes de aplicar el cambio. El pedido sigue igual.');
+          return true;
+        }
+        notes.set(index, noteEdit.note);
       }
-      let next = {...session,cart:session.cart.map((item,index) => index === pending.cartIndex ? {...item,note:noteEdit.note} : item)};
+      let next = {...session,cart:session.cart.map((item,index) => notes.has(index) ? {...item,note:notes.get(index)} : item)};
+      const extraQuantity = indexes.length > 1 ? indexes.reduce((sum, index) => sum + (session.cart[index]?.quantity || 1), 0) : 1;
       if (extra) {
-        const added = this.tryAddProductToCart(next,extra,1,cfg,undefined,undefined,{sourceText:`Agrega 1 ${extra.name} adicional`});
+        const added = this.tryAddProductToCart(next,extra,extraQuantity,cfg,undefined,undefined,{sourceText:`Agrega ${extraQuantity} ${extra.name} adicional`});
         if (added.blocked) { await this.handleCartLimitBlocked(conv,waId,added.blocked,cfg); return true; }
         if (added.missingAttributes) {
           await this.reply(conv,waId,'Necesito confirmar las opciones del adicional antes de modificar el plato. El pedido sigue igual.\n' +
@@ -21729,7 +21740,14 @@ export class WhatsappOrchestratorService {
       }
       session = {...next,pendingSideSwap:undefined};
       await this.conversationService.saveSession(conv,session,'building_cart');
-      const apart = extra ? ` *${extra.name}* va aparte.` : '';
+      const apart = extra ? ` *${extra.name}*${extraQuantity > 1 ? ` ×${extraQuantity}` : ''} va aparte.` : '';
+      if (indexes.length > 1) {
+        const names = indexes.map((index) => `*${session.cart[index].name}*`);
+        await this.reply(conv, waId,
+          `Listo. ${names.slice(0, -1).join(', ')} y ${names[names.length - 1]} quedan sin ${pending.removeSide}.${apart}\n\n` +
+          `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n¿*Algo más*?`);
+        return true;
+      }
       await this.reply(
         conv,
         waId,
@@ -21740,7 +21758,9 @@ export class WhatsappOrchestratorService {
     if (pending && /^(?:no|nop|nel|no gracias)[.!]?$/.test(said)) {
       session = { ...session, pendingSideSwap: undefined };
       await this.conversationService.saveSession(conv, session, 'building_cart');
-      await this.reply(conv, waId, `Listo, dejo *${session.cart[pending.cartIndex]?.name || 'ese plato'}* como está.`);
+      await this.reply(conv, waId, (pending.cartIndexes?.length ?? 0) > 1
+        ? 'Listo, dejo los platos como están.'
+        : `Listo, dejo *${session.cart[pending.cartIndex]?.name || 'ese plato'}* como está.`);
       return true;
     }
 
@@ -21751,6 +21771,43 @@ export class WhatsappOrchestratorService {
       session.pendingSideSwap?.productId,
     );
     if (!swap) return false;
+    if (swap.ambiguous) {
+      const labels = swap.cartIndexes.map((index) => `*${session.cart[index].name}*`);
+      await this.reply(conv, waId,
+        `Traen ${swap.removed}: ${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}. ¿En cuál plato lo cambio?\n\n` +
+        `Escríbeme por ejemplo «cámbiale ${swap.removed} a ${session.cart[swap.cartIndexes[0]].name} por ${swap.added}» ` +
+        `o «cámbiale ${swap.removed} por ${swap.added} en todos los platos». El pedido sigue igual.`);
+      return true;
+    }
+    if (swap.cartIndexes.length > 1) {
+      const lines = swap.cartIndexes.map((index) => session.cart[index]);
+      const units = lines.reduce((sum, line) => sum + (line.quantity || 1), 0);
+      const labels = lines.map((line) => `*${line.name}*${line.quantity > 1 ? ` ×${line.quantity}` : ''}`);
+      const listed = `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`;
+      const without = session.cart.filter((_, index) => !swap.cartIndexes.includes(index)).map((line) => `*${line.name}*`);
+      const added = `${swap.added[0].toUpperCase()}${swap.added.slice(1)}`;
+      session = {
+        ...session,
+        pendingSideSwap: {
+          cartIndex: swap.cartIndex,
+          productId: swap.host.id,
+          removeSide: swap.removed,
+          cartIndexes: swap.cartIndexes,
+          addProductId: swap.separate?.id,
+          addUnitPrice: swap.separate?.price,
+          cartSignature: JSON.stringify(session.cart),
+        },
+      };
+      await this.conversationService.saveSession(conv, session, 'building_cart');
+      await this.reply(conv, waId,
+        `Traen ${swap.removed}: ${listed}. ${added} no hace parte de esos platos.` +
+        (without.length ? ` ${without.join(', ')} no ${without.length > 1 ? 'traen' : 'trae'} ${swap.removed}.` : '') +
+        (swap.separate
+          ? ` Si la quieres, es *${swap.separate.name}* (${this.catalogService.formatMoney(swap.separate.price)} c/u) aparte.\n\n` +
+            `¿Los dejo sin ${swap.removed} y te agrego ${units} ${units > 1 ? 'porciones' : 'porción'}?`
+          : `\n\n¿Los dejo sin ${swap.removed}?`));
+      return true;
+    }
     const description = (swap.host.description || '').trim();
     const comes = description
       ? `*${swap.host.name}* viene así: _${description}_.`
