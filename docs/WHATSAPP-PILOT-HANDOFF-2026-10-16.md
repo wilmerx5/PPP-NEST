@@ -1,3 +1,5 @@
+> Cierre posterior vigente: código **dab94dc0** desplegado solo en staging; 77 suites/7295 pruebas, un recorrido de desarrollo de 10 turnos con Sol real aceptado (2 llamadas), extensión de cierre validada gratis. Leer primero el [relevo local](WHATSAPP-LOCAL-NEXT-AGENT.md) y `whatsapp-post-confirm-validation-1710.json`; el estado del 16/10 debajo es histórico. Siguiente: alinear y validar el preflight de canal real.
+
 > Actualización del 17/10: el estado del 16/10 de este documento es histórico. Leer primero el cierre vigente en [relevo local](WHATSAPP-LOCAL-NEXT-AGENT.md): código 0f98eb1e, 77 suites/7259 pruebas aprobadas sobre fuente congelada; audio/sabores y carta ya abordados. Siguiente puerta: validación independiente del modelo y canal antes del piloto.
 
 # Plan de continuidad: PPP WhatsApp hasta piloto

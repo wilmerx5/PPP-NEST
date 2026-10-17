@@ -2,7 +2,7 @@
   "date": "2026-10-17",
   "baseCommit": "23160b40",
   "scope": "Terminal state after order confirmation; fresh fictional full conversation; corrected persistence mock",
-  "status": "Validated on frozen source; awaiting staging deploy verification",
+  "status": "Validated and deployed to staging only",
   "baseline": {
     "postConfirmationRegression": {
       "failed": 10,
@@ -123,5 +123,30 @@
       "complement": "/tmp/ppp-post-confirm-final-complement-1710.log",
       "typescript": "/tmp/ppp-post-confirm-final-tsc-1710.log"
     }
+  },
+  "codeCommit": "dab94dc0",
+  "deployment": {
+    "verifiedAt": "2026-10-17T20:00:10.586308+00:00",
+    "head": "dab94dc01f3ffd796b04c758cadb93d10df093df",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:8b80c859750fe5e36d3e804a1949607a2f01b128a8b6caa6243cf47bb1d80278",
+    "candidateMatches": true,
+    "compiled": {
+      "terminalGuard": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "rollbackTag": "ppp-nest-staging:rollback-before-dab94dc0",
+    "log": "/tmp/ppp-post-confirm-deploy-1710.log"
   }
 }
