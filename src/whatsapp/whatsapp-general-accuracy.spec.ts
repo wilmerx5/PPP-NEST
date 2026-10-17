@@ -47,9 +47,9 @@ function harness(menu = products, agentEnabled = true) {
       conv.sessionData = structuredClone(session);
       if (state) conv.state = state;
     },
-    resetOrderSession: async () => {
+    resetOrderSession: async (_conv?: unknown, state = 'building_cart') => {
       conv.sessionData = { cart: [], orderType: 'pickup', ignorePriorOrderHistory: true };
-      conv.state = 'building_cart';
+      conv.state = state;
     },
     countInboundMessages: async () => count + 1,
     getRecentMessageTexts: async () => history,
@@ -17397,11 +17397,42 @@ describe('pilot menu interruptions and fragmented confirmation', () => {
         cart:[{productId:35101,code:35101,name:'Bowl De Lentejas',unitPrice:19000,quantity:1,attributes:[]}]});
       await h.sendQueued('Si');
       expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      expect(h.conv.state).toBe('completed');
       const count=h.replies.length;
       await h.sendQueued('Señor');
       expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
       expect(h.replies.slice(count).join(' ')).not.toMatch(/algo m[aá]s|carrito/i);
       expect(h.replies.slice(count).join(' ')).toMatch(/con gusto/i);
+      expect(h.conv.state).toBe('completed');
+    });
+  }
+});
+
+describe('post-order courtesy preserves terminal state', () => {
+  const menu=[{id:37101,code:37101,name:'Bowl De Lentejas',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
+  for(const enabled of [true,false]) for(const state of ['completed','closed']) {
+    for(const text of ['Señor','Gracias','Si señor','Listo','No señor asi esta bien','Nada mas','Eso es todo','No gracias']) {
+      it(`${state}: ${text}, agent ${enabled}`,async()=>{
+        const h=harness(menu,enabled);h.conv.state=state;
+        h.service.conversationService.reopenForNewOrder=jest.fn();
+        const before=structuredClone(h.conv.sessionData);
+        await h.sendQueued(text);
+        expect(h.conv.state).toBe(state);
+        expect(h.conv.sessionData).toEqual(before);
+        expect(h.service.conversationService.reopenForNewOrder).not.toHaveBeenCalled();
+        expect(h.replies.join(' ')).toMatch(/con gusto/i);
+        expect(h.replies.join(' ')).not.toMatch(/algo m[aá]s|carrito|pedido registrado/i);
+      });
+    }
+    it(`${state}: explicit new purchase still reopens, agent ${enabled}`,async()=>{
+      const h=harness(menu,enabled);h.conv.state=state;
+      h.service.conversationService.reopenForNewOrder=jest.fn(async()=>{
+        h.conv.state='building_cart';h.conv.sessionData={cart:[],orderType:'pickup',ignorePriorOrderHistory:true};
+      });
+      await h.sendQueued('Quiero un Bowl De Lentejas');
+      expect(h.service.conversationService.reopenForNewOrder).toHaveBeenCalledTimes(1);
+      expect(h.conv.state).toBe('building_cart');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:37101,qty:1})]);
     });
   }
 });

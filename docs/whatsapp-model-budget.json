@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
   "authorizedRequests": 183,
-  "usedRequests": 179,
-  "remainingRequests": 4,
+  "usedRequests": 181,
+  "remainingRequests": 2,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-16T20:40:12.779Z",
+  "lastAttemptAt": "2026-10-17T19:43:39.915Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "baseCommit": "4fc3c579",
@@ -714,5 +714,18 @@
     "estimatedAudioCostUsd": 0.0015749999999999998,
     "report": "/tmp/ppp-original-audio-result.json",
     "note": "Original supplied customer audio; one replay with fixture vocabulary, prior WhatsApp STT and session context not yet retrieved"
+  },
+  "latestWorkflowValidation": {
+    "date": "2026-10-17",
+    "scenario": "fresh-wrap-checkout-1710",
+    "model": "gpt-6.1-sol",
+    "maxRequests": 4,
+    "requests": 2,
+    "accepted": true,
+    "turns": 10,
+    "estimatedReportedCostUsd": 0.038524,
+    "usageComplete": true,
+    "report": "/tmp/ppp-fresh-wrap-live-1710-report.json",
+    "limits": "Development replay after free router diagnosis; only two turns invoked agent, remaining turns deterministic; orders and Meta isolated, not a channel test or independent holdout."
   }
 }

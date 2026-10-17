@@ -1,0 +1,30 @@
+[
+  {
+    "id": 36101,
+    "code": 36101,
+    "name": "Wrap De Garbanzos",
+    "description": "Wrap vegetal de garbanzos y verduras. Incluye una bebida: Hibisco endulzado o Jazmin sin azúcar.",
+    "price": 18000,
+    "availableNow": true,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Bebida",
+        "options": [
+          "Hibisco",
+          "Jazmin"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 36102,
+    "code": 36102,
+    "name": "Porcion De Camote",
+    "description": "Camote horneado con sal, no frito.",
+    "price": 6000,
+    "availableNow": true,
+    "hasAttributes": false,
+    "attributes": []
+  }
+]

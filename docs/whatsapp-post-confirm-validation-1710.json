@@ -1,0 +1,127 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "23160b40",
+  "scope": "Terminal state after order confirmation; fresh fictional full conversation; corrected persistence mock",
+  "status": "Validated on frozen source; awaiting staging deploy verification",
+  "baseline": {
+    "postConfirmationRegression": {
+      "failed": 10,
+      "log": "/tmp/ppp-post-confirm-baseline-1710.log"
+    },
+    "offlineWorkflow": "Stopped at trailing Señor: completed state attempted reopenForNewOrder; free replay exposed missing runner method and unintended reopen. Earlier payment failure was an incorrect oracle (cash vs contraentrega), not runtime defect."
+  },
+  "fix": "Courtesy, whole affirmations and existing nothing-else intent preserve completed/closed. Explicit new purchase still reopens. Persistence mock respects requested reset state.",
+  "targeted": {
+    "passed": 100,
+    "newTests": 36,
+    "log": "/tmp/ppp-post-confirm-targets-final-1710.log"
+  },
+  "live": {
+    "scenario": "fresh-wrap-checkout-1710",
+    "accepted": true,
+    "turns": 10,
+    "requests": 2,
+    "apiUsage": {
+      "model": "gpt-6.1-sol",
+      "requests": 2,
+      "successfulResponses": 2,
+      "responsesWithUsage": 2,
+      "usageComplete": true,
+      "uncertainResponses": 0,
+      "transportErrors": {},
+      "promptTokens": 18942,
+      "cachedPromptTokens": 0,
+      "completionTokens": 64,
+      "reasoningTokens": 0,
+      "httpErrors": {},
+      "providerErrorCodes": {},
+      "estimatedReportedCostUsd": 0.038524,
+      "priceDate": "2026-10-15",
+      "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+    },
+    "latenciesMs": [
+      16,
+      102,
+      72,
+      6,
+      5,
+      6,
+      4684,
+      2358,
+      11,
+      1
+    ],
+    "finalState": "completed",
+    "mockOrderCount": 1,
+    "orderNotePreserved": true,
+    "includedChoicePreserved": true,
+    "limits": [
+      "Development retest after free diagnosis, not independent statistical sample",
+      "Two turns invoked real agent; other eight resolved deterministically",
+      "Local router isolation, no Meta or external orders",
+      "Final receipt does not display the kitchen note; actual order payload preserves it",
+      "Fictional products were tested under the isolated runner default menu URL; this is not tenant-brand/link isolation evidence. Supply explicit per-tenant URLs in a future tenant adapter validation.",
+      "Paid ten-turn replay preceded the final nothing-else terminal guard extension; the eleven-turn extension was rechecked offline and included closing phrases tested in the final global. No claim of a paid replay of the final eleven-turn sequence."
+    ],
+    "report": "/tmp/ppp-fresh-wrap-live-1710-report.json"
+  },
+  "fixtureHashes": {
+    "scripts/fixtures/whatsapp-fresh-wrap-menu-1710.json": "90dd08f8a365d5fdc42eaec32489e4a47b30c1171c0e683bf2fcce6cbd52e391",
+    "scripts/fixtures/whatsapp-fresh-wrap-cases-1710.json": "5672f11e41273da65de8241fece494c157d75648be673c8a607452f00ecdb983"
+  },
+  "budget": {
+    "cap": 183,
+    "used": 181,
+    "remaining": 2
+  },
+  "officialEvaluationReference": "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+  "externalMetaOrders": 0,
+  "mainModified": false,
+  "interruptedGlobal": {
+    "log": "/tmp/ppp-post-confirm-full-1710.log",
+    "exitCode": 130,
+    "status": "interrupted_not_accepted",
+    "reason": "Free extension with No señor así está bien exposed another terminal-state reopening; stopped before changing source, not counted as pass."
+  },
+  "offlineExtension": {
+    "accepted": true,
+    "turns": 11,
+    "apiRequests": 0,
+    "log": "/tmp/ppp-wrap-third-confirmation-final.log",
+    "baseline": "/tmp/ppp-wrap-third-confirmation-baseline.log",
+    "note": "Offline preload stubs model and forbids network; live runner exits 1 when zero real successful API responses even though scenario accepted. Extension is not a paid real-model result."
+  },
+  "nextChannelGate": {
+    "status": "Legacy rehearsal needs alignment before execution; inspected, not run",
+    "findings": [
+      "scripts/ppp-staging-chat-rehearsal.cjs checks historical GITHUB_REF fix/whatsapp-regression-baseline instead of permanent staging",
+      "whatsapp-staging-test-target.ts approvedModel checks historical gpt-4.1-2025-04-14; must validate actual selected runtime model, not shared historical setting",
+      "Existing runner sends synthetic signed inbound events and real Meta outbound; not genuine customer-to-Meta inbound evidence"
+    ],
+    "next": [
+      "Update rehearsal provenance/target contract and tests against current staging and effective model selection without bypassing recipient or staff-event isolation",
+      "Run bounded preflight, then only permitted test recipient; retain prohibition on external confirmations until isolation is proved"
+    ],
+    "limits": "No change to these legacy gates in the current frozen-source batch."
+  },
+  "costOpportunity": "Both real model requests occurred on phone/payment turns in this sample. Evaluate deterministic checkout fast paths with identical state/response oracles before spending additional inference; this single sample does not establish subscription profitability.",
+  "finalValidation": {
+    "whatsappSuites": 58,
+    "whatsappTests": 7197,
+    "whatsappSeconds": 598.322,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 10.381,
+    "totalDisjointSuites": 77,
+    "totalDisjointTests": 7295,
+    "typescriptPassed": true,
+    "sourceHashesUnchanged": true,
+    "filesHashed": 337,
+    "sourceSnapshot": "/tmp/ppp-post-confirm-final-source-1710.json",
+    "logs": {
+      "whatsapp": "/tmp/ppp-post-confirm-final-full-1710.log",
+      "complement": "/tmp/ppp-post-confirm-final-complement-1710.log",
+      "typescript": "/tmp/ppp-post-confirm-final-tsc-1710.log"
+    }
+  }
+}

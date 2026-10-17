@@ -1,0 +1,142 @@
+[
+  {
+    "id": "fresh-wrap-checkout-1710",
+    "messages": [
+      {
+        "text": "Hola buenas tardes tienes la carta por favor",
+        "expect": {
+          "items": {},
+          "orderCount": 0,
+          "replyForbid": [
+            "no tenemos productos de carta"
+          ]
+        }
+      },
+      {
+        "text": "Me regalas un Wrap De Garbanzos sin cebolla",
+        "expect": {
+          "items": {
+            "36101": 1
+          },
+          "lines": [
+            {
+              "id": 36101,
+              "quantity": 1,
+              "note": [
+                "sin cebolla"
+              ]
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Antes de elegir, entre el hibisco y el jazmin, cual viene sin azucar?",
+        "expect": {
+          "items": {
+            "36101": 1
+          },
+          "replyAll": [
+            "jazmin",
+            "sin azucar"
+          ],
+          "replyForbid": [
+            "ambos sin azucar"
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Con Jazmin y una adicional de camote",
+        "expect": {
+          "items": {
+            "36101": 1,
+            "36102": 1
+          },
+          "lines": [
+            {
+              "id": 36101,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Bebida",
+                  "value": "Jazmin"
+                }
+              ],
+              "note": [
+                "sin cebolla"
+              ]
+            },
+            {
+              "id": 36102,
+              "quantity": 1
+            }
+          ],
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Me muestras el pedido y cuanto suma?",
+        "expect": {
+          "items": {
+            "36101": 1,
+            "36102": 1
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Para recoger en el local",
+        "expect": {
+          "items": {
+            "36101": 1,
+            "36102": 1
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "El telefono es el mismo de WhatsApp",
+        "expect": {
+          "items": {
+            "36101": 1,
+            "36102": 1
+          },
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Pago contraentrega",
+        "expect": {
+          "items": {
+            "36101": 1,
+            "36102": 1
+          },
+          "payment": "cash",
+          "state": "awaiting_final_confirm",
+          "orderCount": 0
+        }
+      },
+      {
+        "text": "Si",
+        "expect": {
+          "items": {},
+          "state": "completed",
+          "orderCount": 1
+        }
+      },
+      {
+        "text": "Señor",
+        "expect": {
+          "items": {},
+          "state": "completed",
+          "orderCount": 1,
+          "replyForbid": [
+            "algo mas",
+            "carrito"
+          ]
+        }
+      }
+    ]
+  }
+]

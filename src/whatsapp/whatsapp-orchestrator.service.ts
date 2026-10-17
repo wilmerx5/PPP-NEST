@@ -1120,6 +1120,13 @@ export class WhatsappOrchestratorService {
     // Mismo chat por número: al escribir de nuevo tras pedido o cierre, empieza pedido nuevo
     let reopenedFreshOrder = false;
     if (conv.state === 'completed' || conv.state === 'closed') {
+      // A courtesy or repeated affirmative is not a new purchase. Preserve the
+      // completed state so a trailing WhatsApp bubble cannot reopen the cart.
+      if (this.catalogService.isCourtesyOnlyMessage(originalText) || isFinalConfirmAffirmation(originalText) ||
+          isNothingElseOrderIntent(originalText)) {
+        await this.reply(conv,msg.waId,'¡Con gusto!');
+        return;
+      }
       // ETA / demora / faltante: no reabrir carrito ni buscar platos
       if (isPostOrderFollowUpIntent(originalText)) {
         await this.handlePostOrderFollowUp(conv, msg.waId, originalText, cfg);
