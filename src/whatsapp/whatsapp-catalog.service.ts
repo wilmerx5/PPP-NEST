@@ -329,13 +329,13 @@ function queryMentionsWord(query: string, word: string): boolean {
 
 /** Estilo de cocina / acompañamiento: no sirven solos para “encontrar” un producto. */
 /** Cuts and doneness describe how a line is prepared; "en cuatro" is never a quantity. */
-const SPOKEN_PREPARATION = /(?:,?\s*\b(?:y|con|pero)\s+)?(?:\b(?:el|la|los|las)\s+[a-záéíóúñ]+\s+)?\b(?:partid|cortad|picad|despresad)[oa]s?\s+en\s+(?:\d+|dos|tres|cuatro|cinco|seis|ocho|presas|trozos|pedazos|cuartos|mitades)\b|(?:,?\s*\bpero\s+)?\b(?:bien|muy)\s+(?:dorad|tostad|cocid|asad|crocant|crujient|quemadit)[oa]s?\b/gi;
+const SPOKEN_PREPARATION = /(?:,?\s*\b(?:y|con|pero)\s+)?(?:\b(?:el|la|los|las)\s+[a-záéíóúñ]+\s+)?\b(?:partid|cortad|picad|despresad)[oa]s?\s+en\s+(?:\d+|dos|tres|cuatro|cinco|seis|ocho|presas|trozos|pedazos|cuartos|mitades)\b|(?:,?\s*\bpero\s+)?\b(?:bien|muy)\s+(?:dorad|tostad|cocid|asad|crocant|crujient|quemad)(?:it)?[oa]s?\b/gi;
 
 /** "ensalada de cebolla y tomate": a bare coordinated word continues the modifier, "y una gaseosa" does not. */
 const MODIFIER_COORDINATION = `(?:\\s+y\\s+(?!(?:un|una|unos|unas|uno|dos|tres|cuatro|cinco|otr[oa]s?|el|la|los|las|sin|con|mas|más|pero|para|por|${DRINK_ORDER_TOKEN.slice(3, -1)})\\b)[a-záéíóúñ]{2,}(?:\\s+(?!y\\b)[a-záéíóúñ]{3,})?)*`;
 
 /** "dame un bagre…": the request verb is not part of the dish or its note. */
-const LEADING_ORDER_VERB = /^(?:dame|d[eé]me|me\s+(?:das|da|regalas?|mandas?|traes?)|ponme|tr[aá]eme|m[aá]ndame|env[ií]ame|agr[eé]game|agrega(?:me)?)\s+(?=(?:un|una|unos|unas|el|la|\d+|dos|tres)\b)/i;
+const LEADING_ORDER_VERB = /^(?:(?:hola|buen[oa]s?(?:\s+(?:d[ií]as|tardes|noches))?)[,!.]?\s+)*(?:por\s+favor\s+)?(?:dame|d[eé]me|me\s+(?:das|da|regalas?|mandas?|traes?|env[ií]as?|vendes?)|ponme|tr[aá]eme|m[aá]ndame|env[ií]ame|agr[eé]game|agrega(?:me)?)\s+(?=(?:un|una|unos|unas|el|la|\d+|dos|tres)\b)/i;
 
 const SPOKEN_REMINDER = /^(?:y\s+)?(?:que\s+)?no\s+(?:se\s+(?:les?|te|me)\s+|(?:te|se)\s+)?(?:vaya[ns]?\s+a\s+)?olvid\w*\s+(?:de\s+)?(?:que\s+)?(.*)$|^(?:recuerd\w+|acu[eé]rd\w+)\s+(?:de\s+)?(?:que\s+)?(.*)$/i;
 
@@ -1784,6 +1784,23 @@ export class WhatsappCatalogService {
       .trim();
   }
 
+  /** "dos combos de pollo" names the catalog head "Combo De …"; the plural must not drop it. */
+  singularizeCountedHeadNouns(text: string, products: WhatsappCatalogProduct[]): string {
+    const names = products.map((product) => normalizeText(product.name).split(/\s+/));
+    const nameTokens = new Set(names.flat());
+    return text.replace(
+      /\b((?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+)([a-záéíóúñ]{3,}?)(es|s)(\s+(?:de|con)\s+)([a-záéíóúñ]{3,})/gi,
+      (whole, qty: string, stem: string, suffix: string, connector: string, next: string) => {
+        if (nameTokens.has(normalizeText(`${stem}${suffix}`))) return whole;
+        const following = singularizeEsToken(normalizeText(next));
+        const singular = [stem, `${stem}${suffix.slice(0, -1)}`].find((form) => names.some((tokens) =>
+          tokens[0] === normalizeText(form) && /^(?:de|con)$/.test(tokens[1] || '') &&
+          tokens.slice(2).some((token) => singularizeEsToken(token) === following)));
+        return singular ? `${qty}${singular}${connector}${next}` : whole;
+      },
+    );
+  }
+
   /** Resolve a culinary synonym only when the configured catalog has one owner. */
   resolveCatalogAliasText(text: string, products: WhatsappCatalogProduct[]): string {
     const q = normalizeText(text);
@@ -2149,7 +2166,7 @@ export class WhatsappCatalogService {
     query = splitKitchenPreference(query)?.productText || query;
     if (supportsCookingTerm({name:query})) query = parseCookingTerm(query)?.productText || query;
     query = interpretProductNote(query, products)?.productText || query;
-    query = stripNonDishKitchenWords(query);
+    query = stripNonDishKitchenWords(this.stripPreparationPhrases(query));
     const leftover: string[] = [];
     const unknown: string[] = [];
     let anchored = false;
@@ -2846,6 +2863,28 @@ export class WhatsappCatalogService {
   }
 
   /** El pollo suelto que ya cabe en el combo del mismo mensaje no es otro plato. */
+  /** "dos original y dos zero": a bare option belongs to the one sibling product that offers it. */
+  private inheritSiblingOptionSegments(
+    confident: MultiProductSegmentMatch[],
+    needsAttributes: MultiProductSegmentMatch[],
+    unresolved: string[],
+  ): void {
+    const owners = [...new Map([...confident, ...needsAttributes].map((line) => [line.product.id, line.product])).values()]
+      .filter((product) => product.attributes?.length);
+    if (!owners.length) return;
+    for (const segment of [...unresolved]) {
+      const bare = normalizeText(segment)
+        .replace(/^(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+/, '')
+        .trim();
+      if (!bare || bare.split(/\s+/).length > 3) continue;
+      const fits = owners.filter((product) =>
+        (product.attributes || []).some((attr) => attr.options.some((option) => normalizeText(option) === bare)));
+      if (fits.length !== 1) continue;
+      unresolved.splice(unresolved.indexOf(segment), 1);
+      confident.push({ segment, product: fits[0], score: 100 });
+    }
+  }
+
   private dropLooserContainedMatches(
     confident: MultiProductSegmentMatch[],
     needsAttributes: MultiProductSegmentMatch[],
@@ -3481,7 +3520,7 @@ export class WhatsappCatalogService {
     // No forzar si el mensaje es SOLO arroz/combo (ej. "arroz con pollo" sin porción aparte).
     // En multi ("arroz con pollo y 1/4 asado") sí resolvemos el pollo por segmento.
     if (
-      /\b(combo|bandeja|ejecutivo|alitas|taco|hamburguesa|menu)\b/.test(q) &&
+      /\b(combos?|bandejas?|ejecutivos?|alitas|tacos?|hamburguesas?|menu)\b/.test(q) &&
       !this.detectPortionHint(q)
     ) {
       return null;
@@ -4636,9 +4675,12 @@ export class WhatsappCatalogService {
     const available = products.filter((p) => p.availableNow !== false);
     // "con arroz" es nota de guarnición, salvo que el cliente haya nombrado un
     // plato completo y esa palabra sea una opción de ese plato.
+    // "un Combo Burger con papas saladas" orders that full name with a note.
+    const ordersByCount = /^(?:\d{1,2}|un|una|dos|tres)\s/.test(normalizeText(raw.replace(LEADING_ORDER_VERB, '')));
     if (this.looksLikeSideModificationNote(raw) && !available.some((product) => {
       const name = normalizeText(product.name);
       if (name.split(' ').length < 2 || !q.includes(name)) return false;
+      if (ordersByCount) return true;
       return (product.attributes || []).some((attr) =>
         (attr.options || []).some((option) => this.queryHasToken(q, normalizeText(option))),
       );
@@ -6341,7 +6383,8 @@ export class WhatsappCatalogService {
     if (this.isRestaurantLocationInquiry(query)) return [];
     // Guarnición sobre combo ya pedido: no buscar "arepas" como plato nuevo
     if (this.looksLikeSideModificationNote(query) &&
-        !products.some(product => this.namesProductWithAttributeChoice(product, query))) return [];
+        !products.some(product => this.namesProductWithAttributeChoice(product, query) ||
+          (normalizeText(product.name).includes(' ') && q.includes(normalizeText(product.name))))) return [];
     // "pollo con arepas fritas" → no rankear Arepa por encima del pollo
     const dropSides = this.hasAccompanimentModifierWithMain(query);
 
@@ -6966,8 +7009,10 @@ export class WhatsappCatalogService {
       .trim();
     if (!subject || this.menuMentionsSubject(subject, products)) return null;
     const menu = (menuUrl || '').trim();
+    const related = this.relatedProductsForMissingDish(subject, products);
     return (
       `No tenemos productos de ${subject}.` +
+      (related.length ? `\nSí tenemos: ${related.map((p) => `*${p.name}* · ${this.formatMoney(p.price)}`).join(', ')}.` : '') +
       (menu ? `\n\nSi quieres mira el menú: ${menu}` : '') +
       `\n\n¿Qué se te antoja?`
     );
@@ -6978,12 +7023,14 @@ export class WhatsappCatalogService {
     const generic = new Set(['solo', 'sola', 'grande', 'pequeno', 'porcion', 'plato', 'natural', 'especial', 'normal', 'favor',
       'dame', 'deme', 'quiero', 'para', 'algo', 'otro', 'otra', 'pero', 'como', 'bien', 'tres', 'unos', 'unas', 'porfa', 'refiero',
       'tienes', 'tiene', 'tienen', 'hola', 'buenas', 'tardes', 'noches', 'veci', 'agregas', 'agrega', 'mejor', 'entonces']);
-    const asked = normalizeText(label).split(/\s+/).filter((token) => token.length >= 4 && !generic.has(token));
+    const asked = normalizeText(label).split(/\s+/)
+      .filter((token) => token.length >= 4 && !generic.has(token) && !generic.has(singularizeEsToken(token)));
     if (!asked.length) return [];
-    return products
-      .filter((product) => product.availableNow !== false &&
-        normalizeText(product.name).split(/\s+/).some((token) => asked.some((word) => token === word || nearDishToken(word, token))))
-      .slice(0, 3);
+    const overlap = (product: WhatsappCatalogProduct) => normalizeText(product.name).split(/\s+/)
+      .filter((token) => asked.some((word) => token === word || nearDishToken(word, token))).length;
+    const hits = products.filter((product) => product.availableNow !== false && overlap(product) > 0);
+    const best = Math.max(0, ...hits.map(overlap));
+    return hits.filter((product) => overlap(product) === best).slice(0, 3);
   }
 
   /** Respuesta cálida cuando preguntan por algo que no está en carta. */
@@ -6992,6 +7039,7 @@ export class WhatsappCatalogService {
       .replace(/[¿?¡!.]+$/g, '')
       .replace(/^(?:me\s+refiero\s+a(?:l)?|quiero\s+decir|o\s+sea|es\s+que)\s+/i, '')
       .replace(/^(?:y\s+)?(?:d[aá]me|d[eé]me|quiero|me\s+das|regal[aá]me|tr[aá]eme|agr[eé]game)\s+(?:(?:un|una|unos|unas)\s+)?/i, '')
+      .replace(/^(?:\d{1,2}|dos|tres|cuatro|cinco|seis)\s+(?:porci[oó]n(?:es)?\s+de\s+)?/i, '')
       .replace(/\s+/g, ' ')
       .trim();
     const nice = label || 'eso';
@@ -10514,6 +10562,7 @@ export class WhatsappCatalogService {
     this.rejectUnsupportedResolvedModifiers(confident, needsAttributes, products, unresolved);
     this.keepOnlyOpenAttributeChoices(confident, needsAttributes);
     this.dropLooserContainedMatches(confident, needsAttributes, text);
+    this.inheritSiblingOptionSegments(confident, needsAttributes, unresolved);
     const leftover = unresolved.filter(
       (s) => !this.isPolitenessOnlySegment(s) && !this.isNonOrderChatterSegment(s),
     );

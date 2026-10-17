@@ -183,6 +183,7 @@ export function isReuseLastAddressIntent(text: string): boolean {
     .replace(/[,;]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t || t.length > 40) return false;
   if (/^(?:(?:si|claro|correcto|dale)\s+)?(?:(?:a|para|en)\s+)?(?:(?:la|esa|esta)\s+)?misma(?:\s+(?:direccion|ubicacion|casa))?(?:\s+(?:por favor|porfa|gracias))?[.!?]*$/.test(t)) return true;
+  if (/^(?:(?:yes|yeah|ok)\s+)?(?:to\s+)?(?:the\s+)?same(?:\s+(?:one|address|place))?(?:\s+(?:please|thanks))?[.!?]*$/.test(t)) return true;
   if (
     /^(si|sep|ok|okay|dale|listo|correcto|exacto|esa|esa misma|confirmo|esta bien|estan bien|todo bien|asi esta bien|de acuerdo)([\s!.?]*|(\s+por\s+fa(vor|fa)?[\s!.?]*))$/i.test(
       t,
@@ -219,9 +220,8 @@ export function isFreshAddressRequest(text: string): boolean {
   if (/\d/.test(t)) return false;
   if (/\b(?:calle|carrera|cra|cll|avenida|diagonal|transversal|conjunto|barrio|torre|apto)\b/.test(t)) return false;
   return (
-    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?(?:a\s+)?una\s+nueva(?:\s+direccion)?$/.test(t) ||
-    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?a\s+otra$/.test(t) ||
-    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?otra\s+direccion$/.test(t) ||
+    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?(?:(?:a|para|en)\s+)?(?:una\s+nueva|otra)(?:\s+direccion)?$/.test(t) ||
+    /^(?:to\s+)?(?:a\s+new\s+one|a\s+new\s+address|new\s+address|another(?:\s+one|\s+address)?|a\s+different\s+(?:one|address))$/.test(t) ||
     /^(?:quiero|ponme|mejor)\s+otra\s+direccion$/.test(t) ||
     /^(?:una\s+)?direccion\s+nueva$/.test(t) ||
     /^nueva\s+direccion$/.test(t) ||

@@ -23,9 +23,9 @@ export function joinKitchenNotes(...parts: Array<string | null | undefined>): st
   const kept: string[] = [];
   const keys: string[] = [];
   const keyOf = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\barto\b/g, 'harto').replace(/\baji\b/g, 'aji').replace(/\s+/g, ' ').trim();
+    .replace(/\barto\b/g, 'harto').replace(/\ba[jh]i\b/g, 'aji').replace(/\s+/g, ' ').trim();
   for (const part of parts) {
-    const clean = (part || '').replace(/\s+/g, ' ').trim();
+    const clean = (part || '').replace(/\s+/g, ' ').trim().replace(/\s+(?:por(?:\s+favor)?|porfa|gracias)$/i, '');
     if (!clean) continue;
     const key = keyOf(clean);
     const container = keys.findIndex((existing) => existing === key || existing.includes(key) || key.includes(existing));

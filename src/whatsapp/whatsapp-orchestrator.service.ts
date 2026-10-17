@@ -3,7 +3,7 @@ import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './wh
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
-import {followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
+import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { condimentIntensityNote, interpretProductNote } from './whatsapp-product-intent';
@@ -970,6 +970,9 @@ export class WhatsappOrchestratorService {
     if (/\b(?:maduro\s+con|pl[aá]tano\s+maduro)\b/i.test(text)) {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
     }
+    if (/\b(?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+[a-záéíóúñ]{3,}s\s+(?:de|con)\b/i.test(text)) {
+      text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
+    }
     let originalText = text;
     // Do not strip the condition and execute an otherwise recognizable option.
     // Attribute availability does not establish a substitution surcharge policy.
@@ -1223,6 +1226,17 @@ export class WhatsappOrchestratorService {
           pendingCartAttributeEdit: undefined, pendingCartRemoval: undefined };
         await this.conversationService.saveSession(conv, session);
       }
+    }
+    const recipientTail = /[,.]?\s+(?:es|son|va|van)\s+para\s+((?:el|la|los|las|mi|mis)\s+\p{L}+(?:\s+\p{L}+){0,2})[.!]*$/iu;
+    const recipient = recipientTail.exec(originalText);
+    if (recipient && recipient.index >= 6 && !/[?¿]/.test(originalText) && !conv.state.startsWith('awaiting_') &&
+        !/\b(?:conjunto|edificio|barrio|torre|casa|apartamento|apto|calle|carrera|oficina|local|urbanizaci[oó]n|unidad|condominio|residencias?|hotel|hospital|cl[ií]nica|colegio|parque|tienda|empresa)\b/i.test(recipient[1]) &&
+        !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
+        !((this.catalogService.searchByNameScored(recipient[1], await this.catalogService.getMenuProducts(), 1)[0]?.score ?? 0) >= 80)) {
+      session = this.appendCustomerNote(session, `Es para ${recipient[1]}`);
+      await this.conversationService.saveSession(conv, session);
+      originalText = originalText.slice(0, recipient.index).trim();
+      text = text.replace(recipientTail, '').trim() || originalText;
     }
     // A product replacement interrupts checkout; never feed it to field
     // handlers or remove the original before validating the replacement.
@@ -2520,7 +2534,7 @@ export class WhatsappOrchestratorService {
     }
 
     // Resolve a single named dish before broad substitution/style heuristics consume its notes.
-    const kitchenRequest = splitKitchenPreference(text);
+    const kitchenRequest = /[.!]\s+\p{L}/u.test(originalText) ? null : splitKitchenPreference(text);
     if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isAvailabilityInquiry(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
@@ -5781,7 +5795,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isLargerPackInquiry(text) &&
       !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
-      !this.looksLikeStandaloneOrderNote(text) &&
+      (!this.looksLikeStandaloneOrderNote(text) || (!session.cart.length &&
+        /\s/.test(embeddedProduct.name.trim()) && this.normalizeForMatch(text).includes(this.normalizeForMatch(embeddedProduct.name)))) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -8177,11 +8192,12 @@ export class WhatsappOrchestratorService {
     }
     await this.conversationService.saveSession(conv, next, 'building_cart');
     const fee = this.deliveryFeeFor(next, cfg);
+    const cartRepeatsAdd = next.cart.length === 1 && items.length === 1 && session.cart.length === 0;
     await this.reply(
       conv,
       waId,
       `${this.buildCartAddReply(next, fee, labels, { suffix: '' })}\n\n` +
-        `${this.formatCartOnly(next, fee)}\n\n` +
+        (cartRepeatsAdd ? '' : `${this.formatCartOnly(next, fee)}\n\n`) +
         this.formatContinueShoppingPrompt(next),
     );
     return true;
@@ -8428,7 +8444,24 @@ export class WhatsappOrchestratorService {
     opts?: { extraLine?: string; suffix?: string; showCartSummary?: boolean },
   ): string {
     const rawNames = (Array.isArray(added) ? added : [added]).filter(Boolean);
-    const names = rawNames.map((n) => this.compactAddedProductLabel(session, n));
+    let names = rawNames.map((n) => this.compactAddedProductLabel(session, n));
+    // "Coca Cola 1.5L ×2, Coca Cola 1.5L ×2" only reads right with the option that tells them apart.
+    const baseOf = (label: string) => this.normalizeForMatch(label.replace(/\s*×\s*\d+\s*$/, '').trim());
+    const repeated = new Set(names.map(baseOf).filter((base, i, all) => all.indexOf(base) !== i));
+    if (repeated.size) {
+      const seen = new Map<string, number>();
+      names = names.map((label) => {
+        const base = baseOf(label);
+        if (!repeated.has(base)) return label;
+        const total = names.filter((other) => baseOf(other) === base).length;
+        const lines = session.cart.filter((line) => this.normalizeForMatch(line.name) === base).slice(-total);
+        const k = seen.get(base) ?? 0;
+        seen.set(base, k + 1);
+        const differing = (lines[k]?.attributes || []).filter((attr) =>
+          lines.some((other) => other.attributes?.find((a) => a.attributeName === attr.attributeName)?.attributeValue !== attr.attributeValue));
+        return differing.length ? `${label} (${differing.map((attr) => attr.attributeValue).join(', ')})` : label;
+      });
+    }
 
     let head =
       names.length === 1
@@ -15120,10 +15153,25 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     if (conv.state !== 'building_cart' || !session.cart.length || session.pendingMatch || session.pendingAttribute ||
       session.pendingMultiOrder) return false;
-    const note = followUpHandlingNote(text);
-    if (!note) return false;
+    const handling = followUpHandlingNote(text);
+    let extra = handling ? null : followUpExtraNote(text);
+    if (extra && !/\p{L}+it[oa]s?(?!\p{L})|\bpoc[oa]\b/iu.test(extra.item) &&
+      this.catalogService.findProductEmbeddedInMessage(extra.item, await this.catalogService.getMenuProducts())) extra = null;
     const index = session.cart.length - 1;
     const line = session.cart[index];
+    if (extra) {
+      // An added extra may cost; the restaurant confirms it. "Lo quiero normal" drops the earlier change.
+      let next = this.appendCustomerNote(session, `Solicitud adicional para revisar con el local: ${extra.note}`);
+      if (extra.replaces) next = { ...next, cart: next.cart.map((item, i) => i === index ? { ...item, note: undefined } : item) };
+      await this.conversationService.saveSession(conv, next, 'building_cart');
+      await this.reply(conv, waId,
+        `Listo, *${line.name}* ${extra.replaces ? 'queda normal' : 'sigue en el pedido'} ✅\n` +
+        `Anoté _${extra.note}_ para revisar con el local; deben confirmar si se puede y si tiene costo.\n\n` +
+        `${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`);
+      return true;
+    }
+    if (!handling) return false;
+    const note = handling;
     const merged = line.note && this.normalizeForMatch(line.note).includes(this.normalizeForMatch(note)) ? line.note :
       [line.note, note].filter(Boolean).join('; ');
     const next: WhatsappSessionData = { ...session, cart: session.cart.map((item, i) => i === index ? { ...item, note: merged } : item) };

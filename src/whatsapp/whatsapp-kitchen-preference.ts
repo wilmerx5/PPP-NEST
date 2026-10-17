@@ -1,6 +1,6 @@
 const CONTAINERS = '(?:ca[jh]as?|partes|porciones|empaques?|bolsas?|platos?)';
 const SPLIT = `(?:dos|tres|2|3)\\s+${CONTAINERS}`;
-const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por\\s+separado|aparte|en\\s+(?:dos|tres|2|3)(?:\\s+${CONTAINERS})?))?|por\\s+separado|en\\s+${SPLIT}|bien\\s+tostad[oa]s?|tostadit[oa]s?|(?:bien\\s+|muy\\s+)?crocantes?)`;
+const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por\\s+separado|aparte|en\\s+(?:dos|tres|2|3)(?:\\s+${CONTAINERS})?))?|por\\s+separado|en\\s+${SPLIT}|(?:bien|muy)\\s+(?:tostad|dorad)(?:it)?[oa]s?|(?:tostad|dorad)it[oa]s?|(?:bien\\s+|muy\\s+)?crocantes?)`;
 
 /** Separate explicit preparation instructions from a single dish request.
  * Unqualified compositions, questions and additional purchases stay with the normal router.
@@ -20,6 +20,17 @@ export function splitKitchenPreference(source: string): {productText: string; no
   const sinPhrase = `(?:sin\\s+${phrase}|${packaging})`;
   const preference = new RegExp(`^${sinPhrase}(?:(?:,\\s*|\\s+y\\s+)${sinPhrase})*(?:(?:,\\s*|\\s+y\\s+)(?:en\\s+vez\\s+de\\s+${phrase}\\s+)?(?:m[aá]s|h?arto|much[oa]|bastante|poc[oa]|extra|con\\s+(?:m[aá]s|extra|h?arto|much[oa]|bastante|poc[oa]))\\s+${phrase})?(?:(?:,\\s*|\\s+y\\s+|\\s+)${onlyCount.slice(0, -1)})?$`, 'iu');
   return preference.test(note) ? {productText, note:note.replace(/\s+y\s+(?=(?:m[aá]s|con\s+))/ig, ', ')} : null;
+}
+
+/** "Lo quiero normal, pero que le agreguen unas tres papitas saladas": an extra for the dish already in the cart.
+ * "Lo quiero normal" restates the dish, so the new note replaces the previous one.
+ */
+export function followUpExtraNote(source: string): {note: string; item: string; replaces: boolean} | null {
+  const text = (source || '').replace(/[¡!¿?.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text || text.length > 160) return null;
+  const match = /^(?:(?:y|pero|ok|bueno|listo)\s+)?(?:((?:lo|la)\s+quiero\s+(?:normal|as[ií]|tal\s+cual)(?:\s+con\s+\p{L}+(?:\s+\p{L}+){0,2}?)?)\s*,?\s+)?(?:pero\s+)?que\s+(?:le|les)\s+(?:agreguen|pongan|echen|incluyan|añadan|anadan)\s+(.{3,60}?)(?:\s+(?:as[ií]\s+)?como\s+(?:siempre|sie\p{L}*re|de\s+costumbre)\b.*)?$/iu.exec(text);
+  if (!match) return null;
+  return {note: `que le agreguen ${match[2].trim()}`, item: match[2].trim(), replaces: !!match[1]};
 }
 
 /** "¿Me lo puedes mandar en dos cajas?" after ordering: only a handling note for a dish already in the cart. */

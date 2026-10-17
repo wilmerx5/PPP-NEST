@@ -17253,3 +17253,94 @@ describe('real staging chats: new address, only-count notes, related offers, pac
     });
   }
 });
+
+describe('real staging chats: plural combos, golden preparation, recipients, extras and sibling options', () => {
+  const fictional = [
+    { id: 33101, code: 33101, name: 'Bandeja De Res', price: 22000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 33102, code: 33102, name: 'Res Asada', price: 18000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 33103, code: 33103, name: 'Trucha', price: 26000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Al Vapor'] }] },
+    { id: 33104, code: 33104, name: 'Combo Burger', price: 25000, availableNow: true, hasAttributes: true, description: 'Hamburguesa, papa francesa y bebida',
+      attributes: [{ attributeName: 'Bebida', options: ['Cola', 'Naranja'] }] },
+    { id: 33105, code: 33105, name: 'Te Frio 1L', price: 6000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Sabor', options: ['Limon', 'Durazno'] }] },
+  ];
+  const menus = [
+    { label: 'PPP', menu: products, plural: 'Dame dos combos De Pollo frito', pluralId: 99, golden: 'dame un pollo frito bien dorado', goldenId: 1,
+      combo: 'Hola Buenos dias me envias Un combo De Pollo broaster con papas saladas es Para los gemelos', comboId: 98, extraProduct: 'dos limonadas',
+      options: 'Dame dos coca cola 1.5 original y dos zero', optionsId: 95, optionValues: ['Original', 'Zero'], ask: 'Tiene coca cola De 5 listros', related: 'Coca Cola 1.5L' },
+    { label: 'fictional', menu: fictional, plural: 'Dame dos bandejas de res', pluralId: 33101, golden: 'dame una trucha frita bien dorada', goldenId: 33103,
+      combo: 'Hola buenas tardes me envias un combo burger con papas saladas es para los gemelos', comboId: 33104, extraProduct: 'dos te frio 1l',
+      options: 'dame dos te frio 1l limon y dos durazno', optionsId: 33105, optionValues: ['Limon', 'Durazno'], ask: 'Tiene te frio de 5 litros', related: 'Te Frio 1L' },
+  ];
+  const awaitingAddress = (menu: any[], enabled: boolean, productId: number) => {
+    const h = harness(menu as any, enabled);
+    const product = menu.find((p) => p.id === productId);
+    h.conv.sessionData.cart = [{ productId: product.id, code: product.id, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, lastDeliveryAddress: 'Altavista' });
+    h.conv.customerName = 'Yordan'; h.conv.state = 'awaiting_address';
+    return h;
+  };
+  for (const enabled of [false, true]) for (const m of menus) {
+    it(`${m.label} a plural head noun keeps the named dish, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(m.plural);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.pluralId, qty: 2 })]);
+    });
+    it(`${m.label} "bien dorado" is a kitchen note, not a missing dish, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const reply = await h.sendQueued(m.golden);
+      expect(reply).not.toMatch(/no manejamos/i);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.goldenId, qty: 1, note: expect.stringMatching(/bien dorad/i) })]);
+    });
+    it(`${m.label} a greeting, a side request and "es para los gemelos" keep the dish and both notes, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(m.combo);
+      expect(h.conv.sessionData.customerNotes).toMatch(/para los gemelos/i);
+      if (!enabled) expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.comboId, qty: 1, note: expect.stringMatching(/papas saladas/i) })]);
+    });
+    it(`${m.label} "lo quiero normal pero que le agreguen unas papitas" clears the change and leaves the extra for the restaurant; a menu product is not an extra, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const product = (m.menu as any[]).find((p) => p.id === m.comboId);
+      h.conv.sessionData.cart = [{ productId: product.id, code: product.id, name: product.name, unitPrice: product.price, quantity: 1,
+        attributes: [], note: 'con papas saladas' }] as any;
+      h.conv.state = 'building_cart';
+      const reply = await h.sendQueued('Lo quiero normal con papa Francesa pero que Le agreguen unas Tres papitas saladas asi como siemore me envian');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.comboId, qty: 1 })]);
+      expect(h.cartRows()[0].note).toBeUndefined();
+      expect(h.conv.sessionData.customerNotes).toMatch(/revisar con el local.*Tres papitas saladas/i);
+      expect(reply).toMatch(/confirmar si se puede y si tiene costo/i);
+      await h.sendQueued(`que le agreguen ${m.extraProduct}`);
+      expect(h.conv.sessionData.customerNotes).not.toMatch(new RegExp(m.extraProduct, 'i'));
+    });
+    it(`${m.label} a bare option after a sibling line uses that product and the reply tells them apart, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const reply = await h.sendQueued(m.options);
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: m.optionsId, qty: 2, attrs: [expect.stringMatching(new RegExp(`:${m.optionValues[0]}$`))] }),
+        expect.objectContaining({ id: m.optionsId, qty: 2, attrs: [expect.stringMatching(new RegExp(`:${m.optionValues[1]}$`))] }),
+      ]);
+      expect(reply).toContain(`(${m.optionValues[0]})`);
+      expect(reply).toContain(`(${m.optionValues[1]})`);
+    });
+    it(`${m.label} an unavailable size question offers the related product, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const reply = await h.sendQueued(m.ask);
+      expect(reply).toContain(m.related);
+      expect(h.cartRows()).toEqual([]);
+    });
+    for (const [text, fresh] of [['A otra direccion', true], ['para otra dirección', true], ['the same', false], ['same address', false]] as const) {
+      it(`${m.label} "${text}" at the address prompt, agent ${enabled}`, async () => {
+        const h = awaitingAddress(m.menu as any, enabled, m.goldenId);
+        const reply = await h.sendQueued(text);
+        if (fresh) {
+          expect(reply).toMatch(/direcci[oó]n nueva/i);
+          expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+        } else {
+          expect(h.conv.sessionData.address).toBe('Altavista');
+          expect(h.conv.sessionData.addressConfirmed).toBe(true);
+        }
+      });
+    }
+  }
+});
