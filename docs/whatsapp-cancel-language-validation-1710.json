@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "7c804911",
+  "status": "Final frozen-source validation passed; deployment pending",
+  "newCases": 88,
+  "axes": {
+    "menus": [
+      "Taco De Calabaza / Porcion De Totopos",
+      "Bao De Setas / Porcion De Pan"
+    ],
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "states": [
+      "awaiting_payment",
+      "awaiting_final_confirm"
+    ],
+    "utterances": 9,
+    "kinds": [
+      "retain",
+      "question",
+      "quoted",
+      "conditional"
+    ],
+    "additionalAffirmativeControls": 16,
+    "affirmativeUtterances": [
+      "S\u00ed, olvida ese cambio",
+      "Claro, cancela ese cambio"
+    ]
+  },
+  "baseline": {
+    "cases": 48,
+    "failed": 48,
+    "unhelpfulReplyFailures": 44,
+    "lostFinalConfirmationState": 4,
+    "cartAndPendingEditPreservedBeforeFailingAssertion": true,
+    "log": "/tmp/ppp-cancel-language-baseline-1710.log",
+    "note": "Expanded to72 with additional wording and stronger response assertions; do not claim all72 failed in baseline"
+  },
+  "fixes": [
+    "A narrow complete meta-message classifier distinguishes retaining an edit, asking to withdraw, quoted command language, and conditional withdrawal from an actual withdrawal instruction",
+    "With an active cart edit, answers the meta-message and re-prompts the existing line selection without writing session or changing checkout state",
+    "Does not evaluate an unknown condition or silently drop a separately marked purchase clause",
+    "Explicit withdrawal commands continue through the existing withdrawal route",
+    "Shared raw-text affirmative prefix handling preserves accented s\u00ed/punctuated si before normalization; conditional si must contain an actual condition before the withdrawal clause"
+  ],
+  "targeted": {
+    "passed": 356,
+    "newUnique": 88,
+    "existingControls": 268,
+    "log": "/tmp/ppp-cancel-language-final-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-cancel-language-accepted-tsc-1710.log"
+  },
+  "runnerContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-cancel-language-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-cancel-language-final-global-1710.log",
+    "snapshot": "/tmp/ppp-cancel-language-final-source-1710.json",
+    "suites": 77,
+    "tests": 7600,
+    "seconds": 927.564,
+    "sourceUnchanged": true,
+    "filesHashed": 354,
+    "generalAccuracySeconds": 809.155
+  },
+  "apiRequests": 0,
+  "apiRequestsScope": "OpenAI inference only",
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainModified": false,
+  "limits": [
+    "Starts from seeded checkout, then opens real ambiguous removal through router; not initial purchase",
+    "Follow-up chooses a line by note and creates one mocked order preserving other rows and notes",
+    "Other edit kinds covered as existing controls, not full new Cartesian conversation matrix",
+    "Nine bounded language forms; not all quotations, conditions or independent mixed intents",
+    "Model, persistence, maps, Meta and orders simulated"
+  ],
+  "affirmativeBaseline": {
+    "failed": 16,
+    "log": "/tmp/ppp-cancel-language-affirmative-baseline-1710.log",
+    "finding": "Affirmative prefix was not treated as operative withdrawal; accented s\u00ed could be confused with conditional si after normalization"
+  },
+  "interruptedGlobal": {
+    "log": "/tmp/ppp-cancel-language-global-1710.log",
+    "exitCode": 130,
+    "accepted": false,
+    "reason": "Stopped own run to add and fix affirmative-withdrawal controls before final validation"
+  }
+}

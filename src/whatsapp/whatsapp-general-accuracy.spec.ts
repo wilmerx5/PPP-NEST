@@ -17643,7 +17643,7 @@ describe('confirmation boundary retains unresolved cart edits',()=>{
 /** Existing checkout -> ambiguous edit -> withdraw edit -> inquiry -> one unchanged order. */
 describe('withdraw cart edit and finish existing checkout',()=>{
   const edits=[
-    {key:'pendingCartRemoval',request:(name:string)=>`Quita el ${name}`,phrases:['No quites nada por favor','Déjalo como estaba','Olvida ese cambio']},
+    {key:'pendingCartRemoval',request:(name:string)=>`Quita el ${name}`,phrases:['No quites nada por favor','Déjalo como estaba','Olvida ese cambio','Sí, olvida ese cambio','Claro, cancela ese cambio']},
     {key:'pendingCartQuantity',request:(name:string)=>`Deja solo dos ${name}`,phrases:['Déjalo como estaba','Olvida ese cambio']},
     {key:'pendingCartAttributeEdit',request:(_name:string)=>'Cambia Salsa a Picante',phrases:['Déjalo como estaba','Olvida ese cambio']},
     {key:'pendingCartReplacement',request:(name:string,side:string)=>`Cambia el ${name} por una ${side}`,phrases:['Déjalo como estaba','Olvida ese cambio']},
@@ -17710,6 +17710,54 @@ describe('withdrawal scope with multiple pending cart edits',()=>{
         expect(h.conv.sessionData).toEqual(before);expect(h.replies.at(-1)).toMatch(/varios cambios.*cu[aá]l cancelamos/is);
       }
       expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
+
+/** Negated, conditional and quoted cancellation language is not a withdrawal instruction. */
+describe('nonoperative cancellation language preserves pending edit',()=>{
+  const cases=[
+    {text:'No canceles ese cambio',kind:'retain'},
+    {text:'Por favor no anules ese cambio',kind:'retain'},
+    {text:'Si cobran extra, olvida ese cambio',kind:'conditional'},
+    {text:'Que pasa si digo "olvida ese cambio"?',kind:'quoted'},
+    {text:'Que ocurre si escribo «cancela ese cambio»?',kind:'quoted'},
+    {text:'Me dijeron "olvida ese cambio", pero no lo canceles',kind:'quoted'},
+    {text:'Puedo cancelar ese cambio?',kind:'question'},
+    {text:'Se puede cancelar el cambio?',kind:'question'},
+    {text:'Si no cuesta nada, dejalo como estaba',kind:'conditional'},
+  ];
+  for(const f of [{dish:'Taco De Calabaza',side:'Porcion De Totopos'},{dish:'Bao De Setas',side:'Porcion De Pan'}])
+  for(const enabled of [true,false])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const {text,kind} of cases){
+    it(`${f.dish}, ${text}, ${state}, agent ${enabled}`,async()=>{
+      const menu=[{id:43101,code:43101,name:f.dish,price:19000,availableNow:true,attributes:[]},{id:43102,code:43102,name:f.side,price:6000,availableNow:true,attributes:[]}];
+      const h=harness(menu,enabled);h.conv.state=state;
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,
+        phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{}),
+        cart:[...['sin cilantro','con cilantro'].map((note,i)=>({productId:43101,code:43101,name:f.dish,unitPrice:19000,quantity:i?1:2,attributes:[],note})),
+          {productId:43102,code:43102,name:f.side,unitPrice:6000,quantity:1,attributes:[],note:'Sin sal'}]});
+      h.service.ordersService.create=jest.fn().mockResolvedValue({id:1004,dailyOrderNumber:4});
+      await h.sendQueued(`Quita el ${f.dish}`);
+      const before=structuredClone(h.conv.sessionData);expect(before.pendingCartRemoval?.options).toHaveLength(2);
+      await h.sendQueued(text);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.sessionData.pendingCartRemoval).toEqual(before.pendingCartRemoval);
+      expect(h.conv.state).toBe(state);expect(h.conv.customerName).toBe('Wilmer');
+      expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);expect(h.conv.sessionData.address).toBe(before.address);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      expect(h.replies.at(-1)).not.toMatch(/cancel[eé] ese cambio|qued[oó] cancelado|vaciamos|pedido registrado/i);
+      expect(h.replies.at(-1)).toMatch(/cu[aá]l l[ií]nea quitamos/i);
+      const response=h.replies.at(-1)||'';
+      if(kind==='retain')expect(response).toMatch(/mantengo el cambio pendiente/i);
+      if(kind==='question')expect(response).toMatch(/puedes cancelar solo el cambio pendiente sin cancelar el pedido/i);
+      if(kind==='quoted')expect(response).toMatch(/frase cancela solo la edici[oó]n pendiente y conserva el pedido/i);
+      if(kind==='conditional')expect(response).toMatch(/condici[oó]n.*no est[aá] confirmada/i);
+      await h.sendQueued('la con cilantro');
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:43101,qty:2,note:'sin cilantro'}),expect.objectContaining({id:43102,qty:1,note:'Sin sal'})]);
+      expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();
+      if(state==='awaiting_payment')await h.sendQueued('Pago contraentrega');
+      await h.sendQueued('Si');expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const order=h.service.ordersService.create.mock.calls[0][0];expect(order.items).toHaveLength(3);
+      expect(order.items.filter((line:any)=>line.productId===43101)).toEqual([expect.objectContaining({note:'sin cilantro'}),expect.objectContaining({note:'sin cilantro'})]);
     });
   }
 });

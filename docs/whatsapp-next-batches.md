@@ -1,3 +1,14 @@
+## Lenguaje de cancelación que no es una orden — 17/10/2026
+
+Tanda en validación: docs/whatsapp-cancel-language-validation-1710.json. 88 casos nuevos (72 de nueve formas no operativas y16 controles afirmativos, dos cartas, pago/confirmación y agente simulado on/off);356 focalizadas pasan. Baseline48 fallos:44 respuestas que ignoraban la intención y cuatro pérdidas de estado final; el carrito y la edición estaban conservados antes de esas aserciones. No acreditar que el bot hubiera cancelado todo ni que72 casos fueran rojos inicialmente.
+
+Siguiente por riesgo:
+0. Revisar cobertura de preguntas sobre cancelar el pedido completo (antes/después de registrar): preguntar «¿puedo cancelar el pedido?» no debe ejecutar cancelación. La búsqueda textual inicial no encontró recorridos con esa frase; auditar las suites antes de afirmar ausencia total. Probar con órdenes y efectos externos simulados, sin cancelar pedidos reales.
+1. Una edición de carrito y otra compra/sustitución pendientes: «ese cambio» debe pedir dueño, no cancelar la primera estructura encontrada. Resolver luego una instrucción explícita y retomar checkout sin perder el resto.
+2. Retención y consultas de cancelación para cantidad, opciones y reemplazo con sus continuaciones naturales; la matriz nueva se centra en eliminación. Variar los textos con nuevas muestras, no solo cambiar nombres de producto.
+3. Pregunta o condición más una acción independiente afirmativa: contestar la consulta sin perder la compra/edición explícita ni ejecutar la condición. El helper actual es deliberadamente estrecho y no acredita esa composición.
+4. Contraste nuevo del modelo y canal con límites antes de red. Dos solicitudes restantes en el tope vigente181/183; no ejecutar el histórico completo sin acotar inferencia. No confirmar órdenes externas.
+
 ## Tras retirar una edición pendiente — 17/10/2026
 
 Tanda validada y desplegada como 22042562: docs/whatsapp-withdraw-edit-validation-1710.json, 84 nuevos casos: 72 continuaciones naturales desde checkout ya sembrado y 12 controles con varias ediciones sembradas. Baseline56 fallos/16 verdes;268 focalizadas pasan después del ajuste. Global final: 77 suites/7512 pruebas aprobadas; despliegue y salud verificados. Solo se cancela la intención pendiente, conservando el carrito; no hay historial de deshacer cambios ya aplicados.

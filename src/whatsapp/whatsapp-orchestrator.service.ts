@@ -93,6 +93,8 @@ import {
   parseQtyDishCorrection,
   isCartChargeQuestion,
   isCostConditionalRequest,
+  pendingCartEditCancellationAside,
+  stripCartEditWithdrawalAffirmation,
   isChangeSurchargeInquiry,
   splitCostConditionFromIndependentAction,
   isOrderBillRequest,
@@ -1162,12 +1164,23 @@ export class WhatsappOrchestratorService {
 
     // A deictic rejection refers to the one unfinished selection, not the confirmed cart.
     const pendingSelection = this.conversationService.getSession(conv);
-    const cancellationText = this.normalizeForMatch(originalText)
+    const cancellationText = this.normalizeForMatch(stripCartEditWithdrawalAffirmation(originalText))
       .replace(/^(?:(?:por favor|porfavor|porfa)\s+)+/, '')
       .replace(/(?:\s+(?:por favor|porfavor|porfa|muchas gracias|gracias))+$/, '')
       .replace(/^cansela\b/, 'cancela').replace(/\bselecsion\b/g, 'seleccion');
     const activeSelection = !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state);
     const pendingEdits = CART_EDIT_SELECTION_KEYS.filter(key => !!pendingSelection[key]);
+    const cancellationAside = pendingCartEditCancellationAside(originalText);
+    if (activeSelection && pendingSelection.cart.length && pendingEdits.length && cancellationAside) {
+      const notice = {
+        retain: 'De acuerdo, mantengo el cambio pendiente. No he modificado el pedido.',
+        question: 'Puedes cancelar solo el cambio pendiente sin cancelar el pedido. Para hacerlo, escribe «olvida ese cambio».',
+        quoted: 'Esa frase cancela solo la edición pendiente y conserva el pedido. No ejecuté la frase que mencionaste.',
+        conditional: 'No apliqué ni cancelé el cambio: esa condición todavía no está confirmada.',
+      }[cancellationAside];
+      await this.reply(conv,msg.waId,notice + '\n\n' + this.formatPendingCartEditReminder(pendingSelection));
+      return;
+    }
     const withdrawRemoval = isKeepCartRefusal(cancellationText) && !!pendingSelection.pendingCartRemoval;
     const withdrawEdit = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
     if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (withdrawRemoval || withdrawEdit)) {

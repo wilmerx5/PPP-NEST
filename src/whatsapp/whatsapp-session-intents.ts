@@ -1241,3 +1241,27 @@ export function splitCostConditionFromIndependentAction(text: string): { conditi
   if (/[¿?;\n]/.test(action) || /\b(?:si|cuando|a menos que|siempre que)\b/.test(normalized)) return null;
   return { condition: clauses[conditionIndex], action };
 }
+
+
+/** Preserve accented affirmative sí before normalization can confuse it with conditional si. */
+export function stripCartEditWithdrawalAffirmation(text: string): string {
+  return text.replace(/^\s*(?:(?:sí|claro|dale|ok)(?:\s*[,;:]\s*|\s+)|si\s*[,;:]\s*)(?=(?:olvida|cancela|d[eé]jalo|no\s+quites)\b)/i, '');
+}
+
+/** A complete meta-message about withdrawing an edit, never the withdrawal itself. */
+export function pendingCartEditCancellationAside(text: string): 'retain' | 'question' | 'quoted' | 'conditional' | null {
+  if (stripCartEditWithdrawalAffirmation(text) !== text) return null;
+  const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(?:por favor|porfa) /, '').replace(/ (?:por favor|porfa|gracias)$/, '');
+  if (!t || t.length > 200) return null;
+  if (/^no (?:me )?(?:canceles|olvides|anules|retires) (?:ese|el) cambio$/.test(t) || /^no lo (?:canceles|anules)$/.test(t)) return 'retain';
+  if (/^(?:puedo|se puede|como puedo|es posible) cancelar (?:ese|el) cambio$/.test(t)) return 'question';
+  const withdrawal = '(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo como estaba)';
+  if (new RegExp(`^(?:que pasa|que ocurre|que haces) si (?:digo|escribo|te digo) ${withdrawal}$`).test(t) ||
+      new RegExp(`^me (?:dijeron|escribieron) ${withdrawal} pero no (?:lo )?canceles$`).test(t)) return 'quoted';
+  // No independent purchase/edit clause is silently dropped by this narrow route.
+  if (/^(?:solo |solamente )?si /.test(t) && !/\b(?:aparte|ademas|independientemente|agrega|dame|quiero|ponme)\b/.test(t) &&
+      new RegExp(`^(?:solo |solamente )?si .+ ${withdrawal}$`).test(t)) return 'conditional';
+  return null;
+}
