@@ -1,7 +1,7 @@
 {
   "date": "2026-10-17",
   "baseCommit": "e9841dab",
-  "status": "Validated on frozen source, awaiting staging deployment and real preflight",
+  "status": "Deployed to staging; real GitHub preflight passed",
   "scope": "Basic full conversations and current staging channel preflight",
   "basicJourneys": {
     "count": 8,
@@ -64,7 +64,46 @@
       "workflow_dispatch"
     ],
     "checkoutRef": "${{ github.sha }}",
-    "runtimeExecution": "not yet dispatched"
+    "runtimeExecution": "success",
+    "runUrl": "https://github.com/wilmerx5/PPP-NEST/actions/runs/39067125562",
+    "mode": "preflight",
+    "checks": [
+      {
+        "name": "authorized_context",
+        "pass": true
+      },
+      {
+        "name": "health_database",
+        "pass": true
+      },
+      {
+        "name": "staging_admin_login",
+        "pass": true
+      },
+      {
+        "name": "effective_staging_target",
+        "pass": true
+      },
+      {
+        "name": "webhook_signature_without_messages",
+        "pass": true
+      },
+      {
+        "name": "existing_empty_test_conversation",
+        "pass": true
+      },
+      {
+        "name": "current_menu_products",
+        "pass": true
+      },
+      {
+        "name": "logout",
+        "pass": true
+      }
+    ],
+    "webhookPosts": 0,
+    "executedSteps": 0,
+    "note": "27 expected steps describe the unexecuted full plan, not executed conversations. No genuine Meta inbound or outbound tested."
   },
   "apiRequests": 0,
   "budget": {
@@ -107,6 +146,31 @@
       "whatsapp": "/tmp/ppp-basic-channel-final-full-1710.log",
       "complement": "/tmp/ppp-basic-channel-final-complement-1710.log",
       "typescript": "/tmp/ppp-basic-channel-final-tsc-1710.log"
+    }
+  },
+  "codeCommit": "b20b94dba65c04c662b76b61d0a8442e5b4257ce",
+  "deployment": {
+    "verifiedAt": "2026-10-17T20:32:02.817203+00:00",
+    "head": "b20b94dba65c04c662b76b61d0a8442e5b4257ce",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:736b95cd319a74acd026f85c34f926d64d66c2d59594a202a5cd98c983ba7ce8",
+    "candidateMatches": true,
+    "compiled": {
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
     }
   }
 }
