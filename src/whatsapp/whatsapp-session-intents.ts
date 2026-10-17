@@ -219,9 +219,9 @@ export function isFreshAddressRequest(text: string): boolean {
   if (/\d/.test(t)) return false;
   if (/\b(?:calle|carrera|cra|cll|avenida|diagonal|transversal|conjunto|barrio|torre|apto)\b/.test(t)) return false;
   return (
-    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?(?:a\s+)?una\s+nueva(?:\s+direccion)?$/.test(t) ||
-    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?a\s+otra$/.test(t) ||
-    /^(?:no\s+)?(?:quiero|ponme|mejor\s+)?otra\s+direccion$/.test(t) ||
+    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?(?:a\s+)?una\s+nueva(?:\s+direccion)?$/.test(t) ||
+    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?a\s+otra$/.test(t) ||
+    /^(?:no\s+)?(?:(?:quiero|ponme|mejor|prefiero|ser[ií]a)\s+)?otra\s+direccion$/.test(t) ||
     /^(?:quiero|ponme|mejor)\s+otra\s+direccion$/.test(t) ||
     /^(?:una\s+)?direccion\s+nueva$/.test(t) ||
     /^nueva\s+direccion$/.test(t) ||

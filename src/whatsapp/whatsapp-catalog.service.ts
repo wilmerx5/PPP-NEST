@@ -6973,16 +6973,33 @@ export class WhatsappCatalogService {
     );
   }
 
+  /** "plátano maduro solo" is missing, but a menu dish named with "plátano" is the obvious offer. */
+  relatedProductsForMissingDish(label: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] {
+    const generic = new Set(['solo', 'sola', 'grande', 'pequeno', 'porcion', 'plato', 'natural', 'especial', 'normal', 'favor',
+      'dame', 'deme', 'quiero', 'para', 'algo', 'otro', 'otra', 'pero', 'como', 'bien', 'tres', 'unos', 'unas', 'porfa', 'refiero',
+      'tienes', 'tiene', 'tienen', 'hola', 'buenas', 'tardes', 'noches', 'veci', 'agregas', 'agrega', 'mejor', 'entonces']);
+    const asked = normalizeText(label).split(/\s+/).filter((token) => token.length >= 4 && !generic.has(token));
+    if (!asked.length) return [];
+    return products
+      .filter((product) => product.availableNow !== false &&
+        normalizeText(product.name).split(/\s+/).some((token) => asked.some((word) => token === word || nearDishToken(word, token))))
+      .slice(0, 3);
+  }
+
   /** Respuesta cálida cuando preguntan por algo que no está en carta. */
-  formatNotOnMenuReply(dishLabel: string, menuUrl?: string | null): string {
+  formatNotOnMenuReply(dishLabel: string, menuUrl?: string | null, products?: WhatsappCatalogProduct[]): string {
     const label = (dishLabel || '')
       .replace(/[¿?¡!.]+$/g, '')
+      .replace(/^(?:me\s+refiero\s+a(?:l)?|quiero\s+decir|o\s+sea|es\s+que)\s+/i, '')
+      .replace(/^(?:y\s+)?(?:d[aá]me|d[eé]me|quiero|me\s+das|regal[aá]me|tr[aá]eme|agr[eé]game)\s+(?:(?:un|una|unos|unas)\s+)?/i, '')
       .replace(/\s+/g, ' ')
       .trim();
     const nice = label || 'eso';
     const menu = (menuUrl || '').trim();
+    const related = this.relatedProductsForMissingDish(label, products || []);
     return (
       `Por ahora no manejamos *${nice}* 🙏\n` +
+      (related.length ? `Sí tenemos: ${related.map((p) => `*${p.name}* · ${this.formatMoney(p.price)}`).join(', ')}.\n` : '') +
       (menu
         ? `Si quieres mira el menú: ${menu}`
         : 'Si quieres escribe *menú* y te oriento con lo que sí tenemos.') +

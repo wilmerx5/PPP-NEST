@@ -179,6 +179,17 @@ type InboundCoalesceState = {
   flushPromise?: Promise<void>;
 };
 
+/** Same note said twice ("con arto limón" / "con harto limón") is kept once; distinct notes all stay. */
+function distinctNotes(...parts: Array<string | null | undefined>): string {
+  const seen = new Set<string>();
+  return parts.filter((part): part is string => {
+    const key = (part || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\barto\b/g, 'harto').replace(/\s+/g, ' ').trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join('; ');
+}
+
 @Injectable()
 export class WhatsappOrchestratorService {
   private readonly logger = new Logger(WhatsappOrchestratorService.name);
@@ -2553,7 +2564,7 @@ export class WhatsappOrchestratorService {
         !this.catalogService.searchByName(query, products).length && !this.catalogService.resolveSpokenDish(query, products) &&
         !this.catalogService.resolveStandaloneDrinkOrder(originalText, products) &&
         !this.catalogService.ambiguousFlavorDrinks(originalText, products)) {
-        await this.reply(conv, msg.waId, this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl));
+        await this.reply(conv, msg.waId, this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl, products));
         return;
       }
     }
@@ -4295,6 +4306,10 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    if (await this.tryHandleFollowUpHandlingNote(conv, msg.waId, session, originalText || text, cfg)) {
+      return;
+    }
+
     // Conditional purchases need one interpretation of the whole utterance,
     // before the deterministic multi-item shortcuts can consume a partial order.
     if (cfg.agentV1Enabled && conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
@@ -4413,9 +4428,6 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryHandleKitchenSendRequest(conv, msg.waId, session, originalText || text, cfg, products)) {
-      return;
-    }
-    if (await this.tryHandleFollowUpHandlingNote(conv, msg.waId, session, originalText || text, cfg)) {
       return;
     }
     if (await this.tryHandleCartChargeQuestion(conv, msg.waId, session, originalText || text, cfg)) {
@@ -5420,7 +5432,8 @@ export class WhatsappOrchestratorService {
       session.cart.length > 0 &&
       !session.pendingMatch &&
       !session.pendingAttribute &&
-      this.looksLikeStandaloneOrderNote(text)
+      this.looksLikeStandaloneOrderNote(text) &&
+      !this.namesAnotherMenuDish(session, originalText || text, products)
     ) {
       const applied = this.applyInlineOrderNote(session, text);
       session = applied.session;
@@ -5560,7 +5573,8 @@ export class WhatsappOrchestratorService {
         .trim();
       if (
         session.cart.length > 0 &&
-        (this.looksLikeDishTextureNote(originalText || '') || this.looksLikeDishTextureNote(text))
+        (this.looksLikeDishTextureNote(originalText || '') || this.looksLikeDishTextureNote(text)) &&
+        !this.namesAnotherMenuDish(session, originalText || text, products)
       ) {
         const applied = this.applyInlineOrderNote(session, applyLocalGlossary(originalText || text));
         session = applied.session;
@@ -5625,7 +5639,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           msg.waId,
-          this.catalogService.formatNotOnMenuReply(dishQuery, cfg.menuUrl),
+          this.catalogService.formatNotOnMenuReply(dishQuery, cfg.menuUrl, products),
         );
         return;
       }
@@ -14609,9 +14623,11 @@ export class WhatsappOrchestratorService {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return false;
     }
+    const spoken = text;
     text = applyLocalGlossary(text);
     if (isCartItemReplacementIntent(text)) return false;
     if (this.catalogService.looksLikeExplicitAddProductRequest(text)) return false;
+    if (this.namesAnotherMenuDish(session, spoken, products)) return false;
     if (intent !== 'side_note' && !this.looksLikeStandaloneOrderNote(text)) {
       return false;
     }
@@ -15078,6 +15094,20 @@ export class WhatsappOrchestratorService {
       `Listo, dejé solo eso ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`,
     );
     return true;
+  }
+
+  /** "Me refiero a plátano maduro sin queso" names another menu dish, not a note for the cart. */
+  private namesAnotherMenuDish(session: WhatsappSessionData, text: string, products: MenuProduct[]): boolean {
+    const lead = /^(?:no\s*,?\s*)?(?:y\s+)?(?:me\s+refiero\s+a(?:l)?|quiero\s+decir|o\s+sea|lo\s+que\s+quiero\s+es|quiero\s+(?:un|una)|d[aá]me\s+(?:un|una)|me\s+das\s+(?:un|una))\s+/i.exec((text || '').trim());
+    if (!lead) return false;
+    const named = (text || '').trim().slice(lead[0].length).split(/\b(?:sin|con)\b/i)[0];
+    return this.catalogService.relatedProductsForMissingDish(named, products)
+      .some((product) => !session.cart.some((line) => line.productId === product.id));
+  }
+
+  private relatedOfferLine(missing: string, products: MenuProduct[]): string {
+    const related = this.catalogService.relatedProductsForMissingDish(missing, products);
+    return related.length ? `\nSí tenemos: ${related.map((p) => `*${p.name}* · ${this.catalogService.formatMoney(p.price)}`).join(', ')}.` : '';
   }
 
   /** "Me lo mandas en dos cajas" after ordering notes the dish already in the cart. */
@@ -19842,7 +19872,7 @@ export class WhatsappOrchestratorService {
         await this.reply(
           conv,
           waId,
-          this.catalogService.formatNotOnMenuReply(dishHint, cfg.menuUrl),
+          this.catalogService.formatNotOnMenuReply(dishHint, cfg.menuUrl, products),
         );
         return true;
       }
@@ -21224,11 +21254,11 @@ export class WhatsappOrchestratorService {
       const noteSource = lineSource;
       const lineNote =
         item.note ||
-        [peelSupportedCookingTerm(noteSource, product)?.note,
+        distinctNotes(peelSupportedCookingTerm(noteSource, product)?.note,
           this.catalogService.extractProductModificationNote(peelSupportedCookingTerm(noteSource, product)?.productText || noteSource),
           interpretProductNote(noteSource, [product])?.note,
           condimentIntensityNote(noteSource),
-          noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=(?:\s+(?:por favor|porfa|gracias))?(?:[,;.!]|$))/iu)?.[0]].filter(Boolean).join('; ') ||
+          noteSource.match(/\b(?:con\s+)?(?:harto|arto|mucho|bastante)\s+[\p{L}]+(?:\s+[\p{L}]+){0,2}(?=(?:\s+(?:por favor|porfa|gracias))?(?:[,;.!]|$))/iu)?.[0]) ||
         (!sameSkuSiblings && !hasOwnedSource && sourceText && sourceText !== noteSource
           ? this.catalogService.extractProductModificationNote(sourceText)
           : undefined) ||
@@ -21421,7 +21451,8 @@ export class WhatsappOrchestratorService {
       multi.needsAttributes.length > 0 && multi.ambiguous.length === 0;
     session = {...session,recentUnavailableOrder: multi.unresolved.length ? {items:[...multi.unresolved],expiresAt:Date.now()+15*60*1000} : undefined};
     const missNote = multi.unresolved.length
-      ? `Por ahora no manejamos: _${multi.unresolved.map((item) => item.replace(/^(?:otr[oa]|un[oa]?)\s+/i, '')).join(' · ')}_.\n\n`
+      ? `Por ahora no manejamos: _${multi.unresolved.map((item) => item.replace(/^(?:otr[oa]|un[oa]?)\s+/i, '')).join(' · ')}_.` +
+        this.relatedOfferLine(multi.unresolved.join(' '), products) + '\n\n'
       : '';
 
     const drinkFirstFoodPending =

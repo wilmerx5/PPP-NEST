@@ -17196,3 +17196,60 @@ describe('a drink ordered "aparte" and a handling note sent after the dish', () 
     }
   }
 });
+
+describe('real staging chats: new address, only-count notes, related offers, packing remarks', () => {
+  const fictional = [
+    { id: 32201, code: 32201, name: 'Medio Pollo Asado', price: 24000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Arepas', options: ['Blancas', 'sin arepas'] }] },
+    { id: 32202, code: 32202, name: 'Tilapia', price: 27000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Al Vapor'] }] },
+    { id: 32203, code: 32203, name: 'Yuca Con Hogao', price: 7000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const menus = [
+    { label: 'PPP', menu: products, half: 'medio Pollo broaster', halfId: 5, fish: 'una mojarra', fishId: 14, missing: 'una pechuga apanada', related: 'Pechuga',
+      side: 'platano maduro solo', sideName: 'Platano Con queso y Bocadillo', sideNote: 'platano maduro sin queso ni bicadillo', main: 'un cuarto de pollo frito', mainId: 6, dish: 'un bagre frito', dishId: 19 },
+    { label: 'fictional', menu: fictional, half: 'medio pollo asado', halfId: 32201, fish: 'una tilapia', fishId: 32202, missing: 'una tilapia rellena de cangrejo', related: 'Tilapia',
+      side: 'yuca sola', sideName: 'Yuca Con Hogao', sideNote: 'yuca sin hogao', main: 'medio pollo asado', mainId: 32201, dish: 'una tilapia frita', dishId: 32202 },
+  ];
+  for (const enabled of [false, true]) for (const m of menus) {
+    it(`${m.label} "Quiero una Nueva" at the address prompt asks for the new address, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const product = (m.menu as any[]).find((p) => p.id === m.fishId);
+      h.conv.sessionData.cart = [{ productId: product.id, code: product.id, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, lastDeliveryAddress: 'Altavista' });
+      h.conv.customerName = 'Yordan'; h.conv.state = 'awaiting_address';
+      const reply = await h.sendQueued('Quiero una Nueva');
+      expect(reply).not.toMatch(/no manejamos/i);
+      expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+      expect(h.conv.sessionData.address).not.toBe('Altavista');
+    });
+    it(`${m.label} "<half> sin arepas solo dos mieles" adds it with the note, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(`Hola buenas tardes me das ${m.half} sin arepas solo dos mieles`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.halfId, qty: 1, note: expect.stringMatching(/solo dos mieles/i) })]);
+    });
+    it(`${m.label} a repeated condiment is noted once and the missing dish gets a related offer, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const reply = await h.sendQueued(`me das ${m.fish} con arto Limon y ${m.missing}`);
+      const rows = h.cartRows();
+      expect(rows).toEqual([expect.objectContaining({ id: m.fishId })]);
+      expect(rows[0].note?.match(/lim[oó]n/gi)).toHaveLength(1);
+      if (!enabled) expect(reply).toMatch(new RegExp(`S[ií] tenemos:.*${m.related}`, 'i'));
+    });
+    it(`${m.label} a missing side offers the related dish and its follow-up is not a note on another line, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(m.main);
+      const before = h.cartRows();
+      const offer = await h.sendQueued(`Y Dame Un ${m.side}`);
+      if (!enabled) expect(offer).toContain(m.sideName);
+      await h.sendQueued(`Me refiero a ${m.sideNote}`);
+      expect(h.cartRows().filter((r: any) => r.id === m.mainId)).toEqual(before.filter((r: any) => r.id === m.mainId));
+    });
+    it(`${m.label} a packing remark with a typo and a payment aside notes the dish, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(m.dish);
+      await h.sendQueued('No puedes dividido  en dos cahas Al empacar yo Pago Si hay algun excedente');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.dishId, qty: 1, note: expect.stringMatching(/^dividido en dos cajas al empacar/i) })]);
+    });
+  }
+});

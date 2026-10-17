@@ -1,4 +1,4 @@
-const CONTAINERS = '(?:cajas?|partes|porciones|empaques?|bolsas?|platos?)';
+const CONTAINERS = '(?:ca[jh]as?|partes|porciones|empaques?|bolsas?|platos?)';
 const SPLIT = `(?:dos|tres|2|3)\\s+${CONTAINERS}`;
 const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por\\s+separado|aparte|en\\s+(?:dos|tres|2|3)(?:\\s+${CONTAINERS})?))?|por\\s+separado|en\\s+${SPLIT}|bien\\s+tostad[oa]s?|tostadit[oa]s?|(?:bien\\s+|muy\\s+)?crocantes?)`;
 
@@ -12,12 +12,13 @@ export function splitKitchenPreference(source: string): {productText: string; no
   if (!match || !match.index) return null;
   const productText = source.slice(0, match.index).replace(/[\s,.]+$/, '').trim();
   const note = source.slice(match.index).replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i, '').replace(/[.!]+$/, '').trim();
-  if (!productText || note.length > 180 ||
-    /\d|\b(?:agrega|quiero|dame|otro|otra|un|una|dos|tres|cuatro)\b/i.test(note.replace(new RegExp(handling, 'giu'), ' '))) return null;
   const phrase = '[\\p{L}]+(?:\\s+[\\p{L}]+){0,2}';
+  const onlyCount = `solo\\s+(?:un|una|dos|tres|\\d)\\s+${phrase}$`;
+  if (!productText || note.length > 180 ||
+    /\d|\b(?:agrega|quiero|dame|otro|otra|un|una|dos|tres|cuatro)\b/i.test(note.replace(new RegExp(handling, 'giu'), ' ').replace(new RegExp(`(?:,\\s*|\\s+y\\s+|\\s+)${onlyCount}`, 'iu'), ''))) return null;
   const packaging = `(?:bien\\s+empacad[oa]s?|en\\s+(?:cajas?|bolsas?|empaques?)\\s+separad[oa]s?|${handling})`;
   const sinPhrase = `(?:sin\\s+${phrase}|${packaging})`;
-  const preference = new RegExp(`^${sinPhrase}(?:(?:,\\s*|\\s+y\\s+)${sinPhrase})*(?:(?:,\\s*|\\s+y\\s+)(?:en\\s+vez\\s+de\\s+${phrase}\\s+)?(?:m[aá]s|h?arto|much[oa]|bastante|poc[oa]|extra|con\\s+(?:m[aá]s|extra|h?arto|much[oa]|bastante|poc[oa]))\\s+${phrase})?$`, 'iu');
+  const preference = new RegExp(`^${sinPhrase}(?:(?:,\\s*|\\s+y\\s+)${sinPhrase})*(?:(?:,\\s*|\\s+y\\s+)(?:en\\s+vez\\s+de\\s+${phrase}\\s+)?(?:m[aá]s|h?arto|much[oa]|bastante|poc[oa]|extra|con\\s+(?:m[aá]s|extra|h?arto|much[oa]|bastante|poc[oa]))\\s+${phrase})?(?:(?:,\\s*|\\s+y\\s+|\\s+)${onlyCount.slice(0, -1)})?$`, 'iu');
   return preference.test(note) ? {productText, note:note.replace(/\s+y\s+(?=(?:m[aá]s|con\s+))/ig, ', ')} : null;
 }
 
@@ -35,5 +36,10 @@ export function followUpHandlingNote(source: string): string | null {
     .replace(/^(divid|part|cort|empac|serv)ir(?:me)?(?:lo|la|los|las)?(?![\p{L}])/iu, (_whole, stem: string) => `${stem}ido`)
     .replace(/\s+(?:por\s+favor|porfa|gracias)$/i, '')
     .trim();
-  return new RegExp(`^${HANDLING}$`, 'iu').test(text) ? text : null;
+  const lead = new RegExp(`^${HANDLING}(?![\\p{L}])`, 'iu').exec(text);
+  if (!lead) return null;
+  // A short packing remark may follow ("al empacar, yo pago el excedente"); another item may not.
+  const tail = text.slice(lead[0].length).trim();
+  if (tail && (tail.length > 70 || /\d|\b(?:un|una|unos|unas|otr[oa]s?|tres|cuatro|cinco|agrega\w*|d[aá]me|quiero)\b/i.test(tail))) return null;
+  return text.replace(/\bcahas?\b/gi, (word) => word.replace(/h/i, 'j'));
 }
