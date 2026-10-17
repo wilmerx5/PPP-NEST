@@ -17155,3 +17155,44 @@ describe('real staging chats: two dishes, handling notes, address lead-ins, lunc
     });
   }
 });
+
+describe('a drink ordered "aparte" and a handling note sent after the dish', () => {
+  const fictional = [
+    { id: 32101, code: 32101, name: 'Almuerzo Con Res', price: 22000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Bebida', options: ['Agua Panela', 'Jugo De Mora'] }] },
+    { id: 32102, code: 32102, name: 'Jugo De Mora', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 32103, code: 32103, name: 'Trucha', price: 28000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Al Ajillo'] }] },
+  ];
+  const menus = [
+    { label: 'PPP', menu: products, lunch: 'un ejecutivo con pollo frito', lunchId: 22, drinkAttr: 'Bebida:Colombiana', drink: 'una limonada', drinkId: 37, dish: 'un bagre frito', dishId: 19 },
+    { label: 'fictional', menu: fictional, lunch: 'un almuerzo con res', lunchId: 32101, drinkAttr: 'Bebida:Agua Panela', drink: 'un jugo de mora', drinkId: 32102, dish: 'una trucha frita', dishId: 32103 },
+  ];
+  for (const enabled of [false, true]) for (const m of menus) {
+    it(`${m.label} "<lunch> y a parte <drink>" keeps the included drink, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(`${m.lunch} y a parte ${m.drink}`);
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: m.lunchId, attrs: expect.arrayContaining([m.drinkAttr]) }),
+        expect.objectContaining({ id: m.drinkId, qty: 1 })]));
+    });
+    it(`${m.label} a later "y a parte <drink>" adds it separately, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(m.lunch);
+      const reply = await h.sendQueued(`y a parte ${m.drink}`);
+      expect(h.cartRows()).toEqual([
+        expect.objectContaining({ id: m.lunchId, attrs: expect.arrayContaining([m.drinkAttr]) }),
+        expect.objectContaining({ id: m.drinkId, qty: 1 })]);
+      expect(reply).not.toMatch(/No tenemos/i);
+    });
+    for (const [text, note] of [['No puedes dividido en dos cajas por favor', 'dividido en dos cajas'], ['¿me lo puedes mandar en dos cajas?', 'en dos cajas'],
+      ['que venga bien tostado', 'bien tostado'], ['partirlo en dos porfa', 'partido en dos']] as const) {
+      it(`${m.label} "${text}" notes the dish already ordered, agent ${enabled}`, async () => {
+        const h = harness(m.menu as any, enabled);
+        await h.sendQueued(m.dish);
+        await h.sendQueued(text);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.dishId, qty: 1, note })]);
+      });
+    }
+  }
+});

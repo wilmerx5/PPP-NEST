@@ -3,7 +3,7 @@ import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './wh
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
-import {splitKitchenPreference} from './whatsapp-kitchen-preference';
+import {followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { condimentIntensityNote, interpretProductNote } from './whatsapp-product-intent';
@@ -937,7 +937,8 @@ export class WhatsappOrchestratorService {
     text = normalizeSpokenOrderCourtesy(text);
     // "y agrégale / ponle una limonada" adds to the order, like "agrégame".
     if (!/\b(?:unidad(?:es)?|a\s+es[ea]s?|al\s+mismo|a\s+la\s+misma)\b/i.test(text)) text = text
-      .replace(/^(?:y\s+)?(?:agr[eé]gale|añ[aá]dele|anadele|s[uú]male|incl[uú]yele)\s+(?=(?:un|una|unos|unas|el|la|los|las|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i, 'agrégame ')
+      .replace(/^(?:y\s+)?a\s*parte\s+((?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s.+?)[.!\s]*$/i, 'agrégame $1 aparte')
+      .replace(/^(?:y\s+)?(?:agr[eé]gale|añ[aá]dele|anadele|s[uú]male|incl[uú]yele|adem[aá]s|tambi[eé]n)\s+(?=(?:un|una|unos|unas|el|la|los|las|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i, 'agrégame ')
       .replace(/^(?:y\s+)?(?:p[oó]nle|m[eé]tele|[eé]chale)\s+(?=(?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s)/i, 'agrégame ');
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
@@ -4412,6 +4413,9 @@ export class WhatsappOrchestratorService {
       return;
     }
     if (await this.tryHandleKitchenSendRequest(conv, msg.waId, session, originalText || text, cfg, products)) {
+      return;
+    }
+    if (await this.tryHandleFollowUpHandlingNote(conv, msg.waId, session, originalText || text, cfg)) {
       return;
     }
     if (await this.tryHandleCartChargeQuestion(conv, msg.waId, session, originalText || text, cfg)) {
@@ -15076,6 +15080,29 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** "Me lo mandas en dos cajas" after ordering notes the dish already in the cart. */
+  private async tryHandleFollowUpHandlingNote(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (conv.state !== 'building_cart' || !session.cart.length || session.pendingMatch || session.pendingAttribute ||
+      session.pendingMultiOrder) return false;
+    const note = followUpHandlingNote(text);
+    if (!note) return false;
+    const index = session.cart.length - 1;
+    const line = session.cart[index];
+    const merged = line.note && this.normalizeForMatch(line.note).includes(this.normalizeForMatch(note)) ? line.note :
+      [line.note, note].filter(Boolean).join('; ');
+    const next: WhatsappSessionData = { ...session, cart: session.cart.map((item, i) => i === index ? { ...item, note: merged } : item) };
+    await this.conversationService.saveSession(conv, next, 'building_cart');
+    await this.reply(conv, waId,
+      `Listo, le anoté a *${line.name}*: _${note}_ ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`);
+    return true;
+  }
+
   /** "Y envias mucho ají, por favor" queda en la nota, no en el nombre. */
   private async tryHandleKitchenSendRequest(
     conv: WhatsappConversation,
@@ -21149,7 +21176,10 @@ export class WhatsappOrchestratorService {
       // Two lines of the same SKU each own their clause. The whole message would copy the first quantity and drop the second note.
       const sameSkuSiblings = pending.confident.filter(c => c.productId === product.id).length > 1;
       const lineSource = sameSkuSiblings ? item.segment : (hasOwnedSource ? ownedSource : item.segment);
-      const attrSource = sameSkuSiblings || hasOwnedSource ? lineSource : [item.segment, sourceText].filter(Boolean).join(' ');
+      // A sibling's clause ("y aparte una limonada") is its own item, not this dish's choice.
+      const unownedSource = pending.confident.reduce((rest, other) => other === item || !other.segment ? rest :
+        rest.replace(other.segment, ' '), sourceText || '').replace(/\s+/g, ' ').trim();
+      const attrSource = sameSkuSiblings || hasOwnedSource ? lineSource : [item.segment, unownedSource].filter(Boolean).join(' ');
       const qty =
         sourceText &&
         this.catalogService.askedForOneComboEach(sourceText) &&
