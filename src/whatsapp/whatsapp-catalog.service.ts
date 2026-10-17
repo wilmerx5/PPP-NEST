@@ -1442,6 +1442,15 @@ export class WhatsappCatalogService {
     return t || text;
   }
 
+  /** "¿Qué tiene de almuerzo?" asks for the menu's lunch dishes, when it has any. */
+  lunchInquiryProducts(text: string, products: WhatsappCatalogProduct[]): WhatsappCatalogProduct[] {
+    const q = normalizeText(text);
+    if (!/\b(?:almuerzos?|almorzar|corrientazos?)\b/.test(q)) return [];
+    if (!/[?¿]|\b(?:que|cual|cuales|hay|tiene|tienen|tienes|manejan|ofrecen|para hoy|de hoy|quiero|algo)\b/.test(q)) return [];
+    return products.filter((product) => product.availableNow !== false &&
+      /\b(?:ejecutivos?|almuerzos?|menu del dia|corrientazos?)\b/.test(normalizeText(product.name)));
+  }
+
   buildMenuExploreIntro(text: string): string {
     const q = normalizeText(text);
     if (/\balmuerzo\b/.test(q)) {
@@ -4193,11 +4202,19 @@ export class WhatsappCatalogService {
   orderKitchenNote(text: string, product: { id: number; name: string; categoryName?: string }): string | undefined {
     // The dish is already chosen: "dame un bagre con harto limón" is not an add-a-side request.
     text = (text || '').replace(LEADING_ORDER_VERB, '');
+    // "Plato Con Res Asada": the name's own "con" clause is not a modification.
+    let modificationText = text;
+    const nameTokens = normalizeText(product.name).split(/\s+/).filter(Boolean);
+    if (nameTokens.some((token) => /^(?:con|sin|mas)$/.test(token))) {
+      const loose = (token: string) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/a/g, '[aá]').replace(/e/g, '[eé]').replace(/i/g, '[ií]').replace(/o/g, '[oó]').replace(/u/g, '[uúü]').replace(/n/g, '[nñ]');
+      modificationText = text.replace(new RegExp(`(?<![\\p{L}])${nameTokens.map(loose).join('\\s+')}(?![\\p{L}])`, 'iu'), 'plato').trim();
+    }
     const peeled = peelSupportedCookingTerm(text, product);
     return joinKitchenNotes(
       peeled?.note,
       interpretProductNote(text, [product])?.note,
-      this.extractProductModificationNote(text),
+      this.extractProductModificationNote(modificationText),
       condimentIntensityNote(text),
     );
   }
@@ -6943,7 +6960,10 @@ export class WhatsappCatalogService {
     // A formatter must not override the message's purchase/query classification.
     // In particular, an availability condition inside an order is not the whole intent.
     if (!this.isAvailabilityInquiry(text)) return null;
-    const subject = this.availabilitySubject(text);
+    const subject = this.availabilitySubject(text)
+      ?.replace(/^(?:(?:ning[uú]n|ninguna|alg[uú]n|alguna|un|una|otro|otra)\s+)?(?:(?:plato|platos|producto|productos|comida|cosa|opci[oó]n)\s+)?(?:(?:con|de)\s+)?/i, '')
+      .replace(/\s+(?:para|de)\s+hoy$/i, '')
+      .trim();
     if (!subject || this.menuMentionsSubject(subject, products)) return null;
     const menu = (menuUrl || '').trim();
     return (
@@ -7726,6 +7746,8 @@ export class WhatsappCatalogService {
     segment: string,
     products: WhatsappCatalogProduct[],
   ): WhatsappCatalogProduct[] | null {
+    const said = normalizeText(segment).split(/\s+/);
+    if (said.some((token) => COOKING_STYLE_TOKENS.has(token))) return null;
     const family = this.findProductVariantFamily(segment, products);
     if (!family || family.variants.length < 2) return null;
     if (this.pickVariantFromFamilyText(segment, family)) return null;
@@ -8883,7 +8905,10 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
-    const parts = this.splitMultiProductSegmentsRaw(text);
+    const raw = this.splitMultiProductSegmentsRaw(text);
+    const addVerbOnly = /^(?:y\s+)?(?:agrega(?:le|me|r)?|agregue(?:le|me)?|pon(?:le|me|ga|gale|game)?|suma(?:le|me)?|anade(?:le|me)?|incluye(?:le|me)?|mete(?:le|me)?|echa(?:le|me)?)(?:\s+(?:tambien|ademas|porfa|por favor))*$/;
+    const kept = raw.filter((part) => !addVerbOnly.test(normalizeText(part)));
+    const parts = kept.length ? kept : raw;
     if (!products?.length || parts.length < 2) return parts;
     // "dos cola y pola": the "y" belongs to the catalog name "Cola Y Pola".
     const conjoined = products
@@ -8906,10 +8931,19 @@ export class WhatsappCatalogService {
   private splitMultiProductSegmentsRaw(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
     const namedOther = 'otr[oa]\\s+(?!(?:de|con|sin|igual|mas|más|para|por|asi|así)\\b)[a-záéíóúñ]{3,}';
-    const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
-    const quantityLead = new RegExp(`^(?:(?:buenas?\\s+(?:tardes|noches|dias)|hola)[, ]*)?(?:(?:por\\s+favor|porfa|quiero|pedir|agrega)\\s+)*(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther})`, 'i');
+    const separately = '(?:y\\s+)?(?:a\\s*parte|adem[aá]s|tambi[eé]n)\\s+(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)';
+    const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)|,?\\s+${separately}|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
+    const greeting = '(?:(?:buenas?\\s+(?:tardes|noches|dias)|hola|veci|vecino|vecina)[, ]*)*';
+    const askVerb = '(?:me\\s+(?:das|da|regalas|regala|envias|envías|mandas|manda|traes)|d[aá]me|regal[aá]me|env[ií]ame|m[aá]ndame)';
+    const quantityLead = new RegExp(`^${greeting}(?:(?:por\\s+favor|porfa|quiero|pedir|agrega|${askVerb})\\s+)*(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther})`, 'i');
     if (explicitClauses.length >= 2 && explicitClauses.every(clause => quantityLead.test(clause) && !/(?:,\s*|\by\s+)(?:medio|media)\b/i.test(clause) && this.countQuantityMentions(splitTrailingEmbeddedAddress(clause)?.productText || clause) <= 1)) {
-      return explicitClauses.map(clause => clause.replace(/^(?:buenas?\s+(?:tardes|noches|dias)|hola)[, ]*/i, '').trim());
+      return explicitClauses.map(clause => clause.replace(new RegExp(`^${greeting}(?:${askVerb}\\s+)?`, 'i'), '').trim());
+    }
+    const apart = new RegExp(`^(.{4,}?),?\\s+${separately}(?!(?:un|una)\\s+(?:poc|poquit))(.+)$`, 'i').exec((text || '').trim());
+    if (apart && !/[\n;]/.test(text || '')) {
+      const left = this.splitMultiProductSegmentsRaw(apart[1]);
+      const right = this.splitMultiProductSegmentsRaw(apart[2]);
+      if (left.length && right.length) return [...left, ...right];
     }
     // Un plato + "sin X más Y" → un solo segmento.
     // Varias burbujas de un menú ("menu vegetariano" / "lentejas sin ensalada")

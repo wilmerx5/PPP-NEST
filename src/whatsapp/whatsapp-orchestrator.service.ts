@@ -596,6 +596,24 @@ export class WhatsappOrchestratorService {
     return { query: list.query, candidates: list.candidates };
   }
 
+  private async tryAnswerLunchInquiry(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): Promise<boolean> {
+    if (conv.state !== 'building_cart' && conv.state !== 'greeting' && conv.state) return false;
+    const lunch = this.catalogService.lunchInquiryProducts(text, products);
+    if (!lunch.length) return false;
+    await this.conversationService.saveSession(conv, {
+      ...session,
+      pendingMatch: { query: 'almuerzo', candidates: lunch, intent: 'order' },
+    }, 'building_cart');
+    await this.reply(conv, waId, this.catalogService.formatCategoryBrowseReply({ categoryName: 'Almuerzo', products: lunch }));
+    return true;
+  }
+
   /** The summary recalled an unpicked list: a row picks from it, a decline drops it. */
   private async tryAnswerRecalledPick(
     conv: WhatsappConversation,
@@ -917,6 +935,10 @@ export class WhatsappOrchestratorService {
         .replace(/\s+y\s+la\s+/gi, ' y una ');
     }
     text = normalizeSpokenOrderCourtesy(text);
+    // "y agrégale / ponle una limonada" adds to the order, like "agrégame".
+    if (!/\b(?:unidad(?:es)?|a\s+es[ea]s?|al\s+mismo|a\s+la\s+misma)\b/i.test(text)) text = text
+      .replace(/^(?:y\s+)?(?:agr[eé]gale|añ[aá]dele|anadele|s[uú]male|incl[uú]yele)\s+(?=(?:un|una|unos|unas|el|la|los|las|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\b)/i, 'agrégame ')
+      .replace(/^(?:y\s+)?(?:p[oó]nle|m[eé]tele|[eé]chale)\s+(?=(?:un|una|unos|unas|otr[oa]s?|\d+|dos|tres|cuatro|cinco)\s)/i, 'agrégame ');
     if (conv.state === 'awaiting_final_confirm' && await this.tryAnswerRecalledPick(conv, msg.waId, text, cfg)) return;
     // The summary asks "Si está bien, escribe confirmar"; a whole yes answers it.
     if (conv.state === 'awaiting_final_confirm' && isFinalConfirmAffirmation(text)) {
@@ -2313,7 +2335,7 @@ export class WhatsappOrchestratorService {
 
     // Catalog identity can omit a presentation only when one matching compound exists.
     const splitsSameSkuPair = /\b(?:uno|una)\s+con\s+.+\by\s+(?:el|la)\s+otr[oa]\s+con\s+/i.test(text);
-    const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|adicional)\s+(?:un|una|dos|tres|\d+)\b/i.test(text)
+    const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|\d+)\b/i.test(text)
       ? this.catalogService.uniqueProductBySpokenTokens(text,products.filter(product => /\bcombo\b/i.test(text) || !/\bcombo\b/i.test(product.name))) : null;
     if (businessOpenForBot && compoundVocabulary && compoundVocabulary.hasAttributes && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isPriceInquiryIntent(text) && !this.catalogService.isAvailabilityInquiry(text) &&
@@ -2329,7 +2351,7 @@ export class WhatsappOrchestratorService {
       (this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
         hostedMeal?.product.id === namedMeal.id && this.catalogService.findAllProductsEmbeddedInMessage(text,products).filter(product => !this.catalogService.isLikelyDrinkProduct(product)).length === 1) &&
       !/\by\s+(?:un|una|otro|otra|dos|tres|\d+)\b/i.test(text) &&
-      !/\b(?:aparte|adicional|extra|por separado)\b/i.test(text) &&
+      !/\b(?:aparte|a parte|adicional|extra|por separado)\b/i.test(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isProductDescriptionInquiry(text)) {
       if (await this.handleProductWithVariants(conv, msg.waId, session, namedMeal, text, cfg, this.catalogService.extractProductModificationNote(text) || undefined)) return;
@@ -3880,9 +3902,15 @@ export class WhatsappOrchestratorService {
       }
       if (text.length >= 6) {
         const spokenAddress = this.stripRejectedAddressPreface(this.rewriteCadaAsCarrera(text));
-        const addrHint = (this.extractDeliveryTail(spokenAddress) || spokenAddress.trim()).replace(/^la\s+direcci[oó]n\s+(?:es\s+)?(?:en|a)\s+/i,'');
-        if (!this.isPlausibleDeliveryAddress(addrHint) && /^(?:almac[eé]n|boutique|oficina|tienda|local|bodega|edificio)\s+\p{L}[\p{L}\s.-]{2,70}$/iu.test(addrHint)) {
-          session = this.withDeliveryAddress({...session,fulfillmentChosen:true},addrHint);
+        let addrHint = (this.extractDeliveryTail(spokenAddress) || spokenAddress.trim()).replace(/^la\s+direcci[oó]n\s+(?:es\s+)?(?:en|a)\s+/i,'');
+        const placeName = this.normalizeDeliveryAddress(addrHint).replace(/^para\s+(?:el\s+|la\s+)?/i, '').trim();
+        const namesPlace = !this.isPlausibleDeliveryAddress(addrHint) && /^\p{L}[\p{L}\s.'-]{2,60}$/u.test(placeName) &&
+          placeName.split(/\s+/).length <= 5 && !isFreshAddressRequest(text) && !this.looksLikeFoodNotAddress(placeName) &&
+          !this.catalogService.findProductEmbeddedInMessage(placeName, products) &&
+          !/^(?:no|si|sí|ok|nueva|otra|ninguna|nada|gracias|hola|ya|listo|espera|un momento)\b/i.test(placeName) && !/[?¿]/.test(text);
+        if (namesPlace) addrHint = placeName;
+        if (!this.isPlausibleDeliveryAddress(addrHint) && (namesPlace || /^(?:almac[eé]n|boutique|oficina|tienda|local|bodega|edificio)\s+\p{L}[\p{L}\s.-]{2,70}$/iu.test(addrHint))) {
+          session = this.withDeliveryAddress({...session,fulfillmentChosen:true,address:undefined,addressConfirmed:false},addrHint);
           session = {...session,addressConfirmed:false,deliveryFeeCalculated:undefined,deliveryDistanceKm:undefined,deliveryLat:null,deliveryLng:null};
           await this.conversationService.saveSession(conv,session,'awaiting_address');
           await this.reply(conv,msg.waId,`Anoté la referencia: _${addrHint}_. ¿Puedes darme la calle/carrera o enviar la ubicación para confirmar el destino?`);
@@ -4383,7 +4411,7 @@ export class WhatsappOrchestratorService {
     ) {
       return;
     }
-    if (await this.tryHandleKitchenSendRequest(conv, msg.waId, session, originalText || text, cfg)) {
+    if (await this.tryHandleKitchenSendRequest(conv, msg.waId, session, originalText || text, cfg, products)) {
       return;
     }
     if (await this.tryHandleCartChargeQuestion(conv, msg.waId, session, originalText || text, cfg)) {
@@ -4542,6 +4570,9 @@ export class WhatsappOrchestratorService {
     ) {
       return;
     }
+
+    if (!session.pendingAttribute && !session.pendingMultiOrder &&
+      await this.tryAnswerLunchInquiry(conv, msg.waId, session, originalText || text, products)) return;
 
     // "thank you / do you have beans?" no es un pedido: no dejar que el modelo diga “¿Cuál prefieres?”
     if (
@@ -6792,8 +6823,9 @@ export class WhatsappOrchestratorService {
       opts?.segment ||
       pm?.needsAttributes?.find((n) => n.productId === product.id)?.segment ||
       pm?.confident?.find((n) => n.productId === product.id)?.segment;
-    const sourceText = this.parseCompoundOrderMessage(opts?.sourceText || segment || session.pendingMatch?.query || '').productText;
-    const quantitySegment = segment ? this.parseCompoundOrderMessage(segment).productText : sourceText;
+    const withoutKitchenNote = (value: string) => splitKitchenPreference(value)?.productText || value;
+    const sourceText = withoutKitchenNote(this.parseCompoundOrderMessage(opts?.sourceText || segment || session.pendingMatch?.query || '').productText);
+    const quantitySegment = segment ? withoutKitchenNote(this.parseCompoundOrderMessage(segment).productText) : sourceText;
 
     if (quantitySegment || sourceText) {
       const qty = Math.max(this.quantityForMultiSegment(quantitySegment || sourceText, product.name, sourceText),
@@ -15051,8 +15083,10 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     text: string,
     cfg: EffectiveWhatsappConfig,
+    products: MenuProduct[] = [],
   ): Promise<boolean> {
     if (!session.cart.length || !looksLikeKitchenSendRequest(text)) return false;
+    if (/\b(?:un|una|otr[oa])\s+\p{L}/iu.test(text) && this.catalogService.findProductEmbeddedInMessage(text, products)) return false;
     const note = text
       .replace(/^(y\s+)/i, '')
       .replace(/[,.]?\s*por favor[\s!.?]*$/i, '')
@@ -15649,6 +15683,8 @@ export class WhatsappOrchestratorService {
         )
         .replace(/^estoy\s+ubicad[oa]\s+en\s+(?:el\s+|la\s+)?/i, '')
         .replace(/^(?:vivo|vivimos)\s+en\s+(?:el\s+|la\s+)?/i, '')
+        .replace(/^(?:env[ií]a|m[aá]nda|ll[eé]va|tr[aá]e)(?:lo|la|los|las|melo|mela|melos|melas)?\s+(?:a\s+la|al|a|para\s+(?:el|la)|para|en\s+(?:el|la)|en)\s+/i, '')
+        .replace(/^(?:ser[ií]a|es)\s+(?=(?:para|al|a|en)\s+)/i, '')
         .trim();
       if (next === t) break;
       t = next;
@@ -18719,6 +18755,7 @@ export class WhatsappOrchestratorService {
         );
         return true;
       }
+      if (await this.tryAnswerLunchInquiry(conv, waId, session, text, products)) return true;
       if (this.catalogService.isMenuExploreIntent(text, products)) {
         const intro = this.catalogService.buildMenuExploreIntro(text);
         const overview = this.catalogService.formatMenuCategoryOverview(products, {

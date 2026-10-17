@@ -17055,3 +17055,103 @@ describe('reusing the saved address after "¿misma dirección o nueva?"', () => 
     }
   }
 });
+
+describe('real staging chats: two dishes, handling notes, address lead-ins, lunch', () => {
+  const fictional = [
+    { id: 32001, code: 32001, name: 'Plato Con Res Asada', price: 21000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Corte', options: ['Costilla', 'Lomo'] }] },
+    { id: 32002, code: 32002, name: 'Menu Del Dia Con Res', price: 19000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 32003, code: 32003, name: 'Trucha', price: 28000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Preparacion', options: ['Frita', 'Al Ajillo'] }] },
+    { id: 32004, code: 32004, name: 'Jugo De Maracuya', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const menus = [
+    { label: 'PPP', menu: products, first: 'Bandeja con pollo frito pierna pernil', firstId: 15, second: 'un ejecutivo con pollo frito', secondId: 22,
+      fish: 'una mojarra frita', fishId: 14, handled: 'bagre frito', handledId: 19, lunchIds: [18, 22], drink: 'una limonada', drinkId: 37 },
+    { label: 'fictional', menu: fictional, first: 'Plato con res asada costilla', firstId: 32001, second: 'un menu del dia con res', secondId: 32002,
+      fish: 'una trucha frita', fishId: 32003, handled: 'trucha frita', handledId: 32003, lunchIds: [32002], drink: 'un jugo de maracuya', drinkId: 32004 },
+  ];
+  for (const enabled of [false, true]) for (const m of menus) {
+    for (const join of ['y a parte', 'y aparte']) {
+      it(`${m.label} "${join}" adds both dishes, agent ${enabled}`, async () => {
+        const h = harness(m.menu as any, enabled);
+        await h.sendQueued(`${m.first} ${join} ${m.second}`);
+        expect(h.cartRows().map((r: any) => r.id).sort()).toEqual([m.firstId, m.secondId].sort());
+      });
+    }
+    it(`${m.label} "X y una <fish>" adds both, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(`${m.first} y ${m.fish}`);
+      expect(h.cartRows().map((r: any) => r.id).sort()).toEqual([m.firstId, m.fishId].sort());
+    });
+    for (const [note, qty] of [['dividido', 1], ['partido en dos', 1], ['empacado por separado', 1], ['bien tostado', 1], ['en dos cajas', 1]] as const) {
+      it(`${m.label} "${m.handled} ${note}" keeps the note and qty ${qty}, agent ${enabled}`, async () => {
+        const h = harness(m.menu as any, enabled);
+        await h.sendQueued(`${m.handled} ${note}`);
+        const rows = h.cartRows();
+        expect(rows).toEqual([expect.objectContaining({ id: m.handledId, qty })]);
+        expect(rows[0].note).toMatch(new RegExp(note.split(' ')[0], 'i'));
+      });
+    }
+    it(`${m.label} "tres ... en dos cajas" keeps qty 3, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      await h.sendQueued(`tres ${m.handled} en dos cajas`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: m.handledId, qty: 3, note: expect.stringMatching(/dos cajas/i) })]);
+    });
+    for (const text of ['Hola veci que tiene De almuerzo Para hoy', 'que hay de almuerzo?']) {
+      it(`${m.label} "${text}" lists the lunch dishes, agent ${enabled}`, async () => {
+        const h = harness(m.menu as any, enabled);
+        const reply = await h.sendQueued(text);
+        expect(reply).not.toMatch(/No tenemos/i);
+        for (const id of m.lunchIds) expect(reply).toContain(String((m.menu as any[]).find((p) => p.id === id).name));
+        expect(h.conv.sessionData.pendingMatch?.candidates.map((c: any) => c.id)).toEqual(m.lunchIds);
+      });
+    }
+    for (const verb of ['Y agregale', 'y ponle']) {
+      it(`${m.label} "${verb} ${m.drink}" adds it without a not-on-menu line, agent ${enabled}`, async () => {
+        const h = harness(m.menu as any, enabled);
+        await h.sendQueued(m.first);
+        const reply = await h.sendQueued(`${verb} ${m.drink}`);
+        expect(h.cartRows().map((r: any) => r.id)).toContain(m.drinkId);
+        expect(reply).not.toMatch(/no manejamos|en la nota/i);
+      });
+    }
+    if (m.label === 'fictional') it(`the "con" inside a dish name is not a kitchen note, agent ${enabled}`, async () => {
+      const plain = harness(m.menu as any, enabled);
+      await plain.sendQueued('Plato con res asada');
+      expect(plain.cartRows()).toEqual([expect.objectContaining({ id: 32001, note: undefined })]);
+      const noted = harness(m.menu as any, enabled);
+      await noted.sendQueued('un plato con res asada lomo sin cebolla');
+      expect(noted.cartRows()).toEqual([expect.objectContaining({ id: 32001, note: 'sin cebolla', attrs: ['Corte:Lomo'] })]);
+    });
+    it(`${m.label} "ningun plato con granos" names only the asked item, agent ${enabled}`, async () => {
+      const h = harness(m.menu as any, enabled);
+      const reply = await h.sendQueued('No tienes ningun Plato con granos');
+      expect(reply).not.toMatch(/ningun/i);
+      expect(reply).toMatch(/grano/i);
+    });
+    const atAddress = () => {
+      const h = harness(m.menu as any, enabled);
+      const product = (m.menu as any[]).find((p) => p.id === m.secondId);
+      h.conv.sessionData.cart = [{ productId: product.id, code: product.id, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+      Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true });
+      h.conv.customerName = 'Yordan';
+      h.conv.state = 'awaiting_address';
+      return h;
+    };
+    for (const [text, stored] of [['Envialo Al conjunto aralia De castilla', /^conjunto aralia De castilla$/i], ['mandalo a la Cll 6 b 79 b 17', /^Cll 6 b 79 b 17$/i]] as const) {
+      it(`${m.label} "${text}" stores the address without the lead-in, agent ${enabled}`, async () => {
+        const h = atAddress();
+        await h.sendQueued(text);
+        expect(h.conv.sessionData.address).toMatch(stored);
+      });
+    }
+    it(`${m.label} a bare place name is kept as a reference and asks for the street, agent ${enabled}`, async () => {
+      const h = atAddress();
+      const reply = await h.sendQueued('Seria Para castaño motos');
+      expect(h.conv.sessionData.address).toMatch(/^casta[ñn]o motos$/i);
+      expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+      expect(reply).toMatch(/calle|carrera|ubicaci[oó]n/i);
+    });
+  }
+});
