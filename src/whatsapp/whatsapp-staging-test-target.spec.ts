@@ -9,13 +9,13 @@ describe('Staging conversation automation isolation', () => {
   const env = { PPP_STAGING: 'true', WHATSAPP_STAGING_OUTBOUND_ALLOW: 'true',
     STAGING_WHATSAPP_PHONE_NUMBER_ID: '12345', STAGING_WHATSAPP_RECIPIENTS: '573001234567',
     FACTUS_ENV: 'sandbox' };
-  const cfg = { enabled: true, agentV1Enabled: true, openaiModel: 'gpt-4.1-2025-04-14',
+  const cfg = { enabled: true, agentV1Enabled: true, openaiModel: 'gpt-6.1-sol',
     phoneNumberId: '12345', accessToken: 'synthetic-token', appSecret: 'synthetic-secret',
     openaiApiKey: 'synthetic-key', rateLimitPerMinute: 25 };
   it('proves the effective channel and single authorized recipient without exposing values', () => {
     const status = stagingTestTargetStatus(cfg, target, env);
     expect(status).toEqual({ staging: true, targetMatches: true, botEnabled: true,
-      conversationTestVersion: '2026-10-10.cart-v8',
+      conversationTestVersion: '2026-10-17.pilot-v1',
       agentEnabled: true, approvedModel: true, credentialsPresent: true,
       staffOrderEventsBlocked: true, factusSandbox: true, rateLimitPerMinute: 25 });
     for (const value of Object.values(target).concat(['synthetic-token', 'synthetic-secret', 'synthetic-key'])) {
@@ -34,6 +34,13 @@ describe('Staging conversation automation isolation', () => {
     expect(stagingTestTargetStatus({ ...cfg, phoneNumberId: '54321' }, target, env).targetMatches).toBe(false);
     expect(stagingTestTargetStatus({ ...cfg, openaiApiKey: null }, target, env).credentialsPresent).toBe(false);
     expect(stagingTestTargetStatus({ ...cfg, openaiModel: 'gpt-4o-mini' }, target, env).approvedModel).toBe(false);
+  });
+  it('validates the same environment-selected agent model used by runtime', () => {
+    const historical={...cfg,openaiModel:'gpt-4.1-2025-04-14'};
+    expect(stagingTestTargetStatus(historical,target,{...env,WHATSAPP_AGENT_MODEL:' gpt-6.1-sol '}).approvedModel).toBe(true);
+    expect(stagingTestTargetStatus(cfg,target,{...env,WHATSAPP_AGENT_MODEL:'gpt-4o-mini'}).approvedModel).toBe(false);
+    expect(stagingTestTargetStatus(historical,target,{...env,WHATSAPP_AGENT_MODEL:''}).approvedModel).toBe(false);
+    expect(stagingTestTargetStatus(cfg,target,{...env,WHATSAPP_AGENT_MODEL:'  '}).approvedModel).toBe(true);
   });
   it('reports order-side-effect isolation without returning environment values', () => {
     expect(stagingTestTargetStatus(cfg, target, {

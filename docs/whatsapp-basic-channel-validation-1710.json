@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "e9841dab",
+  "status": "Validated on frozen source, awaiting staging deployment and real preflight",
+  "scope": "Basic full conversations and current staging channel preflight",
+  "basicJourneys": {
+    "count": 8,
+    "turnsEach": 11,
+    "catalogs": [
+      "Crepe Relleno with included drink",
+      "Taco De Setas with included sauce"
+    ],
+    "modes": [
+      "pickup",
+      "delivery"
+    ],
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "checks": [
+      "greet without mutation",
+      "buy with kitchen note",
+      "price inquiry",
+      "included attribute plus independent side",
+      "remove one line",
+      "fulfillment and address",
+      "price interruption during payment",
+      "cash payment",
+      "single confirmation",
+      "courtesy and nothing-else after completion",
+      "actual mock order retains note, attribute and fulfillment"
+    ],
+    "additionalDeliverySetupCases": 8
+  },
+  "baseline": {
+    "log": "/tmp/ppp-basic-channel-baseline-1710.log",
+    "basicDeliveryFailures": 4,
+    "basicPickupPasses": 4,
+    "diagnosticFailures": 2,
+    "note": "Filtered baseline; compilation mistakes in test authoring were separate attempts, not counted as product failures"
+  },
+  "fixes": [
+    "Concrete positive delivery-setup address after cart creation is normalized into existing address processing; question/negation/condition guard, no product-specific IDs",
+    "Runtime and diagnostics share resolveWhatsappAgentModel with the same environment override precedence and legacy fallback",
+    "Staging diagnostics approve configured Sol runtime and expose new pilot-v1 protocol; no credentials or identifiers returned",
+    "Primary chat workflow uses manual dispatch only on staging and checkout of requested SHA; removes historical pinned checkout and automatic push execution",
+    "Primary chat preflight refuses unapproved model, disabled agent or enabled staff events before webhook requests",
+    "Known diagnostic protocol consumers and fixtures aligned without activating legacy payment/catalog workflows"
+  ],
+  "targeted": {
+    "passed": 76,
+    "log": "/tmp/ppp-basic-channel-expanded-targets-final-1710.log",
+    "includesExistingCoverageControls": true
+  },
+  "runnerContracts": {
+    "passed": 69,
+    "files": 6,
+    "log": "/tmp/ppp-channel-runner-contracts-final-1710.log"
+  },
+  "workflowValidation": {
+    "yamlParsed": true,
+    "events": [
+      "workflow_dispatch"
+    ],
+    "checkoutRef": "${{ github.sha }}",
+    "runtimeExecution": "not yet dispatched"
+  },
+  "apiRequests": 0,
+  "budget": {
+    "cap": 183,
+    "used": 181,
+    "remaining": 2
+  },
+  "mainModified": false,
+  "recurringReview": "When intent or checkout logic changes, rerun complete basic journeys alongside the affected family; before a pilot candidate, add a new complete conversation and replay an older real failure. Documentation-only changes do not require global reruns.",
+  "limits": [
+    "Router tests simulate model, persistence, maps, Meta and orders",
+    "Primary channel preflight is preparatory, not proof of genuine Meta inbound delivery or confirmed external order",
+    "Other legacy workflows retain their original branch/operation restrictions and are not approved for execution by this change",
+    "No broad negation or hypothetical-fulfillment behavior is accredited by the positive delivery setup cases"
+  ],
+  "failedGlobal": {
+    "log": "/tmp/ppp-basic-channel-full-1710.log",
+    "suitesPassed": 57,
+    "suitesFailed": 1,
+    "testsPassed": 7174,
+    "testsFailed": 40,
+    "seconds": 595.321,
+    "status": "failed_not_accepted",
+    "cause": "New address normalization initially consumed unpunctuated coverage questions. Replaced broad logistics detection with affirmative setup anchoring and raw question/condition guards; keeps named catalog dishes in their existing route."
+  },
+  "finalValidation": {
+    "whatsappSuites": 58,
+    "whatsappTests": 7214,
+    "whatsappSeconds": 590.944,
+    "complementSuites": 19,
+    "complementTests": 98,
+    "complementSeconds": 7.195,
+    "totalDisjointJestSuites": 77,
+    "totalDisjointJestTests": 7312,
+    "typescriptPassed": true,
+    "sourceUnchanged": true,
+    "filesHashed": 354,
+    "snapshot": "/tmp/ppp-basic-channel-final-source-1710.json",
+    "logs": {
+      "whatsapp": "/tmp/ppp-basic-channel-final-full-1710.log",
+      "complement": "/tmp/ppp-basic-channel-final-complement-1710.log",
+      "typescript": "/tmp/ppp-basic-channel-final-tsc-1710.log"
+    }
+  }
+}

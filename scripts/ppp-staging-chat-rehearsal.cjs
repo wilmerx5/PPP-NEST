@@ -82,7 +82,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
   try {
     if (!await check('authorized_context', async () => {
       ensure(env.GITHUB_ACTIONS === 'true' && env.GITHUB_REPOSITORY === 'wilmerx5/PPP-NEST' &&
-        env.GITHUB_REF === 'refs/heads/fix/whatsapp-regression-baseline' &&
+        env.GITHUB_REF === 'refs/heads/staging' &&
         ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
       ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
       ensure(!env.STAGING_CHAT_EXECUTE || ['true', 'false'].includes(env.STAGING_CHAT_EXECUTE), 'INVALID_EXECUTION_MODE');
@@ -120,9 +120,10 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       ensure([200, 201].includes(r.status), 'TARGET_VERIFICATION_FAILED');
       const body = await r.json();
       ensure(body.staging === true, 'SERVER_NOT_STAGING');
-      ensure(body.conversationTestVersion === '2026-10-10.cart-v8', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
+      ensure(body.conversationTestVersion === '2026-10-17.pilot-v1', 'CURRENT_CART_PATCHES_NOT_DEPLOYED');
       ensure(body.targetMatches === true, 'TEST_CHANNEL_OR_RECIPIENT_MISMATCH');
       ensure(body.botEnabled === true && body.agentEnabled === true && body.approvedModel === true && body.credentialsPresent === true, 'BOT_OR_APPROVED_MODEL_NOT_READY');
+      ensure(body.staffOrderEventsBlocked === true, 'STAFF_ORDER_EVENTS_NOT_ISOLATED');
       ensure(Number.isInteger(body.rateLimitPerMinute) && body.rateLimitPerMinute >= 5 && body.rateLimitPerMinute <= 120, 'INVALID_RATE_LIMIT');
       rateLimit = body.rateLimitPerMinute;
     })) return report;

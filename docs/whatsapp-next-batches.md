@@ -1,3 +1,15 @@
+## Control recurrente de conversaciones básicas — 17/10/2026
+
+Petición vigente del usuario: repasar chats completos sencillos durante el desarrollo, además de las familias complejas. Repetir este control cuando cambie la lógica de intenciones, direcciones o checkout. No ejecutar una global por cambios exclusivamente documentales.
+
+```bash
+npx jest --runInBand --silent --testPathPattern=whatsapp-general-accuracy --testNamePattern='basic complete ordering journeys revisited|concrete delivery setup after a basic order|Cobertura con carrito|Después de cobertura|post-order courtesy preserves terminal state'
+```
+
+El bloque básico contiene ocho conversaciones completas en dos cartas ficticias, recogida/domicilio y ambos modos de agente simulado. Cada una pasa por saludo, compra con nota, precio, cambio de opción incluida con adicional, eliminación de una línea, destino, consulta mientras espera pago, pago, confirmación y cortesía. Comprobar también el DTO de la orden, estado terminal y creación única. Otras ocho pruebas varían el prefijo de domicilio.
+
+Antes de un candidato de piloto: añadir una conversación completa nueva y recuperar un chat real antiguo que falló; alternar carta y redacción. Conservar los controles negativos: preguntar cobertura no elige dirección, preguntar precio no compra, una cortesía no abre otro carrito y una compra explícita nueva sí puede abrirlo. Si un repaso encuentra un fallo, clasificar la capa y reproducirlo gratis antes de pagar inferencia. Los mocks no acreditan calidad del modelo ni del canal real.
+
 # Próximas tandas de comprensión de WhatsApp
 
 Fecha: 2026-10-11. Rama permanente: staging. Usar AGENTS.md y el relevo. Este plan describe pruebas, no acredita que el producto sea vendible.

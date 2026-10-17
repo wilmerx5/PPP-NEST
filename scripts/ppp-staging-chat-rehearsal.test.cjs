@@ -7,7 +7,7 @@ const { buildPlan, knownVariantDraft, buildKnownVariantResumePlan,
   knownCollapsedVariantDraft, buildCollapsedVariantResumePlan,
   knownVariantRemovalDraft, buildVariantRemovalResumePlan, knownDishNoteDraft, buildDishNoteResumePlan } = require('./ppp-staging-chat-plan.cjs');
 const env = { GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'wilmerx5/PPP-NEST',
-  GITHUB_REF: 'refs/heads/fix/whatsapp-regression-baseline', GITHUB_EVENT_NAME: 'push',
+  GITHUB_REF: 'refs/heads/staging', GITHUB_EVENT_NAME: 'push',
   STAGING_CHAT_EXECUTE: 'true', STAGING_ADMIN_EMAIL: 'automation@example.invalid',
   STAGING_ADMIN_PASSWORD: 'synthetic-password', STAGING_WHATSAPP_APP_SECRET: 'synthetic-app-secret',
   STAGING_WHATSAPP_PHONE_NUMBER_ID: '12345', STAGING_WHATSAPP_RECIPIENTS: '573001234567' };
@@ -95,8 +95,8 @@ function fixture(options = {}) {
     assert.ok(!path.startsWith('/api/admin/') || opts.headers.Cookie === 'access_token=synthetic-cookie');
     if (path === '/api/admin/whatsapp/staging/test-target') return options.missingEndpoint ? json({}, 404) : json({
       staging: !options.notStaging, targetMatches: !options.wrongTarget, botEnabled: true,
-      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-10.cart-v8',
-      agentEnabled: true, approvedModel: true, credentialsPresent: true, rateLimitPerMinute: 25 }, 201);
+      conversationTestVersion: options.oldDeployment ? undefined : '2026-10-17.pilot-v1',
+      agentEnabled: !options.agentDisabled, approvedModel: !options.wrongModel, credentialsPresent: true, staffOrderEventsBlocked: !options.staffEventsEnabled, rateLimitPerMinute: 25 }, 201);
     if (path === '/api/admin/whatsapp/conversations') return json([{ id: 42, phoneE164: conversation.phoneE164 }]);
     if (path === '/api/admin/whatsapp/conversations/42') return json(conversation);
     if (path === '/api/products') return json(products);
@@ -258,7 +258,7 @@ test('does not retry an ambiguous webhook transport failure', async () => {
   assert.ok(!JSON.stringify(report).includes('sensitive response text'));
 });
 test('requires the approved repository and branch, TLS and a single recipient before any network', async () => {
-  for (const patch of [{ GITHUB_REF: 'refs/heads/Main' }, { GITHUB_REPOSITORY: 'other/repo' },
+  for (const patch of [{ GITHUB_REF: 'refs/heads/Main' }, { GITHUB_REF: 'refs/heads/fix/whatsapp-regression-baseline' }, { GITHUB_REPOSITORY: 'other/repo' },
     { GITHUB_EVENT_NAME: 'pull_request' }, { NODE_TLS_REJECT_UNAUTHORIZED: '0' },
     { STAGING_WHATSAPP_RECIPIENTS: '573001234567,573009999999' }]) {
     const f = fixture(); const r = await runRehearsal({ ...env, ...patch }, f.fetch, f.helpers);
@@ -287,5 +287,15 @@ for(const option of ['changedDraftInput','changedDraftQuantity','changedDraftPen
     const report=await runRehearsal({...env,STAGING_CHAT_RESUME:'known-dish-note-draft'},f.fetch,f.helpers);
     assert.equal(report.ok,false);assert.equal(report.webhookPosts,0);assert.equal(f.sentTexts.length,0);
     assert.equal(report.checks.find(check=>!check.pass).code,'KNOWN_FAILED_DRAFT_CHANGED');
+  });
+}
+
+for (const option of ['wrongModel','agentDisabled','staffEventsEnabled']) {
+  test(`preflight refuses ${option} before posting any webhook`,async()=>{
+    const f=fixture({[option]:true});
+    const report=await runRehearsal({...env,STAGING_CHAT_EXECUTE:'false'},f.fetch,f.helpers);
+    assert.equal(report.ok,false);assert.equal(report.webhookPosts,0);
+    assert.equal(f.calls.filter(c=>c.url.endsWith('/webhook')).length,0);
+    assert.equal(f.sentTexts.length,0);
   });
 }

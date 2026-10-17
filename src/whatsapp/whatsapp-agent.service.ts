@@ -1,3 +1,4 @@
+import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { Injectable, Logger } from '@nestjs/common';
@@ -629,7 +630,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       { role: 'user', content: input.userMessage },
     ];
 
-    const model = process.env.WHATSAPP_AGENT_MODEL?.trim() || cfg.openaiModel || 'gpt-4o-mini';
+    const model = resolveWhatsappAgentModel(cfg.openaiModel);
     const responsesBridge = /^gpt-6(?:[.-]|$)/i.test(model) ? new WhatsappResponsesBridge() : null;
     const turnDeadline = Date.now()+25000;
 

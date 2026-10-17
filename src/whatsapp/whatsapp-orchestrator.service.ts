@@ -1221,6 +1221,22 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A concrete delivery setup after shopping is an address, not a new dish.
+    // Keep questions, negations and conditional requests in their own routes.
+    const affirmativeDeliverySetup = /^(?:(?:es|seria)\s+)?(?:para\s+(?:un[oa]?\s+)?domicilio|(?:quiero|dame|necesito)\s+(?:un[oa]?\s+)?domicilio|domicilio\s+(?:para|a|en))\b/.test(this.normalizeForMatch(originalText));
+    if (conv.state === 'building_cart' && session.cart.length && affirmativeDeliverySetup &&
+        isDeliverySetupWithoutFood(originalText) && !/[¿?]/.test(originalText) &&
+        !isDeliveryRangeQuestion(originalText) &&
+        !/\b(?:no|si|puedo|podria|puede|tienen|hacen|llegan)\b/.test(this.normalizeForMatch(originalText))) {
+      const deliveryAddress = extractDeliverySetupAddress(originalText);
+      if (deliveryAddress && looksLikeAddressOnlyMessage(deliveryAddress) && this.isPlausibleDeliveryAddress(deliveryAddress)) {
+        const menu = await this.catalogService.getMenuProducts();
+        if (!this.catalogService.productFullyNamedIn(originalText,menu)) {
+          text = deliveryAddress;
+          originalText = deliveryAddress;
+        }
+      }
+    }
     // Cart edits and catalogue/variant questions can legitimately coexist.
     // A short selection has no unique owner; a full product/option name does.
     const shortSelection = /^(?:\d{1,2}|uno|una|dos|tres|(?:el |la )?(?:primero|primera|segundo|segunda|tercero|tercera))$/i.test(originalText.trim());

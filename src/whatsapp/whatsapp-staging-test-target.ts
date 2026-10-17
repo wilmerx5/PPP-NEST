@@ -1,3 +1,5 @@
+import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
+
 type EffectiveTestConfig = {
   enabled: boolean;
   agentV1Enabled: boolean;
@@ -25,10 +27,10 @@ export function stagingTestTargetStatus(
     recipients.length === 1 && recipients[0] === target.recipient;
   return {
     staging, targetMatches,
-    conversationTestVersion: '2026-10-10.cart-v8',
+    conversationTestVersion: '2026-10-17.pilot-v1',
     botEnabled: cfg.enabled === true,
     agentEnabled: cfg.agentV1Enabled === true,
-    approvedModel: cfg.openaiModel === 'gpt-4.1-2025-04-14',
+    approvedModel: resolveWhatsappAgentModel(cfg.openaiModel, env) === 'gpt-6.1-sol',
     credentialsPresent: !!cfg.accessToken && !!cfg.appSecret && !!cfg.openaiApiKey,
     staffOrderEventsBlocked:
       staging && env.STAGING_ORDER_EVENTS_ALLOW !== 'true',

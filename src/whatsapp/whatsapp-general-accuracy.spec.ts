@@ -17436,3 +17436,66 @@ describe('post-order courtesy preserves terminal state', () => {
     });
   }
 });
+
+describe('basic complete ordering journeys revisited', () => {
+  const menus=[
+    {dish:'Crepe Relleno',attribute:'Bebida',options:['Hibisco','Jazmin'],side:'Porcion De Pan',sideRequest:'pan'},
+    {dish:'Taco De Setas',attribute:'Salsa',options:['Suave','Picante'],side:'Porcion De Totopos',sideRequest:'totopos'},
+  ];
+  for(const config of menus) for(const fulfillment of ['pickup','delivery']) for(const enabled of [true,false]) {
+    it(`${config.dish}, ${fulfillment}, agent ${enabled}`,async()=>{
+      const menu=[{id:38101,code:38101,name:config.dish,price:18000,description:'Plato con acompañamiento incluido',availableNow:true,hasAttributes:true,attributes:[{attributeName:config.attribute,options:config.options}]},
+        {id:38102,code:38102,name:config.side,price:6000,availableNow:true,hasAttributes:false,attributes:[]}];
+      const h=harness(menu,enabled);
+      Object.assign(h.conv.sessionData,{contactPhone:h.conv.phoneE164,phoneConfirmed:true});
+      h.service.ordersService.create=jest.fn().mockResolvedValue({id:999,dailyOrderNumber:1});
+      h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:true,deliveryFeeCalculated:2000}}));
+      await h.sendQueued('Hola buenas tardes');expect(h.cartRows()).toEqual([]);
+      await h.sendQueued(`Quiero un ${config.dish} sin cebolla`);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:38101,qty:1,note:expect.stringMatching(/sin cebolla/i)})]);
+      await h.sendQueued('Cuanto vale?');expect(h.conv.sessionData.cart).toHaveLength(1);
+      expect(h.replies.at(-1)).toMatch(/18[.,]000/);
+      await h.sendQueued(`Con ${config.options[1]} y una adicional de ${config.sideRequest}`);
+      expect(h.conv.sessionData.cart).toHaveLength(2);
+      expect(h.conv.sessionData.cart[0].attributes).toContainEqual({attributeName:config.attribute,attributeValue:config.options[1]});
+      await h.sendQueued('Quita el item dos');expect(h.cartRows()).toHaveLength(1);
+      expect(h.cartRows()[0].id).toBe(38101);
+      await h.sendQueued(fulfillment==='pickup'?'Para recoger en el local':'Para domicilio Calle 12 34 56');
+      expect(h.conv.state).toBe('awaiting_payment');
+      if(fulfillment==='delivery') {
+        expect(h.conv.sessionData.address).toMatch(/Calle 12 34 56/i);
+        expect(h.conv.sessionData.address).not.toMatch(/para domicilio/i);
+      }
+      const before=structuredClone(h.conv.sessionData.cart);
+      await h.sendQueued('Antes de pagar, cuanto cuesta el plato?');
+      expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.replies.at(-1)).toMatch(/18[.,]000/);
+      await h.sendQueued('Pago contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
+      await h.sendQueued('Si');expect(h.conv.state).toBe('completed');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const order=h.service.ordersService.create.mock.calls[0][0];
+      expect(order.orderType).toBe(fulfillment);
+      expect(order.items).toHaveLength(1);
+      expect(order.items[0]).toEqual(expect.objectContaining({productId:38101,note:expect.stringMatching(/sin cebolla/i),attributes:expect.arrayContaining([{attributeName:config.attribute,attributeValue:config.options[1]}])}));
+      await h.sendQueued('Gracias señor');await h.sendQueued('No señor asi esta bien');
+      expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+    });
+  }
+});
+
+describe('concrete delivery setup after a basic order', () => {
+  const menu=[{id:39101,code:39101,name:'Croqueta De Hongos',price:9000,availableNow:true,hasAttributes:false,attributes:[]}];
+  for(const text of ['Para domicilio Calle 12 34 56','Es para domicilio Calle 12 34 56','Domicilio para Calle 12 34 56','Quiero un domicilio para Calle 12 34 56']) for(const enabled of [true,false]) {
+    it(`${text}, agent ${enabled}`,async()=>{
+      const h=harness(menu,enabled);
+      Object.assign(h.conv.sessionData,{orderType:'pickup',phoneConfirmed:true,contactPhone:h.conv.phoneE164,cart:[{productId:39101,code:39101,name:'Croqueta De Hongos',unitPrice:9000,quantity:1,attributes:[],note:'Sin sal'}]});
+      h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:true,deliveryFeeCalculated:2000}}));
+      await h.sendQueued(text);
+      expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.orderType).toBe('delivery');
+      expect(h.conv.sessionData.address).toMatch(/Calle 12 34 56/i);
+      expect(h.conv.sessionData.address).not.toMatch(/domicilio|quiero/i);
+      expect(h.cartRows()).toEqual([expect.objectContaining({id:39101,qty:1,note:'Sin sal'})]);
+      expect(h.replies.join(' ')).not.toMatch(/qu[eé] se te antoja|no manejamos/i);
+    });
+  }
+});

@@ -282,7 +282,7 @@ async function runCheckoutRehearsal(
         );
         ensure(
           typeof body.conversationTestVersion === 'string' &&
-            body.conversationTestVersion.startsWith('2026-10-10.cart-v'),
+            body.conversationTestVersion === '2026-10-17.pilot-v1',
           'CHECKOUT_PATCH_LEVEL_NOT_DEPLOYED',
         );
         ensure(
