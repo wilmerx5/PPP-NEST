@@ -17344,3 +17344,64 @@ describe('real staging chats: plural combos, golden preparation, recipients, ext
     }
   }
 });
+describe('real staging chats: asking whether they have the menu', () => {
+  const fictional = [
+    { id: 34101, code: 34101, name: 'Menu Ejecutivo De Res', price: 21000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 34102, code: 34102, name: 'Trucha Frita', price: 26000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  for (const enabled of [false, true]) for (const [label, menu] of [['PPP', products], ['fictional', fictional]] as const) {
+    for (const text of ['Hola buenas tardes tienes la carta por favor', '¿tienes el menú?', 'me pasas la carta', 'tienes carta por favor']) {
+      it(`${label} "${text}" sends the menu link, agent ${enabled}`, async () => {
+        const h = harness(menu as any, enabled);
+        const cfg = await (h.service as any).settingsService.getEffectiveConfig();
+        cfg.menuLinkMessage = 'Menú: https://example.test/menu';
+        const reply = await h.sendQueued(text);
+        expect(reply).toBe('Menú: https://example.test/menu');
+        expect(h.cartRows()).toEqual([]);
+      });
+    }
+    it(`${label} "tienes un menu ejecutivo" is still a dish question, agent ${enabled}`, async () => {
+      const h = harness(menu as any, enabled);
+      const cfg = await (h.service as any).settingsService.getEffectiveConfig();
+      cfg.menuLinkMessage = 'Menú: https://example.test/menu';
+      const reply = await h.sendQueued('tienes un menu ejecutivo');
+      expect(reply).not.toBe('Menú: https://example.test/menu');
+    });
+  }
+});
+
+describe('pilot menu interruptions and fragmented confirmation', () => {
+  const menu = [{id:35101,code:35101,name:'Bowl De Lentejas',price:19000,availableNow:true,hasAttributes:false,attributes:[]}];
+  for (const enabled of [true,false]) {
+    for (const text of ['Hola, ¿tienes la carta por favor?', 'Buenas tardes, ¿me compartes el menú, gracias?', '¿Tienen carta porfa?']) {
+      for (const state of ['building_cart','awaiting_payment']) {
+        it(`menu request ${text}, ${state}, agent ${enabled}`,async()=>{
+          const h=harness(menu,enabled);
+          (h.cfg as any).menuLinkMessage='Menú: https://example.test/menu';
+          h.conv.state=state;
+          h.conv.sessionData.cart=[{productId:35101,code:35101,name:'Bowl De Lentejas',unitPrice:19000,quantity:1,attributes:[],note:'Sin cebolla'}];
+          const before=structuredClone(h.conv.sessionData);
+          await h.sendQueued(text);
+          expect(h.replies.join(' ')).toContain('https://example.test/menu');
+          expect(h.replies.join(' ')).not.toMatch(/no tenemos|no manejamos|productos de carta/i);
+          expect(h.conv.sessionData).toEqual(before);
+          expect(h.conv.state).toBe(state);
+        });
+      }
+    }
+    it(`Si then Señor confirms exactly once, agent ${enabled}`,async()=>{
+      const h=harness(menu,enabled);
+      h.service.ordersService.create=jest.fn().mockResolvedValue({id:999,orderNumber:'X1'});
+      h.conv.state='awaiting_final_confirm';
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 9 20 30',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000,
+        cart:[{productId:35101,code:35101,name:'Bowl De Lentejas',unitPrice:19000,quantity:1,attributes:[]}]});
+      await h.sendQueued('Si');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const count=h.replies.length;
+      await h.sendQueued('Señor');
+      expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      expect(h.replies.slice(count).join(' ')).not.toMatch(/algo m[aá]s|carrito/i);
+      expect(h.replies.slice(count).join(' ')).toMatch(/con gusto/i);
+    });
+  }
+});

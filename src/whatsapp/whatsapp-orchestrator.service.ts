@@ -974,6 +974,15 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    // A complete request for the menu is informational at every checkout step.
+    // It never supplies a name/address/payment or clears a pending selection.
+    if (this.isPoliteMenuLinkRequest(originalText)) {
+      const current = this.conversationService.getSession(conv);
+      const reminder = current.cart.length ? this.formatInterruptedStepReminder(conv,current) : '';
+      await this.reply(conv,msg.waId,(cfg.menuLinkMessage || cfg.menuUrl || this.formatContinueShoppingPrompt(current)) +
+        (reminder ? `\n\n${reminder}` : ''));
+      return;
+    }
     // Do not strip the condition and execute an otherwise recognizable option.
     // Attribute availability does not establish a substitution surcharge policy.
     if (isCostConditionalRequest(originalText)) {
@@ -14028,7 +14037,16 @@ export class WhatsappOrchestratorService {
     }
     if (/^(ver\s+)?(el\s+)?(menu|carta)(\s+completo)?[\s!.?]*$/i.test(t)) return true;
     if (/^(link|enlace)\s+(del?\s+)?(menu|carta)[\s!.?]*$/i.test(t)) return true;
-    return false;
+    return this.isPoliteMenuLinkRequest(text);
+  }
+
+  private isPoliteMenuLinkRequest(text: string): boolean {
+    const bare = this.normalizeForMatch(text)
+      .replace(/[¿?¡!.,;:]+/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^(?:(?:hola|buen[oa]s?(?:\s+(?:dias|tardes|noches))?|que\s+tal|veci|vecino|vecina)\s+)*/i, '')
+      .replace(/(?:\s+(?:por\s+favor|porfa|gracias|plis|please))+$/i, '')
+      .trim();
+    return /^(?:me\s+)?(?:tienes|tiene|tienen|tendras|tendra|pasas|pasan|das|dan|mandas|mandan|envias|envian|compartes|regalas|regalan|regalame)\s+(?:la\s+|el\s+|una\s+|un\s+)?(?:menu|carta)$/i.test(bare);
   }
 
   /** Pedido explícito del link de pago (Mercado Pago / tarjeta). */
