@@ -54,6 +54,12 @@ export function looksLikeClearCartMessage(text: string): boolean {
   const clearTarget =
     '(?:el\\s+|la\\s+|mi\\s+)?(?:carrito|pedido|todo|orden|lo\\s+que\\s+llevo|lo\\s+que\\s+pedi|de\\s+nuevo)';
 
+  // "quita del carrito el item dos": the cart is where to remove from, not what.
+  const located = t.replace(/\b(?:del|de\s+(?:el|la|mi)|de|en\s+(?:el|la|mi))\s+(?:carrito|pedido|orden)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (located !== t && new RegExp(`^${clearVerb}\\s+\\S`).test(located) && !/\btodo\b/.test(located)) {
+    return false;
+  }
+
   if (new RegExp(`\\b${clearVerb}\\s+${clearTarget}\\b`).test(t)) {
     return true;
   }

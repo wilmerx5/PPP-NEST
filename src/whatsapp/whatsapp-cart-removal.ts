@@ -18,7 +18,9 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
     .replace(/^(?:(?:mejor|entonces|bueno|ok|okay|listo|ah|oye|ay|perd[oó]n|disculpa)\s*,?\s+)+/i, '')
     .replace(/^\S+/, (verb) => verb.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
     .split(/\s*;\s*|\s*,\s*(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)|\s+y\s+(?=(?:conserva|deja|mant[eé]n|no quites|(?:el|la|los|las)\b.*\b(?:dejo|conservo|mantengo))\b)/i);
-  const match = clauses.shift()?.match(/^(?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?)\s+(?:solamente\s+|solo\s+)?(.+)$/i);
+  const match = clauses.shift()
+    ?.replace(/^(\S+)\s+(?:del|de\s+(?:el|la|mi)|en\s+(?:el|la|mi))\s+(?:carrito|pedido|orden)\s+(?=\S)/i, '$1 ')
+    .match(/^(?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?)\s+(?:solamente\s+|solo\s+)?(.+)$/i);
   if (!match) return null;
   const partial = match[1].match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i) ||
     match[1].match(/^(?:uno|una|un|1)\s+(.+)$/i);
@@ -34,6 +36,18 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
     preserve.push(...keep[1].replace(/\s+(?:igual|como est[aá]n|por favor|porfa)$/i, '').split(/\s*,\s*|\s+y\s+/i));
   }
   return { query, preserve, ...(partial ? {quantity:1} : {}), ...(target !== undefined ? {target} : {}) };
+}
+
+/** "el 2", "el segundo", "el item dos", "la línea 3": a cart row, 1-based. */
+export function cartRowReference(query: string): number | null {
+  const q = normalizeCorrection(query);
+  const ordinals: Record<string, number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3,cuarto:4,cuarta:4,quinto:5,quinta:5};
+  const spelled: Record<string, number> = {uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+  const row = q.match(/^(?:(el|la)\s+)?(?:((?:item|producto|fila|linea|plato)(?:\s+(?:numero|no|#))?|numero)\s+)?(\d{1,2}|[a-z]+)$/);
+  if (!row) return null;
+  if (/^\d+$/.test(row[3])) return Number(row[3]);
+  if (ordinals[row[3]]) return ordinals[row[3]];
+  return row[2] && spelled[row[3]] ? spelled[row[3]] : null;
 }
 
 export function preservedRemovalConflict(line: WhatsappCartItem, preserve: string[]): boolean {

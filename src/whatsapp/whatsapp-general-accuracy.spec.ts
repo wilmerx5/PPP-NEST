@@ -16579,3 +16579,43 @@ describe('burger included drink and saved address continuation', () => {
     });
   }
 });
+
+describe('cart row removal names where, not what', () => {
+  const fictional = [
+    { id: 30101, code: 30101, name: 'Ramen De Cerdo', price: 28000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 30102, code: 30102, name: 'Gyoza', price: 12000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 30103, code: 30103, name: 'Te Verde', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const pppCart = [
+    { productId: 33, code: 33, name: 'Bandeja Pronto', unitPrice: 16500, quantity: 1, attributes: [{ attributeName: 'Presa', attributeValue: 'Pierna Pernil' }] },
+    { productId: 26, code: 26, name: 'Arroz Chino', unitPrice: 34000, quantity: 1, attributes: [] },
+    { productId: 36, code: 36, name: 'Arroz Chino Con Medio Pollo', unitPrice: 45000, quantity: 1, attributes: [{ attributeName: 'Pollo', attributeValue: 'Broaster' }], note: 'con medio pollo' },
+  ];
+  const fictionalCart = fictional.map(p => ({ productId: p.id, code: p.code, name: p.name, unitPrice: p.price, quantity: 1, attributes: [] }));
+  for (const enabled of [true, false]) {
+    for (const state of ['awaiting_payment', 'building_cart'] as const) {
+      for (const [label, menu, cart] of [['PPP', products, pppCart], ['fictional', fictional, fictionalCart]] as const) {
+        for (const [phrase, removed] of [
+          ['Quita del carrito El item dos', 1], ['saca del pedido el segundo', 1], ['elimina la linea 3', 2], ['quita el producto numero uno', 0], ['quita el 2', 1],
+        ] as const) {
+          it(`${label} "${phrase}" in ${state}, agent ${enabled}`, async () => {
+            const h = harness(menu as any, enabled);
+            h.conv.state = state;
+            Object.assign(h.conv.sessionData, { orderType: 'delivery', address: 'Altavista', addressConfirmed: true, customerName: 'Cliente Sintético',
+              contactPhone: h.conv.phoneE164, phoneConfirmed: true, deliveryFeeCalculated: 2000, cart: structuredClone(cart) });
+            await h.sendQueued(phrase);
+            expect(h.conv.sessionData.cart.map(line => line.productId)).toEqual(cart.filter((_, i) => i !== removed).map(line => line.productId));
+            expect(h.replies.join(' ')).not.toMatch(/vaciamos/i);
+          });
+        }
+        it(`${label} "quita todo del carrito" still clears in ${state}, agent ${enabled}`, async () => {
+          const h = harness(menu as any, enabled);
+          h.conv.state = state;
+          h.conv.sessionData.cart = structuredClone(cart) as any;
+          await h.sendQueued('quita todo del carrito');
+          expect(h.conv.sessionData.cart).toEqual([]);
+        });
+      }
+    }
+  }
+});

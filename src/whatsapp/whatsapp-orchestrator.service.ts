@@ -11,7 +11,7 @@ import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
 import { correctionMatchesLine, omitRedundantAttributeNote, parseCartQuantityCorrection } from './whatsapp-quantity-correction';
-import { isKeepCartRefusal, parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
+import { cartRowReference, isKeepCartRefusal, parseScopedCartRemoval, preservedRemovalConflict } from './whatsapp-cart-removal';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { WhatsappSettingsService } from './whatsapp-settings.service';
@@ -1668,7 +1668,7 @@ export class WhatsappOrchestratorService {
 
     if (session.pendingCompositionAsk?.resumeState) {
       const rowRemoval = parseScopedCartRemoval(originalText);
-      const rowReference = rowRemoval && /^(?:(?:el|la)\s+)?(?:(?:item|producto|fila)\s+)?(?:\d{1,2}|primero|primera|segundo|segunda|tercero|tercera)$/.test(this.normalizeForMatch(rowRemoval.query));
+      const rowReference = rowRemoval && cartRowReference(rowRemoval.query) != null;
       if (rowReference) {
         await this.reply(conv, msg.waId, 'Hay otra lista pendiente. Dime el nombre del producto que quitamos del carrito. El pedido sigue igual.');
         return;
@@ -12993,9 +12993,7 @@ export class WhatsappOrchestratorService {
     const namedLine = !removal && pending?.cartSignature && pick === null
       ? this.uniqueClarificationLine(session, pending.options, text) : null;
     if (!removal && !(pending?.cartSignature && (pick !== null || namedLine !== null))) return false;
-    const row = removal?.query && this.normalizeForMatch(removal.query).match(/^(?:(?:el|la)\s+)?(?:(?:item|producto|fila)\s+)?(\d{1,2}|primero|primera|segundo|segunda|tercero|tercera)$/);
-    const positions: Record<string,number> = {primero:1,primera:1,segundo:2,segunda:2,tercero:3,tercera:3};
-    const rowNumber = row ? positions[row[1]] || Number(row[1]) : null;
+    const rowNumber = removal?.query ? cartRowReference(removal.query) : null;
     if (rowNumber != null && (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingPriceInquiry || session.pendingCartQuantity || session.pendingCartAttributeEdit || session.pendingCompositionAsk || pending)) {
       await this.reply(conv,waId,'Hay otra lista pendiente. Dime el nombre del producto que quitamos del carrito. El pedido sigue igual.');
       return true;
