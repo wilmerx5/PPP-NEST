@@ -1167,6 +1167,22 @@ export class WhatsappOrchestratorService {
       .replace(/(?:\s+(?:por favor|porfavor|porfa|muchas gracias|gracias))+$/, '')
       .replace(/^cansela\b/, 'cancela').replace(/\bselecsion\b/g, 'seleccion');
     const activeSelection = !['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state);
+    const pendingEdits = CART_EDIT_SELECTION_KEYS.filter(key => !!pendingSelection[key]);
+    const withdrawRemoval = isKeepCartRefusal(cancellationText) && !!pendingSelection.pendingCartRemoval;
+    const withdrawEdit = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio)$/.test(cancellationText);
+    if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (withdrawRemoval || withdrawEdit)) {
+      if (!withdrawRemoval && pendingEdits.length > 1) {
+        await this.reply(conv,msg.waId,'Hay varios cambios pendientes. ¿Cuál cancelamos: quitar, cantidad, opciones o reemplazo? El pedido sigue igual.');
+        return;
+      }
+      const key = withdrawRemoval ? 'pendingCartRemoval' : pendingEdits[0];
+      const next = { ...pendingSelection, [key]: undefined };
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,msg.waId,(withdrawRemoval ? 'Listo, no quito nada.' : 'Cancelé ese cambio.') +
+        ' Conservo el pedido como estaba.\n\n' + this.formatCartOnly(next,this.deliveryFeeFor(next,cfg)) + '\n\n' +
+        (this.formatInterruptedStepReminder(conv,next) || this.formatContinueShoppingPrompt(next)));
+      return;
+    }
     if (activeSelection && pendingSelection.pendingCartAttributeEdit) {
       const stopChange = /^(?:olvida (?:eso|ese cambio|esa seleccion)|cancela (?:ese cambio|esa seleccion))$/.test(cancellationText);
       const stopAttribute = cancellationText.match(/^no cambies (?:el|la) (.+)$/);

@@ -1,3 +1,13 @@
+## Renunciar a una edición sin cancelar el pedido — validado, despliegue pendiente — 17/10/2026
+
+Sobre d19781d6, solo staging. Tanda de 84 casos nuevos: 72 recorridos desde checkout ya sembrado (dos cartas, eliminación/cantidad/atributo/reemplazo, pago/confirmación final, agente simulado on/off; renuncia, consulta del total y una única orden simulada con carrito original) y 12 controles de varias ediciones sembradas. Baseline de 72 casos: 56 fallos/16 verdes, sin fallos de autoría. No sumar los retests como casos nuevos. Los 16 verdes originales eran Olvida ese cambio en atributos/reemplazo.
+
+Ahora una renuncia completa retira una única edición de carrito pendiente. «No quites nada» retira solo la eliminación aunque exista otra edición; una referencia vaga con varios cambios pregunta cuál cancelar. Conserva cantidades, notas, opciones, adicional ajeno, nombre, teléfono, dirección, pago y estado. Responde el paso vigente y no registra orden en el turno de renuncia. Las compras/opciones pendientes fuera de las cuatro claves cart-edit y los cambios ya aplicados NO están acreditados por esta tanda.
+
+268 focalizadas aprobadas (84 nuevas +184 controles), TypeScript y 72 contratos Node aprobados. Global final: 77 suites/7512 pruebas, 591.776 s; 354 hashes de fuente sin cambios. Despliegue pendiente de publicación y verificación efectiva. Informe docs/whatsapp-withdraw-edit-validation-1710.json; logs /tmp/ppp-withdraw-edit-{baseline,expanded,tsc,global,contracts}-1710.log; snapshot /tmp/ppp-withdraw-edit-source-1710.json. Cero API/Meta/órdenes externas. Main intacta1a2b2e23; presupuesto181/183 sin consumo.
+
+Después: condiciones/negaciones/frases citadas alrededor de renuncia; referencia vaga con una edición de carrito y otra compra/sustitución pendiente; no afirmar rollback de algo ya aplicado sin versión anterior. Luego contraste vivo nuevo con contador antes de red y presupuesto explícito (restan dos del tope operativo); no lanzar full histórico del canal sin acotar inferencia. Ver docs/whatsapp-next-batches.md.
+
 ## Edición pendiente antes de confirmar — validado y desplegado — 17/10/2026
 
 Sobre22a21ce2, solo staging. Tanda64 casos nuevos: 48 recorridos desde checkout sembrado (dos cartas ficticias, agente simulado on/off, pago/confirmación final, selección por número/nota, Si/confirmar/listo sin seleccionar) y16 controles directos de frontera de confirmación (eliminación/cantidad/reemplazo/atributos, firma vigente/vieja, ambos agentes). Los16 iniciales sin afirmación pasaban; al añadir Si, ocho casos de pago repetían prompt de pago y ocho de confirmación final creaban orden simulada antes de aclarar. No sumar retests como casos nuevos.

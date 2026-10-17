@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "d19781d6",
+  "status": "Final frozen-source validation passed; deployment pending",
+  "newCases": {
+    "checkoutWithdrawalContinuations": 72,
+    "multipleEditScopeControls": 12,
+    "uniqueTotal": 84
+  },
+  "scope": "Withdraw one pending cart edit while preserving existing checkout; then total inquiry and single mocked order",
+  "menus": [
+    "Taco De Calabaza / Porcion De Totopos",
+    "Bao De Setas / Porcion De Pan",
+    "Ramen De Setas for seeded multiple-edit states"
+  ],
+  "axes": {
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "states": [
+      "awaiting_payment",
+      "awaiting_final_confirm"
+    ],
+    "pendingKinds": [
+      "removal",
+      "quantity",
+      "attribute",
+      "replacement"
+    ],
+    "phrases": [
+      "No quites nada por favor (removal)",
+      "D\u00e9jalo como estaba",
+      "Olvida ese cambio"
+    ]
+  },
+  "baseline": {
+    "failed": 56,
+    "passed": 16,
+    "log": "/tmp/ppp-withdraw-edit-baseline-1710.log",
+    "finding": "Unsupported withdrawal phrases kept the edit pending and prevented ordinary checkout continuation. Existing attribute/replacement Olvida ese cambio paths already passed."
+  },
+  "fixes": [
+    "A single pending cart edit can be withdrawn by a complete explicit deictic cancellation",
+    "No quites nada withdraws only pending removal, preserving other edits",
+    "A vague withdrawal with multiple cart edits asks which instead of guessing",
+    "Persists the same cart and checkout data, renders the current reminder, never confirms in the withdrawal turn"
+  ],
+  "targeted": {
+    "passed": 268,
+    "newUnique": 84,
+    "log": "/tmp/ppp-withdraw-edit-expanded-1710.log",
+    "note": "Includes184 prior cancellation, ambiguity, basic and burst controls; reruns not unique additions"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-withdraw-edit-tsc-1710.log"
+  },
+  "runnerContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-withdraw-edit-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-withdraw-edit-global-1710.log",
+    "snapshot": "/tmp/ppp-withdraw-edit-source-1710.json",
+    "suites": 77,
+    "tests": 7512,
+    "seconds": 591.776,
+    "sourceUnchanged": true,
+    "filesHashed": 354
+  },
+  "apiRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainModified": false,
+  "limits": [
+    "Checkout rows and customer data seeded; not an initial-purchase conversation",
+    "Multiple-edit states seeded to test legacy ambiguity and scoped withdrawal",
+    "Not an undo of an already applied edit, order cancellation, or paid-order modification",
+    "Other unfinished purchases/side swaps are not covered by this cart-edit cancellation family",
+    "Model, persistence, maps, Meta and order creation simulated"
+  ]
+}

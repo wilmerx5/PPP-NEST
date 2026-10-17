@@ -1,3 +1,13 @@
+## Tras retirar una edición pendiente — 17/10/2026
+
+Tanda en validación: docs/whatsapp-withdraw-edit-validation-1710.json,84 nuevos casos:72 continuaciones naturales desde checkout ya sembrado y12 controles con varias ediciones sembradas. Baseline56 fallos/16 verdes;268 focalizadas pasan después del ajuste. Solo se cancela la intención pendiente, conservando el carrito; no hay historial de deshacer cambios ya aplicados.
+
+Siguiente:
+1. Condiciones y negaciones alrededor de la renuncia: no cancelar por una pregunta, frase citada o «no canceles ese cambio». Comprobar datos y respuesta, no solo estado.
+2. Una edición de carrito junto con otra selección de compra/sustitución pendiente: referencia vaga debe pedir dueño; una instrucción explícita debe retirar solo su alcance. No asumir cubierto por dos claves cart-edit.
+3. Distinguir «déjalo como estaba» antes de aplicar frente a después de aplicar. Sin evidencia de versión anterior, no inventar rollback ni decir que se revirtió. Diseñar contrato antes de implementar undo.
+4. Contraste de conversación nueva con modelo real y límite de solicitudes antes de red; canal firmado acotado después, sin confirmar órdenes externas. Presupuesto vigente181/183: no lanzar un runner amplio con dos restantes.
+
 ## Continuación tras aclaraciones de edición — 17/10/2026
 
 Tanda validada y desplegada como7cdbc597: `whatsapp-pending-edits-validation-1710.json`: 48 continuaciones desde checkout sembrado con dos líneas del mismo SKU, notas distintas y un adicional ajeno; total, carta, afirmación sin seleccionar, elección por número/nota y una sola orden simulada. Otros16 casos prueban directamente la frontera central de confirmación para cuatro tipos de edición, firma válida/vieja y agente simulado on/off. No equivalen a16 chats completos.

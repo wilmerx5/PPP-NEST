@@ -17639,3 +17639,77 @@ describe('confirmation boundary retains unresolved cart edits',()=>{
     });
   }
 });
+
+/** Existing checkout -> ambiguous edit -> withdraw edit -> inquiry -> one unchanged order. */
+describe('withdraw cart edit and finish existing checkout',()=>{
+  const edits=[
+    {key:'pendingCartRemoval',request:(name:string)=>`Quita el ${name}`,phrases:['No quites nada por favor','Déjalo como estaba','Olvida ese cambio']},
+    {key:'pendingCartQuantity',request:(name:string)=>`Deja solo dos ${name}`,phrases:['Déjalo como estaba','Olvida ese cambio']},
+    {key:'pendingCartAttributeEdit',request:(_name:string)=>'Cambia Salsa a Picante',phrases:['Déjalo como estaba','Olvida ese cambio']},
+    {key:'pendingCartReplacement',request:(name:string,side:string)=>`Cambia el ${name} por una ${side}`,phrases:['Déjalo como estaba','Olvida ese cambio']},
+  ];
+  for(const f of [{dish:'Taco De Calabaza',side:'Porcion De Totopos'},{dish:'Bao De Setas',side:'Porcion De Pan'}])
+  for(const enabled of [true,false])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const edit of edits)for(const phrase of edit.phrases){
+    it(`${f.dish}, ${edit.key}, ${phrase}, ${state}, agent ${enabled}`,async()=>{
+      const menu=[{id:42101,code:42101,name:f.dish,price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]},
+        {id:42102,code:42102,name:f.side,price:6000,availableNow:true,attributes:[]}];
+      const h=harness(menu,enabled);h.conv.state=state;
+      Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,
+        phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{}),
+        cart:[...['sin cilantro','con cilantro'].map((note,i)=>({productId:42101,code:42101,name:f.dish,unitPrice:19000,quantity:i?1:2,attributes:[{attributeName:'Salsa',attributeValue:'Suave'}],note})),
+          {productId:42102,code:42102,name:f.side,unitPrice:6000,quantity:1,attributes:[],note:'Sin sal'}]});
+      h.service.ordersService.create=jest.fn().mockResolvedValue({id:1003,dailyOrderNumber:3});
+      const before=structuredClone(h.conv.sessionData.cart);const payment=h.conv.sessionData.paymentMethod;
+      await h.sendQueued(edit.request(f.dish,f.side));
+      expect((h.conv.sessionData as any)[edit.key]).toBeTruthy();expect(h.conv.sessionData.cart).toEqual(before);
+      await h.sendQueued(phrase);
+      expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);
+      for(const key of edits.map(item=>item.key))expect((h.conv.sessionData as any)[key]).toBeUndefined();
+      expect(h.conv.sessionData.paymentMethod).toBe(payment);expect(h.conv.sessionData.address).toBe('Calle 12 34 56');expect(h.conv.customerName).toBe('Wilmer');
+      expect(h.replies.at(-1)).toMatch(/no quito|cancel[eé].*cambio|conservo/i);
+      expect(h.replies.at(-1)).not.toMatch(/cu[aá]l l[ií]nea|elige el plato|vaciamos|qued[oó] cancelado|pedido registrado/i);
+      expect(h.replies.at(-1)).toMatch(state==='awaiting_payment'?/pago|pagas/i:/confirmar/i);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      await h.sendQueued('Antes de seguir cuanto vale todo?');
+      expect(h.replies.at(-1)).toMatch(/65[.,]000/);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);
+      if(state==='awaiting_payment')await h.sendQueued('Pago contraentrega');
+      await h.sendQueued('Si');expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+      const order=h.service.ordersService.create.mock.calls[0][0];expect(order.items).toHaveLength(4);
+      expect(order.items.filter((line:any)=>line.productId===42101)).toEqual([
+        expect.objectContaining({note:'sin cilantro',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]}),
+        expect.objectContaining({note:'sin cilantro',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]}),
+        expect.objectContaining({note:'con cilantro',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]})]);
+      expect(order.items.find((line:any)=>line.productId===42102)).toMatchObject({note:'Sin sal'});
+    });
+  }
+});
+
+describe('withdrawal scope with multiple pending cart edits',()=>{
+  for(const enabled of [true,false])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const phrase of ['Olvida ese cambio','Déjalo como estaba','No quites nada']){
+    it(`${phrase}, ${state}, agent ${enabled}`,async()=>{
+      const dish={id:42201,code:42201,name:'Ramen De Setas',price:18000,availableNow:true,attributes:[]};
+      const h=harness([dish],enabled);h.conv.state=state;
+      Object.assign(h.conv.sessionData,{orderType:'pickup',fulfillmentChosen:true,address:'Recoge en el local',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,
+        ...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{}),cart:[...['sin cilantro','con cilantro'].map((note,i)=>({productId:dish.id,code:dish.code,name:dish.name,unitPrice:18000,quantity:i?1:2,attributes:[],note}))]});
+      const cartSignature=JSON.stringify(h.conv.sessionData.cart);
+      const options=h.conv.sessionData.cart.map((line,index)=>({cartIndex:index,label:`Ramen De Setas · ${line.note}`}));
+      h.conv.sessionData.pendingCartRemoval={cartSignature,options};
+      h.conv.sessionData.pendingCartQuantity={cartSignature,options,quantity:1};
+      h.service.ordersService.create=jest.fn();
+      const before=structuredClone(h.conv.sessionData);
+      await h.sendQueued(phrase);
+      expect(h.conv.sessionData.cart).toEqual(before.cart);expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+      expect(h.conv.sessionData.pendingCartQuantity).toEqual(before.pendingCartQuantity);
+      if(phrase==='No quites nada'){
+        expect(h.conv.sessionData.pendingCartRemoval).toBeUndefined();
+        expect(h.replies.at(-1)).toMatch(/cambio de cantidad/i);
+        await h.sendQueued('1');
+        expect(h.cartRows()).toEqual([expect.objectContaining({qty:1,note:'sin cilantro'}),expect.objectContaining({qty:1,note:'con cilantro'})]);
+        expect(h.conv.sessionData.pendingCartQuantity).toBeUndefined();
+      }else{
+        expect(h.conv.sessionData).toEqual(before);expect(h.replies.at(-1)).toMatch(/varios cambios.*cu[aá]l cancelamos/is);
+      }
+      expect(h.conv.sessionData.paymentMethod).toBe(before.paymentMethod);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    });
+  }
+});
