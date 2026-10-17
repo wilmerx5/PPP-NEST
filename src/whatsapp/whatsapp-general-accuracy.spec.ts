@@ -17795,3 +17795,82 @@ describe('Whole order cancellation inquiries preserve checkout', () => {
  });
 
 });
+
+
+describe('Cancellation aside with independent purchase',()=>{
+ const menus=[
+  [{id:59101,code:981,name:'Bowl De Garbanzos',price:19000,availableNow:true,hasAttributes:false,attributes:[]},{id:59102,code:982,name:'Agua De Jamaica',price:5000,availableNow:true,hasAttributes:false,attributes:[]}],
+  [{id:59111,code:983,name:'Crepe De Espinaca',price:22000,availableNow:true,hasAttributes:false,attributes:[]},{id:59112,code:984,name:'Te De Jazmin',price:6000,availableNow:true,hasAttributes:false,attributes:[]}]
+ ];
+ for(const menu of menus)for(const agent of [true,false])for(const state of ['building_cart','awaiting_payment'] as const)
+ it.each([
+  '¿Puedo cancelar el pedido? Además agrega dos PRODUCT.',
+  '¿Cómo puedo cancelar el pedido? Y agrega dos PRODUCT.',
+  'No canceles el pedido; agrega dos PRODUCT.',
+  'Si llega tarde, quiero cancelar el pedido; aparte agrega dos PRODUCT.',
+  'Agrega dos PRODUCT; ¿puedo cancelar el pedido?',
+  'Puedo cancelar el pedido y agrega dos PRODUCT',
+  'No canceles el pedido y agrega dos PRODUCT'
+ ])('%s '+menu[0].name+' '+state+' agent='+agent,async template=>{
+  const h=harness(menu,agent);h.conv.state=state;
+  h.conv.sessionData.cart=[{productId:menu[0].id,code:menu[0].code,name:menu[0].name,unitPrice:menu[0].price,quantity:1,attributes:[],note:'sin sal'}];
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);h.service.ordersService.cancel=jest.fn();h.service.ordersService.create=jest.fn();
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+  h.service.ordersService.create.mockResolvedValue({id:5900,dailyOrderNumber:59});
+  const start=h.replies.length;
+  await h.sendQueued(template.replace('PRODUCT',menu[1].name));
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[0].id,qty:1,note:'sin sal'}),expect.objectContaining({id:menu[1].id,qty:2})]);
+  const response=h.replies.slice(start).join('\n');
+  expect(response).toMatch(/cancel|conservo/i);expect(response).toContain(menu[1].name);
+  expect(response).not.toMatch(/qued[oó] cancelado|no manejamos/i);
+  expect(h.service.ordersService.cancel).not.toHaveBeenCalled();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada mas');
+  await h.sendQueued('Pago contraentrega');
+  expect(h.conv.state).toBe('awaiting_final_confirm');
+  await h.sendQueued('Si');
+  expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const order=h.service.ordersService.create.mock.calls[0][0];expect(order.items).toHaveLength(3);
+  expect(order.items.filter((line:any)=>line.productId===menu[0].id)).toEqual([expect.objectContaining({note:'sin sal'})]);
+  expect(order.items.filter((line:any)=>line.productId===menu[1].id)).toHaveLength(2);
+ });
+});
+
+
+describe('Cancellation composition respects scope',()=>{
+ const menu=[{id:59201,code:975,name:'Tarta De Verduras',price:21000,availableNow:true,hasAttributes:false,attributes:[]},{id:59202,code:976,name:'Agua De Tamarindo',price:4000,availableNow:true,hasAttributes:false,attributes:[]}];
+ for(const agent of [true,false]) {
+ it.each([
+  'Si llega tarde, quiero cancelar el pedido y agrega dos Agua De Tamarindo',
+  'Si llega tarde, quiero cancelar el pedido; agrega dos Agua De Tamarindo',
+  '¿Puedo cancelar el pedido? No agregues Agua De Tamarindo',
+  '¿Puedo cancelar el pedido y agregar dos Agua De Tamarindo?',
+ ])('unclear or negative action stays unexecuted: %s agent='+agent,async text=>{
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';
+  h.conv.sessionData.cart=[{productId:59201,code:975,name:menu[0].name,unitPrice:21000,quantity:1,attributes:[],note:'sin sal'}];
+  const before=structuredClone(h.cartRows());h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  const response=await h.sendQueued(text);
+  expect(h.cartRows()).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');
+  expect(response||'').toMatch(/cancel|condici[oó]n|aclara/i);expect(response||'').not.toMatch(/qued[oó] cancelado/i);
+ });
+ it('independent row removal uses existing edit route agent='+agent,async()=>{
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';
+  h.conv.sessionData.cart=menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}));
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  const start=h.replies.length;
+  await h.sendQueued('¿Puedo cancelar el pedido? Aparte quita el Agua De Tamarindo');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:59201,qty:1})]);
+  expect(h.replies.slice(start).join('\n')).toMatch(/no he cancelado nada/i);
+  expect(h.service.ordersService.findTodayOrdersByPhone).not.toHaveBeenCalled();
+ });
+ }
+});
+
+
+describe('Catalog based quantity during payment',()=>{
+ it.each([true,false].flatMap(agent=>['Te De Jazmin','Infusion De Hibisco'].map(name=>({agent,name}))))('two $name agent=$agent',async({agent,name})=>{
+  const menu=[{id:59301,code:971,name:'Tarta De Setas',price:23000,availableNow:true,hasAttributes:false,attributes:[]},{id:59302,code:972,name,price:4500,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,agent);h.conv.state='awaiting_payment';h.conv.sessionData.cart=[{productId:59301,code:971,name:menu[0].name,unitPrice:23000,quantity:1,attributes:[]}];
+  await h.sendQueued('Quiero dos '+name);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:59301,qty:1}),expect.objectContaining({id:59302,qty:2})]);
+ });
+});

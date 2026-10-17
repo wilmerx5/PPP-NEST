@@ -1129,19 +1129,29 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // Extract only a complete cancellation aside and an independently imperative
+    // clause. Reuse the normal purchase/edit router rather than duplicating mutations.
+    const mixedCancellation = this.splitWholeOrderCancellationAside(originalText);
+    if (mixedCancellation && !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state)) {
+      turn.independentInquiryAnswer = this.wholeOrderCancellationAnswer(mixedCancellation.kind, false);
+      await this.reply(conv, msg.waId, turn.independentInquiryAnswer);
+      if (!mixedCancellation.action) {
+        const current = this.conversationService.getSession(conv);
+        await this.reply(conv, msg.waId, 'No cancelé ni cambié el pedido. Aclara qué cambio quieres hacer ahora, separado de la condición o consulta.' +
+          '\n\n' + (this.formatInterruptedStepReminder(conv, current) || this.formatContinueShoppingPrompt(current)));
+        return;
+      }
+      originalText = mixedCancellation.action;
+      text = mixedCancellation.action;
+    }
+
     // Discussing cancellation is not an instruction to discard a draft.
     // Keep this before post-order reopening as the question concerns the current order.
     const wholeCancellationAside = this.wholeOrderCancellationAside(originalText);
     if (wholeCancellationAside) {
       const current = this.conversationService.getSession(conv);
       const registered = ['completed', 'closed'].includes(conv.state);
-      const answer = wholeCancellationAside === 'retain'
-        ? 'De acuerdo, conservo el pedido. No he cancelado nada.'
-        : wholeCancellationAside === 'conditional'
-          ? 'No he cancelado nada: esa condición todavía no está confirmada.'
-          : registered
-            ? 'Si el pedido ya está registrado, debes coordinar la cancelación con el local. ' + this.humanContactMessage()
-            : 'Mientras el pedido no esté registrado, puedes descartarlo escribiendo «cancela el pedido». No he cancelado nada.';
+      const answer = this.wholeOrderCancellationAnswer(wholeCancellationAside, registered);
       await this.reply(conv, msg.waId, answer + (!registered ? '\n\n' +
         (this.formatInterruptedStepReminder(conv, current) || this.formatContinueShoppingPrompt(current)) : ''));
       return;
@@ -8980,7 +8990,7 @@ export class WhatsappOrchestratorService {
     }
     if (!dish) return false;
 
-    const qty = Math.max(1, this.catalogService.extractQuantityFromSegment(raw));
+    const qty = Math.max(1, this.catalogService.extractQuantityFromMessage(raw, [dish]));
     const attempt = this.tryAddProductToCart(session, dish, qty, cfg, undefined, undefined, {
       sourceText: raw,
     });
@@ -13810,6 +13820,46 @@ export class WhatsappOrchestratorService {
     const redeemed = /\b(redimid[oa]s?|canjead[oa]s?|canje)\b/.test(t);
     const extra = /\b(adicional|aparte|otro|otra|mas)\b/.test(t);
     return redeemed && extra;
+  }
+
+  private wholeOrderCancellationAnswer(kind: 'retain' | 'question' | 'conditional', registered: boolean): string {
+    if (kind === 'retain') return 'De acuerdo, conservo el pedido. No he cancelado nada.';
+    if (kind === 'conditional') return 'No he cancelado nada: esa condición todavía no está confirmada.';
+    return registered
+      ? 'Si el pedido ya está registrado, debes coordinar la cancelación con el local. ' + this.humanContactMessage()
+      : 'Mientras el pedido no esté registrado, puedes descartarlo escribiendo «cancela el pedido». No he cancelado nada.';
+  }
+
+  private splitWholeOrderCancellationAside(text: string): {
+    kind: 'retain' | 'question' | 'conditional'; action: string;
+  } | null {
+    if (!/cancel|anul/i.test(text) || this.wholeOrderCancellationAside(text)) return null;
+    // A separator alone does not prove independence from an unknown condition:
+    // require an explicit aparte/además marker for that case.
+    let ambiguousKind: 'retain' | 'question' | 'conditional' | null = null;
+    const separator = /[?;.\n]+|\s+y\s+(?=(?:agrega(?:me)?|a[nñ]ade(?:me)?|dame|quiero|quita(?:me)?|cambia(?:me)?|ponme)\s+)/gi;
+    for (const boundary of text.matchAll(separator)) {
+      const left = text.slice(0, boundary.index).trim();
+      const right = text.slice(boundary.index! + boundary[0].length).trim();
+      if (!left || !right) continue;
+      for (const [aside, rawAction] of [[left, right], [right, left]]) {
+        const kind = this.wholeOrderCancellationAside(aside);
+        if (!kind) continue;
+        ambiguousKind ||= kind;
+        const explicitIndependence = /^(?:adem[aá]s|aparte)\b/i.test(rawAction);
+        if (kind === 'conditional' && !explicitIndependence) continue;
+        const action = rawAction.replace(/^(?:(?:y|adem[aá]s|aparte)\s*[,;:]?\s+)+/i, '').trim();
+        if (!/^(?:agrega(?:me)?|a[nñ]ade(?:me)?|dame|quiero|quita(?:me)?|cambia(?:me)?|ponme)\s+/i.test(action)) continue;
+        return {kind, action};
+      }
+    }
+    if (ambiguousKind) return {kind: ambiguousKind, action: ''};
+    // A remaining question/negation/condition prefix must never fall through
+    // to the destructive substring-based cancellation route.
+    const asidePrefix = text.match(/^.*?\bpedido\b/i)?.[0];
+    const prefixKind = asidePrefix && this.wholeOrderCancellationAside(asidePrefix);
+    if (prefixKind) return {kind: prefixKind, action: ''};
+    return null;
   }
 
   private wholeOrderCancellationAside(text: string): 'retain' | 'question' | 'conditional' | null {

@@ -1,3 +1,13 @@
+## Mensajes mixtos de cancelación y acción independiente — 17/10/2026
+
+Validado SIN desplegar. docs/whatsapp-mixed-cancel-validation-1710.json:70 casos nuevos (56 recorridos hasta orden simulada,10 de alcance/eliminación, cuatro cantidades por catálogo en pago);145 focalizadas,77 suites/7738 Jest, TypeScript y72 contratos Node verdes. Global inicial interrumpida para ampliar pruebas; solo final acredita aceptación. Cero inferencia;181/183 intacto. Último runtime verificado1c4d98a9; agrupar cambios antes del siguiente deploy.
+
+Próximas prioridades:
+1. Edición cart-edit + compra/opciones pendientes: referencia vaga debe aclarar dueño; retirar explícitamente una sola intención y resolver la restante sin perder carrito/checkout.
+2. Composición fuera de cancelación: consulta informativa +cambio/opción/compra, incluida condición desconocida. Asegurar respuesta y mutación independiente sin depender de puntuación.
+3. Contrato de consulta +nueva compra después de orden registrada. La ruta mixta actual excluye completed/closed; no acreditarlo por los tests de preguntas puras posteriores a registro.
+4. Desplegar el lote acumulado con rollback/imagen/health y luego contraste real limitado al saldo operativo, reservado antes de red. Nunca confirmar/cancelar órdenes externas sin aislamiento.
+
 ## Cancelación del pedido completo — validado, pendiente de despliegue — 17/10/2026
 
 Ver docs/whatsapp-whole-cancel-validation-1710.json:68 casos nuevos;83 focalizadas,77 suites/7668 Jest, TypeScript y72 contratos Node verdes. Código nuevo en staging; runtime todavía1c4d98a9. No reconstruir por rutina: agrupar siguiente ajuste. Cero inferencia;181/183 intacto.

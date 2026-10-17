@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "4fc04402",
+  "newTests": 70,
+  "matrix": {
+    "independentPurchaseCompleteJourneys": 56,
+    "scopeAndIndependentRemoval": 10,
+    "directCatalogQuantityDuringPayment": 4,
+    "fictionalMenus": 2,
+    "simulatedAgent": [
+      true,
+      false
+    ],
+    "checkoutStates": [
+      "building_cart",
+      "awaiting_payment"
+    ]
+  },
+  "behavior": [
+    "Respond to complete cancellation aside without executing cancellation; route independently imperative purchase/removal through existing handlers.",
+    "Recognize punctuation and conjunction boundaries; require aparte/además to treat a positive action after unknown condition as independent.",
+    "Unclear or negative continuation preserves cart/state and asks clarification.",
+    "Retain inquiry answer when automatic delivery checkout replaces shopping responses.",
+    "Payment addition quantity uses catalog vocabulary rather than food glossary alone."
+  ],
+  "baseline": {
+    "initialMixed": {
+      "failed": 40,
+      "log": "/tmp/ppp-mixed-cancel-baseline-1710.log"
+    },
+    "scopeAfterInitialImplementation": {
+      "failed": 6,
+      "passed": 2,
+      "log": "/tmp/ppp-mixed-cancel-scope-baseline-1710.log"
+    },
+    "unpunctuatedAfterInitialImplementation": {
+      "newFailures": 18,
+      "existingPassed": 48,
+      "log": "/tmp/ppp-mixed-cancel-unpunctuated-baseline-1710.log"
+    },
+    "otherDevelopmentFindings": "First implementation retained quantity 1 instead of 2 for tea during payment (10 failures). Extending to full checkout exposed lost inquiry answer in 20 seeded delivery journeys; fixed through existing turn.independentInquiryAnswer context. These overlap new test families and are not additive unique counts."
+  },
+  "targeted": {
+    "passed": 145,
+    "log": "/tmp/ppp-mixed-cancel-final-accepted-targets-1710.log"
+  },
+  "global": {
+    "suites": 77,
+    "passed": 7738,
+    "seconds": 1063.112,
+    "log": "/tmp/ppp-mixed-cancel-final-global-1710.log",
+    "unchangedSourceFiles": 354,
+    "snapshot": "/tmp/ppp-mixed-cancel-final-source-1710.json",
+    "unacceptedRun": "/tmp/ppp-mixed-cancel-global-1710.log interrupted intentionally before source edits to add no-punctuation cases; not accredited."
+  },
+  "typecheck": {
+    "passed": true,
+    "log": "/tmp/ppp-mixed-cancel-accepted-tsc-1710.log"
+  },
+  "nodeContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-mixed-cancel-final-contracts-1710.log"
+  },
+  "paidCalls": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": "181/183 unchanged under operational ceiling; two remaining. No counter reset.",
+  "deployment": "Published source only; not deployed. Last runtime verification was 1c4d98a9. Main untouched.",
+  "limits": [
+    "Two clauses with recognized cancellation aside and explicit imperative; not general proof for arbitrary compound messages.",
+    "Current mixed route excludes completed/closed/human/takeover/awaiting_mp_payment; mixed post-order purchase intent needs a separate contract.",
+    "No new real audio/image/model or Meta-channel accuracy evidence.",
+    "No external order confirmation/cancellation."
+  ],
+  "next": [
+    "One cart edit plus pending purchase/option selection: ambiguous ownership then explicit resolution.",
+    "Vary non-cancellation inquiries alongside edits, attributes and conditions; preserve both response and independently requested changes.",
+    "Group before deploy; verify actual code/image/health after eventual rebuild.",
+    "Bounded real-model/channel contrast with ledger reservation before network."
+  ]
+}
