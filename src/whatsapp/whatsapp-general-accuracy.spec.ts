@@ -17022,3 +17022,36 @@ describe('an unpicked list is recalled before the final summary', () => {
     });
   }
 });
+
+describe('reusing the saved address after "¿misma dirección o nueva?"', () => {
+  const fictional = [
+    { id: 31801, code: 31801, name: 'Lasagna De Carne', price: 23000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  const asked = (menu: any[], id: number, enabled: boolean) => {
+    const h = harness(menu as any, enabled);
+    const product = menu.find((p: any) => p.id === id);
+    h.conv.sessionData.cart = [{ productId: id, code: id, name: product.name, unitPrice: product.price, quantity: 1, attributes: [] }] as any;
+    Object.assign(h.conv.sessionData, { orderType: 'delivery', fulfillmentChosen: true, lastDeliveryAddress: 'Altavista' });
+    h.conv.customerName = 'Wil';
+    h.conv.state = 'awaiting_address';
+    return h;
+  };
+  for (const enabled of [false, true]) {
+    for (const [label, menu, id] of [['PPP', products, 94], ['fictional', fictional, 31801]] as const) {
+      for (const text of ['Si a la misma direction', 'la misma direcion', 'sí, a esa misma', 'misma', 'en la misma']) {
+        it(`${label} "${text}" keeps the saved address, agent ${enabled}`, async () => {
+          const h = asked(menu as any, id, enabled);
+          await h.sendQueued(text);
+          expect(h.conv.sessionData.address).toBe('Altavista');
+          expect(h.conv.sessionData.addressConfirmed).toBe(true);
+          expect(h.conv.state).not.toBe('awaiting_address');
+        });
+      }
+      it(`${label} "a una nueva" asks for the new address, agent ${enabled}`, async () => {
+        const h = asked(menu as any, id, enabled);
+        await h.sendQueued('a una nueva');
+        expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+      });
+    }
+  }
+});
