@@ -61,6 +61,7 @@ export class WhatsappMetaService {
       const changes = Array.isArray((entry as any).changes) ? (entry as any).changes : [];
       for (const change of changes) {
         const value = change?.value;
+        this.logDeliveryStatuses(value?.statuses);
         if (!value?.messages) continue;
         const messages = Array.isArray(value.messages) ? value.messages : [];
         for (const msg of messages) {
@@ -70,6 +71,20 @@ export class WhatsappMetaService {
       }
     }
     return out;
+  }
+
+  /** Meta reports a failed reply only here; the send call itself already returned 200. */
+  private logDeliveryStatuses(statuses: unknown): void {
+    if (!Array.isArray(statuses)) return;
+    for (const status of statuses) {
+      const recipient = String(status?.recipient_id || '').replace(/\d(?=\d{4})/g, '*');
+      const errors = Array.isArray(status?.errors) ? status.errors : [];
+      const detail = errors.map((error: any) =>
+        `${error?.code ?? '?'} ${error?.title || error?.message || ''}${error?.error_data?.details ? ` (${error.error_data.details})` : ''}`.trim()).join('; ');
+      const line = `delivery status=${status?.status || '?'} to=${recipient} wamid=${String(status?.id || '').slice(-12)}${detail ? ` errors=${detail}` : ''}`;
+      if (status?.status === 'failed' || errors.length) this.logger.warn(line);
+      else this.logger.log(line);
+    }
   }
 
   private parseOneMessage(msg: any): IncomingWhatsappMessage | null {
