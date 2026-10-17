@@ -38,6 +38,7 @@ function cartMatches(expected, actual) {
 async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, helpers = {}) {
   const now = helpers.now || Date.now;
   const sleep = helpers.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  const menuOnly = env.STAGING_CHAT_PLAN === 'menu-only';
   const resumeKnownDraft = env.STAGING_CHAT_RESUME === 'known-variant-draft';
   const resumeCollapsedDraft = env.STAGING_CHAT_RESUME === 'known-collapsed-variant-draft';
   const resumeRemovalDraft = env.STAGING_CHAT_RESUME === 'known-variant-removal-draft';
@@ -85,6 +86,8 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         env.GITHUB_REF === 'refs/heads/staging' &&
         ['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME), 'UNAPPROVED_EXECUTION_CONTEXT');
       ensure(env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'TLS_VERIFICATION_REQUIRED');
+      ensure(!env.STAGING_CHAT_PLAN || ['full', 'menu-only'].includes(env.STAGING_CHAT_PLAN), 'INVALID_CHAT_PLAN');
+      ensure(!menuOnly || !env.STAGING_CHAT_RESUME, 'MENU_PLAN_CANNOT_RESUME_DRAFT');
       ensure(!env.STAGING_CHAT_EXECUTE || ['true', 'false'].includes(env.STAGING_CHAT_EXECUTE), 'INVALID_EXECUTION_MODE');
       ensure(!env.STAGING_CHAT_RESUME || resumeKnownDraft || resumeCollapsedDraft || resumeRemovalDraft || resumeNoteDraft || resumeCheckoutDraft, 'INVALID_RESUME_MODE');
       ensure(['STAGING_ADMIN_EMAIL', 'STAGING_ADMIN_PASSWORD', 'STAGING_WHATSAPP_APP_SECRET',
@@ -213,7 +216,7 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
       }
     })) return report;
     if (report.mode === 'preflight') { report.ok = true; return report; }
-    const plan = resumeCheckoutDraft ? [...(checkoutResumeNeedsReset ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}] : []), ...buildPlan(products)] :
+    const plan = menuOnly ? [{id:'polite-menu',text:'Hola buenas tardes tienes la carta por favor',cart:[],reply:'menu'}] : resumeCheckoutDraft ? [...(checkoutResumeNeedsReset ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}] : []), ...buildPlan(products)] :
       resumeKnownDraft ? buildKnownVariantResumePlan(products) :
       resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
       resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
@@ -256,6 +259,10 @@ async function runRehearsal(env = process.env, fetchImpl = globalThis.fetch, hel
         ensure(outgoing.length >= 1 && outgoing.every(m => m.sentBy === 'bot' && m.body?.trim()), 'BOT_REPLY_NOT_PERSISTED_OR_MANUAL_INTERFERENCE');
         ensure(outgoing.every(m => m.body.length <= 600), 'REPLY_TOO_LONG');
         const reply = normalize(outgoing.map(m => m.body).join(' '));
+        if (step.reply === 'menu') {
+          ensure(reply.includes('https://www.prontopolloportal.com/menu') && !/no tenemos|no manejamos|no entendi/.test(reply), 'MENU_LINK_REPLY_FAILED');
+          ensure(JSON.stringify(current.sessionData) === JSON.stringify(before.sessionData) && current.state === before.state, 'MENU_QUERY_CHANGED_SESSION');
+        }
         if (step.reply === 'meat') ensure(reply.includes('churrasco') && /38[.,]?000/.test(reply) &&
           (reply.includes('sobrebarriga') || reply.includes('costilla')), 'MEAT_INQUIRY_FACTS_FAILED');
         if (step.reply === 'ribs') ensure(reply.includes('yuca') && /\bno\b/.test(reply) && reply.includes('ensalada'), 'RIBS_COMPOSITION_FACTS_FAILED');

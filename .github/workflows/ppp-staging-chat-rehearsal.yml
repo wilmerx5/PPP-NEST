@@ -8,6 +8,12 @@ on:
         type: boolean
         default: false
         required: false
+      plan:
+        description: One menu-only message or the full historical conversation plan
+        type: choice
+        options: [menu-only, full]
+        default: menu-only
+        required: false
       resume:
         description: Resume only the verified failed synthetic variant draft
         type: choice
@@ -43,6 +49,7 @@ jobs:
       - name: Verify staging and optionally execute bounded test conversations
         env:
           STAGING_CHAT_EXECUTE: ${{ inputs.execute && 'true' || 'false' }}
+          STAGING_CHAT_PLAN: ${{ inputs.plan }}
           STAGING_CHAT_RESUME: ${{ inputs.resume != 'fresh' && inputs.resume || '' }}
           STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
           STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}

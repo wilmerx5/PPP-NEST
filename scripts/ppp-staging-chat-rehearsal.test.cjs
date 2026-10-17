@@ -24,7 +24,7 @@ const products = [
 ];
 function fixture(options = {}) {
   let clock = Date.parse('2026-10-09T21:31:00Z'), nextId = 2, seen = new Set(), sentTexts = [], simulatedStepIndex = 0;
-  const calls = [], plan = options.resumeCheckoutDraft ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}, ...buildPlan(products)] : options.resumeKnownDraft ? buildKnownVariantResumePlan(products) :
+  const calls = [], plan = options.menuOnly ? [{id:'polite-menu',text:'Hola buenas tardes tienes la carta por favor',cart:[],reply:'menu'}] : options.resumeCheckoutDraft ? [{id:'reset-authorized-checkout-test',text:'Reiniciar',cart:[]}, ...buildPlan(products)] : options.resumeKnownDraft ? buildKnownVariantResumePlan(products) :
     options.resumeCollapsedDraft ? buildCollapsedVariantResumePlan(products) :
     options.resumeRemovalDraft ? buildVariantRemovalResumePlan(products) :
     options.resumeNoteDraft ? buildDishNoteResumePlan(products) : buildPlan(products);
@@ -130,7 +130,7 @@ function fixture(options = {}) {
       if (options.orderCreation && step.id === 'multiple-products-variants-note') conversation.state = 'completed';
       conversation.messages.push({ id: nextId++, direction: 'in', body: msg.text.body, createdAt: new Date(clock).toISOString(), sentBy: 'bot' });
       if (options.concurrentHuman) conversation.messages.push({ id: nextId++, direction: 'in', body: 'Mensaje humano', createdAt: new Date(clock).toISOString(), sentBy: 'bot' });
-      const reply = step.reply === 'meat' ? 'Churrasco $38.000 y sobrebarriga $33.000.' : step.reply === 'ribs' ? 'No incluyen ensalada: traen yuca frita, papa francesa y arroz.' : 'Listo, anotado.';
+      const reply = step.reply === 'menu' ? (options.badMenuReply ? 'No tenemos productos de carta por favor' : 'Claro, nuestra carta: https://www.prontopolloportal.com/menu') : step.reply === 'meat' ? 'Churrasco $38.000 y sobrebarriga $33.000.' : step.reply === 'ribs' ? 'No incluyen ensalada: traen yuca frita, papa francesa y arroz.' : 'Listo, anotado.';
       conversation.messages.push({ id: nextId++, direction: 'out', body: reply, createdAt: new Date(clock).toISOString(), sentBy: 'bot' });
       return json({ ok: true });
     }
@@ -299,3 +299,19 @@ for (const option of ['wrongModel','agentDisabled','staffEventsEnabled']) {
     assert.equal(f.sentTexts.length,0);
   });
 }
+
+for (const badMenuReply of [false, true]) {
+  test(`menu-only sends one bounded message and validates the response (bad=${badMenuReply})`, async () => {
+    const f=fixture({menuOnly:true,badMenuReply});
+    const report=await runRehearsal({...env,STAGING_CHAT_PLAN:'menu-only'},f.fetch,f.helpers);
+    assert.equal(report.ok,!badMenuReply);
+    assert.equal(report.webhookPosts,1);
+    assert.equal(report.expectedSteps,1);
+    assert.deepEqual(f.sentTexts,['Hola buenas tardes tienes la carta por favor']);
+  });
+}
+test('menu-only cannot be combined with draft resumption',async()=>{
+  const f=fixture({menuOnly:true});
+  const report=await runRehearsal({...env,STAGING_CHAT_PLAN:'menu-only',STAGING_CHAT_RESUME:'known-variant-draft'},f.fetch,f.helpers);
+  assert.equal(report.ok,false);assert.equal(report.webhookPosts,0);assert.equal(f.calls.length,0);
+});
