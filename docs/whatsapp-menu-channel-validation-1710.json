@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-17",
+  "codeCommit": "efa2816e0ef199f824a077597caac70b3b7919b7",
+  "runtimeCode": "b20b94db",
+  "scope": "Single deterministic polite menu request, signed synthetic inbound, real staging persistence and Meta outbound",
+  "workflow": "https://github.com/wilmerx5/PPP-NEST/actions/runs/39067442905",
+  "report": {
+    "ok": true,
+    "mode": "execute",
+    "checks": [
+      {
+        "name": "authorized_context",
+        "pass": true
+      },
+      {
+        "name": "health_database",
+        "pass": true
+      },
+      {
+        "name": "staging_admin_login",
+        "pass": true
+      },
+      {
+        "name": "effective_staging_target",
+        "pass": true
+      },
+      {
+        "name": "webhook_signature_without_messages",
+        "pass": true
+      },
+      {
+        "name": "existing_empty_test_conversation",
+        "pass": true
+      },
+      {
+        "name": "current_menu_products",
+        "pass": true
+      },
+      {
+        "name": "logout",
+        "pass": true
+      }
+    ],
+    "steps": [
+      {
+        "id": "polite-menu",
+        "pass": true,
+        "inboundCount": 1,
+        "outboundCount": 1,
+        "expectedCartLines": 0,
+        "actualCartLines": 0,
+        "expectedCart": [],
+        "actualCart": []
+      }
+    ],
+    "webhookPosts": 1,
+    "expectedSteps": 1,
+    "limits": "Synthetic signed inbound events; real staging persistence and Meta outbound. No genuine Meta inbound delivery, kitchen, payments or order confirmation tested.",
+    "webhookSignatureHttpStatus": 200,
+    "initialCart": [],
+    "httpRequests": 11
+  },
+  "deliveryEvidence": {
+    "sent": true,
+    "delivered": true,
+    "read": true,
+    "observedUtc": "2026-10-17T20:36:57Z",
+    "privateLog": "/tmp/ppp-menu-channel-runtime-private-1710.log",
+    "scope": "One outbound message in isolated workflow window; recipient and message identifier omitted"
+  },
+  "validation": {
+    "runnerTests": 72,
+    "basicRegressionTests": 100,
+    "basicLog": "/tmp/ppp-menu-channel-basics-1710.log",
+    "runnerLog": "/tmp/ppp-menu-channel-contracts-1710.log"
+  },
+  "modelRequests": "Deterministic menu-link route, no model call expected; no model telemetry observed in window. No new paid inference deliberately invoked.",
+  "limits": [
+    "No genuine client Meta inbound event tested",
+    "No order created or confirmed",
+    "No whole-chat or burst guarantee",
+    "Changes affect test runner and workflow only; app image not rebuilt"
+  ],
+  "mainModified": false,
+  "automationCreated": false
+}
