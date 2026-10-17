@@ -16663,3 +16663,56 @@ describe('included side preferences stay on the dish', () => {
     });
   }
 });
+
+
+describe('product names that contain "y" stay one product', () => {
+  const fictional = [
+    { id: 31201, code: 31201, name: 'Pan Y Queso 200g', price: 4500, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31202, code: 31202, name: 'Arepa', price: 3000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31203, code: 31203, name: 'Jugo Natural', price: 5000, availableNow: true, hasAttributes: true,
+      attributes: [{ attributeName: 'Sabor', options: ['Mora', 'Lulo'] }] },
+  ];
+  const cokeCart = () => [{ productId: 44, code: 44, name: 'Gaseosa 250ml', unitPrice: 2500, quantity: 2,
+    attributes: [{ attributeName: 'Sabor', attributeValue: 'Coca Cola' }] }];
+  for (const enabled of [true, false]) {
+    it(`PPP "dos cola y pola" is one drink, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      await h.sendQueued('Dame dos cola y pola');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 30, qty: 2, attrs: [] })]);
+    });
+    for (const text of ['No coca cola no cola y pola', 'no era coca cola sino cola y pola']) {
+      it(`PPP "${text}" swaps the drink and keeps the quantity, agent ${enabled}`, async () => {
+        const h = harness(products, enabled);
+        h.conv.sessionData.cart = cokeCart() as any;
+        await h.sendQueued(text);
+        expect(h.cartRows()).toEqual([expect.objectContaining({ id: 30, qty: 2, attrs: [] })]);
+      });
+    }
+    it(`PPP correction already applied only acknowledges, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = [{ productId: 30, code: 30, name: 'Cola Y Pola 330Cm', unitPrice: 4000, quantity: 2, attributes: [] }] as any;
+      await h.sendQueued('No coca cola no cola y pola');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 30, qty: 2 })]);
+      expect(h.replies.join(' ')).toMatch(/queda \*Cola Y Pola 330Cm\*/);
+    });
+    it(`fictional "dos pan y queso" and its correction, agent ${enabled}`, async () => {
+      const h = harness(fictional as any, enabled);
+      await h.sendQueued('Dame dos pan y queso');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 31201, qty: 2, attrs: [] })]);
+      const g = harness(fictional as any, enabled);
+      g.conv.sessionData.cart = [{ productId: 31203, code: 31203, name: 'Jugo Natural', unitPrice: 5000, quantity: 2,
+        attributes: [{ attributeName: 'Sabor', attributeValue: 'Mora' }] }] as any;
+      await g.sendQueued('No jugo de mora no pan y queso');
+      expect(g.cartRows()).toEqual([expect.objectContaining({ id: 31201, qty: 2, attrs: [] })]);
+    });
+    it(`fictional coordinated products are still two lines, agent ${enabled}`, async () => {
+      const h = harness(fictional as any, enabled);
+      await h.sendQueued('una arepa y un jugo natural de lulo');
+      expect(h.cartRows()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 31202, qty: 1 }),
+        expect.objectContaining({ id: 31203, qty: 1, attrs: ['Sabor:Lulo'] }),
+      ]));
+    });
+  }
+});
+

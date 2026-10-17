@@ -8850,7 +8850,28 @@ export class WhatsappCatalogService {
    * Parte un mensaje con varios platos: "sopa de mondongo, cuarto de pollo y costillas".
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
-  splitMultiProductSegments(text: string): string[] {
+  splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
+    const parts = this.splitMultiProductSegmentsRaw(text);
+    if (!products?.length || parts.length < 2) return parts;
+    // "dos cola y pola": the "y" belongs to the catalog name "Cola Y Pola".
+    const conjoined = products
+      .filter((product) => product.availableNow !== false)
+      .map((product) => normalizeText(product.name).split(/\s+/).filter((token) => !/\d/.test(token)).join(' '))
+      .filter((name) => / y /.test(name));
+    if (!conjoined.length) return parts;
+    const merged: string[] = [parts[0]];
+    for (const part of parts.slice(1)) {
+      const previous = merged[merged.length - 1];
+      const joined = ` ${normalizeText(`${previous} y ${part}`)} `;
+      const spans = conjoined.some((name) => joined.includes(` ${name} `) &&
+        !` ${normalizeText(previous)} `.includes(` ${name} `) && !` ${normalizeText(part)} `.includes(` ${name} `));
+      if (spans) merged[merged.length - 1] = `${previous} y ${part}`;
+      else merged.push(part);
+    }
+    return merged;
+  }
+
+  private splitMultiProductSegmentsRaw(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
     const namedOther = 'otr[oa]\\s+(?!(?:de|con|sin|igual|mas|más|para|por|asi|así)\\b)[a-záéíóúñ]{3,}';
     const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
@@ -9487,7 +9508,7 @@ export class WhatsappCatalogService {
     }
 
     const swap = this.swapIntent(text);
-    let segments = this.splitMultiProductSegments(text);
+    let segments = this.splitMultiProductSegments(text, products);
     segments = segments.filter(
       (s) => !this.isPolitenessOnlySegment(s) && !this.isNonOrderChatterSegment(s),
     );

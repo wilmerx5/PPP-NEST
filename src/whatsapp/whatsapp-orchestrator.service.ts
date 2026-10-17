@@ -153,6 +153,9 @@ type EffectiveWhatsappConfig = Awaited<
   ReturnType<WhatsappSettingsService['getEffectiveConfig']>
 >;
 
+/** "No coca cola, no, cola y pola" / "no era coca cola sino cola y pola": drop the first, keep the second. */
+const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\s*[,;]\s*|\s+)(?:no[,\s]+|sino\s+|era\s+|es\s+)(?:(?:era|es)\s+)?(.+?)[.!]*$/i;
+
 const CART_EDIT_SELECTION_KEYS = ['pendingCartReplacement', 'pendingCartQuantity', 'pendingCartAttributeEdit', 'pendingCartRemoval'] as const;
 
 type InboundTurnContext = {
@@ -12188,7 +12191,8 @@ export class WhatsappOrchestratorService {
   ): { removeQuery: string; addQuery: string } | null {
     const raw = (text || '').trim();
     const match = raw.match(/^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i) ||
-      raw.match(/^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|mejor(?:\s+quiero)?)\s+(.+)$/i);
+      raw.match(/^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|mejor(?:\s+quiero)?)\s+(.+)$/i) ||
+      raw.match(NEGATED_CART_CORRECTION);
     if (!match?.[1] || !match?.[2] || session.cart.length === 0) return null;
     const strip = (value: string) => value
       .replace(/^(?:el|la|los|las|un|una|unos|unas)\s+/i, '')
@@ -12203,7 +12207,8 @@ export class WhatsappOrchestratorService {
     const added = tokens(addQuery);
     if (removed.length === 0 || added.length === 0) return null;
     const cartHits = session.cart.filter((item) => {
-      const name = this.normalizeForMatch(item.name);
+      // "Gaseosa 250ml" with Sabor: Coca Cola is the coca cola line.
+      const name = this.normalizeForMatch([item.name, ...(item.attributes || []).map((a) => a.attributeValue)].join(' '));
       return removed.every((token) => name.includes(token));
     });
     const distinct = new Set(cartHits.map((item) => item.productId));
@@ -12218,6 +12223,21 @@ export class WhatsappOrchestratorService {
     });
     if (menuHits.length !== 1 || menuHits[0].id === [...distinct][0]) return null;
     return { removeQuery, addQuery };
+  }
+
+  /** "No coca cola, cola y pola" when the cart already holds only the second. */
+  private negatedCorrectionAlreadyApplied(text: string, session: WhatsappSessionData): WhatsappCartItem[] | null {
+    const negated = (text || '').trim().match(NEGATED_CART_CORRECTION);
+    if (!negated || !session.cart.length) return null;
+    const words = (value: string) => this.normalizeForMatch(value).split(' ').filter((token) => token.length >= 4);
+    const lineText = (item: WhatsappCartItem) =>
+      this.normalizeForMatch([item.name, ...(item.attributes || []).map((a) => a.attributeValue)].join(' '));
+    const holds = (value: string) => {
+      const wanted = words(value);
+      return wanted.length ? session.cart.filter((item) => wanted.every((token) => lineText(item).includes(token))) : [];
+    };
+    const kept = holds(negated[2]);
+    return kept.length && !holds(negated[1]).length ? kept : null;
   }
 
   /** A newly opened cart-edit list owns the next numbered answer. Retire
@@ -12341,7 +12361,14 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const parsed = parseCartItemReplacement(text) || this.catalogNamedCartSwap(text, session, products);
-    if (!parsed) return false;
+    if (!parsed) {
+      const kept = this.negatedCorrectionAlreadyApplied(text, session);
+      if (!kept) return false;
+      await this.reply(conv, waId,
+        `Listo, queda ${kept.map((item) => this.formatCartLineLabel(item)).join(', ')}.\n\n` +
+        `${this.formatCartOnly(session, this.deliveryFeeFor(session, cfg))}\n\n¿*Algo más*?`);
+      return true;
+    }
 
     const pending = session.pendingAttribute;
     const rejectsPending =
@@ -12352,6 +12379,7 @@ export class WhatsappOrchestratorService {
     if (!session.cart.length && !rejectsPending) return false;
 
     let removedLabel = '';
+    let removedQuantity: number | undefined;
     if (rejectsPending) {
       removedLabel = pending?.name || parsed.removeQuery;
       session = {
@@ -12382,10 +12410,14 @@ export class WhatsappOrchestratorService {
       }
 
       removedLabel = match.label;
+      if (match.indices.length === 1) removedQuantity = session.cart[match.indices[0]]?.quantity;
       session = this.removeCartLines(session, match.indices);
     }
 
     const addText = parsed.addQuery;
+    // "no coca cola, cola y pola" swaps the same units unless a new count is said.
+    const carriedQuantity = removedQuantity && removedQuantity > 1 &&
+      !/\b(?:\d+|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(addText) ? removedQuantity : undefined;
     const styleHint = await this.discussedProductFromRecent(conv.id, products);
     const sizedHalf = this.catalogService.resolveSizedChickenProduct(addText, products, {
       preferStyleFromName: styleHint?.name,
@@ -12449,7 +12481,7 @@ export class WhatsappOrchestratorService {
     const added = this.tryAddProductToCart(
       session,
       replacement,
-      this.resolveAddQuantity(session, replacement, { sourceText: addText }),
+      carriedQuantity ?? this.resolveAddQuantity(session, replacement, { sourceText: addText }),
       cfg,
       undefined,
       undefined,
@@ -17469,15 +17501,25 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.isCategoryBrowseQuestion(text)) return false;
     if (this.catalogService.isDishStyleSubstitutionInquiry(text)) return false;
     if (this.catalogService.isMenuExploreIntent(text, products)) return false;
-    if (this.catalogService.looksLikeMultiItemOrderMessage(text)) return false;
-    if (this.catalogService.looksLikeClearlyMultiDishOrder(text)) return false;
+    // "dos cola y pola" is one product whose name holds the "y".
+    const stillSeveral = this.catalogService.splitMultiProductSegments(text).length < 2 ||
+      this.catalogService.splitMultiProductSegments(text, products).length >= 2;
+    if (this.catalogService.looksLikeMultiItemOrderMessage(text) && stillSeveral) return false;
+    if (this.catalogService.looksLikeClearlyMultiDishOrder(text) && stillSeveral) return false;
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text)) return false;
     const query = this.catalogService.extractProductSearchQuery(text) || text;
     if (this.catalogService.uncoveredDishWords(query, products).length &&
       this.catalogService.uncoveredDishWords(
         this.catalogService.stripProductModificationNoise(query) || query, products).length) return false;
 
-    const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
+    // "una cola y pola" is exactly «Cola Y Pola 330Cm» once count and size are set aside.
+    const bareName = (value: string) => this.normalizeForMatch(value)
+      .replace(/^(?:(?:\d+|un[oa]?|dos|tres|cuatro|cinco)\s+)+/, '')
+      .split(' ').filter((token) => token && !/\d/.test(token)).join(' ');
+    const exactName = products.filter((product) =>
+      product.availableNow !== false && bareName(product.name) && bareName(product.name) === bareName(query));
+    const embedded = this.catalogService.findProductEmbeddedInMessage(text, products) ||
+      (exactName.length === 1 ? exactName[0] : null);
     if (
       !embedded ||
       (this.catalogService.isLikelySideOnlyProduct(embedded) &&
@@ -18109,6 +18151,26 @@ export class WhatsappOrchestratorService {
         latencyMs: Date.now() - started,
         userTextPreview: text,
         warnings: ['agent_side_note'],
+      });
+      return false;
+    }
+
+    // "No era coca cola sino cola y pola": la carta y el carrito ya dicen qué línea cambia.
+    if (
+      !hasProductiveActions &&
+      session.cart.length > 0 &&
+      (this.catalogNamedCartSwap(originalText || text, session, products) ||
+        this.negatedCorrectionAlreadyApplied(originalText || text, session))
+    ) {
+      this.turnTelemetry.record({
+        path: 'agent_v1',
+        outcome: 'fallback_rules',
+        waId: msg.waId,
+        conversationId: conv.id,
+        toolCalls: agent.toolCalls,
+        latencyMs: Date.now() - started,
+        userTextPreview: text,
+        warnings: ['agent_asked_instead_of_cart_swap'],
       });
       return false;
     }
