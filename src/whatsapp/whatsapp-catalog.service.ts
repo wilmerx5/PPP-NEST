@@ -331,6 +331,12 @@ function queryMentionsWord(query: string, word: string): boolean {
 /** Cuts and doneness describe how a line is prepared; "en cuatro" is never a quantity. */
 const SPOKEN_PREPARATION = /(?:,?\s*\b(?:y|con|pero)\s+)?(?:\b(?:el|la|los|las)\s+[a-záéíóúñ]+\s+)?\b(?:partid|cortad|picad|despresad)[oa]s?\s+en\s+(?:\d+|dos|tres|cuatro|cinco|seis|ocho|presas|trozos|pedazos|cuartos|mitades)\b|(?:,?\s*\bpero\s+)?\b(?:bien|muy)\s+(?:dorad|tostad|cocid|asad|crocant|crujient|quemadit)[oa]s?\b/gi;
 
+/** "ensalada de cebolla y tomate": a bare coordinated word continues the modifier, "y una gaseosa" does not. */
+const MODIFIER_COORDINATION = `(?:\\s+y\\s+(?!(?:un|una|unos|unas|uno|dos|tres|cuatro|cinco|otr[oa]s?|el|la|los|las|sin|con|mas|más|pero|para|por|${DRINK_ORDER_TOKEN.slice(3, -1)})\\b)[a-záéíóúñ]{2,}(?:\\s+(?!y\\b)[a-záéíóúñ]{3,})?)*`;
+
+/** "dame un bagre…": the request verb is not part of the dish or its note. */
+const LEADING_ORDER_VERB = /^(?:dame|d[eé]me|me\s+(?:das|da|regalas?|mandas?|traes?)|ponme|tr[aá]eme|m[aá]ndame|env[ií]ame|agr[eé]game|agrega(?:me)?)\s+(?=(?:un|una|unos|unas|el|la|\d+|dos|tres)\b)/i;
+
 const SPOKEN_REMINDER = /^(?:y\s+)?(?:que\s+)?no\s+(?:se\s+(?:les?|te|me)\s+|(?:te|se)\s+)?(?:vaya[ns]?\s+a\s+)?olvid\w*\s+(?:de\s+)?(?:que\s+)?(.*)$|^(?:recuerd\w+|acu[eé]rd\w+)\s+(?:de\s+)?(?:que\s+)?(.*)$/i;
 
 const COOKING_STYLE_TOKENS = new Set([
@@ -4159,6 +4165,8 @@ export class WhatsappCatalogService {
 
   /** Cocción, ají y las demás preferencias del mismo plato, sin tapar una con otra. */
   orderKitchenNote(text: string, product: { id: number; name: string; categoryName?: string }): string | undefined {
+    // The dish is already chosen: "dame un bagre con harto limón" is not an add-a-side request.
+    text = (text || '').replace(LEADING_ORDER_VERB, '');
     const peeled = peelSupportedCookingTerm(text, product);
     return joinKitchenNotes(
       peeled?.note,
@@ -4208,7 +4216,7 @@ export class WhatsappCatalogService {
     const chunks: string[] = [];
     const source = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const patterns = [
-      /\b((?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de)\s+(?:de\s+)?(?:(?:la|el|las|los)\s+)?[a-záéíóúñ]+(?:\s+(?!y\b)[a-záéíóúñ]+){0,2})/gi,
+      new RegExp(`\\b((?:sin|con|mas|más|pero\\s+sin|pero\\s+con|en\\s+vez\\s+de)\\s+(?:de\\s+)?(?:(?:la|el|las|los)\\s+)?[a-záéíóúñ]+(?:\\s+(?!y\\b)[a-záéíóúñ]+){0,2}${MODIFIER_COORDINATION})`, 'gi'),
       /\b((?:no\s+quiero|no\s+me\s+(?:pongan?|pongas)|sin)\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[a-záéíóúñ]+(?:\s+(?!y\b)[a-záéíóúñ]+){0,2})/gi,
       /\b((?:quiero\s+)?(?:mas|más)\s+(?:de\s+)?[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,1})/gi,
       /\b((?:cambia(?:r|me)?|cambiar)\s+(?:la\s+|el\s+)?(?:ensalada|papa|papas|yuca|arepa)(?:\s+por\s+[a-záéíóúñ]+(?:\s+[a-záéíóúñ]+){0,2})?)/gi,
@@ -4395,7 +4403,7 @@ export class WhatsappCatalogService {
   looksLikeSingleProductWithMods(text: string): boolean {
     if (this.looksLikeClearlyMultiDishOrder(text)) return false;
     if (this.looksLikeSideModificationNote(text)) return true;
-    return !!this.extractProductModificationNote(text);
+    return !!this.extractProductModificationNote((text || '').trim().replace(LEADING_ORDER_VERB, ''));
   }
 
   /**
@@ -4542,7 +4550,7 @@ export class WhatsappCatalogService {
     if (!raw) return raw;
     let cleaned = raw
       .replace(
-        /\b(?:sin|con|mas|más|pero\s+sin|pero\s+con|en\s+vez\s+de|no\s+quiero|no\s+me\s+(?:pongan?|pongas)|quiero\s+(?:mas|más))\s+(?:de\s+)?(?:la\s+|el\s+|las\s+|los\s+|una\s+|un\s+)?[^\s,]+(?:\s+[^\s,]+){0,2}/gi,
+        new RegExp(`\\b(?:sin|con|mas|más|pero\\s+sin|pero\\s+con|en\\s+vez\\s+de|no\\s+quiero|no\\s+me\\s+(?:pongan?|pongas)|quiero\\s+(?:mas|más))\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?[^\\s,]+(?:\\s+[^\\s,]+){0,2}${MODIFIER_COORDINATION}`, 'gi'),
         ' ',
       )
       .replace(/\s+/g, ' ')
@@ -5592,9 +5600,14 @@ export class WhatsappCatalogService {
     // "el pollo lleva arepas?" nombra el plato; la porción de arepas no es la respuesta
     if (accompaniment && !withoutSides.length) return null;
     const pool = withoutSides.length ? withoutSides : embedded;
+    // "con harto limón" is a kitchen note, not words the dish name must cover.
+    const dishText = this.stripProductModificationNoise(text) || text;
+    const leavesWordsOutOf = (source: string, p: WhatsappCatalogProduct) =>
+      this.missingDishQualifiers(source, [p]).length > 0 ||
+      this.uncoveredWordsAnchoredByProduct(source, p).length > 0;
+    // Names like "Arroz Con Pollo" contain "con": either reading may cover the dish.
     const leavesWordsOut = (p: WhatsappCatalogProduct) =>
-      this.missingDishQualifiers(text, [p]).length > 0 ||
-      this.uncoveredWordsAnchoredByProduct(text, p).length > 0;
+      leavesWordsOutOf(text, p) && leavesWordsOutOf(dishText, p);
     const namedEnough = (p: WhatsappCatalogProduct) => this.productNameFitsUtterance(p, text);
     if (pool.length === 1) {
       if (leavesWordsOut(pool[0]) || !namedEnough(pool[0])) return null;

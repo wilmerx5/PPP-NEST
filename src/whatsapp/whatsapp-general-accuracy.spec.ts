@@ -16619,3 +16619,47 @@ describe('cart row removal names where, not what', () => {
     }
   }
 });
+
+describe('included side preferences stay on the dish', () => {
+  const fictional = [
+    { id: 31101, code: 31101, name: 'Pargo', price: 38000, availableNow: true, hasAttributes: true, description: 'Acompañado con arroz, patacon y ensalada',
+      attributes: [{ attributeName: 'Preparacion', options: ['Frito', 'Al Ajillo'] }] },
+    { id: 31102, code: 31102, name: 'Porcion De Ensalada', price: 6000, availableNow: true, hasAttributes: false, attributes: [] },
+    { id: 31103, code: 31103, name: 'Limonada', price: 5000, availableNow: true, hasAttributes: false, attributes: [] },
+  ];
+  for (const enabled of [true, false]) {
+    it(`PPP original conversation, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      await h.sendQueued('Dame Un bagre en salsa con ensalada De cebolla y to ate y con arto limon');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 19, qty: 1, attrs: ['Seleccion:En Salsa'] })]);
+      expect(h.conv.sessionData.cart[0].note).toMatch(/ensalada de cebolla y to ?m?ate.*limon/i);
+      expect(h.replies.join(' ')).not.toMatch(/no manejamos|no tenemos/i);
+    });
+    it(`PPP "no quiero X quiero Y" replaces the side line, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      h.conv.sessionData.cart = [{ productId: 46, code: 46, name: 'Porcion de ensalada', unitPrice: 7000, quantity: 1, attributes: [], note: 'con ensalada De cebolla' }] as any;
+      await h.sendQueued('No quiero una porcion De ensalada quiero Un bagre en salsa');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 19, qty: 1, attrs: ['Seleccion:En Salsa'] })]);
+    });
+    it(`PPP dish with a request verb keeps its note, agent ${enabled}`, async () => {
+      const h = harness(products, enabled);
+      await h.sendQueued('Dame un bagre en salsa con harto limon');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 19, qty: 1, note: 'con harto limon', attrs: ['Seleccion:En Salsa'] })]);
+    });
+    it(`fictional included side preference and swap, agent ${enabled}`, async () => {
+      const h = harness(fictional as any, enabled);
+      await h.sendQueued('Dame un pargo al ajillo con ensalada de pepino y tomate y con bastante limon');
+      expect(h.cartRows()).toEqual([expect.objectContaining({ id: 31101, qty: 1, attrs: ['Preparacion:Al Ajillo'] })]);
+      expect(h.conv.sessionData.cart[0].note).toMatch(/pepino y tomate.*limon/i);
+      const g = harness(fictional as any, enabled);
+      g.conv.sessionData.cart = [{ productId: 31102, code: 31102, name: 'Porcion De Ensalada', unitPrice: 6000, quantity: 1, attributes: [] }] as any;
+      await g.sendQueued('No quiero la porcion de ensalada quiero un pargo frito');
+      expect(g.cartRows()).toEqual([expect.objectContaining({ id: 31101, qty: 1, attrs: ['Preparacion:Frito'] })]);
+    });
+    it(`a coordinated drink is still its own line, agent ${enabled}`, async () => {
+      const h = harness(fictional as any, enabled);
+      await h.sendQueued('un pargo frito con patacon y una limonada');
+      expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({ id: 31101 }), expect.objectContaining({ id: 31103, qty: 1 })]));
+    });
+  }
+});

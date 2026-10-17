@@ -1916,7 +1916,9 @@ export class WhatsappOrchestratorService {
       if (await this.tryHandleProductInfoInquiry(conv, msg.waId, originalText, menu, cfg)) return;
     }
     const correctionOrder = originalText.match(/^no[,\s]+(?:dame|quiero|reg[aá]lame)\s+(.+?)(?:\s+por\s+favor)?[.!]*$/i);
-    if (correctionOrder && session.cart.length && !['completed','closed','human'].includes(conv.state)) {
+    // "no quiero X, quiero Y" swaps X for Y; it is not a quantity correction of Y.
+    if (correctionOrder && session.cart.length && !['completed','closed','human'].includes(conv.state) &&
+      !/\b(?:quiero|dame|mejor|sino|reg[aá]lame)\b/i.test(correctionOrder[1])) {
       const menu = await this.catalogService.getMenuProducts();
       const exact = this.catalogService.findProductEmbeddedInMessage(correctionOrder[1], menu) ||
         this.catalogService.resolveSizedChickenProduct(correctionOrder[1], menu);
@@ -4174,6 +4176,7 @@ export class WhatsappOrchestratorService {
       !session.pendingMatch &&
       !session.pendingAttribute &&
       !session.pendingMultiOrder &&
+      !(session.cart.length && isCartItemReplacementIntent(originalText)) &&
       (this.catalogService.looksLikeClearlyMultiDishOrder(text) ||
         this.catalogService.looksLikeMultiItemOrderMessage(text) ||
         this.catalogService.looksLikeClearlyMultiDishOrder(originalText) ||
@@ -5473,6 +5476,8 @@ export class WhatsappOrchestratorService {
         !this.catalogService.isProductDescriptionInquiry(text) &&
         !this.catalogService.isPriceInquiryIntent(text) &&
         this.catalogService.uncoveredDishWords(dishQuery, products).length &&
+        this.catalogService.uncoveredDishWords(
+          this.catalogService.stripProductModificationNoise(dishQuery) || dishQuery, products).length &&
         !this.multiResolvesMenuLines(originalText || text, products)
       ) {
         await this.reply(
@@ -12182,7 +12187,8 @@ export class WhatsappOrchestratorService {
     products: MenuProduct[],
   ): { removeQuery: string; addQuery: string } | null {
     const raw = (text || '').trim();
-    const match = raw.match(/^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i);
+    const match = raw.match(/^(?:cambia(?:r|me)?|c[aá]mbial[oa]|reemplaza(?:r|me)?)\s+(.+?)\s+por\s+(.+)$/i) ||
+      raw.match(/^no\s+quiero\s+(.+?)(?:\s*[,;]\s*|\s+)(?:quiero|dame|mejor(?:\s+quiero)?)\s+(.+)$/i);
     if (!match?.[1] || !match?.[2] || session.cart.length === 0) return null;
     const strip = (value: string) => value
       .replace(/^(?:el|la|los|las|un|una|unos|unas)\s+/i, '')
@@ -12205,7 +12211,10 @@ export class WhatsappOrchestratorService {
     const menuHits = products.filter((product) => {
       if (product.availableNow === false) return false;
       const name = this.normalizeForMatch(product.name);
-      return added.every((token) => name.includes(token));
+      const nameTokens = tokens(product.name);
+      // "bagre en salsa" names Bagre plus one of its options.
+      return added.every((token) => name.includes(token)) ||
+        (nameTokens.length > 0 && nameTokens.every((token) => added.includes(token)));
     });
     if (menuHits.length !== 1 || menuHits[0].id === [...distinct][0]) return null;
     return { removeQuery, addQuery };
@@ -17464,7 +17473,9 @@ export class WhatsappOrchestratorService {
     if (this.catalogService.looksLikeClearlyMultiDishOrder(text)) return false;
     if (this.catalogService.looksLikeFoodPlusDrinkOrder(text)) return false;
     const query = this.catalogService.extractProductSearchQuery(text) || text;
-    if (this.catalogService.uncoveredDishWords(query, products).length) return false;
+    if (this.catalogService.uncoveredDishWords(query, products).length &&
+      this.catalogService.uncoveredDishWords(
+        this.catalogService.stripProductModificationNoise(query) || query, products).length) return false;
 
     const embedded = this.catalogService.findProductEmbeddedInMessage(text, products);
     if (
