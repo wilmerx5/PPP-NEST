@@ -74,10 +74,53 @@
   "externalOrders": 0,
   "budget": "181/183 unchanged; two requests remain under operational ceiling.",
   "deployment": {
-    "status": "pending",
+    "status": "verified",
     "preflightHead": "28ec484e",
     "preflightImage": "sha256:c31c61825b25e339eee4f70f83e928adb44ca6e56204db1c21e3a4e24b271f0e",
-    "untrackedServerBinPreserved": true
+    "untrackedServerBinPreserved": true,
+    "verifiedAt": "2026-10-17T23:23:00.992665+00:00",
+    "head": "95cba2c78e9e14573f56a9e28d4f669e57a19a15",
+    "health": "healthy",
+    "image": "sha256:069c6927c3d783236a1fa51e6ba1393ebe5d31a85579095ec83b505c6960173f",
+    "candidateMatches": true,
+    "compiled": {
+      "wholeOrderQuestion": true,
+      "mixedIndependentPurchase": true,
+      "mixedUnclearQuestion": true,
+      "pendingOwnershipGuard": true,
+      "catalogFlavorChoice": true,
+      "foodCategoryIntact": true,
+      "paymentCatalogQuantity": true,
+      "affirmativePrefixPreserved": true,
+      "cancellationAsideKinds": true,
+      "explicitWithdrawalNotAside": true,
+      "asideRoute": true,
+      "withdrawalScope": true,
+      "multipleEditWithdrawalGuard": true,
+      "pendingEditReminder": true,
+      "centralEditGuard": true,
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "codeCommit": "95cba2c78e9e14573f56a9e28d4f669e57a19a15",
+    "rollback": "ppp-nest-staging:rollback-before-95cba2c7",
+    "proof": "/tmp/ppp-pending-owner-deploy-verified-1710.json",
+    "log": "/tmp/ppp-pending-owner-deploy-1710.log"
   },
   "limits": [
     "64 trajectories start with both pending structures seeded; four open both through router. Not real Meta delivery or live model inference.",

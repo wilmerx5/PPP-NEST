@@ -1,3 +1,9 @@
+## Prioridad nueva: enumeración y uno-de-cada — 17/10/2026
+
+Usuario aporta chat18:20: tres sopas una de cada, dos sin arroz papa salada; repite, lista «un ajiaco, menudencia y un mondongo», se agrupan dos como alternativas; «1 y2» no añade ambos. Reproducir en código actual, pues el chat es previo al deploy95cba2c7 verificado18:23. Añadir otras categorías/cartas: enumeraciones con cantidades omitidas, uno-de-cada solo si conjunto inequívoco, selección plural desde lista, notas para dos de tres sin inventar cuáles. Primero no perder productos ni cantidades; pedir aclaración concreta cuando falte dueño de nota.
+
+Lote anterior ya desplegado95cba2c7 y saludable; ver docs/whatsapp-pending-owner-validation-1710.json. No reconstruir por documentación. Presupuesto181/183 intacto.
+
 ## Propiedad de selección pendiente — validado; deploy agrupado en preparación — 17/10/2026
 
 Ver docs/whatsapp-pending-owner-validation-1710.json:74 casos nuevos,68 recorridos completos con orden simulada;246 focalizadas +51 controles de catálogo/agente; global77 suites/7812 Jest, TypeScript y72 contratos Node verdes. Sin inferencia181/183. No atribuirlo al runtime hasta verificar el deploy del lote acumulado.
