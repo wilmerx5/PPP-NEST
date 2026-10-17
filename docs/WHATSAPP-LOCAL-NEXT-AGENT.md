@@ -1,4 +1,4 @@
-## Edición pendiente antes de confirmar — validado, despliegue pendiente — 17/10/2026
+## Edición pendiente antes de confirmar — validado y desplegado — 17/10/2026
 
 Sobre22a21ce2, solo staging. Tanda64 casos nuevos: 48 recorridos desde checkout sembrado (dos cartas ficticias, agente simulado on/off, pago/confirmación final, selección por número/nota, Si/confirmar/listo sin seleccionar) y16 controles directos de frontera de confirmación (eliminación/cantidad/reemplazo/atributos, firma vigente/vieja, ambos agentes). Los16 iniciales sin afirmación pasaban; al añadir Si, ocho casos de pago repetían prompt de pago y ocho de confirmación final creaban orden simulada antes de aclarar. No sumar retests como casos nuevos.
 
@@ -6,7 +6,9 @@ Se incorpora un recordatorio común de edición y se impide que una afirmación 
 
 172 focalizadas aprobadas (64 nuevas +108 controles de básicos/ráfagas/reemplazo), TypeScript y72 contratos Node aprobados. Global final77 suites/7428 pruebas,599.005s,354 hashes de fuente sin cambios. Una global anterior falló16 controles de respuesta al cancelar reemplazo: guardaba el pendiente retirado pero formateaba la respuesta desde la sesión vieja; se corrigió para usar next también al responder. Se conserva como fallida/no aceptada y no se desplegó. Informe docs/whatsapp-pending-edits-validation-1710.json; logs /tmp/ppp-pending-edits-final-{targets,tsc,global}-1710.log y /tmp/ppp-pending-edits-contracts-1710.log; snapshot /tmp/ppp-pending-edits-final-source-1710.json. Cero llamadas API/Meta/órdenes externas. Main intacta1a2b2e23. Presupuesto181/183 intacto.
 
-Después del cierre: renuncia al cambio sin renunciar al pedido (no quites nada/déjalo como estaba/olvida ese cambio), consultas intercaladas y confirmación posterior; extender recorridos naturales de otros tipos de edición, pues las16 pruebas directas de frontera no acreditan esos chats completos. Ver docs/whatsapp-next-batches.md. Mantener presupuestos antes de red y no declarar vendible por volumen de tests.
+Código7cdbc597 desplegado y verificado2026-10-17T21:19:49Z: running/healthy; imagen activa=candidate sha256:21ab34d7edd0a2fc9152599f6e2513e4ceac6465a137359544d554c6ec966dcb; health OK/DB connected/circuit CLOSED. Recordatorio de edición y guard central presentes en compilado; guard de vaciado anterior intacto. Modelos efectivos Sol6.1/Luna/Luna/GPT Transcribe sin cambios. Rollback ppp-nest-staging:rollback-before-7cdbc597. No repetir global ni reconstruir por cierre documental.
+
+Siguiente: renuncia al cambio sin renunciar al pedido (no quites nada/déjalo como estaba/olvida ese cambio), consultas intercaladas y confirmación posterior; extender recorridos naturales de otros tipos de edición, pues las16 pruebas directas de frontera no acreditan esos chats completos. Ver docs/whatsapp-next-batches.md. Mantener presupuestos antes de red y no declarar vendible por volumen de tests.
 
 ## Ráfagas completas y alcance de vaciado — validado y desplegado — 17/10/2026
 

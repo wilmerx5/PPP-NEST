@@ -1,7 +1,7 @@
 {
   "date": "2026-10-17",
   "baseCommit": "22a21ce2",
-  "status": "Final frozen-source validation passed; deployment pending",
+  "status": "Validated, published and deployed only to staging",
   "newCases": {
     "checkoutRemovalContinuations": 48,
     "confirmationBoundaryGuards": 16,
@@ -87,5 +87,36 @@
     "seconds": 592.707,
     "accepted": false,
     "cause": "Replacement cancellation persisted cleared pending but rendered reminder from old session. New shared reminder exposed stale response. Fixed rendering to use the same next session as saveSession."
-  }
+  },
+  "codeCommit": "7cdbc597b6deafb06d4eb634a0cdc39423a6b425",
+  "deployment": {
+    "verifiedAt": "2026-10-17T21:19:49.498947+00:00",
+    "head": "7cdbc597b6deafb06d4eb634a0cdc39423a6b425",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:21ab34d7edd0a2fc9152599f6e2513e4ceac6465a137359544d554c6ec966dcb",
+    "candidateMatches": true,
+    "compiled": {
+      "pendingEditReminder": true,
+      "centralEditGuard": true,
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    }
+  },
+  "rollbackTag": "ppp-nest-staging:rollback-before-7cdbc597"
 }
