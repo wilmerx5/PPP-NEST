@@ -10834,7 +10834,9 @@ export class WhatsappOrchestratorService {
       const product=products.find(item=>item.id===line.productId);
       return product && this.catalogService.isLikelyDrinkProduct(product) && !line.note && line.quantity===original.quantity &&
         this.catalogService.productDrinkVolumeMl(product)===volume &&
-        this.catalogService.drinkTextMatchesAttribute(combo,[line.name,...(line.attributes || []).map(attr=>attr.attributeValue)].join(' '))?.attributeValue===choice.attributeValue;
+        // The volume is checked above; omit it only from the flavour phrase.
+        // Otherwise "Cola 1.5L Zero" may fall back to the shorter "Cola" option.
+        this.catalogService.drinkTextMatchesAttribute(combo,[line.name.replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|lt|lts|litros?)\b/gi,' '),...(line.attributes || []).map(attr=>attr.attributeValue)].join(' '))?.attributeValue===choice.attributeValue;
     });
     return candidates.length===1 ? {...session,cart:session.cart.filter(line=>line!==candidates[0]),lastDrinkAddition:undefined} : session;
   }

@@ -31,3 +31,12 @@ describe('Explicit con-drink segmentation follows the catalogue host attributes'
  it('does not turn an unknown condiment into a separate product',()=>expect(catalog.splitMultiProductSegments('Quiero un Bowl Andino con salsa especial',[main,drink])).toHaveLength(1));
  it('does not split a complete product name containing con',()=>expect(catalog.splitMultiProductSegments('Quiero un Tostado Con Queso',[{...main,name:'Tostado Con Queso'},drink])).toHaveLength(1));
 });
+
+describe('Bottle volume formatting does not erase the selected flavour when included in a combo',()=>{
+ for(const size of ['1.5L','1,5 litros','1500ml'])for(const selected of ['Original','Ligero'])for(const target of ['Original','Ligero'])it(`${size}, bottle=${selected}, combo=${target}`,()=>{
+  const service=Object.create(WhatsappOrchestratorService.prototype) as any;service.catalogService=new WhatsappCatalogService({} as never);
+  const food={id:21,code:21,name:'Bowl De Quinoa',price:18000};const bottle={id:22,code:22,name:`Refresco De Cereza ${size}`,categoryName:'Bebidas',price:6000,attributes:[{attributeName:'Sabor',options:['Original','Ligero']}]};const combo={id:23,code:23,name:'Combo De Bowl De Quinoa',price:24000,description:'Incluye bebida de 1.5L',attributes:[{attributeName:'Bebida',options:['Refresco De Cereza','Refresco De Cereza Ligero']}]};
+  const requested=target==='Ligero'?'Refresco De Cereza Ligero':'Refresco De Cereza';const session={cart:[{productId:23,name:combo.name,quantity:1},{productId:22,name:bottle.name,quantity:1,attributes:[{attributeName:'Sabor',attributeValue:selected}]}]};const before=structuredClone(session);
+  const result=service.absorbExplicitComboDrink(session,{productId:21,quantity:1},combo,`el Bowl De Quinoa damelo en combo con ${requested}`,[food,bottle,combo]);expect(session).toEqual(before);expect(result.cart).toHaveLength(selected===target?1:2);
+ });
+});

@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-18",
+  "base": "9e505494a8f54dcbd637a38d6e578d96dda861a2",
+  "status": "validated_not_deployed",
+  "baseline": {
+    "failed": 8,
+    "log": "/tmp/ppp-combo-flavour-baseline-1810.log"
+  },
+  "new_tests": 20,
+  "focused": {
+    "passed": 36,
+    "suites": 2,
+    "log": "/tmp/ppp-combo-flavour-targets-1810.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-combo-flavour-tsc-1810.log"
+  },
+  "node_contracts": {
+    "passed": 92,
+    "log": "/tmp/ppp-combo-flavour-node-1810.log"
+  },
+  "global": {
+    "log": "/tmp/ppp-combo-flavour-global-1810.log",
+    "result": "/tmp/ppp-combo-flavour-global-1810.json",
+    "manifest": "/tmp/ppp-combo-flavour-source-1810.json",
+    "files": 376,
+    "passed": true,
+    "suites": 86,
+    "tests": 9122,
+    "seconds": 580.25,
+    "unchanged_hashes": 376
+  },
+  "change": "Check documented bottle volume as before, then remove only volume tokens from its display name when mapping selected flavour to combo drink. Preserve differing flavours, quantities, individual notes and ambiguous lines. No restaurant ids/names/prices in rule.",
+  "coverage": [
+    "8 full mocked router conversations, two menus with agent configured on/off, matching Zero/Sin Azucar and mismatching Original/Clasico; exact cart, visible selected drink, price interruption, checkout and simulated DTO",
+    "12 direct guards across Original/Ligero selections and requested drink; volume formats 1.5L,1,5 litros,1500ml; no source mutation",
+    "Prior note, extra-quantity, multiple-candidate and undocumented/different-size controls retained"
+  ],
+  "limits": [
+    "No paid inference, Meta, Google Maps or external orders",
+    "Agent configured on/off uses mocks; no new model-quality claim",
+    "Conversion response identifies combo flavour; does not claim it lists every retained mismatched bottle before final cart",
+    "Raw catalogue display name versus contradictory stored attributes not claimed covered",
+    "Main/production/models/private configuration unchanged; budget188/187/1 unchanged"
+  ],
+  "next_cases": [
+    "Make an explicitly retained mismatched bottle visible in the conversion response, with a clarification where customer intent is ambiguous; current final cart/price/confirmation remain safeguards.",
+    "Partial quantities: convert two of four main units and match exactly two bottle units without changing the rest.",
+    "Then resume destination unit letters/order and labelled customer forms from the main queue."
+  ],
+  "source_probe": {
+    "passed": true,
+    "script": "/tmp/ppp-combo-flavour-source-probe-1810.cjs",
+    "cases": 12
+  }
+}

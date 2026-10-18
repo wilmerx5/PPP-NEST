@@ -1,3 +1,17 @@
+## VALIDADO — sabor de botella al convertir a combo, 18/10/2026
+
+Global final: 86 suites / 9.122 pruebas en 580.25 segundos, 376 hashes intactos. Pasan 36 focalizados, TypeScript, 92 contratos Node y probe local de 12 combinaciones. Ocho fallos iniciales quedaron corregidos. No hay suites activas. Falta publicar/desplegar solo staging y comprobar compilado/health. Runtime aún `3a5a204b`; Main `14d9dd84` intacta. Evidencia `whatsapp-combo-flavour-validation-1810.json`. Cero llamadas pagadas, Meta u órdenes externas; presupuesto 188/187/1 intacto.
+
+Después: explicitar en la respuesta una botella retenida por sabor incompatible y aclarar intención si hace falta; conversión de un subconjunto de unidades; unidades internas con letras, formularios etiquetados y notas por subconjunto. No atribuir nueva precisión al modelo por los mocks. Entradas inferiores históricas.
+
+## GLOBAL ACTIVA — sabor de botella al convertir a combo, 18/10/2026
+
+Base `9e505494`, staging limpio al comenzar y sincronizado con origin. Ocho fallos reprodujeron que el tamaño entre marca y sabor impedía reconocer Zero/Sin Azúcar: se conservaba una botella que debía incluirse o se retiraba otra distinta. Se retira el tamaño solo de la frase usada para comparar sabor, después de validar volumen como antes. No cambia cantidades ni notas.
+
+20 regresiones nuevas: ocho conversaciones completas en dos menús y doce guards de formato de volumen/sabor. Pasan 36 focalizados, TypeScript y 92 contratos Node. Fuente congelada con 376 hashes en `/tmp/ppp-combo-flavour-source-1810.json`. Global `/tmp/ppp-combo-flavour-global-1810.{log,json}`. NO editar fuente ni iniciar otra suite/despliegue mientras esté activa. Evidencia `whatsapp-combo-flavour-validation-1810.json`.
+
+Runtime de staging sigue `3a5a204b`; este cambio aún no está desplegado. Main `14d9dd84` preservada. Cero llamadas pagadas, Meta y órdenes externas; presupuesto 188/187/1 intacto. Tras global verde y hashes iguales: publicar solo staging; agrupar despliegue si la verificación lo permite, con rollback, compilado y health. Después: unidades con letras y cambios de unidad, formularios etiquetados y notas sobre subconjuntos. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 14:49 Bogotá: lote desplegado solo en staging
 
 Código `3a5a204badc1e24fb438c845d2cf13a6cb65f872` publicado y desplegado. Imagen activa y candidate iguales: `sha256:6890143f77da7d69f5c245c97010804d02b17643275ad726df644c358d5d970f`. Contenedor running/healthy; health OK, DB connected y circuito CLOSED a las 19:49:22 UTC. Rollback: `ppp-nest-staging:rollback-before-3a5a204b`. Los commits posteriores de documentación no requieren reconstrucción.
