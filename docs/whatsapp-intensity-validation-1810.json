@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "76a412b29e27342341a2ba6d0f3c0c16372d9971",
-  "status": "validated_pending_staging_deploy",
+  "status": "deployed_staging",
   "new_regressions": 45,
   "baseline": {
     "failed": 12,
@@ -44,5 +44,16 @@
     "passed": true,
     "log": "/tmp/ppp-intensity-local-probe-1810.log",
     "scope": "actual tools, catalogue extraction and adapter, not complete compiled router"
+  },
+  "deployment": {
+    "code_sha": "07a2416a99db0e16d25b57c6ef4b3bc3556fe305",
+    "image": "sha256:139d8378e76d26da0348361001a2ae6881635222ed464c4248e90da8bcee725f",
+    "active_equals_candidate": true,
+    "container": "running/healthy",
+    "health": "ok / DB connected / circuit CLOSED",
+    "verified_at": "2026-10-18T17:13:51.482Z",
+    "rollback": "ppp-nest-staging:rollback-before-07a2416a",
+    "compiled_probe_passed": true,
+    "log": "/tmp/ppp-intensity-deploy-verified-1810.log"
   }
 }

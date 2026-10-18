@@ -1,3 +1,11 @@
+## VIGENTE — 18/10/2026,12:14 Bogotá: intensidad desplegada SOLO en staging
+
+Código07a2416a99db0e16d25b57c6ef4b3bc3556fe305 publicado y desplegado en staging. Contenedor running/healthy,imagen activa=candidate sha256:139d8378e76d26da0348361001a2ae6881635222ed464c4248e90da8bcee725f. Health OK/DB connected/circuit CLOSED a17:13:51UTC. Rollback ppp-nest-staging:rollback-before-07a2416a. Compilado acredita extracción y herramientas reales en6menús,además del adaptador/guards previos;router completo probado en TS con dependencias simuladas. Evidencia whatsapp-intensity-validation-1810.json. No reconstruir por este cierre documental.
+
+12fallos iniciales→45regresiones nuevas:12conversaciones de intensidad con precio intermedio/DTO final,10SKU con adjetivos en nombre,23helper.82focalizados,TypeScript,92Node y global82suites/8934tests en943.587s aprobados,370hashes intactos. Gramática acotada dulce/picante/salado/ácido/grasoso con nota literal;sin excepciones por restaurante. No es nueva precisión de modelo/ASR ni garantía de preparación. CeroAPIpagada/Meta/órdenes externas;188/187/1 intacto. Main queda76a412b2,código productivoe46996fa;modelos/configuración privada/bases/volúmenes/bin/orphan preservados.
+
+PRÓXIMA TANDA:preferencias negativas frente a atributos seleccionables (ej.Salsa Picante/Suave),«menos dulce»/«sin tanto azúcar»,retirada de una cláusula y conservación de las restantes. Después subconjuntos con variantes/nota y consultas durante checkout,menús variados. No asumir cubiertos por los6menús actuales sin atributos. Inferencia real reservada,costo/latencia y conversaciones completas siguen pendientes antes de acreditar piloto. Automatización gratuita y solo staging;no promover Main sin nueva solicitud. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 11:52 Bogotá: Main y staging desplegados
 
 El usuario autorizó promoción y deploy productivo. Código e46996fae72639d8a924298b8b448a16f05d0f29 publicado en Main/staging y desplegado en ambos. Producción ppp_nest_api running, health OK/DB connected/circuit CLOSED (16:51:01UTC); imagen6e71bc54… Staging running/healthy, imagen activa=candidate cc1c4ce3… y health OK (16:51:56UTC). Evidencia exacta en whatsapp-main-promotion-1810.json. Los cuatro módulos compilados comprobados coinciden; no se comparó binariamente todo el backend.
