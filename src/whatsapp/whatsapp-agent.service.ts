@@ -1,3 +1,4 @@
+import { prepareUnitOptionActions, prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
 import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
@@ -65,6 +66,17 @@ type ChatMessage = {
 };
 
 const AGENT_TOOLS = [
+  { type: 'function' as const, function: {
+    name: 'set_unit_attributes',
+    description: 'Cambia opciones de SOLO affectedQuantity unidades de UNA línea YA existente. Agrupa todos los atributos de esas mismas unidades en una llamada. Conserva el resto, las notas y el precio. Consulta get_cart primero. No mezcla compras, retiros ni confirmación en ese turno.',
+    parameters: { type: 'object', properties: {
+      productId: { type: 'integer' }, cartLineIndex: { type: 'integer', minimum: 0 },
+      affectedQuantity: { type: 'integer', minimum: 1 },
+      attributes: { type: 'array', minItems: 1, items: { type: 'object', properties: {
+        attributeName: { type: 'string' }, attributeValue: { type: 'string' },
+      }, required: ['attributeName', 'attributeValue'] } },
+    }, required: ['productId', 'cartLineIndex', 'affectedQuantity', 'attributes'] },
+  } },
   { type: 'function' as const, function: {
     name: 'get_cart', description: 'Devuelve cada línea del carrito con índice estable, cantidad, notas y opciones. Consulta antes de editar variantes.',
     parameters: { type: 'object', properties: {} },
@@ -273,6 +285,7 @@ export class WhatsappAgentService {
   private readonly toolCartIndexes = new WeakMap<AiOrderAction, {
     nextIndex: number; addedIndexes: WeakMap<object, number>;
   }>();
+  private readonly unitOptionAttempts = new WeakSet<AiOrderAction>();
   private readonly maxIterations = 6;
 
   constructor(
@@ -604,6 +617,7 @@ Reglas:
 - "qué hay de comida rápida" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. Si piden un plato que no está y search_menu trae missing, dilo y ofrece esa categoría como alternativas. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
 - Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, cartLineIndex, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
+- Si pide cambiar SOLO algunas unidades de una línea existente, usa set_unit_attributes con affectedQuantity y todos los atributos de ese mismo grupo. set_attribute cambia TODA la línea; update_item.quantity es cantidad final, NO unidades a modificar. No mezcles una partición con comprar/quitar/reemplazar/confirmar; si pide ambas cosas, aclara sin ejecutar una parte. En productos recién añadidos usa add_item separado por variante; no partas una adición pendiente. Tras partición get_cart muestra el resultado; no reinterpretes sus filas proyectadas como nuevas líneas originales. Dos grupos sobre una misma fila necesitan aclaración, no dos llamadas superpuestas.
 - Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
 - set_address solo con un lugar (calle, carrera, barrio, conjunto). Si responde ok:false, contesta al cliente en una frase y no hables de domicilio.
 - Si piden un plato que existe en frito y en broaster y no dijeron cuál, el sistema lista las dos. No asumas frito.
@@ -701,7 +715,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         if (!calls.length) {
           const reply = (msg.content || '').trim().slice(0, 3500);
           const editsCart = actions.clearCart || actions.removeProductIds?.length || actions.removeCartLines?.length ||
-            actions.updateCartLines?.length || actions.updateAttributes?.length || actions.setCustomerNotes || actions.requestHuman;
+            actions.updateCartLines?.length || actions.updateUnitOptions?.length || actions.updateAttributes?.length || actions.setCustomerNotes || actions.requestHuman;
           const multi = actions.addItems?.length && !editsCart && !this.catalogService.swapIntent(input.userMessage)
             ? this.catalogService.resolveMultiProductOrder?.(input.userMessage,input.products) : null;
           const addedIds = new Set((actions.addItems || []).map(item=>item.productId));
@@ -839,6 +853,34 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       state = {nextIndex:(ctx.cart || []).length,addedIndexes:new WeakMap()};
       this.toolCartIndexes.set(actions,state);
     }
+    if (actions.updateUnitOptions?.length) {
+      const snapshot = (ctx.cart || []).map(line => ({ ...line, quantity: line.quantity || 1,
+        code: ctx.byId.get(line.productId)?.code || 0, unitPrice: ctx.byId.get(line.productId)?.price || 0 }));
+      const complete = prepareUnitOptionActions(snapshot, actions, [...ctx.byId.values()], this.catalogService);
+      if (!complete.ok) return (ctx.cart || []).map((line, cartLineIndex) => ({ ...line,
+        cartLineIndex, pendingAddIndex: -1, attributes: line.attributes?.map(a => ({ ...a })) || [] }));
+      // Keep original row IDs; allocate synthetic IDs only to display a split.
+      // All legacy mutations are blocked after a subset attempt in this turn.
+      return (ctx.cart || []).flatMap((original, sourceIndex) => {
+        const edit = actions.updateUnitOptions!.find(item => item.cartLineIndex === sourceIndex);
+        const base = { ...original, quantity: original.quantity || 1,
+          cartLineIndex: sourceIndex, pendingAddIndex: -1, attributes: original.attributes?.map(a => ({ ...a })) || [] };
+        if (!edit) return [base];
+        const product = ctx.byId.get(original.productId);
+        const plan = prepareUnitOptionPlan([{ ...base, code: product?.code || 0, unitPrice: product?.price || 0 }],
+          [{ ...edit, cartLineIndex: 0 }], [...ctx.byId.values()], this.catalogService);
+        if (!plan.ok) return [base];
+        return plan.cart.map((line, index) => {
+          let projectedIndex = sourceIndex;
+          if (index > 0) {
+            let allocated = state!.addedIndexes.get(edit);
+            if (allocated === undefined) { allocated = state!.nextIndex++; state!.addedIndexes.set(edit, allocated); }
+            projectedIndex = allocated;
+          }
+          return { ...base, quantity: line.quantity, attributes: line.attributes || [], cartLineIndex: projectedIndex };
+        });
+      });
+    }
     const lines = (actions.clearCart ? [] : ctx.cart || []).map((original,cartLineIndex) => {
       const line = {...original,cartLineIndex,pendingAddIndex:-1,
         attributes:original.attributes?.map(a=>({...a})) || []};
@@ -889,6 +931,11 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       setLookupDeliveryTime?: () => void;
     },
   ): string {
+    const readOnly = ['get_cart', 'search_menu', 'resolve_multi_order', 'order_status', 'delivery_time'];
+    if (name !== 'set_unit_attributes' && !readOnly.includes(name) && this.unitOptionAttempts.has(ctx.actions)) {
+      return JSON.stringify({ ok: false, error: 'unit_option_turn_locked',
+        hint: 'No amplíes el cambio a toda la línea ni mezcles otra mutación. Consulta get_cart y explica lo aplicado o pide aclaración.' });
+    }
     switch (name) {
       case 'search_menu': {
         const query = String(args.query || '').trim();
@@ -1725,7 +1772,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       }
       case 'get_cart':
         return JSON.stringify({ok:true, lines:this.toolCartView(ctx).map(({pendingAddIndex,...line})=>line),
-          hint:'Edita solo la línea solicitada. Los índices no cambian durante este turno.'});
+          hint:ctx.actions.updateUnitOptions?.length ? 'Resultado proyectado de la partición. Solo lectura en este turno; no reutilices índices de filas proyectadas para otra edición.' : 'Edita solo la línea solicitada. Los índices no cambian durante este turno.'});
       case 'update_item':
       case 'remove_item':
       case 'replace_item': {
@@ -1816,6 +1863,35 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           } else (ctx.actions.updateCartLines ||= []).push(update);
         }
         return JSON.stringify({ok:true,productId,cartLineIndex,hint:'Cambio aceptado. Conserva las otras líneas.'});
+      }
+      case 'set_unit_attributes': {
+        this.unitOptionAttempts.add(ctx.actions);
+        const edit = args as unknown as UnitOptionEdit;
+        const snapshot = (ctx.cart || []).map(line => ({ ...line, quantity: line.quantity || 1,
+          code: ctx.byId.get(line.productId)?.code || 0, unitPrice: ctx.byId.get(line.productId)?.price || 0 }));
+        if (ctx.actions.updateUnitOptions?.length &&
+          !prepareUnitOptionActions(snapshot, ctx.actions, ctx.products, this.catalogService).ok) {
+          return JSON.stringify({ ok: false, error: 'unit_option_batch_rejected', hint: 'La tanda ya quedó rechazada. Pide aclaración; ninguna partición se aplicará.' });
+        }
+        const individual = prepareUnitOptionPlan(snapshot, [edit], ctx.products, this.catalogService);
+        const existing = ctx.actions.updateUnitOptions?.find(item => item?.cartLineIndex === edit.cartLineIndex);
+        if (individual.ok && existing && JSON.stringify(existing) === JSON.stringify(individual.edits[0])) {
+          return JSON.stringify({ ok: true, unchanged: true, hint: 'Esa partición ya está preparada. No la repitas.' });
+        }
+        const proposed = { ...ctx.actions, updateUnitOptions: [...(ctx.actions.updateUnitOptions || []), edit] };
+        const plan = prepareUnitOptionActions(snapshot, proposed, ctx.products, this.catalogService);
+        if (!plan.ok) {
+          // Retain the failed plan so guard/router reject the ENTIRE batch.
+          // A bad second group must not quietly commit the first group.
+          ctx.actions.updateUnitOptions = proposed.updateUnitOptions;
+          return JSON.stringify({ ok: false, error: plan.reason,
+            hint: 'La tanda por unidades quedó rechazada y no se aplicará ningún grupo. No uses set_attribute para ampliar el cambio. Pide aclaración; las adiciones pendientes se crean con add_item por variante.' });
+        }
+        if (!plan.changed) return JSON.stringify({ ok: true, unchanged: true, hint: 'Esas unidades ya tienen las opciones solicitadas.' });
+        ctx.actions.updateUnitOptions = plan.edits;
+        return JSON.stringify({ ok: true, affectedQuantity: edit.affectedQuantity,
+          lines: this.toolCartView(ctx).map(({ pendingAddIndex, ...line }) => line),
+          hint: 'Cambio por unidades preparado. Muestra las dos variantes y conserva el resto. No repitas la partición ni apliques otra mutación en este turno.' });
       }
       case 'set_attribute': {
         const productId = Number(args.productId);

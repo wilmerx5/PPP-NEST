@@ -190,6 +190,7 @@ export function finishTurnDecision(
             'removeCartLines',
             'removeProductIds',
             'updateAttributes',
+            'updateUnitOptions',
           ].includes(key),
         ),
       );

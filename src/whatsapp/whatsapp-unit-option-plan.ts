@@ -1,21 +1,16 @@
-import type { WhatsappCartItem } from './types/whatsapp-session.types';
+import type { AiOrderAction, WhatsappCartItem } from './types/whatsapp-session.types';
 import type { WhatsappCatalogProduct, WhatsappCatalogService } from './whatsapp-catalog.service';
 
 /** One request describes ONE subset. All its attributes belong to those same units. */
-export type UnitOptionEdit = {
-  productId: number;
-  cartLineIndex: number;
-  affectedQuantity: number;
-  attributes: Array<{ attributeName: string; attributeValue: string }>;
-};
+export type UnitOptionEdit = NonNullable<AiOrderAction['updateUnitOptions']>[number];
 export type UnitOptionPlan =
   | { ok: false; reason: string; cartLineIndex?: number }
-  | { ok: true; changed: boolean; cart: WhatsappCartItem[];
+  | { ok: true; changed: boolean; cart: WhatsappCartItem[]; edits: UnitOptionEdit[];
       partitions: Array<{ sourceIndex: number; unchangedQuantity: number; changedQuantity: number }> };
 
 /** Prepare the entire edit before mutation. Indexes always identify the input snapshot.
- * Deliberately not wired to model tools yet: callers must invalidate old projected IDs
- * after applying a partition and validate mixed purchase/approval actions separately.
+ * Tools expose a read-only projection after partition; edits keep original IDs.
+ * Mixed mutations must pass prepareUnitOptionActions before this function is used.
  */
 export function prepareUnitOptionPlan(
   cart: WhatsappCartItem[],
@@ -85,5 +80,21 @@ export function prepareUnitOptionPlan(
     const modified = { ...line, quantity: edit.quantity, attributes };
     return remaining ? [{ ...clone(original), quantity: remaining }, modified] : [modified];
   });
-  return { ok: true, changed, cart: result, partitions };
+  const normalized = [...prepared.entries()].sort(([a], [b]) => a - b).map(([cartLineIndex, edit]) => ({
+    productId: cart[cartLineIndex].productId, cartLineIndex,
+    affectedQuantity: edit.quantity, attributes: edit.attributes,
+  }));
+  return { ok: true, changed, cart: result, partitions, edits: normalized };
+}
+
+/** Partial edits are atomic. Mixed purchases/removals/approval are deferred rather
+ * than applying a valid fragment and claiming that the whole request succeeded. */
+export function prepareUnitOptionActions(
+  cart: WhatsappCartItem[], actions: AiOrderAction, products: WhatsappCatalogProduct[],
+  catalog: Pick<WhatsappCatalogService, 'matchAttributeOptionValue'>,
+): UnitOptionPlan {
+  const mixed = Object.entries(actions).some(([key, value]) => key !== 'updateUnitOptions' &&
+    (Array.isArray(value) ? value.length > 0 : !!value));
+  if (mixed) return { ok: false, reason: 'mixed_unit_option_actions' };
+  return prepareUnitOptionPlan(cart, actions.updateUnitOptions!, products, catalog);
 }

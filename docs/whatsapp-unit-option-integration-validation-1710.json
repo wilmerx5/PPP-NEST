@@ -1,0 +1,99 @@
+{
+  "dateBogota": "2026-10-17",
+  "baseCommit": "851258dc69fff4ac165b76735f22e57125acaa08",
+  "phase": "accepted_ready_to_publish_not_deployed",
+  "newIntegrationTests": 83,
+  "previousPreparationTests": 85,
+  "targeted": {
+    "tests": 210,
+    "suites": 3,
+    "seconds": 15.873,
+    "log": "/tmp/ppp-unit-option-final-targets-1710.log",
+    "result": "/tmp/ppp-unit-option-final-targets-1710.json"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-unit-option-final-tsc-1710.log"
+  },
+  "nodeContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-unit-option-final-node-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-unit-option-final-global-1710.log",
+    "result": "/tmp/ppp-unit-option-final-global-1710.json",
+    "sourceSnapshot": "/tmp/ppp-unit-option-final-source-1710.json",
+    "frozenFiles": 363,
+    "sourceDigestSha256": "9665f69c4d9f6e35f7bb65a0144e0732e53629f4c1054ff4e9583f9baf9fd2a7",
+    "tests": 8473,
+    "suites": 80,
+    "seconds": 1473.182,
+    "sourceUnchanged": true
+  },
+  "paidProbe": {
+    "status": "accepted",
+    "case": "reserved-unit-options-shawarma-1710",
+    "actualPaidCalls": 3,
+    "model": "gpt-6.1-sol",
+    "toolContractExercised": true,
+    "requestsSuccessful": 3,
+    "estimatedReportedCostUsd": 0.0221102,
+    "priceDate": "2026-10-15",
+    "report": "/tmp/ppp-unit-option-paid-1710.json",
+    "log": "/tmp/ppp-unit-option-paid-1710.log",
+    "scope": "One reserved synthetic turn on a fourth fictional menu; actual model inference and tools, router/persistence/Meta/orders isolated; not a real customer or complete order journey",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage.",
+    "finalCandidateValidation": "Captured actual-model calls replayed through final router without new inference after consolidation fix; no re-inference on final price-key source",
+    "trackedReport": "docs/whatsapp-unit-option-real-probe-1710.json"
+  },
+  "runtimeSourceUnchanged": "f61cecffadf384c203c89dbe2535b616acb5663f",
+  "mainChanged": false,
+  "limitations": [
+    "Only existing cart rows are partitioned; pending additions must be added separately by variant",
+    "Mixed mutations/confirmation in actions are rejected atomically, not executed as a compound transaction",
+    "Multiple distinct subsets of one source row require clarification",
+    "A read-only projected split row is not a new original index",
+    "Fictional menus do not prove tenant isolation",
+    "Only one actual model turn measured; no broad reliability or actual audio/image benchmark from this probe"
+  ],
+  "development": [
+    "Initial focused compilation failures were fixture typing (missing code/hasAttributes), corrected before acceptance",
+    "Initial router assumptions failed: confirmed address advances building_cart to payment; seeded price25000 vs menu27000 correctly requires a new explicit confirmation. Tests now assert both behaviors; these were not accepted production failures",
+    "First global interrupted without acceptance after read-only discovery of price consolidation defect. Two focused reproductions failed as expected, then corrected and all210 focalized cases passed before final global."
+  ],
+  "firstGlobal": {
+    "status": "interrupted_for_price_preservation_regression",
+    "session": 46905,
+    "log": "/tmp/ppp-unit-option-integrated-global-1710.log",
+    "result": "/tmp/ppp-unit-option-integrated-global-1710.json",
+    "sourceSnapshot": "/tmp/ppp-unit-option-integrated-source-1710.json",
+    "frozenFiles": 362,
+    "passedSuitesBeforeInterruption": 7,
+    "failedSuitesBeforeInterruption": 0,
+    "reason": "Read-only code review found consolidation identity ignores unitPrice; add a regression before accepting this candidate",
+    "observedPassedSuitesAtExit": 7,
+    "exitCode": 130
+  },
+  "priceCollision": {
+    "baselineFailures": 2,
+    "baselineLog": "/tmp/ppp-unit-option-price-baseline-1710.log",
+    "rootCause": "Consolidation identity ignored unitPrice; a variant edit could merge separately priced units and change the subtotal",
+    "fix": "Only consolidate rows with equal product/options/note AND equal unitPrice",
+    "coverage": "Four direct cases: partial/whole edits and both lower/higher source prices; three full router journeys including repricing review before final order"
+  },
+  "effectiveStagingConfigReadOnly": {
+    "readOnly": true,
+    "verifiedAt": "2026-10-18T04:22:58.206Z",
+    "botEnabled": true,
+    "agentV1Enabled": true,
+    "model": "gpt-6.1-sol",
+    "keyConfigured": true,
+    "mediaModels": {
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    }
+  },
+  "deployed": false
+}

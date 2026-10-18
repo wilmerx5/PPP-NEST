@@ -11,7 +11,7 @@ const catalog = new WhatsappCatalogService({} as never);
 const agent = new WhatsappAgentService({} as never,catalog) as any;
 const line = (id: number, quantity = 1, value?: string, note?: string) => {
   const product=products.find(p=>p.id===id);
-  return {productId:id,name:product.name,unitPrice:product.price,quantity,note,
+  return {productId:id,code:product.code,name:product.name,unitPrice:product.price,quantity,note,
     attributes:catalog.fillDefaultAttributes(product,value ? [{attributeName:product.attributes[0].attributeName,attributeValue:value}] : [])};
 };
 function tool(name: string,args: object,cart: any[],userMessage = '') {
@@ -23,7 +23,7 @@ function tool(name: string,args: object,cart: any[],userMessage = '') {
 async function apply(actions: AiOrderAction,cart: any[]) {
   const service=Object.create(WhatsappOrchestratorService.prototype) as any;
   service.catalogService=catalog;
-  const guarded=new WhatsappActionGuardService(catalog).sanitize({actions,products,businessOpen:true,allowMercadoPago:false});
+  const guarded=new WhatsappActionGuardService(catalog).sanitize({actions,products,cart,businessOpen:true,allowMercadoPago:false});
   return (await service.applyActions({}, {cart,orderType:'pickup'}, guarded.actions,products,{})).session.cart;
 }
 function turnTools(cart:any[],userMessage='') {
@@ -255,4 +255,123 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
     expect(turn.call('add_item',{productId:23,note:'sin ensalada'}).ok).toBe(true);
     expect(turn.actions.addItems?.[0].note).toMatch(/sin ensalada.*yuca/i);
   });
+});
+
+
+describe('Model tools — grouped changes affect only the requested units', () => {
+  const args = { productId: 50, cartLineIndex: 0, affectedQuantity: 2,
+    attributes: [{ attributeName: 'Sabor', attributeValue: 'Lulo' }] };
+  it('passes tool, guard and application while preserving the other units and original price', async () => {
+    const cart = [line(50, 4, 'Mango', 'sin hielo'), line(23)]; cart[0].unitPrice = 1234;
+    const turn = turnTools(cart); expect(turn.call('set_unit_attributes', args).ok).toBe(true);
+    const projected = turn.call('get_cart');
+    expect(projected.lines.filter(item => item.productId === 50).map(item => [item.quantity, item.attributes[0].attributeValue]))
+      .toEqual([[2, 'Mango'], [2, 'Lulo']]);
+    expect(projected.hint).toMatch(/solo lectura/i);
+    const edited = await apply(turn.actions, cart);
+    expect(edited.filter(item => item.productId === 50).map(item => [item.quantity, item.unitPrice, item.note, item.attributes[0].attributeValue]))
+      .toEqual([[2, 1234, 'sin hielo', 'Mango'], [2, 1234, 'sin hielo', 'Lulo']]);
+    expect(edited[2]).toEqual(cart[1]); expect(cart[0].quantity).toBe(4);
+  });
+  it.each([0, -1, 5, 1.5, '2', null])('rejects count %s through guard without changing any unit', async affectedQuantity => {
+    const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart);
+    expect(turn.call('set_unit_attributes', { ...args, affectedQuantity }).ok).toBe(false);
+    expect(await apply(turn.actions, cart)).toEqual(cart);
+    expect(turn.call('set_attribute', { productId: 50, attributeName: 'Sabor', attributeValue: 'Lulo' }).error)
+      .toBe('unit_option_turn_locked');
+  });
+  it.each(['update_item', 'remove_item', 'replace_item', 'add_item', 'set_attribute', 'clear_cart', 'set_address', 'set_notes'])
+    ('does not let %s reinterpret projected row identifiers or expand the scope', async name => {
+      const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart);
+      expect(turn.call('set_unit_attributes', args).ok).toBe(true);
+      const before = structuredClone(turn.actions);
+      const projected = turn.call('get_cart').lines;
+      expect(turn.call(name, { productId: 50, cartLineIndex: projected[1].cartLineIndex, newProductId: 51,
+        quantity: 4, attributeName: 'Sabor', attributeValue: 'Lulo', address: 'Calle 12 34 56', notes: 'otra nota' }).error)
+        .toBe('unit_option_turn_locked');
+      expect(turn.actions).toEqual(before);
+      expect((await apply(turn.actions, cart)).reduce((sum, item) => sum + item.quantity, 0)).toBe(4);
+    });
+  it('keeps projected identifiers stable across get_cart calls and repeated identical tool calls', async () => {
+    const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart);
+    turn.call('set_unit_attributes', args); const first = turn.call('get_cart');
+    expect(turn.call('set_unit_attributes', args)).toMatchObject({ ok: true, unchanged: true });
+    expect(turn.call('get_cart')).toEqual(first); expect(turn.actions.updateUnitOptions).toHaveLength(1);
+    expect((await apply(turn.actions, cart)).map(item => item.quantity)).toEqual([2, 2]);
+  });
+  it('rejects all groups after an overlapping second group, not just the second', async () => {
+    const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart);
+    turn.call('set_unit_attributes', args);
+    expect(turn.call('set_unit_attributes', { ...args, affectedQuantity: 1 }).error).toBe('overlapping_subsets');
+    expect(turn.call('get_cart').lines.map(item => [item.quantity, item.attributes[0].attributeValue])).toEqual([[4, 'Mango']]);
+    expect(await apply(turn.actions, cart)).toEqual(cart);
+  });
+  it('rejects all groups after a second group points to a synthetic projection index', async () => {
+    const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart); turn.call('set_unit_attributes', args);
+    const projected = turn.call('get_cart').lines[1];
+    expect(turn.call('set_unit_attributes', { ...args, cartLineIndex: projected.cartLineIndex }).error).toBe('invalid_cart_line');
+    expect(await apply(turn.actions, cart)).toEqual(cart);
+  });
+  it('prepares two original rows without treating the inserted variant as row one', async () => {
+    const cart = [line(50, 4, 'Mango'), line(50, 3, 'Guanabana')]; const turn = turnTools(cart);
+    expect(turn.call('set_unit_attributes', args).ok).toBe(true);
+    expect(turn.call('set_unit_attributes', { ...args, cartLineIndex: 1, affectedQuantity: 1 }).ok).toBe(true);
+    expect((await apply(turn.actions, cart)).map(item => [item.quantity, item.attributes[0].attributeValue]))
+      .toEqual([[2, 'Mango'], [3, 'Lulo'], [2, 'Guanabana']]);
+  });
+  it('does not silently split a pending addition or commit the preceding purchase', async () => {
+    const turn = turnTools([]); turn.call('add_item', { productId: 50, quantity: 4 });
+    const pending = turn.call('get_cart').lines[0];
+    expect(turn.call('set_unit_attributes', { ...args, cartLineIndex: pending.cartLineIndex }).ok).toBe(false);
+    expect(await apply(turn.actions, [])).toEqual([]);
+  });
+  it.each([
+    { addItems: [{ productId: 23, quantity: 1 }] }, { clearCart: true }, { requestConfirm: true },
+    { removeProductIds: [50] }, { updateCartLines: [{ productId: 50, cartLineIndex: 0, quantity: 1 }] },
+    { setAddress: 'Calle 12 34 56' },
+  ])('rejects mixed actions atomically at both guard and application: %j', async extra => {
+    const cart = [line(50, 4, 'Mango')]; const actions = { updateUnitOptions: [args], ...extra };
+    const guarded = new WhatsappActionGuardService(catalog).sanitize({ actions, products, cart, businessOpen: true, allowMercadoPago: false });
+    expect(guarded.actions).toBeUndefined(); expect(guarded.warnings.join(' ')).toMatch(/sigue igual/);
+    const service = Object.create(WhatsappOrchestratorService.prototype) as any; service.catalogService = catalog;
+    const session = { cart, orderType: 'pickup' };
+    expect(await service.applyActions({}, session, actions, products, {})).toEqual({ session, unitOptionError: 'mixed_unit_option_actions' });
+  });
+  it('cannot revive a rejected group by repeating a previously valid request', async () => {
+    const cart = [line(50, 4, 'Mango')]; const turn = turnTools(cart);
+    turn.call('set_unit_attributes', args); turn.call('set_unit_attributes', { ...args, affectedQuantity: 1 });
+    expect(turn.call('set_unit_attributes', args).error).toBe('unit_option_batch_rejected');
+    expect(await apply(turn.actions, cart)).toEqual(cart);
+  });
+  it('canonicalizes the beverage spelling against the actual product catalog', async () => {
+    const cart = [line(76, 4, 'Coca Cola', 'sin cebolla')]; const turn = turnTools(cart);
+    expect(turn.call('set_unit_attributes', { productId: 76, cartLineIndex: 0, affectedQuantity: 2,
+      attributes: [{ attributeName: 'Bebida', attributeValue: 'Colombiana' }] }).ok).toBe(true);
+    expect((await apply(turn.actions, cart)).map(item => [item.quantity, item.attributes[0].attributeValue]))
+      .toEqual([[2, 'Coca Cola'], [2, 'Colmbiana']]);
+  });
+  it('does not create a partition when the option is already selected', () => {
+    const turn = turnTools([line(50, 4, 'Lulo')]);
+    expect(turn.call('set_unit_attributes', args)).toMatchObject({ ok: true, unchanged: true });
+    expect(turn.actions).toEqual({}); expect(turn.call('get_cart').lines).toHaveLength(1);
+  });
+  it('does not accept a grouped action without a cart snapshot in the guard', () => {
+    const guarded = new WhatsappActionGuardService(catalog).sanitize({ actions: { updateUnitOptions: [args] },
+      products, businessOpen: true, allowMercadoPago: false });
+    expect(guarded.actions).toBeUndefined(); expect(guarded.warnings).toHaveLength(1);
+  });
+
+  it.each(['partial', 'whole'].flatMap(mode => [{ mode, sourcePrice: 1234, existingPrice: 3500 }, { mode, sourcePrice: 3500, existingPrice: 1234 }]))('preserves prices when $mode edit meets a matching variant priced $sourcePrice/$existingPrice', async ({ mode, sourcePrice, existingPrice }) => {
+    const cart = [line(50, 4, 'Mango', 'sin hielo'), line(50, 2, 'Lulo', 'sin hielo')];
+    cart[0].unitPrice = sourcePrice; cart[1].unitPrice = existingPrice;
+    const actions = mode === 'partial'
+      ? tool('set_unit_attributes', args, cart).actions
+      : tool('set_attribute', { productId: 50, cartLineIndex: 0, attributeName: 'Sabor', attributeValue: 'Lulo' }, cart).actions;
+    const edited = await apply(actions, cart);
+    expect(edited.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)).toBe(4 * sourcePrice + 2 * existingPrice);
+    expect(edited.filter(item => item.unitPrice === sourcePrice).reduce((sum, item) => sum + item.quantity, 0)).toBe(4);
+    expect(edited.filter(item => item.unitPrice === existingPrice).reduce((sum, item) => sum + item.quantity, 0)).toBe(2);
+    expect(edited).toHaveLength(mode === 'partial' ? 3 : 2);
+  });
+
 });

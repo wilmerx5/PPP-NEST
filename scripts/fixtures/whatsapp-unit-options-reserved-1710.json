@@ -1,0 +1,79 @@
+[
+  {
+    "id": "reserved-unit-options-shawarma-1710",
+    "initialCart": [
+      {
+        "id": 64601,
+        "quantity": 4,
+        "note": "sin pepino",
+        "attributes": [
+          {
+            "attributeName": "Pan",
+            "attributeValue": "Pita"
+          },
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Ajo"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "A tres de los cuatro kits que llevo ponles pan integral y salsa picante; el restante igual, porfa.",
+        "expect": {
+          "items": {
+            "64601": 4
+          },
+          "lines": [
+            {
+              "id": 64601,
+              "quantity": 1,
+              "attrs": [
+                {
+                  "key": "Pan",
+                  "value": "Pita"
+                },
+                {
+                  "key": "Salsa",
+                  "value": "Ajo"
+                }
+              ],
+              "note": [
+                "sin pepino"
+              ]
+            },
+            {
+              "id": 64601,
+              "quantity": 3,
+              "attrs": [
+                {
+                  "key": "Pan",
+                  "value": "Integral"
+                },
+                {
+                  "key": "Salsa",
+                  "value": "Picante"
+                }
+              ],
+              "note": [
+                "sin pepino"
+              ]
+            }
+          ],
+          "replyAll": [
+            "Pita",
+            "Integral",
+            "Ajo",
+            "Picante"
+          ],
+          "replyForbid": [
+            "no tenemos",
+            "no manejamos"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

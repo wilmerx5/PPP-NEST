@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
+import type { WhatsappCartItem } from './types/whatsapp-session.types';
 import type { AiOrderAction } from './types/whatsapp-session.types';
 import {
   WhatsappCatalogService,
@@ -27,6 +29,7 @@ export class WhatsappActionGuardService {
     businessOpen: boolean;
     allowMercadoPago: boolean;
     paymentMethods?: WhatsappPaymentMethodConfig[];
+    cart?: WhatsappCartItem[];
   }): GuardResult {
     const warnings: string[] = [];
     if (!params.actions) {
@@ -40,6 +43,14 @@ export class WhatsappActionGuardService {
         warnings: ['Pedido no procesado: restaurante cerrado.'],
         blockedClosed: true,
       };
+    }
+
+    // Never keep valid fragments of a rejected grouped edit, including purchases.
+    if (params.actions.updateUnitOptions !== undefined) {
+      const plan = prepareUnitOptionActions(params.cart || [], params.actions, params.products, this.catalogService);
+      return plan.ok
+        ? { actions: { updateUnitOptions: plan.edits }, warnings, blockedClosed: false }
+        : { actions: undefined, warnings: [`No se aplicó el cambio por unidades: ${plan.reason}. El pedido sigue igual.`], blockedClosed: false };
     }
 
     const out: AiOrderAction = {};

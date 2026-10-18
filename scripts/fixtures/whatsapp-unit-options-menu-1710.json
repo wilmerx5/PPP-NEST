@@ -1,0 +1,27 @@
+[
+  {
+    "id": 64601,
+    "code": 64601,
+    "name": "Kit De Shawarma",
+    "description": "Kit con pan y salsa a elección",
+    "price": 23500,
+    "availableNow": true,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Pan",
+        "options": [
+          "Pita",
+          "Integral"
+        ]
+      },
+      {
+        "attributeName": "Salsa",
+        "options": [
+          "Ajo",
+          "Picante"
+        ]
+      }
+    ]
+  }
+]

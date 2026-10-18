@@ -19,7 +19,7 @@ const freeze = (value: any) => { Object.freeze(value); Object.values(value).forE
   if (child && typeof child === 'object' && !Object.isFrozen(child)) freeze(child);
 }); return value; };
 
-describe('Grouped unit option plan — catalog-independent preparation, not yet routed', () => {
+describe('Grouped unit option plan — catalog-independent atomic preparation', () => {
   for (const product of menus) for (const quantity of [1, 2, 3, 4, 10, 31]) {
     for (const affectedQuantity of [...new Set([1, Math.ceil(quantity / 2), quantity])]) {
       it(`${product.name}: ${affectedQuantity} of ${quantity}, prices and all other fields conserved`, () => {

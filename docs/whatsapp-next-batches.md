@@ -1,3 +1,15 @@
+## Integración validada para publicar — 17/10/2026, opciones por unidades
+
+Contrato conectado: `set_unit_attributes` → `AiOrderAction.updateUnitOptions` → guard con instantánea → preparación atómica → carrito y respuesta derivada. Agrupa varias opciones para las mismas unidades; conserva resto/notas/precio. `get_cart` proyecta la división con IDs estables; bloquea mutaciones posteriores que reutilicen la proyección. Una segunda partición incompatible rechaza toda la tanda; una llamada idéntica no duplica la primera. Compras/retiros/confirmación mezclados y adiciones pendientes se aclaran, no se ejecutan como operación compuesta.
+
+Se reprodujo además una pérdida de subtotal en consolidación: dos controles fallaron antes del arreglo. Ahora solo se fusionan líneas de igual precio, producto, opciones y nota. Incluye precios de origen tanto menores como mayores, y tres recorridos hasta revisar el precio actualizado y aprobar expresamente la orden.
+
+Aceptación final:210focalizados,TypeScript,72contratos Node y global80suites/8473tests en1473.182s;363hashes sin cambios. Log `/tmp/ppp-unit-option-final-global-1710.log`, manifiesto `/tmp/ppp-unit-option-final-source-1710.json`. Primera global interrumpida por la nueva regresión de precios; no usarla como aceptación. Informe `whatsapp-unit-option-integration-validation-1710.json`.
+
+Un turno reservado con otro menú ficticio y modelo real Sol6.1 pasó:3solicitudes,US$0.0221102 estimados, get_cart→set_unit_attributes. Se midió antes del ajuste de identidad por precio y se reprodujo gratis su traza sobre el candidato final; no afirmar reinferencia del candidato final. Evidencia `whatsapp-unit-option-real-probe-1710.json` y fixture capturado. Presupuesto operativo185,usadas184,restante1; extensión numérica elegida por el agente bajo autorización continua del usuario. Bot/agente V1 efectivos de staging verificados habilitados;modelos intactos.
+
+Todavía NO desplegado en este punto: runtime anterior f61cecff. Publicar staging y desplegar una vez con los scripts /tmp/ppp-unit-option-deploy-1710.sh y /tmp/ppp-unit-option-deploy-verify-1710.py;verificar imagen/health/compilado y cerrar documentación. Main intacta. Después seguir la matriz «Siguiente matriz después de integrar opciones por unidades» en whatsapp-next-batches.md;no declarar vendible por conteos. Las entradas inferiores son historial.
+
 ## Preparación local publicada: contrato de opciones por unidades — 17/10/2026
 
 Se añadió `whatsapp-unit-option-plan.ts`, una función de preparación todavía **sin conectar a herramientas, AiOrderAction, guard ni router**. Recibe una línea de la instantánea original, cantidad afectada y una lista agrupada de atributos. Valida todo antes de producir un carrito nuevo; conserva cantidad restante, precio original, notas y otras opciones. Dos atributos de un mismo grupo afectan las mismas unidades. Rechaza cantidades inválidas, atributos ausentes, opción inexistente, dos grupos superpuestos y filas ajenas. No muta entrada y devuelve procedencia de cada partición.
@@ -700,3 +712,17 @@ Diseño recomendado a validar:una acción agrupada por línea con cantidad afect
 Pruebas propuestas:2de4,1de3,total4de4,0,5de4,decimal,opción inválida,2atributos en el mismo subconjunto,2subconjuntos distintos,2SKUcon la misma opción,otras líneas,adición pendiente,quitar/reemplazar después de editar,rollback de edición rechazada,petición repetida y pago/confirmación. Comprobar herramienta→guard→plan→carrito→respuesta→payload final. Aprobar con consulta de precio/dirección/nueva compra debe revisar el plan completo antes de crear orden. Un guard de frase confirmatoria no acredita esto.
 
 Después de cerrar controles gratis,contrastar una muestra reservada del modelo real con gasto acotado y contador antes de red. No iniciar una ronda amplia con las2peticiones operativas restantes ni presentar pruebas simuladas como inferencia real.
+
+
+## Siguiente matriz después de integrar opciones por unidades — 17/10
+
+No ampliar frases por producto. Reservar conversaciones completas con productos y atributos distintos, y validar respuesta, carrito, estado y orden simulada:
+
+1. **Compra nueva frente a edición:** carrito vacío; cuatro cajas, dos con una opción y dos con otra. Crear variantes mediante add_item; no intentar partición de una adición pendiente. Controlar que las unidades sumen cuatro y no aparezcan bebidas/platos extra.
+2. **Origen ambiguo después de dividir:** ya existen dos variantes del mismo SKU. «Cambia una por X» sin identificar origen debe aclarar; «de las que tienen Y, cambia una por X» puede editar la línea indicada. El índice elegido por el modelo no acredita por sí mismo que el humano haya identificado el origen.
+3. **Repetición:** llamada idéntica de herramienta ya cubierta; falta ampliar repetición del mensaje del cliente en un turno posterior, reentrega del mismo ID y petición explícita de cambiar otra unidad restante. No mover dos veces las mismas unidades ni confundir una repetición con «otra más». Probar también un no-op del modelo (opción ya elegida): debe responder con claridad y conservar el carrito, sin caer al parser de compra por no tener acciones productivas.
+4. **Atributos y nota en el mismo grupo:** dos de cuatro con otra bebida y sin cebolla. El contrato actual agrupa atributos; no expresa una nota nueva del mismo subconjunto ni mutaciones mixtas. Antes de extenderlo, decidir y probar la unidad de atomicidad: opciones/notas del mismo grupo deben prepararse juntas; compras independientes ya reconocidas tienen otra política y no deben duplicarse.
+5. **Interrupciones:** repetir ediciones agrupadas esperando nombre, teléfono y dirección; resolver consulta de precio/tiempo sin guardar esa consulta como dato. El cierre actual se midió en carrito, pago y confirmación; no extrapolarlo a todos los pendientes.
+6. **Precios:** conservar precios de origen mientras se edita; fusionar solo precios iguales. Si el menú cambió, mostrar el nuevo total y solicitar aprobación antes de crear la orden. Añadir premios/descuentos en otra tanda sin suponer que precio0 equivale a cupón válido.
+
+Puerta posterior: ampliar evidencia reservada del modelo real con un límite explícito, una repetición y parada al fallar; hoy un solo turno real aprobado no equivale a un benchmark amplio. No iniciar inferencia por defecto ni agotar el saldo operativo en casos ya resueltos por reglas. Mantener Main intacta y desplegar únicamente después de aceptación de la fuente congelada.

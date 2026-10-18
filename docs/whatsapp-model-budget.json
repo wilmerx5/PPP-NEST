@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 183,
-  "usedRequests": 181,
-  "remainingRequests": 2,
+  "authorizedRequests": 185,
+  "usedRequests": 184,
+  "remainingRequests": 1,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-17T19:43:39.915Z",
+  "lastAttemptAt": "2026-10-18T03:40:54.666Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "baseCommit": "4fc3c579",
@@ -727,5 +727,28 @@
     "usageComplete": true,
     "report": "/tmp/ppp-fresh-wrap-live-1710-report.json",
     "limits": "Development replay after free router diagnosis; only two turns invoked agent, remaining turns deterministic; orders and Meta isolated, not a channel test or independent holdout."
+  },
+  "operationalCapExtensions": [
+    {
+      "date": "2026-10-17",
+      "additionalRequests": 2,
+      "agentSelected": true,
+      "userSpecifiedNumericCap": false,
+      "authorization": "Standing user authorization for moderate continued inference; this numeric cap is chosen by the agent",
+      "executionLimit": "One reserved synthetic unit-option turn; maximum4 requests, one repetition, stop on first failing case",
+      "case": "reserved-unit-options-shawarma-1710"
+    }
+  ],
+  "latestUnitOptionEvaluation": {
+    "date": "2026-10-17",
+    "sourceSnapshot": "/tmp/ppp-unit-option-integrated-source-1710.json",
+    "model": "gpt-6.1-sol",
+    "requests": 3,
+    "httpSuccessful": 3,
+    "acceptedSyntheticTurns": 1,
+    "completeConversations": 0,
+    "toolContractExercised": true,
+    "estimatedReportedCostUsd": 0.0221102,
+    "report": "/tmp/ppp-unit-option-paid-1710.json"
   }
 }

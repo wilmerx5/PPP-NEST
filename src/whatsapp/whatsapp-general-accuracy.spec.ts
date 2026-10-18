@@ -18465,3 +18465,107 @@ describe('Missing purchases with no alternatives or restaurant configured famili
   const h=harness([{id:63611,code:63611,name:'Roll De Pepino',price:15000,availableNow:true,attributes:[]},{id:63612,code:63612,name:'Roll De Aguacate',price:16000,availableNow:true,attributes:[]}],agent);(h.cfg as any).menuConceptGroups=[{id:'rolls',label:'Rolls',triggers:['roll','rolls'],productKeywords:['roll']}];const reply=await h.sendQueued('Quiero tres rolls de tocino');expect(reply).toMatch(/No encontré/);expect(reply).toMatch(/Roll De Pepino/);expect(h.conv.sessionData.cart).toEqual([]);await h.sendQueued('Roll De Pepino');expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:63611,quantity:3})]);
  });
 });
+
+
+describe('Grouped model unit edits — real router to final mocked order', () => {
+ const families = ['Caja De Falafel', 'Bento Vegetal', 'Combo De Arepas'];
+ for (const name of families) for (const state of ['building_cart', 'awaiting_payment', 'awaiting_final_confirm']) {
+  for (const affectedQuantity of [1, 2, 4]) it(name+' '+state+' units='+affectedQuantity, async () => {
+   const product = {id:64501,code:64501,name,price:27000,availableNow:true,hasAttributes:true,attributes:[
+    {attributeName:'Bebida',options:['Te Frio','Limonada']},{attributeName:'Salsa',options:['Suave','Picante']}]};
+   const extra = {id:64502,code:64502,name:'Postre De Coco',price:7000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([product,extra],true);h.conv.state=state;
+   Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name,unitPrice:25000,quantity:4,
+    note:'sin cebolla',attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'},{attributeName:'Salsa',attributeValue:'Suave'}]},
+    {productId:extra.id,code:extra.code,name:extra.name,unitPrice:extra.price,quantity:1,note:'bien empacado',attributes:[]}],
+    orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,
+    contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:6450,dailyOrderNumber:75});
+   const snapshot=structuredClone(h.conv.sessionData);let toolResults:any[]=[];
+   h.agent.runTurn.mockImplementationOnce(async input=>{
+    const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;
+    const actions:any={};const ctx={actions,cart:input.cart,products:[product,extra],byId:new Map([[product.id,product],[extra.id,extra]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+    toolResults.push(JSON.parse(service.executeTool('get_cart',{},ctx)));
+    toolResults.push(JSON.parse(service.executeTool('set_unit_attributes',{productId:product.id,cartLineIndex:0,affectedQuantity,
+     attributes:[{attributeName:'Bebida',attributeValue:'Limonada'},{attributeName:'Salsa',attributeValue:'Picante'}]},ctx)));
+    toolResults.push(JSON.parse(service.executeTool('get_cart',{},ctx)));
+    return {reply:'CAMBIÉ TODAS POR ERROR',actions,toolCalls:['get_cart','set_unit_attributes','get_cart']};
+   });
+   const reply=await h.sendQueued(`En ${affectedQuantity} unidades prefiero bebida Limonada y salsa Picante; las demás conservan las opciones que tenían`);
+   expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(toolResults[1].ok).toBe(true);
+   expect(h.conv.state).toBe(state==='building_cart'?'awaiting_payment':state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   const rows=h.conv.sessionData.cart.filter(item=>item.productId===product.id);
+   expect(rows.reduce((sum,item)=>sum+item.quantity,0)).toBe(4);
+   expect(rows.find(item=>item.attributes?.some(a=>a.attributeValue==='Limonada'))?.quantity).toBe(affectedQuantity);
+   if(affectedQuantity<4)expect(rows.find(item=>item.attributes?.some(a=>a.attributeValue==='Te Frio'))?.quantity).toBe(4-affectedQuantity);
+   else expect(rows).toHaveLength(1);
+   expect(rows.every(item=>item.note==='sin cebolla'&&item.unitPrice===25000)).toBe(true);
+   expect(h.conv.sessionData.cart.at(-1)).toEqual(snapshot.cart[1]);expect(h.conv.sessionData.address).toBe(snapshot.address);
+   expect(reply).toContain('Limonada');expect(reply).toContain('Picante');expect(reply).not.toContain('CAMBIÉ TODAS');
+   if(affectedQuantity<4){expect(reply).toContain('Te Frio');expect(reply).toContain('Suave');}
+   if(h.conv.state==='building_cart')await h.sendQueued('Nada más');
+   if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   expect(h.replies.at(-1)).toMatch(/precio del men[uú] cambi[oó]/i);
+   expect(h.conv.sessionData.cart.filter(item=>item.productId===product.id).reduce((sum,item)=>sum+item.quantity,0)).toBe(4);
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const order=h.service.ordersService.create.mock.calls[0][0];expect(order.items).toHaveLength(5);
+   const edited=order.items.filter((item:any)=>item.productId===product.id&&item.attributes.some((a:any)=>a.attributeValue==='Limonada'));
+   expect(edited).toHaveLength(affectedQuantity);expect(edited.every((item:any)=>item.attributes.some((a:any)=>a.attributeValue==='Picante')&&item.note==='sin cebolla')).toBe(true);
+   expect(order.items.filter((item:any)=>item.productId===product.id)).toHaveLength(4);
+  });
+ }
+ for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm']) for(const scenario of ['over_count','unknown_option','overlap','mixed_purchase','mixed_confirm','wrong_index']) {
+  it('rejects '+scenario+' without accepting a fragment '+state,async()=>{
+   const product={id:64511,code:64511,name:'Caja De Falafel',price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te Frio','Limonada']}]};
+   const h=harness([product],true);h.conv.state=state;
+   Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:4,note:'sin cebolla',attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData);
+   const edit={productId:product.id,cartLineIndex:scenario==='wrong_index'?2:0,affectedQuantity:scenario==='over_count'?5:2,attributes:[{attributeName:'Bebida',attributeValue:scenario==='unknown_option'?'Chocolate':'Limonada'}]};
+   const actions:any={updateUnitOptions:[edit]};if(scenario==='overlap')actions.updateUnitOptions.push({...edit,affectedQuantity:1});
+   if(scenario==='mixed_purchase')actions.addItems=[{productId:product.id,quantity:1}];if(scenario==='mixed_confirm')actions.requestConfirm=true;
+   h.agent.runTurn.mockResolvedValueOnce({reply:'YA CAMBIÉ Y CONFIRMÉ TODO',actions,toolCalls:['set_unit_attributes']});
+   const reply=await h.sendQueued(scenario==='mixed_confirm'?'En dos unidades prefiero bebida Limonada y confirma el pedido':'En dos unidades prefiero bebida Limonada; las demás conservan la bebida anterior');
+   expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe(state);
+   expect(reply).toMatch(/no pude aplicar.*seguridad/i);expect(reply).toMatch(/pedido sigue igual/i);expect(reply).not.toContain('YA CAMBIÉ');
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});
+
+describe('Grouped price collision — full router and captured actual-model replay', () => {
+ for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])it('preserves both source prices '+state,async()=>{
+  const product={id:64611,code:64611,name:'Kit Del Huerto',price:12000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  const h=harness([product],true);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:10000,quantity:4,note:'bien empacado',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]},
+   {productId:product.id,code:product.code,name:product.name,unitPrice:12000,quantity:1,note:'bien empacado',attributes:[{attributeName:'Salsa',attributeValue:'Picante'}]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6461,dailyOrderNumber:76});
+  h.agent.runTurn.mockResolvedValueOnce({reply:'Listo.',actions:{updateUnitOptions:[{productId:product.id,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}]}]},toolCalls:['set_unit_attributes']});
+  const reply=await h.sendQueued('En dos unidades prefiero salsa Picante; las demás conservan su salsa');
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(h.conv.sessionData.cart).toHaveLength(3);
+  expect(h.conv.sessionData.cart.reduce((sum,item)=>sum+item.quantity*item.unitPrice,0)).toBe(52000);
+  expect(reply).toContain('$52.000');expect(reply).toContain('$54.000');
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.replies.at(-1)).toMatch(/precio del men[uú] cambi[oó]/i);
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(5);
+  expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeValue==='Picante'))).toHaveLength(3);
+ });
+ it('replays the captured real-model tool selection on the final candidate without another API call',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-unit-options-menu-1710.json'),'utf8'));
+  const capture=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-unit-option-captured-trace-1710.json'),'utf8'));
+  expect(capture.calls.map((call:any)=>call.name)).toEqual(['get_cart','set_unit_attributes']);
+  const h=harness(menu,true);h.conv.sessionData.cart=[{productId:64601,code:64601,name:menu[0].name,unitPrice:23500,quantity:4,note:'sin pepino',attributes:[{attributeName:'Pan',attributeValue:'Pita'},{attributeName:'Salsa',attributeValue:'Ajo'}]}];
+  h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:menu,byId:new Map(menu.map((product:any)=>[product.id,product])),setNeedsAttr:()=>{}};
+   for(const call of capture.calls)expect(JSON.parse(service.executeTool(call.name,call.args,ctx)).ok).toBe(true);
+   return {reply:'Listo.',actions,toolCalls:capture.calls.map((call:any)=>call.name)};
+  });
+  const reply=await h.sendQueued(capture.message);expect(h.agent.runTurn).toHaveBeenCalledTimes(1);
+  expect(h.conv.sessionData.cart).toEqual(capture.expectedCart);expect(reply).toContain('Integral');expect(reply).toContain('Pita');
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

@@ -289,6 +289,13 @@ export type AiOrderAction = {
     /** Replacement note; empty string clears it. */
     note?: string;
   }>;
+  /** One subset per original cart row; all attributes apply to the same units. */
+  updateUnitOptions?: Array<{
+    productId: number;
+    cartLineIndex: number;
+    affectedQuantity: number;
+    attributes: Array<{ attributeName: string; attributeValue: string }>;
+  }>;
   updateAttributes?: Array<{
     productId: number;
     cartLineIndex?: number;

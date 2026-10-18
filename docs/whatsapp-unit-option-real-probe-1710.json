@@ -1,0 +1,166 @@
+{
+  "dateBogota": "2026-10-17",
+  "synthetic": true,
+  "model": "gpt-6.1-sol",
+  "sourceSnapshot": "/tmp/ppp-unit-option-integrated-source-1710.json",
+  "case": "reserved-unit-options-shawarma-1710",
+  "accepted": true,
+  "problems": [],
+  "message": "A tres de los cuatro kits que llevo ponles pan integral y salsa picante; el restante igual, porfa.",
+  "toolTrace": [
+    {
+      "origin": "model_call",
+      "name": "get_cart",
+      "args": {},
+      "result": {
+        "ok": true,
+        "lines": [
+          {
+            "productId": 64601,
+            "name": "Kit De Shawarma",
+            "quantity": 4,
+            "note": "sin pepino",
+            "attributes": [
+              {
+                "attributeName": "Pan",
+                "attributeValue": "Pita"
+              },
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Ajo"
+              }
+            ],
+            "cartLineIndex": 0
+          }
+        ],
+        "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+      }
+    },
+    {
+      "origin": "model_call",
+      "name": "set_unit_attributes",
+      "args": {
+        "productId": 64601,
+        "cartLineIndex": 0,
+        "affectedQuantity": 3,
+        "attributes": [
+          {
+            "attributeName": "Pan",
+            "attributeValue": "Integral"
+          },
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Picante"
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "affectedQuantity": 3,
+        "lines": [
+          {
+            "productId": 64601,
+            "name": "Kit De Shawarma",
+            "quantity": 1,
+            "note": "sin pepino",
+            "attributes": [
+              {
+                "attributeName": "Pan",
+                "attributeValue": "Pita"
+              },
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Ajo"
+              }
+            ],
+            "cartLineIndex": 0
+          },
+          {
+            "productId": 64601,
+            "name": "Kit De Shawarma",
+            "quantity": 3,
+            "note": "sin pepino",
+            "attributes": [
+              {
+                "attributeName": "Pan",
+                "attributeValue": "Integral"
+              },
+              {
+                "attributeName": "Salsa",
+                "attributeValue": "Picante"
+              }
+            ],
+            "cartLineIndex": 1
+          }
+        ],
+        "hint": "Cambio por unidades preparado. Muestra las dos variantes y conserva el resto. No repitas la partición ni apliques otra mutación en este turno."
+      }
+    }
+  ],
+  "cart": [
+    {
+      "productId": 64601,
+      "name": "Kit De Shawarma",
+      "code": 64601,
+      "unitPrice": 23500,
+      "quantity": 1,
+      "note": "sin pepino",
+      "attributes": [
+        {
+          "attributeName": "Pan",
+          "attributeValue": "Pita"
+        },
+        {
+          "attributeName": "Salsa",
+          "attributeValue": "Ajo"
+        }
+      ]
+    },
+    {
+      "productId": 64601,
+      "name": "Kit De Shawarma",
+      "code": 64601,
+      "unitPrice": 23500,
+      "quantity": 3,
+      "note": "sin pepino",
+      "attributes": [
+        {
+          "attributeName": "Pan",
+          "attributeValue": "Integral"
+        },
+        {
+          "attributeName": "Salsa",
+          "attributeValue": "Picante"
+        }
+      ]
+    }
+  ],
+  "reply": [
+    "Listo, cambié solo las unidades indicadas ✅\n\n🛒 *Carrito*\n*1.* *Kit De Shawarma* · *$23.500*\n   _Pan: Pita · Salsa: Ajo_\n   📝 _sin pepino_\n*2.* *Kit De Shawarma* ×3 · $23.500 c/u → *$70.500*\n   _Pan: Integral · Salsa: Picante_\n   📝 _sin pepino_\n────────────\nSubtotal $94.000 · Dom. según dir.\n*Total $94.000*\n\n¿*Algo más*?"
+  ],
+  "ordersCreated": 0,
+  "apiUsage": {
+    "model": "gpt-6.1-sol",
+    "requests": 3,
+    "successfulResponses": 3,
+    "responsesWithUsage": 3,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 28197,
+    "cachedPromptTokens": 18602,
+    "completionTokens": 106,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": 0.0221102,
+    "priceDate": "2026-10-15",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  },
+  "requestTimingsMs": [
+    2743,
+    2941,
+    2264
+  ],
+  "scope": "Single actual-model synthetic turn; full inbound router; mocked transport/persistence/orders; no baseline A/B or real WhatsApp traffic"
+}

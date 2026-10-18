@@ -1,0 +1,66 @@
+{
+  "source": "Actual gpt-6.1-sol reserved probe, 2026-10-17; free deterministic replay, not another inference",
+  "message": "A tres de los cuatro kits que llevo ponles pan integral y salsa picante; el restante igual, porfa.",
+  "calls": [
+    {
+      "name": "get_cart",
+      "args": {}
+    },
+    {
+      "name": "set_unit_attributes",
+      "args": {
+        "productId": 64601,
+        "cartLineIndex": 0,
+        "affectedQuantity": 3,
+        "attributes": [
+          {
+            "attributeName": "Pan",
+            "attributeValue": "Integral"
+          },
+          {
+            "attributeName": "Salsa",
+            "attributeValue": "Picante"
+          }
+        ]
+      }
+    }
+  ],
+  "expectedCart": [
+    {
+      "productId": 64601,
+      "name": "Kit De Shawarma",
+      "code": 64601,
+      "unitPrice": 23500,
+      "quantity": 1,
+      "note": "sin pepino",
+      "attributes": [
+        {
+          "attributeName": "Pan",
+          "attributeValue": "Pita"
+        },
+        {
+          "attributeName": "Salsa",
+          "attributeValue": "Ajo"
+        }
+      ]
+    },
+    {
+      "productId": 64601,
+      "name": "Kit De Shawarma",
+      "code": 64601,
+      "unitPrice": 23500,
+      "quantity": 3,
+      "note": "sin pepino",
+      "attributes": [
+        {
+          "attributeName": "Pan",
+          "attributeValue": "Integral"
+        },
+        {
+          "attributeName": "Salsa",
+          "attributeValue": "Picante"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
 import { hasExplicitOrderApprovalClause, blocksImplicitOrderApproval } from './whatsapp-order-approval';
 import { beginTurnDecision, captureInquiryDecision, captureActionDecision, capturePurchaseDecision, finishTurnDecision, type TurnDecisionFrame } from './whatsapp-turn-decision';
@@ -6282,8 +6283,13 @@ export class WhatsappOrchestratorService {
     sourceText = '',
     decision?:TurnDecisionFrame,
     validatedToolActions = false,
-  ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck }> {
+  ): Promise<{ session: WhatsappSessionData; limitBlocked?: CartLimitCheck; unitOptionError?: string }> {
     if (!actions) return { session };
+    if (actions.updateUnitOptions !== undefined) {
+      const plan = prepareUnitOptionActions(session.cart, actions, products, this.catalogService);
+      if (!plan.ok) return { session, unitOptionError: plan.reason };
+      return { session: { ...session, cart: this.consolidateCart(plan.cart) } };
+    }
     let next = { ...session };
 
     if (actions.updateAttributes?.length || actions.updateCartLines?.length || actions.removeCartLines?.length) {
@@ -7072,7 +7078,9 @@ export class WhatsappOrchestratorService {
     const map = new Map<string, WhatsappCartItem>();
     for (const raw of cart) {
       const qty = Math.max(1, raw.quantity || 1);
-      const key = this.cartLineKey(raw);
+      // Equal options can still carry different source prices. Repricing needs
+      // its explicit checkout review; consolidation must not change the amount.
+      const key = JSON.stringify([this.cartLineKey(raw), raw.unitPrice]);
       const prev = map.get(key);
       if (prev) {
         map.set(key, {
@@ -18507,6 +18515,33 @@ export class WhatsappOrchestratorService {
       this.turnTelemetry.record({path:'agent_v1',outcome:'replied',waId:msg.waId,
         conversationId:conv.id,toolCalls:agent.toolCalls,latencyMs:Date.now()-started,
         userTextPreview:originalText || text,replyPreview:answer,warnings:['checkout_readonly_tool_answer']});
+      return true;
+    }
+
+    // A grouped subset edit owns its entire turn. Never route its option as a
+    // new drink, accept a valid fragment of a mixed plan, or confirm the order.
+    if (agent.actions?.updateUnitOptions !== undefined) {
+      const guarded = this.actionGuard.sanitize({ actions: agent.actions, products, cart: session.cart,
+        businessOpen: businessOpenForBot, allowMercadoPago: !!cfg.allowMercadoPago, paymentMethods: cfg.paymentMethods });
+      const unresolved = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+        session.pendingSubsetKitchenNote || session.pendingAddOffer || session.pendingCategoryBrowse ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key]);
+      const applied = !guarded.blockedClosed && !unresolved && guarded.actions
+        ? await this.applyActions(conv, session, guarded.actions, products, cfg, originalText || text, params.decision)
+        : undefined;
+      const accepted = !!applied && !applied.unitOptionError;
+      const changed = accepted && JSON.stringify(applied!.session.cart) !== JSON.stringify(session.cart);
+      if (changed) await this.conversationService.saveSession(conv, applied!.session, conv.state);
+      const current = changed ? applied!.session : session;
+      const reminder = this.formatInterruptedStepReminder(conv, current) || '¿*Algo más*?';
+      const answer = accepted
+        ? (changed ? 'Listo, cambié solo las unidades indicadas ✅' : 'Esas unidades ya tienen las opciones indicadas ✅') +
+          '\n\n' + this.formatCartOnly(current, this.deliveryFeeFor(current, cfg))
+        : 'No pude aplicar ese cambio por unidades con seguridad. El pedido sigue igual. Dime qué producto, cuántas unidades y qué opciones quieres cambiar; separa cualquier compra o retiro adicional.';
+      await this.reply(conv, msg.waId, answer + '\n\n' + reminder);
+      this.turnTelemetry.record({ path: 'agent_v1', outcome: changed ? 'order_progress' : 'replied',
+        waId: msg.waId, conversationId: conv.id, toolCalls: agent.toolCalls, latencyMs: Date.now() - started,
+        warnings: [accepted ? 'unit_option_plan_accepted' : 'unit_option_plan_rejected'] });
       return true;
     }
 
