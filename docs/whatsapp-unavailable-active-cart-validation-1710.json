@@ -2,7 +2,7 @@
   "date": "2026-10-17",
   "branch": "staging",
   "base": "5014f250",
-  "status": "validated_not_deployed",
+  "status": "validated_deployed_staging",
   "newTests": 40,
   "baseline": {
     "failed": 9,
@@ -48,7 +48,28 @@
     "Multiple requests, delivery mixed in the same message and unconfigured families stay in existing routing.",
     "No paid model or original audio evidence."
   ],
-  "deployment": null,
+  "deployment": {
+    "verifiedAt": "2026-10-18T03:20:10.504700+00:00",
+    "head": "f61cecffadf384c203c89dbe2535b616acb5663f",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:29a96d2069a5120209f29f344ef274498d843bd4dd168aa39e6a49b02e6a65c0",
+    "candidateMatches": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-f61cecff",
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "verificationLog": "/tmp/ppp-unavailable-active-cart-deploy-verified-1710.json",
+    "deployLog": "/tmp/ppp-unavailable-active-cart-deploy-1710.log"
+  },
   "completeJourneys": 18,
   "targeted": {
     "passed": 190,

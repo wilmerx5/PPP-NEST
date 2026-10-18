@@ -1,3 +1,17 @@
+## VIGENTE: desplegado y verificado f61cecff — 17/10/2026, 22:20 Bogotá
+
+Staging running/healthy; imagen activa=candidate sha256:29a96d2069a5120209f29f344ef274498d843bd4dd168aa39e6a49b02e6a65c0. Verificación18/10 03:20:10UTC, health OK/DB connected/circuit CLOSED. Modelos Sol6.1/Luna/Luna/GPT Transcribe intactos. Compilado de ambas tandas y guards previos comprobados. Rollback ppp-nest-staging:rollback-before-f61cecff. bin/ remoto y mariadb_local preservados. Main sin cambios.
+
+Incluye ubicación5014f250:45casos nuevos,545focalizadas,TypeScript,72contratos y global79suites/8265tests verdes. Etiqueta humana en respuesta/resumen/recibo; conserva pin raw para logística. Sin nombre usa «Ubicación compartida»;no geocodificación inversa. Google Maps q/query exacto se interpreta localmente y se rechazan pines inválidos.
+
+Incluye compra ausente f61cecff:40casos nuevos,18recorridos completos con órdenes simuladas,190focalizadas definitivas,TypeScript y72contratos Node verdes. Global FINAL79suites/8305tests en1241.223s;358hashes iguales a /tmp/ppp-unavailable-active-cart-final-source-1710.json. Primera global falló14pruebas por distribución cada:nunca se publicó;se corrigió frontera y revalidó. Informes whatsapp-readable-location-validation-1710.json y whatsapp-unavailable-active-cart-validation-1710.json. No repetir global ni reconstruir por este cierre documental.
+
+La solicitud contada de plato ausente de familia configurada se responde antes del bloqueo de carrito/pago;ofrece solo catálogo disponible y conserva cantidad al elegir. No agrega sustituto automáticamente. Pendientes anteriores conservan dueño;oferta nueva informativa usa bullets. Sin alternativas lo indica.0/99no se convierten a1/30. Familias reales de staging auditadas por SELECT de configuración:8predeterminadas,carne habilitada. Ninguna mutación en esa auditoría.
+
+Cero llamadas pagadas,Meta u órdenes externas en ambas tandas;181/183,intacto. Son pruebas de router/modelo simulado,no conversaciones independientes de inferencia. No declarar vendible por conteos. Límites:gramática contada/familia conocida,no universal;pedidos ausentes con preparación adicional,mensajes mixtos,dirección o familia no configurada requieren ampliar evidencia.
+
+SIGUIENTE: contrato general del modelo para opciones sobre algunas unidades y validación de compra+edición+aprobación antes de crear orden. Ver propuesta en whatsapp-next-batches.md. Añadir controles de elección numérica en alternativas,cambios de cantidad/rechazo y notas sobre el producto alternativo. La regla temprana de edición parcial no equivale todavía a alcance por unidades en todas las acciones del modelo. Entradas inferiores de «en curso/no publicar» son historia;este encabezado prevalece.
+
 ## Validado para deploy agrupado — 17/10/2026
 
 Compra no disponible:40casos nuevos,18recorridos completos con orden simulada;190focalizadas,TypeScript y72contratos Node verdes. Global DEFINITIVA79suites/8305tests en1241.223s,/tmp/ppp-unavailable-active-cart-final-global-1710.log;358hashes iguales a /tmp/ppp-unavailable-active-cart-final-source-1710.json. Primera global fallida14/8305 fue desarrollo,nunca publicada;se conservó historial en JSON. Corregida frontera entre distribución cada y plato ausente.
