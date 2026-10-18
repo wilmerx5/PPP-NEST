@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "c617c825e2b018f18084b1d2fae6f39045a8bd43",
-  "status": "validated_deploy_deferred_for_grouping",
+  "status": "published_staging_deploy_deferred_for_grouping",
   "baseline": {
     "failed": 16,
     "log": "/tmp/ppp-retained-drink-notice-baseline-final-1810.log",
@@ -58,5 +58,6 @@
     "last_verified_at": "2026-10-18T20:05:51.728Z",
     "compiled_probe_pending": "/tmp/ppp-retained-drink-notice-compiled-1810.cjs",
     "limits": "No new build, compiled validation or fresh server health check claimed for this response-only batch."
-  }
+  },
+  "published_code_commit": "6c5de4248cad4a4b963c83394902d13a58c8f5f1"
 }

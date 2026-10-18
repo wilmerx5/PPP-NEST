@@ -1,5 +1,7 @@
 ## VALIDADO — aviso de bebidas aparte; desplegar con la siguiente tanda, 18/10/2026
 
+Código `6c5de4248cad4a4b963c83394902d13a58c8f5f1` publicado en origin/staging. Despliegue pendiente para agrupar con la siguiente tanda; no reconstruir solo por este cierre documental.
+
 Global final de 86 suites / 9.144 pruebas en 570.533 segundos, con 376 hashes intactos. Pasan 58 controles focalizados, TypeScript y 92 contratos Node. No hay suites activas. Se corrigieron 16 fallos de respuesta sin alterar reglas de cálculo ni de conservación del carrito: la conversión a combo enumera las bebidas que siguen aparte con cantidad y sabor. La retirada explícita posterior elimina la bebida suelta y conserva la incluida en el combo.
 
 22 pruebas nuevas: 16 conversaciones completas con dos menús y seis controles del aviso; las conversaciones anteriores de sabores también exigen ausencia del aviso cuando no queda botella aparte. Se verifican respuesta, estado, carrito, consulta de total, corrección, checkout y DTO simulado. Evidencia: `whatsapp-retained-drink-notice-validation-1810.json`. Los servicios/modelos son mocks; no son pruebas reales del modelo.
