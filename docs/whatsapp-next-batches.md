@@ -1,3 +1,21 @@
+## Tanda validada — 18/10/2026: opciones y preferencias, solo staging
+
+29regresiones nuevas,111focalizados,TypeScript,92Node y global82suites/8963tests en1585.882s aprobados.370hashes intactos. Global válida es accepted-global;la anterior interrumpida exit130 NO es aceptación. Probe de herramientas reales/catálogo/adaptador contra TS local también pasó,con6propuestas deliberadamente contradictorias y nota omitida por modelo. Falta deploy/compiled/health de esta fuente;no asumir activo hasta cierre. Evidencia whatsapp-intensity-options-validation-1810.json.
+
+Publicar/desplegar una vez SOLO staging. Main quedó14d9dd84 y producción ejecuta la mejora anterior e8cdfc2b,c5e97ab1…por autorización del usuario. CeroAPIpagada/Meta/órdenes externas,presupuesto188/187/1 intacto. Después:frases completas con opción canónica «No Tan Picante» (control actual solo respuesta literal sola),menos dulce/sin tanto azúcar,subconjuntos ya existentes y retiro de una cláusula conservando otras. No atribuir a estos mocks nueva precisión del modelo ni cumplimiento de cocina. Entradas inferiores históricas.
+
+## Global reiniciada — 18/10/2026: nota de intensidad en herramienta real
+
+La primera global se detuvo conSIGINT/exit130 antes de editar:lectura del tool mostró recuperación de nota incompleta tras opción explícita.6pruebas directas nuevas reprodujeron2fallos;arreglado con recuperación acotada de la cláusula de intensidad,sin rehacer otras notas. Ahora29regresiones nuevas y111focalizados aprobados,TypeScript verde. Global vigente /tmp/ppp-intensity-options-accepted-global-1810.{log,json},manifest accepted-source,370hashes congelados. NO editar fuente/otra suite/deploy hasta terminar. La global anterior interrumpida NO acredita aprobación. Main/producción preservados;solo esta fuente nueva continúa en staging. Presupuesto188/187/1 intacto.
+
+## EN CURSO — 18/10/2026: preferencia frente a opción configurable
+
+Base14d9dd84. La mejora anterior de intensidad YA está en Main/producción por solicitud del usuario;ver entrada siguiente. Nueva tanda SOLO staging:10fallos/2verdes iniciales reprodujeron elección accidental de Picante/Dulce o pérdida de nota después de una elección explícita. Separador acotado retira solo la preferencia de intensidad del texto usado para elegir opciones y conserva la nota original. Opción explícita anterior permanece;nombre literal completo de opción sigue válido.
+
+23regresiones nuevas:12router→consulta→DTO en3menús y11helper/catálogo.105focalizados,TypeScript y92Node pasan;una coma residual se corrigió antes del run final. Global EN CURSO /tmp/ppp-intensity-options-global-1810.{log,json},370hashes congelados. NO editar fuente ni iniciar otra suite/deploy. Evidencia whatsapp-intensity-options-validation-1810.json. No promover esta tanda a Main automáticamente. CeroAPIpagada/Meta/órdenes externas;188/187/1 intacto.
+
+Después:menos dulce/sin tanto azúcar,preferencias de unidades ya existentes,retirada de una cláusula conservando otras y referencias/consultas en checkout. Las12conversaciones actuales son compras iniciales,no acreditan esos casos. No garantizar cumplimiento en cocina ni comprensión universal. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026,12:22 Bogotá: intensidad promovida a producción
 
 Por solicitud explícita del usuario,Main actualizado a e8cdfc2b y backend productivo desplegado. Código validado07a2416a;imagen productiva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e,running,health OK/DB connected/circuit CLOSED a17:21:51UTC. Probe compilado de intensidad/herramientas/catálogo/adapter aprobado;sin inferencia ni pedidos externos. Rollback ppp-nest-api:rollback-before-e8cdfc2b. Configuración privada/compose/artefactos locales preservados,sin cambio de modelos. Evidencia whatsapp-intensity-validation-1810.json. Staging mantiene runtime07a2416a,healthy139d8378…;no reconstruir por docs.

@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-18",
+  "base": "14d9dd84",
+  "status": "validated_pending_staging_deploy",
+  "baseline": {
+    "failed": 10,
+    "passed": 2,
+    "log": "/tmp/ppp-intensity-options-baseline-1810.log"
+  },
+  "new_regressions": 29,
+  "focused": {
+    "passed": 111,
+    "log": "/tmp/ppp-intensity-options-accepted-controls-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": 92,
+  "source_manifest": "/tmp/ppp-intensity-options-accepted-source-1810.json",
+  "global_result": "/tmp/ppp-intensity-options-accepted-global-1810.json",
+  "global_mode": "--maxWorkers=2",
+  "change": "Separate bounded negative intensity clauses from explicit attribute choice text; preserve literal full option names and keep the preference as a kitchen note. An explicit option before the preference remains selected. No restaurant-specific names or ids. Agent source-note recovery adds only the bounded intensity clause, leaving unrelated note assembly unchanged.",
+  "coverage": [
+    "12 full-router conversations: three fictional menus, agent configured on/off, default or explicitly chosen option, quantity two, price interruption preserves cart/state, final simulated DTO retains attributes and notes",
+    "11 catalogue/helper controls: bare negative preference cannot choose adjective option, bare positive option still selects, explicit preceding option survives, literal full No Tan Picante option preserved, unrelated purchases/questions not consumed",
+    "6 actual add_item calls with deliberately contradictory valid model attributes, no model-supplied note; source choice/default and quantity/note must prevail"
+  ],
+  "intermediate_findings": [
+    "10 baseline failures exposed unintended option selection or lost note; two cases already passed",
+    "One punctuation cleanup assertion failed after functional repair; trailing comma removed before final focused run"
+  ],
+  "limits": [
+    "Configured-agent paths use mock model; some resolve in earlier deterministic rules. No actual model precision measured",
+    "Current tests cover initial purchases, not existing-item subset updates or note-clause removal",
+    "Does not claim support for menos dulce/sin tanto azúcar or every multi-intent clause order",
+    "No food allergy safety or kitchen fulfillment guarantee",
+    "No paid API/Meta/external orders; budget188/187/1 unchanged",
+    "Production was promoted separately by explicit user request; this new source remains staging-only",
+    "Literal qualified-option control covers a bare option response only; full phrases containing an attribute plus a canonical option such as No Tan Picante remain to be reproduced and validated. Do not infer full phrase coverage from the bare-option test."
+  ],
+  "tool_baseline": {
+    "failed": 2,
+    "passed": 4,
+    "log": "/tmp/ppp-intensity-options-tool-baseline-1810.log"
+  },
+  "interrupted_global": {
+    "log": "/tmp/ppp-intensity-options-global-1810.log",
+    "exit": 130,
+    "reason": "Code inspection exposed missing degree note in actual agent tool after explicit option. Stopped before source edit, reproduced two failures in six new direct-tool tests. Not acceptance evidence."
+  },
+  "global": {
+    "suites": 82,
+    "tests": 8963,
+    "seconds": 1585.882,
+    "source_files_unchanged": 370
+  },
+  "local_tool_probe": {
+    "passed": true,
+    "log": "/tmp/ppp-intensity-options-local-probe-1810.log",
+    "scope": "Tools and catalogue/adapter against TypeScript source; not yet compiled deployment"
+  }
+}

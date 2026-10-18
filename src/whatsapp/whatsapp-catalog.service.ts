@@ -1,3 +1,4 @@
+import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import {splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
@@ -4271,7 +4272,9 @@ export class WhatsappCatalogService {
       modificationText = text.replace(new RegExp(`(?<![\\p{L}])${nameTokens.map(loose).join('\\s+')}(?![\\p{L}])`, 'iu'), 'plato').trim();
     }
     const peeled = peelSupportedCookingTerm(text, product);
+    const intensity=splitIntensityPreference(text);
     return joinKitchenNotes(
+      intensity && !this.looksLikeClearlyMultiDishOrder(intensity.productText) ? intensity.note : undefined,
       peeled?.note,
       interpretProductNote(text, [product])?.note,
       this.extractProductModificationNote(modificationText),
@@ -11306,7 +11309,9 @@ export class WhatsappCatalogService {
     allowPortionChoice = false,
   ): string | null {
     // Quitar porciones sueltas pedidas aparte: no usar "papas fritas" como arepas Fritas
-    let cleaned = text || '';
+    const literalOption=attr.options.find(option=>/\b(?:no tan|no muy|que no)\b/.test(normalizeText(option)) && normalizeText(option)===normalizeText(text || ''));
+    if(literalOption)return literalOption;
+    let cleaned = splitIntensityPreference(text || '')?.productText ?? text ?? '';
     if (!allowPortionChoice) cleaned = cleaned.replace(
         /\bporci[oó]n(?:es)?\s+(?:de\s+)?(?:papas?|yuca|arepas?|maduro)(?:\s+\w+){0,3}\b/gi,
         ' ',

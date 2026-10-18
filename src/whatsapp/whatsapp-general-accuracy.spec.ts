@@ -18999,3 +18999,16 @@ describe('Intensity words inside complete catalogue names keep SKU ownership',()
   expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0]).toMatchObject({productId:65512,quantity:1,unitPrice:14000});
  });
 });
+
+describe('Intensity preferences do not silently choose a named attribute option',()=>{
+ const fixtures=[{name:'Curry de Garbanzos',attr:'Salsa',base:'Suave',other:'Picante',note:'no tan picante'},{name:'Ramen Vegetal',attr:'Caldo',base:'Natural',other:'Salado',note:'que no esté tan salado'},{name:'Flan Artesanal',attr:'Cobertura',base:'Tradicional',other:'Dulce',note:'no tan dulce'}];
+ for(const f of fixtures)for(const enabled of [false,true])for(const explicit of [false,true])it(`${f.name} agent=${enabled} explicit=${explicit}`,async()=>{
+  const product={id:65601,code:65601,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.base,f.other]}]};const h=harness([product],enabled);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6560,dailyOrderNumber:86});
+  const source=`Quiero dos ${f.name}${explicit?` con ${f.attr} ${f.other}, pero`:''} ${f.note} por favor`;
+  const reply=await h.sendQueued(source);expect(reply).not.toMatch(/no (?:manejamos|tenemos)|no pude añadir/i);expect(h.conv.sessionData.cart).toHaveLength(1);const line=h.conv.sessionData.cart[0];expect(line.quantity).toBe(2);expect(line.attributes).toContainEqual({attributeName:f.attr,attributeValue:explicit?f.other:f.base});expect(line.note).toContain(f.note);
+  const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));const state=h.conv.state;await h.sendQueued(`Cuánto cuesta ${f.name}`);expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe(state);
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(2);expect(items.every((item:any)=>item.note===line.note&&item.attributes.some((a:any)=>a.attributeName===f.attr&&a.attributeValue===(explicit?f.other:f.base)))).toBe(true);
+ });
+});
