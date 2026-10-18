@@ -1,3 +1,19 @@
+## VALIDADO — negaciones multilínea, 18 de octubre
+
+Global verde: 88 suites / 9.227 pruebas en 607.927 s, 379 hashes intactos. 23 focalizados, 123 contratos afectados, TypeScript y 92 contratos Node. No hay suites activas. Corregido: línea «sin ensalada/salsa» unida a compra no se convierte en producto; 12 conversaciones en tres menús, mensajes unidos/separados, con agente simulado on/off, respuesta, carrito y DTO con notas. Seis controles de carrito vacío y cinco de segmentación. Publicación/despliegue solo staging en curso.
+
+El baseline también reprodujo cuatro fallos de ejecutivos distribuidos; siguen SIN corregir. No incluirlos en métricas verdes. Ejemplo: «dos ejecutivos pierna pernil uno Broaster y otro frito, con limonadas» seguido de «Sopas. 1ajiaco y otra mondongo», unido o separado, produce cantidades/entidades erróneas. Siguiente corrección prioritaria, con catálogo sintético y recorrido completo. La validación de carrito vacío no explica el origen del comprobante #123; requiere traza real de solo lectura.
+
+Nuevo caso aportado durante la global: combo frito con Coca-Cola + «una porción de francesa» + calle/referencia omite extra; corrección explícita posterior sí lo añade manteniendo pago y dirección. Añadir fixture de abreviatura y contabilización de cada cláusula. Resumen/comprobante tienen teléfono distinto pero el fragmento omite mensajes intermedios: no inferir creación sin confirmar ni cambio indebido sin logs. No se editó fuente durante la global. Cero llamadas pagadas/Meta/órdenes externas, Main intacta.
+
+## GLOBAL ACTIVA — exclusiones multilínea e integridad, 18 de octubre
+
+Base 20c9028b; sin otro proceso al comenzar. Baseline de 12 recorridos: seis fallaron (dos por exclusión multilínea, cuatro por ejecutivos). Se corrige solo exclusión: unir la línea «sin …» con el pedido anterior antes de segmentar. Los cuatro fallos de ejecutivos siguen pendientes; reproducción guardada en /tmp/ppp-executive-replay-pending-1810.txt, texto del chat en plan vigente. No convertir esto en una afirmación de que se arreglaron los ejecutivos.
+
+12 recorridos negativos (tres menús, unidos/separados, agente simulado on/off) verifican carrito/respuesta/DTO con nota. Seis controles de carrito vacío en estados carrito/pago/confirmación; cinco de segmentación con compras adicionales positivas. Pasan 23 focalizados + 123 contratos afectados, TypeScript y 92 contratos Node. Primera selección de suites demasiado amplia fue cancelada, no cuenta como validación.
+
+Fuente congelada en /tmp/ppp-exclusion-source-1810.json. Global /tmp/ppp-exclusion-global-1810.{log,json}. No editar fuente ni iniciar suite/despliegue paralelo hasta terminar. Cero llamadas pagadas/Meta/órdenes externas. Main intacta. Siguiente: ejecutivos distribuidos y ráfagas; dirección y cierre según plan comercial vigente.
+
 ## PRIORIDAD ACTUALIZADA — auditoría de chats reales del 18 de octubre
 
 Leer primero la sección «Revisión vigente de conversaciones del 18 de octubre» en WHATSAPP-COMMERCIAL-READINESS-PLAN.md: 27 episodios, aciertos, fallos y siete lotes con criterios de salida. Es análisis, sin correcciones ni pruebas nuevas. No marcar los incidentes resueltos por los tests anteriores. Se revisó fd7c4321; el archivo no identifica el commit de los chats.

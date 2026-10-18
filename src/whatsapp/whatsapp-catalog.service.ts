@@ -8994,6 +8994,10 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
+    // A standalone exclusion on the following line modifies the preceding
+    // request. Keep it attached before newline-based product segmentation.
+    text = text.replace(/([^\r\n]+)\r?\n[ \t]*(sin[ \t]+[\p{L}][\p{L} \t]{0,60})(?=\r?\n|$)/giu,
+      (whole, host: string, note: string) => /\b(?:y|agrega|quiero|dame|otro|otra)\b/i.test(note) ? whole : `${host} ${note.trim()}`);
     const separateDrink=(part:string):string[]=>{
       const withDrink=products?.length ? part.match(/^(.+?)\s+con\s+(.+)$/i) : null;
       if(withDrink){

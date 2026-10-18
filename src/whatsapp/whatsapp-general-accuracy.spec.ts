@@ -19234,3 +19234,46 @@ describe('Partial combo scope boundaries preserve the full order through checkou
     }
   }
 });
+
+describe('October 18 order integrity replay', () => {
+  for (const enabled of [false, true]) {
+    for (const joined of [false, true]) {
+      for (const menu of [
+        [{id: 66401, code: 66401, name: 'Arroz Con Pollo', price: 32000, availableNow: true, attributes: []}, {id: 66402, code: 66402, name: 'Porcion De Ensalada', price: 7500, availableNow: true, attributes: []}],
+        [{id: 66411, code: 66411, name: 'Bowl De Quinoa', price: 21000, availableNow: true, attributes: []}, {id: 66412, code: 66412, name: 'Porcion De Salsa', price: 4000, availableNow: true, attributes: []}],
+        [{id: 66421, code: 66421, name: 'Pasta Al Pesto', price: 24000, availableNow: true, attributes: []}, {id: 66422, code: 66422, name: 'Porcion De Salsa', price: 4000, availableNow: true, attributes: []}],
+      ]) it(`negated side ${menu[0].name} agent=${enabled} joined=${joined}`, async () => {
+        const h = harness(menu, enabled);
+        const note = menu[0].id === 66401 ? 'sin ensalada por favor' : 'sin salsa por favor';
+        if (joined) await h.sendQueued(`me regalas un ${menu[0].name}\n${note}`);
+        else { await h.sendQueued(`me regalas un ${menu[0].name}`); await h.sendQueued(note); }
+        expect(h.cartRows()).toEqual([expect.objectContaining({id: menu[0].id, qty: 1, note: expect.stringContaining(note.replace(' por favor',''))})]);
+        expect(h.replies.join(' ')).not.toMatch(/no manejamos|no tenemos/i);
+        h.service.ordersService.create = jest.fn().mockResolvedValue({id: 6640, dailyOrderNumber: 104});
+        Object.assign(h.conv.sessionData, {orderType: 'pickup', fulfillmentChosen: true, phoneConfirmed: true, contactPhone: h.conv.phoneE164, notesCollected: true});
+        await h.sendQueued('nada más'); await h.sendQueued('1');
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        await h.sendQueued('confirmar');
+        expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+        expect(h.service.ordersService.create.mock.calls[0][0].items).toEqual([expect.objectContaining({productId: menu[0].id, note: expect.stringContaining(note.replace(' por favor',''))})]);
+      });
+
+    }
+  }
+});
+
+
+describe('October 18 empty order boundaries', () => {
+  for (const enabled of [false,true]) for (const state of ['building_cart','awaiting_payment','awaiting_final_confirm']) {
+    it(`empty cart cannot create an order agent=${enabled} state=${state}`, async () => {
+      const h=harness(products,enabled);h.conv.state=state;
+      Object.assign(h.conv.sessionData,{cart:[],orderType:'pickup',fulfillmentChosen:true,paymentMethod:'cash',phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+      h.service.ordersService.create=jest.fn();
+      for(const text of ['confirmar','sí','1']) {
+        await h.sendQueued(text);
+        expect(h.service.ordersService.create).not.toHaveBeenCalled();
+        expect(h.replies.at(-1)).not.toMatch(/pedido qued[oó] registrado|orden #/i);
+      }
+    });
+  }
+});
