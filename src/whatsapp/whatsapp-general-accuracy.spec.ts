@@ -18707,3 +18707,30 @@ describe('Captured reserved model turn preserves joint subset semantics',()=>{
   expect(reply).toContain('sin sal');expect(reply).toContain('Quinua');expect(reply).toContain('Arroz');expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Distributed purchases reject incomplete semantic proposals atomically',()=>{
+ for(const name of ['Cesta De Panes','Bento De Setas','Trio De Tostadas'])for(const mode of ['missing','failed_after_first','wrong_total','wrong_groups','wrong_options','mixed_clear'])it(`${name} ${mode}`,async()=>{
+  const product={id:65001,code:65001,name,price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  const h=harness([product],true);h.conv.sessionData.cart=[{productId:product.id,code:product.code,name,unitPrice:19000,quantity:1,note:'anterior',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]}];
+  const before=structuredClone(h.conv.sessionData.cart);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   const quantities=mode==='missing'||mode==='failed_after_first'?[2]:mode==='wrong_total'?[2,3]:mode==='wrong_groups'?[1,3]:[2,2];
+   for(const [index,quantity] of quantities.entries())expect(JSON.parse(service.executeTool('add_item',{productId:product.id,quantity,attributes:[{attributeName:'Salsa',attributeValue:index&&mode!=='wrong_options'?'Picante':'Suave'}],note:index?'sin sal':undefined},ctx)).ok).toBe(true);
+   if(mode==='mixed_clear')actions.clearCart=true;
+   return {reply:'Listo todo añadido',actions,toolCalls:quantities.map(()=> 'add_item'),purchaseAttempts:quantities.map(()=>({productId:product.id,accepted:true})),...(mode==='failed_after_first'?{error:'max_iterations'}:{})};
+  });
+  const reply=await h.sendQueued(`Quiero cuatro ${name}, 2 con Suave y 2 con Picante; los de Picante sin sal`);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/reparto.*completo|cantidades.*coinciden/i);expect(reply).not.toContain('todo añadido');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});
+
+describe('Invalid explicit distribution is clarified before inference or clamping',()=>{
+ for(const [total,a,b] of [[4,0,4],[12,11,1],[4,2,3]])it(`${total}=${a}+${b}`,async()=>{
+  const product={id:65011,code:65011,name:'Caja De Desayuno',price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te','Cafe']}]};
+  const h=harness([product],true);h.service.ordersService.create=jest.fn();const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued(`Quiero ${total} Caja De Desayuno, ${a} con Te y ${b} con Cafe`);
+  expect(h.agent.runTurn).not.toHaveBeenCalled();expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/reparto completo.*aclaremos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

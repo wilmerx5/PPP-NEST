@@ -1,3 +1,11 @@
+## Tanda automática validada, pendiente de despliegue — 18/10/2026: reparto incompleto del modelo
+
+Fuente local sobre1bfc7fd0;NO desplegada,runtime6efd6903. Baseline12fallos con3menús demostró compras parciales al omitir un grupo/fallar tras primero o proponer cantidades equivocadas. Añadido contrato de reparto explícito antes de ejecutar acciones:total y grupos por cantidad/opciones del catálogo deben coincidir uno-a-uno;fallo de agente o mezcla con vaciado/ediciones rechaza todo. Cantidades fuente0,11porgrupo y sumas inconsistentes se aclaran antes de inferencia. No cambia semántica de notas.
+
+21regresiones nuevas;55focalizados pasaron,TypeScript y72Node. Global aprobada:81suites/8588tests en590.562s,368hashes intactos,log /tmp/ppp-distribution-atomic-global-1810.log,JSON /tmp/ppp-distribution-atomic-global-1810.json,368hashes en /tmp/ppp-distribution-atomic-source-1810.json. Fuente congelada verificada. Reporte whatsapp-distribution-atomic-validation-1810.json. Prueba de compilado preparada /tmp/ppp-distribution-atomic-compiled-1810.cjs;publicar/desplegar una vez y verificar compilado/health.
+
+Cero API pagada/Meta/órdenes externas;presupuesto188/187/1 intacto;Main intacta. Próximo:publicar/desplegar staging una vez,verificar rechazo compilado+imagen+health,documentar. Luego notas contradictorias/borrado y compras distribuidas durante checkout. Continuación horaria activa:no duplicar ni editar en paralelo. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026: staging6efd6903 desplegado y verificado
 
 Runtime6efd6903da80b669be734df0e743549e1db4d501,imagen activa=candidate sha256:f37bcf1cd279fb65f10e08798e590c040f5db91a43850de37c1cba0fcd1bfe87,running/healthy. Verificado00:59 Bogotá(05:59UTC),health OK/DB connected/circuit CLOSED. Comprobado en compilado:nota+opciones del mismo subconjunto,nota en proyección,cantidades/opciones/notas de variantes nuevas. Sol6.1/Luna/Transcribe sin cambios. Rollback ppp-nest-staging:rollback-before-6efd6903. Main intacta,bin/ remoto y mariadb_local preservados.

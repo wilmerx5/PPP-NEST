@@ -1,3 +1,9 @@
+## Despertar automático — 18/10/2026: conservación del reparto
+
+Tanda actual sobre1bfc7fd0 reprodujo12compras parciales con3catálogos.21regresiones nuevas y55focalizados pasan;global en curso,ver estado vigente en WHATSAPP-LOCAL-NEXT-AGENT.md antes de trabajar. Contrato previo a acciones contrasta total y grupos por cantidad/opciones uno-a-uno y rechaza error del agente/mezclas incompatibles. Prueba fuente inválida antes de inferencia. Sin API pagada/Meta/órdenes externas.
+
+Al cerrar esta tanda,no repetirla. Seguir con notas contradictorias/reemplazo/borrado y checkout distribuido. Añadir también consultas puras con repartos(«cuánto cuestan4,dosAydosB»),grupos reordenados por el modelo,aliases y totales expresados con más variantes;comprobar que una consulta no se trate como compra ni un rechazo de compra impida responder preguntas. Son hipótesis para reproducir antes de cambiar reglas,no fallos acreditados por los mocks actuales. Mantener fuente congelada durante global y preservar Main.
+
 ## Continuación autónoma y siguiente matriz — 18/10/2026
 
 Automatización horaria activa en este hilo: continuar-pruebas-de-ppp-en-staging. Una tanda gratuita por despertar;no inferencia pagada/Meta/órdenes externas;no editar si hay una validación o trabajo en curso. Mantener staging/Main según AGENTS. Notificar cierre verificado,fallo importante o dependencia humana;silencio si no hay cambio accionable. Autorizada por usuario ocupado y permiso explícito para continuar siguientes tandas. No requiere un nuevo «continúa» por cada tanda.

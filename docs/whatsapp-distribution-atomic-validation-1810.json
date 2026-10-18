@@ -1,0 +1,39 @@
+{
+  "dateBogota": "2026-10-18",
+  "automation": "continuar-pruebas-de-ppp-en-staging",
+  "baseCommit": "1bfc7fd070fd7cf5d0d2ab2a329655a0b1ca9913",
+  "status": "validated_not_deployed",
+  "newTests": 21,
+  "baseline": {
+    "failed": 12,
+    "log": "/tmp/ppp-distribution-atomic-baseline-1810.log"
+  },
+  "targeted": {
+    "passed": 55,
+    "log": "/tmp/ppp-distribution-atomic-final-targets-1810.log"
+  },
+  "typescriptPassed": true,
+  "nodeContractsPassed": 72,
+  "global": {
+    "log": "/tmp/ppp-distribution-atomic-global-1810.log",
+    "result": "/tmp/ppp-distribution-atomic-global-1810.json",
+    "sourceManifest": "/tmp/ppp-distribution-atomic-source-1810.json",
+    "passed": true,
+    "tests": 8588,
+    "suites": 81,
+    "seconds": 590.562,
+    "frozenFiles": 368,
+    "sourceUnchanged": true
+  },
+  "scope": "Explicit counted option distributions of a single named catalog host, before action execution. Compares declared total, group quantities and catalog attributes one-to-one. Rejects failed/incomplete/extra/cart-mixed proposals without applying fragments. Source-invalid quantities clarify before inference.",
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainUntouched": true,
+  "limits": [
+    "No new model-language inference; tools/router and transport mocked",
+    "Contract covers the existing explicit counted modifier family, not every narrative distribution",
+    "Note replacement/deletion and contradictory notes remain next work",
+    "New distributed purchases during checkout remain a separate matrix"
+  ]
+}

@@ -1029,11 +1029,25 @@ export class WhatsappOrchestratorService {
         // Bind the host BEFORE the first modifier clause. A product mentioned
         // inside an option (e.g. chicken in a rice combo) is not a new host.
         const namedHost = countedModifierText.slice(0, countedModifierText.search(countedOption));
-        if (groupedOpen && this.catalogService.productFullyNamedIn(namedHost, groupedProducts)) {
+        const host = this.catalogService.productFullyNamedIn(namedHost, groupedProducts);
+        if (groupedOpen && host) {
           const unresolved = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
             session.pendingSubsetKitchenNote || session.pendingAddOffer || session.pendingCategoryBrowse ||
             CART_EDIT_SELECTION_KEYS.some(key => !!session[key]);
-          if (!unresolved && cfg.agentV1Enabled && await this.tryHandleAgentV1({decision:turn.decision,conv,msg,session,text:groupedInput,originalText:groupedInput,products:groupedProducts,cfg,status:groupedStatus,businessOpenForBot:groupedOpen,placedOrderOnly:conv.state!=='building_cart'})) return;
+          const words: Record<string,number> = {un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+          const matches = [...countedModifierText.matchAll(countedOption)];
+          const groups = matches.map((match,index) => {
+            const clause = countedModifierText.slice(match.index!, matches[index+1]?.index);
+            const parsed = this.catalogService.resolveAttributesFromMessage(host,clause,[]);
+            const token = match[0].split(' ')[0];
+            return {quantity:words[token] ?? Number(token),attributes:parsed.status==='invalid'?[]:parsed.attributes};
+          });
+          const total = this.catalogService.extractQuantityNearProduct(namedHost,host.name);
+          const distributedPurchase = !existingSubset ? {productId:host.id,total:total ?? 0,groups} : undefined;
+          const completeSource = !distributedPurchase || Number.isInteger(total) && total!>0 && total!<=30 &&
+            groups.every(group=>Number.isInteger(group.quantity)&&group.quantity>0&&group.quantity<=10&&group.attributes.length>0) &&
+            groups.reduce((sum,group)=>sum+group.quantity,0)===total;
+          if (!unresolved && completeSource && cfg.agentV1Enabled && await this.tryHandleAgentV1({decision:turn.decision,conv,msg,session,text:groupedInput,originalText:groupedInput,products:groupedProducts,cfg,status:groupedStatus,businessOpenForBot:groupedOpen,placedOrderOnly:conv.state!=='building_cart',distributedPurchase})) return;
           await this.reply(conv,msg.waId,'Para aplicar el reparto completo, aclaremos cuántas unidades llevan cada opción y nota. El pedido sigue igual.\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
           return;
         }
@@ -18354,6 +18368,7 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig;
     status: Awaited<ReturnType<BusinessService['getStatus']>>;
     businessOpenForBot: boolean;
+    distributedPurchase?: {productId:number;total:number;groups:Array<{quantity:number;attributes:Array<{attributeName:string;attributeValue:string}>}>};
     /** Primer inbound con contenido: pegar aviso IA a la única reply */
     prependFirstContactDisclaimer?: boolean;
     /**
@@ -18436,6 +18451,26 @@ export class WhatsappOrchestratorService {
       humanPhone: cfg.localContext?.publicPhone || WHATSAPP_HUMAN_CONTACT_PHONE,
       menuConceptGroups: cfg.menuConceptGroups,
     });
+
+    if (params.distributedPurchase) {
+      const contract = params.distributedPurchase;
+      const additions = agent.actions?.addItems || [];
+      const allowed = new Set(['addItems','setAddress','setCustomerName','setContactPhone','setOrderType']);
+      const mixed = Object.entries(agent.actions || {}).some(([key,value])=>!allowed.has(key)&&(Array.isArray(value)?value.length>0:!!value));
+      const remaining = [...additions];
+      const matched = contract.groups.every(group=>{
+        const index = remaining.findIndex(item=>item.productId===contract.productId&&item.quantity===group.quantity&&
+          group.attributes.every(expected=>item.attributes?.some(actual=>
+            this.normalizeForMatch(actual.attributeName)===this.normalizeForMatch(expected.attributeName)&&
+            this.normalizeForMatch(actual.attributeValue)===this.normalizeForMatch(expected.attributeValue))));
+        if(index<0)return false;remaining.splice(index,1);return true;
+      });
+      if(agent.error || mixed || !matched || remaining.length || additions.length!==contract.groups.length ||
+        additions.reduce((sum,item)=>sum+Number(item.quantity),0)!==contract.total) {
+        await this.reply(conv,msg.waId,'No pude aplicar el reparto completo con seguridad. Tu carrito sigue igual. Aclaremos cuántas unidades llevan cada opción.');
+        return true;
+      }
+    }
 
     captureActionDecision(params.decision,'proposed',agent.actions);
     const agentReply = (agent.reply || '').trim();
