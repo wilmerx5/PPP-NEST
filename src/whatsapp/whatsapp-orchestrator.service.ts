@@ -168,6 +168,7 @@ type InboundTurnContext = {
   initialPendingMatch?: NonNullable<WhatsappSessionData['droppedPick']>;
   purchasePriceQuestion?: boolean;
   independentInquiryAnswer?: string;
+  subsetNoteHandled?: boolean;
   closePurchase?: boolean;
   decision?: TurnDecisionFrame;
 };
@@ -542,6 +543,13 @@ export class WhatsappOrchestratorService {
         const ids = new Set(session.recentImageOrder.map(item => item.productId));
         session = { ...session, recentImageCartSignature: JSON.stringify(session.cart.filter(line => ids.has(line.productId))) };
         await this.conversationService.saveSession(conv, session);
+      }
+      if (session.pendingSubsetKitchenNote && !turn.subsetNoteHandled &&
+          !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+          !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]) &&
+          session.cart.filter(line=>session.pendingSubsetKitchenNote!.productIds.includes(line.productId)).length >= session.pendingSubsetKitchenNote.quantity) {
+        await this.reply(conv,msg.waId,this.formatSubsetKitchenNoteQuestion(session));
+        return;
       }
       if (session.pendingCheckoutResume && !conv.humanTakeover &&
           !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
@@ -1205,10 +1213,13 @@ export class WhatsappOrchestratorService {
     const explicitCartWithdrawal = /^(?:cancela|olvida) el cambio del carrito$/.test(cancellationText);
     const explicitPurchaseWithdrawal = /^(?:cancela|olvida) la compra pendiente$/.test(cancellationText);
     const vagueWithdrawal = /^(?:(?:olvida|cancela) (?:ese|el) cambio|dejalo (?:como estaba|igual)|no hagas ese cambio|olvida eso|(?:cancela|olvida) esa seleccion)$/.test(cancellationText);
-    if (activeSelection && pendingSelection.cart.length && pendingEdits.length && pendingPurchaseSelection &&
+    const pendingKitchenNote = !!pendingSelection.pendingSubsetKitchenNote;
+    if (activeSelection && pendingSelection.cart.length && pendingEdits.length && (pendingPurchaseSelection || pendingKitchenNote) &&
         (vagueWithdrawal || cancellationAside)) {
-      await this.reply(conv, msg.waId, 'Hay varias selecciones pendientes. ¿Te refieres al cambio del carrito o a la compra pendiente? No he retirado ninguna.\n\n' +
-        'Escribe «cancela el cambio del carrito» o «cancela la compra pendiente». El pedido sigue igual.');
+      const owners=['el cambio del carrito',pendingPurchaseSelection?'la compra pendiente':null,pendingKitchenNote?'la nota de preparación pendiente':null].filter(Boolean);
+      const commands=['«cancela el cambio del carrito»',pendingPurchaseSelection?'«cancela la compra pendiente»':null,pendingKitchenNote?'«no apliques esa nota»':null].filter(Boolean);
+      await this.reply(conv, msg.waId, 'Hay varias selecciones pendientes. ¿Te refieres a '+owners.join(' o a ')+'? No he retirado ninguna.\n\n' +
+        'Escribe '+commands.join(' o ')+'. El pedido sigue igual.');
       return;
     }
 
@@ -1301,6 +1312,11 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,originalText,cfg)) {
+      turn.subsetNoteHandled = true;
+      return;
+    }
     // A concrete delivery setup after shopping is an address, not a new dish.
     // Keep questions, negations and conditional requests in their own routes.
     const affirmativeDeliverySetup = /^(?:(?:es|seria)\s+)?(?:para\s+(?:un[oa]?\s+)?domicilio|(?:quiero|dame|necesito)\s+(?:un[oa]?\s+)?domicilio|domicilio\s+(?:para|a|en))\b/.test(this.normalizeForMatch(originalText));
@@ -2396,6 +2412,7 @@ export class WhatsappOrchestratorService {
       ? productsRaw.map((p) => ({ ...p, availableNow: true }))
       : productsRaw;
 
+    if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
     if (businessOpenForBot && await this.tryHandleTwoUnitFamilyPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
 
@@ -9194,6 +9211,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (session.pendingSubsetKitchenNote) {
+      await say(this.formatSubsetKitchenNoteQuestion(session));
+      return;
+    }
+
     const limitsCfg = this.toCartLimitsConfig(cfg, session);
     const maxCheck = evaluateCartLimits(session.cart, limitsCfg, {
       orderType: session.orderType,
@@ -14357,6 +14379,7 @@ export class WhatsappOrchestratorService {
     if (session.pendingPriceInquiry) return 'Para seguir con la consulta, indica el nombre o el número del producto de la lista.';
     const editReminder = this.formatPendingCartEditReminder(session);
     if (editReminder) return editReminder;
+    if (session.pendingSubsetKitchenNote) return this.formatSubsetKitchenNoteQuestion(session);
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) {
       return this.formatPendingPurchaseReminder(session);
     }
@@ -15210,6 +15233,138 @@ export class WhatsappOrchestratorService {
       items,
       cfg,
     );
+  }
+
+  private formatSubsetKitchenNoteQuestion(session: WhatsappSessionData): string {
+    const pending = session.pendingSubsetKitchenNote;
+    if (!pending) return '';
+    const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
+    return (pending.note ? `¿A cuáles ${pending.quantity} platos les aplico «${pending.note}»?\n` : '¿Qué preparación o acompañante quieres para estos platos?\n') +
+      lines.map((line,index)=>`${index+1}. ${line.name}`).join('\n') +
+      '\nResponde con los nombres o números. Para retirarla, escribe «no apliques esa nota».';
+  }
+
+  private namedKitchenNoteRows(session: WhatsappSessionData, text: string): number[] {
+    const products = session.cart.map(line=>({id:line.productId,code:line.code,name:line.name,price:line.unitPrice,availableNow:true,attributes:line.attributes?.map(attr=>({attributeName:attr.attributeName,options:[attr.attributeValue]})) || []}));
+    const ids = new Set(products.filter(product=>!!this.catalogService.productFullyNamedIn(text,[product])).map(product=>product.id));
+    for (const clause of this.catalogService.splitMultiProductSegments(text,products)) {
+      const product = this.catalogService.resolveSpokenDish(clause.replace(/^(?:al|a la|a los|a las|el|la|los|las)\s+/i,''),products);
+      if (product) ids.add(product.id);
+    }
+    return session.cart.flatMap((line,index)=>ids.has(line.productId)?[index]:[]);
+  }
+
+  private async tryHandleSubsetKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const pending = session.pendingSubsetKitchenNote;
+    if (!pending || conv.state==='awaiting_mp_payment') return false;
+    if (/^(?:no apliques esa nota|olvida esa nota|cancela esa indicacion)$/.test(this.normalizeForMatch(text))) {
+      const next={...session,pendingSubsetKitchenNote:undefined};await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,'Retiré esa indicación pendiente. Los productos siguen igual.\n\n'+this.formatInterruptedStepReminder(conv,next));return true;
+    }
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    const eligible = session.cart.flatMap((line,index)=>pending.productIds.includes(line.productId)?[index]:[]);
+    if (eligible.length < pending.quantity) return false;
+    const ask=async()=>{await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));return true;};
+    if (/\bde cada\b/i.test(text) || isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) return ask();
+    if (/[¿?]/.test(text) || /^(?:no|si|agrega|quita|cambia)\b/.test(this.normalizeForMatch(text)) || pending.note&&/^(?:dame|quiero)\b/i.test(text)) return false;
+    const numeric = /^\d{1,2}(?:\s*(?:,|y|e)\s*\d{1,2})*$/.test(text.trim());
+    const picks = numeric ? [...new Set((text.match(/\d+/g)||[]).map(Number))] : [];
+    let note=pending.note;
+    let rows: number[];
+    if (!note) {
+      if (/^(?:sin|con|m[aá]s|menos)\s+/i.test(text.trim()) && text.length<=400) {
+        note=text.trim();rows=eligible;
+      } else if (this.namedKitchenNoteRows(session,text).some(index=>eligible.includes(index)) || numeric) return ask();
+      else return false;
+    } else rows = numeric ? picks.flatMap(pick=>pick>=1&&pick<=eligible.length?[eligible[pick-1]]:[]) : this.namedKitchenNoteRows(session,text).filter(index=>eligible.includes(index));
+    if (!numeric && !rows.length) return false;
+    if (rows.length!==pending.quantity || numeric&&rows.length!==picks.length ||
+        !pending.byProduct&&rows.some(index=>session.cart[index].quantity!==1) ||
+        new Set(rows.map(index=>session.cart[index].productId)).size!==rows.length) return ask();
+    const next={...session,pendingSubsetKitchenNote:undefined,cart:session.cart.map((line,index)=>rows.includes(index)?{...line,note:distinctNotes(line.note,note)}:line)};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Anotado en los platos indicados ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  private retireSupersededKitchenNoteProposal(session: WhatsappSessionData,rows: number[]): WhatsappSessionData['pendingMultiOrder'] {
+    const pending=session.pendingMultiOrder;if(!pending)return undefined;
+    const unresolved=pending.unresolved.filter(raw=>{
+      const modifier=raw.search(/\b(?:sin|con|mas|m[aá]s|menos)\b/i);
+      const prefix=modifier>=0?raw.slice(0,modifier).trim():'';
+      const numericLabel=rows.some(index=>this.normalizeForMatch(prefix)===this.normalizeForMatch(session.cart[index].name));
+      return modifier<0 || this.catalogService.countQuantityMentions(prefix)>0&&!numericLabel || /\by\s+(?:un|una|dos|tres|\d+)\b/i.test(raw) || !this.namedKitchenNoteRows(session,prefix).some(index=>rows.includes(index));
+    });
+    const next={...pending,unresolved};
+    return !next.unresolved.length&&!next.ambiguous.length&&!next.confident.length&&!next.needsAttributes.length?undefined:next;
+  }
+
+  private async tryHandleNamedCartKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const normalized=this.normalizeForMatch(text);
+    const changeAccompaniment=/^(?:por favor |porfa )?quiero cambiar el acompanante de\b/.test(normalized);
+    const contextualPreparation=/^(?:quiero|dame|ponme) (?:el|la|los|las)\b/.test(normalized);
+    if (!session.cart.length || conv.state==='awaiting_mp_payment' || /[¿?]/.test(text) ||
+        !contextualPreparation && !changeAccompaniment && !/^(?:por favor |porfavor |porfa )?(?:pon(?:me)? (?:como|de) nota|anota(?:me)?|nota para|quiero (?:poner|dejar) (?:como )?nota)\b/.test(normalized)) return false;
+    const marker = /\bque (?:vayan|vaya|vengan|venga|sean|sea)\s+/i.exec(text);
+    const start = marker ? marker.index+marker[0].length : text.search(/\b(?:sin|m[aá]s|menos)\b/i);
+    const targetText=start<0?text:text.slice(0,start);
+    if(contextualPreparation){
+      if(start<0)return false;
+      const products=await this.catalogService.getMenuProducts();
+      const targets=targetText.replace(/^(?:quiero|dame|ponme)\s+(?:el|la|los|las)\s+/i,'');
+      const clauses=this.catalogService.splitMultiProductSegments(targets,products);
+      // A preparation edit must account for every named dish, including dishes outside the cart.
+      if(!clauses.length || clauses.some(clause=>{
+        const product=this.catalogService.resolveSpokenDish(clause.replace(/^(?:el|la|los|las)\s+/i,''),products);
+        return !product || !session.cart.some(line=>line.productId===product.id);
+      }))return false;
+    }
+    const rows=this.namedKitchenNoteRows(session,targetText);if(!rows.length)return false;
+    const pendingMultiOrder=this.retireSupersededKitchenNoteProposal(session,rows);
+    if(start<0){
+      if(!changeAccompaniment)return false;
+      const next={...session,pendingMultiOrder,pendingSubsetKitchenNote:{quantity:rows.length,note:'',productIds:rows.map(index=>session.cart[index].productId),byProduct:true}};
+      await this.conversationService.saveSession(conv,next);await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(next));return true;
+    }
+    const note=text.slice(start).replace(/[.!]+$/,'').trim();if(!note||note.length>400)return false;
+    const oldSubset=session.pendingSubsetKitchenNote;
+    const resolvesSubset=oldSubset && rows.length===oldSubset.quantity && rows.every(index=>oldSubset.productIds.includes(session.cart[index].productId));
+    const next={...session,pendingSubsetKitchenNote:resolvesSubset?undefined:oldSubset,pendingMultiOrder,
+      cart:session.cart.map((line,index)=>rows.includes(index)?{...line,note:distinctNotes(line.note,note)}:line)};
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,'Anoté la preparación en los platos indicados ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  private async tryHandleEachCategoryPurchase(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
+    text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (/[¿?]/.test(text) || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) return false;
+    const each = /\b(?:un|una|uno) de cada(?: un[ao])?\b/i.exec(text);
+    if (!each) return false;
+    const prefix = text.slice(0,each.index).replace(/[,;]\s*$/, '').trim();
+    if (!/\b(?:quiero|dame|me das|me regalas?|env[ií]ame|pido|agrega)\b/i.test(prefix)) return false;
+    const tail = text.slice(each.index + each[0].length).replace(/[.!]/g,'').trim().replace(/^[,;]\s*/, '').replace(/^(?:por favor|porfa)\s+/i,'');
+    const subset = tail.match(/^(un|una|uno|dos|tres|cuatro|cinco|\d+)\s+((?:sin|con|m[aá]s|menos)\s+.+)$/i);
+    if (tail && !subset && !/^(?:por favor|porfa|gracias)$/.test(this.normalizeForMatch(tail))) return false;
+    const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(prefix));
+    const group = this.catalogService.findCategoryBrowseHit(query,products,cfg.menuConceptGroups);
+    if (!group || group.products.length < 2) return false;
+    const declared = /\b(?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/i.test(prefix)
+      ? this.catalogService.extractQuantityFromMessage(prefix,products) : null;
+    if (subset) {
+      const quantity = this.catalogService.extractQuantityFromSegment(subset[1]+' unidades');
+      if (quantity < 1 || quantity > (declared || group.products.length) || subset[2].length > 400) return false;
+      session = {...session,pendingSubsetKitchenNote:{quantity,note:subset[2].trim(),productIds:group.products.map(product=>product.id)}};
+      await this.conversationService.saveSession(conv,session);
+    }
+    if (declared !== null && declared !== group.products.length) {
+      await this.reply(conv,waId,`Hay ${group.products.length} opciones de ${group.categoryName} y pediste ${declared}. ¿Cuáles quieres? Escribe los nombres.\n` +
+        group.products.map(product=>product.name).join('\n'));
+      return true;
+    }
+    return this.addResolvedDishesToCart(conv,waId,session,group.products.map(product=>({product,segment:'1 '+product.name})),cfg);
   }
 
   /** "2 de cada una" agrega esa cantidad de cada plato nombrado en el último mensaje del bot. */
@@ -22411,6 +22566,25 @@ export class WhatsappOrchestratorService {
 
     const lower = text.trim().toLowerCase();
     const numPick = /^[1-9]\d*$/.test(lower) ? parseInt(lower, 10) : null;
+    // Several row numbers from one group mean several chosen products, not
+    // one pick per group (the latter is handled separately below).
+    if (pending.ambiguous.length === 1 && !pending.unresolved.length && /^\d{1,2}(?:\s*(?:,|y|e)\s*\d{1,2})+$/i.test(text.trim())) {
+      const group = pending.ambiguous[0];
+      const picks = [...new Set((text.match(/\d+/g) || []).map(Number))];
+      const declared = this.catalogService.countQuantityMentions(group.segment) > 0
+        ? this.catalogService.extractQuantityFromSegment(group.segment) : null;
+      if (picks.some(pick=>pick<1 || pick>group.candidates.length) || (declared !== null && declared > 1 && declared !== picks.length)) {
+        await this.reply(conv,waId,'Necesito confirmar las filas y la cantidad de cada producto. El pedido sigue igual.');
+        return true;
+      }
+      const selected = picks.map(pick=>products.find(product=>product.id===group.candidates[pick-1].id) || group.candidates[pick-1] as MenuProduct);
+      const extras = [...pending.confident,...pending.needsAttributes].filter(item=>!selected.some(product=>product.id===item.productId));
+      return this.addResolvedDishesToCart(conv,waId,{...session,pendingMultiOrder:undefined},[
+        ...selected.map(product=>({product,segment:'1 '+product.name})),
+        ...extras.map(item=>({product:products.find(product=>product.id===item.productId)!,segment:item.segment,note:item.note})),
+      ],cfg);
+    }
+
 
     // “Con gaseosa” mientras falta elegir frito/broaster → anotar y re-preguntar
     if (

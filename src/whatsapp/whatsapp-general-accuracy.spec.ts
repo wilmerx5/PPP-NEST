@@ -17955,3 +17955,175 @@ describe('Beverage category preserves explicit flavor choice',()=>{
   expect(catalog.isLikelyDrinkProduct(product)).toBe(false);
  });
 });
+
+
+describe('Enumerated category purchases and plural row choices',()=>{
+ const families=[
+  {category:'Sopas',names:['Sopa De Ajiaco','Sopa De Menudencias','Sopa De Mondongo'],text:'un ajiaco, menudencia y un mondongo'},
+  {category:'Rolls',names:['Roll De Pepino','Roll De Aguacate','Roll De Zanahoria'],text:'un roll de pepino, aguacate y un roll de zanahoria'},
+  {category:'Flanes',names:['Flan De Vainilla','Flan De Coco','Flan De Cafe'],text:'un flan de vainilla, coco y un flan de cafe'},
+ ];
+ for(const f of families)for(const agent of [true,false]){
+  const menu=f.names.map((name,i)=>({id:61101+i,code:941+i,name,categoryName:f.category,price:10000+i*1000,availableNow:true,hasAttributes:false,attributes:[]}));
+  it('bare middle item '+f.category+' agent='+agent,async()=>{
+   const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+   await h.sendQueued(f.text);
+   expect(h.cartRows()).toEqual(menu.map(p=>expect.objectContaining({id:p.id,qty:1})));
+   expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(h.conv.sessionData.pendingMatch).toBeUndefined();
+   expect(h.replies.join('\n')).not.toMatch(/cu[aá]l te gusta|cu[aá]l prefieres|no manejamos/i);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it('one of each complete category '+f.category+' agent='+agent,async()=>{
+   const other={id:61109,code:949,name:'Agua Mineral',categoryName:'Bebidas',price:4000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([...menu,other],agent);
+   await h.sendQueued('Quiero tres '+f.category.toLowerCase()+', una de cada una');
+   expect(h.cartRows()).toEqual(menu.map(p=>expect.objectContaining({id:p.id,qty:1})));
+   expect(h.replies.at(-1)).not.toMatch(/cu[aá]les platos.*cu[aá]ntos/i);
+  });
+  it('both rows from one unresolved group '+f.category+' agent='+agent,async()=>{
+   const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+   h.conv.sessionData.cart=[{productId:menu[2].id,code:menu[2].code,name:menu[2].name,unitPrice:menu[2].price,quantity:1,attributes:[],note:'para Ana'}];
+   h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],unresolved:[],ambiguous:[{segment:menu[0].name+', '+menu[1].name,candidates:menu.slice(0,2)}]};
+   await h.sendQueued('1 y 2');
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:menu[2].id,qty:1,note:'para Ana'}),expect.objectContaining({id:menu[0].id,qty:1}),expect.objectContaining({id:menu[1].id,qty:1})]);
+   expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});
+
+
+describe('Subset kitchen note after category clarification',()=>{
+ const families=[
+  {category:'Sopas',names:['Sopa De Ajiaco','Sopa De Menudencias','Sopa De Mondongo'],extra:'Sopa De Lentejas',enumeration:'un ajiaco, menudencia y un mondongo',note:'sin arroz papa salada'},
+  {category:'Rolls',names:['Roll De Pepino','Roll De Aguacate','Roll De Zanahoria'],extra:'Roll De Remolacha',enumeration:'un roll de pepino, aguacate y un roll de zanahoria',note:'sin salsa de soya'},
+  {category:'Flanes',names:['Flan De Vainilla','Flan De Coco','Flan De Cafe'],extra:'Flan De Chocolate',enumeration:'un flan de vainilla, coco y un flan de cafe',note:'sin caramelo'},
+ ];
+ for(const f of families)for(const agent of [true,false])for(const size of [3,4])for(const byName of [true,false])it(f.category+' options='+size+' names='+byName+' agent='+agent,async()=>{
+  const menu=[...f.names,f.extra].slice(0,size).map((name,i)=>({id:61201+i,code:931+i,name,categoryName:f.category,price:10000+i*1000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(menu,agent);h.service.ordersService.create=jest.fn().mockResolvedValue({id:6120,dailyOrderNumber:61});
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+  await h.sendQueued('Buenas tardes me das tres '+f.category.toLowerCase()+' una de cada una por favor dos '+f.note);
+  expect((h.conv.sessionData as any).pendingSubsetKitchenNote).toMatchObject({quantity:2,note:f.note});
+  expect(h.conv.sessionData.cart).toHaveLength(size===3?3:0);
+  await h.sendQueued('Quiero tres '+f.category.toLowerCase()+' una de cada una');
+  expect(h.conv.sessionData.cart).toHaveLength(size===3?3:0);
+  await h.sendQueued(f.enumeration);
+  expect(h.cartRows()).toHaveLength(3);expect(h.cartRows()).toEqual(expect.arrayContaining(menu.slice(0,3).map(p=>expect.objectContaining({id:p.id,qty:1}))));
+  expect(h.conv.sessionData.cart.every(line=>!line.note)).toBe(true);
+  expect(h.replies.at(-1)).toMatch(/cu[aá]les.*(?:dos|2)/i);
+  await h.sendQueued('Nada mas');expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.replies.at(-1)).toMatch(/cu[aá]les.*(?:dos|2)/i);
+  await h.sendQueued(byName?'Al '+f.names[0]+' y al '+f.names[1]:'1 y 2');
+  expect((h.conv.sessionData as any).pendingSubsetKitchenNote).toBeUndefined();
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:61201,qty:1,note:f.note}),expect.objectContaining({id:61202,qty:1,note:f.note}),expect.objectContaining({id:61203,qty:1,note:undefined})]);
+  await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+  expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(3);expect(items.filter((item:any)=>item.note===f.note)).toHaveLength(2);
+ });
+});
+
+
+describe('Named shared kitchen note interrupts stale proposal',()=>{
+ const families=[{names:['Sopa De Ajiaco','Sopa De Mondongo','Sopa De Menudencias'],note:'sin arroz papa salada a cambio'},{names:['Roll De Pepino','Roll De Zanahoria','Roll De Aguacate'],note:'sin salsa de soya'},{names:['Flan De Vainilla','Flan De Cafe','Flan De Coco'],note:'sin caramelo'}];
+ for(const f of families)for(const agent of [true,false])for(const stale of [true,false])for(const contextual of [true,false])it(f.names[0]+' stale='+stale+' contextual='+contextual+' agent='+agent,async()=>{
+  const menu=f.names.map((name,i)=>({id:61301+i,code:921+i,name,price:10000+i*1000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(menu,agent);h.conv.state='awaiting_address';h.conv.sessionData.orderType='delivery';h.conv.sessionData.fulfillmentChosen=true;
+  h.conv.sessionData.cart=menu.map((p,i)=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[],...(i===2?{note:'para Ana'}:{})}));
+  if(stale)h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],ambiguous:[],unresolved:[f.names[1]+' '+f.note]};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6130,dailyOrderNumber:62});
+  const reply=await h.sendQueued(contextual ? (f.names[0].startsWith('Sopa')?'Quiero la sopa de ajiaco y el mondongo ': 'Quiero el '+f.names[0]+' y el '+f.names[1]+' ')+f.note : 'Por favor pon como nota para '+f.names[0]+' y '+f.names[1]+' que vayan '+f.note);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:61301,qty:1,note:f.note}),expect.objectContaining({id:61302,qty:1,note:f.note}),expect.objectContaining({id:61303,qty:1,note:'para Ana'})]);
+  expect(h.conv.state).toBe('awaiting_address');expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(reply||'').not.toMatch(/no manejamos|no tenemos/i);
+  await h.sendQueued('Dejame ver que tengo en el carrito');expect(h.replies.at(-1)).toContain(f.names[1]);expect(h.replies.at(-1)).not.toMatch(/no tenemos/i);
+  await h.sendQueued('Es para la calle 12 34 56');await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+  expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(3);
+ });
+});
+
+
+describe('Enumeration and subset instruction boundaries',()=>{
+ const menu=['Sopa De Ajiaco','Sopa De Menudencias','Sopa De Mondongo'].map((name,i)=>({id:61401+i,code:911+i,name,categoryName:'Sopas',price:10000+i*1000,availableNow:true,hasAttributes:false,attributes:[]}));
+ for(const agent of [true,false]){
+  it.each(['1 y 3','0 y 1','1 y 2 con total tres'])('invalid/undistributed selection %s agent='+agent,async text=>{
+   const h=harness(menu,agent);h.service.ordersService.create=jest.fn();
+   h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],unresolved:[],ambiguous:[{segment:text.includes('total')?'Tres sopas':'sopas',candidates:menu.slice(0,2)}]};
+   const before=structuredClone(h.conv.sessionData);await h.sendQueued(text.includes('total')?'1 y 2':text);
+   expect(h.conv.sessionData).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+  it('category question is not a purchase agent='+agent,async()=>{
+   const h=harness(menu,agent);await h.sendQueued('¿Tienen tres sopas una de cada una?');expect(h.cartRows()).toEqual([]);
+  });
+  it.each(['bad rows','decline','reset'])('pending subset '+agent+' %s',async mode=>{
+   const h=harness(menu,agent);await h.sendQueued('Quiero tres sopas una de cada una, dos sin arroz');
+   const before=structuredClone(h.conv.sessionData);expect(before.pendingSubsetKitchenNote).toBeDefined();
+   await h.sendQueued(mode==='bad rows'?'1 y 4':mode==='decline'?'No apliques esa nota':'Reiniciar');
+   if(mode==='bad rows')expect(h.conv.sessionData).toEqual(before);
+   else{expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeUndefined();expect(h.conv.sessionData.cart).toEqual(mode==='reset'?[]:before.cart);}
+  });
+  it('fresh named note retires only its stale instruction agent='+agent,async()=>{
+   const h=harness(menu,agent);h.conv.sessionData.cart=menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}));
+   h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],ambiguous:[],unresolved:['Sopa De Mondongo sin arroz con papa salada','Postre Galactico']};
+   await h.sendQueued('Pon como nota para Sopa De Ajiaco y Sopa De Mondongo que vayan sin arroz');
+   expect(h.conv.sessionData.pendingMultiOrder?.unresolved).toEqual(['Postre Galactico']);expect(h.cartRows()).toHaveLength(3);
+   expect(h.cartRows().filter(row=>row.note==='sin arroz').map(row=>row.id).sort()).toEqual([61401,61403]);
+  });
+  it('independent drink does not receive or erase the pending note agent='+agent,async()=>{
+   const drink={id:61409,code:919,name:'Agua Mineral',categoryName:'Bebidas',price:4000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([...menu,drink],agent);await h.sendQueued('Quiero tres sopas una de cada una dos sin arroz');
+   await h.sendQueued('Agrega dos Agua Mineral');expect(h.cartRows().find(row=>row.id===61409)).toMatchObject({qty:2,note:undefined});expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeDefined();
+   await h.sendQueued('1 y 2');expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeUndefined();expect(h.cartRows().find(row=>row.id===61409)).toMatchObject({qty:2,note:undefined});
+  });
+  it('named note does not discard a separate quantified purchase agent='+agent,async()=>{
+   const h=harness(menu,agent);h.conv.sessionData.cart=menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}));
+   h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],ambiguous:[],unresolved:['dos Sopa De Mondongo sin arroz']};
+   await h.sendQueued('Pon como nota para Sopa De Ajiaco y Sopa De Mondongo que vayan sin arroz');
+   expect(h.conv.sessionData.pendingMultiOrder?.unresolved).toEqual(['dos Sopa De Mondongo sin arroz']);expect(h.cartRows()).toHaveLength(3);
+  });
+  it('central confirmation cannot bypass a subset note agent='+agent,async()=>{
+   const h=harness(menu,agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn();
+   h.conv.sessionData.cart=menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}));
+   h.conv.sessionData.pendingSubsetKitchenNote={quantity:2,note:'sin arroz',productIds:menu.map(p=>p.id)};
+   await h.service.tryConfirmOrder(h.conv,'customer',h.conv.sessionData);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.replies.at(-1)).toMatch(/cu[aá]les.*2/i);expect(h.conv.state).toBe('awaiting_final_confirm');
+  });
+ }
+});
+
+
+describe('Named accompaniment change waits for preparation',()=>{
+ for(const names of [['Sopa De Ajiaco','Sopa De Mondongo','Sopa De Menudencias'],['Roll De Pepino','Roll De Zanahoria','Roll De Aguacate'],['Flan De Vainilla','Flan De Cafe','Flan De Coco']])for(const agent of [true,false])it(names[0]+' agent='+agent,async()=>{
+  const menu=names.map((name,i)=>({id:61501+i,code:901+i,name,price:10000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(menu,agent);h.conv.state='awaiting_address';h.conv.sessionData.cart=menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}));
+  h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],ambiguous:[],unresolved:[names[1]+' sin arroz con papa salada']};
+  const before=structuredClone(h.conv.sessionData.cart);
+  const response=await h.sendQueued('Quiero cambiar el acompañante de '+names[0]+' y de '+names[1]);
+  expect(h.conv.sessionData.cart).toEqual(before);expect(response||'').toMatch(/qu[eé].*(?:preparaci[oó]n|acompa[nñ]ante|indicaci[oó]n)|por cu[aá]l/i);expect(response||'').not.toMatch(/no tenemos/i);
+  await h.sendQueued('Dame el '+names[0]+' son arroz');expect(h.conv.sessionData.cart).toEqual(before);expect(h.replies.at(-1)).not.toMatch(/no tenemos/i);
+  await h.sendQueued('Sin arroz papa salada a cambio');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:61501,qty:1,note:'Sin arroz papa salada a cambio'}),expect.objectContaining({id:61502,qty:1,note:'Sin arroz papa salada a cambio'}),expect.objectContaining({id:61503,qty:1,note:undefined})]);
+  expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(h.conv.state).toBe('awaiting_address');
+ });
+});
+
+
+describe('Kitchen note identity and withdrawal ownership',()=>{
+ for(const agent of [true,false]){
+  it('numeric product label is not a separate quantity agent='+agent,async()=>{
+   const product={id:61601,code:891,name:'1 Pack De Gyozas',price:18000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([product],agent);h.conv.sessionData.cart=[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:1,attributes:[]}];
+   h.conv.sessionData.pendingMultiOrder={confident:[],needsAttributes:[],ambiguous:[],unresolved:['1 Pack De Gyozas sin salsa']};
+   await h.sendQueued('Pon como nota para 1 Pack De Gyozas que vaya sin salsa');
+   expect(h.conv.sessionData.pendingMultiOrder).toBeUndefined();expect(h.cartRows()).toEqual([expect.objectContaining({id:61601,qty:1,note:'sin salsa'})]);
+  });
+  it.each(['Olvida ese cambio','¿Puedo cancelar ese cambio?'])('%s note and removal agent='+agent,async text=>{
+   const product={id:61602,code:892,name:'Taco De Calabaza',price:17000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([product],agent);h.conv.state='awaiting_payment';
+   h.conv.sessionData.cart=['sin cilantro','con cilantro'].map(note=>({productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:1,attributes:[],note}));
+   h.conv.sessionData.pendingCartRemoval={cartSignature:JSON.stringify(h.conv.sessionData.cart),options:h.conv.sessionData.cart.map((line,i)=>({cartIndex:i,label:product.name+' '+line.note}))};
+   h.conv.sessionData.pendingSubsetKitchenNote={quantity:1,note:'sin sal',productIds:[product.id]};
+   const before=structuredClone(h.conv.sessionData);const response=await h.sendQueued(text);
+   expect(h.conv.sessionData).toEqual(before);expect(response||'').toMatch(/carrito/i);expect(response||'').toMatch(/nota|preparaci[oó]n/i);
+   await h.sendQueued('No apliques esa nota');expect(h.conv.sessionData.pendingSubsetKitchenNote).toBeUndefined();expect(h.conv.sessionData.pendingCartRemoval).toEqual(before.pendingCartRemoval);
+   await h.sendQueued('la con cilantro');expect(h.cartRows()).toEqual([expect.objectContaining({id:61602,qty:1,note:'sin cilantro'})]);
+  });
+ }
+});

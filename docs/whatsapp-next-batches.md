@@ -1,3 +1,16 @@
+## Tanda validada17/10: enumeraciones y preparación compartida
+
+100 casos nuevos aprobados de forma focalizada; global77 suites/7912 tests aprobado,354 hashes intactos; ver docs/whatsapp-enumeration-notes-validation-1710.json. No iniciar otra tanda de fuente hasta cerrar esa validación y comparar hashes. El cambio de preparación de dos platos ya presentes no debe crear nuevas unidades ni cobrar porción de acompañamiento. Lo que no identifica destinatarios debe aclararse antes de confirmar. Se conserva el tercer plato y su nota.
+
+Después del cierre y deploy agrupado:
+1. Varias unidades en una línea: «dos de los tres sin arroz» requiere partición de unidades sin cambiar total; probar también dos variantes/notas del mismo SKU para impedir selección silenciosa.
+2. Mezcla de edición y nueva compra: «el que tengo sin salsa y otro normal» debe conservar lo anterior y añadir exactamente uno. Cubrir un producto mencionado fuera del carrito; no editar parcialmente ni perder el nuevo.
+3. Retiro/corrección de preparación: cambiar una nota anterior sin conservar instrucciones contradictorias; distinguir quitar una nota, retirar una selección y cancelar todo el pedido.
+4. Mensajes separados y ráfagas: platos, nota y dirección en entradas distintas; persistencia y respuesta de cada turno sin mutaciones duplicadas. Mock del transporte primero; no órdenes reales.
+5. Contraste acotado del modelo real con el saldo registrado (2requests operativas disponibles): seleccionar un caso nuevo y registrar intento antes de red. Detener al fallar, reproducir gratis y no gastar en fallos artificiales.
+
+No considerar el conteo de tests una medida de porcentaje vendible. Para piloto: cerrar regresiones críticas conocidas, verificar versión desplegada y ejecutar conversaciones completas nuevas con carrito/respuesta coherentes. No ampliar a pagos/cocina mientras la prioridad del usuario sea comprensión.
+
 ## Prioridad nueva: enumeración y uno-de-cada — 17/10/2026
 
 Usuario aporta chat18:20: tres sopas una de cada, dos sin arroz papa salada; repite, lista «un ajiaco, menudencia y un mondongo», se agrupan dos como alternativas; «1 y2» no añade ambos. Reproducir en código actual, pues el chat es previo al deploy95cba2c7 verificado18:23. Añadir otras categorías/cartas: enumeraciones con cantidades omitidas, uno-de-cada solo si conjunto inequívoco, selección plural desde lista, notas para dos de tres sin inventar cuáles. Primero no perder productos ni cantidades; pedir aclaración concreta cuando falte dueño de nota.

@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "6709a745",
+  "status": "validated_not_deployed",
+  "newTests": 100,
+  "families": [
+    "catalog enumeration vs alternatives",
+    "one each with category count mismatch",
+    "subset kitchen note recipient clarification",
+    "plural row choice",
+    "named shared preparation supersedes related stale rejection",
+    "accompaniment change while awaiting address",
+    "withdrawal ownership with cart edit",
+    "numeric SKU labels vs quantity"
+  ],
+  "catalogs": [
+    "PPP-shaped soups",
+    "fictional rolls",
+    "fictional flans",
+    "numeric-labelled gyoza"
+  ],
+  "baseline": {
+    "enumeration": {
+      "failed": 18
+    },
+    "subsetNote": {
+      "failed": 24
+    },
+    "explicitNamedNote": {
+      "failed": 12
+    },
+    "preparationContinuation": {
+      "failed": 6
+    },
+    "quantityProtection": {
+      "failed": 2
+    },
+    "identityAndOwnership": {
+      "failed": 6
+    },
+    "contextualPreparation": {
+      "failed": 12,
+      "passed": 12
+    }
+  },
+  "targeted": {
+    "allNew": {
+      "passed": 100,
+      "log": "/tmp/ppp-enumeration-context-targets-1710.log"
+    },
+    "exactAliasFinal": {
+      "passed": 24,
+      "log": "/tmp/ppp-enumeration-exact-context-1710.log"
+    }
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-enumeration-accepted-tsc-1710.log"
+  },
+  "nodeContracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-enumeration-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-enumeration-final-global-1710.log",
+    "sourceSnapshot": "/tmp/ppp-enumeration-final-source-1710.json",
+    "suites": 77,
+    "tests": 7912,
+    "seconds": 1085.999,
+    "sourceFiles": 354,
+    "sourceUnchanged": true
+  },
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "mainChanged": false,
+  "limitations": [
+    "Mocked model and external services; not new paid model evidence.",
+    "Kitchen notes do not certify restaurant substitution policy.",
+    "Unspecified subset recipients must be clarified.",
+    "Typo son arroz is not silently rewritten as sin arroz.",
+    "No universal language comprehension claim."
+  ],
+  "deployment": null
+}

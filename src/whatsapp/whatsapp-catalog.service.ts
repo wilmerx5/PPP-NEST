@@ -8974,7 +8974,24 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
-    const raw = this.splitMultiProductSegmentsRaw(text);
+    const raw = this.splitMultiProductSegmentsRaw(text).flatMap(part => {
+      if (!products?.length || !part.includes(',')) return [part];
+      const clauses = part.split(/\s*,\s*/).filter(Boolean);
+      if (clauses.length < 2 || clauses.some(clause => /^(?:sin|con|extra|bien|poco|poca|mas|menos)\b/.test(normalizeText(clause)))) return [part];
+      const first = this.resolveSpokenDish(clauses[0], products);
+      if (!first) return [part];
+      const head = normalizeText(first.name).replace(/^\d+\s*/, '').split(' ')[0];
+      const dishes = clauses.map((clause,index) => {
+        const q = normalizeText(clause);
+        const elliptical = index > 0 && q.split(' ').length <= 3 ? products.filter(product =>
+          product.availableNow !== false && normalizeText(product.name).replace(/^\d+\s*/, '').split(' ')[0] === head &&
+          q.split(' ').every(token => token.length >= 3 && normalizeText(product.name).split(' ').includes(token))) : [];
+        return elliptical.length === 1 ? elliptical[0] : this.resolveSpokenDish(clause, products);
+      });
+      if (dishes.some(dish => !dish) || new Set(dishes.map(dish => dish!.id)).size !== clauses.length) return [part];
+      if (clauses.slice(1).some(clause => this.bareAttributeHostIndex(clause, [clauses[0]], products) >= 0)) return [part];
+      return clauses.map((clause,index) => index > 0 && !this.resolveSpokenDish(clause,products) ? '1 '+dishes[index]!.name : clause);
+    });
     const addVerbOnly = /^(?:y\s+)?(?:agrega(?:le|me|r)?|agregue(?:le|me)?|pon(?:le|me|ga|gale|game)?|suma(?:le|me)?|anade(?:le|me)?|incluye(?:le|me)?|mete(?:le|me)?|echa(?:le|me)?)(?:\s+(?:tambien|ademas|porfa|por favor))*$/;
     const kept = raw.filter((part) => !addVerbOnly.test(normalizeText(part)));
     const parts = kept.length ? kept : raw;

@@ -59,6 +59,8 @@ export type WhatsappSessionData = {
     options: Array<{ cartIndex: number; label: string }>;
     cartSignature: string;
   };
+  /** Subset instruction awaits recipients; an empty note awaits preparation for named products. */
+  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
