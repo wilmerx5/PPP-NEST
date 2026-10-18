@@ -1,3 +1,11 @@
+## Desplegado y verificado: a3b462a3 — 17/10/2026,21:00 Bogotá
+
+Staging running/healthy;imagen activa=candidate sha256:c410377a0155417cebf160adb2c979b4d201d70f8260e050c69a8d92166b1933;health OK/DB connected/circuit CLOSED. Verificado18/10 02:00:08UTC. Incluye aprobación compuesta b062d801 y opciones parciales/porciones a3b462a3. Compilado conserva guards previos/nuevas rutas;modelos Sol6.1/Luna/Luna/GPT Transcribe iguales. Rollback ppp-nest-staging:rollback-before-a3b462a3. bin/ remoto y mariadb_local preservados. Main intacta. No reconstruir ni repetir global por este cierre documental.
+
+Global definitiva78suites/8220tests,745focalizadas,TypeScript y72contratos Node aprobados;356fuentes congeladas iguales.76pruebas nuevas en esta tanda y98en aprobación anterior. Informes whatsapp-partial-options-portions-validation-1710.json y whatsapp-compound-approval-validation-1710.json. Cero llamadas pagadas/Meta/órdenes externas en estas dos tandas;181/183 intacto. Estos son mocks de dependencias/modelo, no8220 conversaciones independientes ni validación de transcripción de audio real.
+
+SIGUIENTE: ubicación legible sin exponer coordenadas, preservando destino exacto. No se implementó todavía;ver lista reservada y plan comercial. Luego alcance por unidades en contrato de acciones del modelo y composición de compra+edición+aprobación. Repetición de cambio parcial tras dividir y varias líneas del mismo SKU piden aclarar, no trasladan el resto automáticamente. No declarar producto vendible solo por suite verde. Las entradas de «en curso/pendiente» inferiores son historial, este encabezado prevalece.
+
 ## Validado: cambios de opciones por unidades y porciones normales — 17/10/2026
 
 Base b062d801.76 casos nuevos;745 focalizadas en2suites,TypeScript y72contratos Node aprobados. Global78suites/8220pruebas,759.648s;356 hashes idénticos a /tmp/ppp-options-portions-source-1710.json. Log /tmp/ppp-options-portions-global-1710.log. Informe whatsapp-partial-options-portions-validation-1710.json. Publicar únicamente staging; despliegue agrupado pendiente con aprobación b062d801. Main intacta. No repetir suite por cierre documental. Cero API/Meta/órdenes externas;181/183.
