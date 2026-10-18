@@ -1,3 +1,9 @@
+## Estado vigente — 18/10/2026
+
+Staging243c2e3b desplegado/verificado;81suites/8510tests con365hashes intactos,TypeScript y72contratos Node. Corrige pérdida de intención en no-op y evita cambiar el resto al repetir una partición sin identificar variante. Sin nuevas llamadas pagadas;Main intacta. Evidencia whatsapp-unit-option-followup-validation-1810.json y relevo WHATSAPP-LOCAL-NEXT-AGENT.md.
+
+Aún piloto supervisado pendiente: ampliar unión de atributos+nota del mismo subconjunto, compras nuevas distribuidas, alusiones/negaciones entre variantes;reservar conversaciones completas no usadas al ajustar y medir modelo real,costo y latencia. El conteo global no equivale a garantía comercial. Mantener efectivo/transferencia y probar sin órdenes externas hasta verificar aislamiento. Las secciones inferiores son historial.
+
 # Plan vigente de piloto y venta — 17 de octubre de 2026, Bogotá
 
 Esta sección es la referencia actual. Las entradas inferiores son historial y sus modelos, presupuestos, SHAs y conteos no describen necesariamente el runtime vigente. El relevo técnico es `WHATSAPP-LOCAL-NEXT-AGENT.md` y cada tanda tiene un informe JSON. No existe aún evidencia suficiente para declarar venta autónoma ni una fecha de lanzamiento defendible.

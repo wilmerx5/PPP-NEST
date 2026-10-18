@@ -1,3 +1,13 @@
+## VIGENTE — 18/10/2026: staging desplegado 243c2e3b
+
+Código 243c2e3b468fd44695d16268e4644cdced186177 desplegado y verificado a las00:19 Bogotá. Imagen activa=candidate sha256:98f9d9525d06b5c81a92dc2ef90314f23a4c3697450933bca4e4d7fbf9177030;running/healthy;health OK/DB connected/circuit CLOSED. Compilado comprueba no-op con intención retenida, fuente ambigua, rechazo de tanda sin revival y referencias explícitas. Modelos Sol6.1/Luna/Transcribe sin cambios. Rollback ppp-nest-staging:rollback-before-243c2e3b. Main intacta;bin/ remoto y mariadb_local preservados.
+
+Global final81suites/8510tests en600.544s,365hashes intactos;TypeScript y72contratos Node pasaron.15recorridos nuevos hasta DTO simulado y controles de origen de variantes. La primera ejecución de232controles focalizados se solapa: no sumarla. Evidencia docs/whatsapp-unit-option-followup-validation-1810.json;logs/manifiesto /tmp/ppp-unit-source-global-1810.{log,json} y /tmp/ppp-unit-source-global-source-1810.json. Sin inferencia pagada, Meta ni órdenes externas esta tanda. Presupuesto operativo185/usadas184/restante1 intacto.
+
+Comportamiento: si las unidades ya tienen las opciones, responde sin volver al parser de compra. Si ya hay variantes del mismo SKU y una nueva edición no identifica fuente, conserva carrito y aclara de cuál línea/opción actual salen. La ambigüedad invalida toda la tanda, no solo el último grupo. Referencias complejas con negación/preservación se aclaran conservadoramente; esto no acredita comprensión universal. Fuente numérica explícita o valor actual único admitidos; ordinales y referencias implícitas quedan por ampliar.
+
+SIGUIENTE: matriz vigente al inicio de whatsapp-next-batches.md, sobre todo atributos+nota para el mismo subconjunto y compras nuevas distribuidas. Añadir escenarios reservados y medir inferencia/costo antes de piloto. No declarar vendible por conteos. No repetir global ni reconstruir por el cierre documental. Entradas inferiores son históricas.
+
 ## Tanda validada, pendiente de despliegue — 18/10/2026: repetición y origen de variantes
 
 Cambios validados aún NO desplegados. Base baadd569; runtime sigue cf6ded72. Se reprodujeron 9 recorridos no-op (la herramienta dejaba actions vacío y perdía la intención) y 6 recorridos de repetición (tras dividir 4 en 2+2, repetir podía transformar el resto). El no-op conserva ahora updateUnitOptions; una edición con varias variantes del mismo SKU requiere referencia humana a la línea o a una opción actual única, distinta del destino. Si no la hay se invalida toda la tanda, incluso grupos previamente preparados. No se revive en otra llamada del mismo turno. Mensajes negados/de preservación complejos se aclaran conservadoramente.

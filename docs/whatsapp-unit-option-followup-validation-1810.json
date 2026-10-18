@@ -1,7 +1,7 @@
 {
   "dateBogota": "2026-10-18",
   "baseCommit": "baadd569666f927c50c700678a2d6cef800f53d5",
-  "status": "validated_not_deployed",
+  "status": "deployed_and_verified",
   "behaviors": [
     "No-op preserves grouped edit intent and replies without purchase fallback",
     "Repeated partial changes on separated variants require a human source reference",
@@ -46,5 +46,31 @@
     "Complex negated/preservation instructions require clarification when several variants exist",
     "No new real-model inference in this batch",
     "Combination of unit options with subset kitchen notes remains next work"
-  ]
+  ],
+  "deployment": {
+    "codeCommit": "243c2e3b468fd44695d16268e4644cdced186177",
+    "image": "sha256:98f9d9525d06b5c81a92dc2ef90314f23a4c3697450933bca4e4d7fbf9177030",
+    "running": true,
+    "healthy": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "verifiedAtUtc": "2026-10-18T05:19:46.667335+00:00",
+    "compiledChecks": {
+      "compiledNoOp": true,
+      "compiledAmbiguousSource": true,
+      "compiledRejectedBatchLocked": true,
+      "compiledExplicitSources": true,
+      "models": {
+        "agent": "gpt-6.1-sol",
+        "vision": "gpt-6-luna",
+        "audio": "gpt-transcribe"
+      }
+    },
+    "rollback": "ppp-nest-staging:rollback-before-243c2e3b",
+    "mainUntouched": true,
+    "remoteBinAndOrphanDatabasePreserved": true
+  }
 }
