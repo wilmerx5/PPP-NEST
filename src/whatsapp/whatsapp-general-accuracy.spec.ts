@@ -18273,3 +18273,97 @@ describe('Explicit approval with everyday spelling completes once',()=>{
   });
  }
 });
+
+describe('Partial unit option changes preserve the other units',()=>{
+ const families=[
+  {name:'Hamburguesa Clasica',attr:'Bebida',before:'Coca Cola',after:'Colmbiana',spoken:'Colombiana',scope:'gaseosas',base:products.find((p:any)=>p.id===76)},
+  {name:'Bao De Hongos',attr:'Salsa',before:'Teriyaki',after:'Ponzu',spoken:'Ponzu',scope:'salsas'},
+  {name:'Pizza Del Huerto',attr:'Masa',before:'Fina',after:'Gruesa',spoken:'Gruesa',scope:'masas'},
+ ];
+ for(const f of families)for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const agent of [false,true])for(const wording of [0,1]){
+  it(f.name+' '+state+' wording='+wording+' agent='+agent,async()=>{
+   const product=f.base||{id:62901,code:62901,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.before,f.after]}]};
+   const h=harness([product],agent);h.conv.state=state;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6290,dailyOrderNumber:69});
+   Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:4,attributes:[{attributeName:f.attr,attributeValue:f.before}],note:'sin cebolla'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   const text=wording?`Cambia la ${f.attr} de dos ${f.name} a ${f.spoken} por favor`:`Cámbiame dos de las ${f.scope} por ${f.spoken}`;
+   const reply=await h.sendQueued(text);
+   expect(h.cartRows()).toEqual([{id:product.id,qty:2,note:'sin cebolla',attrs:[`${f.attr}:${f.before}`]},{id:product.id,qty:2,note:'sin cebolla',attrs:[`${f.attr}:${f.after}`]}]);
+   expect(reply).toContain(f.before);expect(reply).toContain(f.after);expect(reply).toMatch(/×2/);expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.conv.state).toBe(state==='building_cart'?'awaiting_payment':state);
+   if(state!=='building_cart')expect(reply).not.toMatch(/algo más/i);
+   const after=structuredClone(h.conv.sessionData.cart);await h.sendQueued(text);expect(h.conv.sessionData.cart).toEqual(after);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   if(h.conv.state==='building_cart')await h.sendQueued('Nada más');
+   if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(4);
+   for(const value of [f.before,f.after])expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeName===f.attr&&a.attributeValue===value))).toHaveLength(2);
+  });
+ }
+ for(const agent of [false,true])for(const scenario of ['too_many','zero','unknown','two_targets','pending','already_split']){
+  it('partial option refuses unsafe scope '+scenario+' agent='+agent,async()=>{
+   const p={id:62911,code:62911,name:'Bao De Hongos',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Teriyaki','Ponzu']}]};
+   const h=harness([p],agent);h.conv.state='awaiting_payment';
+   const line={productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:4,attributes:[{attributeName:'Salsa',attributeValue:'Teriyaki'}],note:'bien empacado'};
+   Object.assign(h.conv.sessionData,{cart:[line],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,notesCollected:true});
+   if(scenario==='two_targets')h.conv.sessionData.cart.push({...line,note:'sin cebolla'});
+   if(scenario==='already_split')h.conv.sessionData.cart=[{...line,quantity:2},{...line,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Ponzu'}]}];
+   if(scenario==='pending')h.conv.sessionData.pendingAttribute={productId:p.id,name:p.name,code:p.code,price:p.price,attributes:p.attributes,selected:[]};
+   const before=structuredClone(h.conv.sessionData);const text=`Cambia ${scenario==='too_many'?'cinco':scenario==='zero'?'0':'dos'} de las salsas por ${scenario==='unknown'?'Mostaza':'Ponzu'}`;
+   const reply=await h.sendQueued(text);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');expect(reply).toMatch(/cu[aá]l|cu[aá]ntas|aclar/i);
+  });
+ }
+});
+
+describe('Single presentation portion size preferences do not postpone purchases',()=>{
+ for(const name of ['Porcion de ensalada','Porcion De Verduras'])for(const agent of [false,true])for(const size of ['bien grandes','grandes']){
+  it(name+' '+size+' agent='+agent,async()=>{
+   const p={id:63001,code:63001,name,price:7000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([p],agent);const reply=await h.sendQueued(`Me vende por favor también tres ${name} ${size}`);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:p.id,qty:3})]);expect(reply).not.toMatch(/te agrego|no pude|no manejamos/i);
+   expect(h.conv.sessionData.pendingMatch).toBeFalsy();expect(h.conv.sessionData.pendingMultiOrder).toBeFalsy();
+  });
+ }
+ it('adds three requested portions alongside other sides',async()=>{
+  const names=['Porcion De Papa Francesa','Porcion De Yuca Frita','Porcion de ensalada'];const menu=names.map((name,i)=>({id:63011+i,code:63011+i,name,price:7000,availableNow:true,hasAttributes:false,attributes:[]}));
+  const h=harness(menu,true);await h.sendQueued('Me vende tres porciones de papa francesa, dos porciones de yuca frita y también tres porciones de ensalada bien grandes, no olvidar la yuca por favor');
+  expect(h.cartRows().map(row=>[row.id,row.qty])).toEqual([[63011,3],[63012,2],[63013,3]]);expect(h.replies.join(' ')).not.toMatch(/te agrego|no pude/i);
+ });
+});
+
+describe('Accepted normal portions do not ask the same quantity again',()=>{
+ for(const name of ['Porcion de ensalada','Porcion De Verduras'])for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment']){
+  it(name+' '+state+' agent='+agent,async()=>{
+   const product={id:63101,code:63101,name,price:7000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([product],agent);h.conv.state=state;
+   h.conv.sessionData.pendingAddOffer={productId:product.id,name,code:product.code,price:product.price,quantity:3};
+   h.replies.push(`¿Te agrego las 3 porciones normales a $7.000 cada una?`);
+   h.agent.runTurn.mockResolvedValue({reply:'Necesito aclarar.',actions:{},toolCalls:['add_item'],purchaseAttempts:[{productId:product.id,accepted:false,reason:'dish_not_on_menu'}]});
+   const query=name.replace(/^Porcion de /i,'');const reply=await h.sendQueued(`Sí, dame las 3 ${query.endsWith('s')?query:query+'s'} normales por favor`);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:3})]);expect(reply).not.toMatch(/necesito aclarar|te agrego|no pude|indicas la cantidad/i);expect(h.conv.sessionData.pendingAddOffer).toBeFalsy();
+  });
+ }
+});
+
+describe('Counted option edits retain other attributes and unrelated products',()=>{
+ for(const agent of [false,true])for(const state of ['building_cart','awaiting_address']){
+  it(state+' agent='+agent,async()=>{
+   const menu=[{id:63201,code:63201,name:'Bao De Hongos',price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Teriyaki','Ponzu']},{attributeName:'Masa',options:['Blanca','Integral']}]},{id:63202,code:63202,name:'Agua Mineral',price:4000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.conv.state=state;h.conv.sessionData.cart=[{productId:63201,code:63201,name:menu[0].name,quantity:4,unitPrice:18000,note:'sin cebolla',attributes:[{attributeName:'Salsa',attributeValue:'Teriyaki'},{attributeName:'Masa',attributeValue:'Integral'}]},{productId:63202,code:63202,name:menu[1].name,quantity:1,unitPrice:4000,note:'fria',attributes:[]}];
+   const water=structuredClone(h.conv.sessionData.cart[1]);await h.sendQueued('Cambia la salsa de dos Bao De Hongos a Ponzu');
+   expect(h.conv.state).toBe(state);expect(h.conv.sessionData.cart).toHaveLength(3);expect(h.conv.sessionData.cart[2]).toEqual(water);
+   expect(h.conv.sessionData.cart.reduce((sum,line)=>sum+line.quantity*line.unitPrice,0)).toBe(76000);
+   for(const line of h.conv.sessionData.cart.slice(0,2)){expect(line.quantity).toBe(2);expect(line.note).toBe('sin cebolla');expect(line.attributes).toContainEqual({attributeName:'Masa',attributeValue:'Integral'});}
+  });
+ }
+});
+
+describe('Standard portion preference retains catalog boundaries',()=>{
+ for(const scenario of ['sized_sibling','size_attribute','unavailable','unknown_modifier','conditional','question','pending_note']){
+  it(scenario,async()=>{
+   const p={id:63301,code:63301,name:'Porcion De Verduras',price:7000,availableNow:scenario!=='unavailable',hasAttributes:scenario==='size_attribute',attributes:scenario==='size_attribute'?[{attributeName:'Tamaño',options:['Normal','Grande']}]:[]};
+   const menu=[p,...(scenario==='sized_sibling'?[{...p,id:63302,code:63302,name:'Porcion De Verduras Grande',price:12000}]:[])];
+   const h=harness(menu,false);if(scenario==='pending_note')h.conv.sessionData.pendingSubsetKitchenNote={productIds:[63301],quantity:1,note:'sin salsa'};
+   const before=structuredClone(h.conv.sessionData);const text=scenario==='conditional'?'Si tienes verduras, quiero tres grandes':scenario==='question'?'¿Me vendes tres porciones de verduras grandes?':scenario==='unknown_modifier'?'Quiero tres porciones de verduras grandes con caviar':'Quiero tres porciones de verduras grandes';
+   const handled=await h.service.tryHandleStandardPortionPreference(h.conv,'customer',structuredClone(before),text,h.cfg,{});expect(handled).toBe(false);expect(h.conv.sessionData).toEqual(before);
+  });
+ }
+});

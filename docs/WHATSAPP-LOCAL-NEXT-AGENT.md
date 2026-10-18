@@ -1,3 +1,19 @@
+## Validado: cambios de opciones por unidades y porciones normales — 17/10/2026
+
+Base b062d801.76 casos nuevos;745 focalizadas en2suites,TypeScript y72contratos Node aprobados. Global78suites/8220pruebas,759.648s;356 hashes idénticos a /tmp/ppp-options-portions-source-1710.json. Log /tmp/ppp-options-portions-global-1710.log. Informe whatsapp-partial-options-portions-validation-1710.json. Publicar únicamente staging; despliegue agrupado pendiente con aprobación b062d801. Main intacta. No repetir suite por cierre documental. Cero API/Meta/órdenes externas;181/183.
+
+Cambio contado de2entre4 divide línea y conserva otras opciones, notas, precio, unidades y paso de checkout. Carrito muestra2de cada opción; payload final comprueba4unidades. Incluye Coca Cola→Colmbiana del catálogo PPP y salsas/masas ficticias. Varias líneas del mismo SKU, repetición tras división, cantidad inválida, opción desconocida o selección pendiente piden aclaración sin mutación. Porciones explícitas con preferencia grande y una única presentación sin atributos se añaden aclarando tamaño habitual. Aceptación «Sí,dame las3ensaladas normales» ya no repregunta cantidad. No prometer tamaños aumentados.
+
+Límites: texto reconstruido, no audio original; gramática acotada anterior al matcher por línea, todavía no hay alcance por unidades en todas las acciones generadas por modelo. Nueva solicitud de mapa queda como próxima tanda: etiquetas humanas conservando pin, fallback y geocodificación inversa opcional. Ver plan comercial y lista reservada inferior. Después: compra+edición+aprobación atómica y evaluación independiente del modelo. No declarar vendible por conteos.
+
+## En validación: opciones de algunas unidades y porciones normales — 17/10/2026
+
+Base b062d801.76 casos nuevos:48 edición parcial+límites,4 conservación de otros atributos/productos,9 compra con preferencia de tamaño,8 aceptación de porciones normales,7 fronteras de catálogo. Baseline:48/48 edición parcial fallaban;9/9 preferencia y8/8 continuación normales fallaban. Primera corrección36/48 verdes;12 expectativas de carrito asumían que una dirección ya confirmada no avanzaba automáticamente, corregidas para conducta vigente. Focalizadas48 edición y65 familias iniciales verdes; validación ampliada en /tmp/ppp-options-portions-final-targets-1710.log. Todavía no desplegado. Main intacta. Sin llamadas pagadas ni Meta/órdenes externas;181/183.
+
+Se divide una línea por cantidad explícita, se conservan resto/opciones/notas/precio y se muestra cada grupo. Repetir tras división pregunta sin mutar las unidades restantes. Porciones con «bien grandes» y sin otro tamaño configurable se añaden con aclaración de tamaño habitual. «Sí, dame las 3 ensaladas normales» no vuelve a pedir cantidad. Gramática acotada: no afirmar comprensión universal, transcripción validada ni aislamiento multitenant.
+
+Nueva petición de ubicación: el cálculo actual con coordenadas omite geocodificación inversa, por eso no devuelve etiqueta postal. Próxima tanda: presentación «Ubicación compartida»/nombre recibido y, si procede, geocodificación inversa con caché y fallback, conservando pin exacto y sin presentar dirección aproximada como exacta. Aún no implementada. Siguiente también: aprobación+edición/compra en un turno.
+
 ## Cierre aprobación compuesta — 17/10/2026
 
 Global aprobada:78 suites/8144 pruebas,632.76s.356 hashes idénticos;937 focalizadas,TypeScript y72 contratos Node verdes. Validado, todavía no desplegado. Main intacta. Próximo: cambios de atributos de solo algunas unidades; luego tamaños no configurados expresados como preferencia, sin doble respuesta contradictoria.

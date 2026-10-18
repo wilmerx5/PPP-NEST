@@ -1324,7 +1324,9 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    if (await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+    if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
+        await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,originalText,cfg)) {
       turn.subsetNoteHandled = true;
@@ -15218,6 +15220,94 @@ export class WhatsappOrchestratorService {
       items,
       cfg,
     );
+  }
+
+  /** Explicit portions remain purchases when the only extra is an unconfigured serving preference. */
+  private async tryHandleStandardPortionPreference(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig,turn: InboundTurnContext): Promise<boolean> {
+    if (/[¿?]/.test(text) || text.length>650 || !['building_cart','awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    const q=this.normalizeForMatch(text);
+    if (!/\b(?:bien grandes?|grandes?|normales?)\b/.test(q) || !/^(?:si |por favor |me vende|me vendes|dame|quiero|regalame|agrega|tambien)/.test(q)) return false;
+    const words: Record<string,number>={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+    const amount='(\\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
+    const stripCourtesy=(value:string)=>value.replace(/\b(?:por favor|porfa)\b/g,' ').replace(/^(?:(?:si|tambien|me vende|me vendes|dame|quiero|regalame|agrega)\s+)+/,'').trim().replace(/\s+/g,' ');
+    const normalizeName=(value:string)=>this.normalizeForMatch(value).replace(/\bporcion(?:es)? de /g,'').split(' ').map(word=>word.length>3?word.replace(/s$/,''):word).join(' ');
+    const menu=await this.catalogService.getMenuProducts();
+    const parts=text.replace(/^\s*s[ií][,.]?\s+/i,'').split(/\s+y\s+|[,;]\s*/i).map(part=>this.normalizeForMatch(part));
+    const plans: {product:MenuProduct;quantity:number;note?:string;preference:boolean}[]=[];
+    for(let part of parts){
+      if (/^no olvidar\b/.test(part)) {
+        const query=part.replace(/^no olvidar (?:la |el )?/,'').replace(/ por favor$/,'');
+        const matches=plans.filter(plan=>this.normalizeForMatch(plan.product.name).includes(query));
+        if(matches.length!==1)return false;matches[0].note=part;continue;
+      }
+      part=stripCourtesy(part).replace(/^(?:las|los) /,'');const match=part.match(new RegExp('^'+amount+' (.+)$'));
+      if(!match)return false;
+      const quantity=words[match[1]]??Number(match[1]);if(!quantity||quantity>30)return false;
+      const preference=/\b(?:bien )?grandes?\b/.test(match[2]);
+      const name=match[2].replace(/\s+(?:bien )?(?:grandes?|normales?)$/,'');
+      const candidates=menu.filter(product=>product.availableNow!==false && /^porcion(?:es)? de /i.test(this.normalizeForMatch(product.name)) && normalizeName(product.name)===normalizeName(name));
+      if(candidates.length!==1 || candidates[0].attributes?.length)return false;
+      // A configured size or sibling presentation must use normal catalog selection.
+      const product=candidates[0];
+      const siblings=menu.filter(other=>other.id!==product.id && normalizeName(other.name).replace(/ (?:grande|pequena|familiar|personal)$/,'')===normalizeName(product.name));
+      if(siblings.length)return false;
+      plans.push({product,quantity,preference});
+    }
+    if(!plans.length || plans.reduce((sum,plan)=>sum+plan.quantity,0)>30)return false;
+    let next=session;
+    for(const plan of plans){const added=this.tryAddProductToCart(next,plan.product,plan.quantity,cfg,plan.note,[]);if(added.blocked || added.missingAttributes)return false;next=added.session;}
+    next={...next,pendingAddOffer:undefined};
+    await this.conversationService.saveSession(conv,next);
+    const notice=plans.some(plan=>plan.preference)?'Las porciones van en el tamaño habitual de la carta; no tengo un tamaño más grande confirmado.':'';
+    if(notice)turn.independentInquiryAnswer=notice;
+    await this.reply(conv,waId,this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+(notice?'\n\n'+notice:'')+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
+  }
+
+  /** A counted option edit affects units, not the whole grouped cart line. */
+  private async tryHandlePartialUnitOptionChange(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?]/.test(text) || text.length > 240 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const q = this.normalizeForMatch(text).replace(/[.!]+$/g,'').replace(/\s+(?:por favor|porfa|gracias)$/,'');
+    const amounts: Record<string,number> = {un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12};
+    const amount = '(\\d{1,3}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)';
+    const verb = '(?:por favor )?(?:cambia(?:me|le|les)?|cambiar|quiero cambiar)(?: solo)? ';
+    const quantityFirst = q.match(new RegExp('^'+verb+amount+' (?:de (?:los|las) )?(.+?) (?:por|a) (.+)$'));
+    const attributeFirst = !quantityFirst && q.match(new RegExp('^'+verb+'(?:el |la )?(.+?) de '+amount+' (.+?) (?:por|a) (.+)$'));
+    if (!quantityFirst && !attributeFirst) return false;
+    const quantity = quantityFirst ? (amounts[quantityFirst[1]] ?? Number(quantityFirst[1])) : (amounts[attributeFirst![2]] ?? Number(attributeFirst![2]));
+    const scope = quantityFirst ? quantityFirst[2] : attributeFirst![3];
+    const destination = quantityFirst ? quantityFirst[3] : attributeFirst![4];
+    const reminder = this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session);
+    const clarify = async () => { await this.reply(conv,waId,'¿A cuál producto y cuántas unidades les cambio la opción? Aclara también la opción que prefieres; el pedido sigue igual.\n\n'+reminder); return true; };
+    // Never guess another action from an edit containing an unresolved compound request.
+    if (!quantity || /\b(?:y|pero|agrega|quita|sin|no|si)\b/.test(destination) || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return clarify();
+    const menu = await this.catalogService.getMenuProducts();
+    const singular = (value:string) => this.normalizeForMatch(value).replace(/s$/,'');
+    const targets = session.cart.flatMap((line,cartIndex) => {
+      const product = menu.find(p=>p.id===line.productId);
+      return (product?.attributes || []).flatMap(attr => {
+        const namedScope = correctionMatchesLine(line,scope) || singular(scope)===singular(attr.attributeName) ||
+          (/^(?:gaseosas?|refrescos?|bebidas?)$/.test(scope) && /^(?:bebida|gaseosa|refresco)$/.test(singular(attr.attributeName)));
+        if (!namedScope || (attributeFirst && singular(attributeFirst[1])!==singular(attr.attributeName))) return [];
+        const value = this.catalogService.matchAttributeOptionValue(destination,attr.options);
+        return value ? [{cartIndex,line,attributeName:attr.attributeName,attributeValue:value}] : [];
+      });
+    });
+    if (targets.length!==1) return clarify();
+    const target=targets[0];
+    // Repeating a request after a split must not move the remaining units too.
+    if (session.cart.filter(line=>line.productId===target.line.productId).length!==1 || quantity>target.line.quantity) return clarify();
+    const attributes = (target.line.attributes || []).filter(a=>this.normalizeForMatch(a.attributeName)!==this.normalizeForMatch(target.attributeName));
+    attributes.push({attributeName:target.attributeName,attributeValue:target.attributeValue});
+    const cart=session.cart.flatMap((line,index)=>index!==target.cartIndex?[line]:[
+      ...(quantity<line.quantity?[{...line,quantity:line.quantity-quantity}]:[]),
+      {...line,quantity,attributes},
+    ]);
+    session={...session,cart};
+    await this.conversationService.saveSession(conv,session);
+    await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+reminder);
+    return true;
   }
 
   private async tryHandlePartialUnitKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {

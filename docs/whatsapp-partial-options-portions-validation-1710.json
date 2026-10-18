@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-17",
+  "base": "b062d801",
+  "branch": "staging",
+  "status": "validated_not_deployed",
+  "newTests": 76,
+  "families": {
+    "countedOptionJourneysAndLimits": 48,
+    "otherAttributesAndUnrelatedRows": 4,
+    "portionSizePurchase": 9,
+    "normalPortionsFollowup": 8,
+    "portionScopeControls": 7
+  },
+  "baseline": {
+    "partialOptions": {
+      "failed": 48,
+      "passed": 0,
+      "log": "/tmp/ppp-partial-option-baseline-1710.log"
+    },
+    "portionPreferences": {
+      "failed": 9,
+      "passed": 0,
+      "log": "/tmp/ppp-portion-size-baseline-1710.log"
+    },
+    "normalFollowup": {
+      "failed": 8,
+      "passed": 0,
+      "log": "/tmp/ppp-normal-portion-followup-baseline-1710.log"
+    }
+  },
+  "development": [
+    "12 building-cart assertions expected the prior state despite an already confirmed delivery address; corrected expectations for existing auto-checkout behavior.",
+    "A followup fixture generated Verdurass; corrected plural. The pending-note fixture initially lacked required note; compilation failed before running tests, corrected."
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainChanged": false,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "limitations": [
+    "Text reconstruction only; no original audio or measured voice recognition.",
+    "Counted attribute edits with multiple rows of the same SKU ask for clarification, including repeated edits; they do not silently change the remainder.",
+    "Standard-portion handling requires an explicit counted purchase, a unique catalog portion without configurable attributes, and no sibling size. Unknown or mixed unsupported clauses keep normal routing.",
+    "Human readable pin display and reverse geocoding remain next, not implemented in this batch."
+  ],
+  "deployment": null,
+  "targeted": {
+    "suites": 2,
+    "passed": 745,
+    "seconds": 56.44,
+    "log": "/tmp/ppp-options-portions-final-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-options-portions-tsc-1710.log"
+  },
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-options-portions-contracts-1710.log"
+  },
+  "globalValidation": {
+    "status": "passed",
+    "snapshot": "/tmp/ppp-options-portions-source-1710.json",
+    "sourceFiles": 356,
+    "log": "/tmp/ppp-options-portions-global-1710.log",
+    "suites": 78,
+    "tests": 8220,
+    "seconds": 759.648,
+    "sourceHashesUnchanged": true
+  }
+}
