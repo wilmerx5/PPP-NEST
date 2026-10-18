@@ -1,3 +1,11 @@
+## Consultas contadas validadas, pendientes de despliegue agrupado — 18/10/2026
+
+Baseb1529b5f. Baseline54fallos de consultas precio/contenido/disponibilidad que activaban compra. Ruta informativa desde catálogo conserva carrito y checkout/selecciones, no invoca modelo, no crea oferta pendiente;cotiza cantidad estimada sin domicilio. Productos no disponibles se reconocen para informar, sin modificar disponibilidad.84regresiones nuevas,153focalizados,TypeScript,72Node y global81suites/8788tests en592.772s;368hashes intactos. Evidencia whatsapp-group-inquiries-validation-1810.json y /tmp/ppp-group-inquiries-global-1810.{log,json};manifiesto source. No sumar focalizados solapados. No es inferencia real ni evidencia universal de comprensión.
+
+NO DESPLEGADO aún:runtime d043cc54,preflight staging limpio en archivos versionados/bin/ privado presente/runninghealthy. Publicar/desplegar agrupado con b1529b5f usando procedimiento AGENTS;probe /tmp/ppp-group-inquiries-compiled-1810.cjs pasó contra TS local. Probe acredita herramientas/adaptador checkout y presencia de rama de consulta, NO router completo compilado;ese se prueba con suite TS simulada. Preservar bin/,mariadb_local,volúmenes y Main.
+
+SIGUIENTE HUECO REPRODUCIDO:compra explícita + consulta precio en misma frase sigue bloqueada por question_not_order del add_item.6controles esperan rechazo seguro y carrito intacto;NO acreditan compras exitosas. Resolver ownership antes de relajar guard;conservar preguntas puras sin mutación. Luego notas que retiran una cláusula,productos sin atributos y conversaciones reservadas completas con modelo real/costo/latencia. CeroAPIpagada/Meta/órdenes externas,presupuesto188/187/1 intacto. No declarar piloto/venta por conteos.
+
 ## VIGENTE — 18/10/2026: compra distribuida durante checkout validada, pendiente de despliegue agrupado
 
 Base f52d2ca3. Se corrigió un bloqueo reproducido en seis recorridos: el agente preparaba variantes válidas, pero placedOrderOnly descartaba la compra durante checkout. Ahora un reparto completo, validado contra la fuente y respaldado por herramientas aceptadas, añade todas sus variantes y retoma el mismo paso pendiente. El carrito previo permanece. No confirma órdenes ni permite mezclar esa compra con cambios de metadatos; ante mezcla/incompletitud/error/falta de evidencia conserva el carrito.

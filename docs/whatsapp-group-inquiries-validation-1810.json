@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-18",
+  "base": "b1529b5f5654b8a455c2326c849555dfdaeca7d2",
+  "branch": "staging",
+  "status": "validated_pending_grouped_deploy",
+  "baseline": {
+    "failed": 54,
+    "log": "/tmp/ppp-group-inquiries-baseline-1810.log"
+  },
+  "new_regressions": 84,
+  "focused": {
+    "passed": 153,
+    "log": "/tmp/ppp-group-inquiries-final-controls-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": 72,
+  "global_result": "/tmp/ppp-group-inquiries-global-1810.json",
+  "source_manifest": "/tmp/ppp-group-inquiries-source-1810.json",
+  "coverage": [
+    "3 fictional menus",
+    "6 conversation states",
+    "price/content/availability questions with counted variants",
+    "catalogue estimate without adding units",
+    "pending selections retained",
+    "quotation followed by explicit purchase and final simulated DTO",
+    "polite query prefixes",
+    "unavailable catalogue entries",
+    "mixed purchase+price request rejected atomically"
+  ],
+  "known_pending_failure": "Explicit purchase followed by a price aside is still rejected by add_item as question_not_order; 6 controls reproduce and require safe clarification, not successful purchase. Next coherent batch must resolve intent ownership before relaxing this tool guard.",
+  "intermediate_development_issues": [
+    "Test-only non-existent session.customerName field corrected before baseline",
+    "Malformed test-only pendingMultiOrder fixture corrected before acceptance",
+    "3 unavailable-entry controls failed before lookup was extended for informational matching only"
+  ],
+  "limits": [
+    "No new real-model accuracy/cost/latency evidence",
+    "No paid API, Meta or external orders",
+    "Does not guarantee inventory quantity or unsupported options from catalogue presence",
+    "Main preserved; deployment grouped with prior checkout variant fix"
+  ],
+  "budget_changed": false,
+  "global_acceptance": {
+    "suites": 81,
+    "tests": 8788,
+    "seconds": 592.772,
+    "source_hashes_unchanged": 368
+  }
+}

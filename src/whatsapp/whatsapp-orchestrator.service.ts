@@ -1030,6 +1030,33 @@ export class WhatsappOrchestratorService {
         // inside an option (e.g. chicken in a rice combo) is not a new host.
         const namedHost = countedModifierText.slice(0, countedModifierText.search(countedOption));
         const host = this.catalogService.productFullyNamedIn(namedHost, groupedProducts);
+        // A counted distribution can be a quotation or catalogue question.
+        // Answer it before the purchase contract, even with a field/choice open.
+        const queryOwnershipText = countedModifierText
+          .replace(/\b(?:quiero|quisiera) (?:saber|consultar|cotizar)\b/g,'')
+          .replace(/\bdame (?:el )?(?:precio|valor|costo)\b/g,'');
+        const explicitMutation = /\b(?:quiero|quisiera|dame|ponme|agrega|agregame|anade|cambia|cambiame|quita|borra|envia|enviame|mandame|me das|me regalas|pido)\b/.test(queryOwnershipText);
+        const priceInquiry = this.catalogService.isPriceInquiryIntent(groupedInput);
+        const descriptionInquiry = this.catalogService.isProductDescriptionInquiry(groupedInput);
+        const availabilityInquiry = /^(?:(?:hola|buenas|buenos dias|buenas tardes|buenas noches|por favor)\s+)*(?:tienes|tienen|hay|manejan|venden|vendes)\b/.test(countedModifierText);
+        const isCatalogInquiry = !explicitMutation && (priceInquiry || descriptionInquiry || availabilityInquiry);
+        const inquiryMatch = isCatalogInquiry ? this.catalogService.productFullyNamedIn(namedHost,
+          groupedProducts.map(product=>({...product,availableNow:true}))) : null;
+        const inquiryHost = inquiryMatch ? groupedProducts.find(product=>product.id===inquiryMatch.id) : undefined;
+        if (inquiryHost && isCatalogInquiry) {
+          let answer = this.catalogService.formatProductPriceReply(inquiryHost,{offerAdd:false});
+          if (priceInquiry) {
+            const quantity = this.catalogService.extractQuantityNearProduct(namedHost,inquiryHost.name);
+            if (Number.isInteger(quantity) && quantity!>0 && quantity!<=30) {
+              answer += `\n\nEstimado para ${quantity} unidades, sin domicilio: $${Math.round(inquiryHost.price*quantity!).toLocaleString('es-CO')}.`;
+            }
+          } else if (availabilityInquiry) {
+            answer = (inquiryHost.availableNow===false ? 'Ahora no figura disponible en la carta.' : 'Sí, figura disponible en la carta.')+'\n\n'+answer;
+          }
+          const reminder = this.formatInterruptedStepReminder(conv,session);
+          await this.reply(conv,msg.waId,answer+'\n\nEl pedido sigue igual.'+(reminder?`\n\n${reminder}`:''));
+          return;
+        }
         if (groupedOpen && host) {
           const unresolved = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
             session.pendingSubsetKitchenNote || session.pendingAddOffer || session.pendingCategoryBrowse ||

@@ -1,3 +1,11 @@
+## Tanda validada, pendiente de despliegue agrupado — 18/10/2026: consultas con variantes contadas
+
+Base b1529b5f. Baseline54fallos: consultas de precio/contenido/disponibilidad entraban al contrato de compra. Se responde desde catálogo, sin agente ni mutaciones, y se conserva paso/selección pendiente. Cotización muestra precio unitario y estimado por cantidad, sin domicilio; no es promesa de inventario para esa cantidad. Se reconoce producto no disponible solo para consultar, conservando su estado real. Otros tres controles fallaron antes de corregir ese caso.
+
+84regresiones nuevas:54consultas en3menús/6estados,6conversaciones consulta→compra→DTO,9selecciones pendientes,6prefijos de cortesía,3productos no disponibles y6rechazos seguros de compra mezclada con pregunta de precio.153focalizados,TypeScript y72Node pasan;global aprobada:81suites/8788tests,592.772s,368hashes intactos. No repetir global por documentación. Evidencia whatsapp-group-inquiries-validation-1810.json. No desplegado;runtime aún d043cc54. Publicar/desplegar agrupado con b1529b5f;verificar runtime/health y cerrar documentación.
+
+HUECO REPRODUCIDO pendiente:«Quiero cuatro…,2conA/2conB;y dime cuánto cuestan» no se compra:el add_item rechaza question_not_order. Los6controles exigen aclaración y carrito intacto;NO son6compras exitosas. Siguiente tanda:resolver ownership consulta/compra mixta sin relajar protección contra compras ante preguntas puras. Después notas que retiran una cláusula/productos sin atributos y conversaciones reservadas reales. Esta continuación ceroAPIpagada/Meta/órdenes externas,Main y presupuesto intactos.
+
 ## Tanda cerrada, pendiente de despliegue agrupado — 18/10/2026: compras distribuidas durante checkout
 
 Base f52d2ca3. Se reprodujeron seis bloqueos: add_item preparaba variantes válidas pero placedOrderOnly descartaba la compra. El adaptador ahora acepta solo un reparto fuente completo, con evidencia de herramientas aceptadas y guard sin cambios; conserva el estado pendiente y responde desde el carrito. No autoriza confirmación ni operaciones mezcladas. Metadatos nuevos junto a esta compra se aclaran sin mutación; no se aplican parcialmente.
