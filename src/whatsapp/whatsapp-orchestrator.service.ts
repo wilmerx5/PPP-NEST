@@ -10841,6 +10841,14 @@ export class WhatsappOrchestratorService {
     return candidates.length===1 ? {...session,cart:session.cart.filter(line=>line!==candidates[0]),lastDrinkAddition:undefined} : session;
   }
 
+  /** A conversion must not hide separately charged drinks that remain in cart. */
+  private retainedComboDrinkNotice(session: WhatsappSessionData, original: WhatsappCartItem | undefined, combo: MenuProduct, text: string, products: MenuProduct[]): string | undefined {
+    if(!original || original.productId===combo.id || !/\ben\s+combo\s+con\b/i.test(text))return undefined;
+    const drinks=session.cart.filter(line=>line.productId!==combo.id && products.some(product=>product.id===line.productId && this.catalogService.isLikelyDrinkProduct(product)));
+    if(!drinks.length)return undefined;
+    return `Siguen aparte en tu pedido: ${drinks.map(line=>this.formatCartLineLabel(line)).join(', ')}. Si no las quieres, dime cuál quitamos.`;
+  }
+
   private async tryApplyVariantPreferenceToProduct(
     conv: WhatsappConversation,
     waId: string,
@@ -11053,7 +11061,7 @@ export class WhatsappOrchestratorService {
             conv,
             waId,
             `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
-              this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${picked.name} (${chosen})`),
+              this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${picked.name} (${chosen})`, {extraLine:this.retainedComboDrinkNotice(session,replacement?.originalLine,picked,text,products)}),
           );
           return true;
         }
@@ -11104,7 +11112,7 @@ export class WhatsappOrchestratorService {
         conv,
         waId,
         `${cartContext ? 'Listo, lo cambié 👍\n\n' : ''}` +
-          this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), picked.name),
+          this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), picked.name, {extraLine:this.retainedComboDrinkNotice(session,replacement?.originalLine,picked,text,products)}),
       );
       return true;
     }

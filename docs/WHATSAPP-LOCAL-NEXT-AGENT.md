@@ -1,3 +1,21 @@
+## VALIDADO — aviso de bebidas aparte; desplegar con la siguiente tanda, 18/10/2026
+
+Global final de 86 suites / 9.144 pruebas en 570.533 segundos, con 376 hashes intactos. Pasan 58 controles focalizados, TypeScript y 92 contratos Node. No hay suites activas. Se corrigieron 16 fallos de respuesta sin alterar reglas de cálculo ni de conservación del carrito: la conversión a combo enumera las bebidas que siguen aparte con cantidad y sabor. La retirada explícita posterior elimina la bebida suelta y conserva la incluida en el combo.
+
+22 pruebas nuevas: 16 conversaciones completas con dos menús y seis controles del aviso; las conversaciones anteriores de sabores también exigen ausencia del aviso cuando no queda botella aparte. Se verifican respuesta, estado, carrito, consulta de total, corrección, checkout y DTO simulado. Evidencia: `whatsapp-retained-drink-notice-validation-1810.json`. Los servicios/modelos son mocks; no son pruebas reales del modelo.
+
+Despliegue diferido para agrupar esta mejora de respuesta con la siguiente tanda. El último runtime verificado sigue siendo `5693c57b`, imagen `d8d72cc1…`, comprobado a las 20:05:51 UTC; no afirmar que este aviso ya está activo. Queda preparado el probe `/tmp/ppp-retained-drink-notice-compiled-1810.cjs` para ejecutar al desplegar. Main, configuración privada, modelos, bases y volúmenes no se tocaron. Cero llamadas pagadas, Meta y órdenes externas; presupuesto 188/187/1 intacto.
+
+Siguiente: cuatro unidades del plato más cuatro botellas; convertir exactamente dos a combo, conservar dos platos solos y dos botellas. Comprobar cantidades/variantes/DTO, no solo total: el precio podría coincidir incluso con un reparto incorrecto. Si no soporta conversión parcial, aclarar sin convertir las cuatro unidades. La división de atributos del mismo SKU no acredita por sí sola un cambio parcial a otro SKU combo. Después retomar unidades internas con letras y formularios etiquetados. Un solo lote cerrado en este despertar. Entradas inferiores históricas.
+
+## GLOBAL ACTIVA — bebidas que quedan aparte al convertir a combo, 18/10/2026
+
+Base `c617c825`, staging limpio y origin sincronizado al comenzar; no había otra validación/despliegue activo. Se midieron 16 fallos de respuesta: el carrito conservaba correctamente botellas, pero la conversión no las mostraba. La respuesta ahora enumera las bebidas que siguen aparte con cantidad y sabor, sin retirarlas ni abrir una selección que bloquee el checkout. La retirada explícita posterior conserva la bebida incluida en el combo.
+
+22 regresiones nuevas: 16 conversaciones completas en dos menús y seis controles sin mutación. Pasan 58 focalizados, TypeScript y 92 contratos Node. Fuente congelada con 376 hashes en `/tmp/ppp-retained-drink-notice-source-1810.json`. Global `/tmp/ppp-retained-drink-notice-global-1810.{log,json}`. NO editar fuente ni iniciar otra suite/despliegue mientras esté activa. Evidencia `whatsapp-retained-drink-notice-validation-1810.json`. Un primer intento de baseline falló por tipado del test; solo baseline-final mide los 16 fallos reales.
+
+Runtime de staging sigue `5693c57b`; Main `14d9dd84` intacta. Cero llamadas pagadas, Meta u órdenes externas. Después de global verde y hashes iguales: publicar solo staging, agrupar deploy con siguiente tanda si no requiere actualización inmediata. Siguiente: conversión de dos de cuatro unidades y sus bebidas; unidades internas con letras y formularios etiquetados. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 15:05 Bogotá: sabor al convertir a combo, desplegado solo en staging
 
 Código `5693c57bbe1eaf7e5e4623ca781231fd5b96c791` publicado y desplegado. Imagen activa y candidate: `sha256:d8d72cc159a217a14d03d78b62be9a0bb6c40478bf7c1f07d86dc58bf38b2245`. Contenedor running/healthy; health OK, DB connected, circuito CLOSED a las 20:05:51 UTC. Rollback: `ppp-nest-staging:rollback-before-5693c57b`. Probe compilado de 12 combinaciones de volumen/sabor y probe previo aprobados. Evidencia: `whatsapp-combo-flavour-validation-1810.json`. No reconstruir por documentación posterior.

@@ -40,3 +40,14 @@ describe('Bottle volume formatting does not erase the selected flavour when incl
   const result=service.absorbExplicitComboDrink(session,{productId:21,quantity:1},combo,`el Bowl De Quinoa damelo en combo con ${requested}`,[food,bottle,combo]);expect(session).toEqual(before);expect(result.cart).toHaveLength(selected===target?1:2);
  });
 });
+
+describe('Retained drink notice describes the actual cart without opening a new selection',()=>{
+ const service=Object.create(WhatsappOrchestratorService.prototype) as any;service.catalogService=new WhatsappCatalogService({} as never);
+ const main={id:31,name:'Bowl Andino'};const combo={id:32,name:'Combo De Bowl Andino'};const drink={id:33,name:'Infusion De Jamaica',categoryName:'Bebidas'};const side={id:34,name:'Papas Rusticas'};const products=[main,combo,drink,side];const source='el Bowl Andino damelo en combo con Infusion De Jamaica';const original={productId:31,quantity:1};
+ it('shows the retained quantity and flavour without mutating cart',()=>{const session={cart:[{productId:32,name:combo.name,quantity:1},{productId:33,name:drink.name,quantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Sin Azucar'}],note:'Para Ana'}]};const before=structuredClone(session);const text=service.retainedComboDrinkNotice(session,original,combo,source,products);expect(text).toContain('Siguen aparte en tu pedido');expect(text).toContain('×2');expect(text).toContain('Sin Azucar');expect(session).toEqual(before);});
+ it('does not add a notice when no separate drink remains',()=>expect(service.retainedComboDrinkNotice({cart:[{productId:32,name:combo.name,quantity:1}]},original,combo,source,products)).toBeUndefined());
+ it('does not label a side as a retained drink',()=>expect(service.retainedComboDrinkNotice({cart:[{productId:34,name:side.name,quantity:1}]},original,combo,source,products)).toBeUndefined());
+ it('does not announce retention for a fresh purchase',()=>expect(service.retainedComboDrinkNotice({cart:[{productId:33,name:drink.name,quantity:1}]},undefined,combo,source,products)).toBeUndefined());
+ it('does not announce conversion when the product did not change',()=>expect(service.retainedComboDrinkNotice({cart:[{productId:33,name:drink.name,quantity:1}]},{productId:32,quantity:1},combo,source,products)).toBeUndefined());
+ it('does not add a notice to a normal unrelated product reply',()=>expect(service.retainedComboDrinkNotice({cart:[{productId:33,name:drink.name,quantity:1}]},original,combo,'cuánto cuesta ese plato',products)).toBeUndefined());
+});
