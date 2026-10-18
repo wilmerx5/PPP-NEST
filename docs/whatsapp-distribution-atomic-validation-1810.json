@@ -2,7 +2,7 @@
   "dateBogota": "2026-10-18",
   "automation": "continuar-pruebas-de-ppp-en-staging",
   "baseCommit": "1bfc7fd070fd7cf5d0d2ab2a329655a0b1ca9913",
-  "status": "validated_not_deployed",
+  "status": "deployed_and_verified",
   "newTests": 21,
   "baseline": {
     "failed": 12,
@@ -35,5 +35,34 @@
     "Contract covers the existing explicit counted modifier family, not every narrative distribution",
     "Note replacement/deletion and contradictory notes remain next work",
     "New distributed purchases during checkout remain a separate matrix"
-  ]
+  ],
+  "deployment": {
+    "codeCommit": "71114d9d860a03b38ce358b541e6af359a76a40f",
+    "image": "sha256:203f475cdcd135dd1d55369b562400ff028d10538136567d9cfcb8f6fc61e904",
+    "running": true,
+    "healthy": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 53.41,
+        "heapTotal": 63,
+        "rss": 124.34
+      },
+      "timestamp": "2026-10-18T06:53:29.348Z"
+    },
+    "compiledChecks": {
+      "compiledRejectedMissing": true,
+      "compiledRejectedFailedTurn": true,
+      "compiledRejectedQuantity": true,
+      "compiledRejectedOptions": true,
+      "compiledRejectedMixedClear": true
+    },
+    "verifiedAtUtc": "2026-10-18T06:54:42.520397+00:00",
+    "rollback": "ppp-nest-staging:rollback-before-71114d9d",
+    "mainUntouched": true,
+    "remoteBinAndOrphanDatabasePreserved": true
+  }
 }

@@ -1,3 +1,9 @@
+## Estado vigente — 18/10/2026,01:53 Bogotá
+
+Staging71114d9d desplegado/verificado,Main intacta. Baseline12fallos demostró compras parciales por propuesta incompleta del modelo. Contrato nuevo exige total/grupos por cantidad y opciones de catálogo antes de aplicar esa familia de compra distribuida.21tests nuevos;global81suites/8588tests en590.562s con368hashes intactos,TypeScript y72Node;rechazos verificados en compilado. CeroAPIpagada/Meta/órdenes externas en esta tanda automática. Evidencia whatsapp-distribution-atomic-validation-1810.json.
+
+Pendientes para piloto:reemplazar/borrar notas sin contradicciones,compras distribuidas durante checkout,consultas puras que mencionan grupos,referencias y escenarios reservados completos,costo/latencia. No inferir precisión del lenguaje del modelo por estos mocks ni declarar preparación comercial por conteos. Continuación horaria gratuita sigue activa;no duplicar. Secciones inferiores históricas.
+
 ## Estado vigente — 18/10/2026, tanda conjunta desplegada
 
 Staging6efd6903 desplegado/verificado,Main intacta.57regresiones nuevas;global final81suites/8567tests con368hashes intactos,TypeScript y72Node. Corrige alcance conjunto de opciones+nota y repartos por variantes. Una primera global detectó una regresión del reparto10cajas;se corrigió y pasó la segunda. Evidencia whatsapp-joint-subset-validation-1810.json.

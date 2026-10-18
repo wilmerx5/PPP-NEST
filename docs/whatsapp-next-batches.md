@@ -1,3 +1,9 @@
+## Cierre automático vigente — 18/10/2026,01:53 Bogotá
+
+Reparto incompleto YA reproducido,corregido,validado y desplegado en staging71114d9d.21tests nuevos;81suites/8588tests,TypeScript y72Node;rechazos comprobados en compilado. CeroAPIpagada/Meta/órdenes externas,Main intacta. Evidencia whatsapp-distribution-atomic-validation-1810.json. No repetir esta tanda.
+
+Siguiente despertar:nota contradictoria/reemplazo/borrado;compras distribuidas durante checkout. Añadir consultas puras con grupos,permutación de grupos y aliases con conservación de intención/DTO. Leer primero el relevo vigente;las anotaciones inferiores sobre la tanda en curso y el riesgo aún no reproducido son históricas. No desplegar ni repetir global por este cierre documental.
+
 ## Despertar automático — 18/10/2026: conservación del reparto
 
 Tanda actual sobre1bfc7fd0 reprodujo12compras parciales con3catálogos.21regresiones nuevas y55focalizados pasan;global en curso,ver estado vigente en WHATSAPP-LOCAL-NEXT-AGENT.md antes de trabajar. Contrato previo a acciones contrasta total y grupos por cantidad/opciones uno-a-uno y rechaza error del agente/mezclas incompatibles. Prueba fuente inválida antes de inferencia. Sin API pagada/Meta/órdenes externas.
