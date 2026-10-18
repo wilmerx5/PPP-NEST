@@ -520,7 +520,9 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
 /** Extrae #15 / orden 15 / pedido 15 del texto (número diario). "2 #20" es código de menú. */
 export function extractDailyOrderNumberHint(text: string): number | null {
   // An explicitly labelled catalog code remains product identity, including OCR.
-  const raw = (text || '').replace(/\bc[oó]d(?:igo)?\.?\s*:?\s*#?\s*\d{1,4}\b/gi, '').trim();
+  const raw = (text || '').replace(/\bc[oó]d(?:igo)?\.?\s*:?\s*#?\s*\d{1,4}\b/gi, '')
+    // Street numbering is not an order identifier; explicit 'pedido #N' remains.
+    .replace(/\b(?:calle|cll?|carrera|cra?|kr|diagonal|dg|transversal|tv)\.?\s*\d+[a-z]?(?:\s+(?:[a-z]|bis|sur|norte|este|oeste))*\s*#\s*\d+[a-z]?(?:\s*[a-z])?\s*(?:[-–]\s*)?\d*/gi, '').trim();
   if (!raw) return null;
   const m =
     raw.match(/\b(?:orden|pedido|order)\s*#?\s*(\d{1,4})\b/i) ||

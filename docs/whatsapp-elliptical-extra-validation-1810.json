@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-18",
+  "base": "7833239c",
+  "branch": "staging",
+  "new_tests": 22,
+  "conversations": 12,
+  "menus": [
+    "PPP",
+    "sandwich",
+    "bowl"
+  ],
+  "focused_contracts": 105,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9277,
+    "seconds": 598.411,
+    "failed": 0,
+    "frozen_hashes": 379
+  },
+  "changes": [
+    "Catalog-backed product en combo word order",
+    "Exclude trailing bare street/reference from product matching",
+    "Street hash is not an order number"
+  ],
+  "limits": [
+    "Map quote mocked, no real geocoding",
+    "Model and transport mocked, no real inference",
+    "Other reported incidents remain pending"
+  ],
+  "baseline_notes": "Initial test had wrong expected side ID and missing order lookup mock; corrected harness. Direct catalog probe showed beverage replacing combo. Two address cases still failed after combo normalization and passed after product/address split fix.",
+  "deployment": "Deferred to group with next batch; runtime remains 0d69b9c8. No new runtime health check.",
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "next": [
+    "Full address with lettered internal units and varied references",
+    "Preserve full place name and street numbers through summary/DTO",
+    "Contact updates and interruptions in checkout"
+  ]
+}

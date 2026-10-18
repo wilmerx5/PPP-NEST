@@ -19328,3 +19328,30 @@ describe('Paired option clarification cannot create extra dishes',()=>{
   expect(h.conv.sessionData.cart.map((line:any)=>line.note)).toEqual(['Sin cebolla','Sin cebolla']);expect(h.conv.state).toBe('awaiting_payment');
  });
 });
+
+describe('Combo and elliptical extra with delivery replay',()=>{
+ const fixtures=[
+  {menu:products,food:'pollo frito',drink:'coca-cola',side:'francesa',ids:[99,9],flavor:'Coca Cola'},
+  ...[{food:'Sandwich Serrano',drink:'Te Durazno',side:'Papas Rusticas',short:'rusticas'},{food:'Bowl Vegetal',drink:'Agua',side:'Arroz Integral',short:'integral'}].map((f,i)=>({
+   menu:[{id:66701+i*10,code:66701+i*10,name:'Combo De '+f.food,price:20000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:[f.drink]}]},{id:66702+i*10,code:66702+i*10,name:'Porcion De '+f.side,price:5000,availableNow:true,attributes:[]}],food:f.food,drink:f.drink,side:f.short,ids:[66701+i*10,66702+i*10],flavor:f.drink,
+  })),
+ ];
+ for(const f of fixtures)for(const enabled of [false,true])for(const address of [false,true])it(`${f.food} agent=${enabled} address=${address}`,async()=>{
+  const h=harness(f.menu,enabled);
+  Object.assign(h.conv.sessionData,{phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,fulfillmentChosen:true});
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6670,dailyOrderNumber:108});
+  h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:!!session.address,deliveryFeeCalculated:session.address?2000:0}}));
+  await h.sendQueued(`Buenas tardes me regalas por favor un ${f.food} en combo con ${f.drink} y una porción de ${f.side}`+(address?'\nCalle 6 b # 78 c 33\nTienda de prueba':''));
+  expect(h.cartRows().map(row=>[row.id,row.qty])).toEqual(expect.arrayContaining(f.ids.map(id=>[id,1])));
+  expect(h.cartRows()).toHaveLength(2);
+  expect(h.cartRows().find(row=>row.id===f.ids[0])?.attrs).toContain('Bebida:'+f.flavor);
+  expect(h.replies.join(' ')).not.toMatch(/no manejamos|no tenemos|cu[aá]l prefieres/i);
+  if(address){expect(h.conv.sessionData.address).toMatch(/Calle 6 b # 78 c 33.*Tienda de prueba/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.replies.at(-1)).not.toMatch(/algo m[aá]s/i);}
+  else await h.sendQueued('nada más');
+  await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.items.map((item:any)=>item.productId).sort()).toEqual([...f.ids].sort());
+  if(address)expect(dto.address).toMatch(/78 c 33.*Tienda de prueba/i);
+ });
+});

@@ -17090,6 +17090,8 @@ export class WhatsappOrchestratorService {
     let productText = text.trim();
     const escaped = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     productText = productText
+      // A newline/semicolon address needs no preceding "para" label.
+      .replace(new RegExp(`(?:^|[;\\n]\\s*)${escaped}\\s*$`, 'i'), '')
       .replace(
         new RegExp(
           `(?:^|[.,;:\\n]\\s*)(?:para|direcci[oó]n|domicilio)\\s*[:\\-]?\\s*${escaped}\\s*$`,

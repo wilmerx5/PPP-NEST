@@ -9521,6 +9521,15 @@ export class WhatsappCatalogService {
     text: string,
     products: WhatsappCatalogProduct[],
   ): MultiProductResolveResult | null {
+    // Catalog-backed alternate word order: "burger especial en combo" names
+    // the same SKU as "Combo Burger Especial". Preserve quantities and extras.
+    const combos = products.filter(product => /^combo\s+(?:de\s+)?/i.test(product.name));
+    for (const product of combos) {
+      const base = product.name.replace(/^combo\s+(?:de\s+)?/i, '').trim();
+      if (combos.filter(other => normalizeText(other.name.replace(/^combo\s+(?:de\s+)?/i, '')) === normalizeText(base)).length !== 1) continue;
+      const pattern = new RegExp(`\\b${base.split(/\s+/).map(escapeRegExp).join('\\s+')}\\s+en\\s+combo\\b`, 'gi');
+      text = text.replace(pattern, () => product.name);
+    }
     const framed = this.frameSpokenOrder(text, products);
     const result = this.resolveMultiProductOrderCore(framed.text, products);
     if (!result || !framed.notes.length) return result;
