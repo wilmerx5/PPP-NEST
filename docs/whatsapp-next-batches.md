@@ -1,8 +1,8 @@
 ## Tanda validada17/10: enumeraciones y preparación compartida
 
-100 casos nuevos aprobados de forma focalizada; global77 suites/7912 tests aprobado,354 hashes intactos; ver docs/whatsapp-enumeration-notes-validation-1710.json. No iniciar otra tanda de fuente hasta cerrar esa validación y comparar hashes. El cambio de preparación de dos platos ya presentes no debe crear nuevas unidades ni cobrar porción de acompañamiento. Lo que no identifica destinatarios debe aclararse antes de confirmar. Se conserva el tercer plato y su nota.
+100 casos nuevos aprobados de forma focalizada; global77 suites/7912 tests aprobado,354 hashes intactos; ver docs/whatsapp-enumeration-notes-validation-1710.json. Validación cerrada y hashes idénticos; código1e2d09d7 desplegado en staging, healthy. No repetir global ni rebuild por el cierre documental. El cambio de preparación de dos platos ya presentes no debe crear nuevas unidades ni cobrar porción de acompañamiento. Lo que no identifica destinatarios debe aclararse antes de confirmar. Se conserva el tercer plato y su nota.
 
-Después del cierre y deploy agrupado:
+Siguientes tandas:
 1. Varias unidades en una línea: «dos de los tres sin arroz» requiere partición de unidades sin cambiar total; probar también dos variantes/notas del mismo SKU para impedir selección silenciosa.
 2. Mezcla de edición y nueva compra: «el que tengo sin salsa y otro normal» debe conservar lo anterior y añadir exactamente uno. Cubrir un producto mencionado fuera del carrito; no editar parcialmente ni perder el nuevo.
 3. Retiro/corrección de preparación: cambiar una nota anterior sin conservar instrucciones contradictorias; distinguir quitar una nota, retirar una selección y cancelar todo el pedido.

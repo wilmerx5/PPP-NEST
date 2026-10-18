@@ -2,7 +2,7 @@
   "date": "2026-10-17",
   "branch": "staging",
   "base": "6709a745",
-  "status": "validated_not_deployed",
+  "status": "validated_and_deployed_staging",
   "newTests": 100,
   "families": [
     "catalog enumeration vs alternatives",
@@ -88,5 +88,57 @@
     "Typo son arroz is not silently rewritten as sin arroz.",
     "No universal language comprehension claim."
   ],
-  "deployment": null
+  "deployment": {
+    "verifiedAt": "2026-10-18T00:07:26.362538+00:00",
+    "head": "1e2d09d7da39eb83ad95d4b163cdb6b9b672ceab",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:3a84243b072e85f5680e0e0f06a23748a3767033d2aa3aaca31aa3384ffd6ccb",
+    "candidateMatches": true,
+    "compiled": {
+      "catalogEnumeration": true,
+      "subsetNoteGuard": true,
+      "namedNoteRoute": true,
+      "categoryEachRoute": true,
+      "subsetNoteReminder": true,
+      "wholeOrderQuestion": true,
+      "mixedIndependentPurchase": true,
+      "mixedUnclearQuestion": true,
+      "pendingOwnershipGuard": true,
+      "catalogFlavorChoice": true,
+      "foodCategoryIntact": true,
+      "paymentCatalogQuantity": true,
+      "affirmativePrefixPreserved": true,
+      "cancellationAsideKinds": true,
+      "explicitWithdrawalNotAside": true,
+      "asideRoute": true,
+      "withdrawalScope": true,
+      "multipleEditWithdrawalGuard": true,
+      "pendingEditReminder": true,
+      "centralEditGuard": true,
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-1e2d09d7",
+    "log": "/tmp/ppp-enumeration-deploy-1710.log",
+    "remoteUntrackedPreserved": [
+      "bin/"
+    ]
+  },
+  "sourceCommit": "1e2d09d7da39eb83ad95d4b163cdb6b9b672ceab"
 }
