@@ -1,3 +1,11 @@
+## Estado vigente — 18/10/2026, tanda conjunta desplegada
+
+Staging6efd6903 desplegado/verificado,Main intacta.57regresiones nuevas;global final81suites/8567tests con368hashes intactos,TypeScript y72Node. Corrige alcance conjunto de opciones+nota y repartos por variantes. Una primera global detectó una regresión del reparto10cajas;se corrigió y pasó la segunda. Evidencia whatsapp-joint-subset-validation-1810.json.
+
+Inferencia reservada:1turno de bowls,3requests,US$0.0226031 estimados;capturada y reproducida gratis tras el fix final de enrutamiento. No acreditar una conversación real completa. Presupuesto operativo188/187/1. Continuación horaria gratuita activa en el hilo;no duplicar ni usar API pagada en sus despertares.
+
+Antes del piloto:probar omisión/fallo parcial de un grupo y suma incoherente en propuestas de modelo;notas contradictorias/borrado;compras distribuidas durante checkout;referencias entre variantes;conversaciones reservadas completas,costo y latencia. La nota actual solo añade:no prueba reemplazo semántico. Ver cola vigente en whatsapp-next-batches.md. El conteo de regresiones no equivale a preparación comercial. Secciones inferiores históricas.
+
 ## Estado vigente — 18/10/2026
 
 Staging243c2e3b desplegado/verificado;81suites/8510tests con365hashes intactos,TypeScript y72contratos Node. Corrige pérdida de intención en no-op y evita cambiar el resto al repetir una partición sin identificar variante. Sin nuevas llamadas pagadas;Main intacta. Evidencia whatsapp-unit-option-followup-validation-1810.json y relevo WHATSAPP-LOCAL-NEXT-AGENT.md.

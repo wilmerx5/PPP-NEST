@@ -1,7 +1,7 @@
 {
   "dateBogota": "2026-10-18",
   "baseCommit": "8855c29c",
-  "status": "validated_not_deployed",
+  "status": "deployed_and_verified",
   "newTests": 57,
   "newRouterJourneys": 34,
   "newPreparationTests": 21,
@@ -32,7 +32,8 @@
       "seconds": 604.475,
       "frozenFiles": 368,
       "sourceUnchanged": true
-    }
+    },
+    "finalNodeContractsLog": "/tmp/ppp-subset-options-final-node-1810.log"
   },
   "behaviors": [
     "Optional subset note appends to the same units as options; preserves remainder and old notes",
@@ -61,5 +62,47 @@
     "New purchases with variants during checkout still need a dedicated acceptance matrix",
     "Pilot requires reserved complete conversations, latency and cost review"
   ],
-  "paidSourceLimit": "The real probe preceded the host-prefix correction; captured actual calls are replayed free on final source. Do not claim a second paid run after that correction."
+  "paidSourceLimit": "The real probe preceded the host-prefix correction; captured actual calls are replayed free on final source. Do not claim a second paid run after that correction.",
+  "deployment": {
+    "codeCommit": "6efd6903da80b669be734df0e743549e1db4d501",
+    "image": "sha256:f37bcf1cd279fb65f10e08798e590c040f5db91a43850de37c1cba0fcd1bfe87",
+    "running": true,
+    "healthy": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 53.78,
+        "heapTotal": 62.5,
+        "rss": 123.68
+      },
+      "timestamp": "2026-10-18T05:59:45.856Z"
+    },
+    "compiledChecks": {
+      "compiledJointSubsetNote": true,
+      "compiledProjection": true,
+      "compiledVariantQuantitiesAndAttributes": true,
+      "compiledVariantNoteScope": true,
+      "models": {
+        "agent": "gpt-6.1-sol",
+        "vision": "gpt-6-luna",
+        "audio": "gpt-transcribe"
+      }
+    },
+    "verifiedAtUtc": "2026-10-18T06:00:48.340260+00:00",
+    "rollback": "ppp-nest-staging:rollback-before-6efd6903",
+    "mainUntouched": true,
+    "remoteBinAndOrphanDatabasePreserved": true
+  },
+  "continuation": {
+    "automationId": "continuar-pruebas-de-ppp-en-staging",
+    "status": "ACTIVE",
+    "cadence": "hourly",
+    "sameThread": true,
+    "paidInferenceAllowed": false,
+    "externalWhatsAppAllowed": false,
+    "skipIfCheckoutBusy": true
+  }
 }
