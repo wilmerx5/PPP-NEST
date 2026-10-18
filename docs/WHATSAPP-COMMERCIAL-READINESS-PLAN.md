@@ -1,3 +1,9 @@
+## VIGENTE — 18/10/2026,12:22 Bogotá: intensidad promovida a producción
+
+Por solicitud explícita del usuario,Main actualizado a e8cdfc2b y backend productivo desplegado. Código validado07a2416a;imagen productiva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e,running,health OK/DB connected/circuit CLOSED a17:21:51UTC. Probe compilado de intensidad/herramientas/catálogo/adapter aprobado;sin inferencia ni pedidos externos. Rollback ppp-nest-api:rollback-before-e8cdfc2b. Configuración privada/compose/artefactos locales preservados,sin cambio de modelos. Evidencia whatsapp-intensity-validation-1810.json. Staging mantiene runtime07a2416a,healthy139d8378…;no reconstruir por docs.
+
+CONTINUAR SOLO EN STAGING:preferencia negativa frente a opciones configurables,menos dulce/sin tanto azúcar,subconjuntos y retiro de una cláusula. Global previa82suites/8934tests con370hashes intactos. No acreditar comprensión real por mocks ni promover nuevas tandas a Main sin nueva solicitud. Presupuesto188/187/1 sin cambios. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026,12:14 Bogotá: intensidad desplegada SOLO en staging
 
 Código07a2416a99db0e16d25b57c6ef4b3bc3556fe305 publicado y desplegado en staging. Contenedor running/healthy,imagen activa=candidate sha256:139d8378e76d26da0348361001a2ae6881635222ed464c4248e90da8bcee725f. Health OK/DB connected/circuit CLOSED a17:13:51UTC. Rollback ppp-nest-staging:rollback-before-07a2416a. Compilado acredita extracción y herramientas reales en6menús,además del adaptador/guards previos;router completo probado en TS con dependencias simuladas. Evidencia whatsapp-intensity-validation-1810.json. No reconstruir por este cierre documental.

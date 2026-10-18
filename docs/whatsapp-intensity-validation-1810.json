@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "76a412b29e27342341a2ba6d0f3c0c16372d9971",
-  "status": "deployed_staging",
+  "status": "deployed_main_and_staging",
   "new_regressions": 45,
   "baseline": {
     "failed": 12,
@@ -55,5 +55,17 @@
     "rollback": "ppp-nest-staging:rollback-before-07a2416a",
     "compiled_probe_passed": true,
     "log": "/tmp/ppp-intensity-deploy-verified-1810.log"
+  },
+  "production_promotion": {
+    "checkout_sha": "e8cdfc2bc56a668f9451c303955c08541268a755",
+    "validated_code_sha": "07a2416a99db0e16d25b57c6ef4b3bc3556fe305",
+    "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "status": "running",
+    "health": "ok / DB connected / circuit CLOSED",
+    "verified_at": "2026-10-18T17:21:51.304Z",
+    "compiled_probe_passed": true,
+    "rollback": "ppp-nest-api:rollback-before-e8cdfc2b",
+    "log": "/tmp/ppp-main-intensity-verified-1810.log",
+    "authorized_by_user": true
   }
 }
