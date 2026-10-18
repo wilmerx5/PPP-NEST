@@ -1,3 +1,21 @@
+## Cierre aprobación compuesta — 17/10/2026
+
+Global aprobada:78 suites/8144 pruebas,632.76s.356 hashes idénticos;937 focalizadas,TypeScript y72 contratos Node verdes. Validado, todavía no desplegado. Main intacta. Próximo: cambios de atributos de solo algunas unidades; luego tamaños no configurados expresados como preferencia, sin doble respuesta contradictoria.
+
+## Nueva prioridad del usuario: cambiar opciones de algunas unidades — 17/10/2026
+
+Caso observado: Hamburguesa Clasica x4 con Coca Cola; audio solicita cambiar dos gaseosas por Colombiana; salida y carrito cambian las cuatro. Esperado: dos unidades Coca Cola y dos Colombiana, total cuatro, sin bebida suelta ni cobro adicional. El defecto está en la edición de atributos por línea completa. Preparar regresiones del router con catálogos PPP y ficticios, cantidades parciales, estado de checkout, notas, repetición/ambigüedad y payload final. No hay audio original: validar texto reconstruido no acredita transcripción. Investigar sin editar fuente mientras termine la global de aprobación. Agrupar deploy tras cerrar ambas familias; Main intacta.
+
+## En curso: aprobación explícita frente a preguntas/citas compuestas — 17/10/2026
+
+Base66ec9438, solo staging.98 nuevos:72 recorridos completos de orden simulada (48 ETA+aprobación,16 referencias sin ETA,8 confirmaciones normales; dos menús ficticios, agente simulado on/off),26 contratos puros. Baseline ETA24fallidos/24verdes; referencia sin ETA4fallidos/12verdes. Parser nuevo separa cláusulas declarativas, preguntas y citas; ignora condiciones/negaciones. Se usa en ETA y protege tanto keywords como el cierre isFinishCheckoutIntent. Nueva función blocksImplicitOrderApproval evita que el matcher amplio convierta una pregunta/cita en aprobación, también con typo o cierre citado.
+
+Una regresión de desarrollo bloqueaba «si confirmo el pedido» standalone y «Sí confirmo…» sin coma (10fallidos/22verdes); se corrigió antes de aceptación. Dos contratos extra de pregunta con typo/cierre citado fallaban (2/26); se amplió guard por contexto, sin agregar producto/ID PPP. Primera selección tras parser152router+20contratos verdes; ampliación935verdes anterior al último guard. No atribuir esos runs al conjunto final. 937 focalizadas definitivas y TypeScript aprobados en /tmp/ppp-compound-approval-final-accepted-targets-1710.log y /tmp/ppp-compound-approval-final-tsc-1710.log;72 contratos Node verdes. Global EN CURSO /tmp/ppp-compound-approval-global-1710.log, fuente congelada356archivos en /tmp/ppp-compound-approval-source-1710.json. Esperar footer y comparar mapa completo antes de publicar. No editar fuente mientras corre. Informe whatsapp-compound-approval-validation-1710.json.
+
+Cero API/Meta/órdenes externas,181/183 intacto. Main no modificada. Último runtime verificado a9693ea1; nueva tanda NO desplegada. Publicar solo staging tras validación; agrupar deploy con siguiente familia según preferencia del usuario, no reconstruir por cada regla/documento. No proclamar vendible por conteo.
+
+Siguiente prioridad: aprobación acompañada de edición/compra nueva; validar y aplicar cambios antes de cualquier confirmación, sin aprobar el carrito viejo. Luego «el que tengo sin salsa y agrega otro normal» y reemplazo de notas contradictorias. La función nueva acredita evidencia de aprobación, no valida por sí sola todo el plan de acciones. Mantener esta limitación explícita. No ampliar fuente durante global; actualizar este relevo con footer y mapa de hashes al cerrar.
+
 ## Validado y desplegado: saludos/carta y consulta de confirmación — 17/10/2026
 
 Baseeec87f78.78 regresiones nuevas:48 solicitudes de menú (dos cartas, agente simulado on/off, carrito/nombre/confirmación, cuatro formas),10 preguntas de confirmación con continuación explícita y cortesía postorden,8 saludos simples,12 controles de ETA hipotética frente a aprobación explícita. El caso exacto del usuario ya pasaba. Baseline56 nuevos+86existentes:28fallidos/114verdes;24 solicitudes con modal o «menú completo» fallaban y4 preguntas «Confirmo?»/«Así está bien?» creaban orden. No afirmar que todas las confirmaciones o todos los saludos fallaban.

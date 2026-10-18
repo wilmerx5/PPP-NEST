@@ -1,3 +1,4 @@
+import { hasExplicitOrderApprovalClause, blocksImplicitOrderApproval } from './whatsapp-order-approval';
 import { beginTurnDecision, captureInquiryDecision, captureActionDecision, capturePurchaseDecision, finishTurnDecision, type TurnDecisionFrame } from './whatsapp-turn-decision';
 import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './whatsapp-purchase-plan';
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
@@ -2113,9 +2114,7 @@ export class WhatsappOrchestratorService {
     if (session.cart.length && !['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state) &&
         isDeliveryEtaInquiry(originalText) && !/\b(?:precio|cuesta|vale|costo|valor)\b/i.test(originalText)) {
       const eta = this.formatDeliveryEtaSentence(cfg);
-      const explicitConfirm = /\b(?:lo confirmo|confirmo (?:el |mi )?pedido|confirmar)\b/i.test(originalText) &&
-        !/\b(?:no confirmo|sin confirmar|antes de confirmar|si (?:llega|tarda|demora)|solo si)\b/i.test(originalText) &&
-        !/\b(?:si|en caso de)\s+(?:yo\s+)?(?:lo\s+)?confirm(?:o|ar)\b/i.test(originalText);
+      const explicitConfirm = hasExplicitOrderApprovalClause(originalText);
       if (explicitConfirm) {
         session = { ...session, pendingPriceInquiry: undefined };
         await this.conversationService.saveSession(conv,session);
@@ -2919,6 +2918,7 @@ export class WhatsappOrchestratorService {
       !session.pendingMatch?.candidates?.length &&
       !session.pendingMultiOrder &&
       !closingAlsoConfirmsAddress &&
+      !blocksImplicitOrderApproval(originalText) &&
       (this.isConfirmKeyword(originalText) ||
         isNothingElseOrderIntent(originalText) ||
         isFinishCheckoutIntent(originalText) ||
@@ -13954,7 +13954,7 @@ export class WhatsappOrchestratorService {
    */
   private isConfirmKeyword(text: string): boolean {
     const raw = (text || '').trim();
-    if (!raw || raw.length > 72) return false;
+    if (!raw || raw.length > 72 || blocksImplicitOrderApproval(raw)) return false;
 
     const t = raw
       .toLowerCase()

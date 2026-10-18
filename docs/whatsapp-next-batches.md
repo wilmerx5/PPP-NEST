@@ -1,3 +1,15 @@
+## Cierre aprobación compuesta — 17/10/2026
+
+Global aprobada:78 suites/8144 pruebas,632.76s.356 hashes idénticos;937 focalizadas,TypeScript y72 contratos Node verdes. Validado, todavía no desplegado. Main intacta. Próximo: cambios de atributos de solo algunas unidades; luego tamaños no configurados expresados como preferencia, sin doble respuesta contradictoria.
+
+## En validación17/10: contrato compartido de aprobación
+
+98 nuevos (72recorridos completos con orden simulada+26contratos puros),937focalizadas, TypeScript y72contratos Node verdes. Global EN CURSO /tmp/ppp-compound-approval-global-1710.log;356fuentes congeladas en /tmp/ppp-compound-approval-source-1710.json. Ver whatsapp-compound-approval-validation-1710.json. No editar fuente hasta cierre y hashes.
+
+No despliegue por esta tanda; agrupar con siguiente. Runtime último verificado a9693ea1. Main intacta. Cero API/Meta/órdenes externas;181/183 intacto. No repetir global tras cambios solo documentales.
+
+Siguiente bloque prioritario: aprobación+edición/compra en el mismo mensaje. Una cláusula «lo confirmo» no acredita que se hayan aplicado las otras acciones; no enviar el carrito viejo. Probar cambios antes/después de aprobación, consulta intercalada, mismo SKU nuevo frente al existente y varias variantes. Después reemplazo de notas contradictorias. Mantener casos nuevos reservados del modelo/medios separados del desarrollo; no declarar piloto por conteo.
+
 ## Saludos, carta y confirmación — validado y desplegado17/10
 
 78casos nuevos.839focalizadas, TypeScript,72contratos Node y global77suites/8046tests aprobados en616.486s;354hashes intactos. Informe whatsapp-basic-greeting-confirmation-validation-1710.json. Primera global interrumpida antes de ampliar ETA, no acreditada. «Me puedes pasar la carta»/«menú completo» son consulta; «Confirmo?» no aprueba; «si confirmo…cuánto tarda» no crea orden; «lo confirmo, cuánto tarda» sí aprueba y responde ETA. Main local no tiene manejador de carta, se conserva sin promoción.

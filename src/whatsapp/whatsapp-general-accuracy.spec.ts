@@ -18223,3 +18223,53 @@ describe('Delivery timing distinguishes hypothetical and explicit approval',()=>
   });
  }
 });
+
+describe('Compound approval keeps questions and quotes outside authorization',()=>{
+ const families=[{name:'Bao De Hongos',attr:'Salsa',value:'Teriyaki'},{name:'Ensalada De Quinoa',attr:'Aderezo',value:'Limon'}];
+ const cases:[string,boolean][]=[
+  ['¿Confirmo el pedido? ¿Cuánto tarda?',false],['Confirmar el pedido? Cuanto tarda?',false],
+  ['Me dijiste "confirmar". ¿Cuánto tarda?',false],['¿Puedo confirmar el pedido? ¿En cuánto llega?',false],
+  ['Si yo lo confirmo, ¿cuánto demora?',false],['No lo confirmo todavía. ¿Cuánto tarda?',false],
+  ['Si digo «confirmar», ¿cuánto tarda?',false],['¿Cuánto tarda? Estoy preguntando, no confirmando.',false],
+  ['Lo confirmo. ¿Cuánto tarda?',true],['¿Cuánto tarda? Lo confirmo.',true],
+  ['Confirmo el pedido, ¿cuánto tarda?',true],['Sí, confirmo el pedido. ¿En cuánto llega?',true],
+ ];
+ for(const f of families)for(const agent of [false,true])for(const [text,approval] of cases){
+  it(f.name+' '+text+' agent='+agent,async()=>{
+   const menu=[{id:62601,code:62601,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.value]}]},
+    {id:62602,code:62602,name:'Agua Mineral',price:4000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn().mockResolvedValue({id:6260,dailyOrderNumber:66});
+   Object.assign(h.conv.sessionData,{cart:menu.map((p,i)=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:i?1:2,attributes:i?[]:[{attributeName:f.attr,attributeValue:f.value}],note:i?'fria':'bien empacado'})),orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   const before=structuredClone(h.conv.sessionData);await h.sendQueued(text);expect(h.replies.join(' ')).toMatch(/suele demorar/i);
+   expect(h.service.ordersService.create).toHaveBeenCalledTimes(approval?1:0);expect(h.conv.state).toBe(approval?'completed':'awaiting_final_confirm');
+   if(!approval){expect(h.conv.sessionData).toEqual(before);await h.sendQueued('Confirmar');}
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   expect(h.service.ordersService.create.mock.calls[0][0].items).toEqual(expect.arrayContaining([expect.objectContaining({productId:62601,note:'bien empacado',attributes:[{attributeName:f.attr,attributeValue:f.value}]}),expect.objectContaining({productId:62602,note:'fria'})]));expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(3);expect(h.service.ordersService.create.mock.calls[0][0].items.filter((item:any)=>item.productId===62601)).toHaveLength(2);
+   await h.sendQueued('Gracias señor');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+  });
+ }
+});
+
+describe('Approval reference without delivery question stays pending',()=>{
+ for(const name of ['Bao De Hongos','Ensalada De Quinoa'])for(const agent of [false,true])for(const text of ['Me dijiste "confirmar".','¿Puedo confirmar el pedido?','Si digo «confirmar», ¿se envía?','No lo confirmo todavía.']){
+  it(name+' '+text+' agent='+agent,async()=>{
+   const h=harness([{id:62701,code:62701,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn().mockResolvedValue({id:6270,dailyOrderNumber:67});
+   Object.assign(h.conv.sessionData,{cart:[{productId:62701,code:62701,name,unitPrice:18000,quantity:1,attributes:[],note:'bien empacado'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   const before=structuredClone(h.conv.sessionData);await h.sendQueued(text);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   expect(h.replies.join(' ')).not.toMatch(/no tenemos|no manejamos|pedido registrado/i);
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+  });
+ }
+});
+
+describe('Explicit approval with everyday spelling completes once',()=>{
+ for(const name of ['Bao De Hongos','Ensalada De Quinoa'])for(const agent of [false,true])for(const text of ['si confirmo el pedido','Sí confirmo el pedido. ¿Cuánto tarda?']){
+  it(name+' '+text+' agent='+agent,async()=>{
+   const h=harness([{id:62801,code:62801,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn().mockResolvedValue({id:6280,dailyOrderNumber:68});
+   Object.assign(h.conv.sessionData,{cart:[{productId:62801,code:62801,name,unitPrice:18000,quantity:1,attributes:[]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   await h.sendQueued(text);expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+   if(text.includes('?'))expect(h.replies.join(' ')).toMatch(/suele demorar/i);
+   await h.sendQueued('Gracias señor');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+  });
+ }
+});

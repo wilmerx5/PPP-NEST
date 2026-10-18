@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "66ec9438",
+  "status": "validated_not_deployed",
+  "newTests": 98,
+  "families": {
+    "compoundEtaCompleteJourneys": 48,
+    "referencesWithoutEtaCompleteJourneys": 16,
+    "everydayAffirmativeCompleteJourneys": 8,
+    "pureApprovalContracts": 26
+  },
+  "baseline": {
+    "compoundEta": {
+      "failed": 24,
+      "passed": 24,
+      "log": "/tmp/ppp-compound-approval-baseline-1710.log"
+    },
+    "referenceWithoutEta": {
+      "failed": 4,
+      "passed": 12,
+      "log": "/tmp/ppp-compound-approval-reference-baseline-1710.log"
+    },
+    "developmentAffirmativeRegression": {
+      "failed": 10,
+      "passed": 22,
+      "log": "/tmp/ppp-compound-approval-affirmative-baseline-1710.log",
+      "scope": "After first parser, unaccented standalone yes and accented yes without comma were blocked; fixed before acceptance."
+    },
+    "questionQuoteGuardContracts": {
+      "failed": 2,
+      "passed": 24,
+      "log": "/tmp/ppp-compound-approval-question-boundary-baseline-1710.log"
+    }
+  },
+  "targeted": {
+    "passed": 937,
+    "suites": 2,
+    "seconds": 68.038,
+    "log": "/tmp/ppp-compound-approval-final-accepted-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-compound-approval-final-tsc-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-compound-approval-global-1710.log",
+    "snapshot": "/tmp/ppp-compound-approval-source-1710.json",
+    "sourceFiles": 356,
+    "suites": 78,
+    "tests": 8144,
+    "seconds": 632.76,
+    "sourceHashesUnchanged": true
+  },
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-compound-approval-contracts-1710.log"
+  },
+  "implementation": [
+    "Shared pure approval clause contract handles quote/question boundaries and negated/conditional confirmation.",
+    "ETA execution requires explicit approval evidence.",
+    "Legacy keyword and checkout-close matchers cannot promote questions/quotes/mentions into approval.",
+    "Standalone unaccented yes remains supported; a conditional confirmation inside a longer query does not approve."
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "mainChanged": false,
+  "deployment": null,
+  "lastVerifiedStagingSource": "a9693ea1",
+  "limitations": [
+    "No new paid model, media or real-channel evidence.",
+    "Supported clause grammar is bounded, not universal authorization interpretation.",
+    "Approval mixed with new cart edits or purchases must be evaluated next; explicit clause evidence does not by itself validate those operations.",
+    "Building/payment states are covered by existing controls, but new complete journeys focus on final summary."
+  ]
+}

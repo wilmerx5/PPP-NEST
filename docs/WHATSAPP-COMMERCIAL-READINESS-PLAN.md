@@ -44,7 +44,7 @@ Método: fallo reproducido primero, regla general por catálogo, una familia de 
 
 ### Trabajo estructural para dejar de depender de parches por frase
 
-Este trabajo está planificado, no completado por las nuevas expresiones de carta:
+Trabajo estructural: el primer contrato compartido de aprobación está en validación sobre66ec9438 (whatsapp-compound-approval-validation-1710.json); no sustituye la consolidación de todo el router. El resto del trabajo sigue planificado:
 - Inventariar las rutas que actúan antes del modelo y las que consumen el paso pendiente. Fijar con contratos una prioridad común: reconocer consulta/edición/compra explícita antes de interpretar cualquier texto como nombre, dirección, opción o pago.
 - Consolidar un resultado de turno que distinga intención, entidades del catálogo, cantidad, atributos, preparación, destinatarios y duda pendiente. Un «no resuelto» no puede convertirse en «no existe» sin comprobar catálogo y contexto.
 - Validar el plan antes de aplicarlo: identidad de línea/unidad, disponibilidad, precio y autorización. La mezcla edición+compra requiere aplicación coherente; no guardar media operación y responder como si estuviera completa.
