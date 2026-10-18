@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-17",
+  "base": "69a0df72",
+  "branch": "staging",
+  "status": "validated_not_deployed",
+  "newTests": 45,
+  "routerJourneys": 24,
+  "invalidPins": 4,
+  "pureContracts": 17,
+  "baseline": {
+    "initialRouter": {
+      "failed": 28,
+      "passed": 0,
+      "log": "/tmp/ppp-readable-location-baseline-1710.log"
+    },
+    "postOrderReceipt": {
+      "failed": 24,
+      "passed": 4,
+      "log": "/tmp/ppp-readable-location-receipt-baseline-1710.log"
+    }
+  },
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainChanged": false,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "behavior": [
+    "Customer-only address label; raw logistics address and exact lat/lng preserved.",
+    "Known Maps hosts with explicit q/query coordinates only; no URL fetch or inference.",
+    "Reject nonfinite or out-of-range native pins before quote or session mutation.",
+    "Pin during payment/final summary rebuilds checkout without creating an order; explicit confirmation required.",
+    "Order receipt labels use snapshot, not the reset current session."
+  ],
+  "limitations": [
+    "No reverse geocoding: a pin without a supplied name/address says Ubicación compartida.",
+    "No original-channel or paid-model evidence; dependencies simulated.",
+    "Short links, place-search URLs and URLs mixed with other text are not converted."
+  ],
+  "deployment": null,
+  "targeted": {
+    "passed": 545,
+    "suites": 2,
+    "seconds": 85.902,
+    "log": "/tmp/ppp-readable-location-final-accepted-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-readable-location-accepted-tsc-1710.log"
+  },
+  "globalValidation": {
+    "status": "passed",
+    "snapshot": "/tmp/ppp-readable-location-source-1710.json",
+    "sourceFiles": 358,
+    "log": "/tmp/ppp-readable-location-global-1710.log",
+    "suites": 79,
+    "tests": 8265,
+    "seconds": 1050.018,
+    "sourceHashesUnchanged": true
+  },
+  "developmentCompileFailure": "Optional session fallback exposed unknown JSON address type; narrowed to string before final accepted run.",
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-readable-location-contracts-1710.log"
+  }
+}

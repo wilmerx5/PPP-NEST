@@ -1,3 +1,23 @@
+## Ubicación validada,pendiente deploy agrupado — 17/10/2026
+
+Base69a0df72.45nuevas;545focalizadas,TypeScript,72contratos Node aprobados. Global79suites/8265pruebas1050.018s;358hashes idénticos a /tmp/ppp-readable-location-source-1710.json. Informe whatsapp-readable-location-validation-1710.json. Ya se puede publicar fuente solo staging. No repetir global por documentación. NO desplegado aún:agrupar con la nueva familia solicitada de pedido inexistente con carrito activo. Runtime actual a3b462a3;Main intacta. Cero API/Meta/órdenes externas;181/183.
+
+Etiqueta legible en respuesta,resumen y recibo conserva rawaddress y pin en payload;URLs Google q/query exactas se interpretan localmente;pin inválido no cotiza ni muta. No geocodificación inversa. Nueva prioridad«quiero3carnes a la plancha»→solo carrito:aún pendiente reproducción/corrección;tests preparados en /tmp/ppp-unavailable-active-cart-tests.txt,integrar solo tras commit de esta fuente validada. Ver contrato general de opciones parciales en whatsapp-next-batches.md como siguiente después de ese fallo.
+
+## Nueva prioridad del usuario: pedido no disponible con carrito activo — 17/10/2026
+
+Chat observado: ejecutivo con pollo frito/sopa mondongo en carrito;«quiero3carnes a la plancha» devuelve solo carrito+¿Algo más?. Debe reconocer la compra solicitada,indicar ausencia y ofrecer alternativas verificadas,conservar ejecutivo y cantidad3como intención pendiente sin agregar sustituto automáticamente. Cubrir vacío/carrito/pago,agente simulado on/off,respuestas del modelo sin acciones y pérdida de petición con fallback,menús ficticios y alimentos inexistentes con alternativas o sin ellas. No hardcodear carne a la plancha como excepción. Nueva familia pendiente de reproducción;no afirmar corregida.
+
+Esperar cierre de global de ubicación antes de editar fuente. Publicar ubicación validada primero;agrupar despliegue con esta nueva familia si se completa,según preferencia de no reconstruir por cada regla. Después retomar contrato de alcance por unidades del modelo. Main intacta.
+
+## En curso: presentación de ubicación — 17/10/2026
+
+Base69a0df72.45tests nuevos:24recorridos completos(2cartas×agente simulado on/off×pago/confirmación×pin/pin con nombre/enlaceMaps),4pines inválidos,17contratos puros. Baseline28fallidos/0verdes. Primera corrección28verdes;545focalizadas y TypeScript verdes. Ampliar aserción hasta recibo mostró24fallidos/4verdes: tras reset el recibo usaba snapshot con coordenadas. Se corrige presentación en resumen/carrito/recibo además de reply. Aceptación final en curso /tmp/ppp-readable-location-accepted-targets-1710.log. No confundir primera aceptación con fuente final.
+
+Se conservan dirección raw, enlace y coordenadas para logística/payload. Solo salida al cliente usa nombre/dirección suministrada o «Ubicación compartida». No geocodificación inversa nueva, no LLM/red para nombrar ubicación. URL Google q/query con coordenadas exactas se convierte localmente a pin; otros hosts/URLmezclada/lugares/shortlinks no. Pin nuevo no confirma orden; se conserva mecanismo de reconstruir checkout antes de pedir confirmación. No cambiar a guardar awaiting_final_confirm antes de tryConfirmOrder: esa rutina puede crear una orden desde ese estado.
+
+Cero API/Meta/órdenes externas;181/183. Main intacta. Todavía no publicar/desplegar sin cerrar TypeScript y global congelada. Informe whatsapp-readable-location-validation-1710.json. Runtime último a3b462a3.
+
 ## Desplegado y verificado: a3b462a3 — 17/10/2026,21:00 Bogotá
 
 Staging running/healthy;imagen activa=candidate sha256:c410377a0155417cebf160adb2c979b4d201d70f8260e050c69a8d92166b1933;health OK/DB connected/circuit CLOSED. Verificado18/10 02:00:08UTC. Incluye aprobación compuesta b062d801 y opciones parciales/porciones a3b462a3. Compilado conserva guards previos/nuevas rutas;modelos Sol6.1/Luna/Luna/GPT Transcribe iguales. Rollback ppp-nest-staging:rollback-before-a3b462a3. bin/ remoto y mariadb_local preservados. Main intacta. No reconstruir ni repetir global por este cierre documental.
@@ -616,3 +636,14 @@ Full/TS final en ejecución /tmp/ppp-new-local-combined-full-final.log /tmp/ppp-
 Aprobación completa estable13/10:66suites/2331pruebas en433.264s /tmp/ppp-new-local-combined-full-final.log; fuentes sin cambios frente a snapshot final. Tras corregir únicamente propuesta vacía,64focalizadas aprobadas /tmp/ppp-unknown-proposal-targets-final.log y nuevo full66suites/2335pruebas en419.217s /tmp/ppp-current-stage-all-final.log; TypeScript aprobado /tmp/ppp-current-stage-tsc-final.log. Comparado con última versión publicada2144,191pruebas adicionales integradas; incluye cambios locales ajenos preservados y las tandas de esta sesión.
 Verificación modelo real gpt-4.1-2025-04-14:4recorridos únicos aceptados (2con inferencia,2deterministas),10solicitudes API exitosas en total. Primera ronda max6 dejó una conversación incompleta por presupuesto aunque carrito/respuesta eran correctos; repetición focalizada max4 la completó, sin repetir recorrido ya aceptado. /tmp/ppp-courtesy-real-capped-report.json y/tmp/ppp-courtesy-model-completion-report.json. Meta/persistencia/órdenes aisladas. Prueba de modelo precede al ajuste de texto de propuesta vacía; no repetir llamadas por cambio de presentación.35usadas/5restantes, registro docs/whatsapp-model-budget.json yAGENTS actualizados; credenciales solo en memoria, scripts privados temporales eliminados.
 Propuesta sin coincidencias ya no afirma varios platos ni pide confirmar «el resto» vacío; conserva confirmación útil cuando sí hay parte reconocida y conserva carrito preexistente.
+
+## Próximo contrato general: opciones sobre parte de una línea — propuesta, no implementada
+
+Auditoría17/10: AiOrderAction.updateAttributes (types/whatsapp-session.types.ts) solo transporta producto,índice y atributo/valor;set_attribute (whatsapp-agent.service.ts) y el guard (whatsapp-action-guard.service.ts) construyen esa misma forma;applyCartLineEdits edita todos los atributos de la línea. La gramática temprana actual cubre algunas frases contadas, no corrige esa falta de expresividad del contrato del modelo.
+
+Diseño recomendado a validar:una acción agrupada por línea con cantidad afectada y lista de opciones permite preparar una sola partición y evita que dos llamadas de atributo asignen implícitamente los cambios a unidades distintas. Mantener compatibilidad de la edición total existente;requerir cantidad entera1..cantidad actual,SKU/línea únicos y atributos válidos. No reutilizar quantity de update_item:ahí significa cantidad absoluta final, no unidades afectadas. Resolver contra instantánea original y validar antes de mutar;preservar resto/notas/precio. Actualizar vista provisional de get_cart de forma coherente;no aceptar índices recalculados tras partición como si fueran índices originales. Si una segunda selección parcial es ambigua,preguntar sin aplicar al resto.
+
+Pruebas propuestas:2de4,1de3,total4de4,0,5de4,decimal,opción inválida,2atributos en el mismo subconjunto,2subconjuntos distintos,2SKUcon la misma opción,otras líneas,adición pendiente,quitar/reemplazar después de editar,rollback de edición rechazada,petición repetida y pago/confirmación. Comprobar herramienta→guard→plan→carrito→respuesta→payload final. Aprobar con consulta de precio/dirección/nueva compra debe revisar el plan completo antes de crear orden. Un guard de frase confirmatoria no acredita esto.
+
+Después de cerrar controles gratis,contrastar una muestra reservada del modelo real con gasto acotado y contador antes de red. No iniciar una ronda amplia con las2peticiones operativas restantes ni presentar pruebas simuladas como inferencia real.
+

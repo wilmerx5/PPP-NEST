@@ -1,3 +1,29 @@
+## Ubicación validada,pendiente deploy agrupado — 17/10/2026
+
+Base69a0df72.45nuevas;545focalizadas,TypeScript,72contratos Node aprobados. Global79suites/8265pruebas1050.018s;358hashes idénticos a /tmp/ppp-readable-location-source-1710.json. Informe whatsapp-readable-location-validation-1710.json. Ya se puede publicar fuente solo staging. No repetir global por documentación. NO desplegado aún:agrupar con la nueva familia solicitada de pedido inexistente con carrito activo. Runtime actual a3b462a3;Main intacta. Cero API/Meta/órdenes externas;181/183.
+
+Etiqueta legible en respuesta,resumen y recibo conserva rawaddress y pin en payload;URLs Google q/query exactas se interpretan localmente;pin inválido no cotiza ni muta. No geocodificación inversa. Nueva prioridad«quiero3carnes a la plancha»→solo carrito:aún pendiente reproducción/corrección;tests preparados en /tmp/ppp-unavailable-active-cart-tests.txt,integrar solo tras commit de esta fuente validada. Ver contrato general de opciones parciales en whatsapp-next-batches.md como siguiente después de ese fallo.
+
+## Nueva prioridad del usuario: pedido no disponible con carrito activo — 17/10/2026
+
+Chat observado: ejecutivo con pollo frito/sopa mondongo en carrito;«quiero3carnes a la plancha» devuelve solo carrito+¿Algo más?. Debe reconocer la compra solicitada,indicar ausencia y ofrecer alternativas verificadas,conservar ejecutivo y cantidad3como intención pendiente sin agregar sustituto automáticamente. Cubrir vacío/carrito/pago,agente simulado on/off,respuestas del modelo sin acciones y pérdida de petición con fallback,menús ficticios y alimentos inexistentes con alternativas o sin ellas. No hardcodear carne a la plancha como excepción. Nueva familia pendiente de reproducción;no afirmar corregida.
+
+Esperar cierre de global de ubicación antes de editar fuente. Publicar ubicación validada primero;agrupar despliegue con esta nueva familia si se completa,según preferencia de no reconstruir por cada regla. Después retomar contrato de alcance por unidades del modelo. Main intacta.
+
+## Validación final de ubicación en ejecución — 17/10/2026
+
+Fuente congelada358archivos /tmp/ppp-readable-location-source-1710.json. Global /tmp/ppp-readable-location-global-1710.log (sesión80470);no editar src/scripts/workflows hasta footer y comparación exacta.45 nuevos,545focalizadas finales85.902s y TypeScript aprobados;72contratos Node verdes. Logs /tmp/ppp-readable-location-final-accepted-targets-1710.log y /tmp/ppp-readable-location-accepted-tsc-1710.log. Compilación intermedia falló por tipo unknown en fallback JSON de dirección;se estrechó a string antes de aceptación final. No reutilizar resultado545 anterior como si fuera la fuente actual.
+
+Al cerrar: registrar footer real y hashes,publicar staging,desplegar solo si se cierra tanda agrupada y verificar imagen/health/modelos con /tmp/ppp-readable-location-deploy-verify-1710.py. Último runtime a3b462a3;Main intacta. Reporte docs/whatsapp-readable-location-validation-1710.json. Presupuesto181/183,sin API/Meta/órdenes externas. Próxima familia:alcance por unidades del contrato de acciones del modelo y compra+edición+aprobación atómica. La mejora de ubicación solo muestra una etiqueta,no hace geocodificación inversa.
+
+## En curso: presentación de ubicación — 17/10/2026
+
+Base69a0df72.45tests nuevos:24recorridos completos(2cartas×agente simulado on/off×pago/confirmación×pin/pin con nombre/enlaceMaps),4pines inválidos,17contratos puros. Baseline28fallidos/0verdes. Primera corrección28verdes;545focalizadas y TypeScript verdes. Ampliar aserción hasta recibo mostró24fallidos/4verdes: tras reset el recibo usaba snapshot con coordenadas. Se corrige presentación en resumen/carrito/recibo además de reply. Aceptación final en curso /tmp/ppp-readable-location-accepted-targets-1710.log. No confundir primera aceptación con fuente final.
+
+Se conservan dirección raw, enlace y coordenadas para logística/payload. Solo salida al cliente usa nombre/dirección suministrada o «Ubicación compartida». No geocodificación inversa nueva, no LLM/red para nombrar ubicación. URL Google q/query con coordenadas exactas se convierte localmente a pin; otros hosts/URLmezclada/lugares/shortlinks no. Pin nuevo no confirma orden; se conserva mecanismo de reconstruir checkout antes de pedir confirmación. No cambiar a guardar awaiting_final_confirm antes de tryConfirmOrder: esa rutina puede crear una orden desde ese estado.
+
+Cero API/Meta/órdenes externas;181/183. Main intacta. Todavía no publicar/desplegar sin cerrar TypeScript y global congelada. Informe whatsapp-readable-location-validation-1710.json. Runtime último a3b462a3.
+
 ## Desplegado y verificado: a3b462a3 — 17/10/2026,21:00 Bogotá
 
 Staging running/healthy;imagen activa=candidate sha256:c410377a0155417cebf160adb2c979b4d201d70f8260e050c69a8d92166b1933;health OK/DB connected/circuit CLOSED. Verificado18/10 02:00:08UTC. Incluye aprobación compuesta b062d801 y opciones parciales/porciones a3b462a3. Compilado conserva guards previos/nuevas rutas;modelos Sol6.1/Luna/Luna/GPT Transcribe iguales. Rollback ppp-nest-staging:rollback-before-a3b462a3. bin/ remoto y mariadb_local preservados. Main intacta. No reconstruir ni repetir global por este cierre documental.

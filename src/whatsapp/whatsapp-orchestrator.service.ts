@@ -1,3 +1,4 @@
+import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
 import { hasExplicitOrderApprovalClause, blocksImplicitOrderApproval } from './whatsapp-order-approval';
 import { beginTurnDecision, captureInquiryDecision, captureActionDecision, capturePurchaseDecision, finishTurnDecision, type TurnDecisionFrame } from './whatsapp-turn-decision';
 import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './whatsapp-purchase-plan';
@@ -786,6 +787,9 @@ export class WhatsappOrchestratorService {
     turn.initialCartEditSelections = Object.fromEntries(CART_EDIT_SELECTION_KEYS.map(key => [key, JSON.stringify(initialSession[key])]));
     turn.initialPendingMatch = this.openOrderList(initialSession);
     if (turn.initialPendingMatch && this.declinesList(msg.text || '')) this.declinedListTurns?.add(String(conv.id));
+
+    const mapPin = msg.messageType === 'text' ? googleMapsPin(msg.text || '') : null;
+    if (mapPin) msg = {...msg,messageType:'location',latitude:mapPin.lat,longitude:mapPin.lng};
 
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
@@ -8544,7 +8548,7 @@ export class WhatsappOrchestratorService {
       (prizeDiscount ? `Premio −$${Math.round(prizeDiscount).toLocaleString('es-CO')}\n` : '') +
       `*Total $${Math.round(total).toLocaleString('es-CO')}*` +
       (includeAddress && session.orderType === 'delivery' && session.address?.trim()
-        ? `\n📍 ${session.address.trim()}${session.addressConfirmed ? ' ✅' : ''}`
+        ? `\n📍 ${customerLocationLabel(session.address.trim())}${session.addressConfirmed ? ' ✅' : ''}`
         : '')
     );
   }
@@ -8673,7 +8677,7 @@ export class WhatsappOrchestratorService {
       `${this.formatCartOnly(session, deliveryFee, false)}\n` +
       `\n🛵 Tipo: ${tipo}` +
       `\n👤 Nombre: ${name}` +
-      `\n${lugarLabel}: ${session.address || '(pendiente)'}` +
+      `\n${lugarLabel}: ${customerLocationLabel(session.address || '(pendiente)')}` +
       `\n📞 Teléfono: ${phone ? this.formatWaPhoneDisplay(phone) : '(pendiente)'}` +
       `\n💳 Pago: ${paymentMethodLabel(session.paymentMethod, paymentMethods)}` +
       (session.cashChangeFor ? `\n💵 Cambio de: ${session.cashChangeFor}` : '') +
@@ -17144,6 +17148,7 @@ export class WhatsappOrchestratorService {
   }
 
   private formatLocationAddress(msg: IncomingWhatsappMessage): string | null {
+    if ((msg.latitude != null || msg.longitude != null) && !validDeliveryCoordinates(msg.latitude,msg.longitude)) return null;
     const parts: string[] = [];
     if (msg.locationName) parts.push(msg.locationName);
     if (msg.locationAddress) parts.push(msg.locationAddress);
@@ -17778,7 +17783,7 @@ export class WhatsappOrchestratorService {
       `*Total: $${Math.round(total).toLocaleString('es-CO')}*\n\n` +
       `🛵 ${session.orderType === 'pickup' ? 'Recoges en el local' : 'Domicilio'}\n` +
       `👤 ${this.displayCustomerName(conv)}\n` +
-      `📍 ${session.address}\n` +
+      `📍 ${customerLocationLabel(session.address || '')}\n` +
       `📞 ${this.formatWaPhoneDisplay(session.contactPhone || conv.phoneE164)}\n` +
       `💳 ${paymentMethodLabel(session.paymentMethod, paymentMethods)}\n\n` +
       this.resolveOrderThanksMessage(session, thanksMessage)
@@ -23930,7 +23935,10 @@ export class WhatsappOrchestratorService {
   }
 
   private async reply(conv: WhatsappConversation, waId: string, body: string) {
-    const trimmed = scrubOutboundAsesorMentions(this.absorbCoverageNotice((body || '').trim(), waId));
+    const rawAddress = this.conversationService.getSession?.(conv)?.address || conv.sessionData?.address;
+    const address = typeof rawAddress === 'string' ? rawAddress : undefined;
+    const visibleBody = address ? (body || '').split(address).join(customerLocationLabel(address)) : body;
+    const trimmed = scrubOutboundAsesorMentions(this.absorbCoverageNotice((visibleBody || '').trim(), waId));
     if (!trimmed) {
       this.logger.warn(`[WhatsApp] skip empty reply waId=${waId}`);
       return;

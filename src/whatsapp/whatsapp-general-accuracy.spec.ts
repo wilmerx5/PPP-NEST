@@ -18367,3 +18367,31 @@ describe('Standard portion preference retains catalog boundaries',()=>{
   });
  }
 });
+
+describe('Readable shared locations preserve the exact destination and checkout',()=>{
+ for(const name of ['Bao De Hongos','Ensalada De Quinoa'])for(const agent of [false,true])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const kind of ['pin','named_pin','maps_url']){
+  it(name+' '+kind+' '+state+' agent='+agent,async()=>{
+   const menu=[{id:63401,code:63401,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.service.reply=(WhatsappOrchestratorService.prototype as any).reply.bind(h.service);
+   h.conv.state=state;Object.assign(h.conv.sessionData,{cart:[{productId:63401,code:63401,name,unitPrice:18000,quantity:2,attributes:[],note:'sin cebolla'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 1 2 3',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:6340,dailyOrderNumber:70});
+   h.service.recalculateDeliveryFee=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,deliveryFeeCalculated:6000,deliveryDistanceKm:4.7,deliveryOutOfCoverage:false},notice:'🚚 Domicilio: $6.000 · ruta ~4.7 km'}));
+   const cart=structuredClone(h.conv.sessionData.cart),lat=4.630504131317139,lng=-74.17561340332031;
+   const url='https://maps.google.com/maps?q=4.630504131317139%2C-74.17561340332031&z=17&hl=en';
+   await h.sendQueued(kind==='maps_url'?url:'📍 pin',kind==='maps_url'?{}:{messageType:'location',latitude:lat,longitude:lng,...(kind==='named_pin'?{locationName:'Edificio Del Parque',locationAddress:'Calle 12 34 56'}:{})});
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.deliveryLat).toBe(lat);expect(h.conv.sessionData.deliveryLng).toBe(lng);
+   expect(h.service.recalculateDeliveryFee).toHaveBeenCalledWith(expect.anything(),expect.anything(),{lat,lng});
+   expect(h.replies.join(' ')).toContain(kind==='named_pin'?'Edificio Del Parque':'Ubicación compartida');expect(h.replies.join(' ')).not.toMatch(/4\.630504|-74\.175613|maps\.google\.com\/\?q=/);
+   expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   const address=h.conv.sessionData.address;expect(address).toContain('4.630504');expect(address).toContain('-74.175613');
+   if(state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');
+   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(2);
+   expect(h.service.ordersService.create.mock.calls[0][0].address).toContain(address);
+   expect(h.replies.at(-1)).not.toMatch(/4\.630504|-74\.175613/);
+  });
+ }
+ for(const coords of [[91,-74],[4,-181],[NaN,-74],[4,Infinity]])it('rejects invalid pin '+coords,async()=>{
+  const h=harness([],false);h.service.recalculateDeliveryFee=jest.fn();const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued('pin',{messageType:'location',latitude:coords[0],longitude:coords[1]});expect(reply).toMatch(/no pude leer/i);expect(h.conv.sessionData).toEqual(before);expect(h.service.recalculateDeliveryFee).not.toHaveBeenCalled();
+ });
+});
