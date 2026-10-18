@@ -1,3 +1,17 @@
+## Continuación autónoma y siguiente matriz — 18/10/2026
+
+Automatización horaria activa en este hilo: continuar-pruebas-de-ppp-en-staging. Una tanda gratuita por despertar;no inferencia pagada/Meta/órdenes externas;no editar si hay una validación o trabajo en curso. Mantener staging/Main según AGENTS. Notificar cierre verificado,fallo importante o dependencia humana;silencio si no hay cambio accionable. Autorizada por usuario ocupado y permiso explícito para continuar siguientes tandas. No requiere un nuevo «continúa» por cada tanda.
+
+Tanda actual en validación:57regresiones nuevas de opciones+nota para el mismo subconjunto,proyección y compras distribuidas por variantes. Un turno reservado de Bowl Andino con Sol6.1 real pasó(3requests);su traza quedó capturada y reproducida gratis. Ver estado en WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-joint-subset-validation-1810.json;no asumir despliegue hasta su cierre.
+
+Siguientes tandas, en este orden:
+0. Primero reproducir propuestas parciales del modelo en un reparto:pedir4en2+2pero el modelo solo llamaadd_itempara2,omiteungrupo,falla la API después del primer grupo o propone3+2. La propiedad a demostrar es suma y alcance iguales al reparto completo,o carrito intacto con aclaración. Es un hueco propuesto por revisión del contrato,no un fallo reproducido todavía. Usar metadatos purchaseAttempts reales,errores de agente y varios menús. No confundir mocks que ya entregan la respuesta correcta con precisión lingüística. Cantidades0,11,99,fraccionarias no deben ajustarse silenciosamente. Si se demuestra pérdida parcial,priorizar su arreglo antes de más variaciones de lenguaje.
+1. Corrección/borrado de notas:«sin sal→normal»,«quita la nota de dos»,«la cebolla sí,la sal no»,confirmaciones ambiguas. Definir contrato explícito de añadir/reemplazar/borrar antes de ampliar;no concatenar instrucciones opuestas. Menús de pizzas,desayunos,platos,panes y bebidas. Comprobar resto y DTO.
+2. Compra por variantes durante nombre/teléfono/dirección/pago/confirmación. El cambio parcial existente ya tiene recorridos;la compra nueva distribuida aún requiere matriz de aceptación en esos pasos. Evitar que «placedOrderOnly» convierta una compra clara en repetición de pago o parsers independientes.
+3. Cantidades distribuidas inconsistentes:total4con grupos2+3,grupoomitido,«uno igual»,cantidad0,negación de una variante. Contrastar suma y alcance,clarificar sin partes si no concuerda. Separar evidencia de interpretación real del modelo y controles con propuesta simulada.
+4. Referencias a filas después de separar:ordinales,nota única,«los otros»,rectificación de rectificación,repetición en otro turno,opciónyaelegida. No seleccionar restante automáticamente.
+5. Conversaciones reservadas completas con menús nuevos y lenguaje libre;medir errores,costo y latencia. La automatización usa pruebas gratuitas;inferenciapagadacontrolada corresponde a una ejecución activa bajo presupuesto registrado. No declarar piloto/venta por conteos.
+
 ## Próxima matriz después del origen de variantes — 18/10/2026
 
 Tanda local actual: no-op conserva intención; repetición tras partición no altera el resto por defecto; una fuente ambigua invalida todos los grupos. Ver whatsapp-unit-option-followup-validation-1810.json y estado vigente en WHATSAPP-LOCAL-NEXT-AGENT.md. No asumir desplegado hasta cierre allí.

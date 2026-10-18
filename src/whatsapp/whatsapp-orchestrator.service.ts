@@ -1011,6 +1011,35 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    {
+      // Counted modifier clauses describe variants of one named item, not new
+      // independent products. Keep the whole request ahead of greedy additions.
+      const groupedInput = inboundText;
+      const session = this.conversationService.getSession(conv);
+      const countedModifierText = this.normalizeForMatch(groupedInput);
+      const countedOption = /\b(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) con\b/g;
+      const optionGroups = [...countedModifierText.matchAll(countedOption)].length;
+      const existingSubset = /^de (?:las|los) (?:\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(countedModifierText);
+      const distributedOptions = optionGroups >= 2 || (existingSubset && optionGroups > 0 && session.cart.length > 0);
+      if (distributedOptions && ['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) {
+        const groupedMenu = await this.catalogService.getMenuProducts();
+        const groupedStatus = await this.businessService.getStatus();
+        const groupedOpen = groupedStatus.isOpen || !!cfg.ignoreBusinessHours;
+        const groupedProducts = cfg.ignoreBusinessHours ? groupedMenu.map(product=>({...product,availableNow:true})) : groupedMenu;
+        // Bind the host BEFORE the first modifier clause. A product mentioned
+        // inside an option (e.g. chicken in a rice combo) is not a new host.
+        const namedHost = countedModifierText.slice(0, countedModifierText.search(countedOption));
+        if (groupedOpen && this.catalogService.productFullyNamedIn(namedHost, groupedProducts)) {
+          const unresolved = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+            session.pendingSubsetKitchenNote || session.pendingAddOffer || session.pendingCategoryBrowse ||
+            CART_EDIT_SELECTION_KEYS.some(key => !!session[key]);
+          if (!unresolved && cfg.agentV1Enabled && await this.tryHandleAgentV1({decision:turn.decision,conv,msg,session,text:groupedInput,originalText:groupedInput,products:groupedProducts,cfg,status:groupedStatus,businessOpenForBot:groupedOpen,placedOrderOnly:conv.state!=='building_cart'})) return;
+          await this.reply(conv,msg.waId,'Para aplicar el reparto completo, aclaremos cuántas unidades llevan cada opción y nota. El pedido sigue igual.\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
+          return;
+        }
+      }
+
+    }
     // A complete request for the menu is informational at every checkout step.
     // It never supplies a name/address/payment or clears a pending selection.
     if (this.isPoliteMenuLinkRequest(originalText)) {

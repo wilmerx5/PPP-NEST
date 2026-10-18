@@ -18624,3 +18624,86 @@ describe('Repeated partial edit needs an explicit source after the cart splits',
   expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeValue===f.after))).toHaveLength(3);
  });
 });
+
+describe('Same units receive both options and kitchen note across menus',()=>{
+ for(const f of [{name:'Caja De Falafel',attr:'Salsa',before:'Suave',after:'Picante'},{name:'Bento De Tofu',attr:'Arroz',before:'Blanco',after:'Integral'},{name:'Kit De Arepas',attr:'Bebida',before:'Te Frio',after:'Limonada'}])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const onlyNote of [false,true])it(`${f.name} ${state} noteOnly=${onlyNote}`,async()=>{
+  const product={id:64801,code:64801,name:f.name,price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.before,f.after]}]};
+  const h=harness([product],true);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:4,note:'bien empacado',attributes:[{attributeName:f.attr,attributeValue:f.before}]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6480,dailyOrderNumber:79});
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   const result=JSON.parse(service.executeTool('set_unit_attributes',{productId:product.id,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:f.attr,attributeValue:onlyNote?f.before:f.after}],note:'sin sal'},ctx));expect(result.ok).toBe(true);
+   return {reply:'Listo todas sin sal',actions,toolCalls:['get_cart','set_unit_attributes']};
+  });
+  const reply=await h.sendQueued(`De las cuatro ${f.name}, dos con ${onlyNote?f.before:f.after} y sin sal; el resto igual`);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(reply).toContain('sin sal');expect(reply).not.toContain('todas sin sal');
+  const cart=h.conv.sessionData.cart;expect(cart.map(item=>[item.quantity,item.note,item.attributes?.[0].attributeValue])).toEqual([[2,'bien empacado',f.before],[2,'bien empacado, sin sal',onlyNote?f.before:f.after]]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');
+  if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(4);
+  expect(items.filter((item:any)=>item.note==='bien empacado, sin sal')).toHaveLength(2);
+  expect(items.filter((item:any)=>item.note==='bien empacado')).toHaveLength(2);
+ });
+});
+
+describe('New purchases distribute variants without multiplying named packs',()=>{
+ for(const f of [{name:'Duo De Bao',attr:'Relleno',a:'Tofu',b:'Cerdo'},{name:'Trio De Tostadas',attr:'Salsa',a:'Suave',b:'Picante'},{name:'Bento Vegetal',attr:'Arroz',a:'Blanco',b:'Integral'}])for(const counts of [[1,3],[2,2],[3,1]])it(`${f.name} ${counts.join('+')}`,async()=>{
+  const product={id:64811,code:64811,name:f.name,price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.a,f.b]}]};
+  const h=harness([product],true);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6481,dailyOrderNumber:80});
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   for(const [index,value] of [f.a,f.b].entries())expect(JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:counts[index],attributes:[{attributeName:f.attr,attributeValue:value}],note:index===1?'sin sal':undefined},ctx)).ok).toBe(true);
+   return {reply:'Listo',actions,toolCalls:['add_item','add_item'],purchaseAttempts:[{productId:product.id,accepted:true},{productId:product.id,accepted:true}]};
+  });
+  const initial=await h.sendQueued(`Quiero cuatro ${f.name}, ${counts[0]} con ${f.a} y ${counts[1]} con ${f.b}; los de ${f.b} sin sal. Para Calle 12 34 56`);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(initial).toBeTruthy();
+  expect(h.conv.sessionData.cart.map(item=>[item.quantity,item.attributes?.[0].attributeValue])).toEqual([[counts[0],f.a],[counts[1],f.b]]);
+  expect(h.conv.sessionData.cart.reduce((sum,item)=>sum+item.quantity*item.unitPrice,0)).toBe(108000);expect(h.conv.sessionData.cart[0].note).toBeFalsy();expect(h.conv.sessionData.cart[1].note).toBe('sin sal');
+  const cart=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Déjame ver el carrito');
+  expect(reply).toContain(f.name);expect(reply).toContain(f.a);expect(reply).toContain(f.b);expect(h.conv.sessionData.cart).toEqual(cart);
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');
+  if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(4);
+  expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeValue===f.b)&&item.note==='sin sal')).toHaveLength(counts[1]);
+ });
+});
+
+describe('Distributed option requests cannot fall back to partial purchases',()=>{
+ for(const name of ['Duo De Bao','Bento Vegetal'])for(const mode of ['disabled','failed','pending'])it(`${name} ${mode}`,async()=>{
+  const product={id:64821,code:64821,name,price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Relleno',options:['Tofu','Cerdo']}]};
+  const h=harness([product],mode!=='disabled');h.service.ordersService.create=jest.fn();
+  if(mode==='failed')h.agent.runTurn.mockResolvedValue({reply:'',actions:{},toolCalls:[],error:'max_iterations'});
+  if(mode==='pending')h.conv.sessionData.pendingAttribute={productId:product.id,code:product.code,name,price:product.price,quantity:1,attributes:product.attributes,selected:[]};
+  const before=structuredClone(h.conv.sessionData);const state=h.conv.state;
+  const reply=await h.sendQueued(`Quiero cuatro ${name}, 2 con Tofu y 2 con Cerdo; los de Cerdo sin sal`);
+  expect(reply).toMatch(/aclaremos.*reparto|reparto completo.*aclaremos/i);expect(h.conv.sessionData.cart).toEqual(before.cart);
+  expect(h.conv.state).toBe(state);expect(h.conv.sessionData.pendingAttribute).toEqual(before.pendingAttribute);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();if(mode==='pending')expect(h.agent.runTurn).not.toHaveBeenCalled();
+ });
+});
+
+describe('Captured reserved model turn preserves joint subset semantics',()=>{
+ it('replays actual model calls for bowls without another inference request',async()=>{
+  const menu=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-joint-subset-menu-1810.json'),'utf8'));
+  const fixture=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-joint-subset-reserved-1810.json'),'utf8'))[0];
+  const captured=JSON.parse(readFileSync(join(__dirname,'../../scripts/fixtures/whatsapp-joint-subset-captured-1810.json'),'utf8'));
+  const h=harness(menu,true);h.conv.sessionData.cart=fixture.initialCart.map((line:any)=>({productId:line.id,code:menu[0].code,name:menu[0].name,unitPrice:menu[0].price,quantity:line.quantity,note:line.note,attributes:line.attributes}));
+  h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:menu,byId:new Map(menu.map((product:any)=>[product.id,product])),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   for(const call of captured.calls)expect(JSON.parse(service.executeTool(call.name,call.args,ctx)).ok).toBe(true);
+   expect(actions).toEqual(captured.actions);return {reply:'Listo',actions,toolCalls:captured.calls.map((call:any)=>call.name)};
+  });
+  const reply=await h.sendQueued(captured.message);expect(h.conv.sessionData.cart).toEqual(captured.expectedCart);
+  expect(reply).toContain('sin sal');expect(reply).toContain('Quinua');expect(reply).toContain('Arroz');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

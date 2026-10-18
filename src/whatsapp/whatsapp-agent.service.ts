@@ -69,10 +69,11 @@ type ChatMessage = {
 const AGENT_TOOLS = [
   { type: 'function' as const, function: {
     name: 'set_unit_attributes',
-    description: 'Cambia opciones de SOLO affectedQuantity unidades de UNA línea YA existente. Agrupa todos los atributos de esas mismas unidades en una llamada. Conserva el resto, las notas y el precio. Consulta get_cart primero. No mezcla compras, retiros ni confirmación en ese turno.',
+    description: 'Cambia opciones de SOLO affectedQuantity unidades de UNA línea YA existente. Agrupa todos los atributos y la nota de cocina opcional de esas mismas unidades en una llamada. note se añade solo a ese grupo, conservando notas previas. Conserva el resto y el precio. Consulta get_cart primero. No mezcla compras, retiros ni confirmación en ese turno.',
     parameters: { type: 'object', properties: {
       productId: { type: 'integer' }, cartLineIndex: { type: 'integer', minimum: 0 },
       affectedQuantity: { type: 'integer', minimum: 1 },
+      note: { type: 'string', minLength: 1, maxLength: 500, description: 'Nota de cocina a añadir solo a estas unidades; omitir si no hay nota nueva. No borra notas anteriores.' },
       attributes: { type: 'array', minItems: 1, items: { type: 'object', properties: {
         attributeName: { type: 'string' }, attributeValue: { type: 'string' },
       }, required: ['attributeName', 'attributeValue'] } },
@@ -619,7 +620,7 @@ Reglas:
 - "qué hay de comida rápida" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. Si piden un plato que no está y search_menu trae missing, dilo y ofrece esa categoría como alternativas. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
 - Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, cartLineIndex, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
-- Si pide cambiar SOLO algunas unidades de una línea existente, usa set_unit_attributes con affectedQuantity y todos los atributos de ese mismo grupo. set_attribute cambia TODA la línea; update_item.quantity es cantidad final, NO unidades a modificar. No mezcles una partición con comprar/quitar/reemplazar/confirmar; si pide ambas cosas, aclara sin ejecutar una parte. En productos recién añadidos usa add_item separado por variante; no partas una adición pendiente. Tras partición get_cart muestra el resultado; no reinterpretes sus filas proyectadas como nuevas líneas originales. Dos grupos sobre una misma fila necesitan aclaración, no dos llamadas superpuestas. Si el producto ya tiene varias variantes en el carrito, pide identificar la línea o su opción actual antes de cambiar unidades; mencionar solo la opción de destino no identifica de cuál variante salen.
+- Si pide cambiar SOLO algunas unidades de una línea existente, usa set_unit_attributes con affectedQuantity y todos los atributos de ese mismo grupo; si también pide nota de cocina para esas unidades, inclúyela en note de la MISMA llamada, no en set_notes ni update_item. note añade y conserva las notas previas; omítela si no hay nota nueva. set_attribute cambia TODA la línea; update_item.quantity es cantidad final, NO unidades a modificar. No mezcles una partición con comprar/quitar/reemplazar/confirmar; si pide ambas cosas, aclara sin ejecutar una parte. En productos recién añadidos usa add_item separado por variante; no partas una adición pendiente. Tras partición get_cart muestra el resultado; no reinterpretes sus filas proyectadas como nuevas líneas originales. Dos grupos sobre una misma fila necesitan aclaración, no dos llamadas superpuestas. Si el producto ya tiene varias variantes en el carrito, pide identificar la línea o su opción actual antes de cambiar unidades; mencionar solo la opción de destino no identifica de cuál variante salen.
 - Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
 - set_address solo con un lugar (calle, carrera, barrio, conjunto). Si responde ok:false, contesta al cliente en una frase y no hables de domicilio.
 - Si piden un plato que existe en frito y en broaster y no dijeron cuál, el sistema lista las dos. No asumas frito.
@@ -879,7 +880,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             if (allocated === undefined) { allocated = state!.nextIndex++; state!.addedIndexes.set(edit, allocated); }
             projectedIndex = allocated;
           }
-          return { ...base, quantity: line.quantity, attributes: line.attributes || [], cartLineIndex: projectedIndex };
+          return { ...base, quantity: line.quantity, note: line.note, attributes: line.attributes || [], cartLineIndex: projectedIndex };
         });
       });
     }
@@ -1580,16 +1581,17 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
         const proposedQuantity = Number(args.quantity);
         let quantity = Math.min(10, Math.max(1, Number.isFinite(proposedQuantity) ? proposedQuantity : 1));
         const source = ownedText;
+        const distributedVariant = [...normalizeOption(source).matchAll(/\b(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) con\b/g)].length >= 2 && Array.isArray(args.attributes) && args.attributes.length > 0;
         // Validate literal counts here once. Distributed quantities belong to the
         // semantic proposal: "one for each person" is not one unit in total.
-        if (!ctx.preserveReplacementQuantity && !/\b(?:cada|por persona)\b|c\/u/i.test(source)) {
+        if (!ctx.preserveReplacementQuantity && !distributedVariant && !/\b(?:cada|por persona)\b|c\/u/i.test(source)) {
           const literal = namedPackOrderQuantity(source, product.name) ??
             this.catalogService.extractQuantityNearProduct(source, product.name);
           if (literal != null) quantity = Math.min(10, Math.max(1, literal));
         }
         const modelNote = args.note != null ? String(args.note).trim().slice(0, 200) : '';
         const repeatedSku = normalizeOption(source).split(normalizeOption(product.name)).length > 2;
-        const preferenceSource = modelNote && repeatedSku
+        const preferenceSource = distributedVariant ? modelNote : modelNote && repeatedSku
           ? source.split(/(?:\s+y\s+|[,;]\s*)(?=(?:(?:el|la)\s+)?(?:otr[oa]|un[oa]?|uno|\d+)\b)/i)
             .find(piece => normalizeOption(piece).includes(normalizeOption(modelNote))) || ''
           : source;
@@ -1650,7 +1652,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
 
         // Una elección escrita por el cliente prevalece sobre la propuesta
         // del modelo y sobre los valores por defecto del catálogo.
-        if (product.attributes?.length && ctx.userMessage?.trim()) {
+        if (!distributedVariant && product.attributes?.length && ctx.userMessage?.trim()) {
           const attributeSource = scopedSource;
           const parsed = this.catalogService.resolveAttributesFromMessage(
             product, attributeSource, [],

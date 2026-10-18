@@ -1,0 +1,65 @@
+{
+  "dateBogota": "2026-10-18",
+  "baseCommit": "8855c29c",
+  "status": "validated_not_deployed",
+  "newTests": 57,
+  "newRouterJourneys": 34,
+  "newPreparationTests": 21,
+  "newToolTests": 2,
+  "validation": {
+    "routerPassed": 34,
+    "toolsAndPreparationAndSourcePassed": 206,
+    "typescriptPassed": true,
+    "nodeContractsPassed": 72,
+    "globalLog": "/tmp/ppp-subset-options-final-global-1810.log",
+    "globalResult": "/tmp/ppp-subset-options-final-global-1810.json",
+    "sourceManifest": "/tmp/ppp-subset-options-final-global-source-1810.json",
+    "firstGlobal": {
+      "accepted": false,
+      "testsPassed": 8566,
+      "testsFailed": 1,
+      "suitesPassed": 80,
+      "suitesFailed": 1,
+      "seconds": 615.809,
+      "log": "/tmp/ppp-subset-options-global-1810.log",
+      "reason": "Host recognition used the whole utterance and mistook an option-mentioned chicken SKU for a named rice-combo host. Existing 10-box split regression caught it. Fixed binding to product text before the first counted modifier clause."
+    },
+    "finalFocusedDistributionPassed": 154,
+    "global": {
+      "passed": true,
+      "tests": 8567,
+      "suites": 81,
+      "seconds": 604.475,
+      "frozenFiles": 368,
+      "sourceUnchanged": true
+    }
+  },
+  "behaviors": [
+    "Optional subset note appends to the same units as options; preserves remainder and old notes",
+    "Note-only difference can partition even with unchanged options",
+    "Invalid note rejects all prepared groups",
+    "Cart projection carries the changed note",
+    "Counted option distributions own their turn before greedy cart/checkout parsing",
+    "Per-variant purchase quantities and attributes are not overwritten by total quantity or the final option",
+    "Kitchen note is not copied from another variant",
+    "Failure/disabled agent/pending selection cannot create a partial distributed purchase"
+  ],
+  "reproductions": {
+    "noteIgnoredBaselineFailed": 10,
+    "routerRevealedGreedyParsing": true,
+    "notes": "Intermediate development runs included TypeScript/fixture errors and are not acceptance. Use final logs only."
+  },
+  "paidProbe": "whatsapp-joint-subset-real-probe-1810.json",
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainUntouched": true,
+  "limits": [
+    "One real inference turn does not establish general language accuracy",
+    "Optional subset note appends; contradictory kitchen instructions and deletion require separate semantics",
+    "Explicit counted modifier routing supports current phrase family, not every conversational distribution",
+    "Joint changes on several subsets of the same original row remain rejected as overlap",
+    "New purchases with variants during checkout still need a dedicated acceptance matrix",
+    "Pilot requires reserved complete conversations, latency and cost review"
+  ],
+  "paidSourceLimit": "The real probe preceded the host-prefix correction; captured actual calls are replayed free on final source. Do not claim a second paid run after that correction."
+}

@@ -1,3 +1,15 @@
+## Tanda validada, pendiente de despliegue — 18/10/2026: opciones+nota del mismo subconjunto y compras distribuidas
+
+NO desplegada: runtime sigue243c2e3b. Contrato updateUnitOptions/set_unit_attributes añade note opcional, no borra notas previas ni toca el resto. Valida texto no vacío hasta500caracteres; note-only puede dividir con atributos iguales. La proyección incluye la nota. El reparto contado de opciones sobre producto nombrado entra antes de parsers de compra/checkout; si hay selección pendiente o el agente no resuelve, aclara sin fragmentos. add_item conserva cantidad y atributos propuestos por variante y no arrastra la nota de otra variante.
+
+Aceptación focalizada34recorridos router,206controles de herramientas/preparación/origen,TypeScript y72Node. Primera global rechazó1regresión de reparto de10cajas;80suites/8566tests pasaron. El fix limita el producto anfitrión al prefijo anterior a los modificadores contados.154focalizados de reparto y TypeScript pasan. Global FINAL aprobada:81suites/8567tests,604.475s,368hashes intactos,log /tmp/ppp-subset-options-final-global-1810.log,resultado /tmp/ppp-subset-options-final-global-1810.json,368hashes en /tmp/ppp-subset-options-final-global-source-1810.json. Fuente congelada verificada;no repetir la global por documentación.57tests nuevos totales. Reproducciones y límites en whatsapp-joint-subset-validation-1810.json.
+
+Un turno reservado de Bowl Andino con modelo real Sol6.1 pasó:3requests,US$0.0226031 estimados,get_cart/set_unit_attributes;2de4 cambian base/proteína y nota,resto intacto. Traza capturada y replay gratuito final;no WhatsApp ni orden externa. Primer arranque falló por alias de módulos antes de HTTP;no gastó solicitudes. Evidencia whatsapp-joint-subset-real-probe-1810.json. Tope operativo188/usadas187/restante1;extensión numérica elegida por agente bajo autorización continua,no dictada por usuario.
+
+Pendiente: publicar y desplegar una vez con rollback/compilado/health. Después ampliar notas contradictorias/borrado y corrección tras variantes separadas,compras por variantes durante checkout y escenarios reservados completos. note actual solo añade;no prometer reemplazo semántico de instrucciones opuestas. Main intacta. Usuario autoriza seguir próximas tandas sin pedir confirmación rutinaria. Entradas inferiores históricas.
+
+La inferencia real fue previa al fix de prefijo anfitrión;la traza se reprodujo gratis tras el fix,no se hizo otra inferencia. Continuación horaria gratuita activa en este hilo:continuar-pruebas-de-ppp-en-staging. Evitar cualquier edición simultánea con otras tandas.
+
 ## VIGENTE — 18/10/2026: staging desplegado 243c2e3b
 
 Código 243c2e3b468fd44695d16268e4644cdced186177 desplegado y verificado a las00:19 Bogotá. Imagen activa=candidate sha256:98f9d9525d06b5c81a92dc2ef90314f23a4c3697450933bca4e4d7fbf9177030;running/healthy;health OK/DB connected/circuit CLOSED. Compilado comprueba no-op con intención retenida, fuente ambigua, rechazo de tanda sin revival y referencias explícitas. Modelos Sol6.1/Luna/Transcribe sin cambios. Rollback ppp-nest-staging:rollback-before-243c2e3b. Main intacta;bin/ remoto y mariadb_local preservados.

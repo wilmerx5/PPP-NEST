@@ -19,7 +19,7 @@ export function prepareUnitOptionPlan(
   catalog: Pick<WhatsappCatalogService, 'matchAttributeOptionValue'>,
 ): UnitOptionPlan {
   if (!Array.isArray(edits) || !edits.length) return { ok: false, reason: 'empty_edits' };
-  const prepared = new Map<number, { quantity: number; attributes: UnitOptionEdit['attributes'] }>();
+  const prepared = new Map<number, { quantity: number; attributes: UnitOptionEdit['attributes']; note?: string }>();
   for (const edit of edits) {
     const index = edit?.cartLineIndex;
     const fail = (reason: string): UnitOptionPlan => ({ ok: false, reason, cartLineIndex: index });
@@ -53,7 +53,11 @@ export function prepareUnitOptionPlan(
       }
       attributes.push({ attributeName: attribute.attributeName, attributeValue: matched });
     }
-    prepared.set(index, { quantity: edit.affectedQuantity, attributes });
+    if (edit.note !== undefined && (typeof edit.note !== 'string' || !edit.note.trim() || edit.note.length > 500)) {
+      return fail('invalid_subset_note');
+    }
+    prepared.set(index, { quantity: edit.affectedQuantity, attributes,
+      ...(edit.note !== undefined ? { note: edit.note.trim() } : {}) });
   }
 
   const partitions: Extract<UnitOptionPlan, { ok: true }>['partitions'] = [];
@@ -73,6 +77,14 @@ export function prepareUnitOptionPlan(
       if (index >= 0) attributes[index] = { ...option };
       else attributes.push({ ...option });
     }
+    if (edit.note !== undefined) {
+      const key = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const prior = line.note || '';
+      if (key(prior) !== key(edit.note) && !prior.split(/[,;\n]/).some(part => key(part) === key(edit.note!))) {
+        line.note = prior ? `${prior}, ${edit.note}` : edit.note;
+        lineChanged = true;
+      }
+    }
     if (!lineChanged) return [line];
     changed = true;
     const remaining = original.quantity - edit.quantity;
@@ -83,6 +95,7 @@ export function prepareUnitOptionPlan(
   const normalized = [...prepared.entries()].sort(([a], [b]) => a - b).map(([cartLineIndex, edit]) => ({
     productId: cart[cartLineIndex].productId, cartLineIndex,
     affectedQuantity: edit.quantity, attributes: edit.attributes,
+    ...(edit.note !== undefined ? { note: edit.note } : {}),
   }));
   return { ok: true, changed, cart: result, partitions, edits: normalized };
 }

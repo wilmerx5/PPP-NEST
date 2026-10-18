@@ -1,0 +1,26 @@
+[
+  {
+    "id": 64901,
+    "code": 64901,
+    "name": "Bowl Andino",
+    "price": 26000,
+    "availableNow": true,
+    "hasAttributes": true,
+    "attributes": [
+      {
+        "attributeName": "Base",
+        "options": [
+          "Quinua",
+          "Arroz"
+        ]
+      },
+      {
+        "attributeName": "Proteina",
+        "options": [
+          "Tofu",
+          "Setas"
+        ]
+      }
+    ]
+  }
+]

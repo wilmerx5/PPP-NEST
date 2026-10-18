@@ -1,13 +1,13 @@
 {
   "round": "2026-10-10-authorized-20",
-  "authorizedRequests": 185,
-  "usedRequests": 184,
+  "authorizedRequests": 188,
+  "usedRequests": 187,
   "remainingRequests": 1,
   "scope": "User-authorized moderate ongoing inference; bounded agent-selected operational caps, cumulative attempts retained",
   "acceptedConversations": 17,
   "validationBaseCommit": "faebdb9e",
   "includesCompoundEditWorkingTree": true,
-  "lastAttemptAt": "2026-10-18T03:40:54.666Z",
+  "lastAttemptAt": "2026-10-18T05:36:12.000Z",
   "latestEvaluation": {
     "date": "2026-10-15",
     "baseCommit": "4fc3c579",
@@ -67,6 +67,12 @@
       "additionalRequests": 0,
       "evidence": "Within existing cap (17 remaining); user: continua",
       "executionLimit": "15 requests maximum; development retest (not independent) of fresh-pizza-mixed-edits-1510 after removal/cash-note/drink fixes; one repetition; stop at first failure; model gpt-6.1-sol; code 4fc3c579"
+    },
+    {
+      "date": "2026-10-18",
+      "additionalRequests": 3,
+      "evidence": "Standing user authorization for moderate inference and continued batches; numeric cap chosen by agent, not dictated by user",
+      "executionLimit": "One reserved joint subset conversation; maximum 4 HTTP requests; one repetition; stop on failure"
     }
   ],
   "evaluationHistory": [
@@ -750,5 +756,15 @@
     "toolContractExercised": true,
     "estimatedReportedCostUsd": 0.0221102,
     "report": "/tmp/ppp-unit-option-paid-1710.json"
+  },
+  "latestJointSubsetEvaluation": {
+    "dateBogota": "2026-10-18",
+    "model": "gpt-6.1-sol",
+    "acceptedConversations": 1,
+    "requests": 3,
+    "httpSuccessful": 3,
+    "scope": "One reserved synthetic turn with actual inference; transports and order persistence mocked. Not a real WhatsApp conversation. Captured calls replayed for free on final source.",
+    "estimatedReportedCostUsd": 0.022603099999999997,
+    "report": "docs/whatsapp-joint-subset-real-probe-1810.json"
   }
 }

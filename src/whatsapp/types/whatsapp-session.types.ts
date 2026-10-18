@@ -294,6 +294,8 @@ export type AiOrderAction = {
     productId: number;
     cartLineIndex: number;
     affectedQuantity: number;
+    /** Append only to these units; omitted preserves existing kitchen notes. */
+    note?: string;
     attributes: Array<{ attributeName: string; attributeValue: string }>;
   }>;
   updateAttributes?: Array<{

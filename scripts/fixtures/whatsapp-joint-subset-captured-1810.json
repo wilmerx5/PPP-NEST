@@ -1,0 +1,152 @@
+{
+  "message": "De los cuatro Bowl Andino, dos con arroz y setas y sin sal; los demás como estaban, porfa.",
+  "calls": [
+    {
+      "origin": "model_call",
+      "name": "get_cart",
+      "args": {},
+      "result": {
+        "ok": true,
+        "lines": [
+          {
+            "productId": 64901,
+            "name": "Bowl Andino",
+            "quantity": 4,
+            "note": "sin palta",
+            "attributes": [
+              {
+                "attributeName": "Base",
+                "attributeValue": "Quinua"
+              },
+              {
+                "attributeName": "Proteina",
+                "attributeValue": "Tofu"
+              }
+            ],
+            "cartLineIndex": 0
+          }
+        ],
+        "hint": "Edita solo la línea solicitada. Los índices no cambian durante este turno."
+      }
+    },
+    {
+      "origin": "model_call",
+      "name": "set_unit_attributes",
+      "args": {
+        "productId": 64901,
+        "cartLineIndex": 0,
+        "affectedQuantity": 2,
+        "note": "sin sal",
+        "attributes": [
+          {
+            "attributeName": "Base",
+            "attributeValue": "Arroz"
+          },
+          {
+            "attributeName": "Proteina",
+            "attributeValue": "Setas"
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "affectedQuantity": 2,
+        "lines": [
+          {
+            "productId": 64901,
+            "name": "Bowl Andino",
+            "quantity": 2,
+            "note": "sin palta",
+            "attributes": [
+              {
+                "attributeName": "Base",
+                "attributeValue": "Quinua"
+              },
+              {
+                "attributeName": "Proteina",
+                "attributeValue": "Tofu"
+              }
+            ],
+            "cartLineIndex": 0
+          },
+          {
+            "productId": 64901,
+            "name": "Bowl Andino",
+            "quantity": 2,
+            "note": "sin palta, sin sal",
+            "attributes": [
+              {
+                "attributeName": "Base",
+                "attributeValue": "Arroz"
+              },
+              {
+                "attributeName": "Proteina",
+                "attributeValue": "Setas"
+              }
+            ],
+            "cartLineIndex": 1
+          }
+        ],
+        "hint": "Cambio por unidades preparado. Muestra las dos variantes y conserva el resto. No repitas la partición ni apliques otra mutación en este turno."
+      }
+    }
+  ],
+  "actions": {
+    "updateUnitOptions": [
+      {
+        "productId": 64901,
+        "cartLineIndex": 0,
+        "affectedQuantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Base",
+            "attributeValue": "Arroz"
+          },
+          {
+            "attributeName": "Proteina",
+            "attributeValue": "Setas"
+          }
+        ],
+        "note": "sin sal"
+      }
+    ]
+  },
+  "expectedCart": [
+    {
+      "productId": 64901,
+      "name": "Bowl Andino",
+      "code": 64901,
+      "unitPrice": 26000,
+      "quantity": 2,
+      "note": "sin palta",
+      "attributes": [
+        {
+          "attributeName": "Base",
+          "attributeValue": "Quinua"
+        },
+        {
+          "attributeName": "Proteina",
+          "attributeValue": "Tofu"
+        }
+      ]
+    },
+    {
+      "productId": 64901,
+      "name": "Bowl Andino",
+      "code": 64901,
+      "unitPrice": 26000,
+      "quantity": 2,
+      "note": "sin palta, sin sal",
+      "attributes": [
+        {
+          "attributeName": "Base",
+          "attributeValue": "Arroz"
+        },
+        {
+          "attributeName": "Proteina",
+          "attributeValue": "Setas"
+        }
+      ]
+    }
+  ]
+}

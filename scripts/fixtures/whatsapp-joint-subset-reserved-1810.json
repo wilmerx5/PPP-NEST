@@ -1,0 +1,79 @@
+[
+  {
+    "id": "reserved-joint-subset-bowl-1810",
+    "initialCart": [
+      {
+        "id": 64901,
+        "quantity": 4,
+        "note": "sin palta",
+        "attributes": [
+          {
+            "attributeName": "Base",
+            "attributeValue": "Quinua"
+          },
+          {
+            "attributeName": "Proteina",
+            "attributeValue": "Tofu"
+          }
+        ]
+      }
+    ],
+    "messages": [
+      {
+        "text": "De los cuatro Bowl Andino, dos con arroz y setas y sin sal; los demás como estaban, porfa.",
+        "expect": {
+          "items": {
+            "64901": 4
+          },
+          "lines": [
+            {
+              "id": 64901,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Base",
+                  "value": "Quinua"
+                },
+                {
+                  "key": "Proteina",
+                  "value": "Tofu"
+                }
+              ],
+              "note": [
+                "sin palta"
+              ],
+              "forbidNote": [
+                "sin sal"
+              ]
+            },
+            {
+              "id": 64901,
+              "quantity": 2,
+              "attrs": [
+                {
+                  "key": "Base",
+                  "value": "Arroz"
+                },
+                {
+                  "key": "Proteina",
+                  "value": "Setas"
+                }
+              ],
+              "note": [
+                "sin palta",
+                "sin sal"
+              ]
+            }
+          ],
+          "replyAll": [
+            "Quinua",
+            "Arroz",
+            "Setas",
+            "sin sal"
+          ],
+          "orderCount": 0
+        }
+      }
+    ]
+  }
+]

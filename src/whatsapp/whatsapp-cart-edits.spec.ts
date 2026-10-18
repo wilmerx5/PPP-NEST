@@ -389,3 +389,24 @@ describe('Model tools — grouped changes affect only the requested units', () =
   });
 
 });
+
+describe('Grouped option tools keep subset kitchen notes',()=>{
+ it('projects notes on the same two units and makes repeated tool calls idempotent',async()=>{
+  const cart=[line(50,4,'Mango','sin hielo')];const turn=turnTools(cart,'En dos unidades prefiero Lulo y sin azúcar');
+  const args={productId:50,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Lulo'}],note:'sin azúcar'};
+  expect(turn.call('set_unit_attributes',args).ok).toBe(true);
+  expect(turn.call('set_unit_attributes',args)).toMatchObject({ok:true,unchanged:true});
+  expect(turn.actions.updateUnitOptions).toHaveLength(1);
+  expect(turn.call('get_cart').lines.map(item=>[item.quantity,item.note])).toEqual([[2,'sin hielo'],[2,'sin hielo, sin azúcar']]);
+  const edited=await apply(turn.actions,cart);expect(edited.map(item=>[item.quantity,item.note])).toEqual([[2,'sin hielo'],[2,'sin hielo, sin azúcar']]);
+ });
+ it('rejects all prepared groups when a second kitchen note is invalid',()=>{
+  const turn=turnTools([line(50,4,'Mango'),line(50,3,'Guanabana')],'De la línea 1 y de la línea 2 cambia dos');
+  const args={productId:50,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Lulo'}],note:'sin azúcar'};
+  expect(turn.call('set_unit_attributes',args).ok).toBe(true);
+  expect(turn.call('set_unit_attributes',{...args,cartLineIndex:1,note:''}).ok).toBe(false);
+  expect(turn.call('set_unit_attributes',args).error).toBe('unit_option_batch_rejected');
+  const result=new WhatsappActionGuardService(catalog).sanitize({actions:turn.actions,products,cart:[line(50,4,'Mango'),line(50,3,'Guanabana')],businessOpen:true,allowMercadoPago:false});
+  expect(result.actions).toBeUndefined();
+ });
+});

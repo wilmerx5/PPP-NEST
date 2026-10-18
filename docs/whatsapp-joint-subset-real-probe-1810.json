@@ -1,0 +1,91 @@
+{
+  "dateBogota": "2026-10-18",
+  "model": "gpt-6.1-sol",
+  "reservedScenario": "reserved-joint-subset-bowl-1810",
+  "accepted": true,
+  "requests": 3,
+  "usage": {
+    "model": "gpt-6.1-sol",
+    "requests": 3,
+    "successfulResponses": 3,
+    "responsesWithUsage": 3,
+    "usageComplete": true,
+    "uncertainResponses": 0,
+    "transportErrors": {},
+    "promptTokens": 28672,
+    "cachedPromptTokens": 18911,
+    "completionTokens": 119,
+    "reasoningTokens": 0,
+    "httpErrors": {},
+    "providerErrorCodes": {},
+    "estimatedReportedCostUsd": 0.022603099999999997,
+    "priceDate": "2026-10-15",
+    "caveat": "Estimate for reported text tokens at standard list prices; excludes other usage, taxes and account-specific billing. Missing usage is not zero usage."
+  },
+  "latencyMs": 9251,
+  "tools": [
+    "get_cart",
+    "set_unit_attributes"
+  ],
+  "actions": {
+    "updateUnitOptions": [
+      {
+        "productId": 64901,
+        "cartLineIndex": 0,
+        "affectedQuantity": 2,
+        "attributes": [
+          {
+            "attributeName": "Base",
+            "attributeValue": "Arroz"
+          },
+          {
+            "attributeName": "Proteina",
+            "attributeValue": "Setas"
+          }
+        ],
+        "note": "sin sal"
+      }
+    ]
+  },
+  "cart": [
+    {
+      "productId": 64901,
+      "name": "Bowl Andino",
+      "code": 64901,
+      "unitPrice": 26000,
+      "quantity": 2,
+      "note": "sin palta",
+      "attributes": [
+        {
+          "attributeName": "Base",
+          "attributeValue": "Quinua"
+        },
+        {
+          "attributeName": "Proteina",
+          "attributeValue": "Tofu"
+        }
+      ]
+    },
+    {
+      "productId": 64901,
+      "name": "Bowl Andino",
+      "code": 64901,
+      "unitPrice": 26000,
+      "quantity": 2,
+      "note": "sin palta, sin sal",
+      "attributes": [
+        {
+          "attributeName": "Base",
+          "attributeValue": "Arroz"
+        },
+        {
+          "attributeName": "Proteina",
+          "attributeValue": "Setas"
+        }
+      ]
+    }
+  ],
+  "scope": "One reserved synthetic turn with actual inference; transports and order persistence mocked. Not a real WhatsApp conversation. Captured calls replayed for free on final source.",
+  "rawReport": "/tmp/ppp-joint-subset-paid-1810.json",
+  "localStartDiagnostic": "First start failed to load path aliases before any HTTP request; fixed invocation with tsconfig-paths/register. Not an inference failure."
+}

@@ -140,3 +140,44 @@ describe('Grouped unit option plan — catalog-independent atomic preparation', 
   });
 
 });
+
+describe('Options and kitchen note belong to the same subset',()=>{
+ for(const product of menus)for(const affectedQuantity of [1,2,4])it(`${product.name} ${affectedQuantity} units`,()=>{
+  const original=line(product);const before=JSON.stringify(original);
+  const result=plan([original],[{...edit({productId:product.id,affectedQuantity}),note:'sin sal'} as any]);
+  expect(result.ok).toBe(true);if(!result.ok)return;
+  const changed=result.cart.find(item=>item.attributes?.[0].attributeValue==='Limonada')!;
+  expect(changed.quantity).toBe(affectedQuantity);expect(changed.note).toBe('sin cebolla, sin sal');
+  if(affectedQuantity<4)expect(result.cart[0].note).toBe('sin cebolla');
+  expect(result.edits[0]).toHaveProperty('note','sin sal');expect(JSON.stringify(original)).toBe(before);
+ });
+ it('splits even if only the note changes',()=>{
+  const result=plan([line()],[{...edit({attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]}),note:'sin sal'} as any]);
+  expect(result.ok).toBe(true);if(!result.ok)return;
+  expect(result.changed).toBe(true);expect(result.cart.map(item=>[item.quantity,item.note])).toEqual([[2,'sin cebolla'],[2,'sin cebolla, sin sal']]);
+ });
+});
+
+describe('Subset notes validate atomically and preserve previous preparation',()=>{
+ it.each([null,5,{},'', '   ','x'.repeat(501)])('rejects invalid note %j',note=>{
+  const result=plan([line()],[{...edit(),note} as any]);expect(result).toMatchObject({ok:false,reason:'invalid_subset_note'});
+ });
+ it('normalizes whitespace without erasing previous notes',()=>{
+  const result=plan([line()],[{...edit(),note:'  sin sal  '}]);expect(result.ok).toBe(true);if(!result.ok)return;
+  expect(result.edits[0].note).toBe('sin sal');expect(result.cart[1].note).toBe('sin cebolla, sin sal');
+ });
+ it.each(['sin cebolla','SIN CEBOLLA'])('does not duplicate an existing note %s',note=>{
+  const result=plan([line()],[{...edit({attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]}),note}]);
+  expect(result.ok).toBe(true);if(!result.ok)return;expect(result.changed).toBe(false);expect(result.cart).toEqual([line()]);
+ });
+ it('does not duplicate one existing clause',()=>{
+  const original={...line(),note:'sin cebolla, sin sal'};
+  const result=plan([original],[{...edit({attributes:[{attributeName:'Bebida',attributeValue:'Te Frio'}]}),note:'SIN SAL'}]);
+  expect(result.ok).toBe(true);if(!result.ok)return;expect(result.changed).toBe(false);expect(result.cart).toEqual([original]);
+ });
+ it('rejects the entire plan when the second group has invalid note',()=>{
+  const cart=[line(),line(menus[1])];const before=JSON.stringify(cart);
+  const result=plan(cart,[{...edit(),note:'sin sal'},{...edit({productId:menus[1].id,cartLineIndex:1}),note:9} as any]);
+  expect(result.ok).toBe(false);expect(JSON.stringify(cart)).toBe(before);
+ });
+});
