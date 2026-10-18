@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "14d9dd84",
-  "status": "validated_pending_staging_deploy",
+  "status": "deployed_staging",
   "baseline": {
     "failed": 10,
     "passed": 2,
@@ -56,5 +56,23 @@
     "passed": true,
     "log": "/tmp/ppp-intensity-options-local-probe-1810.log",
     "scope": "Tools and catalogue/adapter against TypeScript source; not yet compiled deployment"
+  },
+  "deployment": {
+    "code_sha": "bd23e68d5641820bb3d5624b16c3e563c1c1241d",
+    "image": "sha256:506ac358710a356e6312f065e6c52cbd2c86b7e0d1646fc86c7138cd1561368e",
+    "active_equals_candidate": true,
+    "container": "running/healthy",
+    "health": "ok / DB connected / circuit CLOSED",
+    "verified_at": "2026-10-18T18:03:52.330Z",
+    "initial_container_health": "starting (not accepted as healthy)",
+    "rollback": "ppp-nest-staging:rollback-before-bd23e68d",
+    "compiled_probe_passed": true,
+    "compiled_probe_log": "/tmp/ppp-intensity-options-deploy-verified-1810.log",
+    "final_health_log": "/tmp/ppp-intensity-options-final-health-1810.log"
+  },
+  "production_preserved": {
+    "head": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+    "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "status": "running"
   }
 }
