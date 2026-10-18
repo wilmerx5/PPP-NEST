@@ -4,10 +4,10 @@ Esta sección es la referencia actual. Las entradas inferiores son historial y s
 
 ## 1. Dónde estamos y qué demuestra la evidencia
 
-- Integración permanente: `staging`. Última tanda publicada antes de esta revisión: `eec87f78`, notas sobre algunas unidades durante checkout.77 suites/7968 tests, TypeScript y72 contratos Node aprobados con354 hashes de fuente intactos. Son pruebas con servicios externos/modelo simulados, no7968 conversaciones reales independientes.
-- Último código desplegado y verificado: `1e2d09d7`, staging healthy el17/10 a19:07 Bogotá. Las notas parciales de `eec87f78` todavía no se desplegaron. Publicar Git no actualiza el contenedor.
+- Integración permanente: `staging`. Candidato publicado y desplegado `a9693ea1`, con notas parciales, solicitudes de carta y consultas de confirmación/ETA.77 suites/8046 tests, TypeScript y72 contratos Node aprobados con354 hashes intactos. Son pruebas con servicios externos/modelo simulados, no8046 conversaciones reales independientes.
+- Último código desplegado y verificado: `a9693ea1`, staging healthy el17/10 a20:07 Bogotá. Imagen activa=candidate y guards/modelos verificados; informe `whatsapp-basic-greeting-confirmation-validation-1710.json`. Incluye las notas parciales de `eec87f78`. Publicar Git no actualiza el contenedor.
 - Main local verificada en `1a2b2e23`, sin el manejador `isPoliteMenuLinkRequest` presente en staging; esta revisión no la promueve ni verifica nuevamente el runtime de producción. No atribuir un chat de Main a la versión nueva de staging.
-- La frase exacta «Hola buenas tardes tienes la carta por favor» ya tiene regresión en staging. Se amplían solicitudes de carta con modales y «menú completo», además de preguntas sobre confirmar. Cierre de esa revisión: consultar `whatsapp-basic-greeting-confirmation-validation-1710.json` cuando exista; no inferir aceptación de este texto.
+- La frase exacta «Hola buenas tardes tienes la carta por favor» ya tiene regresión en staging. Se amplió la familia con modales, «menú completo», saludos, consultas de aprobación y ETA hipotética frente a aprobación explícita:78casos nuevos y839focalizados verdes; consultar `whatsapp-basic-greeting-confirmation-validation-1710.json`. No acredita todas las preguntas compuestas/citas de autorización.
 - La cobertura ya incluye cantidades, opciones, combos, preguntas durante checkout, correcciones, fotos y transcripciones simuladas. Quedan fronteras entre intenciones y falta ampliar evidencia independiente del modelo y de medios originales.
 - Piloto acordado: un restaurante, efectivo y transferencia. Mercado Pago e impresión automática quedan fuera. Cocina usa pantalla, no impresora automática.
 
@@ -100,7 +100,7 @@ Antes de incorporar otro restaurante: ejecutar la misma matriz con su catálogo 
 
 Mantener un único backlog priorizado: caso/familia, severidad, expectativa, prueba, causa, cambio, evidencia y candidato desplegado. No sumar reruns como casos nuevos. Actualizar `WHATSAPP-LOCAL-NEXT-AGENT.md` al cerrar cada tanda. `staging` permanece; Main y producción solo cambian con autorización de promoción.
 
-La próxima entrega debe cerrar saludos/carta/confirmaciones y su global; luego edición+compra nueva y notas contradictorias. Después viene muestra independiente y piloto supervisado. Si una puerta sigue abierta, indicar exactamente la evidencia faltante en lugar de inventar un porcentaje o fecha.
+Esta entrega cerró78casos y su deploy agrupado. La próxima debe ampliar preguntas compuestas/citas sobre autorización, luego edición+compra nueva y notas contradictorias. Después viene muestra independiente y piloto supervisado. Si una puerta sigue abierta, indicar exactamente la evidencia faltante en lugar de inventar un porcentaje o fecha.
 
 ---
 

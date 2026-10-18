@@ -2,7 +2,7 @@
   "date": "2026-10-17",
   "branch": "staging",
   "base": "eec87f78",
-  "status": "validated_not_deployed",
+  "status": "validated_and_deployed_staging",
   "newTests": 78,
   "baseline": {
     "failed": 28,
@@ -52,9 +52,69 @@
     "New tests use simulated model and dependencies.",
     "Only full menu requests with supported grammatical forms; not universal paraphrase interpretation.",
     "Question-shaped approval stays pending; later explicit confirmation creates exactly one mocked order.",
-    "Main local comparison does not prove production runtime identity."
+    "Main local comparison does not prove production runtime identity.",
+    "Compound quoted or multi-question approval remains a next test family; no universal authorization interpretation claim."
   ],
-  "deployment": null,
+  "deployment": {
+    "verifiedAt": "2026-10-18T01:07:38.285283+00:00",
+    "head": "a9693ea13cf41c3e7d0d2eb730d56b521af12d74",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:ee115b531ac867fc91488d218614804636e8fc9ef7e54b5f745e83a9dd467d6a",
+    "candidateMatches": true,
+    "compiled": {
+      "politeModalMenu": true,
+      "completeMenu": true,
+      "dishMenuIntact": true,
+      "approvalQuestionNotAffirmation": true,
+      "approvalPositiveIntact": true,
+      "approvalQuestionRoute": true,
+      "partialUnitNoteRoute": true,
+      "hypotheticalEtaGuard": true,
+      "catalogEnumeration": true,
+      "subsetNoteGuard": true,
+      "namedNoteRoute": true,
+      "categoryEachRoute": true,
+      "subsetNoteReminder": true,
+      "wholeOrderQuestion": true,
+      "mixedIndependentPurchase": true,
+      "mixedUnclearQuestion": true,
+      "pendingOwnershipGuard": true,
+      "catalogFlavorChoice": true,
+      "foodCategoryIntact": true,
+      "paymentCatalogQuantity": true,
+      "affirmativePrefixPreserved": true,
+      "cancellationAsideKinds": true,
+      "explicitWithdrawalNotAside": true,
+      "asideRoute": true,
+      "withdrawalScope": true,
+      "multipleEditWithdrawalGuard": true,
+      "pendingEditReminder": true,
+      "centralEditGuard": true,
+      "clauseScopedClear": true,
+      "explicitClear": true,
+      "paymentPreface": true,
+      "protocol": "2026-10-17.pilot-v1",
+      "deliveryBinding": true,
+      "modelResolver": true,
+      "models": {
+        "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+        "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+        "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+        "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+      }
+    },
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-a9693ea1",
+    "log": "/tmp/ppp-basic-greeting-confirmation-deploy-1710.log",
+    "remoteUntrackedPreserved": [
+      "bin/"
+    ]
+  },
   "interruptedGlobal": {
     "log": "/tmp/ppp-basic-greeting-confirmation-global-1710.log",
     "exitCode": 130,
@@ -66,5 +126,6 @@
     "passed": 12,
     "log": "/tmp/ppp-basic-greeting-confirmation-eta-baseline-1710.log",
     "scope": "12 ETA approval controls plus10 inquiry continuations; two explicit controls passed, other ten ETA controls failed."
-  }
+  },
+  "sourceCommit": "a9693ea13cf41c3e7d0d2eb730d56b521af12d74"
 }

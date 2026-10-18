@@ -2,7 +2,7 @@
   "date": "2026-10-17",
   "branch": "staging",
   "base": "b20e5ea3",
-  "status": "validated_not_deployed",
+  "status": "validated_and_included_in_grouped_staging_deployment",
   "newTests": 56,
   "mainChanged": false,
   "paidRequests": 0,
@@ -61,5 +61,12 @@
     "Competing pending selection is preserved and clarified; the new instruction is not queued for automatic later replay.",
     "This does not implement mixed edit plus independent purchase or rewriting contradictory preparation notes."
   ],
-  "deployment": null
+  "deployment": {
+    "verifiedAt": "2026-10-18T01:07:38.285283+00:00",
+    "head": "a9693ea13cf41c3e7d0d2eb730d56b521af12d74",
+    "health": "healthy",
+    "image": "sha256:ee115b531ac867fc91488d218614804636e8fc9ef7e54b5f745e83a9dd467d6a",
+    "rollback": "ppp-nest-staging:rollback-before-a9693ea1",
+    "evidence": "whatsapp-basic-greeting-confirmation-validation-1710.json"
+  }
 }
