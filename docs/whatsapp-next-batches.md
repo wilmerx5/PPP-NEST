@@ -1,3 +1,43 @@
+## LOTE VALIDADO LOCAL — cierre, bebidas y unidades, 18/10/2026
+
+Global final86suites/9074tests en575.345s aprobada,376hashes intactos;516focalizados,21controles finales,TypeScript,92Node y probe local verdes. Dos globales fallidas previas documentadas;solo repaired-global es aceptación. No desplegado aún;staging vivo bd23e68d,Main14d9dd84 preservada. Evidencia whatsapp-sales-closure-validation-1810.json. Se guarda checkpoint antes de reproducir nuevo chat humano de ráfaga conTv78C#6D-48. No hay global activa al escribir esta entrada. Agrupar deploy SOLO staging al cerrar esa reproducción. Auditoría productiva de contacto:respuesta121caracteres conidMeta a2s;no acredita renderizado en dispositivo. CeroAPIpagada/Meta/órdenes externas. Entradas inferiores históricas.
+
+## GLOBAL ACTIVA FINAL — fuente reparada, 18/10/2026
+
+21controles finales (incluyen los dos pedidos largos que fallaron) yTypeScript verdes,además de516focalizados/92Node previos. Fuente congelada 376hashes /tmp/ppp-sales-location-repaired-source-1810.json. Global /tmp/ppp-sales-location-repaired-global-1810.{log,json}. NO editar fuente ni lanzar otra suite/deploy hasta terminar. Dos globales de cierre fallidas documentadas,NO son aceptación. Staging activo bd23e68d,Main14d9dd84 intacta. Tras global verde/hashes iguales:probe local,publicar/desplegar SOLO staging,probe compilado/health/rollback y cierre documental. Ver whatsapp-sales-closure-validation-1810.json. CeroAPIpagada/Meta/órdenes externas. Entradas inferiores históricas.
+
+## GLOBAL TERMINADA CON 2 FALLOS — alcance del pedido largo, 18/10/2026
+
+Segunda global86suites/9074tests:9072verdes y2fallos en pedido largo con arroz con pollo;no publicar/desplegar. El separador de bebida aceptaba bebida enterrada después de otro plato/nota. Se exige prefijo de bebida resuelta y cláusula derecha sin punto y coma/salto de línea. Se conservan tests existentes;validar focalizados y repetir global con nueva fuente congelada. No hay global activa al escribir esta entrada. Main/staging vivo intactos. Evidencia whatsapp-sales-closure-validation-1810.json. Entradas inferiores históricas.
+
+## GLOBAL ACTIVA — cierre, bebidas y unidades de dirección, 18/10/2026
+
+516focalizados/7suites,TypeScript y92Node aprobados. Fuente congelada 376hashes /tmp/ppp-sales-location-frozen-source-1810.json. Global /tmp/ppp-sales-location-accepted-global-1810.{log,json}. NO editar fuente ni lanzar otra suite/deploy hasta terminar. Primera global de cierre falló87tests (contacto absorbía direcciones/códigos); corregido,484regresiones previas pasan. Esta nueva global debe aprobar completa. Staging vivo bd23e68d,Main14d9dd84 preservada;no publicado/desplegado. Ver whatsapp-sales-closure-validation-1810.json. Incluye bebida explícita+extras,conversión combo sin duplicar botella compatible,contacto reconocido y lugar separado de entrada/apto para mapa/DTO. Silencio productivo del último chat no tiene causa confirmada sin trazas. CeroAPIpagada/Meta/órdenes externas. Tras verde+hashes:publicar/desplegar SOLO staging con rollback,probe compilado y health. Entradas inferiores históricas.
+
+## GLOBAL FALLIDA — corrección de contacto en revisión, 18/10/2026
+
+Global terminada:84suites,83verdes/1fallida;8950verdes/87fallos. NO publicar/desplegar. Se detectó detección temprana de contacto demasiado amplia: absorbía direcciones con múltiples números y texto de imagen con códigos. Se acota a mensaje text y forma completa numérica/con etiqueta de contacto. Fuente descongelada para corregir; repetir afectados y global antes de aceptación. Registro whatsapp-sales-closure-validation-1810.json. Staging vivo bd23e68d,Main intacta. Nuevo chat humano: revisar bebida explícita junto a pollo/extras y teléfono durante pago;no atribuir el silencio observado a una causa sin trazas.
+
+## GLOBAL ACTIVA — cierre de venta agrupado, 18/10/2026
+
+125 focalizados, TypeScript y92Node aprobados. Fuente congelada con373hashes en /tmp/ppp-sales-closure-source-1810.json. Global /tmp/ppp-sales-closure-global-1810.{log,json}. NO editar fuente ni lanzar otra suite/despliegue hasta terminar; verificar proceso y resultado real. Dos globales previas interrumpidas NO son aprobación. Evidencia whatsapp-sales-closure-validation-1810.json. No publicado/desplegado aún; staging vivo bd23e68d, Main14d9dd84 intacta. Cero API pagada/Meta/órdenes externas. Después de verde y hashes iguales: publicar/desplegar SOLO staging con rollback y probe compilado/health.
+
+## EN CURSO — cierre de venta y datos compuestos, 18/10/2026
+
+Fuente local no publicada sobre c894687e. Se agrupan opción canónica y cierre de venta: contacto, nombre+pago, formulario multilinea de productos/destinatario/dirección/teléfono, nota de empaque y dirección numerada con referencia. Las dos globales de opción canónica se interrumpieron con exit130 ANTES de editar; no son aceptación. No hay global activa al escribir esta entrada. Antes de publicar ejecutar controles finales, TypeScript, Node y UNA global con hashes congelados. No desplegar esta fuente hasta aprobarla.
+
+El teléfono del último chat sí persistía: la corrección del usuario aclara que faltó responder una consulta. La consulta exacta NO está en el fragmento y NO se declara reproducida; se comprueba una consulta de total durante pago con carrito/estado conservados y DTO simulado. No hay llamadas pagadas, Meta ni órdenes externas. Producción/Main preservadas; staging activo sigue bd23e68d. Auditoría de configuración: MP productivo habilitado y staging deshabilitado; no se modificó configuración. Efectivo/transferencia siguen alcance del piloto. Ver próximo registro whatsapp-sales-closure-validation-1810.json. Entradas inferiores históricas.
+
+## Global vigente — opción canónica y prefijos, 18/10/2026
+
+La primera global se detuvo (exit130, sin editar durante ejecución) para reproducir un fallo adicional: opción corta ganaba a una más larga del mismo prefijo. Ahora 11 tests nuevos y 127 focalizados verdes; prioridad a opción completa más larga sin mutar catálogo. TypeScript verde. Global vigente /tmp/ppp-canonical-degree-final-global-1810.{log,json}, manifest final-source con370hashes congelados. No editar fuente ni lanzar otra suite/deploy. Runtime continúa bd23e68d; Main intacta. Cierre previsto: publicar validado solo staging, agrupar deploy con siguiente tanda. No atribuir éxito a la global interrumpida. Evidencia whatsapp-canonical-degree-validation-1810.json.
+
+## EN CURSO — 18/10/2026: opción canónica en frase completa
+
+Base c894687e. Seis fallos reprodujeron que «Quiero dos… con Estilo No Tan Picante/Dulce/Salado» elegía Natural en vez de la opción literal. La prioridad literal ahora admite la frase explícita con+atributo+opción y conserva rechazo/preferencia suelta. Diez pruebas nuevas: seis conversaciones router→precio→DTO en tres menús y cuatro controles de catálogo. 126 focalizados, TypeScript y 92 Node aprobados. Global EN CURSO /tmp/ppp-canonical-degree-global-1810.{log,json}, 370 hashes congelados: NO editar fuente ni iniciar otra suite/deploy hasta cierre. Evidencia whatsapp-canonical-degree-validation-1810.json. Main/producción/modelos/presupuesto intactos; cero API pagada/Meta/órdenes externas.
+
+Después: «menos dulce»/«sin tanto azúcar», cambios sobre subconjuntos y retirada de una cláusula de nota. No afirmar cubiertos por estas compras iniciales; no garantizar preparación ni comprensión universal. Publicar solo staging tras global verde; agrupar despliegue si no hay otro cambio urgente. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 13:04 Bogotá: opciones e intensidad desplegadas en staging
 
 Código `bd23e68d5641820bb3d5624b16c3e563c1c1241d` publicado y desplegado solo en staging. Imagen activa = candidate `sha256:506ac358710a356e6312f065e6c52cbd2c86b7e0d1646fc86c7138cd1561368e`; contenedor running/healthy y health OK, DB connected, circuito CLOSED a las 18:03:52 UTC. La primera inspección dio starting; únicamente la comprobación posterior acredita healthy. Rollback `ppp-nest-staging:rollback-before-bd23e68d`. Probe compilado aprobado: seis propuestas deliberadamente contradictorias del modelo se corrigen desde la fuente y conservan nota, además de los controles previos. Evidencia `whatsapp-intensity-options-validation-1810.json`.

@@ -19012,3 +19012,123 @@ describe('Intensity preferences do not silently choose a named attribute option'
   const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(2);expect(items.every((item:any)=>item.note===line.note&&item.attributes.some((a:any)=>a.attributeName===f.attr&&a.attributeValue===(explicit?f.other:f.base)))).toBe(true);
  });
 });
+
+describe('Qualified canonical options in full purchase sentences retain their catalogue choice',()=>{
+ for(const f of [{name:'Curry de Garbanzos',value:'No Tan Picante'},{name:'Flan Artesanal',value:'No Tan Dulce'},{name:'Ramen Vegetal',value:'No Tan Salado'}])for(const enabled of [false,true])it(`${f.name} agent=${enabled}`,async()=>{
+  const product={id:65701,code:65701,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Estilo',options:['Natural',f.value]}]};const h=harness([product],enabled);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6570,dailyOrderNumber:87});
+  const reply=await h.sendQueued(`Quiero dos ${f.name} con Estilo ${f.value} por favor`);expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);const line=h.conv.sessionData.cart[0];expect(line.quantity).toBe(2);expect(line.attributes).toContainEqual({attributeName:'Estilo',attributeValue:f.value});
+  const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));const state=h.conv.state;await h.sendQueued(`Cuánto cuesta ${f.name}`);expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe(state);
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(2);expect(items.every((item:any)=>item.attributes.some((a:any)=>a.attributeValue===f.value))).toBe(true);
+ });
+});
+
+describe('Sales closure after a contact phone and multiline street plus place',()=>{
+ const menus=[{menu:products,order:'Buenas tardes veci\nMe regalas por favor\n1 arroz con pollo\n1 sopa de menudencias grande\n1 sopa de mondongo pequeña',ids:[23,20,41]},{menu:[{id:65801,code:65801,name:'Quinoa Andina',price:22000,availableNow:true,hasAttributes:false,attributes:[]},{id:65802,code:65802,name:'Crema De Zapallo',price:9000,availableNow:true,hasAttributes:false,attributes:[]},{id:65803,code:65803,name:'Consomé Pequeño',price:7000,availableNow:true,hasAttributes:false,attributes:[]}],order:'Buenas tardes\nMe regalas por favor\n1 Quinoa Andina\n1 Crema De Zapallo\n1 Consomé Pequeño',ids:[65801,65802,65803]}];
+ for(const f of menus)for(const enabled of [false,true])for(const address of ['Calle 10 # 81A - 20\nConjunto Santa Catalina Club House','Conjunto Santa Catalina Club House\nCalle 10 # 81A - 20'])it(`${f.ids[0]} agent=${enabled} ${address}`,async()=>{
+  const h=harness(f.menu,enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));h.service.ordersService.create=jest.fn().mockResolvedValue({id:6580,dailyOrderNumber:88});
+  await h.sendQueued(f.order);expect(h.conv.sessionData.cart.map((x:any)=>x.productId).sort()).toEqual([...f.ids].sort());const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));
+  await h.sendQueued('300 000 0002');expect(h.conv.sessionData.contactPhone).toMatch(/3000000002/);
+  const reply=await h.sendQueued(address);expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.address).toMatch(/10.*81A.*20/i);expect(h.conv.state).toBe('awaiting_payment');expect(reply).toMatch(/c[oó]mo pagas|c[oó]mo.*pagar|m[eé]todo de pago/i);expect(reply).not.toMatch(/algo m[aá]s|qu[eé] m[aá]s|mercado pago/i);
+  await h.sendQueued('nad mas');expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(cart);
+  const confirm=await h.sendQueued('1');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.conv.sessionData.paymentMethod).toBeTruthy();expect(confirm).toMatch(/confirmar/i);expect(confirm).not.toMatch(/algo m[aá]s|mercado pago/i);expect(h.conv.sessionData.deliveryFeeCalculated).toBe(2000);
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(3);
+ });
+});
+
+describe('Explicit recipient and payment in one checkout message',()=>{
+ for(const name of ['Combo De Pollo Frito','Caja Vegetariana'])for(const enabled of [false,true])for(const text of ['a nombre Cristina, contraentrega','contraentrega, a nombre de Cristina','Nombre: Cristina; contraentrega'])it(`${name} agent=${enabled} ${text}`,async()=>{
+  const product={id:65811,code:65811,name,price:24000,availableNow:true,hasAttributes:false,attributes:[]};const h=harness([product],enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));h.conv.state='awaiting_payment';h.conv.sessionData={cart:[{productId:product.id,code:product.code,name,unitPrice:24000,quantity:1,note:'Empacar una parte en caja diferente.'}],orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,pickupEtaMinutes:15} as any;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6581,dailyOrderNumber:89});
+  const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));const reply=await h.sendQueued(text);expect(h.conv.customerName).toBe('Cristina');expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.conv.sessionData.paymentMethod).toBe('cash');expect(reply).toContain('Cristina');expect(reply).not.toMatch(/wilmer|mercado pago|algo m[aá]s/i);
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.customerName).toBe('Cristina');expect(dto.items).toHaveLength(1);expect(dto.items[0].note).toBe(cart[0].note);
+ });
+});
+
+describe('Complete multiline order supersedes stored checkout contact details',()=>{
+ for(const name of ['Combo De Arroz Paisa','Bowl Mediterraneo'])for(const enabled of [false,true])it(`${name} agent=${enabled}`,async()=>{
+  const product={id:65821,code:65821,name,price:24000,availableNow:true,hasAttributes:false,attributes:[]};const h=harness([product],enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));Object.assign(h.conv.sessionData,{lastDeliveryAddress:'Calle 90 11 22',lastContactPhone:h.conv.phoneE164});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6582,dailyOrderNumber:90});
+  const reply=await h.sendQueued(`Buenas tardes me das un ${name}\nMaribel Capera\nTorres de Castelló\nDiagonal 3 #83-02\nTorre 3 apto 102\n3000000003`);
+  expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].productId).toBe(product.id);expect(h.conv.customerName).toBe('Maribel Capera');expect(h.conv.sessionData.contactPhone).toMatch(/3000000003/);expect(h.conv.sessionData.address).toMatch(/Diagonal 3.*83-02/i);expect(h.conv.sessionData.address).toMatch(/Torre 3 apto 102/i);expect(h.conv.state).toBe('awaiting_payment');expect(reply).not.toMatch(/algo m[aá]s|misma direcci[oó]n|mercado pago/i);
+  await h.sendQueued('1');expect(h.conv.state).toBe('awaiting_final_confirm');await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.customerName).toBe('Maribel Capera');expect(dto.phone).toMatch(/3000000003/);expect(dto.address).toMatch(/Diagonal 3.*83-02/i);expect(dto.items).toHaveLength(1);
+ });
+});
+
+describe('A phone correction acknowledges the new contact and never confirms on payment selection',()=>{
+ for(const enabled of [false,true])it(`agent=${enabled}`,async()=>{
+  const h=harness(products,enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));h.conv.state='awaiting_payment';h.conv.sessionData={cart:[{productId:23,code:23,name:'Arroz Con Pollo',unitPrice:29500,quantity:2,note:'con salsa de tomate'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 10 81A 20',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true} as any;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6583,dailyOrderNumber:91});const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));
+  const reply=await h.sendQueued('300 000 0004');expect(reply).toMatch(/tel[eé]fono.*actualizad/i);expect(String(reply).replace(/\D/g,'')).toContain('3000000004');expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe('awaiting_payment');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('1');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].phone).toMatch(/3000000004/);
+ });
+});
+
+describe('A requested separate box belongs to the combo before pickup checkout',()=>{
+ for(const f of [{name:'Combo De Pollo Frito',part:'medio pollo'},{name:'Combo Vegetal',part:'la mitad'}])for(const enabled of [false,true])it(`${f.name} agent=${enabled}`,async()=>{
+  const product={id:65831,code:65831,name:f.name,price:30000,availableNow:true,hasAttributes:false,attributes:[]};const half={id:65832,code:65832,name:'Medio Pollo Frito',price:15000,availableNow:true,hasAttributes:false,attributes:[]};const h=harness([product,half],enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));h.service.ordersService.create=jest.fn().mockResolvedValue({id:6584,dailyOrderNumber:92});
+  const added=await h.sendQueued(`Agradezco si me alistan un ${f.name} pero ${f.part} en caja diferente`);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0]).toMatchObject({productId:product.id,quantity:1,note:expect.stringMatching(/caja diferente/i)});expect(added).not.toMatch(/necesito aclarar|cu[aá]l|no manejamos/i);
+  const pickup=await h.sendQueued('No, lo recojo en 15 minutos');expect(h.conv.sessionData.orderType).toBe('pickup');expect(h.conv.state).toBe('awaiting_payment');expect(pickup).not.toMatch(/algo m[aá]s|mercado pago/i);expect(h.conv.sessionData.cart).toHaveLength(1);
+  await h.sendQueued('a nombre Cristina, contraentrega');expect(h.conv.customerName).toBe('Cristina');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.customerName).toBe('Cristina');expect(dto.orderType).toBe('pickup');expect(dto.items).toHaveLength(1);expect(dto.items[0].note).toMatch(/caja diferente/i);
+ });
+});
+
+describe('Street and residence references reach the real routing adapter during checkout',()=>{
+ it('keeps contact, street, reference, cart and fee through payment and simulated confirmation',async()=>{
+  const {WhatsappDeliveryRoutingService}=require('./whatsapp-delivery-routing.service');const h=harness(products,true);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15,deliveryFeeTiers:[{maxKm:5.5,fee:2000}]});
+  const routing=new WhatsappDeliveryRoutingService({get:()=> 'test-key'});const route=jest.spyOn(routing as any,'directionsDistance').mockResolvedValue({distanceKm:1.5,durationMinutes:3});h.service.deliveryRouting=routing;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6585,dailyOrderNumber:93});
+  const originalFetch=global.fetch;global.fetch=jest.fn().mockResolvedValue({status:200,json:async()=>({status:'OK',results:[{formatted_address:'Cl. 10 #81a-20, Bogotá, Colombia',partial_match:false,geometry:{location:{lat:4.62,lng:-74.15}},address_components:[{short_name:'CO',types:['country']}]}]})});
+  try{
+   await h.sendQueued('Quiero un Arroz Con Pollo');await h.sendQueued('3000000005');const reply=await h.sendQueued('Conjunto Santa Catalina Club House\nCalle 10 #81A-20');expect(h.conv.state).toBe('awaiting_payment');expect(reply).not.toMatch(/no pude identificar|algo m[aá]s|mercado pago/i);expect(h.conv.sessionData.address).toMatch(/Santa Catalina/i);expect(h.conv.sessionData.deliveryFeeCalculated).toBe(2000);expect(route).toHaveBeenCalled();
+   const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));const total=await h.sendQueued('¿Cuánto es el total?');expect(total).toMatch(/31\.500/);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.cart).toEqual(cart);
+   await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.phone).toMatch(/3000000005/);expect(dto.deliveryFee).toBe(2000);expect(dto.address).toMatch(/Santa Catalina/i);expect(dto.items).toHaveLength(1);
+  }finally{global.fetch=originalFetch;}
+ });
+});
+
+describe('An additional half remains a purchase rather than the earlier packing note',()=>{
+ for(const enabled of [false,true])it(`agent=${enabled}`,async()=>{
+  const menu=[{id:65841,code:65841,name:'Combo Vegetal',price:30000,availableNow:true,hasAttributes:false,attributes:[]},{id:65842,code:65842,name:'Medio Pollo Frito',price:15000,availableNow:true,hasAttributes:false,attributes:[]}];const h=harness(menu,enabled);
+  await h.sendQueued('Agradezco si me alistan un Combo Vegetal pero la mitad en caja diferente');const note=h.conv.sessionData.cart[0].note;await h.sendQueued('Además un Medio Pollo Frito');expect(h.conv.sessionData.cart).toHaveLength(2);expect(h.conv.sessionData.cart.find((line:any)=>line.productId===65841)).toMatchObject({quantity:1,note});expect(h.conv.sessionData.cart.find((line:any)=>line.productId===65842)).toMatchObject({quantity:1});
+ });
+});
+
+describe('A complete form with several products and payment needs only final confirmation',()=>{
+ for(const enabled of [false,true])it(`agent=${enabled}`,async()=>{
+  const menu=[{id:65851,code:65851,name:'Bowl Mediterraneo',price:24000,availableNow:true,hasAttributes:false,attributes:[]},{id:65852,code:65852,name:'Crema De Zapallo',price:9000,availableNow:true,hasAttributes:false,attributes:[]}];const h=harness(menu,enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));Object.assign(h.conv.sessionData,{lastDeliveryAddress:'Calle 90 11 22'});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6586,dailyOrderNumber:94});
+  const reply=await h.sendQueued('Me das un Bowl Mediterraneo y 2 Crema De Zapallo\nCarlos Torres\n3000000006\nConjunto Los Pinos\nCalle 10 #81A-20\nTorre 4 apto 505\ncontraentrega');
+  expect(h.conv.sessionData.cart).toHaveLength(2);expect(h.conv.sessionData.cart.find((line:any)=>line.productId===65851)?.quantity).toBe(1);expect(h.conv.sessionData.cart.find((line:any)=>line.productId===65852)?.quantity).toBe(2);expect(h.conv.customerName).toBe('Carlos Torres');expect(h.conv.sessionData.paymentMethod).toBe('cash');expect(h.conv.state).toBe('awaiting_final_confirm');expect(reply).toMatch(/confirmar/i);expect(reply).not.toMatch(/algo m[aá]s|misma direcci[oó]n|mercado pago/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.customerName).toBe('Carlos Torres');expect(dto.phone).toMatch(/3000000006/);expect(dto.address).toMatch(/Torre 4 apto 505/i);expect(dto.items).toHaveLength(3);
+ });
+});
+
+describe('Explicit drink with main and extras survives a later combo upgrade and contact correction',()=>{
+ const cases=[{menu:products,source:'me das por favor, un pollo Broaster con Coca-Cola 1.5 orginal, extra 1 porción de papa Francesa 1 plátano con bocadillo y queso',main:4,drink:95,combo:98,extras:[9,53],correction:'el pollo damelo en combo con la coca cola',flavor:'Coca Cola'},
+ {menu:[{id:65901,code:65901,name:'Sandwich Serrano',price:18000,availableNow:true,hasAttributes:false,attributes:[]},{id:65902,code:65902,name:'Te De Durazno 1.5L',categoryName:'Bebidas',price:6000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Sabor',options:['Original','Sin Azucar']}]},{id:65903,code:65903,name:'Combo De Sandwich Serrano',price:24000,description:'Incluye sandwich y té de 1.5L',availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Te De Durazno','Te De Limon']}]},{id:65904,code:65904,name:'Papas Rusticas',price:6000,availableNow:true,hasAttributes:false,attributes:[]},{id:65905,code:65905,name:'Flan De Coco',price:5000,availableNow:true,hasAttributes:false,attributes:[]}],source:'Me das un Sandwich Serrano con Te De Durazno 1.5L Original, extra 1 Papas Rusticas y 1 Flan De Coco',main:65901,drink:65902,combo:65903,extras:[65904,65905],correction:'el Sandwich Serrano damelo en combo con Te De Durazno',flavor:'Te De Durazno'}];
+ for(const f of cases)for(const enabled of [false,true])it(`${f.main} agent=${enabled}`,async()=>{
+  const h=harness(f.menu,enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.flow!=='mercadopago'}));h.service.ordersService.create=jest.fn().mockResolvedValue({id:6590,dailyOrderNumber:95});
+  const reply=await h.sendQueued(f.source);const initial=h.conv.sessionData.cart;expect(initial.map((line:any)=>line.productId)).toEqual(expect.arrayContaining(f.extras));expect(initial.map((line:any)=>line.productId)).toEqual(expect.arrayContaining([f.drink]));expect(reply).toMatch(f.drink===95?/Coca.?Cola.*1[.,]5/i:/Te De Durazno/i);expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);
+  await h.sendQueued(f.correction);expect(h.conv.sessionData.cart.map((line:any)=>line.productId).sort()).toEqual([...f.extras,f.combo].sort());expect(h.conv.sessionData.cart.find((line:any)=>line.productId===f.combo)?.attributes).toContainEqual({attributeName:'Bebida',attributeValue:f.flavor});
+  await h.sendQueued('no mas');await h.sendQueued('cra 81 b # 6b 50 Terrazas de Castilla 2 casa 102');expect(h.conv.state).toBe('awaiting_payment');const cart=structuredClone(h.conv.sessionData.cart);
+  const phone=await h.sendQueued('3000000007');expect(phone).toMatch(/tel[eé]fono.*actualizado|contacto.*actualizado/i);expect(phone).toMatch(/300 000 0007/);expect(phone).toMatch(/c[oó]mo pagas|m[eé]todo de pago/i);expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.contactPhone).toMatch(/3000000007/);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.phone).toMatch(/3000000007/);expect(dto.items).toHaveLength(3);
+ });
+});
+
+describe('Repeating a named destination with internal units must not bypass a coverage rejection',()=>{
+ for(const place of ['Villa Galante','Conjunto Los Pinos'])for(const enabled of [false,true])it(`${place} agent=${enabled}`,async()=>{
+  const h=harness(products,enabled);Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15,deliveryMaxKm:8.5});h.conv.state='awaiting_address';h.conv.sessionData={cart:[{productId:23,code:23,name:'Arroz Con Pollo',unitPrice:29500,quantity:1}],orderType:'delivery',fulfillmentChosen:true,lastDeliveryAddress:'Calle 7 90 76 casa 175',address:'Calle 7 90 76 casa 175',addressConfirmed:false,phoneConfirmed:false} as any;
+  h.service.deliveryRouting.quoteDeliveryFee=jest.fn().mockResolvedValue({ok:false,reason:'out_of_coverage',distanceKm:11.2,message:'Fuera de cobertura. Comparte otra dirección o ubicación.'});
+  await h.sendQueued(`A ${place} entrada 43 apartamento 48`);const reply=await h.sendQueued(`${place} entrada 43 apartamento 48`);
+  expect(reply).toMatch(/cobertura|ubicaci[oó]n/i);expect(reply).not.toMatch(/n[uú]mero de contacto|c[oó]mo pagas/i);expect(h.conv.sessionData.address?.toLowerCase().split(place.toLowerCase()).length).toBe(2);expect(h.conv.sessionData.deliveryOutOfCoverage).toBe(true);expect(h.conv.sessionData.cart).toHaveLength(1);
+ });
+});
+
+describe('Named address plus internal access reaches checkout without losing driver details',()=>{
+ for(const place of ['Villa Galante','Conjunto Los Pinos'])for(const enabled of [false,true])it(`${place} agent=${enabled}`,async()=>{
+  const {WhatsappDeliveryRoutingService}=require('./whatsapp-delivery-routing.service');const h=harness(products,enabled);Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15,deliveryFeeTiers:[{maxKm:8.5,fee:2000}],deliveryMaxKm:8.5});h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));h.conv.state='awaiting_address';h.conv.sessionData={cart:[{productId:23,code:23,name:'Arroz Con Pollo',unitPrice:29500,quantity:1}],orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true} as any;
+  const routing=new WhatsappDeliveryRoutingService({get:()=> 'mock-key'});jest.spyOn(routing as any,'directionsDistance').mockResolvedValue({distanceKm:1.5,durationMinutes:4});h.service.deliveryRouting=routing;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6591,dailyOrderNumber:96});
+  const original=global.fetch;const queries:string[]=[];global.fetch=jest.fn().mockImplementation(async(url:string)=>{queries.push(new URL(url).searchParams.get('address')||'');return {status:200,json:async()=>({status:'OK',results:[{formatted_address:`${place}, Kennedy, Bogotá, Colombia`,partial_match:false,geometry:{location:{lat:4.62,lng:-74.15}},address_components:[{short_name:'CO',types:['country']}]}]})};});
+  try{
+   const reply=await h.sendQueued(`A ${place} entrada 43 apartamento 48`);expect(reply).not.toMatch(/fuera de cobertura|algo m[aá]s|n[uú]mero de contacto/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.address).toMatch(/entrada 43.*(?:apartamento|apto) 48/i);expect(queries.length).toBeGreaterThan(0);expect(queries.every(query=>!/entrada|apartamento|\b43\b|\b48\b/i.test(query))).toBe(true);
+   await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/entrada 43.*(?:apartamento|apto) 48/i);expect(dto.deliveryFee).toBe(2000);expect(dto.items).toHaveLength(1);
+  }finally{global.fetch=original;}
+ });
+});

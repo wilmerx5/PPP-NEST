@@ -1,3 +1,5 @@
+import {splitDeliveryAddressParts} from './whatsapp-address-parts';
+import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
 import { hasExplicitOrderApprovalClause, blocksImplicitOrderApproval } from './whatsapp-order-approval';
@@ -920,6 +922,19 @@ export class WhatsappOrchestratorService {
 
     // Glosario local: typos / aliases antes de matching e IA.
     // El saludo se arma con el texto de entrada: "veci" no es un plato, pero sí el tono.
+    if (msg.messageType==='text' && /\n/.test(msg.text || '') && !['completed','closed','human_takeover'].includes(conv.state)) {
+      const envelopeMenu=await this.catalogService.getMenuProducts();
+      const envelope=checkoutEnvelope(msg.text || text,line=>!!this.catalogService.findProductEmbeddedInMessage(line,envelopeMenu),line=>this.looksLikePhoneNumber(line),line=>{
+        const value=this.normalizeForMatch(line.replace(/^pago\s+(?:con|por|en)\s+/i,''));
+        return getEnabledPaymentMethods(cfg.paymentMethods).find(method=>[method.label,...method.keywords].some(word=>this.normalizeForMatch(word)===value))?.id || null;
+      });
+      if(envelope){
+        await this.conversationService.updateCustomerName(conv,envelope.customerName);
+        const current=this.conversationService.getSession(conv);
+        await this.conversationService.saveSession(conv,{...current,contactPhone:this.normalizeContactPhone(envelope.phone,conv.phoneE164),phoneConfirmed:true,...(envelope.paymentMethod?{paymentMethod:envelope.paymentMethod}: {})});
+        text=`${envelope.orderText} para ${envelope.address}`;
+      }
+    }
     const inboundText = text;
     text = applyLocalGlossary(text);
     if (!['awaiting_name', 'awaiting_address', 'awaiting_phone'].includes(conv.state || '')) {
@@ -2368,6 +2383,17 @@ export class WhatsappOrchestratorService {
           (this.formatInterruptedStepReminder(conv,session) ? '\n\n' + this.formatInterruptedStepReminder(conv,session) : ''));
         return;
       }
+    }
+    if (session.cart.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+        !session.pendingAddOffer && !session.pendingSideSwap && !this.formatPendingCartEditReminder(session) &&
+        !['completed','closed','human_takeover'].includes(conv.state)) {
+      if(msg.messageType==='text' && /^(?:(?:mi\s+)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*)?[+\d\s()-]+$/i.test(originalText.trim()) && this.looksLikePhoneNumber(originalText)){
+        session={...session,contactPhone:this.normalizeContactPhone(originalText,conv.phoneE164),phoneConfirmed:true};
+        await this.conversationService.saveSession(conv,session);
+        await this.tryConfirmOrder(conv,msg.waId,session,{preface:`Teléfono de contacto actualizado ✅ ${this.formatWaPhoneDisplay(session.contactPhone!)}`});return;
+      }
+      if(/(?:^|[,;\n])\s*(?:a\s+nombre|(?:mi\s+)?nombre\s*[:\-])/i.test(originalText) &&
+          await this.tryHandleExplicitCustomerNameLabel(conv,msg.waId,session,originalText,cfg))return;
     }
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
@@ -3904,6 +3930,7 @@ export class WhatsappOrchestratorService {
         isReuseLastAddressIntent(originalText || text));
     if (
       cfg.agentV1Enabled &&
+      !this.isAddressOnlyCustomerMessage(originalText,this.parseCompoundOrderMessage(originalText)) &&
       this.looksLikeHumanIntentSentence(originalText || text) &&
       conv.state !== 'building_cart' &&
       conv.state !== 'awaiting_attribute' &&
@@ -9852,12 +9879,17 @@ export class WhatsappOrchestratorService {
     waId: string,
     session: WhatsappSessionData,
     text: string,
+    cfg?: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const raw = (text || '').trim();
     if (raw.length < 5 || raw.length > 90) return false;
-    const m = raw.match(
+    const clauses=raw.split(/[,;\n]+/).map(clause=>clause.trim()).filter(Boolean);
+    const nameClause=clauses.find(clause=>/^(?:a\s+nombre(?:\s+de)?|(?:mi\s+)?nombre\s*[:\-]|me\s+llamo|soy)(?:\s|$)/i.test(clause)) || raw;
+    const payment=cfg ? findPaymentMethodByText(raw,cfg.paymentMethods) : null;
+    if(clauses.length>1 && (!payment || clauses.some(clause=>clause!==nameClause && !findPaymentMethodByText(clause,cfg!.paymentMethods))))return false;
+    const m = nameClause.match(/^(?:a\s+nombre(?:\s+de)?)\s+(.+)$/i) || nameClause.match(
       /^(?:mi\s+)?nombre\s*[:\-]\s*(.+)$/i,
-    ) || raw.match(
+    ) || nameClause.match(
       /^(?:me\s+llamo|soy)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{1,60})$/i,
     );
     if (!m?.[1]) return false;
@@ -9877,8 +9909,9 @@ export class WhatsappOrchestratorService {
     const fresh = await this.conversationService.reloadConversation(conv.id);
     Object.assign(conv, fresh);
     session = this.conversationService.getSession(conv);
+    if(payment){session={...session,paymentMethod:payment.id};await this.conversationService.saveSession(conv,session);}
 
-    if (conv.state === 'awaiting_name' || !session.paymentMethod) {
+    if (payment || conv.state === 'awaiting_name' || !session.paymentMethod) {
       await this.tryConfirmOrder(conv, waId, session, {
         preface: `Perfecto, *${name}* ✅`,
       });
@@ -10601,7 +10634,10 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!this.catalogService.isVariantPreferenceIntent(text)) return false;
-    const product = this.resolveDiscussedProduct(session, text, products);
+    const namedTarget=text.match(/^(?:el\s+|la\s+)?(.+?)\s+(?:d[aá]melo|d[aá]mela|ponlo|ponla)\s+en\s+combo\b/i)?.[1];
+    const cartProducts=products.filter(product=>session.cart.some(line=>line.productId===product.id) && !this.catalogService.isLikelyDrinkProduct(product));
+    const explicitProduct=namedTarget ? this.catalogService.resolveSpokenDish(namedTarget,cartProducts) : null;
+    const product = explicitProduct || this.resolveDiscussedProduct(session, text, products);
     if (!product) return false;
 
     return this.tryApplyVariantPreferenceToProduct(
@@ -10785,6 +10821,22 @@ export class WhatsappOrchestratorService {
         `Si buscas *sopa pequeña* (ajiaco/menudencias), dímelo. ${this.humanContactMessage()}`,
     );
     return true;
+  }
+
+  /** Explicitly folding a single matching bottle into a replacement combo must
+   * not charge the same drink twice. Ambiguous lines or extra bottles remain. */
+  private absorbExplicitComboDrink(session: WhatsappSessionData, original: WhatsappCartItem | undefined, combo: MenuProduct, text: string, products: MenuProduct[]): WhatsappSessionData {
+    if(!original || original.productId===combo.id || !/\ben\s+combo\s+con\b/i.test(text) || /\b(?:aparte|adicional|extra)\b/i.test(text))return session;
+    const choice=this.catalogService.drinkTextMatchesAttribute(combo,text);
+    const volume=this.catalogService.productDrinkVolumeMl({...combo,name:combo.description || ''});
+    if(!choice || !volume)return session;
+    const candidates=session.cart.filter(line=>{
+      const product=products.find(item=>item.id===line.productId);
+      return product && this.catalogService.isLikelyDrinkProduct(product) && !line.note && line.quantity===original.quantity &&
+        this.catalogService.productDrinkVolumeMl(product)===volume &&
+        this.catalogService.drinkTextMatchesAttribute(combo,[line.name,...(line.attributes || []).map(attr=>attr.attributeValue)].join(' '))?.attributeValue===choice.attributeValue;
+    });
+    return candidates.length===1 ? {...session,cart:session.cart.filter(line=>line!==candidates[0]),lastDrinkAddition:undefined} : session;
   }
 
   private async tryApplyVariantPreferenceToProduct(
@@ -10992,7 +11044,7 @@ export class WhatsappOrchestratorService {
             await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
             return true;
           }
-          session = added.session;
+          session = this.absorbExplicitComboDrink(added.session, replacement?.originalLine, picked, text, products);
           await this.conversationService.saveSession(conv, session, 'building_cart');
           const chosen = step.attributes.map((a) => a.attributeValue).join(', ');
           await this.reply(
@@ -11044,7 +11096,7 @@ export class WhatsappOrchestratorService {
         await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
         return true;
       }
-      session = added.session;
+      session = this.absorbExplicitComboDrink(added.session, replacement?.originalLine, picked, text, products);
       await this.conversationService.saveSession(conv, session, 'building_cart');
       await this.reply(
         conv,
@@ -16072,7 +16124,7 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const raw = (text || '').trim();
     if (!raw || raw.length < 3) return false;
-    if (!session.address?.trim() || !session.addressConfirmed) return false;
+    if (!session.address?.trim() || !session.addressConfirmed || session.deliveryOutOfCoverage) return false;
     if (!this.looksLikeUnitOrTowerDetailOnly(raw)) return false;
 
     const detail = this.normalizeUnitDetailText(raw);
@@ -16169,7 +16221,7 @@ export class WhatsappOrchestratorService {
       !/\b(calle|carrera|cra|av|avenida)\b/.test(n)
     ) {
       const words = n.split(/\s+/).filter(Boolean);
-      return words.length >= 1 && words.length <= 6;
+      return words.length >= 1 && words.length <= 6 && /^(?:(?:es|mi|la|el)\s+)?(?:torre|bloque|apto|apartamento|apt|ap|int\.?|interior|casa|local|oficina)\b/.test(n);
     }
 
     return false;
@@ -16483,7 +16535,7 @@ export class WhatsappOrchestratorService {
     if (paren?.[1] && paren[2]) {
       return { geocodeQuery: paren[1].trim(), customerHint: paren[2].trim() };
     }
-    return { geocodeQuery: trimmed, customerHint: trimmed };
+    return { geocodeQuery: splitDeliveryAddressParts(trimmed).base, customerHint: trimmed };
   }
 
   /**

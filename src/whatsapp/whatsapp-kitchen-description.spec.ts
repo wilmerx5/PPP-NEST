@@ -51,3 +51,16 @@ describe('Real purchase tools retain degree notes and override contradictory val
   expect(result.ok).toBe(true);expect(actions.addItems[0].quantity).toBe(2);expect(actions.addItems[0].attributes).toEqual([{attributeName:f.attr,attributeValue:explicit?f.other:f.base}]);expect(actions.addItems[0].note).toContain(f.note);
  });
 });
+
+describe('Qualified literal option requires its own explicit attribute phrase',()=>{
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');const catalog=new WhatsappCatalogService({});const attr={attributeName:'Estilo',options:['Natural','Picante','No Tan Picante']};
+ it('selects a complete named option after con plus attribute',()=>expect(catalog.pickAttributeOptionFromText('Quiero curry con Estilo No Tan Picante por favor',attr)).toBe('No Tan Picante'));
+ it('does not choose the named option from an unbound preference',()=>expect(catalog.pickAttributeOptionFromText('Quiero curry no tan picante',attr)).toBeNull());
+ it('keeps the explicit option before a degree preference',()=>expect(catalog.pickAttributeOptionFromText('con Estilo Picante, pero no tan picante',attr)).toBe('Picante'));
+ it('does not bypass an explicit rejection',()=>expect(catalog.pickAttributeOptionFromText('no quiero curry con Estilo No Tan Picante',attr)).toBeNull());
+});
+
+it('uses the longest complete qualified canonical option in an explicit attribute phrase',()=>{
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');const catalog=new WhatsappCatalogService({});
+ expect(catalog.pickAttributeOptionFromText('Quiero curry con Estilo No Tan Picante Especial por favor',{attributeName:'Estilo',options:['Natural','No Tan Picante','No Tan Picante Especial']})).toBe('No Tan Picante Especial');
+});

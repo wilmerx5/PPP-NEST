@@ -13,7 +13,8 @@ const PHRASE_REWRITES: Array<{
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
   { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
-  { re: /^ada\s+mas$/i, to: 'nada mas' },
+  { re: /^(?:te\s+)?agradezco\s+si\s+me\s+(?:alistan|preparan)\s+/i, to: 'quiero ' },
+  { re: /^(?:ada|nad)\s+m[aá]s[.!]*$/i, to: 'nada mas' },
   { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
   // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
   { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },

@@ -8,6 +8,8 @@ const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por
  */
 export function splitKitchenPreference(source: string): {productText: string; note: string} | null {
   if (/[?¿;]/.test(source)) return null;
+  const packedPart=source.match(/^(.+?)\s+pero\s+((?:(?:medi[oa]|una\s+parte)(?:\s+de)?\s+\p{L}+(?:\s+\p{L}+){0,2}|la\s+mitad(?:\s+de\s+\p{L}+)?)\s+en\s+(?:una?\s+)?(?:caja|bolsa|empaque)\s+(?:diferente|aparte|separad[oa]))(?:\s+por\s+favor)?[.!]*$/iu);
+  if(packedPart && !/\b(?:otro|otra|agrega|anade|y)\b/i.test(packedPart[2]))return {productText:packedPart[1],note:packedPart[2]};
   const description=splitKitchenDescription(source);
   if(description)return description;
   const handling = HANDLING;

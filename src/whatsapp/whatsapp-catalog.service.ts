@@ -8994,7 +8994,28 @@ export class WhatsappCatalogService {
    * También bullets/líneas WhatsApp: "* Medio pollo\n* Porción de papas".
    */
   splitMultiProductSegments(text: string, products?: WhatsappCatalogProduct[]): string[] {
-    const raw = this.splitMultiProductSegmentsRaw(text).flatMap(part => {
+    const separateDrink=(part:string):string[]=>{
+      const withDrink=products?.length ? part.match(/^(.+?)\s+con\s+(.+)$/i) : null;
+      if(withDrink){
+        const host=this.resolveSpokenDish(withDrink[1],products!);
+        const drink=this.resolveSpokenDish(withDrink[2],products!);
+        const drinkHead=drink ? normalizeText(this.stripQuantityFromSearchQuery(drink.name) || drink.name).split(' ')[0] : '';
+        const drinkSource=normalizeText(this.stripQuantityFromSearchQuery(withDrink[2]) || withDrink[2]);
+        if(host && drink && drinkHead && (drinkSource===drinkHead || drinkSource.startsWith(drinkHead+' ')) &&
+            !/[;\r\n]/.test(withDrink[2]) && host.id!==drink.id && !this.isLikelyDrinkProduct(host) &&
+            this.isLikelyDrinkProduct(drink) &&
+            !(host.attributes || []).some(attr=>/\b(?:bebida|gaseosa|refresco)s?\b/i.test(attr.attributeName)) &&
+            !this.findAllProductsEmbeddedInMessage(withDrink[2],products!).some(product=>!this.isLikelyDrinkProduct(product)))
+          return [withDrink[1],withDrink[2]];
+      }
+      return [part];
+    };
+    // Protect catalogue beverages outside the fixed food glossary before the
+    // raw splitter can discard their "con …" clause as a preparation note.
+    const framed=products?.length ? text.split(/((?<!\d),(?!\d)|\r?\n)/).map(part=>separateDrink(part).join(' y ')).join('') : text;
+    const raw = this.splitMultiProductSegmentsRaw(framed).flatMap(part => {
+      const separated=separateDrink(part);
+      if(separated.length>1)return separated;
       if (!products?.length || !part.includes(',')) return [part];
       const clauses = part.split(/\s*,\s*/).filter(Boolean);
       if (clauses.length < 2 || clauses.some(clause => /^(?:sin|con|extra|bien|poco|poca|mas|menos)\b/.test(normalizeText(clause)))) return [part];
@@ -11309,7 +11330,13 @@ export class WhatsappCatalogService {
     allowPortionChoice = false,
   ): string | null {
     // Quitar porciones sueltas pedidas aparte: no usar "papas fritas" como arepas Fritas
-    const literalOption=attr.options.find(option=>/\b(?:no tan|no muy|que no)\b/.test(normalizeText(option)) && normalizeText(option)===normalizeText(text || ''));
+    const literalSource=normalizeText(text || '');
+    const rejectsLiteral=/\b(?:no quiero|ya no|no era|no es eso)\b/.test(literalSource);
+    const literalOption=[...attr.options].sort((a,b)=>normalizeText(b).length-normalizeText(a).length).find(option=>{
+      const value=normalizeText(option);
+      if(!/\b(?:no tan|no muy|que no)\b/.test(value))return false;
+      return value===literalSource || !rejectsLiteral && new RegExp(`\\bcon\\s+${escapeRegExp(normalizeText(attr.attributeName))}\\s+${escapeRegExp(value)}(?:\\b|$)`).test(literalSource);
+    });
     if(literalOption)return literalOption;
     let cleaned = splitIntensityPreference(text || '')?.productText ?? text ?? '';
     if (!allowPortionChoice) cleaned = cleaned.replace(
