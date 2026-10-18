@@ -1,3 +1,11 @@
+## VIGENTE — controles de límites parciales ampliados, 18/10/2026 22:47 UTC
+
+Base a71c537c, staging limpio/sin procesos de validación y sincronizado con origin al comenzar. Se añadieron 32 conversaciones gratuitas en menús de arepas y burritos: cero unidades, más unidades de las disponibles, total declarado incompatible y varias líneas candidatas. Se probaron carrito y espera de pago, con agente simulado encendido/apagado. Todas conservan cantidades, notas individuales de plato/bebida y estado; permiten consultar total y cerrar con DTO simulado exacto sin crear orden antes de confirmar.
+
+Pasaron 60 pruebas focalizadas (32 nuevas + 28 controles previos) en 7.957 s y TypeScript. Solo cambian tests y documentación: no hay reglas de ejecución nuevas, no se repitió global ni se reconstruyó/desplegó. Última global acreditada sigue 87 suites / 9.172 casos del código 0a1b7585; NO atribuirle las 32 pruebas nuevas. Último runtime verificado sigue 0a1b7585 / imagen 4c3fc474… a las 22:03:14 UTC; no hubo health nuevo en este despertar. Main preservada, cero API pagada/Meta/mapas/órdenes externas. Presupuesto intacto.
+
+Siguiente objetivo pendiente: implementar conversión parcial real, hoy solo protegida con aclaración. Dividir una línea de cuatro en dos originales y dos combos, absorber exactamente dos botellas compatibles, conservar otras dos con sus notas/sabores, comprobar respuesta/estado/DTO. Añadir caso de alcance igual al total que permita conversión completa; bebidas incompatibles, notas distintas y ambigüedad deben conservarse. Luego unidades internas con letras y formularios etiquetados. Evidencia whatsapp-partial-boundaries-expanded-validation-1810.json. No hay suites activas. Entradas inferiores históricas.
+
 ## VIGENTE — protección parcial y aviso de bebidas desplegados en staging, 18/10/2026
 
 Código `0a1b75850e760dab3b5697bf5175658f0e192998`, imagen `sha256:4c3fc474fc3d2a0cd4f3aac79f646f3a32cde4f6e55743524c938603c6631e5e`, running/healthy y /api/health OK, DB connected, circuito CLOSED a las 22:03:14 UTC. Rollback `ppp-nest-staging:rollback-before-0a1b7585`. Probes del compilado de alcance parcial y aviso de bebidas aprobados. Main/producción preservadas (imagen productiva c5e97ab1… running). No reconstruir por este cierre documental.

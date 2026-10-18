@@ -19186,3 +19186,51 @@ describe('Partial combo conversion must not silently replace the whole cart line
   await h.sendQueued('nada más');await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(prefix?8:4);expect(dto.items.filter((line:any)=>line.productId===(prefix?main.id:combo.id))).toHaveLength(4);expect(dto.items.filter((line:any)=>line.productId===(prefix?main.id:combo.id)).every((line:any)=>/sin cebolla/i.test(line.note))).toBe(true);
  });
 });
+
+describe('Partial combo scope boundaries preserve the full order through checkout', () => {
+  const menus = [
+    {food: 'Arepa De Champinones', drink: 'Agua De Panela'},
+    {food: 'Burrito Vegetal', drink: 'Te Verde'},
+  ];
+  for (const menu of menus) for (const enabled of [false, true]) {
+    for (const state of ['building_cart', 'awaiting_payment']) {
+      for (const boundary of ['zero', 'excess', 'wrong_total', 'ambiguous']) {
+        it(`${menu.food} agent=${enabled} state=${state} ${boundary}`, async () => {
+          const main = {id: 66301, code: 66301, name: menu.food, price: 18000, availableNow: true, attributes: []};
+          const drink = {id: 66302, code: 66302, name: menu.drink, categoryName: 'Bebidas', price: 6000, availableNow: true, attributes: []};
+          const combo = {id: 66303, code: 66303, name: 'Combo De ' + menu.food, description: 'Incluye bebida de 1.5L', price: 24000, availableNow: true, attributes: [{attributeName: 'Bebida', options: [menu.drink]}]};
+          const other = {id: 66304, code: 66304, name: 'Croquetas De Garbanzo', price: 10000, availableNow: true, attributes: []};
+          const h = harness([main, drink, combo, other], enabled);
+          h.conv.state = state;
+          const line = (p: any, quantity: number, note: string) => ({productId: p.id, code: p.code, name: p.name, unitPrice: p.price, quantity, note});
+          Object.assign(h.conv.sessionData, {cart: [line(main, 4, 'Sin cebolla'), line(drink, 4, 'Sin hielo'), ...(boundary === 'ambiguous' ? [line(other, 1, 'Bien doradas')] : [])], orderType: 'pickup', fulfillmentChosen: true, phoneConfirmed: true, contactPhone: h.conv.phoneE164, notesCollected: true});
+          h.service.ordersService.create = jest.fn().mockResolvedValue({id: 6630, dailyOrderNumber: 102});
+          const before = structuredClone(h.conv.sessionData.cart);
+          const text = boundary === 'ambiguous' ? `damelo solo 2 en combo con ${menu.drink}` : `el ${menu.food} damelo ${boundary === 'wrong_total' ? 'solo dos de los cinco' : boundary === 'zero' ? 'solo 0' : 'solo 9'} en combo con ${menu.drink}`;
+          const reply = await h.sendQueued(text);
+          expect(reply).toMatch(/pedido sigue igual/i);
+          expect(reply).not.toMatch(/listo ✅|lo cambi[eé]/i);
+          if (boundary === 'ambiguous') expect(reply).toMatch(/indica el plato/i);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.state).toBe(state);
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+          const total = await h.sendQueued('cuánto suma mi pedido');
+          expect(total).toMatch(boundary === 'ambiguous' ? /106[.,]000/ : /96[.,]000/);
+          expect(h.conv.sessionData.cart).toEqual(before);
+          expect(h.conv.state).toBe(state);
+          await h.sendQueued('nada más');
+          await h.sendQueued('1');
+          expect(h.service.ordersService.create).not.toHaveBeenCalled();
+          await h.sendQueued('confirmar');
+          expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+          const dto = h.service.ordersService.create.mock.calls[0][0];
+          expect(dto.items).toHaveLength(boundary === 'ambiguous' ? 9 : 8);
+          expect(dto.items.filter((item: any) => item.productId === main.id)).toHaveLength(4);
+          expect(dto.items.filter((item: any) => item.productId === drink.id)).toHaveLength(4);
+          expect(dto.items.filter((item: any) => item.productId === main.id).every((item: any) => /sin cebolla/i.test(item.note))).toBe(true);
+          expect(dto.items.filter((item: any) => item.productId === drink.id).every((item: any) => /sin hielo/i.test(item.note))).toBe(true);
+        });
+      }
+    }
+  }
+});
