@@ -18127,3 +18127,45 @@ describe('Kitchen note identity and withdrawal ownership',()=>{
   });
  }
 });
+
+describe('Partial unit preparation interrupts checkout without changing totals',()=>{
+ const families=[{name:'Sopa De Ajiaco',plural:'sopas de ajiaco',other:'Sopa De Mondongo',note:'sin arroz',attr:'Tamaño',value:'Grande'},
+ {name:'Bao De Hongos',plural:'baos de hongos',other:'Bao De Tofu',note:'sin cilantro',attr:'Salsa',value:'Teriyaki'}];
+ for(const f of families)for(const agent of [false,true])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const format of ['quantity first','product first']){
+  it(f.name+' '+state+' '+format+' agent='+agent,async()=>{
+   const menu=[{id:62001,code:62001,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.value]}]},
+    {id:62002,code:62002,name:f.other,price:12000,availableNow:true,hasAttributes:false,attributes:[]}];
+   const h=harness(menu,agent);h.conv.state=state;
+   Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,
+    ...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{}),cart:menu.map((p,i)=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:i?1:3,attributes:i?[]:[{attributeName:f.attr,attributeValue:f.value}],note:i?'para Ana':'bien empacado'}))});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:6200,dailyOrderNumber:63});
+   const request=format==='quantity first'?'dos de los tres '+f.plural+' '+f.note+' y los demás normales':'de los tres '+f.plural+', dos '+f.note+' y el otro normal';
+   await h.sendQueued(request);
+   expect(h.cartRows()).toEqual(expect.arrayContaining([expect.objectContaining({id:62001,qty:1,note:'bien empacado',attrs:[f.attr+':'+f.value]}),expect.objectContaining({id:62001,qty:2,note:expect.stringContaining(f.note),attrs:[f.attr+':'+f.value]}),expect.objectContaining({id:62002,qty:1,note:'para Ana'})]));
+   expect(h.cartRows()).toHaveLength(3);expect(h.cartRows().find(r=>r.qty===2)?.note).toContain('bien empacado');
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.replies.at(-1)).not.toMatch(/no manejamos|no tenemos|no entend/i);
+   const before=structuredClone(h.cartRows());await h.sendQueued(request);expect(h.cartRows()).toEqual(before);
+   await h.sendQueued('Pago contraentrega');await h.sendQueued('Si');
+   expect(h.conv.state).toBe('completed');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(4);expect(items.filter((item:any)=>item.productId===62001)).toHaveLength(3);expect(items.filter((item:any)=>item.productId===62001&&item.note?.includes(f.note))).toHaveLength(2);expect(items.filter((item:any)=>item.productId===62001&&!item.note?.includes(f.note))).toHaveLength(1);
+  });
+ }
+});
+
+describe('Partial unit preparation respects selection ownership and variants',()=>{
+ for(const name of ['Sopa De Ajiaco','Bao De Hongos'])for(const agent of [false,true])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const mode of ['variants','invalid total','pending attribute','pending subset']){
+  it(name+' '+state+' '+mode+' agent='+agent,async()=>{
+   const menu=[{id:62101,code:62101,name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]}];
+   const h=harness(menu,agent);h.conv.state=state;h.service.ordersService.create=jest.fn();
+   const line={productId:62101,code:62101,name,unitPrice:18000,quantity:3,attributes:[{attributeName:'Salsa',attributeValue:'Suave'}],note:'bien empacado'};
+   Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,cart:[line]});
+   if(mode==='variants')h.conv.sessionData.cart.push({...line,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Picante'}]});
+   if(mode==='pending attribute')h.conv.sessionData.pendingAttribute={productId:62101,code:62101,name,price:18000,quantity:1,attributes:menu[0].attributes,selected:[]};
+   if(mode==='pending subset')h.conv.sessionData.pendingSubsetKitchenNote={quantity:1,note:'sin sal',productIds:[62101]};
+   const before=structuredClone(h.conv.sessionData);
+   await h.sendQueued('dos de los '+(mode==='invalid total'?'cuatro':'tres')+' '+name+' sin cilantro y los demás normales');
+   expect(h.conv.sessionData).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   expect(h.replies.at(-1)).toMatch(/cu[aá]l|selecci[oó]n|unidades|platos/i);expect(h.replies.at(-1)).not.toMatch(/no manejamos|no tenemos/i);
+  });
+ }
+});

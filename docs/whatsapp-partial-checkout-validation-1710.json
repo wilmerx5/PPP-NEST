@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "b20e5ea3",
+  "status": "validated_not_deployed",
+  "newTests": 56,
+  "mainChanged": false,
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "baseline": {
+    "completeJourneys": {
+      "failed": 24,
+      "log": "/tmp/ppp-partial-checkout-baseline-1710.log",
+      "scope": "Building-cart quantity-first split succeeded initially, but repeating after auto-checkout added an item; product-first singular remainder and payment/final-confirm paths failed earlier."
+    },
+    "boundaries": {
+      "failed": 8,
+      "passed": 24,
+      "log": "/tmp/ppp-partial-checkout-boundaries-baseline-fixed-1710.log",
+      "scope": "Pending subset instruction was not protected. Earlier baseline could not compile due to test fixture unitPrice instead of price; corrected without changing production."
+    }
+  },
+  "targeted": {
+    "passed": 191,
+    "suites": 2,
+    "log": "/tmp/ppp-partial-checkout-final-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-partial-checkout-tsc-1710.log"
+  },
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-partial-checkout-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-partial-checkout-global-1710.log",
+    "snapshot": "/tmp/ppp-partial-checkout-final-source-1710.json",
+    "suites": 77,
+    "tests": 7968,
+    "seconds": 1115.764,
+    "sourceFiles": 354,
+    "sourceUnchanged": true
+  },
+  "scope": [
+    "24 complete mock-order journeys: soups/baos, agent enabled/disabled, building/payment/final-confirm states, quantity-first/product-first text",
+    "32 boundary controls: same SKU variants, inconsistent total, pending attribute or subset note; payment/final-confirm states",
+    "Preserves quantities, attributes, prior notes, other item and final per-unit order payload",
+    "Repeating after split asks for clarification and does not add units"
+  ],
+  "limitations": [
+    "No new real-model inference or audio evidence.",
+    "Repeated split request asks rather than claiming idempotent success.",
+    "Competing pending selection is preserved and clarified; the new instruction is not queued for automatic later replay.",
+    "This does not implement mixed edit plus independent purchase or rewriting contradictory preparation notes."
+  ],
+  "deployment": null
+}

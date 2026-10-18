@@ -1312,7 +1312,8 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
-    if (await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+    if (await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,originalText,cfg)) {
       turn.subsetNoteHandled = true;
       return;
@@ -2725,34 +2726,6 @@ export class WhatsappOrchestratorService {
       }
       text = first.availableNow !== false ? conditionalOrder[1] : conditionalOrder[2];
       originalText = text;
-    }
-
-    const partialNote = parsePartialNote(text);
-    if (partialNote && session.cart.length && conv.state === 'building_cart' &&
-      !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
-      const targets = partialNote.query
-        ? session.cart.flatMap((line, index) => correctionMatchesLine(line, partialNote.query!) ? [index] : [])
-        : session.cart.length === 1 ? [0] : [];
-      const index = targets.length === 1 ? targets[0] : -1;
-      const line = session.cart[index];
-      if (!line || (!partialNote.query && line.note) || partialNote.quantity >= line.quantity ||
-        (partialNote.total !== undefined && partialNote.total !== line.quantity) ||
-        (partialNote.remainder !== undefined && partialNote.quantity + partialNote.remainder !== line.quantity)) {
-        await this.reply(conv, msg.waId, '¿De cuál producto y cuántas unidades llevan esa nota? Así conservo las demás como están.');
-        return;
-      }
-      const note = editScopedCartNote(line.note, {kind:'append',query:'',note:partialNote.note,preserve:[]});
-      if (note.blocked) {
-        await this.reply(conv, msg.waId, 'La nota es demasiado larga. ¿Puedes resumirla? El carrito sigue igual.');
-        return;
-      }
-      session = {...session, cart: session.cart.flatMap((item, position) => position !== index ? [item] : [
-        {...line, quantity: line.quantity - partialNote.quantity},
-        {...line, quantity: partialNote.quantity, note: note.note},
-      ])};
-      await this.conversationService.saveSession(conv, session);
-      await this.reply(conv, msg.waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n¿Algo más?');
-      return;
     }
 
     // Resolve independent purchase/price clauses before the agent's inquiry guards.
@@ -15233,6 +15206,38 @@ export class WhatsappOrchestratorService {
       items,
       cfg,
     );
+  }
+
+  private async tryHandlePartialUnitKitchenNote(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    const partialNote = parsePartialNote(text);
+    if (!partialNote || !session.cart.length || !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      await this.reply(conv,waId,'Primero aclaremos la selección pendiente para aplicar la nota a las unidades correctas.\n\n'+this.formatInterruptedStepReminder(conv,session));return true;
+    }
+    const targets = partialNote.query
+      ? session.cart.flatMap((line, index) => correctionMatchesLine(line, partialNote.query!) ? [index] : [])
+      : session.cart.length === 1 ? [0] : [];
+    const index = targets.length === 1 ? targets[0] : -1;
+    const line = session.cart[index];
+    if (!line || (!partialNote.query && line.note) || partialNote.quantity >= line.quantity ||
+      (partialNote.total !== undefined && partialNote.total !== line.quantity) ||
+      (partialNote.remainder !== undefined && partialNote.quantity + partialNote.remainder !== line.quantity)) {
+      await this.reply(conv, waId, '¿De cuál producto y cuántas unidades llevan esa nota? Así conservo las demás como están.');
+      return true;
+    }
+    const note = editScopedCartNote(line.note, {kind:'append',query:'',note:partialNote.note,preserve:[]});
+    if (note.blocked) {
+      await this.reply(conv, waId, 'La nota es demasiado larga. ¿Puedes resumirla? El carrito sigue igual.');
+      return true;
+    }
+    session = {...session, cart: session.cart.flatMap((item, position) => position !== index ? [item] : [
+      {...line, quantity: line.quantity - partialNote.quantity},
+      {...line, quantity: partialNote.quantity, note: note.note},
+    ])};
+    await this.conversationService.saveSession(conv, session);
+    await this.reply(conv, waId, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)) + '\n\n'+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));
+    return true;
+
   }
 
   private formatSubsetKitchenNoteQuestion(session: WhatsappSessionData): string {

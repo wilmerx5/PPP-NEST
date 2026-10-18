@@ -6,7 +6,8 @@ const count = (word: string) => counts[word] || (/^\d{1,2}$/.test(word) ? Number
 /** An explicit exclusion for a subset, with an explicit unchanged remainder. */
 export function parsePartialNote(text: string): { quantity: number; note: string; remainder?: number; query?: string; total?: number } | null {
   if (/[¿?;]/.test(text) || text.length > 250) return null;
-  const normalized = normalizeCorrection(text).replace(/[.!]+$/, '').trim();
+  const normalized = normalizeCorrection(text).replace(/[.!]+$/, '').trim()
+    .replace(/\by (?:el otro|la otra) normal$/, 'y los otros uno normales');
   const amount = '(?:\\d{1,2}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)';
   const tail = '(sin\\s+.+?)\\s+y\\s+(?:los|las)\\s+(?:(?:otros|otras)\\s+(' + amount + ')|(?:demas|resto))\\s+normales?$';
   const quantityFirst = normalized.match(new RegExp('^(' + amount + ')\\s+de\\s+(?:los|las)\\s+(' + amount + ')\\s+(.+?)\\s+' + tail));

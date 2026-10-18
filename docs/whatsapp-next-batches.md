@@ -1,3 +1,16 @@
+## Tanda17/10: subconjuntos de unidades durante checkout
+
+56 nuevos casos;191 focalizadas, TypeScript y72 contratos Node verdes. Global77 suites/7968tests aprobado en1115.764s,354 hashes intactos; /tmp/ppp-partial-checkout-global-1710.log, ver docs/whatsapp-partial-checkout-validation-1710.json. Esta tanda NO está desplegada; agrupar con siguientes reglas. Main intacta.
+
+Próximo bloque concreto, después de validar/publicar:
+- Carrito contiene1plato: «el que tengo sin salsa y agrega otro normal» →2unidades, solo la anterior con nota. Probar en2catálogos con opciones, durante carrito y pago.
+- Mismo mensaje menciona un plato existente y otro fuera de carrito: conservar ambos significados; si no se puede separar con seguridad, pedir aclaración sin ejecutar compra parcial.
+- Dos variantes del mismo SKU: no elegir la primera. Pedir sabor/variante o referencia de línea, luego modificar solo las unidades indicadas.
+- Retirar/reemplazar preparación previa: «mejor con arroz» después de «sin arroz» no debe dejar instrucciones contradictorias en la misma línea.
+- Conversación completa nueva: compra, consulta interrumpida, cambio, dirección, pago y confirmación; aserciones sobre respuesta y payload final, no solo cantidad de tests.
+
+Mantener fixtures de menús sintéticos y modelos simulados separados de contraste real. Con2requests operativas disponibles no lanzar runner que necesite más herramientas de las que permite el saldo. No borrar contadores ni atribuir resultados de mocks a precisión de audio/visión/modelo real. Priorizar un contraste acotado al cerrar varias reglas.
+
 ## Tanda validada17/10: enumeraciones y preparación compartida
 
 100 casos nuevos aprobados de forma focalizada; global77 suites/7912 tests aprobado,354 hashes intactos; ver docs/whatsapp-enumeration-notes-validation-1710.json. Validación cerrada y hashes idénticos; código1e2d09d7 desplegado en staging, healthy. No repetir global ni rebuild por el cierre documental. El cambio de preparación de dos platos ya presentes no debe crear nuevas unidades ni cobrar porción de acompañamiento. Lo que no identifica destinatarios debe aclararse antes de confirmar. Se conserva el tercer plato y su nota.
