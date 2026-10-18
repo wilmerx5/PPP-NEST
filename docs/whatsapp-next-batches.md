@@ -1,3 +1,9 @@
+## Cierre vigente — 18/10/2026,06:54 Bogotá
+
+Notas por unidades YA desplegadas en stagingd043cc54.47tests nuevos;81suites/8635tests,235controles de preparación/tool/origen,TypeScript y72Node;compilado/health verificados. CeroAPIpagada/Meta/órdenes externas,Main intacta. Evidencia whatsapp-note-modes-validation-1810.json. No repetir esta tanda.
+
+Siguiente:compra distribuida durante nombre/teléfono/dirección/pago/confirmación y consultas puras de precio que mencionan grupos. Para notas:retirar solo una cláusula,preservación de otras instrucciones,referencias ambiguas y productos sin atributos. NoteMode actual es append/replace FINAL COMPLETO/clear TODA la nota del subconjunto;no prometer comprensión universal. Inferencia reservada de elección de modo solo fuera del despertar gratuito,bajo presupuesto previo. Leer relevo vigente y mantener Main;las secciones inferiores sobre validación en curso son históricas.
+
 ## Tanda de notas — 18/10/2026,validación en curso
 
 Cambio local noteMode append/replace/clear permite corregir o borrar toda la nota de un subconjunto sin concatenar instrucciones opuestas ni tocar el resto. Baseline18fallos;47tests nuevos y235controles de herramientas/preparación/origen pasan. Global en curso:consultar primero WHATSAPP-LOCAL-NEXT-AGENT.md y no editar la fuente durante la suite. No asumir desplegado hasta cierre.

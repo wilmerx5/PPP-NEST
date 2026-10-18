@@ -1,3 +1,9 @@
+## Estado vigente — 18/10/2026,06:54 Bogotá
+
+Stagingd043cc54 desplegado/verificado,Main intacta. Reemplazo/borrado de nota para unidades seleccionadas conserva el resto.47regresiones nuevas;global81suites/8635tests en594.556s con368hashes intactos,TypeScript y72Node. Ver whatsapp-note-modes-validation-1810.json. CeroAPIpagada/Meta/órdenes externas;presupuesto188/187/1 intacto.
+
+Antes del piloto:falta validar compra por variantes durante checkout,consultas puras con reparto,notas ambiguas/retirar una cláusula/productos sin atributos y conversaciones reservadas reales del modelo,costo/latencia. La validación actual mide estado/contrato/DTO con mocks,no nueva precisión lingüística. Automatización horaria gratuita sigue activa;no duplicar. Secciones inferiores históricas.
+
 ## Estado vigente — 18/10/2026,01:53 Bogotá
 
 Staging71114d9d desplegado/verificado,Main intacta. Baseline12fallos demostró compras parciales por propuesta incompleta del modelo. Contrato nuevo exige total/grupos por cantidad y opciones de catálogo antes de aplicar esa familia de compra distribuida.21tests nuevos;global81suites/8588tests en590.562s con368hashes intactos,TypeScript y72Node;rechazos verificados en compilado. CeroAPIpagada/Meta/órdenes externas en esta tanda automática. Evidencia whatsapp-distribution-atomic-validation-1810.json.

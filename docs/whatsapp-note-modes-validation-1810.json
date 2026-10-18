@@ -1,7 +1,7 @@
 {
   "dateBogota": "2026-10-18",
   "baseCommit": "b8f3e33c0c53399ef227ef8b1d2f78cc293aafed",
-  "status": "validated_not_deployed",
+  "status": "deployed_and_verified",
   "baseline": {
     "failedRouterJourneys": 18,
     "log": "/tmp/ppp-note-modes-baseline-1810.log"
@@ -38,5 +38,33 @@
     "Current tool still requires declared catalog attributes; no new claim for products with no attributes",
     "Several differing edits on one original row remain unsupported overlapping subsets",
     "Conversational ambiguity and distributed purchases during checkout need further tests"
-  ]
+  ],
+  "deployment": {
+    "codeCommit": "d043cc549b337d471de633d234ab6a41b0deedad",
+    "image": "sha256:80e9c28530452557ebe6fa0787b5b9f0abd15861a5da3b3c9f5879284989924d",
+    "running": true,
+    "healthy": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "cacheSize": 0,
+      "memory": {
+        "heapUsed": 49.05,
+        "heapTotal": 53.5,
+        "rss": 113.64
+      },
+      "timestamp": "2026-10-18T11:53:37.382Z"
+    },
+    "compiledChecks": {
+      "compiledSubsetReplace": true,
+      "compiledSubsetClear": true,
+      "compiledProjection": true,
+      "compiledRemainderPreserved": true
+    },
+    "verifiedAtUtc": "2026-10-18T11:54:34.928273+00:00",
+    "rollback": "ppp-nest-staging:rollback-before-d043cc54",
+    "mainUntouched": true,
+    "remoteBinAndOrphanDatabasePreserved": true
+  }
 }
