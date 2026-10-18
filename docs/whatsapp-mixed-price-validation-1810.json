@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-18",
+  "base": "c649368d94f2322bc05975cb645519ac15b82419",
+  "status": "validated_pending_grouped_deploy_with_kitchen_notes",
+  "baseline": {
+    "failed": 18,
+    "log": "/tmp/ppp-mixed-price-baseline-1810.log"
+  },
+  "new_regressions": 45,
+  "focused": {
+    "passed": 198,
+    "log": "/tmp/ppp-mixed-price-final-controls-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": 72,
+  "source_manifest": "/tmp/ppp-mixed-price-source-1810.json",
+  "global_result": "/tmp/ppp-mixed-price-global-1810.json",
+  "contract": [
+    "Internal verifiedDistributedProductId passed from complete source distribution to runTurn and tools; cannot be supplied by tool arguments",
+    "Guard also requires literal affirmative purchase with counted variants and matching named host before a later price inquiry",
+    "Adapter still rejects missing/wrong groups, errors and mixed mutations atomically",
+    "Pure price questions, permission questions, negation and conditions remain non-purchases"
+  ],
+  "coverage": [
+    "18 full-router conversations, three menus, cart/payment/final-confirm, two price asides, previous cart, notes, simulated final DTO",
+    "24 actual-tool negative controls with correct/absent/wrong capability and injected tool argument",
+    "3 complete runTurn loops with search_menu, two add_item calls and reply; every HTTP response mocked",
+    "6 prior negative controls renamed to explicitly omit trusted capability; not evidence that the supported mixed purchase still fails"
+  ],
+  "limits": [
+    "No paid inference, WhatsApp or external orders",
+    "No new real-model language, latency or cost measurement",
+    "Only verified distributed purchase before later price question; reverse clause order and general mixed non-distributed intents still pending",
+    "No sale/pilot claim from counts"
+  ],
+  "budget_changed": false,
+  "main_changed": false,
+  "global_acceptance": {
+    "suites": 81,
+    "tests": 8833,
+    "seconds": 1044.429,
+    "frozen_hashes_unchanged": 368
+  }
+}

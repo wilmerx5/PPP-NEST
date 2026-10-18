@@ -1,3 +1,13 @@
+## Tanda validada, pendiente de despliegue agrupado — 18/10/2026: compra distribuida seguida de consulta de precio
+
+Base c649368d.18recorridos reprodujeron question_not_order. Contrato interno verifiedDistributedProductId solo sale del reparto fuente validado, no de argumentos del modelo; tool exige compra afirmativa literal, anfitrión de catálogo y consulta de precio posterior. El adaptador conserva validación de grupos completa y atomicidad. No relaja preguntas puras, permisos, negaciones ni condiciones. Prompt explica compra+consulta.
+
+45regresiones nuevas:18recorridos router→DTO en3menús/3estados/2preguntas,24rechazos de herramientas y3bucles runTurn con HTTP íntegramente simulado.198focalizados,TypeScript y72Node pasan;global aprobada:81suites/8833tests en1044.429s,368hashes intactos. La fuente puede cambiar ahora para la tanda de notas;no reconstruir aún. Evidencia whatsapp-mixed-price-validation-1810.json. Runtime todavía190c6c86;no asumir desplegado. Los6rechazos previos ahora se llaman Untrusted mixed... y omiten la capacidad deliberadamente;no representan fallo del camino autorizado.
+
+CASO NUEVO DEL USUARIO, prioridad tras cerrar la global actual: audio reconstruido «quiero una sobrebarriga dorada, bien bonita que no esté tan gorda» (usuario también escribió dorda/torda). El bot separó «que no esté tan gorda» como producto no disponible y conservó solo dorada. Reproducir con router/tool y varios catálogos: preferencias de grosor/presentación como nota del plato, sin garantizar cumplimiento ni ocultar una compra adicional. No hay audio original en este mensaje: la nueva prueba será textual/transcripción reconstruida, no precisión ASR.
+
+SIGUIENTE: orden inverso de cláusulas (pregunta antes de compra), variación de cortesía/verbos y compras mixtas no distribuidas;no ampliar la excepción sin contrato completo. Luego retirada de una cláusula de nota,productos sin atributos y preguntas sobre detalles no documentados. Conversaciones reservadas reales/costo/latencia siguen pendientes;esta tanda gratuita no los acredita. Main/modelos/presupuesto intactos.
+
 ## Cierre vigente — 18/10/2026, 08:19 Bogotá
 
 Staging 190c6c86 desplegado/verificado, running/healthy, imagen activa=candidate826391cb…, health ok/DB connected/circuit CLOSED. Incluye b1529b5f y consultas contadas.84regresiones nuevas;153focalizados,TypeScript,72Node y global81suites/8788tests en592.772s,368hashes intactos. Evidencia whatsapp-group-inquiries-validation-1810.json. Main/modelos/bases/volúmenes/archivos privados preservados; ceroAPIpagada/Meta/órdenes externas. No repetir esta tanda ni reconstruir por docs.

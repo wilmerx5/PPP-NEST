@@ -2321,6 +2321,23 @@ export class WhatsappCatalogService {
     return ordered ? purchase : null;
   }
 
+  /** Literal purchase evidence for a router-validated distribution with a later
+   * price aside. This is not authorization by itself; the tool also requires
+   * the internal distribution capability and the adapter checks every group. */
+  explicitDistributedPurchaseBeforePriceInquiry(text: string, productId: number, products: WhatsappCatalogProduct[]): boolean {
+    if (!this.isPriceInquiryIntent(text)) return false;
+    const q = normalizeText(text);
+    const price = /\b(?:cuanto|que precio|q precio|precio tienen|precio de|valor de|costo de)\b/.exec(q);
+    if (!price || price.index===0) return false;
+    const purchase = q.slice(0,price.index);
+    if (!/^(?:(?:hola|buenas tardes|buenos dias|buenas noches|por favor|veci|vecino)\s+)*(?:quiero|quisiera|dame|ponme|agregame|anademe|enviame|mandame|me das|me regalas)\s+(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(purchase)) return false;
+    if (/\b(?:no|si|antes de|cotizar|cotizacion)\b/.test(purchase)) return false;
+    const groups = [...purchase.matchAll(/\b(?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) con\b/g)];
+    if (groups.length<2) return false;
+    const host = this.productFullyNamedIn(purchase.slice(0,groups[0].index),products);
+    return host?.id===productId;
+  }
+
   /** Scope choices to their own dish when a multi-order has a unique owner. */
   orderSegmentForProduct(text: string, product: WhatsappCatalogProduct, products: WhatsappCatalogProduct[], selected?: Array<{attributeName:string;attributeValue:string}>): string {
     text = expandDistributedVariants(text, products, this);

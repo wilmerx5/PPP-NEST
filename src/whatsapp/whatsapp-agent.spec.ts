@@ -692,3 +692,39 @@ describe('WhatsappAgentService tools (sin OpenAI)', () => {
     expect(lookedUp).toBeUndefined();
   });
 });
+
+describe('Verified distributions may buy before a price aside, never from a question alone',()=>{
+ for(const name of ['Caja De Desayuno','Bento De Setas','Duo De Bao']){
+  const product={id:65301,code:65301,name,price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  for(const source of [
+   `Cuánto cuestan cuatro ${name}, 2 con Suave y 2 con Picante?`,
+   `Quisiera saber cuánto cuestan cuatro ${name}, 2 con Suave y 2 con Picante`,
+   `Puedo pedir cuatro ${name}, 2 con Suave y 2 con Picante, cuánto cuesta?`,
+   `No quiero cuatro ${name}, 2 con Suave y 2 con Picante; cuánto cuestan?`,
+   `Si son baratos, quiero cuatro ${name}, 2 con Suave y 2 con Picante; cuánto cuestan?`,
+   `Quiero cotizar cuatro ${name}, 2 con Suave y 2 con Picante; cuánto cuestan?`,
+  ])it(`${name} rejects query/condition: ${source}`,()=>{
+   const catalog=new WhatsappCatalogService({} as never);const service=new WhatsappAgentService({} as never,catalog) as any;const actions:any={};
+   const result=JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Suave'}],verifiedDistributedProductId:product.id},{actions,cart:[],products:[product],byId:new Map([[product.id,product]]),userMessage:source,verifiedDistributedProductId:product.id,setNeedsAttr:()=>{}}));
+   expect(result).toMatchObject({ok:false,error:'question_not_order'});expect(actions).toEqual({});
+  });
+  for(const capability of [undefined,65302])it(`${name} rejects absent/other capability ${capability}`,()=>{
+   const service=new WhatsappAgentService({} as never,new WhatsappCatalogService({} as never)) as any;const actions:any={};
+   const result=JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Suave'}],verifiedDistributedProductId:product.id},{actions,cart:[],products:[product],byId:new Map([[product.id,product]]),userMessage:`Quiero cuatro ${name},2 con Suave y 2 con Picante; cuánto cuestan?`,verifiedDistributedProductId:capability,setNeedsAttr:()=>{}}));
+   expect(result).toMatchObject({ok:false,error:'question_not_order'});expect(actions).toEqual({});
+  });
+  it(`${name} forwards the internal capability through runTurn without real HTTP`,async()=>{
+   let calls=0;const fetchMock=jest.spyOn(global,'fetch').mockImplementation(async()=>{
+    calls++;if(calls===1)return {ok:true,json:async()=>({choices:[{message:{content:null,tool_calls:[{id:'search',type:'function',function:{name:'search_menu',arguments:JSON.stringify({query:name})}}]}}]})} as Response;
+    if(calls===2)return {ok:true,json:async()=>({choices:[{message:{content:null,tool_calls:['Suave','Picante'].map((value,index)=>({id:`group-${index}`,type:'function',function:{name:'add_item',arguments:JSON.stringify({productId:product.id,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:value}]})}}))}}]})} as Response;
+    if(calls===3)return {ok:true,json:async()=>({choices:[{message:{content:'Listo, dos de cada salsa a $27.000 por unidad.'}}]})} as Response;
+    throw Error('Unexpected mocked inference round');
+   });
+   try{
+    const service=new WhatsappAgentService({getEffectiveConfig:async()=>({openaiApiKey:'test-key',openaiModel:'gpt-4o-mini',localContext:{}})} as never,new WhatsappCatalogService({} as never));
+    const result=await service.runTurn({userMessage:`Quiero cuatro ${name}, 2 con Suave y 2 con Picante; y dime cuánto cuestan`,verifiedDistributedProductId:product.id,sessionSummary:'carrito vacío',recentMessages:[],businessRulesBlock:'reglas',brandName:'Ficticio',products:[product],cart:[]});
+    expect(result.error).toBeUndefined();expect(result.actions.addItems?.map(item=>item.quantity)).toEqual([2,2]);expect(result.purchaseAttempts?.every(item=>item.accepted)).toBe(true);expect(fetchMock).toHaveBeenCalledTimes(3);
+   }finally{fetchMock.mockRestore();}
+  });
+ }
+});

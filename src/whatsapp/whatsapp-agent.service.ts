@@ -22,6 +22,9 @@ import { looksLikeKitchenSendRequest, parseEachOfQuantity, parseQtyDishCorrectio
 
 export type AgentV1TurnInput = {
   userMessage: string;
+  /** Internal router capability: source distribution was validated and will be
+   * checked atomically after tools. Never accepted from model tool arguments. */
+  verifiedDistributedProductId?: number;
   sessionSummary: string;
   recentMessages: string[];
   businessRulesBlock: string;
@@ -577,6 +580,7 @@ Reglas:
 - Si la intención es cuánto tarda un domicilio en general, llama delivery_time. No inventes minutos.
 - "¿Tienes X?" / "¿qué tienes de X?" vale para cualquier cosa. Lista lo que search_menu sí trae con nombre y precio, y pregunta cuál quiere. Describe ingredientes y acompañamientos SOLO si pregunta "¿cómo es X?", qué incluye o una composición concreta. NO add_item. add_item solo si está pidiendo ese plato.
 - "¿Tienes algo de X?" (también "tines", "hay algo de", "te pregunté que si tienes"): pregunta si hay X. Si search_menu no lo trae, di "No tenemos productos de X". X es el producto, sin "algo de", sin "tienes" y sin repetir la frase. No reenvíes el carrito.
+- Una compra explícita con reparto seguida de una pregunta de precio sigue siendo compra y consulta: ejecuta cada grupo con su cantidad/opciones y responde con el precio real. No conviertas una consulta pura ni una condición de precio en compra.
 - Pedido de varios platos: la intención es armar ese pedido. Busca cada plato. Di solo el que no está. El resto lo agregas y lo confirmas en una frase, con nombre y precio. No tires la frase entera como si nada existiera.
 - Si tras una consulta el cliente acepta explícitamente ("sí, agrégame las dos"), resuelve el producto y la cantidad usando el intercambio anterior. Busca su ID y ejecuta add_item; no basta decir que lo agregaste. Si el intercambio ofrece varias alternativas sin una elección, pregunta cuál.
 - Pedido directo ("un churrasco", "quiero una limonada"): add_item en ese mismo turno. No preguntes "¿lo agrego?".
@@ -787,6 +791,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
             byId,
             actions,
             userMessage: input.userMessage,
+            verifiedDistributedProductId: input.verifiedDistributedProductId,
             cart: input.cart,
             menuConceptGroups: input.menuConceptGroups,
             setNeedsAttr: (id) => {
@@ -927,6 +932,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       diagnosticOrigin?: 'model_call' | 'validation_probe';
       /** Replacement inherits the old line's units unless the caller explicitly changed them. */
       preserveReplacementQuantity?: boolean;
+      verifiedDistributedProductId?: number;
       userMessage?: string;
       cart?: AgentV1TurnInput['cart'];
       menuConceptGroups?: MenuConceptGroup[];
@@ -1457,7 +1463,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           this.catalogService.isCategoryBrowseQuestion(ctx.userMessage || '') ||
           this.catalogService.isProductDescriptionInquiry(ctx.userMessage || '');
         const conditionalPurchase = asked ? this.catalogService.conditionalPurchaseText(ctx.userMessage || '', ctx.products) : null;
-        if (asked && !(conditionalPurchase && this.catalogService.productNameFitsUtterance(product, conditionalPurchase))) {
+        const verifiedMixedPurchase = ctx.verifiedDistributedProductId===product.id &&
+          this.catalogService.explicitDistributedPurchaseBeforePriceInquiry(ctx.userMessage || '',product.id,ctx.products);
+        if (asked && !verifiedMixedPurchase && !(conditionalPurchase && this.catalogService.productNameFitsUtterance(product, conditionalPurchase))) {
           return JSON.stringify({
             ok: false,
             error: 'question_not_order',
