@@ -1,3 +1,5 @@
+> Documento histórico del10/10. Sus SHAs, modelos y pendientes no son un estado actual. Para la decisión vigente leer [Plan comercial](WHATSAPP-COMMERCIAL-READINESS-PLAN.md) y [Relevo local](WHATSAPP-LOCAL-NEXT-AGENT.md). Conservar esta evidencia sin atribuirla a otro candidato.
+
 # PPP: decisión de piloto y evidencia para Kamppo
 
 ## Objetivo inmediato

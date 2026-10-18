@@ -1,3 +1,111 @@
+# Plan vigente de piloto y venta — 17 de octubre de 2026, Bogotá
+
+Esta sección es la referencia actual. Las entradas inferiores son historial y sus modelos, presupuestos, SHAs y conteos no describen necesariamente el runtime vigente. El relevo técnico es `WHATSAPP-LOCAL-NEXT-AGENT.md` y cada tanda tiene un informe JSON. No existe aún evidencia suficiente para declarar venta autónoma ni una fecha de lanzamiento defendible.
+
+## 1. Dónde estamos y qué demuestra la evidencia
+
+- Integración permanente: `staging`. Última tanda publicada antes de esta revisión: `eec87f78`, notas sobre algunas unidades durante checkout.77 suites/7968 tests, TypeScript y72 contratos Node aprobados con354 hashes de fuente intactos. Son pruebas con servicios externos/modelo simulados, no7968 conversaciones reales independientes.
+- Último código desplegado y verificado: `1e2d09d7`, staging healthy el17/10 a19:07 Bogotá. Las notas parciales de `eec87f78` todavía no se desplegaron. Publicar Git no actualiza el contenedor.
+- Main local verificada en `1a2b2e23`, sin el manejador `isPoliteMenuLinkRequest` presente en staging; esta revisión no la promueve ni verifica nuevamente el runtime de producción. No atribuir un chat de Main a la versión nueva de staging.
+- La frase exacta «Hola buenas tardes tienes la carta por favor» ya tiene regresión en staging. Se amplían solicitudes de carta con modales y «menú completo», además de preguntas sobre confirmar. Cierre de esa revisión: consultar `whatsapp-basic-greeting-confirmation-validation-1710.json` cuando exista; no inferir aceptación de este texto.
+- La cobertura ya incluye cantidades, opciones, combos, preguntas durante checkout, correcciones, fotos y transcripciones simuladas. Quedan fronteras entre intenciones y falta ampliar evidencia independiente del modelo y de medios originales.
+- Piloto acordado: un restaurante, efectivo y transferencia. Mercado Pago e impresión automática quedan fuera. Cocina usa pantalla, no impresora automática.
+
+## 2. Qué significa estar listo
+
+**Para iniciar piloto supervisado:** cerrar todos los fallos críticos conocidos de comprensión, fijar un candidato reproducible, verificarlo desplegado y aprobar conversaciones completas nuevas. La revisión humana debe poder detener o corregir antes del efecto operativo. No abrir tráfico nuevo si esa revisión no está disponible.
+
+**Para vender como producto:** además del piloto, demostrar calidad antes de intervención, recuperación de errores, costos y soporte sostenibles y aislamiento entre restaurantes. La venta inicial debe describir el alcance probado y la supervisión que todavía requiere.
+
+**Criterios que bloquean avance:** confirmación sin permiso, pedido duplicado, cantidades o productos cambiados sin pedirlo, cobros/precios inventados, pérdida de una preparación acordada o dirección incorrecta tratada como segura. Cualquier caso observado exige reproducir su familia y volver a validar el candidato; no se compensa con un porcentaje alto de casos fáciles.
+
+## 3. Primera puerta: conversaciones básicas y estados
+
+Responsable de ejecución: agente de desarrollo. Prioridad inmediata.
+
+1. Saludo solo y saludo con solicitud: carta, precios, cobertura, horarios o compra. El saludo no debe ocultar la intención que viene después. «Carta» como consulta no es un producto; «menú ejecutivo» sí puede nombrar uno.
+2. Consultas en cada paso pendiente: nombre, dirección, teléfono, variante, pago y resumen. Responder sin guardar la pregunta como dato, conservar carrito y recordar el paso correcto.
+3. Confirmaciones: «sí», «sí señor», «así está bien», «no gracias, eso es todo», mensajes fragmentados y repetidos. Confirmar solo con resumen válido y sin selecciones pendientes. «Confirmo?» y «¿cuánto tarda si confirmo?» son consultas, no aprobación. «Lo confirmo. ¿Cuánto tarda?» sí contiene aprobación explícita y consulta: debe resolver ambas sin duplicar.
+4. Final de conversación: agradecimientos no reabren el carrito ni registran otra orden. Una compra nueva explícita debe distinguirse de la cortesía.
+
+Aceptación: cada caso verifica mensajes completos, estado previo/posterior, datos del cliente y número de llamadas de creación de orden. Probar con agente simulado activo/inactivo y más de un catálogo. Ninguna consulta modifica el carrito o confirma una orden. No usar respuestas ficticias del modelo como prueba de comprensión real.
+
+## 4. Segunda puerta: composiciones difíciles sin perder lo básico
+
+Orden de trabajo después de cerrar la primera puerta:
+
+1. Edición más compra nueva: «el que tengo sin salsa y agrega otro normal». Modificar solo la unidad anterior y añadir exactamente la nueva. Incluir un producto todavía fuera de carrito para impedir ediciones parciales que lo pierdan.
+2. Varias unidades y variantes: identificar línea y número de unidades; no seleccionar el primer sabor cuando hay varios. Conservar cantidades totales, atributos, notas previas compatibles y productos ajenos.
+3. Corrección de preparación: retirar o sustituir una nota sin acumular instrucciones opuestas. Separar nota, opción del catálogo y acompañamiento cobrado; no prometer sustituciones o gratuidad no configuradas.
+4. Ambigüedad y cambios de intención: pedir una aclaración concreta, permitir otra consulta y retomar. Cada selección debe tener dueño; «ese cambio» no puede retirar otra compra pendiente.
+5. Mensajes largos y ráfagas: un pedido distribuido en mensajes conserva el mismo producto foco cuando corresponda. Verificar orden de llegada, respuestas y efectos únicos; probar reenvío y repetición sin generar unidades extras.
+
+Método: fallo reproducido primero, regla general por catálogo, una familia de positivos y negativos, continuaciones hasta orden simulada y controles existentes. Un fallo nuevo no se tapa con una frase especial para PPP. Los fixtures pueden nombrar productos; las reglas de producción no deben fijar sus IDs/nombres/precios.
+
+### Trabajo estructural para dejar de depender de parches por frase
+
+Este trabajo está planificado, no completado por las nuevas expresiones de carta:
+- Inventariar las rutas que actúan antes del modelo y las que consumen el paso pendiente. Fijar con contratos una prioridad común: reconocer consulta/edición/compra explícita antes de interpretar cualquier texto como nombre, dirección, opción o pago.
+- Consolidar un resultado de turno que distinga intención, entidades del catálogo, cantidad, atributos, preparación, destinatarios y duda pendiente. Un «no resuelto» no puede convertirse en «no existe» sin comprobar catálogo y contexto.
+- Validar el plan antes de aplicarlo: identidad de línea/unidad, disponibilidad, precio y autorización. La mezcla edición+compra requiere aplicación coherente; no guardar media operación y responder como si estuviera completa.
+- Emitir la respuesta desde el resultado persistido: qué cambió, qué no se añadió y qué falta. Nunca confiar en una afirmación libre de «listo» para acreditar que se llamó la herramienta correcta.
+- Migrar una familia a la vez con comparación antes/después y regresiones de contratos. Reutilizar las estructuras ya existentes cuando cumplan este contrato; no iniciar una reescritura general sin evaluación y rollback.
+
+La prueba de mejora debe ser que una familia nueva funciona en varias cartas y estados, y que los básicos siguen pasando. Añadir sinónimos sin medir esas fronteras no cierra la deuda de enrutamiento.
+
+## 5. Tercera puerta: evaluación independiente y medios
+
+Preparar40 conversaciones reservadas:12 básicas/consultas,12 compras/cambios,8 checkout/interrupciones,4 ráfagas y4 con medios. Es una primera muestra propuesta, no garantía estadística ni evidencia ya obtenida. Reservarlas antes de ejecutar; un caso inspeccionado para corregir pasa a desarrollo y necesita reemplazo como muestra independiente.
+
+Ejecutar por lotes pequeños. Primera comparación con modelo real: escoger tres conversaciones nuevas y un límite de requests antes de red; detener ante el primer fallo para analizarlo gratis. El saldo operativo registrado hoy es2requests; eso no permite prometer40 conversaciones con herramientas. La autorización de gasto moderado del usuario persiste, pero cualquier ampliación operativa debe registrarse con alcance y límite explícitos, sin reiniciar los181 intentos acumulados ni confundir requests con dólares.
+
+Audio: separar transcripción de interpretación. Usar el original disponible con permiso y grabaciones controladas de pedidos nuevos; revisar nombres, números, negaciones, dirección y notas. La transcripción correcta no acredita el pedido y una transcripción escrita no acredita reconocimiento de voz. Imágenes: producto único, carrito con cantidades, varias tarjetas, foto ilegible y envío sin texto. No confundir mocks HTTP con calidad visual real.
+
+Registrar SHA, catálogo, configuración, modelos efectivos, fuente de entrada, salida del modelo, acciones aceptadas/rechazadas, carrito, respuesta, tokens y costo cuando estén disponibles. Conservar datos personales y originales fuera de Git; fixtures sintéticos por patrón.
+
+Aceptación: cero errores críticos, ausencia explícita de información inventada y consultas resueltas sin bloqueos. Todo fallo crítico reabre la familia y el candidato se vuelve a probar. No reportar éxito independiente usando solo reensayos corregidos.
+
+## 6. Cuarta puerta: un candidato desplegado y un piloto acotado
+
+Agrupar reglas antes de desplegar. Congelar fuente, ejecutar suites afectadas y TypeScript; cuando cambien reglas compartidas, ejecutar global y comprobar mapa completo de hashes. Publicar staging, conservar rollback y verificar SHA, imagen activa/candidata, health, modelos y configuración del candidato. No promover Main sin petición explícita.
+
+Antes de abrir el piloto, hacer una comprobación acotada del canal real y de la recepción operativa en un entorno deliberadamente aislado. Esto queda después del trabajo de comprensión, respetando la prioridad del usuario. Los tests de router no acreditan entrega por Meta ni recepción visual en cocina.
+
+Propuesta de fases, no fechas prometidas:
+- Primeros10 pedidos: revisión humana antes de liberar cada orden; corregir y registrar discrepancias. No automatizar una confirmación externa de prueba sin aislamiento.
+- Hasta50 pedidos: incluir horas pico y consultas/cancelaciones; revisar también abandonos, no solo pedidos exitosos.
+- Revisión a100 pedidos completados: objetivo propuesto de98% correctos antes de intervención y cero errores críticos enviados a operación. Registrar por separado correcciones humanas antes de cocina. El tamaño de muestra es un punto de revisión, no una garantía.
+
+Si aparece un error crítico, suspender el comportamiento afectado o volver al candidato anterior; documentar conversación, versión y corrección. No ampliar tráfico hasta resolverlo y revalidar. Responsables humanos pendientes para esa fase: encargado del local que revisa y persona que decide detener/reanudar. El usuario los define al llegar a esta puerta, no hace falta bloquear ahora el desarrollo para preguntarlo.
+
+## 7. Medición para decidir venta y precio
+
+Medir por conversación elegible y por pedido completado, con denominadores separados:
+- Exactitud antes de corrección: producto, cantidad, opciones, notas, dirección, modalidad, pago y totales.
+- Intervención necesaria, abandono por error y consultas resueltas; separar cancelación voluntaria de fallo.
+- Primera respuesta útil y tiempo hasta confirmación; informar mediana y p95 medidos, no fijar un SLA sin datos.
+- Costo de texto, voz, visión, canal, infraestructura y tiempo de soporte. Registrar tokens y uso, no estimar rentabilidad por número de mensajes.
+
+Costo variable por pedido = IA + canal + parte variable de infraestructura + soporte atribuible. Comparar ese costo con el ingreso neto por pedido que resulte del plan de suscripción; simular también locales con pocos pedidos y muchos audios. Definir límites incluidos, excedentes y margen objetivo después de medir, sin prometer precio rentable hoy.
+
+Puerta comercial: resultados del piloto revisados, seguimiento de incidentes, responsable de soporte, procedimiento de rollback/pausa y alcance de servicio documentado. La marca «vendible» no deriva de7968 tests ni de que el servidor esté healthy.
+
+## 8. Kamppo y producto reutilizable
+
+Migrar comportamientos y contratos, no excepciones de PPP. Separar núcleo conversacional, adaptador de catálogo/pedidos/canal y configuración de tenant: menú, atributos, alias, políticas, entrega, puntos y mensajes. Menús ficticios acreditan independencia de vocabulario; no acreditan aislamiento multitenant.
+
+Antes de incorporar otro restaurante: ejecutar la misma matriz con su catálogo real y al menos dos tenants simultáneos; probar que teléfono, sesión, caché, productos, dirección, puntos, credenciales y órdenes no crucen tenant. Versionar configuración/modelos junto con el candidato y ejecutar evaluación cuando cambien. Empezar por un segundo restaurante de piloto antes de ofrecer expansión amplia.
+
+## 9. Cómo continuar sin perder el control
+
+Mantener un único backlog priorizado: caso/familia, severidad, expectativa, prueba, causa, cambio, evidencia y candidato desplegado. No sumar reruns como casos nuevos. Actualizar `WHATSAPP-LOCAL-NEXT-AGENT.md` al cerrar cada tanda. `staging` permanece; Main y producción solo cambian con autorización de promoción.
+
+La próxima entrega debe cerrar saludos/carta/confirmaciones y su global; luego edición+compra nueva y notas contradictorias. Después viene muestra independiente y piloto supervisado. Si una puerta sigue abierta, indicar exactamente la evidencia faltante en lugar de inventar un porcentaje o fecha.
+
+---
+
+# Historial conservado
+
 ## Familias, repartos de opciones y consultas del carrito — 16/10
 
 Estado vigente: código **d410291e** (incluye 620c982b), publicado y desplegado solo en staging. Esta entrada sustituye la prioridad anterior de familia genérica. Main no se modificó ni producción se reconstruyó.

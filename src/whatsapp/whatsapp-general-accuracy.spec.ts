@@ -18169,3 +18169,57 @@ describe('Partial unit preparation respects selection ownership and variants',()
   });
  }
 });
+
+describe('Basic greeting with menu request preserves the pending step',()=>{
+ const menus=[products,[{id:62201,code:62201,name:'Menu Ejecutivo Vegetal',price:21000,availableNow:true,hasAttributes:false,attributes:[]}]];
+ for(const menu of menus)for(const agent of [false,true])for(const state of ['building_cart','awaiting_name','awaiting_final_confirm'])for(const text of [
+  'Hola buenas tardes tienes la carta por favor','Buenas tardes, me puedes pasar la carta por favor?',
+  'Hola me regalas el menú completo por favor','Buenas noches vecino me compartes la carta gracias']){
+  it(menu[0].name+' '+state+' '+text+' agent='+agent,async()=>{
+   const h=harness(menu,agent);h.cfg.menuUrl='https://example.test/menu';h.conv.state=state;h.service.ordersService.create=jest.fn();
+   const product=menu[0];Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:2,attributes:[],note:'bien empacado'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   const before=structuredClone(h.conv.sessionData);const customerName=h.conv.customerName;
+   await h.sendQueued(text);expect(h.replies.join(' ')).toContain('https://example.test/menu');expect(h.replies.join(' ')).not.toMatch(/no tenemos|no manejamos|productos de carta|no entend/i);
+   expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customerName);expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});
+
+describe('Confirmation questions are not final approval',()=>{
+ const menu=[{id:62301,code:62301,name:'Tostada De Hongos',price:14000,availableNow:true,hasAttributes:false,attributes:[]}];
+ for(const agent of [false,true])for(const text of ['Confirmo?','Confirmar el pedido?','Asi esta bien?','¿Con esto queda confirmado?','Si confirmo cuanto tarda?']){
+  it(text+' agent='+agent,async()=>{
+   const h=harness(menu,agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn();
+   Object.assign(h.conv.sessionData,{cart:[{productId:62301,code:62301,name:menu[0].name,unitPrice:14000,quantity:1,attributes:[]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   const before=structuredClone(h.conv.sessionData);await h.sendQueued(text);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   expect(h.replies.join(' ')).not.toMatch(/pedido registrado|no manejamos|no tenemos/i);
+   h.service.ordersService.create.mockResolvedValue({id:6230,dailyOrderNumber:64});
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+   await h.sendQueued('Gracias señor');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+  });
+ }
+});
+
+describe('Plain greeting remains a greeting across catalogs',()=>{
+ for(const name of ['Sopa De Mondongo','Ensalada De Quinoa'])for(const agent of [false,true])for(const text of ['Hola buenas tardes','Buenas noches vecino']){
+  it(name+' '+text+' agent='+agent,async()=>{
+   const h=harness([{id:62401,code:62401,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]}],agent);h.cfg.menuUrl='https://example.test/menu';h.service.ordersService.create=jest.fn();
+   await h.sendQueued(text);expect(h.cartRows()).toEqual([]);expect(h.replies.join(' ')).toMatch(/hola|buenas|plato|antoja|pedido/i);expect(h.replies.join(' ')).not.toMatch(/no tenemos|no manejamos|no entend/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  });
+ }
+});
+
+describe('Delivery timing distinguishes hypothetical and explicit approval',()=>{
+ const menu=[{id:62501,code:62501,name:'Tostada De Hongos',price:14000,availableNow:true,hasAttributes:false,attributes:[]}];
+ for(const agent of [false,true])for(const [text,approval] of [
+  ['Cuanto tarda si confirmo el pedido?',false],['Si confirmo el pedido, en cuanto llega?',false],['¿Cuánto tarda si lo confirmo?',false],['En caso de confirmar, cuanto tarda?',false],
+  ['Lo confirmo. ¿Cuánto tarda?',true],['Sí, confirmo el pedido. ¿En cuánto llega?',true],
+ ] as const){
+  it(text+' agent='+agent,async()=>{
+   const h=harness(menu,agent);h.conv.state='awaiting_final_confirm';h.service.ordersService.create=jest.fn().mockResolvedValue({id:6250,dailyOrderNumber:65});
+   Object.assign(h.conv.sessionData,{cart:[{productId:62501,code:62501,name:menu[0].name,unitPrice:14000,quantity:1,attributes:[]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'contraentrega',notesCollected:true,deliveryFeeCalculated:2000});
+   const before=structuredClone(h.conv.sessionData);await h.sendQueued(text);expect(h.replies.join(' ')).toMatch(/suele demorar/i);
+   expect(h.service.ordersService.create).toHaveBeenCalledTimes(approval?1:0);expect(h.conv.state).toBe(approval?'completed':'awaiting_final_confirm');if(!approval)expect(h.conv.sessionData).toEqual(before);
+  });
+ }
+});

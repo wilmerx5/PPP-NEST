@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "eec87f78",
+  "status": "validated_not_deployed",
+  "newTests": 78,
+  "baseline": {
+    "failed": 28,
+    "passed": 114,
+    "log": "/tmp/ppp-basic-greeting-confirmation-baseline-1710.log",
+    "limits": "56 new tests and86 existing; failures:24 modal/complete menu requests and4 question-shaped approvals. Exact original request passed."
+  },
+  "targeted": {
+    "passed": 839,
+    "seconds": 65.109,
+    "log": "/tmp/ppp-basic-greeting-confirmation-accepted-targets-1710.log",
+    "scope": "78 new plus761 existing; includes ETA, fragments, courtesy and complete-order controls. Reruns not counted as new."
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-basic-greeting-confirmation-accepted-tsc-1710.log"
+  },
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-basic-greeting-confirmation-accepted-contracts-1710.log"
+  },
+  "global": {
+    "status": "passed",
+    "log": "/tmp/ppp-basic-greeting-confirmation-accepted-global-1710.log",
+    "snapshot": "/tmp/ppp-basic-greeting-confirmation-accepted-source-1710.json",
+    "suites": 77,
+    "tests": 8046,
+    "seconds": 616.486,
+    "sourceFiles": 354,
+    "sourceUnchanged": true
+  },
+  "main": {
+    "localHead": "1a2b2e23",
+    "hasPoliteMenuRequestHandler": false,
+    "changed": false,
+    "productionRuntimeAudited": false
+  },
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "limitations": [
+    "New tests use simulated model and dependencies.",
+    "Only full menu requests with supported grammatical forms; not universal paraphrase interpretation.",
+    "Question-shaped approval stays pending; later explicit confirmation creates exactly one mocked order.",
+    "Main local comparison does not prove production runtime identity."
+  ],
+  "deployment": null,
+  "interruptedGlobal": {
+    "log": "/tmp/ppp-basic-greeting-confirmation-global-1710.log",
+    "exitCode": 130,
+    "accepted": false,
+    "reason": "Stopped before edits to test ETA inquiry versus explicit approval; broad first guard could hide ETA and an existing conditional ETA path could confirm."
+  },
+  "etaBaseline": {
+    "failed": 10,
+    "passed": 12,
+    "log": "/tmp/ppp-basic-greeting-confirmation-eta-baseline-1710.log",
+    "scope": "12 ETA approval controls plus10 inquiry continuations; two explicit controls passed, other ten ETA controls failed."
+  }
+}

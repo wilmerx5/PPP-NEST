@@ -1,3 +1,9 @@
+## Salud/os, carta y confirmación — validado17/10, deploy agrupado pendiente
+
+78casos nuevos.839focalizadas, TypeScript,72contratos Node y global77suites/8046tests aprobados en616.486s;354hashes intactos. Informe whatsapp-basic-greeting-confirmation-validation-1710.json. Primera global interrumpida antes de ampliar ETA, no acreditada. «Me puedes pasar la carta»/«menú completo» son consulta; «Confirmo?» no aprueba; «si confirmo…cuánto tarda» no crea orden; «lo confirmo, cuánto tarda» sí aprueba y responde ETA. Main local no tiene manejador de carta, se conserva sin promoción.
+
+Plan vigente al principio de WHATSAPP-COMMERCIAL-READINESS-PLAN.md. Agrupar esta tanda con parcial de unidades eec87f78, publicar staging y verificar deploy. No reconstruir por cierres documentales ni repetir global sin cambio. Después: edición+compra nueva y notas contradictorias, muestra nueva del modelo/medios, piloto supervisado por puertas. Cero API/Meta/órdenes externas;181/183 intacto.
+
 ## Tanda17/10: subconjuntos de unidades durante checkout
 
 56 nuevos casos;191 focalizadas, TypeScript y72 contratos Node verdes. Global77 suites/7968tests aprobado en1115.764s,354 hashes intactos; /tmp/ppp-partial-checkout-global-1710.log, ver docs/whatsapp-partial-checkout-validation-1710.json. Esta tanda NO está desplegada; agrupar con siguientes reglas. Main intacta.

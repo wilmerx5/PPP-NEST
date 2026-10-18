@@ -414,6 +414,7 @@ export function isCourtesyAffirmation(text: string): boolean {
  * Only a whole yes: “sí pero sin cebolla” is not a confirmation.
  */
 export function isFinalConfirmAffirmation(text: string): boolean {
+  if (/[¿?]/.test(text)) return false;
   const t = (text || '')
     .trim()
     .toLowerCase()

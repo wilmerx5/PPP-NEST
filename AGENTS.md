@@ -10,6 +10,7 @@ Antes de continuar el agente de WhatsApp, leer `docs/AGENT-HANDOFF-WHATSAPP.md`:
 - Las mejoras deben funcionar por catálogo y reglas generales; no codificar nombres, IDs o precios de PPP como excepciones de producción. Los fixtures de pruebas sí pueden usar productos concretos. Probar también catálogos sintéticos de otros restaurantes.
 
 ## Procedimiento de pruebas
+- Para decidir piloto/venta, usar la sección vigente al comienzo de `docs/WHATSAPP-COMMERCIAL-READINESS-PLAN.md`; los planes y auditorías fechados anteriores son evidencia histórica. No usar sus SHAs/modelos/presupuestos como estado actual.
 - Prioridad actual: comprensión, intención de compra frente a consulta, cantidades, variantes, notas, interrupciones, correcciones y checkout breve. No desviar el trabajo hacia cocina/pagos sin necesidad de esta tarea.
 - Reproducir fallos con el router completo y dependencias externas simuladas. Comprobar carrito, estado y contenido de respuesta; un carrito correcto no acredita una respuesta clara.
 - Añadir regresiones por comportamiento. Ejecutar las suites afectadas, TypeScript y la suite completa cuando cambien reglas compartidas. Registrar commit, modelo, casos y resultados; no declarar vendible solo porque las pruebas pasan.

@@ -901,6 +901,17 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // A question about the approval phrase is not authorization to place an order.
+    if (conv.state==='awaiting_final_confirm' && /[¿?]/.test(text)) {
+      const approvalText=text.replace(/[¿?]/g,'').trim();
+      const wholeApproval=/^(?:(?:quiero )?(?:confirmar|confirma|confirmo|confirmado|aprobar|apruebo|aprobado|finalizar|terminar|cerrar)(?: (?:el|mi) pedido)?|pedido (?:confirmado|aprobado|listo))(?: (?:por favor|porfa|gracias))?$/.test(this.normalizeForMatch(approvalText));
+      if(isFinalConfirmAffirmation(approvalText) || wholeApproval) {
+        const current=this.conversationService.getSession(conv);
+        await this.reply(conv,msg.waId,'Aún no confirmé el pedido. Revisa el resumen y, si está correcto, escribe «confirmar».\n\n'+this.formatInterruptedStepReminder(conv,current));
+        return;
+      }
+    }
+
     // Glosario local: typos / aliases antes de matching e IA.
     // El saludo se arma con el texto de entrada: "veci" no es un plato, pero sí el tono.
     const inboundText = text;
@@ -2103,7 +2114,8 @@ export class WhatsappOrchestratorService {
         isDeliveryEtaInquiry(originalText) && !/\b(?:precio|cuesta|vale|costo|valor)\b/i.test(originalText)) {
       const eta = this.formatDeliveryEtaSentence(cfg);
       const explicitConfirm = /\b(?:lo confirmo|confirmo (?:el |mi )?pedido|confirmar)\b/i.test(originalText) &&
-        !/\b(?:no confirmo|sin confirmar|antes de confirmar|si (?:llega|tarda|demora)|solo si)\b/i.test(originalText);
+        !/\b(?:no confirmo|sin confirmar|antes de confirmar|si (?:llega|tarda|demora)|solo si)\b/i.test(originalText) &&
+        !/\b(?:si|en caso de)\s+(?:yo\s+)?(?:lo\s+)?confirm(?:o|ar)\b/i.test(originalText);
       if (explicitConfirm) {
         session = { ...session, pendingPriceInquiry: undefined };
         await this.conversationService.saveSession(conv,session);
@@ -14202,7 +14214,7 @@ export class WhatsappOrchestratorService {
       .replace(/^(?:(?:hola|buen[oa]s?(?:\s+(?:dias|tardes|noches))?|que\s+tal|veci|vecino|vecina)\s+)*/i, '')
       .replace(/(?:\s+(?:por\s+favor|porfa|gracias|plis|please))+$/i, '')
       .trim();
-    return /^(?:me\s+)?(?:tienes|tiene|tienen|tendras|tendra|pasas|pasan|das|dan|mandas|mandan|envias|envian|compartes|regalas|regalan|regalame)\s+(?:la\s+|el\s+|una\s+|un\s+)?(?:menu|carta)$/i.test(bare);
+    return /^(?:me\s+)?(?:(?:puedes|puede|podrias|podria)\s+)?(?:tienes|tiene|tienen|tendras|tendra|pasas|pasan|pasame|pasar(?:me)?|das|dan|dar(?:me)?|mandas|mandan|mandame|mandar(?:me)?|envias|envian|enviame|enviar(?:me)?|compartes|comparteme|compartir(?:me)?|muestras|mostrar(?:me)?|regalas|regalan|regalame|regalar(?:me)?)\s+(?:la\s+|el\s+|una\s+|un\s+)?(?:menu|carta)(?:\s+complet[oa])?$/i.test(bare);
   }
 
   /** Pedido explícito del link de pago (Mercado Pago / tarjeta). */
