@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-18",
+  "base": "fa67be49",
+  "branch": "staging",
+  "scope": "Two unit family purchase and labelled options assigned across two unit lines",
+  "baseline_failed": 4,
+  "new_tests": 28,
+  "focused_passed": 36,
+  "global": {
+    "suites": 88,
+    "tests": 9255,
+    "failed": 0,
+    "seconds": 593.781,
+    "frozen_hashes": 379
+  },
+  "typescript": "passed",
+  "node_contracts": 92,
+  "menus": [
+    "PPP",
+    "ramen",
+    "bowls"
+  ],
+  "paid_calls": 0,
+  "external_orders": 0,
+  "meta_messages": 0,
+  "limits": [
+    "Mocks do not certify real model understanding or concurrent transport",
+    "Labelled assignment requires exactly two cart lines with one unit each",
+    "Partial combo conversion and omitted elliptical side remain pending"
+  ],
+  "next": "Combo with drink, elliptical extra portion, address and reference in the same message",
+  "deployment": "pending"
+}

@@ -1,3 +1,11 @@
+## VALIDADO — dos preparaciones y opciones por unidad, 18 de octubre
+
+Global aprobada: 88 suites / 9.255 pruebas en 593.781 s; 379 hashes de fuente intactos. Cuatro fallos iniciales reproducidos y corregidos. 28 pruebas nuevas: cuatro PPP, 16 recorridos de ramen/bowls con DTO simulado exacto y ocho límites de opción/cantidad/nota. Pasan 36 focalizados, TypeScript y 92 contratos Node. Evidencia whatsapp-paired-meals-validation-1810.json. No hay suites activas; publicación y despliegue solo staging pendientes.
+
+Regla por catálogo: reconocer uno/otro antes de la agrupación genérica, conservar opciones compartidas y aplicar la siguiente lista etiquetada a dos líneas unitarias. Opciones desconocidas o cantidades ambiguas conservan el carrito y solicitan precisión. No acredita modelo real ni concurrencia; cero llamadas pagadas/Meta/órdenes externas. Main preservada.
+
+Siguiente: reproducir el extra elíptico «porción de francesa» junto a combo/bebida/dirección, con varios menús y respuesta/carrito/estado/DTO; después dirección estructurada y cierre/contacto del plan comercial. La conversión parcial real sigue pendiente. Entradas inferiores históricas.
+
 ## VIGENTE — negaciones multilínea corregidas y desplegadas solo staging
 
 Código `9f29f10a680431af4a834e84bb5cd3b3a80256b8`, imagen `sha256:4b30294fa9cce5341db79979f236cf1ff5aab4c0a6f1841d74b8afa0cd25bc88`, running/healthy a las 23:10:50 UTC del 18/10. Health público /api/health OK, DB connected, circuito CLOSED a las 23:10:37 UTC. Cinco controles del catálogo compilado aprobados. Rollback ppp-nest-staging:rollback-before-9f29f10a. Main y producción preservadas (imagen productiva c5e97ab1… running). No reconstruir por documentación posterior.

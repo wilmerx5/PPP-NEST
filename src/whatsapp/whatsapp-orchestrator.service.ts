@@ -1027,6 +1027,32 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    // Resolve explicit one/other family plans before generic quantity/option
+    // grouping can turn the second preparation into an independent dish.
+    if (!/[¿?]/.test(originalText) && !['completed','closed','human_takeover'].includes(conv.state || '') &&
+        (/\b(?:uno|una)\s+(?:con\s+)?[\s\S]+\s+y\s+(?:(?:el|la)\s+)?otr[oa]\s+/i.test(originalText) ||
+         /^[\p{L} ]{2,30}[.:]\s*(?:1\s*|un[oa]?\s+)/iu.test(originalText))) {
+      const current=this.conversationService.getSession(conv);
+      const menu=await this.catalogService.getMenuProducts();
+      const open=await this.businessService.getStatus();
+      if (open.isOpen || cfg.ignoreBusinessHours) {
+        const available=cfg.ignoreBusinessHours ? menu.map(product=>({...product,availableNow:true})) : menu;
+        const paired=this.applyPairedAttributeFollowup(current,originalText,available);
+        if (paired) {
+          if (conv.state==='awaiting_mp_payment' && current.mpPreferenceId) {
+            await this.reply(conv,msg.waId,'Ya tienes un enlace de pago. Para cambiar ese pedido debemos revisar el pago con el restaurante. El carrito sigue igual.');return;
+          }
+          await this.conversationService.saveSession(conv,paired);
+          await this.reply(conv,msg.waId,`Listo, actualicé las opciones de cada plato.\n\n${this.formatCartOnly(paired,this.deliveryFeeFor(paired,cfg))}\n\n${this.formatInterruptedStepReminder(conv,paired)}`);return;
+        }
+        const label=originalText.trim().match(/^([\p{L} ]{2,30})[.:]\s*(?:1\s*|un[oa]?\s+)(.+?)\s+y\s+(?:otr[oa]|un[oa]?)\s+(.+)$/iu)?.[1];
+        if(label && current.cart.some(line=>available.find(product=>product.id===line.productId)?.attributes?.some(attribute=>
+            this.normalizeForMatch(attribute.attributeName).replace(/s$/,'')===this.normalizeForMatch(label).replace(/s$/,'')))) {
+          await this.reply(conv,msg.waId,'No pude repartir esas opciones con seguridad. El pedido sigue igual. Indica el plato y su opción juntos.');return;
+        }
+        if (await this.tryHandleTwoUnitFamilyPurchase(conv,msg.waId,current,originalText,available,cfg)) return;
+      }
+    }
     {
       // Counted modifier clauses describe variants of one named item, not new
       // independent products. Keep the whole request ahead of greedy additions.
@@ -2530,7 +2556,6 @@ export class WhatsappOrchestratorService {
       : productsRaw;
 
     if (businessOpenForBot && await this.tryHandleEachCategoryPurchase(conv,msg.waId,session,originalText,products,cfg)) return;
-    if (businessOpenForBot && await this.tryHandleTwoUnitFamilyPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
     if (businessOpenForBot && await this.tryHandleOfferedOptionPurchase(conv, msg.waId, session, originalText, products, cfg)) return;
 
     if (await this.tryApplyAllergyOrder(conv, msg.waId, session, originalText, products, cfg)) return;
@@ -19637,18 +19662,53 @@ export class WhatsappOrchestratorService {
 
   /** Distribute existing units over catalog options, without replacing their product. */
   /** Keep unit-specific presentations and shared options inside the requested family. */
+  /** Labelled one/other choices update attributes, never add their catalogue names as dishes. */
+  private applyPairedAttributeFollowup(session: WhatsappSessionData,text: string,products: MenuProduct[]): WhatsappSessionData | null {
+    const match=text.trim().match(/^([\p{L} ]{2,30})[.:]\s*(?:1\s*|un[oa]?\s+)(.+?)\s+y\s+(?:otr[oa]|un[oa]?)\s+(.+)$/iu);
+    if (!match || session.cart.length!==2 || session.cart.some(line=>line.quantity!==1)) return null;
+    const label=this.normalizeForMatch(match[1]).replace(/s$/,'');
+    const changes=session.cart.map((line,index)=>{
+      const product=products.find(product=>product.id===line.productId);
+      const attribute=product?.attributes?.find(attribute=>this.normalizeForMatch(attribute.attributeName).replace(/s$/,'')===label);
+      if (!product || !attribute) return null;
+      const resolved=this.catalogService.resolveAttributesFromMessage(product,match[index+2],[]);
+      const choices=resolved.status==='invalid' ? [] : resolved.attributes.filter(choice=>choice.attributeName===attribute.attributeName);
+      if (choices?.length!==1) return null;
+      return {...line,attributes:[...(line.attributes || []).filter(choice=>choice.attributeName!==attribute.attributeName),choices[0]]};
+    });
+    return changes.every(Boolean) ? {...session,cart:changes as WhatsappSessionData['cart']} : null;
+  }
+
   private async tryHandleTwoUnitFamilyPurchase(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData,
     text: string, products: MenuProduct[], cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (/[¿?]/.test(text) || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return false;
-    const sharedParts = text.split(/\b(?:ambos|ambas|los dos|las dos)\s+(?:con\s+)?/i);
-    if (sharedParts.length !== 2) return false;
-    const split = sharedParts[0].trim().match(/^(.+?)\b(?:uno|una)\s+con\s+(.+?)\s+y\s+(?:(?:el|la)\s+)?otr[oa]\s+(?:con\s+)?(.+)$/is);
-    if (!split || !/\b(?:quiero|dame|me das|me regalas?|env[ií]ame)\b/i.test(split[1])) return false;
+    if (/[¿?]/.test(text) || this.catalogService.isPriceInquiryIntent(text) || this.catalogService.isAvailabilityInquiry(text) || /\bno\s+(?:quiero|me|dame|env[ií]es)\b/i.test(text) || session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return false;
+    const followupMatch = text.match(/\r?\n([^\r\n]+[.:]\s*(?:1\s*|un[oa]?\s+).+)$/i);
+    const followup = followupMatch?.[1];
+    const purchase = followupMatch ? text.slice(0,followupMatch.index) : text;
+    const sharedParts = purchase.split(/\b(?:ambos|ambas|los dos|las dos)\s+(?:con\s+)?/i);
+    if (sharedParts.length > 2) return false;
+    const split = sharedParts[0].trim().match(/^(.+?)\b(?:uno|una)\s+(?:con\s+)?(.+?)\s+y\s+(?:(?:el|la)\s+)?otr[oa]\s+(?:con\s+)?(.+)$/is);
+    if (!split || !/\b(?:quiero|dame|me das|me regalas?|env[ií]ame|me colaboras con)\b/i.test(split[1])) return false;
+    if (sharedParts.length === 1) {
+      const commonTail = split[3].match(/^(.+?),\s*con\s+(.+)$/i);
+      if (commonTail) { split[3]=commonTail[1]; sharedParts[1]=commonTail[2]; }
+      else sharedParts[1]='';
+    }
     const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(split[1]));
-    const family = this.catalogService.findProductVariantFamily(query, products);
-    const variants = family?.variants || this.catalogService.findCatalogPrefixCandidates(query, products);
+    let family = this.catalogService.findProductVariantFamily(query, products);
+    let variants = family?.variants || this.catalogService.findCatalogPrefixCandidates(query, products);
+    if (variants.length < 2) {
+      const words=query.split(/\s+/);
+      for (let end=words.length-1;end>0;end--) {
+        const candidates=this.catalogService.findCatalogPrefixCandidates(words.slice(0,end).join(' '),products);
+        const tail=this.normalizeForMatch(words.slice(end).join(' ')).split(' ');
+        if(candidates.length<2 || !candidates.every(product=>tail.every(word=>
+          (product.attributes || []).some(attribute=>attribute.options.some(option=>this.normalizeForMatch(option).split(' ').includes(word)))))) continue;
+        variants=candidates;family=this.catalogService.findProductVariantFamily(words.slice(0,end).join(' '),products);break;
+      }
+    }
     if (variants.length < 2) return false;
     const clarify = async () => {
       await this.reply(conv, waId, 'Necesito aclarar las dos preparaciones y las opciones compartidas. El pedido sigue igual.\n' + variants.map(product => product.name).join('\n'));
@@ -19672,7 +19732,7 @@ export class WhatsappOrchestratorService {
     let next: WhatsappSessionData = { ...session, pendingAddOffer: undefined, pendingQuantityHint: undefined };
     for (let index = 0; index < selected.length; index++) {
       const product = selected[index]!;
-      const source = `${index === 0 ? split[2] : split[3]} ${sharedParts[1]}`;
+      const source = `${split[1]} ${index === 0 ? split[2] : split[3]} ${sharedParts[1]}`;
       if (this.catalogService.uncoveredWordsAgainstOffers(`${product.name} ${sharedParts[1]}`, [product]).length) return clarify();
       const resolved = this.catalogService.resolveAttributesFromMessage(product, source, []);
       if (resolved.status === 'invalid') return clarify();
@@ -19680,6 +19740,11 @@ export class WhatsappOrchestratorService {
       const added = this.tryAddProductToCart(next, product, 1, cfg, note, resolved.attributes, { sourceText: source });
       if (added.blocked || added.missingAttributes) return clarify();
       next = added.session;
+    }
+    if (followup) {
+      const paired = this.applyPairedAttributeFollowup(next,followup,products);
+      if (!paired) return clarify();
+      next=paired;
     }
     const checkout = ['awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state);
     await this.conversationService.saveSession(conv, next, checkout ? conv.state : 'building_cart');

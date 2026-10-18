@@ -19277,3 +19277,54 @@ describe('October 18 empty order boundaries', () => {
     });
   }
 });
+
+describe("Paired meal attribute replay",()=>{for(const enabled of [false,true])for(const joined of [false,true]){
+      it(`two executive meals agent=${enabled} joined=${joined}`, async () => {
+        const h = harness(products, enabled);
+        const first = 'Por favor me colaboras con dos ejecutivos pierna pernil uno Broaster y otro frito, con limonadas';
+        const second = 'Sopas. 1ajiaco y otra mondongo';
+        if (joined) await h.sendQueued(first + '\n' + second);
+        else { await h.sendQueued(first); await h.sendQueued(second); }
+        expect(h.cartRows()).toHaveLength(2);
+        expect(h.cartRows().map(line => [line.id, line.qty]).sort((a,b)=>Number(a[0])-Number(b[0]))).toEqual([[18,1],[22,1]]);
+        for (const row of h.cartRows()) expect(row.attrs).toEqual(expect.arrayContaining(['Presa:Pierna Pernil','Bebida:Limonada']));
+        expect(h.cartRows().map(row=>row.attrs.join(' ')).join(' ')).toMatch(/Ajiaco/);
+        expect(h.cartRows().map(row=>row.attrs.join(' ')).join(' ')).toMatch(/Mondongo/);
+      });
+}});
+
+describe('Paired meal attribute general menus and checkout',()=>{
+ for(const f of [
+  {head:'ramen',variants:['Miso','Shoyu'],size:'Grande',attribute:'Caldo',choices:['Vegetal','Cerdo'],drink:'Te'},
+  {head:'bowl',variants:['Rojo','Verde'],size:'Grande',attribute:'Base',choices:['Quinoa','Arroz'],drink:'Agua'},
+ ])for(const enabled of [false,true])for(const joined of [false,true])for(const state of ['building_cart','awaiting_payment'])it(`${f.head} agent=${enabled} joined=${joined} state=${state}`,async()=>{
+  const menu=f.variants.map((v,index)=>({id:66501+index,code:66501+index,name:`${f.head} ${v}`,price:20000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Tamano',options:[f.size,'Chico']},{attributeName:f.attribute,options:f.choices},{attributeName:'Bebida',options:[f.drink]}]}));
+  const h=harness(menu,enabled);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+  const first=`Me regalas dos ${f.head} ${f.size} uno ${f.variants[0]} y otro ${f.variants[1]}, con ${f.drink}`;
+  const follow=`${f.attribute}s. 1${f.choices[0]} y otra ${f.choices[1]}`;
+  if(joined)await h.sendQueued(first+'\n'+follow);else{await h.sendQueued(first);await h.sendQueued(follow);}
+  expect(h.cartRows()).toHaveLength(2);
+  for(let index=0;index<2;index++)expect(h.cartRows()[index]).toMatchObject({id:menu[index].id,qty:1,attrs:expect.arrayContaining([`Tamano:${f.size}`,`${f.attribute}:${f.choices[index]}`,`Bebida:${f.drink}`])});
+  expect(h.replies.at(-1)).not.toMatch(/no manejamos|necesito aclarar/i);
+  expect(h.conv.state).toBe(state);
+  const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('cuánto suma mi pedido');expect(h.conv.sessionData.cart).toEqual(before);
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6650,dailyOrderNumber:105});
+  await h.sendQueued('nada más');await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);
+  expect(dto.items.map((item:any)=>item.productId)).toEqual(menu.map(item=>item.id));
+  for(let index=0;index<2;index++)expect(dto.items[index].attributes).toEqual(expect.arrayContaining([{attributeName:'Tamano',attributeValue:f.size},{attributeName:f.attribute,attributeValue:f.choices[index]},{attributeName:'Bebida',attributeValue:f.drink}]));
+ });
+});
+
+
+describe('Paired option clarification cannot create extra dishes',()=>{
+ for(const enabled of [false,true])for(const quantity of [1,2])for(const invalid of [false,true])it(`agent=${enabled} quantity=${quantity} invalid=${invalid}`,async()=>{
+  const menu=['Miso','Shoyu'].map((name,i)=>({id:66601+i,code:66601+i,name:'Ramen '+name,price:20000,availableNow:true,attributes:[{attributeName:'Caldo',options:['Vegetal','Cerdo']}]}));
+  const h=harness(menu,enabled);h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{cart:menu.map(p=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity,note:'Sin cebolla',attributes:[{attributeName:'Caldo',attributeValue:'Vegetal'}]}))});
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued(`Caldos. 1Vegetal y otro ${invalid?'Desconocido':'Cerdo'}`);
+  if(invalid||quantity!==1){expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/pedido sigue igual/i);}
+  else{expect(h.conv.sessionData.cart[1].attributes).toContainEqual({attributeName:'Caldo',attributeValue:'Cerdo'});expect(reply).toMatch(/actualic[eé]/i);}
+  expect(h.conv.sessionData.cart.map((line:any)=>line.note)).toEqual(['Sin cebolla','Sin cebolla']);expect(h.conv.state).toBe('awaiting_payment');
+ });
+});
