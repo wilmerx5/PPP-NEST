@@ -1,3 +1,34 @@
+## Global cerrada — 18/10/2026: preparada promoción Main autorizada
+
+82 suites / 8.889 pruebas aprobadas en 947.954s; 370 hashes de fuente intactos. TypeScript, 72 contratos Node y controles focalizados acreditados en whatsapp-kitchen-description-validation-1810.json. La primera global detectó 3 pérdidas de ají: corregidas y verificadas antes de esta aceptación. Cero API pagada/Meta/órdenes externas. Ahora publicar staging, avanzar Main sin alterar artefactos locales, desplegar ambos backends con rollback/modelos iguales y verificar. Estado EN CURSO: no asumir desplegado hasta cierre con SHA e imagen. Después continuar matriz de preferencias variadas. Entradas inferiores históricas.
+
+## Promoción solicitada por el usuario — 18/10/2026
+
+El usuario autorizó integrar todo en Main y desplegar producción, conservando staging. Global final en curso: no editar fuente ni lanzar otra suite. La primera global de notas detectó tres pérdidas de ají con sin arepa; se corrigió combinando la nota completa del mensaje con la descripción extraída. Los 37 controles router afectados pasan, TypeScript pasa. Fuente congelada de 370 archivos; esta global usa dos workers. Publicar/promover/desplegar solo si queda verde. Conservar dist local de Main, compose productivo modificado, archivos privados y volúmenes.
+
+## Plan posterior: preferencias reutilizables entre restaurantes
+
+La lista es una matriz de comportamientos y fixtures, no un diccionario de excepciones por plato. Implementar y medir por familias, con menús ficticios y casos reservados que no se usen para ajustar reglas.
+
+1. Intensidad: menos dulce/sin tanto azúcar, suave/no tan picante, poca sal/no tan salado, menos ácido, poca grasa/no tan grasoso. Menús de café, jugos, postres, mexicano, asiático y parrilla. Distinguir opción válida, nota y pregunta sobre preparación; no prometer que cocina pueda cumplirla.
+2. Textura, corte y temperatura: dorado/crujiente/no seco, delgado/no tan grueso, bien caliente, poco hielo. Proteger nombres completos de catálogo que contienen estos adjetivos y no absorber bebidas u otros adicionales.
+3. Alcance por unidades: cuatro productos, dos con una preferencia y dos con otra; una nota compartida y otra exclusiva; cambiar solo un grupo; retirar una cláusula conservando el resto. Verificar cantidades, precio, atributos y notas en cada unidad del DTO simulado.
+4. Contexto: nota inicial, después de elegir variante, tras consulta informativa, durante nombre/dirección/pago/confirmación. Responder consultas sin bloquear el paso pendiente ni convertirlas en datos del cliente.
+5. Corrección y límites: «normal», «mejor no», referencia ambigua, opción inexistente, adicional pagado frente a preferencia, negación y compras nuevas en la misma frase. Las alergias/restricciones no se convierten en garantías de ausencia o seguridad.
+6. Conversaciones completas: saludo/carta → compra → variantes/notas → corrección → dirección → pago → confirmación simulada. Rotar panadería, hamburguesería, vegetariano, parrilla, cocina asiática, cafetería y postres; probar tanto reglas como herramientas del agente con respuestas simuladas.
+
+Cada tanda requiere reproducir antes de corregir, oráculos sobre respuesta/carrito/estado/DTO y controles contra compras indebidas. Los mocks no miden comprensión del modelo ni ASR real. Después de contratos verdes, evaluar un conjunto reservado pequeño con límite de gasto, costo por conversación y latencia. El piloto supervisado necesita recuperación clara, ausencia de mutaciones silenciosas y trazabilidad; los conteos de tests no acreditan venta universal.
+
+## Global en curso — 18/10/2026: notas de grosor/presentación/cocción
+
+Base local de1479d1 (compra+precio ya validada, no desplegada).28fallos reprodujeron notas tratadas como productos o perdidas tras elegir.56regresiones nuevas:24router→DTO,4familias ambiguas→elección→DTO,6nombres de catálogo y22unitarios.322focalizados,TypeScript y72Node pasan. Global EN CURSO con370hashes congelados;no editar/lanzar otra suite. No confundir con global8833 de la base anterior. Runtime sigue190c6c86;desplegar agrupado solo después del cierre final.
+
+Reglas generales: descripción acotada con ancla de catálogo, nota literal sin promesa de cumplimiento; no absorber otros productos/direcciones/preguntas; conservar la nota original durante una elección de presentación. Un nombre completo de catálogo tiene prioridad sobre un hermano genérico. El helper tolera una errata solo para clasificar adjetivos;no reescribe palabras del usuario.
+
+Audio original de pollos revisado por Kinocut/Whisper tiny local sin API pagada. El resultado recoge cantidad2 e insistencia en cocción, pero tiene errores y NO es ground truth humano ni prueba del GPT Transcribe desplegado. Evidencia whatsapp-kitchen-description-validation-1810.json. Archivo original privado, sin commit ni envío externo WhatsApp.
+
+Siguiente tras cierre: preparaciones combinadas con compras adicionales independientes (no solo controles unitarios de no absorción), notas de varias unidades y elección después de una consulta; orden inverso de compra+precio y detalles no documentados. Reservadas reales/costo/latencia pendientes del piloto. Main y presupuesto intactos; no declarar vendible por conteos.
+
 ## Tanda validada, pendiente de despliegue agrupado — 18/10/2026: compra distribuida seguida de consulta de precio
 
 Base c649368d.18recorridos reprodujeron question_not_order. Contrato interno verifiedDistributedProductId solo sale del reparto fuente validado, no de argumentos del modelo; tool exige compra afirmativa literal, anfitrión de catálogo y consulta de precio posterior. El adaptador conserva validación de grupos completa y atomicidad. No relaja preguntas puras, permisos, negaciones ni condiciones. Prompt explica compra+consulta.

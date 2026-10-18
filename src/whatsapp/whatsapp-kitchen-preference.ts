@@ -1,3 +1,4 @@
+import {splitKitchenDescription} from './whatsapp-kitchen-description';
 const CONTAINERS = '(?:ca[jh]as?|partes|porciones|empaques?|bolsas?|platos?)';
 const SPLIT = `(?:dos|tres|2|3)\\s+${CONTAINERS}`;
 const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por\\s+separado|aparte|en\\s+(?:dos|tres|2|3)(?:\\s+${CONTAINERS})?))?|por\\s+separado|en\\s+${SPLIT}|(?:bien|muy)\\s+(?:tostad|dorad)(?:it)?[oa]s?|(?:tostad|dorad)it[oa]s?|(?:bien\\s+|muy\\s+)?crocantes?)`;
@@ -7,6 +8,8 @@ const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por
  */
 export function splitKitchenPreference(source: string): {productText: string; note: string} | null {
   if (/[?¿;]/.test(source)) return null;
+  const description=splitKitchenDescription(source);
+  if(description)return description;
   const handling = HANDLING;
   const match = new RegExp(`\\b(?:sin\\s+|bien\\s+empacad[oa]s?\\b|en\\s+(?:cajas?|bolsas?|empaques?)\\s+separad[oa]s?\\b|${handling}(?![\\p{L}]))`, 'iu').exec(source);
   if (!match || !match.index) return null;

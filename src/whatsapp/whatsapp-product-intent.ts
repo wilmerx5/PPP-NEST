@@ -1,3 +1,4 @@
+import {kitchenDescriptionNote} from './whatsapp-kitchen-description';
 import {applyLocalGlossary} from './whatsapp-local-glossary';
 type NamedProduct = { id: number; name: string };
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -55,6 +56,9 @@ export function interpretProductNote(source: string, products: NamedProduct[]):
     if (!match) continue;
     const tail = normalized.slice(match.index + match[0].length).trim()
       .replace(/\s+(?:por favor|porfa|gracias)[.!]*$/, '').replace(/[.!]+$/, '').trim();
+    if(!tail)return null; // An exact longer catalogue name owns its adjectives.
+    const description=kitchenDescriptionNote(prepared.slice(match.index+match[0].length));
+    if(description)return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:description};
     const descriptor = '(?:dorad[oa]s?|delgad[oa]s?|grues[oa]s?|picad[oa]s?|tajad[oa]s?|crocantes?|crujientes?)';
     if (new RegExp(`^(?:(?:bien|muy)\\s+)?${descriptor}(?:\\s+(?:y\\s+)?(?:(?:bien|muy)\\s+)?${descriptor})*$`).test(tail)) {
       return {productId:product.id,productText:prepared.slice(0,match.index+match[0].length).trim(),note:tail};

@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-18",
+  "base": "de1479d1daf7f54bc3360a6814ce880666859c53",
+  "status": "validated_pending_main_promotion_and_deploy",
+  "baseline": {
+    "failed": 28,
+    "log": "/tmp/ppp-kitchen-description-baseline-1810.log"
+  },
+  "new_regressions": 56,
+  "focused": {
+    "passed": 322,
+    "log": "/tmp/ppp-kitchen-description-controls-1810.log",
+    "catalog_suites_skipped_by_name_filter": 2
+  },
+  "typescript": "passed",
+  "node_contracts": 72,
+  "source_manifest": "/tmp/ppp-kitchen-description-final-source-1810.json",
+  "global_result": "/tmp/ppp-kitchen-description-final-global-1810.json",
+  "coverage": [
+    "24 named-product conversations over 3 menus, agent enabled/disabled, 4 presentation/thickness wordings, actual selection attribute on Sobrebarriga, final simulated DTO",
+    "4 ambiguous family conversations over chicken/arepa, enabled/disabled, quantity two, option selection and note on every final DTO item; chicken has real arepa attributes",
+    "6 exact named-catalogue preparation controls preserve the more specific SKU",
+    "22 bounded phrase and negative-consumption controls"
+  ],
+  "intermediate_findings": [
+    "Initial grammar improvement left notes missing after choosing chicken; recover a validated preparation from the explicit pending purchase source",
+    "Stronger assertions exposed loss of the initial dorada/dorda descriptor; catalogue-anchored note now owns the full description",
+    "A literal specific catalogue name was reduced to a shorter sibling SKU; exact full query gets precedence and an exact longest name is not reinterpreted as a note",
+    "No broad unknown tail absorption: additional purchases, questions, addresses and multiple intents are rejected by the note recognizer"
+  ],
+  "audio_evidence": {
+    "path": "/home/levi/Downloads/WhatsApp Ptt 2026-10-18 at 8.46.37 AM.ogg",
+    "inspection": "Kinocut video_info rejects audio-only stream; video_ai_transcribe then accepted the original audio",
+    "transcriber": "local Whisper tiny, language es; no paid API",
+    "transcript": "quiero dos pollo pero bien cocina dos por favor que no me vayan a hacer el crudo",
+    "artifact": "/tmp/ppp-chicken-audio-1810.srt",
+    "limits": "Contains recognition errors. Corroborative only, not human ground truth and not a test of deployed GPT Transcribe. Raw audio not committed or sent to WhatsApp."
+  },
+  "limits": [
+    "No paid inference, Meta or external orders",
+    "Speech-like test text is reconstructed; no new deployed ASR precision claim",
+    "Spelling tolerance only recognizes an adjective; stored note preserves original wording",
+    "Does not promise kitchen fulfillment or convert a note into a supported SKU option",
+    "Preparations combined with separate additional purchases and more clause orders still need further full-router cases"
+  ],
+  "budget_changed": false,
+  "main_changed": false,
+  "first_global": {
+    "suites_passed": 81,
+    "suites_failed": 1,
+    "tests_passed": 8886,
+    "tests_failed": 3,
+    "seconds": 1405.46,
+    "result": "/tmp/ppp-kitchen-description-global-1810.json",
+    "failure": "variant note override discarded ají when sin arepa was extracted; repaired by joining complete catalogue-derived source note"
+  },
+  "repair_focused": {
+    "passed": 37,
+    "log": "/tmp/ppp-kitchen-description-repair-1810.log"
+  },
+  "global_mode": "--maxWorkers=2, source frozen",
+  "global": {
+    "suites_passed": 82,
+    "tests_passed": 8889,
+    "failed": 0,
+    "seconds": 947.954,
+    "source_files_unchanged": 370
+  }
+}

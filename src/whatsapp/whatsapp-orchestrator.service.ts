@@ -9,7 +9,7 @@ import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-req
 import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
-import { condimentIntensityNote, interpretProductNote } from './whatsapp-product-intent';
+import { condimentIntensityNote, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { applyCartLineEdits } from './whatsapp-cart-edits';
@@ -2753,7 +2753,8 @@ export class WhatsappOrchestratorService {
     }
 
     // Resolve a single named dish before broad substitution/style heuristics consume its notes.
-    const kitchenRequest = /[.!]\s+\p{L}/u.test(originalText) ? null : splitKitchenPreference(text);
+    const anchoredKitchenRequest = interpretProductNote(originalText,products);
+    const kitchenRequest = /[.!]\s+\p{L}/u.test(originalText) ? null : anchoredKitchenRequest || splitKitchenPreference(text);
     if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isAvailabilityInquiry(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
@@ -2762,14 +2763,14 @@ export class WhatsappOrchestratorService {
       !this.multiResolvesSeveralLines(originalText, products)) {
       const hits = this.catalogService.searchByNameScored(kitchenRequest.productText, products, 4);
       const sized = this.catalogService.resolveSizedChickenProduct(kitchenRequest.productText, products);
-      const selected = sized || (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) ? hits[0].p : undefined);
+      const selected = (anchoredKitchenRequest ? products.find(product=>product.id===anchoredKitchenRequest.productId) : undefined) || sized || (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) ? hits[0].p : undefined);
       if (selected && selected.availableNow !== false &&
         this.catalogService.productNameFitsUtterance(selected, kitchenRequest.productText) &&
         !this.catalogService.uncoveredDishWords(kitchenRequest.productText, products).length) {
-        if (await this.handleProductWithVariants(conv, msg.waId, session, selected, originalText, cfg)) return;
+        if (await this.handleProductWithVariants(conv, msg.waId, session, selected, originalText, cfg, joinKitchenNotes(this.catalogService.orderKitchenNote(originalText, selected), kitchenRequest.note))) return;
         if (!selected.hasAttributes || !selected.attributes?.length) {
           await this.addResolvedDishesToCart(conv, msg.waId, session,
-            [{product:selected,segment:kitchenRequest.productText,note:[supportsCookingTerm(selected) ? parseCookingTerm(kitchenRequest.productText)?.note : undefined, kitchenRequest.note].filter(Boolean).join('; ')}], cfg);
+            [{product:selected,segment:kitchenRequest.productText,note:joinKitchenNotes(supportsCookingTerm(selected) ? parseCookingTerm(kitchenRequest.productText)?.note : undefined, this.catalogService.orderKitchenNote(originalText,selected), kitchenRequest.note)}], cfg);
           return;
         }
       }
@@ -5950,7 +5951,12 @@ export class WhatsappOrchestratorService {
     if (orderQty >= 2) {
       session = this.rememberQuantityHint(session, text, orderQty);
     }
-    const embeddedProductRaw =
+    // A literal full catalogue name owns its preparation words before generic
+    // size/style heuristics can reduce it to a shorter sibling SKU.
+    const exactProductQuery = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(text));
+    const exactNamedProduct = products.find(product=>product.availableNow!==false &&
+      this.normalizeForMatch(product.name)===this.normalizeForMatch(exactProductQuery));
+    const embeddedProductRaw = exactNamedProduct ||
       this.catalogService.findProductEmbeddedInMessage(text, products) ||
       this.catalogService.resolveSizedChickenProduct(text, products);
     // Si el plato tiene presentaciones (arroz chino caja/medio/costillas…),
@@ -7493,7 +7499,8 @@ export class WhatsappOrchestratorService {
     if (available.length < 2) return false;
     session = {
       ...session,
-      pendingMatch: { query: text, candidates: available, intent: 'order', quantity },
+      pendingMatch: { query: text, candidates: available, intent: 'order', quantity,
+        note: this.catalogService.extractProductModificationNote(text) || undefined },
       pendingQuantityHint: { query, quantity },
       ...(['awaiting_address', 'awaiting_name', 'awaiting_phone', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state)
         ? { pendingCheckoutResume: conv.state as WhatsappSessionData['pendingCheckoutResume'] } : {}),
@@ -7905,6 +7912,14 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingMatch;
     if (!pending?.candidates?.length) return false;
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    // Older/fallback family lists retain the original request but may omit its
+    // note. Recover only a verified preparation from an actual purchase source.
+    const pendingOrderSource = pending.intent==='order' ||
+      /^(?:quiero|quisiera|dame|ponme|me das|me regalas) (?:\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/.test(this.normalizeForMatch(pending.query));
+    if (!pending.note && pending.intent!=='info' && pendingOrderSource &&
+      !this.catalogService.isPriceInquiryIntent(pending.query) && !this.catalogService.isProductDescriptionInquiry(pending.query)) {
+      pending.note=this.catalogService.extractProductModificationNote(pending.query) || undefined;
+    }
 
     const trimmed = text.trim();
     const bareNum = this.catalogService.extractListPickNumber(text);

@@ -18933,3 +18933,41 @@ describe('Mixed distributed purchases execute while preserving checkout and fina
   expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeValue===f.b)&&item.note==='sin sal')).toHaveLength(counts[1]);
  });
 });
+
+describe('Kitchen presentation clauses remain notes rather than unavailable dishes',()=>{
+ for(const name of ['Sobrebarriga','Filete Vegetal','Berenjena Gratinada'])for(const enabled of [false,true])for(const preference of ['dorada, bien bonita que no esté tan gorda','bien doradita, que no venga tan gruesa','delgadita por favor','dorda, bien bonita que no esté tan torda'])it(`${name} agent=${enabled} ${preference}`,async()=>{
+  const product={id:65401,code:65401,name,price:27000,availableNow:true,hasAttributes:name==='Sobrebarriga',attributes:name==='Sobrebarriga'?[{attributeName:'Seleccion',options:['Asada','En Salsa']}]:[]};const h=harness([product],enabled);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6540,dailyOrderNumber:83});
+  if(enabled)h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const result=JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:1},{actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}}));
+   expect(result.ok).toBe(true);return {reply:'Listo',actions,toolCalls:['add_item'],purchaseAttempts:[{productId:product.id,accepted:true}]};
+  });
+  const reply=await h.sendQueued(`Quiero una ${name} ${preference}`);
+  expect(reply).not.toMatch(/no (?:manejamos|tenemos)|no pude añadir/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].quantity).toBe(1);
+  const note=h.conv.sessionData.cart[0].note || '';if(!preference.includes('delgadita'))expect(note).toMatch(/dorad|dord/i);expect(note).toMatch(preference.includes('delgadita')?/delgadita/i:preference.includes('torda')?/torda/i:preference.includes('gruesa')?/gruesa/i:/gorda/i);
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create.mock.calls[0][0].items[0].note).toBe(note);
+ });
+});
+
+describe('Cooking reassurance notes survive a pending product-family selection',()=>{
+ for(const family of [{query:'pollos',a:'1 Pollo Frito',b:'1 Pollo Broaster',note:'bien cocinados, que no me vayan a salir crudos'},{query:'arepas',a:'Arepa Asada',b:'Arepa Frita',note:'bien cocinadas, que no me vayan a salir crudas'}])for(const enabled of [false,true])it(`${family.query} agent=${enabled}`,async()=>{
+  const menu=[{id:65411,code:65411,name:family.a,price:24000,availableNow:true,hasAttributes:family.query==='pollos',attributes:family.query==='pollos'?[{attributeName:'Arepas',options:['Blancas','Fritas']}]:[]},{id:65412,code:65412,name:family.b,price:25000,availableNow:true,hasAttributes:family.query==='pollos',attributes:family.query==='pollos'?[{attributeName:'Arepas',options:['Blancas','Fritas']}]:[]}];const h=harness(menu,enabled);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6541,dailyOrderNumber:84});
+  const reply=await h.sendQueued(`Quiero dos ${family.query} pero ${family.note}`);
+  expect(reply).toContain(family.a);expect(reply).toContain(family.b);expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(0);
+  const selected=await h.sendQueued('1');expect(selected).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].quantity).toBe(2);expect(h.conv.sessionData.cart[0].note).toMatch(/cocinad[oa]s.*crud[oa]s/i);
+  const note=h.conv.sessionData.cart[0].note;if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(2);expect(items.every((item:any)=>item.note===note)).toBe(true);
+ });
+});
+
+describe('Named catalogue preparations remain products rather than extracted notes',()=>{
+ for(const base of ['Pollo','Filete','Vegetal'])for(const enabled of [false,true])it(`${base} agent=${enabled}`,async()=>{
+  const menu=[{id:65431,code:65431,name:base,price:19000,availableNow:true,hasAttributes:false,attributes:[]},{id:65432,code:65432,name:`${base} Bien Cocinado`,price:24000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,enabled);const reply=await h.sendQueued(`Quiero un ${base} Bien Cocinado`);
+  expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].productId).toBe(65432);
+ });
+});

@@ -1,3 +1,15 @@
+## Global cerrada — 18/10/2026: preparada promoción Main autorizada
+
+82 suites / 8.889 pruebas aprobadas en 947.954s; 370 hashes de fuente intactos. TypeScript, 72 contratos Node y controles focalizados acreditados en whatsapp-kitchen-description-validation-1810.json. La primera global detectó 3 pérdidas de ají: corregidas y verificadas antes de esta aceptación. Cero API pagada/Meta/órdenes externas. Ahora publicar staging, avanzar Main sin alterar artefactos locales, desplegar ambos backends con rollback/modelos iguales y verificar. Estado EN CURSO: no asumir desplegado hasta cierre con SHA e imagen. Después continuar matriz de preferencias variadas. Entradas inferiores históricas.
+
+## EN CURSO — 18/10/2026: global final y promoción Main autorizada
+
+No editar fuente ni iniciar otra suite/deploy mientras exista la global /tmp/ppp-kitchen-description-final-global-1810.log. Fuente congelada 370 archivos, dos workers, manifest /tmp/ppp-kitchen-description-final-source-1810.json. La primera global detectó 3 pérdidas de ají al combinar sin arepa; arreglo focalizado 37 verdes y TypeScript verde. Aún NO desplegar hasta global verde.
+
+El usuario solicitó explícitamente integrar todo en Main, desplegar producción y continuar en staging. Main local contiene artefactos generados ajenos preservados en manifiestos /tmp/ppp-main-preserved-{artifacts,untracked}-1810.json. Producción /var/www/ppp-nest, Main, contenedor ppp_nest_api, compose modificado localmente: conservarlo. .env es env_file efectivo; hay que alinear los cuatro modelos con staging mediante esas claves solamente y guardar copia privada antes de reiniciar. Script preparado /tmp/ppp-main-deploy-1810.sh. Staging conserva su procedimiento aislado. Ningún cambio productivo ejecutado aún.
+
+Tras cierre documentar SHA/runtimes, rollback, modelos y salud, y retomar matriz de preferencias entre restaurantes de whatsapp-next-batches.md. Cero llamadas pagadas/Meta/órdenes externas;188/187/1 sin cambio. No declarar vendible por global simulada. Entradas inferiores históricas hasta el nuevo cierre.
+
 ## Compra distribuida + precio validada, NO desplegada — 18/10/2026
 
 Basec649368d.45regresiones nuevas:18router→DTO,24rechazos de herramientas,3bucles de agente con HTTP totalmente simulado.198focalizados,TypeScript,72Node y global81suites/8833tests en1044.429s,368hashes intactos. Evidencia whatsapp-mixed-price-validation-1810.json;/tmp/ppp-mixed-price-global-1810.{log,json} y source-manifest. Runtime sigue190c6c86;no confundir con publicación/despliegue. Compilar/desplegar agrupado al cerrar la siguiente tanda de notas. Main/modelos/presupuesto188/187/1 intactos,ceroAPIpagada/Meta/órdenes externas.
