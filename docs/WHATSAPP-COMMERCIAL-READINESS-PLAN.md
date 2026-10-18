@@ -1,3 +1,21 @@
+## VIGENTE — 18/10/2026, 15:05 Bogotá: sabor al convertir a combo, desplegado solo en staging
+
+Código `5693c57bbe1eaf7e5e4623ca781231fd5b96c791` publicado y desplegado. Imagen activa y candidate: `sha256:d8d72cc159a217a14d03d78b62be9a0bb6c40478bf7c1f07d86dc58bf38b2245`. Contenedor running/healthy; health OK, DB connected, circuito CLOSED a las 20:05:51 UTC. Rollback: `ppp-nest-staging:rollback-before-5693c57b`. Probe compilado de 12 combinaciones de volumen/sabor y probe previo aprobados. Evidencia: `whatsapp-combo-flavour-validation-1810.json`. No reconstruir por documentación posterior.
+
+Ocho fallos iniciales reprodujeron que «Coca Cola 1.5L Zero» se comparaba como la bebida base. Se conserva la validación de tamaño y se omite el volumen únicamente al comparar el sabor seleccionado con la bebida del combo. Una botella distinta no se retira por error; una compatible se incorpora sin duplicarla. Las notas, cantidades adicionales y líneas ambiguas siguen protegidas por los controles previos.
+
+20 regresiones nuevas: ocho conversaciones completas con dos menús y agente configurado encendido/apagado, más doce controles de formatos 1.5L/1,5 litros/1500ml y sabores Original/Ligero. Se comprueban respuesta, carrito, consulta de total sin mutación, checkout y DTO de orden simulada. Pasan 36 focalizados, TypeScript, 92 contratos Node y global de 86 suites / 9.122 pruebas en 580.25 segundos, con 376 hashes intactos. No hay suites activas. Los modelos y servicios externos están simulados: no acredita nueva precisión lingüística ni disponibilidad para venta por conteos.
+
+Main local y producción siguen en `14d9dd84`, imagen productiva `c5e97ab1…` running. Configuración privada, modelos, bases, volúmenes, bin/ y orphan preservados. Cero llamadas pagadas, Meta y órdenes externas; presupuesto 188/187/1 intacto. Este despertar cierra una sola tanda.
+
+Siguiente:
+1. Hacer visible una botella retenida por sabor incompatible en la respuesta de conversión y aclarar intención cuando sea ambigua; actualmente el total, carrito final y confirmación protegen esa conservación.
+2. Convertir solo dos de cuatro unidades y asignar exactamente sus bebidas, conservando el resto.
+3. Retomar unidades internas con letras/cambio de unidad, formularios etiquetados y notas/opciones sobre subconjuntos.
+4. Validación reservada del modelo, costo/latencia y mapa real solo en ejecución activa con presupuesto; los despertares programados siguen gratuitos, sin Meta ni órdenes externas.
+
+Las mejoras de dirección, contacto y cierre del lote anterior siguen incluidas. La cobertura real de Villa Galante no queda acreditada por HTTP simulado. Mercado Pago productivo continúa habilitado y staging deshabilitado; el piloto acordado sigue con efectivo y transferencia. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 14:49 Bogotá: lote desplegado solo en staging
 
 Código `3a5a204badc1e24fb438c845d2cf13a6cb65f872` publicado y desplegado. Imagen activa y candidate iguales: `sha256:6890143f77da7d69f5c245c97010804d02b17643275ad726df644c358d5d970f`. Contenedor running/healthy; health OK, DB connected y circuito CLOSED a las 19:49:22 UTC. Rollback: `ppp-nest-staging:rollback-before-3a5a204b`. Los commits posteriores de documentación no requieren reconstrucción.

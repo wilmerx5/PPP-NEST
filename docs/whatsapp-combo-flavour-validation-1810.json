@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "9e505494a8f54dcbd637a38d6e578d96dda861a2",
-  "status": "validated_not_deployed",
+  "status": "deployed_staging_only",
   "baseline": {
     "failed": 8,
     "log": "/tmp/ppp-combo-flavour-baseline-1810.log"
@@ -53,5 +53,35 @@
     "passed": true,
     "script": "/tmp/ppp-combo-flavour-source-probe-1810.cjs",
     "cases": 12
+  },
+  "deployment": {
+    "head": "5693c57bbe1eaf7e5e4623ca781231fd5b96c791",
+    "image": "sha256:d8d72cc159a217a14d03d78b62be9a0bb6c40478bf7c1f07d86dc58bf38b2245",
+    "running": true,
+    "health": "healthy",
+    "candidate_matches_active": true,
+    "public_health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "timestamp": "2026-10-18T20:05:51.728Z"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-5693c57b",
+    "log": "/tmp/ppp-combo-flavour-deploy-1810.log",
+    "compiled_probe": {
+      "passed": true,
+      "cases": 12,
+      "log": "/tmp/ppp-combo-flavour-compiled-result-1810.log"
+    },
+    "prior_compiled_probe": {
+      "passed": true,
+      "log": "/tmp/ppp-combo-flavour-prior-probe-1810.log"
+    },
+    "main_preserved": {
+      "head": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+      "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+      "running": true,
+      "health": null
+    }
   }
 }
