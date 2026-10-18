@@ -45,5 +45,15 @@
   "paidCalls": 0,
   "metaCalls": 0,
   "externalOrders": 0,
-  "deployment": "pending"
+  "deployment": {
+    "code": "9f29f10a680431af4a834e84bb5cd3b3a80256b8",
+    "image": "sha256:4b30294fa9cce5341db79979f236cf1ff5aab4c0a6f1841d74b8afa0cd25bc88",
+    "verifiedAt": "2026-10-18T23:10:50Z",
+    "container": "running/healthy",
+    "health": "ok/db connected/circuit CLOSED at 23:10:37Z",
+    "compiledControlsPassed": 5,
+    "rollback": "ppp-nest-staging:rollback-before-9f29f10a",
+    "productionImageUnchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "note": "Metadata SSH timed out once; retry verified runtime. No changes to models, private config, databases or volumes."
+  }
 }

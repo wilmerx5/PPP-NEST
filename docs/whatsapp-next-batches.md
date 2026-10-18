@@ -1,3 +1,11 @@
+## VIGENTE — negaciones multilínea corregidas y desplegadas solo staging
+
+Código `9f29f10a680431af4a834e84bb5cd3b3a80256b8`, imagen `sha256:4b30294fa9cce5341db79979f236cf1ff5aab4c0a6f1841d74b8afa0cd25bc88`, running/healthy a las 23:10:50 UTC del 18/10. Health público /api/health OK, DB connected, circuito CLOSED a las 23:10:37 UTC. Cinco controles del catálogo compilado aprobados. Rollback ppp-nest-staging:rollback-before-9f29f10a. Main y producción preservadas (imagen productiva c5e97ab1… running). No reconstruir por documentación posterior.
+
+Global 88 suites / 9.227 pruebas, 607.927 s, 379 hashes intactos. 23 pruebas nuevas: 12 recorridos negativos, seis límites de carrito vacío y cinco controles de segmentación. Pasan 23 focalizados, 123 contratos afectados, TypeScript y 92 contratos Node. Baseline: dos fallos de negación corregidos; cuatro de ejecutivos distribuidos siguen pendientes. No afirmar que modelos reales se probaron ni que el comprobante vacío histórico quedó explicado. Evidencia whatsapp-exclusion-integrity-validation-1810.json. Cero llamadas pagadas/Meta/órdenes externas. No hay suites activas.
+
+Próximo trabajo: corregir reparto de dos ejecutivos (preparación y sopa), luego extra elíptico «porción de francesa» junto con combo/bebida/dirección. Ambos están reproducidos o registrados como pendientes, NO cubiertos por el verde anterior. Conservar respuesta/carrito/estado/DTO en tres menús. Continuar después dirección estructurada y cierre/contacto según plan comercial. Unir/separar mensajes en mocks no acredita concurrencia del transporte real: añadir prueba de intercalado antes de declarar resueltas las ráfagas.
+
 ## VALIDADO — negaciones multilínea, 18 de octubre
 
 Global verde: 88 suites / 9.227 pruebas en 607.927 s, 379 hashes intactos. 23 focalizados, 123 contratos afectados, TypeScript y 92 contratos Node. No hay suites activas. Corregido: línea «sin ensalada/salsa» unida a compra no se convierte en producto; 12 conversaciones en tres menús, mensajes unidos/separados, con agente simulado on/off, respuesta, carrito y DTO con notas. Seis controles de carrito vacío y cinco de segmentación. Publicación/despliegue solo staging en curso.
