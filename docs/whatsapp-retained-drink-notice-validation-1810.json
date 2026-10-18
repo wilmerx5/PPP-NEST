@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "c617c825e2b018f18084b1d2fae6f39045a8bd43",
-  "status": "published_staging_deploy_deferred_for_grouping",
+  "status": "deployed_staging_grouped_with_partial_conversion_guard",
   "baseline": {
     "failed": 16,
     "log": "/tmp/ppp-retained-drink-notice-baseline-final-1810.log",
@@ -51,13 +51,22 @@
     "Then handle mixed bottle flavours and individually noted units before adding new menu-specific cases."
   ],
   "deployment": {
-    "performed": false,
-    "reason": "Group response-only update with next conversion/subset batch; no calculation or cart mutation rule changed.",
-    "last_verified_runtime_code": "5693c57bbe1eaf7e5e4623ca781231fd5b96c791",
-    "last_verified_runtime_image": "sha256:d8d72cc159a217a14d03d78b62be9a0bb6c40478bf7c1f07d86dc58bf38b2245",
-    "last_verified_at": "2026-10-18T20:05:51.728Z",
-    "compiled_probe_pending": "/tmp/ppp-retained-drink-notice-compiled-1810.cjs",
-    "limits": "No new build, compiled validation or fresh server health check claimed for this response-only batch."
+    "performed": true,
+    "code": "0a1b75850e760dab3b5697bf5175658f0e192998",
+    "image": "sha256:4c3fc474fc3d2a0cd4f3aac79f646f3a32cde4f6e55743524c938603c6631e5e",
+    "verifiedAt": "2026-10-18T22:03:14Z",
+    "container": "running/healthy",
+    "publicHealth": "/api/health: ok, db connected, circuit CLOSED",
+    "rollback": "ppp-nest-staging:rollback-before-0a1b7585",
+    "compiledProbes": [
+      "partial scope guard: two forms preserve cart/state/notes; excludes drink count",
+      "retained drink notice and no mutation guards"
+    ],
+    "scope": "staging only; no models/private config/database/volume changes",
+    "operationalNotes": [
+      "First helper invocation stopped before build because abbreviated SHA failed exact equality. Retried with full SHA.",
+      "Initial public /health returned404; correct /api/health returned200 after startup."
+    ]
   },
   "published_code_commit": "6c5de4248cad4a4b963c83394902d13a58c8f5f1"
 }

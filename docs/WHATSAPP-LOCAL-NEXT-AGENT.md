@@ -1,3 +1,11 @@
+## VIGENTE — protección parcial y aviso de bebidas desplegados en staging, 18/10/2026
+
+Código `0a1b75850e760dab3b5697bf5175658f0e192998`, imagen `sha256:4c3fc474fc3d2a0cd4f3aac79f646f3a32cde4f6e55743524c938603c6631e5e`, running/healthy y /api/health OK, DB connected, circuito CLOSED a las 22:03:14 UTC. Rollback `ppp-nest-staging:rollback-before-0a1b7585`. Probes del compilado de alcance parcial y aviso de bebidas aprobados. Main/producción preservadas (imagen productiva c5e97ab1… running). No reconstruir por este cierre documental.
+
+Global 87 suites / 9.172 pruebas, 573.47 s, 378 hashes intactos; 56 focalizados, TypeScript y 92 contratos Node. Ocho fallos de baseline protegidos. 16 conversaciones nuevas y 12 controles del parser. Cero llamadas pagadas, Meta, mapas reales y órdenes externas; presupuesto intacto. Evidencia: whatsapp-partial-combo-boundary-validation-1810.json y aviso anterior actualizado.
+
+Límite importante: NO convierte automáticamente dos de cuatro a otro SKU combo. Conserva todo y explica la limitación, permitiendo mantener el pedido o convertir explícitamente la línea completa. El siguiente lote debe implementar la división real y conservar cantidades, sabores y notas; antes añadir controles de cero/exceso, total declarado incompatible y varias líneas candidatas. También falta validar formatos de alcance fuera de las dos formas ensayadas; no acreditar comprensión del modelo por mocks. Después unidades internas con letras y formularios etiquetados. No hay suites activas. Entradas inferiores históricas.
+
 ## VALIDADO — límite de conversión parcial a combo, 18/10/2026
 
 Global verde: 87 suites / 9.172 pruebas en 573.47 s, 378 hashes intactos. Pasan 56 focalizados, TypeScript y 92 contratos Node. Ocho fallos iniciales de conversión de toda la línea protegidos. 16 conversaciones en dos menús verifican respuesta, carrito, estado, consulta y DTO simulado; 12 controles del parser separan alcance de unidades y cantidades de bebidas.
