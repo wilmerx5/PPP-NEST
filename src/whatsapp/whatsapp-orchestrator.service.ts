@@ -18639,6 +18639,36 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    // A source-checked distribution may interrupt checkout without reopening it.
+    // Require actual accepted tools and an unchanged guarded plan; do not widen
+    // this permission to mixed checkout metadata or confirmation operations.
+    if (params.placedOrderOnly && params.distributedPurchase) {
+      const additions = agent.actions?.addItems;
+      const guarded = this.actionGuard.sanitize({actions:{addItems:additions},products,
+        businessOpen:businessOpenForBot,allowMercadoPago:!!cfg.allowMercadoPago,paymentMethods:cfg.paymentMethods});
+      const mixed = Object.entries(agent.actions || {}).some(([key,value])=>
+        key!=='addItems' && (Array.isArray(value)?value.length>0:!!value));
+      const accepted = !mixed && !guarded.blockedClosed &&
+        hasCompleteToolPurchaseEvidence(agent.purchaseAttempts?.filter(attempt=>attempt.accepted),additions) &&
+        JSON.stringify(guarded.actions?.addItems)===JSON.stringify(additions);
+      if (!accepted) {
+        await this.reply(conv,msg.waId,'No pude aplicar el reparto completo con seguridad. Tu carrito sigue igual. Aclaremos el reparto antes de continuar.');
+        return true;
+      }
+      const applied = await this.applyActions(conv,session,guarded.actions,products,cfg,
+        originalText || text,params.decision,true);
+      if (applied.limitBlocked) {
+        await this.handleCartLimitBlocked(conv,msg.waId,applied.limitBlocked,cfg);
+        return true;
+      }
+      await this.conversationService.saveSession(conv,applied.session,conv.state);
+      const reminder = this.formatInterruptedStepReminder(conv,applied.session);
+      await this.reply(conv,msg.waId,'Listo, añadí las variantes indicadas ✅\n\n'+
+        this.formatCartOnly(applied.session,this.deliveryFeeFor(applied.session,cfg))+
+        (reminder ? `\n\n${reminder}` : ''));
+      return true;
+    }
+
     if (params.placedOrderOnly) {
       const removed = await this.applyCheckoutCartCorrection(
         conv,

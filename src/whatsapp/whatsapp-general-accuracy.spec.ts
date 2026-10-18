@@ -18757,3 +18757,52 @@ describe('Subset kitchen note replacement and clearing preserve other units',()=
   expect(items.filter((item:any)=>(item.note||'')===(mode==='clear'?'':'sin cebolla, con sal'))).toHaveLength(2);
  });
 });
+
+describe('Checkout purchases preserve complete distributed variants',()=>{
+ for(const f of [{name:'Duo De Bao',attr:'Relleno',a:'Tofu',b:'Cerdo'},{name:'Trio De Tostadas',attr:'Salsa',a:'Suave',b:'Picante'},{name:'Bento Vegetal',attr:'Arroz',a:'Blanco',b:'Integral'}])for(const state of ['awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'])for(const counts of [[1,3],[2,2],[3,1]])it(`${f.name} ${state} ${counts.join("+")}`,async()=>{
+  const product={id:64811,code:64811,name:f.name,price:27000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.a,f.b]}]};
+  const h=harness([product],true);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name:product.name,unitPrice:product.price,quantity:1,note:'pedido previo',attributes:[{attributeName:f.attr,attributeValue:f.a}]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6481,dailyOrderNumber:80});
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   for(const [index,value] of [f.a,f.b].entries())expect(JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:counts[index],attributes:[{attributeName:f.attr,attributeValue:value}],note:index===1?'sin sal':undefined},ctx)).ok).toBe(true);
+   return {reply:'Listo',actions,toolCalls:['add_item','add_item'],purchaseAttempts:[{productId:product.id,accepted:true},{productId:product.id,accepted:true}]};
+  });
+  const initial=await h.sendQueued(`Quiero cuatro ${f.name}, ${counts[0]} con ${f.a} y ${counts[1]} con ${f.b}; los de ${f.b} sin sal. Para Calle 12 34 56`);
+  expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(initial).toContain(f.a);expect(initial).toContain(f.b);expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  expect(h.conv.sessionData.cart.map(item=>[item.quantity,item.attributes?.[0].attributeValue])).toEqual([[1,f.a],[counts[0],f.a],[counts[1],f.b]]);
+  expect(h.conv.sessionData.cart.reduce((sum,item)=>sum+item.quantity*item.unitPrice,0)).toBe(135000);expect(h.conv.sessionData.cart[0].note).toBe('pedido previo');expect(h.conv.sessionData.cart[1].note).toBeFalsy();expect(h.conv.sessionData.cart[2].note).toBe('sin sal');
+  const cart=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('Déjame ver el carrito');
+  expect(reply).toContain(f.name);expect(reply).toContain(f.a);expect(reply).toContain(f.b);expect(h.conv.sessionData.cart).toEqual(cart);
+  const price=await h.sendQueued(`Cuánto cuesta ${f.name}`);expect(price).toContain('27.000');expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe(state);
+  if(h.conv.state==='awaiting_name')await h.sendQueued('Wilmer Perez');
+  if(h.conv.state==='awaiting_phone')await h.sendQueued('3000000001');
+  if(h.conv.state==='awaiting_address')await h.sendQueued('Calle 12 34 56');
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');
+  if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(5);
+  expect(items.filter((item:any)=>item.attributes.some((a:any)=>a.attributeValue===f.b)&&item.note==='sin sal')).toHaveLength(counts[1]);
+ });
+});
+
+
+describe('Checkout distributions reject incomplete or mixed plans without changing the pending step',()=>{
+ for(const name of ['Cesta De Panes','Bento De Setas','Trio De Tostadas'])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const mode of ['missing','failed_after_first','mixed_address','no_evidence'])it(`${name} ${state} ${mode}`,async()=>{
+  const product={id:65001,code:65001,name,price:19000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  const h=harness([product],true);h.conv.state=state;h.conv.sessionData.cart=[{productId:product.id,code:product.code,name,unitPrice:19000,quantity:1,note:'anterior',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]}];
+  const before=structuredClone(h.conv.sessionData.cart);h.service.ordersService.create=jest.fn();
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   const quantities=mode==='missing'||mode==='failed_after_first'?[2]:mode==='wrong_total'?[2,3]:mode==='wrong_groups'?[1,3]:[2,2];
+   for(const [index,quantity] of quantities.entries())expect(JSON.parse(service.executeTool('add_item',{productId:product.id,quantity,attributes:[{attributeName:'Salsa',attributeValue:index&&mode!=='wrong_options'?'Picante':'Suave'}],note:index?'sin sal':undefined},ctx)).ok).toBe(true);
+   if(mode==='mixed_address')actions.setAddress='Calle 99 88 77';
+   return {reply:'Listo todo añadido',actions,toolCalls:quantities.map(()=> 'add_item'),purchaseAttempts:mode==='no_evidence'?[]:quantities.map(()=>({productId:product.id,accepted:true})),...(mode==='failed_after_first'?{error:'max_iterations'}:{})};
+  });
+  const reply=await h.sendQueued(`Quiero cuatro ${name}, 2 con Suave y 2 con Picante; los de Picante sin sal`);
+  expect(h.conv.state).toBe(state);expect(h.conv.sessionData.address).not.toBe('Calle 99 88 77');expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/reparto.*completo|cantidades.*coinciden/i);expect(reply).not.toContain('todo añadido');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

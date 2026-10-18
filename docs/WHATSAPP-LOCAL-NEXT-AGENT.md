@@ -1,3 +1,13 @@
+## VIGENTE — 18/10/2026: compra distribuida durante checkout validada, pendiente de despliegue agrupado
+
+Base f52d2ca3. Se corrigió un bloqueo reproducido en seis recorridos: el agente preparaba variantes válidas, pero placedOrderOnly descartaba la compra durante checkout. Ahora un reparto completo, validado contra la fuente y respaldado por herramientas aceptadas, añade todas sus variantes y retoma el mismo paso pendiente. El carrito previo permanece. No confirma órdenes ni permite mezclar esa compra con cambios de metadatos; ante mezcla/incompletitud/error/falta de evidencia conserva el carrito.
+
+69 regresiones nuevas:45 recorridos con tres menús ficticios, cinco estados (nombre/teléfono/dirección/pago/confirmación), repartos1+3/2+2/3+1, carrito previo, consultas intermedias de carrito/precio y DTO final simulado;24 rechazos adversariales.99focalizados,TypeScript,72Node y global81suites/8704tests en597.816s aprobados.368hashes idénticos antes/después. Evidencia whatsapp-checkout-variants-validation-1810.json y /tmp/ppp-checkout-variants-{baseline,final-targets,global}-1810.log;resultado global JSON y manifiesto source. No sumar ejecuciones focalizadas solapadas. Un error intermedio TS18048 se corrigió antes de aceptación.
+
+NO DESPLEGADO: runtime continúa d043cc549b337d471de633d234ab6a41b0deedad (imagen80e9c285..., última verificación en la entrada inferior). No hubo nueva auditoría remota de salud en esta tanda. Agrupar despliegue con siguiente familia, siguiendo AGENTS. Main intacta. CeroAPIpagada/Meta/órdenes externas, presupuesto188/187/1 sin cambios. Modelos sin cambios. La evidencia usa propuestas de modelo simuladas y herramientas reales: no acredita interpretación lingüística real, costos/latencias ni preparación comercial universal.
+
+SIGUIENTE: reproducir consultas puras con grupos contados (precio/composición/disponibilidad) frente a compras, preservando estado y carrito; el detector temprano podría exigir compra, es hipótesis pendiente. Después notas que retiran una cláusula, productos sin atributos y conversaciones reservadas completas. Una tanda coherente por despertar; no editar/lanzar suite si hay trabajo activo. No repetir global por documentos ni modificar Main. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026,06:54 Bogotá: notas por unidades desplegadas
 
 Stagingd043cc549b337d471de633d234ab6a41b0deedad desplegado/verificado. Imagen activa=candidate sha256:80e9c28530452557ebe6fa0787b5b9f0abd15861a5da3b3c9f5879284989924d,running/healthy. HealthOK/DB connected/circuit CLOSED. Compilado comprobó reemplazo,borrado,proyección y conservación del resto. Rollback ppp-nest-staging:rollback-before-d043cc54. Main intacta,bin/ y mariadb_local preservados.

@@ -1,3 +1,11 @@
+## Tanda cerrada, pendiente de despliegue agrupado — 18/10/2026: compras distribuidas durante checkout
+
+Base f52d2ca3. Se reprodujeron seis bloqueos: add_item preparaba variantes válidas pero placedOrderOnly descartaba la compra. El adaptador ahora acepta solo un reparto fuente completo, con evidencia de herramientas aceptadas y guard sin cambios; conserva el estado pendiente y responde desde el carrito. No autoriza confirmación ni operaciones mezcladas. Metadatos nuevos junto a esta compra se aclaran sin mutación; no se aplican parcialmente.
+
+69 regresiones nuevas: 45 recorridos (tres menús, cinco pasos pendientes y tres repartos) con carrito previo, consultas intermedias y DTO final simulado; 24 rechazos por reparto incompleto/error/metadata mezclada/falta de evidencia. Focalizados 99, TypeScript y 72 Node pasan. Global aprobada:81suites/8704tests,597.816s,368hashes intactos. Ver evidencia whatsapp-checkout-variants-validation-1810.json. No desplegada:agrupar con la siguiente familia;runtime aún d043cc54. No repetir global por documentos.
+
+SIGUIENTE: consultas puramente informativas que contienen grupos contados («cuánto cuestan cuatro..., dos con A y dos con B»). Reproducir antes de corregir: el detector temprano aún puede exigir una compra aunque la intención sea consultar. Después: notas que retiran una sola cláusula, productos sin atributos y conversaciones reservadas completas. Esta tanda no mide interpretación real del modelo ni latencia/costo; cero llamadas pagadas/Meta/órdenes externas. Main intacta. Mantener despliegues agrupados.
+
 ## Cierre vigente — 18/10/2026,06:54 Bogotá
 
 Notas por unidades YA desplegadas en stagingd043cc54.47tests nuevos;81suites/8635tests,235controles de preparación/tool/origen,TypeScript y72Node;compilado/health verificados. CeroAPIpagada/Meta/órdenes externas,Main intacta. Evidencia whatsapp-note-modes-validation-1810.json. No repetir esta tanda.

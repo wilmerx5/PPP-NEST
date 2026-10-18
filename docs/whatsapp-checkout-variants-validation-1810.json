@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-18",
+  "base": "f52d2ca302c07f97ff7af9105f589ed90cbda9ae",
+  "branch": "staging",
+  "status": "validated_pending_grouped_deploy",
+  "baseline": {
+    "failed": 6,
+    "log": "/tmp/ppp-checkout-variants-baseline-1810.log"
+  },
+  "new_regressions": 69,
+  "focused": {
+    "passed": 99,
+    "log": "/tmp/ppp-checkout-variants-final-targets-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": 72,
+  "source_manifest": "/tmp/ppp-checkout-variants-source-1810.json",
+  "global_result": "/tmp/ppp-checkout-variants-global-1810.json",
+  "coverage": [
+    "3 fictional menus",
+    "5 pending checkout steps",
+    "1+3,2+2,3+1 distributions",
+    "previous cart retained",
+    "cart and price interruptions",
+    "simulated final order DTO",
+    "partial/error/mixed metadata/missing tool evidence rejected"
+  ],
+  "limits": [
+    "No paid inference, WhatsApp or external orders",
+    "New distribution plus checkout metadata is clarified atomically, not executed",
+    "Pure queries containing counted groups remain a separate pending family",
+    "Does not establish model language accuracy or commercial readiness"
+  ],
+  "production_changed": false,
+  "budget_changed": false,
+  "global": {
+    "suites": 81,
+    "tests": 8704,
+    "seconds": 597.816,
+    "source_hashes_unchanged": 368
+  },
+  "intermediate_development_issue": "First fixed run hit TS18048 on optional guard actions; corrected before passing focused/TypeScript/global runs."
+}
