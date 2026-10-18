@@ -1,3 +1,11 @@
+## Tanda de notas validada,pendiente de despliegue — 18/10/2026
+
+Baseb8f3e33c,NO desplegada:runtime71114d9d. Baseline18recorridos falló al reemplazar/borrar nota de2de4en3menús y estados carrito/pago/confirmación. Contrato nuevo noteMode opcional append(default)/replace(nota final completa)/clear(sin note),solo en las unidades del grupo;resto conserva nota,precio,opciones,cantidad. El modo inválido/clearcontexto/replace sin nota rechaza toda la tanda. Prompt exige consultar carrito y conservar instrucciones no revocadas. No es edición semántica automática de cláusulas.
+
+47regresiones nuevas:18router hasta DTO,26preparación,3tool.235controles de herramientas/preparación/origen pasan;router y controles previos229pasaron en ejecución solapada,no sumar;TypeScript y72Node pasaron. Global aprobada:81suites/8635tests en594.556s,368hashes intactos,log /tmp/ppp-note-modes-global-1810.log,JSON /tmp/ppp-note-modes-global-1810.json,368hashes /tmp/ppp-note-modes-source-1810.json. Fuente congelada verificada. Informe whatsapp-note-modes-validation-1810.json. Prueba compilada preparada /tmp/ppp-note-modes-compiled-1810.cjs(pasó contra TS local).
+
+Interrupción del despertar por usuario «continua»:se verificaron procesos y cambios antes de retomar;no había suite concurrente. Un error intermedio de tipo del helper de prueba(nota opcional)se corrigió,ver logfinal. CeroAPIpagada/Meta/órdenes externas;presupuesto188/187/1 intacto;Main intacta. Pendiente publicar/desplegar una vez,verificar compiled/imagen/health,cierre documental. Luego compra distribuida durante checkout y consultas puras con repartos;real-model de noteMode en una ejecución activa autorizada,NO en despertar gratuito. No declarar inteligencia/cobertura universal por mocks.
+
 ## VIGENTE — 18/10/2026,01:53 Bogotá: reparto completo antes de mutar
 
 Staging71114d9d860a03b38ce358b541e6af359a76a40f desplegado/verificado. Imagen activa=candidate sha256:203f475cdcd135dd1d55369b562400ff028d10538136567d9cfcb8f6fc61e904,running/healthy. HealthOK/DB connected/circuit CLOSED;compilado rechaza grupo omitido,error tras preparar primero,cantidad/opción equivocada y vaciado mezclado,sin mutar carrito. Rollback ppp-nest-staging:rollback-before-71114d9d. Main intacta,bin/ y mariadb_local preservados.

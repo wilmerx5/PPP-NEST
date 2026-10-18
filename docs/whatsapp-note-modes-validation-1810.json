@@ -1,0 +1,42 @@
+{
+  "dateBogota": "2026-10-18",
+  "baseCommit": "b8f3e33c0c53399ef227ef8b1d2f78cc293aafed",
+  "status": "validated_not_deployed",
+  "baseline": {
+    "failedRouterJourneys": 18,
+    "log": "/tmp/ppp-note-modes-baseline-1810.log"
+  },
+  "newTests": 47,
+  "newRouterJourneys": 18,
+  "newPreparationTests": 26,
+  "newToolTests": 3,
+  "targetedToolsPassed": 235,
+  "targetedToolsLog": "/tmp/ppp-note-modes-tools-final-1810.log",
+  "targetedRouterAndExistingControlsLog": "/tmp/ppp-note-modes-fixed-1810.log",
+  "typescriptPassed": true,
+  "nodeContractsPassed": 72,
+  "global": {
+    "log": "/tmp/ppp-note-modes-global-1810.log",
+    "result": "/tmp/ppp-note-modes-global-1810.json",
+    "sourceManifest": "/tmp/ppp-note-modes-source-1810.json",
+    "passed": true,
+    "tests": 8635,
+    "suites": 81,
+    "seconds": 594.556,
+    "frozenFiles": 368,
+    "sourceUnchanged": true
+  },
+  "contract": "Optional noteMode append(default),replace(full final note),clear(no note text). All apply only to affectedQuantity units of the original cart row, with the same attribute group. Reject invalid/ambiguous modes and whole batch if any group is invalid. Existing source binding and mixed-action restrictions retained.",
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "mainUntouched": true,
+  "limits": [
+    "No new real-model inference; the model must select the right operation and retain instructions not revoked by the customer",
+    "clear removes the entire note of the selected units, not a named clause",
+    "Removing one clause requires replace with complete final note",
+    "Current tool still requires declared catalog attributes; no new claim for products with no attributes",
+    "Several differing edits on one original row remain unsupported overlapping subsets",
+    "Conversational ambiguity and distributed purchases during checkout need further tests"
+  ]
+}

@@ -410,3 +410,22 @@ describe('Grouped option tools keep subset kitchen notes',()=>{
   expect(result.actions).toBeUndefined();
  });
 });
+
+describe('Subset note modes survive tool projection, guard and application',()=>{
+ for(const mode of ['replace','clear'] as const)it(mode,async()=>{
+  const cart=[line(50,4,'Mango','sin hielo, sin azúcar')];const turn=turnTools(cart,'En dos unidades conserva Mango y corrige toda la nota');
+  const args={productId:50,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}],noteMode:mode,...(mode==='replace'?{note:'sin hielo, con azúcar'}:{})};
+  expect(turn.call('set_unit_attributes',args).ok).toBe(true);expect(turn.call('set_unit_attributes',args)).toMatchObject({ok:true,unchanged:true});
+  const expected=[[2,'sin hielo, sin azúcar'],[2,mode==='clear'?'':'sin hielo, con azúcar']];
+  expect(turn.call('get_cart').lines.map(item=>[item.quantity,item.note||''])).toEqual(expected);
+  const edited=await apply(turn.actions,cart);expect(edited.map(item=>[item.quantity,item.note||''])).toEqual(expected);
+ });
+ it('rejects all tool groups after an invalid clear, without revival',()=>{
+  const cart=[line(50,4,'Mango','sin hielo'),line(50,3,'Guanabana','sin azúcar')];const turn=turnTools(cart,'De la línea 1 y de la línea 2 cambia la nota');
+  const args={productId:50,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Sabor',attributeValue:'Mango'}],noteMode:'clear'};
+  expect(turn.call('set_unit_attributes',args).ok).toBe(true);
+  expect(turn.call('set_unit_attributes',{...args,cartLineIndex:1,attributes:[{attributeName:'Sabor',attributeValue:'Guanabana'}],note:'texto incompatible'}).ok).toBe(false);
+  expect(turn.call('set_unit_attributes',args).error).toBe('unit_option_batch_rejected');
+  expect(turn.call('get_cart').lines.map(item=>item.note)).toEqual(['sin hielo','sin azúcar']);
+ });
+});

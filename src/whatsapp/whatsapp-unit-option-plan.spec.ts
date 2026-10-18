@@ -1,3 +1,4 @@
+import type { WhatsappCartItem } from './types/whatsapp-session.types';
 import { WhatsappCatalogService } from './whatsapp-catalog.service';
 import { prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
 
@@ -14,7 +15,7 @@ const edit = (overrides: Partial<UnitOptionEdit> = {}): UnitOptionEdit => ({
   productId: menus[0].id, cartLineIndex: 0, affectedQuantity: 2,
   attributes: [{ attributeName: 'Bebida', attributeValue: 'Limonada' }], ...overrides,
 });
-const plan = (cart = [line()], edits = [edit()], products = menus) => prepareUnitOptionPlan(cart, edits, products, catalog);
+const plan = (cart: WhatsappCartItem[] = [line()], edits = [edit()], products = menus) => prepareUnitOptionPlan(cart, edits, products, catalog);
 const freeze = (value: any) => { Object.freeze(value); Object.values(value).forEach(child => {
   if (child && typeof child === 'object' && !Object.isFrozen(child)) freeze(child);
 }); return value; };
@@ -178,6 +179,32 @@ describe('Subset notes validate atomically and preserve previous preparation',()
  it('rejects the entire plan when the second group has invalid note',()=>{
   const cart=[line(),line(menus[1])];const before=JSON.stringify(cart);
   const result=plan(cart,[{...edit(),note:'sin sal'},{...edit({productId:menus[1].id,cartLineIndex:1}),note:9} as any]);
+  expect(result.ok).toBe(false);expect(JSON.stringify(cart)).toBe(before);
+ });
+});
+
+describe('Explicit subset note modes never concatenate contradictory instructions',()=>{
+ for(const product of menus)for(const quantity of [1,2,4])for(const mode of ['replace','clear'] as const)it(`${product.name} ${quantity} ${mode}`,()=>{
+  const original=line(product);const result=plan([original],[edit({productId:product.id,affectedQuantity:quantity,noteMode:mode,...(mode==='replace'?{note:'con cebolla'}:{})})]);
+  expect(result.ok).toBe(true);if(!result.ok)return;
+  const changed=result.cart.at(-1)!;expect(changed.quantity).toBe(quantity);expect(changed.note||'').toBe(mode==='clear'?'':'con cebolla');
+  expect(changed.note||'').not.toContain('sin cebolla');expect(original.note).toBe('sin cebolla');
+  if(quantity<4)expect(result.cart[0].note).toBe('sin cebolla');expect(result.edits[0].noteMode).toBe(mode);
+ });
+ it.each([{noteMode:'unknown'},{noteMode:'replace'},{noteMode:'replace',note:''},{noteMode:'clear',note:'sin sal'},{noteMode:'clear',note:''}])('rejects ambiguous note operation %j',patch=>{
+  const result=plan([line()],[{...edit(),...patch} as any]);expect(result.ok).toBe(false);
+ });
+ it('keeps a clear no-op unchanged when no note exists',()=>{
+  const original={...line(),note:undefined};const result=plan([original],[edit({attributes:original.attributes,noteMode:'clear'})]);
+  expect(result.ok).toBe(true);if(!result.ok)return;expect(result.changed).toBe(false);expect(result.cart).toEqual([original]);
+ });
+ it('keeps an identical replacement unchanged',()=>{
+  const original=line();const result=plan([original],[edit({attributes:original.attributes,noteMode:'replace',note:original.note})]);
+  expect(result.ok).toBe(true);if(!result.ok)return;expect(result.changed).toBe(false);expect(result.cart).toEqual([original]);
+ });
+ it('rejects all groups if the second requests clear and replacement text',()=>{
+  const cart=[line(),line(menus[1])];const before=JSON.stringify(cart);
+  const result=plan(cart,[edit({noteMode:'replace',note:'con cebolla'}),edit({productId:menus[1].id,cartLineIndex:1,noteMode:'clear',note:'otra nota'})]);
   expect(result.ok).toBe(false);expect(JSON.stringify(cart)).toBe(before);
  });
 });

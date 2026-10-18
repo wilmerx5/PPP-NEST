@@ -1,3 +1,9 @@
+## Tanda de notas — 18/10/2026,validación en curso
+
+Cambio local noteMode append/replace/clear permite corregir o borrar toda la nota de un subconjunto sin concatenar instrucciones opuestas ni tocar el resto. Baseline18fallos;47tests nuevos y235controles de herramientas/preparación/origen pasan. Global en curso:consultar primero WHATSAPP-LOCAL-NEXT-AGENT.md y no editar la fuente durante la suite. No asumir desplegado hasta cierre.
+
+Siguiente tanda:compras distribuidas durante nombre/teléfono/dirección/pago/confirmación,con consulta de carrito e interrupciones. Probar también consultas puras que mencionan grupos para evitar que el guard de compra sustituya una respuesta informativa por una aclaración de cantidades. Para notas:quitar solo una cláusula conservando las otras,alusiones ambiguas y productos sin atributos declarados;el nuevo contrato no acredita todos esos casos. Real-model reservado de elección append/replace/clear solo en ejecución activa con autorización/budget;no pagado en el despertar programado. Mantener Main intacta y una tanda por despertar.
+
 ## Cierre automático vigente — 18/10/2026,01:53 Bogotá
 
 Reparto incompleto YA reproducido,corregido,validado y desplegado en staging71114d9d.21tests nuevos;81suites/8588tests,TypeScript y72Node;rechazos comprobados en compilado. CeroAPIpagada/Meta/órdenes externas,Main intacta. Evidencia whatsapp-distribution-atomic-validation-1810.json. No repetir esta tanda.

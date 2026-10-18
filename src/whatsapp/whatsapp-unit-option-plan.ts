@@ -19,7 +19,7 @@ export function prepareUnitOptionPlan(
   catalog: Pick<WhatsappCatalogService, 'matchAttributeOptionValue'>,
 ): UnitOptionPlan {
   if (!Array.isArray(edits) || !edits.length) return { ok: false, reason: 'empty_edits' };
-  const prepared = new Map<number, { quantity: number; attributes: UnitOptionEdit['attributes']; note?: string }>();
+  const prepared = new Map<number, { quantity: number; attributes: UnitOptionEdit['attributes']; note?: string; noteMode?: UnitOptionEdit['noteMode'] }>();
   for (const edit of edits) {
     const index = edit?.cartLineIndex;
     const fail = (reason: string): UnitOptionPlan => ({ ok: false, reason, cartLineIndex: index });
@@ -53,11 +53,15 @@ export function prepareUnitOptionPlan(
       }
       attributes.push({ attributeName: attribute.attributeName, attributeValue: matched });
     }
+    if (edit.noteMode !== undefined && !['append','replace','clear'].includes(edit.noteMode)) return fail('invalid_note_mode');
+    if (edit.noteMode === 'clear' && edit.note !== undefined) return fail('ambiguous_subset_note');
+    if (edit.noteMode === 'replace' && edit.note === undefined) return fail('missing_replacement_note');
     if (edit.note !== undefined && (typeof edit.note !== 'string' || !edit.note.trim() || edit.note.length > 500)) {
       return fail('invalid_subset_note');
     }
     prepared.set(index, { quantity: edit.affectedQuantity, attributes,
-      ...(edit.note !== undefined ? { note: edit.note.trim() } : {}) });
+      ...(edit.note !== undefined ? { note: edit.note.trim() } : {}),
+      ...(edit.noteMode !== undefined ? { noteMode: edit.noteMode } : {}) });
   }
 
   const partitions: Extract<UnitOptionPlan, { ok: true }>['partitions'] = [];
@@ -77,7 +81,11 @@ export function prepareUnitOptionPlan(
       if (index >= 0) attributes[index] = { ...option };
       else attributes.push({ ...option });
     }
-    if (edit.note !== undefined) {
+    if (edit.noteMode === 'clear') {
+      if (line.note) { delete line.note; lineChanged = true; }
+    } else if (edit.noteMode === 'replace') {
+      if (line.note !== edit.note) { line.note = edit.note; lineChanged = true; }
+    } else if (edit.note !== undefined) {
       const key = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
       const prior = line.note || '';
       if (key(prior) !== key(edit.note) && !prior.split(/[,;\n]/).some(part => key(part) === key(edit.note!))) {
@@ -96,6 +104,7 @@ export function prepareUnitOptionPlan(
     productId: cart[cartLineIndex].productId, cartLineIndex,
     affectedQuantity: edit.quantity, attributes: edit.attributes,
     ...(edit.note !== undefined ? { note: edit.note } : {}),
+    ...(edit.noteMode !== undefined ? { noteMode: edit.noteMode } : {}),
   }));
   return { ok: true, changed, cart: result, partitions, edits: normalized };
 }

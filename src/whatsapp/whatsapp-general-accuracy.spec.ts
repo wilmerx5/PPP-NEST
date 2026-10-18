@@ -18734,3 +18734,26 @@ describe('Invalid explicit distribution is clarified before inference or clampin
   expect(h.agent.runTurn).not.toHaveBeenCalled();expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/reparto completo.*aclaremos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
  });
 });
+
+describe('Subset kitchen note replacement and clearing preserve other units',()=>{
+ for(const name of ['Pizza De Huerta','Caja De Desayuno','Bento De Setas'])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const mode of ['replace','clear'])it(`${name} ${state} ${mode}`,async()=>{
+  const product={id:65101,code:65101,name,price:21000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Salsa',options:['Suave','Picante']}]};
+  const h=harness([product],true);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{cart:[{productId:product.id,code:product.code,name,unitPrice:product.price,quantity:4,note:'sin cebolla, sin sal',attributes:[{attributeName:'Salsa',attributeValue:'Suave'}]}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6510,dailyOrderNumber:81});
+  h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const ctx={actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}};
+   expect(JSON.parse(service.executeTool('set_unit_attributes',{productId:product.id,cartLineIndex:0,affectedQuantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Suave'}],noteMode:mode,...(mode==='replace'?{note:'sin cebolla, con sal'}:{})},ctx)).ok).toBe(true);
+   return {reply:'Todas iguales',actions,toolCalls:['get_cart','set_unit_attributes']};
+  });
+  const text=`De las cuatro ${name}, dos con Suave; ${mode==='clear'?'borra toda la nota de esas dos':'en esas dos reemplaza sin sal por con sal, conserva sin cebolla'}`;
+  const reply=await h.sendQueued(text);expect(h.agent.runTurn).toHaveBeenCalledTimes(1);expect(reply).not.toContain('Todas iguales');
+  expect(h.conv.sessionData.cart.map(item=>[item.quantity,item.note||''])).toEqual([[2,'sin cebolla, sin sal'],[2,mode==='clear'?'':'sin cebolla, con sal']]);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+  await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(4);expect(items.filter((item:any)=>item.note==='sin cebolla, sin sal')).toHaveLength(2);
+  expect(items.filter((item:any)=>(item.note||'')===(mode==='clear'?'':'sin cebolla, con sal'))).toHaveLength(2);
+ });
+});
