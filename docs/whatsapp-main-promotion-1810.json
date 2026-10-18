@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-18",
+  "code_sha": "e46996fae72639d8a924298b8b448a16f05d0f29",
+  "user_authorized_main_and_production": true,
+  "global": {
+    "suites": 82,
+    "tests": 8889,
+    "seconds": 947.954,
+    "frozen_files": 370,
+    "result": "/tmp/ppp-kitchen-description-final-global-1810.json"
+  },
+  "production": {
+    "checkout": "/var/www/ppp-nest",
+    "container": "ppp_nest_api",
+    "image": "sha256:6e71bc545f0101c85c5d0e5c9f05caa2162cee97c026937f324a561f0cf1a450",
+    "status": "running",
+    "health": "ok / db connected / circuit CLOSED",
+    "verified_at": "2026-10-18T16:51:01.899Z",
+    "rollback_tag": "ppp-nest-api:rollback-before-e46996fa",
+    "compose_preserved_sha256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84",
+    "private_env_backup": ".env.before-model-parity-e46996fa"
+  },
+  "staging": {
+    "checkout": "/opt/ppp-staging",
+    "container": "ppp-staging-api-1",
+    "image": "sha256:cc1c4ce3cb97fe777dea8d7314827ba60c045b9d6e7ec8799c21bf3886851858",
+    "status": "running/healthy",
+    "health": "ok / db connected / circuit CLOSED",
+    "verified_at": "2026-10-18T16:51:56.602Z",
+    "rollback_tag": "ppp-nest-staging:rollback-before-e46996fa"
+  },
+  "models": {
+    "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+    "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+    "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+    "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+  },
+  "compiled_modules_identical": [
+    "whatsapp-orchestrator.service.js",
+    "whatsapp-agent.service.js",
+    "whatsapp-ai.service.js",
+    "whatsapp-kitchen-description.js"
+  ],
+  "preserved_local_main": {
+    "modified_generated_files": 454,
+    "untracked_files": 18
+  },
+  "limits": [
+    "No paid inference, Meta, or external orders in this promotion",
+    "Compiled probe verifies tools, extraction and checkout adapter; full router tested through mocked TypeScript suite",
+    "Equal code and model configuration do not guarantee identical model responses or tenant database data",
+    "No claim of universal commercial readiness"
+  ],
+  "next": "Continue only staging: cross-restaurant preference matrix in whatsapp-next-batches.md"
+}

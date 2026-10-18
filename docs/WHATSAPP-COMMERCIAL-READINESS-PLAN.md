@@ -1,3 +1,13 @@
+## VIGENTE — 18/10/2026, 11:52 Bogotá: Main y staging desplegados
+
+El usuario autorizó promoción y deploy productivo. Código e46996fae72639d8a924298b8b448a16f05d0f29 publicado en Main/staging y desplegado en ambos. Producción ppp_nest_api running, health OK/DB connected/circuit CLOSED (16:51:01UTC); imagen6e71bc54… Staging running/healthy, imagen activa=candidate cc1c4ce3… y health OK (16:51:56UTC). Evidencia exacta en whatsapp-main-promotion-1810.json. Los cuatro módulos compilados comprobados coinciden; no se comparó binariamente todo el backend.
+
+Se alinearon los cuatro modelos en .env privado productivo con staging: agente gpt-6.1-sol, visión/assist gpt-6-luna, audio gpt-transcribe. Backup privado .env.before-model-parity-e46996fa; compose productivo intacto. Rollbacks ppp-nest-api:rollback-before-e46996fa y ppp-nest-staging:rollback-before-e46996fa. Preservados454artefactos modificados y18no versionados de Main local, archivos privados/bases/volúmenes/orphan. No frontend para subir a Hostinger.
+
+Global final82suites/8889tests en947.954s,370hashes intactos;TypeScript,72Node,controles focalizados y probes compilados aprobados. Primer global falló en3notas ají+sin arepa: reparado antes de promoción. No son llamadas reales del modelo ni evidencia universal de venta. CeroAPIpagada/Meta/órdenes externas;presupuesto188/187/1 intacto.
+
+CONTINUAR SOLO EN STAGING, rama permanente conservada. No reconstruir por esta documentación. Próxima tanda: matriz de dulzor/picante/sal/grasa/temperatura/textura entre restaurantes, preferencias por subconjunto y retiro de una cláusula de nota; conversaciones completas reservadas/costo/latencia antes de acreditar piloto. Ver whatsapp-next-batches.md. La lista es plan de pruebas, no soporte ya acreditado. Entradas inferiores históricas.
+
 ## Estado vigente — 18/10/2026, 08:19 Bogotá
 
 Staging190c6c86 desplegado/verificado, running/healthy y healthOK. Compras con variantes durante checkout y consultas contadas conservan carrito/estado.84regresiones nuevas de consultas;global81suites/8788tests en592.772s,368hashes intactos,TypeScript y72Node. Evidencia whatsapp-group-inquiries-validation-1810.json. Main intacta; ceroAPIpagada/Meta/órdenes externas.

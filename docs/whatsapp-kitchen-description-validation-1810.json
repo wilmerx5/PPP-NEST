@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "de1479d1daf7f54bc3360a6814ce880666859c53",
-  "status": "validated_pending_main_promotion_and_deploy",
+  "status": "deployed_main_and_staging",
   "baseline": {
     "failed": 28,
     "log": "/tmp/ppp-kitchen-description-baseline-1810.log"
@@ -44,7 +44,7 @@
     "Preparations combined with separate additional purchases and more clause orders still need further full-router cases"
   ],
   "budget_changed": false,
-  "main_changed": false,
+  "main_changed": true,
   "first_global": {
     "suites_passed": 81,
     "suites_failed": 1,
@@ -65,5 +65,6 @@
     "failed": 0,
     "seconds": 947.954,
     "source_files_unchanged": 370
-  }
+  },
+  "deployment_evidence": "docs/whatsapp-main-promotion-1810.json"
 }
