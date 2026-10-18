@@ -1,3 +1,11 @@
+## Preparación local publicada: contrato de opciones por unidades — 17/10/2026
+
+Se añadió `whatsapp-unit-option-plan.ts`, una función de preparación todavía **sin conectar a herramientas, AiOrderAction, guard ni router**. Recibe una línea de la instantánea original, cantidad afectada y una lista agrupada de atributos. Valida todo antes de producir un carrito nuevo; conserva cantidad restante, precio original, notas y otras opciones. Dos atributos de un mismo grupo afectan las mismas unidades. Rechaza cantidades inválidas, atributos ausentes, opción inexistente, dos grupos superpuestos y filas ajenas. No muta entrada y devuelve procedencia de cada partición.
+
+85 controles nuevos con tres menús ficticios;127 controles focalizados (incluye42 existentes de edición),2 suites,11.492s y TypeScript verdes. Informe `whatsapp-unit-option-plan-validation-1710.json`. Cero inferencia, Meta u órdenes externas. No cambió la ejecución del agente, no se reconstruyó staging y no se actualizó Main. La global8305 anterior acredita f61cecff, no esta futura integración. No repetirla por un módulo aún sin consumidores de producción.
+
+Siguiente trabajo: exponer una herramienta agrupada y acción dedicada; guard con rechazo completo; vista get_cart coherente tras partición; impedir índices obsoletos en edición/quitar/reemplazar; preparación antes de mutación y respuesta con las dos variantes. Probar conversación completa hasta payload final simulado, unidades pendientes de añadir, repetición y compra+edición+aprobación. Solo después congelar fuente, ejecutar global y activar/desplegar agrupado. No considerar solucionado todavía el alcance por unidades del modelo en todos los caminos.
+
 ## VIGENTE: desplegado y verificado f61cecff — 17/10/2026, 22:20 Bogotá
 
 Staging running/healthy; imagen activa=candidate sha256:29a96d2069a5120209f29f344ef274498d843bd4dd168aa39e6a49b02e6a65c0. Verificación18/10 03:20:10UTC, health OK/DB connected/circuit CLOSED. Modelos Sol6.1/Luna/Luna/GPT Transcribe intactos. Compilado de ambas tandas y guards previos comprobados. Rollback ppp-nest-staging:rollback-before-f61cecff. bin/ remoto y mariadb_local preservados. Main sin cambios.

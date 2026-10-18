@@ -4,6 +4,7 @@ Esta sección es la referencia actual. Las entradas inferiores son historial y s
 
 ## 1. Dónde estamos y qué demuestra la evidencia
 
+- Preparación adicional sin activar: contrato agrupado para cambios de opciones sobre parte de una línea,85 casos nuevos/127 focalizados y TypeScript verdes. Todavía falta herramienta→guard→router→payload y regresión global de esa integración; no demuestra una mejora del modelo desplegado. Ver `whatsapp-unit-option-plan-validation-1710.json`.
 - Integración permanente: `staging`. Candidato publicado y desplegado `f61cecff`: ubicación legible y compras no disponibles con carrito activo, además de las tandas anteriores. Global final79suites/8305tests,190focalizadas,TypeScript y72contratos Node aprobados;358hashes intactos. Son pruebas con servicios externos/modelo simulados, no8305conversaciones reales independientes.
 - Último código desplegado y verificado: `f61cecff`, staging healthy el17/10 a22:20 Bogotá. Imagen activa=candidate y guards/modelos verificados; informes `whatsapp-unavailable-active-cart-validation-1710.json` y `whatsapp-readable-location-validation-1710.json`. Primera global de ausencia falló14controles de distribución;se corrigió antes de publicar. Publicar Git no actualiza el contenedor.
 - Main local verificada en `1a2b2e23`, sin el manejador `isPoliteMenuLinkRequest` presente en staging; esta revisión no la promueve ni verifica nuevamente el runtime de producción. No atribuir un chat de Main a la versión nueva de staging.

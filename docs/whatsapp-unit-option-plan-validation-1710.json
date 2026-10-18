@@ -1,0 +1,51 @@
+{
+  "dateBogota": "2026-10-17",
+  "phase": "prepared_contract_not_connected_to_runtime",
+  "baseCommit": "c4a0083fc966623346ecc3e9d85b56d604416b93",
+  "runtimeSourceUnchanged": "f61cecffadf384c203c89dbe2535b616acb5663f",
+  "newTests": 85,
+  "focusedTests": 127,
+  "focusedSuites": 2,
+  "focusedSeconds": 11.492,
+  "typescript": "passed",
+  "paidCalls": 0,
+  "externalMessages": 0,
+  "externalOrders": 0,
+  "deployed": false,
+  "hashes": {
+    "src/whatsapp/whatsapp-unit-option-plan.ts": "638f93defc45d2171b3c0aab67730f6b37ebd9bfb777a78068fde57de4d44a14",
+    "src/whatsapp/whatsapp-unit-option-plan.spec.ts": "21807926231ff29d4bd46edea25598f51ac9709f4136640f2a29a96352443778"
+  },
+  "logs": {
+    "targeted": "/tmp/ppp-unit-option-plan-targets-1710.log",
+    "targetedJson": "/tmp/ppp-unit-option-plan-targets-1710.json",
+    "typescript": "/tmp/ppp-unit-option-plan-tsc-1710.log"
+  },
+  "coverage": [
+    "three fictional menus",
+    "affected quantity from one to all units",
+    "one grouped subset with multiple attributes",
+    "atomic rejection of invalid second row or second attribute",
+    "overlapping subset rejection",
+    "original snapshot indexes",
+    "source prices and notes preserved",
+    "no mutation or aliased attributes",
+    "unchanged choices avoid partition",
+    "unavailable catalog products"
+  ],
+  "limitations": [
+    "No new model tool or AiOrderAction field exposed yet",
+    "Not called from router, action guard or checkout",
+    "No measured model behavior improvement from these unit tests",
+    "No new full-suite acceptance or deployment; previous runtime acceptance remains separate"
+  ],
+  "next": [
+    "Introduce grouped subset action and model tool; never repurpose update_item.quantity",
+    "Validate entire grouped action in guard without accepting valid fragments of an invalid group",
+    "Update get_cart projection with stable identifiers or explicitly reject chained ambiguous edits",
+    "Connect preparation to action application and deterministic replies showing both resulting variants",
+    "Full router journeys through checkout and final mocked payload, mixed purchase/edit/approval, pending additions, replace/remove and repeats",
+    "Freeze source; targeted, tsc, full regression before runtime activation/deployment",
+    "Bounded held-out inference only after free acceptance and budget recording"
+  ]
+}
