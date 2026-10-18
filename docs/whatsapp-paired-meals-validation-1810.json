@@ -29,5 +29,16 @@
     "Partial combo conversion and omitted elliptical side remain pending"
   ],
   "next": "Combo with drink, elliptical extra portion, address and reference in the same message",
-  "deployment": "pending"
+  "deployment": {
+    "commit": "0d69b9c8b44caaebfc263eb28bf3b632516ac7b1",
+    "image": "sha256:6c869302e592cc4049afb6fa66389186a1b9b4b5ad1e408e98bb33d47abf9e75",
+    "status": "running/healthy",
+    "verified_utc": "2026-10-18T23:38:43Z",
+    "public_health_utc": "2026-10-18T23:38:49.305Z",
+    "health": "ok/db connected/circuit CLOSED",
+    "compiled_helper_assertions": 6,
+    "rollback": "ppp-nest-staging:rollback-before-0d69b9c8",
+    "production_image_unchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "note": "First probe SSH connection timed out; read-only retry passed."
+  }
 }
