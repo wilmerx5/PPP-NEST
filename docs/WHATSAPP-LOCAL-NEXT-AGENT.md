@@ -1,3 +1,9 @@
+## PRIORIDAD ACTUALIZADA — auditoría de chats reales del 18 de octubre
+
+Leer primero la sección «Revisión vigente de conversaciones del 18 de octubre» en WHATSAPP-COMMERCIAL-READINESS-PLAN.md: 27 episodios, aciertos, fallos y siete lotes con criterios de salida. Es análisis, sin correcciones ni pruebas nuevas. No marcar los incidentes resueltos por los tests anteriores. Se revisó fd7c4321; el archivo no identifica el commit de los chats.
+
+Se reordena la cola: integridad/orden vacía y negaciones, ráfagas con atributos y datos, dirección estructurada, cierre/contacto, catálogo/contexto, medios y validación reservada. La conversión parcial automática sigue pendiente pero queda detrás de estos fallos de pedido confirmado. Preservar Main; ejecución en staging. Revisar estado/origin y exclusión de otros procesos antes de retomar. No hay suite ni deploy iniciados por esta auditoría.
+
 ## VIGENTE — controles de límites parciales ampliados, 18/10/2026 22:47 UTC
 
 Base a71c537c, staging limpio/sin procesos de validación y sincronizado con origin al comenzar. Se añadieron 32 conversaciones gratuitas en menús de arepas y burritos: cero unidades, más unidades de las disponibles, total declarado incompatible y varias líneas candidatas. Se probaron carrito y espera de pago, con agente simulado encendido/apagado. Todas conservan cantidades, notas individuales de plato/bebida y estado; permiten consultar total y cerrar con DTO simulado exacto sin crear orden antes de confirmar.

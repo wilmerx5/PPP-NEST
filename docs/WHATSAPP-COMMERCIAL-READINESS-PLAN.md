@@ -1,3 +1,87 @@
+## Revisión vigente de conversaciones del 18 de octubre
+
+Prioridad acordada tras analizar el archivo de chats de las 14:16 a las 17:08: integridad del pedido, direcciones y cierre. Esta revisión sustituye el orden de trabajo anterior; la conversión parcial a combo queda detrás de estos riesgos. Es análisis y plan, sin nuevas pruebas ni correcciones de ejecución en este turno.
+
+Fuente local: adjunto a9b4e009-3d70-4e8b-a335-1c2bbbf075ce/Pasted text.txt. Se leyeron 309 mensajes y 21 comprobantes; no equivalen a 21 pedidos correctos. No copiar teléfonos, base64 ni datos personales del adjunto a fixtures públicos: usar sustitutos. Las imágenes y audios omitidos no permiten auditar su reconocimiento original. Los chats no identifican commit/modelo efectivo; no atribuir los fallos a staging actual ni declararlos resueltos sin reproducción. Base local revisada fd7c4321, rama staging limpia. Último runtime acreditado por relevo: 0a1b7585; no se comprobó servidor en esta revisión.
+
+### Lo que funciona y debe conservarse
+
+- Selección de variante de arroz con medio pollo; pedidos por código; pollo y medio descompuesto en un entero y un medio.
+- En varias conversaciones, la dirección después del producto ya lleva a pago sin exigir «nada más».
+- Cambio de bebida incluida correcto a las 15:16, Ginger a las 15:19 y Coca Cola Zero en combo explícito a las 15:26. El mismo comportamiento falla en otra formulación a las 15:31: no está consolidado.
+- Actualización de teléfono finalmente reflejada en muchos resúmenes y comprobantes; «sí» y «confirmar» completan varios pedidos.
+- Cambio tardío de dirección a las 14:39 conserva carrito y pago; complemento de torre/apartamento a las 15:26 se conserva.
+- La dirección con calle sin nombre de conjunto permite recuperar Plazuela a las 16:23. La ubicación compartida se presenta sin coordenadas crudas en varios mensajes.
+- El menú ejecutivo de las 16:22 conserva presa, sopa y nota. El cambio a recoger a las 16:50 elimina domicilio.
+- El flujo muestra sustitución del enlace cuando cambia el carrito con Mercado Pago. El texto no acredita que el enlace anterior quede realmente inutilizable ni que el pago se haya conciliado.
+
+Estos son aciertos observados, no una tasa comparativa de mejora. Hay progreso visible en el recorrido, pero también pedidos confirmados con errores.
+
+### Inventario de hallazgos por conversación
+
+1. 14:16–14:17. Producto/variante correctos. Foto con texto «así nada más» termina en aclaración de plato y no cierre. Separar intención del texto y resultado de visión; si la imagen pudiera modificar el pedido, aclarar solo esa incertidumbre. Sin la imagen no afirmar que debía reconocerse.
+2. 14:20–14:22. «Me regalas medio y qué vale un plátano» contiene compra contextual y consulta. Repite la ficha del medio pollo y omite el plátano; «sí» acaba reutilizando una dirección con carrito vacío. Riesgo de resolver una oferta con la selección equivocada.
+3. 14:23–14:25. Dirección más «sin ensalada» se reconoce verbalmente pero el siguiente paso ofrece la dirección anterior y pierde la nota hasta repetirla. El teléfono sí acaba guardado, aunque la respuesta solo repite pago. Nota visible en carrito pero ausente del comprobante: revisar DTO antes de concluir que cocina no la recibió.
+4. 14:26–14:27. Productos correctos. Ráfaga con Tv y «no» produce pregunta de barrio y luego dirección anterior. Después recupera dirección, teléfono y transferencia. El archivo completo sí contiene selección de pago y «sí»: no fue una orden sin confirmar según esta secuencia.
+5. 14:31–14:34. Reconoce producto de imagen y cierra. Limpieza incompleta de prefijos deja «Esta es la Calle». Teléfono guardado sin reconocimiento explícito en la respuesta.
+6. 14:35–14:39. Imagen y variante correctas. «depapa» genera falsa indisponibilidad mientras ofrece el producto equivalente. Repetición sin typo añade la porción; nueva dirección tardía se aplica. Resumen de corrección repite dirección y omite parte de los datos que el cliente debe verificar.
+7. 15:05–15:09. Pedido largo omite dos mondongos y recorta «San Felipe Castilla» a «Castilla». La primera corrección es ignorada durante pago. Tras repetir, abre selección y recupera cantidad dos. No debería avanzar sin explicar productos pendientes. Enlace actualizado tras cambio de carrito: verificar contrato con revisión del pedido.
+8. 15:10–15:12. Combo, calle y unidad interna correctos; cierre exitoso. Fricción repetida al proporcionar teléfono durante pago.
+9. 15:15–15:18. Dos sopas pequeñas y cambio de bebida del combo correctos. Teléfono de 11 dígitos no se explica como inválido y se conserva silenciosamente el anterior válido. Mantener el válido está bien; informar rechazo y pedir corrección.
+10. 15:18–15:21. Ginger correcto. «por favo» queda en dirección; no resuelve conjunto sin calle, lo cual por sí solo no prueba fallo del mapa. Con calle recupera. Teléfono y pago seguidos generan pregunta redundante antes del resumen.
+11. 15:24. «Arroz chino con costillas» se divide en arroz y costillas independientes y pierde la bebida indicada. La existencia del producto compuesto debe resolverse antes de separar ingredientes. No asumir combo sin verificar catálogo e intención de bebida aparte.
+12. 15:26–15:27. Combo explícito con Zero correcto. Mapa refiere un número diferente al escrito: 82A38 frente a 82a91. No aceptar equivalencia por cercanía sin revisar precisión. Torre/apartamento se conservan.
+13. 15:28. Comprobante #123 vacío, total cero, sin dirección ni pago y sin mensaje de cliente inmediatamente anterior. Hallazgo crítico para investigar logs y origen; el texto no prueba que el router haya creado esa orden ni descarta actividad externa. Ningún camino autorizado del bot debe crear pedido vacío.
+14. 15:31–15:36. Combo más Coca-Cola se interpreta como gaseosa extra. Corrección añade un combo mixto no pedido y deja bebida del broaster incorrecta. Eliminar bebida y combo exige pasos adicionales; «no» no cierra, «no más» sí. La orden final mantiene Colombiana aunque se pidió Coca-Cola. Negar un extra debe corregir el plan, sin inventar reemplazos.
+15. 15:41. Pedido correcto, pero «Senderos de Castilla» pierde «Senderos» y queda solo Castilla. Cobertura/importe no pueden acreditarse con una coincidencia geográfica tan genérica.
+16. 15:44–15:46. Omite medio pollo broaster del primer mensaje; al repetirlo lo añade. Pago y teléfono seguidos producen dos resúmenes, el primero con teléfono antiguo.
+17. 15:47–15:50. Pedido por código y ubicación completan flujo. «Ubicación compartida» es legible pero poco útil para verificar destino; conservar pin accesible y añadir dirección aproximada si es fiable. No sustituir coordenadas exactas por un texto aproximado.
+18. 15:50–15:53. «Rosaleda 8 303» se asocia con Calle 8 Sur; parece coincidencia débil entre número interno y calle. Teléfono enviado un segundo antes de pago no aparece hasta repetirlo: posible pérdida por ráfaga/estado, por confirmar en logs y test de intercalado.
+19. 15:54–15:56. Pollo y medio correctos. «48casa10» no se separa limpiamente y mapa refiere intersección en vez de puerta exacta. Evitar presentar precisión mayor que la disponible.
+20. 15:58–15:59. «Un combo de pollo broaster porfaor» produce aclaración genérica sin opciones operables. Al responder «1» añade pollo frito. Toda pregunta debe guardar qué selección o cantidad espera; no convertir respuesta en código global de producto.
+21. 15:59–16:01. Combo con Coca-Cola y dirección completa funcionan. Persisten fricción de teléfono y nombre heredado wilmer.
+22. 16:06–16:07. Dos ejecutivos distribuidos por preparación y sopa terminan en un ejecutivo y cuatro pollos broaster, con respuesta contradictoria ×2/×4. Fallo crítico de alcance de cantidades, agrupación de atributos y ráfaga. Esperado: exactamente dos ejecutivos, sin pollos enteros ni bebidas/sopas sueltas.
+23. 16:17–16:18. «Sin ensalada» en mensaje seguido añade una porción de ensalada y la cobra; la orden se confirma así. Negación debe ser modificación del producto activo, sin alta de la entidad negada. Evaluar también qué hace «sin arroz», «sin salsa», «sin bebida» en todos los estados.
+24. 16:22–16:24. Ejecutivo correcto. Dirección completa más conjunto falla; vuelve a preguntar calle ya suministrada, muestra check de dirección a la vez que dice no identificarla y pregunta «algo más». Teléfono desencadena pago pese al bloqueo de ubicación. Sin conjunto la misma calle funciona. Geocodificar calle separada del conjunto/unidad, conservar todos los datos originales y mantener un único pendiente coherente.
+25. 16:49–16:50. Consulta de tiempo para recoger responde con tiempo según zona (domicilio). Cambia a recoger pero ignora «mi nombre es Jairo Gutierrez», confirmando wilmer. Procesar modalidad y nombre en el mismo turno; ETA de preparación separado de reparto y solo con datos configurados.
+26. 17:04–17:06. Productos y cantidades correctos. Audio omitido produce dirección contaminada; corrección textual sí resuelve. Teléfono enviado junto a dirección requiere repetición. Transferencia aparece sin elección textual visible; puede proceder del audio omitido: investigar antes de atribuir herencia. No evaluar transcripción sin audio original.
+27. 17:07–17:08. Tolera «paias» y «coa cola», reconoce bebida incluida y usa ubicación. Cierre correcto según texto, con fricción de teléfono y destino genérico en comprobante.
+
+### Familias causales que se deben verificar
+
+Hipótesis de código, no diagnósticos confirmados de estas ejecuciones: ramas tempranas procesan una sola intención y pierden las restantes; parsers de ingredientes compiten con productos compuestos; selecciones pendientes interpretan números fuera de su contexto; actualizaciones de sesión y respuestas pueden usar revisiones diferentes. Los helpers actuales de formulario y dirección son acotados: checkoutEnvelope exige una estructura concreta y splitDeliveryAddressParts separa solo unidades numéricas etiquetadas. Su existencia y pruebas no acreditan estos chats completos.
+
+Reglas generales de diseño:
+- Extraer un plan de turno con compras, modificaciones, consultas, destinatario, teléfono, destino, modalidad, pago y cierre; validar todas las acciones contra catálogo y sesión antes de aplicar.
+- Un solo escritor por conversación; procesar cada mensaje con orden estable, deduplicación por ID y revisión de sesión. Una ráfaga puede completarse progresivamente sin perder turnos ni enviar resúmenes obsoletos. No diagnosticar concurrencia solo por la transcripción.
+- Distinguir entidad mencionada de entidad comprada: «sin ensalada» no compra ensalada; «con Coca-Cola» dentro de combo suele llenar bebida; «adicional/aparte» permite línea separada. Aclarar si hay más de un producto compatible.
+- Toda selección tiene objetivo, opciones, cantidad, estado y revisión. Invalidarla al eliminar/cambiar ese objetivo; un «1» nunca cae al código global si había una selección pendiente válida.
+- Respuesta y DTO derivados de la misma sesión persistida. Las afirmaciones «añadido», «actualizado» y «confirmado» deben coincidir con acciones aplicadas.
+
+### Plan de ejecución por lotes
+
+1. Integridad antes del cierre. Reproducir #123 con mocks y revisar trazas solo de lectura si están disponibles; bloquear carrito vacío, producto no válido, cantidad inválida, datos obligatorios o pendientes sin resolver. Confirmación explícita ligada a la revisión mostrada; un cambio la invalida y una reentrega no crea duplicado. Cubrir también DTO con notas y ubicación. Investigar origen del comprobante vacío sin afirmar todavía causa.
+2. Ráfagas y turnos múltiples. Fixtures de ejecutivos, «sin ensalada», dirección/teléfono/pago en ambos órdenes y con pausas distintas. Incluir mensajes que llegan mientras hay procesamiento y reintentos. Acreditar cantidad exacta, cero entidades no pedidas y ninguna actualización perdida. Esta tanda precede nuevas optimizaciones de estilo.
+3. Dirección estructurada. Separar calle/placa, nombre de conjunto, barrio/ciudad, entrada/torre/casa/apartamento y pin. Precedencia: dato explícito actual sobre histórico; complemento agrega unidad, corrección reemplaza destino. Retirar cortesías/prefijos sin borrar «Senderos» ni «San Felipe». Geocodificar calle o lugar base, no número interno; comparar calle y placa del candidato. Coincidencia de barrio/intersección no es puerta exacta. Conservar texto humano y coordenadas, pedir solo dato realmente faltante; dirección no resuelta no muestra check validado ni habilita cierre.
+4. Cierre y contacto. Si hay productos y el cliente da destino/modalidad, pasar al siguiente dato necesario. Teléfono válido: confirmar «Teléfono actualizado» y continuar pago; inválido: explicar qué corregir sin reemplazar el válido. Nombre y pago en un turno se aplican juntos. No repetir carrito completo por cada campo. Reconocer «sí», «así está bien», «no más» según la pregunta pendiente, sin confundir fin de compra con confirmación final.
+5. Catálogo e interrupciones. Compra más consulta en el mismo turno, typos unidos y corteses, compuestos, bebida incluida y correcciones negativas. «Me regalas medio y cuánto vale un plátano»: añadir el medio contextual, responder plátano y conservar paso pendiente. «Porfaor» no cambia el plato; «1» responde a su selección. Resolver corrección/pregunta durante pago y reanudar el paso necesario.
+6. Mensajería y medios. Texto/caption de imagen conserva intención aunque visión falle; no adivinar contenido omitido. Audios originales cuando existan, transcripción y comprensión evaluadas por separado. ETA según recoger/domicilio y configuración real; ubicación con pin accesible y dirección humana fiable. Comprobante conserva notas y atributos relevantes sin duplicarlos.
+7. Validación reservada y piloto. Tras mocks verdes y global de fuente congelada, ejecutar conversaciones reservadas con modelo real en una sesión autorizada con presupuesto explícito; mismas condiciones/modelos en staging y producción comprobadas en runtime. Probar direcciones reales de forma controlada antes de acreditar mapa. Mantener alcance efectivo/transferencia; la configuración de Mercado Pago en este archivo no cambia por este plan.
+
+### Contrato de cierre propuesto
+
+Producto más dirección o recogida inicia checkout si no quedan elecciones. Recoger nombre/contacto faltante, resolver destino y tarifa, y preguntar pago. Si llegan varios datos juntos, aplicarlos juntos. Mostrar una sola revisión compacta con cantidades/opciones/notas, total con domicilio, destino una vez, destinatario/contacto y pago. Pedir confirmación explícita; crear exactamente una orden de esa revisión. Si cambia cualquier campo, actualizar revisión y volver a confirmar. Las consultas no mutan el pedido ni reinician checkout. «No más» termina la compra; no equivale por sí solo a autorizar una orden sin haber mostrado el resumen final.
+
+Ejemplo de teléfono durante pago: «Teléfono actualizado. Total $49.000 con domicilio. ¿Pagas en efectivo o transferencia?». No volver a preguntar productos cuando ya hay intención de cerrar. No pedir «con cuánto paga» antes de saber que eligió efectivo; registrar cambio si el negocio lo requiere.
+
+### Pruebas y criterio de salida
+
+Cada incidente anterior debe tener ID de fixture anonimizado, intención esperada, carrito antes/después, estado, respuesta, llamadas permitidas/prohibidas y DTO exacto. Añadir variantes en al menos tres catálogos sintéticos y PPP sin reglas por nombre/ID; permutar estado de compra, dirección, teléfono, pago y confirmación. Mantener parte de las reformulaciones fuera de los tests de desarrollo. Usar eventos reales simulados de transporte, no solo concatenación de textos.
+
+Por lote: medir reproducción antes de corregir; controles afectados y TypeScript; global cuando cambien reglas compartidas, sin editar fuente mientras corre; registrar SHA, configuración, límites y despliegue efectivo. No reconstruir por cambios documentales. No añadir llamadas pagadas o órdenes externas en heartbeats.
+
+Para piloto supervisado: cero pedidos vacíos/duplicados, cero productos extra por negaciones, cero pérdida de datos explícitos en los recorridos reservados críticos; direcciones sin coincidencia suficiente deben pedir aclaración y no simular validación; las correcciones e interrupciones deben poder terminar el pedido sin reinicio. La prueba con modelo real y la ubicación real son evidencias separadas de los mocks. Medir turnos evitables, repeticiones exigidas al cliente, exactitud del pedido, latencia y costo por conversación; fijar umbrales comerciales con datos observados antes de ampliar el piloto. No estimar porcentaje de preparación a partir del número de tests.
+
 ## VALIDADO — aviso de bebidas aparte; desplegar con la siguiente tanda, 18/10/2026
 
 Código `6c5de4248cad4a4b963c83394902d13a58c8f5f1` publicado en origin/staging. Despliegue pendiente para agrupar con la siguiente tanda; no reconstruir solo por este cierre documental.
