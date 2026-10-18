@@ -1,3 +1,35 @@
+## Validado para deploy agrupado — 17/10/2026
+
+Compra no disponible:40casos nuevos,18recorridos completos con orden simulada;190focalizadas,TypeScript y72contratos Node verdes. Global DEFINITIVA79suites/8305tests en1241.223s,/tmp/ppp-unavailable-active-cart-final-global-1710.log;358hashes iguales a /tmp/ppp-unavailable-active-cart-final-source-1710.json. Primera global fallida14/8305 fue desarrollo,nunca publicada;se conservó historial en JSON. Corregida frontera entre distribución cada y plato ausente.
+
+Publicar solo staging y desplegar agrupado con ubicación5014f250. Runtime previo a3b462a3;Main intacta. Informes whatsapp-unavailable-active-cart-validation-1710.json y whatsapp-readable-location-validation-1710.json. Config real de staging leída sin mutaciones:8familias predeterminadas,carne habilitada. Cero API/Meta/órdenes externas;181/183. No repetir global tras cierre documental.
+
+Próximo:contrato de acciones del modelo para afectar solo algunas unidades y aprobación del plan completo antes de crear orden. La regla actual de ausencia es contada y de familia reconocida/configurada,no universal. No acreditar transcripción real o aislamiento multitenant con mocks.
+
+## REVALIDACIÓN GLOBAL FINAL — 17/10/2026
+
+No publicar todavía. Primera global de compra ausente /tmp/ppp-unavailable-active-cart-global-1710.log falló14tests/8291verdes,78suitesverdes/1fallida,1096.684s;358hashes intactos. Causa:«Quiero3sopas,una de cada una» se capturaba como compra ausente;las notas de subconjunto posteriores tampoco podían arrancar. Se delega gramática distributiva cada antes del fallback. No atribuir esa primera global a aceptación.
+
+190focalizadas definitivas y TypeScript verdes /tmp/ppp-unavailable-active-cart-distribution-accepted-targets-1710.log y /tmp/ppp-unavailable-active-cart-distribution-tsc-1710.log. Ahora congeladas358fuentes en /tmp/ppp-unavailable-active-cart-final-source-1710.json. Global definitiva EN CURSO /tmp/ppp-unavailable-active-cart-final-global-1710.log (exec session18900,PID1648686). Esperar footer,comparar mapa exacto,registrar y solo entonces publicar/deploy agrupado con ubicación5014f250. Informe whatsapp-unavailable-active-cart-validation-1710.json conserva primera global fallida.
+
+40casos nuevos,18recorridos completos con orden simulada. Main sin cambios. Cero API/Meta/órdenes externas;181/183. Último runtime a3b462a3,checkout remoto69a0df72. Verificador /tmp/ppp-unavailable-active-cart-deploy-verify-1710.py comprueba modelo/health/imagen/guards de ambas tandas sin crear orden. No editar fuente durante esta global. Tras deploy,cierre solo documental no reconstruir. Próximo contrato de edición parcial por unidades del modelo.
+
+## Global final en ejecución: compra no disponible — 17/10/2026
+
+Fuente congelada358archivos /tmp/ppp-unavailable-active-cart-source-1710.json. Global /tmp/ppp-unavailable-active-cart-global-1710.log;NO editar fuente hasta footer y hashes.40nuevos:18recorridos completos de orden simulada PPP/sopas×carrito/pago/confirmación×3modos de agente,22controles.150focalizadas finales en2suites22.366s y TypeScript aprobados: /tmp/ppp-unavailable-active-cart-accepted-full-journeys-1710.log y /tmp/ppp-unavailable-active-cart-final-tsc-1710.log. VerJSON. Una corrección temprana declaraba hamburguesa sin cebolla ausente;guard de base/preferencia ya lo evita. Genérico conocido puede pedir presentación;no exigir compra automática cuando hay ambigüedad legítima.
+
+Ubicación5014f250ya publicada/validada79suites8265tests;NO desplegada todavía. Agrupar deploy al cerrar esta global. Runtime a3b462a3,checkout remoto69a0df72,bin/ preservado. Verificador /tmp/ppp-readable-location-deploy-verify-1710.py para imagen/health/modelos/guards previos;añadir guard de compra ausente antes de usarlo. Main intacta. Cero API/Meta/órdenes externas;181/183.
+
+Límites:gramática contada de familia configurada;mensajes mixtos/domicilio/unfamilia sin configurar conservan rutas existentes,no acreditar universalidad. Oferta conserva cantidad;si hay otro pendiente,alternativas informativas con bullets y reminder del dueño. Sin disponibles,respuesta explícita sin inventar productos. Próximo:contrato de edición parcial por unidades y autorización de plan completo,según plan de whatsapp-next-batches.md.
+
+## En validación: compra no disponible con carrito activo — 17/10/2026
+
+Base5014f250.34tests nuevos:12solicitudes PPP/catálogo sopa(cart/pago×reglas/agente vago/agente que devuelve carrito),6controles selección existente/platos conocidos,5cantidades/repetición,7propiedad/disponibilidad/rangos,4sin alternativas/familia configurada. Baseline9fallidos/3verdes. Primera corrección12verdes. Regresión detectada y corregida:«3hamburguesas sin cebolla» se declaraba ausente;no confundir preferencia con plato nuevo ni saltar prioridad de porciones normales. Otros fallos intermedios fueron fixtures/assertions,verJSON. Última selección51verdes(34nuevos+17porciones existentes);ampliación final en /tmp/ppp-unavailable-active-cart-accepted-final-targets-1710.log,TypeScript /tmp/ppp-unavailable-active-cart-tsc-1710.log. Todavía no publicado/desplegado.
+
+Regla general por catálogo y conceptos configurables:pedido contado no resuelto a SKU,pero familia reconocida,se responde antes de carrito/pago. Ofrece solo productos disponibles;guarda cantidad en pendingMatch para elección posterior. No añade alternativa sin elegirla. Un pendiente anterior no se sustituye:oferta informativa con bullets y recordatorio de dueño. Sin alternativas lo indica y conserva sesión. Cantidad0/>30 no se convierte a1/30. Gramática acotada;no afirmar comprensión universal ni inferencia real.
+
+Ubicación ya validada/publicada5014f250,NO desplegada:agrupar ambas familias después de global final. Runtime últimoa3b462a3. Main intacta. Cero API/Meta/órdenes externas;181/183. Siguiente estructural:contrato de opciones por unidades del modelo y compra+edición+aprobación atómica.
+
 ## Ubicación validada,pendiente deploy agrupado — 17/10/2026
 
 Base69a0df72.45nuevas;545focalizadas,TypeScript,72contratos Node aprobados. Global79suites/8265pruebas1050.018s;358hashes idénticos a /tmp/ppp-readable-location-source-1710.json. Informe whatsapp-readable-location-validation-1710.json. Ya se puede publicar fuente solo staging. No repetir global por documentación. NO desplegado aún:agrupar con la nueva familia solicitada de pedido inexistente con carrito activo. Runtime actual a3b462a3;Main intacta. Cero API/Meta/órdenes externas;181/183.

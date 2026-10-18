@@ -121,7 +121,7 @@ import {
   type CartLimitCheck,
   type WhatsappCartLimitsConfig,
 } from './whatsapp-cart-limits';
-import type { MenuConceptGroup } from './whatsapp-menu-concepts';
+import { resolveMenuConceptGroups, type MenuConceptGroup } from './whatsapp-menu-concepts';
 import { isNamedMenuDishOrderPhrase, productLooksLikeNamedMenuDish } from './whatsapp-named-menu-dish';
 import type {
   AiOrderAction,
@@ -1329,6 +1329,7 @@ export class WhatsappOrchestratorService {
 
     let session = this.conversationService.getSession(conv);
     if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
+        await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
@@ -15224,6 +15225,41 @@ export class WhatsappOrchestratorService {
       items,
       cfg,
     );
+  }
+
+  /** A new counted purchase must not disappear behind cart/payment prompts. */
+  private async tryHandleUnavailableCountedPurchase(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (/[¿?]/.test(text) || text.length>220 || !['building_cart','awaiting_name','awaiting_phone','awaiting_address','awaiting_payment','awaiting_final_confirm'].includes(conv.state)) return false;
+    const query=this.normalizeForMatch(text).replace(/\b(?:por favor|porfa|gracias)\b/g,' ').trim().replace(/\s+/g,' ');
+    const match=query.match(/^(?:quiero|quisiera|dame|me das|me regalas|agrega|enviame) (\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (.+)$/);
+    if(!match || /\b(?:y|pero|si|no|para|cada)\b/.test(match[2])) return false;
+    const menu=await this.catalogService.getMenuProducts();
+    if(this.catalogService.resolveSpokenDish(match[2],menu) || this.catalogService.productFullyNamedIn(text,menu))return false;
+    const preference=splitKitchenPreference(match[2]);
+    const note=this.catalogService.extractProductModificationNote(match[2]);
+    const base=preference?.productText || (note ? match[2].replace(note,'').trim() : '');
+    if(base && (this.catalogService.resolveSpokenDish(base,menu) || preference && this.catalogService.findCategoryBrowseHit(base,menu,cfg.menuConceptGroups)))return false;
+    const head=match[2].split(' ')[0];
+    if(head===match[2])return false; // A category alone is available, but needs choosing a presentation.
+    const group=this.catalogService.findCategoryBrowseHit(head,menu,cfg.menuConceptGroups);
+    const alternatives=group?.products.filter(product=>product.availableNow!==false).slice(0,6);
+    if(!alternatives?.length){
+      const knownFamily=resolveMenuConceptGroups(cfg.menuConceptGroups).some(group=>group.enabled!==false && group.triggers.some(trigger=>this.normalizeForMatch(trigger).replace(/s$/,'')===head.replace(/s$/,'')));
+      if(!knownFamily)return false;
+      await this.reply(conv,waId,`No encontré *${match[2]}* en la carta y no tengo alternativas de esa categoría disponibles ahora.\n\n`+(this.formatInterruptedStepReminder(conv,session)||this.formatContinueShoppingPrompt(session)));return true;
+    }
+    const quantity=/^\d+$/.test(match[1])?Number(match[1]):this.catalogService.extractQuantityFromMessage(text);
+    if(quantity<1 || quantity>30){await this.reply(conv,waId,'Necesito una cantidad entre 1 y 30 para ofrecerte una alternativa. Tu carrito sigue igual.');return true;}
+    const conflict=!!(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || session.pendingAddOffer || session.pendingCategoryBrowse || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]));
+    if(!conflict){
+      const checkout=['awaiting_address','awaiting_name','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
+      session={...session,pendingMatch:{query:match[2],candidates:alternatives,intent:'order',quantity},...(checkout?{pendingCheckoutResume:conv.state as WhatsappSessionData['pendingCheckoutResume']}:{})};
+      await this.conversationService.saveSession(conv,session,'building_cart');
+    }
+    await this.reply(conv,waId,`No encontré *${match[2]}* como producto de la carta. Estas son alternativas disponibles:\n`+
+      alternatives.map((product,index)=>`${conflict?'•':String(index+1)+'.'} *${product.name}* · $${Math.round(product.price).toLocaleString('es-CO')}`).join('\n')+
+      (conflict?'\n\nConservo la selección pendiente. '+this.formatInterruptedStepReminder(conv,session):`\n\nPediste ${quantity}. ¿Cuál prefieres? No agregué ninguna alternativa todavía.`));
+    return true;
   }
 
   /** Explicit portions remain purchases when the only extra is an unconfigured serving preference. */

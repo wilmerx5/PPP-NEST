@@ -18395,3 +18395,73 @@ describe('Readable shared locations preserve the exact destination and checkout'
   const reply=await h.sendQueued('pin',{messageType:'location',latitude:coords[0],longitude:coords[1]});expect(reply).toMatch(/no pude leer/i);expect(h.conv.sessionData).toEqual(before);expect(h.service.recalculateDeliveryFee).not.toHaveBeenCalled();
  });
 });
+
+describe('An unavailable new purchase is answered while the existing cart stays intact',()=>{
+ for(const family of ['meat','soup'])for(const state of ['building_cart','awaiting_payment','awaiting_final_confirm'])for(const mode of ['rules','vague_agent','cart_agent']){
+  it(family+' '+state+' '+mode,async()=>{
+   const menu=family==='meat'?products:[{id:63501,code:63501,name:'Bao De Hongos',price:18000,availableNow:true,attributes:[]},{id:63502,code:63502,name:'Sopa De Calabaza',price:9000,availableNow:true,category:'Sopas',attributes:[]},{id:63503,code:63503,name:'Sopa De Tomate',price:8500,availableNow:true,category:'Sopas',attributes:[]}];
+   const p=family==='meat'?menu.find((p:any)=>p.id===22):menu[0];const h=harness(menu,mode!=='rules');h.conv.state=state;
+   Object.assign(h.conv.sessionData,{cart:[{productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:family==='meat'?[{attributeName:'Presa',attributeValue:'Ala, pechuga'},{attributeName:'Sopa',attributeValue:'Mondongo'},{attributeName:'Bebida',attributeValue:'Colombiana'}]:[],note:'bien empacado'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:6350,dailyOrderNumber:71});
+   const before=structuredClone(h.conv.sessionData.cart);
+   if(mode==='cart_agent')h.agent.runTurn.mockResolvedValue({reply:'🛒 Carrito\n1. '+p.name+'\n¿Algo más?',actions:{},toolCalls:['get_cart']});
+   const reply=await h.sendQueued(family==='meat'?'quiero 3 carnes a la plancha':'Quiero tres sopas de langosta por favor');
+   expect(h.conv.sessionData.cart).toEqual(before);expect(reply).toMatch(/no tenemos|no manejamos|no encontr|no disponible/i);
+   expect(reply).toMatch(family==='meat'?/Churrasco|Sobrebarriga/i:/Sopa De Calabaza|Sopa De Tomate/i);
+   expect(reply).not.toMatch(/agregu[eé].*(?:plancha|langosta)/i);
+   await h.sendQueued(family==='meat'?'Churrasco':'Sopa De Tomate');
+   const selected=menu.find((item:any)=>item.name===(family==='meat'?'Churrasco':'Sopa De Tomate'));
+   expect(h.conv.sessionData.cart).toContainEqual(expect.objectContaining({productId:selected.id,quantity:3}));
+   expect(h.conv.sessionData.cart).toContainEqual(before[0]);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   if(h.conv.state==='awaiting_payment')await h.sendQueued('1');
+   await h.sendQueued('Confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   expect(h.service.ordersService.create.mock.calls[0][0].items).toHaveLength(4);
+   expect(h.service.ordersService.create.mock.calls[0][0].items.filter((item:any)=>item.productId===selected.id)).toHaveLength(3);
+  });
+ }
+});
+
+describe('Missing purchase suggestions preserve existing selections and real orders',()=>{
+ for(const agent of [false,true])it('keeps note ownership while answering agent='+agent,async()=>{
+  const h=harness(products,agent);const p=products.find((p:any)=>p.id===22);h.conv.sessionData.cart=[{productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:1,attributes:[]}];h.conv.sessionData.pendingSubsetKitchenNote={quantity:1,note:'sin arroz',productIds:[p.id]};const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued('Quiero tres carnes a la plancha');expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/no encontr/i);expect(reply).toMatch(/Churrasco/);
+ });
+ for(const text of ['Quiero tres hamburguesas sin cebolla','Quiero tres sopas de ajiaco sin arroz','Quiero tres porciones de ensalada bien grandes','Quiero tres churrascos']){
+  it('does not call an existing dish unavailable: '+text,async()=>{
+   const h=harness(products,false);const reply=await h.sendQueued(text);expect(reply).not.toMatch(/No encontré .*como producto de la carta/i);expect(h.conv.sessionData.cart.reduce((sum,line)=>sum+line.quantity,0)===3 || h.conv.sessionData.pendingMatch || h.conv.sessionData.pendingAttribute || h.conv.sessionData.pendingMultiOrder).toBeTruthy();
+  });
+ }
+});
+
+describe('Missing purchase quantity variants and repeated requests',()=>{
+ for(const [text,quantity] of [['Quisiera dos carnes a la plancha porfa',2],['Dame una carne a la plancha',1],['Me das 4 carnes a la plancha',4]] as [string,number][]){
+  it(text,async()=>{const h=harness(products,false);const reply=await h.sendQueued(text);expect(reply).toMatch(/No encontré/);expect(h.conv.sessionData.cart).toEqual([]);await h.sendQueued('Churrasco');expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:products.find((p:any)=>p.name==='Churrasco').id,quantity})]);});
+ }
+ for(const agent of [false,true])it('repeating a missing request retains offer and quantity agent='+agent,async()=>{
+  const h=harness(products,agent);await h.sendQueued('Quiero tres carnes a la plancha');const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued('Quiero tres carnes a la plancha');expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/No encontré/);expect((reply||'').split('Conservo')[0]).not.toMatch(/\n1\./);
+ });
+});
+
+describe('Missing purchase offers respect ownership availability and quantity bounds',()=>{
+ for(const kind of ['offer','category'])for(const agent of [false,true])it(kind+' agent='+agent,async()=>{
+  const h=harness(products,agent);const p=products.find((p:any)=>p.id===22);
+  if(kind==='offer')h.conv.sessionData.pendingAddOffer={productId:p.id,code:p.code,name:p.name,price:p.price,quantity:1};else h.conv.sessionData.pendingCategoryBrowse={categories:['Pollo','Sopas']};
+  const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued('Quiero tres carnes a la plancha');expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/No encontré/);expect((reply||'').split('Conservo')[0]).not.toMatch(/\n1\./);
+ });
+ it('never suggests an unavailable alternative',async()=>{
+  const menu=products.map((p:any)=>p.name==='Churrasco'?{...p,availableNow:false}:p);const h=harness(menu,false);const reply=await h.sendQueued('Quiero tres carnes a la plancha');expect(reply).toMatch(/Sobrebarriga/);expect(reply).not.toMatch(/Churrasco/);expect(h.conv.sessionData.cart).toEqual([]);
+ });
+ for(const amount of [0,99])it('does not clamp requested units '+amount,async()=>{
+  const h=harness(products,false);const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued(`Quiero ${amount} carnes a la plancha`);expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/cantidad entre 1 y 30/);
+ });
+});
+
+describe('Missing purchases with no alternatives or restaurant configured families',()=>{
+ for(const agent of [false,true])it('does not invent an alternative agent='+agent,async()=>{
+  const h=harness([{id:63601,code:63601,name:'Bao De Hongos',price:18000,availableNow:true,attributes:[]}],agent);h.conv.state='awaiting_payment';h.conv.sessionData.cart=[{productId:63601,code:63601,name:'Bao De Hongos',unitPrice:18000,quantity:1,attributes:[]}];const before=structuredClone(h.conv.sessionData);const reply=await h.sendQueued('Quiero tres carnes a la plancha');expect(h.conv.sessionData).toEqual(before);expect(reply).toMatch(/no tengo alternativas/i);expect(reply).not.toMatch(/Churrasco|Sobrebarriga/);
+ });
+ for(const agent of [false,true])it('uses restaurant configured family agent='+agent,async()=>{
+  const h=harness([{id:63611,code:63611,name:'Roll De Pepino',price:15000,availableNow:true,attributes:[]},{id:63612,code:63612,name:'Roll De Aguacate',price:16000,availableNow:true,attributes:[]}],agent);(h.cfg as any).menuConceptGroups=[{id:'rolls',label:'Rolls',triggers:['roll','rolls'],productKeywords:['roll']}];const reply=await h.sendQueued('Quiero tres rolls de tocino');expect(reply).toMatch(/No encontré/);expect(reply).toMatch(/Roll De Pepino/);expect(h.conv.sessionData.cart).toEqual([]);await h.sendQueued('Roll De Pepino');expect(h.conv.sessionData.cart).toEqual([expect.objectContaining({productId:63611,quantity:3})]);
+ });
+});

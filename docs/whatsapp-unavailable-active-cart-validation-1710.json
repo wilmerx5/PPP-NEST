@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-17",
+  "branch": "staging",
+  "base": "5014f250",
+  "status": "validated_not_deployed",
+  "newTests": 40,
+  "baseline": {
+    "failed": 9,
+    "passed": 3,
+    "log": "/tmp/ppp-unavailable-active-cart-baseline-1710.log"
+  },
+  "initialCorrection": {
+    "passed": 12,
+    "log": "/tmp/ppp-unavailable-active-cart-targets-1710.log"
+  },
+  "expanded": {
+    "passed": 51,
+    "seconds": 25.296,
+    "log": "/tmp/ppp-unavailable-active-cart-final-expanded-targets-1710.log",
+    "includesExistingPortionControls": 17
+  },
+  "development": [
+    "A new early handler falsely called a known burger with sin cebolla unavailable; added known-base/preference guard and retained standard-portion precedence.",
+    "Three quantity fixtures initially used incorrect Churrasco ID7 rather than fixture ID17; corrected lookup by name.",
+    "A known generic burger request legitimately opens a presentation choice; control now accepts that structured selection rather than assuming automatic default.",
+    "Repeated-offer assertions initially rejected the numbered reminder of the existing offer; only the new informational part must be unnumbered.",
+    "Two tests initially failed compilation because reply may be undefined; narrowed to string for splitting.",
+    "First global found14 regressions: counted category purchases with una de cada were intercepted as missing products; dependent subset-note setups then failed. Delegate explicit distribution grammar before unavailable handling."
+  ],
+  "paidRequests": 0,
+  "metaMessages": 0,
+  "externalOrders": 0,
+  "budget": {
+    "used": 181,
+    "cap": 183,
+    "remaining": 2
+  },
+  "mainChanged": false,
+  "behavior": [
+    "Counted unavailable purchase in a configured family is answered before cart/payment fallback.",
+    "Related alternatives are live catalog products; choosing one preserves requested quantity and existing cart.",
+    "Existing pending selection remains owned; new informational alternatives are bullets rather than a competing numbered list.",
+    "No available alternative produces an explicit answer without invented products or session mutation.",
+    "Counts0/99 are rejected instead of silently clamped."
+  ],
+  "limitations": [
+    "Bounded counted-purchase grammar for known/configured families, not universal unknown-product understanding.",
+    "Multiple requests, delivery mixed in the same message and unconfigured families stay in existing routing.",
+    "No paid model or original audio evidence."
+  ],
+  "deployment": null,
+  "completeJourneys": 18,
+  "targeted": {
+    "passed": 190,
+    "suites": 2,
+    "seconds": 32.133,
+    "log": "/tmp/ppp-unavailable-active-cart-distribution-accepted-targets-1710.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-unavailable-active-cart-distribution-tsc-1710.log"
+  },
+  "globalValidation": {
+    "status": "passed",
+    "sourceFiles": 358,
+    "snapshot": "/tmp/ppp-unavailable-active-cart-final-source-1710.json",
+    "log": "/tmp/ppp-unavailable-active-cart-final-global-1710.log",
+    "suites": 79,
+    "tests": 8305,
+    "seconds": 1241.223,
+    "sourceHashesUnchanged": true
+  },
+  "contracts": {
+    "passed": 72,
+    "log": "/tmp/ppp-unavailable-active-cart-final-contracts-1710.log"
+  },
+  "firstGlobal": {
+    "status": "failed",
+    "sourceFiles": 358,
+    "snapshot": "/tmp/ppp-unavailable-active-cart-source-1710.json",
+    "log": "/tmp/ppp-unavailable-active-cart-global-1710.log",
+    "failed": 14,
+    "passed": 8291,
+    "suitesFailed": 1,
+    "suitesPassed": 78,
+    "seconds": 1096.684,
+    "sourceHashesUnchanged": true
+  },
+  "stagingFamilyConfigReadOnly": {
+    "readOnly": true,
+    "source": "defaults",
+    "groupCount": 8,
+    "meatFamilyEnabled": true,
+    "log": "/tmp/ppp-live-menu-concepts-verified-1710.json"
+  }
+}
