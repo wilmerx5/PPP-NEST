@@ -1,0 +1,50 @@
+{
+  "dateBogota": "2026-10-18",
+  "baseCommit": "baadd569666f927c50c700678a2d6cef800f53d5",
+  "status": "validated_not_deployed",
+  "behaviors": [
+    "No-op preserves grouped edit intent and replies without purchase fallback",
+    "Repeated partial changes on separated variants require a human source reference",
+    "Ambiguous source invalidates previously prepared groups and cannot revive within the turn",
+    "Explicit source permits later partial edit and preserves total units through simulated checkout"
+  ],
+  "reproductions": {
+    "noOpBaselineFailed": 9,
+    "repeatSourceBaselineFailed": 6,
+    "note": "After no-op fix 3 remaining failures were incorrect building_cart expectations, corrected to preserve the current step; all 15 full-router journeys passed."
+  },
+  "validation": {
+    "routerJourneysPassed": 15,
+    "toolAndSourceSafetyPassed": 98,
+    "preparationTestsPassed": 85,
+    "typescriptPassed": true,
+    "nodeContractsPassed": 72,
+    "globalLog": "/tmp/ppp-unit-source-global-1810.log",
+    "globalJson": "/tmp/ppp-unit-source-global-1810.json",
+    "sourceManifest": "/tmp/ppp-unit-source-global-source-1810.json",
+    "note": "Overlapping focused run of 232 cases is not added to counts.",
+    "global": {
+      "passed": true,
+      "tests": 8510,
+      "suites": 81,
+      "seconds": 600.544,
+      "frozenFiles": 365,
+      "sourceUnchanged": true
+    }
+  },
+  "paidCallsThisBatch": 0,
+  "metaMessagesThisBatch": 0,
+  "externalOrdersThisBatch": 0,
+  "mainChanged": false,
+  "budget": {
+    "operationalCap": 185,
+    "used": 184,
+    "remaining": 1
+  },
+  "limits": [
+    "Conservative source matching supports numeric displayed row or unique current option, not every conversational reference",
+    "Complex negated/preservation instructions require clarification when several variants exist",
+    "No new real-model inference in this batch",
+    "Combination of unit options with subset kitchen notes remains next work"
+  ]
+}

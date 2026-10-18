@@ -1,3 +1,15 @@
+## Próxima matriz después del origen de variantes — 18/10/2026
+
+Tanda local actual: no-op conserva intención; repetición tras partición no altera el resto por defecto; una fuente ambigua invalida todos los grupos. Ver whatsapp-unit-option-followup-validation-1810.json y estado vigente en WHATSAPP-LOCAL-NEXT-AGENT.md. No asumir desplegado hasta cierre allí.
+
+1. Opciones + nota sobre el mismo subconjunto: cuatro hamburguesas, dos sin cebolla y con otra bebida; tres bentos, uno sin salsa y con arroz distinto; dos menús, uno con nota de alergia. Verificar unión del grupo, resto intacto, precio, respuesta y DTO final. Aclarar si el alcance no está definido; no ampliar automáticamente la nota a todos.
+2. Compra nueva distribuida: “cuatro, dos A y dos B”, con atributos compartidos y luego específicos. Variar catálogos de jugos, menús, sushi y panes. Cantidad de paquete dentro del nombre no equivale a multiplicador del carrito.
+3. Referencias después de separar: “de las dos originales cambia una”, ordinales de fila, dos referencias simultáneas, negaciones, “las otras”, repetición literal, corrección de la corrección. Los casos que hoy piden aclaración deben permanecer sin mutación hasta una fuente verificable.
+4. Reanudar pasos pendientes: nombre/teléfono/dirección/pago, con consulta de precio, carrito, horario o ingredientes antes de responder el dato. Jamás registrar una pregunta como nombre ni duplicar productos.
+5. Reservar conversaciones nuevas sin usarlas para ajustar reglas; comparar respuesta, carrito y estado, no solo clasificación. Inferencia moderada con presupuesto registrado antes de red. No WhatsApp externo ni órdenes reales sin verificar aislamiento.
+
+Entrada al piloto supervisado: global reproducible sobre fuente congelada, prueba reservada de modelo real, revisión de costo por conversación y latencia, correcciones sin pérdida de carrito, configuración efectiva auditada y acompañamiento humano disponible. Los conteos de regresión por sí solos no acreditan preparación comercial. Continuar efectivo/transferencia, Main solo con instrucción explícita.
+
 ## VIGENTE: cf6ded72 desplegado y verificado — 17/10/2026, 23:25 Bogotá
 
 Runtime de staging cf6ded721eb26a2f59e64d9fa10fa0969a4fa69d, running/healthy. Imagen activa=candidate sha256:b318ba027fff3a61f37337619a3bd471251cff0b6797f65c177a99a349de590e. Verificación18/10 04:25:13UTC;health OK/DB connected/circuit CLOSED. Guard/herramienta/proyección/plan y colisión de precios comprobados en compilado, además de los guards previos. Rollback ppp-nest-staging:rollback-before-cf6ded72. bin/ remoto y mariadb_local preservados. Main intacta.

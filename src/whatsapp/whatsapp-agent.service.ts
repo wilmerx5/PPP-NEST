@@ -1,3 +1,4 @@
+import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
 import { prepareUnitOptionActions, prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
 import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
@@ -286,6 +287,7 @@ export class WhatsappAgentService {
     nextIndex: number; addedIndexes: WeakMap<object, number>;
   }>();
   private readonly unitOptionAttempts = new WeakSet<AiOrderAction>();
+  private readonly ambiguousUnitOptionSources = new WeakSet<AiOrderAction>();
   private readonly maxIterations = 6;
 
   constructor(
@@ -617,7 +619,7 @@ Reglas:
 - "qué hay de comida rápida" / "qué bandejas hay" → lista lo que search_menu trae en esa categoría. Si piden un plato que no está y search_menu trae missing, dilo y ofrece esa categoría como alternativas. NO resumas con pollos ni agregues una sola hamburguesa.
 - "qué jugos/sopas/gaseosas tienes" es otra cosa de la carta. NO ofrezcas cambiar la bebida (ni otro atributo) ya elegida. Manzana/Uva del combo son gaseosas, no jugos, salvo que exista un producto *Jugo* en search_menu.
 - Si el cliente pide otra opción de un producto que YA está en el carrito (bebida, pollo, arepa, presa, sabor), llama set_attribute con productId, cartLineIndex, attributeName y attributeValue de la sesión. Un typo ("roaster") es la opción real más cercana (Broaster) si está en esa lista. NO add_item, NO set_notes y NO digas que no lo manejamos.
-- Si pide cambiar SOLO algunas unidades de una línea existente, usa set_unit_attributes con affectedQuantity y todos los atributos de ese mismo grupo. set_attribute cambia TODA la línea; update_item.quantity es cantidad final, NO unidades a modificar. No mezcles una partición con comprar/quitar/reemplazar/confirmar; si pide ambas cosas, aclara sin ejecutar una parte. En productos recién añadidos usa add_item separado por variante; no partas una adición pendiente. Tras partición get_cart muestra el resultado; no reinterpretes sus filas proyectadas como nuevas líneas originales. Dos grupos sobre una misma fila necesitan aclaración, no dos llamadas superpuestas.
+- Si pide cambiar SOLO algunas unidades de una línea existente, usa set_unit_attributes con affectedQuantity y todos los atributos de ese mismo grupo. set_attribute cambia TODA la línea; update_item.quantity es cantidad final, NO unidades a modificar. No mezcles una partición con comprar/quitar/reemplazar/confirmar; si pide ambas cosas, aclara sin ejecutar una parte. En productos recién añadidos usa add_item separado por variante; no partas una adición pendiente. Tras partición get_cart muestra el resultado; no reinterpretes sus filas proyectadas como nuevas líneas originales. Dos grupos sobre una misma fila necesitan aclaración, no dos llamadas superpuestas. Si el producto ya tiene varias variantes en el carrito, pide identificar la línea o su opción actual antes de cambiar unidades; mencionar solo la opción de destino no identifica de cuál variante salen.
 - Si search_menu devuelve mode="cart_attribute", llama set_attribute con ese candidate.
 - set_address solo con un lugar (calle, carrera, barrio, conjunto). Si responde ok:false, contesta al cliente en una frase y no hables de domicilio.
 - Si piden un plato que existe en frito y en broaster y no dijeron cuál, el sistema lista las dos. No asumas frito.
@@ -1866,6 +1868,7 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
       }
       case 'set_unit_attributes': {
         this.unitOptionAttempts.add(ctx.actions);
+        if (this.ambiguousUnitOptionSources.has(ctx.actions)) return JSON.stringify({ ok: false, error: 'unit_option_batch_rejected' });
         const edit = args as unknown as UnitOptionEdit;
         const snapshot = (ctx.cart || []).map(line => ({ ...line, quantity: line.quantity || 1,
           code: ctx.byId.get(line.productId)?.code || 0, unitPrice: ctx.byId.get(line.productId)?.price || 0 }));
@@ -1874,6 +1877,12 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           return JSON.stringify({ ok: false, error: 'unit_option_batch_rejected', hint: 'La tanda ya quedó rechazada. Pide aclaración; ninguna partición se aplicará.' });
         }
         const individual = prepareUnitOptionPlan(snapshot, [edit], ctx.products, this.catalogService);
+        if (individual.ok && individual.changed && !hasExplicitUnitOptionSource(ctx.userMessage || '', snapshot, individual.edits[0])) {
+          this.ambiguousUnitOptionSources.add(ctx.actions);
+          // Keep ownership of the rejected turn and invalidate any prior group.
+          ctx.actions.updateUnitOptions = [];
+          return JSON.stringify({ ok: false, error: 'ambiguous_unit_option_source', hint: 'Hay variantes separadas. Pregunta de cuál línea u opción actual salen las unidades; no elijas el resto por defecto.' });
+        }
         const existing = ctx.actions.updateUnitOptions?.find(item => item?.cartLineIndex === edit.cartLineIndex);
         if (individual.ok && existing && JSON.stringify(existing) === JSON.stringify(individual.edits[0])) {
           return JSON.stringify({ ok: true, unchanged: true, hint: 'Esa partición ya está preparada. No la repitas.' });
@@ -1887,8 +1896,10 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           return JSON.stringify({ ok: false, error: plan.reason,
             hint: 'La tanda por unidades quedó rechazada y no se aplicará ningún grupo. No uses set_attribute para ampliar el cambio. Pide aclaración; las adiciones pendientes se crean con add_item por variante.' });
         }
-        if (!plan.changed) return JSON.stringify({ ok: true, unchanged: true, hint: 'Esas unidades ya tienen las opciones solicitadas.' });
+        // A no-op still owns this turn: empty actions would fall back to the
+        // purchase/checkout parser and hide the successful interpretation.
         ctx.actions.updateUnitOptions = plan.edits;
+        if (!plan.changed) return JSON.stringify({ ok: true, unchanged: true, hint: 'Esas unidades ya tienen las opciones solicitadas.' });
         return JSON.stringify({ ok: true, affectedQuantity: edit.affectedQuantity,
           lines: this.toolCartView(ctx).map(({ pendingAddIndex, ...line }) => line),
           hint: 'Cambio por unidades preparado. Muestra las dos variantes y conserva el resto. No repitas la partición ni apliques otra mutación en este turno.' });

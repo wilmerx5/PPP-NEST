@@ -261,6 +261,20 @@ describe('Cart edits preserve the other variants and use stable indexes',()=>{
 describe('Model tools — grouped changes affect only the requested units', () => {
   const args = { productId: 50, cartLineIndex: 0, affectedQuantity: 2,
     attributes: [{ attributeName: 'Sabor', attributeValue: 'Lulo' }] };
+  it('rejects the entire batch after an ambiguous source and cannot revive it', () => {
+    const turn = turnTools([line(50, 4, 'Mango'), line(50, 3, 'Guanabana')], 'De los mango cambia dos; también cambia dos más');
+    expect(turn.call('set_unit_attributes', args).ok).toBe(true);
+    expect(turn.call('set_unit_attributes', { ...args, cartLineIndex: 1 }).error).toBe('ambiguous_unit_option_source');
+    expect(turn.actions.updateUnitOptions).toEqual([]);
+    expect(turn.call('set_unit_attributes', args).error).toBe('unit_option_batch_rejected');
+    expect(turn.call('get_cart').lines.map(item => item.quantity)).toEqual([4, 3]);
+  });
+  it('allows an unchanged option without guessing a different source', () => {
+    const turn = turnTools([line(50, 4, 'Lulo'), line(50, 3, 'Mango')], 'Dos de lulo');
+    expect(turn.call('set_unit_attributes', args)).toMatchObject({ ok: true, unchanged: true });
+    expect(turn.actions.updateUnitOptions).toHaveLength(1);
+    expect(turn.call('get_cart').lines.map(item => item.quantity)).toEqual([4, 3]);
+  });
   it('passes tool, guard and application while preserving the other units and original price', async () => {
     const cart = [line(50, 4, 'Mango', 'sin hielo'), line(23)]; cart[0].unitPrice = 1234;
     const turn = turnTools(cart); expect(turn.call('set_unit_attributes', args).ok).toBe(true);
@@ -313,7 +327,7 @@ describe('Model tools — grouped changes affect only the requested units', () =
     expect(await apply(turn.actions, cart)).toEqual(cart);
   });
   it('prepares two original rows without treating the inserted variant as row one', async () => {
-    const cart = [line(50, 4, 'Mango'), line(50, 3, 'Guanabana')]; const turn = turnTools(cart);
+    const cart = [line(50, 4, 'Mango'), line(50, 3, 'Guanabana')]; const turn = turnTools(cart, 'De la línea 1 y de la línea 2');
     expect(turn.call('set_unit_attributes', args).ok).toBe(true);
     expect(turn.call('set_unit_attributes', { ...args, cartLineIndex: 1, affectedQuantity: 1 }).ok).toBe(true);
     expect((await apply(turn.actions, cart)).map(item => [item.quantity, item.attributes[0].attributeValue]))
@@ -353,7 +367,7 @@ describe('Model tools — grouped changes affect only the requested units', () =
   it('does not create a partition when the option is already selected', () => {
     const turn = turnTools([line(50, 4, 'Lulo')]);
     expect(turn.call('set_unit_attributes', args)).toMatchObject({ ok: true, unchanged: true });
-    expect(turn.actions).toEqual({}); expect(turn.call('get_cart').lines).toHaveLength(1);
+    expect(turn.actions.updateUnitOptions).toEqual([args]); expect(turn.call('get_cart').lines).toHaveLength(1);
   });
   it('does not accept a grouped action without a cart snapshot in the guard', () => {
     const guarded = new WhatsappActionGuardService(catalog).sanitize({ actions: { updateUnitOptions: [args] },
@@ -365,7 +379,7 @@ describe('Model tools — grouped changes affect only the requested units', () =
     const cart = [line(50, 4, 'Mango', 'sin hielo'), line(50, 2, 'Lulo', 'sin hielo')];
     cart[0].unitPrice = sourcePrice; cart[1].unitPrice = existingPrice;
     const actions = mode === 'partial'
-      ? tool('set_unit_attributes', args, cart).actions
+      ? tool('set_unit_attributes', args, cart, 'De la línea 1 cambia dos').actions
       : tool('set_attribute', { productId: 50, cartLineIndex: 0, attributeName: 'Sabor', attributeValue: 'Lulo' }, cart).actions;
     const edited = await apply(actions, cart);
     expect(edited.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)).toBe(4 * sourcePrice + 2 * existingPrice);

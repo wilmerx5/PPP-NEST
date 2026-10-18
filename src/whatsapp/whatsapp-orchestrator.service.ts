@@ -18537,7 +18537,7 @@ export class WhatsappOrchestratorService {
       const answer = accepted
         ? (changed ? 'Listo, cambié solo las unidades indicadas ✅' : 'Esas unidades ya tienen las opciones indicadas ✅') +
           '\n\n' + this.formatCartOnly(current, this.deliveryFeeFor(current, cfg))
-        : 'No pude aplicar ese cambio por unidades con seguridad. El pedido sigue igual. Dime qué producto, cuántas unidades y qué opciones quieres cambiar; separa cualquier compra o retiro adicional.';
+        : 'No pude aplicar ese cambio por unidades con seguridad. El pedido sigue igual. Dime de cuál línea o variante actual salen las unidades, cuántas quieres cambiar y a qué opciones; separa cualquier compra o retiro adicional.';
       await this.reply(conv, msg.waId, answer + '\n\n' + reminder);
       this.turnTelemetry.record({ path: 'agent_v1', outcome: changed ? 'order_progress' : 'replied',
         waId: msg.waId, conversationId: conv.id, toolCalls: agent.toolCalls, latencyMs: Date.now() - started,

@@ -1,3 +1,11 @@
+## Tanda validada, pendiente de despliegue — 18/10/2026: repetición y origen de variantes
+
+Cambios validados aún NO desplegados. Base baadd569; runtime sigue cf6ded72. Se reprodujeron 9 recorridos no-op (la herramienta dejaba actions vacío y perdía la intención) y 6 recorridos de repetición (tras dividir 4 en 2+2, repetir podía transformar el resto). El no-op conserva ahora updateUnitOptions; una edición con varias variantes del mismo SKU requiere referencia humana a la línea o a una opción actual única, distinta del destino. Si no la hay se invalida toda la tanda, incluso grupos previamente preparados. No se revive en otra llamada del mismo turno. Mensajes negados/de preservación complejos se aclaran conservadoramente.
+
+15 recorridos nuevos completos, 3 menús para no-op/2 para repetición, estados carrito/pago/confirmación, hasta DTO de orden simulado. Pruebas focalizadas y TypeScript/72contratos Node aprobados. Global aprobada:81suites/8510tests,600.544s,365hashes intactos; log /tmp/ppp-unit-source-global-1810.log, JSON /tmp/ppp-unit-source-global-1810.json, hashes /tmp/ppp-unit-source-global-source-1810.json. Resultado y hashes comprobados; falta verificar runtime tras desplegar. El primer conjunto focalizado de 232 controles se solapa con los demás; no sumar sus totales.
+
+Sin llamadas pagadas, Meta ni órdenes externas; presupuesto185/184/1 intacto. Main intacta. Próximo: publicar staging y desplegar UNA vez con rollback/health/compilado. Documentar límites: el guard no sustituye comprensión de toda frase; ordinales y alusiones implícitas pueden requerir aclaración. Después ampliar cambios con nota para el mismo subconjunto y compras nuevas distribuidas por variantes, con catálogos variados. No afirmar listo para venta por conteos.
+
 ## VIGENTE: cf6ded72 desplegado y verificado — 17/10/2026, 23:25 Bogotá
 
 Runtime de staging cf6ded721eb26a2f59e64d9fa10fa0969a4fa69d, running/healthy. Imagen activa=candidate sha256:b318ba027fff3a61f37337619a3bd471251cff0b6797f65c177a99a349de590e. Verificación18/10 04:25:13UTC;health OK/DB connected/circuit CLOSED. Guard/herramienta/proyección/plan y colisión de precios comprobados en compilado, además de los guards previos. Rollback ppp-nest-staging:rollback-before-cf6ded72. bin/ remoto y mariadb_local preservados. Main intacta.
