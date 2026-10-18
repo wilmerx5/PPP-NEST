@@ -1,7 +1,7 @@
 {
   "date": "2026-10-18",
   "base": "29da678851cc211185568ba4c7949eb8f0e37b06",
-  "status": "validated_not_deployed",
+  "status": "deployed_staging_only",
   "change": "Canonicalize Tv/Tv./Trv/Transv and Kr only with a clear numbered street, #, crossing and door. Protect ambiguous product/code text. No restaurant-specific address mappings.",
   "baseline": {
     "failed": 8,
@@ -50,5 +50,30 @@
       "/tmp/ppp-intensity-options-current-source-probe-1810.cjs"
     ],
     "limits": "Selected helper/tools/guards only; complete router in TypeScript mocked suite, no real inference or orders"
+  },
+  "deployment": {
+    "code_commit": "3a5a204badc1e24fb438c845d2cf13a6cb65f872",
+    "image": "sha256:6890143f77da7d69f5c245c97010804d02b17643275ad726df644c358d5d970f",
+    "candidate_matches_active": true,
+    "running": true,
+    "health": "healthy",
+    "public_health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "timestamp": "2026-10-18T19:49:22.729Z"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-3a5a204b",
+    "log": "/tmp/ppp-sales-location-deploy-1810.log",
+    "compiled_probes": [
+      "/tmp/ppp-sales-location-compiled-1810.log",
+      "/tmp/ppp-sales-location-prior-compiled-1810.log"
+    ],
+    "main_preserved": {
+      "head": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+      "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+      "running": true
+    },
+    "limits": "Compiled probes check selected helper/tools/guards; full router tested in TypeScript with mocked services. No paid inference, real geocoding, Meta or external order calls."
   }
 }
