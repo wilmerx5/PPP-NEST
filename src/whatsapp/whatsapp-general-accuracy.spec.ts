@@ -19132,3 +19132,24 @@ describe('Named address plus internal access reaches checkout without losing dri
   }finally{global.fetch=original;}
  });
 });
+
+describe('A fresh abbreviated street in a purchase burst overrides saved delivery data',()=>{
+ const fixtures=[{menu:products,order:'Veci me vendes un pollo frito y una sopa de mondongo',ids:[1,45]},{menu:[{id:65971,code:65971,name:'Ravioles De Espinaca',price:23000,availableNow:true,attributes:[]},{id:65972,code:65972,name:'Crema De Tomate',price:9000,availableNow:true,attributes:[]}],order:'Me vendes un Ravioles De Espinaca y una Crema De Tomate',ids:[65971,65972]}];
+ for(const f of fixtures)for(const enabled of [false,true])for(const street of ['Tv 78C #6D-48','Tv. 78C #6D-48','Transversal 78C #6D-48','Kr 78C #6D-48'])it(`${f.ids[0]} agent=${enabled} ${street}`,async()=>{
+  jest.useFakeTimers();try{
+   const h=harness(f.menu,enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));Object.assign(h.conv.sessionData,{lastDeliveryAddress:'Calle 6a #75-56 ap 302 interior 1',phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6597,dailyOrderNumber:97});
+   h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:true,deliveryFeeCalculated:2000}}));
+   const messages=[f.order,'por fa',street];const jobs=messages.map((text,index)=>h.service.handleIncoming({waId:'customer',phoneE164:h.conv.phoneE164,messageId:`fresh-address-${index}`,messageType:'text',text,timestamp:Math.floor(Date.now()/1000),raw:{}}));await jest.advanceTimersByTimeAsync(10000);await Promise.all(jobs);
+   expect(h.conv.sessionData.cart.map((line:any)=>line.productId).sort()).toEqual([...f.ids].sort());expect(h.conv.sessionData.address).toMatch(/78\s*C.*6\s*D.*48/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.replies.join('\n')).not.toMatch(/75.?56|misma direcci[oó]n|algo m[aá]s|en qu[eé] barrio/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   await h.sendQueued('1');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/78\s*C.*6\s*D.*48/i);expect(dto.phone).toMatch(/3000000001/);expect(dto.items).toHaveLength(2);
+  }finally{jest.useRealTimers();}
+ });
+});
+
+describe('Fresh abbreviated address after separate purchase replies continues checkout',()=>{
+ for(const enabled of [false,true])for(const street of ['Tv. 78C #6D-48','Kr 78C #6D-48'])it(`agent=${enabled} ${street}`,async()=>{
+  const h=harness(products,enabled);Object.assign(h.conv.sessionData,{lastDeliveryAddress:'Calle 6a #75-56 ap 302 interior 1',phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6598,dailyOrderNumber:98});
+  await h.sendQueued('Veci me vendes un pollo frito y una sopa de mondongo');await h.sendQueued('por fa');const cart=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued(street);
+  expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.address).toMatch(/78\s*C.*6\s*D.*48/i);expect(h.conv.state).toBe('awaiting_payment');expect(reply).not.toMatch(/75.?56|misma direcci[oó]n|algo m[aá]s|en qu[eé] barrio/i);expect(reply).toMatch(/c[oó]mo pagas|m[eé]todo de pago/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+});

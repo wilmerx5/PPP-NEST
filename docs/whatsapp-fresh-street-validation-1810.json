@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-18",
+  "base": "29da678851cc211185568ba4c7949eb8f0e37b06",
+  "status": "validated_not_deployed",
+  "change": "Canonicalize Tv/Tv./Trv/Transv and Kr only with a clear numbered street, #, crossing and door. Protect ambiguous product/code text. No restaurant-specific address mappings.",
+  "baseline": {
+    "failed": 8,
+    "passed": 8,
+    "log": "/tmp/ppp-fresh-street-burst-baseline-1810.log",
+    "finding": "Bare Tv and full Transversal already passed on validated staging source. Dotted Tv and Kr lost new address in purchase burst."
+  },
+  "focused": {
+    "passed": 50,
+    "passed_suites": 2,
+    "log": "/tmp/ppp-fresh-street-accepted-controls-1810.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-fresh-street-final-tsc-1810.log"
+  },
+  "node_scripts": "unchanged; 92 previously passed in grouped sales validation",
+  "global": {
+    "log": "/tmp/ppp-fresh-street-global-1810.log",
+    "result": "/tmp/ppp-fresh-street-global-1810.json",
+    "manifest": "/tmp/ppp-fresh-street-source-1810.json",
+    "files": 376,
+    "passed": true,
+    "suites": 86,
+    "tests": 9102,
+    "failed": 0,
+    "seconds": 566.854,
+    "unchanged_hashes": 376
+  },
+  "new_tests": 28,
+  "coverage": [
+    "16 real coalescer bursts with fake timers, two menus, agent configured on/off, four address forms, stale saved address, no order before confirmation, final simulated DTO",
+    "4 separate-message checkout continuations; phone and cart preserved, fresh address used",
+    "8 alias guards: four transversal forms, inline Kr, three ambiguous product/code texts unchanged"
+  ],
+  "limits": [
+    "No paid inference, real Google Maps, Meta sends or external orders",
+    "Final human chat omits intervening phone/payment/confirmation messages: do not infer unauthorized order from pasted fragment.",
+    "Main and production untouched; all new source remains staging.",
+    "Whole source before aliases accepted global86suites/9074tests at29da6788. New alias source needs its own final global."
+  ],
+  "source_probes": {
+    "passed": true,
+    "scripts": [
+      "/tmp/ppp-sales-closure-current-source-probe-1810.cjs",
+      "/tmp/ppp-intensity-options-current-source-probe-1810.cjs"
+    ],
+    "limits": "Selected helper/tools/guards only; complete router in TypeScript mocked suite, no real inference or orders"
+  }
+}

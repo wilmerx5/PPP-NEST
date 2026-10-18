@@ -12,6 +12,9 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // Street aliases only when followed by a numbered street and #, not SKU codes.
+  { re: /\b(?:tv|trv|transv)\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Transversal ' },
+  { re: /\bkr\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Carrera ' },
   { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
   { re: /^(?:te\s+)?agradezco\s+si\s+me\s+(?:alistan|preparan)\s+/i, to: 'quiero ' },
   { re: /^(?:ada|nad)\s+m[aá]s[.!]*$/i, to: 'nada mas' },

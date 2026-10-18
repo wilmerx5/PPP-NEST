@@ -1,3 +1,11 @@
+## VALIDADO — listo para publicar y desplegar SOLO staging, 18/10/2026
+
+Global final86suites/9102tests en566.854s,376hashes intactos;50controles de abreviaturas/rutas yTypeScript,92Node previos y probes locales actuales aprobados. Incluye checkpoint29da6788 con cierre/datos/bebidas/unidades. No hay suites activas. Falta publicar/desplegar y verificar compilado/health. Staging vivo aúnbd23e68d;Main14d9dd84 preservada. Ver whatsapp-fresh-street-validation-1810.json y whatsapp-sales-closure-validation-1810.json. SSH tuvo timeout transitorio y se recuperó;health público responde. No afirmar ya desplegado hasta cierre. CeroAPIpagada/Meta/órdenes externas. Entradas inferiores históricas.
+
+## GLOBAL ACTIVA — direcciones abreviadas en ráfagas, 18/10/2026
+
+Checkpoint anterior29da6788 validado global86suites/9074tests,NO desplegado aún. Nuevo chatTv:forma sin punto ya pasaba;8fallos conTv./Kr frente a8verdes iniciales. Normalización acotada a dirección numerada completa,28tests nuevos,50focalizados yTypeScript verdes. Fuente congelada 376hashes /tmp/ppp-fresh-street-source-1810.json. Global /tmp/ppp-fresh-street-global-1810.{log,json}. NO editar fuente ni lanzar otra suite/deploy hasta cierre. Ver whatsapp-fresh-street-validation-1810.json. Tras verde+hashes publicar ambos commits/desplegar SOLO staging y verificar compilado/health/rollback. Runtime siguebd23e68d,Main14d9dd84 preservada. CeroAPIpagada/Meta/órdenes externas. Entradas inferiores históricas.
+
 ## LOTE VALIDADO LOCAL — cierre, bebidas y unidades, 18/10/2026
 
 Global final86suites/9074tests en575.345s aprobada,376hashes intactos;516focalizados,21controles finales,TypeScript,92Node y probe local verdes. Dos globales fallidas previas documentadas;solo repaired-global es aceptación. No desplegado aún;staging vivo bd23e68d,Main14d9dd84 preservada. Evidencia whatsapp-sales-closure-validation-1810.json. Se guarda checkpoint antes de reproducir nuevo chat humano de ráfaga conTv78C#6D-48. No hay global activa al escribir esta entrada. Agrupar deploy SOLO staging al cerrar esa reproducción. Auditoría productiva de contacto:respuesta121caracteres conidMeta a2s;no acredita renderizado en dispositivo. CeroAPIpagada/Meta/órdenes externas. Entradas inferiores históricas.
