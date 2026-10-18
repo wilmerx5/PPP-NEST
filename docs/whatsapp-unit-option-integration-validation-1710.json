@@ -1,7 +1,7 @@
 {
   "dateBogota": "2026-10-17",
   "baseCommit": "851258dc69fff4ac165b76735f22e57125acaa08",
-  "phase": "accepted_ready_to_publish_not_deployed",
+  "phase": "deployed_and_verified",
   "newIntegrationTests": 83,
   "previousPreparationTests": 85,
   "targeted": {
@@ -47,7 +47,6 @@
     "finalCandidateValidation": "Captured actual-model calls replayed through final router without new inference after consolidation fix; no re-inference on final price-key source",
     "trackedReport": "docs/whatsapp-unit-option-real-probe-1710.json"
   },
-  "runtimeSourceUnchanged": "f61cecffadf384c203c89dbe2535b616acb5663f",
   "mainChanged": false,
   "limitations": [
     "Only existing cart rows are partitioned; pending additions must be added separately by variant",
@@ -95,5 +94,41 @@
       "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
     }
   },
-  "deployed": false
+  "deployed": true,
+  "codeCommit": "cf6ded721eb26a2f59e64d9fa10fa0969a4fa69d",
+  "deployment": {
+    "verifiedAt": "2026-10-18T04:25:13.672933+00:00",
+    "head": "cf6ded721eb26a2f59e64d9fa10fa0969a4fa69d",
+    "status": "running",
+    "health": "healthy",
+    "image": "sha256:b318ba027fff3a61f37337619a3bd471251cff0b6797f65c177a99a349de590e",
+    "candidateMatches": true,
+    "publicHealth": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED"
+    },
+    "compiledUnitChecks": {
+      "unitOptionIntegration": {
+        "toolGuardPlan": true,
+        "projection": true,
+        "scopeLocked": true,
+        "mixedRejected": true,
+        "routerBound": true
+      },
+      "unitPriceMergeGuard": {
+        "priceCollisionPreserved": true
+      }
+    },
+    "models": {
+      "WHATSAPP_AGENT_MODEL": "gpt-6.1-sol",
+      "WHATSAPP_VISION_MODEL": "gpt-6-luna",
+      "WHATSAPP_ASSIST_MODEL": "gpt-6-luna",
+      "WHATSAPP_AUDIO_MODEL": "gpt-transcribe"
+    },
+    "rollbackTag": "ppp-nest-staging:rollback-before-cf6ded72",
+    "verificationReport": "/tmp/ppp-unit-option-deploy-verified-1710.json",
+    "log": "/tmp/ppp-unit-option-deploy-1710.log"
+  },
+  "previousRuntimeSource": "f61cecffadf384c203c89dbe2535b616acb5663f"
 }
