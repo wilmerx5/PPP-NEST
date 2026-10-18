@@ -1,0 +1,19 @@
+{
+  "base": "9465dbc0",
+  "baselineFailures": 8,
+  "newRouterTests": 16,
+  "newParserTests": 12,
+  "focusedPassed": 56,
+  "typecheck": true,
+  "nodePassed": 92,
+  "globalSuites": 87,
+  "globalTests": 9172,
+  "globalSeconds": 573.47,
+  "sourceHashes": 378,
+  "sourceUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "metaCalls": 0,
+  "limitation": "Partial conversion is guarded without mutation, not implemented. Full conversation tests use mocks.",
+  "deployment": "pending"
+}

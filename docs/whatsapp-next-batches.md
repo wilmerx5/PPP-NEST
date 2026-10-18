@@ -1,3 +1,17 @@
+## VALIDADO — límite de conversión parcial a combo, 18/10/2026
+
+Global verde: 87 suites / 9.172 pruebas en 573.47 s, 378 hashes intactos. Pasan 56 focalizados, TypeScript y 92 contratos Node. Ocho fallos iniciales de conversión de toda la línea protegidos. 16 conversaciones en dos menús verifican respuesta, carrito, estado, consulta y DTO simulado; 12 controles del parser separan alcance de unidades y cantidades de bebidas.
+
+La conversión automática parcial NO está implementada: se conserva el pedido y se explica que el cambio parcial no pudo aplicarse. El cliente puede mantenerlo o solicitar explícitamente el cambio de toda la línea. Siguiente objetivo: conversión parcial real preservando el resto de platos, bebidas y notas; ampliar controles de cero/exceso y líneas ambiguas.
+
+Publicación/despliegue agrupado con aviso de bebidas aparte en curso, solo staging. Cero llamadas pagadas, Meta, mapas reales y órdenes externas. Main preservada. No declarar mejora de precisión del modelo por estos mocks.
+
+## GLOBAL ACTIVA — protección de conversión parcial a combo, 18/10/2026
+
+Base 9465dbc0. Ocho fallos de baseline reproducidos: una petición limitada podía cambiar toda la línea. Se protege el carrito con aclaración explícita; NO implementa conversión parcial automática. 16 conversaciones completas con dos menús, agente simulado encendido/apagado y estado carrito/pago; 12 controles del parser. Pasan 56 focalizados, TypeScript y 92 contratos Node. Fuente congelada en /tmp/ppp-partial-combo-source-1810.json; no editar ni desplegar durante global /tmp/ppp-partial-combo-global-1810.{log,json}.
+
+Sin API pagada, Meta, mapas reales ni órdenes externas. Main preservada. Aviso anterior de bebidas aparte sigue pendiente de despliegue agrupado. Siguiente: implementar conversión parcial con conservación exacta de unidades/bebidas; esta protección solo evita corrupción.
+
 ## VALIDADO — aviso de bebidas aparte; desplegar con la siguiente tanda, 18/10/2026
 
 Código `6c5de4248cad4a4b963c83394902d13a58c8f5f1` publicado en origin/staging. Despliegue pendiente para agrupar con la siguiente tanda; no reconstruir solo por este cierre documental.

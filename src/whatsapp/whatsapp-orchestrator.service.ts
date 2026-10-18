@@ -1,3 +1,4 @@
+import {variantUnitScope} from './whatsapp-variant-unit-scope';
 import {splitDeliveryAddressParts} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
@@ -10634,6 +10635,21 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (!this.catalogService.isVariantPreferenceIntent(text)) return false;
+    // Whole-line replacement cannot represent a subset of a different SKU.
+    // Keep the current cart until an explicit supported whole-line decision.
+    const scope=variantUnitScope(text,word=>this.catalogService.extractQuantityFromSegment(word+' unidades'));
+    if(scope && session.cart.length && !/[¿?]/.test(text) && !this.catalogService.isPriceInquiryIntent(text)){
+      const foods=session.cart.filter(line=>products.some(product=>product.id===line.productId && !this.catalogService.isLikelyDrinkProduct(product)));
+      const named=foods.filter(line=>this.catalogService.isCartProductNamedInText(line.name,text));
+      const candidates=named.length?named:foods;
+      if(candidates.length!==1){
+        await this.reply(conv,waId,`No pude identificar una sola línea para cambiar ${scope.quantity} unidades. El pedido sigue igual. Indica el plato y la cantidad en el mismo mensaje.`);return true;
+      }
+      const line=candidates[0];
+      if(scope.quantity<1 || scope.quantity!==line.quantity || scope.statedTotal!==undefined && scope.statedTotal!==line.quantity){
+        await this.reply(conv,waId,`No pude aplicar el cambio solo a ${scope.quantity} de ${line.quantity} unidades de ${line.name}. El pedido sigue igual. Puedes mantenerlo así o pedirme el cambio para las ${line.quantity} unidades.`);return true;
+      }
+    }
     const namedTarget=text.match(/^(?:el\s+|la\s+)?(.+?)\s+(?:d[aá]melo|d[aá]mela|ponlo|ponla)\s+en\s+combo\b/i)?.[1];
     const cartProducts=products.filter(product=>session.cart.some(line=>line.productId===product.id) && !this.catalogService.isLikelyDrinkProduct(product));
     const explicitProduct=namedTarget ? this.catalogService.resolveSpokenDish(namedTarget,cartProducts) : null;
