@@ -1,3 +1,9 @@
+## Cierre vigente — 18/10/2026, 08:19 Bogotá
+
+Staging 190c6c86 desplegado/verificado, running/healthy, imagen activa=candidate826391cb…, health ok/DB connected/circuit CLOSED. Incluye b1529b5f y consultas contadas.84regresiones nuevas;153focalizados,TypeScript,72Node y global81suites/8788tests en592.772s,368hashes intactos. Evidencia whatsapp-group-inquiries-validation-1810.json. Main/modelos/bases/volúmenes/archivos privados preservados; ceroAPIpagada/Meta/órdenes externas. No repetir esta tanda ni reconstruir por docs.
+
+PRÓXIMA TANDA: compra explícita + pregunta precio en la misma frase. Fallo confirmado: add_item devuelve question_not_order;6controles actuales esperan rechazo seguro, NO éxito. Diseñar propiedad de intención por cláusula, host de catálogo y reparto verificado; preservar precio puro como read-only, negaciones y atomicidad. Probar variación de menús, orden de cláusulas y checkout, con respuesta/carrito/estado/DTO. No convertir cualquier pregunta que menciona un producto en autorización de compra. Después: retirada de una cláusula de nota, productos sin atributos y detalles de catálogo desconocidos en consultas contadas. Reservadas reales/costo/latencia pendientes del piloto; esta automatización no hace llamadas pagadas. Fuente limpia y una tanda por despertar, según AGENTS.
+
 ## Tanda validada, pendiente de despliegue agrupado — 18/10/2026: consultas con variantes contadas
 
 Base b1529b5f. Baseline54fallos: consultas de precio/contenido/disponibilidad entraban al contrato de compra. Se responde desde catálogo, sin agente ni mutaciones, y se conserva paso/selección pendiente. Cotización muestra precio unitario y estimado por cantidad, sin domicilio; no es promesa de inventario para esa cantidad. Se reconoce producto no disponible solo para consultar, conservando su estado real. Otros tres controles fallaron antes de corregir ese caso.

@@ -2,7 +2,7 @@
   "date": "2026-10-18",
   "base": "b1529b5f5654b8a455c2326c849555dfdaeca7d2",
   "branch": "staging",
-  "status": "validated_pending_grouped_deploy",
+  "status": "deployed_verified",
   "baseline": {
     "failed": 54,
     "log": "/tmp/ppp-group-inquiries-baseline-1810.log"
@@ -45,5 +45,32 @@
     "tests": 8788,
     "seconds": 592.772,
     "source_hashes_unchanged": 368
+  },
+  "deployment": {
+    "commit": "190c6c86f61125a93e34e490bbe8f8002d13d6c1",
+    "image": "sha256:826391cb4767fead4a227c6d06cbbc4bfb2725992a4edaf61fa98dbea032e73f",
+    "container": "running healthy",
+    "health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "timestamp": "2026-10-18T13:19:49.118Z"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-190c6c86",
+    "grouped_with": "b1529b5f",
+    "probe": "Actual tools and checkout adapter passed in compiled runtime; catalogue matching/formatting passed; query branch present. Full query routing was verified by mocked TypeScript suite, not compiled probe.",
+    "logs": [
+      "/tmp/ppp-group-inquiries-deploy-1810.log",
+      "/tmp/ppp-group-inquiries-compiled-1810.log",
+      "/tmp/ppp-group-inquiries-runtime-1810.log",
+      "/tmp/ppp-group-inquiries-health-1810.json"
+    ],
+    "preserved": [
+      "Main",
+      "bin/",
+      "mariadb_local",
+      "database volumes",
+      "model configuration"
+    ]
   }
 }

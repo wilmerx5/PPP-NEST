@@ -1,3 +1,9 @@
+## Estado vigente — 18/10/2026, 08:19 Bogotá
+
+Staging190c6c86 desplegado/verificado, running/healthy y healthOK. Compras con variantes durante checkout y consultas contadas conservan carrito/estado.84regresiones nuevas de consultas;global81suites/8788tests en592.772s,368hashes intactos,TypeScript y72Node. Evidencia whatsapp-group-inquiries-validation-1810.json. Main intacta; ceroAPIpagada/Meta/órdenes externas.
+
+Pendientes concretos antes del piloto: compra explícita mezclada con consulta de precio aún se rechaza por question_not_order (fallo reproducido, sin compras parciales); notas que retiran solo una cláusula, productos sin atributos y consultas de detalles no documentados; conversaciones reservadas completas con modelo real, costo/latencia y supervisión. No usar conteos/mocks como acreditación comercial. La automatización sigue gratuita; validación real corresponde a ejecución activa autorizada bajo presupuesto. Secciones inferiores históricas.
+
 ## Estado vigente — 18/10/2026,06:54 Bogotá
 
 Stagingd043cc54 desplegado/verificado,Main intacta. Reemplazo/borrado de nota para unidades seleccionadas conserva el resto.47regresiones nuevas;global81suites/8635tests en594.556s con368hashes intactos,TypeScript y72Node. Ver whatsapp-note-modes-validation-1810.json. CeroAPIpagada/Meta/órdenes externas;presupuesto188/187/1 intacto.

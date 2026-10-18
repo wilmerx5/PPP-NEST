@@ -2,7 +2,7 @@
   "date": "2026-10-18",
   "base": "f52d2ca302c07f97ff7af9105f589ed90cbda9ae",
   "branch": "staging",
-  "status": "validated_pending_grouped_deploy",
+  "status": "deployed_with_group_inquiries",
   "baseline": {
     "failed": 6,
     "log": "/tmp/ppp-checkout-variants-baseline-1810.log"
@@ -39,5 +39,7 @@
     "seconds": 597.816,
     "source_hashes_unchanged": 368
   },
-  "intermediate_development_issue": "First fixed run hit TS18048 on optional guard actions; corrected before passing focused/TypeScript/global runs."
+  "intermediate_development_issue": "First fixed run hit TS18048 on optional guard actions; corrected before passing focused/TypeScript/global runs.",
+  "deployment_commit": "190c6c86f61125a93e34e490bbe8f8002d13d6c1",
+  "deployment_evidence": "whatsapp-group-inquiries-validation-1810.json"
 }
