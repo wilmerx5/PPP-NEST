@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-18",
+  "base": "76a412b29e27342341a2ba6d0f3c0c16372d9971",
+  "status": "validated_pending_staging_deploy",
+  "new_regressions": 45,
+  "baseline": {
+    "failed": 12,
+    "log": "/tmp/ppp-intensity-baseline-1810.log"
+  },
+  "focused": {
+    "passed": 82,
+    "log": "/tmp/ppp-intensity-controls-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": {
+    "passed": 92,
+    "command": "node --test scripts/*.test.cjs",
+    "log": "/tmp/ppp-intensity-node-1810.log"
+  },
+  "global_mode": "--maxWorkers=2",
+  "source_manifest": "/tmp/ppp-intensity-source-1810.json",
+  "global_result": "/tmp/ppp-intensity-global-1810.json",
+  "coverage": [
+    "12 full-router conversations: six fictional restaurant menus, agent configured on/off, quantity two, literal intensity note in answer/cart, pure price interruption preserves cart/state, two final simulated DTO items retain notes",
+    "10 full-router controls retain complete catalogue names ending Dulce/Picante/Salado/Ácido/Grasoso instead of selecting shorter sibling",
+    "23 helper controls: ten accepted intensity phrases, eight rejected additional purchases/questions/addresses/safety conditions and five exact-name ownership controls"
+  ],
+  "change": "Bounded preparation adjective grammar accepts sweet/spicy/salty/acidic/greasy preferences with existing qualifiers. No restaurant-specific name/id/price exceptions. Original note preserved; no kitchen compliance guarantee. New intensity adjectives exact, no new typo rewrites.",
+  "limits": [
+    "No new model inference or ASR evaluation; configured-agent tests use simulated proposals when route invokes agent",
+    "Full-router intensity fixtures have no configurable attributes; conflict with a selectable flavour/style needs its own cases",
+    "Does not establish support for menos dulce/sin tanto azúcar or every clause order",
+    "Helper rejection of allergy conditions is not end-to-end allergy safety validation",
+    "No paid API, WhatsApp or external order calls; budget unchanged188/187/1",
+    "Main and production remain at promoted e46996fa code; staging runtime unchanged until verified deployment"
+  ],
+  "global": {
+    "suites": 82,
+    "tests": 8934,
+    "seconds": 943.587,
+    "source_files_unchanged": 370
+  },
+  "tool_probe_against_local_typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-intensity-local-probe-1810.log",
+    "scope": "actual tools, catalogue extraction and adapter, not complete compiled router"
+  }
+}

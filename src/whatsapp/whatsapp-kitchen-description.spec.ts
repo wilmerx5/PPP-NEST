@@ -16,3 +16,12 @@ describe('Anchored kitchen descriptions preserve wording without consuming purch
   expect(interpretProductNote('Quiero una Berenjena delgadita',[{id:1,name:'Berenjena'}])).toMatchObject({productId:1,note:'delgadita'});
  });
 });
+
+describe('Intensity preferences remain bounded and catalogue anchored',()=>{
+ it.each(['no tan dulce','que no venga tan dulce','que no esté tan salado','no tan picante','que no esté tan ácida','que no venga tan grasosa','muy dulce','no muy picante','un poco salado','que no sea demasiado ácido'])('preserves wording: %s',note=>expect(kitchenDescriptionNote(note)).toBe(note));
+ it.each(['no tan dulce y dos cafés','que no esté tan salado con camarones','que no venga tan grasosa para calle 12 34 56','¿puede venir no tan picante?','sin gluten garantizado','soy alérgico a la leche','que sea seguro para celíacos','que no esté tan ácida; y un postre'])('does not swallow another request or safety condition: %s',note=>expect(kitchenDescriptionNote(note)).toBeNull());
+ it.each(['Dulce','Picante','Salado','Ácido','Grasoso'])('preserves a longer exact named SKU: %s',suffix=>{
+  const products=[{id:1,name:'Especial'},{id:2,name:`Especial ${suffix}`}];
+  expect(interpretProductNote(`Quiero un Especial ${suffix}`,products)).toBeNull();
+ });
+});

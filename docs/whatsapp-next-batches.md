@@ -1,3 +1,15 @@
+## Tanda validada — 18/10/2026: intensidad pendiente de deploy solo staging
+
+45regresiones nuevas;82focalizados,TypeScript,92Node y global82suites/8934tests en943.587s aprobados.370hashes idénticos antes/después. Probe de herramientas/catálogo/adaptador pasó contra TS local; falta ejecutarlo compilado tras deploy. Evidencia whatsapp-intensity-validation-1810.json. Base76a412b2;Main/producción intactos. Publicar/desplegar una vez únicamente staging con rollback/health/compiled, cerrar con SHA e imagen. CeroAPIpagada/Meta/órdenes externas;188/187/1 intacto.
+
+Siguiente tanda:preferencias de intensidad negativas frente a atributos seleccionables (evitar convertir «no tan picante» en elección de Picante), «menos dulce»/«sin tanto azúcar», y retirada de una cláusula de nota conservando las otras. Añadir variantes/correcciones por subconjunto y consultas durante checkout,con menús variados. La mejora actual conserva notas literales en seis menús sin atributos;no prometer cobertura universal ni cumplimiento en cocina. Entradas inferiores históricas.
+
+## EN CURSO — 18/10/2026: intensidad entre restaurantes, solo staging
+
+Base76a412b2.12fallos reproducidos con flan/café/ramen/curry/limonada/tostada: «no tan dulce», «que no esté tan salado», etc., tratados como nombre de plato o rechazados por tool. Gramática acotada ahora reconoce intensidad dulce/picante/salado/ácido/grasoso conservando nota literal.45regresiones nuevas:12router→consulta precio→DTO,10SKU completos,23helper.82focalizados,TypeScript y92Node verdes. Global EN CURSO,370hashes congelados,/tmp/ppp-intensity-global-1810.{log,json}. NO editar fuente ni iniciar otra suite/deploy hasta cierre. Evidencia whatsapp-intensity-validation-1810.json.
+
+Main/producción intactos en código e46996fa;no volver a promover esta tanda automáticamente. Agrupar staging cuando esté validado. CeroAPIpagada/Meta/órdenes externas;188/187/1 intacto. Tests con menú sin atributos no acreditan interacción entre preferencia negativa y opción seleccionable (ej. Salsa Picante/Suave), ni menos dulce/sin tanto azúcar;son próximas prioridades. No prometer cumplimiento de notas ni seguridad alimentaria. Entradas inferiores históricas.
+
 ## VIGENTE — 18/10/2026, 11:52 Bogotá: Main y staging desplegados
 
 El usuario autorizó promoción y deploy productivo. Código e46996fae72639d8a924298b8b448a16f05d0f29 publicado en Main/staging y desplegado en ambos. Producción ppp_nest_api running, health OK/DB connected/circuit CLOSED (16:51:01UTC); imagen6e71bc54… Staging running/healthy, imagen activa=candidate cc1c4ce3… y health OK (16:51:56UTC). Evidencia exacta en whatsapp-main-promotion-1810.json. Los cuatro módulos compilados comprobados coinciden; no se comparó binariamente todo el backend.

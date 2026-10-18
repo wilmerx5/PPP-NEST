@@ -1,7 +1,7 @@
 import { editDistance } from './whatsapp-message-classify';
 
 const STEMS=['dorad','cocinad','cocid','tostad','delgad','grues','gord','bonit','crud','sec'];
-const ADJECTIVE=`(?:(?:${STEMS.join('|')})(?:it)?[oa]s?|calientes?|fri[oa]s?|crocantes?|crujientes?)`;
+const ADJECTIVE=`(?:(?:${STEMS.join('|')})(?:it)?[oa]s?|calientes?|fri[oa]s?|crocantes?|crujientes?|dulces?|picantes?|salad[oa]s?|acid[oa]s?|grasos[oa]s?)`;
 const FORMS=STEMS.flatMap(stem=>['o','a','os','as','ito','ita','itos','itas'].map(ending=>stem+ending));
 const normalize=(value:string)=>value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 

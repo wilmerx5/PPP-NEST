@@ -18971,3 +18971,31 @@ describe('Named catalogue preparations remain products rather than extracted not
   expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0].productId).toBe(65432);
  });
 });
+
+describe('Cross-restaurant intensity requests stay with their named product',()=>{
+ const fixtures=[{name:'Flan Artesanal',note:'no tan dulce'},{name:'Café de la Casa',note:'que no venga tan dulce'},{name:'Ramen Vegetal',note:'que no esté tan salado'},{name:'Curry de Garbanzos',note:'no tan picante'},{name:'Limonada de Hierbabuena',note:'que no esté tan ácida'},{name:'Tostada Campesina',note:'que no venga tan grasosa'}];
+ for(const f of fixtures)for(const enabled of [false,true])it(`${f.name} agent=${enabled}`,async()=>{
+  const product={id:65501,code:65501,name:f.name,price:12000,availableNow:true,hasAttributes:false,attributes:[]};const h=harness([product],enabled);
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6550,dailyOrderNumber:85});
+  if(enabled)h.agent.runTurn.mockImplementationOnce(async input=>{
+   const service=new WhatsappAgentService({} as never,h.service.catalogService) as any;const actions:any={};
+   const result=JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:2},{actions,cart:input.cart,products:[product],byId:new Map([[product.id,product]]),userMessage:input.userMessage,setNeedsAttr:()=>{}}));
+   expect(result.ok).toBe(true);return {reply:'Listo',actions,toolCalls:['add_item'],purchaseAttempts:[{productId:product.id,accepted:true}]};
+  });
+  const reply=await h.sendQueued(`Quiero dos ${f.name} ${f.note} por favor`);
+  expect(reply).not.toMatch(/no (?:manejamos|tenemos)|no pude añadir/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0]).toMatchObject({productId:product.id,quantity:2});
+  const note=h.conv.sessionData.cart[0].note;expect(note).toContain(f.note);expect(reply).toContain(f.note);
+  const cart=JSON.parse(JSON.stringify(h.conv.sessionData.cart));const state=h.conv.state;const priceReply=await h.sendQueued(`Cuánto cuesta ${f.name}`);expect(priceReply).toContain("12.000");expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('Confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const items=h.service.ordersService.create.mock.calls[0][0].items;expect(items).toHaveLength(2);expect(items.every((item:any)=>item.productId===product.id&&item.note===note)).toBe(true);
+ });
+});
+
+describe('Intensity words inside complete catalogue names keep SKU ownership',()=>{
+ for(const suffix of ['Dulce','Picante','Salado','Ácido','Grasoso'])for(const enabled of [false,true])it(`${suffix} agent=${enabled}`,async()=>{
+  const menu=[{id:65511,code:65511,name:'Especial',price:9000,availableNow:true,hasAttributes:false,attributes:[]},{id:65512,code:65512,name:`Especial ${suffix}`,price:14000,availableNow:true,hasAttributes:false,attributes:[]}];
+  const h=harness(menu,enabled);const reply=await h.sendQueued(`Quiero un Especial ${suffix}`);
+  expect(reply).not.toMatch(/no (?:manejamos|tenemos)/i);expect(h.conv.sessionData.cart).toHaveLength(1);expect(h.conv.sessionData.cart[0]).toMatchObject({productId:65512,quantity:1,unitPrice:14000});
+ });
+});
