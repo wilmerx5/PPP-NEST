@@ -1,0 +1,49 @@
+{
+  "base": "9af96d8f",
+  "branch": "staging",
+  "batchSincePdfAudit": 17,
+  "newConversationTests": 36,
+  "cumulativeNewTestsSinceAudit": 310,
+  "baseline": {
+    "failed": 24,
+    "reason": "clarification not persisted"
+  },
+  "focused": {
+    "passed": 92
+  },
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodeTests": 92,
+  "global": {
+    "numPassedTestSuites": 101,
+    "numFailedTestSuites": 1,
+    "numPassedTests": 9678,
+    "numFailedTests": 2
+  },
+  "globalSeconds": 356.554,
+  "retry": {
+    "scope": "whatsapp-general-accuracy.spec.ts",
+    "passed": 80,
+    "failed": 0,
+    "seconds": 108.651,
+    "sourceAndTimeoutChanged": false
+  },
+  "unchangedSourceHashes": 396,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "whatsappSends": 0,
+  "deployment": "deferred; last verified runtime 4de330e41f4500492523af4661c1127c7d618ec6",
+  "limitations": [
+    "Models/maps/orders mocked",
+    "Two global timeouts; full affected file passed in isolation",
+    "Not full PDF coverage",
+    "Configured attributes versus free notes and same-product variant selection remain next block"
+  ],
+  "logs": [
+    "/tmp/ppp-note-resolution-baseline.log",
+    "/tmp/ppp-note-resolution-focused.log",
+    "/tmp/ppp-note-resolution-global.json",
+    "/tmp/ppp-note-resolution-retry.json",
+    "/tmp/ppp-note-resolution-source.json"
+  ]
+}

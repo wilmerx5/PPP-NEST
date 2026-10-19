@@ -554,8 +554,10 @@ export class WhatsappOrchestratorService {
       if (session.pendingSubsetKitchenNote && !turn.subsetNoteHandled &&
           !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
           !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key]) &&
-          session.cart.filter(line=>session.pendingSubsetKitchenNote!.productIds.includes(line.productId)).length >= session.pendingSubsetKitchenNote.quantity) {
-        await this.reply(conv,msg.waId,this.formatSubsetKitchenNoteQuestion(session));
+          (session.pendingSubsetKitchenNote.byUnits || session.cart.filter(line=>session.pendingSubsetKitchenNote!.productIds.includes(line.productId)).length >= session.pendingSubsetKitchenNote.quantity)) {
+        const question = this.formatSubsetKitchenNoteQuestion(session);
+        const held = this.outboundHoldByWaId.get((msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown');
+        if (!held?.some(body => body.includes(question))) await this.reply(conv,msg.waId,question);
         return;
       }
       if (session.pendingCheckoutResume && !conv.humanTakeover &&
@@ -12308,7 +12310,9 @@ export class WhatsappOrchestratorService {
       if (scopeKnown && next.cart.length && edited.every(edit => !edit.blocked)) {
         next = { ...next, cart: next.cart.map((line, i) => ({ ...line, note: edited[i].note })) };
       } else {
-        noteClarification = `¿Cuáles productos deben llevar la nota «${kitchen.note}»? La dirección sí quedó actualizada.`;
+        next = { ...next, pendingSubsetKitchenNote: { quantity: kitchen.count || 0, note: kitchen.note,
+          productIds: [...new Set(next.cart.map(line => line.productId))], byUnits: true } };
+        noteClarification = 'La dirección sí quedó actualizada.\n' + this.formatSubsetKitchenNoteQuestion(next);
       }
     }
     const fee = await this.ensureDeliveryFeeQuoted(next, cfg);
@@ -15697,6 +15701,9 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingSubsetKitchenNote;
     if (!pending) return '';
     const lines = session.cart.filter(line=>pending.productIds.includes(line.productId));
+    if (pending.byUnits) return `¿Cuáles productos${pending.quantity ? ` (${pending.quantity} unidades)` : ''} deben llevar la nota «${pending.note}»?\n` +
+      lines.map((line,index)=>`${index+1}. ${line.name} ×${line.quantity}`).join('\n') +
+      '\nResponde con los nombres o números. Para retirarla, escribe «no apliques esa nota».';
     return (pending.note ? `¿A cuáles ${pending.quantity} platos les aplico «${pending.note}»?\n` : '¿Qué preparación o acompañante quieres para estos platos?\n') +
       lines.map((line,index)=>`${index+1}. ${line.name}`).join('\n') +
       '\nResponde con los nombres o números. Para retirarla, escribe «no apliques esa nota».';
@@ -15721,7 +15728,7 @@ export class WhatsappOrchestratorService {
     }
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
     const eligible = session.cart.flatMap((line,index)=>pending.productIds.includes(line.productId)?[index]:[]);
-    if (eligible.length < pending.quantity) return false;
+    if (!pending.byUnits && eligible.length < pending.quantity) return false;
     const ask=async()=>{await this.reply(conv,waId,this.formatSubsetKitchenNoteQuestion(session));return true;};
     if (/\bde cada\b/i.test(text) || isNothingElseOrderIntent(text) || this.isConfirmKeyword(text)) return ask();
     if (/[¿?]/.test(text) || /^(?:no|si|agrega|quita|cambia)\b/.test(this.normalizeForMatch(text)) || pending.note&&/^(?:dame|quiero)\b/i.test(text)) return false;
@@ -15736,6 +15743,26 @@ export class WhatsappOrchestratorService {
       else return false;
     } else rows = numeric ? picks.flatMap(pick=>pick>=1&&pick<=eligible.length?[eligible[pick-1]]:[]) : this.namedKitchenNoteRows(session,text).filter(index=>eligible.includes(index));
     if (!numeric && !rows.length) return false;
+    if (pending.byUnits) {
+      if (!rows.length || numeric && rows.length !== picks.length) return ask();
+      const units = rows.reduce((sum,index)=>sum+session.cart[index].quantity,0);
+      const requested = pending.quantity || units;
+      // A single selected row can be split; multiple rows must match the requested total.
+      if (requested > units || rows.length > 1 && requested !== units) return ask();
+      const edits = rows.map(index=>editScopedCartNote(session.cart[index].note, {kind:'append',query:'',note,preserve:[]}));
+      if (edits.some(edit=>edit.blocked)) return ask();
+      const cart = session.cart.flatMap((line,index)=>{
+        const selected = rows.indexOf(index);
+        if (selected < 0) return [line];
+        const quantity = rows.length === 1 ? requested : line.quantity;
+        return [...(quantity < line.quantity ? [{...line,quantity:line.quantity-quantity}] : []),
+          {...line,quantity,note:edits[selected].note}];
+      });
+      const next = {...session,cart,pendingSubsetKitchenNote:undefined};
+      await this.conversationService.saveSession(conv,next);
+      await this.reply(conv,waId,'Anotado en las unidades indicadas ✅\n\n'+this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+(this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+      return true;
+    }
     if (rows.length!==pending.quantity || numeric&&rows.length!==picks.length ||
         !pending.byProduct&&rows.some(index=>session.cart[index].quantity!==1) ||
         new Set(rows.map(index=>session.cart[index].productId)).size!==rows.length) return ask();
