@@ -23,7 +23,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "factus:backfill-standalone": "ts-node -r tsconfig-paths/register scripts/backfill-factus-standalone-invoices.ts",
-    "beta:whatsapp:router": "ts-node -r tsconfig-paths/register scripts/whatsapp-live-router-rehearsal.ts"
+    "beta:whatsapp:router": "ts-node -r tsconfig-paths/register scripts/whatsapp-live-router-rehearsal.ts",
+    "test:whatsapp:accuracy": "jest whatsapp-general-accuracy --maxWorkers=4"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
