@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-18",
+  "base": "d322fb8f",
+  "new_conversations": 12,
+  "menus": [
+    "ravioles",
+    "bowl",
+    "sandwich"
+  ],
+  "focused_passed": 30,
+  "focused_seconds": 8.439,
+  "typescript": "passed",
+  "runtime_changes": false,
+  "global": "Not repeated: tests and documentation only. Prior 88/9313 does not include these 12 new cases.",
+  "baseline_note": "Initial six failures were an oracle error: DTO expands quantity into per-unit items. Corrected to actual DTO contract; no production defect claimed.",
+  "checks": [
+    "uncertain quote does not permit premature payment",
+    "cart query and price query preserve address/cart",
+    "remove by number or name during address clarification",
+    "correct street resumes payment",
+    "exact two-unit DTO with notes and driver details",
+    "no external order before final confirmation"
+  ],
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "deployment": "pending grouped with validated d322fb8f"
+}

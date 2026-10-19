@@ -19397,3 +19397,22 @@ describe('Lettered access is excluded from map queries and retained in final ord
   }finally{global.fetch=original;}
  });
 });
+
+describe('Uncertain map destination allows cart inspection and correction before checkout',()=>{
+ for(const [main,side] of [['Ravioles De Ricota','Pan De Ajo'],['Bowl De Garbanzos','Te De Durazno'],['Sandwich De Pavo','Papas Rusticas']])for(const enabled of [false,true])for(const byName of [false,true])it(`${main} agent=${enabled} byName=${byName}`,async()=>{
+  const menu=[{id:67001,code:67001,name:main,price:21000,availableNow:true,attributes:[]},{id:67002,code:67002,name:side,price:5000,availableNow:true,attributes:[]}];const h=harness(menu,enabled);
+  Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15});h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  h.conv.state='awaiting_address';Object.assign(h.conv.sessionData,{cart:menu.map((p,i)=>({productId:p.id,code:p.code,name:p.name,unitPrice:p.price,quantity:i===0?2:1,note:'Bien empacado'})),orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+  const quote=jest.fn().mockResolvedValue({ok:false,reason:'address_ambiguous',message:'No pude identificar con seguridad ese conjunto. Comparte calle y número o ubicación.'});h.service.deliveryRouting={quoteDeliveryFee:quote};h.service.ordersService.create=jest.fn().mockResolvedValue({id:6700,dailyOrderNumber:111});
+  await h.sendQueued('Conjunto Los Olivos torre B apartamento 304B');
+  expect(h.replies.at(-1)).toMatch(/calle y n[uú]mero|ubicaci[oó]n/i);expect(h.conv.state).not.toBe('awaiting_payment');expect(h.conv.sessionData.deliveryFeeCalculated).toBeNull();
+  const before=structuredClone(h.conv.sessionData.cart),destination=h.conv.sessionData.address;
+  const shown=await h.sendQueued('déjame ver qué tengo en el carrito');expect(shown).toContain(main);expect(shown).toContain(side);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toBe(destination);
+  const total=await h.sendQueued('cuánto suma mi pedido');expect(total).toMatch(/47[.,]000/);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toBe(destination);
+  await h.sendQueued(byName?`quita ${side}`:'quita la 2');expect(h.cartRows()).toEqual([expect.objectContaining({id:67001,qty:2,note:'Bien empacado'})]);expect(h.conv.sessionData.address).toBe(destination);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  quote.mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}});
+  await h.sendQueued('Dirección: Calle 10 #81A-20 torre B apartamento 304B');expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.address).toMatch(/81A-20.*torre B.*304B/i);
+  await h.sendQueued('1');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toEqual([{productId:67001,attributes:undefined,note:'Bien empacado'},{productId:67001,attributes:undefined,note:'Bien empacado'}]);expect(dto.address).toMatch(/81A-20.*torre B.*304B/i);expect(dto.deliveryFee).toBe(2000);
+ });
+});

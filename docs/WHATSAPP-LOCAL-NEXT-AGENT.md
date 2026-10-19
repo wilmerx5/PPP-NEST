@@ -1,3 +1,9 @@
+## VALIDADO — interrupciones durante aclaración del mapa, 18 de octubre
+
+Base d322fb8f, limpio/origin sincronizado y sin otra suite al iniciar. Doce conversaciones nuevas en tres menús, agente simulado on/off, retirada por índice/nombre. El mapa incierto mantiene pedido pendiente; ver carrito/consultar total no altera destino; retirar extra conserva dos unidades/notas; nueva calle permite pago y confirmar produce DTO exacto. Pasan 30 focalizados (12 nuevos +18 previos), TypeScript, 8.439 s. Sin cambios de ejecución: no se repite global. Última global 88/9.313 del lote anterior, NO incluye estas 12 nuevas. Primer baseline tuvo oráculo DTO equivocado (el contrato expande cantidades en unidades), corregido sin tocar producción.
+
+Evidencia whatsapp-uncertain-checkout-validation-1810.json. No hay suites activas. Cero llamadas pagadas, Meta/mapas reales/órdenes externas. Main intacto. Publicación y despliegue agrupado con d322fb8f en curso. Cotización y modelo simulados, no acreditan mapas reales. Siguiente: interior antes de calle; teléfono inválido y datos simultáneos, contrastando inventario del adjunto. No todos los fallos están resueltos ni hay criterio de piloto cumplido por conteos.
+
 ## VIGENTE — interiores alfanuméricos validados; despliegue agrupado pendiente
 
 Base e8bf89d1. Global verde: 88 suites / 9.313 pruebas en 590.42 s; 379 hashes intactos. Después únicamente se quitó una línea vacía extra al final del archivo de tests. 24 pruebas nuevas: 12 parser, seis conversaciones con tres menús y seis rechazos de resultado de mapa distinto/parcial. Baseline 10 fallos/7 verdes; pasan 31 focalizados, 108 contratos afectados, TypeScript y 92 Node. Evidencia whatsapp-map-units-validation-1810.json. No hay suites activas.
