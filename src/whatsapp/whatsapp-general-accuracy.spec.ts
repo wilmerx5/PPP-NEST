@@ -19667,3 +19667,31 @@ describe('Missing extra recovery during checkout distinguishes an existing line'
   });
  }
 });
+
+describe('Extra replacement preserves combo through checkout and rejects unknown alternatives',()=>{
+ for(const f of [{meal:'Combo De Sushi',old:'Porcion De Gyozas',next:'Porcion De Edamame'},{meal:'Combo Vegetal',old:'Porcion De Falafel',next:'Porcion De Hummus'}])for(const enabled of [false,true])for(const final of [false,true])for(const wording of ['cambia','no quiero']){
+  it(`${f.meal} final=${final} agent=${enabled} wording=${wording}`,async()=>{
+   const menu=[{id:79981,code:79981,name:f.meal,price:30000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Manzana','Colombiana']}]},...([f.old,f.next].map((name,i)=>({id:79982+i,code:79982+i,name,price:i?9000:8000,availableNow:true,attributes:[]})))];
+   const h=harness(menu,enabled);Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:7998,dailyOrderNumber:85});
+   await h.sendQueued(`Un ${f.meal} con manzana y dos ${f.old}`);
+   expect(h.cartRows().map(r=>[r.id,r.qty])).toEqual(expect.arrayContaining([[79981,1],[79982,2]]));
+   h.conv.sessionData.cart.find(r=>r.productId===79981)!.note='Salsa aparte';
+   await h.sendQueued('no más, recojo en el local');if(final)await h.sendQueued('contraentrega');
+   const state=h.conv.state;expect(state).toBe(final?'awaiting_final_confirm':'awaiting_payment');
+   const before=structuredClone(h.conv.sessionData.cart);
+   const rejected=await h.sendQueued(`Cambia la ${f.old} por Porcion De Trufas`);
+   expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.state).toBe(state);
+   expect(rejected).toMatch(/no encontr|no tenemos|no manejamos/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   const reply=await h.sendQueued(wording==='cambia'?`Cambia la ${f.old} por ${f.next}`:`No quiero ${f.old}, quiero ${f.next}`);
+   expect(reply).not.toMatch(/algo m[aá]s|no encontr|no tenemos|no manejamos/i);
+   expect(h.conv.state).toBe(state);expect(h.conv.sessionData.cart.find(r=>r.productId===79981)).toEqual(before.find(r=>r.productId===79981));
+   expect(h.cartRows().some(r=>r.id===79982)).toBe(false);
+   expect(h.cartRows().filter(r=>r.id===79983).reduce((n,r)=>n+r.qty,0)).toBe(2);expect(h.cartRows()).toHaveLength(2);
+   const updated=structuredClone(h.conv.sessionData.cart);const total=await h.sendQueued('cuánto es el total');expect(total).toMatch(/48[.,]000/);expect(h.conv.sessionData.cart).toEqual(updated);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   if(!final)await h.sendQueued('contraentrega');await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(3);expect(dto.items.filter((r:any)=>r.productId===79983)).toHaveLength(2);
+   expect(dto.items.find((r:any)=>r.productId===79981)).toEqual({productId:79981,attributes:[{attributeName:'Bebida',attributeValue:'Manzana'}],note:'Salsa aparte'});expect(dto.orderType).toBe('pickup');expect(dto.phone).toMatch(/3000000001/);
+  });
+ }
+});

@@ -1,3 +1,11 @@
+## VIGENTE — sustitución de adicionales durante cierre verificada (19/10)
+
+Base 5103211e. Dieciséis conversaciones nuevas: sushi/vegetal, pago/confirmación, agente simulado on/off y «cambia X por Y»/«no quiero X, quiero Y». Compra de combo con Manzana y dos unidades de adicional; reemplazo inexistente rechazado sin mutación; reemplazo válido conserva cantidad dos, combo/opción/nota preexistente; consulta total actualizado 48.000 y cierre hasta DTO de tres unidades. No orden antes de confirmar. Nota del combo sembrada como estado previo, no extracción probada. Datos externos/modelos simulados.
+
+72 controles focalizados y TypeScript aprobados. No cambios de runtime; no repetir global ni reconstruir por tests. Última global runtime sigue 88 suites / 9.474 tests; estas 16 nuevas se validan focalmente y no se incluyen en ese conteo. Cero API pagada, Meta y órdenes externas. Main intacto, sin suites activas. Evidencia whatsapp-extra-replacement-validation-1910.json. Último runtime acreditado 1b5b0028 / imagen d28f968f…, no se comprobó servidor en esta tanda.
+
+Ocho tandas cerradas desde auditoría PDF 18/10, 120 tests nuevos y ocho fortalecidos. No equivale a todo el PDF cubierto. Schedule eliminado; continuar manualmente con D: destinos/cierre, datos en ráfagas y en un mensaje, interiores separados de calle y corrección durante pago/confirmación. Después ampliar E y F; evaluación reservada con modelo real pendiente. No declarar piloto listo por conteos.
+
 ## VIGENTE — cierre tras faltante validado (19/10)
 
 Base 964e1ee3. Ocho recorridos existentes fortalecidos: faltante presente/ausente, sushi/vegetal, agente simulado on/off. Exigen conservar awaiting_final_confirm, ausencia de «Algo más», combo/opción/nota intactos, sin duplicados ni orden prematura, y DTO exacto después de confirmar. Corrección general: la ruta de compra múltiple totalmente resuelta recuerda si venía de confirmación y reutiliza tryConfirmOrder desde building_cart para presentar revisión. No aplica con enlace de pago activo ni advertencias de ítems no resueltos.

@@ -1,14 +1,16 @@
 ## Estado de cobertura revisado — 19/10
 
-Las 60 páginas están leídas y sus patrones inventariados. No se han reproducido todas las conversaciones completas ni cerrado todos los fallos. Siete tandas posteriores a la auditoría están cerradas; las seis primeras sumaron 104 tests nuevos: ETA 16; datos del comercio 45; acompañamientos reducidos 21; combo/fracción adicional 6; edición de adicionales 8; recuperación de faltantes 8. La tanda de acompañamientos viene de un chat nuevo del usuario y amplía la familia E; no es replay literal del PDF.
+Las 60 páginas están leídas y sus patrones inventariados. No se han reproducido todas las conversaciones completas ni cerrado todos los fallos. Ocho tandas posteriores a la auditoría están cerradas, con 120 tests nuevos. Las seis primeras sumaron 104: ETA 16; datos del comercio 45; acompañamientos reducidos 21; combo/fracción adicional 6; edición de adicionales 8; recuperación de faltantes 8. La tanda de acompañamientos viene de un chat nuevo del usuario y amplía la familia E; no es replay literal del PDF.
 
 Séptima tanda validada: fortalece los ocho tests de faltantes para retomar confirmación sin «Algo más». No añade ocho tests nuevos. Global repetida aprobada: 88 suites / 9.474 tests, 379 hashes intactos. La corrida previa se interrumpió y no se acredita. No confundir publicación con despliegue.
 
-A y el subconjunto probado de B tienen evidencia cerrada. C es parcial: falta sustitución de adicional y ampliar negativas. D/E tienen cobertura histórica y correcciones recientes, pero aún no una matriz completa trazable contra todas las conversaciones del PDF. F sigue pendiente como tanda de este set. Tampoco se han evaluado los medios originales omitidos ni un conjunto reservado con modelo real en estas tandas gratuitas.
+Octava tanda: 16 conversaciones nuevas de sustitución de adicional (pago/confirmación, dos menús, dos formulaciones, agente simulado on/off), rechazo de reemplazo inexistente y cierre hasta DTO. 72 focalizados y TypeScript aprobados; sin cambios de runtime ni nueva global.
+
+A y el subconjunto probado de B tienen evidencia cerrada. C cubre sustitución, cantidades, faltantes y rechazo de reemplazo inexistente; no acredita todas las ambigüedades, opciones ni formulaciones posibles. D/E tienen cobertura histórica y correcciones recientes, pero aún no una matriz completa trazable contra todas las conversaciones del PDF. F sigue pendiente como tanda de este set. Tampoco se han evaluado los medios originales omitidos ni un conjunto reservado con modelo real en estas tandas gratuitas.
 
 Hay 73 archivos históricos de evidencia de validación en docs al revisar; no equivalen a 73 tandas independientes ni todas proceden del PDF. El total global actual acreditado es 88 suites / 9.474 tests, incluyendo las dos tandas de solo pruebas. No sumar ejecuciones repetidas como tests nuevos.
 
-La automatización continuar-pruebas-de-ppp-en-staging fue eliminada por petición del usuario. Continuar manualmente: cerrar revisión final; sustituir adicionales; completar destinos/cierre; cubrir postorden; evaluación reservada y piloto supervisado. No declarar vendible por conteos.
+La automatización continuar-pruebas-de-ppp-en-staging fue eliminada por petición del usuario. Continuar manualmente: completar destinos/cierre; ampliar variantes ambiguas; cubrir postorden; evaluación reservada y piloto supervisado. No declarar vendible por conteos.
 
 # Auditoría del PDF chats 18_10 — 18/10/2026
 
