@@ -1,0 +1,43 @@
+{
+  "base": "77b8cda0",
+  "branch": "staging",
+  "newTests": 24,
+  "baseline": {
+    "initialFailed": 8,
+    "extendedFailed": 16,
+    "extendedPassed": 8,
+    "logs": [
+      "/tmp/ppp-unit-before-street-baseline.log",
+      "/tmp/ppp-unit-before-street-extended-baseline.log"
+    ]
+  },
+  "targetedPassed": 68,
+  "typescript": "passed",
+  "nodeTestsPassed": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9572,
+    "failed": 0,
+    "sourceHashesUnchanged": 379,
+    "report": "/tmp/ppp-unit-before-street-global.json"
+  },
+  "checks": [
+    "unit stays pending without address",
+    "no route quote until street or pin",
+    "cart preserved",
+    "explicit new units override pending",
+    "pin coordinates preserved in simulated DTO and hidden in summary",
+    "no order before final confirmation"
+  ],
+  "limits": [
+    "external services mocked",
+    "existing cart required",
+    "separate unit fragments still pending",
+    "not all PDF chats covered",
+    "pin test oracle corrected to preserve coordinates, not require reverse-geocoded street"
+  ],
+  "deployment": "pending grouped deployment with 77b8cda0",
+  "mainUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0
+}

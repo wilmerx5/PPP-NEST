@@ -1,3 +1,7 @@
+## Actualización: decimotercera tanda cerrada (19/10)
+
+202 tests nuevos acumulados y ocho existentes fortalecidos. 24 conversaciones nuevas de interiores antes del destino, dos menús, agente simulado on/off, antes/durante checkout y tres formas de completar dirección. Se conserva pendiente sin cotizarlo, se consume con calle/pin y se descarta ante unidad explícita nueva. Final 68 focalizados, TypeScript, 92 Node y global 88/9.572, 379 hashes intactos. Evidencia whatsapp-unit-before-street-validation-1910.json. Mapas/modelos simulados. D sigue abierto para cobertura, rechazo de dirección anterior y unidades en burbujas separadas; no todos los chats del PDF están reproducidos. Conteos inferiores históricos.
+
 ## Actualización: duodécima tanda cerrada (19/10)
 
 178 tests nuevos acumulados y ocho existentes fortalecidos. Esta tanda añade 16 recorridos de reemplazo de apartamento/interior durante pago/confirmación, dos menús, agente simulado on/off y DTO final. Reproduce duplicación de unidades y pérdida de calle; corrige reemplazo por componente sin confirmar orden. Primera global detectó dos regresiones de formato, reparadas. Final: 46 focalizados, TypeScript, 92 Node y global repetida 88/9.548, 379 hashes intactos. Evidencia whatsapp-unit-replacement-validation-1910.json. Despliegue agrupado pendiente. D sigue abierto para complementos sin base, consultas y otros caminos; no todos los chats del PDF reproducidos. Conteos inferiores históricos.

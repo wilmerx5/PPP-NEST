@@ -218,6 +218,8 @@ export type WhatsappSessionData = {
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */
   addressConfirmed?: boolean;
+  /** Unit fragment received before the destination street/location. Never geocode alone. */
+  pendingDeliveryUnit?: string;
   /**
    * Última dirección de domicilio exitosa (sobrevive reset/reopen).
    * Para ofrecer “¿Misma dirección? / acá” en el siguiente pedido.

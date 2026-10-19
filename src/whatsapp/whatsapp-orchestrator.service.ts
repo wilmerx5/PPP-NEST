@@ -840,6 +840,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       let sessionLoc = this.conversationService.getSession(conv);
+      const pendingUnit = sessionLoc.pendingDeliveryUnit;
       sessionLoc = {
         ...sessionLoc,
         orderType: 'delivery',
@@ -857,6 +858,8 @@ export class WhatsappOrchestratorService {
         lng: msg.longitude,
       });
       sessionLoc = feeResult.session;
+      if (pendingUnit) sessionLoc = { ...sessionLoc,
+        address: `${sessionLoc.address || addr} — ${pendingUnit}`.slice(0, 240), pendingDeliveryUnit: undefined };
       await this.conversationService.saveSession(conv, sessionLoc, 'building_cart');
       const feeLine = feeResult.notice ? `\n${feeResult.notice}` : '';
       await this.reply(
@@ -1444,6 +1447,14 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (session.cart.length && session.orderType !== 'pickup' && !session.address?.trim() &&
+        !/[¿?]/.test(originalText) && this.looksLikeUnitOrTowerDetailOnly(originalText)) {
+      session = { ...session, pendingDeliveryUnit: this.normalizeUnitDetailText(originalText),
+        addressConfirmed: false, fulfillmentChosen: true, orderType: 'delivery' };
+      await this.conversationService.saveSession(conv, session, 'awaiting_address');
+      await this.reply(conv, msg.waId, `Anoté: ${session.pendingDeliveryUnit}. ¿Me compartes la calle o carrera con número, o la ubicación de WhatsApp?`);
+      return;
+    }
     // A concrete access reference belongs to delivery, not to the food note.
     if (session.cart.length && ['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
         !/[¿?]/.test(originalText) &&
@@ -14888,6 +14899,7 @@ export class WhatsappOrchestratorService {
     return {
       ...session,
       orderType: 'pickup',
+      pendingDeliveryUnit: undefined,
       address,
       fulfillmentChosen: true,
       addressConfirmed: true,
@@ -14916,8 +14928,14 @@ export class WhatsappOrchestratorService {
     if (address && this.isPickupIntent(address)) {
       return this.applyPickupIntent(session, address);
     }
-    const addr = this.normalizeDeliveryAddress(address || '');
+    let addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
+    if (session.pendingDeliveryUnit && this.isStrongExplicitAddress(addr)) {
+      // The pending unit supplements this destination once, never an older remembered address.
+      const hasExplicitUnit = /\b(?:apartamento|apto|apt|interior|int|torre|bloque|casa|local|oficina|piso)\.?\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/i.test(addr);
+      if (!hasExplicitUnit) addr = `${addr}, ${session.pendingDeliveryUnit}`.slice(0, 240);
+      session = { ...session, pendingDeliveryUnit: undefined };
+    }
     const prev = (session.address || '').trim();
 
     // Neighborhood-only messages supplement an existing street, even before confirmation.

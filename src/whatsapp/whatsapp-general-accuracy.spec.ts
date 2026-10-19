@@ -19853,3 +19853,36 @@ describe('Delivery unit corrections replace previous values without confirming',
   expect(dto.phone).toMatch(/3000000001/);expect(dto.customerName).toBe('Wilmer');
  });
 });
+
+describe('Delivery unit before street stays pending until a complete destination',()=>{
+ for(const destination of ['street','pin','explicit'])for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const checkout of [false,true])it(`${name} ${destination} checkout=${checkout} agent=${enabled}`,async()=>{
+  const h=harness([{id:80021,code:80021,name,price:21000,availableNow:true,attributes:[]}],enabled);
+  Object.assign(h.cfg,{deliveryFeeMode:'route_tiers',restaurantLat:4.62,restaurantLng:-74.15});
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,address:undefined,addressConfirmed:false});
+  h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',geocodedAddress:'Calle 10 #81A-20',customer:{lat:4.62,lng:-74.15}})};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:8002,dailyOrderNumber:89});
+  await h.sendQueued(`Quiero dos ${name}`);if(checkout)await h.sendQueued('Nada más');
+  const cart=structuredClone(h.conv.sessionData.cart);
+  for(let repeat=0;repeat<2;repeat++){
+   const reply=await h.sendQueued('Torre B apartamento 304B');
+   expect(reply).toMatch(/calle|carrera|ubicaci[oó]n/i);expect(reply).not.toMatch(/c[oó]mo pagas|algo m[aá]s|no manejamos/i);
+   expect(h.conv.sessionData.addressConfirmed).not.toBe(true);expect(h.conv.state).toBe('awaiting_address');
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.service.deliveryRouting.quoteDeliveryFee).not.toHaveBeenCalled();
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }
+  const input=destination==='pin'?'https://maps.google.com/?q=4.62,-74.15':destination==='explicit'?'Calle 10 #81A-20 torre C apartamento 205':'Calle 10 #81A-20';
+  const expected=destination==='explicit'?/81A-20.*torre C.*205/i:destination==='pin'?/4\.62.*-74\.15.*Torre B.*304B/i:/81A-20.*Torre B.*304B/i;
+  const reply=await h.sendQueued(input);expect(reply).toMatch(destination==='explicit'?/205/:/304B/);
+  if(destination==='pin'){expect(reply).not.toMatch(/4\.62|-74\.15/);expect(h.service.deliveryRouting.quoteDeliveryFee).toHaveBeenCalledWith(expect.objectContaining({customerCoords:{lat:4.62,lng:-74.15}}));}
+  expect(h.service.deliveryRouting.quoteDeliveryFee).toHaveBeenCalled();
+  expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.address).toMatch(expected);
+  expect(h.conv.sessionData.pendingDeliveryUnit).toBeUndefined();
+  if(destination==='explicit')expect(h.conv.sessionData.address).not.toMatch(/304B|Torre B/i);
+  else expect(h.conv.sessionData.address!.match(/304B/g)).toHaveLength(1);expect(h.conv.sessionData.cart).toEqual(cart);
+  await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(expected);
+  expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80021)).toBe(true);expect(dto.deliveryFee).toBe(2000);
+ });
+});

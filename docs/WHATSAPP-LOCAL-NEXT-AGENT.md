@@ -1,3 +1,13 @@
+## VIGENTE — interiores antes del destino validados (19/10)
+
+Base 77b8cda0, staging. 24 conversaciones nuevas: dos menús, agente simulado on/off, building_cart/awaiting_address, destino posterior calle/pin/dirección completa con otra unidad. Baseline inicial ocho fallos: torre/apto solos avanzaban a pago. Ampliación: 16 fallos y ocho verdes, pérdida de complemento con pin y arrastre de unidad al recibir otra explícita. pendingDeliveryUnit conserva el fragmento sin geocodificarlo; calle fuerte lo consume una vez, unidad explícita nueva prevalece, pin conserva complemento y coordenadas. Recogida limpia pendiente; reset del servicio usa sesión nueva (sin nuevo replay de reset en esta tanda).
+
+Final: 68 focalizados, TypeScript, 92 Node y global 88 suites / 9.572 tests aprobados, 379 hashes intactos. Evidencia whatsapp-unit-before-street-validation-1910.json. La prueba final usa modo ruta: exige no cotizar sin base, luego cotizar destino. Se corrigió el oráculo del pin: conserva coordenadas para logística, no exige inventar una calle; resumen muestra complemento sin coordenadas crudas. Cero llamadas pagadas/Meta/órdenes externas. Modelos y mapas simulados.
+
+Decimotercera tanda cerrada desde auditoría PDF, 202 tests nuevos acumulados; no equivale a todos los chats cubiertos. Main intacto. Publicación/despliegue agrupado con 77b8cda0 pendientes de registrar. Último runtime acreditado antes de este cierre: 327ae112. No hay suites activas. Schedule eliminado.
+
+Siguiente: cobertura sin modificar destino, «a una nueva», interiores separados entre sí y otras unidades. Esta tanda exige carrito existente y ausencia de dirección base; no acredita todas las formas de conversación. Evaluación reservada con modelo real sigue pendiente.
+
 ## VIGENTE — reemplazo de apartamento/interior validado (19/10)
 
 Base d117377f, staging. 16 conversaciones nuevas, dos menús sintéticos, agente simulado on/off y pago/confirmación. «apartamento 402» / «el apartamento es 402» sustituye 304B; interior 21 → 2 evita coincidencia parcial. Repite corrección, consulta total, pago y confirma DTO. Baseline ocho fallos de apartamento: acumulación de unidades o pérdida de calle; ocho controles de interior añadidos después. Ruta temprana de unidad declarativa y reemplazo por componente/aliases conservan calle, torre, carrito, tarifa, contacto y paso pendiente; corregir datos no confirma la compra.
