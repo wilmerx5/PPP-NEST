@@ -1833,7 +1833,18 @@ describe('Partial unit option changes preserve the other units',()=>{
    if(scenario==='already_split')h.conv.sessionData.cart=[{...line,quantity:2},{...line,quantity:2,attributes:[{attributeName:'Salsa',attributeValue:'Ponzu'}]}];
    if(scenario==='pending')h.conv.sessionData.pendingAttribute={productId:p.id,name:p.name,code:p.code,price:p.price,attributes:p.attributes,selected:[]};
    const before=structuredClone(h.conv.sessionData);const text=`Cambia ${scenario==='too_many'?'cinco':scenario==='zero'?'0':'dos'} de las salsas por ${scenario==='unknown'?'Mostaza':'Ponzu'}`;
-   const reply=await h.sendQueued(text);expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe('awaiting_payment');expect(reply).toMatch(/cu[aá]l|cu[aá]ntas|aclar/i);
+   const reply=await h.sendQueued(text);
+   expect(h.conv.state).toBe('awaiting_payment');expect(reply).toMatch(/cu[aá]l|cu[aá]ntas|aclar/i);
+   if(['two_targets','already_split'].includes(scenario)) {
+    const {pendingCartAttributeEdit,...unchanged}=h.conv.sessionData;
+    expect(unchanged).toEqual(before);expect(pendingCartAttributeEdit?.unitChanges).toHaveLength(2);
+    await h.sendQueued('1');
+    expect(h.conv.sessionData.pendingCartAttributeEdit).toBeUndefined();
+    expect(h.conv.sessionData.cart.reduce((n,item)=>n+item.quantity,0)).toBe(before.cart.reduce((n,item)=>n+item.quantity,0));
+    expect(h.conv.sessionData.cart.filter(item=>item.attributes?.some(a=>a.attributeValue==='Ponzu')).reduce((n,item)=>n+item.quantity,0)).toBe(scenario==='already_split'?4:2);
+    if(scenario==='two_targets')expect(h.conv.sessionData.cart).toContainEqual(before.cart[1]);
+    expect(h.conv.state).toBe('awaiting_payment');
+   } else expect(h.conv.sessionData).toEqual(before);
   });
  }
 });

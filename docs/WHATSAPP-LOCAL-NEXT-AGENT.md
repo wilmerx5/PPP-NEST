@@ -1,3 +1,15 @@
+## VIGENTE — aclaración corta de opciones por unidades (19/10)
+
+Base bd9ee5a4, tanda 21 desde auditoría PDF. 60 regresiones nuevas: bao/salsa, pizza/masa y batido/base, agente simulado on/off. Carrito sembrado con dos líneas del mismo producto (3 y 2 unidades), opciones/notas diferentes. Diez caminos: número, ordinal, referencia por nota, consulta de precio, número inválido, cancelación, carrito reordenado por otro escritor, confirmar con duda pendiente, cambio de dirección y repetición posterior. 48 recorren hasta DTO de cinco unidades; 12 cancelación/índice obsoleto conservan carrito. No es interpretación de compra inicial ni inferencia real.
+
+Baseline inicial 36/36 fallaban: la pregunta de línea no se persistía. Se reutiliza pendingCartAttributeEdit con opciones por unidades, cantidad y nota guardadas por candidato; la firma del carrito invalida índices antiguos. Resolver prepara opción+nota atómicamente y conserva estado de checkout. Una instrucción completa puede reemplazar la duda; cancelar solo retira el cambio. La repetición exacta de un cambio ya aplicado se reconoce únicamente con firma intacta. Revalidación de catálogo antes de aplicar. Sin nombres/IDs de restaurantes en reglas.
+
+Validación: 288 focalizados (60 nuevos), TypeScript, build TypeScript y 92 Node aprobados. Global secuencial en dos fases: 80 ráfagas / 103,776s; resto 9.770 aprobados y cuatro fallidos / 322,210s. Total inicial 9.850 aprobados / cuatro fallidos, 106 suites, 400 hashes intactos e inventario exacto. Los cuatro fallos exigían sesión idéntica ante ambigüedad; se actualizaron para permitir SOLO el pendiente, mantener carrito/resto de sesión y resolver luego «1» comprobando unidades/variantes/estado. Archivo afectado completo: 813/813 en 98,536s. NO llamar a la global verde en un solo pase. Después de la global solo cambió ese spec, no runtime; los otros 399 hashes permanecieron iguales. TypeScript final repetido. Evidencia whatsapp-unit-clarification-validation-1910.json.
+
+Acumulado desde auditoría PDF: 484 nuevos y 12 existentes fortalecidos; no todos los chats del PDF acreditados. Cero llamadas pagadas, WhatsApp u órdenes externas. Solo staging; Main intacto. Despliegue diferido para agrupar: último runtime acreditado 498124619b30f2294eba10a05f79407bd6914845 (servidor no consultado). Schedule eliminado.
+
+Siguiente tanda: retirar/reemplazar notas contradictorias sobre unidades ya divididas y dos atributos sobre la misma selección. Añadir contraste con catálogo cambiado durante la duda y cambios concurrentes reales: esta tanda simula reordenación por otro escritor, no una ráfaga concurrente. Leer WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md y mantener focalizados durante desarrollo, una global al cierre.
+
 ## VIGENTE — relevo operativo y dos regresiones reportadas (19/10)
 
 Base f0b5221b, vigésima tanda desde auditoría PDF. Leer primero [WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md](WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md): diseño de tandas, controles, fuente congelada, ejecución focalizada/global, límites de mocks y publicación frente a despliegue.

@@ -1,0 +1,53 @@
+{
+  "base": "bd9ee5a4",
+  "branch": "staging",
+  "batchSincePdfAudit": 21,
+  "newTests": 60,
+  "strengthenedExisting": 4,
+  "cumulativeNewTests": 484,
+  "cumulativeStrengthened": 12,
+  "baseline": {
+    "failed": 36,
+    "passed": 0
+  },
+  "developmentRegression": "Six repeated-edit checks initially blocked checkout; fixed with same-request/cart-signature guard",
+  "focusedPassed": 288,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodePassed": 92,
+  "global": {
+    "passed": 9850,
+    "failed": 4,
+    "suites": 106,
+    "seconds": 425.986,
+    "inventoryExact": true,
+    "unchangedHashes": 400
+  },
+  "updatedContractValidation": {
+    "scope": "entire whatsapp-general-accuracy-part-06.spec.ts",
+    "passed": 813,
+    "failed": 0,
+    "seconds": 98.536,
+    "runtimeChangedAfterGlobal": false,
+    "reason": "Old assertions prohibited pending clarification; updated to preserve all other session fields then resolve and assert quantities/options/state"
+  },
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "deployment": "deferred; last verified 49812461; server not queried",
+  "limitations": [
+    "Seeded variant cart, not initial purchase parsing",
+    "Model/map/order mocks",
+    "Global not green in a single pass",
+    "Cart writer simulated by reorder, not concurrent WhatsApp burst",
+    "Not all PDF conversations covered"
+  ],
+  "logs": [
+    "/tmp/ppp-unit-clarification-baseline.log",
+    "/tmp/ppp-unit-clarification-combined.log",
+    "/tmp/ppp-unit-clarification-bursts.json",
+    "/tmp/ppp-unit-clarification-rest.json",
+    "/tmp/ppp-unit-clarification-updated-contracts.json",
+    "/tmp/ppp-unit-clarification-source.json"
+  ]
+}

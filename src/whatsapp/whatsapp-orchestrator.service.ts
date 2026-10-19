@@ -15630,6 +15630,16 @@ export class WhatsappOrchestratorService {
     const quantityFirst = q.match(new RegExp('^'+verb+amount+' (?:de (?:los|las) )?(.+?) (?:por|a) (.+)$'));
     const attributeFirst = !quantityFirst && q.match(new RegExp('^'+verb+'(?:el |la )?(.+?) de '+amount+' (.+?) (?:por|a) (.+)$'));
     if (!quantityFirst && !attributeFirst) return false;
+    if (session.lastUnitOptionEdit?.sourceText === this.normalizeForMatch(text) &&
+        session.lastUnitOptionEdit.cartSignature === JSON.stringify(session.cart) &&
+        !CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) {
+      await this.reply(conv,waId,'Ese cambio ya está aplicado.\n\n' +
+        this.formatCartOnly(session,this.deliveryFeeFor(session,cfg)) + '\n\n' +
+        (this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
+    // A complete new instruction supersedes this counted-edit clarification only.
+    if (session.pendingCartAttributeEdit?.unitChanges) session={...session,pendingCartAttributeEdit:undefined};
     const quantity = quantityFirst ? (amounts[quantityFirst[1]] ?? Number(quantityFirst[1])) : (amounts[attributeFirst![2]] ?? Number(attributeFirst![2]));
     const scope = quantityFirst ? quantityFirst[2] : attributeFirst![3];
     const explicitLine = scope.match(/^(?:unidad(?:es)? de )?(?:la )?linea (\d{1,2})$/);
@@ -15660,6 +15670,18 @@ export class WhatsappOrchestratorService {
         return value ? [{cartIndex,line,attributeName:attr.attributeName,attributeValue:value,note:kitchen?.note}] : [];
       });
     });
+    if (targets.length > 1 && new Set(targets.map(target=>target.cartIndex)).size === targets.length &&
+        targets.every(target=>quantity <= target.line.quantity)) {
+      session = {...session,pendingCartAttributeEdit:{sourceText:text,cartSignature:JSON.stringify(session.cart),
+        candidates:targets.map(target=>({cartIndex:target.cartIndex,name:target.line.name + ' · ' +
+          (target.line.attributes || []).map(attr=>`${attr.attributeName}: ${attr.attributeValue}`).join(' · ') +
+          (target.line.note ? ` · ${target.line.note}` : '')})),
+        unitChanges:targets.map(target=>({cartIndex:target.cartIndex,quantity,attributeName:target.attributeName,
+          attributeValue:target.attributeValue,note:target.note}))}};
+      await this.conversationService.saveSession(conv,session);
+      await this.reply(conv,waId,`¿De cuál línea cambio ${quantity} unidad(es)?\n` + this.formatPendingCartEditReminder(session));
+      return true;
+    }
     if (targets.length!==1) return clarify();
     const target=targets[0];
     // A qualified option/note or explicit row may identify one existing variant.
@@ -15672,7 +15694,7 @@ export class WhatsappOrchestratorService {
       ...(target.note ? {note:target.note} : {}),
     }]},menu,this.catalogService);
     if (!plan.ok) return clarify();
-    session={...session,cart:plan.cart};
+    session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(text),cartSignature:JSON.stringify(plan.cart)}};
     await this.conversationService.saveSession(conv,session);
     await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+reminder);
     return true;
@@ -20195,6 +20217,10 @@ export class WhatsappOrchestratorService {
       if (pendingEdit.cartSignature !== JSON.stringify(session.cart)) {
         session = {...session, pendingCartAttributeEdit:undefined};
         await this.conversationService.saveSession(conv, session);
+        if (pendingEdit.unitChanges) {
+          await this.reply(conv,waId,'El carrito cambió desde esa lista. Indica de nuevo el producto, las unidades y la opción; no apliqué el cambio anterior.');
+          return true;
+        }
       } else if (!/[¿?]/.test(text)) {
         const namedLine = this.uniqueClarificationLine(session, pendingEdit.candidates, text);
         if (namedLine === 'ambiguous') {
@@ -20234,6 +20260,26 @@ export class WhatsappOrchestratorService {
         }
         }
       }
+    }
+    if (pendingEdit?.unitChanges && selectedCartIndex != null) {
+      const edit = pendingEdit.unitChanges.find(change=>change.cartIndex===selectedCartIndex);
+      const line = session.cart[selectedCartIndex];
+      const plan = edit && line ? prepareUnitOptionActions(session.cart,{updateUnitOptions:[{
+        productId:line.productId,cartLineIndex:selectedCartIndex,affectedQuantity:edit.quantity,
+        attributes:[{attributeName:edit.attributeName,attributeValue:edit.attributeValue}],
+        ...(edit.note ? {note:edit.note} : {}),
+      }]},products,this.catalogService) : undefined;
+      if (!plan?.ok) {
+        await this.conversationService.saveSession(conv,session);
+        await this.reply(conv,waId,'No pude aplicar ese cambio completo con la carta actual. Indica de nuevo la opción; el pedido sigue igual.');
+        return true;
+      }
+      session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(pendingEdit.sourceText),cartSignature:JSON.stringify(plan.cart)}};
+      await this.conversationService.saveSession(conv,session);
+      await this.reply(conv,waId,`Listo ✅ ${line.name}: ${edit!.quantity} unidad(es) con ${edit!.attributeName}: ${edit!.attributeValue}` +
+        (edit!.note ? ` · ${edit!.note}` : '') + '\n\n' +
+        (this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session)));
+      return true;
     }
     const changeQuery = this.normalizeForMatch(text);
     if (/^(?:cambia|cambiar|cambialo|cambiala)\b/.test(changeQuery)) {

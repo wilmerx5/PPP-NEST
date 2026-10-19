@@ -49,10 +49,13 @@ export type WhatsappSessionData = {
 
   /** Read-only price clarification, separate from an order selection. */
   pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
+  lastUnitOptionEdit?: { sourceText: string; cartSignature: string };
   pendingCartAttributeEdit?: {
     sourceText: string;
     cartSignature: string;
     candidates: Array<{cartIndex: number; name: string; sourceText?: string}>;
+    /** Counted edit awaiting a row, not permission to replace every unit in it. */
+    unitChanges?: Array<{cartIndex: number; quantity: number; attributeName: string; attributeValue: string; note?: string}>;
   };
   pendingCartQuantity?: {
     quantity: number;
