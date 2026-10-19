@@ -1123,6 +1123,9 @@ export class WhatsappOrchestratorService {
       }
 
     }
+    // Merchant payment details are information, never customer identity or a
+    // payment selection. Handle them before checkout field extraction.
+    if (await this.tryHandleMerchantPaymentDetails(conv, msg.waId, originalText, cfg)) return;
     // A complete request for the menu is informational at every checkout step.
     // It never supplies a name/address/payment or clears a pending selection.
     if (this.isPoliteMenuLinkRequest(originalText)) {
@@ -17920,6 +17923,30 @@ export class WhatsappOrchestratorService {
       return enabled.find(m => m.id === 'cash' || m.id === 'contraentrega') || null;
     }
     return null;
+  }
+
+  private async tryHandleMerchantPaymentDetails(
+    conv: WhatsappConversation, waId: string, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const t = this.normalizeForMatch(text);
+    const paymentSubject = /\b(?:nequi|daviplata|transferencia|transferir|cuenta bancaria|datos de pago|titular|pago)\b/.test(t);
+    const asksDetails = /\b(?:a nombre de quien|titular|datos (?:para|de)|(?:cual|que) (?:es )?(?:el |la )?(?:numero|cuenta|nequi|llave)|(?:este|ese) es|es este|es ese)\b/.test(t) ||
+      /\b(?:nequi|daviplata) es\b/.test(t) ||
+      /\b(?:pasa|pasas|compartes|envias|das)\b.*\b(?:datos|cuenta|numero|nequi|llave)\b/.test(t);
+    // Mixed edits/purchases need the ordinary multi-intent path; this handler
+    // must not swallow a new item, recipient or explicit payment choice.
+    if (!paymentSubject || !asksDetails ||
+        /\b(?:mi (?:nombre|telefono|celular)|me llamo|agrega|anade|quita|cambia|quiero|regalas|vendes|dame|me das|pago por|pagare|a nombre de (?!quien\b))\b/.test(t)) return false;
+    const session = this.conversationService.getSession(conv);
+    const methods = getEnabledPaymentMethods(cfg.paymentMethods);
+    const transfer = methods.find(method => method.enabled && method.id === 'transfer');
+    const details = (cfg.localContext?.transferInfoNote || '').trim();
+    const answer = !transfer ? 'La transferencia no está habilitada para este pedido.' : details
+      ? `Estos son los datos de transferencia configurados por el comercio:\n${details}`
+      : 'No tengo los datos de cuenta ni el titular confirmados. El restaurante debe proporcionarlos antes de transferir.';
+    const reminder = session.cart.length ? this.formatInterruptedStepReminder(conv, session) : '';
+    await this.reply(conv, waId, answer + (reminder ? `\n\n${reminder}` : ''));
+    return true;
   }
 
   private buildPaymentConfirmReply(

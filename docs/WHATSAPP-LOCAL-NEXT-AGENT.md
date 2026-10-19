@@ -1,3 +1,11 @@
+## VIGENTE — consultas de datos de transferencia validadas
+
+Base f151b35e. Tanda B del PDF 18/10: consultas sobre cuenta/Nequi/titular responden solo datos configurados del comercio, sin reemplazar contacto/nombre, elegir pago ni confirmar orden. Sin datos pide obtenerlos del local; transferencia deshabilitada no expone datos antiguos. Guarda compras/cambios/datos personales mezclados para el router normal, sin consumirlos desde este handler.
+
+45 pruebas nuevas: 32 recorridos completos (dos menús, pago/confirmación, cuatro frases, agente simulado on/off), ocho límites (sin configuración, deshabilitada, contacto explícito, selección explícita) y cinco guardas del helper para mensajes mixtos. Baseline inicial 16 fallos. 67 focalizados, TypeScript y 92 Node verdes. Global aprobada: 88 suites / 9.431 pruebas, 379 hashes intactos. Sin suites activas. Evidencia whatsapp-merchant-details-validation-1810.json. Sin llamadas pagadas/Meta/órdenes externas. La respuesta no verifica cuenta ni transferencia.
+
+Al cerrar global, publicar staging y agrupar deploy con ETA f151b35e; Main intacto. Siguiente: tanda C del PDF, combo con bebida y medio producto adicional; variantes sintéticas, notas de empaque frente a adicionales, corrección sin duplicación y consultas intercaladas. Fotos/direcciones siguen desplegadas en 9c9a5487. Entradas inferiores históricas.
+
 ## VIGENTE — PDF 18/10 completo auditado; ETA coloquial validada
 
 Fuente: chats 18_10.pdf, 60 páginas. Auditoría completa y próximas seis tandas en `docs/whatsapp-pdf-1810-audit.md`. Mezcla bot/atención humana/duplicados; no afirmar que todo son fallos del bot ni que todos están resueltos. Fixtures sin datos personales. Primera tanda: 16 recorridos con dos menús sintéticos, pago y confirmación; 12 fallos iniciales por «se demoran»/«demorará mucho». Corrección general de plural/futuro de demorar. 38 focalizados, TypeScript y 92 Node verdes. Global aprobada: 88 suites / 9.386 pruebas, 379 hashes intactos. No hay suites activas. Publicar solo staging; despliegue de ETA diferido para agrupar con la siguiente tanda. Evidencia `whatsapp-pdf-1810-eta-validation.json`.

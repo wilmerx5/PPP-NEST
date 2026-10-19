@@ -88,3 +88,7 @@ Demora de pedido existente, corrección posterior, reclamo de calidad, cuenta de
 Cada familia debe tener recorrido completo con estado, respuesta, carrito y DTO, negativos ambiguos y varios menús. Mantener casos reservados no usados al modificar reglas. Luego una evaluación acotada con modelo y medios reales, autorizada y contabilizada por separado, y piloto supervisado con recuperación humana. La lectura de todo el PDF no significa que todos los fallos estén corregidos; tampoco los conteos de pruebas acreditan que sea vendible.
 
 Validación final de A: 38 focalizados, TypeScript, 92 Node y global 88 suites / 9.386 pruebas aprobadas; 379 hashes intactos. Corrección local para publicar en staging; deploy diferido para agrupar con siguiente tanda. Cero llamadas pagadas y órdenes externas.
+
+## Avance de tanda B: datos del comercio (siguiente revisión)
+
+45 pruebas nuevas reproducen preguntas de cuenta/titular en pago y confirmación, dos menús y agente simulado on/off; 16 fallos iniciales. Se responde desde configuración, sin mutar identidad, carrito, estado ni método. No se valida titularidad bancaria. Mensajes con compra/cambio/contacto explícitos se dejan al router normal, y cinco contratos de helper protegen esa frontera; no equivalen a recorridos completos de todas las mezclas. 67 focalizados, TypeScript y 92 Node aprobados; global 88 suites / 9.431 pruebas, 379 hashes intactos.

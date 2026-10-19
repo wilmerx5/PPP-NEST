@@ -1,0 +1,25 @@
+{
+  "base": "f151b35e",
+  "new_tests": 45,
+  "baseline_failed": 16,
+  "focused_passed": 67,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9431,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_changed": []
+  },
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "limits": [
+    "Merchant data comes from localContext.transferInfoNote, no external verification",
+    "Models and order persistence mocked",
+    "Mixed edits are declined by this helper and left to normal routing; five helper-level guards do not prove entire mixed flows",
+    "No proof of transfer payment or bank account ownership",
+    "Main unchanged"
+  ]
+}

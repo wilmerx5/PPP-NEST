@@ -19499,3 +19499,47 @@ describe('PDF 18 Oct colloquial delivery timing preserves checkout',()=>{
   });
  }
 });
+
+describe('PDF merchant payment questions never overwrite customer identity',()=>{
+ for(const enabled of [false,true])for(const name of ['Pizza Del Huerto','Bowl De Garbanzos'])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const text of ['¿El Nequi es 3000000009?','3000000009 este es para Nequi cierto','¿A nombre de quién sale el pago?','Me pasas los datos para transferir por favor']){
+  it(name+' '+state+' '+text+' agent='+enabled,async()=>{
+   const p={id:79911,code:79911,name,price:21000,availableNow:true,attributes:[]};const h=harness([p],enabled);
+   h.cfg.localContext={transferInfoNote:'Cuenta de prueba del comercio: 3000000008. Titular: Restaurante Ejemplo.'};
+   h.conv.state=state;h.service.ordersService.create=jest.fn().mockResolvedValue({id:7991,dailyOrderNumber:80});
+   Object.assign(h.conv.sessionData,{cart:[{productId:p.id,code:p.code,name,unitPrice:p.price,quantity:2,note:'Salsa aparte'}],orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,...(state==='awaiting_final_confirm'?{paymentMethod:'cash'}:{})});
+   const before=structuredClone(h.conv.sessionData);const customer=h.conv.customerName;
+   const reply=await h.sendQueued(text);expect(reply).toContain('3000000008');expect(reply).toContain('Restaurante Ejemplo');
+   expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe(customer);expect(h.conv.state).toBe(state);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   if(state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('confirmar');
+   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.customerName).toBe(customer);expect(dto.phone).toMatch(/3000000001/);
+   expect(dto.items.every((item:any)=>item.productId===p.id&&item.note==='Salsa aparte')).toBe(true);
+  });
+ }
+});
+
+describe('PDF merchant payment details boundaries',()=>{
+ for(const enabled of [false,true])for(const mode of ['missing','disabled','explicit_customer','payment_choice']){
+  it(mode+' agent='+enabled,async()=>{
+   const h=harness([{id:79912,code:79912,name:'Ravioles De Ricota',price:18000,availableNow:true,attributes:[]}],enabled);
+   h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{cart:[{productId:79912,name:'Ravioles De Ricota',quantity:1,unitPrice:18000,note:'Salsa aparte'}],orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn();
+   if(mode==='disabled'){h.cfg.localContext={transferInfoNote:'Cuenta vieja 3000000008'};h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(m=>({...m,enabled:m.id==='cash'}));}
+   const before=structuredClone(h.conv.sessionData);
+   const text=mode==='explicit_customer'?'a nombre de Cristina, teléfono 3000000004, contraentrega':mode==='payment_choice'?'Pago por Nequi':'¿A nombre de quién sale el pago?';
+   const reply=await h.sendQueued(text);expect(h.service.ordersService.create).not.toHaveBeenCalled();expect(h.conv.sessionData.cart).toEqual(before.cart);
+   if(mode==='missing'||mode==='disabled'){
+    expect(h.conv.sessionData).toEqual(before);expect(h.conv.customerName).toBe('Wilmer');expect(h.conv.state).toBe('awaiting_payment');
+    expect(reply).toMatch(mode==='missing'?/no tengo.*confirmados/i:/no está habilitada/i);expect(reply).not.toContain('3000000008');
+   }else if(mode==='explicit_customer'){
+    expect(h.conv.customerName).toBe('Cristina');expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);expect(h.conv.sessionData.paymentMethod).toBe('cash');
+   }else{expect(h.conv.sessionData.paymentMethod).toBe('transfer');expect(h.conv.customerName).toBe('Wilmer');}
+  });
+ }
+});
+
+describe('Merchant details helper does not consume mixed order requests',()=>{
+ it.each(['Quiero una pizza y me pasas los datos para transferir','Cambia la dirección y me pasas los datos para transferir','Me regalas dos bowls, cuál es el Nequi','Mi teléfono es 3000000004, me pasas los datos para transferir','A nombre de Cristina, me pasas los datos para transferir'])('%s',async text=>{
+  const h=harness(products,false);h.service.reply=jest.fn();const before=structuredClone(h.conv);
+  expect(await h.service.tryHandleMerchantPaymentDetails(h.conv,'customer',text,h.cfg)).toBe(false);
+  expect(h.conv).toEqual(before);expect(h.service.reply).not.toHaveBeenCalled();
+ });
+});
