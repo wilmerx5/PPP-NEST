@@ -1,3 +1,5 @@
+import { splitKitchenPreference } from './whatsapp-kitchen-preference';
+
 /** Keep labelled internal access identifiers for the driver, out of map queries.
  * A standalone unit or a building name is not an external destination. */
 export function splitDeliveryAddressParts(source: string): { base: string; details: string } {
@@ -18,4 +20,17 @@ export function splitDeliveryAddressParts(source: string): { base: string; detai
     return { base: raw, details: '' };
   }
   return { base, details };
+}
+
+/** A delimited kitchen note after a street is not part of the destination. */
+export function splitAddressKitchenNote(source: string): { address: string; note: string; count?: number; all: boolean } | null {
+  const match = source.match(/^(.+?)[,;\n]\s*(?:(todos|todas|ambos|ambas|(?:los|las)\s+(?:dos|tres|cuatro|cinco|seis|\d{1,2}))\s+)?(sin\s+.+)$/iu);
+  if (!match || !/\b(?:calle|cll?|carrera|cra|kr|diagonal|dg|transversal|tv|avenida)\.?\s*\d/i.test(match[1])) return null;
+  const preference = splitKitchenPreference('pedido ' + match[3]);
+  if (!preference) return null;
+  const scope = (match[2] || '').toLowerCase();
+  const counts: Record<string, number> = { dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6 };
+  const amount = scope.replace(/^(?:los|las)\s+/, '');
+  const count = /^(?:ambos|ambas)$/.test(scope) ? 2 : counts[amount] || (/^\d+$/.test(amount) ? Number(amount) : undefined);
+  return { address: match[1].trim(), note: preference.note, count, all: /^(?:todos|todas)$/.test(scope) };
 }

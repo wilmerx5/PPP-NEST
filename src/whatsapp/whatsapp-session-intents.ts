@@ -173,6 +173,13 @@ export function isInterruptedPhoneOrderInquiry(text: string): boolean {
 /**
  * Confirmar dirección sugerida / última guardada: “sí”, “acá”, “la misma”.
  */
+/** Explicit reference to a saved destination; unlike a bare yes it can reverse a new-address request. */
+export function isExplicitSavedAddressReference(text: string): boolean {
+  const t = (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion').replace(/[.,!?¡¿]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^(?:(?:mejor|prefiero|si|entonces) )?(?:(?:a|para|en) )?(?:(?:la|esa) )?(?:misma(?: direccion)?(?: de antes)?|anterior(?: direccion)?|direccion anterior|de siempre)(?: por favor| porfa| gracias)?$/.test(t);
+}
+
 export function isReuseLastAddressIntent(text: string): boolean {
   const t = (text || '')
     .trim()

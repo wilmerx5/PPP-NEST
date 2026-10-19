@@ -1,3 +1,7 @@
+## Actualización: decimosexta tanda cerrada (19/10)
+
+274 tests nuevos acumulados y ocho existentes fortalecidos. Bloque nuevo: 32 conversaciones y 24 contratos de destino/contexto. Corrige retorno explícito al destino guardado y dirección+nota alimentaria; verifica seis recorridos completos y controles de ausencia de histórico/cantidad incompatible. 56 focalizados, TypeScript/build, 92 Node y global 101/9.644 aprobados, 395 hashes intactos. La nueva cantidad de suites procede de partición: 7.611 tests históricos idénticos en 12 archivos, no cobertura nueva. Global pasa de 21m37s a 6m31s con partición y cuatro workers. No todos los chats PDF están acreditados, ni mapas/modelos reales. Evidencias whatsapp-accuracy-partition-1910.json y whatsapp-destination-block-validation-1910.json.
+
 ## Actualización: decimoquinta tanda cerrada (19/10)
 
 218 tests nuevos acumulados y ocho existentes fortalecidos. Ocho recorridos de nueva dirección, consulta/edición del carrito, cierre sin reofrecer destino descartado, afirmación sin calle, unidad antes de calle y DTO con nueva tarifa. 64 focalizados, TypeScript, 92 Node, global 88/9.588 y 379 hashes intactos. Cero API pagada. No todos los chats cubiertos. Nueva cadencia: bloques amplios y partición del archivo gigante antes de continuar con tandas pequeñas.

@@ -1,0 +1,34 @@
+{
+  "base": "9a53dc5f",
+  "branch": "staging",
+  "newTests": 56,
+  "fullConversations": 32,
+  "intentContracts": 24,
+  "validBaseline": {
+    "failed": 8,
+    "passed": 16
+  },
+  "fixtureCorrection": "Base had an automatic default; use a required juice flavor to reproduce pending attributes",
+  "targetedPassed": 56,
+  "typescript": "passed",
+  "buildTypescript": "passed",
+  "nodeTestsPassed": 92,
+  "global": {
+    "passedSuites": 101,
+    "passedTests": 9644,
+    "failedTests": 0,
+    "seconds": 391.298,
+    "sourceHashesUnchanged": 395,
+    "report": "/tmp/ppp-partition-block-global.json"
+  },
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "mainUnchanged": true,
+  "deployment": "pending",
+  "limits": [
+    "mocked maps and models",
+    "serial message delivery",
+    "subset clarification follow-up remains pending",
+    "not all PDF conversations replayed"
+  ]
+}

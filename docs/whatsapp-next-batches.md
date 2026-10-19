@@ -1,3 +1,15 @@
+## VIGENTE — suite repartida y bloque de destinos cerrados (19/10)
+
+Base 9a53dc5f, solo staging. Suite histórica repartida en 12 archivos equilibrados por duración, simulador compartido whatsapp-accuracy.test-support.ts excluido del build productivo. Los 512 bloques mantienen contenido; global confirma exactamente los mismos 7.611 nombres/multiplicidades de tests históricos. No se eliminaron casos. Comandos y cadencia: WHATSAPP-TEST-RUNNING.md.
+
+Global nueva: 101 suites / 9.644 tests aprobados en 391,298 s (6m31s), frente a 1.296,707 s (21m37s). Reducción 69,8 % en una medición local; incluye partición y cambio de dos a cuatro workers, no atribuir solo a archivos. 395 hashes intactos. TypeScript, build TypeScript y 92 Node aprobados. Sin suite activa. Manifiesto whatsapp-accuracy-partition-1910.json y evidencia whatsapp-destination-block-validation-1910.json.
+
+Bloque de 56 tests nuevos: 32 conversaciones completas con cuatro nombres de platos de menús sintéticos + 24 contratos. Seis recorridos principales: calle/conjunto/torre/apto y corrección; nueva dirección con consulta y compra extra; retorno explícito al histórico; sabor pendiente mientras cambia destino; cobertura fallida y recuperación; destino+nota. Baseline válido ocho fallos/16 verdes. Primer intento incluyó cuatro fallos de fixture: Base aplicaba default y no dejaba selección pendiente, reemplazado por jugo con sabor obligatorio. No contarlos como fallos del bot.
+
+Corregido: «mejor a la misma de antes» recupera dirección guardada en vez de geocodificar frase literal; sin histórico pide calle. Dirección+nota se procesa antes del editor de platos y separa destino de nota; cantidades incompatibles no aplican nota a todos y solicitan aclaración. Carrito, pago, atributos, unidades y DTO conservados; no órdenes antes de confirmar. 56 focalizados aprobados. Decimosexta tanda desde auditoría PDF: 274 tests nuevos acumulados, más ocho anteriores fortalecidos. No equivale a PDF completo ni precisión real del modelo.
+
+Publicación/despliegue staging pendiente de cierre. Main intacto, cero API pagada/WhatsApp/órdenes externas; schedule eliminado. Próximo bloque: resolver aclaración de nota para un subconjunto tras destino, notas que coinciden con atributo configurado y ráfagas de datos nuevos durante selección pendiente. Los turnos de esta tanda son seriales, no concurrencia real; mapas/modelos simulados. Mantener focalizados durante un bloque amplio y una global al cierre, no una por cada ocho tests.
+
 ## VIGENTE — nueva dirección sin arrastrar destino anterior (19/10)
 
 Base e1572421, staging. Ocho conversaciones nuevas, ravioles/bowl y agente simulado on/off, desde dirección guardada o destino confirmado/pagado (incluye destino activo sin histórico). «A una nueva» invalida dirección, confirmación, unidad y ruta anteriores; conserva carrito, pago e histórico. No vuelve a ofrecer automáticamente el destino descartado después de agregar producto y cerrar; «sí» sin calle no lo reactiva. Torre/apto antes de calle se conserva en nueva dirección; DTO final tiene tres unidades y tarifa nueva.

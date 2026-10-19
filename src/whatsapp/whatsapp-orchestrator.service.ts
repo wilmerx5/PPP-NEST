@@ -1,5 +1,5 @@
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
-import {splitDeliveryAddressParts} from './whatsapp-address-parts';
+import {splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
 import { prepareUnitOptionActions } from './whatsapp-unit-option-plan';
 import { customerLocationLabel, googleMapsPin, validDeliveryCoordinates } from './whatsapp-location-label';
@@ -86,6 +86,7 @@ import {
   isPendingAddOfferDecline,
   isPostOrderFollowUpIntent,
   isReuseLastAddressIntent,
+  isExplicitSavedAddressReference,
   isFreshAddressRequest,
   isSpecificOrderProgressInquiry,
   extractDailyOrderNumberHint,
@@ -1455,6 +1456,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, msg.waId, `Anoté: ${session.pendingDeliveryUnit}. ¿Me compartes la calle o carrera con número, o la ubicación de WhatsApp?`);
       return;
     }
+    // Route an explicit destination plus kitchen note together before scoped food editors.
+    if (session.cart.length && !['completed', 'closed', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state) &&
+        !/[¿?]/.test(originalText) && isAddressChangeIntent(originalText) && splitAddressKitchenNote(originalText) &&
+        await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
     // A concrete access reference belongs to delivery, not to the food note.
     if (session.cart.length && ['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
         !/[¿?]/.test(originalText) &&
@@ -12201,6 +12206,17 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    if (session.freshDeliveryAddressRequested && isExplicitSavedAddressReference(text)) {
+      const saved = session.lastDeliveryAddress?.trim();
+      if (!saved) {
+        await this.reply(conv, waId, 'No tengo una dirección anterior guardada. Escribe la dirección del domicilio.');
+        return true;
+      }
+      const next = this.withDeliveryAddress({ ...session, orderType: 'delivery', fulfillmentChosen: true }, saved);
+      await this.conversationService.saveSession(conv, next, 'building_cart');
+      await this.tryConfirmOrder(conv, waId, next, { preface: 'Retomamos la dirección anterior ✅' });
+      return true;
+    }
     // A copied address prompt is context; the following street is the answer.
     const copiedStreet = text.match(/^(?:claro[, ]*)?¿?cu[aá]l es la (?:nueva )?direcci[oó]n del domicilio\?\s*\n\s*((?:cll?|calle|cra|kr|carrera|avenida|diagonal|transversal)\b[^\n]+)$/i);
     if (copiedStreet) text = this.expandStreetAbbreviations(copiedStreet[1]);
@@ -12253,6 +12269,8 @@ export class WhatsappOrchestratorService {
       return true;
     }
 
+    const kitchen = splitAddressKitchenNote(text);
+    if (kitchen) text = kitchen.address;
     const payingWithStreet = this.streetCorrectionDuringPayment(conv.state, session, text, cfg);
     const addr = (payingWithStreet || !!copiedStreet)
       ? this.normalizeDeliveryAddress(this.expandStreetAbbreviations(this.stripStreetLabel(text)))
@@ -12282,6 +12300,17 @@ export class WhatsappOrchestratorService {
       },
       addr,
     );
+    let noteClarification = '';
+    if (kitchen) {
+      const quantity = next.cart.reduce((sum, line) => sum + line.quantity, 0);
+      const scopeKnown = kitchen.all || (kitchen.count !== undefined ? kitchen.count === quantity : next.cart.length === 1);
+      const edited = next.cart.map(line => editScopedCartNote(line.note, { kind: 'append', query: '', note: kitchen.note, preserve: [] }));
+      if (scopeKnown && next.cart.length && edited.every(edit => !edit.blocked)) {
+        next = { ...next, cart: next.cart.map((line, i) => ({ ...line, note: edited[i].note })) };
+      } else {
+        noteClarification = `¿Cuáles productos deben llevar la nota «${kitchen.note}»? La dirección sí quedó actualizada.`;
+      }
+    }
     const fee = await this.ensureDeliveryFeeQuoted(next, cfg);
     next = fee.session;
     const keepStep =
@@ -12294,6 +12323,10 @@ export class WhatsappOrchestratorService {
         ? 'awaiting_final_confirm'
       : null;
     await this.conversationService.saveSession(conv, next, keepStep || 'building_cart');
+    if (noteClarification) {
+      await this.reply(conv, waId, noteClarification);
+      return true;
+    }
     const feeLine = fee.blocked
       ? `\n\n${fee.blocked}`
       : fee.notice
