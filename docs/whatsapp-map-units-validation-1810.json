@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-18",
+  "base": "e8bf89d1",
+  "new_tests": 24,
+  "baseline": {
+    "failed": 10,
+    "passed": 7
+  },
+  "focused_passed": 31,
+  "contracts_passed": 108,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9313,
+    "seconds": 590.42,
+    "frozen_hashes": 379
+  },
+  "source_after_global": "Removed one extra blank line at EOF of test file only; no semantic changes.",
+  "scope": [
+    "Exclude labelled alphanumeric access from map query",
+    "Retain driver details in simulated final order",
+    "Reject wrong or partial place results after splitting"
+  ],
+  "menus": [
+    "ravioles",
+    "bowl",
+    "sandwich"
+  ],
+  "limits": [
+    "Map HTTP and route distance mocked",
+    "Street after interior remains unsplit to avoid losing destination",
+    "Ambiguous-map checkout interruption still pending"
+  ],
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "deployment": "Deferred for grouping; runtime remains eef62660, no new runtime health check"
+}

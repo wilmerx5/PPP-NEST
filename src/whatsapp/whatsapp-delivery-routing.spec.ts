@@ -70,3 +70,16 @@ describe('Map lookup separates internal delivery units from the destination',()=
   expect(await service.quoteDeliveryFee({customerAddress:'Villa Galante entrada 43 apartamento 48',restaurant:{lat:4.62,lng:-74.15},tiers:[{maxKm:8.5,fee:2000}],maxKm:8.5,fallbackFee:2000})).toMatchObject({ok:false,reason:'address_ambiguous'});expect(route).not.toHaveBeenCalled();
  });
 });
+
+describe('Lettered access does not make an uncertain map result valid',()=>{
+ const original=global.fetch;afterEach(()=>global.fetch=original);
+ for(const details of ['torre B apartamento 304B','bloque C casa 12A','interior 2A oficina 405'])for(const partial of [false,true])it(`${details} partial=${partial}`,async()=>{
+  const service=new WhatsappDeliveryRoutingService({get:()=> 'mock-key'} as never);
+  const queries:string[]=[];
+  global.fetch=jest.fn().mockImplementation(async(url:string)=>{queries.push(new URL(url).searchParams.get('address')||'');return {status:200,json:async()=>({status:'OK',results:[{formatted_address:partial?'Conjunto Los Olivos, Bogotá':'Conjunto Los Pinos, Bogotá',partial_match:partial,geometry:{location:{lat:4.62,lng:-74.15}},address_components:[{short_name:'CO',types:['country']}]}]})};});
+  const route=jest.spyOn(service as any,'directionsDistance');
+  const result=await service.quoteDeliveryFee({customerAddress:`Conjunto Los Olivos ${details}`,restaurant:{lat:4.62,lng:-74.15},tiers:[{maxKm:8.5,fee:2000}],maxKm:8.5,fallbackFee:2000});
+  expect(result).toMatchObject({ok:false,reason:'address_ambiguous'});expect(route).not.toHaveBeenCalled();
+  expect(queries.length).toBeGreaterThan(0);expect(queries.every(query=>!/torre|bloque|interior|apartamento|oficina|casa/i.test(query))).toBe(true);
+ });
+});

@@ -19385,3 +19385,15 @@ describe('Lettered internal units survive checkout interruptions across menus',(
   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toBe(address+' / Contraentrega');expect(dto.customerName).toBe('Cristina');expect(dto.phone).toMatch(/3000000004/);expect(dto.items).toHaveLength(1);expect(dto.items[0].productId).toBe(product.id);
  });
 });
+
+describe('Lettered access is excluded from map queries and retained in final order',()=>{
+ for(const place of ['Conjunto Los Olivos','Edificio Las Acacias','Residencial Los Cedros'])for(const enabled of [false,true])it(`${place} agent=${enabled}`,async()=>{
+  const {WhatsappDeliveryRoutingService}=require('./whatsapp-delivery-routing.service');const name=place.startsWith('Conjunto')?'Ravioles De Ricota':place.startsWith('Edificio')?'Bowl De Garbanzos':'Sandwich De Pavo';const h=harness([{id:66901,code:66901,name,price:21000,availableNow:true,attributes:[]}],enabled);Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15,deliveryFeeTiers:[{maxKm:8.5,fee:2000}],deliveryMaxKm:8.5});h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));h.conv.state='awaiting_address';h.conv.sessionData={cart:[{productId:66901,code:66901,name,unitPrice:21000,quantity:1}],orderType:'delivery',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true} as any;
+  const routing=new WhatsappDeliveryRoutingService({get:()=> 'mock-key'});jest.spyOn(routing as any,'directionsDistance').mockResolvedValue({distanceKm:1.5,durationMinutes:4});h.service.deliveryRouting=routing;h.service.ordersService.create=jest.fn().mockResolvedValue({id:6591,dailyOrderNumber:96});
+  const original=global.fetch;const queries:string[]=[];global.fetch=jest.fn().mockImplementation(async(url:string)=>{queries.push(new URL(url).searchParams.get('address')||'');return {status:200,json:async()=>({status:'OK',results:[{formatted_address:`${place}, Kennedy, Bogotá, Colombia`,partial_match:false,geometry:{location:{lat:4.62,lng:-74.15}},address_components:[{short_name:'CO',types:['country']}]}]})};});
+  try{
+   const reply=await h.sendQueued(`A ${place} torre B apartamento 304B`);expect(reply).not.toMatch(/fuera de cobertura|algo m[aá]s|n[uú]mero de contacto/i);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.address).toMatch(/torre B.*(?:apartamento|apto) 304B/i);expect(queries.length).toBeGreaterThan(0);expect(queries.every(query=>!/torre|apartamento|\b304B\b/i.test(query))).toBe(true);
+   await h.sendQueued('1');expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/torre B.*(?:apartamento|apto) 304B/i);expect(dto.deliveryFee).toBe(2000);expect(dto.items).toHaveLength(1);expect(dto.items[0].productId).toBe(66901);
+  }finally{global.fetch=original;}
+ });
+});

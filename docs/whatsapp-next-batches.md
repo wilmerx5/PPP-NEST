@@ -1,3 +1,11 @@
+## VIGENTE — interiores alfanuméricos validados; despliegue agrupado pendiente
+
+Base e8bf89d1. Global verde: 88 suites / 9.313 pruebas en 590.42 s; 379 hashes intactos. Después únicamente se quitó una línea vacía extra al final del archivo de tests. 24 pruebas nuevas: 12 parser, seis conversaciones con tres menús y seis rechazos de resultado de mapa distinto/parcial. Baseline 10 fallos/7 verdes; pasan 31 focalizados, 108 contratos afectados, TypeScript y 92 Node. Evidencia whatsapp-map-units-validation-1810.json. No hay suites activas.
+
+Se separan unidades B, B-2, 2A, 304B de consulta al mapa y se conservan en respuesta/DTO. Protección de Casa Blanca/Torre del Sol, destino incompleto y calle posterior a interior. El antiguo contrato que dejaba bloque B pegado al edificio cambia deliberadamente. Conversaciones con router/routing reales pero HTTP, distancia y órdenes simulados; no acreditar Maps ni modelo real.
+
+Publicar solo staging y agrupar despliegue con la siguiente tanda. Runtime previo sigue eef62660 / imagen 20aa1570…, sin nueva comprobación. Main intacto, cero llamadas pagadas, Meta/mapas reales/órdenes externas. Próximo lote: mezcla de interior antes de calle; respuesta de mapa incierta que permita consulta/cambio de carrito y luego aclarar destino sin reiniciar. Después teléfono inválido y actualización conjunta de datos. Los chats están inventariados, no todos sus fallos están resueltos; mantener pendiente la investigación del comprobante vacío y validación reservada real. Entradas inferiores históricas.
+
 ## VIGENTE — destino completo y combo con extra desplegados juntos en staging
 
 Código eef626606cbd25e88df93c1ffc390991728e26a4; imagen sha256:20aa157079bc985d7a3745d490a7e6e849f7faded00500aa84d1174e46d07234. Running/healthy a las 00:09:16 UTC del 19/10 (19:09 Bogotá del 18/10); health público OK/DB connected/circuit CLOSED a las 00:09:22 UTC. Probes del compilado: nueve aserciones de destino y seis de combo/extra/dirección, sin red ni órdenes. Rollback ppp-nest-staging:rollback-before-eef62660. Main/producción intactos (imagen c5e97ab1… running). No reconstruir por documentación posterior.
