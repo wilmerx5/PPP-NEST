@@ -1444,6 +1444,10 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A concrete access reference belongs to delivery, not to the food note.
+    if (session.cart.length && ['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
+        !/[¿?]/.test(originalText) &&
+        await this.tryAppendDeliveryAccessReference(conv, msg.waId, session, originalText, cfg)) return;
     if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
@@ -16410,7 +16414,12 @@ export class WhatsappOrchestratorService {
       },
       note,
     );
-    await this.conversationService.saveSession(conv, session, 'building_cart');
+    const inCheckout = ['awaiting_payment', 'awaiting_final_confirm', 'awaiting_name', 'awaiting_phone'].includes(conv.state);
+    await this.conversationService.saveSession(conv, session, inCheckout && conv.state !== 'awaiting_final_confirm' ? undefined : 'building_cart');
+    if (inCheckout) {
+      await this.tryConfirmOrder(conv, waId, session, {preface: `📍 Referencia anotada: ${note}`});
+      return true;
+    }
     await this.reply(
       conv,
       waId,

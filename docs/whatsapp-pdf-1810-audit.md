@@ -1,3 +1,7 @@
+## Actualización: undécima tanda cerrada (19/10)
+
+162 tests nuevos acumulados desde esta auditoría, además de ocho existentes fortalecidos. Esta tanda añade ocho conversaciones de referencias de acceso en pago/confirmación con dos menús: conserva destino y carrito, no duplica referencia y no aprueba prematuramente. Baseline ocho fallos; 28 focalizados, TypeScript, 92 Node y global 88/9.532 aprobados, 379 hashes intactos. Evidencia whatsapp-access-reference-validation-1910.json. Todo simulado; D sigue pendiente para reemplazo de apartamento, complemento sin base y cobertura. No todos los chats del PDF reproducidos; los conteos inferiores son históricos.
+
 ## Estado de cobertura revisado — 19/10
 
 Las 60 páginas están leídas y sus patrones inventariados. No se han reproducido todas las conversaciones completas ni cerrado todos los fallos. Diez tandas posteriores a la auditoría están cerradas, con 154 tests nuevos. Las seis primeras sumaron 104: ETA 16; datos del comercio 45; acompañamientos reducidos 21; combo/fracción adicional 6; edición de adicionales 8; recuperación de faltantes 8. La tanda de acompañamientos viene de un chat nuevo del usuario y amplía la familia E; no es replay literal del PDF.

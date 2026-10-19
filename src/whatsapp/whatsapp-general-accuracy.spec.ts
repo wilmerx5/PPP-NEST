@@ -19793,3 +19793,33 @@ describe('Alphanumeric building details have a bounded grammar',()=>{
   expect(harness([],false).service.looksLikeUnitOrTowerDetailOnly(text)).toBe(false);
  });
 });
+
+describe('Delivery access references resume checkout without asking for more products',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const final of [false,true])it(`${name} final=${final} agent=${enabled}`,async()=>{
+  const h=harness([{id:80011,code:80011,name,price:21000,availableNow:true,attributes:[]}],enabled);
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+  h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}})};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:8001,dailyOrderNumber:88});
+  await h.sendQueued(`Quiero dos ${name}`);await h.sendQueued('Calle 10 #81A-20 torre B apartamento 304B');
+  expect(h.conv.state).toBe('awaiting_payment');if(final)await h.sendQueued('contraentrega');
+  const state=h.conv.state;const cart=structuredClone(h.conv.sessionData.cart);
+  const reference=name.startsWith('Bowl')?'Timbre 304B':'Portón verde a mitad de cuadra';
+  for(let repeat=0;repeat<2;repeat++){
+   const reply=await h.sendQueued(reference);
+   expect(reply).toContain(reference);expect(reply).not.toMatch(/algo m[aá]s|qu[eé] se te antoja/i);
+   expect(h.conv.state).toBe(state);expect(h.conv.sessionData.cart).toEqual(cart);
+   expect(h.conv.sessionData.address).toMatch(/81A-20.*torre B.*304B/i);
+   expect(h.conv.sessionData.address).toContain(reference);
+   expect(h.conv.sessionData.address!.split(reference)).toHaveLength(2);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }
+  const total=await h.sendQueued('Cuánto es el total');expect(total).toMatch(/44[.,]000/);
+  if(!final)await h.sendQueued('contraentrega');
+  expect(h.conv.state).toBe('awaiting_final_confirm');await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80011)).toBe(true);
+  expect(dto.address).toContain(reference);expect(dto.address).toMatch(/81A-20.*torre B.*304B/i);expect(dto.deliveryFee).toBe(2000);
+  expect(dto.phone).toMatch(/3000000001/);expect(dto.customerName).toBe('Wilmer');
+ });
+});

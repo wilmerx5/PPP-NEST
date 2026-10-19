@@ -1,3 +1,11 @@
+## VIGENTE — referencias de acceso conservan el cierre (19/10)
+
+Base 6f42b450, staging. Ocho regresiones nuevas: ravioles/bowl, agente simulado on/off, pago/confirmación; portón/timbre, repetición, total, pago y DTO final. Baseline ocho fallos: referencia como nota del plato, retorno a compras o aprobación prematura. Corrección general: priorizar referencia declarativa de entrega y retomar el paso pendiente sin aprobar. Conserva carrito, calle, torre/apto, tarifa y contacto; repetir no duplica ni crea orden.
+
+28 focalizados, TypeScript, 92 Node y global 88 suites / 9.532 tests aprobados. Los 379 hashes permanecieron intactos. Evidencia whatsapp-access-reference-validation-1910.json. Undécima tanda cerrada desde auditoría PDF, 162 tests nuevos acumulados; no equivale a todos los chats cubiertos. Main intacto; cero llamadas pagadas, WhatsApp u órdenes externas. Publicación pendiente al escribir; despliegue se registra después. No hay suites activas.
+
+Siguiente: cambiar solo apartamento sin conservar el anterior; complemento sin dirección base; rechazo de destino anterior y consulta de cobertura. Schedule eliminado, continuación manual. Mapas/modelos simulados, evaluación real reservada pendiente.
+
 ## VIGENTE — destino fragmentado y complemento sin aprobación validados (19/10)
 
 Base 2b9e4c9e, solo staging. 21 tests nuevos: ocho conversaciones de ravioles/bowl, agente simulado on/off, calle → conjunto → torre/apto → total → pago → confirmación, con/sin cambio tardío de calle y complementos repetidos. Trece contratos gramaticales positivos/negativos de torres alfanuméricas. Mapas, modelos, Meta y órdenes simulados.
