@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-18",
+  "base": "c06cc4f5",
+  "new_conversations": 12,
+  "baseline_real_failures": 6,
+  "focused_passed": 50,
+  "contracts_passed": 90,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9289,
+    "seconds": 595.223,
+    "frozen_hashes": 379
+  },
+  "menus": [
+    "ravioles",
+    "bowl",
+    "sandwich"
+  ],
+  "scope": "Preserve named destination before street through interruptions and order DTO",
+  "limits": [
+    "Quotation mocked; no real geocoding",
+    "Lettered unit separation from map queries remains pending",
+    "Initial DTO oracle corrected to existing payment suffix; not a production defect"
+  ],
+  "paid_calls": 0,
+  "external_orders": 0,
+  "meta_messages": 0,
+  "deployment": "pending grouped with c06cc4f5"
+}

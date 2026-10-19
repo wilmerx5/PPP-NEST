@@ -1,3 +1,11 @@
+## VALIDADO — conservar conjunto antes de calle y cierre interrumpido
+
+Base c06cc4f5, limpio/origin sincronizado y sin procesos al iniciar heartbeat. Doce recorridos nuevos en ravioles/bowl/sandwich con agente simulado on/off y lugar antes/después de calle. Tras ajustar el oráculo al formato existente de DTO (añade / Contraentrega), baseline seis fallos reales: se pierde nombre de conjunto/edificio/residencial si precede a calle. Extraer el destino etiquetado completo antes del matcher de calle corrige los seis, sin excepciones por restaurante.
+
+Pasan 50 focalizados (12 nuevos), 90 contratos afectados, TypeScript y 92 Node. Comprueban respuesta, carrito, estado, consulta de total, actualización de teléfono, nombre+pago y DTO. No prueban geocodificación real: la cotización es mock. La separación de unidades alfabéticas en consulta al mapa sigue pendiente aunque su texto se conserve en el pedido.
+
+Global verde: 88 suites / 9.289 pruebas en 595.223 s; 379 hashes intactos. No hay suites activas. Evidencia whatsapp-lettered-checkout-validation-1810.json. Publicación/despliegue agrupado solo staging en curso con c06cc4f5. Cero llamadas pagadas, Meta/mapas/órdenes externas. Main intacto. Probes preparados /tmp/ppp-lettered-checkout-compiled-1810.cjs y /tmp/ppp-elliptical-extra-compiled-1810.cjs. Siguiente: separar unidades alfabéticas de consultas de mapa y validar incertidumbre sin perder detalles ni bloquear cambios.
+
 ## VIGENTE — combo, extra abreviado y dirección validados; despliegue agrupado pendiente
 
 Base 7833239c. Global verde: 88 suites / 9.277 pruebas en 598.411 s; 379 hashes intactos. 22 nuevas: 12 conversaciones PPP/sandwich/bowl, agente simulado on/off, con/sin dirección y DTO; diez controles de hash de calle frente a número de orden. Pasan 105 contratos afectados, TypeScript y 92 Node. Evidencia whatsapp-elliptical-extra-validation-1810.json. No hay suites activas.

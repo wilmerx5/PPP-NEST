@@ -16954,6 +16954,14 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // A labelled destination can name the building before its street. Extract
+    // the whole destination before the generic embedded-street matcher cuts it.
+    const namedDestination = raw.match(/\bpara\s+(?:la\s+|el\s+)?((?:conjunto|edificio|residencial|urbanizaci[oó]n|condominio|torres)\b[\s\S]+)$/i);
+    if (namedDestination?.[1] && this.isPlausibleDeliveryAddress(namedDestination[1]) &&
+        !this.looksLikeFoodNotAddress(namedDestination[1]) && !FOOD_ORDER_SIGNAL_RE.test(namedDestination[1])) {
+      return this.normalizeDeliveryAddress(namedDestination[1]);
+    }
+
     // Pedido y domicilio en el mismo párrafo: quedarse con el tramo de dirección,
     // no con el mensaje completo aunque mencione un conjunto y un apto.
     const embedded = splitTrailingEmbeddedAddress(raw);

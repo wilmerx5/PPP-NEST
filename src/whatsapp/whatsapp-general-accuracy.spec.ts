@@ -19355,3 +19355,33 @@ describe('Combo and elliptical extra with delivery replay',()=>{
   if(address)expect(dto.address).toMatch(/78 c 33.*Tienda de prueba/i);
  });
 });
+
+describe('Lettered internal units survive checkout interruptions across menus',()=>{
+ const fixtures=[
+  {name:'Ravioles De Ricota',place:'Conjunto Los Olivos',details:'torre B apartamento 304B'},
+  {name:'Bowl De Garbanzos',place:'Edificio Las Acacias',details:'interior 2A oficina 405'},
+  {name:'Sandwich De Pavo',place:'Residencial Los Cedros',details:'bloque C casa 12A'},
+ ];
+ for(const f of fixtures)for(const enabled of [false,true])for(const placeFirst of [false,true])it(`${f.name} agent=${enabled} placeFirst=${placeFirst}`,async()=>{
+  const product={id:66801,code:66801,name:f.name,price:21000,availableNow:true,attributes:[]};
+  const h=harness([product],enabled);
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{lastDeliveryAddress:'Calle 90 11 22',phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6680,dailyOrderNumber:109});
+  h.service.ordersService.findTodayOrdersByPhone=jest.fn().mockResolvedValue([]);
+  h.service.ensureDeliveryFeeQuoted=jest.fn(async(session:WhatsappSessionData)=>({session:{...session,addressConfirmed:!!session.address,deliveryFeeCalculated:session.address?2000:0}}));
+  const street='Calle 10 #81A-20';
+  const destination=placeFirst?`${f.place}, ${street}, ${f.details}`:`${street}, ${f.place}, ${f.details}`;
+  await h.sendQueued(`Me regalas un ${f.name} para ${destination}`);
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:product.id,qty:1})]);
+  expect(h.conv.sessionData.address).toContain(f.place);expect(h.conv.sessionData.address).toContain(f.details);
+  expect(h.conv.sessionData.address).toContain('81A-20');expect(h.conv.state).toBe('awaiting_payment');
+  expect(h.replies.at(-1)).not.toMatch(/algo m[aá]s|misma direcci[oó]n/i);
+  const cart=structuredClone(h.conv.sessionData.cart),address=h.conv.sessionData.address;
+  await h.sendQueued('cuánto suma mi pedido');expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.address).toBe(address);expect(h.conv.state).toBe('awaiting_payment');
+  const phoneReply=await h.sendQueued('300 000 0004');expect(phoneReply).toMatch(/tel[eé]fono.*actualizad/i);expect(h.conv.sessionData.address).toBe(address);expect(h.conv.sessionData.cart).toEqual(cart);
+  await h.sendQueued('a nombre Cristina, contraentrega');expect(h.conv.customerName).toBe('Cristina');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.replies.at(-1)).toContain(f.details);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toBe(address+' / Contraentrega');expect(dto.customerName).toBe('Cristina');expect(dto.phone).toMatch(/3000000004/);expect(dto.items).toHaveLength(1);expect(dto.items[0].productId).toBe(product.id);
+ });
+});
