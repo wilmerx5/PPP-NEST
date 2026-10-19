@@ -15636,7 +15636,7 @@ export class WhatsappOrchestratorService {
     const reminder = this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session);
     const clarify = async () => { await this.reply(conv,waId,'¿A cuál producto y cuántas unidades les cambio la opción? Aclara también la opción que prefieres; el pedido sigue igual.\n\n'+reminder); return true; };
     // Never guess another action from an edit containing an unresolved compound request.
-    if (!quantity || /\b(?:y|pero|agrega|quita|sin|no|si)\b/.test(destination) || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return clarify();
+    if (!quantity || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingSubsetKitchenNote || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return clarify();
     const menu = await this.catalogService.getMenuProducts();
     const singular = (value:string) => this.normalizeForMatch(value).replace(/s$/,'');
     const targets = session.cart.flatMap((line,cartIndex) => {
@@ -15645,21 +15645,31 @@ export class WhatsappOrchestratorService {
         const namedScope = correctionMatchesLine(line,scope) || singular(scope)===singular(attr.attributeName) ||
           (/^(?:gaseosas?|refrescos?|bebidas?)$/.test(scope) && /^(?:bebida|gaseosa|refresco)$/.test(singular(attr.attributeName)));
         if (!namedScope || (attributeFirst && singular(attributeFirst[1])!==singular(attr.attributeName))) return [];
-        const value = this.catalogService.matchAttributeOptionValue(destination,attr.options);
-        return value ? [{cartIndex,line,attributeName:attr.attributeName,attributeValue:value}] : [];
+        // A configured value such as "Sin lactosa" is an option, not a free note.
+        const exact = attr.options.find(option=>this.normalizeForMatch(option)===destination);
+        const prefix = exact || [...attr.options].sort((a,b)=>b.length-a.length)
+          .find(option=>destination.startsWith(this.normalizeForMatch(option)+' '));
+        const tail = prefix ? destination.slice(this.normalizeForMatch(prefix).length).trim().replace(/^y\s+/,'') : '';
+        const kitchen = exact ? null : splitKitchenPreference(prefix ? 'pedido '+tail : destination);
+        if (prefix && !exact && (!kitchen || kitchen.productText !== 'pedido')) return [];
+        const optionText = prefix || (kitchen ? kitchen.productText.replace(/\s+y$/,'').trim() : destination);
+        if (!prefix && /\b(?:y|pero|agrega|quita|sin|no|si)\b/.test(optionText)) return [];
+        const value = prefix || this.catalogService.matchAttributeOptionValue(optionText,attr.options);
+        return value ? [{cartIndex,line,attributeName:attr.attributeName,attributeValue:value,note:kitchen?.note}] : [];
       });
     });
     if (targets.length!==1) return clarify();
     const target=targets[0];
     // Repeating a request after a split must not move the remaining units too.
     if (session.cart.filter(line=>line.productId===target.line.productId).length!==1 || quantity>target.line.quantity) return clarify();
-    const attributes = (target.line.attributes || []).filter(a=>this.normalizeForMatch(a.attributeName)!==this.normalizeForMatch(target.attributeName));
-    attributes.push({attributeName:target.attributeName,attributeValue:target.attributeValue});
-    const cart=session.cart.flatMap((line,index)=>index!==target.cartIndex?[line]:[
-      ...(quantity<line.quantity?[{...line,quantity:line.quantity-quantity}]:[]),
-      {...line,quantity,attributes},
-    ]);
-    session={...session,cart};
+    // Prepare the option and note together against the same original row.
+    const plan = prepareUnitOptionActions(session.cart,{updateUnitOptions:[{
+      productId:target.line.productId,cartLineIndex:target.cartIndex,affectedQuantity:quantity,
+      attributes:[{attributeName:target.attributeName,attributeValue:target.attributeValue}],
+      ...(target.note ? {note:target.note} : {}),
+    }]},menu,this.catalogService);
+    if (!plan.ok) return clarify();
+    session={...session,cart:plan.cart};
     await this.conversationService.saveSession(conv,session);
     await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+reminder);
     return true;
