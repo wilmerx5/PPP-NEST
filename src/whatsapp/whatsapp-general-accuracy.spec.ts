@@ -19886,3 +19886,35 @@ describe('Delivery unit before street stays pending until a complete destination
   expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80021)).toBe(true);expect(dto.deliveryFee).toBe(2000);
  });
 });
+
+describe('Coverage questions preserve destination and checkout until an explicit change',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const final of [false,true])it(`${name} final=${final} agent=${enabled}`,async()=>{
+  const h=harness([{id:80031,code:80031,name,price:21000,availableNow:true,attributes:[]}],enabled);
+  Object.assign(h.cfg,{deliveryFeeMode:'route_tiers',restaurantLat:4.62,restaurantLng:-74.15});
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+  h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockImplementation(async({customerAddress}:any)=>customerAddress.includes('90-99')
+   ?{ok:false,reason:'out_of_coverage',message:'Esa dirección está fuera de cobertura.',distanceKm:10}
+   :{ok:true,fee:customerAddress.includes('45-60')?6000:2000,distanceKm:customerAddress.includes('45-60')?4:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}})};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:8003,dailyOrderNumber:90});
+  await h.sendQueued(`Quiero dos ${name}`);await h.sendQueued('Calle 10 #81A-20 torre B apto 304B');
+  if(final)await h.sendQueued('contraentrega');
+  const state=h.conv.state;const cart=structuredClone(h.conv.sessionData.cart);const address=h.conv.sessionData.address;
+  for(const [question,expected] of [['¿Llegan a Carrera 22 #45-60?',/6[.,]000/],['¿Tienen domicilio a Calle 90 #90-99?',/fuera de cobertura/i]] as const){
+   const reply=await h.sendQueued(question);expect(reply).toMatch(expected);
+   expect(reply).toMatch(/81A-20/);expect(reply).toMatch(final?/confirmar/i:/c[oó]mo pagas|c[oó]mo.*pagar|m[eé]todo de pago/i);
+   expect(h.conv.sessionData.address).toBe(address);expect(h.conv.sessionData.deliveryFeeCalculated).toBe(2000);
+   expect(h.conv.sessionData.deliveryOutOfCoverage).not.toBe(true);expect(h.conv.state).toBe(state);
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  }
+  const total=await h.sendQueued('Cuánto es el total');expect(total).toMatch(/44[.,]000/);
+  const changed=await h.sendQueued('Cambiar dirección a Carrera 22 #45-60');expect(changed).toMatch(/45-60/);
+  expect(h.conv.sessionData.address).toMatch(/45-60/);expect(h.conv.sessionData.address).not.toMatch(/81A-20|304B|torre B/i);
+  expect(h.conv.sessionData.deliveryFeeCalculated).toBe(6000);expect(h.conv.sessionData.cart).toEqual(cart);
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(!final)await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/45-60/);expect(dto.deliveryFee).toBe(6000);
+  expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80031)).toBe(true);
+ });
+});

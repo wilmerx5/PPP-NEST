@@ -1,3 +1,13 @@
+## VIGENTE — cobertura consultiva durante cierre validada (19/10)
+
+Base 911eb576, staging. Ocho conversaciones nuevas: ravioles/bowl, agente simulado on/off, pago/confirmación. Destino A con torre/apto y tarifa 2.000; consulta B con tarifa 6.000 y consulta C fuera de cobertura; consulta de total conserva 44.000; cambio explícito a B descarta interiores anteriores y cierra DTO con tarifa 6.000. No orden antes de confirmar, carrito y estado se conservan durante consultas.
+
+Baseline ocho fallos de respuesta: cotizar B no mostraba que A seguía siendo el destino. Corrección exclusivamente de respuesta: indicar dirección conservada y retomar el paso pendiente también al consultar fuera de cobertura. No cambian detección, estado, persistencia ni cálculo de tarifa. 125 focalizados y TypeScript aprobados. No repetir global por este ajuste de plantilla; última global de lógica sigue 88 suites / 9.572 tests. Estas ocho nuevas se acreditan focalmente, no se suman al resultado de aquella global. Evidencia whatsapp-coverage-checkout-validation-1910.json.
+
+Decimocuarta tanda cerrada desde auditoría PDF, 210 tests nuevos acumulados; no todos los chats cubiertos. Modelos/mapas/órdenes simulados, cero API pagada ni WhatsApp. Main intacto. Publicación en staging; despliegue diferido para agrupar próxima tanda. Último runtime desplegado acreditado b8606294 / imagen 13329f78…, servidor no revisado aquí. Schedule eliminado. No hay suites activas.
+
+Siguiente: «a una nueva» sin calle desde pregunta de reutilización; conservar pendientes al rechazar la dirección anterior; interiores separados entre sí. La prueba actual usa cambio explícito completo, no acredita esas otras formulaciones. Evaluación reservada real pendiente.
+
 ## VIGENTE — interiores antes del destino validados (19/10)
 
 Base 77b8cda0, staging. 24 conversaciones nuevas: dos menús, agente simulado on/off, building_cart/awaiting_address, destino posterior calle/pin/dirección completa con otra unidad. Baseline inicial ocho fallos: torre/apto solos avanzaban a pago. Ampliación: 16 fallos y ocho verdes, pérdida de complemento con pin y arrastre de unidad al recibir otra explícita. pendingDeliveryUnit conserva el fragmento sin geocodificarlo; calle fuerte lo consume una vez, unidad explícita nueva prevalece, pin conserva complemento y coordenadas. Recogida limpia pendiente; reset del servicio usa sesión nueva (sin nuevo replay de reset en esta tanda).

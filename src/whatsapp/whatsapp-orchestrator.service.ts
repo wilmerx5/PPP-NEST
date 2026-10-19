@@ -24196,6 +24196,10 @@ export class WhatsappOrchestratorService {
       deliveryLng: null,
     };
     const feeResult = await this.recalculateDeliveryFee(probe, cfg);
+    const preservedDestination = session.cart.length && session.addressConfirmed && session.address?.trim()
+      ? `Tu pedido conserva esta dirección: ${customerLocationLabel(session.address)}.\n`
+      : '';
+    const reminder = this.formatInterruptedStepReminder(conv, session);
 
     if (feeResult.blocked || feeResult.session.deliveryOutOfCoverage) {
       await this.reply(
@@ -24204,7 +24208,8 @@ export class WhatsappOrchestratorService {
         `📍 _${addr}_\n\n` +
           (feeResult.blocked ||
             'Esa dirección queda *fuera de cobertura* de domicilio por ahora.') +
-          `\n\nSi tienes otra dirección más cerca del local, pégamela y la reviso.`,
+          `\n\n${preservedDestination}${session.cart.length && reminder
+            ? reminder : 'Si tienes otra dirección más cerca del local, pégamela y la reviso.'}`,
       );
       return true;
     }
@@ -24219,9 +24224,8 @@ export class WhatsappOrchestratorService {
       feeResult.notice ||
       `🚚 Domicilio: *$${fee.toLocaleString('es-CO')}*${kmPart}`;
 
-    const reminder = this.formatInterruptedStepReminder(conv,session);
     const continuation = session.cart.length
-      ? `Tu pedido sigue con ${session.cart.map(line => `${line.name} ×${Math.max(1,line.quantity || 1)}`).join(', ')}.\n` +
+      ? preservedDestination + `Tu pedido sigue con ${session.cart.map(line => `${line.name} ×${Math.max(1,line.quantity || 1)}`).join(', ')}.\n` +
         (reminder || '¿Quieres agregar algo más o seguimos con ese pedido?')
       : '¿Qué se te antoja? Escribe el *plato* o el *código*.';
     await this.reply(
