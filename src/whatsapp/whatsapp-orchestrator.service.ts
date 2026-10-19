@@ -15632,6 +15632,7 @@ export class WhatsappOrchestratorService {
     if (!quantityFirst && !attributeFirst) return false;
     const quantity = quantityFirst ? (amounts[quantityFirst[1]] ?? Number(quantityFirst[1])) : (amounts[attributeFirst![2]] ?? Number(attributeFirst![2]));
     const scope = quantityFirst ? quantityFirst[2] : attributeFirst![3];
+    const explicitLine = scope.match(/^(?:unidad(?:es)? de )?(?:la )?linea (\d{1,2})$/);
     const destination = quantityFirst ? quantityFirst[3] : attributeFirst![4];
     const reminder = this.formatInterruptedStepReminder(conv,session) || this.formatContinueShoppingPrompt(session);
     const clarify = async () => { await this.reply(conv,waId,'¿A cuál producto y cuántas unidades les cambio la opción? Aclara también la opción que prefieres; el pedido sigue igual.\n\n'+reminder); return true; };
@@ -15642,7 +15643,8 @@ export class WhatsappOrchestratorService {
     const targets = session.cart.flatMap((line,cartIndex) => {
       const product = menu.find(p=>p.id===line.productId);
       return (product?.attributes || []).flatMap(attr => {
-        const namedScope = correctionMatchesLine(line,scope) || singular(scope)===singular(attr.attributeName) ||
+        const namedScope = explicitLine ? cartIndex === Number(explicitLine[1])-1 :
+          correctionMatchesLine(line,scope) || singular(scope)===singular(attr.attributeName) ||
           (/^(?:gaseosas?|refrescos?|bebidas?)$/.test(scope) && /^(?:bebida|gaseosa|refresco)$/.test(singular(attr.attributeName)));
         if (!namedScope || (attributeFirst && singular(attributeFirst[1])!==singular(attr.attributeName))) return [];
         // A configured value such as "Sin lactosa" is an option, not a free note.
@@ -15660,8 +15662,9 @@ export class WhatsappOrchestratorService {
     });
     if (targets.length!==1) return clarify();
     const target=targets[0];
-    // Repeating a request after a split must not move the remaining units too.
-    if (session.cart.filter(line=>line.productId===target.line.productId).length!==1 || quantity>target.line.quantity) return clarify();
+    // A qualified option/note or explicit row may identify one existing variant.
+    // Unqualified repeated edits still match several rows and are rejected above.
+    if (quantity>target.line.quantity) return clarify();
     // Prepare the option and note together against the same original row.
     const plan = prepareUnitOptionActions(session.cart,{updateUnitOptions:[{
       productId:target.line.productId,cartLineIndex:target.cartIndex,affectedQuantity:quantity,

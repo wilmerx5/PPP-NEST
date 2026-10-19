@@ -1,0 +1,48 @@
+{
+  "base": "f2ace2a4",
+  "branch": "staging",
+  "batchSincePdfAudit": 19,
+  "newRouterTests": 54,
+  "cumulativeNewTestsSincePdfAudit": 406,
+  "baseline": {
+    "failed": 24,
+    "passed": 18
+  },
+  "focusedPassed": 228,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodePassed": 92,
+  "global": {
+    "numPassedTestSuites": 103,
+    "numFailedTestSuites": 1,
+    "numPassedTests": 9775,
+    "numFailedTests": 1
+  },
+  "globalSeconds": 362.262,
+  "retry": {
+    "passed": 1,
+    "notSelected": 79,
+    "seconds": 12.573,
+    "scope": "Only the one failed historical burst test",
+    "sourceAndTimeoutChanged": false
+  },
+  "unchangedHashes": 398,
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "deployment": "deferred; last verified runtime 498124619b30f2294eba10a05f79407bd6914845",
+  "limitations": [
+    "Seeded checkout cart, not purchase parsing from scratch",
+    "Models and external services mocked",
+    "Bare numeric clarification remains next",
+    "Global not fully green in one pass; historical timeout passed isolated",
+    "Not all PDF chats covered"
+  ],
+  "logs": [
+    "/tmp/ppp-existing-variants-baseline.log",
+    "/tmp/ppp-existing-variants-focused.log",
+    "/tmp/ppp-existing-variants-global.json",
+    "/tmp/ppp-existing-variants-retry.json",
+    "/tmp/ppp-existing-variants-source.json"
+  ]
+}
