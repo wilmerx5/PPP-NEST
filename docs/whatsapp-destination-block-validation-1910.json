@@ -24,7 +24,18 @@
   "paidCalls": 0,
   "externalOrders": 0,
   "mainUnchanged": true,
-  "deployment": "pending",
+  "deployment": {
+    "runtime": "4de330e41f4500492523af4661c1127c7d618ec6",
+    "partitionCommit": "7506920b",
+    "image": "sha256:11c3c9362c9307742e51e06e65802da7b016912ee184bdbe38dc4ce7083044d9",
+    "health": "ok",
+    "database": "connected",
+    "circuitBreaker": "CLOSED",
+    "verifiedAt": "2026-10-19T19:13:26.274Z",
+    "restarts": 0,
+    "initialHealth": "502 during startup, retry passed",
+    "productionUnchanged": true
+  },
   "limits": [
     "mocked maps and models",
     "serial message delivery",
