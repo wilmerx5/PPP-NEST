@@ -1,0 +1,30 @@
+{
+  "source_filename": "chats 18_10.pdf",
+  "source_sha256": "490ffcbf1bb05acb80ce7775cf0485c59b5ecfaa1b72b29264cd80c5c3c5feff",
+  "pages": 60,
+  "base_commit": "9c9a5487551e1258c18f429a23ba37538c9b449d",
+  "new_tests": 16,
+  "baseline": {
+    "passed": 4,
+    "failed": 12
+  },
+  "focused_passed": 38,
+  "typescript": "passed",
+  "node_contracts_passed": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9386,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_changed": []
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Entire PDF reviewed, not every pattern replayed yet",
+    "Two synthetic catalogs, payment and final confirmation states",
+    "ETA response uses configured estimate, not real delivery status",
+    "Models, Meta and orders mocked",
+    "No change to Main or production"
+  ]
+}

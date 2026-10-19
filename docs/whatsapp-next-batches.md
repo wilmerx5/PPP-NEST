@@ -1,3 +1,11 @@
+## VIGENTE — PDF 18/10 completo auditado; ETA coloquial validada
+
+Fuente: chats 18_10.pdf, 60 páginas. Auditoría completa y próximas seis tandas en `docs/whatsapp-pdf-1810-audit.md`. Mezcla bot/atención humana/duplicados; no afirmar que todo son fallos del bot ni que todos están resueltos. Fixtures sin datos personales. Primera tanda: 16 recorridos con dos menús sintéticos, pago y confirmación; 12 fallos iniciales por «se demoran»/«demorará mucho». Corrección general de plural/futuro de demorar. 38 focalizados, TypeScript y 92 Node verdes. Global aprobada: 88 suites / 9.386 pruebas, 379 hashes intactos. No hay suites activas. Publicar solo staging; despliegue de ETA diferido para agrupar con la siguiente tanda. Evidencia `whatsapp-pdf-1810-eta-validation.json`.
+
+Siguiente tanda: distinguir cuenta/Nequi del comercio y titular del pago frente a contacto/nombre del cliente. Luego integridad de combo+adicional, dirección/cierre, fracciones/opciones/notas y soporte posterior. No gastar API ni enviar WhatsApp en heartbeat. No cambiar Main.
+
+Fotos de direcciones 9c9a5487 ya desplegadas en staging: imagen 4fcdbeeecd23b53ca4f754f6d27252dffc9e1a57ff1655cfd5810e3adb9e164a, running; health OK/DB connected/circuit CLOSED 2026-10-19T02:11:44Z. Probe compilado aprobado con HTTP/routing/Meta simulados; primeros intentos del probe fallaron por mocks incompletos, sin cambios al runtime. Producción sigue c5e97ab1… running. No reconstruir por documentación. Entradas inferiores históricas.
+
 ## VIGENTE — fotos de direcciones validadas; despliegue agrupado pendiente
 
 Base 8dec6309. Visión distingue address de order/payment_proof; prompts principal y reintento conservan calle, conjunto e interiores y no inventan coordenadas. Router aplica dirección reconocida por el flujo de cambio de destino sin matching de productos. Una dirección incierta o múltiple pide precisión y conserva destino/carrito. Pie de dirección evita falso comprobante; comprobante explícito conserva su flujo. Foto caducada pide dirección/ubicación. Pedido cerrado no se modifica. Carrito vacío vuelve a pedir productos, no confirmar vacío.

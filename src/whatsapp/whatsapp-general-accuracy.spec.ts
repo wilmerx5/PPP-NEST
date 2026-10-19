@@ -19481,3 +19481,21 @@ it('Expired address photo asks for destination rather than a dish or payment pro
  const h=harness(products,false);h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{paymentMethod:'transfer',address:'Calle 1 #2-3'});h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));const before=structuredClone(h.conv.sessionData);
  const reply=await h.sendQueued('Foto de mi dirección',{messageType:'image',mediaId:'expired-address'});expect(reply).toMatch(/calle y n[uú]mero|ubicaci[oó]n/i);expect(reply).not.toMatch(/plato|comprobante/i);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.cart).toEqual(before.cart);
 });
+
+describe('PDF 18 Oct colloquial delivery timing preserves checkout',()=>{
+ for(const name of ['Bao De Hongos','Ensalada De Quinoa'])for(const state of ['awaiting_payment','awaiting_final_confirm'])for(const text of ['se demoran','cuánto se demoran?','Disculpa, demorará mucho?','¿Cuánto tarda?']){
+  it(name+' '+state+' '+text,async()=>{
+   const p={id:79901,code:79901,name,price:18000,availableNow:true,hasAttributes:false,attributes:[]};
+   const h=harness([p],false);h.conv.state=state;h.service.ordersService.create=jest.fn().mockResolvedValue({id:7990,dailyOrderNumber:79});
+   Object.assign(h.conv.sessionData,{cart:[{productId:p.id,code:p.code,name,unitPrice:p.price,quantity:2,attributes:[],note:'bien empacado'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 12 34 56',addressConfirmed:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,deliveryFeeCalculated:2000,...(state==='awaiting_final_confirm'?{paymentMethod:'contraentrega'}:{})});
+   const before=structuredClone(h.conv.sessionData);const customer=h.conv.customerName;
+   const reply=await h.sendQueued(text);
+   expect(reply).toMatch(/suele demorar/i);expect(reply).not.toMatch(/no manejamos|no tenemos|cuál producto/i);
+   expect(h.conv.sessionData).toEqual(before);expect(h.conv.state).toBe(state);expect(h.conv.customerName).toBe(customer);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   if(state==='awaiting_payment')await h.sendQueued('1');
+   await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);expect(h.conv.state).toBe('completed');
+   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);
+   expect(dto.items).toEqual([expect.objectContaining({productId:p.id,note:'bien empacado'}),expect.objectContaining({productId:p.id,note:'bien empacado'})]);
+  });
+ }
+});
