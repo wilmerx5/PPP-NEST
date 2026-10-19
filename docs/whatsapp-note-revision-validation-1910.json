@@ -32,8 +32,17 @@
     "cause": "New Map accessed without optional chaining in specs that build the service via prototype; fixed, then full global repeated"
   },
   "global": {
-    "burst": { "passed": 80, "failed": 0, "seconds": 104.998 },
-    "rest": { "passed": 9864, "failed": 0, "seconds": 307.640, "maxWorkers": 4 },
+    "burst": {
+      "passed": 80,
+      "failed": 0,
+      "seconds": 104.998
+    },
+    "rest": {
+      "passed": 9864,
+      "failed": 0,
+      "seconds": 307.64,
+      "maxWorkers": 4
+    },
     "suites": 107,
     "inventoryExact": true,
     "unchangedHashes": 402,
@@ -50,5 +59,12 @@
     "Serial turns, not concurrent bursts",
     "Only phrasings in the spec are credited; other note-reversal wordings fall back to previous routes",
     "Other tryConfirmOrder callers are covered by the general guard only within the same inbound turn"
-  ]
+  ],
+  "deployment": {
+    "runtime": "923c880b0fc93fb6f702ed6f2d01d3eb3749de48",
+    "image": "sha256:f22a5a76b5406b1420535578b3eed2b42c3d13e1dfc9e8cb4c205e086277f69b",
+    "health": "ok/db connected/circuit CLOSED 2026-10-19T21:05:02Z",
+    "rollback": "ppp-nest-staging:rollback-before-923c880b",
+    "production": "unchanged c5e97ab1"
+  }
 }

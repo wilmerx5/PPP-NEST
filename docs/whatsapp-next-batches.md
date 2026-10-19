@@ -12,6 +12,8 @@ Validación: 208 focalizados, TypeScript, build TypeScript y 92 Node aprobados. 
 
 Acumulado desde auditoría PDF: 574 nuevos y 12 fortalecidos; no todos los chats del PDF acreditados. Cero llamadas pagadas, WhatsApp u órdenes externas. Solo staging; Main intacto.
 
+Desplegado solo staging: runtime 923c880b0fc93fb6f702ed6f2d01d3eb3749de48 (agrupa f0b5221b y 71c7d3e0), imagen f22a5a76b5406b1420535578b3eed2b42c3d13e1dfc9e8cb4c205e086277f69b, running sin reinicios; health OK / DB connected / circuit CLOSED 2026-10-19T21:05:02Z. Rollback ppp-nest-staging:rollback-before-923c880b (imagen cf59636b…). Producción sigue c5e97ab1…; bin/ privado preservado. No reconstruir por documentación.
+
 Siguiente: revisar el resto de llamadas a tryConfirmOrder fuera de un turno entrante (la protección solo aplica dentro del turno), otras formulaciones de inversión de notas («ahora sí con X», «échale X a todas») y concurrencia real de ráfagas durante una duda pendiente.
 
 ## VIGENTE — aclaración corta de opciones por unidades (19/10)
