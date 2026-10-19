@@ -19571,3 +19571,19 @@ describe('Reduced accompaniment grammar keeps explicit extras distinct',()=>{
   await h.sendQueued('quiero un bowl vegetal y una porcion de ensalada adicional');expect(h.cartRows().map(r=>[r.id,r.qty])).toEqual(expect.arrayContaining([[79931,1],[79932,1]]));expect(h.cartRows()).toHaveLength(2);
  });
 });
+
+describe('PDF combo with beverage and separate half product closes intact',()=>{
+ const families=[
+  {name:'PPP',menu:products,combo:94,extra:5,text:'Un combo de arroz paisa con colombiana y medio pollo broaster'},
+  {name:'pizza',menu:[{id:79941,code:79941,name:'Combo De Pizza',price:30000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Colombiana','Manzana']}]},{id:79942,code:79942,name:'Media Pizza Margarita',price:15000,availableNow:true,attributes:[]}],combo:79941,extra:79942,text:'Un combo de pizza con colombiana y media pizza margarita'},
+  {name:'vegetal',menu:[{id:79951,code:79951,name:'Combo Vegetal',price:28000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Colombiana','Manzana']}]},{id:79952,code:79952,name:'Media Porcion De Falafel',price:10000,availableNow:true,attributes:[]}],combo:79951,extra:79952,text:'Un combo vegetal con colombiana y media porcion de falafel'},
+ ];
+ for(const f of families)for(const enabled of [false,true])it(`${f.name} agent=${enabled}`,async()=>{
+  const h=harness(f.menu,enabled);Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn().mockResolvedValue({id:7994,dailyOrderNumber:82});
+  const reply=await h.sendQueued(f.text);expect(h.cartRows().map(r=>[r.id,r.qty])).toEqual(expect.arrayContaining([[f.combo,1],[f.extra,1]]));expect(h.cartRows()).toHaveLength(2);
+  expect(reply).not.toMatch(/no manejamos|no tenemos|aclara|cu[aá]l prefieres/i);expect(h.conv.sessionData.cart.find(r=>r.productId===f.combo)?.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Colombiana'});
+  const before=structuredClone(h.conv.sessionData.cart);await h.sendQueued('cuánto es el total');expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('no más, recojo en el local');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.items.map((r:any)=>r.productId).sort()).toEqual([f.combo,f.extra].sort());expect(dto.orderType).toBe('pickup');
+ });
+});

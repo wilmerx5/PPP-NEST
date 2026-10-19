@@ -9062,12 +9062,15 @@ export class WhatsappCatalogService {
   private splitMultiProductSegmentsRaw(text: string): string[] {
     if (this.isOffTopicChitchat(text)) return [];
     const namedOther = 'otr[oa]\\s+(?!(?:de|con|sin|igual|mas|más|para|por|asi|así)\\b)[a-záéíóúñ]{3,}';
-    const separately = '(?:y\\s+)?(?:a\\s*parte|adem[aá]s|tambi[eé]n)\\s+(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)';
-    const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+)|,?\\s+${separately}|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
+    const separately = '(?:y\\s+)?(?:a\\s*parte|adem[aá]s|tambi[eé]n)\\s+(?=(?:un|una|dos|tres|cuatro|cinco|medio|media|cuarto|cuarta|\\d+)\\s+)';
+    const explicitClauses = (text || '').split(new RegExp(`;\\s*|\\r?\\n+|,\\s*(?=(?:un|una|dos|tres|cuatro|cinco|medio|media|cuarto|cuarta|\\d+)\\s+)|,?\\s+${separately}|\\s+y\\s+(?=(?:(?:un|una|dos|tres|cuatro|cinco|medio|media|cuarto|cuarta|\\d+)\\s+|${namedOther}))`, 'i')).map(clause => clause.trim()).filter(Boolean);
     const greeting = '(?:(?:buenas?\\s+(?:tardes|noches|dias)|hola|veci|vecino|vecina)[, ]*)*';
     const askVerb = '(?:me\\s+(?:das|da|regalas|regala|envias|envías|mandas|manda|traes)|d[aá]me|regal[aá]me|env[ií]ame|m[aá]ndame)';
-    const quantityLead = new RegExp(`^${greeting}(?:(?:por\\s+favor|porfa|quiero|pedir|agrega|${askVerb})\\s+)*(?:(?:un|una|dos|tres|cuatro|cinco|\\d+)\\s+|${namedOther})`, 'i');
-    if (explicitClauses.length >= 2 && explicitClauses.every(clause => quantityLead.test(clause) && !/(?:,\s*|\by\s+)(?:medio|media)\b/i.test(clause) && this.countQuantityMentions(splitTrailingEmbeddedAddress(clause)?.productText || clause) <= 1)) {
+    const quantityLead = new RegExp(`^${greeting}(?:(?:por\\s+favor|porfa|quiero|pedir|agrega|${askVerb})\\s+)*(?:(?:un|una|dos|tres|cuatro|cinco|medio|media|cuarto|cuarta|\\d+)\\s+|${namedOther})`, 'i');
+    // A fractional clause must not hide another uncounted dish joined by 'y'.
+    const fractionClausesComplete = !explicitClauses.some(clause => /^(?:medio|media|cuarto|cuarta)\b/i.test(clause)) ||
+      explicitClauses.every(clause => !/\by\b/i.test(clause));
+    if (fractionClausesComplete && explicitClauses.length >= 2 && explicitClauses.every(clause => quantityLead.test(clause) && !/(?:,\s*|\by\s+)(?:medio|media)\b/i.test(clause) && this.countQuantityMentions(splitTrailingEmbeddedAddress(clause)?.productText || clause) <= 1)) {
       return explicitClauses.map(clause => clause.replace(new RegExp(`^${greeting}(?:${askVerb}\\s+)?`, 'i'), '').trim());
     }
     const apart = new RegExp(`^(.{4,}?),?\\s+${separately}(?!(?:un|una)\\s+(?:poc|poquit))(.+)$`, 'i').exec((text || '').trim());

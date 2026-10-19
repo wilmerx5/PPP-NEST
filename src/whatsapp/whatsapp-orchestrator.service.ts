@@ -2635,7 +2635,7 @@ export class WhatsappOrchestratorService {
 
     // Catalog identity can omit a presentation only when one matching compound exists.
     const splitsSameSkuPair = /\b(?:uno|una)\s+con\s+.+\by\s+(?:el|la)\s+otr[oa]\s+con\s+/i.test(text);
-    const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|\d+)\b/i.test(text)
+    const compoundVocabulary = !splitsSameSkuPair && /\bcon\b/i.test(text) && !/\b(?:y|aparte|a parte|adicional)\s+(?:un|una|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text)
       ? this.catalogService.uniqueProductBySpokenTokens(text,products.filter(product => /\bcombo\b/i.test(text) || !/\bcombo\b/i.test(product.name))) : null;
     if (businessOpenForBot && compoundVocabulary && compoundVocabulary.hasAttributes && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isPriceInquiryIntent(text) && !this.catalogService.isAvailabilityInquiry(text) &&
@@ -2650,7 +2650,7 @@ export class WhatsappOrchestratorService {
     if (businessOpenForBot && !splitsSameSkuPair && namedMeal && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       (this.catalogService.orderNamesThisProduct(namedMeal.name, text) || this.catalogService.productWhoseHeadWasSpoken(text,products)?.id === namedMeal.id ||
         hostedMeal?.product.id === namedMeal.id && this.catalogService.findAllProductsEmbeddedInMessage(text,products).filter(product => !this.catalogService.isLikelyDrinkProduct(product)).length === 1) &&
-      !/\by\s+(?:un|una|otro|otra|dos|tres|\d+)\b/i.test(text) &&
+      !/\by\s+(?:un|una|otro|otra|dos|tres|medio|media|cuarto|cuarta|\d+)\b/i.test(text) &&
       !/\b(?:aparte|a parte|adicional|extra|por separado)\b/i.test(text) &&
       !this.catalogService.isAvailabilityInquiry(text) && !this.catalogService.isPriceInquiryIntent(text) &&
       !this.catalogService.isProductDescriptionInquiry(text)) {

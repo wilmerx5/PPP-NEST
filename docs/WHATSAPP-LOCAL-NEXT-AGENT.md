@@ -1,3 +1,13 @@
+## VIGENTE — combo y media presentación adicional validados (19/10)
+
+Base 127384f3, staging. PDF: «Un combo de arroz paisa con colombiana y medio pollo broaster» omitía el medio pollo. Seis conversaciones nuevas con PPP, pizza y menú vegetal, agente simulado on/off, consulta de total y cierre hasta DTO exacto. Dos fallos baseline PPP; cuatro verdes iniciales con adicionales explícitos. Variantes finales prueban «y media…» sin exigir «una» ni «adicional».
+
+Las rutas tempranas de plato único excluyen fracciones adicionales. El splitter conserva cláusulas completas antes de limpiar identidad combo; si una cláusula fraccionaria aún contiene conjunciones, mantiene el análisis general. Sin nombres/IDs de PPP en la regla. Se conserva empaque separado y compras distribuidas por variantes.
+
+Primera global: 9.456 verdes / dos regresiones por aceptar enumeraciones incompletas. Reparadas antes de publicar. Final: 22 focalizados, TypeScript, 92 Node y global 88 suites / 9.458 pruebas aprobadas, 379 hashes intactos. No hay suites activas. Evidencia whatsapp-combo-half-validation-1910.json. Modelos/Meta/órdenes simulados; cero llamadas pagadas ni órdenes externas. No acreditar modelo real por estos tests.
+
+Despliegue diferido para agrupar con próxima tanda; runtime anterior acreditado 695aae28, no se comprobó servidor en este cierre. Main intacto. Siguiente parte de tanda C: retirar/cambiar adicional, corrección de faltante sin duplicación y catálogos sushi/bowl; luego tanda D de destinos/cierre. No declarar todos los casos del PDF solucionados.
+
 ## VIGENTE — pedido con poquito/poquita durante dirección desplegado
 
 Base 7d3bbdc5. Caso nuevo 21:41 Bogotá del 18/10: «quiero un churrasco 3/4, poquito arroz y poquita ensalada» era rechazado como dirección; tras reiniciar añadía ensalada como producto. Reproducción: 12 fallos en tres menús (churrasco, bowl, pasta), carrito vacío y awaiting_address, agente simulado on/off.

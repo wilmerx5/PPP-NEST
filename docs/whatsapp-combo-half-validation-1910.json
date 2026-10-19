@@ -1,0 +1,32 @@
+{
+  "base": "127384f3",
+  "new_tests": 6,
+  "baseline": {
+    "failed": 2,
+    "passed": 4
+  },
+  "focused_passed": 22,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "first_global": {
+    "passed": 9456,
+    "failed": 2,
+    "reason": "Fraction clause shortcut swallowed remaining uncounted conjuncts"
+  },
+  "global": {
+    "suites": 88,
+    "tests": 9458,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_unchanged": true
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "deployment": "deferred to group with next batch",
+  "limits": [
+    "Mocked models and external services; does not validate live inference",
+    "Three catalogs, agent simulated on/off, cart/response/state/order DTO",
+    "Next: corrections and removal of the extra without duplication",
+    "Main untouched"
+  ]
+}
