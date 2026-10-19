@@ -1488,6 +1488,7 @@ export class WhatsappOrchestratorService {
     if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleLineScopedPaidAddon(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleCartNoteRevision(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleOptionReferencedLineEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
@@ -15828,6 +15829,56 @@ export class WhatsappOrchestratorService {
     const next = { ...session, cart: plan.cart };
     await this.conversationService.saveSession(conv, next);
     await this.reply(conv, waId, `${lead}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
+    return true;
+  }
+
+  /** "Las de A con extra queso": a priced catalogue add-on named against cart rows is bought once per unit, never noted for free. */
+  private async tryHandleLineScopedPaidAddon(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 160 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const q = this.normalizeForMatch(text).replace(/(?: (?:por favor|porfa|gracias))+$/, '').trim();
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const held = [...new Set(session.cart.flatMap(line => (line.attributes || []).map(attr => this.normalizeForMatch(attr.attributeValue))))]
+      .filter(value => value.length >= 3).sort((a, b) => b.length - a.length);
+    const add = '(?:ponle|ponles|agregale|agregales|echale|echales|anadele|anadeles|pon|agrega|echa)';
+    const scope = `(?:todas|todos|todo|(?:la|las|el|los) (?:de |con )?(${held.map(escape).join('|') || '\\b\\B'}))`;
+    const m = q.match(new RegExp(`^(?:que |para |a |y )?(?:todas |todos )?(?:la|las|el|los) (?:de |con )?(${held.map(escape).join('|') || '\\b\\B'}) (?:(?:que )?(?:lleven|lleve|llevan|vengan|venga) |${add} )?(?:con )?(.+)$`)) ||
+      q.match(new RegExp(`^(${held.map(escape).join('|') || '\\b\\B'}) (?:con )?(.+)$`));
+    const before = m ? null : q.match(new RegExp(`^${add} (?:con )?(.+?) a ${scope}$`));
+    const all = m || before ? null : q.match(new RegExp(`^(?:(?:que )?(?:todas|todos)(?: (?:las|los))? (?:(?:que )?(?:lleven|vengan) )?(?:con )?|a (?:todas|todos) ${add} )(.+)$`));
+    const reference = m ? m[1] : before ? before[2] || '' : '';
+    const said = m ? m[2] : before ? before[1] : all ? all[1] : '';
+    if (!said) return false;
+    const words = (value: string) => this.normalizeForMatch(value).split(' ')
+      .filter(word => word && !['de','del','con','el','la','los','las','un','una','unos','unas'].includes(word))
+      .map(word => word === 'adicional' || word === 'adicionales' ? 'extra' : word.length > 3 ? word.replace(/s$/, '') : word).sort().join(' ');
+    const key = words(said);
+    const menu = await this.catalogService.getMenuProducts();
+    const matches = key ? menu.filter(product => words(product.name) === key) : [];
+    const addon = matches.length === 1 ? matches[0] : null;
+    if (!addon || addon.attributes?.some(attr => attr.options?.length)) return false;
+    const rows = session.cart.flatMap((line, index) => line.productId === addon.id ? [] :
+      !reference || (line.attributes || []).some(attr => this.normalizeForMatch(attr.attributeValue) === reference) ? [index] : []);
+    if (!rows.length) return false;
+    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
+    const target = rows.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ');
+    if (addon.availableNow === false) {
+      await this.reply(conv, waId, `*${addon.name}* no está disponible en este momento, así que no lo agregué a ${target}. El pedido sigue igual.\n\n${reminder(session)}`);
+      return true;
+    }
+    const units = rows.reduce((sum, index) => sum + Math.max(1, session.cart[index].quantity || 1), 0);
+    const note = 'para ' + rows.map(index => this.formatCartLineLabel(session.cart[index]).replace(/\*/g, '')).join(' y ');
+    const existing = session.cart.find(line => line.productId === addon.id && line.note === note);
+    if (existing && existing.quantity === units) {
+      await this.reply(conv, waId, `Ya tenía *${addon.name}* ×${units} ${note}. El pedido sigue igual.\n\n${reminder(session)}`);
+      return true;
+    }
+    const next = this.addProductToCart(session, addon, units, note, undefined, { mode: 'set' });
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, `Listo, agregué *${addon.name}* ×${units} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅\n\n` +
+      `${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
     return true;
   }
 
