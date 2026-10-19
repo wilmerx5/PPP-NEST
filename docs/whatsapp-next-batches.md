@@ -4,7 +4,7 @@ Base 77b8cda0, staging. 24 conversaciones nuevas: dos menús, agente simulado on
 
 Final: 68 focalizados, TypeScript, 92 Node y global 88 suites / 9.572 tests aprobados, 379 hashes intactos. Evidencia whatsapp-unit-before-street-validation-1910.json. La prueba final usa modo ruta: exige no cotizar sin base, luego cotizar destino. Se corrigió el oráculo del pin: conserva coordenadas para logística, no exige inventar una calle; resumen muestra complemento sin coordenadas crudas. Cero llamadas pagadas/Meta/órdenes externas. Modelos y mapas simulados.
 
-Decimotercera tanda cerrada desde auditoría PDF, 202 tests nuevos acumulados; no equivale a todos los chats cubiertos. Main intacto. Publicación/despliegue agrupado con 77b8cda0 pendientes de registrar. Último runtime acreditado antes de este cierre: 327ae112. No hay suites activas. Schedule eliminado.
+Decimotercera tanda cerrada desde auditoría PDF, 202 tests nuevos acumulados; no equivale a todos los chats cubiertos. Main intacto. Publicado y desplegado solo staging, incluyendo 77b8cda0: b860629431ac2dd95bfb973d119186ae01a160a2, imagen 13329f78fd343708b8e3beeab957e21e48d90c2682792fb6f28d8f5017feab8d. Running sin reinicios; health OK/DB connected/circuit CLOSED 2026-10-19T18:19:48Z tras 502 transitorio de arranque. Producción c5e97ab1… intacta; bin/ privado preservado. No reconstruir por documentación. No hay suites activas. Schedule eliminado.
 
 Siguiente: cobertura sin modificar destino, «a una nueva», interiores separados entre sí y otras unidades. Esta tanda exige carrito existente y ausencia de dirección base; no acredita todas las formas de conversación. Evaluación reservada con modelo real sigue pendiente.
 
