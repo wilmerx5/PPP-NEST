@@ -27,5 +27,12 @@
     "PDF patterns generalized, not every PDF conversation replayed",
     "Main unchanged"
   ],
-  "deployment": "pending"
+  "deployment": {
+    "code": "33411362eceb37b292bdda319c7d928e4815b1cd",
+    "image": "sha256:62980a4fa000edbb44ce24670c7c4f901a45fc02259f10c76feaec6d59c0699a",
+    "checked_at": "2026-10-19T16:26:40Z",
+    "health": "OK, DB connected, circuit CLOSED",
+    "production_unchanged": true,
+    "startup": "Initial 502; subsequent public health passed. Running without restarts."
+  }
 }
