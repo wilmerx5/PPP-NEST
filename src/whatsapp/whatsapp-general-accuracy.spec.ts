@@ -19416,3 +19416,28 @@ describe('Uncertain map destination allows cart inspection and correction before
   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toEqual([{productId:67001,attributes:undefined,note:'Bien empacado'},{productId:67001,attributes:undefined,note:'Bien empacado'}]);expect(dto.address).toMatch(/81A-20.*torre B.*304B/i);expect(dto.deliveryFee).toBe(2000);
  });
 });
+
+describe('Recipient phone and payment together preserve checkout across menus',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos','Sandwich De Pavo'])for(const enabled of [false,true])for(const text of ['a nombre Cristina, celular 3000000004, contraentrega','contraentrega, teléfono 300 000 0004, nombre: Cristina'])it(`${name} agent=${enabled} ${text}`,async()=>{
+  const product={id:67101,code:67101,name,price:21000,availableNow:true,attributes:[]};const h=harness([product],enabled);h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));h.conv.state='awaiting_payment';h.conv.sessionData={cart:[{productId:product.id,code:product.code,name,unitPrice:product.price,quantity:2,note:'Empacar por separado'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 10 #81A-20 torre B apartamento 304B',addressConfirmed:true,deliveryFeeCalculated:2000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true} as any;
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:6710,dailyOrderNumber:112});const before=structuredClone(h.conv.sessionData.cart),address=h.conv.sessionData.address;
+  const reply=await h.sendQueued(text);expect(h.conv.customerName).toBe('Cristina');expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);expect(h.conv.sessionData.paymentMethod).toBe('cash');expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toBe(address);
+  expect(reply).toContain('Cristina');expect(String(reply).replace(/\D/g,'')).toContain('3000000004');expect(reply).not.toMatch(/c[oó]mo pagas|algo m[aá]s/i);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  const total=await h.sendQueued('cuánto suma mi pedido');expect(total).toMatch(/44[.,]000/);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.customerName).toBe('Cristina');expect(dto.phone).toMatch(/3000000004/);expect(dto.address).toContain(address);expect(dto.deliveryFee).toBe(2000);expect(dto.items).toEqual([{productId:67101,attributes:undefined,note:'Empacar por separado'},{productId:67101,attributes:undefined,note:'Empacar por separado'}]);
+ });
+});
+
+describe('Combined contact updates keep missing payment and unrelated clauses pending',()=>{
+ for(const enabled of [false,true])for(const separator of [', ','; ','\n'])it(`name and phone only agent=${enabled} separator=${JSON.stringify(separator)}`,async()=>{
+  const h=harness([{id:67102,code:67102,name:'Tarta De Espinaca',price:18000,availableNow:true,attributes:[]}],enabled);
+  h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{cart:[{productId:67102,name:'Tarta De Espinaca',unitPrice:18000,quantity:1}],orderType:'pickup',fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn();
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued(['a nombre Cristina','celular 3000000004'].join(separator));
+  expect(h.conv.customerName).toBe('Cristina');expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);expect(h.conv.state).toBe('awaiting_payment');expect(h.conv.sessionData.paymentMethod).toBeUndefined();expect(reply).toMatch(/c[oó]mo pagas|m[eé]todo de pago/i);expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+ });
+ for(const tail of ['quita la segunda','sin cebolla','cuánto demora','celular 3000000004, celular 3000000005'])it(`contact handler declines unconsumed or conflicting clauses: ${tail}`,async()=>{
+  const h=harness(products,false);const before=structuredClone(h.conv.sessionData);const name=h.conv.customerName;
+  const handled=await (h.service as any).tryHandleExplicitCustomerNameLabel(h.conv,'customer',h.conv.sessionData,`a nombre Cristina, contraentrega, ${tail}`,h.cfg);
+  expect(handled).toBe(false);expect(h.conv.customerName).toBe(name);expect(h.conv.sessionData).toEqual(before);expect(h.replies).toHaveLength(0);
+ });
+});

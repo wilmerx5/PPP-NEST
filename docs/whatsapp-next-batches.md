@@ -1,3 +1,28 @@
+## VIGENTE — contacto combinado validado; fotos de direcciones son la siguiente prioridad
+
+Base 7036af5d. Corregido el descarte de nombre al recibir nombre, teléfono y pago juntos: el handler acepta cláusulas de contacto explícitas y persiste los tres datos antes de retomar checkout. Sin pago conserva la pregunta pendiente. No consume cláusulas ajenas ni dos teléfonos contradictorios. Regla general sin productos/IDs del restaurante.
+
+22 pruebas nuevas: 12 recorridos completos con tres menús y agente simulado on/off, seis actualizaciones de nombre/teléfono sin pago y cuatro contratos de rechazo de cláusulas no consumidas. Baseline 12 fallos reales por conservar Wilmer. 40 focalizados, TypeScript, 92 Node; global 88 suites / 9.347 pruebas en 597.966 s, 379 hashes intactos. DTO exacto por unidad, nota, dirección, teléfono y nombre; no orden antes de confirmación. Evidencia whatsapp-contact-together-validation-1810.json. Sin suites activas. Cero API pagada/Meta/mapas reales/órdenes externas.
+
+Publicar solo staging, despliegue diferido para agrupar con siguiente tanda. Runtime acreditado anterior eeeaeb54 / imagen b46b2c70…; esta corrección aún no está desplegada. Main intacto.
+
+Nueva prioridad del usuario: fotos de direcciones. Contrato visual actual carece de kind address y fallback solo pide plato/código; contexto de transferencia puede capturar imagen other/unclear como comprobante. Diagnóstico de código, no prueba de OCR real. Plan detallado al inicio/siguiente sección de whatsapp-next-batches.md: contrato+prompts+router, dirección antes de catálogo, conservación de interiores, respuesta inmediata, ambigüedad y no confundir comprobante. Hace falta una foto real para medir lectura; mocks solo prueban flujo. Luego retomar calle posterior a interior y teléfonos inválidos. Comprobante vacío histórico y validación reservada real siguen pendientes; no declarar todos los chats resueltos ni piloto listo por conteos.
+
+## Solicitud nueva — fotos de direcciones (diagnóstico, pendiente de implementación)
+
+El usuario reporta buena lectura de platos pero fotos de direcciones no reconocidas. Inspección del 18/10: WhatsappImageAnalysis solo admite order/payment_proof/other/unclear; el prompt centra OCR en productos y el fallback pide plato/código. resolveImageMessage puede interpretar una imagen other/unclear como comprobante según estado. Esto acredita un hueco de contrato, no el resultado OCR de las fotos concretas (no adjuntadas).
+
+Siguiente tanda prioritaria tras cerrar contacto combinado:
+1. Incorporar dirección como intención de imagen en contrato, parser y ambos prompts, sin modificar modelo.
+2. Conducir texto de destino al flujo normal de dirección antes de matching de productos, conservando calle, conjunto y unidades. No tratar números de calle como códigos/cantidades.
+3. Evitar que contexto de transferencia convierta una dirección reconocida en comprobante; preservar reconocimiento explícito de comprobantes.
+4. Probar foto sola durante carrito, dirección, pago y confirmación; carrito vacío no debe crear productos ni órdenes. Cambio de destino conserva notas/contacto y recalcula cotización simulada.
+5. Foto ilegible o múltiples direcciones: aclaración específica, sin inventar coordenadas, calle ni selección del destino. Un mapa sin dirección legible debe pedir ubicación de WhatsApp/calle y número.
+6. Respuesta inmediata sin texto posterior; sin escalamiento automático a humano. Pruebas de contrato HTTP y router con varios menús, respuesta/carrito/estado/DTO.
+7. Las pruebas gratuitas de OCR simulado no acreditan precisión visual. Solicitar una foto real de ejemplo para evaluación separada con presupuesto controlado; no hacer llamadas pagadas en heartbeat.
+
+La suite global de contacto cerró verde (88/9.347); esta nota no acredita implementación de fotos de direcciones.
+
 ## VIGENTE — interiores y controles de checkout incierto publicados/desplegados juntos
 
 Código eeeaeb541a9b527594ae0a45a7e551d68e2cce87, imagen sha256:b46b2c7035ce7da843b773886af2a0025eb2405fa609a9dacbd3e4edc802b713. Running/healthy a las 00:54:23 UTC del 19/10 (19:54 Bogotá del 18/10); /api/health OK/DB connected/circuit CLOSED 00:54:29 UTC. Nueve aserciones del helper compilado aprobadas. Rollback ppp-nest-staging:rollback-before-eeeaeb54. Main/producción intactos, imagen productiva c5e97ab1… running. No reconstruir por este cierre documental.

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-18",
+  "base": "7036af5d",
+  "runtime_changes": true,
+  "new_tests": 22,
+  "baseline": {
+    "failed": 12,
+    "cause": "explicit name handler rejected a phone clause; previous customer name remained"
+  },
+  "focused_passed": 40,
+  "typescript": "passed",
+  "node_contracts_passed": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9347,
+    "seconds": 597.966,
+    "source_hashes": 379,
+    "source_changes": 0
+  },
+  "checks": [
+    "combined name phone payment across three synthetic menus and agent on/off",
+    "exact simulated DTO per unit after price interruption and confirmation",
+    "missing payment remains pending",
+    "unknown or conflicting clauses are not consumed by contact handler"
+  ],
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "deployment": "Deferred to group with next batch; runtime previously verified eeeaeb54",
+  "limits": [
+    "Model, maps and orders mocked",
+    "Image address support diagnosed but not implemented",
+    "Phone normalization policy unchanged; invalid phone cases remain pending"
+  ]
+}

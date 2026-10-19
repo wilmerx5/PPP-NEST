@@ -9908,11 +9908,19 @@ export class WhatsappOrchestratorService {
     cfg?: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const raw = (text || '').trim();
-    if (raw.length < 5 || raw.length > 90) return false;
+    if (raw.length < 5 || raw.length > 180) return false;
     const clauses=raw.split(/[,;\n]+/).map(clause=>clause.trim()).filter(Boolean);
     const nameClause=clauses.find(clause=>/^(?:a\s+nombre(?:\s+de)?|(?:mi\s+)?nombre\s*[:\-]|me\s+llamo|soy)(?:\s|$)/i.test(clause)) || raw;
     const payment=cfg ? findPaymentMethodByText(raw,cfg.paymentMethods) : null;
-    if(clauses.length>1 && (!payment || clauses.some(clause=>clause!==nameClause && !findPaymentMethodByText(clause,cfg!.paymentMethods))))return false;
+    // Consume only explicit contact/payment clauses; unknown instructions must
+    // continue through the router rather than disappearing in a name update.
+    const phoneClauses = clauses.filter(clause =>
+      /^(?:(?:mi\s+)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|n[uú]mero)\s*(?:es|:)?\s*)?[+\d\s()-]+$/i.test(clause) &&
+      this.looksLikePhoneNumber(clause));
+    if (phoneClauses.length > 1) return false;
+    const phone = phoneClauses.length ? this.normalizeContactPhone(phoneClauses[0], conv.phoneE164) : null;
+    if (clauses.length > 1 && clauses.some(clause => clause !== nameClause &&
+        !phoneClauses.includes(clause) && !(cfg && findPaymentMethodByText(clause, cfg.paymentMethods)))) return false;
     const m = nameClause.match(/^(?:a\s+nombre(?:\s+de)?)\s+(.+)$/i) || nameClause.match(
       /^(?:mi\s+)?nombre\s*[:\-]\s*(.+)$/i,
     ) || nameClause.match(
@@ -9935,9 +9943,13 @@ export class WhatsappOrchestratorService {
     const fresh = await this.conversationService.reloadConversation(conv.id);
     Object.assign(conv, fresh);
     session = this.conversationService.getSession(conv);
-    if(payment){session={...session,paymentMethod:payment.id};await this.conversationService.saveSession(conv,session);}
+    if (payment || phone) {
+      session = {...session, ...(payment ? {paymentMethod: payment.id} : {}),
+        ...(phone ? {contactPhone: phone, phoneConfirmed: true} : {})};
+      await this.conversationService.saveSession(conv, session);
+    }
 
-    if (payment || conv.state === 'awaiting_name' || !session.paymentMethod) {
+    if (phone || payment || conv.state === 'awaiting_name' || !session.paymentMethod) {
       await this.tryConfirmOrder(conv, waId, session, {
         preface: `Perfecto, *${name}* ✅`,
       });
