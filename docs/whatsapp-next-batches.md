@@ -1,3 +1,13 @@
+## VIGENTE — pedido con poquito/poquita durante dirección validado
+
+Base 7d3bbdc5. Caso nuevo 21:41 Bogotá del 18/10: «quiero un churrasco 3/4, poquito arroz y poquita ensalada» era rechazado como dirección; tras reiniciar añadía ensalada como producto. Reproducción: 12 fallos en tres menús (churrasco, bowl, pasta), carrito vacío y awaiting_address, agente simulado on/off.
+
+Separación de preferencias acotada: todas las cláusulas deben empezar por poco/poca/poquito/poquita; números, compras extra y datos de dirección no se consumen como nota. Solo para preferencias explícitas poco/poquito, el control de múltiples productos usa la parte de producto ya separada, sin volver a interpretar ingredientes de la nota como compras. La ruta de producto con nota existente resuelve la compra antes del campo dirección. No se añadió excepción por plato/ID/restaurante.
+
+21 pruebas nuevas: 12 conversaciones hasta DTO con cantidad/notas exactas, ocho contratos gramaticales y un extra explícito. Conservan el carrito previo y no confirman dirección guardada sin consentimiento. Primera global: 9.450 aprobadas / dos regresiones de «una X y otra X» con variantes; se limitó el cambio de guard a poco/poquito y pasan 33 focalizados, TypeScript y 92 Node. Global de reparación aprobada: 88 suites / 9.452 pruebas, 379 hashes intactos. No hay suites activas. La primera global tuvo un intervalo de ~42 minutos sin logs; no atribuirlo a una causa no verificada. Evidencia whatsapp-small-accompaniments-validation-1810.json. Sin llamadas pagadas/Meta/órdenes externas. No mide transcripción ni garantiza cumplimiento de la nota en cocina.
+
+Al cerrar global, publicar/desplegar solo staging. Main intacto. Después retomar tanda C del PDF: combo con bebida y medio producto adicional, empaque separado versus adicional, corrección sin duplicación. Entradas inferiores históricas.
+
 ## VIGENTE — consultas de datos de transferencia validadas y desplegadas
 
 Base f151b35e. Tanda B del PDF 18/10: consultas sobre cuenta/Nequi/titular responden solo datos configurados del comercio, sin reemplazar contacto/nombre, elegir pago ni confirmar orden. Sin datos pide obtenerlos del local; transferencia deshabilitada no expone datos antiguos. Guarda compras/cambios/datos personales mezclados para el router normal, sin consumirlos desde este handler.

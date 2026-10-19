@@ -2809,13 +2809,14 @@ export class WhatsappOrchestratorService {
 
     // Resolve a single named dish before broad substitution/style heuristics consume its notes.
     const anchoredKitchenRequest = interpretProductNote(originalText,products);
-    const kitchenRequest = /[.!]\s+\p{L}/u.test(originalText) ? null : anchoredKitchenRequest || splitKitchenPreference(text);
+    const separatedKitchenPreference = splitKitchenPreference(text);
+    const kitchenRequest = /[.!]\s+\p{L}/u.test(originalText) ? null : anchoredKitchenRequest || separatedKitchenPreference;
     if (kitchenRequest && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder &&
       !this.catalogService.isAvailabilityInquiry(originalText) &&
       !this.catalogService.isPriceInquiryIntent(originalText) &&
       !this.catalogService.isProductDescriptionInquiry(originalText) &&
       !this.catalogService.looksLikeClearlyMultiDishOrder(kitchenRequest.productText) &&
-      !this.multiResolvesSeveralLines(originalText, products)) {
+      !this.multiResolvesSeveralLines(separatedKitchenPreference && /^(?:poquit[oa]|poc[oa])\b/i.test(separatedKitchenPreference.note) ? separatedKitchenPreference.productText : originalText, products)) {
       const hits = this.catalogService.searchByNameScored(kitchenRequest.productText, products, 4);
       const sized = this.catalogService.resolveSizedChickenProduct(kitchenRequest.productText, products);
       const selected = (anchoredKitchenRequest ? products.find(product=>product.id===anchoredKitchenRequest.productId) : undefined) || sized || (hits[0]?.score >= 80 && (!hits[1] || hits[0].score - hits[1].score >= 12) ? hits[0].p : undefined);

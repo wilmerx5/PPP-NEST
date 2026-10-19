@@ -8,6 +8,17 @@ const HANDLING = `(?:(?:dividid|partid|cortad|empacad|servid)[oa]s?(?:\\s+(?:por
  */
 export function splitKitchenPreference(source: string): {productText: string; note: string} | null {
   if (/[?¿;]/.test(source)) return null;
+  // A bounded reduction belongs to the preceding dish. Every coordinated
+  // clause must be a preference; an explicit extra must stay in order parsing.
+  const reduction = /\b(?:poquit[oa]|poc[oa])\s+(?:de\s+)?/iu.exec(source);
+  if (reduction?.index) {
+    const productText = source.slice(0, reduction.index).replace(/[\s,.]+$/, '').replace(/\s+con$/i, '').trim();
+    const note = source.slice(reduction.index).replace(/\s+(?:por favor|porfa|gracias)[.!]*$/i, '').replace(/[.!]+$/, '').trim();
+    const clauses = note.split(/\s+y\s+|,\s*/i);
+    if (productText && note.length <= 180 && clauses.every(clause =>
+      /^(?:poquit[oa]|poc[oa])\s+(?:de\s+)?[\p{L}]+(?:\s+[\p{L}]+){0,2}$/iu.test(clause) &&
+      !/\b(?:y|extra|adicional|otro|otra|quiero|dame|para|sin|con)\b/i.test(clause))) return {productText, note};
+  }
   const packedPart=source.match(/^(.+?)\s+pero\s+((?:(?:medi[oa]|una\s+parte)(?:\s+de)?\s+\p{L}+(?:\s+\p{L}+){0,2}|la\s+mitad(?:\s+de\s+\p{L}+)?)\s+en\s+(?:una?\s+)?(?:caja|bolsa|empaque)\s+(?:diferente|aparte|separad[oa]))(?:\s+por\s+favor)?[.!]*$/iu);
   if(packedPart && !/\b(?:otro|otra|agrega|anade|y)\b/i.test(packedPart[2]))return {productText:packedPart[1],note:packedPart[2]};
   const description=splitKitchenDescription(source);

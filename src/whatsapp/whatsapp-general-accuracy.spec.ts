@@ -19543,3 +19543,31 @@ describe('Merchant details helper does not consume mixed order requests',()=>{
   expect(h.conv).toEqual(before);expect(h.service.reply).not.toHaveBeenCalled();
  });
 });
+
+describe('Small accompaniment preferences stay attached to a new dish',()=>{
+ const cases=[{name:'Churrasco',suffix:'3/4',a:'arroz',b:'ensalada'},{name:'Bowl Vegetal',suffix:'',a:'quinoa',b:'salsa'},{name:'Pasta Del Huerto',suffix:'',a:'queso',b:'crema'}];
+ for(const c of cases)for(const state of ['building_cart','awaiting_address'])for(const enabled of [false,true])it(`${c.name} ${state} agent=${enabled}`,async()=>{
+  const menu=[{id:79921,code:79921,name:c.name,price:21000,availableNow:true,attributes:[]},...(['a','b'] as const).map((key,i)=>({id:79922+i,code:79922+i,name:'Porcion De '+c[key],price:5000,availableNow:true,attributes:[]}))];const h=harness(menu,enabled);h.conv.state=state;Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});h.service.ordersService.create=jest.fn().mockResolvedValue({id:7992,dailyOrderNumber:81});
+  if(state==='awaiting_address')Object.assign(h.conv.sessionData,{cart:[{productId:79922,name:menu[1].name,quantity:1,unitPrice:5000,note:'pedido anterior'}],orderType:'delivery',fulfillmentChosen:true,lastDeliveryAddress:'Calle 12 #34-56 torre 1 apto 402',addressConfirmed:false});
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued(`quiero un ${c.name} ${c.suffix}, poquito ${c.a} y poquita ${c.b}`);
+  expect(reply).not.toMatch(/no me quedó clara|no manejamos|no tenemos/i);
+  const dish=h.conv.sessionData.cart.find((r:any)=>r.productId===79921)!;expect(dish).toBeDefined();expect(dish.quantity).toBe(1);expect(dish.note).toMatch(new RegExp('poquito '+c.a,'i'));expect(dish.note).toMatch(new RegExp('poquita '+c.b,'i'));if(c.suffix)expect(dish.note).toMatch(/tres cuartos/i);
+  expect(h.conv.sessionData.cart).toHaveLength(before.length+1);for(const row of before)expect(h.conv.sessionData.cart).toContainEqual(row);
+  if(state==='awaiting_address'){expect(h.conv.sessionData.lastDeliveryAddress).toContain('torre 1 apto 402');expect(h.conv.sessionData.addressConfirmed).not.toBe(true);}
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();if(state==='awaiting_address')await h.sendQueued('Calle 12 #34-56');
+  if(h.conv.state==='building_cart')await h.sendQueued('Nada más');if(h.conv.state==='awaiting_payment')await h.sendQueued('1');await h.sendQueued('confirmar');
+  expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(before.length+1);expect(dto.items.find((r:any)=>r.productId===79921).note).toBe(dish.note);
+ });
+});
+
+describe('Reduced accompaniment grammar keeps explicit extras distinct',()=>{
+ const {splitKitchenPreference}=require('./whatsapp-kitchen-preference');
+ it.each(['quiero un bowl, poco arroz y poca salsa','quiero un roll con poquito de salsa','dame una pasta, poquita crema por favor','quiero un churrasco 3/4, poquito arroz y poquita ensalada'])('%s',text=>{
+  const result=splitKitchenPreference(text);expect(result).not.toBeNull();expect(result.productText).not.toMatch(/poquit|poco|poca/);expect(result.note).toMatch(/poquit|poco|poca/);
+ });
+ it.each(['quiero un bowl, poquito arroz y una ensalada adicional','quiero un bowl, poquito arroz y dos sopas','quiero un bowl, poquito arroz para Calle 12 34','quiero un bowl, poquito arroz y dame una bebida'])('does not swallow %s',text=>expect(splitKitchenPreference(text)).toBeNull());
+ it('keeps explicitly counted salad as a paid additional item',async()=>{
+  const menu=[{id:79931,code:79931,name:'Bowl Vegetal',price:21000,availableNow:true,attributes:[]},{id:79932,code:79932,name:'Porcion De Ensalada',price:5000,availableNow:true,attributes:[]}];const h=harness(menu,false);
+  await h.sendQueued('quiero un bowl vegetal y una porcion de ensalada adicional');expect(h.cartRows().map(r=>[r.id,r.qty])).toEqual(expect.arrayContaining([[79931,1],[79932,1]]));expect(h.cartRows()).toHaveLength(2);
+ });
+});

@@ -1,0 +1,30 @@
+{
+  "base": "7d3bbdc5",
+  "new_tests": 21,
+  "baseline_failed": 12,
+  "focused_passed": 33,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9452,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_unchanged": true
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Text reproduction; original audio not required or evaluated",
+    "Three catalogs including synthetic bowl and pasta, agent simulated on/off",
+    "Reduced accompaniments recorded as requests, not promises of availability or price adjustment",
+    "Explicit counted extras protected",
+    "Main unchanged"
+  ],
+  "first_global": {
+    "passed": 9450,
+    "failed": 2,
+    "reason": "Broadly checking peeled product text hid first item in repeated dish with different options",
+    "long_gap_seconds": 2494
+  }
+}
