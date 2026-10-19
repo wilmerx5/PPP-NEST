@@ -1,3 +1,17 @@
+## VIGENTE — inversiones de nota en formas sueltas y teléfono repetido en el paso final (19/10)
+
+Base 4c37c61e, tanda 23. 144 regresiones nuevas (whatsapp-note-revision-phrasing.spec.ts): bao/salsa, pizza/masa y batido/base, agente simulado on/off, building_cart y awaiting_final_confirm, carrito de dos líneas (3× opción A «sin X», 2× opción B).
+
+Baseline con router real: «ahora sí con X» y «mejor con X» anotaban en la línea equivocada; «las de A sí con X» y «quita el sin X de las de A» cambiaban la opción de la OTRA línea a A (applyNamedCartAttributes) y guardaban nota basura; «ya no sin X» añadía «sin X» a la otra línea; «échale X a todas», «sí ponle X», «al final sí quiero X», «que las de A sí lleven X», «ponle X a las de A» no hacían nada o guardaban la frase literal. Repetir el mismo teléfono en el paso final creaba la orden sin «confirmar».
+
+Arreglo general: el analizador acepta muletillas iniciales, «mejor» final, «a todas», verbo primero con destino al final, lleven/van con/quiero y retiradas sin línea. Sin línea indicada solo actúa si exactamente una línea tiene la cláusula contraria; si hay varias, pregunta con pendingCartNoteEdit. «A todas» aplica a todas las que la tienen. Línea nombrada sin la cláusula ya no cae a rutas que editan otra línea: anota «con X» o dice que no encontró la nota, salvo que X nombre un producto u opción del catálogo (para no convertir adicionales cobrados en notas gratis). El teléfono del paso final re-entra por confirming. «Así está bien» sigue aprobando por política.
+
+Validación: 234 focalizados, TypeScript, build TypeScript, 92 Node y diff --check. Global en dos fases: ráfagas 80/80 en 105,515s; resto 10.008/10.008 en 311,187s, 107 suites (inventario 108), 403 hashes intactos, sin reintentos. Evidencia whatsapp-note-reversal-phrasing-validation-1910.json. Cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Desplegado solo staging: runtime e8d77bbac8c6ad1c10d4cd586c4af9974f9580ab, imagen 825c589b…; health OK / DB connected / circuit CLOSED 2026-10-19T22:24:02Z. Rollback ppp-nest-staging:rollback-before-e8d77bba (imagen f22a5a76…). Producción sigue c5e97ab1…. No reconstruir por documentación.
+
+Siguiente: guardar applyNamedCartAttributes para que «las de <opción existente>» usado como referencia no mute otra línea (queda expuesto cuando X es producto/opción del catálogo); revisar llamadas a tryConfirmOrder fuera de un turno entrante; concurrencia real de ráfagas durante una duda pendiente.
+
 ## VIGENTE — notas contradictorias, dos atributos y orden creada sin «confirmar» (19/10)
 
 Base 71c7d3e0, tanda 22 desde auditoría PDF. 90 regresiones nuevas (whatsapp-note-replacement-block.spec.ts): bao/salsa, pizza/masa y batido/base con Tamaño Normal/Grande, agente simulado on/off, carrito sembrado de dos líneas en awaiting_final_confirm. 36 recorridos: reemplazar «sin X» por «con X» en una línea, retirar la nota, reemplazo parcial dividiendo unidades, dos atributos sobre las mismas unidades, opción retirada del catálogo durante la duda y retirada ambigua resuelta con «2». 54 contrastes: sin cláusula contradictoria, pregunta, duda pendiente con cancelar/confirmar/número inválido/carrito cambiado, segundo atributo inexistente, nota suelta y teléfono nuevo en el paso final.
