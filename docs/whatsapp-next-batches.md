@@ -1,3 +1,17 @@
+## VIGENTE — línea nombrada por la opción que ya tiene (19/10)
+
+Base 7363774e, tanda 24. 120 regresiones nuevas (whatsapp-option-reference-edit.spec.ts): bao/salsa, pizza/masa y batido/base, agente simulado on/off, carrito 3× opción A «sin X» + 2× opción B.
+
+Baseline con router real (agente off): «las de A bien empacadas», «para las de A cubiertos» y «B bien empacado» no guardaban nada sin avisar; «la de B bien caliente» y «que las de A vengan separadas» respondían «no manejamos»; «cambia las de B a A» respondía «No tenemos esos productos»; «las de B mejor A» y «todas A» no cambiaban nada. La mutación de la línea equivocada vía applyNamedCartAttributes ya no se reproduce tras la tanda 23. Sin el manejador fallan 87/120.
+
+Arreglo general: tryHandleOptionReferencedLineEdit (grupo temprano, tras la revisión de notas). Las filas son las que hoy tienen esa opción. Si la cola es otra opción del mismo atributo (verbo cambia/pasa, «mejor», o «todas <opción>») se cambia; cualquier otra cola corta se anota. Ambos pasan por prepareUnitOptionActions de forma atómica. Colas con con/sin/ponle/quítale…, palabras de aprobación, entrega/pago/dirección, productos u opciones del catálogo, otro plato, dígitos o preguntas siguen por sus rutas. Opción inexistente con verbo explícito: se nombra y no se cambia. En awaiting_final_confirm no crea la orden; «confirmar» después lleva notas/opciones al DTO.
+
+Validación: 572 focalizados, TypeScript, build TypeScript, 92 Node y diff --check. Global en dos fases: ráfagas 80/80 en 141,033s; resto 10.128/10.128 en 519,847s, 108 suites (inventario 109), 404 hashes intactos, sin reintentos. Evidencia whatsapp-option-reference-validation-1910.json. Cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Desplegado solo staging: runtime ed5baea4f9161886a69c29015d76634d404b13ed, imagen 8b14516b…; health OK / DB connected / circuit CLOSED 2026-10-19T22:49:55Z, sin reinicios. Rollback ppp-nest-staging:rollback-before-ed5baea4 (imagen 825c589b…). Producción sigue c5e97ab1…. No reconstruir por documentación.
+
+Siguiente: «las de A con extra queso» cuando «Queso Extra» es producto (orden invertido) sigue quedando como nota gratis por la ruta antigua; revisar llamadas a tryConfirmOrder fuera de un turno entrante; concurrencia real de ráfagas durante una duda pendiente.
+
 ## VIGENTE — inversiones de nota en formas sueltas y teléfono repetido en el paso final (19/10)
 
 Base 4c37c61e, tanda 23. 144 regresiones nuevas (whatsapp-note-revision-phrasing.spec.ts): bao/salsa, pizza/masa y batido/base, agente simulado on/off, building_cart y awaiting_final_confirm, carrito de dos líneas (3× opción A «sin X», 2× opción B).

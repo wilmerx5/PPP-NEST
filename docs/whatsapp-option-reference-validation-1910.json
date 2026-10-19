@@ -1,0 +1,48 @@
+{
+  "batch": 24,
+  "date": "2026-10-19",
+  "base": "7363774e",
+  "commit": "ed5baea4f9161886a69c29015d76634d404b13ed",
+  "scope": "Cart rows named by the option they already carry («las de <opción> …»)",
+  "baselineFindings": [
+    "«las de A bien empacadas», «para las de A cubiertos», «B bien empacado» saved nothing (silent loss)",
+    "«la de B bien caliente», «que las de A vengan separadas» answered «no manejamos»",
+    "«cambia las de B a A» answered «No tenemos esos productos»; «las de B mejor A» and «todas A» changed nothing",
+    "The suspected wrong-row mutation through applyNamedCartAttributes no longer reproduced after batch 23"
+  ],
+  "fix": "tryHandleOptionReferencedLineEdit (early group, after tryHandleCartNoteRevision): rows are those currently holding the named option; tail that is an option of the same attribute changes it (verb-first, «mejor», or «todas <opción>»); any other short tail is appended as a note; both go through prepareUnitOptionActions atomically. Tails starting with con/sin/ponle/quitale/etc., approval words, fulfillment/payment/address words, catalog products/options, another menu dish, digits or questions keep their existing routes. Unknown option with an explicit verb is named and nothing changes.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-option-reference-edit.spec.ts",
+    "count": 120,
+    "menus": ["Bao De Hongos/Salsa", "Pizza Del Huerto/Masa", "Batido De Mango/Base"],
+    "agent": [false, true],
+    "edits": "4 note forms + 3 option changes × building_cart/awaiting_final_confirm; final state confirms and checks DTO (5 items, notes/options on the right units)",
+    "contrasts": ["unknown-option", "catalog-retired", "question", "approval-word", "fulfillment", "pending-selection"],
+    "baselineWithoutHandler": "87/120 failed (all 84 edits/changes + 3 unknown-option agent off)"
+  },
+  "knownGap": "«las de A con extra queso» when «Queso Extra» is a catalog product (reversed word order) is still stored as a free note by the pre-existing route",
+  "validation": {
+    "focused": "572/572 (new spec, note-revision-phrasing, note-replacement-block, unit-clarification, chat-regressions)",
+    "typescript": "tsconfig.json and tsconfig.build.json clean",
+    "nodeScripts": "92/92",
+    "diffCheck": "clean",
+    "global": {
+      "phase1Burst": { "passed": 80, "total": 80, "seconds": 141.033 },
+      "phase2Rest": { "passed": 10128, "total": 10128, "suites": 108, "seconds": 519.847 },
+      "inventorySuites": 109,
+      "hashesFrozen": 404,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only",
+    "runtime": "ed5baea4f9161886a69c29015d76634d404b13ed",
+    "image": "sha256:8b14516b36a6d32a9731a12b8bd5df97443e5faa82167ce2e25a6ed8d869eeaa",
+    "health": "200 ok, db connected, circuit CLOSED at 2026-10-19T22:49:55Z, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-ed5baea4 (image 825c589b…)",
+    "productionImage": "c5e97ab1… unchanged"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
