@@ -1489,6 +1489,7 @@ export class WhatsappOrchestratorService {
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleLineScopedPaidAddon(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleOrderLevelAside(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleCartNoteRevision(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleOptionReferencedLineEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
@@ -4560,6 +4561,10 @@ export class WhatsappOrchestratorService {
         Object.assign(conv, fresh);
         session = this.conversationService.getSession(conv);
         await this.tryConfirmOrder(conv, msg.waId, session);
+        return;
+      }
+      if (session.cart.length > 0) {
+        await this.reply(conv, msg.waId, `¡Con gusto! 🙌 Tu pedido sigue abierto.\n\n${this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)}`);
         return;
       }
       await this.reply(
@@ -15882,6 +15887,50 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /** Cash change, recipient and urgency asides belong to the whole order: never a dish note, a purchase or silence. */
+  private async tryHandleOrderLevelAside(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?]/.test(text) || text.length > 120 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const plain = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[!.,;]+$/g, '').replace(/\s+/g, ' ').trim();
+    const q = plain.replace(/^(?:(?:y|ah|ademas|tambien|otra cosa|por favor|porfa)\s*,?\s+)+/, '').replace(/(?:\s*,?\s+(?:por favor|porfa|gracias))+$/, '').trim();
+    const amount = this.CASH_CHANGE_AMOUNT;
+    const changeAsk = q.match(new RegExp(String.raw`^(?:(?:que\s+)?(?:me\s+)?(?:traer|trae|traeme|traiga|traigame|traigan|traiganme|llevar|lleva|llevame|lleven|manden|mandame|necesito|necesitamos|con)\s+)?(?:el\s+|un\s+)?(?:cambio|vueltas?|devuelta|vuelto)\s+(?:de|para|pa)\s+(?:un\s+billete\s+de\s+)?\$?\s*(${amount})$`));
+    const billPayment = changeAsk ? null : q.match(new RegExp(String.raw`^(?:le\s+|te\s+)?(?:pago|pagare|pagamos|cancelo|llevo|tengo)\s+(?:con\s+)?(?:un\s+)?billete\s+de\s+\$?\s*(${amount})$`));
+    // While choosing a payment method, a cash amount is the payment answer itself.
+    const cash = conv.state === 'awaiting_payment' || (billPayment && !session.paymentMethod) ? null : changeAsk || billPayment;
+    if (!cash && (changeAsk || billPayment)) return false;
+    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
+    const finish = async (next: WhatsappSessionData, lead: string) => {
+      await this.conversationService.saveSession(conv, next);
+      const fee = this.deliveryFeeFor(next, cfg);
+      await this.reply(conv, waId, conv.state === 'awaiting_final_confirm'
+        ? `${lead}\n\n${this.formatOrderSummary(conv, next, fee, cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`
+        : `${lead}\n\n${this.formatCartOnly(next, fee)}\n\n${reminder(next)}`);
+      return true;
+    };
+    if (cash) {
+      const method = getEnabledPaymentMethods(cfg.paymentMethods).find(m => m.id === session.paymentMethod);
+      if (session.paymentMethod && !['cash','contraentrega'].includes(session.paymentMethod)) {
+        await this.reply(conv, waId, `El cambio aplica para pago en efectivo y tu pedido está con *${method?.label || session.paymentMethod}*. ` +
+          `Si quieres pagar en efectivo, dime *efectivo*. El pedido sigue igual.\n\n${reminder(session)}`);
+        return true;
+      }
+      const change = `cambio de ${cash[1].trim()}`;
+      return finish({ ...session, cashChangeFor: change }, `Anotado 💵 _${change}_ ✅`);
+    }
+    const recipient = q.match(/^(?:es|son|va|van)\s+(?:para|pa)\s+((?:un\s+)?regalo|(?:mi|mis|el|la|los|las|su|sus|nuestro|nuestra|nuestros|nuestras)\s+[a-z]+(?:\s+[a-z]+)?)$/) ||
+      q.match(/^(?:es\s+)?(un\s+regalo|regalo)$/);
+    const urgent = /^(?:que\s+(?:me\s+lo\s+|lo\s+|la\s+|los\s+)?(?:llegue|lleguen|venga|vengan|traigan|manden|sea)\s+(?:rapido|pronto|lo\s+mas\s+rapido\s+posible|lo\s+antes\s+posible)|lo\s+(?:mas\s+rapido|mas\s+pronto|antes)\s+posible|(?:es\s+)?urgente)$/.test(q);
+    if (!recipient && !urgent) return false;
+    if (recipient && /\b(?:llevar|domicilio|recoger|hoy|manana|ahora|almuerzo|cena|noche|tarde|conjunto|edificio|barrio|torre|casa|apartamento|apto|calle|carrera|oficina|local|unidad|porteria)\b/.test(recipient[1])) return false;
+    if (recipient && (this.catalogService.searchByNameScored(recipient[1], await this.catalogService.getMenuProducts(), 1)[0]?.score ?? 0) >= 80) return false;
+    const note = text.trim().replace(/[!.,;]+$/g, '').replace(/(?:\s*,?\s+(?:por favor|porfa|gracias))+$/i, '').replace(/^(?:(?:y|ah|por favor|porfa)\s*,?\s+)+/i, '').trim();
+    const saved = (session.customerNotes || '').split(/;\s*/).some(part => this.normalizeForMatch(part) === this.normalizeForMatch(note));
+    return finish(saved ? session : this.appendCustomerNote(session, note), `Anoté para el pedido: _${note}_ ✅`);
+  }
+
   private async tryHandleCartNoteRevision(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || ['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state)) return false;
     const pending = session.pendingCartNoteEdit;
@@ -18099,7 +18148,7 @@ export class WhatsappOrchestratorService {
     const rest = this.stripCashChangePhrases(t);
     const noteText =
       explicit?.note ||
-      this.catalogService.extractProductModificationNote(rest || t) ||
+      this.catalogService.extractProductModificationNote(rest || (change ? '' : t)) ||
       (rest && !/^(ninguno|ninguna|no|nada)$/i.test(rest) && !looksLikeExplicitCartItemNote(t)
         ? rest
         : null) ||
@@ -18231,7 +18280,8 @@ export class WhatsappOrchestratorService {
       .replace(/^[,.\s\-–—]+|[,.\s\-–—]+$/g, '')
       .trim();
     const cashOnly = new Set(['y', 'yo', 'te', 'le', 'un', 'una', 'el', 'la', 'de', 'en', 'con', 'efectivo', 'llevo', 'tengo',
-      'doy', 'pago', 'billete', 'plata', 'cash', 'entonces', 'listo', 'ok', 'bueno']);
+      'doy', 'pago', 'billete', 'plata', 'cash', 'entonces', 'listo', 'ok', 'bueno', 'que', 'me', 'traer', 'trae', 'traeme', 'traiga',
+      'traigan', 'llevar', 'lleva', 'llevame', 'lleven', 'manden', 'necesito', 'necesitamos', 'cambio', 'vueltas', 'vuelto']);
     const words = this.normalizeForMatch(rest).split(/[^a-z0-9]+/).filter(Boolean);
     return words.length && words.every((word) => cashOnly.has(word)) ? '' : rest;
   }
