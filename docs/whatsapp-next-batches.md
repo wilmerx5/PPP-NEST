@@ -1,3 +1,17 @@
+## VIGENTE — adicional cobrado nombrado sobre líneas del carrito (19/10)
+
+Base d0b93923, tanda 25. 108 regresiones nuevas (whatsapp-line-scoped-addon.spec.ts): bao/salsa + «Queso Extra», pizza/masa + «Champiñones Extra», batido/base + «Adicional Proteína»; agente simulado on/off; building_cart y awaiting_final_confirm; carrito sembrado 3× opción A «sin X» + 2× opción B (no es compra desde cero).
+
+Baseline con router real: «las de A con extra queso» y «a las de B agregale extra queso» guardaban nota gratis en la línea; «las de A con queso extra», «B con extra queso» y «con extra de queso» agregaban UN adicional para tres o dos platos con nota basura; «ponle queso extra a las de A» guardaba la frase literal y devolvía awaiting_final_confirm a building_cart; «échale queso extra a todas» respondía «no manejamos» ofreciendo ese mismo adicional. Sin el manejador fallan 84/108.
+
+Arreglo general: tryHandleLineScopedPaidAddon (grupo temprano, tras tryHandlePartialUnitOptionChange). Alcance: filas que hoy tienen la opción nombrada, o todas las que no son el adicional con «todas/todos». La cola debe nombrar exactamente un producto del catálogo por conjunto de palabras (cualquier orden, sin de/con/artículos, adicional≡extra, plural final) y sin opciones configurables. Se agrega una unidad por plato referenciado con nota «para <línea>» (addProductToCart en modo set: repetir no duplica y responde «Ya tenía»). Adicional no disponible: se nombra y no cambia nada. Preguntas, dígitos, otras selecciones pendientes y colas que no nombran un producto siguen por sus rutas. En awaiting_final_confirm no crea orden; «confirmar» lleva el adicional al DTO.
+
+Validación: 994 focalizados (15 suites vecinas), TypeScript, build TypeScript, 92 Node y diff --check. Global en dos fases: ráfagas 80/80 en 105,428s; resto 10.236/10.236 en 318,423s, 109 suites; unión exacta con el inventario de 110 archivos (la diferencia «suites/inventario» de tandas anteriores es la suite de ráfagas en su fase), 405 hashes intactos, sin reintentos. Duración total 423,9s: el pico de 661s de la tanda 24 no se repitió. Evidencia whatsapp-line-scoped-addon-validation-1910.json. Cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Desplegado solo staging: runtime 86d5a3d7ecabc68d23b47d555a7350fc9528c11b, imagen e19b1461…; health OK / DB connected / circuit CLOSED 2026-10-19T23:20:56Z, contenedor healthy sin reinicios. Rollback ppp-nest-staging:rollback-before-86d5a3d7 (imagen 8b14516b…). Producción sigue c5e97ab1… antes y después; bin/ privado preservado. No reconstruir por documentación.
+
+Siguiente: llamadas a tryConfirmOrder fuera de un turno entrante; concurrencia real de ráfagas durante una duda pendiente. Huecos conocidos de esta ruta: cantidad explícita de adicional («con 2 quesos extra»), referencia por producto en singular («al bao»), adicionales con opciones configurables y retirar el adicional por la línea («las de A sin queso extra»).
+
 ## VIGENTE — línea nombrada por la opción que ya tiene (19/10)
 
 Base 7363774e, tanda 24. 120 regresiones nuevas (whatsapp-option-reference-edit.spec.ts): bao/salsa, pizza/masa y batido/base, agente simulado on/off, carrito 3× opción A «sin X» + 2× opción B.

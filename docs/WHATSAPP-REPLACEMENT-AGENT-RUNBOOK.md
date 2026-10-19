@@ -4,7 +4,7 @@
 
 Checkout: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`. Rama permanente `staging`; remoto `origin/staging`. No tocar `Main` ni producción sin una nueva solicitud. Leer AGENTS.md, el comienzo vigente de WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-next-batches.md. AGENT-HANDOFF-WHATSAPP.md conserva historia; no asumir que sus modelos, presupuestos o SHAs antiguos siguen vigentes.
 
-Al crear este documento: HEAD f0b5221b; último runtime acreditado en staging 49812461. Hay cambios publicados aún sin desplegar. Verificar de nuevo Git y servidor antes de actuar. El schedule fue eliminado: no recrearlo. No hay autorización implícita para otro agente concurrente, llamadas pagadas, mensajes WhatsApp ni órdenes externas en una tanda gratuita.
+Actualizado 19/10 tras la tanda 25: runtime desplegado en staging 86d5a3d7 (health OK 23:20Z); producción c5e97ab1… intacta. No hay código publicado pendiente de despliegue. Verificar de nuevo Git y servidor antes de actuar; la entrada más reciente de WHATSAPP-LOCAL-NEXT-AGENT.md manda sobre estos SHAs. El schedule fue eliminado: no recrearlo. No hay autorización implícita para otro agente concurrente, llamadas pagadas, mensajes WhatsApp ni órdenes externas en una tanda gratuita.
 
 ## Arranque sin pisar trabajo
 
@@ -84,9 +84,12 @@ Después: verificar HEAD, imagen/contenedor running, reinicios y https://dev.pro
 
 ## Siguientes objetivos
 
-- Casos del usuario: poco arroz/poca ensalada deben ser notas del plato; consulta de demora después de completar no debe reabrir compra ni inventar productos/ETA.
-- Aclaración numérica corta tras seleccionar entre variantes: conservar intención completa e invalidar índices si cambió el carrito.
-- Dos atributos y nota sobre las mismas unidades; reemplazo/retirada de notas contradictorias.
+Resueltos en tandas 20–25 (no repetir): poco arroz/ensalada como nota, demora tras orden, «2» tras aclaración, dos atributos, notas contradictorias y sus formas sueltas, orden creada sin «confirmar» dentro del turno, línea nombrada por su opción, adicional cobrado nombrado sobre líneas.
+
+- Llamadas a tryConfirmOrder fuera de un turno entrante (la firma del pedido solo protege dentro del turno).
+- Ráfagas concurrentes reales (handleIncoming + temporizadores) durante una duda pendiente.
+- Huecos del adicional por línea: cantidad explícita, referencia por producto en singular, adicionales con opciones, retirarlo por la línea.
+- Vigilar duración de la global (417 s tanda 23, 661 s tanda 24, 424 s tanda 25) y que la unión de ambas fases coincida con --listTests.
 - Estado del piloto: consultar WHATSAPP-COMMERCIAL-READINESS-PLAN.md. Un caso ya corregido localmente puede seguir fallando en un runtime anterior; comparar versiones antes de duplicar parches.
 
 ## Resultado de esta tanda de relevo (19/10)

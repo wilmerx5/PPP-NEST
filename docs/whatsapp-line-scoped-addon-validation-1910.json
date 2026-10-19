@@ -1,0 +1,54 @@
+{
+  "batch": 25,
+  "date": "2026-10-19",
+  "base": "d0b93923",
+  "commit": "86d5a3d7ecabc68d23b47d555a7350fc9528c11b",
+  "scope": "Priced catalogue add-on named against cart rows («las de <opción> con extra queso», «ponle X a las de <opción>», «échale X a todas»)",
+  "baselineFindings": [
+    "«las de A con extra queso» and «a las de B agregale extra queso» (reversed word order) appended a free note «con extra queso» to the row",
+    "«las de A con queso extra», «B con extra queso», «las de A con extra de queso» added ONE add-on unit for 3 or 2 dishes, with a junk note «con …»",
+    "«ponle queso extra a las de A» saved the literal sentence as a free note and moved awaiting_final_confirm back to building_cart",
+    "«échale queso extra a todas» answered «no manejamos» while offering that same add-on"
+  ],
+  "fix": "tryHandleLineScopedPaidAddon (early group, right after tryHandlePartialUnitOptionChange). Scope: rows currently holding a named option, or every non-add-on row for todas/todos. The tail must name exactly one catalogue product by word set (any order, de/con/articles ignored, adicional≡extra, trailing plural s dropped) with no configurable options. It is added with one unit per referenced dish and note «para <línea>» via addProductToCart mode set, so repeating the same request is idempotent and answered «Ya tenía». Unavailable add-on is named and nothing changes. Questions, digits, other pending selections and tails that do not name a catalogue product keep their existing routes. No restaurant names/IDs/prices in the rule.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-line-scoped-addon.spec.ts",
+    "count": 108,
+    "menus": ["Bao De Hongos/Salsa + Queso Extra", "Pizza Del Huerto/Masa + Champiñones Extra", "Batido De Mango/Base + Adicional Proteína"],
+    "agent": [false, true],
+    "asks": "6 phrasings (reversed con, verb-first, a-las-verb, que lleven, bare option, todas) × building_cart/awaiting_final_confirm; final state confirms and checks DTO (add-on units, 5 dishes, no free extra note on dishes)",
+    "contrasts": ["unavailable", "not-in-catalog", "question", "repeat", "pending-selection", "removal-wording"],
+    "baselineWithoutHandler": "84/108 failed",
+    "seededCart": "3× option A «sin X» + 2× option B; not a purchase from scratch"
+  },
+  "knownGaps": [
+    "Explicit add-on quantity («con 2 quesos extra») and singular product references («al bao») are not handled by this route",
+    "Add-on products with configurable options fall through to pre-existing routes",
+    "Removing a previously added add-on by line wording («las de A sin queso extra») is not linked to the add-on line"
+  ],
+  "validation": {
+    "focused": "994/994 (15 suites: new spec, option-reference-edit, note-revision-phrasing, note-replacement-block, existing-variants-block, unit-option-plan/source, unit-clarification, cart-note, cart-edits, combo-drink-absorption, kitchen-description, exclusion-lines, destination-note-resolution, reduced-sides-postorder)",
+    "typescript": "tsconfig.json and tsconfig.build.json clean",
+    "nodeScripts": "92/92",
+    "diffCheck": "clean",
+    "global": {
+      "phase1Burst": { "passed": 80, "total": 80, "seconds": 105.428 },
+      "phase2Rest": { "passed": 10236, "total": 10236, "suites": 109, "seconds": 318.423 },
+      "inventorySuites": 110,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 405,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only",
+    "runtime": "86d5a3d7ecabc68d23b47d555a7350fc9528c11b",
+    "image": "sha256:e19b1461c8c9e07c7982b600f1f1e57deef07e6659db808a29ee62f40e8ac6a4",
+    "health": "200 ok, db connected, circuit CLOSED at 2026-10-19T23:20:56Z, restarts=0, container healthy",
+    "rollbackTag": "ppp-nest-staging:rollback-before-86d5a3d7 (image 8b14516b…)",
+    "productionImage": "c5e97ab1… unchanged before/after"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
