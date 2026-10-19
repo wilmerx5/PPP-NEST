@@ -1,3 +1,21 @@
+## VIGENTE — datos completos y destinatario explícito validados (19/10)
+
+Base c4bf7d7a, solo staging. Trece pruebas nuevas: ocho recorridos de ravioles/bowl, agente simulado on/off, datos juntos/secuenciales; cinco controles de destinatario explícito frente a nombre inferido. Los recorridos comprueban dos unidades, teléfono, calle/conjunto/torre/apartamento, consulta de carrito, pago, cambio tardío de calle y DTO simulado sin orden prematura.
+
+Baseline: cuatro mensajes completos conservaron Wilmer en lugar de Cristina; secuenciales pasaron. Se reconoce «a nombre (de)», se permite reemplazar contacto guardado solo con nombre explícito válido, se limpian separadores residuales al separar dirección y se evita reintroducir datos de contacto como palabras del plato en mensajes sin dirección. La primera corrección expuso contaminación de dirección por separadores; los controles adicionales reprodujeron falsa indisponibilidad del plato con nombre/teléfono. Reglas generales, sin IDs/nombres de restaurante.
+
+Primera global: 9.483 verdes / 20 regresiones (alergias, notas y correcciones), NO aprobada. Se limitó la limpieza a datos explícitos; «soy…» e inferencias de nombre no sustituyen la intención original. Reparación: 125 focalizados, TypeScript, 92 contratos Node y global 88 suites / 9.503 tests aprobados. Los 379 hashes de fuente permanecieron intactos durante la global. Evidencia whatsapp-delivery-contact-validation-1910.json. Cero llamadas pagadas/Meta/órdenes externas. Main intacto; schedule eliminado. Novena tanda cerrada desde la auditoría, 133 tests nuevos acumulados; no equivale a todos los chats del PDF cubiertos. Siguiente: destinos fragmentados hasta DTO, rechazo de dirección anterior y complemento sin calle; después variantes/postorden y evaluación reservada. Publicación/despliegue de staging pendiente de verificación; última imagen acreditada d28f968f… en 1b5b0028.
+
+### Siguiente tanda D2 — destino fragmentado hasta orden simulada
+
+1. Ampliar `Historical chat continuation: address components and late notes` mediante `sendQueued`, dos menús sintéticos y agente simulado on/off. Calle → conjunto → torre/apartamento → consulta total → pago → confirmación. Exigir respuesta útil, datos no duplicados y DTO íntegro.
+2. Rechazo «a una nueva» → nueva calle → complemento. Nunca guardar «esta», «la nueva» ni la dirección anterior; no reutilizar torre/apartamento del destino reemplazado.
+3. Complemento aislado («torre 2 apto 301») sin dirección base: conservar como pendiente, pedir calle/ubicación y no avanzar con una geocodificación inventada. Mapa simulado no acredita exactitud real.
+4. Cambio tardío de apartamento durante confirmación: conservar calle, carrito y pago; actualizar revisión, sin crear orden antes de la aprobación.
+5. Negativo: pregunta de cobertura con una calle no sustituye automáticamente destino confirmado. Mantener casos de consulta frente a instrucción explícita.
+
+Cerrar una familia coherente, no sumar combinaciones cosméticas. Para cada fallo guardar baseline, respuesta/carrito/estado y DTO. No desplegar pruebas/documentación solas; agrupar runtime validado. Continúan pendientes variantes ambiguas (E), postorden (F) y evaluación reservada con modelo real antes del piloto.
+
 ## VIGENTE — sustitución de adicionales durante cierre verificada (19/10)
 
 Base 5103211e. Dieciséis conversaciones nuevas: sushi/vegetal, pago/confirmación, agente simulado on/off y «cambia X por Y»/«no quiero X, quiero Y». Compra de combo con Manzana y dos unidades de adicional; reemplazo inexistente rechazado sin mutación; reemplazo válido conserva cantidad dos, combo/opción/nota preexistente; consulta total actualizado 48.000 y cierre hasta DTO de tres unidades. No orden antes de confirmar. Nota del combo sembrada como estado previo, no extracción probada. Datos externos/modelos simulados.

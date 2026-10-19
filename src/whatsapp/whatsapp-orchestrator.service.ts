@@ -2533,21 +2533,22 @@ export class WhatsappOrchestratorService {
         session = { ...session, cashChangeFor: change, paymentMethod: session.paymentMethod || cash?.id };
       }
     }
-    if (compound.customerName && !isUsableWhatsappCustomerName(conv.customerName || '')) {
-      if (isUsableWhatsappCustomerName(compound.customerName)) {
-        await this.conversationService.updateCustomerName(conv, compound.customerName);
-        const freshName = await this.conversationService.reloadConversation(conv.id);
-        Object.assign(conv, freshName);
-      }
-    } else if (compound.customerName && !conv.customerName?.trim()) {
-      if (isUsableWhatsappCustomerName(compound.customerName)) {
-        await this.conversationService.updateCustomerName(conv, compound.customerName);
-        const freshName = await this.conversationService.reloadConversation(conv.id);
-        Object.assign(conv, freshName);
-      }
+    // An explicitly supplied recipient supersedes the saved contact; an inferred
+    // leading name only fills a missing/invalid name.
+    if (compound.customerName && isUsableWhatsappCustomerName(compound.customerName) &&
+        (compound.customerNameExplicit || !isUsableWhatsappCustomerName(conv.customerName || ''))) {
+      await this.conversationService.updateCustomerName(conv, compound.customerName);
+      const freshName = await this.conversationService.reloadConversation(conv.id);
+      Object.assign(conv, freshName);
     }
     if (compound.productText.length >= 3) {
       text = compound.productText;
+      // Explicit contact clauses are already persisted. Downstream purchase
+      // guards must not reject them as unknown words in the product name.
+      // Keep the full destination source for delivery/checkout handling.
+      if (!compound.address && (compound.customerNameExplicit || compound.phone || compound.phoneUsesWhatsapp)) {
+        originalText = text;
+      }
     }
     await this.conversationService.saveSession(conv, session);
     const productsRaw = await this.catalogService.getMenuProducts();
@@ -17134,7 +17135,7 @@ export class WhatsappOrchestratorService {
   /** Separa el pedido del domicilio para matching de producto (audios compuestos). */
   private splitProductAndDelivery(text: string): { productText: string; address: string | null } {
     // Removing a trailing payment clause can leave a comma after the address.
-    text = text.trim().replace(/[.,;:]+$/, '').trim();
+    text = text.trim().replace(/[.,;:\s]+$/, '').trim();
     const address = this.extractDeliveryTail(text);
     if (!address) return { productText: text.trim(), address: null };
 
@@ -17190,6 +17191,7 @@ export class WhatsappOrchestratorService {
     phone: string | null;
     customerName: string | null;
     phoneUsesWhatsapp?: boolean;
+    customerNameExplicit?: boolean;
   } {
     const original = (text || '').trim();
     const lines = original.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -17212,6 +17214,7 @@ export class WhatsappOrchestratorService {
     let phone: string | null = null;
     let customerName: string | null = null;
     let phoneUsesWhatsapp = false;
+    let customerNameExplicit = false;
 
     // Quitar cláusulas de pago para no contaminar matching / dirección
     working = working
@@ -17248,7 +17251,7 @@ export class WhatsappOrchestratorService {
     }
 
     const namePatterns = [
-      /\b(?:me\s+llamo|soy|mi\s+nombre\s+es|nombre\s*:)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{1,60}?)(?=$|[.,;]|\b(?:para|cel|tel|whatsapp|direcci[oó]n|domicilio)\b)/i,
+      /\b(?:a\s+nombre(?:\s+de)?\s*:?|me\s+llamo|soy|mi\s+nombre\s+es|nombre\s*:)\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{1,60}?)(?=$|[.,;]|\b(?:para|cel|tel|whatsapp|direcci[oó]n|domicilio)\b)/i,
     ];
     for (const re of namePatterns) {
       const m = working.match(re);
@@ -17261,6 +17264,9 @@ export class WhatsappOrchestratorService {
         isUsableWhatsappCustomerName(name)
       ) {
         customerName = name;
+        // "Soy alérgico/celíaco" is not an explicit recipient label. Preserve
+        // the original utterance for allergy and other intent handlers.
+        customerNameExplicit = !/^soy\b/i.test(m[0]);
         working = working.replace(m[0], ' ').replace(/\s+/g, ' ').trim();
         break;
       }
@@ -17330,7 +17336,7 @@ export class WhatsappOrchestratorService {
 
     const { productText, address } = this.splitProductAndDelivery(working);
     if (address) {
-      return { productText, address, phone, customerName, phoneUsesWhatsapp };
+      return { productText, address, phone, customerName, phoneUsesWhatsapp, customerNameExplicit };
     }
 
     // Corpus: dirección al final sin "para" (calle/torre/Castilla…)
@@ -17342,6 +17348,7 @@ export class WhatsappOrchestratorService {
         phone,
         customerName,
         phoneUsesWhatsapp,
+        customerNameExplicit,
       };
     }
 
@@ -17357,7 +17364,7 @@ export class WhatsappOrchestratorService {
       };
     }
 
-    return { productText, address: null, phone, customerName, phoneUsesWhatsapp };
+    return { productText, address: null, phone, customerName, phoneUsesWhatsapp, customerNameExplicit };
   }
 
   private mergeNameScores(

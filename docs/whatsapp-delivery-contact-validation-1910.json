@@ -1,0 +1,28 @@
+{
+  "base": "c4bf7d7a",
+  "new_tests": 13,
+  "focused_passed": 125,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "first_global": {
+    "passed": 9483,
+    "failed": 20,
+    "reason": "Inferred names and soy allergy descriptions must not strip original intent"
+  },
+  "global": {
+    "suites": 88,
+    "tests": 9503,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_unchanged": true
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Models, maps, Meta and order service mocked",
+    "Two synthetic menus; full street/complex/unit in same message or sequential contact",
+    "Not a complete replay of every PDF conversation",
+    "Main unchanged"
+  ],
+  "deployment": "pending"
+}

@@ -19695,3 +19695,46 @@ describe('Extra replacement preserves combo through checkout and rejects unknown
   });
  }
 });
+
+describe('Delivery data together or sequentially reaches checkout and accepts a new street',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const together of [false,true])it(`${name} together=${together} agent=${enabled}`,async()=>{
+  const product={id:79991,code:79991,name,price:21000,availableNow:true,attributes:[]};const h=harness([product],enabled);
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,lastDeliveryAddress:'Calle 2 #3-40'});
+  h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}})};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:7999,dailyOrderNumber:86});
+  const destination='Calle 10 #81A-20 conjunto Los Cedros torre B apartamento 304B';
+  const contact='a nombre Cristina, celular 3000000004';
+  if(together)await h.sendQueued(`Quiero dos ${name}\nDirección: ${destination}\n${contact}`);
+  else {await h.sendQueued(`Quiero dos ${name}`);await h.sendQueued(`Dirección: ${destination}`);await h.sendQueued(contact);}
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:79991,qty:2})]);
+  expect(h.conv.customerName).toBe('Cristina');expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);
+  expect(h.conv.sessionData.address).toMatch(/81A-20.*Los Cedros.*torre B.*304B/i);expect(h.conv.sessionData.address).not.toContain('3-40');
+  expect(h.conv.state).toBe('awaiting_payment');
+  const cart=structuredClone(h.conv.sessionData.cart);const shown=await h.sendQueued('déjame ver el carrito');expect(shown).toContain(name);expect(h.conv.sessionData.cart).toEqual(cart);
+  await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
+  const change=await h.sendQueued('Cambiar dirección a Carrera 22 #45-60 conjunto Los Robles torre C apartamento 205');
+  expect(h.conv.sessionData.address).toMatch(/22.*45-60.*Los Robles.*torre C.*205/i);expect(h.conv.sessionData.address).not.toMatch(/Cedros|304B/);
+  expect(change).not.toMatch(/algo m[aá]s/i);expect(h.conv.sessionData.cart).toEqual(cart);expect(h.conv.sessionData.paymentMethod).toBe('cash');
+  expect(h.service.ordersService.create).not.toHaveBeenCalled();await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===79991)).toBe(true);expect(dto.address).toMatch(/45-60.*Los Robles.*205/i);expect(dto.deliveryFee).toBe(2000);expect(dto.customerName).toBe('Cristina');expect(dto.phone).toMatch(/3000000004/);
+ });
+});
+
+describe('Compound recipient replaces saved name only when explicitly supplied', () => {
+ for (const clause of ['a nombre de Cristina', 'Nombre: Cristina', 'me llamo Cristina', 'a nombre Cristina']) {
+  it(clause, async () => {
+   const h=harness([{id:79992,code:79992,name:'Ravioles De Ricota',price:21000,availableNow:true,attributes:[]}],false);
+   await h.sendQueued(`Quiero un Ravioles De Ricota; ${clause}; celular 3000000004`);
+   expect(h.conv.customerName).toBe('Cristina');
+   expect(h.conv.sessionData.contactPhone).toMatch(/3000000004/);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:79992,qty:1})]);
+  });
+ }
+ it('inferred leading name does not replace the saved recipient', async () => {
+  const h=harness([{id:79992,code:79992,name:'Ravioles De Ricota',price:21000,availableNow:true,attributes:[]}],false);
+  await h.sendQueued('Natalia quiero un Ravioles De Ricota; celular 3000000004');
+  expect(h.conv.customerName).toBe('Wilmer');
+  expect(h.cartRows()).toEqual([expect.objectContaining({id:79992,qty:1})]);
+ });
+});
