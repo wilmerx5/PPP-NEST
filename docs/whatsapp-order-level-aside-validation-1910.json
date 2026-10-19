@@ -1,0 +1,57 @@
+{
+  "batch": 26,
+  "date": "2026-10-19",
+  "base": "41e374a4",
+  "commit": "290615416827036ba3e8a603096d11a14303eae4",
+  "scope": "Order-level asides during cart building and final review: cash change, recipient/gift, urgency, thanks with an open order",
+  "auditOfPlannedItem": "tryConfirmOrder has no caller outside an incoming turn: public entry points that skip handleIncoming (completeAfterMercadoPagoPayment, sendHumanReply, sendHumanMedia, releaseToBot) never call it, and the turn signature is set at turn start and deleted in finally. Probe of 38 final-step messages (name, same address, same/other payment, cash amounts, access references, notes) created no order without approval («listo» approves by policy). Cash/notes not being part of orderReviewSignature is covered because those routes save through saveForSummaryRefresh (state confirming). No runtime change for this item.",
+  "baselineFindings": [
+    "«traer vueltas de 100 mil» answered «No tengo autorización para comprar vueltas de 100 mil» (off-menu errand)",
+    "«tráeme cambio de 50 mil» (accent) was lost silently",
+    "«traigan/necesito/llevar cambio de …» and «le pago con un billete de …» stored the leftover verb («traigan», «necesito», «llevar», «con un billete de») as a dish note AND an order note",
+    "«es para regalo», «es para mi mamá», «son para mis hijos», «que llegue rápido», «lo más rápido posible» were dropped silently (cart re-shown) in building_cart and awaiting_final_confirm",
+    "«es un regalo» answered «Ese plato no está en tu carrito»",
+    "«gracias» with an open order answered «Cuando quieras pedir…» as if no order were open"
+  ],
+  "fix": "tryHandleOrderLevelAside (early group, after tryHandleLineScopedPaidAddon): standalone cash-change asks set cashChangeFor (normalized «cambio de N»); with a non-cash payment it explains change applies to cash and changes nothing; in awaiting_payment, or «pago con un billete de N» with no payment yet, it defers to the payment route. Recipient/gift and urgency phrases append once to customerNotes; pickup, schedule, address words and catalogue names keep their routes. Final review re-shows the full summary and asks «confirmar». Thanks with a non-empty cart answers that the order is still open plus the step reminder. applyInlineOrderNote no longer falls back to the whole text when only a cash phrase was present, and cash-only leftovers include common verbs.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-order-level-aside.spec.ts",
+    "count": 120,
+    "carts": ["one row with option (Bao/Salsa ×2)", "two rows with different options (Pizza/Masa 3+1)", "plain product without options (Jugo ×3)"],
+    "agent": [false, true],
+    "asks": "4 cash forms + recipient + gift + urgency + thanks × building_cart/awaiting_final_confirm; final state confirms and checks DTO (address composition carries cash/note, item notes empty, unit count)",
+    "contrasts": ["non-cash-payment", "pickup-phrase", "repeat-note", "empty-cart"],
+    "baselineWithoutFix": "108/120 failed"
+  },
+  "knownGaps": [
+    "Dish handling asides such as «que traigan salsa aparte» are still dropped silently (need line targeting across multi-row carts)",
+    "Mixed messages (dish note + cash in one sentence) still go through applyInlineOrderNote",
+    "Name changes in the final step update the name without an explicit acknowledgement line"
+  ],
+  "validation": {
+    "focused": "1128/1128 (14 suites: new spec, checkout-envelope, ambiguous-turns, chat-regressions, catalog.matching, intent, cart-note, address-change-checkout, compound-parse, order-address, line-scoped-addon, option-reference-edit, note-revision-phrasing, note-replacement-block)",
+    "focusedFailureFixed": "address-change-checkout «Pago con un billete de 100 mil» while awaiting payment must select cash: the aside now defers to the payment route",
+    "typescript": "tsconfig.json and tsconfig.build.json clean",
+    "nodeScripts": "92/92",
+    "diffCheck": "clean",
+    "global": {
+      "phase1Burst": { "passed": 80, "total": 80, "seconds": 105.605 },
+      "phase2Rest": { "passed": 10356, "total": 10356, "suites": 110, "seconds": 318.191 },
+      "inventorySuites": 111,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 406,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only",
+    "runtime": "290615416827036ba3e8a603096d11a14303eae4",
+    "image": "sha256:817acceaf361c16e83257e35c47c3786ffc80c6b6b79d51e03b6b80ed508a6e1",
+    "health": "200 ok, db connected, circuit CLOSED at 2026-10-19T23:37:14Z, restarts=0, container healthy",
+    "rollbackTag": "ppp-nest-staging:rollback-before-29061541 (image e19b1461…)",
+    "productionImage": "c5e97ab1… unchanged before/after"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
