@@ -30,7 +30,20 @@
     "Other reported incidents remain pending"
   ],
   "baseline_notes": "Initial test had wrong expected side ID and missing order lookup mock; corrected harness. Direct catalog probe showed beverage replacing combo. Two address cases still failed after combo normalization and passed after product/address split fix.",
-  "deployment": "Deferred to group with next batch; runtime remains 0d69b9c8. No new runtime health check.",
+  "deployment": {
+    "commit": "eef626606cbd25e88df93c1ffc390991728e26a4",
+    "image": "sha256:20aa157079bc985d7a3745d490a7e6e849f7faded00500aa84d1174e46d07234",
+    "status": "running/healthy",
+    "verified_utc": "2026-10-19T00:09:16Z",
+    "public_health_utc": "2026-10-19T00:09:22.134Z",
+    "health": "ok/db connected/circuit CLOSED",
+    "compiled_assertions": {
+      "destination": 9,
+      "combo_address": 6
+    },
+    "rollback": "ppp-nest-staging:rollback-before-eef62660",
+    "production_image_unchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  },
   "paid_calls": 0,
   "meta_messages": 0,
   "external_orders": 0,
