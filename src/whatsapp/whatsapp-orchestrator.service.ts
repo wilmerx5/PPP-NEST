@@ -1489,6 +1489,7 @@ export class WhatsappOrchestratorService {
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleCartNoteRevision(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleOptionReferencedLineEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleNamedCartKitchenNote(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleSubsetKitchenNote(conv,msg.waId,session,originalText,cfg)) {
@@ -15741,6 +15742,92 @@ export class WhatsappOrchestratorService {
     session={...session,cart:plan.cart,lastUnitOptionEdit:{sourceText:this.normalizeForMatch(text),cartSignature:JSON.stringify(plan.cart)}};
     await this.conversationService.saveSession(conv,session);
     await this.reply(conv,waId,this.formatCartOnly(session,this.deliveryFeeFor(session,cfg))+'\n\n'+reminder);
+    return true;
+  }
+
+  /** «las de <opción que ya tiene una línea> …» names those rows: change their option or note them, never another row. */
+  private async tryHandleOptionReferencedLineEdit(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 160 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const q = this.normalizeForMatch(text).replace(/[.!]+$/g, '').replace(/(?: (?:por favor|porfa|gracias))+$/, '').trim();
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const menu = await this.catalogService.getMenuProducts();
+    const held = [...new Set(session.cart.flatMap(line => (line.attributes || []).map(attr => this.normalizeForMatch(attr.attributeValue))))]
+      .filter(value => value.length >= 3).sort((a, b) => b.length - a.length);
+    const rowsHolding = (value: string) => session.cart.flatMap((line, index) =>
+      (line.attributes || []).some(attr => this.normalizeForMatch(attr.attributeValue) === value) ? [index] : []);
+    const optionFor = (index: number, said: string, reference?: string) => {
+      const product = menu.find(p => p.id === session.cart[index].productId);
+      const hits = (product?.attributes || []).flatMap(attr => {
+        const current = (session.cart[index].attributes || []).find(a => a.attributeName === attr.attributeName);
+        if (reference && this.normalizeForMatch(current?.attributeValue || '') !== reference) return [];
+        return attr.options.filter(option => this.normalizeForMatch(option) === said).map(option => ({ attributeName: attr.attributeName, attributeValue: option }));
+      });
+      return hits.length === 1 ? hits[0] : null;
+    };
+    let reference = '', tail = '', verbChange = false;
+    for (const value of held) {
+      const ref = escape(value);
+      const m = q.match(new RegExp(`^(?:cambia(?:me|les)?|pasa(?:me)?) (?:todas |todos )?(?:la|las|el|los) (?:de |con )?${ref} (?:a|por|para) (.+)$`)) ||
+        q.match(new RegExp(`^(?:que |para |a )?(?:todas |todos )?(?:la|las|el|los) (?:de |con )?${ref} (.+)$`)) ||
+        q.match(new RegExp(`^${ref} (.+)$`));
+      if (m) { reference = value; tail = m[1]; verbChange = /^(?:cambia|pasa)/.test(q); break; }
+    }
+    let rows: number[] = [], change: string | null = null;
+    if (reference) {
+      rows = rowsHolding(reference);
+      const said = tail.replace(/^(?:(?:mejor|ahora|cambialas|cambialos|cambiala|cambialo|pasalas|pasalos|que sean|en vez|a|por|en|de|con) )*/, '').trim();
+      if (verbChange || said !== tail || rows.every(index => optionFor(index, said, reference))) change = said;
+    } else {
+      const all = q.match(/^(?:todas|todos|todo)(?: (?:las|los))? (?:(?:de|con|en|a) )?(.+)$/);
+      if (!all) return false;
+      change = all[1];
+      rows = session.cart.flatMap((line, index) => {
+        const option = optionFor(index, all[1]);
+        return option && !(line.attributes || []).some(a => a.attributeName === option.attributeName && a.attributeValue === option.attributeValue) ? [index] : [];
+      });
+      if (!rows.length) return false;
+    }
+    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
+    const labels = (indexes: number[]) => indexes.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ');
+    let edits: Array<{ productId: number; cartLineIndex: number; affectedQuantity: number; attributes: Array<{ attributeName: string; attributeValue: string }>; note?: string }>;
+    let lead: string;
+    if (change !== null) {
+      const options = rows.map(index => optionFor(index, change!, reference || undefined));
+      if (options.some(option => !option)) {
+        if (!verbChange) return false;
+        await this.reply(conv, waId, `No encontré *${change}* como opción de ${labels(rows)}. El pedido sigue igual.\n\n${reminder(session)}`);
+        return true;
+      }
+      edits = rows.map((index, i) => ({ productId: session.cart[index].productId, cartLineIndex: index, affectedQuantity: session.cart[index].quantity, attributes: [options[i]!] }));
+      lead = `Listo, ${labels(rows)} ${rows.length === 1 && session.cart[rows[0]].quantity === 1 ? 'queda' : 'quedan'} con *${options[0]!.attributeName}: ${options[0]!.attributeValue}* ✅`;
+    } else {
+      // Food edits, fulfillment and payment keep their own routes.
+      if (tail.length < 3 || tail.length > 60 ||
+          /^(?:con|sin|y|pero|no|ya|mas|menos|mejor|ponle|ponles|echale|echales|agregale|agregales|quitale|quitales|quita|borra|cambia|agrega|tambien|otra|otro|otras|otros)\b/.test(tail) ||
+          /^(?:esta|estan|es|son|era|eran|asi|queda|quedan|quedo|nada|eso|todo|igual|ok|listo|perfecto|gracias|por|para)\b/.test(tail) ||
+          /\b(?:llevar|domicilio|recoger|pago|pagar|efectivo|nequi|daviplata|transferencia|tarjeta|direccion|calle|carrera|cra|cll|avenida|confirmo|confirmar)\b/.test(tail) ||
+          this.namesAnotherMenuDish(session, text, menu)) return false;
+      if (menu.some(product => [product.name, ...(product.attributes || []).flatMap(attr => attr.options || [])]
+        .some(name => { const known = this.normalizeForMatch(name); return known.length > 2 && new RegExp(`(?:^|\\s)${escape(known)}(?:\\s|$)`).test(tail); }))) return false;
+      const note = text.replace(/[.!]+$/, '').replace(/(?:\s+(?:por favor|porfa|gracias))+$/i, '').trim().split(/\s+/).slice(-tail.split(' ').length).join(' ');
+      edits = rows.map(index => {
+        const attr = (session.cart[index].attributes || []).find(a => this.normalizeForMatch(a.attributeValue) === reference)!;
+        return { productId: session.cart[index].productId, cartLineIndex: index, affectedQuantity: session.cart[index].quantity,
+          attributes: [{ attributeName: attr.attributeName, attributeValue: attr.attributeValue }], note };
+      });
+      lead = `Listo, anoté «${note}» en ${labels(rows)} ✅`;
+    }
+    const plan = prepareUnitOptionActions(session.cart, { updateUnitOptions: edits }, menu, this.catalogService);
+    if (!plan.ok) {
+      await this.reply(conv, waId, `No pude aplicar ese cambio sobre ${labels(rows)}. El pedido sigue igual.\n\n${reminder(session)}`);
+      return true;
+    }
+    const next = { ...session, cart: plan.cart };
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, `${lead}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
     return true;
   }
 
