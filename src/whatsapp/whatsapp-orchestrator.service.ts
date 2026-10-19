@@ -233,6 +233,13 @@ export class WhatsappOrchestratorService {
   private readonly declinedListTurns = new Set<string>();
   private readonly turnStartOrderReview = new Map<string, string>();
 
+  /** Data given at the final step refreshes the summary; only an approval may create the order. */
+  private async saveForSummaryRefresh(conv: WhatsappConversation, session: WhatsappSessionData): Promise<void> {
+    const atFinalConfirm = conv.state === 'awaiting_final_confirm';
+    await this.conversationService.saveSession(conv, session, atFinalConfirm ? 'confirming' : undefined);
+    if (atFinalConfirm) conv.state = 'confirming';
+  }
+
   /** What the customer approves: dishes, fulfilment, destination, payment and contact. Derived checkout fields are excluded. */
   private orderReviewSignature(session: WhatsappSessionData, defaultPhone: string): string {
     return JSON.stringify([this.consolidateCart(session.cart || []), session.orderType,
@@ -2454,7 +2461,7 @@ export class WhatsappOrchestratorService {
         !['completed','closed','human_takeover'].includes(conv.state)) {
       if(msg.messageType==='text' && /^(?:(?:mi\s+)?(?:cel(?:ular)?|tel(?:[eé]fono)?|whatsapp|wa|n[uú]mero)\s*(?:es|:)?\s*)?[+\d\s()-]+$/i.test(originalText.trim()) && this.looksLikePhoneNumber(originalText)){
         session={...session,contactPhone:this.normalizeContactPhone(originalText,conv.phoneE164),phoneConfirmed:true};
-        await this.conversationService.saveSession(conv,session);
+        await this.saveForSummaryRefresh(conv,session);
         await this.tryConfirmOrder(conv,msg.waId,session,{preface:`Teléfono de contacto actualizado ✅ ${this.formatWaPhoneDisplay(session.contactPhone!)}`});return;
       }
       if(/(?:^|[,;\n])\s*(?:a\s+nombre|(?:mi\s+)?nombre\s*[:\-])/i.test(originalText) &&
@@ -15245,10 +15252,7 @@ export class WhatsappOrchestratorService {
       session = applied.session;
       notedItemIndex = applied.notedItemIndex;
     }
-    // At the final step a note only refreshes the summary; the order needs a fresh confirmation.
-    const editedAtFinalConfirm = conv.state === 'awaiting_final_confirm';
-    await this.conversationService.saveSession(conv, session, editedAtFinalConfirm ? 'confirming' : undefined);
-    if (editedAtFinalConfirm) conv.state = 'confirming';
+    await this.saveForSummaryRefresh(conv, session);
     const ack = [
       ...named.lines,
       named.noteText ? this.formatInlineNoteAck(session, notedItemIndex) : '',
@@ -15793,7 +15797,31 @@ export class WhatsappOrchestratorService {
     const candidates = session.cart.flatMap((line, index) =>
       (!revision.query || correctionMatchesLine(line, revision.query)) && reviseLineNote(line.note, revision) &&
       (!revision.quantity || revision.quantity <= line.quantity) ? [index] : []);
-    if (!candidates.length) return false;
+    if (!candidates.length) {
+      // A named row without the contradicted clause must not fall through to routes that could edit another row.
+      const scoped = revision.query ? session.cart.flatMap((line, index) => correctionMatchesLine(line, revision.query!) ? [index] : []) : [];
+      if (!scoped.length) return false;
+      const line = session.cart[scoped[0]];
+      const food = this.normalizeForMatch(revision.remove[0]?.replace(/^sin /, '') || '');
+      const menu = food ? await this.catalogService.getMenuProducts() : [];
+      if (menu.some(product => [product.name, ...(product.attributes || []).flatMap(attr => attr.options || [])]
+        .some(name => { const known = this.normalizeForMatch(name); return known.length > 2 && (known.includes(food) || food.includes(known)); }))) return false;
+      const appended = scoped.length === 1 && revision.add && !revision.quantity
+        ? editScopedCartNote(line.note, { kind: 'append', query: '', note: revision.add, preserve: [] }) : null;
+      if (appended && !appended.blocked) {
+        return finish({ ...session, cart: session.cart.map((item, index) => index === scoped[0] ? { ...item, note: appended.note } : item) },
+          `Listo, anoté «${revision.add}» en ${this.formatCartLineLabel(line)} ✅`);
+      }
+      await this.reply(conv, waId, `No encontré esa nota en ${scoped.length === 1 ? this.formatCartLineLabel(line) : 'esas líneas'}. El pedido sigue igual.\n\n` +
+        (this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session)));
+      return true;
+    }
+    if (revision.all && !revision.quantity) {
+      const cart = session.cart.map((line, index) => candidates.includes(index) ? { ...line, note: reviseLineNote(line.note, revision)!.note } : line);
+      const change = revision.clearAll ? 'retiré la nota' : revision.add ? `cambié «${revision.remove.join(', ')}» por «${revision.add}»` : `retiré «${revision.remove.join(', ')}»`;
+      return finish({ ...session, cart, pendingCartNoteEdit: undefined },
+        `Listo, ${change} en ${candidates.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ')} ✅`);
+    }
     if (candidates.length === 1) return apply(session, candidates[0], revision);
     const next = { ...session, pendingCartNoteEdit: { sourceText: text, cartSignature: JSON.stringify(session.cart), revision,
       candidates: candidates.map(cartIndex => ({ cartIndex, name: this.formatCartLineLabel(session.cart[cartIndex]) +
