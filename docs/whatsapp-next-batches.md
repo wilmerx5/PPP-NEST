@@ -1,3 +1,11 @@
+## VIGENTE — faltantes sin duplicación; fricción de cierre pendiente (19/10)
+
+Base 1b2e05e6, staging. Ocho conversaciones nuevas de sushi/vegetal, agente simulado on/off y adicional inicialmente presente/ausente. «Falta la porción…» deja exactamente una unidad, conserva combo, bebida y nota sembrada, permite consultar carrito y terminar hasta DTO exacto. No cambió runtime. 16 focalizados y TypeScript aprobados; no repetir global por tests: referencia runtime sigue 88/9.458 y no incluye estas pruebas ni las ocho de la tanda anterior.
+
+Hallazgo real de UX: durante awaiting_final_confirm, reclamar faltante reabre building_cart con «Algo más», incluso cuando ya estaba y no hay mutación. La primera prueba exigía crear orden tras un solo «confirmar» y falló ocho veces: traza muestra que ese confirmar presentaba el resumen actualizado, no bloqueo permanente. Las pruebas finales permiten retomar con «no más», revisan ausencia de creación prematura y luego confirman. No fijan como requisito el paso redundante. NO afirmar corregida esa fricción: próxima prioridad conservar/reanudar checkout y mostrar resumen actualizado directamente tras la recuperación, con prueba que exija estado awaiting_final_confirm y sin «Algo más». Luego sustitución atómica del adicional y destinos/cierre del PDF.
+
+Evidencia whatsapp-missing-extra-validation-1910.json. Nota de preparación preexistente sembrada, no extracción probada. Modelos/Meta/órdenes simulados, cero llamadas pagadas y órdenes externas. Main intacto, sin suites activas. Solo tests/documentación publicados: no reconstruir staging; último runtime acreditado 156ef70f / imagen 05d13fdb…, sin nueva comprobación remota. No declarar piloto listo por conteos.
+
 ## VIGENTE — edición de adicionales durante pago verificada (19/10)
 
 Base f8cde83b. Ocho conversaciones nuevas de sushi/bowl con agente simulado on/off: compra de combo con bebida y media porción adicional, cierre a pago, retirar adicional o dejar dos unidades, consultar carrito y confirmar. Comprueban respuesta sin falsa indisponibilidad, estado de pago, combo/opción/nota preexistente intactos, nombre/contacto y DTO expandido exacto. Nota «Salsa aparte» sembrada como estado previo: no mide extracción de esa nota. No se cambió runtime: todos pasan con la lógica actual.

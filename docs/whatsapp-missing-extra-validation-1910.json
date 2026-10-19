@@ -1,0 +1,20 @@
+{
+  "base": "1b2e05e6",
+  "new_tests": 8,
+  "focused_passed": 16,
+  "typescript": "passed before final test-only review wording; final Jest compiled/passed",
+  "runtime_changes": false,
+  "initial_failures": 8,
+  "initial_failure_explanation": "Test expected immediate order creation; router reopened cart and confirm showed review. Recovery works with another closing turn. UX friction remains.",
+  "pending": "Resume confirmation summary directly after missing-item recovery; do not ask Algo mas",
+  "global": "Not repeated, tests-only; prior runtime 88 suites / 9458 tests",
+  "paid_calls": 0,
+  "external_orders": 0,
+  "deployment": "No rebuild for tests; prior runtime 156ef70f",
+  "limits": [
+    "Two synthetic catalogs; simulated agent on/off",
+    "Prepared note seeded, not extracted",
+    "Absent/present extra ends as exactly one unit",
+    "No claims of real model or production validation"
+  ]
+}

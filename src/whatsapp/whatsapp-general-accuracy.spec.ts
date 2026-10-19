@@ -19635,3 +19635,34 @@ describe('Combo extras can be edited during payment without losing the meal', ()
   });
  }
 });
+
+describe('Missing extra recovery during checkout distinguishes an existing line', () => {
+ for (const names of [{meal:'Combo De Sushi',extra:'Porcion De Gyozas'},{meal:'Combo Vegetal',extra:'Porcion De Falafel'}]) for(const enabled of [false,true]) for(const present of [false,true]) {
+  it(`${names.meal} present=${present} agent=${enabled}`,async()=>{
+   const menu=[{id:79971,code:79971,name:names.meal,price:30000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Manzana','Colombiana']}]},{id:79972,code:79972,name:names.extra,price:8000,availableNow:true,attributes:[]}];
+   const h=harness(menu,enabled);Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:7997,dailyOrderNumber:84});
+   await h.sendQueued(`Un ${names.meal} con manzana${present?` y una ${names.extra}`:''}`);
+   expect(h.cartRows()).toHaveLength(present?2:1);
+   h.conv.sessionData.cart.find(r=>r.productId===79971)!.note='Salsa aparte';
+   const meal=structuredClone(h.conv.sessionData.cart.find(r=>r.productId===79971));
+   await h.sendQueued('no más, recojo en el local');await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
+   const reply=await h.sendQueued(`Falta la ${names.extra}`);
+   expect(h.cartRows().filter(r=>r.id===79972).reduce((n,r)=>n+r.qty,0)).toBe(1);
+   expect(h.conv.sessionData.cart.find(r=>r.productId===79971)).toEqual(meal);
+   expect(reply).not.toMatch(/no manejamos|no tenemos|no me qued[oó] clar/i);
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   await h.sendQueued('déjame ver el carrito');expect(h.cartRows()).toHaveLength(2);
+   // Resume review if the recovery reopened cart building; do not lock in that extra turn.
+   if(h.conv.state==='building_cart') {
+    const review=await h.sendQueued('no más');expect(review).toMatch(/confirmar/i);
+   }
+   expect(h.conv.state).toBe('awaiting_final_confirm');
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);
+   expect(dto.items.find((r:any)=>r.productId===79971)).toEqual({productId:79971,attributes:meal!.attributes,note:'Salsa aparte'});
+   expect(dto.items.filter((r:any)=>r.productId===79972)).toHaveLength(1);expect(dto.orderType).toBe('pickup');
+  });
+ }
+});
