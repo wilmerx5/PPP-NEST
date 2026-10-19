@@ -73,3 +73,15 @@ describe('Independent vision model selection',()=>{
   expect(body).not.toHaveProperty('max_tokens');expect(body).not.toHaveProperty('temperature');
  });
 });
+
+describe('Address image provider contract — offline',()=>{
+ const previousFetch=global.fetch;
+ afterEach(()=>{global.fetch=previousFetch;});
+ it.each([false,true])('preserves a distinct address result including internal access, retry=%s',async ocrRetry=>{
+  const text='Calle 10 #81A-20; Conjunto Los Olivos torre B apartamento 304B';
+  const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({kind:'address',textForBot:text,visibleText:text})}}]})});global.fetch=fetchMock;
+  const service=new WhatsappAiService({getEffectiveConfig:async()=>({openaiApiKey:'offline',openaiModel:'gpt-6-luna'})} as never);
+  expect(await service.analyzeOrderImage({buffer:Buffer.from('fixture'),mimeType:'image/png',menuSummary:'Ramen',ocrRetry})).toMatchObject({kind:'address',textForBot:text});
+  const prompt=JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;expect(prompt).toContain('kind=address');expect(prompt).toMatch(/coordenadas/);expect(prompt).toMatch(/varios destinos/);
+ });
+});

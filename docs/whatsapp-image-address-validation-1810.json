@@ -1,0 +1,24 @@
+{
+  "base": "8dec6309",
+  "new_tests": 23,
+  "baseline_failed": 14,
+  "additional_defect": "empty cart retained final-confirm prompt during address change",
+  "focused_passed": 59,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9370,
+    "seconds": 617.423,
+    "source_hashes": 379
+  },
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "limits": [
+    "OCR HTTP mocked, no real photo accuracy claim",
+    "Full router tested with three synthetic menus",
+    "Image classification still depends on model; ambiguous addresses require clarification"
+  ],
+  "deployment": "pending"
+}

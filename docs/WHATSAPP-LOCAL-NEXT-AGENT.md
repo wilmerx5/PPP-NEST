@@ -1,3 +1,11 @@
+## VIGENTE — fotos de direcciones validadas; despliegue agrupado pendiente
+
+Base 8dec6309. Visión distingue address de order/payment_proof; prompts principal y reintento conservan calle, conjunto e interiores y no inventan coordenadas. Router aplica dirección reconocida por el flujo de cambio de destino sin matching de productos. Una dirección incierta o múltiple pide precisión y conserva destino/carrito. Pie de dirección evita falso comprobante; comprobante explícito conserva su flujo. Foto caducada pide dirección/ubicación. Pedido cerrado no se modifica. Carrito vacío vuelve a pedir productos, no confirmar vacío.
+
+23 pruebas nuevas; baseline 14 fallos, más fallo de cierre vacío detectado. 59 focalizados, TypeScript, 92 Node y global 88/9.370 en 617.423 s con 379 hashes intactos. Respuesta, carrito, estado y DTO por unidad con notas/dirección/fee comprobados en tres menús. OCR, mapas, Meta y órdenes simulados: no acreditar precisión real de fotos. Cero llamadas pagadas y órdenes externas. Main intacto. Evidencia whatsapp-image-address-validation-1810.json.
+
+Publicar y agrupar deploy con contacto combinado 8dec6309; estado de deploy se actualizará tras verificación. No hay suites activas. Nueva solicitud manual: analizar COMPLETO /home/levi/Downloads/chats 18_10.pdf (60 páginas) y generar pruebas de sus patrones. Lectura en curso; contiene conversaciones humanas y reproducción con bot, duplicados y medios omitidos. No atribuir todo a fallos del bot ni copiar datos privados a fixtures. Tras el análisis seleccionar tandas de integridad, dirección/cierre y consultas interrumpidas; fotos reales pendientes de muestra para medir OCR.
+
 ## VIGENTE — contacto combinado validado; fotos de direcciones son la siguiente prioridad
 
 Base 7036af5d. Corregido el descarte de nombre al recibir nombre, teléfono y pago juntos: el handler acepta cláusulas de contacto explícitas y persiste los tres datos antes de retomar checkout. Sin pago conserva la pregunta pendiente. No consume cláusulas ajenas ni dos teléfonos contradictorios. Regla general sin productos/IDs del restaurante.

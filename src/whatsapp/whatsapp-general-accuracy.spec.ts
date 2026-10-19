@@ -19441,3 +19441,43 @@ describe('Combined contact updates keep missing payment and unrelated clauses pe
   expect(handled).toBe(false);expect(h.conv.customerName).toBe(name);expect(h.conv.sessionData).toEqual(before);expect(h.replies).toHaveLength(0);
  });
 });
+
+describe('Address photos resume checkout without becoming food or payment proof',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos','Sandwich De Pavo'])for(const state of ['building_cart','awaiting_address','awaiting_payment','awaiting_final_confirm'])it(`${name} ${state}`,async()=>{
+  const h=harness([{id:67201,code:67201,name,price:21000,availableNow:true,attributes:[]}],false);h.conv.state=state;
+  Object.assign(h.conv.sessionData,{cart:[{productId:67201,name,unitPrice:21000,quantity:2,note:'Salsa aparte'}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 1 #2-3',addressConfirmed:true,deliveryFeeCalculated:9000,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true,paymentMethod:state==='awaiting_final_confirm'?'cash':undefined});
+  Object.assign(h.cfg,{deliveryFeeMode:'route',restaurantLat:4.62,restaurantLng:-74.15});
+  h.service.deliveryRouting.quoteDeliveryFee=jest.fn().mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}});
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock-image'),mimeType:'image/jpeg'});h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue(name);h.service.conversationService.updateMessageBody=jest.fn();
+  h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'address',textForBot:'Calle 10 #81A-20 torre B apartamento 304B',visibleText:'Calle 10 #81A-20 torre B apartamento 304B'});h.service.ordersService.create=jest.fn().mockResolvedValue({id:6720,dailyOrderNumber:113});
+  const before=structuredClone(h.conv.sessionData.cart);const reply=await h.sendQueued('',{messageType:'image',mediaId:'address-photo'});
+  expect(reply).toMatch(/81A-20.*torre B.*304B/i);expect(reply).not.toMatch(/cu[aá]l plato|comprobante|no manejamos/i);expect(h.conv.sessionData.cart).toEqual(before);expect(h.conv.sessionData.address).toMatch(/81A-20.*304B/);expect(h.conv.sessionData.deliveryFeeCalculated).toBe(2000);expect(h.service.aiService.analyzeOrderImage).toHaveBeenCalledTimes(1);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(state!=='awaiting_final_confirm')await h.sendQueued('1');await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/81A-20.*304B/);expect(dto.deliveryFee).toBe(2000);expect(dto.items).toEqual([{productId:67201,attributes:undefined,note:'Salsa aparte'},{productId:67201,attributes:undefined,note:'Salsa aparte'}]);
+ });
+ for(const text of ['', 'Calle 10 #81A-20\nCarrera 20 #30-40'])it(`uncertain address does not overwrite destination: ${text}`,async()=>{
+  const h=harness(products,false);h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{address:'Calle 1 #2-3',paymentMethod:'transfer',cart:[{productId:23,name:'Arroz Con Pollo',quantity:1,unitPrice:29500}]});
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('mock'),mimeType:'image/jpeg'});h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('');h.service.conversationService.updateMessageBody=jest.fn();h.service.aiService.analyzeOrderImage=jest.fn().mockResolvedValue({kind:'address',textForBot:text,visibleText:text});const before=structuredClone(h.conv.sessionData);
+  const reply=await h.sendQueued('Esta es la dirección',{messageType:'image',mediaId:'address-uncertain'});expect(reply).toMatch(/direcci[oó]n|ubicaci[oó]n/i);expect(reply).not.toMatch(/cu[aá]l plato|comprobante/i);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.cart).toEqual(before.cart);
+ });
+});
+
+describe('Address photo edge cases do not purchase or acknowledge payment',()=>{
+ for(const mode of ['empty cart','transfer','retry','caption unreadable','closed','proof'])it(mode,async()=>{
+  const h=harness(products,false);h.conv.state=mode==='closed'?'completed':'awaiting_final_confirm';Object.assign(h.conv.sessionData,{cart:mode==='empty cart'?[]:[{productId:23,name:'Arroz Con Pollo',unitPrice:29500,quantity:1}],orderType:'delivery',fulfillmentChosen:true,address:'Calle 1 #2-3',phoneConfirmed:true,contactPhone:h.conv.phoneE164,paymentMethod:'transfer',notesCollected:true});
+  h.service.metaService.downloadMedia=jest.fn().mockResolvedValue({buffer:Buffer.from('fixture'),mimeType:'image/png'});h.service.catalogService.getMenuDetailedText=jest.fn().mockResolvedValue('');h.service.conversationService.updateMessageBody=jest.fn();h.service.ordersService.create=jest.fn();
+  const analysis={kind:'address',textForBot:'Calle 10 #81A-20 torre B apartamento 304B'};const vision=jest.fn().mockResolvedValue(mode==='proof'?{kind:'payment_proof',textForBot:'Calle 10 #81A-20'}:mode==='caption unreadable'?{kind:'unclear',textForBot:''}:analysis);
+  if(mode==='retry')vision.mockResolvedValueOnce({kind:'unclear',textForBot:''});h.service.aiService.analyzeOrderImage=vision;const before=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('Esta es mi dirección',{messageType:'image',mediaId:`photo-${mode}`});
+  expect(h.conv.sessionData.cart).toEqual(before);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  if(mode==='proof'){expect(reply).toMatch(/comprobante/i);expect(h.conv.sessionData.address).toBe('Calle 1 #2-3');}
+  else if(mode==='closed'){expect(h.conv.sessionData.address).toBe('Calle 1 #2-3');expect(reply).toMatch(/cerrado|registrado/i);}
+  else if(mode==='caption unreadable'){expect(reply).toMatch(/direcci[oó]n|ubicaci[oó]n/i);expect(reply).not.toMatch(/comprobante|cu[aá]l plato/i);expect(h.conv.sessionData.address).toBe('Calle 1 #2-3');}
+  else {expect(reply).not.toMatch(/comprobante|cu[aá]l plato/i);expect(h.conv.sessionData.address).toMatch(/81A-20.*304B/);if(mode==='empty cart')expect(reply).toMatch(/qu[eé].*pedir/i);}
+  if(mode==='retry')expect(vision).toHaveBeenCalledTimes(2);
+ });
+});
+
+it('Expired address photo asks for destination rather than a dish or payment proof',async()=>{
+ const h=harness(products,false);h.conv.state='awaiting_payment';Object.assign(h.conv.sessionData,{paymentMethod:'transfer',address:'Calle 1 #2-3'});h.service.metaService.downloadMedia=jest.fn().mockRejectedValue(new Error('fixture expired'));const before=structuredClone(h.conv.sessionData);
+ const reply=await h.sendQueued('Foto de mi dirección',{messageType:'image',mediaId:'expired-address'});expect(reply).toMatch(/calle y n[uú]mero|ubicaci[oó]n/i);expect(reply).not.toMatch(/plato|comprobante/i);expect(h.conv.sessionData.address).toBe(before.address);expect(h.conv.sessionData.cart).toEqual(before.cart);
+});

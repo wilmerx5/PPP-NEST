@@ -11796,12 +11796,35 @@ export class WhatsappOrchestratorService {
         menuSummary,
       });
 
+      const addressCaption = /\b(?:direcci[oó]n|domicilio|ubicaci[oó]n|mapa|enviar\s+aqu[ií])\b/i.test(caption || '');
+      const addressClarification = 'No pude leer una única dirección completa en la foto. Escribe la calle y número con torre/apartamento, o comparte la ubicación de WhatsApp.';
+      const handleAddressPhoto = async (result: WhatsappImageAnalysis): Promise<boolean> => {
+        if (result.kind !== 'address') return false;
+        const destination = (result.textForBot || '').trim().replace(/^direcci[oó]n\s*:\s*/i, '').replace(/\s*\n\s*/g, '; ');
+        const streets = destination.match(/\b(?:calle|cll?|carrera|cra?|diagonal|dg|transversal|tv|avenida)\.?\s*\d/gi) || [];
+        if (!destination || destination.length > 500 || streets.length > 1 ||
+            !this.isPlausibleDeliveryAddress(destination) ||
+            (!streets.length && !this.looksLikeLandmarkOrComplexName(destination))) {
+          await this.reply(conv, msg.waId, addressClarification);
+          return true;
+        }
+        if (['completed','closed','human_takeover'].includes(conv.state)) {
+          await this.reply(conv, msg.waId, 'Veo la dirección de la foto. El pedido anterior ya está cerrado; un cambio de entrega debe coordinarse con el local.');
+          return true;
+        }
+        await this.conversationService.updateMessageBody(loggedMessageId, `📍 Foto de dirección: ${destination}`);
+        const current = this.conversationService.getSession(conv);
+        await this.tryHandleAddressChange(conv, msg.waId, current, `cambiar la dirección a ${destination}`, cfg);
+        return true;
+      };
+      if (await handleAddressPhoto(analysis)) return {done: true};
+
       // A previous payment must not override positive food recognition.
       // Uncertain photos may be proof only when their caption does not request food.
       const asksForFood = /\b(menu|menú|carta|pedir|plato|comida|quiero)\b/i.test(caption || '');
       const isProof = (result: WhatsappImageAnalysis) =>
         result.kind === 'payment_proof' ||
-        (proofCtx && result.kind !== 'order' && !asksForFood &&
+        (proofCtx && result.kind !== 'order' && result.kind !== 'address' && !addressCaption && !asksForFood &&
           (!result.visibleText?.trim() || this.catalogService.findAllProductsEmbeddedInMessage(result.visibleText, products).length < 2) &&
           (result.kind === 'unclear' || result.kind === 'other' || this.isVagueImageCaption(caption)));
       const treatAsProof = isProof(analysis);
@@ -11830,6 +11853,7 @@ export class WhatsappOrchestratorService {
           menuSummary,
           ocrRetry: true,
         });
+        if (await handleAddressPhoto(analysis)) return {done: true};
         if (isProof(analysis)) {
           await this.conversationService.updateMessageBody(
             loggedMessageId,
@@ -11860,7 +11884,7 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         msg.waId,
-        this.imageMenuChoicesReply(analysis, products) ||
+        (addressCaption ? addressClarification : this.imageMenuChoicesReply(analysis, products)) ||
           'No alcancé a identificar con seguridad lo que quieres de la foto. ¿Cuál plato o código quieres pedir? También puedes enviar una foto más cercana.',
       );
       return { done: true };
@@ -11869,7 +11893,9 @@ export class WhatsappOrchestratorService {
       await this.reply(
         conv,
         msg.waId,
-        proofCtx
+        /\b(?:direcci[oó]n|ubicaci[oó]n|domicilio|mapa)\b/i.test(msg.text || '')
+          ? 'No pude abrir la foto de la dirección. Escríbela con calle y número o comparte la ubicación de WhatsApp.'
+          : proofCtx
           ? 'No pude abrir tu foto del comprobante (a veces Meta la deja caducar).\n' +
               'Mándala de nuevo por aquí.\n' +
               this.humanPhoneHint()
@@ -12225,7 +12251,8 @@ export class WhatsappOrchestratorService {
     const fee = await this.ensureDeliveryFeeQuoted(next, cfg);
     next = fee.session;
     const keepStep =
-      conv.state === 'awaiting_name' ? 'awaiting_name'
+      !next.cart.length ? null
+      : conv.state === 'awaiting_name' ? 'awaiting_name'
       : conv.state === 'awaiting_phone' && !next.phoneConfirmed ? 'awaiting_phone'
       : (conv.state === 'awaiting_payment' || conv.state === 'awaiting_final_confirm') && !next.paymentMethod
         ? 'awaiting_payment'
