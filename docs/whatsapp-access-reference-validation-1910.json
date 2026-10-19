@@ -31,5 +31,15 @@
     "apartment-only replacement still pending",
     "not all PDF conversations covered"
   ],
-  "deployment": "pending"
+  "deployment": {
+    "commit": "327ae11207390068d75a63ab134223308d22c99f",
+    "image": "sha256:f841346690ed791988782e20d45f2d400a88907317c2e02fce65521ae4c9f9c7",
+    "healthAt": "2026-10-19T17:09:45Z",
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "restarts": 0,
+    "initialHealth": "502 during startup, subsequent check passed",
+    "productionUnchanged": true
+  }
 }
