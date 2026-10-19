@@ -1,3 +1,15 @@
+## VIGENTE — destino fragmentado y complemento sin aprobación validados (19/10)
+
+Base 2b9e4c9e, solo staging. 21 tests nuevos: ocho conversaciones de ravioles/bowl, agente simulado on/off, calle → conjunto → torre/apto → total → pago → confirmación, con/sin cambio tardío de calle y complementos repetidos. Trece contratos gramaticales positivos/negativos de torres alfanuméricas. Mapas, modelos, Meta y órdenes simulados.
+
+Baseline: ocho fallos; Torre B apto 304B borraba la calle. Tras ampliar gramática, cuatro recorridos revelaron que añadir unidad en awaiting_final_confirm creaba orden antes de aprobar. Corrección: torre/bloque con identificadores alfanuméricos acotados; complemento en confirmación vuelve a revisión sin crear orden. Conserva carrito, pago, tarifa, contacto; cambiar calle descarta interiores anteriores. Repetir unidad no duplica ni confirma. No regla por restaurante.
+
+41 focalizados finales, TypeScript, 92 Node y global 88 suites / 9.524 tests aprobados. Los 379 hashes de fuente permanecieron intactos. Evidencia whatsapp-fragmented-destination-validation-1910.json. Main intacto; cero API pagada/Meta/órdenes externas. Décima tanda cerrada desde auditoría PDF, 154 tests nuevos acumulados; no equivale a todos los chats cubiertos. Publicación/despliegue de staging pendiente de verificación. No hay suites activas.
+
+Pendiente D: «a una nueva» sin calle; complemento sin dirección base; cambiar solo apartamento descartando el anterior; consulta de cobertura sin cambiar destino; mapa real. Después E/F y evaluación reservada. Schedule eliminado; continuar manualmente.
+
+Inspección para próxima tanda, todavía sin reproducción nueva: tryAppendDeliveryAccessReference guarda building_cart y pregunta por más productos incluso al venir de pago/confirmación. Probar «portón verde» durante cierre y conservar/reanudar revisión si corresponde; no afirmar corregido ni extender esta tanda durante la global.
+
 ## VIGENTE — datos completos y destinatario explícito validados (19/10)
 
 Base c4bf7d7a, solo staging. Trece pruebas nuevas: ocho recorridos de ravioles/bowl, agente simulado on/off, datos juntos/secuenciales; cinco controles de destinatario explícito frente a nombre inferido. Los recorridos comprueban dos unidades, teléfono, calle/conjunto/torre/apartamento, consulta de carrito, pago, cambio tardío de calle y DTO simulado sin orden prematura.

@@ -19738,3 +19738,58 @@ describe('Compound recipient replaces saved name only when explicitly supplied',
   expect(h.cartRows()).toEqual([expect.objectContaining({id:79992,qty:1})]);
  });
 });
+
+describe('Fragmented destination survives checkout and replacement without stale units', () => {
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const replace of [false,true]) {
+  it(`${name} replace=${replace} agent=${enabled}`,async()=>{
+   const h=harness([{id:80001,code:80001,name,price:21000,availableNow:true,attributes:[]}],enabled);
+   h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+   Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164});
+   h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockResolvedValue({ok:true,fee:2000,distanceKm:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}})};
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:8000,dailyOrderNumber:87});
+   await h.sendQueued(`Quiero dos ${name}`);
+   await h.sendQueued('Para la Calle 10 #81A-20');
+   await h.sendQueued('Conjunto residencial Los Cedros');
+   const unitReply=await h.sendQueued('Torre B apartamento 304B');
+   expect(unitReply).not.toMatch(/no manejamos|no tenemos|no me qued[oó] clar/i);
+   expect(unitReply).toMatch(/304B/i);
+   expect(h.conv.state).toBe('awaiting_payment');
+   expect(h.conv.sessionData.address).toMatch(/81A-20.*Los Cedros.*Torre B.*304B/i);
+   expect(h.cartRows()).toEqual([expect.objectContaining({id:80001,qty:2})]);
+   const cart=structuredClone(h.conv.sessionData.cart);
+   const total=await h.sendQueued('Cuánto es el total');expect(total).toMatch(/44[.,]000/);
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
+   if(replace){
+    await h.sendQueued('Cambiar dirección a Carrera 22 #45-60');
+    await h.sendQueued('Conjunto residencial Los Robles');
+    const newUnit=name.startsWith('Bowl')?'Torre 3 apartamento 205':'Torre C apartamento 205';
+    const changed=await h.sendQueued(newUnit);
+    await h.sendQueued(newUnit);
+    expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    expect(changed).toMatch(/confirmar/i);
+    expect(changed).not.toMatch(/algo m[aá]s|no me qued[oó] clar/i);
+    expect(h.conv.sessionData.address).toMatch(/45-60.*Los Robles.*Torre [C3].*205/i);
+    expect(h.conv.sessionData.address).not.toMatch(/81A-20|Cedros|304B|Torre B/i);
+    expect(h.conv.sessionData.paymentMethod).toBe('cash');
+    expect(h.conv.state).toBe('awaiting_final_confirm');
+   }
+   expect(h.conv.sessionData.cart).toEqual(cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const dto=h.service.ordersService.create.mock.calls[0][0];
+   expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80001)).toBe(true);
+   expect(dto.address).toMatch(replace?/45-60.*Los Robles.*Torre [C3].*205/i:/81A-20.*Los Cedros.*Torre B.*304B/i);
+   expect(dto.address.match(new RegExp(replace?'Los Robles':'Los Cedros','gi'))).toHaveLength(1);
+   expect(dto.deliveryFee).toBe(2000);expect(dto.phone).toMatch(/3000000001/);expect(dto.customerName).toBe('Wilmer');
+  });
+ }
+});
+
+describe('Alphanumeric building details have a bounded grammar',()=>{
+ it.each(['Torre B','Bloque A2','Torre 12B','Torre C apartamento 205','Bloque A2 apto 304B','Torre 12B interior 7','Torre 3 apto 101'])('accepts %s as a unit fragment',text=>{
+  expect(harness([],false).service.looksLikeUnitOrTowerDetailOnly(text)).toBe(true);
+ });
+ it.each(['Torre B calle 10 #81A-20','Torre B y quiero dos sopas','Conjunto Los Cedros torre B','Quiero un bowl para torre B','Bloque central','Cambiar dirección a Carrera 22 #45-60'])('does not swallow unrelated text: %s',text=>{
+  expect(harness([],false).service.looksLikeUnitOrTowerDetailOnly(text)).toBe(false);
+ });
+});

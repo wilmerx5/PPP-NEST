@@ -16243,7 +16243,8 @@ export class WhatsappOrchestratorService {
       // No duplicar en Notas: el detalle ya va en la dirección
     };
     const inCheckout = ['awaiting_payment','awaiting_final_confirm','awaiting_name','awaiting_phone'].includes(conv.state || '');
-    await this.conversationService.saveSession(conv, session, inCheckout ? undefined : 'building_cart');
+    // A unit correction requests a new review; it is never final approval.
+    await this.conversationService.saveSession(conv, session, inCheckout && conv.state !== 'awaiting_final_confirm' ? undefined : 'building_cart');
     if (inCheckout) {
       await this.tryConfirmOrder(conv, waId, session, {preface:`📍 Dirección actualizada ✅ ${nextAddr}`});
       return true;
@@ -16295,6 +16296,12 @@ export class WhatsappOrchestratorService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+
+    // Tower/block identifiers can be letters or alphanumeric, not only numbers.
+    // Anchor the entire fragment so a new street or an order is never swallowed.
+    if (/^(?:torre|bloque)\s+(?:[a-z]\d{0,3}|\d{1,3}[a-z]?)(?:\s+(?:apto|apartamento|apt|ap|interior|int)\.?\s*\d{1,4}[a-z]?)?$/.test(n)) {
+      return true;
+    }
 
     if (
       /^(?:torre\s*)?\d{1,2}\s*(?:apto|apartamento|apt|ap)\.?\s*\d{2,4}[a-z]?$/.test(n) ||
