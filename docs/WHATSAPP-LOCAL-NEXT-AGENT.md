@@ -1,3 +1,13 @@
+## VIGENTE — reemplazo de apartamento/interior validado (19/10)
+
+Base d117377f, staging. 16 conversaciones nuevas, dos menús sintéticos, agente simulado on/off y pago/confirmación. «apartamento 402» / «el apartamento es 402» sustituye 304B; interior 21 → 2 evita coincidencia parcial. Repite corrección, consulta total, pago y confirma DTO. Baseline ocho fallos de apartamento: acumulación de unidades o pérdida de calle; ocho controles de interior añadidos después. Ruta temprana de unidad declarativa y reemplazo por componente/aliases conservan calle, torre, carrito, tarifa, contacto y paso pendiente; corregir datos no confirma la compra.
+
+Primera global: 9.546 verdes y dos fallos de formato (torre 3, apto 607 frente a torre 3 apto 607). Se conserva el grupo de componentes juntos. Final: 46 focalizados, TypeScript, 92 Node y global repetida 88 suites / 9.548 tests aprobados. Los 379 hashes finales permanecieron intactos. Evidencia whatsapp-unit-replacement-validation-1910.json. Duodécima tanda cerrada desde auditoría PDF, 178 tests nuevos acumulados. No equivale a todos los chats cubiertos.
+
+Solo rama staging; Main intacto. Cero API pagada/WhatsApp/órdenes externas. Despliegue diferido para agrupar con próxima tanda; último runtime desplegado acreditado sigue 327ae112 / imagen f8413466…, no se revisó servidor en esta tanda. No hay suites activas. Schedule eliminado, continuación manual.
+
+Siguiente: complemento sin dirección base, pregunta de cobertura sin sustituir destino y rechazo «a una nueva». Reemplazos probados son apartamento/interior: no acreditar todas las demás unidades por compartir implementación. Formas interrogativas y «cambia X por Y» requieren recorrido propio. Mapas/modelos simulados, evaluación reservada pendiente.
+
 ## VIGENTE — referencias de acceso conservan el cierre (19/10)
 
 Base 6f42b450, staging. Ocho regresiones nuevas: ravioles/bowl, agente simulado on/off, pago/confirmación; portón/timbre, repetición, total, pago y DTO final. Baseline ocho fallos: referencia como nota del plato, retorno a compras o aprobación prematura. Corrección general: priorizar referencia declarativa de entrega y retomar el paso pendiente sin aprobar. Conserva carrito, calle, torre/apto, tarifa y contacto; repetir no duplica ni crea orden.

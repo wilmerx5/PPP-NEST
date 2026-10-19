@@ -1,3 +1,7 @@
+## Actualización: duodécima tanda cerrada (19/10)
+
+178 tests nuevos acumulados y ocho existentes fortalecidos. Esta tanda añade 16 recorridos de reemplazo de apartamento/interior durante pago/confirmación, dos menús, agente simulado on/off y DTO final. Reproduce duplicación de unidades y pérdida de calle; corrige reemplazo por componente sin confirmar orden. Primera global detectó dos regresiones de formato, reparadas. Final: 46 focalizados, TypeScript, 92 Node y global repetida 88/9.548, 379 hashes intactos. Evidencia whatsapp-unit-replacement-validation-1910.json. Despliegue agrupado pendiente. D sigue abierto para complementos sin base, consultas y otros caminos; no todos los chats del PDF reproducidos. Conteos inferiores históricos.
+
 ## Actualización: undécima tanda cerrada (19/10)
 
 162 tests nuevos acumulados desde esta auditoría, además de ocho existentes fortalecidos. Esta tanda añade ocho conversaciones de referencias de acceso en pago/confirmación con dos menús: conserva destino y carrito, no duplica referencia y no aprueba prematuramente. Baseline ocho fallos; 28 focalizados, TypeScript, 92 Node y global 88/9.532 aprobados, 379 hashes intactos. Evidencia whatsapp-access-reference-validation-1910.json. Todo simulado; D sigue pendiente para reemplazo de apartamento, complemento sin base y cobertura. No todos los chats del PDF reproducidos; los conteos inferiores son históricos.

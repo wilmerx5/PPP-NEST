@@ -1447,7 +1447,8 @@ export class WhatsappOrchestratorService {
     // A concrete access reference belongs to delivery, not to the food note.
     if (session.cart.length && ['awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) &&
         !/[¿?]/.test(originalText) &&
-        await this.tryAppendDeliveryAccessReference(conv, msg.waId, session, originalText, cfg)) return;
+        (await this.tryAppendUnitDetailsToAddress(conv, msg.waId, session, originalText, cfg) ||
+         await this.tryAppendDeliveryAccessReference(conv, msg.waId, session, originalText, cfg))) return;
     if (await this.tryHandleStandardPortionPreference(conv,msg.waId,session,originalText,cfg,turn) ||
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
@@ -16236,9 +16237,25 @@ export class WhatsappOrchestratorService {
     // Preservar "(ref. mapa: …)" del geocode previo
     const refMatch = session.address.match(/(\s*\(ref\.\s*[^)]*\))\s*$/i);
     const refSuffix = refMatch?.[1] || '';
-    const nextAddr = alreadyInAddr
-      ? session.address
-      : `${addrBase}, ${detail}${refSuffix}`.slice(0, 240);
+    // Replace only the named unit component; a new apartment is not a second destination.
+    const componentAliases: Record<string, string> = {
+      apto: 'apartamento|apto|apt|ap', int: 'interior|int',
+      torre: 'torre', bloque: 'bloque', casa: 'casa', piso: 'piso',
+      local: 'local', oficina: 'oficina', entrada: 'entrada',
+    };
+    let updatedBase = addrBase;
+    const missing: string[] = [];
+    const components = [...detail.matchAll(/\b(torre|bloque|apto|int|casa|piso|local|oficina|entrada)\.?\s+([a-z]\d{0,3}|\d{1,4}[a-z]?)\b/gi)];
+    for (const component of components) {
+      const aliases = componentAliases[component[1].toLowerCase()];
+      const existing = new RegExp(`\\b(?:${aliases})\\.?\\s+([a-z]\\d{0,3}|\\d{1,4}[a-z]?)\\b`, 'i');
+      if (existing.test(updatedBase)) updatedBase = updatedBase.replace(existing, component[0]);
+      else missing.push(component[0]);
+    }
+    const merged = components.length
+      ? [updatedBase, missing.join(' ')].filter(Boolean).join(', ')
+      : `${addrBase}, ${detail}`;
+    const nextAddr = !components.length && alreadyInAddr ? session.address : `${merged}${refSuffix}`.slice(0, 240);
 
     session = {
       ...session,
@@ -16365,6 +16382,7 @@ export class WhatsappOrchestratorService {
 
   private normalizeUnitDetailText(text: string): string {
     return (text || '')
+      .replace(/^(?:(?:el|la|mi)\s+)?(apartamento|apto|interior|torre|bloque|casa|piso|local|oficina|entrada)\s+es\s+(?=[a-z]?\d|[a-z]$)/i, '$1 ')
       .replace(/\bt[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
       .replace(/\btorre[\s\-]*(\d{1,2})\b/gi, 'Torre $1')
       .replace(/\bbloque[\s\-]*(\d{1,2})\b/gi, 'Bloque $1')
