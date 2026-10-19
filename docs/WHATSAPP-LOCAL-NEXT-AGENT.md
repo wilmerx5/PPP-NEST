@@ -1,3 +1,11 @@
+## VIGENTE — edición de adicionales durante pago verificada (19/10)
+
+Base f8cde83b. Ocho conversaciones nuevas de sushi/bowl con agente simulado on/off: compra de combo con bebida y media porción adicional, cierre a pago, retirar adicional o dejar dos unidades, consultar carrito y confirmar. Comprueban respuesta sin falsa indisponibilidad, estado de pago, combo/opción/nota preexistente intactos, nombre/contacto y DTO expandido exacto. Nota «Salsa aparte» sembrada como estado previo: no mide extracción de esa nota. No se cambió runtime: todos pasan con la lógica actual.
+
+20 controles focalizados y TypeScript aprobados. No repetir global por cambios solo de tests: última global del runtime f8cde83b sigue 88 suites / 9.458 pruebas, no incluye estos ocho casos nuevos. Modelos, Meta y creación de orden simulados. Cero llamadas pagadas y órdenes externas, Main intacto. Evidencia whatsapp-combo-extra-edit-validation-1910.json. Sin suites activas.
+
+Publicar staging y agrupar despliegue con f8cde83b, cuya corrección combo+fracción estaba pendiente. Estado de servidor se anotará tras verificar. Siguiente: corrección de faltante ya presente frente a nueva compra y sustitución de adicional; después destinos y cierre del PDF. No declarar todos los chats corregidos ni piloto listo por conteos.
+
 ## VIGENTE — combo y media presentación adicional validados (19/10)
 
 Base 127384f3, staging. PDF: «Un combo de arroz paisa con colombiana y medio pollo broaster» omitía el medio pollo. Seis conversaciones nuevas con PPP, pizza y menú vegetal, agente simulado on/off, consulta de total y cierre hasta DTO exacto. Dos fallos baseline PPP; cuatro verdes iniciales con adicionales explícitos. Variantes finales prueban «y media…» sin exigir «una» ni «adicional».

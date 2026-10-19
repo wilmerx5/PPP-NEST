@@ -1,0 +1,16 @@
+{
+  "base": "f8cde83b",
+  "new_tests": 8,
+  "focused_passed": 20,
+  "typescript": "passed",
+  "runtime_changes": false,
+  "global": "Not repeated: tests-only; runtime baseline 88 suites / 9458 tests",
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Two synthetic menus, mocked agent on/off",
+    "Preparation note seeded as prior cart state, not extracted in these tests",
+    "Remove or set quantity during payment, inspect cart, confirm simulated order",
+    "Main untouched"
+  ]
+}

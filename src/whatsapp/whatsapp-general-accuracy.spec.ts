@@ -19587,3 +19587,51 @@ describe('PDF combo with beverage and separate half product closes intact',()=>{
   const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.items).toHaveLength(2);expect(dto.items.map((r:any)=>r.productId).sort()).toEqual([f.combo,f.extra].sort());expect(dto.orderType).toBe('pickup');
  });
 });
+
+describe('Combo extras can be edited during payment without losing the meal', () => {
+ const menus = [
+  {meal:'Combo De Sushi',extra:'Media Porcion De Gyozas'},
+  {meal:'Combo De Bowl',extra:'Media Porcion De Falafel'},
+ ];
+ for (const names of menus) for (const enabled of [false,true]) for (const remove of [false,true]) {
+  it(`${names.meal} remove=${remove} agent=${enabled}`, async () => {
+   const menu=[
+    {id:79961,code:79961,name:names.meal,price:30000,availableNow:true,hasAttributes:true,attributes:[{attributeName:'Bebida',options:['Colombiana','Manzana']}]},
+    {id:79962,code:79962,name:names.extra,price:8000,availableNow:true,attributes:[]},
+   ];
+   const h=harness(menu,enabled);
+   Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
+   h.service.ordersService.create=jest.fn().mockResolvedValue({id:7996,dailyOrderNumber:83});
+   await h.sendQueued(`Un ${names.meal} con manzana y ${names.extra}`);
+   expect(h.cartRows().map(r=>[r.id,r.qty])).toEqual(expect.arrayContaining([[79961,1],[79962,1]]));
+   expect(h.cartRows()).toHaveLength(2);
+   // Existing preparation note must survive an unrelated extra edit.
+   h.conv.sessionData.cart.find(r=>r.productId===79961)!.note='Salsa aparte';
+   const customer=h.conv.customerName;
+   const meal=structuredClone(h.conv.sessionData.cart.find(r=>r.productId===79961));
+   expect(meal?.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
+   await h.sendQueued('no más, recojo en el local');
+   expect(h.conv.state).toBe('awaiting_payment');
+   const reply=await h.sendQueued(remove ? `Quita la ${names.extra}` : `Deja dos ${names.extra}`);
+   expect(reply).not.toMatch(/no manejamos|no tenemos|no me qued[oó] clar|cu[aá]l prefieres/i);
+   expect(h.conv.sessionData.cart.find(r=>r.productId===79961)).toEqual(meal);
+   expect(h.cartRows().filter(r=>r.id===79962).reduce((n,r)=>n+r.qty,0)).toBe(remove?0:2);
+   expect(h.conv.state).toBe('awaiting_payment');
+   expect(h.service.ordersService.create).not.toHaveBeenCalled();
+   const before=structuredClone(h.conv.sessionData.cart);
+   await h.sendQueued('déjame ver el carrito');expect(h.conv.sessionData.cart).toEqual(before);
+   await h.sendQueued('contraentrega');await h.sendQueued('confirmar');
+   expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+   const dto=h.service.ordersService.create.mock.calls[0][0];
+   expect(dto.items).toHaveLength(remove?1:3);
+   expect(dto.items.filter((r:any)=>r.productId===79961)).toHaveLength(1);
+   expect(dto.items.filter((r:any)=>r.productId===79962)).toHaveLength(remove?0:2);
+   expect(dto.orderType).toBe('pickup');
+   expect(dto.customerName).toBe(customer);
+   expect(dto.phone).toMatch(/3000000001/);
+   const orderedMeal=dto.items.find((r:any)=>r.productId===79961);
+   expect(orderedMeal.note).toBe('Salsa aparte');
+   expect(orderedMeal.attributes).toContainEqual({attributeName:'Bebida',attributeValue:'Manzana'});
+  });
+ }
+});
