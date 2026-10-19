@@ -1,3 +1,19 @@
+## VIGENTE — notas contradictorias, dos atributos y orden creada sin «confirmar» (19/10)
+
+Base 71c7d3e0, tanda 22 desde auditoría PDF. 90 regresiones nuevas (whatsapp-note-replacement-block.spec.ts): bao/salsa, pizza/masa y batido/base con Tamaño Normal/Grande, agente simulado on/off, carrito sembrado de dos líneas en awaiting_final_confirm. 36 recorridos: reemplazar «sin X» por «con X» en una línea, retirar la nota, reemplazo parcial dividiendo unidades, dos atributos sobre las mismas unidades, opción retirada del catálogo durante la duda y retirada ambigua resuelta con «2». 54 contrastes: sin cláusula contradictoria, pregunta, duda pendiente con cancelar/confirmar/número inválido/carrito cambiado, segundo atributo inexistente, nota suelta y teléfono nuevo en el paso final.
+
+HALLAZGO CRÍTICO: en awaiting_final_confirm, tryConfirmOrder crea la orden y varias rutas de edición lo llamaban para refrescar el resumen. «sin cebolla porfa», «sin hielo», un teléfono nuevo o «Quítale el sin cilantro a uno» creaban la orden sin «confirmar» (agente on/off). Arreglo general: firma del pedido (carrito consolidado, tipo, destino, pago, teléfono) al iniciar el turno; si cambió cuando se iba a crear, se re-muestra el resumen. Mercado Pago con skipFinalConfirm queda exento. La ruta de nota en línea además re-entra por confirming.
+
+Baseline 36/36 fallaban. Nuevo pendingCartNoteEdit (firma de carrito, candidatos) dentro de CART_EDIT_SELECTION_KEYS: confirmar, «olvida ese cambio» y lista obsoleta usan la maquinaria existente. La revisión solo actúa si la línea tiene la cláusula contradicha; si no, cae a rutas anteriores. El cambio de opción por unidades acepta un segundo atributo configurado y aplica ambos con el plan atómico (directo o tras aclaración). Opción retirada del catálogo: se nombra y no se aplica. Sin nombres/IDs/precios de restaurantes en reglas.
+
+Concurrencia: otro agente (Codex) empezó esta misma tanda en este checkout y dejó un manejador sin compilar que importaba un módulo inexistente. Tras 10 minutos sin actividad y por instrucción del usuario, se conservó y completó su manejador. No lanzar dos agentes sobre la misma fuente.
+
+Validación: 208 focalizados, TypeScript, build TypeScript y 92 Node aprobados. Primera global: 80 + 9.818 aprobados y 46 fallidos por un Map sin encadenamiento opcional en specs que crean el servicio por prototipo; corregido y global repetida completa: ráfagas 80/80 en 104,998s; resto 9.864/9.864 en 307,640s, 107 suites, inventario exacto, 402 hashes intactos, sin reintentos. Evidencia whatsapp-note-revision-validation-1910.json.
+
+Acumulado desde auditoría PDF: 574 nuevos y 12 fortalecidos; no todos los chats del PDF acreditados. Cero llamadas pagadas, WhatsApp u órdenes externas. Solo staging; Main intacto.
+
+Siguiente: revisar el resto de llamadas a tryConfirmOrder fuera de un turno entrante (la protección solo aplica dentro del turno), otras formulaciones de inversión de notas («ahora sí con X», «échale X a todas») y concurrencia real de ráfagas durante una duda pendiente.
+
 ## VIGENTE — aclaración corta de opciones por unidades (19/10)
 
 Base bd9ee5a4, tanda 21 desde auditoría PDF. 60 regresiones nuevas: bao/salsa, pizza/masa y batido/base, agente simulado on/off. Carrito sembrado con dos líneas del mismo producto (3 y 2 unidades), opciones/notas diferentes. Diez caminos: número, ordinal, referencia por nota, consulta de precio, número inválido, cancelación, carrito reordenado por otro escritor, confirmar con duda pendiente, cambio de dirección y repetición posterior. 48 recorren hasta DTO de cinco unidades; 12 cancelación/índice obsoleto conservan carrito. No es interpretación de compra inicial ni inferencia real.

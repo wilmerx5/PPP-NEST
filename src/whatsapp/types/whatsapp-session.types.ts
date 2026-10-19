@@ -55,7 +55,15 @@ export type WhatsappSessionData = {
     cartSignature: string;
     candidates: Array<{cartIndex: number; name: string; sourceText?: string}>;
     /** Counted edit awaiting a row, not permission to replace every unit in it. */
-    unitChanges?: Array<{cartIndex: number; quantity: number; attributeName: string; attributeValue: string; note?: string}>;
+    unitChanges?: Array<{cartIndex: number; quantity: number; attributeName: string; attributeValue: string; note?: string;
+      extraAttributes?: Array<{attributeName: string; attributeValue: string}>}>;
+  };
+  /** A note revision whose target row is still ambiguous; the cart is untouched until it resolves. */
+  pendingCartNoteEdit?: {
+    sourceText: string;
+    cartSignature: string;
+    candidates: Array<{cartIndex: number; name: string}>;
+    revision: { query?: string; quantity?: number; remainder?: number; clearAll: boolean; remove: string[]; add?: string };
   };
   pendingCartQuantity?: {
     quantity: number;
