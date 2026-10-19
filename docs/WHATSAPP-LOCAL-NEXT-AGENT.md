@@ -1,10 +1,10 @@
-## VIGENTE — consultas de datos de transferencia validadas
+## VIGENTE — consultas de datos de transferencia validadas y desplegadas
 
 Base f151b35e. Tanda B del PDF 18/10: consultas sobre cuenta/Nequi/titular responden solo datos configurados del comercio, sin reemplazar contacto/nombre, elegir pago ni confirmar orden. Sin datos pide obtenerlos del local; transferencia deshabilitada no expone datos antiguos. Guarda compras/cambios/datos personales mezclados para el router normal, sin consumirlos desde este handler.
 
 45 pruebas nuevas: 32 recorridos completos (dos menús, pago/confirmación, cuatro frases, agente simulado on/off), ocho límites (sin configuración, deshabilitada, contacto explícito, selección explícita) y cinco guardas del helper para mensajes mixtos. Baseline inicial 16 fallos. 67 focalizados, TypeScript y 92 Node verdes. Global aprobada: 88 suites / 9.431 pruebas, 379 hashes intactos. Sin suites activas. Evidencia whatsapp-merchant-details-validation-1810.json. Sin llamadas pagadas/Meta/órdenes externas. La respuesta no verifica cuenta ni transferencia.
 
-Al cerrar global, publicar staging y agrupar deploy con ETA f151b35e; Main intacto. Siguiente: tanda C del PDF, combo con bebida y medio producto adicional; variantes sintéticas, notas de empaque frente a adicionales, corrección sin duplicación y consultas intercaladas. Fotos/direcciones siguen desplegadas en 9c9a5487. Entradas inferiores históricas.
+Código f0231b77 desplegado junto a ETA f151b35e. Imagen 7f5d00c7125c9da34fa9b6761a10db6591c950762bba934bc22ad849701f779d, running; health OK/DB connected/circuit CLOSED 2026-10-19T02:42:03Z. Probe compilado sin red aprobado. Producción c5e97ab1… intacta. Primer SSH atascado antes de ejecución: inspección confirmó HEAD viejo y ningún deploy activo; reintento con keepalive completó. Main intacto. No reconstruir por este cierre documental. Siguiente: tanda C del PDF, combo con bebida y medio producto adicional; variantes sintéticas, notas de empaque frente a adicionales, corrección sin duplicación y consultas intercaladas. Fotos/direcciones siguen desplegadas en 9c9a5487. Entradas inferiores históricas.
 
 ## VIGENTE — PDF 18/10 completo auditado; ETA coloquial validada
 

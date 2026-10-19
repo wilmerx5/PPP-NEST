@@ -21,5 +21,15 @@
     "Mixed edits are declined by this helper and left to normal routing; five helper-level guards do not prove entire mixed flows",
     "No proof of transfer payment or bank account ownership",
     "Main unchanged"
-  ]
+  ],
+  "deployment": {
+    "code": "f0231b7712a1067f353914f9013f730a3e8e8aa0",
+    "image": "sha256:7f5d00c7125c9da34fa9b6761a10db6591c950762bba934bc22ad849701f779d",
+    "status": "running",
+    "checked_at": "2026-10-19T02:42:03Z",
+    "health": "ok / DB connected / circuit CLOSED",
+    "compiled_probe": "passed; no external calls",
+    "production_unchanged": true,
+    "note": "First SSH stalled before server execution; read-only probe confirmed old HEAD and no deploy process; retry succeeded."
+  }
 }
