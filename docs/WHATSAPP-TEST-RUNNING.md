@@ -30,3 +30,9 @@ node --test scripts/*.test.cjs
 ```
 
 Cuatro workers es el límite probado en este equipo, no una obligación para servidores con menos memoria. Usar dos si faltan recursos. La comparación inicial también cambia workers de dos a cuatro; no atribuir toda la mejora de tiempo solo a la partición. No afirmar mejora de comprensión del modelo por estas pruebas simuladas. Los replays usados para desarrollar dejan de ser evaluación reservada.
+
+## Ráfagas aisladas y relevo operativo
+
+El procedimiento detallado está en [WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md](WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md). Para evitar competencia entre temporizadores y carga intensiva, ejecutar la suite original de ráfagas serialmente y luego el resto con cuatro workers, sin superposición. Comprobar la unión contra `jest --listTests`: no excluir los archivos part-02…part-12.
+
+Validado el 19/10: 80 + 9.714 tests, 105 suites, cero fallos/reintentos, 399 hashes intactos; 438,027 segundos totales. No es una mejora de velocidad demostrada. Mantener la cadencia focalizada durante el desarrollo; la global en dos fases solo al cerrar un bloque coherente. No incrementar timeouts para ocultar problemas.

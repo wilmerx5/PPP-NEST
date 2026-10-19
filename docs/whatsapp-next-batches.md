@@ -1,3 +1,15 @@
+## VIGENTE — relevo operativo y dos regresiones reportadas (19/10)
+
+Base f0b5221b, vigésima tanda desde auditoría PDF. Leer primero [WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md](WHATSAPP-REPLACEMENT-AGENT-RUNBOOK.md): diseño de tandas, controles, fuente congelada, ejecución focalizada/global, límites de mocks y publicación frente a despliegue.
+
+18 conversaciones nuevas con churrasco, bowl vegetal y pasta, agente simulado on/off. «un churrasco con poquito arroz y poquita ensalada» conserva un único producto y ambas notas, aunque existen porciones comprables en el catálogo. Tras completar una orden simulada, «cuanto tarda el pedido» y dos variantes responden sobre la orden registrada y el plazo configurado, sin reabrir carrito ni crear otra orden. Baseline 18/18 aprobado: estos casos ya estaban corregidos en la fuente actual; NO se cambió runtime en esta tanda. No acredita comportamiento del modelo real ni del bot desplegado.
+
+TypeScript, build TypeScript y 92 Node aprobados. Global completa en dos fases secuenciales, sin reintentos: ráfagas aisladas 80/80 en 106,098s; resto con cuatro workers 9.714/9.714 en 331,929s. Total 105 suites / 9.794 tests, 438,027s (7m18s). Inventario de archivos exacto sin faltantes ni duplicados; 399 hashes intactos. No se cambiaron timeouts. Esta medición no mejora velocidad respecto a la última global; aisló satisfactoriamente las ráfagas en esta ejecución, no prueba ausencia futura de flakiness. Evidencia whatsapp-reduced-sides-postorder-validation-1910.json.
+
+Acumulado desde auditoría PDF: 424 pruebas nuevas + ocho fortalecidas; no todos los chats del PDF están acreditados. Cero llamadas pagadas, WhatsApp u órdenes externas. Main intacto. Sin cambios productivos nuevos ni despliegue: último runtime acreditado 498124619b30f2294eba10a05f79407bd6914845; f0b5221b sigue pendiente de despliegue agrupado. Servidor no consultado en esta tanda. Schedule eliminado.
+
+Siguiente bloque: respuesta numérica corta «2» tras aclaración entre líneas preexistentes, conservar cantidad/opción/nota y invalidar índices tras cambiar carrito. Después, dos atributos sobre las mismas unidades y sustitución/retirada de notas contradictorias. Mantener controles focalizados durante desarrollo y una global al cierre; no añadir parches para casos que ya pasan.
+
 ## VIGENTE — líneas preexistentes con variantes y notas distintas (19/10)
 
 Base f2ace2a4 (runtime previo 49812461), decimonovena tanda desde auditoría PDF. 54 regresiones de router con tres menús sintéticos (bao/salsa, pizza/masa, batido/base), agente simulado on/off. Carrito inicial con dos líneas del mismo producto, cantidades 3 y 2, opciones/notas distintas. Nueve escenarios: selección por opción, por nota, por línea 2, petición ambigua seguida de instrucción completa con línea, cantidad excesiva, línea inexistente, cambio de dirección posterior, misma opción con notas distintas, nota compartida que no permite identificar una sola línea. 36 recorridos finalizan en DTO de cinco unidades; 18 controles inválidos conservan carrito y no crean orden.
