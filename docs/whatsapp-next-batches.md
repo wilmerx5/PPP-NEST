@@ -1,3 +1,11 @@
+## VIGENTE — cierre tras faltante validado (19/10)
+
+Base 964e1ee3. Ocho recorridos existentes fortalecidos: faltante presente/ausente, sushi/vegetal, agente simulado on/off. Exigen conservar awaiting_final_confirm, ausencia de «Algo más», combo/opción/nota intactos, sin duplicados ni orden prematura, y DTO exacto después de confirmar. Corrección general: la ruta de compra múltiple totalmente resuelta recuerda si venía de confirmación y reutiliza tryConfirmOrder desde building_cart para presentar revisión. No aplica con enlace de pago activo ni advertencias de ítems no resueltos.
+
+Global anterior interrumpida sin evidencia recuperable: no acreditarla. Global repetida aprobada: 88 suites / 9.474 tests, 379 hashes intactos. Incluye las 16 pruebas añadidas en las dos tandas previas de solo tests. Esta tanda fortalece ocho existentes, no suma ocho nuevas. Cero API pagada, Meta y órdenes externas; Main intacto. Sin suites activas. Evidencia whatsapp-resume-final-review-validation-1910.json.
+
+Schedule eliminado a petición del usuario; continuar manualmente. PDF 18/10 leído completo, no todos sus chats reproducidos/corregidos. Siete tandas cerradas desde auditoría, 104 tests nuevos en las seis primeras; ver estado de cobertura en whatsapp-pdf-1810-audit.md. Siguiente: sustitución atómica de adicional, matriz destinos/cierre y postorden; después casos reservados con modelo real antes de acreditar piloto. Publicación/deploy de esta tanda se registran tras verificar. No declarar vendible por conteos.
+
 ## VIGENTE — faltantes sin duplicación; fricción de cierre pendiente (19/10)
 
 Base 1b2e05e6, staging. Ocho conversaciones nuevas de sushi/vegetal, agente simulado on/off y adicional inicialmente presente/ausente. «Falta la porción…» deja exactamente una unidad, conserva combo, bebida y nota sembrada, permite consultar carrito y terminar hasta DTO exacto. No cambió runtime. 16 focalizados y TypeScript aprobados; no repetir global por tests: referencia runtime sigue 88/9.458 y no incluye estas pruebas ni las ocho de la tanda anterior.

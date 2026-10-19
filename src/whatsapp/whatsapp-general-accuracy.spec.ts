@@ -19648,6 +19648,7 @@ describe('Missing extra recovery during checkout distinguishes an existing line'
    const meal=structuredClone(h.conv.sessionData.cart.find(r=>r.productId===79971));
    await h.sendQueued('no más, recojo en el local');await h.sendQueued('contraentrega');expect(h.conv.state).toBe('awaiting_final_confirm');
    const reply=await h.sendQueued(`Falta la ${names.extra}`);
+   expect(reply).not.toMatch(/algo m[aá]s/i);expect(h.conv.state).toBe('awaiting_final_confirm');
    expect(h.cartRows().filter(r=>r.id===79972).reduce((n,r)=>n+r.qty,0)).toBe(1);
    expect(h.conv.sessionData.cart.find(r=>r.productId===79971)).toEqual(meal);
    expect(reply).not.toMatch(/no manejamos|no tenemos|no me qued[oó] clar/i);

@@ -22317,6 +22317,7 @@ export class WhatsappOrchestratorService {
     /** Texto completo del mensaje (antes de cortar "para …") */
     fullTextForDelivery?: string,
   ): Promise<boolean> {
+    const resumeFinalReview = conv.state === 'awaiting_final_confirm' && !session.mpPreferenceId;
     const foodHits =
       multi.confident.length +
       multi.ambiguous.length +
@@ -22710,6 +22711,12 @@ export class WhatsappOrchestratorService {
       }
 
       await this.conversationService.saveSession(conv, { ...next, pendingMultiOrder: undefined }, 'building_cart');
+      // A resolved edit at final review needs a refreshed summary, not a new shopping loop.
+      // Re-enter through building_cart so this cannot submit the revised order.
+      if (resumeFinalReview && !missNote && next.cart.length) {
+        await this.tryConfirmOrder(conv, waId, this.conversationService.getSession(conv));
+        return true;
+      }
       if (addResult.addedNames.length) {
         await this.reply(
           conv,
