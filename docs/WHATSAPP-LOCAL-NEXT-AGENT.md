@@ -4,7 +4,7 @@ Base f8cde83b. Ocho conversaciones nuevas de sushi/bowl con agente simulado on/o
 
 20 controles focalizados y TypeScript aprobados. No repetir global por cambios solo de tests: última global del runtime f8cde83b sigue 88 suites / 9.458 pruebas, no incluye estos ocho casos nuevos. Modelos, Meta y creación de orden simulados. Cero llamadas pagadas y órdenes externas, Main intacto. Evidencia whatsapp-combo-extra-edit-validation-1910.json. Sin suites activas.
 
-Publicar staging y agrupar despliegue con f8cde83b, cuya corrección combo+fracción estaba pendiente. Estado de servidor se anotará tras verificar. Siguiente: corrección de faltante ya presente frente a nueva compra y sustitución de adicional; después destinos y cierre del PDF. No declarar todos los chats corregidos ni piloto listo por conteos.
+Desplegado solo staging junto a f8cde83b: HEAD 156ef70fe368fc16e3cc4d5346200c64ea6e89da, imagen 05d13fdb3a45d201ae5c2ccea90b3e29523d01e13a10a956d625e0c18807b43a, running. Health público OK/DB connected/circuit CLOSED 2026-10-19T11:50:17Z. Producción conserva c5e97ab1… running. No reconstruir por documentación posterior. Siguiente: corrección de faltante ya presente frente a nueva compra y sustitución de adicional; después destinos y cierre del PDF. No declarar todos los chats corregidos ni piloto listo por conteos.
 
 ## VIGENTE — combo y media presentación adicional validados (19/10)
 
