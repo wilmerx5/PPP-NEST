@@ -1,4 +1,4 @@
-## VIGENTE — pedido con poquito/poquita durante dirección validado
+## VIGENTE — pedido con poquito/poquita durante dirección desplegado
 
 Base 7d3bbdc5. Caso nuevo 21:41 Bogotá del 18/10: «quiero un churrasco 3/4, poquito arroz y poquita ensalada» era rechazado como dirección; tras reiniciar añadía ensalada como producto. Reproducción: 12 fallos en tres menús (churrasco, bowl, pasta), carrito vacío y awaiting_address, agente simulado on/off.
 
@@ -6,7 +6,7 @@ Separación de preferencias acotada: todas las cláusulas deben empezar por poco
 
 21 pruebas nuevas: 12 conversaciones hasta DTO con cantidad/notas exactas, ocho contratos gramaticales y un extra explícito. Conservan el carrito previo y no confirman dirección guardada sin consentimiento. Primera global: 9.450 aprobadas / dos regresiones de «una X y otra X» con variantes; se limitó el cambio de guard a poco/poquito y pasan 33 focalizados, TypeScript y 92 Node. Global de reparación aprobada: 88 suites / 9.452 pruebas, 379 hashes intactos. No hay suites activas. La primera global tuvo un intervalo de ~42 minutos sin logs; no atribuirlo a una causa no verificada. Evidencia whatsapp-small-accompaniments-validation-1810.json. Sin llamadas pagadas/Meta/órdenes externas. No mide transcripción ni garantiza cumplimiento de la nota en cocina.
 
-Al cerrar global, publicar/desplegar solo staging. Main intacto. Después retomar tanda C del PDF: combo con bebida y medio producto adicional, empaque separado versus adicional, corrección sin duplicación. Entradas inferiores históricas.
+Desplegado solo staging: código 695aae28, imagen 84d72c8d84a23c8226cf1b01e7901f38d14a3404c229ba08a7fd616ff6eae353, running. Probe compilado de gramática aprobado sin red. Health público OK/DB connected/circuit CLOSED 2026-10-19T04:04:27Z tras 502 transitorio de arranque. Producción c5e97ab1… intacta. No reconstruir por documentación. Main intacto. Después retomar tanda C del PDF: combo con bebida y medio producto adicional, empaque separado versus adicional, corrección sin duplicación. Entradas inferiores históricas.
 
 ## VIGENTE — consultas de datos de transferencia validadas y desplegadas
 

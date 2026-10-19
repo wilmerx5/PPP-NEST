@@ -26,5 +26,13 @@
     "failed": 2,
     "reason": "Broadly checking peeled product text hid first item in repeated dish with different options",
     "long_gap_seconds": 2494
+  },
+  "deployment": {
+    "code": "695aae2890af02f50b8a6e91fe59585276518269",
+    "image": "sha256:84d72c8d84a23c8226cf1b01e7901f38d14a3404c229ba08a7fd616ff6eae353",
+    "compiled_probe": "passed",
+    "health": "public OK, DB connected, circuit CLOSED after startup 502",
+    "production_unchanged": true,
+    "checked_at": "2026-10-19T04:04:27Z"
   }
 }
