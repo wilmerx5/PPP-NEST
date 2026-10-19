@@ -1,3 +1,11 @@
+## VIGENTE — nueva dirección sin arrastrar destino anterior (19/10)
+
+Base e1572421, staging. Ocho conversaciones nuevas, ravioles/bowl y agente simulado on/off, desde dirección guardada o destino confirmado/pagado (incluye destino activo sin histórico). «A una nueva» invalida dirección, confirmación, unidad y ruta anteriores; conserva carrito, pago e histórico. No vuelve a ofrecer automáticamente el destino descartado después de agregar producto y cerrar; «sí» sin calle no lo reactiva. Torre/apto antes de calle se conserva en nueva dirección; DTO final tiene tres unidades y tarifa nueva.
+
+Baseline cuatro fallos/ocho: dirección y ruta viejas seguían activas. Ampliación produjo ocho fallos por reofrecer dirección rechazada. 64 focalizados, TypeScript, 92 Node y global 88 suites / 9.588 tests aprobados; 379 hashes intactos. Archivo general tardó 1.263,811 segundos. Evidencia whatsapp-fresh-destination-validation-1910.json. Decimoquinta tanda desde auditoría PDF: 218 nuevos acumulados, además de ocho existentes fortalecidos. No todos los chats reproducidos; modelos/mapas/órdenes simulados, cero llamadas pagadas/WhatsApp. Main intacto. Publicación staging y despliegue agrupado con tanda anterior por verificar. No hay suite activa; schedule eliminado.
+
+Cambio de cadencia: agrupar familias con focalizados y correr global al cerrar bloque; no repetirla por cada ocho casos. Priorizar partición del archivo gigante (511 describe + un it suelto) con equivalencia verificable. Próximo bloque de seis recorridos en whatsapp-next-batches.md. Pendientes: vuelta explícita al destino guardado después de pedir otro, unidades en mensajes separados y selección de producto pendiente. No declarar esos recorridos acreditados por esta tanda.
+
 ## VIGENTE — cobertura consultiva durante cierre validada (19/10)
 
 Base 911eb576, staging. Ocho conversaciones nuevas: ravioles/bowl, agente simulado on/off, pago/confirmación. Destino A con torre/apto y tarifa 2.000; consulta B con tarifa 6.000 y consulta C fuera de cobertura; consulta de total conserva 44.000; cambio explícito a B descarta interiores anteriores y cierra DTO con tarifa 6.000. No orden antes de confirmar, carrito y estado se conservan durante consultas.

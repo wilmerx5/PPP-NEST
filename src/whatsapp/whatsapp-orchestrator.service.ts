@@ -4159,7 +4159,7 @@ export class WhatsappOrchestratorService {
       if (isReuseLastAddressIntent(text)) {
         const reuse =
           session.address?.trim() ||
-          session.lastDeliveryAddress?.trim() ||
+          (!session.freshDeliveryAddressRequested && session.lastDeliveryAddress?.trim()) ||
           '';
         if (reuse) {
           session = this.withDeliveryAddress(
@@ -8946,7 +8946,7 @@ export class WhatsappOrchestratorService {
       );
     }
 
-    const last = session.lastDeliveryAddress?.trim();
+    const last = !session.freshDeliveryAddressRequested && session.lastDeliveryAddress?.trim();
     if (last) {
       return (
         `${head}\n📍 _${last}_\n` +
@@ -12206,8 +12206,21 @@ export class WhatsappOrchestratorService {
     if (copiedStreet) text = this.expandStreetAbbreviations(copiedStreet[1]);
     if (!copiedStreet && !isAddressChangeIntent(text) && !isAddressRejectionIntent(text) && !isFreshAddressRequest(text) && !this.streetCorrectionDuringPayment(conv.state, session, text, cfg)) return false;
 
-    if (isFreshAddressRequest(text) && (conv.state === 'awaiting_address' || !!session.lastDeliveryAddress?.trim())) {
-      await this.conversationService.saveSession(conv, session, 'awaiting_address');
+    if (isFreshAddressRequest(text) && (conv.state === 'awaiting_address' || !!session.address?.trim() || !!session.lastDeliveryAddress?.trim())) {
+      // Choosing a new destination invalidates the old route, not the cart or payment.
+      const next: WhatsappSessionData = {
+        ...session,
+        address: undefined,
+        addressConfirmed: false,
+        pendingDeliveryUnit: undefined,
+        freshDeliveryAddressRequested: true,
+        deliveryFeeCalculated: null,
+        deliveryDistanceKm: null,
+        deliveryLat: null,
+        deliveryLng: null,
+        deliveryOutOfCoverage: false,
+      };
+      await this.conversationService.saveSession(conv, next, 'awaiting_address');
       await this.reply(
         conv,
         waId,
@@ -14900,6 +14913,7 @@ export class WhatsappOrchestratorService {
       ...session,
       orderType: 'pickup',
       pendingDeliveryUnit: undefined,
+      freshDeliveryAddressRequested: undefined,
       address,
       fulfillmentChosen: true,
       addressConfirmed: true,
@@ -14930,6 +14944,7 @@ export class WhatsappOrchestratorService {
     }
     let addr = this.normalizeDeliveryAddress(address || '');
     if (!addr) return session;
+    session = { ...session, freshDeliveryAddressRequested: undefined };
     if (session.pendingDeliveryUnit && this.isStrongExplicitAddress(addr)) {
       // The pending unit supplements this destination once, never an older remembered address.
       const hasExplicitUnit = /\b(?:apartamento|apto|apt|interior|int|torre|bloque|casa|local|oficina|piso)\.?\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/i.test(addr);
@@ -15212,7 +15227,7 @@ export class WhatsappOrchestratorService {
     if (!isConfirmCurrentAddressIntent(text)) return false;
     if (session.cart.length === 0) return false;
     // “¿La misma o una nueva?” deja la calle en lastDeliveryAddress, no en address.
-    if (!session.address?.trim() && session.lastDeliveryAddress?.trim() && isReuseLastAddressIntent(text)) {
+    if (!session.address?.trim() && !session.freshDeliveryAddressRequested && session.lastDeliveryAddress?.trim() && isReuseLastAddressIntent(text)) {
       return false;
     }
 
@@ -16063,6 +16078,7 @@ export class WhatsappOrchestratorService {
     // “acá” / “la misma” con dirección guardada del pedido anterior
     if (
       isReuseLastAddressIntent(originalText) &&
+      !session.freshDeliveryAddressRequested &&
       session.lastDeliveryAddress?.trim() &&
       !session.addressConfirmed
     ) {

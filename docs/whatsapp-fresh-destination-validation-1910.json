@@ -1,0 +1,27 @@
+{
+  "base": "e1572421",
+  "branch": "staging",
+  "newTests": 8,
+  "baselineFailed": 4,
+  "expandedBaselineFailed": 8,
+  "targetedPassed": 64,
+  "typescript": "passed",
+  "nodeTestsPassed": 92,
+  "global": {
+    "passedSuites": 88,
+    "passedTests": 9588,
+    "failedTests": 0,
+    "generalSuiteSeconds": 1263.811,
+    "sourceHashesUnchanged": 379,
+    "report": "/tmp/ppp-fresh-destination-global.json"
+  },
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "mainUnchanged": true,
+  "limits": [
+    "model and map mocked",
+    "not all PDF chats covered",
+    "explicit return to saved address after requesting a new one pending"
+  ],
+  "deployment": "pending grouped staging deployment"
+}

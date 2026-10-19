@@ -1,3 +1,28 @@
+## VIGENTE — nueva dirección sin arrastrar destino anterior (19/10)
+
+Base e1572421, staging. Ocho conversaciones nuevas, ravioles/bowl y agente simulado on/off, desde dirección guardada o destino confirmado/pagado (incluye destino activo sin histórico). «A una nueva» invalida dirección, confirmación, unidad y ruta anteriores; conserva carrito, pago e histórico. No vuelve a ofrecer automáticamente el destino descartado después de agregar producto y cerrar; «sí» sin calle no lo reactiva. Torre/apto antes de calle se conserva en nueva dirección; DTO final tiene tres unidades y tarifa nueva.
+
+Baseline cuatro fallos/ocho: dirección y ruta viejas seguían activas. Ampliación produjo ocho fallos por reofrecer dirección rechazada. 64 focalizados, TypeScript, 92 Node y global 88 suites / 9.588 tests aprobados; 379 hashes intactos. Archivo general tardó 1.263,811 segundos. Evidencia whatsapp-fresh-destination-validation-1910.json. Decimoquinta tanda desde auditoría PDF: 218 nuevos acumulados, además de ocho existentes fortalecidos. No todos los chats reproducidos; modelos/mapas/órdenes simulados, cero llamadas pagadas/WhatsApp. Main intacto. Publicación staging y despliegue agrupado con tanda anterior por verificar. No hay suite activa; schedule eliminado.
+
+Cambio de cadencia: agrupar familias con focalizados y correr global al cerrar bloque; no repetirla por cada ocho casos. Priorizar partición del archivo gigante (511 describe + un it suelto) con equivalencia verificable. Próximo bloque de seis recorridos en whatsapp-next-batches.md. Pendientes: vuelta explícita al destino guardado después de pedir otro, unidades en mensajes separados y selección de producto pendiente. No declarar esos recorridos acreditados por esta tanda.
+
+### Próximo bloque coherente: cierre con destino fragmentado
+
+1. Calle → conjunto → torre → apartamento en cuatro turnos, antes de pago y antes de confirmar; sustituir solo apartamento sin perder calle/torre.
+2. «A una nueva» → consulta de precio → agregar producto → calle; no revivir destino descartado ni tarifa anterior.
+3. «A una nueva» → «mejor a la misma de antes»: retorno explícito (pendiente, la protección actual bloquea reutilización automática); distinguirlo de «sí» sin dirección.
+4. Elegir nueva dirección con variante de producto pendiente; resolver ambas sin perder cantidad ni atributos.
+5. Destino fuera de cobertura → nuevo destino válido, con pago seleccionado; recalcular y revisar, nunca confirmar por cambiar datos.
+6. Dirección y nota alimentaria en un turno; modificar solo el plato indicado, conservar todos los componentes logísticos y retomar cierre.
+
+Usar menús con estructuras distintas (plato simple, combo con bebida y producto con varias variantes), cantidades no uniformes y datos de cliente ficticios. Afirmar respuesta, carrito, pendiente y DTO. Estas filas son plan, NO tests ejecutados. Correr focalizados por familia; global una vez para el bloque validado. La evaluación de modelos/mapas reales sigue separada.
+
+### Ajuste de cadencia solicitado por el usuario (19/10)
+
+Evitar global completa por cada grupo pequeño. Agrupar familias relacionadas, reproducir y correr focalizados durante desarrollo; una global congelada al cerrar el bloque, antes de publicación/despliegue. Esto mantiene AGENTS (reglas compartidas requieren global), cambia el tamaño del bloque. No inflar conteos con paráfrasis equivalentes. Reportar riesgos/recorridos cerrados y defectos abiertos.
+
+Medición tomada de /tmp/ppp-unit-before-street-global.json: whatsapp-general-accuracy.spec.ts concentra 7.595 tests y 1.083,6 s; siguientes suites 32,7 y 31,0 s. maxWorkers=2 no distribuye los tests de un mismo archivo. Próximo trabajo de infraestructura: extraer harness compartido y separar familias en archivos conservando todos los nombres/oráculos/conteos; comparar mismos resultados y tiempo con recursos acotados. No editar durante la global activa. No atribuir toda la demora a conversaciones largas ni usar cantidad de tests como calidad. Inspección AST sin modificar fuente: 511 grupos describe y un it suelto, más imports/fixture/harness. La partición debe conservar ese test suelto, las rutas de fixtures relativas a __dirname y el aislamiento de mocks. No acreditar mejora de velocidad hasta medir.
+
 ## VIGENTE — cobertura consultiva durante cierre validada (19/10)
 
 Base 911eb576, staging. Ocho conversaciones nuevas: ravioles/bowl, agente simulado on/off, pago/confirmación. Destino A con torre/apto y tarifa 2.000; consulta B con tarifa 6.000 y consulta C fuera de cobertura; consulta de total conserva 44.000; cambio explícito a B descarta interiores anteriores y cierra DTO con tarifa 6.000. No orden antes de confirmar, carrito y estado se conservan durante consultas.

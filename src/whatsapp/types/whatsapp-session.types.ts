@@ -220,6 +220,8 @@ export type WhatsappSessionData = {
   addressConfirmed?: boolean;
   /** Unit fragment received before the destination street/location. Never geocode alone. */
   pendingDeliveryUnit?: string;
+  /** Do not reoffer a saved destination after the customer requested a new one. */
+  freshDeliveryAddressRequested?: boolean;
   /**
    * Última dirección de domicilio exitosa (sobrevive reset/reopen).
    * Para ofrecer “¿Misma dirección? / acá” en el siguiente pedido.

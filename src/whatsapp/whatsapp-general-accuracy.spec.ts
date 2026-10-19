@@ -19918,3 +19918,35 @@ describe('Coverage questions preserve destination and checkout until an explicit
   expect(dto.items).toHaveLength(2);expect(dto.items.every((r:any)=>r.productId===80031)).toBe(true);
  });
 });
+
+describe('Fresh destination request suspends the old destination and permits cart interruptions',()=>{
+ for(const name of ['Ravioles De Ricota','Bowl De Garbanzos'])for(const enabled of [false,true])for(const confirmed of [false,true])it(`${name} confirmed=${confirmed} agent=${enabled}`,async()=>{
+  const h=harness([{id:80041,code:80041,name,price:21000,availableNow:true,attributes:[]}],enabled);
+  Object.assign(h.cfg,{deliveryFeeMode:'route_tiers',restaurantLat:4.62,restaurantLng:-74.15});
+  h.cfg.paymentMethods=DEFAULT_PAYMENT_METHODS.map(method=>({...method,enabled:method.flow!=='mercadopago'}));
+  Object.assign(h.conv.sessionData,{orderType:'delivery',fulfillmentChosen:true,notesCollected:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,lastDeliveryAddress:'Calle 10 #81A-20 torre B apto 304B'});
+  h.service.deliveryRouting={quoteDeliveryFee:jest.fn().mockImplementation(async({customerAddress}:any)=>({ok:true,fee:customerAddress.includes('45-60')?6000:2000,distanceKm:customerAddress.includes('45-60')?4:1,source:'google_directions',customer:{lat:4.62,lng:-74.15}}))};
+  h.service.ordersService.create=jest.fn().mockResolvedValue({id:8004,dailyOrderNumber:91});
+  await h.sendQueued(`Quiero dos ${name}`);
+  if(confirmed){await h.sendQueued('Calle 10 #81A-20 torre B apto 304B');await h.sendQueued('contraentrega');}
+  else {const prompt=await h.sendQueued('Nada más');expect(prompt).toMatch(/misma.*nueva/i);}
+  if(confirmed && name.startsWith('Bowl'))h.conv.sessionData.lastDeliveryAddress=undefined;
+  const cart=structuredClone(h.conv.sessionData.cart);
+  const reply=await h.sendQueued('A una nueva por favor');expect(reply).toMatch(/direcci[oó]n nueva|nueva direcci[oó]n/i);
+  expect(h.conv.state).toBe('awaiting_address');expect(h.conv.sessionData.address).toBeFalsy();expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+  expect(h.conv.sessionData.deliveryFeeCalculated == null).toBe(true);expect(h.conv.sessionData.deliveryLat == null).toBe(true);
+  expect(h.conv.sessionData.cart).toEqual(cart);expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  const summary=await h.sendQueued('Déjame ver el carrito');expect(summary).toContain(name);expect(summary).not.toMatch(/81A-20|304B/);
+  await h.sendQueued(`Agrega un ${name}`);expect(h.cartRows()).toEqual([expect.objectContaining({id:80041,qty:3})]);
+  const resume=await h.sendQueued('Nada más');expect(resume).not.toMatch(/81A-20|304B|misma.*nueva/i);
+  await h.sendQueued('Sí');expect(h.conv.sessionData.address).toBeFalsy();expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('Torre C apto 205');expect(h.conv.sessionData.addressConfirmed).not.toBe(true);
+  await h.sendQueued('Carrera 22 #45-60');expect(h.conv.sessionData.address).toMatch(/45-60.*Torre C.*205/i);
+  expect(h.conv.sessionData.address).not.toMatch(/81A-20|304B|Torre B/i);expect(h.conv.sessionData.deliveryFeeCalculated).toBe(6000);
+  if(h.conv.state==='awaiting_payment')await h.sendQueued('contraentrega');
+  expect(h.conv.state).toBe('awaiting_final_confirm');expect(h.service.ordersService.create).not.toHaveBeenCalled();
+  await h.sendQueued('confirmar');expect(h.service.ordersService.create).toHaveBeenCalledTimes(1);
+  const dto=h.service.ordersService.create.mock.calls[0][0];expect(dto.address).toMatch(/45-60.*Torre C.*205/i);
+  expect(dto.address).not.toMatch(/81A-20|304B/);expect(dto.deliveryFee).toBe(6000);expect(dto.items).toHaveLength(3);
+ });
+});

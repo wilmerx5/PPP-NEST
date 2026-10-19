@@ -1,3 +1,7 @@
+## Actualización: decimoquinta tanda cerrada (19/10)
+
+218 tests nuevos acumulados y ocho existentes fortalecidos. Ocho recorridos de nueva dirección, consulta/edición del carrito, cierre sin reofrecer destino descartado, afirmación sin calle, unidad antes de calle y DTO con nueva tarifa. 64 focalizados, TypeScript, 92 Node, global 88/9.588 y 379 hashes intactos. Cero API pagada. No todos los chats cubiertos. Nueva cadencia: bloques amplios y partición del archivo gigante antes de continuar con tandas pequeñas.
+
 ## Actualización: decimocuarta tanda cerrada (19/10)
 
 210 tests nuevos acumulados y ocho existentes fortalecidos. Ocho recorridos nuevos de cobertura durante pago/confirmación, dos menús: consultas de dirección alternativa dentro/fuera de cobertura, invariancia de destino/tarifa/carrito/estado, total y posterior cambio explícito hasta DTO. Mejora de respuesta para indicar destino conservado y retomar cierre tras consulta negativa. 125 focalizados y TypeScript aprobados; no nueva global por plantilla sin cambios de decisiones/persistencia. Global lógica vigente 88/9.572; no incluir las ocho nuevas en ese conteo. Evidencia whatsapp-coverage-checkout-validation-1910.json. Quedan «a una nueva» y fragmentos separados; no todos los chats del PDF reproducidos.
