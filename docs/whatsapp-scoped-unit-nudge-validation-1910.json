@@ -1,0 +1,56 @@
+{
+  "batch": 34,
+  "date": "2026-10-19",
+  "base": "b8ee8282",
+  "commit": "981cc11ffe05c79104ad017dd151804a10af3194",
+  "scope": "One unit more or less of a named line when the cart has several lines, in building_cart, awaiting_payment and awaiting_final_confirm",
+  "baselineFindings": [
+    "building_cart: «quita una de mora» / «quita una de lulo» were saved as a delivery address and jumped to checkout",
+    "awaiting_payment and awaiting_final_confirm: «quita una de mora» removed the whole «Jugo De Mora ×2» line",
+    "«una de mora menos» answered «No tenemos de mora menos»; «uno menos de mora» asked «¿De cuál plato o línea?» although it named the line",
+    "«quítale una hamburguesa», «otra hamburguesa más», «una hamburguesa más» opened a one-row list (and dropped the final step to building_cart)",
+    "«quita uno» with several lines silently reprinted the cart; «agrega otro» answered «No encontré ese producto»",
+    "«una arepa menos» (not in the order) answered «Por ahora no manejamos arepa menos»"
+  ],
+  "fix": "tryHandleSingleLineQuantityNudge now accepts an optional line reference: «quita/saca/quítale/resta/baja una (de) <ref>», «una (de) <ref> menos», «uno menos de <ref>», «agrega/pon/dame otro <ref>», «otra <ref> más». The reference matches dish lines (excluding «para …» add-on rows) by every word against the line name and option values, singular/plural tolerant. One match: ±1 unit; «quita» at ×1 removes that line (unless it is the only line, which keeps the batch 31 explanation). Several matches, or an unscoped «quita uno»/«agrega otro» with several lines: asks which line, listing candidates, no change. A removal naming a catalog product that is not in the order says so; an addition for a product not in the cart keeps the normal add route. Lines with per-unit add-ons tied to them keep existing routes. The reply labels the option when two lines share a product name; in the final step it re-shows the summary with «confirmar».",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-scoped-unit-nudge.spec.ts",
+    "count": 102,
+    "menus": ["grill + juices + arepa", "regional + empanadas + patacón", "pizzeria + shakes + lasaña"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["quita-una-de-variant in build/pay/final", "una-de-variant-menos", "uno-menos-de-variant", "quitale-una-dish", "otra-dish-mas in build/final", "una-dish-mas", "pon-otro-full-name", "quita-una-at-one-removes-line"],
+    "contrasts": ["family-word-with-two-lines-asks", "bare-quita-uno-asks", "bare-agrega-otro-asks", "absent-product", "single-line-at-one", "quita-una-cebolla"],
+    "baselineWithoutFix": "78/102 failed"
+  },
+  "knownGaps": [
+    "«agrega un jugo» in the final step opens the list in building_cart with checkout resume (existing design)",
+    "The «¿De cuál…?» question stores no pending selection; a bare follow-up («la de mora») goes through normal routing"
+  ],
+  "validation": {
+    "focused": "1239/1239 (25 suites incl. new spec, single-line nudge/acknowledged-checkout-edit, quantity-corrections, cart-removal, cart-note, line-addon suites, subset/partial/named kitchen notes, variant suites, address/checkout suites, pending-choice-burst, ambiguous/clarification/unit-clarification)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 105.418s",
+      "phase2Rest": "11280/11280 in 331.191s, 118 suites",
+      "totalSeconds": 439,
+      "totalTests": 11360,
+      "inventorySuites": 119,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 414,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "981cc11ffe05c79104ad017dd151804a10af3194",
+    "image": "sha256:37bd73f747964cfc4fd046a3800b2ef6b862157a825aeab434a0e8e919468eb8",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T03:28:14Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-981cc11f (image 3c2b234e…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
