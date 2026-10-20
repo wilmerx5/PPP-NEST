@@ -1,3 +1,17 @@
+## VIGENTE — bebida condicional sin perder checkout (20/10, tanda 47)
+
+Base fa78a1ee. 48 casos nuevos gratuitos, router real y servicios externos simulados: tres menús, agente on/off, bebida incluida/excluida/desconocida, pago/confirmación. 36 recorridos hasta DTO con mismas unidades/notas y pago numérico después de la interrupción. Doce contrastes: cantidad dos, ya incluida, carrito mixto, agotada, tamaño ambiguo y local cerrado.
+
+Baseline 36/36 fallaban contrato de respuesta/acción (no son 36 defectos de carrito: algunos devolvían la descripción sin responder directamente). Arreglo inicial pasó los 36; los contrastes descubrieron dos compras arbitrarias del tamaño pequeño ante «dame una». Se bloquea la selección ambigua en esta ruta condicional.
+
+Regla general: «¿<plato> trae gaseosa? Si no, agrega una <bebida>» separa consulta y condición. Solo la exclusión explícita del catálogo autoriza ejecutar la compra; inclusión, evidencia insuficiente o contexto mixto conservan carrito. Se usa resolución del catálogo, disponibilidad, opciones y límites existentes. Si falta elegir tamaño/sabor o hay selección pendiente, pide aclarar sin crear una lista que compita con pago. Preserva el estado de checkout y muestra carrito actualizado cuando añade. La regla acepta la condición separada por ?, coma o punto y coma; no acredita habla libre sin puntuación. Usa cfg y estado de negocio antes de comprar. Fuente actual no añade excepciones de restaurante.
+
+Validación: 182 focalizados, TypeScript, build TypeScript, 92 Node, diff check. Global: 80 ráfagas + 12.338 resto = 12.418 / 133 suites, cero fallos/reintentos; 429 hashes intactos e inventario exacto. Tiempos 110,524s + 365,784s. Evidencia whatsapp-conditional-drink-validation-2010.json. No cambios de código/tests tras global.
+
+Publicación staging y despliegue agrupado 45–47 previsto tras commit; verificar la entrada de despliegue antes de atribuir runtime. Main intacto, cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Siguiente: expresiones condicionales sin puntuación y «si no viene, me mandas…», consulta + cambio de sabor, opciones/preferencias explícitas en la bebida añadida, recorrido desde saludo (esta tanda siembra checkout), estados nombre/teléfono/dirección, y repetición del pedido condicional. Aclaración pendiente no significa compra ejecutada: verificar su siguiente turno. Mantener evaluación reservada de modelos/medios y matriz PDF→test→commit→runtime. No declarar vendible por conteos.
+
 ## VIGENTE — consultas de bebida incluida durante checkout (20/10, tanda 46)
 
 Base 565133be. 42 regresiones nuevas con router real y servicios externos simulados: tres menús (bowl, pizza, arroz), agente on/off, estados dirección/pago/confirmación, pregunta sin nombre y con nombre; seis contrastes con carrito mixto, plato nombrado y plato fuera del carrito. 36 recorridos terminan en DTO de orden simulada: dos unidades, misma nota y dirección, una sola creación. No se prueba inferencia real.

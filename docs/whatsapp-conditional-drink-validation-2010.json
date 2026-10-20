@@ -1,0 +1,34 @@
+{
+  "batch": 47,
+  "base": "fa78a1ee",
+  "branch": "staging",
+  "newCases": 48,
+  "baselineFailedAssertions": 36,
+  "ambiguousSizeFailuresFound": 2,
+  "focusedPassed": 182,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12418,
+    "suites": 133,
+    "bursts": 80,
+    "rest": 12338,
+    "seconds": [
+      110.524,
+      365.784
+    ],
+    "unchangedSourceHashes": 429,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Seeded checkout; external services mocked",
+    "No paid inference or media",
+    "Free-form conditions without punctuation not covered",
+    "Clarification follow-up and repeated conditional request pending"
+  ]
+}

@@ -2366,10 +2366,10 @@ export class WhatsappOrchestratorService {
       session = {...session,pendingCompositionAsk:undefined};
       await this.conversationService.saveSession(conv,session);
     }
-    // Inclusion is a read-only interruption of checkout, not a new drink purchase.
+    // Answer inclusion before checkout fields; only an explicit conditional authorizes a purchase.
     if (/^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state) &&
       /(?:trae|viene|incluye|lleva)/i.test(originalText) &&
-      await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts())) return;
+      await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts(), cfg)) return;
     const referenceText = this.normalizeForMatch(originalText);
     const shortDetailReference = /^(?:y )?(?:(?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?|(?:el otro|la otra)(?: plato|producto|combo|opcion)?) (?:trae|incluye|lleva)(?: .+)?$/.test(referenceText) &&
       !/\b(?:agrega\w*|anade\w*|quita\w*|cambia\w*|quiero|dame|envia\w*)\b/.test(referenceText);
@@ -2859,7 +2859,7 @@ export class WhatsappOrchestratorService {
         !/[¿?]/.test(originalText) && /^(?:quiero|dame|agrega|me das)\s+(?:un|una|\d+)\s+/i.test(originalText.trim()) &&
         this.catalogService.resolveStandaloneDrinkOrder(originalText,products) &&
         await this.tryHandleStandaloneDrink(conv,msg.waId,{...session,pendingMatch:undefined,pendingAddOffer:undefined},originalText,products,cfg)) return;
-    if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products)) return;
+    if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products, cfg)) return;
     const readOnlyAside = this.offMenuErrandQuery(originalText,products) || this.randomAsideLabel(originalText,products);
     if (cfg.agentV1Enabled && readOnlyAside &&
       (conv.state !== 'building_cart' || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)) {
@@ -11841,9 +11841,13 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     text: string,
     products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const checkout = /^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state);
-    const q = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalized = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const conditional = normalized.match(/^(.+?)\s*[,;?]\s*si no[,]?\s+((?:agrega(?:me)?|anade(?:me)?|dame)\s+.+?)[.!]?$/);
+    const question = conditional ? conditional[1] : text;
+    const q = this.normalizeForMatch(question).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
     const asked = q.match(/^(?:y\s+|pero\s+|oye\s+)?(?:(.+?)\s+)?(?:traen|trae|vienen\s+con|viene\s+con|incluyen|incluye|llevan|lleva)\s+(?:la\s+|el\s+|una?\s+|su\s+)?(gaseosas?|bebidas?|refrescos?|jugos?|sodas?)(?:\s+(?:incluida|incluido|tambien|o\s+no))?$/);
     if (!asked) return false;
     const subject = (asked[1] || '').replace(/^(?:los|las|el|la|esos|esas|ese|esa|estos|estas)\s+/, '').trim();
@@ -11880,12 +11884,49 @@ export class WhatsappOrchestratorService {
     const withItem = context.filter(includes);
     const without = context.filter(product => drinkInclusion(product,item) === 'no');
     const uncertain = context.filter(product => drinkInclusion(product,item) === 'unknown');
-    if (checkout) {
+    if (checkout || conditional) {
       const lines: string[] = [];
       if (withItem.length) lines.push(`Sí ${withItem.length === 1 ? 'trae' : 'traen'} ${item}: ${withItem.map(product => `*${product.name}*`).join(', ')}.`);
       if (without.length) lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
       if (uncertain.length) lines.push(`No tengo confirmado si incluye ${item}: ${uncertain.map(product => `*${product.name}*`).join(', ')}.`);
-      lines.push('', 'El pedido sigue igual.', this.formatInterruptedStepReminder(conv, session));
+      let changed = false;
+      if (conditional) {
+        if (uncertain.length || (withItem.length && without.length)) {
+          lines.push('No añadí una bebida: no está claro que se cumpla la condición. Si la quieres aparte de todos modos, dímelo explícitamente.');
+        } else if (withItem.length) {
+          lines.push('Ya viene incluida; no añadí otra bebida.');
+        } else if (without.length) {
+          const rawAction = conditional[2].replace(/^(agrega(?:me)?|anade(?:me)?)/, 'quiero');
+          const action = /^(?:quiero|dame) (?:un|una)$/.test(rawAction) ? `${rawAction} ${item}` : rawAction;
+          const resolved = this.catalogService.resolveStandaloneDrinkOrder(action, products);
+          const matchingDrinks = products.filter(product => product.availableNow !== false &&
+            this.catalogService.isLikelyDrinkProduct(product) && this.catalogService.productNameFitsUtterance(product, action));
+          const ambiguous = matchingDrinks.length > 1 && !!resolved &&
+            !this.catalogService.productFullyNamedIn(action, [resolved.product]);
+          const pending = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder || session.pendingCartAttributeEdit;
+          const open = cfg.ignoreBusinessHours || (await this.businessService.getStatus()).isOpen;
+          if (!open) lines.push('No añadí la bebida porque el local está cerrado.');
+          else if (pending) lines.push('No añadí la bebida; primero aclaremos la selección pendiente.');
+          else if (!resolved || ambiguous || resolved.product.availableNow === false ||
+            (resolved.product.hasAttributes && !this.catalogService.isAttributeSelectionComplete(resolved.product, resolved.attributes))) {
+            lines.push(`No añadí la bebida todavía. Dime el nombre, tamaño y sabor de ${itemArticle} ${item} que quieres aparte.`);
+          } else {
+            const quantity = Math.max(1, this.catalogService.extractQuantityFromSegment(action));
+            const note = this.catalogService.extractProductModificationNote(action) || undefined;
+            const added = this.tryAddProductToCart(session, resolved.product, quantity, cfg, note, resolved.attributes, { sourceText: action });
+            if (added.blocked || added.missingAttributes) {
+              lines.push('No pude añadir la bebida como la pediste; el carrito sigue igual.');
+            } else {
+              session = added.session;
+              await this.conversationService.saveSession(conv, session);
+              changed = true;
+              lines.push(`Agregué *${resolved.product.name}* ×${quantity}.`, this.formatCartOnly(session, this.deliveryFeeFor(session, cfg)));
+            }
+          }
+        }
+      }
+      if (!changed) lines.push('', 'El pedido sigue igual.');
+      lines.push(this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session));
       await this.reply(conv, waId, lines.join('\n'));
       return true;
     }
