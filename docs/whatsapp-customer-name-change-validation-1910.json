@@ -1,0 +1,56 @@
+{
+  "batch": 30,
+  "date": "2026-10-19",
+  "base": "ffcc85e9",
+  "commit": "1fac5c4f42b16802eadc109df7c77a11fa427410",
+  "scope": "Customer name changes and receiver mentions during cart building, payment selection and final review",
+  "baselineFindings": [
+    "CRITICAL: in awaiting_final_confirm «el pedido va a nombre de Laura Gómez» CREATED THE ORDER without «confirmar»: the compound parser removed the explicit name and the leftover «el pedido va» matched isConfirmKeyword («va» is an approval word)",
+    "«cambia el nombre a Carlos» answered «No tenemos esos productos en la carta» and dropped the final step to building_cart",
+    "«el nombre es Laura», «no, el nombre es Carlos», «que lo reciba Laura» were dropped silently (cart or payment prompt re-shown)",
+    "«mi nombre es Carlos Pérez» in the final step changed the name silently and asked «¿Algo más?»",
+    "«ponlo a nombre de mi esposa Laura» stored «mi esposa Laura» as the name",
+    "«soy alérgico al maní» stored «alérgico al maní» as the customer name"
+  ],
+  "fix": "tryHandleCustomerNameChange (before the contact/name label block and the compound parser): explicit forms (el/mi nombre es, cambia el nombre a, va/queda a nombre de, ponlo a nombre de, a nombre de, mi nombre es, me llamo) with optional «no,/mejor/perdón» lead update the name with an acknowledgement; relation prefixes (mi esposa, mi mamá…) are dropped; «que lo reciba X» is an order note. State is preserved; the final step re-shows the summary and asks for «confirmar». Names that look like addresses, catalog products or checkout words keep their routes. Defensive guard in the compound parser: after an explicit name was extracted in awaiting_final_confirm, an empty or approval-only remainder re-shows the summary instead of approving. tryHandleExplicitCustomerNameLabel rejects «soy <condition>» (alérgico, vegetariano, celíaco, … or phrases with al/con/sin).",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-customer-name-change.spec.ts",
+    "count": 132,
+    "menus": ["one row with option (bao/sauce)", "two rows same product (pizza/dough)", "two plain products (juice + arepa)"],
+    "states": ["building_cart", "awaiting_payment", "awaiting_final_confirm"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["order-goes-under-name", "change-the-name-to", "the-name-is", "correction-with-no", "relation-prefix-dropped", "receiver-is-a-note"],
+    "contrasts": ["same-name-again", "approval-plus-name", "question-about-name", "allergy-soy"],
+    "baselineWithoutFix": "126/132 failed"
+  },
+  "knownGaps": [
+    "«soy X» still updates the name through the existing route without the new acknowledgement wording",
+    "Name plus other instructions in one message (name + address change) keep existing routes"
+  ],
+  "validation": {
+    "focused": "1243/1243 (16 suites incl. new spec, address-change-checkout, checkout-destination-block, checkout-envelope, compound-parse, human-contact, named-menu-dish, named-pack-quantity, order-level-aside, mixed-cash-note, dish-handling-aside, ambiguous-turns, chat-regressions, cart-note, line add-on suites)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 108.272s",
+      "phase2Rest": "10860/10860 in 317.057s, 114 suites",
+      "totalSeconds": 427,
+      "inventorySuites": 115,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 410,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "1fac5c4f42b16802eadc109df7c77a11fa427410",
+    "image": "sha256:daa8bb4466d9b9a66a34a7842bd06dbb4d4aad39e97aaefbd6aaa1b4650726db",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T01:43:05Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-1fac5c4f (image 6f3cf0f2…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
