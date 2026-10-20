@@ -1,0 +1,32 @@
+{
+  "batch": 50,
+  "base": "d3de13f4",
+  "newCases": 66,
+  "baselineFailures": 54,
+  "focusedPassed": 312,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12556,
+    "suites": 136,
+    "bursts": 80,
+    "rest": 12476,
+    "seconds": [
+      109.723,
+      361.031
+    ],
+    "sourceHashesUnchanged": 432,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": null,
+  "limits": [
+    "External dependencies and model simulated",
+    "Checkout seeded; no from-greeting flow",
+    "Changing pending drink to another SKU and early contact data remain pending"
+  ]
+}

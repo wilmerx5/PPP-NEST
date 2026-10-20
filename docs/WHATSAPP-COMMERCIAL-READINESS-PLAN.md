@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 50
+
+Se validaron selección de sabor, reducción/cancelación y retorno a nombre/teléfono/dirección en tres menús. Validación: 66 nuevos + 246 relacionados = 312 focalizados, TypeScript/build TypeScript, 92 Node y diff check. Global congelada: 80 ráfagas + 12476 resto = 12556 / 136 suites, cero fallos/reintentos, inventario exacto y 432 hashes intactos. Tiempos [109.723, 361.031]. Evidencia whatsapp-conditional-flavor-validation-2010.json. No se cambió fuente/tests después de global.
+
+Pendiente despliegue agrupado 49–50. Después: consultas durante sabor, cambio a otro producto, datos de contacto antes de terminar la selección y recorridos desde saludo. Piloto supervisado sigue requiriendo muestra reservada real, costo/latencia y trazabilidad de chats; los mocks no acreditan precisión de modelo, audio o mapas.
+
 ## Estado vigente — 20/10, tanda 48
 
 Runtime staging 805136eb, healthy verificado 17:49:45Z. La respuesta conserva evidencia genérica de bebida incluida y muestra nombres/códigos/volumen del catálogo sin afirmar gaseosa. Global 12.450 / 134 suites, 32 casos nuevos, cero inferencia pagada. Producción intacta. Ver evidencia whatsapp-generic-drink-validation-2010.json y relevo vigente.

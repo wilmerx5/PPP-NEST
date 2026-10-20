@@ -2766,6 +2766,12 @@ export class WhatsappOrchestratorService {
     }
     // Mensaje largo / audio: guardar texto completo para no perder domicilio al cortar productos
     const compound = this.parseCompoundOrderMessage(text);
+    const answeringName = conv.state === 'awaiting_name' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
+      isUsableWhatsappCustomerName(originalText) && !this.looksLikeAddressRejectingPersonName(originalText);
+    if (answeringName) {
+      compound.address = null;
+      compound.productText = text;
+    }
     const earlyMenu = session.cart.length ? await this.catalogService.getMenuProducts() : [];
     const namesLoadedDish = earlyMenu.some((product) => this.normalizeForMatch(product.name) === this.normalizeForMatch(originalText));
     const namesOrderDish = /^(?:quiero|quisiera|dame|reg[aá]lame|me\s+env[ií]as|un|una|dos|tres|cuatro|cinco|\d+)\b/i.test(compound.productText.trim()) &&
@@ -2813,6 +2819,7 @@ export class WhatsappOrchestratorService {
     // An explicitly supplied recipient supersedes the saved contact; an inferred
     // leading name only fills a missing/invalid name.
     if (compound.customerName && isUsableWhatsappCustomerName(compound.customerName) &&
+        (compound.customerNameExplicit || !(session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)) &&
         (compound.customerNameExplicit || !isUsableWhatsappCustomerName(conv.customerName || ''))) {
       await this.conversationService.updateCustomerName(conv, compound.customerName);
       const freshName = await this.conversationService.reloadConversation(conv.id);
@@ -3426,7 +3433,7 @@ export class WhatsappOrchestratorService {
       !this.isConfirmKeyword(originalText) &&
       !isDeliveryEtaInquiry(originalText) &&
       !isDeliveryEtaInquiry(text) &&
-      !cfg.agentV1Enabled &&
+      !cfg.agentV1Enabled && !answeringName &&
       !this.isPickupIntent(originalText) &&
       !this.isPickupIntent(text) &&
       customerIntent === 'address'
@@ -11960,8 +11967,20 @@ export class WhatsappOrchestratorService {
             await this.conversationService.saveSession(conv, session, 'building_cart');
             lines.push('No añadí la bebida todavía. Elige la presentación para completar esa compra; después seguimos con el pedido.');
           }
-          else if (!resolved || ambiguous || resolved.product.availableNow === false ||
-            (resolved.product.hasAttributes && !this.catalogService.isAttributeSelectionComplete(resolved.product, resolved.attributes))) {
+          else if (resolved && !ambiguous && resolved.product.availableNow !== false &&
+            resolved.product.hasAttributes && !this.catalogService.isAttributeSelectionComplete(resolved.product, resolved.attributes)) {
+            session = {
+              ...session,
+              pendingAttribute: {
+                ...this.toPendingAttribute(resolved.product, { sourceText: action, selected: resolved.attributes }),
+                quantity: Math.max(1, this.catalogService.extractQuantityFromSegment(action)),
+              },
+              ...(checkout ? { pendingCheckoutResume: conv.state as WhatsappSessionData['pendingCheckoutResume'] } : {}),
+            };
+            await this.conversationService.saveSession(conv, session, 'awaiting_attribute');
+            lines.push('Para añadir la bebida falta elegir una opción:');
+          }
+          else if (!resolved || ambiguous || resolved.product.availableNow === false) {
             lines.push(`No añadí la bebida todavía. Dime el nombre, tamaño y sabor de ${itemArticle} ${item} que quieres aparte.`);
           } else {
             const quantity = Math.max(1, this.catalogService.extractQuantityFromSegment(action));
@@ -17232,6 +17251,9 @@ export class WhatsappOrchestratorService {
     compound: { productText: string; address: string | null },
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
+    // A plausible name answering the name prompt wins over a broad landmark guess.
+    if (conv.state === 'awaiting_name' && isUsableWhatsappCustomerName(originalText) &&
+        !this.looksLikeAddressRejectingPersonName(originalText)) return false;
     if (parseEachOfQuantity(originalText) || parseQtyMenuCodeLines(originalText)) return false;
     // «y otro de esos» / «una de pollo» count units of something; never a street.
     if (!/\d/.test(originalText) &&
@@ -18717,7 +18739,9 @@ export class WhatsappOrchestratorService {
     ) {
       return true;
     }
-    if (this.looksLikeExplicitLandmarkKeyword(text)) return true;
+    // A place word inside a personal name (e.g. a surname) is not a destination.
+    // Keep explicit place prefixes and known destinations, rather than any word match.
+    if (PPP_ZONE_LANDMARK_RE.test(text) || /^(?:(?:para|a|en)\s+(?:(?:el|la|los|las)\s+)?)?(?:hospital|cl[ií]nica|ips|hotel|hostal|motel|conjunto|residencial|edificio|torres?|supermercado|centro\s+comercial|colegio|universidad|iglesia|parque|plaza|estaci[oó]n|portal|santa|san|kennedy|bosa|fontib[oó]n|engativ[aá]|suba|usaqu[eé]n|chapinero|soacha|mosquera)\b/i.test(t)) return true;
     return t.length >= 12 && /\d/.test(t) && !/\b(minutos?|mins?|horas?)\b/i.test(t);
   }
 
