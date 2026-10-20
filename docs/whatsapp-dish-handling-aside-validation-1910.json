@@ -1,0 +1,58 @@
+{
+  "batch": 27,
+  "date": "2026-10-19",
+  "base": "411ec278",
+  "commit": "c29a3466fc762e0d695117533a1f3753c4857174",
+  "scope": "Standalone dish handling / packing asides on an existing cart (separate, apart, well packed, no spill, separate bags, arrival temperature) during cart building and checkout steps",
+  "baselineFindings": [
+    "Standalone asides such as «que la ensalada venga aparte», «el aderezo aparte para la ensalada», «bien empacado», «que no se riegue», «en bolsas separadas» were not stored on the named dish nor on the order (dropped or answered without saving)",
+    "tryHandleKitchenSendRequest returned awaiting_final_confirm/checkout steps to building_cart with «¿Algo más?»",
+    "Naming a dish that is not in the cart gave no explicit «not in your order» answer"
+  ],
+  "fix": "tryHandleDishHandlingAside (early handler group, after tryHandleOrderLevelAside). Only short separation/packing phrases without digits, questions, ';', sin/con/pero/y, or purchase verbs/articles. Targets the cart rows named by product tokens, held option values or attribute names; with one row the note goes to that row; with several unnamed rows, and for arrival/temperature phrases, it goes to customerNotes once. A destination naming a catalog product that is not in the cart is answered without changes. The state is preserved (final step re-shows the summary and asks for «confirmar»). tryHandleKitchenSendRequest keeps the checkout step and shows the step reminder.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-dish-handling-aside.spec.ts",
+    "count": 156,
+    "menus": ["bao with sauce option + caesar salad", "pizza with dough option + soup of the day", "plain burger + rustic fries"],
+    "carts": ["main ×2 only", "main ×2 + side ×1"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["side-comes-apart", "dressing-apart-for-side", "well-packed", "no-spill", "separate-bags"],
+    "contrasts": ["question", "repeat", "purchase-wording", "napkins-final-step", "pending-selection", "arrival-condition"],
+    "baselineWithoutFix": "138/156 failed"
+  },
+  "historicalRegressionsCaughtAndFixed": [
+    "general-accuracy-part-12 «sin picante; el ají aparte»: compound note must stay with the existing note route (now rejected by ';' and sin/con/pero/y guard)",
+    "general-accuracy-part-07 «que llegue caliente»: must not become a dish note (now order-level note)"
+  ],
+  "knownGaps": [
+    "Mixed messages (dish note + cash in one sentence) still go through applyInlineOrderNote",
+    "Compound handling asides with «y»/«con» (e.g. «la salsa aparte y bien empacado») are left to existing routes",
+    "Name change in the final step has no explicit acknowledgement"
+  ],
+  "validation": {
+    "focused": "1600/1600 (23 suites) before the final guard; after the final guard the new spec plus general-accuracy parts 07 and 12: 1590/1590",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 115.436s",
+      "phase2Rest": "10512/10512 in 306.849s, 111 suites",
+      "totalSeconds": 424,
+      "inventorySuites": 112,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 407,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "c29a3466fc762e0d695117533a1f3753c4857174",
+    "image": "sha256:46baad5325a03a7efd70010a5d445c136622ad95c5d6f6b3efa0ffeb2e01fffc",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T00:10:56Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-c29a3466 (image 817accea…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
