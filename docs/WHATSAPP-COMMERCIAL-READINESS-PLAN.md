@@ -1,8 +1,10 @@
 ## Estado vigente — 20/10, tanda 54
 
+Despliegue agrupado 53–54 verificado 2026-10-20T20:35:43.534Z: staging 6bba0c4eac1586a2381ac852218bed9f42191c4f, imagen aa581ba8a064a707f12eb80b5a268499d2ad5de9d10ee640f9f8efbe962c2d78, running/healthy, cero reinicios, /api/health OK, DB connected y circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-6bba0c4e; bin/ privado, bases y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.
+
 42 casos nuevos en tres menús: alternativas ambiguas, sabores disponibles/inexistentes, contenido/precio y seguimiento por nombre o retorno al sabor original. Validación: 280 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12730 pruebas / 138 suites, cero fallos/reintentos; inventario exacto y 434 hashes intactos. Evidencia whatsapp-pending-drink-questions-validation-2010.json.
 
-Siguiente: consultas sobre alternativas mostradas, nombres abreviados/duplicados y disponibilidad cambiante. Modelo/servicios simulados; no acredita precisión real. Main intacto, cero llamadas pagadas. Despliegue agrupado 53–54 por verificar.
+Siguiente: consultas sobre alternativas mostradas, nombres abreviados/duplicados y disponibilidad cambiante. Modelo/servicios simulados; no acredita precisión real. Main intacto, cero llamadas pagadas. Despliegue acreditado en encabezado vigente.
 
 ## Estado vigente — 20/10, tanda 53
 
