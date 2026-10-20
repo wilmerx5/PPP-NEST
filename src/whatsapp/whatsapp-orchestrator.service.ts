@@ -2461,6 +2461,7 @@ export class WhatsappOrchestratorService {
         return;
       }
     }
+    if (await this.tryHandleCustomerNameChange(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder &&
         !session.pendingAddOffer && !session.pendingSideSwap && !this.formatPendingCartEditReminder(session) &&
         !['completed','closed','human_takeover'].includes(conv.state)) {
@@ -2587,6 +2588,14 @@ export class WhatsappOrchestratorService {
       await this.conversationService.updateCustomerName(conv, compound.customerName);
       const freshName = await this.conversationService.reloadConversation(conv.id);
       Object.assign(conv, freshName);
+      // What is left after removing a name ("el pedido va") is never an approval.
+      if (compound.customerNameExplicit && session.cart.length && conv.state === 'awaiting_final_confirm' &&
+          (!compound.productText.trim() || this.isConfirmKeyword(compound.productText))) {
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, msg.waId, `Listo, el pedido queda a nombre de *${conv.customerName}* ✅\n\n` +
+          `${this.formatOrderSummary(conv, session, this.deliveryFeeFor(session, cfg), cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`);
+        return;
+      }
     }
     if (compound.productText.length >= 3) {
       text = compound.productText;
@@ -9992,7 +10001,10 @@ export class WhatsappOrchestratorService {
     );
     if (!m?.[1]) return false;
     const name = m[1].replace(/\s+/g, ' ').trim().replace(/[.,;]+$/, '');
-    if (!isUsableWhatsappCustomerName(name) || this.looksLikeAddressRejectingPersonName(name)) {
+    // "Soy alérgico al maní" / "soy vegetariano" describe the customer, not a name.
+    const describesCustomer = /^soy\b/i.test(nameClause) &&
+      /^(?:alerg|celiac|vegetarian|vegan|intolerante|diabetic|hipertens|embarazad|cliente|nuev[oa]\b|el mismo|la misma|de |del |muy |bien )|\b(?:al|a la|a los|a las|con|sin)\b/.test(this.normalizeForMatch(name));
+    if (describesCustomer || !isUsableWhatsappCustomerName(name) || this.looksLikeAddressRejectingPersonName(name)) {
       return false;
     }
     // Solo en checkout / carrito (no hijackear charla suelta)
@@ -15944,6 +15956,53 @@ export class WhatsappOrchestratorService {
     const next = this.addProductToCart(session, addon, units, note, undefined, { mode: 'set' });
     const scopeNote = explicit && !perUnit && dishUnits > 1 && units !== dishUnits ? ' en total' : '';
     return finish(next, `Listo, agregué *${addon.name}* ×${units}${scopeNote} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅`);
+  }
+
+  /** "El nombre es Laura", "cambia el nombre a Carlos", "el pedido va a nombre de …": an acknowledged name change that never approves the order. */
+  private async tryHandleCustomerNameChange(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?\d\n]/.test(text) || text.length > 90 ||
+        !['building_cart','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const raw = text.trim().replace(/[.!]+$/, '').replace(/\s+(?:por favor|porfa|gracias)$/i, '').trim();
+    const NAME = String.raw`([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]*(?:\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]*){0,4})`;
+    const lead = String.raw`^(?:no\s*,?\s+|mejor\s+|perd[oó]n\s*,?\s+|ah\s*,?\s+|y\s+)?`;
+    const forms = [
+      String.raw`(?:el|mi)\s+nombre\s+(?:es|ser[ií]a|:)\s*`,
+      String.raw`(?:cambia(?:me|lo|le)?|cambiar|corrige|corr[ií]gelo|pon(?:le)?|deja)\s+(?:el|mi)\s+nombre\s+(?:a|por|de|como)\s+`,
+      String.raw`(?:(?:el\s+)?pedido\s+|la\s+orden\s+)?(?:va|queda|sale|est[aá])\s+a\s+nombre\s+de\s+`,
+      String.raw`(?:p[oó]n(?:lo|la|el pedido)|d[eé]j(?:alo|ala|a el pedido)|que\s+(?:quede|salga|vaya))\s+a\s+nombre\s+de\s+`,
+      String.raw`a\s+nombre\s+de\s+`,
+      String.raw`(?:mi\s+nombre\s+es|me\s+llamo)\s+`,
+    ];
+    const receiver = raw.match(new RegExp(`${lead}(?:que\\s+)?(?:lo|la|los)\\s+(?:reciba|recibe|va a recibir)\\s+${NAME}$`, 'i'));
+    const named = receiver ? null : forms.map(form => raw.match(new RegExp(`${lead}${form}${NAME}$`, 'i'))).find(Boolean);
+    const said = (receiver || named)?.[1];
+    if (!said) return false;
+    const name = said.replace(/^(?:(?:mi|mis|su)\s+(?:espos[oa]|mam[aá]|pap[aá]|madre|padre|herman[oa]|hij[oa]|novi[oa]|amig[oa]|jefe|jefa|t[ií][oa]|abuel[oa]|prim[oa]|suegr[oa]|vecin[oa])\s+)/i, '').replace(/\s+/g, ' ').trim();
+    if (!name || name.split(' ').length > 4 || !isUsableWhatsappCustomerName(name) || this.looksLikeAddressRejectingPersonName(name) ||
+        /\b(?:pedido|orden|domicilio|llevar|recoger|efectivo|nequi|transferencia|direcci[oó]n|calle|carrera)\b/i.test(name)) return false;
+    if ((this.catalogService.searchByNameScored(name, await this.catalogService.getMenuProducts(), 1)[0]?.score ?? 0) >= 80) return false;
+    let next = session;
+    let ack: string;
+    if (receiver) {
+      const note = `lo recibe ${name}`;
+      const saved = (session.customerNotes || '').split(/;\s*/).some(part => this.normalizeForMatch(part) === this.normalizeForMatch(note));
+      next = saved ? session : this.appendCustomerNote(session, note);
+      await this.conversationService.saveSession(conv, next);
+      ack = `Anoté para el pedido: _${note}_ ✅`;
+    } else if (this.normalizeForMatch(conv.customerName || '') === this.normalizeForMatch(name)) {
+      ack = `El pedido ya está a nombre de *${conv.customerName}*.`;
+    } else {
+      await this.conversationService.updateCustomerName(conv, name);
+      Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+      ack = `Listo, el pedido queda a nombre de *${name}* ✅`;
+    }
+    const fee = this.deliveryFeeFor(next, cfg);
+    await this.reply(conv, waId, conv.state === 'awaiting_final_confirm'
+      ? `${ack}\n\n${this.formatOrderSummary(conv, next, fee, cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`
+      : `${ack}\n\n${this.formatCartOnly(next, fee)}\n\n${this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)}`);
+    return true;
   }
 
   /** "Sin cebolla y tráeme cambio de 50 mil": one cash-change clause plus one note clause — each part lands where it belongs, without leftover verbs. */
