@@ -1,0 +1,63 @@
+{
+  "batch": 39,
+  "date": "2026-10-19",
+  "base": "cec6b857",
+  "commit": "bebc2c87f9fd0b3dbfd5dd3430b194661f14b1d5",
+  "scope": "Negated cart requests: «no quiero un X» removes the line, past-tense swaps «no quería X, quería Y», explicit swaps with the agent on",
+  "trigger": "Staging chat (05:35Z, previous deploy): after a wrong «1 Pollo Frito», «no quieria un pollo, queria el combo de arroz paisa» got a chicken variant list and «no quiero un pollo» got «Conservo 1 Pollo Frito en tu pedido»",
+  "baselineFindings": [
+    "«no quiero un/el X» matched the quantity-correction regex «no quiero <qty> X» and kept the line («Conservo …»)",
+    "Past-tense swaps («no quería/queria/quieria/pedí X, quería Y») were not recognised as swaps; the family word opened a variant list",
+    "«no quiero X, quiero el combo de …» on menus without a «pollo combo» product went to the make-it-combo path («no veo una variante combo aparte»)",
+    "With the agent on, «no quiero el <line>, quiero <dish>» was taken by the multi-dish splitter before the agent and the swap fallback: it added the new dish, kept the old one and replied «no manejamos: no quiero …»"
+  ],
+  "fix": "rewriteNegatedCartRequest (in the pre-routing rewrite chain, cart not empty): «(yo) no quería/queria/quieria/pedí X, (era/sino) quería Y» becomes «no quiero X, quiero Y»; «(ya) no quiero/quería/pedí (un|el …) X» without quantity, second request or note words becomes «quita 1 <line>» (un/una) or «quita el <line>» (definite/bare) only when X matches exactly one cart line. tryApplyVariantPreferenceToProduct steps aside when the text names another catalog combo outright. tryHandleMultiProductOrder returns false for an explicit cart swap so the agent and the swap fallback handle it.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-negated-cart-request.spec.ts",
+    "count": 102,
+    "menus": ["rotisserie (pollo variants)", "pizzeria (pizza variants)", "juice bar (jugo variants)"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "«no, quiero 2 <variant>» stays a quantity correction",
+      "present-tense swap still replaces the line",
+      "dish not in the cart removes nothing",
+      "two lines of the same family are not removed by the family word",
+      "«no quiero cebolla» removes no dish",
+      "two units: «un/una» removes one unit, «el/la» removes that line only"
+    ],
+    "baselineWithoutFix": "67 failed / 102"
+  },
+  "validation": {
+    "focused": "980 passed (18 suites: cart edits/removal/notes, multi-order, combos, variants, quantity corrections, image caption)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 104.757 },
+      "rest": { "passed": 11772, "total": 11772, "suites": 123, "seconds": 352.252 },
+      "inventory": 124,
+      "unionEqualsInventory": true,
+      "hashes": 419,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 11852
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "bebc2c87f9fd0b3dbfd5dd3430b194661f14b1d5",
+    "image": "sha256:9f30692f654a19d0fbd0c13afd1efed40e4b584e791be5ed21b172f7d31f04bf",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T06:29:21Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-bebc2c87 (image 9f9d9bbf…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "«no quiero dos X» is still read as a quantity correction to 2",
+    "«no quiero cebolla» replies «¿Qué plato del pedido quieres cambiar?» instead of a note",
+    "«quita todo el <dish>» empties the whole cart",
+    "«quita una unidad de <dish>» does not find the line",
+    "«no, quiero 2 <family plural>» only resolves for chicken families",
+    "A bare number after a non-list bot question is still read as a product code"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
