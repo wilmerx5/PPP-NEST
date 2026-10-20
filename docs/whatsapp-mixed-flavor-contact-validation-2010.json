@@ -22,7 +22,17 @@
   "paidCalls": 0,
   "whatsappSent": 0,
   "externalOrders": 0,
-  "deployment": "Pending staging only",
+  "deployment": {
+    "commit": "132a846c1c6b97c459ebe234679ee5b8f666ad21",
+    "image": "0cf66f5f90a914984629d01bb5531c92bca2b7a987cfd084d55165fbc5a4585b",
+    "verifiedAt": "2026-10-20T19:49:13.611Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-132a846c"
+  },
   "limits": [
     "Mocked model and external services",
     "Checkout seeded",

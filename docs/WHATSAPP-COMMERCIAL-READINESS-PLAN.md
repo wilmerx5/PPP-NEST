@@ -1,8 +1,10 @@
 ## Estado vigente — 20/10, tanda 52
 
+Despliegue agrupado 51–52 verificado 2026-10-20T19:49:13.611Z: staging 132a846c1c6b97c459ebe234679ee5b8f666ad21, imagen 0cf66f5f90a914984629d01bb5531c92bca2b7a987cfd084d55165fbc5a4585b, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-132a846c; bin/ privado y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.
+
 42 casos nuevos: correcciones de contacto repetidas durante sabor y sabor+datos juntos. Validación: 202 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12652 pruebas / 137 suites, cero fallos/reintentos; inventario exacto y 433 hashes intactos. Evidencia whatsapp-mixed-flavor-contact-validation-2010.json.
 
-Siguiente: formulaciones variadas de reemplazo, precio durante sabor, recorridos desde saludo. Modelo y servicios simulados; piloto aún requiere muestra reservada real y costo/latencia. Main intacto. Despliegue agrupado 51–52 pendiente de verificar.
+Siguiente: formulaciones variadas de reemplazo, precio durante sabor, recorridos desde saludo. Modelo y servicios simulados; piloto aún requiere muestra reservada real y costo/latencia. Main intacto. Despliegue acreditado en el encabezado vigente.
 
 ## Estado vigente — 20/10, tanda 51
 
