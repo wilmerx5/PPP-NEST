@@ -70,3 +70,20 @@ export function followUpHandlingNote(source: string): string | null {
   if (tail && (tail.length > 70 || /\d|\b(?:un|una|unos|unas|otr[oa]s?|tres|cuatro|cinco|agrega\w*|d[aá]me|quiero)\b/i.test(tail))) return null;
   return text.replace(/\bcahas?\b/gi, (word) => word.replace(/h/i, 'j'));
 }
+
+/** "con yuca en vez de papa", "cambiando la papa por yuca", "a cambio de la yuca, papa":
+ * the side named first in the canonical form is removed, the second one replaces it. */
+export function normalizeSideSwapPhrase(text: string): string {
+  const side = String.raw`(?!(?:un|una|unos|unas|uno|dos|tres|cuatro|cinco|seis|\d)\b)[\p{L}]{3,}(?:\s+(?:de\s+)?(?!(?:y|con|sin|para|por|las?|los?|el|del)\b)[\p{L}]{3,}){0,2}`;
+  const article = String.raw`(?:(?:la|el|los|las|unas?|unos?)\s+)?`;
+  const end = String.raw`(?=\s*(?:[,.;!]|\s+y\s|\s+para\b|$))`;
+  return text
+    .replace(new RegExp(String.raw`\b(?:con\s+)?${article}(${side})\s+(?:en\s+vez|envez|en\s+lugar)\s+de\s+${article}(${side})${end}`, 'giu'),
+      (_all, replacement: string, replaced: string) => `sin ${replaced} y con ${replacement}`)
+    .replace(new RegExp(String.raw`(\p{L}\s+)(?:cambi[aá]ndo(?:le|les)?)\s+${article}(${side})\s+por\s+${article}(${side})${end}`, 'giu'),
+      (_all, before: string, replaced: string, replacement: string) => `${before}sin ${replaced} y con ${replacement}`)
+    .replace(new RegExp(String.raw`\ba\s+cambio\s+de\s+${article}(${side})\s*,\s*${article}(${side})${end}`, 'giu'),
+      (_all, replacement: string, replaced: string) => `sin ${replaced} y con ${replacement}`)
+    .replace(new RegExp(String.raw`(\p{L}\s+)a\s+cambio\s+de\s+${article}(${side})(?=\s*(?:[.;!]|\s+y\s|\s+para\b|$))`, 'giu'),
+      (_all, before: string, replacement: string) => `${before}con ${replacement}`);
+}

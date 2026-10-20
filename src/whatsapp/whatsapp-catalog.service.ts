@@ -4661,7 +4661,7 @@ export class WhatsappCatalogService {
     if (!raw) return raw;
     let cleaned = raw
       .replace(
-        new RegExp(`\\b(?:sin|con|mas|más|pero\\s+sin|pero\\s+con|en\\s+vez\\s+de|no\\s+quiero|no\\s+me\\s+(?:pongan?|pongas)|quiero\\s+(?:mas|más))\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?[^\\s,]+(?:\\s+[^\\s,]+){0,2}${MODIFIER_COORDINATION}`, 'gi'),
+        new RegExp(`\\b(?:sin|con|mas|más|pero\\s+sin|pero\\s+con|en\\s+vez\\s+de|no\\s+quiero|no\\s+me\\s+(?:pongan?|pongas)|quiero\\s+(?:mas|más))\\s+(?:de\\s+)?(?:la\\s+|el\\s+|las\\s+|los\\s+|una\\s+|un\\s+)?[^\\s,]+(?:\\s+(?!(?:y|con|sin|pero)\\b)[^\\s,]+){0,2}${MODIFIER_COORDINATION}`, 'gi'),
         ' ',
       )
       .replace(/\s+/g, ' ')

@@ -1,4 +1,5 @@
 import { fixFuzzyDomicilioTypos, fixFuzzyEjecutivoTypos } from './whatsapp-message-classify';
+import { normalizeSideSwapPhrase } from './whatsapp-kitchen-preference';
 
 /**
  * Glosario local PPP: typos, aliases y frases del restaurante.
@@ -310,7 +311,7 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
  * Idempotente en lo razonable; no cambia nombres de platos válidos.
  */
 export function applyLocalGlossary(text: string): string {
-  let out = (text || '').trim();
+  let out = normalizeSideSwapPhrase((text || '').trim());
   if (!out) return out;
 
   for (const { re, to } of PHRASE_REWRITES) {

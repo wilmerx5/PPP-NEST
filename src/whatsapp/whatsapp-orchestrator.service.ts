@@ -6327,7 +6327,8 @@ export class WhatsappOrchestratorService {
       !this.catalogService.isExternalMarketplaceOrderMessage(text) &&
       !looksLikeExplicitCartItemNote(text) &&
       (!this.looksLikeStandaloneOrderNote(text) || (!session.cart.length &&
-        /\s/.test(embeddedProduct.name.trim()) && this.normalizeForMatch(text).includes(this.normalizeForMatch(embeddedProduct.name)))) &&
+        ((/\s/.test(embeddedProduct.name.trim()) && this.normalizeForMatch(text).includes(this.normalizeForMatch(embeddedProduct.name))) ||
+          this.catalogService.findProductEmbeddedInMessage(text.split(/\b(?:sin|con|no\s+quiero|en\s+vez|en\s+lugar|a\s+cambio)\b/i)[0], products)?.id === embeddedProduct.id))) &&
       !this.catalogService.isCategoryBrowseQuestion(text) &&
       !this.catalogService.isMenuExploreIntent(text, products) &&
       !session.pendingMatch &&
@@ -18354,6 +18355,7 @@ export class WhatsappOrchestratorService {
           'vengo',
           'seria',
           'me',
+          'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'docena', 'media', 'medio',
         ]);
         // No capturar si el “nombre” es claramente comida / verbo de pedido
         // ("Para hacer un pedido" → Para hacer; "Necesito un domicilio" → Necesito)
@@ -18368,7 +18370,7 @@ export class WhatsappOrchestratorService {
             ),
           ) &&
           isUsableWhatsappCustomerName(candidate) &&
-          !/\b(pollo|arroz|sopa|bandeja|mojarra|bebida|gaseosa|combo|broaster|domicilio|pedido)\b/i.test(
+          !/\b(pollo|arroz|sopa|bandeja|mojarra|bebida|gaseosa|combo|broaster|domicilio|pedido)s?\b/i.test(
             candidate,
           ) &&
           !/^(un|una|el|la|los|las)$/i.test(last) &&
