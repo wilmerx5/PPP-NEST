@@ -1,0 +1,57 @@
+{
+  "batch": 42,
+  "date": "2026-10-20",
+  "base": "aef7a658",
+  "commit": "3db253d0a847b237c16d89abc533506ddc5be819",
+  "scope": "Same product with an option named several times in one message («1 sopa de ajiaco y 1 sopa de menudencias», «1 jugo pequeño de mora y 1 jugo pequeño de lulo», «2 malteadas de fresa y 1 malteada de vainilla»)",
+  "trigger": "Gap found in batch 41: explicit counts for the same product with different options kept a single line",
+  "baselineFindings": [
+    "«1 sopa de ajiaco y 1 sopa de menudencias» (one «Sopa» product with an option) added only Ajiaco, with the agent on or off: the segment fell to the scored-search path, which silently skipped a product already used",
+    "«1 jugo pequeño de mora y 1 jugo pequeño de lulo» added only Lulo; once both lines were kept, the standalone-drink path picked «Jugo» over «Jugo pequeño» because both fit and the preference rank favored the plain drink",
+    "«2 malteadas de fresa y 1 malteada de vainilla» stored 2 + 1 but replied «Malteada ×2 (Fresa), Malteada ×2 (Vainilla)»: the label took the quantity of the first cart line with that name"
+  ],
+  "fix": "resolveMultiProductOrderCore: one helper (alreadyUsed) replaces every silent «product already used» skip in the segment loop; a repeated product is kept when the segment states a different value for an option already stated on an earlier line (the rule the embedded path already had). resolveStandaloneDrinkOrder prefers the longest drink name actually said («jugo pequeño» → Jugo pequeño). buildCartAddReply takes the quantity of each repeated label from its own cart line when the label has no explicit quantity.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-repeated-product-options.spec.ts",
+    "count": 54,
+    "menus": ["soups (generic soup with option + small soup)", "juice bar (drinks in two sizes)", "pizzeria (three flavors, personal size)"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "«1 X de A y 1 <otro plato>» still gives two different products",
+      "«1 X de A» alone still asks the size instead of guessing (no small line added)",
+      "«1 <pequeño> de A» alone keeps the small size",
+      "A line already in the cart is kept when two new options arrive"
+    ],
+    "baselineWithoutFix": "16 failed / 54"
+  },
+  "validation": {
+    "focused": "655 passed (11 suites: multi-order catalog/router, chat regressions, language, combo drinks, distributed variants, existing variants, side swap, variant scope)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 112.793 },
+      "rest": { "passed": 12078, "total": 12078, "suites": 126, "seconds": 369.225 },
+      "inventory": 127,
+      "unionEqualsInventory": true,
+      "hashes": 422,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 12158
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "3db253d0a847b237c16d89abc533506ddc5be819",
+    "image": "sha256:02f9b84e8cff9aac6e19830007702930c503107c0c4b645de7075bd45201395d",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T15:25:23Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-3db253d0 (image 26ff8ec3…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "«1 X de A y 1 X de B» with a small and a large version picks the large one without asking, while «1 X de A» alone asks the size",
+    "«cambia el X por una <plato> mini de A» answers «no manejamos: cambia» and keeps X",
+    "«dos <plato con opción>» without the option silently takes the first option"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
