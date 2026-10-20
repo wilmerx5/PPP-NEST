@@ -1,0 +1,63 @@
+{
+  "batch": 32,
+  "date": "2026-10-19",
+  "base": "c20e3a27",
+  "commit": "00bea478a2d62bde8b66a69fab332b20c0c17cf3",
+  "scope": "Real concurrent bursts (handleIncoming + coalesce timers) while an option, a candidate list or the final confirmation is pending",
+  "baselineFindings": [
+    "Pending list + burst «2» / «sin hielo»: the fused text added the side dish ×2 instead of picking row 2",
+    "Pending option or list + burst «<answer>» / «y agrega <dish>»: the answer was applied and the extra dish was dropped silently",
+    "Pending option + «2» / «y <dish>»: «No te capté esa opción», nothing added",
+    "Final step + burst «sin cebolla» / «confirmar»: the line note became «sin cebolla\\nconfirmar»",
+    "Final step + burst «agrega <dish>» / «confirmar»: «No encontré ese producto», dish not added",
+    "Final step + burst with an edit that could not be applied followed by «confirmar» could create the order unchanged once bubbles were split",
+    "«y otra de <option>» after adding a product with another option: the add reply showed the first row's option"
+  ],
+  "fix": "When a coalesced burst is claimed, splitBurstAtPendingAnswer checks the open doubt. If the first bubble alone answers the pending option (one option name or its row number) or the pending candidate list (row number or candidate name), that bubble runs as its own turn and the remaining bubbles run as a continuation turn inside the same outbound hold (already claimed, no second claim); the first reply's trailing «¿Algo más?» is dropped when the continuation replies. «y otra/otro de <option|candidate>» in the rest becomes an explicit add of one more unit. A correction bubble («perdón/mejor/no…») naming exactly one option replaces the answer; list corrections keep the fused route. In awaiting_final_confirm with no doubt, trailing approval bubbles are separated from earlier non-courtesy bubbles; the approval continuation never creates the order and replies «Aún no confirmé el pedido…» (summary changed or a change was requested). buildCartAddReply accepts the chosen attributes so the add reply labels the row actually added (standalone drink and variant routes).",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-pending-choice-burst.spec.ts",
+    "count": 114,
+    "menus": ["bowl bar (lemonade flavors, juice list)", "burger grill (iced tea flavors, milkshake list)", "street kitchen (italian soda flavors, empanada list)"],
+    "agent": ["off", "on (simulated; a bubble the router delegates must reach the agent alone)"],
+    "asks": ["option+dish", "option-number+dish", "option+kitchen-note", "option+another-with-option", "list-number+dish", "list-name+dish", "list-name+another-row", "final-add+confirm", "final-note+confirm"],
+    "contrasts": ["option-correction", "split-answer-fragments", "repeated-option", "single-bubble", "bubbles-beyond-coalesce-window", "list-correction", "final-failed-edit+confirm", "final-courtesy+confirm", "final-confirm+edit", "final-double-confirm"],
+    "baselineWithoutFix": "62/114 failed"
+  },
+  "historicalRegressionsCaughtAndFixed": [
+    "During development: splitting «coco» / «perdón, mango» broke the correction the fused route already handled; corrections are now explicit",
+    "During development: «gracias» / «confirmar» sent «Tu pedido sigue abierto…» followed by the confirmation; courtesy-only leads keep the fused route"
+  ],
+  "knownGaps": [
+    "Standalone «y otro de <candidate>» after picking from a list (not in a burst) jumps to checkout",
+    "Final step: «agrega una arepa» does not match «Arepa De Queso» (building_cart does)",
+    "With the agent on, a plain «y agrega <dish>» after an option answer is delegated to the agent even without a burst",
+    "«una limonada» with a single matching product opens a one-row list"
+  ],
+  "validation": {
+    "focused": "972/972 (12 suites incl. new spec, general-accuracy bursts, inbound-coalesce, image-burst, clarification-turns, ambiguous-turns, unit-clarification, acknowledged-checkout-edit, customer-name-change, line-addon, mixed-cash-note, dish-handling-aside)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 103.731s",
+      "phase2Rest": "11076/11076 in 327.779s, 116 suites",
+      "totalSeconds": 433,
+      "totalTests": 11156,
+      "inventorySuites": 117,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 412,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "00bea478a2d62bde8b66a69fab332b20c0c17cf3",
+    "image": "sha256:85f71fb87ec0519cdab71496984a5c13a59bfd6c1adf7b65aa681fe5c0261d44",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T02:56:48Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-00bea478 (image 308a4372…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
