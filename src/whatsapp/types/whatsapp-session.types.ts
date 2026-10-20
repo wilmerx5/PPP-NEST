@@ -26,6 +26,8 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Explicitly offered alternatives for replacing this pending drink by name. */
+  alternativeProductIds?: number[];
   /** Original cart line retained until a variant replacement is complete. */
   replacement?: { originalLine: WhatsappCartItem };
   /** Explicit correction while the product options are still pending. */

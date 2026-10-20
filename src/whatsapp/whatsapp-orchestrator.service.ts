@@ -8300,7 +8300,37 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const pending = session.pendingAttribute;
     if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement) return false;
+    if (pending.alternativeProductIds?.length) {
+      const menu = await this.catalogService.getMenuProducts();
+      const named = menu.filter(item => pending.alternativeProductIds!.includes(item.id) && item.availableNow !== false &&
+        this.normalizeForMatch(item.name) === this.normalizeForMatch(text));
+      if (named.length === 1) text = `cambia esas bebidas por ${named[0].name}`;
+    }
     const normalized = this.normalizeForMatch(text);
+    const vagueReplacement = /^(?:mejor (?:la otra|otra) bebida|(?:cambia|reemplaza) (?:esas|las) bebidas por otra)$/.test(normalized);
+    const flavorInquiry = normalized.match(/^(?:tienes|tienen|hay) (?:de|sabor) ([a-z ]+)$/);
+    if (vagueReplacement || flavorInquiry) {
+      const menu = await this.catalogService.getMenuProducts();
+      const product = menu.find(item => item.id === pending.productId);
+      if (product && this.catalogService.isLikelyDrinkProduct(product)) {
+        if (vagueReplacement) {
+          const alternatives = menu.filter(item => item.id !== product.id && item.availableNow !== false && this.catalogService.isLikelyDrinkProduct(item)).slice(0, 8);
+          await this.conversationService.saveSession(conv, { ...session, pendingAttribute: { ...pending, alternativeProductIds: alternatives.map(item => item.id) } }, 'awaiting_attribute');
+          const list = alternatives.slice(0, 8).map(item => `• ${item.name} · ${this.catalogService.formatMoney(item.price)}`).join('\n');
+          await this.reply(conv, waId, (list ? `¿Por cuál bebida quieres cambiar?\n${list}\nEscribe el nombre de la bebida para aclarar el cambio.` : 'No veo otra bebida disponible en la carta.') +
+            '\nConservo la selección pendiente y tu carrito.\n\n' + this.formatPendingPurchaseReminder(session));
+          return true;
+        }
+        const flavors = product.attributes?.find(attribute => this.normalizeForMatch(attribute.attributeName) === 'sabor');
+        if (flavors && flavorInquiry) {
+          const flavor = flavors.options.find(option => this.normalizeForMatch(option) === flavorInquiry[1]);
+          await this.reply(conv, waId, (flavor ? `Sí, tenemos ${flavor} disponible para ${product.name}.` :
+            `No aparece ${flavorInquiry[1]} entre los sabores de ${product.name}.`) +
+            '\nEl pedido sigue igual.\n\n' + this.formatPendingPurchaseReminder(session));
+          return true;
+        }
+      }
+    }
     if (this.catalogService.isPriceInquiryIntent(text)) {
       const menu = await this.catalogService.getMenuProducts();
       const product = menu.find(item => item.id === pending.productId);

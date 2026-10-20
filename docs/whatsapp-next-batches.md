@@ -1,3 +1,16 @@
+## VIGENTE — alternativas ambiguas y consultas durante sabor (20/10, tanda 54)
+
+Base 1b25e851. Nueva suite whatsapp-pending-drink-questions.spec.ts: 42 casos, tres menús y agente simulado on/off. Preguntar por otra bebida con varias alternativas, reemplazo explícito no identificado, volver a la bebida original, contenido, sabor disponible/inexistente y precio antes de reemplazar. Cada recorrido comprueba respuesta, carrito y selección pendiente, excluye alternativas agotadas, conserva dos bebidas sin hielo y plato previo, llega a un único DTO con opción/contacto/dirección correctos. Alternativas no numeradas para no competir con los números de sabores.
+
+Baseline 36: 24 fallos / 12 verdes (contenido y precio ya pasaban). El primer run incluía tres TypeError por generateTurn ausente en el mock del harness: no era un fallo de producción. Se añadió mock local explícito; repitió 24 fallos de contrato / 12 verdes. Con respuesta informativa pasaron 274 controles, pero al fortalecer el seguimiento para aceptar solo el nombre de la alternativa fallaron seis; se añadió alternativeProductIds opcional dentro de pendingAttribute. Se guarda solo la lista ofrecida y se resuelve nombre exacto único todavía disponible por la ruta existente de reemplazo. Al terminar o cancelar la opción se descarta con pendingAttribute. Sin migración DB ni excepciones de productos PPP. Una compilación intermedia detectó aserciones de test con tipos posiblemente undefined, corregidas antes de validar.
+
+Consultas «tienes de/sabor…» usan las opciones Sabor del producto pendiente y no compran ni niegan el producto como si fuese un plato. Petición de otra bebida mantiene pendiente y carrito, muestra hasta ocho alternativas disponibles con nombres/precios; escoger su nombre conserva cantidad/nota. La consulta de contenido conserva el comportamiento existente; no hubo cambio específico para hacerla pasar. Se añadieron seis contrastes para regresar al sabor original después de ver alternativas.
+
+Validación: 280 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12730 pruebas / 138 suites, cero fallos/reintentos; inventario exacto y 434 hashes intactos. Evidencia whatsapp-pending-drink-questions-validation-2010.json.
+
+Siguiente: pregunta de precio/disponibilidad sobre una alternativa recién mostrada, variantes de nombre abreviado, no hay alternativas, varios productos con el mismo nombre y cambio de disponibilidad antes de escoger; por ahora la selección por nombre exige coincidencia exacta normalizada y única. No se acredita cualquier forma de expresar «otra», ni opciones llamadas distinto de Sabor. Recorridos desde saludo y muestra reservada real siguen pendientes. Checkout sembrado, modelo/mapas/servicios simulados; conteos no acreditan venta autónoma. Cero API pagada, WhatsApp u órdenes externas. Main intacto.
+
+
 ## VIGENTE — precio de bebida pendiente y expresiones de reemplazo (20/10, tanda 53)
 
 Base 3169381b. 36 casos nuevos: tres consultas de precio (nombre completo, esa bebida, las dos bebidas) y tres formas de reemplazo (me cambias, reemplaza, en lugar de), tres menús y agente simulado on/off. Verifican respuesta, selección pendiente intacta al consultar, carrito previo, reemplazo sin bebida vieja, dos unidades sin hielo y DTO único con sabor/contacto/dirección. La suite ampliada tiene 132 casos, no 132 nuevos.
