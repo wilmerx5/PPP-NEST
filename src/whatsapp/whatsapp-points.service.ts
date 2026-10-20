@@ -75,7 +75,8 @@ export class WhatsappPointsService {
   }
 
   private hasPointsKeywords(text: string): boolean {
-    const t = (text || '').toLowerCase();
+    // "a las 12 en punto" / "a punto de salir" are not about loyalty points.
+    const t = (text || '').toLowerCase().replace(/\b(?:en|a)\s+punto\b/g, ' ');
     return (
       /\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio)|registrar)\b/.test(
         t,

@@ -10335,22 +10335,18 @@ export class WhatsappOrchestratorService {
     if (!session.pendingOrderStatusLookup) return false;
     const num = extractDailyOrderNumberHint(text);
     if (num == null && !/^\d{1,4}[\s!.?]*$/.test(text.trim())) {
-      // Otro tema: soltar el pendiente
-      if (
-        looksLikeClearCartMessage(text) ||
-        isHumanHandoffRequest(text) ||
-        this.catalogService.looksLikeExplicitAddProductRequest(text)
-      ) {
-        await this.conversationService.saveSession(conv, {
-          ...session,
-          pendingOrderStatusLookup: undefined,
-        });
+      // Only another status question keeps waiting for the number; orders,
+      // addresses and thanks go through the normal router.
+      if (!isSpecificOrderProgressInquiry(text) && !isDeliveryEtaInquiry(text)) {
+        session.pendingOrderStatusLookup = undefined;
+        await this.conversationService.saveSession(conv, session);
         return false;
       }
       await this.reply(
         conv,
         waId,
-        'Para ubicar tu pedido necesito el *número de orden* (ej. *15* o *#15*). Si no lo tienes, ' + this.humanContactMessage(),
+        'Para ubicar tu pedido necesito el *número de orden* (ej. *15* o *#15*). ' +
+          `Si no lo tienes, llámanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`,
       );
       return true;
     }
@@ -10511,8 +10507,7 @@ export class WhatsappOrchestratorService {
             ? 'Para decirte en qué va, '
             : 'Para ubicar *tu* pedido, ') +
           'necesito el *número de orden* (aparece como *#15* al confirmar).\n' +
-          'Escríbelo aquí. Si no lo tienes, ' +
-          this.humanContactMessage()),
+          `Escríbelo aquí. Si no lo tienes, llámanos al *${WHATSAPP_HUMAN_CONTACT_PHONE}*.`),
     );
     return true;
   }
@@ -12800,6 +12795,7 @@ export class WhatsappOrchestratorService {
 
   private randomAsideLabel(text: string, products: MenuProduct[]): string | null {
     if (text.length > 140 || this.offMenuErrandQuery(text, products)) return null;
+    if (isSpecificOrderProgressInquiry(text) || isDeliveryEtaInquiry(text)) return null;
     const said = this.normalizeForMatch(text);
     if (/\b(?:quiero|dame|ponme|agrega|pideme|codigo)\b/.test(said)) return null;
     if (this.catalogService.isPriceInquiryIntent(text)) return null;
@@ -24170,6 +24166,15 @@ export class WhatsappOrchestratorService {
           }),
       );
       return true;
+    }
+
+    // Only unmatched text is left: nothing to choose, so other messages take the normal route
+    // instead of replaying the same notice.
+    if (!pending.confident.length && !pending.ambiguous.length && !pending.needsAttributes.length &&
+        !this.isMultiOrderAffirmative(text)) {
+      session.pendingMultiOrder = undefined;
+      await this.conversationService.saveSession(conv, session);
+      return false;
     }
 
     const lower = text.trim().toLowerCase();

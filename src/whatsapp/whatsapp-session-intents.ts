@@ -514,6 +514,14 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     return false;
   }
 
+  // "El pedido es para las 12 / a domicilio" describes the order being placed.
+  if (
+    /\b(?:el|mi)\s+pedido\s+(?:es|seria|sera|va\s+a\s+ser|lo\s+(?:quiero|necesito))(?:\s+(?:para|a|de|con)\b|[\s.,!]*$)/.test(t) &&
+    !/\b(?:en\s+que\s+va|donde\s+va|ya\s+sali|demora|tarda|llega|no\s+ha|todavia|aun\s+no)/.test(t)
+  ) {
+    return false;
+  }
+
   if (extractDailyOrderNumberHint(raw) != null) return true;
 
   if (
@@ -525,6 +533,12 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     /\b(en\s+que\s+(va|esta|andan)|donde\s+(va|esta|andan)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino)|estado\s+(del?\s+)?(pedido|orden)|ubicar\s+(al\s+)?domiciliario)\b/.test(
       t,
     )
+  ) {
+    return true;
+  }
+  // "ya vienen?", "ya casi está?", "qué pasó con el domicilio?" ("ya viene con papas?" asks composition).
+  if (
+    /\b(?:ya\s+(?:viene(?!\s+con)|vienen(?!\s+con)|casi\s+(?:esta|llega)|(?:me\s+)?lo\s+(?:enviaste|enviaron|mandaste|mandaron|despacharon)|despacharon)|falta\s+mucho|cuanto\s+falta|(?:todavia|aun)\s+no\s+(?:llega|ha\s+llegado|viene|sale)|que\s+paso\s+con\s+(?:el|mi)\s+(?:domicilio|pedido))\b/.test(t)
   ) {
     return true;
   }
