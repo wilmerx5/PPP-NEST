@@ -1,0 +1,85 @@
+{
+  "batch": 37,
+  "date": "2026-10-19",
+  "base": "9038671d",
+  "commit": "8a845f1d419ca85b084a7974dd4fda7edef74a5b",
+  "scope": "Order-status flow: the order-number request and an unmatched-only notice must release on other topics; status questions must reach the lookup instead of the off-menu refusal",
+  "baselineFindings": [
+    "After «necesito el número de orden», dishes, addresses, thanks and fillers all got the same request again (pendingOrderStatusLookup kept)",
+    "The request read «Si no lo tienes, No entendí bien tu mensaje 🙏 ¿Me lo aclaras?» (generic misunderstanding text concatenated)",
+    "«el pedido es para las 12 del medio en punto» opened the order lookup (agent off) or the loyalty program (agent on, «en punto» read as points)",
+    "A message with only unmatched text («Es que me salió algo urgente…») left a pending multi-order: the next unrelated messages replayed «No tenemos esos productos…» and a later dish got «Primero termina de elegir el pollo»",
+    "Status questions («ya vienen?», «ya casi está?», «qué pasó con el domicilio?», «y en qué va mi pedido?», «ya salieron?», «se demoran?») got «Eso no lo resuelvo por este chat» from the generic question fallback"
+  ],
+  "fix": "tryResolvePendingOrderStatusLookup keeps waiting for the number only when the message is another status/ETA question; anything else clears the flag on the shared session and continues through the router. The number request names the phone directly. isSpecificOrderProgressInquiry excludes «el/mi pedido es/será… para/a/de/con» (and a bare «el pedido es» left after address stripping) unless a status word is present, and recognises «ya viene(n)» (not «viene con»), «ya casi está/llega», «ya lo enviaste/mandaron/despacharon», «falta mucho», «cuánto falta», «todavía/aún no llega», «qué pasó con el domicilio/pedido». randomAsideLabel never labels a status/ETA question as an off-menu aside. Points keywords ignore «en punto»/«a punto». tryResolvePendingMultiOrder: when only unmatched text is pending, a message that is not «sí», a discard, a correction or a dish claim clears the proposal and takes the normal route.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-order-lookup-release.spec.ts",
+    "count": 129,
+    "menus": [
+      "grill",
+      "bakery",
+      "sushi"
+    ],
+    "agent": [
+      "off",
+      "on (simulated)"
+    ],
+    "asks": [
+      "dish, bare dish, thanks, address then dish, fillers after the number request",
+      "request copy",
+      "4 order-description phrasings",
+      "3 unmatched-message pairs followed by a dish",
+      "7 status phrasings with the agent off"
+    ],
+    "contrasts": [
+      "second status question keeps asking",
+      "number resolves the order",
+      "«el pedido no ha llegado, en qué va?» asks",
+      "pending list keeps its pick",
+      "known dish next to unknown text is added",
+      "«… ya viene con papas?» is not status",
+      "«aceptan mascotas?» still refused",
+      "«cómo funcionan los puntos?» still explains points"
+    ]
+  },
+  "baselineFailed": "75/129",
+  "firstGlobalAttempt": "Clearing the unmatched-only proposal at creation broke 41 existing tests that rely on it for discard flows («me equivoqué de chat», «olvida lo anterior, mejor quiero…»); replaced by releasing it only on unrelated messages",
+  "realChatReplayAfterFix": {
+    "orderNumberLoop": "6 -> 0 chats",
+    "staleUnavailableReplyRepeated": "7 -> 0 chats",
+    "noResuelvoForStatusQuestions": "8 -> 0 chats (all «Eso no lo resuelvo»: 17 -> 8; the rest are a bare «?», «47 ??», opening hours, a pasted map link)"
+  },
+  "knownGaps": [
+    "A clock time after «para» («para las 12 del medio») is still stored as the address (address-absorbs batch)",
+    "In a multi-dish message an ambiguous family word («un chorizo») is resolved silently to one variant",
+    "With the agent on, phrasings outside the pre-agent status shortcut depend on the agent calling the lookup"
+  ],
+  "validation": {
+    "focused": "1005/1005 (17 suites)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1": "80/80 in 109.946 s (whatsapp-general-accuracy, runInBand)",
+      "phase2": "11625/11625 in 343.788 s, 121 suites, maxWorkers=4",
+      "inventory": 122,
+      "unionMatchesInventory": true,
+      "hashesFrozen": 417,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 11705,
+      "totalSeconds": 454
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "8a845f1d419ca85b084a7974dd4fda7edef74a5b",
+    "image": "sha256:73fb2d26f1ed359afc09d7b29f446106c1ba34c104fc458c376c96839bab7468",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T05:36:58Z, healthy, restarts 0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-8a845f1d (image 20dc17bc…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e unchanged before and after",
+    "privateBin": "preserved"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
