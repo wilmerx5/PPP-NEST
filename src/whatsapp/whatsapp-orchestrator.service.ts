@@ -715,6 +715,29 @@ export class WhatsappOrchestratorService {
     return answers ? { first, rest: { text: rest } } : null;
   }
 
+  /**
+   * «y otro de mora» / «otras dos de carne» order more of the catalog product
+   * named by that variant word; it is never a street name.
+   */
+  private rewriteAnotherOfVariant(text: string, session: WhatsappSessionData, products: MenuProduct[]): string | null {
+    if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) return null;
+    const said = this.normalizeForMatch(text).replace(/[.!,\s]+$/, '');
+    const shape = said.match(/^(?:y\s+)?(otr[oa]s?|un[oa]?|dos|tres|cuatro|cinco|\d{1,2})\s+(?:(dos|tres|cuatro|cinco|\d{1,2})\s+)?(?:mas\s+)?de\s+(?:(?:el|la|los|las)\s+)?([a-zñ]+(?:\s+[a-zñ]+){0,2})(?:\s+(?:por favor|porfa))?$/);
+    if (!shape) return null;
+    const words: Record<string, number> = { otro: 1, otra: 1, un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5 };
+    const count = (word?: string) => word ? (words[word] ?? (/^\d+$/.test(word) ? Number(word) : NaN)) : NaN;
+    const quantity = Number.isFinite(count(shape[2])) ? count(shape[2]) : Number.isFinite(count(shape[1])) ? count(shape[1]) : 1;
+    if (!quantity || quantity > 20) return null;
+    const tail = shape[3].split(' ');
+    const named = products.filter(product => product.availableNow !== false &&
+      tail.every(word => ` ${this.normalizeForMatch(product.name)} `.includes(` ${word} `)));
+    if (!named.length) return null;
+    const head = (name: string) => this.normalizeForMatch(name).split(' ')[0];
+    const sameFamily = named.filter(product => session.cart.some(line => head(line.name) === head(product.name)));
+    const pick = sameFamily.length === 1 ? sameFamily[0] : named.length === 1 ? named[0] : null;
+    return pick ? `Quiero ${quantity} ${pick.name}` : `Quiero ${quantity} ${shape[3]}`;
+  }
+
   /** An order list still waiting for a pick, unless one of its products is already in the cart. */
   private openOrderList(session: WhatsappSessionData): WhatsappSessionData['droppedPick'] {
     const list = session.pendingMatch;
@@ -1156,6 +1179,10 @@ export class WhatsappOrchestratorService {
     if (['awaiting_final_confirm', 'awaiting_payment', 'building_cart'].includes(conv.state) && !/[¿?]/.test(text)) {
       const paidWith = text.match(/^\s*(?:y\s+)?(?:el pedido|la orden|todo|eso)\s+(?:va|queda|lo pago|se paga|lo pagamos|lo pagan)\s+(?:con|en|por)\s+(.{2,40}?)[\s.!]*$/i);
       if (paidWith && findPaymentMethodByText(paidWith[1], cfg.paymentMethods)) text = `pago con ${paidWith[1]}`;
+    }
+    if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) && !/[¿?]/.test(text)) {
+      const another = this.rewriteAnotherOfVariant(text, this.conversationService.getSession(conv), await this.catalogService.getMenuProducts());
+      if (another) text = another;
     }
     if (/\b(?:maduro\s+con|pl[aá]tano\s+maduro)\b/i.test(text)) {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
@@ -1699,7 +1726,8 @@ export class WhatsappOrchestratorService {
       const query = this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(canonical));
       const knownName = this.catalogService.findProductEmbeddedInMessage(canonical, additionMenu) ||
         this.catalogService.searchByNameScored(query, additionMenu, 6).find(hit => hit.score >= 40)?.p ||
-        this.catalogService.resolveStandaloneDrinkOrder(canonical, additionMenu)?.product;
+        this.catalogService.resolveStandaloneDrinkOrder(canonical, additionMenu)?.product ||
+        this.catalogService.productWhoseHeadWasSpoken(canonical, additionMenu);
       if ((unknownCode && !explicitCodeOrder?.confident.length && !explicitCodeOrder?.needsAttributes.length) || (!codes.length && !knownName)) {
         await this.reply(conv, msg.waId, 'No encontré ese producto en la carta. El carrito sigue igual. Dime otro producto o pide el menú.');
         return;
@@ -1709,6 +1737,9 @@ export class WhatsappOrchestratorService {
         if (addressStart >= 0 && offset >= addressStart) return match;
         return this.catalogService.findByCode(Number(code), additionMenu)?.name || match;
       });
+      const headOnly = text.trim().match(/^(Quiero\s+(?:un|una|unos|unas|otr[oa]s?|dos|tres|cuatro|cinco|\d+)\s+)(\S+)[.!\s]*$/i);
+      const headed = headOnly && !codes.length ? this.catalogService.productWhoseHeadWasSpoken(text, additionMenu) : null;
+      if (headOnly && headed) text = `${headOnly[1]}${headed.name}`;
       originalText = text;
       if (conv.state === 'awaiting_address') {
         session = { ...session, pendingCheckoutResume: this.parseCompoundOrderMessage(text).address ? undefined : 'awaiting_address' };
@@ -3024,6 +3055,7 @@ export class WhatsappOrchestratorService {
       if (query.length >= 3 && !/\b(?:pedido|domicilio|orden|menu|menú|carta|algo|comida)\b/i.test(query) &&
         !this.catalogService.searchByName(query, products).length && !this.catalogService.resolveSpokenDish(query, products) &&
         !this.catalogService.resolveStandaloneDrinkOrder(originalText, products) &&
+        !this.catalogService.productWhoseHeadWasSpoken(originalText, products) &&
         !this.catalogService.ambiguousFlavorDrinks(originalText, products)) {
         await this.reply(conv, msg.waId, this.catalogService.formatNotOnMenuReply(query, cfg.menuUrl, products));
         return;
@@ -9337,6 +9369,9 @@ export class WhatsappOrchestratorService {
       ) {
         dish = top.p;
       }
+    }
+    if (!dish && /^(?:y\s+)?(?:quiero|quisiera|dame|agr[eé]ga(?:me)?|a[nñ][aá]de(?:me)?|ponme|un|una|unos|unas|otr[oa]s?|dos|tres|cuatro|cinco|\d+)\s/i.test(raw)) {
+      dish = this.catalogService.productWhoseHeadWasSpoken(raw, products) || null;
     }
     if (!dish) return false;
 
@@ -16085,7 +16120,7 @@ export class WhatsappOrchestratorService {
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     const q = this.normalizeForMatch(text).replace(/^(?:(?:y|ah|porfa|por favor)\s+)+/, '').replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
     const less = /^(?:quita(?:me|le)?|saca(?:me|le)?|quitar|sacar|elimina) (?:uno|una)$|^(?:uno|una) menos$/.test(q);
-    const more = /^(?:agrega(?:me|le)?|pon(?:me|le)?|suma(?:me|le)?|anade(?:me|le)?|dame|echa(?:me|le)) (?:otro|otra|uno mas|una mas)$|^(?:otro|otra|uno|una) mas$/.test(q);
+    const more = /^(?:agrega(?:me|le)?|pon(?:me|le)?|suma(?:me|le)?|anade(?:me|le)?|dame|echa(?:me|le)) (?:otro|otra|uno mas|una mas)$|^(?:otro|otra|uno|una) mas$|^(?:otro|otra)(?: igual| del mismo| de lo mismo)?$/.test(q);
     if (!less && !more) return false;
     const dishes = session.cart.flatMap((line, index) => line.note?.startsWith('para ') ? [] : [index]);
     if (dishes.length !== 1) return false;
@@ -16843,6 +16878,9 @@ export class WhatsappOrchestratorService {
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     if (parseEachOfQuantity(originalText) || parseQtyMenuCodeLines(originalText)) return false;
+    // «y otro de esos» / «una de pollo» count units of something; never a street.
+    if (!/\d/.test(originalText) &&
+      /^(?:y\s+)?(?:otr[oa]s?|un[oa]?s?|dos|tres|cuatro|cinco)\s+(?:(?:dos|tres|cuatro|cinco)\s+)?(?:m[aá]s\s+)?de\s+/i.test(originalText.trim())) return false;
     // Solo calle/#/landmark conocido gana sobre attrs pendientes.
     // NUNCA frases genéricas (ej. "Las mojarras fritas" ≠ dirección).
     const clearStreetAddress =
