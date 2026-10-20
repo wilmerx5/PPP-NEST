@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 47
+
+Tandas 45–47 publicadas y desplegadas solo a staging: runtime 7057ec9b, healthy verificado 17:30:35Z. Global 12.418 pruebas / 133 suites; no equivale a tasa de comprensión real. Se corrigieron evidencia de inclusión de bebida, consulta durante cierre y compra condicional, con DTO simulado. Main intacto.
+
+Siguiente puerta: condiciones libres, consultas con cambio de sabor, recuperación de aclaraciones, reproducción completa desde saludo; luego evaluación reservada real con costo/latencia y matriz PDF→test→commit→runtime. Las dependencias externas están simuladas en esta tanda; no acredita mapas, medios o modelo real. No declarar vendible por conteos. Ver WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-conditional-drink-validation-2010.json. Los encabezados siguientes son históricos.
+
 ## Estado de validación actualizado — 20/10, tanda 45
 
 El relevo vigente es WHATSAPP-LOCAL-NEXT-AGENT.md. Hay 12.328 pruebas en la global documentada; no son una tasa de comprensión ni prueba de que todos los chats reales estén cubiertos. La revisión de aserciones encontró cuatro compras incorrectas ocultas por tests que solo miraban una frase. Se fortalecieron y corrigieron, junto con evidencia de bebida incluida y un inicio truncado de pedido.

@@ -8,7 +8,7 @@ Regla general: «¿<plato> trae gaseosa? Si no, agrega una <bebida>» separa con
 
 Validación: 182 focalizados, TypeScript, build TypeScript, 92 Node, diff check. Global: 80 ráfagas + 12.338 resto = 12.418 / 133 suites, cero fallos/reintentos; 429 hashes intactos e inventario exacto. Tiempos 110,524s + 365,784s. Evidencia whatsapp-conditional-drink-validation-2010.json. No cambios de código/tests tras global.
 
-Publicación staging y despliegue agrupado 45–47 previsto tras commit; verificar la entrada de despliegue antes de atribuir runtime. Main intacto, cero llamadas pagadas, WhatsApp u órdenes externas.
+Despliegue agrupado 45–47 verificado 2026-10-20T17:30:35.039Z (12:30 Bogotá): runtime 7057ec9bc375453458986194f4a30f0e777fef87, imagen e348344ce1ae326484584d153a2222fc6c959c35fdf633cc13cbfd7e023626f1, running/healthy, cero reinicios, health OK / DB connected / circuit CLOSED. La primera consulta durante starting devolvió 502; tras 15 segundos pasó, sin reinicios. Rollback ppp-nest-staging:rollback-before-7057ec9b (13e631ca…). Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e; bin/ privado intacto. No reconstruir por el commit posterior de documentación. Main intacto, cero llamadas pagadas, WhatsApp u órdenes externas.
 
 Siguiente: expresiones condicionales sin puntuación y «si no viene, me mandas…», consulta + cambio de sabor, opciones/preferencias explícitas en la bebida añadida, recorrido desde saludo (esta tanda siembra checkout), estados nombre/teléfono/dirección, y repetición del pedido condicional. Aclaración pendiente no significa compra ejecutada: verificar su siguiente turno. Mantener evaluación reservada de modelos/medios y matriz PDF→test→commit→runtime. No declarar vendible por conteos.
 

@@ -30,5 +30,17 @@
     "No paid inference or media",
     "Free-form conditions without punctuation not covered",
     "Clarification follow-up and repeated conditional request pending"
-  ]
+  ],
+  "deployment": {
+    "commit": "7057ec9bc375453458986194f4a30f0e777fef87",
+    "image": "e348344ce1ae326484584d153a2222fc6c959c35fdf633cc13cbfd7e023626f1",
+    "verifiedAt": "2026-10-20T17:30:35.039Z",
+    "health": "ok",
+    "db": "connected",
+    "circuit": "CLOSED",
+    "restarts": 0,
+    "productionUnchanged": true,
+    "rollback": "ppp-nest-staging:rollback-before-7057ec9b",
+    "startupObservation": "502 while starting; healthy after 15s without restart"
+  }
 }
