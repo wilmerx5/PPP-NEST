@@ -5356,7 +5356,12 @@ export class WhatsappCatalogService {
               .some((word) => word.length >= 4 && nearDishToken(word, normalizeText(option))),
           ),
       );
-    const named = pool.filter((candidate) => this.productNameFitsUtterance(candidate, raw));
+    let named = pool.filter((candidate) => this.productNameFitsUtterance(candidate, raw));
+    const said = ` ${normalizeText(raw).split(/\s+/).map(singularizeEsToken).join(' ')} `;
+    const nameSaid = (candidate: WhatsappCatalogProduct) =>
+      said.includes(` ${normalizeText(candidate.name).split(/\s+/).map(singularizeEsToken).join(' ')} `);
+    const longestSaid = Math.max(0, ...named.filter(nameSaid).map((candidate) => candidate.name.length));
+    if (longestSaid) named = named.filter((candidate) => nameSaid(candidate) && candidate.name.length === longestSaid);
     const byFlavor = pool.length === 1 && flavorSpoken(pool[0]) ? pool : [];
     const product = (named.length ? named : byFlavor).sort(
       (a, b) => this.drinkPreferenceRank(a) - this.drinkPreferenceRank(b),
@@ -10118,6 +10123,18 @@ export class WhatsappCatalogService {
     const possibleCustomerNames: string[] = [];
     const needsAttributes: MultiProductSegmentMatch[] = [];
     const usedProductIds = new Set<number>();
+    const choiceKey = (choice: { attributeName: string; attributeValue: string }) => normalizeText(choice.attributeName);
+    // "1 sopa de ajiaco y 1 sopa de menudencias": the same product with a different option is another line.
+    const repeatsWithNewChoice = (product: WhatsappCatalogProduct, segment: string) => {
+      const selected = this.extractExplicitAttributeChoice(segment, product) || [];
+      return selected.length > 0 && confident.some(previous =>
+        previous.product.id === product.id &&
+        (this.extractExplicitAttributeChoice(previous.segment, product) || []).some(choice =>
+          selected.some(current => choiceKey(current) === choiceKey(choice) &&
+            normalizeText(current.attributeValue) !== normalizeText(choice.attributeValue))));
+    };
+    const alreadyUsed = (product: WhatsappCatalogProduct, segment: string) =>
+      usedProductIds.has(product.id) && !repeatsWithNewChoice(product, segment);
 
     if (swap && swapNotedHostId != null && this.looksLikeClearlyMultiDishOrder(text)) {
       const host = products.find((p) => p.id === swapNotedHostId);
@@ -10141,7 +10158,7 @@ export class WhatsappCatalogService {
       const segment = this.cleanOrderSegment(rawSegment);
       if (this.isBareDinerCount(segment)) continue;
       const standaloneDrink = this.resolveStandaloneDrinkOrder(segment, products);
-      if (standaloneDrink && !usedProductIds.has(standaloneDrink.product.id) &&
+      if (standaloneDrink && !alreadyUsed(standaloneDrink.product, segment) &&
         !(swap && this.productIsSwapRemoval(standaloneDrink.product, swap.removed, swap.added))) {
         usedProductIds.add(standaloneDrink.product.id);
         confident.push({ segment, product: standaloneDrink.product, score: 100 });
@@ -10189,7 +10206,7 @@ export class WhatsappCatalogService {
         const dish = this.dishTextBeforeSwap(segment);
         const host = this.mostSpecificNamedProduct(dish, products);
         const carries = !!host && this.productCarriesMention(host, segSwap.removed);
-        if (host && !usedProductIds.has(host.id)) {
+        if (host && !alreadyUsed(host, segment)) {
           usedProductIds.add(host.id);
           const match: MultiProductSegmentMatch = {
             segment: dish || segment,
@@ -10236,7 +10253,7 @@ export class WhatsappCatalogService {
           ambiguous.push({ segment, candidates: styleOptions });
           continue;
         }
-        if (!usedProductIds.has(namedMenuHit.id)) {
+        if (!alreadyUsed(namedMenuHit, segment)) {
           usedProductIds.add(namedMenuHit.id);
           const match = { segment, product: namedMenuHit, score: 100 };
           if (namedMenuHit.hasAttributes && namedMenuHit.attributes?.length) {
@@ -10255,7 +10272,7 @@ export class WhatsappCatalogService {
       const uniqueNamed = this.uniqueProductBySpokenTokens(segment, products);
       if (
         uniqueNamed &&
-        !usedProductIds.has(uniqueNamed.id) &&
+        !alreadyUsed(uniqueNamed, segment) &&
         !this.productNameFitsUtterance(uniqueNamed, segment)
       ) {
         usedProductIds.add(uniqueNamed.id);
@@ -10314,15 +10331,7 @@ export class WhatsappCatalogService {
           /^medio\s+pollo$/.test(normalizeText(embedded.name)) &&
           /\bbroaster\b/.test(normalizeText(`${segment} ${text}`));
         if (!skipGenericMedio) {
-          if (usedProductIds.has(embedded.id) && !hasDistributedVariants) {
-            const selected = this.extractExplicitAttributeChoice(segment, embedded) || [];
-            const distinctChoice = selected.length > 0 && confident.some(previous =>
-              previous.product.id === embedded.id &&
-              (this.extractExplicitAttributeChoice(previous.segment, embedded) || []).some(choice =>
-                selected.some(current => normalizeText(current.attributeName) === normalizeText(choice.attributeName) &&
-                  normalizeText(current.attributeValue) !== normalizeText(choice.attributeValue))));
-            if (!distinctChoice) continue;
-          }
+          if (!hasDistributedVariants && alreadyUsed(embedded, segment)) continue;
           usedProductIds.add(embedded.id);
           const match = { segment, product: embedded, score: 100 };
           if (embedded.hasAttributes && embedded.attributes?.length) {
@@ -10435,7 +10444,7 @@ export class WhatsappCatalogService {
             ? drinks.map((x) => x.p)
             : products.filter((p) => p.availableNow !== false && this.isLikelyDrinkProduct(p));
         const preferredP = this.pickBestDrinkProduct(pool, `${segment} ${text}`);
-        if (preferredP && !usedProductIds.has(preferredP.id)) {
+        if (preferredP && !alreadyUsed(preferredP, segment)) {
           const preferredScore =
             drinks.find((x) => x.p.id === preferredP.id)?.score ?? drinks[0]?.score ?? 50;
           usedProductIds.add(preferredP.id);
@@ -10469,7 +10478,7 @@ export class WhatsappCatalogService {
               ) || wrapperHits[0].p
             );
           })();
-        if (resolved && !usedProductIds.has(resolved.id)) {
+        if (resolved && !alreadyUsed(resolved, segment)) {
           const styleOptions = /\bbandeja\b/i.test(segment)
             ? this.unstatedCookingStyleChoices(segment, products)
             : null;
@@ -10512,13 +10521,13 @@ export class WhatsappCatalogService {
           unresolved.push(segment);
           continue;
         }
-        if (usedProductIds.has(top.p.id)) continue;
+        if (alreadyUsed(top.p, segment)) continue;
         // Varias variantes del mismo plato (Mojarra / Mojarra Frita): no asumir
         const family = this.findProductVariantFamily(segment, products, uniqueScored.map((x) => x.p));
         if (family && family.variants.length >= 2) {
           const pickedVariant = this.pickVariantFromFamilyText(segment, family);
           if (pickedVariant) {
-            if (usedProductIds.has(pickedVariant.id)) continue;
+            if (alreadyUsed(pickedVariant, segment)) continue;
             usedProductIds.add(pickedVariant.id);
             const match = { segment, product: pickedVariant, score: top.score };
             if (pickedVariant.hasAttributes && pickedVariant.attributes?.length) {
@@ -10534,7 +10543,7 @@ export class WhatsappCatalogService {
           }
           const bare =
             family.variants.find((p) => normalizeText(p.name) === family.baseKey) || null;
-          if (bare && !usedProductIds.has(bare.id)) {
+          if (bare && !alreadyUsed(bare, segment)) {
             usedProductIds.add(bare.id);
             const match = { segment, product: bare, score: top.score };
             if (bare.hasAttributes && bare.attributes?.length) {
@@ -10571,7 +10580,7 @@ export class WhatsappCatalogService {
       const distinctlyNamed = uniqueScored.length >= 2 && uniqueScored[0].score >= 35
         ? this.candidateNamedByDistinctToken(segment, uniqueScored.slice(0, 6).map((x) => x.p))
         : null;
-      if (distinctlyNamed && !usedProductIds.has(distinctlyNamed.id) &&
+      if (distinctlyNamed && !alreadyUsed(distinctlyNamed, segment) &&
         !this.leftoverFoodWords(segment, distinctlyNamed).length) {
         usedProductIds.add(distinctlyNamed.id);
         const match = { segment, product: distinctlyNamed, score: uniqueScored[0].score };
@@ -10593,7 +10602,7 @@ export class WhatsappCatalogService {
           unresolved.push(segment);
           continue;
         }
-        if (usedProductIds.has(top.p.id)) continue;
+        if (alreadyUsed(top.p, segment)) continue;
         usedProductIds.add(top.p.id);
         const match = { segment, product: top.p, score: top.score };
         if (top.p.hasAttributes && top.p.attributes?.length) {
@@ -10615,7 +10624,7 @@ export class WhatsappCatalogService {
           unresolved.push(segment);
           continue;
         }
-        if (!usedProductIds.has(top.p.id) && !this.isLikelyDrinkProduct(top.p)) {
+        if (!alreadyUsed(top.p, segment) && !this.isLikelyDrinkProduct(top.p)) {
           usedProductIds.add(top.p.id);
           const match = { segment, product: top.p, score: top.score };
           if (top.p.hasAttributes && top.p.attributes?.length) {

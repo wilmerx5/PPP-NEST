@@ -8998,13 +8998,17 @@ export class WhatsappOrchestratorService {
     const repeated = new Set(names.map(baseOf).filter((base, i, all) => all.indexOf(base) !== i));
     if (repeated.size) {
       const seen = new Map<string, number>();
-      names = names.map((label) => {
+      names = names.map((label, index) => {
         const base = baseOf(label);
         if (!repeated.has(base)) return label;
         const total = names.filter((other) => baseOf(other) === base).length;
         const lines = session.cart.filter((line) => this.normalizeForMatch(line.name) === base).slice(-total);
         const k = seen.get(base) ?? 0;
         seen.set(base, k + 1);
+        const quantity = lines[k]?.quantity || 1;
+        if (!/×\s*\d+|_\(x\d+\)_/i.test(rawNames[index]) && lines.length === total) {
+          label = `${label.replace(/\s*×\s*\d+\s*$/, '').trim()}${quantity > 1 ? ` ×${quantity}` : ''}`;
+        }
         const differing = (lines[k]?.attributes || []).filter((attr) =>
           lines.some((other) => other.attributes?.find((a) => a.attributeName === attr.attributeName)?.attributeValue !== attr.attributeValue));
         return differing.length ? `${label} (${differing.map((attr) => attr.attributeValue).join(', ')})` : label;
