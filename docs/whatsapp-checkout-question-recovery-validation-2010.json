@@ -24,5 +24,17 @@
     "Checkout states and missing fields explicitly arranged after a real router purchase",
     "Three single-product menus, no flavor ambiguity or real model accuracy claim",
     "Five states each queried for price and cart, then explicit name/phone correction; arbitrary questions not covered"
-  ]
+  ],
+  "deployment": {
+    "commit": "95c0860b43d50583103e5fbf61484761ac973dcb",
+    "image": "b00a298223c70c5f6fb0acdc6ba7fe9b6bf4e7ee99a6fd0548b901124aef21d4",
+    "verifiedAt": "2026-10-20T21:46:45.124Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-95c0860b",
+    "startup": "First probe starting/502; next probe healthy/200"
+  }
 }

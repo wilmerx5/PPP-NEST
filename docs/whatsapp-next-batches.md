@@ -1,10 +1,12 @@
 ## VIGENTE — consultas y cambios durante cierre (20/10, tanda 60)
 
+Despliegue agrupado 59–60 verificado 2026-10-20T21:46:45.124Z: staging 95c0860b43d50583103e5fbf61484761ac973dcb, imagen b00a298223c70c5f6fb0acdc6ba7fe9b6bf4e7ee99a6fd0548b901124aef21d4, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Primer probe durante arranque 502; siguiente healthy/200. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-95c0860b; bin/ privado, bases y volúmenes preservados. Commit documental posterior no requiere reconstrucción.
+
 Base 02b0da40. Nueva suite whatsapp-checkout-question-recovery.spec.ts: 30 recorridos, tres menús (bowl, pizza, pescado), cinco estados (nombre/dirección/teléfono/pago/confirmación), agente simulado on/off. Compra por router, luego estado/datos faltantes preparados explícitamente. Pregunta precio y solicita carrito sin mutar nombre, dirección, teléfono, carrito o paso. Completa el dato faltante, cambia destinatario y teléfono, confirma una única orden con nuevos datos y nota sin cebolla conservada.
 
 Baseline 30/30 verdes; se fortalecieron los mismos casos con cambio de nombre y comprobación de respuesta/DTO. No se requirió modificar runtime. Final 68 focalizados (suite nueva + recorridos desde saludo + envelope), TypeScript/build y 92 Node. No repetir global por solo pruebas/documentación: última global acreditada 12909/143 de tanda 59; no presentar 12939 como una global ejecutada. Evidencia whatsapp-checkout-question-recovery-validation-2010.json. Cero API pagada, WhatsApp y órdenes externas.
 
-Agrupar despliegue 59–60, porque 59 contiene corrección de formulario pendiente de runtime; verificar y registrar health antes de declararlo desplegado. Main intacto.
+Tandas 59–60 publicadas y desplegadas únicamente en staging, con verificación indicada arriba. Main intacto.
 
 Siguiente tanda 61: trazabilidad de chats del PDF y controles de preguntas de contenido/tiempo con cambio de datos en un mismo turno, referencias ambiguas y negaciones durante cierre; combinar con recorridos desde saludo donde no haya reproducción completa. Priorizar casos reales pendientes sobre más paráfrasis de estas dos consultas. Modelo/servicios simulados, menús simples sin sabores; los estados de cierre de esta suite se preparan, no se alcanzan desde saludo. No acredita todas las preguntas ni todos los chats del PDF. Muestra reservada real/costo/latencia sigue siendo puerta de piloto.
 
