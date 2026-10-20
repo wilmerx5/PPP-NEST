@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 48
+
+Runtime staging 805136eb, healthy verificado 17:49:45Z. La respuesta conserva evidencia genérica de bebida incluida y muestra nombres/códigos/volumen del catálogo sin afirmar gaseosa. Global 12.450 / 134 suites, 32 casos nuevos, cero inferencia pagada. Producción intacta. Ver evidencia whatsapp-generic-drink-validation-2010.json y relevo vigente.
+
+Pendiente principal de la siguiente tanda: continuación de aclaraciones de compra condicional, lenguaje sin puntuación, conservación de cantidad/opciones y retorno al checkout; después muestra real reservada y matriz de chats con versión. Las pruebas simuladas no acreditan comprensión real ni cobertura completa. Encabezados siguientes históricos.
+
 ## Estado vigente — 20/10, tanda 47
 
 Tandas 45–47 publicadas y desplegadas solo a staging: runtime 7057ec9b, healthy verificado 17:30:35Z. Global 12.418 pruebas / 133 suites; no equivale a tasa de comprensión real. Se corrigieron evidencia de inclusión de bebida, consulta durante cierre y compra condicional, con DTO simulado. Main intacto.
