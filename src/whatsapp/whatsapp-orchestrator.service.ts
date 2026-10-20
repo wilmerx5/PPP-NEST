@@ -8301,7 +8301,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingAttribute;
     if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement) return false;
     let selectedAlternative: MenuProduct | undefined;
-    if (pending.alternativeProductIds?.length) {
+    if (pending.alternativeProductIds !== undefined) {
       const menu = await this.catalogService.getMenuProducts();
       const offered = menu.filter(item => pending.alternativeProductIds!.includes(item.id));
       const inquiry = this.normalizeForMatch(text).match(/^(cuanto cuesta|tienes|hay) (.+)$/);
@@ -8315,8 +8315,10 @@ export class WhatsappOrchestratorService {
         query.length >= 2 && (this.normalizeForMatch(item.name) === query || this.normalizeForMatch(item.name).startsWith(query + ' ')))
         .map(item => [item.id, item])).values()];
       const list = offered.filter(item => item.availableNow !== false).map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}`).join('\n');
+      const alternativeRecovery = list ? list + '\nElige una por nombre o código con #.' :
+        'No quedan alternativas disponibles. Puedes elegir un sabor de la bebida pendiente o escribir «Olvida esa bebida» para cancelarla.\n\n' + this.formatPendingPurchaseReminder(session);
       if (code && !named.length) {
-        await this.reply(conv, waId, 'Ese código no corresponde a las alternativas ofrecidas. No cambié tu pedido.\n' + list + '\nElige una por nombre o código con #.');
+        await this.reply(conv, waId, 'Ese código no corresponde a las alternativas ofrecidas. No cambié tu pedido.\n' + alternativeRecovery);
         return true;
       }
       if (named.length > 1) {
@@ -8330,8 +8332,7 @@ export class WhatsappOrchestratorService {
       if (named.length === 1) {
         const current = offered.find(item => item.id === named[0].id);
         if (!current || current.availableNow === false) {
-          await this.reply(conv, waId, `${named[0].name} ya no está disponible. Conservo la bebida pendiente y el carrito.\n` + list +
-            '\nElige otra por nombre o código con #.');
+          await this.reply(conv, waId, `${named[0].name} ya no está disponible. Conservo la bebida pendiente y el carrito.\n` + alternativeRecovery);
           return true;
         }
         if (inquiry) {

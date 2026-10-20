@@ -1,3 +1,13 @@
+## VIGENTE — recuperación sin alternativas y plan de piloto (20/10, tanda 58)
+
+Base f2187263. 36 casos nuevos en whatsapp-pending-alternative-recovery.spec.ts: tres menús, agente simulado on/off, lista vacía inicialmente, retirada de todas las alternativas y código inválido; cada escenario termina eligiendo sabor original o cancelando solo la bebida. Se comprueban respuesta, carrito, pendiente, retorno al pago y DTO único con cantidades/notas/contacto/dirección conservados.
+
+Baseline: 24 fallos / 12 verdes. Lista vacía saltaba el guard de alternativas y la retirada completa todavía pedía «elige otra». Corrección general: distinguir lista ofrecida vacía de ausencia de lista; rechazar códigos fuera del conjunto y, si no hay opciones, mostrar sabor pendiente/cancelación en lugar de una selección imposible. No modifica catálogo ni productos PPP.
+
+Validación: 198 focalizados, TypeScript/build TypeScript y 92 Node. Global congelada 12886 pruebas / 142 suites; inventario exacto, 438 hashes intactos, cero fallos/reintentos. Duración 110.1s ráfagas + 371.7s resto (~8min). Evidencia whatsapp-alternative-recovery-validation-2010.json. Cero llamadas pagadas, WhatsApp u órdenes externas. Publicar solo staging y desplegar agrupadas 57–58; resultado efectivo se registra después del health. Main intacto.
+
+Plan vigente: [Plan de piloto](WHATSAPP-PILOT-EXECUTION-PLAN-2010.md). Próxima prioridad tanda 59: recorridos desde saludo (notas sin adicionales, todos los datos juntos, corrección durante pago) con varios menús y DTO. Luego tanda 60: interrupciones cruzadas de cierre y matriz PDF→chat→prueba→commit→runtime; después muestra reservada real y costo/latencia antes de decidir piloto supervisado. No seguir indefinidamente ampliando variantes de alternativas. PDF18/10 leído según auditoría, no todos los chats completos acreditados. Los mocks con checkout sembrado no prueban comprensión inicial, mapas o medios reales. Sigue pendiente retirar también la bebida original, productos nuevos y alias de sabor; registrar como huecos, no como resueltos.
+
 ## VIGENTE — alternativas renombradas y códigos cambiantes (20/10, tanda 57)
 
 Base caff85d7. Nueva suite whatsapp-pending-alternative-renamed.spec.ts: 36 recorridos en tres menús sintéticos, agente simulado on/off. Cambio simultáneo de nombre y código después de ofrecer alternativas: elegir por nombre anterior/nuevo y código anterior/nuevo; colisión del alias o código anterior con otra alternativa ofrecida. Verifica respuesta, carrito, pendiente, retorno a pago y DTO único conservando plato previo, dos bebidas sin hielo, contacto y dirección.

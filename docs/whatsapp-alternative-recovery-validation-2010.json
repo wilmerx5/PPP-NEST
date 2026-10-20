@@ -1,0 +1,30 @@
+{
+  "batch": 58,
+  "base": "f2187263",
+  "newCases": 36,
+  "baseline": {
+    "failed": 24,
+    "passed": 12
+  },
+  "focusedPassed": 198,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12886,
+    "suites": 142,
+    "sourceHashesUnchanged": 438,
+    "exactInventory": true,
+    "retries": 0,
+    "burstsSeconds": 110.1,
+    "restSeconds": 371.7
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Seeded checkout and simulated model/services",
+    "Does not validate original pending drink becoming unavailable",
+    "PDF complete-chat traceability and reserved real evaluation remain pending"
+  ]
+}
