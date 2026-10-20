@@ -8304,25 +8304,40 @@ export class WhatsappOrchestratorService {
     if (pending.alternativeProductIds?.length) {
       const menu = await this.catalogService.getMenuProducts();
       const offered = menu.filter(item => pending.alternativeProductIds!.includes(item.id));
-      const query = this.normalizeForMatch(text).replace(/^(?:el|la) /, '');
-      const code = text.trim().match(/^(?:#|c[oó]digo\s*#?)\s*(\d+)$/i);
-      const named = offered.filter(item => code ? item.code === Number(code[1]) :
+      const inquiry = this.normalizeForMatch(text).match(/^(cuanto cuesta|tienes|hay) (.+)$/);
+      const reference = inquiry ? inquiry[2] : text;
+      const query = this.normalizeForMatch(reference).replace(/^(?:el|la) /, '');
+      const code = reference.trim().match(/^(?:#|c[oó]digo\s*#?)\s*(\d+)$/i);
+      const identities = pending.alternativeProducts || offered;
+      const named = identities.filter(item => code ? item.code === Number(code[1]) :
         query.length >= 2 && (this.normalizeForMatch(item.name) === query || this.normalizeForMatch(item.name).startsWith(query + ' ')));
+      const list = offered.filter(item => item.availableNow !== false).map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}`).join('\n');
+      if (code && !named.length) {
+        await this.reply(conv, waId, 'Ese código no corresponde a las alternativas ofrecidas. No cambié tu pedido.\n' + list + '\nElige una por nombre o código con #.');
+        return true;
+      }
       if (named.length > 1) {
         await this.reply(conv, waId, 'Hay varias alternativas con ese nombre. ¿Cuál quieres? Escribe su código con #.\n' +
-          named.map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}${item.availableNow === false ? ' · agotada' : ''}`).join('\n') +
-          '\nConservo la bebida pendiente y el carrito.');
+          named.map(item => {
+            const current = offered.find(product => product.id === item.id);
+            return `• ${item.name} · #${item.code} · ${current ? this.catalogService.formatMoney(current.price) : 'retirada'}${current?.availableNow === false ? ' · agotada' : ''}`;
+          }).join('\n') + '\nConservo la bebida pendiente y el carrito.');
         return true;
       }
       if (named.length === 1) {
-        if (named[0].availableNow === false) {
-          await this.reply(conv, waId, `${named[0].name} ya no está disponible. Conservo la bebida pendiente y el carrito.\n` +
-            offered.filter(item => item.availableNow !== false).map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}`).join('\n') +
+        const current = offered.find(item => item.id === named[0].id);
+        if (!current || current.availableNow === false) {
+          await this.reply(conv, waId, `${named[0].name} ya no está disponible. Conservo la bebida pendiente y el carrito.\n` + list +
             '\nElige otra por nombre o código con #.');
           return true;
         }
-        selectedAlternative = named[0];
-        text = `cambia esas bebidas por ${named[0].name}`;
+        if (inquiry) {
+          await this.reply(conv, waId, (inquiry[1] === 'cuanto cuesta' ? `${current.name}: ${this.catalogService.formatMoney(current.price)} por unidad.` : `Sí, ${current.name} está disponible.`) +
+            '\nEl pedido sigue igual. Puedes elegir una alternativa por nombre o código con #, o continuar con la opción pendiente.\n\n' + this.formatPendingPurchaseReminder(session));
+          return true;
+        }
+        selectedAlternative = current;
+        text = `cambia esas bebidas por ${current.name}`;
       }
     }
     const normalized = this.normalizeForMatch(text);
@@ -8334,7 +8349,7 @@ export class WhatsappOrchestratorService {
       if (product && this.catalogService.isLikelyDrinkProduct(product)) {
         if (vagueReplacement) {
           const alternatives = menu.filter(item => item.id !== product.id && item.availableNow !== false && this.catalogService.isLikelyDrinkProduct(item)).slice(0, 8);
-          await this.conversationService.saveSession(conv, { ...session, pendingAttribute: { ...pending, alternativeProductIds: alternatives.map(item => item.id) } }, 'awaiting_attribute');
+          await this.conversationService.saveSession(conv, { ...session, pendingAttribute: { ...pending, alternativeProductIds: alternatives.map(item => item.id), alternativeProducts: alternatives.map(({ id, code, name }) => ({ id, code, name })) } }, 'awaiting_attribute');
           const list = alternatives.slice(0, 8).map(item => `• ${item.name} · ${this.catalogService.formatMoney(item.price)}`).join('\n');
           await this.reply(conv, waId, (list ? `¿Por cuál bebida quieres cambiar?\n${list}\nEscribe el nombre de la bebida para aclarar el cambio.` : 'No veo otra bebida disponible en la carta.') +
             '\nConservo la selección pendiente y tu carrito.\n\n' + this.formatPendingPurchaseReminder(session));

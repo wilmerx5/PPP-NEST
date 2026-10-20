@@ -1,0 +1,31 @@
+{
+  "batch": 56,
+  "base": "fbd6ca32",
+  "newCases": 48,
+  "baseline": {
+    "failed": 36,
+    "passed": 12
+  },
+  "focusedPassed": 258,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12814,
+    "suites": 140,
+    "bursts": 80,
+    "rest": 12734,
+    "sourceHashesUnchanged": 436,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Pending staging only",
+  "limits": [
+    "Checkout seeded, model and external services simulated",
+    "Legacy sessions without identity snapshots cannot recognize removed names",
+    "Bounded inquiry formulations"
+  ]
+}

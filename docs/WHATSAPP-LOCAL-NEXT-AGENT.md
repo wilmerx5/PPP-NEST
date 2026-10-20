@@ -1,3 +1,14 @@
+## VIGENTE — catálogo cambiante y consultas de alternativas (20/10, tanda 56)
+
+Base fbd6ca32. Nueva suite whatsapp-pending-alternative-catalog-changes.spec.ts: 48 casos, tres menús y agente simulado on/off. Retirar una alternativa del menú y elegirla por nombre/código, código válido de un plato no ofrecido, código inexistente, precio, disponibilidad, disponibilidad tras retirada y precio actualizado después de ofrecer. Cada recorrido comprueba respuesta, carrito/pendiente intactos durante la consulta o rechazo y continuación con otra alternativa hasta DTO único: plato previo, dos bebidas sin hielo, contacto y dirección correctos.
+
+Baseline 36 fallos / 12 verdes; las consultas de precio ya pasaban. Se almacena identidad de alternativas (id/código/nombre) opcional junto a IDs existentes para reconocer productos retirados. Nunca se guarda precio o disponibilidad como autoridad: se leen del catálogo actual. Consulta «cuanto cuesta/tienes/hay» responde sin seleccionar. Un código explícito ajeno a alternativas no cae a compra independiente. Nombre/código retirado conserva pendiente y muestra disponibles. Sesiones antiguas sin snapshot de identidades usan los productos actuales; no pueden identificar por nombre un producto ya retirado antes de esta versión. No hay migración DB ni excepciones PPP.
+
+Validación: 258 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12814 pruebas / 140 suites, cero fallos/reintentos; inventario exacto y 436 hashes intactos. Evidencia whatsapp-alternative-catalog-validation-2010.json.
+
+Siguiente: lista sin alternativas disponibles, nueva aparición de productos después de ofrecer, cambio de nombre/código durante selección, consulta por alias que coincide con sabor original, cancelación/repetición después de errores y recorridos desde saludo. La nueva matriz usa nombres completos para consultas y los patrones acotados documentados; no acredita cualquier pregunta libre. Modelo/mapas/servicios simulados, checkout sembrado; mantener muestra reservada real, costo/latencia y trazabilidad antes de afirmar venta autónoma. Main intacto. Cero API pagada, WhatsApp u órdenes externas.
+
+
 ## VIGENTE — identidad y disponibilidad de alternativas (20/10, tanda 55)
 
 Base c9dacf1d. Nueva suite whatsapp-pending-drink-alternative-identity.spec.ts: 36 casos en tres menús, agente simulado on/off. Nombre corto único, prefijo ambiguo, nombres duplicados, alternativa agotada antes de elegir por nombre completo/corto y duplicado con una opción agotada. Todos completan DTO simulado: plato previo, dos bebidas sin hielo, código correcto y datos de checkout; no se añade ni sustituye nada mientras hay ambigüedad o el producto está agotado. El catálogo cambia availableNow después de mostrar alternativas, no antes.
