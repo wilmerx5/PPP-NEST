@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 52
+
+42 casos nuevos: correcciones de contacto repetidas durante sabor y sabor+datos juntos. Validación: 202 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12652 pruebas / 137 suites, cero fallos/reintentos; inventario exacto y 433 hashes intactos. Evidencia whatsapp-mixed-flavor-contact-validation-2010.json.
+
+Siguiente: formulaciones variadas de reemplazo, precio durante sabor, recorridos desde saludo. Modelo y servicios simulados; piloto aún requiere muestra reservada real y costo/latencia. Main intacto. Despliegue agrupado 51–52 pendiente de verificar.
+
 ## Estado vigente — 20/10, tanda 51
 
 54 casos nuevos en tres menús: cambio de bebida durante sabor pendiente y captura anticipada de nombre/teléfono/dirección; preservan unidades, notas y orden simulada. Global final congelada: 12610 pruebas / 137 suites, cero fallos, inventario exacto y 433 hashes intactos. 92 controles Node aprobados. Segunda global tras corregir la regresión; no un reintento sin cambios. Evidencia whatsapp-pending-drink-interruptions-validation-2010.json.

@@ -8337,8 +8337,10 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, `Listo, cambié la bebida por *${resolved.product.name}* ×${quantity}.`);
       return true;
     }
-    const clauses = text.trim().split(/\n|;/).map(value => value.trim()).filter(Boolean);
+    const clauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
     let name: string | undefined, phone: string | undefined, address: string | undefined;
+    let flavorText: string | undefined;
+    const product = (await this.catalogService.getMenuProducts()).find(item => item.id === pending.productId);
     for (const clause of clauses) {
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
       if (named && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) {
@@ -8350,19 +8352,32 @@ export class WhatsappOrchestratorService {
       } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
         if (address) return false;
         address = clause;
+      } else if (product && !flavorText && product.attributes?.some(attribute => attribute.options.some(option =>
+        this.normalizeForMatch(option) === this.normalizeForMatch(clause)))) {
+        flavorText = clause;
       } else return false;
     }
     if (!name && !phone && !address) return false;
     let next: WhatsappSessionData = { ...session, pendingCheckoutDetailsCaptured: true };
+    if (flavorText && product) {
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) return false;
+      const choice = this.catalogService.resolveAttributesFromMessage(product, flavorText, pending.selected || []);
+      if (choice.status !== 'complete') return false;
+      const source = pending.sourceText || '';
+      const added = this.tryAddProductToCart(next, product, pending.quantity || 1, cfg,
+        this.catalogService.extractProductModificationNote(source) || undefined, choice.attributes, { sourceText: source });
+      if (added.blocked || added.missingAttributes) return false;
+      next = { ...added.session, pendingAttribute: undefined };
+    }
     if (name) {
       await this.conversationService.updateCustomerName(conv, name);
       Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
     }
     if (phone) next = { ...next, contactPhone: phone, phoneConfirmed: true };
     if (address) next = this.withDeliveryAddress({ ...next, address: undefined, addressConfirmed: false }, address);
-    await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+    await this.conversationService.saveSession(conv, next, flavorText ? 'building_cart' : 'awaiting_attribute');
     await this.reply(conv, waId, ['Anoté tus datos:', name ? `Nombre: ${name}` : '', phone ? `Teléfono: ${phone}` : '', address ? `Dirección: ${next.address}` : '',
-      '\nFalta terminar la selección del producto.', this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
+      flavorText ? `Opción elegida: ${flavorText}.` : '\nFalta terminar la selección del producto.', flavorText ? '' : this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
     return true;
   }
 

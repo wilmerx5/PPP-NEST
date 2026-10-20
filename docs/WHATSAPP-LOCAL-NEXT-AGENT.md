@@ -1,3 +1,16 @@
+## VIGENTE — sabor y datos juntos, correcciones antes de terminar (20/10, tanda 52)
+
+Base eb032694. 42 casos nuevos en la suite pending-drink-interruptions: 24 corrigen nombre/teléfono/calle o los tres datos y repiten la corrección mientras falta sabor; 18 envían sabor y los tres datos en un mensaje, opción antes/después o comas ante prefijos explícitos. Tres menús sintéticos y agente simulado on/off. Verifican respuesta, carrito previo, dos bebidas sin hielo, pendiente, regreso a pago y DTO único con contacto/dirección correctos. La suite ampliada tiene 96 casos, no 96 nuevos.
+
+Baseline: los 24 de correcciones pasaron sin cambios de runtime; seis primeros de sabor+datos fallaron dejando pendingAttribute. Se amplió el helper existente: reconoce una opción exacta del catálogo entre cláusulas de contacto; valida selección completa y límites antes de aplicar; conserva cantidad y nota de la compra pendiente. Solo separa comas ante prefijos de datos conocidos, sin fragmentar todas las comas de una dirección. Se conserva el control de horario. No contiene productos/IDs PPP ni inferencias de sabores desde nombres de clientes. Una compilación de desarrollo detectó una referencia a variable antes de declararla por una sustitución de edición demasiado amplia; corregida antes de validar.
+
+Validación: 202 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12652 pruebas / 137 suites, cero fallos/reintentos; inventario exacto y 433 hashes intactos. Evidencia whatsapp-mixed-flavor-contact-validation-2010.json.
+
+Límites: checkout sembrado, modelo/mapas/servicios simulados. Los separadores cubiertos son salto de línea, punto y coma y coma ante nombre/teléfono de diez dígitos/calle/carrera. No acredita texto libre sin separadores, teléfonos espaciados tras coma, lugares sin calle, varios atributos incompletos ni cambio de bebida expresado de cualquier forma. El horario cerrado no tiene un caso nuevo en esta matriz. Siguiente: ampliar formulaciones de reemplazo de bebida, consulta de precio durante sabor, nombres sin prefijo y recorridos desde saludo; mantener muestra reservada real y trazabilidad antes de afirmar piloto/venta.
+
+Cero llamadas pagadas, WhatsApp u órdenes externas. Main preservado.
+
+
 ## VIGENTE — cambiar bebida y guardar datos antes de terminar sabor (20/10, tanda 51)
 
 Base 95e50309. 54 casos nuevos: tres menús (bowl/gaseosa/agua, pizza/jugo/limonada, arroz/refresco/té), agente simulado on/off; nombre explícito, teléfono, calle, todos los datos multilínea, todos los datos más cancelación, reemplazo explícito, reemplazo sin repetir cantidad/nota, reemplazo que requiere otro sabor y alternativa inexistente. Todos recorren el DTO de orden simulada, verificando respuesta, pendiente, carrito original, cantidades/notas/opciones y contacto/dirección; una sola creación y sin bebida vieja tras reemplazar.

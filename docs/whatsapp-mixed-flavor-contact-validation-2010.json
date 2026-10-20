@@ -1,0 +1,32 @@
+{
+  "batch": 52,
+  "base": "eb032694",
+  "newCases": 42,
+  "baseline": {
+    "correctionCasesPassed": 24,
+    "mixedCasesFailed": 6
+  },
+  "focusedPassed": 202,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12652,
+    "suites": 137,
+    "bursts": 80,
+    "rest": 12572,
+    "sourceHashesUnchanged": 433,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Pending staging only",
+  "limits": [
+    "Mocked model and external services",
+    "Checkout seeded",
+    "No unseparated free text or landmark addresses",
+    "Broader beverage replacement wording remains pending"
+  ]
+}
