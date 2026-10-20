@@ -179,7 +179,11 @@ type InboundTurnContext = {
   subsetNoteHandled?: boolean;
   closePurchase?: boolean;
   decision?: TurnDecisionFrame;
+  burstContinuation?: BurstContinuation;
 };
+
+/** Bubbles of one coalesced burst that run as a later turn after its pending answer. */
+type BurstContinuation = { text: string; approvalAfter?: string };
 
 type InboundCoalesceState = {
   pending: IncomingWhatsappMessage[];
@@ -517,7 +521,15 @@ export class WhatsappOrchestratorService {
     this.beginOutboundHold(key);
     let succeeded = false;
     try {
-      await this.handleIncomingUnlocked(msg);
+      const continuation = await this.handleIncomingUnlocked(msg);
+      if (continuation) {
+        const answered = this.outboundHoldByWaId.get(key)?.length ?? 0;
+        await this.handleIncomingUnlocked({ ...msg, text: continuation.text, raw: { burstContinuation: continuation } });
+        const held = this.outboundHoldByWaId.get(key);
+        if (held && held.length > answered) {
+          for (let index = 0; index < answered; index++) held[index] = held[index].replace(/\n+¿\*Algo más\*\?\s*$/u, '').trimEnd();
+        }
+      }
       const conv = await this.conversationService.findOrCreateConversation(
         msg.waId,
         msg.phoneE164,
@@ -546,8 +558,13 @@ export class WhatsappOrchestratorService {
     }
   }
 
-  private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<void> {
+  private async handleIncomingUnlocked(msg: IncomingWhatsappMessage): Promise<BurstContinuation | undefined> {
     const turn: InboundTurnContext = {};
+    await this.runIncomingTurn(msg, turn);
+    return turn.burstContinuation;
+  }
+
+  private async runIncomingTurn(msg: IncomingWhatsappMessage, turn: InboundTurnContext): Promise<void> {
     let failed = false;
     try {
       await this.handleIncomingTurn(msg, turn);
@@ -633,6 +650,69 @@ export class WhatsappOrchestratorService {
           finishTurnDecision(turn.decision,turn.conv.state,this.conversationService.getSession(turn.conv),failed));
       } catch { /* Diagnostics must not break a reply or replace the original error. */ }
     }
+  }
+
+  /**
+   * A burst whose first bubble alone answers the open choice runs that answer
+   * first; a trailing approval after final-step edits must see the new summary.
+   */
+  private splitBurstAtPendingAnswer(
+    conv: WhatsappConversation,
+    parts: string[],
+  ): { first: string; rest?: BurstContinuation } | null {
+    if (['completed', 'closed', 'human', 'human_takeover', 'awaiting_mp_payment'].includes(conv.state || '')) return null;
+    const session = this.conversationService.getSession(conv);
+    const approves = (part: string) => !/[¿?]/.test(part) && (this.isConfirmKeyword(part) || isFinalConfirmAffirmation(part));
+    const doubt = session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder ||
+      CART_EDIT_SELECTION_KEYS.some(selection => !!session[selection]);
+    if (conv.state === 'awaiting_final_confirm' && !doubt && approves(parts[parts.length - 1])) {
+      let cut = parts.length - 1;
+      while (cut > 0 && approves(parts[cut - 1])) cut--;
+      const courtesy = /^(?:(?:muchas\s+)?gracias|mil gracias|ok|okey|listo|perfecto|genial|vale|bueno|super|excelente|porfa|por favor|hola|buenas)[\s!.]*$/;
+      if (!cut || parts.slice(0, cut).every(part => courtesy.test(this.normalizeForMatch(part)))) return null;
+      return {
+        first: parts.slice(0, cut).join('\n'),
+        rest: { text: parts[parts.length - 1], approvalAfter: this.orderReviewSignature(session, conv.phoneE164) },
+      };
+    }
+    const first = parts[0];
+    const said = this.normalizeForMatch(first);
+    let rest = parts.slice(1).join('\n');
+    const restSaid = this.normalizeForMatch(rest);
+    const corrects = /^(?:perdon|mejor|no|digo|corrijo|cambi\w*|espera|ay|ups|uy)\b/.test(restSaid);
+    if (!said || /[¿?]/.test(first) || said.split(' ').length > 4) return null;
+    const row = this.catalogService.extractListPickNumber(first);
+    const names = (option: string) => ` ${restSaid} `.includes(` ${this.normalizeForMatch(option)} `);
+    let answers = false;
+    const attribute = session.pendingAttribute;
+    if (attribute) {
+      const open = attribute.attributes.find(attr => !attribute.selected?.some(chosen => chosen.attributeName === attr.attributeName));
+      const options = open?.options || [];
+      answers = options.filter(option => ` ${said} `.includes(` ${this.normalizeForMatch(option)} `)).length === 1 ||
+        (/^\d+$/.test(said) && row != null && row >= 1 && row <= options.length);
+      if (answers && corrects) {
+        // «coco» + «perdón, mango»: the corrected option is the only answer.
+        const corrected = options.filter(names);
+        return corrected.length === 1 && parts.length === 2 ? { first: corrected[0] } : null;
+      }
+      if (answers && options.some(names)) {
+        // «y otra de mango» orders one more of the same product with another option.
+        const another = restSaid.match(/^(?:y\s+)?(?:otr[oa]|un[ao]?)\s+(?:de|con|en|sabor|sabor a)\s+(.+)$/);
+        const option = another ? options.filter(item => this.normalizeForMatch(item) === another[1].trim()) : [];
+        if (option.length !== 1 || attribute.attributes.length !== 1) return null;
+        rest = `agrégame 1 ${attribute.name} ${option[0]}`;
+      }
+    } else if (session.pendingMatch && session.pendingMatch.candidates.length > 1) {
+      if (corrects) return null;
+      const candidates = session.pendingMatch.candidates;
+      answers = (row != null && row >= 1 && row <= candidates.length) ||
+        !!this.catalogService.pickFromCandidateList(first, candidates as MenuProduct[]);
+      const another = restSaid.match(/^(?:y\s+)?(?:otr[oa]|un[ao]?)\s+(?:de|con|en)\s+(.+)$/);
+      const named = another ? this.catalogService.pickFromCandidateList(another[1], candidates as MenuProduct[]) : null;
+      if (answers && named) rest = `agrégame 1 ${named.name}`;
+      else if (answers && candidates.some(candidate => names(candidate.name))) return null;
+    }
+    return answers ? { first, rest: { text: rest } } : null;
   }
 
   /** An order list still waiting for a pick, unless one of its products is already in the cart. */
@@ -747,8 +827,11 @@ export class WhatsappOrchestratorService {
       : null;
     const freshTexts: string[] = [];
     const newlyClaimedIds: string[] = [];
+    const continuation = msg.raw?.burstContinuation as BurstContinuation | undefined;
     let logged: Awaited<ReturnType<WhatsappConversationService['claimInboundMessage']>> = null;
-    if (batch?.length) {
+    if (continuation) {
+      // Its bubbles were claimed with the burst that answered the pending doubt.
+    } else if (batch?.length) {
       for (const part of batch) {
         const claimed = await this.conversationService.claimInboundMessage({
           conversationId: conv.id,
@@ -767,6 +850,11 @@ export class WhatsappOrchestratorService {
         }
       }
       if (logged) msg = { ...msg, text: freshTexts.join('\n') };
+      const split = logged && freshTexts.length > 1 ? this.splitBurstAtPendingAnswer(conv, freshTexts) : null;
+      if (split) {
+        msg = { ...msg, text: split.first };
+        turn.burstContinuation = split.rest;
+      }
     } else {
       logged = await this.conversationService.claimInboundMessage({
         conversationId: conv.id,
@@ -781,13 +869,13 @@ export class WhatsappOrchestratorService {
     }
     // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
     // No tocar sesión ni crear pedidos a partir del webhook duplicado.
-    if (!logged) {
+    if (!logged && !continuation) {
       this.logger.debug(`Skip duplicate inbound waMessageId=${msg.messageId}`);
       return;
     }
     const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
     // Nunca cambiar el estado de IDs duplicados reclamados por otro worker.
-    this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
+    if (!continuation) this.claimedInboundIdsByWaId.set(key, newlyClaimedIds);
 
     if (!cfg.enabled) {
       await this.reply(conv, msg.waId, 'Por ahora WhatsApp no está activo. Puedes pedir por la web o llamar al local.');
@@ -800,6 +888,17 @@ export class WhatsappOrchestratorService {
       Object.assign(conv, fresh);
     }
     if (conv.humanTakeover) {
+      return;
+    }
+    if (continuation?.approvalAfter) {
+      const current = this.conversationService.getSession(conv);
+      const doubt = current.pendingAttribute || current.pendingMatch || current.pendingMultiOrder ||
+        CART_EDIT_SELECTION_KEYS.some(selection => !!current[selection]);
+      if (conv.state === 'awaiting_final_confirm' && !doubt) {
+        await this.reply(conv, msg.waId, this.orderReviewSignature(current, conv.phoneE164) !== continuation.approvalAfter
+          ? 'Aún no confirmé el pedido porque lo cambiaste en el mismo mensaje. Revisa el resumen y, si está bien, escribe *confirmar*.'
+          : 'Aún no confirmé el pedido porque en el mismo mensaje pediste un cambio. Si el pedido está bien así, escribe *confirmar*.');
+      }
       return;
     }
 
@@ -819,7 +918,7 @@ export class WhatsappOrchestratorService {
     // Audio / imagen → texto (Whisper / Vision); resto: avisar
     let text = (msg.text || '').trim();
     if (msg.messageType === 'audio' && msg.mediaId) {
-      const resolved = await this.resolveAudioToText(msg, logged.id, conv);
+      const resolved = await this.resolveAudioToText(msg, logged!.id, conv);
       if (!resolved) {
         await this.reply(
           conv,
@@ -837,7 +936,7 @@ export class WhatsappOrchestratorService {
         ...priorImageSession, recentImageOrder: undefined,
         recentImageCartBefore: undefined, recentImageCartSignature: undefined,
       });
-      const img = await this.resolveImageMessage(msg, logged.id, conv, cfg);
+      const img = await this.resolveImageMessage(msg, logged!.id, conv, cfg);
       if (img.done) return;
       msg.raw = { ...(msg.raw || {}), resolvedOrderImage: true };
       text = img.text;
@@ -8788,7 +8887,7 @@ export class WhatsappOrchestratorService {
     session: WhatsappSessionData,
     deliveryFee: number,
     added: string | string[],
-    opts?: { extraLine?: string; suffix?: string; showCartSummary?: boolean },
+    opts?: { extraLine?: string; suffix?: string; showCartSummary?: boolean; attributes?: { attributeName: string; attributeValue: string }[] },
   ): string {
     const rawNames = (Array.isArray(added) ? added : [added]).filter(Boolean);
     let names = rawNames.map((n) => this.compactAddedProductLabel(session, n));
@@ -8819,7 +8918,10 @@ export class WhatsappOrchestratorService {
     if (names.length === 1) {
       const baseNorm = this.normalizeForMatch(names[0].replace(/\s*×\s*\d+\s*$/, '').trim());
       const cart = this.consolidateCart(session.cart);
+      const chosen = opts?.attributes || [];
       const hit =
+        (chosen.length ? cart.find((c) => this.normalizeForMatch(c.name) === baseNorm &&
+          chosen.every((pick) => c.attributes?.some((attr) => attr.attributeName === pick.attributeName && attr.attributeValue === pick.attributeValue))) : undefined) ||
         cart.find((c) => this.normalizeForMatch(c.name) === baseNorm) ||
         session.cart[session.cart.length - 1];
       if (hit?.attributes?.length) {
@@ -9199,7 +9301,7 @@ export class WhatsappOrchestratorService {
     await this.reply(
       conv,
       waId,
-      this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`),
+      this.buildCartAddReply(session, this.deliveryFeeFor(session, cfg), `${product.name}${qtyNote}`, { attributes }),
     );
     return true;
   }
@@ -19045,6 +19147,7 @@ export class WhatsappOrchestratorService {
           session,
           this.deliveryFeeFor(session, cfg),
           `${product.name} (${chosen})`,
+          { attributes: step.attributes },
         ),
       );
       return true;
