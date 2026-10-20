@@ -1,0 +1,28 @@
+{
+  "batch": 60,
+  "base": "02b0da40",
+  "newCases": 30,
+  "baseline": {
+    "passed": 30,
+    "failed": 0
+  },
+  "focusedPassed": 68,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "runtimeChanges": false,
+  "global": {
+    "rerun": false,
+    "reason": "Only tests/documentation changed; runtime retains prior frozen global validation",
+    "previousPassed": 12909,
+    "previousSuites": 143
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Checkout states and missing fields explicitly arranged after a real router purchase",
+    "Three single-product menus, no flavor ambiguity or real model accuracy claim",
+    "Five states each queried for price and cart, then explicit name/phone correction; arbitrary questions not covered"
+  ]
+}
