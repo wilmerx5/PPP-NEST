@@ -48,8 +48,15 @@ for(const enabled of [false,true]) for(const scenario of ['two','included','mixe
     if(scenario==='closed') {h.cfg.ignoreBusinessHours=false; h.service.businessService.getStatus=async()=>({isOpen:false});}
     const before=structuredClone(h.conv.sessionData.cart);
     const reply=await h.sendQueued(scenario==='unspecified'?'traen gaseosa? Si no, dame una':'traen gaseosa? Si no, agrega dos gaseosas 400ml');
-    expect(h.conv.state).toBe('awaiting_payment');
-    expect(reply).toContain('método de pago');
+    if(scenario==='unspecified') {
+      expect(h.conv.state).toBe('building_cart');
+      expect(h.conv.sessionData.pendingCheckoutResume).toBe('awaiting_payment');
+      expect(h.conv.sessionData.pendingMatch?.candidates).toHaveLength(2);
+      expect(reply).toContain('Gaseosa 1.5L');
+    } else {
+      expect(h.conv.state).toBe('awaiting_payment');
+      expect(reply).toContain('método de pago');
+    }
     if(scenario==='two') {
       expect(h.conv.sessionData.cart).toHaveLength(2);
       expect(h.conv.sessionData.cart[1]).toMatchObject({productId:90102,quantity:2});

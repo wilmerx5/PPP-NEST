@@ -1,3 +1,19 @@
+## VIGENTE — cantidad y notas durante aclaración de bebida (20/10, tanda 49)
+
+Base 8d6705eb. 40 regresiones nuevas gratuitas, router completo con servicios/modelo simulados: 24 recorridos en bowl/pizza/arroz, agente on/off, elección por número/tamaño, consulta de precio y cancelación; doce condiciones sin puntuación y «si no viene me mandas…», con contrastes de bebida ya incluida; cuatro tamaños ambiguos/inexistentes. Los 24 recorridos terminan en DTO: no se pierde cantidad dos, nota sin hielo ni sabor, y solo se crea una orden simulada. Se conserva el plato previo y se retoma pago/confirmación.
+
+Baseline inicial: 24 fallos por aclaración sin lista/pending; al guardar pendiente aparecieron pérdidas de cantidad/nota y selección por volumen/precio incorrecta (18 fallos, seis cancelaciones verdes). Las doce formas naturales fallaban antes de ampliar reconocimiento. Los cuatro contrastes finales descubrieron selección arbitraria o pérdida de pending ante tamaño ambiguo/inexistente. Estas cifras corresponden a iteraciones solapadas, no defectos independientes.
+
+La primera global encontró dos regresiones en el caso existente de audio con pechugas partidas en cuatro: al incorporar la nota se reextraía cuatro como unidades. Se corrigió pasando la cantidad ya resuelta como dato explícito a handleProductWithVariants, tanto para adición como para atributos pendientes, en vez de reconstruirla desde la nota. La reproducción y matriz nueva pasaron después: 310 pruebas seleccionadas, 494 omitidas por filtro; no son una suite completa.
+
+Cambios generales: guardar compra condicional pendiente con cantidad/nota y retorno a checkout; conservar esas propiedades al pasar de producto a atributos; resolver volumen únicamente dentro de candidatos pendientes, sin tomar mililitros por código; consulta de precio conserva pendiente, volumen no único pide nombre/número. La condición acepta omisión de puntuación y «si no viene/trae/incluye, me mandas/envías…». Se mantiene la regla de no comprar por condición cuando la inclusión es desconocida o ya está incluida. La expectativa previa de seis casos «unspecified» se actualizó al nuevo estado de selección con retorno pendiente; no se rebajó la comprobación del carrito.
+
+Validación final: TypeScript y build TypeScript, 92 Node, diff check. Segunda global congelada: 80 ráfagas + 12410 resto = 12490 / 135 suites, cero fallos, inventario exacto y 431 hashes intactos. Tiempos [110.876, 363.357]. Se ejecutó una segunda global por la corrección de los dos fallos, no un reintento de tests sin cambios. Evidencia whatsapp-conditional-followup-validation-2010.json. Sin cambios de fuente/tests posteriores a esta global.
+
+Publicar únicamente staging. Sin despliegue en esta tanda: agrupar con el siguiente bloque. Último runtime acreditado sigue 805136eb (tanda 48); publicar no significa desplegar. Main/producción intactos, cero API pagada, WhatsApp u órdenes externas.
+
+Siguiente bloque prioritario: producto de bebida único con sabor obligatorio (hoy la rama incompleta puede pedir aclaración genérica sin guardar pending), consulta/cambio durante ese sabor, regreso a nombre/teléfono/dirección, recorrido desde saludo y repetición de compra condicional sin duplicados. Revisar puntuación sin espacio antes de «si no» y no confundir «sino» con corrección. La nueva matriz siembra checkout: no acredita todas las fases ni comprensión real del modelo/audio. Mantener muestra reservada y trazabilidad chat→test→commit→runtime. No declarar vendible por conteos.
+
 ## VIGENTE — información útil de bebida genérica, sin inventar gaseosa (20/10, tanda 48)
 
 Base caa094de. El usuario repitió «que arroces tiene» → «vienen con gaseosa?» en staging: la respuesta era cautelosa, pero ocultaba que tres combos incluían bebida 1.5L. Esta tanda prioriza ese nuevo ejemplo; la continuación de aclaraciones condicionales sigue pendiente.
