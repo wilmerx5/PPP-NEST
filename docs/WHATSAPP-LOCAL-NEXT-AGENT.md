@@ -1,3 +1,19 @@
+## VIGENTE — número suelto tras cotizar un plato es su cantidad, no un código: «¿cuánto vale X?» → «2» = X ×2 (20/10)
+
+Base 4778554f, tanda 43 (hueco anotado desde la tanda 38). Baseline con router real, agente on y off: «¿cuánto vale la bandeja paisa?» (el bot ofrece «¿Te lo agrego al pedido? Responde sí») → «2» agregaba el producto de código 2 (una gaseosa); «qué trae la bandeja paisa?» → «2» igual; «qué precio tiene la mojarra» (plato con opción, lista de una fila) → «2» también tomaba el código 2, porque una fila fuera de rango cae a códigos a propósito; al aceptar una oferta de plato con opción con cantidad se agregaba una sola unidad. Sin el arreglo fallan 36/60.
+
+60 regresiones nuevas (whatsapp-bare-quantity-after-quote.spec.ts): rostizadería (plato con opción cotizado como lista de una fila), hamburguesería, pizzería, con códigos 1–3 de otros productos; agente simulado on/off. Contrastes: «sí» tras la cotización sigue agregando una; tras el saludo («dime el plato o el código») «2» sigue siendo el código 2; con lista de dos filas «2» elige la segunda; «2» tras agregar un plato («¿Algo más?») no agrega el código 2.
+
+Arreglo general: antes del manejo de códigos, una cantidad suelta 1–20 (dígitos o palabras, «porfa/por favor» opcional) con una oferta pendiente de un solo producto, o con carrito vacío y un plato en foco por una consulta, acepta ese plato con esa cantidad (fuera de los pasos de checkout y sin otra lista o edición pendiente). tryResolvePendingMatchPick: una lista de una fila más un 2–20 suelto elige esa fila con esa cantidad. tryHandlePendingAddOffer pasa la cantidad al flujo de opciones cuando el texto cotizado no la dice.
+
+Validación: 492 focalizados (7 suites), TypeScript, build TypeScript, 92 Node y diff --check. Global en dos fases: ráfagas 80/80 en 110s; resto 12.138/12.138 en 356s, 127 suites; unión exacta con inventario de 128, 423 hashes intactos, sin reintentos (468s). Total acumulado: 12.218 pruebas. Evidencia whatsapp-bare-quantity-after-quote-validation-1910.json. Cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Desplegado solo staging: runtime bb6312e172b79bb76692b50ec692a8df0c135ebd, imagen 81a5a043…; health OK / DB connected / circuit CLOSED 2026-10-20T15:44:59Z, healthy sin reinicios. Rollback ppp-nest-staging:rollback-before-bb6312e1 (imagen 02f9b84e…). Producción sigue c5e97ab1… antes y después; bin/ privado preservado. No reconstruir por documentación.
+
+Huecos vistos y no tocados: tras «No tenemos X… ¿Qué se te antoja?» un «1» suelto sigue agregando el código 1 (pregunta abierta; los códigos están en la carta); un número suelto tras «¿Algo más?» con carrito solo muestra el carrito; con lista de varias filas un número fuera de rango sigue leyéndose como código (deliberado); aceptar un plato con opción cotizado toma la primera opción en silencio.
+
+Siguiente (por impacto en chats reales): saludos/cortesías/muletillas («buenas», «este») en la línea del pedido; dirección que absorbe palabras de pago/cortesía y horas; «cuánto es?» con varias líneas; combos; palabra de familia en varios platos elige variante en silencio; «7 up» como cantidad; «no quiero dos X»; «no quiero cebolla».
+
 ## VIGENTE — mismo producto con opciones distintas en un mensaje: «1 sopa de A y 1 sopa de B», «1 jugo pequeño de A y 1 jugo pequeño de B», «2 X de A y 1 X de B» (20/10)
 
 Base aef7a658, tanda 42 (hueco hallado en la tanda 41). Baseline con router real, agente on y off: «1 sopa de ajiaco y 1 sopa de menudencias» (un producto «Sopa» con opción) agregaba solo Ajiaco: el segmento caía en la búsqueda por puntaje, que saltaba en silencio un producto ya usado. «1 jugo pequeño de mora y 1 jugo pequeño de lulo» agregaba solo Lulo y, ya con ambas líneas, la ruta de bebida suelta elegía «Jugo» en vez de «Jugo pequeño». «2 malteadas de fresa y 1 malteada de vainilla» guardaba 2 + 1 pero respondía «Malteada ×2 (Fresa), Malteada ×2 (Vainilla)». Sin el arreglo fallan 16/54.
