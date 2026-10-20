@@ -1,8 +1,10 @@
 ## Estado vigente — 20/10, tanda 56
 
+Despliegue agrupado 55–56 verificado 2026-10-20T20:58:40.916Z: staging 30cffa27c05a74a84d2b43b11b1754fa71de9df0, imagen aa0b13c19f1fef9d385a83477ae857f6decdbced27beee42cea9656cd35b2b7e, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-30cffa27; bin/ privado, bases y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.
+
 48 casos nuevos: alternativas retiradas, códigos no ofrecidos y consultas sin compra. Validación: 258 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12814 pruebas / 140 suites, cero fallos/reintentos; inventario exacto y 436 hashes intactos. Evidencia whatsapp-alternative-catalog-validation-2010.json.
 
-Siguiente: listas vacías, cambio de nombre/código, alias coincidente con sabor y cancelación tras errores. Modelo/servicios simulados; no acredita venta autónoma. Main intacto; cero llamadas pagadas. Despliegue agrupado 55–56 por verificar.
+Siguiente: listas vacías, cambio de nombre/código, alias coincidente con sabor y cancelación tras errores. Modelo/servicios simulados; no acredita venta autónoma. Main intacto; cero llamadas pagadas. Despliegue acreditado en encabezado vigente.
 
 ## Estado vigente — 20/10, tanda 55
 

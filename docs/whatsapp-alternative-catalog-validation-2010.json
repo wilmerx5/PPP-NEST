@@ -22,7 +22,17 @@
   "paidCalls": 0,
   "whatsappSent": 0,
   "externalOrders": 0,
-  "deployment": "Pending staging only",
+  "deployment": {
+    "commit": "30cffa27c05a74a84d2b43b11b1754fa71de9df0",
+    "image": "aa0b13c19f1fef9d385a83477ae857f6decdbced27beee42cea9656cd35b2b7e",
+    "verifiedAt": "2026-10-20T20:58:40.916Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-30cffa27"
+  },
   "limits": [
     "Checkout seeded, model and external services simulated",
     "Legacy sessions without identity snapshots cannot recognize removed names",
