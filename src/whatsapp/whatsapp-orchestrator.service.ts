@@ -750,6 +750,31 @@ export class WhatsappOrchestratorService {
    * «y otro de mora» / «otras dos de carne» order more of the catalog product
    * named by that variant word; it is never a street name.
    */
+  /**
+   * "no quería el pollo, quería el combo" is the same swap as "no quiero …, quiero …";
+   * "no quiero un pollo" (no comma after "no") drops the one cart line it names.
+   * "no, quiero 2 pollos" stays a quantity correction.
+   */
+  private rewriteNegatedCartRequest(text: string, session: WhatsappSessionData): string | null {
+    if (!session.cart.length) return null;
+    const raw = text.trim();
+    const want = '(?:quer[ií]+a|quieria|quisiera|ped[ií]|quiero)';
+    const swap = raw.match(new RegExp(`^(?:yo\\s+)?no\\s+${want}\\s+(.+?)\\s*(?:[,;.]\\s*|\\s+)(?:sino\\s+|era\\s+|es\\s+)?(?:yo\\s+)?(?:lo\\s+que\\s+)?${want}\\s+(?:era\\s+)?(.+)$`, 'i'));
+    if (swap && !/^quiero$/i.test(raw.match(new RegExp(`^(?:yo\\s+)?no\\s+(${want})`, 'i'))?.[1] || '')) {
+      return `no quiero ${swap[1].trim()}, quiero ${swap[2].trim()}`;
+    }
+    const drop = raw.match(new RegExp(`^(?:ya\\s+)?(?:yo\\s+)?no\\s+${want}\\s+(?:(un|una|el|la|ese|esa|eso\\s+de|lo\\s+del?)\\s+)?([\\p{L} ]+?)[.!\\s]*$`, 'iu'));
+    if (!drop || /\b(?:quiero|dame|mejor|sino|nada|mas|más|solo|sin|con|tanto|tan|eso|esto|este|esta|dos|tres|cuatro|cinco|seis|otr[oa]s?)\b/i.test(drop[2])) return null;
+    const tokens = this.normalizeForMatch(drop[2]).split(' ').filter(token => token.length >= 4);
+    if (!tokens.length) return null;
+    const lines = session.cart.filter(line => {
+      const name = this.normalizeForMatch(line.name);
+      return tokens.every(token => name.includes(token) || name.includes(token.replace(/s$/, '')));
+    });
+    if (new Set(lines.map(line => line.productId)).size !== 1 || lines.length !== 1) return null;
+    return /^un[a]?$/i.test(drop[1] || '') ? `quita 1 ${lines[0].name}` : `quita el ${lines[0].name}`;
+  }
+
   private rewriteAnotherOfVariant(text: string, session: WhatsappSessionData, products: MenuProduct[]): string | null {
     if (session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder) return null;
     const said = this.normalizeForMatch(text).replace(/[.!,\s]+$/, '');
@@ -1223,6 +1248,8 @@ export class WhatsappOrchestratorService {
     if (['building_cart', 'awaiting_payment', 'awaiting_final_confirm'].includes(conv.state) && !/[¿?]/.test(text)) {
       const another = this.rewriteAnotherOfVariant(text, this.conversationService.getSession(conv), await this.catalogService.getMenuProducts());
       if (another) text = another;
+      const negated = this.rewriteNegatedCartRequest(text, this.conversationService.getSession(conv));
+      if (negated) text = negated;
     }
     if (/\b(?:maduro\s+con|pl[aá]tano\s+maduro)\b/i.test(text)) {
       text = this.catalogService.resolveCatalogAliasText(text, await this.catalogService.getMenuProducts());
@@ -11179,6 +11206,11 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const hint = this.catalogService.extractVariantPreferenceHint(text);
     const cartContext = session.cart.length > 0 || opts.fromPendingAttribute;
+    const namedOther = !opts.focusedComboId && this.catalogService.findProductEmbeddedInMessage(text, products);
+    if (namedOther && namedOther.id !== product.id && /\bcombo\b/i.test(namedOther.name) &&
+        !this.catalogService.findProductVariantFamily(product.name, products, [product])?.variants.some(variant => variant.id === namedOther.id)) {
+      return false;
+    }
     if (opts.focusedComboId) {
       const namedProduct = this.catalogService.getProductById(opts.focusedComboId, products);
       if (namedProduct) product = namedProduct;
@@ -23402,6 +23434,8 @@ export class WhatsappOrchestratorService {
       multi.needsAttributes.length +
       multi.unresolved.length;
     if (foodHits === 0) return false;
+    if (session.cart.length && !/[¿?]/.test(text) &&
+        (parseCartItemReplacement(text) || this.catalogNamedCartSwap(text, session, products))) return false;
 
     // Nombre detectado en el mismo mensaje que los platos (ej. "Natalia seria un arroz…")
     // No usar platos del menú como nombre (ajiaco, mondongo…)
