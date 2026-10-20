@@ -4,7 +4,7 @@ for (const [dish, drink, flavor, alternative] of [
   ['Bowl Verde', 'Gaseosa 400ml', 'Cola', 'Agua 600ml'],
   ['Pizza Vegetal', 'Jugo 500ml', 'Mora', 'Limonada Natural'],
   ['Arroz Marinero', 'Refresco 600ml', 'Limon', 'Te Frio'],
-]) for (const enabled of [false, true]) for (const scenario of ['name', 'phone', 'address', 'all', 'allCancel', 'switchFlavor', 'switch', 'switchImplicit', 'unavailable', 'nameCorrection', 'phoneCorrection', 'addressCorrection', 'allCorrection', 'allFlavor', 'allFlavorComma', 'allFlavorLast']) {
+]) for (const enabled of [false, true]) for (const scenario of ['name', 'phone', 'address', 'all', 'allCancel', 'switchFlavor', 'switch', 'switchImplicit', 'unavailable', 'nameCorrection', 'phoneCorrection', 'addressCorrection', 'allCorrection', 'allFlavor', 'allFlavorComma', 'allFlavorLast', 'priceExplicit', 'priceShort', 'priceTotal', 'switchPolite', 'switchReplace', 'switchInstead']) {
   it(`${dish}: ${scenario} while choosing flavor, agent=${enabled}`, async () => {
     const menu = [
       { id: 98001, code: 98001, name: dish, description: 'Sin bebida', price: 24000, availableNow: true, attributes: [] },
@@ -28,7 +28,19 @@ for (const [dish, drink, flavor, alternative] of [
     const before = structuredClone(h.conv.sessionData.cart);
     await h.sendQueued(`el ${dish} trae ${drink.split(' ')[0]}? Si no, agrega dos ${drink} sin hielo`);
     expect(h.conv.sessionData.pendingAttribute).toMatchObject({ productId: 98002, quantity: 2 });
-    const interrupt = scenario.startsWith('name') ? 'a nombre de Ana Torres' : scenario.startsWith('phone') ? '3001112233' : scenario.startsWith('address') ? 'Calle 10 #20-30' : scenario.startsWith('all') ? 'a nombre de Ana Torres\n3001112233\nCalle 10 #20-30' : scenario === 'switchImplicit' ? `cambia esas bebidas por ${alternative}` : scenario.startsWith('switch') ? `mejor cambia esas bebidas por dos ${alternative} sin hielo` : 'mejor cambia esas bebidas por dos bebidas de tamarindo';
+    const interrupt = scenario.startsWith('name') ? 'a nombre de Ana Torres' : scenario.startsWith('phone') ? '3001112233' : scenario.startsWith('address') ? 'Calle 10 #20-30' : scenario.startsWith('all') ? 'a nombre de Ana Torres\n3001112233\nCalle 10 #20-30' : scenario === 'switchImplicit' ? `cambia esas bebidas por ${alternative}` : scenario === 'switchPolite' ? `me cambias las bebidas por dos ${alternative}` : scenario === 'switchReplace' ? `reemplaza esas bebidas por dos ${alternative}` : scenario === 'switchInstead' ? `en lugar de esas bebidas quiero dos ${alternative}` : scenario.startsWith('switch') ? `mejor cambia esas bebidas por dos ${alternative} sin hielo` : 'mejor cambia esas bebidas por dos bebidas de tamarindo';
+    if (scenario.startsWith('price')) {
+      const question = scenario === 'priceExplicit' ? `cuanto cuesta ${drink}?` : scenario === 'priceShort' ? 'cuanto cuesta esa bebida?' : 'cuanto cuestan las dos bebidas?';
+      const snapshot = structuredClone(h.conv.sessionData.pendingAttribute);
+      const answer = await h.sendQueued(question);
+      expect(h.conv.sessionData.cart).toEqual(before);
+      expect(h.conv.sessionData.pendingAttribute).toEqual(snapshot);
+      expect(answer).toContain(scenario === 'priceTotal' ? '14.000' : '7.000');
+      expect(answer).not.toMatch(/no manejamos|no tenemos/i);
+      expect(answer).not.toContain(`${dish}:`);
+      expect(answer).toContain(drink);
+      expect(h.service.ordersService.create).not.toHaveBeenCalled();
+    }
     let reply = await h.sendQueued(scenario === 'allFlavorLast' ? `${interrupt}; ${flavor}` : scenario === 'allFlavorComma' ? `${flavor}, ${interrupt.replace(/\n/g, ', ')}` : scenario === 'allFlavor' ? `${flavor}; ${interrupt}` : interrupt);
     const corrected = scenario.endsWith('Correction');
     if (corrected) {

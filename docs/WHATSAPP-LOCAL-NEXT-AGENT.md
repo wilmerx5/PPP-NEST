@@ -1,3 +1,16 @@
+## VIGENTE — precio de bebida pendiente y expresiones de reemplazo (20/10, tanda 53)
+
+Base 3169381b. 36 casos nuevos: tres consultas de precio (nombre completo, esa bebida, las dos bebidas) y tres formas de reemplazo (me cambias, reemplaza, en lugar de), tres menús y agente simulado on/off. Verifican respuesta, selección pendiente intacta al consultar, carrito previo, reemplazo sin bebida vieja, dos unidades sin hielo y DTO único con sabor/contacto/dirección. La suite ampliada tiene 132 casos, no 132 nuevos.
+
+Baseline inicial de precio: seis fallos y doce verdes. Se detectó que comprobar solo $7.000 permitía un falso positivo: la respuesta daba el precio del plato y el valor de bebida aparecía en el recordatorio del sabor. Se fortaleció la aserción para rechazar el plato como objetivo de precio. Con los reemplazos, baseline reforzado: 30 fallos y seis verdes entre los 36 nuevos. La corrección prioriza la referencia a la bebida pendiente durante checkout, muestra precio unitario y total de las unidades consultadas sin mutar el pedido, y conserva la pregunta de sabor. El reemplazo reutiliza la resolución/cantidad/notas existente con tres formulaciones adicionales; exige producto único disponible. Sin nombres/IDs PPP en runtime.
+
+Validación: 238 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12688 pruebas / 137 suites, cero fallos/reintentos; inventario exacto y 433 hashes intactos. Evidencia whatsapp-pending-drink-price-validation-2010.json.
+
+Publicar solo staging, sin despliegue en esta tanda: agrupar con siguiente. Último runtime acreditado 132a846c (51–52), saludable el 20/10 a las 19:49:13Z. Main/producción intactos; cero API pagada, WhatsApp y órdenes externas.
+
+Siguiente: consultas de disponibilidad/composición durante sabor, cambio sin nombrar producto (la otra bebida) con varias alternativas, consultas de precio con modificaciones hipotéticas, recorridos desde saludo y datos libres. Esta tanda siembra checkout y simula modelo/mapas/servicios: no acredita inferencia real, todos los chats históricos ni venta autónoma. La cobertura de precio genérico nueva usa formulaciones acotadas; no interpretar esto como comprensión de cualquier referencia. Mantener muestra reservada real, costo/latencia y trazabilidad.
+
+
 ## VIGENTE — sabor y datos juntos, correcciones antes de terminar (20/10, tanda 52)
 
 Despliegue agrupado 51–52 verificado 2026-10-20T19:49:13.611Z: staging 132a846c1c6b97c459ebe234679ee5b8f666ad21, imagen 0cf66f5f90a914984629d01bb5531c92bca2b7a987cfd084d55165fbc5a4585b, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-132a846c; bin/ privado y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.

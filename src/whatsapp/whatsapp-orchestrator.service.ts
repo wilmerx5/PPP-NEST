@@ -8299,8 +8299,25 @@ export class WhatsappOrchestratorService {
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
     const pending = session.pendingAttribute;
-    if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement || /[¿?]/.test(text)) return false;
-    const replacement = text.trim().match(/^(?:mejor\s+)?cambia\s+(?:esa|esas|la|las)\s+bebidas?\s+por\s+(.+?)[.!]?$/i);
+    if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement) return false;
+    const normalized = this.normalizeForMatch(text);
+    if (this.catalogService.isPriceInquiryIntent(text)) {
+      const menu = await this.catalogService.getMenuProducts();
+      const product = menu.find(item => item.id === pending.productId);
+      const reference = normalized.match(/^(?:cuanto (?:cuesta|cuestan|vale|valen)|que precio tiene) (?:esa bebida|esta bebida|la bebida|las (\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) bebidas)$/);
+      const named = product && this.catalogService.productFullyNamedIn(text, [product]);
+      if (product && this.catalogService.isLikelyDrinkProduct(product) && (reference || named) &&
+        !this.splitPriceAndOrderParts(text)) {
+        const quantity = reference?.[1] ? this.catalogService.extractQuantityFromSegment(`${reference[1]} unidades`) : 1;
+        await this.reply(conv, waId, `*${product.name}*: ${this.catalogService.formatMoney(product.price)} por unidad.` +
+          (quantity > 1 ? ` Para ${quantity} unidades: ${this.catalogService.formatMoney(product.price * quantity)}, antes de domicilio.` : '') +
+          '\nEl pedido sigue igual.\n\n' + this.formatPendingPurchaseReminder(session));
+        return true;
+      }
+    }
+    if (/[¿?]/.test(text)) return false;
+    const replacement = text.trim().match(/^(?:mejor\s+)?(?:cambia|me cambias|reemplaza)\s+(?:esa|esas|la|las)\s+bebidas?\s+por\s+(.+?)[.!]?$/i) ||
+      text.trim().match(/^en lugar de (?:esa|esas|la|las) bebidas? (?:quiero|dame) (.+?)[.!]?$/i);
     if (replacement) {
       const menu = await this.catalogService.getMenuProducts();
       const original = menu.find(product => product.id === pending.productId);
