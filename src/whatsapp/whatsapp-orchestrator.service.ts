@@ -16112,32 +16112,72 @@ export class WhatsappOrchestratorService {
     return finish(next, `Listo, agregué *${addon.name}* ×${units}${scopeNote} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅`);
   }
 
-  /** "Quita uno" / "agrega otro" with a single dish line: one unit less or more of that line. */
+  /**
+   * "Quita uno" / "agrega otro", optionally scoped to a line ("quita una de mora",
+   * "otra hamburguesa más", "una de coco menos"): one unit less or more of that line.
+   */
   private async tryHandleSingleLineQuantityNudge(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
-    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 40 ||
+    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 60 ||
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     const q = this.normalizeForMatch(text).replace(/^(?:(?:y|ah|porfa|por favor)\s+)+/, '').replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
-    const less = /^(?:quita(?:me|le)?|saca(?:me|le)?|quitar|sacar|elimina) (?:uno|una)$|^(?:uno|una) menos$/.test(q);
-    const more = /^(?:agrega(?:me|le)?|pon(?:me|le)?|suma(?:me|le)?|anade(?:me|le)?|dame|echa(?:me|le)) (?:otro|otra|uno mas|una mas)$|^(?:otro|otra|uno|una) mas$|^(?:otro|otra)(?: igual| del mismo| de lo mismo)?$/.test(q);
-    if (!less && !more) return false;
+    const ref = String.raw`(?:\s+(?:de\s+)?(?:(?:la|el|los|las)\s+)?([a-zñ]+(?:\s+[a-zñ]+){0,3}?))?`;
+    const lessForms = [
+      new RegExp(String.raw`^(?:quita(?:me|le)?|saca(?:me|le)?|quitar|sacar|elimina|resta(?:le)?|baja(?:le)?) (?:uno|una|un)${ref}$`),
+      new RegExp(String.raw`^(?:uno|una|un)${ref} menos$`),
+      new RegExp(String.raw`^(?:uno|una) menos${ref}$`),
+    ];
+    const moreForms = [
+      new RegExp(String.raw`^(?:agrega(?:me|le)?|pon(?:me|le)?|suma(?:me|le)?|anade(?:me|le)?|dame|echa(?:me|le)) (?:otro|otra|uno mas|una mas)${ref}$`),
+      new RegExp(String.raw`^(?:otro|otra|uno|una)${ref} mas$`),
+      /^(?:otro|otra)(?: igual| del mismo| de lo mismo)?$/,
+    ];
+    const lessHit = lessForms.map(form => q.match(form)).find(Boolean);
+    const moreHit = lessHit ? null : moreForms.map(form => q.match(form)).find(Boolean);
+    if (!lessHit && !moreHit) return false;
+    const less = !!lessHit;
+    const more = !less;
+    const said = ((lessHit || moreHit)?.[1] || '').trim();
+    const stem = (word: string) => word.replace(/(?:es|s)$/, '');
+    const words = said.split(' ').filter(word => word && !['de', 'con', 'la', 'el', 'los', 'las'].includes(word)).map(stem);
     const dishes = session.cart.flatMap((line, index) => line.note?.startsWith('para ') ? [] : [index]);
-    if (dishes.length !== 1) return false;
-    const index = dishes[0];
+    const labelOf = (line: WhatsappCartItem) => `${line.name}${line.attributes?.length ? ` (${line.attributes.map(attr => attr.attributeValue).join(', ')})` : ''}`;
+    const scoped = words.length ? dishes.filter(index => {
+      const label = this.normalizeForMatch(labelOf(session.cart[index])).split(' ').map(stem);
+      return words.every(word => label.some(part => part.startsWith(word) && word.length >= Math.min(3, part.length)));
+    }) : dishes;
+    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
+    if (!scoped.length) {
+      if (more) return false;
+      const product = this.catalogService.productWhoseHeadWasSpoken(said, await this.catalogService.getMenuProducts()) ||
+        this.catalogService.searchByNameScored(said, await this.catalogService.getMenuProducts(), 1).find(hit => hit.score >= 60)?.p;
+      if (!product) return false;
+      await this.reply(conv, waId, `No tienes *${product.name}* en el pedido. El pedido sigue igual.\n\n${reminder(session)}`);
+      return true;
+    }
+    if (scoped.length > 1) {
+      const options = scoped.map(index => `• *${labelOf(session.cart[index])}* ×${Math.max(1, session.cart[index].quantity || 1)}`).join('\n');
+      await this.reply(conv, waId, `¿De cuál ${less ? 'quito' : 'agrego'} una unidad?\n${options}\n\nEscribe el plato con la instrucción, por ejemplo *${less ? 'quita una de' : 'otra de'} ${this.normalizeForMatch(session.cart[scoped[0]].name).split(' ').slice(-1)[0]}*. El pedido sigue igual.`);
+      return true;
+    }
+    const index = scoped[0];
     const line = session.cart[index];
     // Add-ons bought per unit of this line would no longer match its quantity.
     if (session.cart.some(other => other !== line && other.note?.startsWith('para ') && other.note.includes(line.name))) return false;
     const quantity = Math.max(1, line.quantity || 1);
-    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
-    if (less && quantity <= 1) {
+    if (less && quantity <= 1 && dishes.length === 1) {
       await this.reply(conv, waId, `Solo queda *${line.name}* ×1. Si quieres quitarlo, escribe *quitar ${line.name}*. El pedido sigue igual.\n\n${reminder(session)}`);
       return true;
     }
-    const next = { ...session, cart: session.cart.map((row, i) => i === index ? { ...row, quantity: quantity + (more ? 1 : -1) } : row) };
+    const dropped = less && quantity <= 1;
+    const next = { ...session, cart: dropped
+      ? session.cart.filter((_, i) => i !== index)
+      : session.cart.map((row, i) => i === index ? { ...row, quantity: quantity + (more ? 1 : -1) } : row) };
     await this.conversationService.saveSession(conv, next);
     const fee = this.deliveryFeeFor(next, cfg);
-    const lead = `Listo, ahora llevas *${line.name}* ×${next.cart[index].quantity} ✅`;
+    const shown = dishes.some(other => other !== index && session.cart[other].name === line.name) ? labelOf(line) : line.name;
+    const lead = dropped ? `Listo, quité *${shown}* del pedido ✅` : `Listo, ahora llevas *${shown}* ×${next.cart[index].quantity} ✅`;
     await this.reply(conv, waId, conv.state === 'awaiting_final_confirm'
       ? `${lead}\n\n${this.formatOrderSummary(conv, next, fee, cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`
       : `${lead}\n\n${this.formatCartOnly(next, fee)}\n\n${reminder(next)}`);
