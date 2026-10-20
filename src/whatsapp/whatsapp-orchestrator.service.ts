@@ -8300,11 +8300,30 @@ export class WhatsappOrchestratorService {
   ): Promise<boolean> {
     const pending = session.pendingAttribute;
     if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement) return false;
+    let selectedAlternative: MenuProduct | undefined;
     if (pending.alternativeProductIds?.length) {
       const menu = await this.catalogService.getMenuProducts();
-      const named = menu.filter(item => pending.alternativeProductIds!.includes(item.id) && item.availableNow !== false &&
-        this.normalizeForMatch(item.name) === this.normalizeForMatch(text));
-      if (named.length === 1) text = `cambia esas bebidas por ${named[0].name}`;
+      const offered = menu.filter(item => pending.alternativeProductIds!.includes(item.id));
+      const query = this.normalizeForMatch(text).replace(/^(?:el|la) /, '');
+      const code = text.trim().match(/^(?:#|c[oó]digo\s*#?)\s*(\d+)$/i);
+      const named = offered.filter(item => code ? item.code === Number(code[1]) :
+        query.length >= 2 && (this.normalizeForMatch(item.name) === query || this.normalizeForMatch(item.name).startsWith(query + ' ')));
+      if (named.length > 1) {
+        await this.reply(conv, waId, 'Hay varias alternativas con ese nombre. ¿Cuál quieres? Escribe su código con #.\n' +
+          named.map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}${item.availableNow === false ? ' · agotada' : ''}`).join('\n') +
+          '\nConservo la bebida pendiente y el carrito.');
+        return true;
+      }
+      if (named.length === 1) {
+        if (named[0].availableNow === false) {
+          await this.reply(conv, waId, `${named[0].name} ya no está disponible. Conservo la bebida pendiente y el carrito.\n` +
+            offered.filter(item => item.availableNow !== false).map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}`).join('\n') +
+            '\nElige otra por nombre o código con #.');
+          return true;
+        }
+        selectedAlternative = named[0];
+        text = `cambia esas bebidas por ${named[0].name}`;
+      }
     }
     const normalized = this.normalizeForMatch(text);
     const vagueReplacement = /^(?:mejor (?:la otra|otra) bebida|(?:cambia|reemplaza) (?:esas|las) bebidas por otra)$/.test(normalized);
@@ -8353,10 +8372,10 @@ export class WhatsappOrchestratorService {
       const original = menu.find(product => product.id === pending.productId);
       if (!original || !this.catalogService.isLikelyDrinkProduct(original)) return false;
       const source = `quiero ${replacement[1]}`;
-      const resolved = this.catalogService.resolveStandaloneDrinkOrder(source, menu);
+      const resolved = selectedAlternative ? { product: selectedAlternative, attributes: [] } : this.catalogService.resolveStandaloneDrinkOrder(source, menu);
       const candidates = menu.filter(product => product.availableNow !== false && this.catalogService.isLikelyDrinkProduct(product) &&
         this.catalogService.productFullyNamedIn(source, [product]));
-      if (!resolved || resolved.product.availableNow === false || candidates.length !== 1 || candidates[0].id !== resolved.product.id) {
+      if (!resolved || resolved.product.availableNow === false || (!selectedAlternative && (candidates.length !== 1 || candidates[0].id !== resolved.product.id))) {
         await this.reply(conv, waId, 'No pude identificar una única bebida disponible para ese cambio. Conservo la selección pendiente y el carrito.\n\n' + this.formatPendingPurchaseReminder(session));
         return true;
       }

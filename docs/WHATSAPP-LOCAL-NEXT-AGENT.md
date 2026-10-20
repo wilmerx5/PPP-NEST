@@ -1,3 +1,16 @@
+## VIGENTE — identidad y disponibilidad de alternativas (20/10, tanda 55)
+
+Base c9dacf1d. Nueva suite whatsapp-pending-drink-alternative-identity.spec.ts: 36 casos en tres menús, agente simulado on/off. Nombre corto único, prefijo ambiguo, nombres duplicados, alternativa agotada antes de elegir por nombre completo/corto y duplicado con una opción agotada. Todos completan DTO simulado: plato previo, dos bebidas sin hielo, código correcto y datos de checkout; no se añade ni sustituye nada mientras hay ambigüedad o el producto está agotado. El catálogo cambia availableNow después de mostrar alternativas, no antes.
+
+Baseline 36/36 fallaban: nombre corto no completaba, respuestas ambiguas/agotadas podían caer a adición independiente, y faltaba selección por código dentro del conjunto ofrecido. Corrección general: resolver solo IDs ofrecidos; nombre exacto o prefijo completo de palabras (mínimo dos caracteres), código explícito #/código. No filtrar agotados antes de detectar duplicados: no elegir arbitrariamente el hermano disponible. Con varios candidatos, mostrar nombres/códigos/precios y agotamiento; con uno agotado, conservar pendiente y ofrecer disponibles. La selección por código conserva identidad del producto en vez de volver a resolver su nombre duplicado. Reutiliza validación de disponibilidad, horario, cantidad, nota y atributos del reemplazo existente. No usa productos/IDs PPP como excepciones.
+
+Validación: 210 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12766 pruebas / 139 suites, cero fallos/reintentos; inventario exacto y 435 hashes intactos. Evidencia whatsapp-alternative-identity-validation-2010.json.
+
+Publicar únicamente staging; despliegue diferido para agrupar con siguiente tanda. Runtime acreditado sigue 6bba0c4e (53–54). Main intacto; cero API pagada, WhatsApp y órdenes externas.
+
+Siguiente: alternativa retirada del catálogo (distinta de agotada), código no ofrecido/inexistente, precio o disponibilidad de alternativa recién listada, nombre abreviado que coincide con sabor del producto original y repetición del reemplazo. Esta tanda prueba abreviación por prefijo, no siglas/typos/arbitrariedad semántica. No acredita todos los menús ni inferencia real: checkout sembrado y servicios/modelo simulados. Mantener muestra reservada real y trazabilidad antes de declarar piloto/venta. No reconstruir por documentación ni tocar producción sin solicitud.
+
+
 ## VIGENTE — alternativas ambiguas y consultas durante sabor (20/10, tanda 54)
 
 Despliegue agrupado 53–54 verificado 2026-10-20T20:35:43.534Z: staging 6bba0c4eac1586a2381ac852218bed9f42191c4f, imagen aa581ba8a064a707f12eb80b5a268499d2ad5de9d10ee640f9f8efbe962c2d78, running/healthy, cero reinicios, /api/health OK, DB connected y circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-6bba0c4e; bin/ privado, bases y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.

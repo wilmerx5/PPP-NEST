@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 55
+
+36 casos nuevos: nombres cortos únicos/ambiguos, duplicados y agotamiento después de ofrecer alternativas. Validación: 210 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12766 pruebas / 139 suites, cero fallos/reintentos; inventario exacto y 435 hashes intactos. Evidencia whatsapp-alternative-identity-validation-2010.json.
+
+Publicar solo staging; despliegue diferido para agrupar. Runtime sigue 6bba0c4e. Siguiente: productos retirados, códigos no ofrecidos y consultas de alternativas. Pruebas simuladas; no acredita precisión real ni venta autónoma. Main intacto, cero llamadas pagadas.
+
 ## Estado vigente — 20/10, tanda 54
 
 Despliegue agrupado 53–54 verificado 2026-10-20T20:35:43.534Z: staging 6bba0c4eac1586a2381ac852218bed9f42191c4f, imagen aa581ba8a064a707f12eb80b5a268499d2ad5de9d10ee640f9f8efbe962c2d78, running/healthy, cero reinicios, /api/health OK, DB connected y circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-6bba0c4e; bin/ privado, bases y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.
