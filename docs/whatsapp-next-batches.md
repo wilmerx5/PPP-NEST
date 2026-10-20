@@ -1,3 +1,15 @@
+## VIGENTE — información útil de bebida genérica, sin inventar gaseosa (20/10, tanda 48)
+
+Base caa094de. El usuario repitió «que arroces tiene» → «vienen con gaseosa?» en staging: la respuesta era cautelosa, pero ocultaba que tres combos incluían bebida 1.5L. Esta tanda prioriza ese nuevo ejemplo; la continuación de aclaraciones condicionales sigue pendiente.
+
+32 pruebas nuevas: 24 con arroz/pizza/bowl, agente on/off, catálogo abierto o pago pendiente, dos volúmenes; seis negativos sin bebida/opcional con costo/sin evidencia; dos recorridos con el fixture completo PPP («que arroces tiene» → pregunta → código 94 → Colombiana). Verifican nombres/códigos/descripción, carrito intacto al preguntar, estado, lista original conservada y producto correcto después. Baseline: 24 fallos de respuesta y seis negativos verdes. En los dos recorridos PPP la primera aserción asumía adición inmediata, pero #94 abre legítimamente la opción Bebida: se ajustó el test para responder Colombiana; no se parcheó runtime para evitar esa selección.
+
+Cambio general: si el tipo solicitado no está confirmado pero sí hay evidencia de bebida incluida, se muestra primero ese dato con nombre, código, precio y descripción del catálogo (conserva volumen). No afirma que sea gaseosa ni recomienda comprarla aparte por falta de precisión. Mantiene la lista previa; usa #código, no una segunda numeración. La regla condicional no se relaja: desconocido no autoriza compra. No hay excepciones por productos PPP.
+
+Validación: 214 focalizados, TypeScript y build TypeScript, 92 Node. Global congelada: 80 ráfagas + 12.370 resto = 12.450 / 134 suites, cero fallos/reintentos; 430 hashes intactos e inventario exacto. Tiempos 110,627s + 368,788s. Evidencia whatsapp-generic-drink-validation-2010.json. No se modificó fuente/tests después de global. Cero API pagada/WhatsApp/órdenes externas. Publicar/desplegar solo staging; comprobar anotación posterior de deploy. Main intacto.
+
+Siguiente: retomar aclaración de bebida condicional («dame una» → «la de 1.5L» → sabor), cantidades y notas conservadas, consulta intermedia, cancelación, pago y DTO; frases sin puntuación. El despliegue saludable no acredita precisión real del modelo: mantener muestra reservada y matriz chat→test→commit→runtime. Esta tanda es de respuesta/contexto; no acredita todas las aclaraciones ni venta autónoma.
+
 ## VIGENTE — bebida condicional sin perder checkout (20/10, tanda 47)
 
 Base fa78a1ee. 48 casos nuevos gratuitos, router real y servicios externos simulados: tres menús, agente on/off, bebida incluida/excluida/desconocida, pago/confirmación. 36 recorridos hasta DTO con mismas unidades/notas y pago numérico después de la interrupción. Doce contrastes: cantidad dos, ya incluida, carrito mixto, agotada, tamaño ambiguo y local cerrado.

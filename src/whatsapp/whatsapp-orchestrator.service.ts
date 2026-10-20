@@ -11884,11 +11884,22 @@ export class WhatsappOrchestratorService {
     const withItem = context.filter(includes);
     const without = context.filter(product => drinkInclusion(product,item) === 'no');
     const uncertain = context.filter(product => drinkInclusion(product,item) === 'unknown');
+    // Preserve useful generic evidence without claiming that a beverage is soda.
+    // Use catalogue codes, not a new numbered list that would change the pending choice.
+    const genericDrinks = uncertain.filter(product => drinkInclusion(product, 'bebida') === 'yes');
+    const unknownDetails = uncertain.filter(product => !genericDrinks.some(known => known.id === product.id));
+    const genericDrinkLines = genericDrinks.length ? [
+      `No tengo confirmado si esa bebida es ${item}. La carta sí indica bebida incluida:`,
+      ...genericDrinks.flatMap(product => [
+        `*${product.name}* · #${product.code} · ${this.catalogService.formatMoney(product.price)}`,
+        ...(product.description ? [`_${product.description}_`] : []),
+      ]),
+    ] : [];
     if (checkout || conditional) {
-      const lines: string[] = [];
+      const lines: string[] = [...genericDrinkLines];
       if (withItem.length) lines.push(`Sí ${withItem.length === 1 ? 'trae' : 'traen'} ${item}: ${withItem.map(product => `*${product.name}*`).join(', ')}.`);
       if (without.length) lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
-      if (uncertain.length) lines.push(`No tengo confirmado si incluye ${item}: ${uncertain.map(product => `*${product.name}*`).join(', ')}.`);
+      if (unknownDetails.length) lines.push(`No tengo confirmado si incluye ${item}: ${unknownDetails.map(product => `*${product.name}*`).join(', ')}.`);
       let changed = false;
       if (conditional) {
         if (uncertain.length || (withItem.length && without.length)) {
@@ -11934,11 +11945,11 @@ export class WhatsappOrchestratorService {
     const variants = products.filter(product => product.availableNow !== false && !contextIds.has(product.id) && includes(product) &&
       [...without,...uncertain].some(base => (` ${this.normalizeForMatch(product.name)} `).includes(` ${this.normalizeForMatch(base.name)} `)));
     const offers = [...withItem, ...variants].slice(0, 6);
-    const lines: string[] = [];
+    const lines: string[] = [...genericDrinkLines];
     if (without.length) {
       lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
     }
-    if (uncertain.length) lines.push(`No tengo confirmado si incluye ${item}: ${uncertain.map(product=>`*${product.name}*`).join(', ')}.`);
+    if (unknownDetails.length) lines.push(`No tengo confirmado si incluye ${item}: ${unknownDetails.map(product=>`*${product.name}*`).join(', ')}.`);
     if (offers.length) {
       if (lines.length) lines.push('');
       lines.push(without.length || uncertain.length ? `Con ${item} ${offers.length === 1 ? 'viene' : 'vienen'}:` : `Sí ${offers.length === 1 ? 'trae' : 'traen'} ${item}:`);
@@ -11957,7 +11968,7 @@ export class WhatsappOrchestratorService {
         },
       };
       await this.conversationService.saveSession(conv, session);
-    } else {
+    } else if (!genericDrinks.length) {
       lines.push(`Si quieres, pide ${itemArticle} ${item} aparte.`);
     }
     await this.reply(conv, waId, lines.join('\n'));
