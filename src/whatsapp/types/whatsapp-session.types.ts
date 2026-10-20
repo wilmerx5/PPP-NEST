@@ -126,6 +126,8 @@ export type WhatsappSessionData = {
   recentImageCartSignature?: string;
   /** Resume the interrupted checkout field after a catalog purchase or replacement. */
   pendingCheckoutResume?: 'awaiting_address' | 'awaiting_name' | 'awaiting_phone' | 'awaiting_payment' | 'awaiting_final_confirm';
+  /** Explicit contact details captured while a checkout purchase choice was open. */
+  pendingCheckoutDetailsCaptured?: boolean;
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;

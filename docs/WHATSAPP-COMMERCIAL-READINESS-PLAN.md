@@ -1,3 +1,9 @@
+## Estado vigente — 20/10, tanda 51
+
+54 casos nuevos en tres menús: cambio de bebida durante sabor pendiente y captura anticipada de nombre/teléfono/dirección; preservan unidades, notas y orden simulada. Global final congelada: 12610 pruebas / 137 suites, cero fallos, inventario exacto y 433 hashes intactos. 92 controles Node aprobados. Segunda global tras corregir la regresión; no un reintento sin cambios. Evidencia whatsapp-pending-drink-interruptions-validation-2010.json.
+
+Publicar solo staging; despliegue diferido para agrupar, runtime sigue e893e3ca. Próximo: datos y sabor en una frase, correcciones de datos, formulaciones variadas y recorridos desde saludo. Piloto aún requiere muestra reservada real, costo/latencia y trazabilidad. Cero API pagada/WhatsApp/órdenes externas; Main intacto.
+
 ## Estado vigente — 20/10, tanda 50
 
 Se validaron selección de sabor, reducción/cancelación y retorno a nombre/teléfono/dirección en tres menús. Validación: 66 nuevos + 246 relacionados = 312 focalizados, TypeScript/build TypeScript, 92 Node y diff check. Global congelada: 80 ráfagas + 12476 resto = 12556 / 136 suites, cero fallos/reintentos, inventario exacto y 432 hashes intactos. Tiempos [109.723, 361.031]. Evidencia whatsapp-conditional-flavor-validation-2010.json. No se cambió fuente/tests después de global.

@@ -1339,7 +1339,7 @@ export class WhatsappCatalogService {
     }
 
     const digitMatch = q.match(
-      /\b(\d{1,2})\s*(?:de\s+)?(pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)?\b/,
+      /\b(\d{1,2})\s*(?:de\s+)?(pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|tes?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)?\b/,
     );
     if (digitMatch?.[1]) {
       const n = parseInt(digitMatch[1], 10);
@@ -1364,7 +1364,7 @@ export class WhatsappCatalogService {
     for (const [word, n] of Object.entries(wordMap)) {
       if (n < 2) continue;
       const re = new RegExp(
-        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)\\b`,
+        `\\b${word}\\s+(?:de\\s+)?(?:pollos?|sopas?|bandejas?|platos?|unidades?|porciones?|combos?|arepas?|gaseosas?|jugos?|tes?|limonadas?|carnes?|mojarras?|churrascos?|ejecutivos?|almuerzos?|platanos?|broaster|fritos?)\\b`,
       );
       if (re.test(q)) return n;
     }
@@ -4137,7 +4137,7 @@ export class WhatsappCatalogService {
     if (/^(?:bebidas?|gaseosas?|jugos?|zumos?|infusiones|tes|refrescos?)(?:\s|$)/.test(category)) return true;
     // A main dish that includes a drink in its description is still food.
     const hay = normalizeText(`${product.name} ${product.categoryName || ''}`);
-    return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon|colombiana|tea|pola)\b/.test(
+    return /\b(gaseosa|bebida|jugo|limonada|malta|coca|sprite|pepsi|cerveza|agua|refresco|hit|postobon|colombiana|tea|te|pola)\b/.test(
       hay,
     );
   }

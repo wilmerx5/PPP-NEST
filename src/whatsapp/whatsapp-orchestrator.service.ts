@@ -594,11 +594,19 @@ export class WhatsappOrchestratorService {
         if (!held?.some(body => body.includes(question))) await this.reply(conv,msg.waId,question);
         return;
       }
-      if (session.pendingCheckoutResume && !conv.humanTakeover &&
+      if ((session.pendingCheckoutResume || session.pendingCheckoutDetailsCaptured) && !conv.humanTakeover &&
           !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
-        const resumeState = session.pendingCheckoutResume;
-        session = { ...session, pendingCheckoutResume: undefined };
+        const resumeState = session.pendingCheckoutResume || conv.state;
+        const supplied = session.pendingCheckoutDetailsCaptured;
+        session = { ...session, pendingCheckoutResume: undefined, pendingCheckoutDetailsCaptured: undefined };
         await this.conversationService.saveSession(conv, session, resumeState);
+        if (supplied) {
+          const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
+          if (this.outboundHoldByWaId.has(key)) this.outboundHoldByWaId.set(key, []);
+          await this.conversationService.saveSession(conv, session, 'building_cart');
+          await this.tryConfirmOrder(conv, msg.waId, session);
+          return;
+        }
         if (JSON.stringify(session.cart) !== turn.initialCart) {
           const cfg = await this.settingsService.getEffectiveConfig();
           const key = (msg.waId || msg.phoneE164 || 'unknown').trim() || 'unknown';
@@ -1676,6 +1684,7 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryHandlePendingCheckoutInterruption(conv, msg.waId, session, originalText, cfg)) return;
     if (session.cart.length && session.orderType !== 'pickup' && !session.address?.trim() &&
         !/[¿?]/.test(originalText) && this.looksLikeUnitOrTowerDetailOnly(originalText)) {
       session = { ...session, pendingDeliveryUnit: this.normalizeUnitDetailText(originalText),
@@ -8285,10 +8294,79 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
-  /**
-   * Lista de productos pendiente: número de fila (1, 2…) o código del menú (cód. 28).
-   */
-  /** Match a volume only within the pending choices; never treat ml/l as a menu code. */
+  /** Contact details and an explicit replacement can interrupt a checkout purchase choice. */
+  private async tryHandlePendingCheckoutInterruption(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingAttribute;
+    if (!pending || !session.pendingCheckoutResume || session.pendingMultiOrder || pending.replacement || /[¿?]/.test(text)) return false;
+    const replacement = text.trim().match(/^(?:mejor\s+)?cambia\s+(?:esa|esas|la|las)\s+bebidas?\s+por\s+(.+?)[.!]?$/i);
+    if (replacement) {
+      const menu = await this.catalogService.getMenuProducts();
+      const original = menu.find(product => product.id === pending.productId);
+      if (!original || !this.catalogService.isLikelyDrinkProduct(original)) return false;
+      const source = `quiero ${replacement[1]}`;
+      const resolved = this.catalogService.resolveStandaloneDrinkOrder(source, menu);
+      const candidates = menu.filter(product => product.availableNow !== false && this.catalogService.isLikelyDrinkProduct(product) &&
+        this.catalogService.productFullyNamedIn(source, [product]));
+      if (!resolved || resolved.product.availableNow === false || candidates.length !== 1 || candidates[0].id !== resolved.product.id) {
+        await this.reply(conv, waId, 'No pude identificar una única bebida disponible para ese cambio. Conservo la selección pendiente y el carrito.\n\n' + this.formatPendingPurchaseReminder(session));
+        return true;
+      }
+      if (!cfg.ignoreBusinessHours && !(await this.businessService.getStatus()).isOpen) {
+        await this.reply(conv, waId, 'No pude aplicar el cambio porque el local está cerrado. Conservo la selección pendiente.\n\n' + this.formatPendingPurchaseReminder(session));
+        return true;
+      }
+      const explicitQuantity = /^(?:\d+|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/i.test(replacement[1]);
+      const quantity = explicitQuantity ? this.catalogService.extractQuantityFromSegment(source) : pending.quantity || 1;
+      const note = this.catalogService.extractProductModificationNote(source) ||
+        this.catalogService.extractProductModificationNote(pending.sourceText || '') || undefined;
+      const next: WhatsappSessionData = { ...session, pendingAttribute: undefined };
+      if (resolved.product.hasAttributes && !this.catalogService.isAttributeSelectionComplete(resolved.product, resolved.attributes)) {
+        next.pendingAttribute = { ...this.toPendingAttribute(resolved.product, { sourceText: note && !source.includes(note) ? `${source}, ${note}` : source, selected: resolved.attributes }), quantity };
+        await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+        await this.reply(conv, waId, 'Cambié la selección pendiente; falta elegir una opción.\n\n' + this.formatPendingPurchaseReminder(next));
+        return true;
+      }
+      const added = this.tryAddProductToCart(next, resolved.product, quantity, cfg, note, resolved.attributes, { sourceText: source });
+      if (added.blocked || added.missingAttributes) {
+        await this.reply(conv, waId, 'No pude aplicar ese cambio. Conservo la selección pendiente.\n\n' + this.formatPendingPurchaseReminder(session));
+        return true;
+      }
+      await this.conversationService.saveSession(conv, added.session, 'building_cart');
+      await this.reply(conv, waId, `Listo, cambié la bebida por *${resolved.product.name}* ×${quantity}.`);
+      return true;
+    }
+    const clauses = text.trim().split(/\n|;/).map(value => value.trim()).filter(Boolean);
+    let name: string | undefined, phone: string | undefined, address: string | undefined;
+    for (const clause of clauses) {
+      const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+      if (named && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) {
+        if (name) return false;
+        name = named[1].trim();
+      } else if (this.looksLikePhoneNumber(clause)) {
+        if (phone) return false;
+        phone = this.normalizeContactPhone(clause, conv.phoneE164) || undefined;
+      } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
+        if (address) return false;
+        address = clause;
+      } else return false;
+    }
+    if (!name && !phone && !address) return false;
+    let next: WhatsappSessionData = { ...session, pendingCheckoutDetailsCaptured: true };
+    if (name) {
+      await this.conversationService.updateCustomerName(conv, name);
+      Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+    }
+    if (phone) next = { ...next, contactPhone: phone, phoneConfirmed: true };
+    if (address) next = this.withDeliveryAddress({ ...next, address: undefined, addressConfirmed: false }, address);
+    await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+    await this.reply(conv, waId, ['Anoté tus datos:', name ? `Nombre: ${name}` : '', phone ? `Teléfono: ${phone}` : '', address ? `Dirección: ${next.address}` : '',
+      '\nFalta terminar la selección del producto.', this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
+    return true;
+  }
+
+  /** Match a volume only within pending choices; never treat ml/l as a menu code. */
   private pendingVolumeValue(text: string): number | null {
     const flat = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, '').trim();
     const size = flat.match(/^(?:(?:cuanto (?:cuesta|vale)|que (?:precio|valor) tiene)\s+)?(?:(?:el|la|los|las)\s+)?(?:de\s+)?(\d+(?:[.,]\d+)?)\s*(ml|mililitros?|l|litros?)(?:\s+por favor)?[.!]?$/);
