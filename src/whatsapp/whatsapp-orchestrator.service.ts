@@ -5768,6 +5768,29 @@ export class WhatsappOrchestratorService {
       }
     }
 
+    // "¿cuánto vale la bandeja?" → "2": two of the dish just quoted, not the product with code 2.
+    const bareQuantity = (() => {
+      const words: Record<string, number> = { una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+      const said = this.normalizeForMatch(text).replace(/\s+(?:porfa|por\s+favor|pls|plis)$/, '').trim();
+      const value = /^\d{1,2}$/.test(said) ? Number(said) : words[said];
+      return value && value >= 1 && value <= 20 ? value : 0;
+    })();
+    const quotedFocus = session.pendingAddOffer && !((session.pendingAddOffer.productIds?.length || 0) > 1)
+      ? products.find(product => product.id === session.pendingAddOffer!.productId)
+      : !session.cart.length && session.productFocus
+        ? products.find(product => product.id === session.productFocus!.productId)
+        : undefined;
+    if (bareQuantity && quotedFocus && quotedFocus.availableNow !== false &&
+      !['awaiting_name', 'awaiting_phone', 'awaiting_address', 'awaiting_payment', 'awaiting_final_confirm', 'awaiting_attribute'].includes(conv.state) &&
+      !session.pendingMatch?.candidates?.length && !session.pendingAttribute && !session.pendingCategoryBrowse?.categories?.length &&
+      !session.pendingCartRemoval && !session.pendingCartQuantity && !session.pendingMultiOrder &&
+      (bareQuantity !== Number(text.trim()) || Number(quotedFocus.code) !== bareQuantity || bareQuantity > 1)) {
+      if (!session.pendingAddOffer) {
+        await this.savePendingAddOffer(conv, quotedFocus, bareQuantity, { sourceText: `${bareQuantity} ${quotedFocus.name}` });
+        session = this.conversationService.getSession(conv);
+      } else session = { ...session, pendingAddOffer: { ...session.pendingAddOffer, quantity: bareQuantity } };
+      if (await this.tryHandlePendingAddOffer(conv, msg.waId, session, 'sí', products, cfg)) return;
+    }
     const codeRaw = this.catalogService.extractCodeFromMessage(text);
     // "1" suelto con carrito ≠ código #1 (suele ser qty “una” tras “¿una o dos?”)
     const bareSingleDigit = /^\d$/.test(text.trim());
@@ -8259,6 +8282,7 @@ export class WhatsappOrchestratorService {
     const bareNum = this.catalogService.extractListPickNumber(text);
     let chosenLite: (typeof pending.candidates)[number] | null = null;
     let describedAcceptance = false;
+    let quotedQuantity = 0;
 
     // Número de fila (1, 2…) vs código de menú (ej. cód. 99 en lista de 9)
     const listOrCode = resolvePendingListOrMenuCode({
@@ -8270,6 +8294,14 @@ export class WhatsappOrchestratorService {
     } else if (listOrCode === 'menu_code' && bareNum != null) {
       chosenLite =
         pending.candidates.find((c) => Number(c.code) === bareNum) ?? null;
+    }
+    // A one-option list is a quoted dish: "2" is its quantity, not row 2 or code 2.
+    if (!chosenLite && pending.candidates.length === 1 && bareNum != null && /^\d{1,2}$/.test(trimmed) &&
+      bareNum >= 2 && bareNum <= 20 && !pending.replacement) {
+      chosenLite = pending.candidates[0];
+      pending.quantity = bareNum;
+      pending.intent = 'order';
+      quotedQuantity = bareNum;
     }
 
     if (!chosenLite) {
@@ -8418,7 +8450,7 @@ export class WhatsappOrchestratorService {
     };
     // Si eligieron por número de lista, no guardar "3" como sourceText (infla qty en attrs).
     // El sabor dicho antes ("jugo de lulo" y luego "en leche") sigue en la consulta.
-    const followUp = usedAsListIndex ? chosen.name : text;
+    const followUp = quotedQuantity ? `${quotedQuantity} ${chosen.name}` : usedAsListIndex ? chosen.name : text;
     const attrSourceText = this.catalogService.utteranceNamesProductFlavor(chosen, pending.query || '') ||
       !!this.catalogService.extractExplicitAttributeChoice(pending.query || '', chosen)?.length
       ? `${pending.query}. ${followUp}`
@@ -22995,7 +23027,10 @@ export class WhatsappOrchestratorService {
     if (product.hasAttributes && product.attributes?.length) {
       session = { ...session, pendingAddOffer: undefined };
       // Usar el texto de la cotización (menudencias / en salsa), no el "sí"
-      if (await this.handleProductWithVariants(conv, waId, session, product, sizeSource, cfg)) {
+      const variantSource = (offer.quantity || 1) >= 2 && this.catalogService.extractQuantityFromMessage(sizeSource) < 2
+        ? `${offer.quantity} ${product.name}. ${sizeSource}`
+        : sizeSource;
+      if (await this.handleProductWithVariants(conv, waId, session, product, variantSource, cfg)) {
         return true;
       }
     }
