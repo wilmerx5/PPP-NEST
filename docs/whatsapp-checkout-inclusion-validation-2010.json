@@ -8,7 +8,7 @@
     "unnamedWrongOffMenuResponses": 18,
     "note": "Named queries returned descriptions; exact response assertions are not all cart defects."
   },
-  "focusedUniquePassed": 149,
+  "focusedUniquePassed": 155,
   "typescript": true,
   "buildTypescript": true,
   "nodePassed": 92,
