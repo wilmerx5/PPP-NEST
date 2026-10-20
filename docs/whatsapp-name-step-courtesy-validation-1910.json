@@ -1,0 +1,69 @@
+{
+  "batch": 35,
+  "date": "2026-10-19",
+  "base": "20ec2539",
+  "commit": "1c7d309f4b023d4cb1b5346bfb1813f9b5026cc6",
+  "scope": "Name step (awaiting_name, agent name action, explicit name labels): conversational replies and dish names must not become the order name",
+  "realChatAudit": {
+    "source": "130 real customer chats of 18/10 (PDF export), replayed turn by turn through the real router with the beta menu fixture, agent off; same-minute bubbles merged like the coalescer, PDF line wraps joined. Personal data is not copied into specs or docs.",
+    "customerTurns": 656,
+    "findings": {
+      "conversationalReplyStoredAsName": "15 chats (thanks, acknowledgements, complaints, payment questions, a dish, a removal command)",
+      "spuriousUnavailableNotice": "42 chats: greetings/courtesy/fillers in an order line produce «Por ahora no manejamos: …» (some lose the whole order: «Arroz paisa / Buenas noches», «medio pollo frito / Pirfa»)",
+      "pendingChoiceLostWhenAddressArrives": "11 chats: address (alone or with the option word) during an open option drops the pending dish",
+      "orderNumberLookupLoop": "6 chats: once the bot asks for an order number, later orders, addresses and thanks keep getting the same request",
+      "staleUnavailableReplyRepeated": "6 chats: the previous «No tenemos esos productos…» reply is repeated for unrelated messages",
+      "noResuelvoForStatusOrEta": "17 chats: «ya salió?», «se demoran?», «ya casi está?» answered «Eso no lo resuelvo por este chat»",
+      "priceQuestionAsksWhichProduct": "4 chats: «cuánto es?» with several lines asks which product instead of the total",
+      "addressAbsorbsPaymentOrCourtesyWords": "about 15 chats: «; Para», «; Te», «Ok com datáfono…», option word or «Si por favor»/«Listo muchas gracias» inside the address",
+      "comboHandling": "about 10 chats: «combo de arroz chino» picks one combo silently, «en combo» after a dish is lost, the combo drink becomes a separate soda, «combo mixto» not found, «sin combo» ignored",
+      "quantityFromDrinkName": "1 chat: «gaseosa 7 up» set quantity 7 on the dish"
+    }
+  },
+  "baselineFindings": [
+    "awaiting_name: «Ok gracia», «Dale, muchas gracias», «Listo, muchas gracias», «Ah dale gracia», «Vale te encargo», «Nada que llega», «Ok ya reci», «Pregunta le pago al mensajero…», «Y me puedes enviar salsas», «Por favor bien caliente y con salsas», «Te recomiendo por fa» were stored as the customer name and the order moved to payment",
+    "«A nombre de» alone stored the name «de»",
+    "A dish of the menu typed at the name question («jugo de lulo») became the customer name"
+  ],
+  "fix": "isUsableWhatsappCustomerName rejects text containing words a personal name never carries (courtesy, acknowledgements, clitic pronouns, checkout verbs such as pago/encargo/quedo/llega/quita, fillers and connectors such as con/sin/por/para/que, «nombre», misspelled «gracias») and text made only of connectors (de/del/la/los/el/y). Articles inside names («María de los Ángeles», «José del Carmen») and the name «Gracia» stay valid. The awaiting_name branch also rejects a reply whose words all belong to one catalog product including its head noun. The same predicate guards the agent name action, explicit name labels, compound parsing and linked/profile names.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-name-step-courtesy.spec.ts",
+    "count": 138,
+    "menus": ["grill + juice", "regional + empanada", "pizzeria + shake"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["16 conversational replies at the name question", "catalog dish name at the name question"],
+    "contrasts": ["5 real names incl. connectors and «Gracia»", "courtesy first, real name after"],
+    "baselineWithoutFix": "108/138 failed"
+  },
+  "realChatReplayAfterFix": "conversational replies stored as name: 15 -> 0",
+  "knownGaps": [
+    "«A nombre de» alone now re-asks the name; it does not prompt for the rest of the phrase",
+    "The other real-chat findings above remain for the next batches"
+  ],
+  "validation": {
+    "focused": "837/837 (13 suites: new spec, chat-regressions, compound-parse, checkout-envelope, customer-name-change, model-guard-contract, conversation-claim, acknowledged-checkout-edit, address-change-checkout, checkout-destination-block, named-menu-dish, named-pack-quantity, premium-regressions)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 106s",
+      "phase2Rest": "11418/11418 in 329s, 119 suites",
+      "totalSeconds": 435,
+      "totalTests": 11498,
+      "inventorySuites": 120,
+      "inventoryUnionExact": true,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "1c7d309f4b023d4cb1b5346bfb1813f9b5026cc6",
+    "image": "sha256:60c610dec647e681d7bc8e5eedb878812a4f1d6b2bec9059674a08d28867d516",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T03:57:56Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-1c7d309f (image 37bd73f7…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}
