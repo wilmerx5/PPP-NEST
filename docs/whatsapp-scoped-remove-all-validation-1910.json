@@ -1,0 +1,58 @@
+{
+  "batch": 40,
+  "date": "2026-10-20",
+  "base": "ea2f10db",
+  "commit": "45d5b2a5aac6e10287fa415dfafc9120d3e463fe",
+  "scope": "Scoped «todo» removals: «quita todo el <plato>» must remove that dish, not the whole cart; «todos los <plural>», «todo lo del <plato>», «una unidad de <plato>»",
+  "trigger": "Gap found in batch 39 while probing removal phrasings",
+  "baselineFindings": [
+    "«quita/elimina/saca/borra todo el <plato>» emptied the whole cart («vaciamos el carrito»): the clear-cart detector matched «quita todo» and ignored the dish after it (the feminine «toda la» already worked)",
+    "«quita todos los pollos» / «todas las pizzas» answered «No encontré todos los pollos en tu carrito»",
+    "«quítame todo lo del pollo» added one more chicken",
+    "«quita una unidad de/del <plato>» answered «No tienes <plato> en el pedido» («unidad» read as part of the dish name)"
+  ],
+  "fix": "looksLikeClearCartMessage: «<verbo> todo(s) el/la/los/las/lo del/de X» is not a clear-cart command unless X is the cart, order, «nuevo» or «lo que…». parseScopedCartRemoval strips «todo(s) el/los … / todo lo del» and marks the removal as all matching lines in full; «una unidad de/del X» is a one-unit removal. tryHandleScopedCartRemoval removes every matching line for an «all» removal instead of asking which one. tryHandleSingleLineQuantityNudge reads «una unidad de X» as «una de X».",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-scoped-remove-all.spec.ts",
+    "count": 108,
+    "menus": ["rotisserie (names with a leading count)", "pizzeria", "sushi"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "«quita todo», «borra todo», «quita todo el pedido», «quita todo de mi pedido», «borra todo lo que llevo», «quita todo lo del carrito», «vaciar carrito» still empty the cart",
+      "«quita todo el <plato fuera del carrito>» keeps the cart",
+      "«quita el <familia>» without «todos» does not remove two lines"
+    ],
+    "baselineWithoutFix": "60 failed / 108"
+  },
+  "validation": {
+    "focused": "972 passed (14 suites: removal, clear/cancel, cart, intents, quantity, negated requests)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 103.996 },
+      "rest": { "passed": 11880, "total": 11880, "suites": 124, "seconds": 334.316 },
+      "inventory": 125,
+      "unionEqualsInventory": true,
+      "hashes": 420,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 11960
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "45d5b2a5aac6e10287fa415dfafc9120d3e463fe",
+    "image": "sha256:9af6b17e50b113ae9753702c07b049fb148d43791acdf893c366b8cc8461886d",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T11:52:22Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-45d5b2a5 (image 9f30692f…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "«no quiero dos X» is still read as a quantity correction to 2",
+    "«no quiero cebolla» replies «¿Qué plato del pedido quieres cambiar?» instead of a note",
+    "«No encontré *todo el <plato>*» echoes «todo el» when the dish is absent (agent off)",
+    "A bare number after a non-list bot question is still read as a product code"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
