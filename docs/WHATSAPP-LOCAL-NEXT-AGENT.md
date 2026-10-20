@@ -1,3 +1,15 @@
+## VIGENTE — alternativas renombradas y códigos cambiantes (20/10, tanda 57)
+
+Base caff85d7. Nueva suite whatsapp-pending-alternative-renamed.spec.ts: 36 recorridos en tres menús sintéticos, agente simulado on/off. Cambio simultáneo de nombre y código después de ofrecer alternativas: elegir por nombre anterior/nuevo y código anterior/nuevo; colisión del alias o código anterior con otra alternativa ofrecida. Verifica respuesta, carrito, pendiente, retorno a pago y DTO único conservando plato previo, dos bebidas sin hielo, contacto y dirección.
+
+Baseline inicial 24: 12 fallos (referencias nuevas), 12 verdes (anteriores). Se añadieron 12 contrastes de colisiones. Corrección general: combinar identidad ofrecida y catálogo actual, deduplicar por ID estable; no ampliar a productos no ofrecidos. Si dos IDs coinciden, aclarar mostrando nombre/código actuales y no comprar arbitrariamente. Precio y disponibilidad siguen leyéndose del catálogo vigente. Sin excepciones PPP ni migración.
+
+Validación: 162 focalizados, TypeScript y build TypeScript, 92 Node. Global congelada: 12850 pruebas / 141 suites, cero fallos/reintentos, inventario exacto y 437 hashes intactos. Evidencia: whatsapp-alternative-renamed-validation-2010.json.
+
+Publicar solo staging; despliegue diferido para agrupar con siguiente tanda. Runtime acreditado permanece 30cffa27 (55–56); no se ha desplegado esta corrección. Main intacto. Cero llamadas pagadas, WhatsApp u órdenes externas.
+
+Siguiente tanda: listas vacías inicialmente o tras retirar todas las alternativas, cancelación tras códigos inválidos, volver al sabor original y retomar cierre. También pendientes: productos nuevos después de ofrecer, alias coincidente con sabor y recorridos desde saludo. Se acotó esta tanda a identidad cambiante para cerrar una corrección coherente. Límites: checkout sembrado, modelo/mapas/servicios simulados, nombres exactos/prefijos por palabra; no acredita cualquier redacción ni precisión real. Mantener muestra reservada real, costo/latencia y trazabilidad antes de declarar venta autónoma.
+
 ## VIGENTE — catálogo cambiante y consultas de alternativas (20/10, tanda 56)
 
 Despliegue agrupado 55–56 verificado 2026-10-20T20:58:40.916Z: staging 30cffa27c05a74a84d2b43b11b1754fa71de9df0, imagen aa0b13c19f1fef9d385a83477ae857f6decdbced27beee42cea9656cd35b2b7e, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-30cffa27; bin/ privado, bases y volúmenes preservados. El commit posterior de documentación no requiere reconstrucción.

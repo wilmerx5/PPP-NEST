@@ -8308,9 +8308,12 @@ export class WhatsappOrchestratorService {
       const reference = inquiry ? inquiry[2] : text;
       const query = this.normalizeForMatch(reference).replace(/^(?:el|la) /, '');
       const code = reference.trim().match(/^(?:#|c[oó]digo\s*#?)\s*(\d+)$/i);
-      const identities = pending.alternativeProducts || offered;
-      const named = identities.filter(item => code ? item.code === Number(code[1]) :
-        query.length >= 2 && (this.normalizeForMatch(item.name) === query || this.normalizeForMatch(item.name).startsWith(query + ' ')));
+      // Keep the offered aliases, but also accept the current catalog identity.
+      // Deduplicate by product ID: a renamed product is still one alternative.
+      const identities = [...(pending.alternativeProducts || []), ...offered];
+      const named = [...new Map(identities.filter(item => code ? item.code === Number(code[1]) :
+        query.length >= 2 && (this.normalizeForMatch(item.name) === query || this.normalizeForMatch(item.name).startsWith(query + ' ')))
+        .map(item => [item.id, item])).values()];
       const list = offered.filter(item => item.availableNow !== false).map(item => `• ${item.name} · #${item.code} · ${this.catalogService.formatMoney(item.price)}`).join('\n');
       if (code && !named.length) {
         await this.reply(conv, waId, 'Ese código no corresponde a las alternativas ofrecidas. No cambié tu pedido.\n' + list + '\nElige una por nombre o código con #.');
@@ -8320,7 +8323,7 @@ export class WhatsappOrchestratorService {
         await this.reply(conv, waId, 'Hay varias alternativas con ese nombre. ¿Cuál quieres? Escribe su código con #.\n' +
           named.map(item => {
             const current = offered.find(product => product.id === item.id);
-            return `• ${item.name} · #${item.code} · ${current ? this.catalogService.formatMoney(current.price) : 'retirada'}${current?.availableNow === false ? ' · agotada' : ''}`;
+            return `• ${current?.name || item.name} · #${current?.code ?? item.code} · ${current ? this.catalogService.formatMoney(current.price) : 'retirada'}${current?.availableNow === false ? ' · agotada' : ''}`;
           }).join('\n') + '\nConservo la bebida pendiente y el carrito.');
         return true;
       }

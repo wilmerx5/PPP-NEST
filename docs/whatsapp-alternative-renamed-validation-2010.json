@@ -1,0 +1,33 @@
+{
+  "batch": 57,
+  "base": "caff85d7",
+  "newCases": 36,
+  "baseline": {
+    "cases": 24,
+    "failed": 12,
+    "passed": 12
+  },
+  "additionalCollisionCases": 12,
+  "focusedPassed": 162,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12850,
+    "suites": 141,
+    "bursts": 80,
+    "rest": 12770,
+    "sourceHashesUnchanged": 437,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Deferred to group with next batch; runtime remains 30cffa27",
+  "limits": [
+    "Seeded checkout, simulated model and external services",
+    "Empty lists and cancellation after errors deferred to next batch",
+    "Exact names and word prefixes only; no arbitrary semantic aliases"
+  ]
+}
