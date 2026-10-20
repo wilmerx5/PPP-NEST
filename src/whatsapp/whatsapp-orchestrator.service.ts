@@ -15841,23 +15841,49 @@ export class WhatsappOrchestratorService {
 
   /** "Las de A con extra queso": a priced catalogue add-on named against cart rows is bought once per unit, never noted for free. */
   private async tryHandleLineScopedPaidAddon(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
-    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 160 ||
+    if (!session.cart.length || /[¿?]/.test(text) || text.length > 160 ||
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
     const q = this.normalizeForMatch(text).replace(/(?: (?:por favor|porfa|gracias))+$/, '').trim();
+    if ((q.match(/\d+/g) || []).length > 1) return false;
     const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const alt = (values: string[]) => values.map(escape).join('|') || '\\b\\B';
     const held = [...new Set(session.cart.flatMap(line => (line.attributes || []).map(attr => this.normalizeForMatch(attr.attributeValue))))]
       .filter(value => value.length >= 3).sort((a, b) => b.length - a.length);
-    const add = '(?:ponle|ponles|agregale|agregales|echale|echales|anadele|anadeles|pon|agrega|echa)';
-    const scope = `(?:todas|todos|todo|(?:la|las|el|los) (?:de |con )?(${held.map(escape).join('|') || '\\b\\B'}))`;
-    const m = q.match(new RegExp(`^(?:que |para |a |y )?(?:todas |todos )?(?:la|las|el|los) (?:de |con )?(${held.map(escape).join('|') || '\\b\\B'}) (?:(?:que )?(?:lleven|lleve|llevan|vengan|venga) |${add} )?(?:con )?(.+)$`)) ||
-      q.match(new RegExp(`^(${held.map(escape).join('|') || '\\b\\B'}) (?:con )?(.+)$`));
-    const before = m ? null : q.match(new RegExp(`^${add} (?:con )?(.+?) a ${scope}$`));
-    const all = m || before ? null : q.match(new RegExp(`^(?:(?:que )?(?:todas|todos)(?: (?:las|los))? (?:(?:que )?(?:lleven|vengan) )?(?:con )?|a (?:todas|todos) ${add} )(.+)$`));
-    const reference = m ? m[1] : before ? before[2] || '' : '';
-    const said = m ? m[2] : before ? before[1] : all ? all[1] : '';
+    const nameTokens = [...new Set(session.cart.flatMap(line => this.normalizeForMatch(line.name).split(' ')))]
+      .filter(word => word.length >= 3 && !['del','con','las','los'].includes(word)).sort((a, b) => b.length - a.length);
+    // Groups: product token, option after the token, option alone.
+    const ref = `(?:(${alt(nameTokens)})s?(?: (?:de |con )?(${alt(held)}))?|(?:de |con )?(${alt(held)}))`;
+    const add = '(?:ponle|ponles|agregale|agregales|agregame|agregamele|echale|echales|echame|anadele|anadeles|anademe|ponme|pon|agrega|echa)';
+    const drop = '(?:quitale|quitales|quita|quitar|sacale|sacales|saca|ya no le pongas|ya no les pongas|no le pongas|no les pongas|sin)';
+    const to = '(?:a (?:la|las|el|los)|al|de (?:la|las|el|los)|del)';
+    let reference: { name?: string; held?: string } | null = null;
+    let said = '';
+    let removing = false;
+    const take = (match: RegExpMatchArray | null, refAt: number, saidAt: number) => {
+      if (!match) return false;
+      reference = { name: match[refAt], held: match[refAt + 1] || match[refAt + 2] };
+      said = match[saidAt];
+      return true;
+    };
+    const lead = `^(?:que |para |a |y )?(?:todas |todos )?(?:al|la|las|el|los) ${ref}`;
+    if (take(q.match(new RegExp(`${lead} sin (?:el |la |los |las )?(.+)$`)), 1, 4) ||
+        take(q.match(new RegExp(`^${drop} (?:el |la |los |las )?(.+?) ${to} ${ref}$`)), 2, 1)) removing = true;
+    else if (!take(q.match(new RegExp(`${lead} (?:(?:que )?(?:lleven|lleve|llevan|vengan|venga) |${add} )?(?:con )?(.+)$`)), 1, 4) &&
+        !take(q.match(new RegExp(`^${add} (?:con )?(.+?) (?:a (?:la|las|el|los)|al) ${ref}$`)), 2, 1)) {
+      const bare = q.match(new RegExp(`^(${alt(held)}) (?:con )?(.+)$`));
+      const all = bare ? null : q.match(new RegExp(`^(?:(?:que )?(?:todas|todos)(?: (?:las|los))? (?:(?:que )?(?:lleven|vengan) )?(?:con )?|a (?:todas|todos) ${add} |${add} (?=.+ a (?:todas|todos|todo)$))(.+?)(?: a (?:todas|todos|todo))?$`));
+      if (bare) { reference = { held: bare[1] }; said = bare[2]; }
+      else if (all) said = all[1];
+    }
     if (!said) return false;
+    const numbers: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, doble: 2 };
+    const counted = said.match(/^(\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|doble) (.+?)( (?:por|para|a) cada (?:una|uno)| cada (?:una|uno))?$/);
+    const explicit = counted ? (/^\d/.test(counted[1]) ? parseInt(counted[1], 10) : numbers[counted[1]]) : 0;
+    const perUnit = !!counted && (counted[1] === 'doble' || !!counted[3]);
+    if (counted) said = counted[2];
+    if (/\d/.test(said) || (/\d/.test(q) && !/^\d/.test(counted?.[1] || '')) || explicit > 20 || (counted && explicit < 1)) return false;
     const words = (value: string) => this.normalizeForMatch(value).split(' ')
       .filter(word => word && !['de','del','con','el','la','los','las','un','una','unos','unas'].includes(word))
       .map(word => word === 'adicional' || word === 'adicionales' ? 'extra' : word.length > 3 ? word.replace(/s$/, '') : word).sort().join(' ');
@@ -15866,16 +15892,49 @@ export class WhatsappOrchestratorService {
     const matches = key ? menu.filter(product => words(product.name) === key) : [];
     const addon = matches.length === 1 ? matches[0] : null;
     if (!addon || addon.attributes?.some(attr => attr.options?.length)) return false;
+    const r = reference as { name?: string; held?: string } | null;
     const rows = session.cart.flatMap((line, index) => line.productId === addon.id ? [] :
-      !reference || (line.attributes || []).some(attr => this.normalizeForMatch(attr.attributeValue) === reference) ? [index] : []);
+      (!r?.held || (line.attributes || []).some(attr => this.normalizeForMatch(attr.attributeValue) === r.held)) &&
+      (!r?.name || this.normalizeForMatch(line.name).split(' ').includes(r.name)) ? [index] : []);
     if (!rows.length) return false;
     const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
     const target = rows.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ');
+    const finish = async (next: WhatsappSessionData, message: string) => {
+      await this.conversationService.saveSession(conv, next);
+      await this.reply(conv, waId, `${message}\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
+      return true;
+    };
+    if (removing) {
+      // Notes read «para Name ×N (Option)»: match the row by name and options, whatever its quantity now.
+      const labelRe = (index: number) => {
+        const line = session.cart[index];
+        const attrs = line.attributes?.length ? ` \\(${escape(line.attributes.map(attr => attr.attributeValue).join(', '))}\\)` : '';
+        return new RegExp(`${escape(line.name)}(?: ×\\d+)?${attrs}`);
+      };
+      let removedUnits = 0;
+      const cart = session.cart.flatMap(line => {
+        if (line.productId !== addon.id || !line.note?.startsWith('para ')) return [line];
+        const tied = rows.filter(index => labelRe(index).test(line.note!));
+        if (!tied.length) return [line];
+        const labels = line.note.slice(5).split(/ y (?=\S)/);
+        const kept = labels.filter(label => !tied.some(index => labelRe(index).test(label)));
+        if (!kept.length) { removedUnits += line.quantity; return []; }
+        const fewer = Math.min(line.quantity - 1, tied.reduce((sum, index) => sum + Math.max(1, session.cart[index].quantity || 1), 0));
+        removedUnits += fewer;
+        return [{ ...line, quantity: line.quantity - fewer, note: `para ${kept.join(' y ')}` }];
+      });
+      if (!removedUnits) {
+        await this.reply(conv, waId, `${target} no tiene *${addon.name}*, así que no hay nada que quitar. El pedido sigue igual.\n\n${reminder(session)}`);
+        return true;
+      }
+      return finish({ ...session, cart }, `Listo, quité *${addon.name}* ×${removedUnits} de ${target} ✅`);
+    }
     if (addon.availableNow === false) {
       await this.reply(conv, waId, `*${addon.name}* no está disponible en este momento, así que no lo agregué a ${target}. El pedido sigue igual.\n\n${reminder(session)}`);
       return true;
     }
-    const units = rows.reduce((sum, index) => sum + Math.max(1, session.cart[index].quantity || 1), 0);
+    const dishUnits = rows.reduce((sum, index) => sum + Math.max(1, session.cart[index].quantity || 1), 0);
+    const units = !explicit ? dishUnits : perUnit ? explicit * dishUnits : explicit;
     const note = 'para ' + rows.map(index => this.formatCartLineLabel(session.cart[index]).replace(/\*/g, '')).join(' y ');
     const existing = session.cart.find(line => line.productId === addon.id && line.note === note);
     if (existing && existing.quantity === units) {
@@ -15883,10 +15942,8 @@ export class WhatsappOrchestratorService {
       return true;
     }
     const next = this.addProductToCart(session, addon, units, note, undefined, { mode: 'set' });
-    await this.conversationService.saveSession(conv, next);
-    await this.reply(conv, waId, `Listo, agregué *${addon.name}* ×${units} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅\n\n` +
-      `${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
-    return true;
+    const scopeNote = explicit && !perUnit && dishUnits > 1 && units !== dishUnits ? ' en total' : '';
+    return finish(next, `Listo, agregué *${addon.name}* ×${units}${scopeNote} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅`);
   }
 
   /** "Sin cebolla y tráeme cambio de 50 mil": one cash-change clause plus one note clause — each part lands where it belongs, without leftover verbs. */
