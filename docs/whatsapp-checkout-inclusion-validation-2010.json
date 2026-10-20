@@ -1,0 +1,40 @@
+{
+  "batch": 46,
+  "base": "565133be",
+  "branch": "staging",
+  "newCases": 42,
+  "baseline": {
+    "failedResponseAssertions": 36,
+    "unnamedWrongOffMenuResponses": 18,
+    "note": "Named queries returned descriptions; exact response assertions are not all cart defects."
+  },
+  "focusedUniquePassed": 149,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12370,
+    "suites": 132,
+    "bursts": 80,
+    "rest": 12290,
+    "seconds": [
+      110.878,
+      365.37
+    ],
+    "sourceHashesUnchanged": 428,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "whatsappSent": 0,
+  "deployed": false,
+  "lastVerifiedRuntime": "3812417c",
+  "limits": [
+    "External dependencies mocked",
+    "36 seeded checkout flows reach simulated DTO",
+    "No model inference or media validation",
+    "No name/phone matrix in this batch",
+    "Compound conditional requests pending"
+  ]
+}

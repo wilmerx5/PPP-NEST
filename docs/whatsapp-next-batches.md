@@ -1,3 +1,17 @@
+## VIGENTE — consultas de bebida incluida durante checkout (20/10, tanda 46)
+
+Base 565133be. 42 regresiones nuevas con router real y servicios externos simulados: tres menús (bowl, pizza, arroz), agente on/off, estados dirección/pago/confirmación, pregunta sin nombre y con nombre; seis contrastes con carrito mixto, plato nombrado y plato fuera del carrito. 36 recorridos terminan en DTO de orden simulada: dos unidades, misma nota y dirección, una sola creación. No se prueba inferencia real.
+
+Baseline: 36/36 fallaban el contrato de respuesta; 18 preguntas sin nombre respondían que no se podían comprar bebidas fuera de carta. Las nombradas ya mostraban descripción/reminder, pero no respondían de forma directa o distinguían bien ausencia de bebida frente a ausencia de evidencia. No interpretar los 36 como 36 fallos de carrito. Los seis contrastes se añadieron después del arreglo.
+
+Cambio general: durante checkout la consulta de inclusión usa el catálogo y los platos del carrito (o el nombrado explícitamente); responde sí/no/no confirmado mediante drinkInclusion, conserva carrito y estado, retoma el paso pendiente. No abre pendingMatch ni ofrece una nueva lista numérica que pueda competir con la respuesta de pago. No modifica compras fuera del checkout. El contexto sin nombre consulta todos los platos del carrito, no supone que todos incluyan lo mismo.
+
+Validación: 149 focalizados únicos (128 iniciales + 63 finales con 42 solapados), TypeScript y build TypeScript, 92 Node. Global congelada: ráfagas 80, resto 12.290, total 12.370 / 132 suites, cero fallos/reintentos; 428 hashes intactos e inventario exacto. Tiempos 110,878s + 365,370s. Evidencia docs/whatsapp-checkout-inclusion-validation-2010.json. Sin cambios de runtime/tests posteriores a global.
+
+Publicación solo staging; no despliegue en esta tanda. Último runtime acreditado sigue 3812417c, por lo que tandas 45/46 aún no están acreditadas en servidor. Main intacto, cero API pagada/WhatsApp/órdenes externas.
+
+Siguiente tanda: consulta + acción condicional en un mensaje («¿trae gaseosa? Si no, agrega una»), intención explícita de compra frente a consulta, respuesta numérica de pago tras interrupción y conservación de opciones ya elegidas. Luego negaciones compuestas y atributos opcionales con recargo. Nombre/teléfono están habilitados por la misma ruta pero esta matriz nueva no los recorre; agregarlos como contrastes. Mantener evaluación reservada con modelo real y matriz PDF→test→commit→runtime; esta tanda no acredita cobertura completa ni producto vendible.
+
 ## VIGENTE — evidencia de bebida incluida y revisión de tres chats del 20/10
 
 Base 5e2f23ed, tanda 45. 66 casos nuevos: 48 sobre evidencia de bebida (tres menús, agente simulado on/off); seis del formulario de combo, sustitución y rechazo del pollo; doce variantes «uiero» del pedido distribuido de acompañantes/sopas. Se fortalecieron los seis contrastes de compra de bebida: antes solo comprobaban que no apareciera «No trae», ahora verifican producto y cantidad tras resolver sabor. Los dos formularios de combo llegan a DTO con nombre/teléfono/dirección ficticios; correcciones parten de un pollo sembrado, no reproducen el fallo inicial del modelo real.

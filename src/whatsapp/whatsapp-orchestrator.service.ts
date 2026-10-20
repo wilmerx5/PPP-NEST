@@ -2366,6 +2366,10 @@ export class WhatsappOrchestratorService {
       session = {...session,pendingCompositionAsk:undefined};
       await this.conversationService.saveSession(conv,session);
     }
+    // Inclusion is a read-only interruption of checkout, not a new drink purchase.
+    if (/^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state) &&
+      /(?:trae|viene|incluye|lleva)/i.test(originalText) &&
+      await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, await this.catalogService.getMenuProducts())) return;
     const referenceText = this.normalizeForMatch(originalText);
     const shortDetailReference = /^(?:y )?(?:(?:ese|esa|este|esta|eso|esto)(?: plato|producto|combo|opcion)?|(?:el otro|la otra)(?: plato|producto|combo|opcion)?) (?:trae|incluye|lleva)(?: .+)?$/.test(referenceText) &&
       !/\b(?:agrega\w*|anade\w*|quita\w*|cambia\w*|quiero|dame|envia\w*)\b/.test(referenceText);
@@ -11838,7 +11842,7 @@ export class WhatsappOrchestratorService {
     text: string,
     products: MenuProduct[],
   ): Promise<boolean> {
-    if (/^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state)) return false;
+    const checkout = /^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state);
     const q = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
     const asked = q.match(/^(?:y\s+|pero\s+|oye\s+)?(?:(.+?)\s+)?(?:traen|trae|vienen\s+con|viene\s+con|incluyen|incluye|llevan|lleva)\s+(?:la\s+|el\s+|una?\s+|su\s+)?(gaseosas?|bebidas?|refrescos?|jugos?|sodas?)(?:\s+(?:incluida|incluido|tambien|o\s+no))?$/);
     if (!asked) return false;
@@ -11861,6 +11865,9 @@ export class WhatsappOrchestratorService {
       const named = context.filter(product => (` ${q} `).includes(` ${this.normalizeForMatch(product.name)} `));
       if (named.length) context = named.filter(product => !named.some(other => other.id !== product.id &&
         this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
+    } else if (checkout && session.cart.length) {
+      const ids = new Set(session.cart.map(line => line.productId));
+      context = products.filter(product => ids.has(product.id) && live(product));
     } else if (session.pendingMatch?.candidates?.length) {
       context = session.pendingMatch.candidates
         .map(candidate => products.find(product => product.id === candidate.id))
@@ -11873,6 +11880,15 @@ export class WhatsappOrchestratorService {
     const withItem = context.filter(includes);
     const without = context.filter(product => drinkInclusion(product,item) === 'no');
     const uncertain = context.filter(product => drinkInclusion(product,item) === 'unknown');
+    if (checkout) {
+      const lines: string[] = [];
+      if (withItem.length) lines.push(`Sí ${withItem.length === 1 ? 'trae' : 'traen'} ${item}: ${withItem.map(product => `*${product.name}*`).join(', ')}.`);
+      if (without.length) lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
+      if (uncertain.length) lines.push(`No tengo confirmado si incluye ${item}: ${uncertain.map(product => `*${product.name}*`).join(', ')}.`);
+      lines.push('', 'El pedido sigue igual.', this.formatInterruptedStepReminder(conv, session));
+      await this.reply(conv, waId, lines.join('\n'));
+      return true;
+    }
     const contextIds = new Set(context.map(product => product.id));
     const variants = products.filter(product => product.availableNow !== false && !contextIds.has(product.id) && includes(product) &&
       [...without,...uncertain].some(base => (` ${this.normalizeForMatch(product.name)} `).includes(` ${this.normalizeForMatch(base.name)} `)));
