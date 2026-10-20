@@ -4,7 +4,7 @@
 
 Checkout: `/home/levi/Documents/programming/PPP/PPP-NEST-staging`. Rama permanente `staging`; remoto `origin/staging`. No tocar `Main` ni producción sin una nueva solicitud. Leer AGENTS.md, el comienzo vigente de WHATSAPP-LOCAL-NEXT-AGENT.md y whatsapp-next-batches.md. AGENT-HANDOFF-WHATSAPP.md conserva historia; no asumir que sus modelos, presupuestos o SHAs antiguos siguen vigentes.
 
-Actualizado 19/10 tras la tanda 28: runtime desplegado en staging c4188d98 (health OK 2026-10-20 00:52Z); producción c5e97ab1… intacta. No hay código publicado pendiente de despliegue. Verificar de nuevo Git y servidor antes de actuar; la entrada más reciente de WHATSAPP-LOCAL-NEXT-AGENT.md manda sobre estos SHAs. El schedule fue eliminado: no recrearlo. No hay autorización implícita para otro agente concurrente, llamadas pagadas, mensajes WhatsApp ni órdenes externas en una tanda gratuita.
+Actualizado 19/10 tras la tanda 29: runtime desplegado en staging a430270e (health OK 2026-10-20 01:18Z); producción c5e97ab1… intacta. No hay código publicado pendiente de despliegue. Verificar de nuevo Git y servidor antes de actuar; la entrada más reciente de WHATSAPP-LOCAL-NEXT-AGENT.md manda sobre estos SHAs. El schedule fue eliminado: no recrearlo. No hay autorización implícita para otro agente concurrente, llamadas pagadas, mensajes WhatsApp ni órdenes externas en una tanda gratuita.
 
 ## Arranque sin pisar trabajo
 
@@ -84,12 +84,12 @@ Después: verificar HEAD, imagen/contenedor running, reinicios y https://dev.pro
 
 ## Siguientes objetivos
 
-Resueltos en tandas 20–28 (no repetir): poco arroz/ensalada como nota, demora tras orden, «2» tras aclaración, dos atributos, notas contradictorias y sus formas sueltas, orden creada sin «confirmar» dentro del turno, línea nombrada por su opción, adicional cobrado nombrado sobre líneas, cambio/destinatario/urgencia como datos del pedido «gracias» con pedido abierto y notas de manejo/empaque sueltas («aparte», «bien empacado», «que no se riegue») y nota + cambio en un mismo mensaje. Auditado sin cambio (tanda 26): tryConfirmOrder no tiene llamadores fuera de un turno entrante.
+Resueltos en tandas 20–29 (no repetir): poco arroz/ensalada como nota, demora tras orden, «2» tras aclaración, dos atributos, notas contradictorias y sus formas sueltas, orden creada sin «confirmar» dentro del turno, línea nombrada por su opción, adicional cobrado nombrado sobre líneas, cambio/destinatario/urgencia como datos del pedido «gracias» con pedido abierto y notas de manejo/empaque sueltas («aparte», «bien empacado», «que no se riegue») nota + cambio en un mismo mensaje y adicional por línea con cantidad explícita, referencia en singular y retiro por línea. Auditado sin cambio (tanda 26): tryConfirmOrder no tiene llamadores fuera de un turno entrante.
 
 - Asides compuestos con «y»/«con» («la salsa aparte y bien empacado»); dos notas independientes o dos montos de cambio en un mensaje; cambio de nombre en el paso final sin acuse.
 - Ráfagas concurrentes reales (handleIncoming + temporizadores) durante una duda pendiente.
-- Huecos del adicional por línea: cantidad explícita, referencia por producto en singular, adicionales con opciones, retirarlo por la línea.
-- Vigilar duración de la global (417 s tanda 23, 661 s tanda 24, 424 s tandas 25–27, 411 s tanda 28) y que la unión de ambas fases coincida con --listTests.
+- Huecos del adicional por línea: adicionales con opciones configurables; dos cantidades en un mensaje.
+- Vigilar duración de la global (417 s tanda 23, 661 s tanda 24, 424 s tandas 25–27, 411 s tanda 28, 417 s tanda 29) y que la unión de ambas fases coincida con --listTests.
 - Estado del piloto: consultar WHATSAPP-COMMERCIAL-READINESS-PLAN.md. Un caso ya corregido localmente puede seguir fallando en un runtime anterior; comparar versiones antes de duplicar parches.
 
 ## Resultado de esta tanda de relevo (19/10)
