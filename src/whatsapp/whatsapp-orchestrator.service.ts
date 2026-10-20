@@ -4246,7 +4246,7 @@ export class WhatsappOrchestratorService {
             'Después te pido la dirección de domicilio.',
         );
         return;
-      } else if (!isUsableWhatsappCustomerName(text)) {
+      } else if (!isUsableWhatsappCustomerName(text) || this.repliesWithCatalogDishName(text, products)) {
         await this.reply(
           conv,
           msg.waId,
@@ -19505,6 +19505,18 @@ export class WhatsappOrchestratorService {
     );
     if (!expected.length) return false;
     return expected.some((c) => !added.has(c.product.id) && !rejectedProductIds.includes(c.product.id));
+  }
+
+  /** "Arroz con pollo" answering the name question names a dish of the menu, not a person. */
+  private repliesWithCatalogDishName(text: string, products: MenuProduct[]): boolean {
+    const words = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9ñ\s]/g, ' ').split(/\s+/).filter(Boolean);
+    const spoken = words(text);
+    if (!spoken.length) return false;
+    return products.some(product => {
+      const name = words(product.name);
+      return name.length > 0 && spoken.includes(name[0]) && spoken.every(word => name.includes(word));
+    });
   }
 
   private nestWouldAddDirectDishOrder(text: string, products: MenuProduct[]): boolean {

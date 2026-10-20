@@ -400,9 +400,23 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   if (isCourtesyAffirmation(t)) return false;
   // Cierre del pedido o consulta de precio, no la identidad del cliente.
   if (/^(?:asi\s+esta\s+bien|esta\s+bien\s+asi|(?:que\s+)?precio\s+tiene)$/.test(t)) return false;
+  // "Dale, muchas gracias", "Vale te encargo", "Nada que llega": words a person's name never carries.
+  if (t.split(' ').some((word) => NON_NAME_WORDS.has(word) || /^grac+i+a*s+$|^graci[a-z]*s$/.test(word))) return false;
+  if (t.split(' ').every((word) => /^(?:de|del|la|las|los|el|y|e)$/.test(word))) return false;
 
   return true;
 }
+
+const NON_NAME_WORDS = new Set([
+  'favor', 'porfa', 'porfis', 'porfavor', 'xfa', 'plis', 'pls', 'please', 'amable', 'amables', 'gusto',
+  'ok', 'okay', 'oki', 'vale', 'dale', 'listo', 'lista', 'perfecto', 'claro', 'super', 'genial', 'chevere',
+  'me', 'te', 'se', 'le', 'les', 'lo', 'nos', 'yo', 'usted', 'ustedes', 'sumerce',
+  'quedo', 'quede', 'pendiente', 'atento', 'atenta', 'encargo', 'recomiendo', 'pago', 'pagar', 'pagas',
+  'cancelo', 'envio', 'envia', 'enviame', 'manda', 'mandas', 'quita', 'quitas', 'quitale', 'saca', 'agrega',
+  'agregas', 'llega', 'llego', 'llegado', 'demora', 'demoran', 'tarda', 'pregunta', 'puedo', 'puedes', 'podria',
+  'podrias', 'quiero', 'necesito', 'tengo', 'hay', 'era', 'eran', 'ya', 'aqui', 'aca', 'alla', 'nada', 'todo',
+  'tambien', 'muy', 'mil', 'jaja', 'jajaja', 'ah', 'ay', 'uy', 'eh', 'con', 'sin', 'por', 'para', 'que', 'nombre',
+]);
 
 /** “sí” / “si por favor” / “dale” confirman; no son un nombre. */
 export function isCourtesyAffirmation(text: string): boolean {
