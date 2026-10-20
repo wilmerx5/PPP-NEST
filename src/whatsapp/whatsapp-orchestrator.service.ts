@@ -1489,6 +1489,7 @@ export class WhatsappOrchestratorService {
         await this.tryHandleUnavailableCountedPurchase(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleLineScopedPaidAddon(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleMixedCashAside(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleOrderLevelAside(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleDishHandlingAside(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleCartNoteRevision(conv,msg.waId,session,originalText,cfg) ||
@@ -15885,6 +15886,83 @@ export class WhatsappOrchestratorService {
     await this.conversationService.saveSession(conv, next);
     await this.reply(conv, waId, `Listo, agregué *${addon.name}* ×${units} (${this.catalogService.formatMoney(addon.price)} c/u) para ${target} ✅\n\n` +
       `${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n${reminder(next)}`);
+    return true;
+  }
+
+  /** "Sin cebolla y tráeme cambio de 50 mil": one cash-change clause plus one note clause — each part lands where it belongs, without leftover verbs. */
+  private async tryHandleMixedCashAside(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?]/.test(text) || text.length > 140 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const original = text.normalize('NFC');
+    // Same length as `original`, so clause offsets map back to the customer's wording.
+    const plain = original.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const amount = this.CASH_CHANGE_AMOUNT;
+    const cashRe = new RegExp(String.raw`(?<![a-z])(?:(?:(?:que\s+)?(?:me\s+)?(?:traer|trae|traeme|traiga|traigame|traigan|traiganme|llevar|lleva|llevame|lleven|manden|mandame|necesito|necesitamos|con)\s+)?(?:el\s+|un\s+)?(?:cambio|vueltas?|devuelta|vuelto)\s+(?:de|para|pa)\s+(?:un\s+billete\s+de\s+)?\$?\s*(${amount})|(?:(?:le|te)\s+)?(?:pago|pagare|pagamos|cancelo|llevo|tengo)\s+(?:con\s+)?(?:un\s+)?billete\s+de\s+\$?\s*(${amount}))`);
+    const m = plain.match(cashRe);
+    if (!m || m.index === undefined) return false;
+    if (cashRe.test(plain.slice(0, m.index) + ' ' + plain.slice(m.index + m[0].length))) return false;
+    if (m[2] && !session.paymentMethod) return false;
+    const strip = (value: string) => value
+      .replace(/^(?:[\s,;.!\-]|\b(?:y|e|ah|adem[aá]s|tambi[eé]n|por favor|porfa|pf)\b)+/i, '')
+      .replace(/(?:[\s,;.!\-]|\b(?:y|e|tambi[eé]n|por favor|porfa|pf|gracias)\b)+$/i, '')
+      .replace(/\s+/g, ' ').trim();
+    const note = strip(original.slice(0, m.index) + ' ' + original.slice(m.index + m[0].length));
+    const q = this.normalizeForMatch(note);
+    if (!q || /\d/.test(q) || q.length > 80 ||
+        /\b(?:dame|deme|quiero|agrega\w*|ponme|pideme|adiciona\w*|otro|otra|otros|otras|quita\w*|cancela\w*|cambia\w*)\b/.test(q)) return false;
+    const recipient = q.match(/^(?:es|son|va|van) (?:para|pa) ((?:un )?regalo|(?:mi|mis|el|la|los|las|su|sus) [a-z]+(?: [a-z]+)?)$/) || q.match(/^(?:es )?(un regalo)$/);
+    if (recipient && /\b(?:llevar|domicilio|recoger|hoy|manana|ahora|almuerzo|cena|noche|tarde|casa|oficina|apartamento|apto|calle|carrera|torre|edificio|conjunto|barrio)\b/.test(recipient[1])) return false;
+    const urgent = /^(?:que (?:me lo |lo |la |los )?(?:llegue|lleguen|venga|vengan|traigan|manden|sea) (?:rapido|pronto|lo mas rapido posible|lo antes posible)|lo (?:mas rapido|mas pronto|antes) posible|(?:es )?urgente)$/.test(q);
+    const arrival = /^(?:que (?:me )?(?:lo |la |los |las )?(?:llegue|lleguen) )?(?:bien )?calient(?:e|es|it[oa]s?)$/.test(q);
+    const removal = q.match(/^(?:sin|que no (?:tenga|tengan|lleve|lleven|traiga|traigan|le pongan|les pongan|le echen|les echen)|no le (?:pongan|echen)) (.+)$/);
+    const dish = !!removal ||
+      /^(?:con (?:poco|poca|poquito|poquita|bastante|harto|harta|mucho|mucha|extra) |poco |poca |bien |que (?:este|esten|venga|vengan) bien )[a-z]/.test(q) ||
+      /^(?:muy )?(?:empacad|tapad|sellad)[oa]s?$|^(?:que )?no se (?:riegue|rieguen|derrame|derramen|aplaste|aplasten)$/.test(q) ||
+      /^(?:el |la |los |las )?[a-z]+(?: [a-z]+)? (?:aparte|por separado|separad[oa]s?)$/.test(q);
+    if (!recipient && !urgent && !arrival && !dish) return false;
+    const menu = await this.catalogService.getMenuProducts();
+    const stop = new Set(['sin','con','que','poco','poca','bien','muy','tenga','tengan','lleve','lleven','traiga','traigan','pongan','echen','aparte','separado','separada',
+      'separados','separadas','empacado','empacada','empacados','empacadas','para','del','los','las','por','una','uno','mas','les','sus']);
+    const tokens = (value: string) => this.normalizeForMatch(value).split(' ').filter(word => word.length >= 3 && !stop.has(word));
+    const words = new Set(q.split(' ').map(word => word.replace(/s$/, '')));
+    const mentions = (value: string) => tokens(value).some(token => words.has(token.replace(/s$/, '')));
+    // "sin la pizza" names a cart dish first: that is a removal, not a note ("sin hielo en el jugo" is a note).
+    const removed = removal ? tokens(removal[1])[0]?.replace(/s$/, '') : undefined;
+    if (removed && session.cart.some(line => tokens(line.name).some(token => token.replace(/s$/, '') === removed))) return false;
+    const named = dish ? session.cart.flatMap((line, index) => {
+      const product = menu.find(p => p.id === line.productId);
+      return mentions(line.name) || (line.attributes || []).some(attr => mentions(attr.attributeValue)) ||
+        (product?.attributes || []).some(attr => attr.options?.length && mentions(attr.attributeName)) ? [index] : [];
+    }) : [];
+    const targets = !dish ? [] : named.length ? named : session.cart.length === 1 ? [0] : [];
+    const same = (a: string, b: string) => this.normalizeForMatch(a) === this.normalizeForMatch(b);
+    let next: WhatsappSessionData;
+    let noteLine: string;
+    if (targets.length) {
+      next = { ...session, cart: session.cart.map((line, index) => !targets.includes(index) ? line : {
+        ...line, note: (line.note || '').split(/;\s*/).some(part => same(part, note)) ? line.note : [line.note, note].filter(Boolean).join('; ') }) };
+      noteLine = `📝 En ${targets.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ')}: _${note}_`;
+    } else {
+      next = (session.customerNotes || '').split(/;\s*/).some(part => same(part, note)) ? { ...session } : this.appendCustomerNote(session, note);
+      noteLine = `📝 Para todo el pedido: _${note}_`;
+    }
+    let cashLine: string;
+    if (session.paymentMethod && !['cash','contraentrega'].includes(session.paymentMethod)) {
+      const method = getEnabledPaymentMethods(cfg.paymentMethods).find(item => item.id === session.paymentMethod);
+      cashLine = `El cambio aplica para pago en efectivo y tu pedido está con *${method?.label || session.paymentMethod}*, así que no lo anoté. Si quieres pagar en efectivo, dime *efectivo*.`;
+    } else {
+      const change = `cambio de ${(m[1] || m[2]).replace(/[.,]+$/, '').trim()}`;
+      next = { ...next, cashChangeFor: change };
+      cashLine = `Anotado 💵 _${change}_ ✅`;
+    }
+    await this.conversationService.saveSession(conv, next);
+    const fee = this.deliveryFeeFor(next, cfg);
+    const lead = `${cashLine}\n${noteLine}`;
+    await this.reply(conv, waId, conv.state === 'awaiting_final_confirm'
+      ? `${lead}\n\n${this.formatOrderSummary(conv, next, fee, cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`
+      : `${lead}\n\n${this.formatCartOnly(next, fee)}\n\n${this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next)}`);
     return true;
   }
 
