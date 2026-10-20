@@ -2291,6 +2291,11 @@ export class WhatsappCatalogService {
     // Fulfillment and a matching serving/bottle size describe the order;
     // they are not unavailable ingredients ("sobrebarriga para llevar").
     let dishQuery = query.replace(/\bpara\s+llevar\b|\b(?:paso|voy)\s+a\s+recoger\b/gi, ' ');
+    // This product's own catalog code ("(código 94)", "#94") identifies it; it is not a dish word.
+    if (product.code != null && /^\d+$/.test(String(product.code))) {
+      dishQuery = dishQuery.replace(new RegExp(
+        `\\(?\\s*(?:\\b(?:c[oó]d(?:igo)?|code)\\.?\\s*:?\\s*#?|#)\\s*0*${product.code}\\b\\s*\\)?`, 'gi'), ' ');
+    }
     if (/\bsopa\b/i.test(product.name) &&
       this.detectServingSizeHint(query) === 'grande' &&
       !/peque[nñ]a/i.test(product.name)) {

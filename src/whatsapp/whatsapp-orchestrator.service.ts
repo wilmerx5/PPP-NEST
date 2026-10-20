@@ -1108,9 +1108,10 @@ export class WhatsappOrchestratorService {
 
     // Glosario local: typos / aliases antes de matching e IA.
     // El saludo se arma con el texto de entrada: "veci" no es un plato, pero sí el tono.
-    if (msg.messageType==='text' && /\n/.test(msg.text || '') && !['completed','closed','human_takeover'].includes(conv.state)) {
+    const envelopeSource = msg.messageType==='text' ? (msg.text || '') : msg.raw?.resolvedOrderImage === true ? text : '';
+    if (/\n/.test(envelopeSource) && !['completed','closed','human_takeover'].includes(conv.state)) {
       const envelopeMenu=await this.catalogService.getMenuProducts();
-      const envelope=checkoutEnvelope(msg.text || text,line=>!!this.catalogService.findProductEmbeddedInMessage(line,envelopeMenu),line=>this.looksLikePhoneNumber(line),line=>{
+      const envelope=checkoutEnvelope(envelopeSource || text,line=>!!this.catalogService.findProductEmbeddedInMessage(line,envelopeMenu),line=>this.looksLikePhoneNumber(line),line=>{
         const value=this.normalizeForMatch(line.replace(/^pago\s+(?:con|por|en)\s+/i,''));
         return getEnabledPaymentMethods(cfg.paymentMethods).find(method=>[method.label,...method.keywords].some(word=>this.normalizeForMatch(word)===value))?.id || null;
       });
@@ -12133,6 +12134,15 @@ export class WhatsappOrchestratorService {
         orderText = this.resolveImageOrderText(analysis, caption, products);
       }
 
+      if (orderText && caption && !orderText.includes(caption)) {
+        // Name, address and phone lines of the caption belong to the same order as the photo.
+        const extra = caption.split(/\r?\n/).map(line => line.trim()).filter(line => line &&
+          !this.catalogService.findProductEmbeddedInMessage(line, products) &&
+          this.catalogService.extractCodeFromMessage(line) == null);
+        const details = extra.length ? this.parseCompoundOrderMessage(extra.join('\n')) : null;
+        if (details && (details.address || details.phone)) orderText = `${orderText}\n${extra.join('\n')}`;
+      }
+
       if (orderText) {
         await this.conversationService.updateMessageBody(
           loggedMessageId,
@@ -19771,10 +19781,21 @@ export class WhatsappOrchestratorService {
       !params.placedOrderOnly && !params.readOnlyAside &&
       agent.purchaseAttempts?.some(attempt => !attempt.accepted) &&
       !agent.purchaseAttempts.some(attempt => attempt.accepted) && !agent.actions?.addItems?.length) {
-      const names = [...new Set(agent.purchaseAttempts.map(attempt =>
-        products.find(product => product.id === attempt.productId)?.name).filter(Boolean))];
-      const answer = 'Necesito aclarar '+(names.length ? names.join(', ') : 'los productos de este pedido')+
-        ' antes de agregarlos. ¿Me indicas la cantidad y las opciones de cada uno? Tu pedido sigue igual.';
+      const named = [...new Set(agent.purchaseAttempts.map(attempt => attempt.productId))]
+        .map(id => products.find(product => product.id === id)).filter((product): product is MenuProduct => !!product);
+      const names = named.map(product => product.name);
+      // Without a pending list, a bare "1" in reply would be read as catalog code #1.
+      const canHoldChoice = named.length === 1 && conv.state === 'building_cart' &&
+        !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder;
+      if (canHoldChoice) {
+        session.pendingMatch = { query: originalText || text, candidates: named, intent: 'order' };
+        await this.conversationService.saveSession(conv, session);
+      }
+      const answer = canHoldChoice
+        ? `Necesito aclarar *${named[0].name}* antes de agregarlo:\n1. *${named[0].name}*\n` +
+          'Escribe *1* para agregarlo (y la cantidad si es más de una) o dime cómo lo quieres. Tu pedido sigue igual.'
+        : 'Necesito aclarar '+(names.length ? names.join(', ') : 'los productos de este pedido')+
+          ' antes de agregarlos. ¿Me indicas la cantidad y las opciones de cada uno? Tu pedido sigue igual.';
       await this.reply(conv,msg.waId,answer);
       this.turnTelemetry.record({path:'agent_v1',outcome:'replied',waId:msg.waId,conversationId:conv.id,
         toolCalls:agent.toolCalls,latencyMs:Date.now()-started,warnings:['all_purchase_tools_rejected']});
