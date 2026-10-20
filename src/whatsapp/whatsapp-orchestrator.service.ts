@@ -1490,6 +1490,7 @@ export class WhatsappOrchestratorService {
         await this.tryHandlePartialUnitOptionChange(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleLineScopedPaidAddon(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleOrderLevelAside(conv,msg.waId,session,originalText,cfg) ||
+        await this.tryHandleDishHandlingAside(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleCartNoteRevision(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandleOptionReferencedLineEdit(conv,msg.waId,session,originalText,cfg) ||
         await this.tryHandlePartialUnitKitchenNote(conv,msg.waId,session,originalText,cfg) ||
@@ -15931,6 +15932,65 @@ export class WhatsappOrchestratorService {
     return finish(saved ? session : this.appendCustomerNote(session, note), `Anoté para el pedido: _${note}_ ✅`);
   }
 
+  /** "La salsa aparte", "bien empacado", "que no se riegue": packing asides go to the dish they name, the only dish or the whole order — never silence or a purchase. */
+  private async tryHandleDishHandlingAside(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!session.cart.length || /[¿?\d]/.test(text) || text.length > 120 ||
+        !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+        session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
+        CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
+    const q = this.normalizeForMatch(text).replace(/^(?:(?:y|ah|ademas|tambien|ojo|porfa|por favor)\s+)+/, '')
+      .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
+    const separate = /(?:^|\s)(?:aparte|por separado|separad[oa]s?|en (?:bolsas?|empaques?|recipientes?|cajas?|vasos?|cajitas?) (?:aparte|separad[oa]s?|diferentes))(?: (?:para|de|del) (?:el |la |los |las )?[a-z]{3,}(?: [a-z]{3,}){0,2})?$/.test(q);
+    const packing = /^(?:que (?:me )?(?:lo |la |los |las )?(?:venga|vengan|llegue|lleguen) )?(?:bien |muy bien )?(?:empacad[oa]s?|tapad[oa]s?|sellad[oa]s?|calientes?|calientit[oa]s?)$/.test(q) ||
+      /^(?:que )?no se (?:riegue|rieguen|derrame|derramen|enfrie|enfrien|aplaste|aplasten)$/.test(q);
+    if (!separate && !packing) return false;
+    if (/;/.test(text) || /\b(?:sin|con|pero|y)\b/.test(q) ||
+        /\b(?:un|una|unos|unas|otro|otra|otros|otras|dame|deme|quiero|agrega\w*|ponme|pideme|adiciona\w*|mas)\b/.test(q)) return false;
+    // Arrival conditions describe the delivery, not one dish.
+    const arrival = /^que (?:me )?(?:lo |la |los |las )?(?:llegue|lleguen)\b|\bcalient(?:e|es|it[oa]s?)$/.test(q);
+    const destination = q.match(/ (?:para|de|del) (?:el |la |los |las )?([a-z]{3,}(?: [a-z]{3,}){0,2})$/)?.[1] ||
+      q.match(/^que (?:el|la|los|las) ([a-z ]{3,30}?) (?:venga|vengan)\b/)?.[1] || '';
+    const stop = new Set(['para','con','sin','que','venga','vengan','aparte','separado','separados','separada','separadas','bolsa','bolsas','empaque','empaques',
+      'recipiente','recipientes','caja','cajas','vaso','vasos','bien','traigan','manden','envien','pongan','empaquen','empacado','empacada','empacados','empacadas',
+      'del','los','las','por','una','uno','muy','mas','les','sus','con','sin','que']);
+    const tokens = (value: string) => this.normalizeForMatch(value).split(' ').filter(word => word.length >= 3 && !stop.has(word));
+    const words = new Set(q.split(' ').map(word => word.replace(/s$/, '')));
+    const mentions = (value: string) => tokens(value).some(token => words.has(token.replace(/s$/, '')));
+    const menu = await this.catalogService.getMenuProducts();
+    const named = session.cart.flatMap((line, index) => {
+      const product = menu.find(p => p.id === line.productId);
+      return mentions(line.name) || (line.attributes || []).some(attr => mentions(attr.attributeValue)) ||
+        (product?.attributes || []).some(attr => attr.options?.length && mentions(attr.attributeName)) ? [index] : [];
+    });
+    const reminder = (next: WhatsappSessionData) => this.formatInterruptedStepReminder(conv, next) || this.formatContinueShoppingPrompt(next);
+    const note = text.trim().replace(/[!.,;]+$/g, '').replace(/(?:\s*,?\s+(?:por favor|porfa|gracias))+$/i, '')
+      .replace(/^(?:(?:y|ah|ojo|porfa|por favor)\s*,?\s+)+/i, '').trim();
+    const destinationWords = new Set(destination.split(' ').map(word => word.replace(/s$/, '')));
+    if (!named.length && destination && menu.some(product => !session.cart.some(line => line.productId === product.id) &&
+        tokens(product.name).some(token => destinationWords.has(token.replace(/s$/, ''))))) {
+      await this.reply(conv, waId, `No veo ese plato en tu pedido, así que no anoté «${note}». ¿A cuál plato del carrito se lo dejo? El pedido sigue igual.\n\n${reminder(session)}`);
+      return true;
+    }
+    const targets = arrival ? [] : named.length ? named : session.cart.length === 1 ? [0] : [];
+    let next: WhatsappSessionData;
+    let lead: string;
+    if (targets.length) {
+      next = { ...session, cart: session.cart.map((line, index) => !targets.includes(index) ? line : {
+        ...line, note: line.note && this.normalizeForMatch(line.note).includes(this.normalizeForMatch(note)) ? line.note : [line.note, note].filter(Boolean).join('; ') }) };
+      lead = `Listo, anoté «${note}» en ${targets.map(index => this.formatCartLineLabel(session.cart[index])).join(' y ')} ✅`;
+    } else {
+      const saved = (session.customerNotes || '').split(/;\s*/).some(part => this.normalizeForMatch(part) === this.normalizeForMatch(note));
+      next = saved ? session : this.appendCustomerNote(session, note);
+      lead = `Anoté para todo el pedido: _${note}_ ✅`;
+    }
+    await this.conversationService.saveSession(conv, next);
+    const fee = this.deliveryFeeFor(next, cfg);
+    await this.reply(conv, waId, conv.state === 'awaiting_final_confirm'
+      ? `${lead}\n\n${this.formatOrderSummary(conv, next, fee, cfg.paymentMethods)}\n\nSi está bien, escribe *confirmar*.`
+      : `${lead}\n\n${this.formatCartOnly(next, fee)}\n\n${reminder(next)}`);
+    return true;
+  }
+
   private async tryHandleCartNoteRevision(conv: WhatsappConversation,waId: string,session: WhatsappSessionData,text: string,cfg: EffectiveWhatsappConfig): Promise<boolean> {
     if (!session.cart.length || ['completed','closed','human','human_takeover','awaiting_mp_payment'].includes(conv.state)) return false;
     const pending = session.pendingCartNoteEdit;
@@ -16393,11 +16453,13 @@ export class WhatsappOrchestratorService {
       .trim();
     if (!note) return false;
     const next = this.appendCustomerNote(session, note);
-    await this.conversationService.saveSession(conv, next, 'building_cart');
+    const checkout = ['awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state);
+    await this.conversationService.saveSession(conv, next, checkout ? undefined : 'building_cart');
     await this.reply(
       conv,
       waId,
-      `Listo, lo dejo en la nota: _${note}_ ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n¿*Algo más*?`,
+      `Listo, lo dejo en la nota: _${note}_ ✅\n\n${this.formatCartOnly(next, this.deliveryFeeFor(next, cfg))}\n\n` +
+        (checkout ? this.formatInterruptedStepReminder(conv, next) : '¿*Algo más*?'),
     );
     return true;
   }
