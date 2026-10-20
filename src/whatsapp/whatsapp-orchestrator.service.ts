@@ -716,6 +716,37 @@ export class WhatsappOrchestratorService {
   }
 
   /**
+   * «Colombiana / por favor / Calle 45 #12-30» while that option is pending: one line
+   * answers the choice and the other lines are the address, in any order.
+   */
+  private splitPendingOptionFromAddress(
+    conv: WhatsappConversation,
+    parts: string[],
+  ): { first: string; rest?: BurstContinuation } | null {
+    const session = this.conversationService.getSession(conv);
+    const attribute = session.pendingAttribute;
+    if (!attribute || parts.length < 2) return null;
+    const options = attribute.attributes
+      .filter(attr => !attribute.selected?.some(chosen => chosen.attributeName === attr.attributeName))
+      .flatMap(attr => attr.options);
+    const courtesy = /^(?:(?:muchas\s+)?gracias|por favor|porfa|porfis)$/;
+    const optionOf = (part: string) => {
+      const said = this.normalizeForMatch(part)
+        .replace(/\b(?:por favor|porfa|porfis|gracias)\b/g, ' ')
+        .replace(/^(?:(?:la|el|una?|que sea)\s+)*(?:(?:gaseosa|bebida|sabor)\s+(?:de\s+|que sea\s+)?)?/, '')
+        .replace(/\s+/g, ' ').trim();
+      return said ? options.filter(option => this.normalizeForMatch(option) === said) : [];
+    };
+    const hits = parts.map((part, index) => ({ index, found: optionOf(part) })).filter(hit => hit.found.length);
+    if (hits.length !== 1 || hits[0].found.length !== 1) return null;
+    const rest = parts
+      .filter((part, index) => index !== hits[0].index && !courtesy.test(this.normalizeForMatch(part)))
+      .join('\n');
+    if (!rest || !this.isAddressOnlyCustomerMessage(rest, this.parseCompoundOrderMessage(rest))) return null;
+    return { first: hits[0].found[0], rest: { text: rest } };
+  }
+
+  /**
    * «y otro de mora» / «otras dos de carne» order more of the catalog product
    * named by that variant word; it is never a street name.
    */
@@ -873,7 +904,9 @@ export class WhatsappOrchestratorService {
         }
       }
       if (logged) msg = { ...msg, text: freshTexts.join('\n') };
-      const split = logged && freshTexts.length > 1 ? this.splitBurstAtPendingAnswer(conv, freshTexts) : null;
+      const split = logged && freshTexts.length > 1
+        ? this.splitBurstAtPendingAnswer(conv, freshTexts) || this.splitPendingOptionFromAddress(conv, freshTexts)
+        : null;
       if (split) {
         msg = { ...msg, text: split.first };
         turn.burstContinuation = split.rest;
@@ -889,6 +922,12 @@ export class WhatsappOrchestratorService {
         mimeType: msg.mimeType,
       });
       if (logged && msg.messageId) newlyClaimedIds.push(msg.messageId);
+      const lines = (msg.text || '').split('\n').map(line => line.trim()).filter(Boolean);
+      const split = logged && lines.length > 1 ? this.splitPendingOptionFromAddress(conv, lines) : null;
+      if (split) {
+        msg = { ...msg, text: split.first };
+        turn.burstContinuation = split.rest;
+      }
     }
     // Otro worker/instancia ya reclamó este messageId mediante UNIQUE.
     // No tocar sesión ni crear pedidos a partir del webhook duplicado.
@@ -4933,8 +4972,10 @@ export class WhatsappOrchestratorService {
           return;
         }
       }
-      session = { ...session, pendingMatch: undefined };
-      await this.conversationService.saveSession(conv, session);
+      if (!this.isAddressOnlyCustomerMessage(originalText, compound)) {
+        session = { ...session, pendingMatch: undefined };
+        await this.conversationService.saveSession(conv, session);
+      }
     }
 
     // "costillas der cerdo" responde la pregunta anterior, no es un plato nuevo.
@@ -17103,7 +17144,7 @@ export class WhatsappOrchestratorService {
     }
 
     const feeLine = feeOk.notice ? `\n${feeOk.notice}` : '';
-    if (!session.cart.length) {
+    if (!session.cart.length && !pendingAttribute && !pendingMatch && !pendingMultiOrder) {
       await this.reply(
         conv,
         waId,
@@ -17116,7 +17157,7 @@ export class WhatsappOrchestratorService {
         ? this.catalogService.formatProductOptionsPrompt({
             id: pendingAttribute.productId, name: pendingAttribute.name,
             code: pendingAttribute.code, price: pendingAttribute.price,
-            attributes: pendingAttribute.attributes,
+            attributes: pendingAttribute.attributes, hasAttributes: true,
           } as MenuProduct, pendingAttribute.selected, this.attributeFlowOpts(pendingAttribute))
         : pendingMatch
           ? `Falta escoger ${pendingMatch.query}:\n` + pendingMatch.candidates
