@@ -1,0 +1,66 @@
+{
+  "batch": 41,
+  "date": "2026-10-20",
+  "base": "e0591458",
+  "commit": "7b3562797b1e74065a9fc9fc60f84fdf17ccb615",
+  "scope": "Side swaps inside a dish order («a cambio de la A, B», «con A en vez de B», «cambiando la B por A», «a cambio de A») become a kitchen note on the dish instead of extra portions; «dos <plato con opción> una de X y una de Y» expands without a colon; quantity words before a dish are not a customer name",
+  "trigger": "Real staging chat: «quiero dos mojarras a cambio de la papa salada, papa francesa, dos sopas pequeñas una de ajiaco y una de menudencias, para la cll …». The owner confirmed the meaning: the two dishes take the first side instead of the second, with no separate portion",
+  "baselineFindings": [
+    "The cart got a separate side portion ×2 with a «papa salada» note, two large soups, a third soup, the dish ×2 with the note «papa salada» and «Sopa pequeña ×2 Ajiaco»",
+    "The local glossary rewrote «a cambio de la papa salada» to «papa salada» before any swap reading, so the replaced side was lost",
+    "parseCompoundOrderMessage took «dos sopas pequeñas» as the customer name",
+    "«dos <plato> una de X y una de Y» without a colon was not distributed; «una <plato> de X y una de Y» lost the second line",
+    "With an empty cart, a plural dish plus modifiers was treated as a standalone note and answered «¿Qué se te antoja?»",
+    "«<plato> sin X y con Y» answered «no manejamos <plato> Y» when Y was not a known side word: the modifier strip swallowed «X y con» and left Y as a dish word"
+  ],
+  "fix": "normalizeSideSwapPhrase (whatsapp-kitchen-preference.ts, applied first in applyLocalGlossary) rewrites «con A en vez/en lugar de B», «cambiando la B por A» and «a cambio de la A, B» into «sin B y con A», and «<plato> a cambio de A» (end of item, no comma) into «con A»; side names may contain «de». parseCompoundOrderMessage does not take quantity words or plural food words as a name. expandDistributedVariants picks the attribute owner whose whole name was said (nested names collapse to the longest), adds a no-colon pass and an ellipsis pass for «de» choices whose counts add up. The standalone-note gate lets an empty-cart message through when it starts with a named dish. stripProductModificationNoise stops a modifier at y/con/sin/pero so each modifier is stripped on its own.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-side-swap-distributed.spec.ts",
+    "count": 144,
+    "menus": ["fish house (dish with option, large soups as separate products)", "burger joint (dish without option, sides with «de»)", "arepa shop (dish with option, small/large tamal with option)"],
+    "sidePortionsOnMenu": ["no", "yes"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "«una <grande> de X y una de Y» stays on the large product(s)",
+      "«dos <pequeños> …, para la cll …» does not set a customer name",
+      "«cambia el X por una Y» with X in the cart is still a dish swap",
+      "«sin B» alone adds nothing",
+      "Audio fixture «un combo frito a cambio de la gaseosa, un madurito con …» keeps its previous reading (existing part-11 test)"
+    ],
+    "baselineWithoutFix": "112 failed / 144"
+  },
+  "validation": {
+    "focused": "730 passed (10 suites: compound parse, distributed variants, kitchen description, glossary, handling/order asides, reduced sides, negated requests, scoped removal, catalog) plus 3404 in the affected general-accuracy parts",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "firstGlobalAttempt": "85 failures: the no-colon pass also expanded «cuatro <pack>, 2 con A y 2 con B» (named packs routed to the agent) and the single-side rule rewrote «a cambio de la gaseosa, un madurito …». Fixed by limiting the new passes to «de» choices and skipping the single-side rule before a comma",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 112.399 },
+      "rest": { "passed": 12024, "total": 12024, "suites": 125, "seconds": 372.822 },
+      "inventory": 126,
+      "unionEqualsInventory": true,
+      "hashes": 421,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 12104
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "7b3562797b1e74065a9fc9fc60f84fdf17ccb615",
+    "image": "sha256:26ff8ec32af25bcef9c2bd794ba62665e4a0f6440760f242a14d5324be03793e",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T15:06:19Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-7b356279 (image 9af6b17e…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "«dos <plato con opción>» without the option silently takes the first option; «una <plato>» shows a one-item list",
+    "«un <plato> en lugar de A con B» (inverted order) only notes «con B»",
+    "«1 sopa de X y 1 sopa de Y» / «1 jugo pequeño de X y 1 jugo pequeño de Y» (same product with an option, «sopa»/«jugo» vocabulary) keep only one line, even with explicit counts",
+    "«cambia el X por una <plato> mini de Y» answers «no manejamos: cambia» and keeps X",
+    "Two-word plural dish names («hamburguesas dobles») are not matched",
+    "«dos sopas, una de X y una de Y» with separate products leaves an extra pending question"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
