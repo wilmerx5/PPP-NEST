@@ -1148,12 +1148,12 @@ export class WhatsappOrchestratorService {
       const envelope=checkoutEnvelope(envelopeSource || text,line=>!!this.catalogService.findProductEmbeddedInMessage(line,envelopeMenu),line=>this.looksLikePhoneNumber(line),line=>{
         const value=this.normalizeForMatch(line.replace(/^pago\s+(?:con|por|en)\s+/i,''));
         return getEnabledPaymentMethods(cfg.paymentMethods).find(method=>[method.label,...method.keywords].some(word=>this.normalizeForMatch(word)===value))?.id || null;
-      });
+      },this.conversationService.getSession(conv).cart.length>0);
       if(envelope){
         await this.conversationService.updateCustomerName(conv,envelope.customerName);
         const current=this.conversationService.getSession(conv);
         await this.conversationService.saveSession(conv,{...current,contactPhone:this.normalizeContactPhone(envelope.phone,conv.phoneE164),phoneConfirmed:true,...(envelope.paymentMethod?{paymentMethod:envelope.paymentMethod}: {})});
-        text=`${envelope.orderText} para ${envelope.address}`;
+        text=`${envelope.orderText} para ${envelope.address}`.trim();
       }
     }
     const inboundText = text;

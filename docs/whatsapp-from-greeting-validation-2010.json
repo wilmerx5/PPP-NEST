@@ -1,0 +1,31 @@
+{
+  "batch": 59,
+  "base": "5fa407dd",
+  "newCases": 23,
+  "newConversations": 18,
+  "newFormGuards": 5,
+  "baseline": {
+    "failed": 12,
+    "passed": 6
+  },
+  "focusedPassed": 38,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12909,
+    "suites": 143,
+    "sourceHashesUnchanged": 439,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Deferred to group with batch 60; runtime remains ccb6a395",
+  "limits": [
+    "Known profile, empty cart, simulated model and services, fixed delivery fee",
+    "Structured multiline delivery forms only; arbitrary field orders not accredited",
+    "Real PDF traceability and reserved model evaluation remain pending"
+  ]
+}

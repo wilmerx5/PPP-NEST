@@ -12,3 +12,14 @@ it.each(['Muchas gracias','Buenas noches','No mas','Me regalas'])('does not use 
 
 it('extracts a separate explicit payment line only through the allowed-method callback',()=>expect(checkoutEnvelope(source()+'\ncontraentrega',product,phone,line=>line==='contraentrega'?'cash':null)?.paymentMethod).toBe('cash'));
 it('rejects two payment lines rather than guessing',()=>expect(checkoutEnvelope(source()+'\ncontraentrega\ntransferencia',product,phone,line=>['contraentrega','transferencia'].includes(line)?line:null)).toBeNull());
+
+// Contact-only delivery forms must not become purchases or discard other clauses.
+it('accepts a delivery form only with an existing cart contract', () => {
+ const text='Para domicilio\nCarlos Torres\n3000000006\nCalle 10 #81A-20\nTorre 4 apto 505';
+ expect(checkoutEnvelope(text,product,phone)).toBeNull();
+ expect(checkoutEnvelope(text,product,phone,undefined,true)).toMatchObject({orderText:'',customerName:'Carlos Torres',phone:'3000000006',address:expect.stringContaining('505')});
+});
+it.each(['Y agrega un postre','Carlos Lopez','3000000007','No mas'])('rejects extra delivery-form clause: %s', extra => {
+ const text='Para domicilio\nCarlos Torres\n3000000006\nCalle 10 #81A-20\nTorre 4 apto 505\n'+extra;
+ expect(checkoutEnvelope(text,product,phone,undefined,true)).toBeNull();
+});

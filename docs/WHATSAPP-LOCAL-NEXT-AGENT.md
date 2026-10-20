@@ -1,3 +1,13 @@
+## VIGENTE — conversaciones desde saludo y destinatario de entrega (20/10, tanda 59)
+
+Base 5fa407dd. Nueva suite whatsapp-from-greeting-checkout.spec.ts: 18 conversaciones, tres menús, agente simulado on/off, carrito vacío desde saludo. Pedido con poquito arroz/poquita ensalada sin comprar acompañamientos; pedido y datos completos juntos; datos posteriores y consulta de precio/corrección de dirección durante pago. Cierre hasta DTO y agradecimiento sin segunda orden. Cinco guardas nuevas en checkout-envelope para formulario sin compra y cláusulas adicionales ambiguas.
+
+Baseline: 12 fallos / 6 verdes. Los seis pedidos con datos juntos ya pasaban; los doce con datos en mensaje posterior conservaban Wilmer en vez de Carlos Torres. Corrección: checkoutEnvelope acepta encabezado «Para domicilio»/«Domicilio» sin productos solo cuando ya existe carrito; conserva validaciones estrictas de destinatario/teléfono/calle/referencias. No descarta cláusulas adicionales ni adivina datos. Aplica nombre y contacto y continúa la ruta existente de dirección. Sin excepciones de menú/ID PPP.
+
+Validación: 38 focalizados, TypeScript/build TypeScript, 92 Node. Global congelada: 12909 pruebas / 143 suites, inventario exacto y 439 hashes intactos, cero fallos/reintentos. Evidencia whatsapp-from-greeting-validation-2010.json. Publicar únicamente staging; despliegue diferido para agrupar con tanda 60. Runtime acreditado sigue ccb6a395 (57–58). Main intacto, cero API pagada/WhatsApp/órdenes externas.
+
+Siguiente tanda 60: consultas y correcciones durante nombre, dirección, teléfono, pago y confirmación, con seguimiento hasta cierre; priorizar casos del usuario y trazabilidad PDF→test→commit→runtime. Después evaluación reservada real/costo/latencia para decidir piloto. Esta tanda usa perfil conocido, carrito vacío y servicios/modelo simulados, tarifa fija; no acredita mapas reales ni formularios libres o cualquier orden de campos. No declarar todos los chats PDF resueltos. Plan: WHATSAPP-PILOT-EXECUTION-PLAN-2010.md.
+
 ## VIGENTE — recuperación sin alternativas y plan de piloto (20/10, tanda 58)
 
 Despliegue agrupado 57–58 verificado 2026-10-20T21:28:00.411Z: staging ccb6a39587d8e1f3b056039d83be54407951c406, imagen a6d3e57d5bc6b03a31429344d5528e23d0ee9ca33b93ed940d1963d7f6c34d4b, running/healthy, cero reinicios, /api/health OK, DB connected, circuito CLOSED. Primer chequeo durante arranque respondió 502; siguiente chequeo tras 15s pasó. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-ccb6a395; bin/ privado, bases y volúmenes preservados. Commit documental posterior no requiere reconstrucción.
