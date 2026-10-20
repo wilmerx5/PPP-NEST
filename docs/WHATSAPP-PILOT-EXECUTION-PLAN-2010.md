@@ -2,7 +2,7 @@
 
 ## Punto de partida verificado
 
-Staging permanente: base f2187263, tanda 57 cerrada, 12850 tests / 141 suites; runtime acreditado antes de esta sesión: 30cffa27 (tandas 55–56). Main no se modifica. Estos números acreditan regresiones ejecutadas, no un porcentaje de comprensión o preparación comercial. Tanda 58 cerrada: 36 casos nuevos, 12886 tests / 142 suites globales verdes, 198 focalizados, TypeScript/build y 92 Node. Consultar el relevo para el despliegue efectivo.
+Staging permanente: base f2187263, tanda 57 cerrada, 12850 tests / 141 suites; runtime acreditado antes de esta sesión: 30cffa27 (tandas 55–56). Main no se modifica. Estos números acreditan regresiones ejecutadas, no un porcentaje de comprensión o preparación comercial. Tanda 58 cerrada: 36 casos nuevos, 12886 tests / 142 suites globales verdes, 198 focalizados, TypeScript/build y 92 Node. Despliegue agrupado 57–58 acreditado: ccb6a395, healthy el 20/10 a las 21:28:00Z; producción intacta. Consultar relevo y JSON de tanda 58 para evidencia completa.
 
 Las familias recientes cubren compras condicionales, sabores, consultas durante selección, reemplazos, nombres duplicados y catálogo cambiante, con respuesta/carrito/estado/DTO. La cobertura usa checkout sembrado y modelos/servicios simulados: no demuestra que el bot llegue a ese estado interpretando todos los mensajes anteriores.
 
