@@ -2849,6 +2849,7 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products)) return;
     const readOnlyAside = this.offMenuErrandQuery(originalText,products) || this.randomAsideLabel(originalText,products);
     if (cfg.agentV1Enabled && readOnlyAside &&
       (conv.state !== 'building_cart' || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)) {
@@ -11816,6 +11817,87 @@ export class WhatsappOrchestratorService {
         ? this.catalogService.formatWeDontOfferPreface(query, variants.length) + listBody
         : `Sí, *${baseLabel}*:\n\n${listBody}`,
     );
+    return true;
+  }
+
+  /**
+   * "Arroz" → list of rice dishes → "¿traen gaseosa?": asks whether those dishes include a drink,
+   * not for the drinks list. Answered from descriptions and drink options; variants of the same
+   * dish that include it (combos) are offered as a numbered list.
+   */
+  private async tryHandleIncludedItemQuestion(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): Promise<boolean> {
+    if (/^awaiting_(?:name|phone|address|payment|final_confirm)$/.test(conv.state)) return false;
+    const q = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+    const asked = q.match(/^(?:y\s+|pero\s+|oye\s+)?(?:(.+?)\s+)?(?:traen|trae|vienen\s+con|viene\s+con|incluyen|incluye|llevan|lleva)\s+(?:la\s+|el\s+|una?\s+|su\s+)?(gaseosas?|bebidas?|refrescos?|jugos?|sodas?)(?:\s+(?:incluida|incluido|tambien|o\s+no))?$/);
+    if (!asked) return false;
+    const subject = (asked[1] || '').replace(/^(?:los|las|el|la|esos|esas|ese|esa|estos|estas)\s+/, '').trim();
+    const item = asked[2].replace(/s$/, '');
+    const itemArticle = /a$/.test(item) ? 'la' : 'el';
+    const live = (product: MenuProduct) => product.availableNow !== false && !this.catalogService.isLikelyDrinkProduct(product);
+    const includes = (product: MenuProduct) =>
+      (product.attributes || []).some(attr => /\b(?:bebida|gaseosa|refresco|jugo)s?\b/.test(this.normalizeForMatch(attr.attributeName))) ||
+      /\b(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(this.normalizeForMatch(product.description || ''));
+    const mentionedIn = (source: string) => {
+      const said = ` ${this.normalizeForMatch(source).replace(/[^a-z0-9ñ]+/g, ' ')} `;
+      const count = (name: string) => said.split(` ${name} `).length - 1;
+      const hits = products.filter(live).map(product => ({ product, name: this.normalizeForMatch(product.name), n: 0 }))
+        .map(hit => ({ ...hit, n: count(hit.name) })).filter(hit => hit.n > 0);
+      return hits.filter(hit => hit.n > hits.filter(other => other.name !== hit.name && other.name.includes(hit.name))
+        .reduce((sum, other) => sum + other.n, 0)).map(hit => hit.product);
+    };
+    let context: MenuProduct[] = [];
+    if (subject) {
+      context = this.catalogService.findAllProductsEmbeddedInMessage(subject, products).filter(live) as MenuProduct[];
+      const named = context.filter(product => (` ${q} `).includes(` ${this.normalizeForMatch(product.name)} `));
+      if (named.length) context = named.filter(product => !named.some(other => other.id !== product.id &&
+        this.normalizeForMatch(other.name).includes(this.normalizeForMatch(product.name))));
+    } else if (session.pendingMatch?.candidates?.length) {
+      context = session.pendingMatch.candidates
+        .map(candidate => products.find(product => product.id === candidate.id))
+        .filter((product): product is MenuProduct => !!product && live(product));
+    } else {
+      context = mentionedIn((await this.conversationService.getLastOutboundBody(conv.id)) || '');
+    }
+    if (!context.length) return false;
+
+    const withItem = context.filter(includes);
+    const without = context.filter(product => !includes(product));
+    const contextIds = new Set(context.map(product => product.id));
+    const variants = products.filter(product => product.availableNow !== false && !contextIds.has(product.id) && includes(product) &&
+      without.some(base => (` ${this.normalizeForMatch(product.name)} `).includes(` ${this.normalizeForMatch(base.name)} `)));
+    const offers = [...withItem, ...variants].slice(0, 6);
+    const lines: string[] = [];
+    if (without.length) {
+      lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
+    }
+    if (offers.length) {
+      if (lines.length) lines.push('');
+      lines.push(without.length ? `Con ${item} ${offers.length === 1 ? 'viene' : 'vienen'}:` : `Sí ${offers.length === 1 ? 'trae' : 'traen'} ${item}:`);
+      offers.forEach((product, index) => {
+        lines.push(`${this.catalogService.optionNumberEmoji(index + 1)} *${product.name}* · ${this.catalogService.formatMoney(product.price)}`);
+        if (product.description) lines.push(`   _${product.description}_`);
+      });
+      lines.push('', `_Dime el *número* si quieres ${offers.length === 1 ? 'pedirlo' : 'alguno'}${without.length ? `, o pide ${itemArticle} ${item} aparte` : ''}._`);
+      session = {
+        ...session,
+        pendingAddOffer: undefined,
+        pendingMatch: {
+          query: text,
+          intent: 'order',
+          candidates: offers.map(product => ({ id: product.id, code: product.code, name: product.name, price: product.price, description: product.description })),
+        },
+      };
+      await this.conversationService.saveSession(conv, session);
+    } else {
+      lines.push(`Si quieres, pide ${itemArticle} ${item} aparte.`);
+    }
+    await this.reply(conv, waId, lines.join('\n'));
     return true;
   }
 
