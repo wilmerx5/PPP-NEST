@@ -63,6 +63,12 @@ export function looksLikeClearCartMessage(text: string): boolean {
     return false;
   }
 
+  // "quita todo el pollo" names one dish; "quita todo el pedido" still clears.
+  const scopedAll = located.match(new RegExp(`^${clearVerb}(?:me|le)?\\s+tod[oa]s?\\s+(?:lo\\s+del?|el|la|los|las|de)\\s+(.+)$`));
+  if (scopedAll && !/^(?:(?:mi|el|la|los|las|lo|este|esta)\s+)?(?:carrito|pedido|orden|nuevo|que)\b/.test(scopedAll[1])) {
+    return false;
+  }
+
   if (new RegExp(`\\b${clearVerb}\\s+${clearTarget}\\b`).test(t)) {
     return true;
   }

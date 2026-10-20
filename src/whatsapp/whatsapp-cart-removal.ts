@@ -9,7 +9,7 @@ export function isKeepCartRefusal(text: string): boolean {
 }
 
 /** Only a single explicit dish removal, optionally followed by preservation clauses. */
-export function parseScopedCartRemoval(text: string): { query: string; preserve: string[]; quantity?: number; target?: number } | null {
+export function parseScopedCartRemoval(text: string): { query: string; preserve: string[]; quantity?: number; target?: number; all?: boolean } | null {
   if (!text.trim() || text.length > 350 || /[¿?]/.test(text)) return null;
   const finalCount = text.trim().replace(/[.!]+$/, '').match(/^(.+?)\s*(?:,\s*|\s+)(?:y\s+)?(?:que\s+(?:sean|queden|quede)|deja(?:me)?(?:\s+solo)?)\s+(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)$/i);
   const countWords: Record<string, number> = {una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
@@ -22,9 +22,11 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
     ?.replace(/^(\S+)\s+(?:del|de\s+(?:el|la|mi)|en\s+(?:el|la|mi))\s+(?:carrito|pedido|orden)\s+(?=\S)/i, '$1 ')
     .match(/^(?:quita(?:me|r)?|saca(?:me|r)?|elimina(?:me|r)?|retira(?:me|r)?|borra(?:me|r)?)\s+(?:solamente\s+|solo\s+)?(.+)$/i);
   if (!match) return null;
-  const partial = match[1].match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i) ||
-    match[1].match(/^(?:uno|una|un|1)\s+(.+)$/i);
-  const query = (partial?.[1] || match[1]).replace(/\s+(?:por favor|porfa|gracias)$/i, '').replace(/\s+(?:del carrito|de mi pedido|del pedido)$/i, '').trim();
+  const whole = match[1].match(/^tod[oa]s?\s+(?:lo\s+del?\s+|(?:el|la|los|las)\s+)(.+)$/i);
+  const body = whole?.[1] || match[1];
+  const partial = body.match(/^(?:una|1)\s+unidad\s+d(?:e\s+(?:(?:el|la|los|las)\s+)?|el\s+)(.+)$/i) ||
+    (whole ? null : body.match(/^(?:uno|una|un|1)\s+de\s+(?:los|las|el|la)\s+(.+)$/i) || body.match(/^(?:uno|una|un|1)\s+(.+)$/i));
+  const query = (partial?.[1] || body).replace(/\s+(?:por favor|porfa|gracias)$/i, '').replace(/\s+(?:del carrito|de mi pedido|del pedido)$/i, '').trim();
   const normalized = normalizeCorrection(query);
   if (!normalized || query.includes(',') || /\b(?:y|nota|notas|observacion|observaciones|atributo|opcion|sin|no|solo|solamente|todo|carrito|pedido|agrega|pon|cambia|reemplaza|mejor|por)\b/.test(normalized)) return null;
   const preserve: string[] = [];
@@ -35,7 +37,8 @@ export function parseScopedCartRemoval(text: string): { query: string; preserve:
     if (/\b(?:agrega|anade|pon|cambia|reemplaza|quita|elimina|retira|borra)\b/.test(normalizeCorrection(keep[1]))) return null;
     preserve.push(...keep[1].replace(/\s+(?:igual|como est[aá]n|por favor|porfa)$/i, '').split(/\s*,\s*|\s+y\s+/i));
   }
-  return { query, preserve, ...(partial ? {quantity:1} : {}), ...(target !== undefined ? {target} : {}) };
+  return { query, preserve, ...(partial ? {quantity:1} : {}), ...(target !== undefined ? {target} : {}),
+    ...(whole && !partial && target === undefined ? {all: true} : {}) };
 }
 
 /** "el 2", "el segundo", "el item dos", "la línea 3": a cart row, 1-based. */

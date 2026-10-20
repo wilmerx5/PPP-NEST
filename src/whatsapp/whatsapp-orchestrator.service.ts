@@ -14002,7 +14002,7 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, 'Me pediste quitar y conservar la misma línea. ¿Cuál plato quitamos? El carrito sigue igual.');
       return true;
     }
-    if (indices.length > 1) {
+    if (indices.length > 1 && !removal?.all) {
       if (removal?.quantity) {
         await this.reply(conv, waId, '¿De cuál plato quito una unidad? Escribe el nombre y la instrucción juntos. El carrito sigue igual.');
         return true;
@@ -14014,8 +14014,8 @@ export class WhatsappOrchestratorService {
       await this.reply(conv, waId, `¿Cuál línea quitamos?\n\n${options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')}\n\nEscribe el número. Los demás platos se conservan.`);
       return true;
     }
-    const label = this.formatCartLineLabel(session.cart[indices[0]]);
-    const current = session.cart[indices[0]].quantity;
+    const label = indices.map(index => this.formatCartLineLabel(session.cart[index])).join(', ');
+    const current = indices.length > 1 ? 0 : session.cart[indices[0]].quantity;
     if (removal?.target !== undefined && (removal.target >= current || (removal.quantity && current - removal.quantity !== removal.target))) {
       await this.reply(conv, waId, `Tienes *${session.cart[indices[0]].name}* ×${current}. ¿Cuántas dejamos en total? El carrito sigue igual.`);
       return true;
@@ -16200,7 +16200,8 @@ export class WhatsappOrchestratorService {
         !['building_cart','awaiting_name','awaiting_address','awaiting_phone','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
         session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || session.pendingSubsetKitchenNote ||
         CART_EDIT_SELECTION_KEYS.some(key => !!session[key])) return false;
-    const q = this.normalizeForMatch(text).replace(/^(?:(?:y|ah|porfa|por favor)\s+)+/, '').replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim();
+    const q = this.normalizeForMatch(text).replace(/^(?:(?:y|ah|porfa|por favor)\s+)+/, '').replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '').trim()
+      .replace(/\b(uno|una|un) unidad (?:de |del |de la )/, '$1 de ');
     const ref = String.raw`(?:\s+(?:de\s+)?(?:(?:la|el|los|las)\s+)?([a-zñ]+(?:\s+[a-zñ]+){0,3}?))?`;
     const lessForms = [
       new RegExp(String.raw`^(?:quita(?:me|le)?|saca(?:me|le)?|quitar|sacar|elimina|resta(?:le)?|baja(?:le)?) (?:uno|una|un)${ref}$`),
