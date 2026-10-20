@@ -120,11 +120,11 @@ describe.each(families)('$id: side swap and distributed attribute without colon'
         expect(lines(h).map(l => [l.name, l.qty, l.attr])).toEqual([[f.small, 1, f.opt1], [f.small, 1, f.opt2]]);
       });
 
-      it('full message: swap + distributed smalls + address', async () => {
+      it.each(['quiero','uiero'])('full message %s: swap + distributed smalls + address', async verb => {
         const h = rig();
         (h.conv as any).customerName = '';
         await h.sendQueued(
-          `quiero dos ${f.mains}${pref(f)} a cambio de la ${f.sideA}, ${f.sideB}, dos ${f.smalls} ${f.one} de ${f.opt1.toLowerCase()} y ${f.one} de ${f.opt2.toLowerCase()}, para la cll 9 12b 34`,
+          `${verb} dos ${f.mains}${verb === 'uiero' ? '' : pref(f)} a cambio de la ${f.sideA}, ${f.sideB}, dos ${f.smalls} ${f.one} de ${f.opt1.toLowerCase()} y ${f.one} de ${f.opt2.toLowerCase()}, para la cll 9 12b 34`,
         );
         expectSwap(h, f, swapNote(f));
         const smalls = lines(h).filter(l => l.name === f.small).map(l => [l.qty, l.attr]).sort();

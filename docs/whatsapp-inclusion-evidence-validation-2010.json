@@ -1,0 +1,56 @@
+{
+  "batch": 45,
+  "base": "5e2f23ed",
+  "newTests": 66,
+  "strengthenedPurchaseContrasts": 6,
+  "baselineInclusion": {
+    "failed": 36,
+    "passed": 6
+  },
+  "additionalFindings": {
+    "weakPurchaseAssertionsExposed": 4,
+    "truncatedVerbFailedVariants": 8,
+    "truncatedVerbTotalVariants": 12
+  },
+  "focusedPassed": 259,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodePassed": 92,
+  "global": {
+    "passed": 12328,
+    "failed": 0,
+    "suites": 131,
+    "seconds": 475.032,
+    "hashesIntact": 427,
+    "inventoryExact": true,
+    "retries": 0
+  },
+  "afterGlobal": {
+    "change": "only side-swap test omits explicit cooking option for uiero input",
+    "filePassed": 156,
+    "seconds": 31.22,
+    "runtimeChanged": false,
+    "otherHashesUnchanged": 426,
+    "tsc": "passed"
+  },
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "deployment": "deferred; last documented runtime 3812417c; server not queried",
+  "limitations": [
+    "Inference and maps mocked",
+    "Checkout inclusion questions remain to evaluate",
+    "Complex negation and optional attribute pricing not fully covered",
+    "Correction tests start with seeded mistaken chicken",
+    "Not all PDF chats mapped to tests/runtime"
+  ],
+  "logs": [
+    "/tmp/ppp-inclusion-baseline.log",
+    "/tmp/ppp-drink-purchase-diagnostic.log",
+    "/tmp/ppp-inclusion-focused2.log",
+    "/tmp/ppp-inclusion-focused3.log",
+    "/tmp/ppp-inclusion-bursts.json",
+    "/tmp/ppp-inclusion-rest.json",
+    "/tmp/ppp-inclusion-exact-final.log"
+  ]
+}

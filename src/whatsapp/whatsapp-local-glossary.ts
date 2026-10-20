@@ -311,7 +311,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
  * Idempotente en lo razonable; no cambia nombres de platos válidos.
  */
 export function applyLocalGlossary(text: string): string {
-  let out = normalizeSideSwapPhrase((text || '').trim());
+  // A truncated purchase verb must be repaired before phrase/side-swap parsing.
+  const source = (text || '').trim().replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero');
+  let out = normalizeSideSwapPhrase(source);
   if (!out) return out;
 
   for (const { re, to } of PHRASE_REWRITES) {

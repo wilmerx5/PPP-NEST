@@ -15,7 +15,7 @@ const families: Family[] = [
   {
     id: 'rice-house', word: 'arroz', item: 'gaseosa',
     plain: ['Arroz Paisa', 'Arroz Marinero'], plainDesc: 'Acompañado con papa francesa',
-    variant: { name: 'Combo Arroz Paisa', description: 'Arroz paisa con papa y bebida de 1.5L', attributes: [] },
+    variant: { name: 'Combo Arroz Paisa', description: 'Arroz paisa con papa y gaseosa de 1.5L', attributes: [] },
     drinks: ['Gaseosa 1.5L', 'Jugo Natural'],
   },
   {
@@ -63,7 +63,7 @@ describe.each(families)('$id: «¿traen <bebida>?» after listing dishes asks ab
       const h = rig();
       await listDishes(h);
       const reply = String(await h.sendQueued(question));
-      expect(reply).toMatch(new RegExp(`No traen? ${f.item}:[^\\n]*\\*${f.plain[0]}\\*`));
+      expect(reply).toContain(`No tengo confirmado si incluye ${f.item}: *${f.plain[0]}*`);
       expect(reply).toContain(`*${f.variant.name}*`);
       expect(reply).not.toContain(`*${f.drinks[0]}*`);
       expect(rows(h)).toEqual([]);
@@ -83,7 +83,7 @@ describe.each(families)('$id: «¿traen <bebida>?» after listing dishes asks ab
       const h = rig();
       await listDishes(h);
       const reply = String(await h.sendQueued(`el ${f.plain[0].toLowerCase()} trae ${f.item}?`));
-      expect(reply).toContain(`No trae ${f.item}: *${f.plain[0]}*.`);
+      expect(reply).toContain(`No tengo confirmado si incluye ${f.item}: *${f.plain[0]}*.`);
       expect(reply).toContain(`*${f.variant.name}*`);
       expect(reply).not.toContain(`*${f.plain[1]}*`);
     });
@@ -108,6 +108,8 @@ describe.each(families)('$id: «¿traen <bebida>?» after listing dishes asks ab
       await listDishes(h);
       const reply = String(await h.sendQueued(`quiero una ${f.drinks[0].split(' ')[0].toLowerCase()}`));
       expect(reply).not.toMatch(/No traen?\s/);
+      if(h.conv.sessionData.pendingAttribute) await h.sendQueued('Cola');
+      expect(rows(h)).toEqual([[f.drinks[0],1]]);
     });
   });
 });

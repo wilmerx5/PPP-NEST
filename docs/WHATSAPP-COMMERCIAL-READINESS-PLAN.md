@@ -1,3 +1,11 @@
+## Estado de validación actualizado — 20/10, tanda 45
+
+El relevo vigente es WHATSAPP-LOCAL-NEXT-AGENT.md. Hay 12.328 pruebas en la global documentada; no son una tasa de comprensión ni prueba de que todos los chats reales estén cubiertos. La revisión de aserciones encontró cuatro compras incorrectas ocultas por tests que solo miraban una frase. Se fortalecieron y corrigieron, junto con evidencia de bebida incluida y un inicio truncado de pedido.
+
+Prioridades antes del piloto: (1) respuesta y carrito coherentes, cantidades/notas/opciones y DTO final en familias recientes; (2) mismas consultas durante cada estado de checkout, con negaciones, datos incompletos y correcciones; (3) matriz de chats reales con versión y prueba asociadas, sin marcar como resuelto solo por parecido; (4) muestra reservada con modelo real, medios originales, costo y latencia; (5) piloto supervisado con cero errores críticos conocidos sin contención. Los tests de corrección con carrito sembrado no acreditan comprensión inicial; los mapas y modelos simulados no prueban precisión real. No promover a Main automáticamente.
+
+Último runtime acreditado por relevo: 3812417c; la tanda 45 aún no se desplegó. Las secciones siguientes conservan historia y no deben usarse como estado actual del servidor. Evidencia: whatsapp-inclusion-evidence-validation-2010.json.
+
 ## Revisión vigente de conversaciones del 18 de octubre
 
 Prioridad acordada tras analizar el archivo de chats de las 14:16 a las 17:08: integridad del pedido, direcciones y cierre. Esta revisión sustituye el orden de trabajo anterior; la conversión parcial a combo queda detrás de estos riesgos. Es análisis y plan, sin nuevas pruebas ni correcciones de ejecución en este turno.

@@ -1,3 +1,4 @@
+import { drinkInclusion } from './whatsapp-drink-inclusion';
 import {variantUnitScope} from './whatsapp-variant-unit-scope';
 import {splitDeliveryAddressParts, splitAddressKitchenNote} from './whatsapp-address-parts';
 import {checkoutEnvelope} from './whatsapp-checkout-envelope';
@@ -2849,6 +2850,11 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    // An explicit standalone drink purchase after browsing dishes is not a pick from that dish list.
+    if (businessOpenForBot && !session.cart.length && !session.pendingAttribute && !session.pendingMultiOrder &&
+        !/[¿?]/.test(originalText) && /^(?:quiero|dame|agrega|me das)\s+(?:un|una|\d+)\s+/i.test(originalText.trim()) &&
+        this.catalogService.resolveStandaloneDrinkOrder(originalText,products) &&
+        await this.tryHandleStandaloneDrink(conv,msg.waId,{...session,pendingMatch:undefined,pendingAddOffer:undefined},originalText,products,cfg)) return;
     if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products)) return;
     const readOnlyAside = this.offMenuErrandQuery(originalText,products) || this.randomAsideLabel(originalText,products);
     if (cfg.agentV1Enabled && readOnlyAside &&
@@ -11840,9 +11846,7 @@ export class WhatsappOrchestratorService {
     const item = asked[2].replace(/s$/, '');
     const itemArticle = /a$/.test(item) ? 'la' : 'el';
     const live = (product: MenuProduct) => product.availableNow !== false && !this.catalogService.isLikelyDrinkProduct(product);
-    const includes = (product: MenuProduct) =>
-      (product.attributes || []).some(attr => /\b(?:bebida|gaseosa|refresco|jugo)s?\b/.test(this.normalizeForMatch(attr.attributeName))) ||
-      /\b(?:bebida|gaseosa|refresco|jugo|soda)s?\b/.test(this.normalizeForMatch(product.description || ''));
+    const includes = (product: MenuProduct) => drinkInclusion(product,item) === 'yes';
     const mentionedIn = (source: string) => {
       const said = ` ${this.normalizeForMatch(source).replace(/[^a-z0-9ñ]+/g, ' ')} `;
       const count = (name: string) => said.split(` ${name} `).length - 1;
@@ -11867,18 +11871,20 @@ export class WhatsappOrchestratorService {
     if (!context.length) return false;
 
     const withItem = context.filter(includes);
-    const without = context.filter(product => !includes(product));
+    const without = context.filter(product => drinkInclusion(product,item) === 'no');
+    const uncertain = context.filter(product => drinkInclusion(product,item) === 'unknown');
     const contextIds = new Set(context.map(product => product.id));
     const variants = products.filter(product => product.availableNow !== false && !contextIds.has(product.id) && includes(product) &&
-      without.some(base => (` ${this.normalizeForMatch(product.name)} `).includes(` ${this.normalizeForMatch(base.name)} `)));
+      [...without,...uncertain].some(base => (` ${this.normalizeForMatch(product.name)} `).includes(` ${this.normalizeForMatch(base.name)} `)));
     const offers = [...withItem, ...variants].slice(0, 6);
     const lines: string[] = [];
     if (without.length) {
       lines.push(`${without.length === 1 ? 'No trae' : 'No traen'} ${item}: ${without.map(product => `*${product.name}*`).join(', ')}.`);
     }
+    if (uncertain.length) lines.push(`No tengo confirmado si incluye ${item}: ${uncertain.map(product=>`*${product.name}*`).join(', ')}.`);
     if (offers.length) {
       if (lines.length) lines.push('');
-      lines.push(without.length ? `Con ${item} ${offers.length === 1 ? 'viene' : 'vienen'}:` : `Sí ${offers.length === 1 ? 'trae' : 'traen'} ${item}:`);
+      lines.push(without.length || uncertain.length ? `Con ${item} ${offers.length === 1 ? 'viene' : 'vienen'}:` : `Sí ${offers.length === 1 ? 'trae' : 'traen'} ${item}:`);
       offers.forEach((product, index) => {
         lines.push(`${this.catalogService.optionNumberEmoji(index + 1)} *${product.name}* · ${this.catalogService.formatMoney(product.price)}`);
         if (product.description) lines.push(`   _${product.description}_`);
