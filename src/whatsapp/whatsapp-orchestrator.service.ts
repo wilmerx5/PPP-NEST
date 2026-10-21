@@ -1718,6 +1718,34 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    // A customer's purchase + flavor question is not a quoted bot prompt.
+    const purchaseFlavorQuestion = originalText.trim().match(/^(?:quiero\s+|dame\s+|me\s+das\s+)?((?:un[oa]?|dos|tres|\d{1,2})\s+[^?¿,;\n]+?)[,;]?\s+(?:¿\s*)?(?:de\s+)?qu[eé]\s+sabor(?:es)?\s+(?:tienes|tienen|hay|manejas|manejan)[?!.]*$/i);
+    if (purchaseFlavorQuestion && conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+      const source = purchaseFlavorQuestion[1].trim();
+      const menu = await this.catalogService.getMenuProducts();
+      const query = this.normalizeForMatch(this.catalogService.stripQuantityFromSearchQuery(this.catalogService.extractProductSearchQuery(source)));
+      const exact = menu.filter(product => product.availableNow !== false && this.normalizeForMatch(product.name) === query);
+      const prefix = this.catalogService.findCatalogPrefixCandidates(source, menu);
+      const candidates = (exact.length ? exact : prefix.length ? prefix : this.catalogService.resolveCatalogQuestion(originalText,menu)?.products || [])
+        .filter(product => product.availableNow !== false && product.attributes?.some(attribute => /sabor/i.test(attribute.attributeName)));
+      const quantity = Math.max(1,this.catalogService.extractQuantityFromMessage(source,menu));
+      if (candidates.length === 1) {
+        const product = candidates[0];
+        session = {...session,pendingAttribute:{...this.toPendingAttribute(product,{sourceText:source,selected:[]}),quantity}};
+        await this.conversationService.saveSession(conv,session,'awaiting_attribute');
+        await this.reply(conv,msg.waId,this.catalogService.formatProductOptionsPrompt(product,[]));
+        return;
+      }
+      if (candidates.length > 1) {
+        session = {...session,pendingMatch:{query:source,intent:'order',quantity,candidates}};
+        await this.conversationService.saveSession(conv,session);
+        await this.reply(conv,msg.waId,'Estos son los sabores según la presentación:\n\n'+candidates.map((product,index)=>
+          `${this.catalogService.optionNumberEmoji(index+1)} *${product.name}* · ${this.catalogService.formatMoney(product.price)}\n`+
+          product.attributes!.filter(attribute=>/sabor/i.test(attribute.attributeName)).map(attribute=>attribute.options.join(', ')).join('; ')
+        ).join('\n\n')+'\n\n¿Cuál presentación prefieres? Escribe el número.');
+        return;
+      }
+    }
     // Prefer an evidenced related presentation before buying a separate accompaniment.
     const accompanimentRequest = splitAccompanimentPurchase(originalText);
     if (accompanimentRequest && conv.state === 'building_cart' && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
@@ -21660,7 +21688,7 @@ export class WhatsappOrchestratorService {
     const raw = (text || '').trim();
     if (!raw.endsWith('?') || raw.length > 160) return false;
     const q = this.normalizeForMatch(raw);
-    if (/\b(?:quiero|dame|ponme|cuanto|precio|cuesta|domicilio|envio)\b/.test(q)) return false;
+    if (/\b(?:quiero|dame|ponme|cuanto|precio|cuesta|domicilio|envio|tienes|tienen|hay|manejas|manejan)\b/.test(q)) return false;
     return /\b(?:que sabor|que bebida|cual prefieres|deseas|que opcion)\b/.test(q);
   }
 
