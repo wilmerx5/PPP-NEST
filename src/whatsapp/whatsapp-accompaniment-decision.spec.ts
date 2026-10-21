@@ -4,7 +4,7 @@ for(const [dish,side] of menus)for(const agent of [false,true])for(const decisio
  const menu=[{id:93001,code:93001,name:dish,price:15000,availableNow:true,attributes:[]},
  {id:93002,code:93002,name:`Combo De ${dish}`,description:`Incluye ${side}`,price:22000,availableNow:true,attributes:[]},
  {id:93003,code:93003,name:side,price:4000,availableNow:true,attributes:[]}];
- const h=harness(menu,agent);h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
+ const h=harness(menu,agent);h.service.aiService.classifyMessage=jest.fn().mockResolvedValue(null);h.service.aiService.generateTurn=jest.fn().mockResolvedValue({reply:'¿Cuál prefieres?',actions:{}});
  Object.assign(h.conv.sessionData,{fulfillmentChosen:true,phoneConfirmed:true,contactPhone:h.conv.phoneE164,notesCollected:true});
  h.service.ordersService.create=jest.fn().mockResolvedValue({id:930,dailyOrderNumber:93});
  await h.sendQueued(`Quiero un ${dish} con ${side}`);

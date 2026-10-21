@@ -1,3 +1,13 @@
+## VIGENTE — tanda 77: compra inicial, datos y rechazo de combo (21/10)
+
+Base 7504ab66, staging. 54 conversaciones nuevas: tres menús (arroz+gaseosa, bowl+ensalada, pasta+pan), agente simulado on/off, tres decisiones (combo, por separado, solo plato) y tres datos (teléfono etiquetado, nombre, dirección). En cada recorrido se repiten los datos, se consulta precio antes de elegir y se comprueban respuesta, carrito, pendingMatch, datos guardados y DTO de orden simulada; ninguna orden antes de confirmar. Los acompañamientos no se duplican al elegir combo; separarlos conserva ambos artículos; solo plato excluye acompañamiento.
+
+Baseline 54/54 verdes: no se encontró fallo de runtime en estos recorridos. El fixture no implementaba classifyMessage y el router capturaba TypeError; se añade mock explícito null (clasificador sin resultado) al test nuevo y a la suite de decisiones anterior. Es saneamiento del simulador, no prueba de calidad de inferencia real. Focalizado 396/396 en siete suites, TypeScript general/build y 92 Node aprobados. Revalidación limpia de ambos fixtures documentada en evidencia. No se modifica runtime. No se repite global ni despliega: última global del runtime vigente, tanda 76, 13729/160. No sumar 54 a esa cifra y presentarla como global ejecutada.
+
+Runtime staging sigue 3de69a151411da91e1ec537360766eec8e5a6616; publicación de tests/documentación no necesita rebuild. Main intacto. Cero API pagada, WhatsApp u órdenes externas.
+
+Siguiente tanda: conversaciones completas nuevas desde saludo, consulta de catálogo, selección, corrección de datos y pregunta durante cierre; reservar enunciados antes de editar y registrar baseline. Añadir después mensajes mixtos sin separadores y dos elecciones ambiguas. Evitar seguir multiplicando únicamente etiquetas/menús de una misma plantilla: priorizar secuencias distintas y pruebas negativas. Quedan evaluación del modelo real con gasto registrado, audio/visión y medición supervisada antes de declarar listo para vender. Este bloque no acredita todos los PDF.
+
 ## VIGENTE — tanda 76: aceptación y contacto en el mismo mensaje (21/10)
 
 Base 96f768b1, staging. 54 casos nuevos con tres menús (bowl, pasta, arroz) y agente simulado on/off. 36 recorridos hasta DTO: dos opciones y aceptación con teléfono separada por coma, punto y coma o salto de línea, incluyendo cortesía y puntuación. Dieciocho controles de carrito/estado/respuesta: aceptar una lista aún ambigua, elegir otra opción tras recotizar y segundo cambio de precio. La lista ambigua conserva alternativas, guarda teléfono y permite elegir después; no compra con «sí» sin referente.
