@@ -1,0 +1,59 @@
+{
+  "batch": 88,
+  "date": "2026-10-21",
+  "base": "e2ca708f",
+  "commit": "1a291afcf80c95e0c2bb0f35a6778243ef2df122",
+  "scope": "Remaining gaps from the batch-87 staging chat: a side question about the dish already in the cart («Ese viene con papa a la francesa ?», «trae yuca?», «el combo trae papas?») gets a yes or no from the dish's listed contents instead of the side's product card; «dame una porción de papa con el combo» treats «con el <cart dish>» as a reference and adds or lists the side instead of reopening the dish list",
+  "trigger": "Real staging chat pasted by the owner in batch 87 (personal data omitted)",
+  "baselineFindings": [
+    "Real router with the beta fixture, agent on and off, after ordering the broaster combo: «Ese viene con papa a la francesa ?» → fries product card; «trae yuca?» → yuca product card; «el combo trae papas?» and «viene con papa salada?» → combo card with no yes or no",
+    "«Bueno dame una porción de papa con el combo de pollo» → combo family list again; «dame una porción de papa francesa con el combo» already added the fries"
+  ],
+  "fix": "tryHandleCartSideInclusionQuestion (before the drink inclusion handler, also inside checkout): a question «(subject) trae/viene con/incluye/lleva <item>?» about the only non-drink dish in the cart, the dish pending its option, or a cart dish named in the subject is answered from the description components (prefix «Acompañado con / Incluye / Trae / Viene con» stripped, split on commas and «y», fuzzy token match). Yes: «Sí ✅ *Dish* trae <component>. Viene con …». No is only given for an enumerated accompaniment list; it offers the separate menu side with its price. Drinks, empty carts, ambiguous deixis and loose descriptions stay with the existing routes; the cart is never changed. tryHandleSideForCartLine: «(bueno) dame/quiero/agrega/ponme <qty> <side> con/para el <cart dish>» when the reference matches a cart line — one side candidate is added, several are listed as a pending pick («<dish> sigue en el carrito. ¿Cuál quieres aparte?»). Catalog exposes nearToken for the fuzzy match.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-cart-side-inclusion.spec.ts",
+    "count": 84,
+    "menus": ["chicken combos (Acompañado con …)", "burger menus (Incluye …)", "pasta plates (Trae …)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "with two dishes in the cart a bare «ese trae X?» is left to the general flow",
+      "a loose description («Con X») is not enough to deny a side",
+      "with an empty cart the question is not answered as a cart dish",
+      "a reference that is not in the cart does not use the cart-dish path",
+      "a drink question stays with the drink answer"
+    ],
+    "baselineWithoutFix": "56 failed / 84"
+  },
+  "validation": {
+    "focused": "2570 passed (33 suites: included drinks, sides, cart notes, partial notes, list rows, checkout interruptions, conditional drinks, general accuracy part 12)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "firstGlobal": "2 failures in general-accuracy-part-12 («Y ese trae salsa de ajo?» on a dish described only «Con arroz» must say the detail is not confirmed); fixed by requiring an enumerated list before denying, then the global was rerun with refrozen hashes",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 69 },
+      "rest": { "passed": 14450, "total": 14450, "suites": 171, "seconds": 405 },
+      "inventory": 172,
+      "unionEqualsInventory": true,
+      "hashes": 469,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14530
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "1a291afcf80c95e0c2bb0f35a6778243ef2df122",
+    "image": "sha256:34724722c9c8c66d7ebbb8d26eb1734b83e6bc7a749c271b152ca7083592f522",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T19:32:27Z, healthy, 0 restarts (started 19:31:57Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-1a291afc (image 64f0a278…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "«Te transformo 57.000?» with the agent on returns the model's text (cart protected); a deterministic payment-amount answer with the total is still missing; the real model was not evaluated (simulated only)",
+    "«quiero un menu hamburguesa» / «quiero un plato pasta» (family prefix) silently adds one member instead of listing",
+    "Same-product lines get the same label in pick lists",
+    "A short «ese trae X?» right after a side's card refers to that side (focus follows the last card shown)"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
