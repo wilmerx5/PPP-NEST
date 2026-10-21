@@ -1,3 +1,17 @@
+## VIGENTE — tanda 96: pregunta del monto a pagar y respuestas del agente que anuncian cambios no aplicados (21/10)
+
+Base a635aa00, staging. Hueco pendiente de un chat real anterior (agente encendido): en checkout «Te transformo 57.000?» (preguntaba si transfería el total) terminó con «Listo, agregué <combo de ese precio>». Reproducido con el router real: randomAsideLabel lo toma como tema ajeno y esa rama reenviaba la respuesta del agente aunque anunciara un cambio de carrito que no se aplicó (el carrito no cambiaba, pero el cliente leía «agregué»); sin agente respondía «Eso no lo resuelvo por este chat» y «te transfiero 57.000» solo repetía el menú de pago. Sin el arreglo fallan 45/85.
+
+Auditado sin cambio: el pedido directo llena opciones con la primera por diseño (fillDefaultAttributes las muestra para cambiarlas); el pin crudo en la explicación del domicilio solo aparece en el harness (reply() de producción ya usa customerLocationLabel); nombres que empiezan por palabra de lugar («Santa Maria Lopez», «Kennedy Rojas») siguen siendo ambiguos con barrios reales y «Ana Villa» ya es nombre.
+
+85 regresiones nuevas (whatsapp-payment-amount-check.spec.ts): combos de pollo, pizzas, rolls de sushi, cada uno con un producto que cuesta exactamente el total con domicilio; agente on y off, ambos simulando el error del chat real. Contrastes: monto distinto se corrige con el total real; «pago con 100.000» y un monto suelto no se interceptan; carrito vacío no responde total; recoger no suma domicilio; una respuesta inofensiva del agente a un tema ajeno se conserva.
+
+Arreglo general: parsePaymentAmountQuestion (verbo de pago + monto, o «son/serían/total + monto?»; 57.000 / 57,000 / 57000 / 57 mil / $) se responde antes del agente y de la ruta legada con el total y su desglose («Sí, el total es…» o «El total del pedido es …, no …»), y en el paso de pago, si la transferencia está habilitada, indica escribir *transferencia*. La rama de tema ajeno nunca reenvía una respuesta que anuncie agregar, quitar o cambiar.
+
+Validación: foco 11303/11303 (72 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (477) 80/80 + 15025/15025, unión = inventario 180, 513 s, sin reintentos. Commit 389bfcf5 desplegado solo en staging (imagen 261cb109…, health OK 22:33Z, 0 reinicios, rollback rollback-before-389bfcf5); producción 1d512d0c… intacta. Evidencia: docs/whatsapp-payment-amount-check-validation-2110.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: auditar otras rutas que reenvían texto del agente distinto de las acciones aplicadas; el harness no aplica customerLocationLabel en reply(); «2 y una coca cola» con opción abierta es ambiguo; evaluar modelo real con presupuesto registrado.
+
 ## VIGENTE — tanda 95: opción abierta por número con nota de servicio (21/10)
 
 Base 8bfd833f, staging. Antes de esta tanda, por pedido del usuario, staging (tandas hasta 94) se fusionó en Main (54c057b5, árbol idéntico a staging validado) y se desplegó en producción: ppp_nest_api imagen 1d512d0c…, health OK/DB connected/circuit CLOSED 21:52Z, 0 reinicios, rollback ppp-nest-api:rollback-before-54c057b5 (bf4596b2…), compose productivo intacto, módulos WhatsApp compilados idénticos a staging. Evidencia: docs/whatsapp-main-promotion-2110.json.

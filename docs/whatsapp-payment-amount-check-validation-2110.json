@@ -1,0 +1,63 @@
+{
+  "batch": 96,
+  "date": "2026-10-21",
+  "base": "a635aa00",
+  "commit": "389bfcf541a8f85b7963d029895eaf64d09cc852",
+  "scope": "At checkout «Te transformo 57.000?» (asking whether to transfer the total) was answered as off-topic with the agent off and, with the agent on, the model's reply «Listo, agregué <combo of that price>» was relayed although nothing was added; «te transfiero 57.000» only repeated the payment menu",
+  "trigger": "Pending gap from an earlier real staging chat (agent on, a combo priced like the order total was announced as added); personal data not copied",
+  "audited_without_change": [
+    "Direct orders fill missing options with the first option by design (fillDefaultAttributes shows the applied option so it can be changed); not reversed",
+    "The raw pin in the delivery-fee explanation only appears in the test harness: the production reply() already swaps the stored address for customerLocationLabel",
+    "Names starting with a place word («Santa Maria Lopez», «Kennedy Rojas») stay ambiguous with real neighbourhoods; two-word names like «Ana Villa» are already names"
+  ],
+  "baselineFindings": [
+    "randomAsideLabel classifies the amount message as an aside; that branch used the agent reply verbatim even when it reported a cart change",
+    "No deterministic answer for an amount-to-pay question; agent off replied «Eso no lo resuelvo por este chat»"
+  ],
+  "fix": "parsePaymentAmountQuestion (payment verb + amount, or «son/serían/total + amount?»; amounts 57.000 / 57,000 / 57000 / 57 mil / $; cash denominations «pago con …» and bare amounts excluded) answered before the agent and the legacy path with the cart total and its breakdown («Sí, el total es…» or «El total del pedido es …, no …»), a transfer hint at the payment step when transfer is enabled, otherwise the open-step reminder; the off-topic branch never relays a model reply that claims a cart change.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-payment-amount-check.spec.ts",
+    "count": 85,
+    "menus": ["chicken combos", "pizzas", "sushi rolls"],
+    "agent": ["off", "on (simulated with the real-chat mistake: add the product priced like the total and claim it)"],
+    "contrasts": [
+      "a different amount is corrected with the real total",
+      "«pago con 100.000» and a bare amount are not answered as amount checks",
+      "an empty cart does not answer a total",
+      "pickup total has no delivery fee",
+      "a harmless off-topic model reply is still used"
+    ],
+    "baselineWithoutFix": "45 failed / 85 (only the orchestrator stashed; the spec imports the new intent)"
+  },
+  "validation": {
+    "focused": "11303 passed (72 suites: payment, totals, transfer, cash, off-topic, session intents)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 66 },
+      "rest": { "passed": 15025, "total": 15025, "suites": 179, "seconds": 447 },
+      "inventory": 180,
+      "unionEqualsInventory": true,
+      "hashes": 477,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 15105
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "389bfcf541a8f85b7963d029895eaf64d09cc852",
+    "image": "sha256:261cb109091683b346895803243ffa2ef720b752cd8ce5d4d363cfed9c82de0a",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T22:33:21Z, healthy, 0 restarts (started 22:32:48Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-389bfcf5 (image 11ae84cf…)",
+    "production": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748 before and after"
+  },
+  "remainingGaps": [
+    "«2 y una coca cola» on an open drink option is ambiguous",
+    "Other agent-reply paths may still relay claims that differ from the applied actions; audit them one by one",
+    "The harness reply() skips customerLocationLabel, so tests cannot see the customer-facing address label",
+    "Real model evaluation with a recorded budget"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
