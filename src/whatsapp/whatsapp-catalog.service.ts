@@ -10882,6 +10882,10 @@ export class WhatsappCatalogService {
     return singularizeEsToken(token);
   }
 
+  nearToken(word: string, token: string): boolean {
+    return nearDishToken(word, token);
+  }
+
   formatCategoryList(
     categoryName: string,
     list: WhatsappCatalogProduct[],
