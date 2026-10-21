@@ -1057,7 +1057,7 @@ export class WhatsappOrchestratorService {
         return;
       }
       let sessionLoc = this.conversationService.getSession(conv);
-      const pendingUnit = sessionLoc.pendingDeliveryUnit;
+      const pendingUnit = [sessionLoc.pendingDeliveryUnit, sessionLoc.pendingDeliveryPlace].filter(Boolean).join(', ');
       sessionLoc = {
         ...sessionLoc,
         orderType: 'delivery',
@@ -1076,7 +1076,7 @@ export class WhatsappOrchestratorService {
       });
       sessionLoc = feeResult.session;
       if (pendingUnit) sessionLoc = { ...sessionLoc,
-        address: `${sessionLoc.address || addr} — ${pendingUnit}`.slice(0, 240), pendingDeliveryUnit: undefined };
+        address: `${sessionLoc.address || addr} — ${pendingUnit}`.slice(0, 240), pendingDeliveryUnit: undefined, pendingDeliveryPlace: undefined };
       await this.conversationService.saveSession(conv, sessionLoc, 'building_cart');
       const feeLine = feeResult.notice ? `\n${feeResult.notice}` : '';
       await this.reply(
@@ -4681,7 +4681,8 @@ export class WhatsappOrchestratorService {
         if (namesPlace) addrHint = placeName;
         if (!this.isPlausibleDeliveryAddress(addrHint) && (namesPlace || /^(?:almac[eé]n|boutique|oficina|tienda|local|bodega|edificio)\s+\p{L}[\p{L}\s.-]{2,70}$/iu.test(addrHint))) {
           session = this.withDeliveryAddress({...session,fulfillmentChosen:true,address:undefined,addressConfirmed:false},addrHint);
-          session = {...session,addressConfirmed:false,deliveryFeeCalculated:undefined,deliveryDistanceKm:undefined,deliveryLat:null,deliveryLng:null};
+          session = {...session,addressConfirmed:false,deliveryFeeCalculated:undefined,deliveryDistanceKm:undefined,deliveryLat:null,deliveryLng:null,
+            pendingDeliveryPlace:this.bareDeliveryPlace(addrHint)};
           await this.conversationService.saveSession(conv,session,'awaiting_address');
           await this.reply(conv,msg.waId,`Anoté la referencia: _${addrHint}_. ¿Puedes darme la calle/carrera o enviar la ubicación para confirmar el destino?`);
           return;
@@ -13586,6 +13587,7 @@ export class WhatsappOrchestratorService {
         address: undefined,
         addressConfirmed: false,
         pendingDeliveryUnit: undefined,
+        pendingDeliveryPlace: undefined,
         freshDeliveryAddressRequested: true,
         deliveryFeeCalculated: null,
         deliveryDistanceKm: null,
@@ -16333,6 +16335,7 @@ export class WhatsappOrchestratorService {
       ...session,
       orderType: 'pickup',
       pendingDeliveryUnit: undefined,
+      pendingDeliveryPlace: undefined,
       freshDeliveryAddressRequested: undefined,
       address,
       fulfillmentChosen: true,
@@ -16370,6 +16373,11 @@ export class WhatsappOrchestratorService {
       const hasExplicitUnit = /\b(?:apartamento|apto|apt|interior|int|torre|bloque|casa|local|oficina|piso)\.?\s+(?:[a-z]\d{0,3}|\d{1,4}[a-z]?)\b/i.test(addr);
       if (!hasExplicitUnit) addr = `${addr}, ${session.pendingDeliveryUnit}`.slice(0, 240);
       session = { ...session, pendingDeliveryUnit: undefined };
+    }
+    if (session.pendingDeliveryPlace && this.isStrongExplicitAddress(addr)) {
+      const place = session.pendingDeliveryPlace;
+      if (!this.normalizeForMatch(addr).includes(this.normalizeForMatch(place))) addr = `${addr}, ${place}`.slice(0, 240);
+      session = { ...session, pendingDeliveryPlace: undefined };
     }
     const prev = (session.address || '').trim();
 
@@ -26314,6 +26322,10 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  private bareDeliveryPlace(place: string): string | undefined {
+    return place.trim().replace(/^(?:(?:en|a|al|para|hasta)\s+)?(?:(?:el|la)\s+)?/i, '').replace(/[.,;]+$/, '').trim() || undefined;
+  }
+
   /** "domicilio" / "envíamelo" / "me lo envías a <lugar>" while a pickup order is in checkout. */
   private async tryHandleCheckoutSwitchToDelivery(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
@@ -26331,7 +26343,8 @@ export class WhatsappOrchestratorService {
     const place = toPlace ? text.trim().split(/\s+/).slice(-toPlace[1].split(' ').length).join(' ') : '';
     if (place && this.isPlausibleDeliveryAddress(place) && !this.looksLikeFoodNotAddress(place)) return false;
     const next: WhatsappSessionData = { ...session, orderType: 'delivery', fulfillmentChosen: true, address: undefined, addressConfirmed: false,
-      deliveryFeeCalculated: undefined, deliveryDistanceKm: undefined, deliveryOutOfCoverage: false };
+      deliveryFeeCalculated: undefined, deliveryDistanceKm: undefined, deliveryOutOfCoverage: false,
+      pendingDeliveryPlace: place ? this.bareDeliveryPlace(place) : undefined };
     await this.conversationService.saveSession(conv, next, 'awaiting_address');
     await this.reply(conv, waId, place
       ? `Listo, cambiamos a *domicilio* 🛵 Anoté *${place}*. Para calcular el domicilio escríbeme la dirección completa: calle o carrera con número (y conjunto o apto si aplica).`
