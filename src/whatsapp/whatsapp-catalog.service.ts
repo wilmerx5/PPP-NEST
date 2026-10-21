@@ -10878,6 +10878,10 @@ export class WhatsappCatalogService {
     return lines.join('\n');
   }
 
+  singularToken(token: string): string {
+    return singularizeEsToken(token);
+  }
+
   formatCategoryList(
     categoryName: string,
     list: WhatsappCatalogProduct[],

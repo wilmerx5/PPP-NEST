@@ -51,6 +51,8 @@ export class WhatsappPointsService {
 
     const bare = raw.match(/^[A-Za-z0-9]{12}$/);
     if (bare) {
+      // A lowercase word with no digit ("hamburguesas") is text; printed codes are uppercase.
+      if (!/\d/.test(bare[0]) && bare[0] !== bare[0].toUpperCase()) return null;
       const code = bare[0].toUpperCase();
       return POINT_CODE_CHARSET.test(code) ? code : null;
     }

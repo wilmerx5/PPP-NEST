@@ -3049,6 +3049,7 @@ export class WhatsappOrchestratorService {
         this.catalogService.resolveStandaloneDrinkOrder(originalText,products) &&
         await this.tryHandleStandaloneDrink(conv,msg.waId,{...session,pendingMatch:undefined,pendingAddOffer:undefined},originalText,products,cfg)) return;
     if (await this.tryHandleIncludedItemQuestion(conv, msg.waId, session, originalText, products, cfg)) return;
+    if (await this.tryHandleFamilyBrowse(conv, msg.waId, session, originalText, products)) return;
     const readOnlyAside = this.offMenuErrandQuery(originalText,products) || this.randomAsideLabel(originalText,products);
     if (cfg.agentV1Enabled && readOnlyAside &&
       (conv.state !== 'building_cart' || session.pendingAttribute || session.pendingMatch || session.pendingMultiOrder)) {
@@ -12487,6 +12488,50 @@ export class WhatsappOrchestratorService {
    * not for the drinks list. Answered from descriptions and drink options; variants of the same
    * dish that include it (combos) are offered as a numbered list.
    */
+  /**
+   * "¿qué hamburguesas tienen?", "tienen lasagnas?", "quiero ver las hamburguesas", "lasagnas":
+   * a family of dishes sharing a word is listed, never answered with one of them or added.
+   * Category words are left to the category browse.
+   */
+  private async tryHandleFamilyBrowse(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+  ): Promise<boolean> {
+    if (/^awaiting_/.test(conv.state)) return false;
+    if (session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder) return false;
+    const q = this.normalizeForMatch(text).replace(/[¿?¡!.,]/g, ' ').replace(/\b(?:por favor|porfa)\b/g, ' ')
+      .replace(/^(?:(?:hola|buenas|buenos dias|buenas tardes|buenas noches|oye|veci|y)\s+)*/, '')
+      .replace(/\s+/g, ' ').trim();
+    const word = (q.match(/^(?:que|cuales)\s+([a-zñ]{3,})\s+(?:tienen|tiene|tienes|hay|manejan|venden|ofrecen|ofreces)$/) ||
+      q.match(/^(?:tienen|tiene|tienes|hay|manejan|venden)\s+(?:de\s+)?([a-zñ]{3,})$/) ||
+      q.match(/^(?:(?:quiero|quisiera|puedo|me\s+dejas?)\s+)?ver\s+(?:las|los)\s+([a-zñ]{3,})$/) ||
+      q.match(/^(?:muestrame|mostrame|ensename|me\s+muestras)\s+(?:las|los)\s+([a-zñ]{3,})$/) ||
+      q.match(/^([a-zñ]{3,}s)$/))?.[1];
+    if (!word) return false;
+    const singular = this.catalogService.singularToken(word);
+    const forms = new Set([word, singular]);
+    const isCategory = products.some(product => {
+      const category = this.normalizeForMatch(product.categoryName || '');
+      return !!category && category.split(/\s+/).some(token => forms.has(token) || forms.has(this.catalogService.singularToken(token)));
+    });
+    if (isCategory) return false;
+    const family = products.filter(product => product.availableNow !== false &&
+      this.normalizeForMatch(product.name).split(/\s+/).some(token => forms.has(token) || this.catalogService.singularToken(token) === singular));
+    if (family.length < 2 || family.length > 12) return false;
+    const label = singular.charAt(0).toUpperCase() + singular.slice(1);
+    session = {
+      ...session,
+      pendingAddOffer: undefined,
+      pendingMatch: { query: text, candidates: family.map(product => ({ id: product.id, code: product.code, name: product.name, price: product.price, description: product.description })) },
+    };
+    await this.conversationService.saveSession(conv, session, conv.state === 'greeting' ? 'building_cart' : undefined);
+    await this.reply(conv, waId, this.catalogService.formatCategoryList(label, family));
+    return true;
+  }
+
   private async tryHandleIncludedItemQuestion(
     conv: WhatsappConversation,
     waId: string,
