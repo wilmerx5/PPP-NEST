@@ -1,0 +1,56 @@
+{
+  "batch": 92,
+  "date": "2026-10-21",
+  "base": "6301588c",
+  "commit": "d5177ef4d4707ab7003e50ef87e3e8d1265def45",
+  "scope": "Pending from batch 90: the place named in «me lo envías a <place>» was shown but lost once the street arrived; the same happened when the address question was answered with a bare place («Anoté la referencia: _<place>_») and then with the street",
+  "trigger": "Gap recorded after the batch-89 staging chat (address «Me lo envias a <neighborhood> …»)",
+  "baselineFindings": [
+    "Real router, synthetic menu, agent on and off, pickup order at the payment step: «Me lo envias a Villa Clara» → switch to delivery naming the place; then «calle 45 # 12-10» → address «calle 45 # 12-10», place dropped",
+    "«domicilio» → «Villa Clara» or «en Villa Clara» → «Anoté la referencia: _Villa Clara_» → «calle 45 # 12-10» → address «calle 45 # 12-10», place dropped although the bot said it was noted",
+    "Already handled elsewhere: «barrio X» / «conjunto X» after a street is appended (neighborhoodDetail); a unit given before the street is kept by pendingDeliveryUnit"
+  ],
+  "fix": "New session field pendingDeliveryPlace (never geocoded alone), mirroring pendingDeliveryUnit: set by the «Anoté la referencia» path and by the checkout switch to delivery with a place (leading «en/a/al/para/hasta» and article removed); withDeliveryAddress appends it once to the next strong explicit street («<street>, <place>») unless the street already names it; a WhatsApp location pin appends it next to the pin; switching to pickup or asking for a new address clears it.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-delivery-place-reference.spec.ts",
+    "count": 42,
+    "menus": ["arepas (no options, plain street)", "pastas (size option, street with apartment)", "seafood (spice option, two units, diagonal with tower)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a street that already names the place does not repeat it",
+      "a bare «domicilio» switch adds nothing to the street",
+      "going back to pickup drops the place"
+    ],
+    "baselineWithoutFix": "24 failed / 42"
+  },
+  "validation": {
+    "focused": "1331 passed (26 suites: address, delivery, location, pickup, checkout, payment)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 14734, "total": 14734, "suites": 175, "seconds": 415 },
+      "inventory": 176,
+      "unionEqualsInventory": true,
+      "hashes": 473,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14814
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "d5177ef4d4707ab7003e50ef87e3e8d1265def45",
+    "image": "sha256:5ad3270f8993a3381865c743593c5321ce43727e37a0efbfe7952e0cc1516583",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T21:00:16Z, healthy, 0 restarts (started 20:59:46Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-d5177ef4 (image b718f82a…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "Some two-word place names («San Telmo», «Los Almendros») are quoted directly as an address instead of being noted as a reference and asking for the street",
+    "«<dish> con <side product> y <drink>» can leave a note that repeats the chosen options",
+    "«Te transformo 57.000?» with the agent on still answers with the model's text; the real model was not evaluated"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

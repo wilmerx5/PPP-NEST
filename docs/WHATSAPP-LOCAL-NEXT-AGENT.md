@@ -1,3 +1,15 @@
+## VIGENTE — tanda 92: el lugar dicho antes de la calle queda en la dirección (21/10)
+
+Base 6301588c, staging. Pendiente de la tanda 90. Baseline con router real y menú sintético, con y sin agente, pedido para recoger en el pago: «Me lo envias a Villa Clara» y luego «calle 45 # 12-10» dejaba la dirección «calle 45 # 12-10» sin el lugar; lo mismo con «domicilio» → «Villa Clara» («Anoté la referencia: _Villa Clara_») → calle: el bot decía que lo anotaba y lo perdía. Sin el arreglo fallan 24/42.
+
+42 regresiones nuevas (whatsapp-delivery-place-reference.spec.ts): arepas (calle simple), pastas (tamaño, calle con apto), mariscos (picante, dos unidades, diagonal con torre); agente simulado on/off, clasificador null. Contrastes: una calle que ya nombra el lugar no lo repite; «domicilio» sin lugar no agrega nada; volver a recoger borra el lugar.
+
+Arreglo general: campo de sesión pendingDeliveryPlace (nunca se geocodifica solo), igual que pendingDeliveryUnit: lo guardan la ruta «Anoté la referencia» y el cambio a domicilio con lugar del checkout (sin «en/a/al/para/hasta» ni artículo); withDeliveryAddress lo agrega una vez a la siguiente calle explícita («<calle>, <lugar>») salvo que ya lo nombre; la ubicación de WhatsApp lo agrega junto al pin; pasar a recoger o pedir una dirección nueva lo borra.
+
+Validación: foco 1331/1331 (26 suites); tsc ambos OK; node 92/0; diff --check OK; global en dos fases con hashes congelados (473) 80/80 + 14734/14734, unión = inventario 176, 478 s, sin reintentos. Commit d5177ef4 desplegado solo en staging (imagen 5ad3270f…, health OK 21:00Z, 0 reinicios, rollback rollback-before-d5177ef4); producción bf4596b2… intacta. Evidencia: docs/whatsapp-delivery-place-reference-validation-2110.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: algunos lugares de dos palabras («San Telmo», «Los Almendros») se cotizan como dirección en vez de anotarse como referencia; nota que repite opciones ya elegidas; respuesta determinista al «Te transformo 57.000?» con agente; evaluar modelo real con presupuesto registrado.
+
 ## VIGENTE — tanda 91: platos que empiezan por «arepa» y acompañamientos pedidos solos se agregan directo con agente (21/10)
 
 Base c76dcca0, staging. Pendiente de la tanda 90. Baseline con router real y menú sintético, agente encendido: «quiero una arepa rellena», «quiero 1 arepa rellena», «me das una arepa rellena» y «quiero pedir una arepa rellena» respondían «¿Cuál prefieres?» con el carrito vacío; con un plato de arepa en la carta, «dame arepas fritas» (acompañamiento real) tampoco se agregaba. Causa: isLikelySideOnlyProduct tomaba como acompañamiento cualquier nombre de hasta tres palabras que empezara por «arepa». Sin agente ya funcionaba. Sin el arreglo fallan 26/75.
