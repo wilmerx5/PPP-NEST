@@ -1,3 +1,15 @@
+## VIGENTE — tanda 93: los lugares con artículo lo conservan en la referencia de domicilio (21/10)
+
+Base d85904a8, staging. Revisando el pendiente de la tanda 92. Baseline con router real y menú sintético, con y sin agente: «Los Almendros» se anotaba como «Almendros», «El Prado» como «Prado», «La Esperanza» como «Esperanza»; «en Villa Clara» quedaba con la preposición; «Me lo envias a La Esperanza» guardaba «Esperanza». No es defecto: «San Telmo», «Santa Inés» y «barrio X» coinciden a propósito con las palabras de barrio y se cotizan como barrio. Sin el arreglo fallan 20/42.
+
+42 regresiones nuevas (whatsapp-delivery-place-article.spec.ts): arepas (calle simple), pastas (tamaño, calle con apto), mariscos (picante, dos unidades, diagonal con torre); agente simulado on/off, clasificador null. Contrastes: el artículo antes de una calle se sigue quitando; «me lo envías a la <calle>» cotiza la calle sin artículo; «al conjunto <nombre>» conserva el conjunto.
+
+Arreglo general: normalizeDeliveryAddress quita «la/el/los/las» inicial solo antes de un sustantivo genérico de dirección (calle, carrera, conjunto, barrio, casa, torre, edificio, misma, que, de…) o de un número; ante cualquier otra palabra es parte del nombre y se conserva. La ruta «Anoté la referencia» y el cambio a domicilio del checkout usan la misma limpieza (sin preposición, con artículo).
+
+Validación: foco 1531/1531 (28 suites); tsc ambos OK; node 92/0; diff --check OK. El primer global falló 3 casos de whatsapp-order-lookup-release.spec.ts («el pedido es para las 7 de la noche» se leía como consulta de estado al conservar «las 7»); se arregló quitando el artículo antes de un número, se recongelaron hashes y se repitió: 80/80 + 14776/14776, unión = inventario 177, hashes 474, 524 s. Commit 3ba7e2fc desplegado solo en staging (imagen 72f55b06…, health OK 21:24Z, 0 reinicios, rollback rollback-before-3ba7e2fc); producción bf4596b2… intacta. Evidencia: docs/whatsapp-delivery-place-article-validation-2110.json. Sin llamadas pagadas, WhatsApp ni órdenes externas.
+
+Pendiente: «al <lugar>» sigue perdiendo el «El» del nombre (contracción ambigua); un barrio solo se confirma sin calle (diseño actual); nota que repite opciones ya elegidas; respuesta determinista al «Te transformo 57.000?» con agente; evaluar modelo real con presupuesto registrado.
+
 ## VIGENTE — tanda 92: el lugar dicho antes de la calle queda en la dirección (21/10)
 
 Base 6301588c, staging. Pendiente de la tanda 90. Baseline con router real y menú sintético, con y sin agente, pedido para recoger en el pago: «Me lo envias a Villa Clara» y luego «calle 45 # 12-10» dejaba la dirección «calle 45 # 12-10» sin el lugar; lo mismo con «domicilio» → «Villa Clara» («Anoté la referencia: _Villa Clara_») → calle: el bot decía que lo anotaba y lo perdía. Sin el arreglo fallan 24/42.
