@@ -1,0 +1,36 @@
+{
+  "batch": 63,
+  "base": "7583292d",
+  "newCases": 56,
+  "baseline": {
+    "failed": 24,
+    "passed": 24,
+    "cases": 48
+  },
+  "boundaryDevelopment": {
+    "failed": 2,
+    "passed": 54,
+    "reason": "new category composer swallowed sin gluten/sin huevo; excluded conditional/modifier clauses"
+  },
+  "focusedPassed": 147,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 13131,
+    "suites": 147,
+    "unchangedHashes": 443,
+    "exactInventory": true,
+    "testTimeoutMs": 15000
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Multiple category questions, known categories only, building_cart, no pending attribute/multi-order",
+    "Audio pipeline uses mocked transcription matching observed real server transcript",
+    "Boundary controls only prove this helper declines mixed clauses, not complete dietary answers",
+    "No claim all basic conversations or all PDF chats covered"
+  ],
+  "runnerIssue": "Initial focused command referenced nonexistent whatsapp-catalog.service.spec.ts; 120 tests passed and correct catalog.matching suite subsequently passed 27"
+}

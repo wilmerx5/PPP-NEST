@@ -3122,6 +3122,16 @@ export class WhatsappOrchestratorService {
       return;
     }
 
+    if (conv.state === 'building_cart' && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const categories = this.catalogService.findCategoryQuestionList(originalText, products, cfg.menuConceptGroups);
+      if (categories) {
+        session = { ...session, pendingMatch: { query: categories.categoryName, candidates: categories.products } };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, msg.waId, this.catalogService.formatCategoryBrowseReply(categories));
+        return;
+      }
+    }
+
     // A nearby delivery reference is separate from the ordered catalog product.
     const nearbyRequest = originalText.match(/^(.+?)\s+((?:aqu[ií]|por aqu[ií])\s+(?:para|a)\s+la\s+vuelta)(?:\s+por favor)?[.!]*$/i);
     if (nearbyRequest && (this.catalogService.isAvailabilityInquiry(originalText) ||

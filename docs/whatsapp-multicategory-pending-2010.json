@@ -1,5 +1,5 @@
 {
-  "status": "pending_not_validated",
+  "status": "covered_by_mocked_router_batch_63",
   "realTranscript": "Quiero algo como de carne. ¿Qué tiene de carne? O de pescado, ¿qué tiene de pescado?",
   "cases": [
     {
@@ -36,7 +36,7 @@
         "mustNotDenyExistingCategories": true,
         "showCatalogOptionsOrClarifyCategory": true
       },
-      "status": "pending_reproduction"
+      "status": "covered_by_mocked_router_batch_63"
     },
     {
       "categories": [
@@ -72,7 +72,7 @@
         "mustNotDenyExistingCategories": true,
         "showCatalogOptionsOrClarifyCategory": true
       },
-      "status": "pending_reproduction"
+      "status": "covered_by_mocked_router_batch_63"
     },
     {
       "categories": [
@@ -108,7 +108,8 @@
         "mustNotDenyExistingCategories": true,
         "showCatalogOptionsOrClarifyCategory": true
       },
-      "status": "pending_reproduction"
+      "status": "covered_by_mocked_router_batch_63"
     }
-  ]
+  ],
+  "suite": "src/whatsapp/whatsapp-basic-category-inquiries.spec.ts"
 }

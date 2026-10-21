@@ -6334,6 +6334,37 @@ export class WhatsappCatalogService {
     return /\bsopas?\b/.test(hay) || /\b(ajiaco|mondongo|sancocho)\b/.test(name);
   }
 
+  /** Resolve independently worded category questions without treating their
+   * concatenation as a missing SKU. Every clause must be accounted for.
+   */
+  findCategoryQuestionList(
+    text: string, products: WhatsappCatalogProduct[], menuConceptGroups?: MenuConceptGroup[],
+  ): { categoryName: string; products: WhatsappCatalogProduct[] } | null {
+    const raw = normalizeText(text);
+    if (!/\bque\s+(?:tiene|tienen|tienes|hay|manejan|ofrecen)\b/.test(raw) ||
+        /\d/.test(raw)) return null;
+    const clauses = text.split(/[?¿.!;]+|\s+[oy]\s+/i).map(part=>part.trim()).filter(Boolean);
+    const labels: string[] = [];
+    const selected: WhatsappCatalogProduct[] = [];
+    let questions = 0;
+    for (const clause of clauses) {
+      const normalized = normalizeText(clause).replace(/^(?:hola|buenas tardes|buenas noches|buenos dias)[, ]*/, '');
+      if (!normalized) continue;
+      const question = normalized.match(/^(?:[oy]\s+)?que\s+(?:tiene|tienen|tienes|hay|manejan|ofrecen)\s+(?:de\s+)?(.+)$/);
+      const introduction = normalized.match(/^quiero algo(?: como)?(?: de)?\s+(.+)$/);
+      const continuation = normalized.match(/^(?:[oy]\s+)?de\s+(.+)$/);
+      const subject = (question?.[1] || introduction?.[1] || continuation?.[1])?.replace(/\s+por favor$/, '').trim();
+      if (!subject || /\b(?:sin|con|excepto|menos|mas|pero|si|barato|barata|economico|economica)\b/.test(subject)) return null;
+      const hit = this.findCategoryBrowseHit(subject, products, menuConceptGroups);
+      if (!hit?.products.length || hit.askedButMissing) return null;
+      if (question) questions++;
+      labels.push(hit.categoryName);
+      selected.push(...hit.products);
+    }
+    if (!questions || labels.length < 2) return null;
+    return { categoryName: [...new Set(labels)].join(' / '), products: this.dedupeProductsById(selected).slice(0,16) };
+  }
+
   /**
    * "quiero hamburguesas o salchipapas" → las dos opciones, no un solo SKU.
    * No aplica a estilos sueltos ("frito o broaster").

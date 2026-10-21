@@ -1,3 +1,13 @@
+## VIGENTE — consultas básicas encadenadas por categorías (20/10, tanda 63)
+
+Base 7583292d. 56 casos nuevos: tres menús (carnes/pescados, pizzas/pastas, postres/bebidas), agente simulado on/off, carrito vacío/existente, audio con transcripción simulada y texto. Incluye frase real «Quiero algo como de carne. ¿Qué tiene de carne? O de pescado, ¿qué tiene de pescado?», pregunta con «o», preguntas separadas, carta con saludo, repetición sin duplicar y selección numérica posterior. Comprueba respuesta, carrito intacto, estado, ausencia de orden y compra posterior correcta.
+
+Baseline 24 fallos / 24 verdes de 48; los saludos/carta ya pasaban. Corrección general: separar cláusulas explícitas de consulta, resolver cada una contra categorías/conceptos del catálogo, reunir candidatos únicos y mantener una lista seleccionable antes del rechazo por producto inexistente. Ninguna excepción por nombres o IDs PPP. Dos controles nuevos detectaron descarte de «sin gluten/sin huevo»; el compositor ahora declina esas condiciones y cualquier cláusula no reconocida. Esto NO acredita respuesta nutricional correcta en el flujo restante.
+
+147 focalizados (120 router + 27 catálogo), TypeScript/build, 92 Node. Global congelada: 13131/147, inventario exacto, 443 hashes intactos; testTimeout=15000 del runner, no certificación de latencia. Cero llamadas pagadas, Meta u órdenes externas. Evidencia whatsapp-basic-category-validation-2010.json. Una invocación focalizada apuntó a un archivo inexistente: se corrigió la ruta, no las expectativas.
+
+Siguiente tanda 64: preguntas básicas con cambio de opinión («mejor solo…»), una categoría conocida y otra ausente, pregunta de contenido/tiempo junto a navegación; luego cruzarlas con nombre/dirección/pago/confirmación. Mantener matriz de comportamiento y resultado esperado, no solo paráfrasis/conteos. En cada conversación comprobar consulta→respuesta→pedido intacto→continuación correcta, y DTO cuando cierre. No dar por cubiertos escenarios descartados por guards ni los chats PDF sin trazabilidad. Estado de alcance: solo building_cart y categorías reconocidas; pendiente selección de atributos y consultas de categorías durante cierre.
+
 ## VIGENTE — solicitudes ignoradas fuera de catálogo (20/10, tanda 62)
 
 Despliegue agrupado 61–62 verificado el 20/10 a las 19:17 Bogotá: código 7d0151a33e997017b66c71019893426d1f3d5a25, imagen de589f3ffde242d6ae35ada8be526ce49a677bd4f5224acac6ccf08b4ca1e51f, healthy, cero reinicios, health OK/DB connected/circuit CLOSED. Producción intacta. Casos de categorías aún pendientes en whatsapp-multicategory-pending-2010.json: son fixtures propuestos, no pruebas ejecutadas.
