@@ -167,6 +167,9 @@ type EffectiveWhatsappConfig = Awaited<
 >;
 
 /** "No coca cola, no, cola y pola" / "no era coca cola sino cola y pola": drop the first, keep the second. */
+/** Common nouns that open an address; any other word after a leading article is a place name. */
+const GENERIC_ADDRESS_NOUN_RE = /calle|carrera|cra|cll|kra|avenida|av|autopista|diagonal|dg|transversal|tv|circular|v[ií]a|esquina|direcci[oó]n|misma|mism[oa]|casa|apartamento|apto|torre|bloque|interior|manzana|mz|porter[ií]a|conjunto|conj|barrio|urbanizaci[oó]n|urb|edificio|unidad|vereda|finca|hospital|cl[ií]nica|hotel|hostal|colegio|universidad|iglesia|parque|plaza|centro|portal|estaci[oó]n|tienda|local|oficina|bodega|droguer[ií]a|panader[ií]a|supermercado|entrada|parqueadero|cancha|salida|que|de|del/;
+
 const NEGATED_CART_CORRECTION = /^no[,\s]+(?:era\s+|es\s+)?(?!quiero\b)(.+?)(?:\s*[,;]\s*|\s+)(?:no[,\s]+|sino\s+|era\s+|es\s+)(?:(?:era|es)\s+)?(.+?)[.!]*$/i;
 
 const CART_EDIT_SELECTION_KEYS = ['pendingCartReplacement', 'pendingCartQuantity', 'pendingCartAttributeEdit', 'pendingCartRemoval', 'pendingCartNoteEdit'] as const;
@@ -4673,7 +4676,7 @@ export class WhatsappOrchestratorService {
       if (text.length >= 6) {
         const spokenAddress = this.stripRejectedAddressPreface(this.rewriteCadaAsCarrera(text));
         let addrHint = (this.extractDeliveryTail(spokenAddress) || spokenAddress.trim()).replace(/^la\s+direcci[oó]n\s+(?:es\s+)?(?:en|a)\s+/i,'');
-        const placeName = this.normalizeDeliveryAddress(addrHint).replace(/^para\s+(?:el\s+|la\s+)?/i, '').trim();
+        const placeName = this.bareDeliveryPlace(this.normalizeDeliveryAddress(addrHint)) || '';
         const namesPlace = !this.isPlausibleDeliveryAddress(addrHint) && /^\p{L}[\p{L}\s.'-]{2,60}$/u.test(placeName) &&
           placeName.split(/\s+/).length <= 5 && !isFreshAddressRequest(text) && !this.looksLikeFoodNotAddress(placeName) &&
           !this.catalogService.findProductEmbeddedInMessage(placeName, products) &&
@@ -18909,8 +18912,11 @@ export class WhatsappOrchestratorService {
       .replace(/\bdirecci[oó]n\s*[:\-]?\s*/i, '')
       .replace(/\s+/g, ' ')
       .trim();
+    // "la calle 45" drops its article; "Los Almendros" or "El Prado" keeps it as part of the name.
     return t
-      .replace(/^(?:a\s+)?(?:la|el|los|las|al)\s+/i, '')
+      .replace(/^al\s+/i, '')
+      .replace(/^a\s+(?=(?:la|el|los|las)\s)/i, '')
+      .replace(new RegExp(`^(?:la|el|los|las)\\s+(?=(?:${GENERIC_ADDRESS_NOUN_RE.source})\\b|\\d)`, 'i'), '')
       .replace(/^[\s,.-]+|[\s,.-]+$/g, '')
       .trim();
   }
@@ -26323,7 +26329,9 @@ export class WhatsappOrchestratorService {
   }
 
   private bareDeliveryPlace(place: string): string | undefined {
-    return place.trim().replace(/^(?:(?:en|a|al|para|hasta)\s+)?(?:(?:el|la)\s+)?/i, '').replace(/[.,;]+$/, '').trim() || undefined;
+    return place.trim().replace(/^(?:(?:en|a|al|para|hasta)\s+)?/i, '')
+      .replace(new RegExp(`^(?:la|el|los|las)\\s+(?=(?:${GENERIC_ADDRESS_NOUN_RE.source})\\b|\\d)`, 'i'), '')
+      .replace(/[.,;]+$/, '').trim() || undefined;
   }
 
   /** "domicilio" / "envíamelo" / "me lo envías a <lugar>" while a pickup order is in checkout. */
@@ -26338,13 +26346,13 @@ export class WhatsappOrchestratorService {
     const bare = /^(?:(?:no|mejor|entonces|ah|ok|listo|perdon|y)\s+)*(?:(?:lo|la|los|las)\s+quiero\s+|(?:es|seria|que sea|lo pido|pidelo)\s+)?(?:a|para|por|en)?\s*domicilio$/.test(said) ||
       /^(?:(?:no|mejor|entonces|ah|ok|listo)\s+)*(?:(?:me|nos)\s+)?(?:env[ií]a|manda|lleva|trae)(?:melo|mela|melos|melas|noslo|nosla)$/.test(said) ||
       /^(?:(?:no|mejor|entonces)\s+)*(?:(?:me|nos)\s+)?(?:lo|la)\s+(?:envias|mandas|llevas|traes)$/.test(said);
-    const toPlace = said.match(/^(?:(?:no|mejor|entonces|ah|ok|listo)\s+)*(?:(?:me|nos)\s+)?(?:(?:lo|la|los|las)\s+(?:envias|mandas|llevas|traes|puedes enviar|puedes mandar|puedes llevar)|(?:env[ií]a|manda|lleva|trae)(?:melo|mela|noslo|nosla))\s+(?:a la|al|a|para el|para la|para|en el|en la|en|hasta)\s+(.+)$/);
+    const toPlace = said.match(/^(?:(?:no|mejor|entonces|ah|ok|listo)\s+)*(?:(?:me|nos)\s+)?(?:(?:lo|la|los|las)\s+(?:envias|mandas|llevas|traes|puedes enviar|puedes mandar|puedes llevar)|(?:env[ií]a|manda|lleva|trae)(?:melo|mela|noslo|nosla))\s+(?:al|a|para|en|hasta)\s+(.+)$/);
     if (!bare && !toPlace) return false;
-    const place = toPlace ? text.trim().split(/\s+/).slice(-toPlace[1].split(' ').length).join(' ') : '';
+    const place = toPlace ? this.bareDeliveryPlace(text.trim().split(/\s+/).slice(-toPlace[1].split(' ').length).join(' ')) || '' : '';
     if (place && this.isPlausibleDeliveryAddress(place) && !this.looksLikeFoodNotAddress(place)) return false;
     const next: WhatsappSessionData = { ...session, orderType: 'delivery', fulfillmentChosen: true, address: undefined, addressConfirmed: false,
       deliveryFeeCalculated: undefined, deliveryDistanceKm: undefined, deliveryOutOfCoverage: false,
-      pendingDeliveryPlace: place ? this.bareDeliveryPlace(place) : undefined };
+      pendingDeliveryPlace: place || undefined };
     await this.conversationService.saveSession(conv, next, 'awaiting_address');
     await this.reply(conv, waId, place
       ? `Listo, cambiamos a *domicilio* 🛵 Anoté *${place}*. Para calcular el domicilio escríbeme la dirección completa: calle o carrera con número (y conjunto o apto si aplica).`
