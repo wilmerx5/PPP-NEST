@@ -1,3 +1,15 @@
+## VIGENTE — tanda 80: alternativas ambiguas y precio con contacto (21/10)
+
+Base 25f9e339, staging. 42 casos nuevos: 36 recorridos hasta DTO con tres menús, agente simulado on/off, «el primero o el segundo», «1 o 2» o «cuánto cuestan?», con punto y coma o sin separador antes del teléfono. Se conserva carrito y pendingMatch, guarda teléfono, aclara opciones o informa precios y luego acepta elección explícita hasta orden simulada. Seis controles adicionales actualizan precio y agotan alternativa antes de consulta, verificando catálogo vigente y nueva aceptación de precio sin mutar carrito.
+
+Baseline 18/18 fallidos: alternativas ambiguas perdían pendingMatch; consulta de precios ignoraba teléfono. Handler reconoce disyunción de dos selecciones ofrecidas y pregunta de precio relativa a la lista, junto a datos. No trata «o» como compra de ambas; no aplica a «y». Precio se consulta en catálogo vivo y se informa indisponibilidad. No hay excepciones de PPP. Selección+pregunta en la misma cláusula queda fuera de este handler para no ignorar la consulta.
+
+Focalizado 282/282 en cinco suites antes de expansión; expansión final 42/42 (36 ya incluidos, no sumar reruns). TypeScript general/build y 92 Node aprobados. Global aprobada: 13891 pruebas / 164 suites, inventario exacto y 461 hashes intactos. Cero API pagada, Meta y órdenes externas. Main preservado. El caso nuevo de botellas interrumpe el despliegue: agrupar 79–81 tras validar ese reparto;  runtime previo staging 3de69a15.
+
+Límites: esta tanda exige datos de contacto junto a disyunción/consulta. No acredita disyunción aislada ni una compra de dos opciones con «y». Preguntas acotadas a precio de la lista, no contenido libre de cualquier producto. Modelos/servicios simulados: no inferencia real, PDF completo ni estado vendible.
+
+Siguiente: probar disyunciones sin teléfono y compras explícitas de varias alternativas (distinguir «o» de «y» y cantidad por opción); después evaluación real acotada de conversaciones congeladas con gasto registrado. Evitar confundir una oferta de sustitución con autorización para duplicar unidades. Mantener el objetivo de piloto supervisado con pedidos correctos, cierre breve, latencia y costo medidos.
+
 ## VIGENTE — tanda 79: elección y teléfono sin separadores (21/10)
 
 Base 4001caf7, staging. 54 casos nuevos con tres menús y agente simulado on/off: 36 sustituciones con aceptación de precio+teléfono sin coma/salto de línea hasta DTO; 18 controles de lista ambigua, cambio explícito a segunda opción y segundo cambio de precio. Baseline 36 fallos/0 verdes. El parser separa el sufijo telefónico etiquetado solo si el prefijo completo es una elección ofrecida o una afirmación reconocida. Reutiliza captura de contacto y resolvedor existentes; no codifica nombres/productos/precios.

@@ -8492,6 +8492,8 @@ export class WhatsappOrchestratorService {
     const rawClauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
     let name: string | undefined, phone: string | undefined, address: string | undefined;
     let selection: string | undefined;
+    let uncertainChoice = false;
+    let priceQuestion = false;
     const isOfferedSelection = (clause: string) => {
       if (this.isPriceQuoteAcceptance(clause)) return true;
       const flat = this.normalizeForMatch(clause);
@@ -8503,11 +8505,17 @@ export class WhatsappOrchestratorService {
       if (code) return pending.candidates.some(candidate => Number(candidate.code) === Number(code[1]));
       return pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === flat).length === 1;
     };
+    const isUncertainChoice = (clause: string) => {
+      const parts = clause.split(/\s+o\s+/i);
+      return parts.length === 2 && parts.every(part => !this.isPriceQuoteAcceptance(part) && isOfferedSelection(part));
+    };
+    const isOfferedPriceQuestion = (clause: string) => /^(?:cuanto (?:cuesta|cuestan|vale|valen)|que (?:precio|precios)(?: tiene| tienen)?)(?: (?:el combo|los combos|cada uno|cada una|estos|estas))?$/.test(
+      this.normalizeForMatch(clause).replace(/[?¿!.]/g, '').trim());
     // Only split a contact suffix when its prefix is an offered choice.
     // Arbitrary prose must continue through the normal intent router intact.
     const clauses = rawClauses.flatMap(clause => {
       const mixed = clause.match(/^(.+?)\s+((?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)\b.+)$/i);
-      return mixed && isOfferedSelection(mixed[1]) ? [mixed[1].trim(), mixed[2].trim()] : [clause];
+      return mixed && (isOfferedSelection(mixed[1]) || isUncertainChoice(mixed[1]) || isOfferedPriceQuestion(mixed[1])) ? [mixed[1].trim(), mixed[2].trim()] : [clause];
     });
     for (const clause of clauses) {
       const phoneText = clause.replace(/^(?:(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)(?:\s+es)?\s*:?\s*)/i, "");
@@ -8521,11 +8529,15 @@ export class WhatsappOrchestratorService {
       } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
         if (address) return false;
         address = clause;
-      } else if (!selection && isOfferedSelection(clause)) {
+      } else if (!selection && !uncertainChoice && isUncertainChoice(clause)) {
+        uncertainChoice = true;
+      } else if (!priceQuestion && isOfferedPriceQuestion(clause)) {
+        priceQuestion = true;
+      } else if (!selection && !uncertainChoice && isOfferedSelection(clause)) {
         selection = clause;
       } else return false;
     }
-    if (!name && !phone && !address) return false;
+    if ((!name && !phone && !address) || (selection && priceQuestion)) return false;
     let next: WhatsappSessionData = {...session, pendingCheckoutDetailsCaptured: true};
     if (name) {
       await this.conversationService.updateCustomerName(conv, name);
@@ -8539,8 +8551,18 @@ export class WhatsappOrchestratorService {
       // Reuse live availability, price re-acceptance and replacement safeguards.
       if (await this.tryResolvePendingMatchPick(conv, waId, next, selection, menu, cfg)) return true;
     }
+    let prices: string[] = [];
+    if (priceQuestion) {
+      const menu = await this.catalogService.getMenuProducts();
+      prices = pending.candidates.map(candidate => {
+        const current = menu.find(product => product.id === candidate.id);
+        return !current || current.availableNow === false ? `*${candidate.name}*: no disponible` :
+          `*${current.name}*: ${this.catalogService.formatMoney(current.price)}`;
+      });
+    }
     await this.reply(conv, waId, ['Anoté tus datos:', name ? `Nombre: ${name}` : '',
       phone ? `Teléfono: ${phone}` : '', address ? `Dirección: ${next.address}` : '',
+      ...prices, uncertainChoice ? 'Mencionaste dos alternativas; elige una para continuar.' : '',
       'El pedido sigue igual. Falta elegir la presentación:', this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
     return true;
   }

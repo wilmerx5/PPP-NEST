@@ -1,0 +1,19 @@
+{
+  "batch": 80,
+  "base": "25f9e3399a4263929a2c711ebc88387797be39f5",
+  "newTests": 42,
+  "baselineFailed": 18,
+  "focusedPassed": 282,
+  "expandedPassed": 42,
+  "global": {
+    "passed": 13891,
+    "suites": 164,
+    "hashes": 461,
+    "inventoryExact": true
+  },
+  "typescript": "passed general and build",
+  "nodeTests": 92,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "deployment": "Pending grouped staging release including new bottle case. Main untouched."
+}
