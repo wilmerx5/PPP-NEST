@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-21",
+  "user_authorized_main_and_production": true,
+  "merge_commit": "54c057b5ba4b19b7435a2b1eefe35510bd0ca92b",
+  "merged": "origin/staging e16bb44a (WhatsApp batches through 94) into origin/Main d4c73944",
+  "conflicts": "src/whatsapp/whatsapp-accuracy.test-support.ts add/add resolved with the staging version; merged tree identical to origin/staging",
+  "validation": "tree identical to the batch 94 validated tree (global 80/80 + 14861/14861, 501 s); no re-run because no source differs",
+  "runtime_changes_scope": "src/whatsapp only; no entity, migration, dependency or environment-variable changes; package.json adds a test script",
+  "production": {
+    "checkout": "/var/www/ppp-nest",
+    "previous_head": "639e7cd77e64a301734ee6f004d3c704278fd301",
+    "head": "54c057b5ba4b19b7435a2b1eefe35510bd0ca92b",
+    "container": "ppp_nest_api",
+    "image": "sha256:1d512d0c6d4726e3eb2668ec8ea0942295add25917546250552ac033eee29748",
+    "status": "running, 0 restarts",
+    "health": "ok / db connected / circuit CLOSED",
+    "verified_at": "2026-10-21T21:52:47.084Z",
+    "rollback_tag": "ppp-nest-api:rollback-before-54c057b5 (sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0)",
+    "compose_preserved_sha256": "d973f08a9a1708b7309e801c07738350ce8e4f61b17af295bf52b6828bdf3b84"
+  },
+  "staging": {
+    "branch": "fast-forwarded to 54c057b5 (same tree, no rebuild)",
+    "container": "ppp-staging-api-1",
+    "image": "sha256:28d5ebc7cf3fa65306b9cafa8f874f0e02b63d6ef3ceabf348524b154262b07d",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-21T21:52:48.752Z"
+  },
+  "compiled_whatsapp_modules_aggregate_sha256": {
+    "production": "a31d9c5112222b99d187dc68dc3a823ee7b489f4658a2b716819c2d0b51a30fb",
+    "staging": "a31d9c5112222b99d187dc68dc3a823ee7b489f4658a2b716819c2d0b51a30fb"
+  },
+  "preserved": "private env, compose, databases, volumes, local Main checkout with generated artifacts",
+  "limits": [
+    "No paid inference, WhatsApp messages or external orders",
+    "Equal code does not guarantee identical model responses or tenant data"
+  ]
+}
