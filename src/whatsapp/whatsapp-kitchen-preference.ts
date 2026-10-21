@@ -73,6 +73,27 @@ export function followUpHandlingNote(source: string): string | null {
   return text.replace(/\bcahas?\b/gi, (word) => word.replace(/h/i, 'j'));
 }
 
+const TEMPERATURE = String.raw`(?:fr[ií][oa]s?|helad[oa]s?|tibi[oa]s?|calientes?|al\s+clima|a\s+temperatura\s+ambiente)`;
+const POLITE_TAIL = String.raw`(?:[\s,]+(?:por\s*favor|porfa|porfis|gracias))*[\s.!]*$`;
+
+/** "Manzana bien fría por favor": a serving-temperature request closing an option answer. */
+export function trailingServingNote(source: string): {head: string; note: string} | null {
+  const text = (source || '').replace(/\s+/g, ' ').trim();
+  if (!text || text.length > 120 || /[¿?]/.test(text)) return null;
+  const match = new RegExp(String.raw`^(.*?)(?:^|[\s,]+)((?:que\s+(?:(?:me\s+)?(?:la|lo|las|los)\s+)?(?:est[eé]n?|venga|vengan|sea|sean|llegue|lleguen)\s+)?(?:(?:bien|muy|super|bastante)\s+)?${TEMPERATURE})${POLITE_TAIL}`, 'iu').exec(text);
+  if (!match) return null;
+  const note = match[2].replace(/^que\s+(?:(?:me\s+)?(?:la|lo|las|los)\s+)?\p{L}+\s+/iu, '').trim();
+  return {head: match[1].replace(/[\s,]+$/, '').trim(), note};
+}
+
+/** "2 que esté fría porfavor", "la 3, sin hielo", "2 por favor": an option number followed by a remark (empty when only courtesy). */
+export function splitOptionIndexAnswer(source: string): {index: number; rest: string} | null {
+  const match = /^(?:(?:la|el|opci[oó]n|n[uú]mero|#)\s*)?([1-9]\d?)(?:\s*[,.:;-]\s*|\s+)(\S.*)$/iu.exec((source || '').replace(/\s+/g, ' ').trim());
+  if (!match) return null;
+  const rest = ` ${match[2]}`.replace(new RegExp(POLITE_TAIL, 'iu'), '').trim();
+  return {index: Number(match[1]), rest};
+}
+
 /** "con yuca en vez de papa", "cambiando la papa por yuca", "a cambio de la yuca, papa":
  * the side named first in the canonical form is removed, the second one replaces it. */
 export function normalizeSideSwapPhrase(text: string): string {

@@ -11,7 +11,7 @@ import { prepareValidatedPurchases, hasCompleteToolPurchaseEvidence } from './wh
 import { dialogueProductReferences } from './whatsapp-dialogue-context';
 import { normalizeSpokenOrderCourtesy } from './whatsapp-spoken-courtesy';
 import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-request';
-import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
+import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference, splitOptionIndexAnswer, trailingServingNote} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
 import { condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
@@ -4033,7 +4033,7 @@ export class WhatsappOrchestratorService {
         : null;
       const offeredChoice = pa && product ? this.offeredPendingChoice(pa, product, text) : null;
       const withdrawnOption = offeredChoice?.status === 'withdrawn' ? offeredChoice.name : null;
-      const attributeText = offeredChoice?.status === 'kept' ? offeredChoice.name : text;
+      const attributeText = offeredChoice?.status === 'kept' ? offeredChoice.name : absorbed.choiceText || text;
       if (pa && product && withdrawnOption) {
         const selected = (pa.selected || []).filter((choice) =>
           (product.attributes || []).some((attr) =>
@@ -24750,7 +24750,7 @@ export class WhatsappOrchestratorService {
    */
   private async absorbPendingOptionAnswer(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, products: MenuProduct[],
-  ): Promise<{ session: WhatsappSessionData; answers: boolean } | null> {
+  ): Promise<{ session: WhatsappSessionData; answers: boolean; choiceText?: string } | null> {
     const pa = session.pendingAttribute;
     const product = pa ? this.catalogService.getProductById(pa.productId, products) : null;
     if (!pa || !product?.attributes?.length || session.pendingMultiOrder || /[¿?]/.test(text) || text.length > 160) return { session, answers: false };
@@ -24773,14 +24773,26 @@ export class WhatsappOrchestratorService {
         changed.push(`${choice.attributeName}: ${hits[0]}`);
       });
     }
-    const step = this.catalogService.resolveNextAttributeChoice(product, text, selected, opts);
+    const optionKeys = product.attributes.flatMap(attr => attr.options.map(key)).filter(Boolean);
+    const namesNoOption = (value: string) => !optionKeys.some(option => ` ${key(value)} `.includes(` ${option} `));
+    const indexed = changed.length ? null : splitOptionIndexAnswer(text);
+    const restServing = indexed?.rest ? trailingServingNote(indexed.rest) : null;
+    const indexInRange = !!indexed && !!remaining[0] && indexed.index <= remaining[0].options.length;
+    const indexNote = indexInRange && indexed!.rest && !/\d/.test(indexed!.rest) && namesNoOption(indexed!.rest)
+      ? (restServing && !restServing.head ? restServing.note : this.catalogService.orderKitchenNote(indexed!.rest, product))
+      : undefined;
+    const choiceText = indexNote || (indexInRange && !indexed!.rest) ? String(indexed!.index) : undefined;
+    const step = this.catalogService.resolveNextAttributeChoice(product, choiceText || text, selected, opts);
     const answers = step.status === 'complete' || step.status === 'partial';
-    const note = answers || changed.length ? this.catalogService.orderKitchenNote(text, product) : undefined;
-    if (!changed.length && !note) return { session, answers: false };
+    const serving = trailingServingNote(text);
+    const servingNote = serving && serving.head && namesNoOption(serving.note) ? serving.note : undefined;
+    const note = indexNote || (answers || changed.length
+      ? joinKitchenNotes(this.catalogService.orderKitchenNote(text, product), servingNote) : undefined);
+    if (!changed.length && !note) return { session, answers: !!choiceText && answers, choiceText: answers ? choiceText : undefined };
     const next: WhatsappSessionData = { ...session, pendingAttribute: { ...pa, selected,
       answerNote: note ? dedupeKitchenNoteParts([pa.answerNote, note].filter(Boolean).join(', ')) : pa.answerNote } };
     await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
-    if (answers) return { session: next, answers: true };
+    if (answers) return { session: next, answers: true, choiceText };
     await this.reply(conv, waId, `Listo ✅ ${changed.join(' · ')}${note ? ` · 📝 ${note}` : ''}\n\n` +
       this.catalogService.formatProductOptionsPrompt(product, selected, opts));
     return null;
