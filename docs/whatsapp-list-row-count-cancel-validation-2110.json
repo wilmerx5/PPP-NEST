@@ -1,0 +1,79 @@
+{
+  "batch": 87,
+  "date": "2026-10-21",
+  "base": "8cbc3616",
+  "commit": "bfc822e2cbdc367d4ff2ff6e8b31f1f59b92f154",
+  "scope": "Staging chat (combo + fries + cancel by phone): a list row named with words («El combo 2 por fa») is one unit of that row; the add reply describes the line just added; «Solo pedí un combo» / «Dame solo el combo número 2» fix the count; «Cancela, ya lo pedí por llamada» clears the unsent cart; a registered order no longer makes cancel say «No entendí»; «quiero un <exact combo name>» is not called off-menu",
+  "trigger": "Real staging chat pasted by the owner (personal data omitted)",
+  "chatReview": {
+    "wentWell": [
+      "Delivery request at the start was acknowledged",
+      "«Un pollo a la Broster en combo» resolved to the broaster combo",
+      "The combo-family list after «combo de pollo» showed the three combos with their contents",
+      "«Coca Cola» changed the drink of the existing combo",
+      "The shared WhatsApp location was used as the delivery address with a route fee"
+    ],
+    "wentWrong": [
+      "«El combo 2 por fa» on the list added row two as two units (cart reached ×3 with the first combo)",
+      "After «8» the reply showed «Bebida: Colombiana» from the older line instead of the drink just chosen",
+      "«Solo pedí un combo» and «Dame solo el combo de pollo número 2» did not lower the count; the model promised one combo while the cart kept three",
+      "«Te transformo 57.000?» (transfer typo) added a different combo whose price matched (agent path)",
+      "«Cancela ya lo pedí por llamada» answered «No encontré *ya lo pedí por llamada* en tu carrito»",
+      "«Cancela el pedido» with a phone order already registered said it could not cancel and added «No entendí bien tu mensaje»",
+      "«Ese viene con papa a la francesa ?» showed the fries product card instead of answering what the combo includes (not fixed in this batch)",
+      "«dame una porción de papa con el combo de pollo» reopened the combo list instead of adding the fries (not fixed in this batch)"
+    ]
+  },
+  "baselineFindings": [
+    "Real router with the beta fixture, agent on and off: «El combo 2 por fa» → ×2; reply after the drink pick named the older line's drink; «Solo pedí un combo» → «Por ahora no manejamos: Solo pedí» and one more unit (×4); «Dame solo el combo de pollo número 2» → «Dime qué quitamos» or the combo list; «Cancela ya lo pedí por llamada» → «No encontré…» (agent on: «¿Cuál prefieres?»)",
+    "Synthetic menus: on the unavailable-alternatives list «El combo 2 por fa» picked row one ×2; «quiero un combo pollo asado» (exact name) → «Por ahora no manejamos *pollo asado*»"
+  ],
+  "fix": "tryResolvePendingMatchPick: a reply made of words shared by every row plus a number («el combo 2», «la opción 3», «combo número 3») selects that row; when the number names the chosen row it is not a quantity (list quantity or 1). buildCartAddReply describes the newest line of that dish. tryHandleOrderedCountDispute (cart chain): «(yo) solo (te) pedí N X», «pedí solo N X», «dame/deja solo el/un X (número K)» when every cart line is that dish — one line takes N, several lines are listed without changes, an equal count says nothing is extra; works in checkout steps and keeps the step. isCancelIntent accepts «cancela(lo)» followed by a reason («ya lo pedí», «ya no lo quiero», «lo pedí por llamada/teléfono»); handleCancelRequest with a registered order today drops an unsent chat cart and names the order, and the refusal no longer appends «No entendí». The off-menu reply for «quiero un …» is skipped when the text fully names a product.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-list-row-count-cancel.spec.ts",
+    "count": 108,
+    "menus": ["chicken combos", "burger menus", "pasta plates"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a bare row number on the list is still one unit of that row",
+      "the disputed count already matching changes nothing",
+      "units on lines with different options are listed, not guessed",
+      "another dish in the cart leaves the dispute to the existing routes and adds nothing",
+      "with a registered order and no chat cart, cancel is refused without «No entendí»",
+      "«no canceles el pedido» keeps the cart"
+    ],
+    "baselineWithoutFix": "92 failed / 108 (the spec's direct-order helper also depends on the exact-name fix)"
+  },
+  "validation": {
+    "focused": "3518 passed (62 suites: cancel, quantity, list rows, pending pick, combos, attributes, notes, units, checkout, family, menu, catalog, unavailable, order)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 63 },
+      "rest": { "passed": 14366, "total": 14366, "suites": 170, "seconds": 406 },
+      "inventory": 171,
+      "unionEqualsInventory": true,
+      "hashes": 468,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14446
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "bfc822e2cbdc367d4ff2ff6e8b31f1f59b92f154",
+    "image": "sha256:64f0a2788e1c8b208c40a8c4bbf2fd25bfc6bc25c3ea468776bd5105b326acbc",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T19:01:11Z, healthy, 0 restarts (started 19:00:40Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-bfc822e2 (image 46f7e061…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "«Ese viene con papa a la francesa ?» about a combo in the cart shows the fries card instead of the combo contents",
+    "«dame una porción de papa con el combo» reopens the combo list instead of adding the side",
+    "«quiero un menu hamburguesa» / «quiero un plato pasta» (family prefix) silently adds one member instead of listing",
+    "«Te transformo 57.000?» on the agent path added a product by price; the real model was not evaluated (simulated only)",
+    "A single non-drink option is filled with its first value without asking (existing policy)"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
