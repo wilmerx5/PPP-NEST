@@ -1,3 +1,13 @@
+## VIGENTE — tanda 78: conversaciones completas con interrupciones del cierre (21/10)
+
+Base e5ce5ff3, staging. 12 conversaciones nuevas: dos secuencias (corregir nombre+teléfono o dirección), tres menús (bowl, pescado, churrasco), agente simulado on/off. Empiezan con sesión vacía: saludo+solicitud de carta, consulta de precio sin compra, dos platos con nota, datos de domicilio, consulta de contenido durante pago, corrección de datos con acuse visible, consulta de total, pago, pregunta de tiempo durante confirmación, confirmación y agradecimiento sin duplicar orden. Verifican respuesta, carrito, estado, datos y DTO simulado de dos unidades con notas. No son doce intenciones independientes: son dos recorridos combinados con variaciones de menú/modelo simulado.
+
+Baseline 12/12 verdes; no cambio runtime. Al fortalecer el acuse visible apareció TS18048 del test (reply opcional), corregido con fallback de string; rerun 12/12. Focalizado final 294/294 en seis suites. TypeScript general/build y 92 Node aprobados. Se explicita mock classifyMessage null; generateTurn devuelve respuesta genérica sin acciones. El fallback del router es parte de lo probado; no acreditar comprensión del modelo real. Advertencia de telemetría placed_order_only no implica orden externa: el mock ordersService se verifica sin llamadas antes de confirmar y una sola después.
+
+Sin global nueva porque solo se añade test/documentación. Última global runtime: tanda 76, 13729/160, no sumar nuevos tests como si fueran una global ejecutada. Sin despliegue necesario; staging runtime sigue 3de69a15. Main intacto, cero API pagada, Meta u órdenes externas.
+
+Siguiente: mensajes mixtos sin separadores y dos elecciones ambiguas; después evaluación focalizada del modelo real con presupuesto registrado sobre estas conversaciones ya congeladas. Quedan audio/visión reales y evaluación supervisada de pedidos, costo y tiempo de cierre. No declarar piloto listo solo por regresiones gratuitas ni afirmar revisión completa de PDF.
+
 ## VIGENTE — tanda 77: compra inicial, datos y rechazo de combo (21/10)
 
 Base 7504ab66, staging. 54 conversaciones nuevas: tres menús (arroz+gaseosa, bowl+ensalada, pasta+pan), agente simulado on/off, tres decisiones (combo, por separado, solo plato) y tres datos (teléfono etiquetado, nombre, dirección). En cada recorrido se repiten los datos, se consulta precio antes de elegir y se comprueban respuesta, carrito, pendingMatch, datos guardados y DTO de orden simulada; ninguna orden antes de confirmar. Los acompañamientos no se duplican al elegir combo; separarlos conserva ambos artículos; solo plato excluye acompañamiento.
