@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-18",
+  "base": "c06cc4f5",
+  "new_conversations": 12,
+  "baseline_real_failures": 6,
+  "focused_passed": 50,
+  "contracts_passed": 90,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9289,
+    "seconds": 595.223,
+    "frozen_hashes": 379
+  },
+  "menus": [
+    "ravioles",
+    "bowl",
+    "sandwich"
+  ],
+  "scope": "Preserve named destination before street through interruptions and order DTO",
+  "limits": [
+    "Quotation mocked; no real geocoding",
+    "Lettered unit separation from map queries remains pending",
+    "Initial DTO oracle corrected to existing payment suffix; not a production defect"
+  ],
+  "paid_calls": 0,
+  "external_orders": 0,
+  "meta_messages": 0,
+  "deployment": {
+    "commit": "eef626606cbd25e88df93c1ffc390991728e26a4",
+    "image": "sha256:20aa157079bc985d7a3745d490a7e6e849f7faded00500aa84d1174e46d07234",
+    "status": "running/healthy",
+    "verified_utc": "2026-10-19T00:09:16Z",
+    "public_health_utc": "2026-10-19T00:09:22.134Z",
+    "health": "ok/db connected/circuit CLOSED",
+    "compiled_assertions": {
+      "destination": 9,
+      "combo_address": 6
+    },
+    "rollback": "ppp-nest-staging:rollback-before-eef62660",
+    "production_image_unchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  }
+}

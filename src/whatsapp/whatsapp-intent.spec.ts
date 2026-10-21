@@ -13,7 +13,7 @@ import {
   isNothingElseOrderIntent,
   isFinishCheckoutIntent,
 } from './whatsapp-intent';
-import { isSpecificOrderProgressInquiry } from './whatsapp-session-intents';
+import { extractDailyOrderNumberHint, isSpecificOrderProgressInquiry } from './whatsapp-session-intents';
 import { applyLocalGlossary } from './whatsapp-local-glossary';
 
 describe('classifyWhatsappCustomerIntent', () => {
@@ -365,5 +365,20 @@ describe('clear-cart scope across independent questions and commands',()=>{
 describe('full clear command may itself be fragmented',()=>{
   it.each(['Quita\ntodo','Vacia\nel carrito','Borra\nel pedido','Carrito\nvacio'])('%s',text=>{
     expect(looksLikeClearCartMessage(text)).toBe(true);
+  });
+});
+
+
+describe('Street hashes are not order references', () => {
+  it.each(['Calle 6 b # 78 c 33','Cra 81B #6B-50','Tv 78C #6D-48','Diagonal 3 #83-02','Cl. 10 #81A-20'])('does not look up an order from %s', address => {
+    const text = `Me regalas un almuerzo; ${address}; Tienda de prueba`;
+    expect(extractDailyOrderNumberHint(text)).toBeNull();
+    expect(isSpecificOrderProgressInquiry(text)).toBe(false);
+  });
+  it.each(['pedido #183','orden 183','cómo va #183','183'])('preserves the explicit order reference %s', text => {
+    expect(extractDailyOrderNumberHint(text)).toBe(183);
+  });
+  it('preserves an explicit order even alongside an address', () => {
+    expect(extractDailyOrderNumberHint('Cómo va mi pedido #183 para Calle 6 b #78c33')).toBe(183);
   });
 });

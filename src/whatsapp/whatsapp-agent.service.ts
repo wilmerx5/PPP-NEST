@@ -1,3 +1,4 @@
+import {splitIntensityPreference} from './whatsapp-kitchen-description';
 import { hasExplicitUnitOptionSource } from './whatsapp-unit-option-source';
 import { prepareUnitOptionActions, prepareUnitOptionPlan, type UnitOptionEdit } from './whatsapp-unit-option-plan';
 import { resolveWhatsappAgentModel } from './whatsapp-agent-model';
@@ -1606,7 +1607,9 @@ Contacto humano: ${phone ? `*${phone}*` : 'no configurado; no inventar un númer
           : source;
         let note = modelNote ||
           this.catalogService.extractProductModificationNote(preferenceSource) || undefined;
+        const degreePreference=splitIntensityPreference(preferenceSource);
         const sourceNote = joinKitchenNotes(
+          degreePreference && !this.catalogService.looksLikeClearlyMultiDishOrder?.(degreePreference.productText) ? degreePreference.note : undefined,
           peelSupportedCookingTerm(preferenceSource, product)?.note,
           interpretProductNote(preferenceSource, [product])?.note,
           this.catalogService.extractProductModificationNote(preferenceSource),

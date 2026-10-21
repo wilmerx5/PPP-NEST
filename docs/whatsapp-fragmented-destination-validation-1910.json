@@ -1,0 +1,38 @@
+{
+  "base": "2b9e4c9e",
+  "new_tests": 21,
+  "focused_passed": 41,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "baseline": {
+    "initial_failed": 8,
+    "after_unit_grammar_failed": 4,
+    "findings": [
+      "Alphanumeric tower replaced the whole street",
+      "Unit append during final confirmation created a simulated order without approval"
+    ]
+  },
+  "global": {
+    "suites": 88,
+    "tests": 9524,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_unchanged": true
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Two synthetic menus with mocked agent, maps, Meta and order service",
+    "Full destination replacement, not replacement of a single existing apartment",
+    "PDF patterns generalized, not every PDF conversation replayed",
+    "Main unchanged"
+  ],
+  "deployment": {
+    "code": "33411362eceb37b292bdda319c7d928e4815b1cd",
+    "image": "sha256:62980a4fa000edbb44ce24670c7c4f901a45fc02259f10c76feaec6d59c0699a",
+    "checked_at": "2026-10-19T16:26:40Z",
+    "health": "OK, DB connected, circuit CLOSED",
+    "production_unchanged": true,
+    "startup": "Initial 502; subsequent public health passed. Running without restarts."
+  }
+}

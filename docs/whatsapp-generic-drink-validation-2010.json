@@ -1,0 +1,45 @@
+{
+  "batch": 48,
+  "base": "caa094de",
+  "newCases": 32,
+  "baseline": {
+    "responseFailures": 24,
+    "negativeControlsPassed": 6
+  },
+  "focusedPassed": 214,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12450,
+    "suites": 134,
+    "bursts": 80,
+    "rest": 12370,
+    "seconds": [
+      110.627,
+      368.788
+    ],
+    "sourceHashesUnchanged": 430,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Mocks do not measure real inference",
+    "Actual PPP selection requires beverage choice, exercised in two tests",
+    "Conditional clarification follow-up remains pending"
+  ],
+  "deployment": {
+    "commit": "805136eb9c853699a2974f465f70cf0ad88518f7",
+    "image": "0a85382237dba90aeb235ad6e0ab7cded87cd5bbc1607eeb97474edaa2d1e307",
+    "verifiedAt": "2026-10-20T17:49:45.375Z",
+    "healthy": true,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "restarts": 0,
+    "productionUnchanged": true,
+    "rollback": "ppp-nest-staging:rollback-before-805136eb"
+  }
+}

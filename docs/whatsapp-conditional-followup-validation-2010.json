@@ -1,0 +1,37 @@
+{
+  "batch": 49,
+  "base": "8d6705eba29e6a54005ec7fc54aff3bb013aff36",
+  "newCases": 40,
+  "focusedPassedBeforeGlobal": 276,
+  "repairFocusedPassed": 310,
+  "repairFocusedSkipped": 494,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "initialGlobalFailures": 2,
+  "initialGlobalFailureCause": "Preparation note with four cuts was reinterpreted as four purchased units; fixed with structured quantity through attribute flow",
+  "global": {
+    "passed": 12490,
+    "suites": 135,
+    "bursts": 80,
+    "rest": 12410,
+    "seconds": [
+      110.876,
+      363.357
+    ],
+    "sourceHashesUnchanged": 431,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": null,
+  "lastVerifiedRuntime": "805136eb9c853699a2974f465f70cf0ad88518f7",
+  "limits": [
+    "Mocks do not measure real inference",
+    "Checkout seeded; not all customer journeys covered",
+    "Single beverage with required flavor still needs targeted follow-up",
+    "Staging publication only; deployment grouped with next batch"
+  ]
+}

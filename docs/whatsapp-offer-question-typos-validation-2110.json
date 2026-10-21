@@ -1,0 +1,56 @@
+{
+  "batch": 83,
+  "date": "2026-10-21",
+  "base": "c4b9ca77",
+  "commit": "d6fa7a9b49b7d5d8724c58e13428b524974703bf",
+  "scope": "«buenos días, uqe me ofreces» and similar menu questions («que/qué me ofreces», «q/ke/qe/uqe» typos, «me ofrece», «qe hay de comer») are answered with the menu, not the generic nudge",
+  "trigger": "Real staging chat: «buenos dias, uqe me ofreces» → «¿Qué se te antoja? Escribe el plato o el código.» plus the menu link; the owner said the question was ignored",
+  "baselineFindings": [
+    "Agent off: «que me ofreces», «buenos dias, que me ofreces», «uqe me ofreces», «q me ofreces» → «¿Qué se te antoja? Escribe el plato o el código»",
+    "Agent off: «qué me ofreces?» → «Eso no lo resuelvo por este chat»",
+    "Agent on and off: «buenas tardes, qe hay de comer» → «No tenemos productos de comer»",
+    "«que tienen», «que venden», «que me recomiendas» already listed the menu: the explore pattern did not allow «me» between «que» and the verb"
+  ],
+  "fix": "Local glossary: «uqe/qeu/qe/ke/k/q» becomes «que» only before an offer verb (hay, tienen, tiene(s), ofrece(n/s), sirven, venden, vendes, manejan, recomienda…, sugiere…), optionally after «me/nos/le». isMenuExploreIntent and isCategoryBrowseQuestion accept «me/nos/le» and «ofrece/vendes». unavailableAskReply returns nothing for a menu-explore question (glossary applied) or a generic subject (comer, comida, almuerzo, cena, desayuno, algo, hoy).",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-offer-question-typos.spec.ts",
+    "count": 68,
+    "menus": ["grill (meats + drink)", "bakery (bread + coffee)", "seafood (fish + juice)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "an explicit order still adds the dish",
+      "asking for a dish not on the menu still says it is not available",
+      "glossary leaves «q tal», «ok q bien», «el k 2» and an already-correct «que me ofreces» unchanged"
+    ],
+    "baselineWithoutFix": "31 failed / 68"
+  },
+  "validation": {
+    "focused": "253 passed (9 suites: glossary, menu, browse, availability, catalog, new spec)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 13993, "total": 13993, "suites": 166, "seconds": 413 },
+      "inventory": 167,
+      "unionEqualsInventory": true,
+      "hashes": 464,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14073
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "d6fa7a9b49b7d5d8724c58e13428b524974703bf",
+    "image": "sha256:d5766ef768f65c3d8b4ad947b6788efdcebd5caaf10c71e2cfae66cefe85002c",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T17:47:31Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-d6fa7a9b (image c1be4663…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "With the agent on the question now reaches the model; the real model's answer was not evaluated (simulated)",
+    "Other typos of the verb itself («ofreses», «tiens») rely on the existing fuzzy verb matching only where it exists"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

@@ -1,0 +1,18 @@
+{
+  "base": "5103211e",
+  "new_tests": 16,
+  "focused_passed": 72,
+  "typescript": "passed",
+  "runtime_changes": false,
+  "global": "Not repeated: tests-only. Last runtime global 88 suites / 9474 tests excludes these 16 new tests.",
+  "paid_calls": 0,
+  "external_orders": 0,
+  "deployment": "Not needed: tests only",
+  "limits": [
+    "Two synthetic menus, two checkout states, two wordings, simulated agent on/off",
+    "Unknown replacement preserves original; valid replacement keeps two units",
+    "Combo note seeded, not extracted",
+    "DTO checked; model, maps and orders mocked",
+    "Main untouched"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "base": "71c7d3e0",
+  "branch": "staging",
+  "batchSincePdfAudit": 22,
+  "newTests": 90,
+  "strengthenedExisting": 0,
+  "cumulativeNewTests": 574,
+  "cumulativeStrengthened": 12,
+  "baseline": {
+    "failed": 36,
+    "passed": 0,
+    "note": "First 36 journeys; the 54 contrasts were added after the first fixes. Two phrasings created an order at awaiting_final_confirm without 'confirmar'."
+  },
+  "criticalFinding": "At awaiting_final_confirm, tryConfirmOrder creates the order. Several edit routes (inline note, standalone exclusion 'sin X', contact phone) called it to refresh the summary, so 'sin cebolla porfa', 'sin hielo' or a new phone number created the order without explicit approval (agent on and off).",
+  "fixes": [
+    "General guard: an order signature (consolidated cart, fulfilment, destination, payment, contact phone) is taken at turn start; if it differs when tryConfirmOrder would create the order, the summary is shown again instead (Mercado Pago skipFinalConfirm exempt)",
+    "Inline note route at final confirm re-enters through 'confirming'",
+    "Note revision parser/handler: retire a stored clause, clear notes, or reverse 'sin X' to 'con X' on the selected row or a subset of its units; requires the contradicted clause to exist",
+    "Ambiguous note revision stored as pendingCartNoteEdit (cart signature, candidates); joins CART_EDIT_SELECTION_KEYS so confirm, withdrawal and stale-list handling apply",
+    "Counted option edit accepts a second configured attribute in the same request and applies both atomically, directly or after line clarification",
+    "Option removed from catalog during clarification is named in the reply; cart unchanged"
+  ],
+  "concurrency": "Another agent (Codex) began the same batch in this checkout and left an uncompiled handler importing a missing module. After 10 idle minutes and user instruction, its handler was kept and completed rather than replaced.",
+  "focusedPassed": 208,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodePassed": 92,
+  "firstGlobal": {
+    "burstPassed": 80,
+    "restPassed": 9818,
+    "restFailed": 46,
+    "cause": "New Map accessed without optional chaining in specs that build the service via prototype; fixed, then full global repeated"
+  },
+  "global": {
+    "burst": {
+      "passed": 80,
+      "failed": 0,
+      "seconds": 104.998
+    },
+    "rest": {
+      "passed": 9864,
+      "failed": 0,
+      "seconds": 307.64,
+      "maxWorkers": 4
+    },
+    "suites": 107,
+    "inventoryExact": true,
+    "unchangedHashes": 402,
+    "retries": 0
+  },
+  "fixtures": "Synthetic menus: bao/salsa, pizza/masa, batido/base, each with Tamaño Normal/Grande; seeded two-line carts at awaiting_final_confirm",
+  "mocks": "Agent mock on/off, ordersService.create stub; no maps/model/Meta calls",
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "limitations": [
+    "Seeded carts, not purchases from scratch",
+    "Mock agent does not credit real model understanding",
+    "Serial turns, not concurrent bursts",
+    "Only phrasings in the spec are credited; other note-reversal wordings fall back to previous routes",
+    "Other tryConfirmOrder callers are covered by the general guard only within the same inbound turn"
+  ],
+  "deployment": {
+    "runtime": "923c880b0fc93fb6f702ed6f2d01d3eb3749de48",
+    "image": "sha256:f22a5a76b5406b1420535578b3eed2b42c3d13e1dfc9e8cb4c205e086277f69b",
+    "health": "ok/db connected/circuit CLOSED 2026-10-19T21:05:02Z",
+    "rollback": "ppp-nest-staging:rollback-before-923c880b",
+    "production": "unchanged c5e97ab1"
+  }
+}

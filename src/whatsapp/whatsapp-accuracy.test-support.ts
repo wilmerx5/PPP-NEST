@@ -127,4 +127,3 @@ export function harness(menu = products, agentEnabled = true) {
     }));
   return { conv, send, sendQueued, agent, replies, cartRows, service, cfg };
 }
-

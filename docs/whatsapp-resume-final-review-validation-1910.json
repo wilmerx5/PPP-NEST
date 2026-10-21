@@ -1,0 +1,32 @@
+{
+  "base": "964e1ee3",
+  "strengthened_tests": 8,
+  "new_tests": 0,
+  "focused_passed": 16,
+  "global": {
+    "suites": 88,
+    "tests": 9474,
+    "failed": 0,
+    "source_hashes": 379,
+    "source_unchanged": true
+  },
+  "paid_calls": 0,
+  "external_orders": 0,
+  "previous_global": "Interrupted, evidence unavailable, not credited",
+  "limits": [
+    "Mocked model, Meta and order service",
+    "Two synthetic catalogs; prepared note seeded",
+    "No active payment link; resolved products only",
+    "Main untouched"
+  ],
+  "automation": "deleted at user request",
+  "typescript": "passed",
+  "node_contracts": 92,
+  "deployment": {
+    "code": "1b5b0028e2a17a179aa5d73caa7912de6ce7e00a",
+    "image": "sha256:d28f968f2261bcf70ec925b5a3b2b7e136c958124eea0cc625155e9454df15b1",
+    "checked_at": "2026-10-19T15:10:34Z",
+    "health": "OK, DB connected, circuit CLOSED",
+    "production_unchanged": true
+  }
+}

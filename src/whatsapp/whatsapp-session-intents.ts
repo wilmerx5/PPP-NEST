@@ -9,7 +9,7 @@ export function isAddressChangeIntent(text: string): boolean {
   if (!t || t.length < 8) return false;
   if (isAddressRejectionIntent(t)) return true;
   return (
-    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+)?(direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\b/i.test(
+    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+|mi\s+|el\s+)?(direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\b/i.test(
       t,
     ) ||
     /\b(la\s+)?(direcci[oó]n|direcion|direction|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
@@ -173,6 +173,13 @@ export function isInterruptedPhoneOrderInquiry(text: string): boolean {
 /**
  * Confirmar dirección sugerida / última guardada: “sí”, “acá”, “la misma”.
  */
+/** Explicit reference to a saved destination; unlike a bare yes it can reverse a new-address request. */
+export function isExplicitSavedAddressReference(text: string): boolean {
+  const t = (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\b(?:direction|direcion)\b/g, 'direccion').replace(/[.,!?¡¿]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^(?:(?:mejor|prefiero|si|entonces) )?(?:(?:a|para|en) )?(?:(?:la|esa) )?(?:misma(?: direccion)?(?: de antes)?|anterior(?: direccion)?|direccion anterior|de siempre)(?: por favor| porfa| gracias)?$/.test(t);
+}
+
 export function isReuseLastAddressIntent(text: string): boolean {
   const t = (text || '')
     .trim()
@@ -314,6 +321,10 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
     'domicilio',
     'nombre',
     'sin nombre',
+    'muchas gracias',
+    'gracias',
+    'no mas',
+    'nada mas',
     'n a',
     'na',
     'none',
@@ -389,9 +400,23 @@ export function isUsableWhatsappCustomerName(name: string): boolean {
   if (isCourtesyAffirmation(t)) return false;
   // Cierre del pedido o consulta de precio, no la identidad del cliente.
   if (/^(?:asi\s+esta\s+bien|esta\s+bien\s+asi|(?:que\s+)?precio\s+tiene)$/.test(t)) return false;
+  // "Dale, muchas gracias", "Vale te encargo", "Nada que llega": words a person's name never carries.
+  if (t.split(' ').some((word) => NON_NAME_WORDS.has(word) || /^grac+i+a*s+$|^graci[a-z]*s$/.test(word))) return false;
+  if (t.split(' ').every((word) => /^(?:de|del|la|las|los|el|y|e)$/.test(word))) return false;
 
   return true;
 }
+
+const NON_NAME_WORDS = new Set([
+  'favor', 'porfa', 'porfis', 'porfavor', 'xfa', 'plis', 'pls', 'please', 'amable', 'amables', 'gusto',
+  'ok', 'okay', 'oki', 'vale', 'dale', 'listo', 'lista', 'perfecto', 'claro', 'super', 'genial', 'chevere',
+  'me', 'te', 'se', 'le', 'les', 'lo', 'nos', 'yo', 'usted', 'ustedes', 'sumerce',
+  'quedo', 'quede', 'pendiente', 'atento', 'atenta', 'encargo', 'recomiendo', 'pago', 'pagar', 'pagas',
+  'cancelo', 'envio', 'envia', 'enviame', 'manda', 'mandas', 'quita', 'quitas', 'quitale', 'saca', 'agrega',
+  'agregas', 'llega', 'llego', 'llegado', 'demora', 'demoran', 'tarda', 'pregunta', 'puedo', 'puedes', 'podria',
+  'podrias', 'quiero', 'necesito', 'tengo', 'hay', 'era', 'eran', 'ya', 'aqui', 'aca', 'alla', 'nada', 'todo',
+  'tambien', 'muy', 'mil', 'jaja', 'jajaja', 'ah', 'ay', 'uy', 'eh', 'con', 'sin', 'por', 'para', 'que', 'nombre',
+]);
 
 /** “sí” / “si por favor” / “dale” confirman; no son un nombre. */
 export function isCourtesyAffirmation(text: string): boolean {
@@ -451,7 +476,7 @@ export function isDeliveryEtaInquiry(text: string): boolean {
     .replace(/[\u0300-\u036f]/g, '');
 
   return (
-    /\b(se\s+demora|cuanto\s+(se\s+)?(demora|tarda|tardaria)|cuanto\s+tiempo|en\s+cuanto\s+(llega|llegaria|llegara|sale|salen)|cuando\s+(llega|llegaria)|tiempo\s+de\s+(domicilio|entrega|espera)|demora\s+(el\s+)?(domicilio|pedido|envio)|eta)\b/.test(
+    /\b(se\s+demoran?|demorara[n]?\s+(?:mucho|el\s+pedido|el\s+domicilio)|cuanto\s+(se\s+)?(demora|tarda|tardaria)|cuanto\s+tiempo|en\s+cuanto\s+(llega|llegaria|llegara|sale|salen)|cuando\s+(llega|llegaria)|tiempo\s+de\s+(domicilio|entrega|espera)|demora\s+(el\s+)?(domicilio|pedido|envio)|eta)\b/.test(
       t,
     ) ||
     /\b(cuanto|cuanto\s+aprox|mas\s*o?\s*menos|masomenos|aprox(?:imadamente)?)\b.+\b(minutos?|mins?|demora|tarda|lleg)\b/.test(
@@ -489,6 +514,14 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     return false;
   }
 
+  // "El pedido es para las 12 / a domicilio" describes the order being placed.
+  if (
+    /\b(?:el|mi)\s+pedido\s+(?:es|seria|sera|va\s+a\s+ser|lo\s+(?:quiero|necesito))(?:\s+(?:para|a|de|con)\b|[\s.,!]*$)/.test(t) &&
+    !/\b(?:en\s+que\s+va|donde\s+va|ya\s+sali|demora|tarda|llega|no\s+ha|todavia|aun\s+no)/.test(t)
+  ) {
+    return false;
+  }
+
   if (extractDailyOrderNumberHint(raw) != null) return true;
 
   if (
@@ -500,6 +533,12 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
     /\b(en\s+que\s+(va|esta|andan)|donde\s+(va|esta|andan)|ya\s+(salio|salieron|va\s+en\s+camino|esta\s+en\s+camino)|estado\s+(del?\s+)?(pedido|orden)|ubicar\s+(al\s+)?domiciliario)\b/.test(
       t,
     )
+  ) {
+    return true;
+  }
+  // "ya vienen?", "ya casi está?", "qué pasó con el domicilio?" ("ya viene con papas?" asks composition).
+  if (
+    /\b(?:ya\s+(?:viene(?!\s+con)|vienen(?!\s+con)|casi\s+(?:esta|llega)|(?:me\s+)?lo\s+(?:enviaste|enviaron|mandaste|mandaron|despacharon)|despacharon)|falta\s+mucho|cuanto\s+falta|(?:todavia|aun)\s+no\s+(?:llega|ha\s+llegado|viene|sale)|que\s+paso\s+con\s+(?:el|mi)\s+(?:domicilio|pedido))\b/.test(t)
   ) {
     return true;
   }
@@ -516,7 +555,9 @@ export function isSpecificOrderProgressInquiry(text: string): boolean {
 /** Extrae #15 / orden 15 / pedido 15 del texto (número diario). "2 #20" es código de menú. */
 export function extractDailyOrderNumberHint(text: string): number | null {
   // An explicitly labelled catalog code remains product identity, including OCR.
-  const raw = (text || '').replace(/\bc[oó]d(?:igo)?\.?\s*:?\s*#?\s*\d{1,4}\b/gi, '').trim();
+  const raw = (text || '').replace(/\bc[oó]d(?:igo)?\.?\s*:?\s*#?\s*\d{1,4}\b/gi, '')
+    // Street numbering is not an order identifier; explicit 'pedido #N' remains.
+    .replace(/\b(?:calle|cll?|carrera|cra?|kr|diagonal|dg|transversal|tv)\.?\s*\d+[a-z]?(?:\s+(?:[a-z]|bis|sur|norte|este|oeste))*\s*#\s*\d+[a-z]?(?:\s*[a-z])?\s*(?:[-–]\s*)?\d*/gi, '').trim();
   if (!raw) return null;
   const m =
     raw.match(/\b(?:orden|pedido|order)\s*#?\s*(\d{1,4})\b/i) ||
@@ -804,6 +845,23 @@ export function isChangeSurchargeInquiry(text: string): boolean {
 }
 
 /** "¿cuánto me están cobrando?" pregunta por el carrito, no por la carta. */
+/** "¿Por qué sube el domicilio si primero decía 2 mil?" / "no entiendo por qué sube todo eso". */
+export function isDeliveryFeeChangeQuestion(text: string): boolean {
+  const t = (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s$]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t.length > 160) return false;
+  if (!/\b(?:por\s*que|porque|no\s+entiendo|como\s+asi|y\s+eso)\b/.test(t)) return false;
+  const rise = /\b(?:sube|suben|subio|subieron|aumenta|aumento|aumentaron|cambia|cambio|cambiaron|quedo\s+en|paso\s+a)\b/.test(t);
+  const fee = /\b(?:domicilio|envio|domi)\b/.test(t);
+  if (fee) return rise || /\b(?:cobran|cobra|cobraron|cuesta|vale|sale|tanto|mas\s+caro)\b/.test(t);
+  return rise && /\b(?:todo|eso|tanto|valor|precio|total|\d+\s*mil|\d{1,3}(?:\.\d{3})+)\b/.test(t);
+}
+
 export function isCartChargeQuestion(text: string): boolean {
   if (isChangeSurchargeInquiry(text)) return false;
   const t = (text || '')

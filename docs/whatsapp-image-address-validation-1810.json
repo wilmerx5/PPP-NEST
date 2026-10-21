@@ -1,0 +1,32 @@
+{
+  "base": "8dec6309",
+  "new_tests": 23,
+  "baseline_failed": 14,
+  "additional_defect": "empty cart retained final-confirm prompt during address change",
+  "focused_passed": 59,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9370,
+    "seconds": 617.423,
+    "source_hashes": 379
+  },
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "limits": [
+    "OCR HTTP mocked, no real photo accuracy claim",
+    "Full router tested with three synthetic menus",
+    "Image classification still depends on model; ambiguous addresses require clarification"
+  ],
+  "deployment": {
+    "code": "9c9a5487551e1258c18f429a23ba37538c9b449d",
+    "image": "sha256:4fcdbeeecd23b53ca4f754f6d27252dffc9e1a57ff1655cfd5810e3adb9e164a",
+    "status": "running",
+    "health": "ok / db connected / circuit CLOSED",
+    "checked_at": "2026-10-19T02:11:44Z",
+    "compiled_probe": "passed; provider HTTP, routing, Meta mocked; initial probe lacked catalog mocks, fixed harness without runtime changes",
+    "production_image_unchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  }
+}

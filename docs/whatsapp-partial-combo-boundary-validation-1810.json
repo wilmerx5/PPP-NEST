@@ -1,0 +1,36 @@
+{
+  "base": "9465dbc0",
+  "baselineFailures": 8,
+  "newRouterTests": 16,
+  "newParserTests": 12,
+  "focusedPassed": 56,
+  "typecheck": true,
+  "nodePassed": 92,
+  "globalSuites": 87,
+  "globalTests": 9172,
+  "globalSeconds": 573.47,
+  "sourceHashes": 378,
+  "sourceUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "metaCalls": 0,
+  "limitation": "Partial conversion is guarded without mutation, not implemented. Full conversation tests use mocks.",
+  "deployment": {
+    "performed": true,
+    "code": "0a1b75850e760dab3b5697bf5175658f0e192998",
+    "image": "sha256:4c3fc474fc3d2a0cd4f3aac79f646f3a32cde4f6e55743524c938603c6631e5e",
+    "verifiedAt": "2026-10-18T22:03:14Z",
+    "container": "running/healthy",
+    "publicHealth": "/api/health: ok, db connected, circuit CLOSED",
+    "rollback": "ppp-nest-staging:rollback-before-0a1b7585",
+    "compiledProbes": [
+      "partial scope guard: two forms preserve cart/state/notes; excludes drink count",
+      "retained drink notice and no mutation guards"
+    ],
+    "scope": "staging only; no models/private config/database/volume changes",
+    "operationalNotes": [
+      "First helper invocation stopped before build because abbreviated SHA failed exact equality. Retried with full SHA.",
+      "Initial public /health returned404; correct /api/health returned200 after startup."
+    ]
+  }
+}

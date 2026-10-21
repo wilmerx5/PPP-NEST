@@ -1,0 +1,56 @@
+{
+  "batch": 33,
+  "date": "2026-10-19",
+  "base": "5c7b9218",
+  "commit": "536f45f968f13e408933a9ccc174c15b9375ea89",
+  "scope": "«y otro/otra/otras dos de <variant>» while building the cart, dishes requested by their head noun («agrega una arepa») in building_cart, awaiting_payment and awaiting_final_confirm, and a bare «y otro» with one line",
+  "baselineFindings": [
+    "building_cart: «y otro de mora», «otro de mora», «y uno de mora», «y otra de carne», «y otras dos de carne», «y otro de lulo» were saved as a delivery address and jumped to checkout (awaiting_payment with a delivery fee on a pickup order); agent on and off",
+    "«y otro de esos» was saved as the delivery address",
+    "«agrega una arepa» answered «No encontré ese producto» in building_cart, awaiting_payment and the final step while «una arepa» added «Arepa De Queso»; «agrega una hamburguesa» failed the same way (search score 33 < 40)",
+    "Final step: «quiero una arepa» answered «Por ahora no manejamos arepa… Sí tenemos: Arepa De Queso»",
+    "Payment step: «quiero una arepa» answered «no manejamos»; after letting it through, it re-asked «¿Cómo pagas?» without adding",
+    "«y otro» with a single cart line only reprinted the cart"
+  ],
+  "fix": "rewriteAnotherOfVariant (building_cart, awaiting_payment, awaiting_final_confirm; no pending choice): «(y) otro/otra/uno/una/otras dos/N (más) de <words>» becomes «Quiero N <product>» when exactly one catalog product contains those words (preferring the family already in the cart), else «Quiero N <words>» so the catalog asks. tryHandleAddressOnlyWhileBuildingCart rejects «<count> de …» phrases without digits. The explicit-add guard and the final-step «no manejamos» check also consult productWhoseHeadWasSpoken; an add of only quantity + head noun is rewritten to the product's full name. tryAddDishDuringPayment falls back to the head-noun product for purchase-shaped messages. tryHandleSingleLineQuantityNudge accepts bare «otro/otra (igual)».",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-variant-and-head-addition.spec.ts",
+    "count": 102,
+    "menus": ["grill + juices + arepa", "regional + empanadas + patacón", "pizzeria + shakes + lasaña"],
+    "agent": ["off", "on (simulated; a delegated purchase must reach the agent with the resolved product)"],
+    "asks": ["another-of-variant in build/pay/final", "two-more-of-variant", "another-of-same-variant", "variant-without-family-in-cart", "head-noun add in build/pay/final", "final-step quiero head-noun", "bare-y-otro"],
+    "contrasts": ["dos-de-variant", "otro-de-esos", "unknown-product", "family-with-two-variants-asks", "real-street-address", "y-otro-with-two-lines"],
+    "baselineWithoutFix": "69/102 failed"
+  },
+  "knownGaps": [
+    "With the agent on, a purchase like «quiero una arepa de queso» while building the cart is delegated to the agent (existing routing); the agent now receives the full product name",
+    "«agrega un jugo» in the final step opens the list and moves to building_cart"
+  ],
+  "validation": {
+    "focused": "1095/1095 (21 suites incl. new spec, address-change-checkout, address-parts, order-address, checkout-destination-block, checkout-envelope, compound-parse, catalog matching/multi-order, distributed/existing variants, quantity-corrections, cart-removal, pending-choice-burst, acknowledged-checkout-edit, ambiguous/clarification/unit-clarification)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 104.421s",
+      "phase2Rest": "11178/11178 in 336.912s, 117 suites",
+      "totalSeconds": 443,
+      "totalTests": 11258,
+      "inventorySuites": 118,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 413,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "536f45f968f13e408933a9ccc174c15b9375ea89",
+    "image": "sha256:3c2b234e8eee76bc0ea461e4cf2025032c3fa5910d0ccf736ac206926ab78530",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T03:14:16Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-536f45f9 (image 85f71fb8…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

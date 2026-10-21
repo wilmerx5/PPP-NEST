@@ -1,0 +1,64 @@
+{
+  "batch": 38,
+  "date": "2026-10-19",
+  "base": "4bf621bf",
+  "commit": "f32bc87be03231832d53adcefa25f679c6867553",
+  "scope": "Product-card photo with the order (dish + name + address + phone) in its caption; agent purchase rejection followed by «1»",
+  "trigger": "Staging chat (deploy 48f3efa7): photo of a combo card with caption «… Me das este combo de arroz paisa / name / complex / address / apartment / phone» got «Necesito aclarar Combo De Arroz Paisa antes de agregarlos…»; the reply «1» added product code 1 instead of the combo",
+  "baselineFindings": [
+    "The vision text «Combo … (código 94)» was rejected by agent add_item as dish_not_on_menu: «código/cod/#94» counted as an uncovered word",
+    "Caption lines with name, address and phone were dropped when the vision text replaced the caption",
+    "The checkout envelope (dish line + contact block) only ran for text messages, never for a resolved photo order",
+    "The rejected-purchase fallback kept no pending choice, so a following «1» was read as product code #1"
+  ],
+  "fix": "stripOrderMetadata removes the product's own numeric code marker («(código 94)», «cod. 94», «code: 94», «#94», «(#094)») before the uncovered-word check; another code or extra words are still rejected. resolveImageMessage appends caption lines that are not a product or code line when they carry an address or phone. The checkout envelope also runs on the routed text of a resolved photo order. When every agent purchase attempt is rejected for a single product while building the cart with no other pending choice, the fallback offers «1. *product*» and stores it as pendingMatch so «1» picks it; several products keep the generic «Necesito aclarar … cantidad y las opciones» question.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-image-caption-order.spec.ts",
+    "count": 45,
+    "menus": ["rotisserie (combo code 94)", "burger (combo code 57)", "sushi (combo code 312)"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "three vision text formats add the combo with name, full address and phone",
+      "«1» after the photo order does not add the code-1 product",
+      "routed body carries the contact lines, not the request line",
+      "vague caption does not invent contact data",
+      "text and photo rejected purchase: «1» picks the held product",
+      "rejection in checkout state keeps the session without a held pick",
+      "add_item accepts 5 own-code marker forms; rejects another code and «con langosta»"
+    ],
+    "baselineWithoutFix": "24 failed / 45"
+  },
+  "removedContrast": "A two-product rejection contrast was dropped: the router handles that message before the agent fallback; parts 04 and 12 already cover the multi-product generic question",
+  "firstAttempt": "Holding a pick for several rejected products broke 7 tests in parts 04 and 12 (expect the multi-product «Necesito aclarar» wording); restricted to a single product",
+  "validation": {
+    "focused": "776 passed (20 suites)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 113.673 },
+      "rest": { "passed": 11670, "total": 11670, "suites": 122, "seconds": 335.376 },
+      "inventory": 123,
+      "unionEqualsInventory": true,
+      "hashes": 418,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 11750
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "f32bc87be03231832d53adcefa25f679c6867553",
+    "image": "sha256:9f9d9bbf1b67607c59b8bb577a180dd3a3a54379cbb59a457b5956667aa66a3b",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T06:11:43Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-f32bc87b (image 73fb2d26…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "A bare number after a non-list bot question is still read as a product code",
+    "Greeting or «este» inside an agent add_item source is still rejected (greetings batch)",
+    "Clock time after «para» stored as address",
+    "Family word in a multi-dish message resolves a variant silently"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

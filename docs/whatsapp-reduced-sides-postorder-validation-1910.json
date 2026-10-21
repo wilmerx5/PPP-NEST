@@ -1,0 +1,56 @@
+{
+  "base": "f0b5221b",
+  "branch": "staging",
+  "batchSincePdfAudit": 20,
+  "newRouterTests": 18,
+  "cumulativeNewTestsSincePdfAudit": 424,
+  "baseline": {
+    "passed": 18,
+    "failed": 0
+  },
+  "runtimeChanges": false,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodePassed": 92,
+  "global": {
+    "suitesPassed": 105,
+    "testsPassed": 9794,
+    "failed": 0,
+    "retries": 0,
+    "seconds": 438.027,
+    "phases": [
+      {
+        "scope": "original burst suite isolated",
+        "passed": 80,
+        "seconds": 106.098
+      },
+      {
+        "scope": "all remaining suites four workers",
+        "passed": 9714,
+        "seconds": 331.929
+      }
+    ],
+    "inventoryExact": true,
+    "duplicates": 0
+  },
+  "unchangedHashes": 399,
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "deployment": "none; tests and documentation only; last verified runtime 49812461",
+  "limitations": [
+    "Models and external services mocked",
+    "No new runtime fix: exact cases passed baseline",
+    "Not all PDF chats covered",
+    "Single two-phase run does not prove permanent stability or faster validation",
+    "Server not consulted"
+  ],
+  "next": "Bare numeric clarification between existing variant lines; stale index invalidation",
+  "logs": [
+    "/tmp/ppp-reduced-postorder-baseline.log",
+    "/tmp/ppp-burst-global.json",
+    "/tmp/ppp-rest-global.json",
+    "/tmp/ppp-reduced-postorder-inventory.json",
+    "/tmp/ppp-reduced-postorder-source.json"
+  ]
+}

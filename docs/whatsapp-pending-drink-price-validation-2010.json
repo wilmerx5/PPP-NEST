@@ -1,0 +1,33 @@
+{
+  "batch": 53,
+  "base": "3169381b",
+  "newCases": 36,
+  "baseline": {
+    "failed": 30,
+    "passed": 6,
+    "note": "Strengthened response assertion prevents matching pending-option price while wrong cart product is quoted"
+  },
+  "focusedPassed": 238,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12688,
+    "suites": 137,
+    "bursts": 80,
+    "rest": 12608,
+    "sourceHashesUnchanged": 433,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Deferred; runtime staging remains 132a846c; Main unchanged",
+  "limits": [
+    "Mocked model and services",
+    "Checkout seeded",
+    "Generic pending price formulations bounded",
+    "Ambiguous alternative references remain pending"
+  ]
+}

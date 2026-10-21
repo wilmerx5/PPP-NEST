@@ -1,0 +1,28 @@
+{
+  "batch": 55,
+  "base": "c9dacf1d",
+  "newCases": 36,
+  "baselineFailed": 36,
+  "focusedPassed": 210,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12766,
+    "suites": 139,
+    "bursts": 80,
+    "rest": 12686,
+    "sourceHashesUnchanged": 435,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Deferred; runtime remains 6bba0c4e, Main unchanged",
+  "limits": [
+    "Checkout seeded, model and external services simulated",
+    "Abbreviations by word prefix only",
+    "Removed products and non-offered codes require further tests"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "batch": 51,
+  "base": "95e50309",
+  "newCases": 54,
+  "focusedPassed": 160,
+  "cancellationControlsPassed": 132,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "firstGlobalFailed": 14,
+  "firstGlobalFailure": "Spanish tea recognition exposed quantity two becoming one; quantity noun vocabulary corrected",
+  "global": {
+    "passed": 12610,
+    "suites": 137,
+    "bursts": 80,
+    "rest": 12530,
+    "sourceHashesUnchanged": 433,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": "Deferred; staging runtime remains e893e3ca; Main unchanged",
+  "limits": [
+    "Mocked model and external services",
+    "Checkout seeded",
+    "Contact and flavor in same clause not covered",
+    "Bare names and landmarks not covered",
+    "Replacement grammar limited; see handoff"
+  ]
+}

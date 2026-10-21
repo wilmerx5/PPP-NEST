@@ -1,0 +1,81 @@
+{
+  "base": "9a53dc5f",
+  "originalTests": 7611,
+  "topLevelGroups": 512,
+  "unchangedTestBodiesSha256": "17519597353ba4d19d1e591d5b61521cc0689b09e365a8f6e4b419933ecfe8e4",
+  "files": [
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy.spec.ts",
+      "groups": 1,
+      "previousDurationMs": 123628
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-02.spec.ts",
+      "groups": 44,
+      "previousDurationMs": 103508
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-03.spec.ts",
+      "groups": 44,
+      "previousDurationMs": 103508
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-04.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103508
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-05.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103508
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-06.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103512
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-07.spec.ts",
+      "groups": 48,
+      "previousDurationMs": 103508
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-08.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103511
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-09.spec.ts",
+      "groups": 46,
+      "previousDurationMs": 103507
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-10.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103511
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-11.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103509
+    },
+    {
+      "path": "src/whatsapp/whatsapp-general-accuracy-part-12.spec.ts",
+      "groups": 47,
+      "previousDurationMs": 103507
+    }
+  ],
+  "runtimeEquivalence": {
+    "passed": true,
+    "identicalLegacyAssertionNamesAndMultiplicities": 7611,
+    "oldGlobalTests": 9588,
+    "newGlobalTests": 9644,
+    "newIndependentTests": 56,
+    "globalPassed": true,
+    "beforeSeconds": 1296.707,
+    "afterSeconds": 391.298,
+    "beforeWorkers": 2,
+    "afterWorkers": 4,
+    "measurementLimit": "single local run; includes partition and worker-count change"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "batch": 50,
+  "base": "d3de13f4",
+  "newCases": 66,
+  "baselineFailures": 54,
+  "focusedPassed": 312,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12556,
+    "suites": 136,
+    "bursts": 80,
+    "rest": 12476,
+    "seconds": [
+      109.723,
+      361.031
+    ],
+    "sourceHashesUnchanged": 432,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "commit": "e893e3ca180eb83b47c2740e5c857c6f1a49ff39",
+    "image": "675f324a6fab5c75ebe0cfa58f974f41f3b8af25eaed09221c1c9b0c8616bc93",
+    "verifiedAt": "2026-10-20T18:37:02.495Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionUnchanged": true,
+    "rollback": "ppp-nest-staging:rollback-before-e893e3ca",
+    "note": "Initial request used /health (404); correct endpoint /api/health passed."
+  },
+  "limits": [
+    "External dependencies and model simulated",
+    "Checkout seeded; no from-greeting flow",
+    "Changing pending drink to another SKU and early contact data remain pending"
+  ]
+}

@@ -51,6 +51,8 @@ export class WhatsappPointsService {
 
     const bare = raw.match(/^[A-Za-z0-9]{12}$/);
     if (bare) {
+      // A lowercase word with no digit ("hamburguesas") is text; printed codes are uppercase.
+      if (!/\d/.test(bare[0]) && bare[0] !== bare[0].toUpperCase()) return null;
       const code = bare[0].toUpperCase();
       return POINT_CODE_CHARSET.test(code) ? code : null;
     }
@@ -75,7 +77,8 @@ export class WhatsappPointsService {
   }
 
   private hasPointsKeywords(text: string): boolean {
-    const t = (text || '').toLowerCase();
+    // "a las 12 en punto" / "a punto de salir" are not about loyalty points.
+    const t = (text || '').toLowerCase().replace(/\b(?:en|a)\s+punto\b/g, ' ');
     return (
       /\b(puntos?|premio?s?|cup[oó]n|canjear|redimir|acumular|mis\s+puntos|programa\s+de\s+puntos|factura|recibo|ticket|c[oó]digo\s+de\s+(punto|factura|premio)|registrar)\b/.test(
         t,

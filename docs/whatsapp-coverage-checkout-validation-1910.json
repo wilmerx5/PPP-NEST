@@ -1,0 +1,37 @@
+{
+  "base": "911eb576",
+  "branch": "staging",
+  "newTests": 8,
+  "baseline": {
+    "failed": 8,
+    "failure": "response did not identify retained order destination",
+    "log": "/tmp/ppp-coverage-checkout-baseline.log"
+  },
+  "targetedPassed": 125,
+  "typescript": "passed",
+  "global": {
+    "rerun": false,
+    "reason": "response-template-only change; detection, state, persistence and tariff logic unchanged",
+    "lastValidatedSuites": 88,
+    "lastValidatedTests": 9572,
+    "newTestsIncludedInThatGlobal": false
+  },
+  "checks": [
+    "query alternate destination within coverage without changing order",
+    "query outside coverage without blocking current valid destination",
+    "resume payment or final confirmation",
+    "total unchanged after queries",
+    "explicit destination change clears previous interior and updates fee",
+    "final simulated DTO without premature order"
+  ],
+  "limits": [
+    "all external dependencies mocked",
+    "fresh-address request without explicit street still pending",
+    "not all PDF chats covered"
+  ],
+  "deployment": "deferred to group with next batch",
+  "lastVerifiedDeployedRuntime": "b860629431ac2dd95bfb973d119186ae01a160a2",
+  "mainUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0
+}

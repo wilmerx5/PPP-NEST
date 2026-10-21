@@ -1,0 +1,55 @@
+{
+  "batch": 28,
+  "date": "2026-10-19",
+  "base": "c19c7d26",
+  "commit": "c4188d98c16fa14863437e81da3084c926a3900e",
+  "scope": "One message with a cash-change clause plus one dish or order note clause, during cart building and checkout steps",
+  "baselineFindings": [
+    "«sin cebolla y tráeme cambio de 50 mil» answered «No encontré *cebolla y tráeme cambio de 50 mil* en tu carrito» and stored neither the note nor the change",
+    "Leftover verbs stayed inside the note: «bien empacado y necesito», «tráeme  y que llegue rápido», «es para mi mamá y traer», «que no tenga cebolla, y llevar»",
+    "Every note was stored twice (dish note and order note) and, with several rows, silently on the last row",
+    "Order-level parts («es para mi mamá», «que llegue rápido») became dish notes",
+    "Cash stored as «vueltas de 100 mil» / «billete de 100 mil» instead of the normalized «cambio de N» used by the standalone route"
+  ],
+  "fix": "tryHandleMixedCashAside (early handler group, before tryHandleOrderLevelAside). Exactly one cash clause (change/vueltas/devuelta with optional verb, or «pago/llevo/tengo con billete de N» when a payment method exists) is removed with offsets mapped back to the original wording; connectors and courtesy words are stripped from the rest. Recipient, urgency and arrival/temperature parts go to customerNotes; dish modifications (sin…, que no tenga…, con poco…, bien…, packing, «X aparte») go to the named row, the only row, or the whole order when several rows are unnamed — stored once. «sin <cart dish>…», purchase/removal/change verbs, digits in the note, questions, awaiting_payment and pending selections keep their routes. Non-cash payment: the note is stored and the change is explained, not stored. State is preserved; the existing building_cart auto-advance to the summary still applies when the cart changed with a confirmed delivery address.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-mixed-cash-note.spec.ts",
+    "count": 102,
+    "menus": ["one row with option (bao/sauce)", "two rows same product, different option (pizza/dough)", "two plain products (juice + arepa)"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["removal-then-change", "negated-then-vueltas", "packing-then-need", "bill-then-removal", "change-then-urgency", "recipient-then-change", "named-line-then-change"],
+    "contrasts": ["non-cash-payment", "repeat", "cash-only"],
+    "baselineWithoutFix": "96/102 failed"
+  },
+  "knownGaps": [
+    "Two cash clauses or two independent notes in one message are left to existing routes",
+    "Mixed note + cash while choosing the payment method (awaiting_payment) keeps the payment route",
+    "Name change in the final step has no explicit acknowledgement"
+  ],
+  "validation": {
+    "focused": "2037/2037 (17 suites: new spec, address-change-checkout, ambiguous-turns, cart-note, chat-regressions, checkout-destination-block, checkout-envelope, destination-note-resolution, dish-handling-aside, line-scoped-addon, note-replacement-block, note-revision-phrasing, order-level-aside, partial-note, unit-notes-options-block, general-accuracy-part-09, option-reference-edit)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 103.491s",
+      "phase2Rest": "10614/10614 in 305.585s, 112 suites",
+      "totalSeconds": 411,
+      "inventorySuites": 113,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 408,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "c4188d98c16fa14863437e81da3084c926a3900e",
+    "image": "sha256:ce6ab809697242bd3139568724457c22258c0fb13c8a520f3f1d81df6bc71b2d",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T00:52:20Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-c4188d98 (image 46baad53…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

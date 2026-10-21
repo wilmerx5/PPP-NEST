@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-18",
+  "base": "c894687e004a11ab6e2787304a55919302976e5c",
+  "status": "deployed_staging_only",
+  "new_regressions": 11,
+  "baseline": {
+    "failed": 6,
+    "log": "/tmp/ppp-canonical-degree-baseline-1810.log"
+  },
+  "focused": {
+    "passed": 127,
+    "log": "/tmp/ppp-canonical-degree-final-controls-1810.log"
+  },
+  "typescript": "passed",
+  "node_contracts": 92,
+  "source_manifest": "/tmp/ppp-canonical-degree-final-source-1810.json",
+  "global_result": "/tmp/ppp-canonical-degree-final-global-1810.json",
+  "coverage": [
+    "6 router conversations across three fictional menus with agent configured on/off; quantity2, exact canonical qualified option, price interruption preserves cart/state, simulated final DTO",
+    "4 catalogue controls: explicit con+attribute+qualified option; unbound degree preference does not select option; preceding explicit option retained; rejection not bypassed",
+    "Longest matching literal option with shorter prefixed sibling"
+  ],
+  "change": "Qualified catalogue options can match a full explicit con+attribute+option phrase before stripping a degree note. Exact bare option support retained. No restaurant ids/names/prices in production rule. Longest complete qualified option wins when names share a prefix; catalogue option order is not mutated.",
+  "limits": [
+    "No real model/ASR inference, Meta or external orders",
+    "Extra literal note equal to option is allowed by these tests; no claim of redundant note suppression",
+    "No validation of every paraphrase without explicit attribute name",
+    "Main, production and models unchanged; budget188/187/1 unchanged"
+  ],
+  "prefix_baseline": {
+    "failed": 1,
+    "log": "/tmp/ppp-canonical-degree-prefix-baseline-1810.log"
+  },
+  "interrupted_global": {
+    "exit": 130,
+    "log": "/tmp/ppp-canonical-degree-global-1810.log",
+    "reason": "Stopped before edits to reproduce/fix qualified option prefix collision; not acceptance evidence"
+  },
+  "second_interrupted_global": {
+    "exit": 130,
+    "log": "/tmp/ppp-canonical-degree-final-global-1810.log",
+    "reason": "Stopped before source edits to include human sales-closure reports; not acceptance"
+  },
+  "accepted_global": {
+    "result": "/tmp/ppp-sales-location-repaired-global-1810.json",
+    "suites": 86,
+    "tests": 9074,
+    "passed": true
+  },
+  "deployment": {
+    "code_commit": "3a5a204badc1e24fb438c845d2cf13a6cb65f872",
+    "image": "sha256:6890143f77da7d69f5c245c97010804d02b17643275ad726df644c358d5d970f",
+    "candidate_matches_active": true,
+    "running": true,
+    "health": "healthy",
+    "public_health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "timestamp": "2026-10-18T19:49:22.729Z"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-3a5a204b",
+    "log": "/tmp/ppp-sales-location-deploy-1810.log",
+    "compiled_probes": [
+      "/tmp/ppp-sales-location-compiled-1810.log",
+      "/tmp/ppp-sales-location-prior-compiled-1810.log"
+    ],
+    "main_preserved": {
+      "head": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+      "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+      "running": true
+    },
+    "limits": "Compiled probes check selected helper/tools/guards; full router tested in TypeScript with mocked services. No paid inference, real geocoding, Meta or external order calls."
+  }
+}

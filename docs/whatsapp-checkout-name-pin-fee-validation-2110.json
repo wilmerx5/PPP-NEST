@@ -1,0 +1,66 @@
+{
+  "batch": 94,
+  "date": "2026-10-21",
+  "base": "6979a62a",
+  "commit": "8ba56bc3bb76ec5f61d1bbb3bc2a2ff7b09fcbb5",
+  "scope": "Real staging chat (delivery order, agent on): a full name whose last surname is also a place keyword was saved as the delivery address and quoted (fee 2.000 → 5.000) while the name was requested again; a complex name sent after the WhatsApp location pin replaced the pin; «¿por qué sube el domicilio…?» was answered with the name prompt and «No entiendo porque sube todo eso» was saved as the customer name",
+  "trigger": "Real chat pasted by the user on 21/10 (personal data not copied; synthetic names and places in tests)",
+  "whatWentWell": [
+    "Family list with descriptions for the fried-chicken question, pick by number and option prompt",
+    "Drink option with a kitchen note («que esté fría»), arepa option change, closing with «así está bien gracias»",
+    "Location pin quoted by route distance; cash payment, confirmation and ETA answer after the order"
+  ],
+  "baselineFindings": [
+    "Root cause: «torres», «plaza», «iglesia», «san X», «santa» and coverage-zone words match the landmark keywords anywhere in the text, so «<Nombre> <Apellido> Torres» was an address-only message, a plausible address and an address replacement; the agent's own shortcut turns such a message into set_address, and with a pending option the deterministic address path takes it too (reproduced: «Domicilio anotado: _<name>_», fee 5.000)",
+    "Pin then «Agrupación bosques de Castilla» / «Conjunto Torres del Parque»: the pin and its coordinates were replaced by the complex name and quoted again",
+    "Fee complaints at the name or payment step: no explanation; at the name step a long complaint could be taken as the name",
+    "The exact production path for the name at the name step could not be replayed with the simulated model; the shared root cause was reproduced deterministically"
+  ],
+  "fix": "looksLikePersonNameNotPlace (2–4 letter-only words, no prepositions/articles/address nouns, first word not a place head or coverage zone, a later word is a place keyword) blocks looksLikeAddressOnlyMessage, the landmark detectors behind isPlausibleDeliveryAddress / looksLikeAddressReplacement and the name-rejection check; a confirmed pin keeps its coordinates and fee and appends a complex or landmark name as a reference («📍 … — <reference>», «Anoté la referencia … junto a tu ubicación») unless the new text is a street with a number; isDeliveryFeeChangeQuestion («por qué sube/cobran … domicilio», «no entiendo por qué sube todo eso») answers with the current address, route km and fee (or the fixed fee) and repeats the open step.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-checkout-name-pin-fee.spec.ts",
+    "count": 85,
+    "menus": ["chicken (plain dish + combo with two options)", "pastas (plain dish + pasta with size and sauce)", "seafood (plain dish + casserole with spice and side)"],
+    "agent": ["off", "on (simulated with the agent's set_address shortcut, classifier null)"],
+    "contrasts": [
+      "a street with a number after the pin replaces it and is quoted again",
+      "a complex name without a pin is still the address",
+      "«¿cuánto es el total?» is not a fee question",
+      "«Torres del Parque», «Conjunto Torres de Castilla», «San Martin», «Plaza de las Americas», «Castilla reservado», «Hospital de Kennedy», «Santa Isabel» stay plausible places"
+    ],
+    "baselineWithoutFix": "57 failed / 85"
+  },
+  "validation": {
+    "focused": "2602 passed (43 suites: address, delivery, location, landmark, name, checkout, payment, totals, agent, intent, corpus)",
+    "firstFocused": "3 failures for «Portería nuevo sol» (access word first); fixed by adding access words to the place head list",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 14861, "total": 14861, "suites": 177, "seconds": 438 },
+      "inventory": 178,
+      "unionEqualsInventory": true,
+      "hashes": 475,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14941
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "8ba56bc3bb76ec5f61d1bbb3bc2a2ff7b09fcbb5",
+    "image": "sha256:28d5ebc7cf3fa65306b9cafa8f874f0e02b63d6ef3ceabf348524b154262b07d",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T21:47:52Z, healthy, 0 restarts (started 21:47:22Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-8ba56bc3 (image 72f55b06…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "With the simulated agent, «2 que esté fría porfavor» on an open drink option is not picked (the real model did it in the chat)",
+    "A direct order fills every option by default while the same dish picked from a list asks the remaining option",
+    "The fee explanation shows the raw pin text and map link instead of «Ubicación compartida»",
+    "A two-word name whose second word is a place head («Ana Villa») or a name that starts with a place word («Santa…») is still read as a place",
+    "«<dish> con <side product> y <drink>» note that repeats chosen options; «Te transformo 57.000?» with the agent on; real model evaluation"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

@@ -1,0 +1,57 @@
+{
+  "batch": 91,
+  "date": "2026-10-21",
+  "base": "c76dcca0",
+  "commit": "43cc6838f73caae6c90b700be539c009ce24fcfc",
+  "scope": "Pending from batch 90: with the agent on, «quiero una arepa rellena», «quiero 1 arepa rellena», «me das una arepa rellena» and «quiero pedir una arepa rellena» went to the model instead of the direct add; a plain side arepa ordered alone («dame arepas fritas») did the same",
+  "trigger": "Gap found while writing the batch-90 spec",
+  "baselineFindings": [
+    "Real router, synthetic menu, agent on: the four phrasings above → «¿Cuál prefieres?» with an empty cart; «una arepa rellena», «dame una arepa rellena», «quiero dos arepas rellenas» and other dishes («quiero una lasagna mixta») were added",
+    "Root cause: isLikelySideOnlyProduct treated any name starting with «arepa» with up to three words as a side, so nestWouldAddDirectDishOrder only accepted it with an explicit add verb matched by looksLikeExplicitAddProductRequest",
+    "With a filled arepa on the menu, «dame arepas fritas», «quiero unas arepas fritas» and «dame una porción de arepas fritas» (a real side product) also went to the model",
+    "Agent off: all phrasings were already added"
+  ],
+  "fix": "isLikelySideOnlyProduct: an arepa is a side only when its name is «Arepa(s)» followed solely by plain-portion descriptors (blanca, frita, asada, de maíz, sencilla, pequeña, redonda, tela); «Arepa Rellena», «Arepa De Pollo» or «Arepa Mixta» are dishes. nestWouldAddDirectDishOrder: a side product whose name is the whole message after an order verb, quantity and «porción de» is a direct order; «con/sin/y <side>» keeps the existing path.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-arepa-dish-direct-add.spec.ts",
+    "count": 75,
+    "menus": ["filled arepa + fried arepas side + juice", "chicken arepa + white arepa side + pasta + soda", "mixed arepa + plain «Arepa» side + ceviche + lemonade"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "the catalog keeps the plain arepa as a side",
+      "a price question about the dish does not add it",
+      "«sin <side>» on a dish already in the cart does not add the side"
+    ],
+    "baselineWithoutFix": "26 failed / 75"
+  },
+  "validation": {
+    "focused": "2533 passed (39 suites: specs mentioning arepas, portions or side-only products, and agent specs)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 14692, "total": 14692, "suites": 174, "seconds": 430 },
+      "inventory": 175,
+      "unionEqualsInventory": true,
+      "hashes": 472,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14772
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "43cc6838f73caae6c90b700be539c009ce24fcfc",
+    "image": "sha256:b718f82a8f068e5e769f3e04029632668b89a1b531b99e2db25f2386eecb82b3",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T20:43:26Z, healthy, 0 restarts (started 20:42:57Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-43cc6838 (image 224625bb…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "The place named in «me lo envías a <place>» is shown but not kept as a reference once the street arrives",
+    "«<dish> con <side product> y <drink>» can leave a note that repeats the chosen options",
+    "«Te transformo 57.000?» with the agent on still answers with the model's text; the real model was not evaluated"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

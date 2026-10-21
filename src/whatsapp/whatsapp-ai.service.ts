@@ -9,7 +9,7 @@ import {
 import { applyOpenAiChatCompat } from './whatsapp-openai-compat';
 
 export type WhatsappImageAnalysis = {
-  kind: 'order' | 'payment_proof' | 'other' | 'unclear';
+  kind: 'order' | 'address' | 'payment_proof' | 'other' | 'unclear';
   /** Texto como si el cliente lo hubiera escrito (pedido, dirección, etc.) */
   textForBot: string;
   /** Texto visible leído en la imagen (OCR) */
@@ -302,24 +302,26 @@ ${WHATSAPP_AI_JSON_SCHEMA}`;
     const system = input.ocrRetry
       ? `Lee TODO el texto visible en la imagen (OCR). Restaurante WhatsApp. Responde SOLO JSON:
 {
-  "kind": "order" | "payment_proof" | "other" | "unclear",
+  "kind": "order" | "address" | "payment_proof" | "other" | "unclear",
   "visibleText": "texto que ves (códigos, nombres, precios)",
   "textForBot": "pedido en lenguaje natural si hay producto/código",
   "reply": "opcional"
 }
+Si es una dirección escrita, etiqueta de entrega o captura de mapa: kind=address; textForBot contiene SOLO un destino inequívoco legible, con calle, número, conjunto, torre, apartamento y referencias. No conviertas números de dirección en productos. Si hay varios destinos sin selección o no se lee la dirección, textForBot vacío; nunca inventes coordenadas ni deduzcas una calle por el mapa. Un comprobante bancario sigue siendo payment_proof aunque muestre una dirección.
 Si hay UN producto seleccionado con CÓDIGO numérico y nombre de plato → kind=order y textForBot debe incluir el código (ej. "código 28 medio pollo").
 Si es un carrito o lista de pedido, incluye TODOS sus productos seleccionados, uno por línea, con su cantidad explícita y sus notas. No reduzcas el pedido al primer producto. No confundas precios, códigos o números del nombre con cantidades. En una foto de carta con varios productos legibles, incluye TODOS como pedido, una unidad de cada uno salvo cantidad explícita. Si el pie solo consulta precios, composición o dice no agregar, kind=unclear y textForBot vacío.
 Menú referencia:\n${input.menuSummary.slice(0, 4000)}`
       : `Eres el asistente de un restaurante (WhatsApp).
 Analizas UNA imagen del cliente. Responde SOLO JSON:
 {
-  "kind": "order" | "payment_proof" | "other" | "unclear",
+  "kind": "order" | "address" | "payment_proof" | "other" | "unclear",
   "visibleText": "todo el texto legible en la imagen",
   "textForBot": "string",
   "reply": "string opcional"
 }
 
 Reglas:
+- address: dirección escrita, etiqueta de entrega o captura de mapa. textForBot contiene SOLO el destino inequívoco legible, conservando calle, número, conjunto, torre, apartamento y referencias. No inventes coordenadas ni deduzcas una calle por el mapa. Si hay varios destinos sin selección o texto ilegible, kind=address y textForBot vacío. Los números de calle no son códigos ni cantidades de platos. Un comprobante bancario sigue siendo payment_proof aunque incluya una dirección.
 - payment_proof: comprobante de transferencia, captura de banco, Nequi, Daviplata, QR pagado, recibo.
   textForBot vacío; reply breve confirmando recepción.
 - order: pide comida, foto de carta/menú, pantalla con plato, captura con CÓDIGO y nombre visibles.
@@ -402,7 +404,7 @@ ${input.menuSummary.slice(0, 6000)}`;
       }
       const parsed = JSON.parse(content || '{}') as Partial<WhatsappImageAnalysis>;
       const kind = parsed.kind;
-      if (kind !== 'order' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
+      if (kind !== 'order' && kind !== 'address' && kind !== 'payment_proof' && kind !== 'other' && kind !== 'unclear') {
         return {
           kind: 'unclear',
           textForBot: '',

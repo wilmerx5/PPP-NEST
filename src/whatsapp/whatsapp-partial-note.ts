@@ -4,7 +4,7 @@ const counts: Record<string, number> = { un:1, uno:1, una:1, dos:2, tres:3, cuat
 const count = (word: string) => counts[word] || (/^\d{1,2}$/.test(word) ? Number(word) : 0);
 
 /** An explicit exclusion for a subset, with an explicit unchanged remainder. */
-export function parsePartialNote(text: string): { quantity: number; note: string; remainder?: number; query?: string; total?: number } | null {
+export function parsePartialNote(text: string): { quantity: number; note: string; remainder?: number; query?: string; total?: number; implied?: boolean } | null {
   if (/[¿?;]/.test(text) || text.length > 250) return null;
   const normalized = normalizeCorrection(text).replace(/[.!]+$/, '').trim()
     .replace(/\by (?:el otro|la otra) normal$/, 'y los otros uno normales');
@@ -27,6 +27,14 @@ export function parsePartialNote(text: string): { quantity: number; note: string
   if (match && match[2].length <= 200 && !/\b(?:agrega|quita|cambia|reemplaza|pero|si)\b/.test(match[2])) {
     const quantity = count(match[1]); const remainder = match[3] ? count(match[3]) : undefined;
     if (quantity && (!match[3] || remainder)) return { quantity, note: match[2], remainder };
+  }
+  // "una sin cebolla" / "una de ellas sin cebolla": the rest stays as it is, but only a single
+  // unnoted line with more units can take it; the caller falls through otherwise.
+  const implied = normalized.replace(/\s+(?:por favor|porfa|gracias)$/, '')
+    .match(/^(?:y\s+)?(\w+)\s+(?:de\s+(?:ellas|ellos|esas|esos|las\s+dos|los\s+dos)\s+)?((?:sin|poco|poca|bien|extra)\s+.+)$/);
+  if (implied && count(implied[1]) && implied[2].length <= 120 &&
+      !/\b(?:y|agrega|quita|cambia|reemplaza|pero|si|mas|otra|otro|otras|otros|adicional|aparte|normal|normales)\b/.test(implied[2])) {
+    return { quantity: count(implied[1]), note: implied[2], implied: true };
   }
   const other = normalized.match(/^(\w+)\s+(sin\s+.+?)\s+y\s+el\s+otro\s+normal$/);
   if (!other || count(other[1]) !== 1 || other[2].length > 200 || /\b(?:agrega|quita|cambia|reemplaza|pero|si)\b/.test(other[2])) return null;

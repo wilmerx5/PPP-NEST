@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-18",
+  "base": "c617c825e2b018f18084b1d2fae6f39045a8bd43",
+  "status": "deployed_staging_grouped_with_partial_conversion_guard",
+  "baseline": {
+    "failed": 16,
+    "log": "/tmp/ppp-retained-drink-notice-baseline-final-1810.log",
+    "excluded_attempt": "Initial baseline hit TS optional-property error in new test; not a product regression. Oracle corrected before 16 behavioural failures were measured."
+  },
+  "new_tests": 22,
+  "focused": {
+    "passed": 58,
+    "suites": 2,
+    "log": "/tmp/ppp-retained-drink-notice-final-controls-1810.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-retained-drink-notice-tsc-1810.log"
+  },
+  "node_contracts": {
+    "passed": 92,
+    "log": "/tmp/ppp-retained-drink-notice-node-1810.log"
+  },
+  "global": {
+    "log": "/tmp/ppp-retained-drink-notice-global-1810.log",
+    "result": "/tmp/ppp-retained-drink-notice-global-1810.json",
+    "manifest": "/tmp/ppp-retained-drink-notice-source-1810.json",
+    "files": 376,
+    "passed": true,
+    "suites": 86,
+    "tests": 9144,
+    "seconds": 570.533,
+    "unchanged_hashes": 376
+  },
+  "change": "Explicit same-turn combo conversion now lists every separately charged drink still in cart with quantity and selected attributes. Does not infer removal or open a blocking selection. Uses catalogue beverage metadata. Normal unrelated replies and absorbed bottles do not get retention notice.",
+  "coverage": [
+    "16 complete mocked router conversations in two menus with agent configured on/off; incompatible flavour, extra bottle quantity, individually noted bottle and a different second bottle retained; visible notice, exact cart, price interruption, removal of standalone bottle, combo beverage preserved, checkout and simulated order DTO",
+    "6 pure formatting guards: quantity/flavour and no mutation; no retained drink, side only, missing original, unchanged product and unrelated text",
+    "Prior 8 flavour conversion conversations strengthened to require retained notice on mismatch and absence when bottle fully absorbed"
+  ],
+  "limits": [
+    "No paid inference, Meta, geocoding or external orders",
+    "Current notice describes actual retained drinks, without guessing whether customer intended a replacement",
+    "Bare yes/no does not become an implicit bottle removal; correction tests use explicit product removal",
+    "Deferred attribute selection and conversion of subsets remain outside this same-turn notice coverage",
+    "Main/production/models/private config unchanged; budget188/187/1 unchanged"
+  ],
+  "next_batch": [
+    "Four main units plus four separately selected bottles: convert exactly two units into combo, keep two plain and two separate bottles. Assert line quantities, flavours, notes, total and simulated DTO; equal totals alone are insufficient.",
+    "If partial SKU conversion is unsupported, clarify without changing all four. Do not infer existing same-SKU attribute splitting already covers a change to a different combo SKU.",
+    "Then handle mixed bottle flavours and individually noted units before adding new menu-specific cases."
+  ],
+  "deployment": {
+    "performed": true,
+    "code": "0a1b75850e760dab3b5697bf5175658f0e192998",
+    "image": "sha256:4c3fc474fc3d2a0cd4f3aac79f646f3a32cde4f6e55743524c938603c6631e5e",
+    "verifiedAt": "2026-10-18T22:03:14Z",
+    "container": "running/healthy",
+    "publicHealth": "/api/health: ok, db connected, circuit CLOSED",
+    "rollback": "ppp-nest-staging:rollback-before-0a1b7585",
+    "compiledProbes": [
+      "partial scope guard: two forms preserve cart/state/notes; excludes drink count",
+      "retained drink notice and no mutation guards"
+    ],
+    "scope": "staging only; no models/private config/database/volume changes",
+    "operationalNotes": [
+      "First helper invocation stopped before build because abbreviated SHA failed exact equality. Retried with full SHA.",
+      "Initial public /health returned404; correct /api/health returned200 after startup."
+    ]
+  },
+  "published_code_commit": "6c5de4248cad4a4b963c83394902d13a58c8f5f1"
+}

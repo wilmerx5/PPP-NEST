@@ -1,0 +1,115 @@
+{
+  "status": "covered_by_mocked_router_batch_63",
+  "realTranscript": "Quiero algo como de carne. ¿Qué tiene de carne? O de pescado, ¿qué tiene de pescado?",
+  "cases": [
+    {
+      "categories": [
+        "Carnes",
+        "Pescados"
+      ],
+      "catalog": [
+        {
+          "id": 99500,
+          "code": 99500,
+          "name": "Churrasco",
+          "categoryName": "Carnes",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        },
+        {
+          "id": 99501,
+          "code": 99501,
+          "name": "Mojarra",
+          "categoryName": "Pescados",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        }
+      ],
+      "messages": [
+        "Quiero algo como de carnes. ¿Qué tiene de carnes? O de pescados, ¿qué tiene de pescados?",
+        "¿Qué tienen de carnes o pescados?"
+      ],
+      "expected": {
+        "cartUnchanged": true,
+        "mustNotDenyExistingCategories": true,
+        "showCatalogOptionsOrClarifyCategory": true
+      },
+      "status": "covered_by_mocked_router_batch_63"
+    },
+    {
+      "categories": [
+        "Pizzas",
+        "Pastas"
+      ],
+      "catalog": [
+        {
+          "id": 99500,
+          "code": 99500,
+          "name": "Pizza Vegetal",
+          "categoryName": "Pizzas",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        },
+        {
+          "id": 99501,
+          "code": 99501,
+          "name": "Ravioles",
+          "categoryName": "Pastas",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        }
+      ],
+      "messages": [
+        "Quiero algo como de pizzas. ¿Qué tiene de pizzas? O de pastas, ¿qué tiene de pastas?",
+        "¿Qué tienen de pizzas o pastas?"
+      ],
+      "expected": {
+        "cartUnchanged": true,
+        "mustNotDenyExistingCategories": true,
+        "showCatalogOptionsOrClarifyCategory": true
+      },
+      "status": "covered_by_mocked_router_batch_63"
+    },
+    {
+      "categories": [
+        "Postres",
+        "Bebidas"
+      ],
+      "catalog": [
+        {
+          "id": 99500,
+          "code": 99500,
+          "name": "Tarta De Manzana",
+          "categoryName": "Postres",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        },
+        {
+          "id": 99501,
+          "code": 99501,
+          "name": "Té Verde",
+          "categoryName": "Bebidas",
+          "price": 15000,
+          "availableNow": true,
+          "attributes": []
+        }
+      ],
+      "messages": [
+        "Quiero algo como de postres. ¿Qué tiene de postres? O de bebidas, ¿qué tiene de bebidas?",
+        "¿Qué tienen de postres o bebidas?"
+      ],
+      "expected": {
+        "cartUnchanged": true,
+        "mustNotDenyExistingCategories": true,
+        "showCatalogOptionsOrClarifyCategory": true
+      },
+      "status": "covered_by_mocked_router_batch_63"
+    }
+  ],
+  "suite": "src/whatsapp/whatsapp-basic-category-inquiries.spec.ts"
+}

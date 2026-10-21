@@ -1,0 +1,34 @@
+{
+  "batch": 78,
+  "base": "e5ce5ff3f38222d976997218101d7806d9618313",
+  "newTests": 12,
+  "distinctSequences": 2,
+  "menus": 3,
+  "agentEnabledVariants": [
+    false,
+    true
+  ],
+  "baseline": {
+    "passed": 12,
+    "failed": 0
+  },
+  "focused": {
+    "passed": 294,
+    "suites": 6
+  },
+  "typescriptGeneral": "passed",
+  "typescriptBuild": "passed",
+  "nodeTests": 92,
+  "runtimeChanged": false,
+  "globalThisBatch": "Not rerun: only tests and docs. Last runtime global batch76: 13729 tests, 160 suites.",
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "whatsappSent": 0,
+  "deployment": "Not required; staging runtime remains 3de69a15; Main untouched.",
+  "limits": [
+    "Mocked model and external services; router fallback evaluated",
+    "Two scenario templates, not twelve novel intents",
+    "No real time-of-delivery or geocoding quality validation",
+    "No claim of complete PDF coverage or pilot readiness"
+  ]
+}

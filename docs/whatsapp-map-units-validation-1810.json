@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-18",
+  "base": "e8bf89d1",
+  "new_tests": 24,
+  "baseline": {
+    "failed": 10,
+    "passed": 7
+  },
+  "focused_passed": 31,
+  "contracts_passed": 108,
+  "typescript": "passed",
+  "node_contracts": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9313,
+    "seconds": 590.42,
+    "frozen_hashes": 379
+  },
+  "source_after_global": "Removed one extra blank line at EOF of test file only; no semantic changes.",
+  "scope": [
+    "Exclude labelled alphanumeric access from map query",
+    "Retain driver details in simulated final order",
+    "Reject wrong or partial place results after splitting"
+  ],
+  "menus": [
+    "ravioles",
+    "bowl",
+    "sandwich"
+  ],
+  "limits": [
+    "Map HTTP and route distance mocked",
+    "Street after interior remains unsplit to avoid losing destination",
+    "Ambiguous-map checkout interruption still pending"
+  ],
+  "paid_calls": 0,
+  "meta_messages": 0,
+  "external_orders": 0,
+  "deployment": {
+    "commit": "eeeaeb541a9b527594ae0a45a7e551d68e2cce87",
+    "image": "sha256:b46b2c7035ce7da843b773886af2a0025eb2405fa609a9dacbd3e4edc802b713",
+    "status": "running/healthy",
+    "verified_utc": "2026-10-19T00:54:23Z",
+    "public_health_utc": "2026-10-19T00:54:29.205Z",
+    "health": "ok/db connected/circuit CLOSED",
+    "compiled_map_unit_assertions": 9,
+    "rollback": "ppp-nest-staging:rollback-before-eeeaeb54",
+    "production_image_unchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  }
+}

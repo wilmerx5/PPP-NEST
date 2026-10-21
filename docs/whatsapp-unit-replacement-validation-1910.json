@@ -1,0 +1,44 @@
+{
+  "base": "d117377f",
+  "branch": "staging",
+  "batch": "replace delivery apartment/interior without confirming",
+  "newTests": 16,
+  "baseline": {
+    "failed": 8,
+    "scope": "apartment cases; interior cases added later",
+    "log": "/tmp/ppp-unit-replacement-baseline.log"
+  },
+  "targetedPassed": 46,
+  "typescript": "passed",
+  "nodeTestsPassed": 92,
+  "firstGlobal": {
+    "passed": 9546,
+    "failed": 2,
+    "reason": "extra comma separating tower and apartment"
+  },
+  "finalGlobal": {
+    "suites": 88,
+    "tests": 9548,
+    "failed": 0,
+    "sourceHashesUnchanged": 379,
+    "report": "/tmp/ppp-unit-replacement-global-final.json"
+  },
+  "checks": [
+    "replace previous unit instead of appending",
+    "preserve street/tower/cart/fee/contact/payment",
+    "repeat does not duplicate or approve",
+    "review before explicit confirmation",
+    "simulated final DTO"
+  ],
+  "limits": [
+    "all external dependencies mocked",
+    "other unit types not covered by new full conversations",
+    "standalone unit without base and question phrasing pending",
+    "not all PDF chats covered"
+  ],
+  "deployment": "deferred to group with next batch",
+  "lastVerifiedDeployedRuntime": "327ae11207390068d75a63ab134223308d22c99f",
+  "mainUnchanged": true,
+  "paidCalls": 0,
+  "externalOrders": 0
+}

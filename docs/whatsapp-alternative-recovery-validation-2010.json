@@ -1,0 +1,42 @@
+{
+  "batch": 58,
+  "base": "f2187263",
+  "newCases": 36,
+  "baseline": {
+    "failed": 24,
+    "passed": 12
+  },
+  "focusedPassed": 198,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12886,
+    "suites": 142,
+    "sourceHashesUnchanged": 438,
+    "exactInventory": true,
+    "retries": 0,
+    "burstsSeconds": 110.1,
+    "restSeconds": 371.7
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Seeded checkout and simulated model/services",
+    "Does not validate original pending drink becoming unavailable",
+    "PDF complete-chat traceability and reserved real evaluation remain pending"
+  ],
+  "deployment": {
+    "commit": "ccb6a39587d8e1f3b056039d83be54407951c406",
+    "image": "a6d3e57d5bc6b03a31429344d5528e23d0ee9ca33b93ed940d1963d7f6c34d4b",
+    "verifiedAt": "2026-10-20T21:28:00.411Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-ccb6a395",
+    "startup": "First probe starting/502; next probe healthy/200 after 15 seconds"
+  }
+}

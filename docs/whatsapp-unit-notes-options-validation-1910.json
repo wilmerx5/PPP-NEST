@@ -1,0 +1,50 @@
+{
+  "base": "644b9812",
+  "branch": "staging",
+  "batchSincePdfAudit": 18,
+  "newTests": 42,
+  "cumulativeNewTestsSincePdfAudit": 352,
+  "baseline": {
+    "initialFailed": 30,
+    "initialPassed": 6,
+    "extensionFailed": 6
+  },
+  "focusedPassed": 174,
+  "tsc": "passed",
+  "buildTsc": "passed",
+  "nodeTestsPassed": 92,
+  "global": {
+    "numPassedTestSuites": 103,
+    "numFailedTestSuites": 0,
+    "numPassedTests": 9722,
+    "numFailedTests": 0
+  },
+  "seconds": 396.165,
+  "unchangedHashes": 397,
+  "paidCalls": 0,
+  "whatsappSends": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "commit": "498124619b30f2294eba10a05f79407bd6914845",
+    "image": "cf59636b82ca1d3327d0c5b3a992569c86e7c396d825c7b3a279e1d9675530a2",
+    "health": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "timestamp": "2026-10-19T19:41:28.712Z",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "restarts": 0
+  },
+  "limitations": [
+    "Mocked models, maps, transport and orders",
+    "Starts with one grouped variant; pre-existing multiple variants remain next",
+    "Unsafe extra purchase deferred rather than partially applied",
+    "Not all PDF conversations replayed"
+  ],
+  "logs": [
+    "/tmp/ppp-unit-notes-baseline.log",
+    "/tmp/ppp-unit-notes-negative-baseline.log",
+    "/tmp/ppp-unit-notes-final-focused.log",
+    "/tmp/ppp-unit-notes-global.json",
+    "/tmp/ppp-unit-notes-source.json"
+  ]
+}

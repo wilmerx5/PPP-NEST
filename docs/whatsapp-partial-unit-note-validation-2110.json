@@ -1,0 +1,63 @@
+{
+  "batch": 85,
+  "date": "2026-10-21",
+  "base": "bf2467a1",
+  "commit": "c8df9648bc85c3ae2ef55690b3b54ac6553ff9ad",
+  "scope": "A kitchen note for some units with an implied remainder («dos hamburguesas, una sin cebolla», or «una sin cebolla» after ordering two) notes only those units and keeps the rest plain; counted notes («una / las dos sin <ingrediente>») accept any ingredient",
+  "trigger": "Pending priority from batches 81 and 84 (per-unit notes)",
+  "baselineFindings": [
+    "«dos hamburguesas clasicas, una sin cebolla» added ×2 with «sin cebolla» on both units, agent on and off",
+    "«3 hamburguesas clasicas, dos sin tomate» put the note on all three units",
+    "After «dos hamburguesas clasicas», «una sin cebolla» noted the whole ×2 line (only «una de las hamburguesas sin cebolla» or an explicit «y la otra normal» split it)",
+    "On a one-unit line, «una sin alcaparras» and «las dos sin alcaparras» showed the cart and dropped the note: the counted-note detector only knew a fixed ingredient list (cebolla, ají, sal, tomate…)"
+  ],
+  "fix": "parsePartialNote returns an implied split for «(y) M (de ellas) sin/poco/poca/bien/extra …» (no «más/otra/adicional/normal/y …»); tryHandlePartialUnitKitchenNote applies it only to a single unnoted cart line with more units than M and otherwise lets the existing flow continue. The same-SKU text expansion rewrites «N <plato>, (y) M (de ellas) sin/poco/poca …» with M < N ≤ 30 and a single attribute-free product into «(N−M) <plato> y M <plato> <nota>». The kitchen-note detector accepts any ingredient after a counted subject («una / las dos / ambas / todas … sin X»).",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-partial-unit-note.spec.ts",
+    "count": 92,
+    "menus": ["burger bar", "taco stand", "soup kitchen"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "one-unit line: «una sin X» still notes that line",
+      "«las dos sin X» notes both units",
+      "explicit «una sin X y la otra normal» still splits",
+      "«una sin X y la otra sin Y» in one message gives each unit its note",
+      "two different one-unit lines: «una sin X» splits nothing (the existing last-line note is unchanged)",
+      "a line that already has a note is not split by an implied note",
+      "«dos <plato>, tres sin X» is not split",
+      "parser: «una más sin cebolla», «otra sin cebolla», «una sin cebolla adicional», «una sin cebolla y otra sin tomate» are not implied splits"
+    ],
+    "baselineWithoutFix": "46 failed / 92"
+  },
+  "validation": {
+    "focused": "1450 passed (22 suites: partial note, cart note, note revision, note replacement block, distributed variants, side swap, binary subset, unit option/clarification/scope, quantity corrections, scoped nudge, several list rows, family browse, offer typos…)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 14156, "total": 14156, "suites": 168, "seconds": 386 },
+      "inventory": 169,
+      "unionEqualsInventory": true,
+      "hashes": 466,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14236
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "c8df9648bc85c3ae2ef55690b3b54ac6553ff9ad",
+    "image": "sha256:f1afa168f414436cc6e7e17843dcdf28730160e0fcfa2b912bf6c267a30e1ae3",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T18:22:12Z, healthy, 0 restarts (started 18:21:42Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-c8df9648 (image 1009410f…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "With two different one-unit lines, «una sin X» still notes the last added line instead of asking (pre-existing)",
+    "«la hamburguesa sin cebolla» with two burger lines answers «Tienes varias líneas de ese plato…»; the wording could be clearer",
+    "Same-message implied split only for attribute-free products; products with options keep the existing distributed-variants route",
+    "Agent on, real model answers not evaluated (simulated only)"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

@@ -1,0 +1,59 @@
+{
+  "batch": 31,
+  "date": "2026-10-19",
+  "base": "d43d2a36",
+  "commit": "dff8cc92a41a92c1ef8ea89b466ed41c3e2bc1e7",
+  "scope": "Audit of short approvable leftovers in the final step, plus edits preceded by an acknowledgement word (listo/va/ok/dale/perfecto…), pickup/delivery switches and single-line quantity nudges",
+  "auditOfPlannedItem": "Probe of 25 final-step messages combining address, phone, payment, fulfillment, notes, cash, name and cart edits with approval words: none created the order without «confirmar» after the batch 30 fix. Pure approvals («listo, gracias», «dale, confirmo», «ok, confirmar», «listo eso es todo») still approve, as intended.",
+  "baselineFindings": [
+    "Dropped silently (cart re-shown): «listo pero tráeme cambio de 50 mil», «va y que llegue rápido», «listo, es para mi mamá», «dale, bien empacado», «ok, sin hielo», «listo, el nombre es Laura», «listo, quita uno», «va, agrega otro», «ok, mejor para recoger»",
+    "The acknowledgement leaked into data: address «va, a la carrera 15 #20-30»; «listo, torre 2 apto 301» replaced the whole address; reference and order note «perfecto, entrégalo en la portería» (duplicated)",
+    "«el pedido va con transferencia» answered «Para ubicar tu pedido, necesito el número de orden»",
+    "«para recoger» alone did nothing; «mejor a domicilio» on a delivery order dropped the final step to building_cart with «¿Qué se te antoja?»",
+    "«quita uno» / «agrega otro» / «uno más» with a single dish line were dropped or answered «No encontré ese producto»"
+  ],
+  "fix": "Before routing, in building_cart and awaiting_final_confirm a leading acknowledgement word with a separator (comma/period or pues/entonces/pero/y) is removed when the rest is a real instruction (not an approval, closing or courtesy). «el pedido/la orden/todo va|queda|se paga con <enabled method>» is rewritten as «pago con <method>». looksLikePickupOnlySwitch accepts «(mejor) para/a recoger (en el local)» and «lo recogemos» (isPickupIntent unchanged). tryHandleDeliverySetup with a cart and no address: already delivery with an address → says so and keeps the step (final summary); from pickup → switches to delivery and asks for the address (awaiting_address). tryHandleSingleLineQuantityNudge: with exactly one dish line and no per-unit add-ons tied to it, «quita/saca uno», «uno menos», «agrega/pon/dame otro», «uno más» change that line by one unit; at ×1 «quita uno» explains how to remove it.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-acknowledged-checkout-edit.spec.ts",
+    "count": 102,
+    "menus": ["dish with option (bao/sauce)", "plain drink", "pizza with option"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["ack-then-unit-details", "ack-then-new-address", "ack-then-reference", "ack-but-change", "ack-and-urgency", "ack-then-recipient", "ack-then-name", "order-goes-with-payment", "ack-then-pickup", "bare-pickup", "ack-then-one-less", "ack-then-one-more"],
+    "contrasts": ["ack-plus-courtesy", "ack-plus-confirm", "already-delivery", "pickup-to-delivery", "one-less-at-one"],
+    "baselineWithoutFix": "87/102 failed"
+  },
+  "historicalRegressionsCaughtAndFixed": [
+    "ambiguous-turns «Quiero un churrasco para recoger y también domicilio» emptied the cart when «para recoger» was added to isPickupIntent globally; the phrase is now accepted only in the pickup-only switch"
+  ],
+  "knownGaps": [
+    "«mi número es 3001234567, va» (trailing acknowledgement) updates the phone without the explicit acknowledgement line",
+    "Quantity nudges with several dish lines keep existing routes",
+    "«Domicilio a X ✅ ¿Qué se te antoja?» wording for a new address with a non-empty cart outside the final step"
+  ],
+  "validation": {
+    "focused": "1426/1426 (17 suites incl. new spec, customer-name-change, address-change-checkout, checkout-destination-block, checkout-envelope, compound-parse, order-level-aside, mixed-cash-note, dish-handling-aside, ambiguous-turns, chat-regressions, cart-note, line add-on suites, pickup/delivery/quantity/confirm matches)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 108.458s",
+      "phase2Rest": "10962/10962 in 326.369s, 115 suites",
+      "totalSeconds": 437,
+      "inventorySuites": 116,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 411,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "dff8cc92a41a92c1ef8ea89b466ed41c3e2bc1e7",
+    "image": "sha256:308a4372935f9e7c87efef52ed009a413c47bbd135ec416e72f4c2504b4dc640",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T01:59:44Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-dff8cc92 (image daa8bb44…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

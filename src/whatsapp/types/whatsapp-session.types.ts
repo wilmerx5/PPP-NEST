@@ -26,6 +26,10 @@ export type WhatsappProductCandidate = {
 };
 
 export type WhatsappPendingAttribute = {
+  /** Explicitly offered alternatives for replacing this pending drink by name. */
+  alternativeProductIds?: number[];
+  /** Identity only; prices and availability must be read from the current catalog. */
+  alternativeProducts?: { id: number; code: number; name: string }[];
   /** Original cart line retained until a variant replacement is complete. */
   replacement?: { originalLine: WhatsappCartItem };
   /** Explicit correction while the product options are still pending. */
@@ -41,6 +45,8 @@ export type WhatsappPendingAttribute = {
   variantIntent?: 'combo' | 'solo';
   /** Texto/segmento original del pedido (para cantidad: "3 pollos") */
   sourceText?: string;
+  /** Kitchen note given while answering an option ("Limonada sin azúcar"); never a quantity source. */
+  answerNote?: string;
 };
 
 export type WhatsappSessionData = {
@@ -49,18 +55,30 @@ export type WhatsappSessionData = {
 
   /** Read-only price clarification, separate from an order selection. */
   pendingPriceInquiry?: { cartSignature: string; state: string; productIds: number[] };
+  lastUnitOptionEdit?: { sourceText: string; cartSignature: string };
   pendingCartAttributeEdit?: {
     sourceText: string;
     cartSignature: string;
     candidates: Array<{cartIndex: number; name: string; sourceText?: string}>;
+    /** Counted edit awaiting a row, not permission to replace every unit in it. */
+    unitChanges?: Array<{cartIndex: number; quantity: number; attributeName: string; attributeValue: string; note?: string;
+      extraAttributes?: Array<{attributeName: string; attributeValue: string}>}>;
+  };
+  /** A note revision whose target row is still ambiguous; the cart is untouched until it resolves. */
+  pendingCartNoteEdit?: {
+    sourceText: string;
+    cartSignature: string;
+    candidates: Array<{cartIndex: number; name: string}>;
+    revision: { query?: string; quantity?: number; remainder?: number; clearAll: boolean; remove: string[]; add?: string };
   };
   pendingCartQuantity?: {
     quantity: number;
     options: Array<{ cartIndex: number; label: string }>;
     cartSignature: string;
   };
-  /** Subset instruction awaits recipients; an empty note awaits preparation for named products. */
-  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean };
+  /** Subset instruction awaits recipients; an empty note awaits preparation for named products.
+   * byUnits counts individual portions rather than rows; quantity 0 permits any explicit selection. */
+  pendingSubsetKitchenNote?: { quantity: number; note: string; productIds: number[]; byProduct?: boolean; byUnits?: boolean };
   cart: WhatsappCartItem[];
   orderType: 'delivery' | 'pickup';
   address?: string;
@@ -83,6 +101,10 @@ export type WhatsappSessionData = {
   pendingMatch?: {
     /** A retained browse list after its chosen item was already added. */
     selectionAdded?: boolean;
+    /** Explicit candidate awaiting acceptance of its refreshed price. */
+    priceAcceptanceProductId?: number;
+    /** The offered bundle fulfills the whole source request; do not add its components again. */
+    includesRequestedAccompaniment?: boolean;
     query: string;
     candidates: WhatsappProductCandidate[];
     /** info = eligió variante para ver detalle (no agregar al carrito) */
@@ -114,6 +136,8 @@ export type WhatsappSessionData = {
   recentImageCartSignature?: string;
   /** Resume the interrupted checkout field after a catalog purchase or replacement. */
   pendingCheckoutResume?: 'awaiting_address' | 'awaiting_name' | 'awaiting_phone' | 'awaiting_payment' | 'awaiting_final_confirm';
+  /** Explicit contact details captured while a checkout purchase choice was open. */
+  pendingCheckoutDetailsCaptured?: boolean;
   pendingMultiOrder?: {
     confident: Array<{
       segment: string;
@@ -218,6 +242,12 @@ export type WhatsappSessionData = {
   fulfillmentChosen?: boolean;
   /** Dirección ya confirmada (no solo inferida del mensaje) */
   addressConfirmed?: boolean;
+  /** Unit fragment received before the destination street/location. Never geocode alone. */
+  pendingDeliveryUnit?: string;
+  /** Neighborhood or landmark named before the street; joins the next complete street once. Never geocode alone. */
+  pendingDeliveryPlace?: string;
+  /** Do not reoffer a saved destination after the customer requested a new one. */
+  freshDeliveryAddressRequested?: boolean;
   /**
    * Última dirección de domicilio exitosa (sobrevive reset/reopen).
    * Para ofrecer “¿Misma dirección? / acá” en el siguiente pedido.

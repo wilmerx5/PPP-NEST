@@ -1,4 +1,5 @@
 import { fixFuzzyDomicilioTypos, fixFuzzyEjecutivoTypos } from './whatsapp-message-classify';
+import { normalizeSideSwapPhrase } from './whatsapp-kitchen-preference';
 
 /**
  * Glosario local PPP: typos, aliases y frases del restaurante.
@@ -12,8 +13,13 @@ const PHRASE_REWRITES: Array<{
   re: RegExp;
   to: string | ((match: string, ...groups: string[]) => string);
 }> = [
+  // Street aliases only when followed by a numbered street and #, not SKU codes.
+  { re: /\b(?:tv|trv|transv)\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Transversal ' },
+  { re: /\bkr\.?[ \t]*(?=\d+[a-z]?[ \t]*#[ \t]*\d+[a-z]?[ \t]*[- ][ \t]*\d+)/gi, to: 'Carrera ' },
   { re: /\bbuenas\s+nochs\b/gi, to: 'buenas noches' },
-  { re: /^ada\s+mas$/i, to: 'nada mas' },
+  { re: /\b(?:uqe|qeu|qe|ke|k|q)\b(?=[ \t]+(?:(?:me|nos|le)[ \t]+)?(?:hay|tienen|tiene|tienes|ofrecen|ofreces|ofrece|sirven|venden|vendes|manejan|recomienda\w*|sugiere\w*)\b)/gi, to: 'que' },
+  { re: /^(?:te\s+)?agradezco\s+si\s+me\s+(?:alistan|preparan)\s+/i, to: 'quiero ' },
+  { re: /^(?:ada|nad)\s+m[aá]s[.!]*$/i, to: 'nada mas' },
   { re: /\bme[ \t]+haces?[ \t]+(?:el[ \t]+)?favor[ \t]+(?:me[ \t]+)?(?:mandas?|env[ií]as?)\b[ \t]*/gi, to: 'quiero ' },
   // Cortesía inicial: conservar el pedido y su cantidad, sin tratarla como plato.
   { re: /^(?:por\s+favor|porfa|por\s+fa)[\s,!.-]+(?=(?:\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b)/i, to: '' },
@@ -306,7 +312,9 @@ const WORD_REWRITES: Array<{ re: RegExp; to: string | ((m: string) => string) }>
  * Idempotente en lo razonable; no cambia nombres de platos válidos.
  */
 export function applyLocalGlossary(text: string): string {
-  let out = (text || '').trim();
+  // A truncated purchase verb must be repaired before phrase/side-swap parsing.
+  const source = (text || '').trim().replace(/^uiero(?=\s+(?:un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b)/i,'quiero');
+  let out = normalizeSideSwapPhrase(source);
   if (!out) return out;
 
   for (const { re, to } of PHRASE_REWRITES) {

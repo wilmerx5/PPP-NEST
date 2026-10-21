@@ -1,0 +1,74 @@
+{
+  "batch": 36,
+  "date": "2026-10-19",
+  "base": "76b916af",
+  "commit": "48f3efa71daa9976619bb6fced4eedfe8e548126",
+  "scope": "Address arriving while an option (pendingAttribute) or a product list (pendingMatch) is open: the pending dish must survive and the option given with the address must be applied",
+  "baselineFindings": [
+    "Address alone with an open option and an empty cart answered «Primero arma tu pedido» and dropped the pending dish",
+    "Option word plus address in one bubble («Limón\\nCalle 10 # 5-20», «la de limón, calle …») stored everything as address or lost the option",
+    "Burst [address, option] lost the option; the grill family re-ask printed only the product card (prompt lacked hasAttributes)",
+    "With the agent on, an open product list was cleared by the non-pick branch when the address arrived"
+  ],
+  "fix": "splitPendingOptionFromAddress splits a multi-line message or burst into the single exact option of the open pendingAttribute (after stripping courtesy, articles and «gaseosa/bebida/sabor (de/que sea)») and an address-only remainder; the option runs first and the address continues as burstContinuation. splitBurstAtPendingAnswer runs first so «y otra de …» keeps its meaning. tryHandleAddressOnlyWhileBuildingCart no longer answers empty-cart while any pending choice is open and re-asks the option with hasAttributes. The pendingMatch non-pick branch keeps the list when the message is address-only.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-pending-choice-address.spec.ts",
+    "count": 78,
+    "menus": [
+      "juice bar",
+      "pizzeria",
+      "grill"
+    ],
+    "agent": [
+      "off",
+      "on (simulated)"
+    ],
+    "asks": [
+      "address alone with an open option and empty cart",
+      "multi-line address",
+      "four single-bubble option+address forms",
+      "burst [address, option]",
+      "second attribute of a two-attribute combo",
+      "address with an open product list"
+    ],
+    "contrasts": [
+      "full cart address",
+      "burst [option, address]",
+      "two options in one message (no wrong split, no order)",
+      "option word inside a street name"
+    ]
+  },
+  "baselineFailed": "46/78",
+  "realChatReplayAfterFix": "pending choice lost when the address arrives: 11 -> 7; the remaining 7 have no pending state (dish lost earlier, e.g. «combo mixto» not found, offer without pending)",
+  "knownGaps": [
+    "The remaining real-chat findings of batch 35 stay for the next batches"
+  ],
+  "validation": {
+    "focused": "8890/8890 (33 suites)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1": "80/80 in 107.034 s (whatsapp-general-accuracy, runInBand)",
+      "phase2": "11496/11496 in 323.066 s, 120 suites, maxWorkers=4",
+      "inventory": 121,
+      "unionMatchesInventory": true,
+      "hashesFrozen": 416,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 11576,
+      "totalSeconds": 430
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "48f3efa71daa9976619bb6fced4eedfe8e548126",
+    "image": "sha256:20dc17bca064133e994b7df91c3f2a7aa23f3c58c28630b339ad4ba527925285",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T04:25:16Z, healthy, restarts 0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-48f3efa7 (image 60c610de…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e unchanged before and after",
+    "privateBin": "preserved"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

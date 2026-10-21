@@ -1,0 +1,32 @@
+{
+  "batch": 77,
+  "base": "7504ab66ef62eb2498d45025dce746a2327bef1c",
+  "newTests": 54,
+  "baseline": {
+    "passed": 54,
+    "failed": 0
+  },
+  "focused": {
+    "passed": 396,
+    "suites": 7
+  },
+  "cleanFixtureRecheck": {
+    "passed": 96,
+    "suites": 2,
+    "classificationExceptionWarnings": 0
+  },
+  "typescriptGeneral": "passed",
+  "typescriptBuild": "passed",
+  "nodeTests": 92,
+  "runtimeChanged": false,
+  "globalThisBatch": "Not rerun; only fixtures and docs changed. Runtime global from batch76 remains 13729 tests / 160 suites.",
+  "paidCalls": 0,
+  "externalOrders": 0,
+  "whatsappSent": 0,
+  "deployment": "Not required; runtime unchanged, staging 3de69a15, Main untouched.",
+  "limits": [
+    "Template variations across three menus, not independent novel intents",
+    "Classifier explicitly returns null; model and services mocked",
+    "No blanket PDF coverage or pilot readiness claim"
+  ]
+}

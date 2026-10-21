@@ -1,0 +1,59 @@
+{
+  "batch": 93,
+  "date": "2026-10-21",
+  "base": "d85904a8",
+  "commit": "3ba7e2fc87c6e22b6b48cebbeab7c412fc638058",
+  "scope": "Place names that start with an article («Los Almendros», «La Esperanza», «El Recreo») lost the article when noted as a delivery reference, and «en <place>» was noted with the preposition",
+  "trigger": "Investigating the batch-92 gap about two-word places quoted as addresses",
+  "baselineFindings": [
+    "Real router, synthetic menu, agent on and off: «domicilio» → «Los Almendros» → «Anoté la referencia: _Almendros_»; «El Prado» → «Prado»; «La Esperanza» → «Esperanza»",
+    "«en Villa Clara» was noted and stored as «en Villa Clara»",
+    "«Me lo envias a La Esperanza» named and stored «Esperanza» (the destination regex consumed «a la» / «para el»)",
+    "Not a defect: «San Telmo», «Santa Inés» and «barrio X» match the existing landmark keywords on purpose and are quoted like a neighborhood"
+  ],
+  "fix": "normalizeDeliveryAddress drops a leading «la/el/los/las» only before a generic address noun (calle, carrera, conjunto, barrio, casa, torre, edificio, misma, que, de…) or a number; any other following word is a place name and keeps it; a leading «a»/«al» is still removed. The «Anoté la referencia» path and the checkout switch to delivery use the same cleanup (preposition removed, article kept), and the destination regex now consumes only the preposition.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-delivery-place-article.spec.ts",
+    "count": 42,
+    "menus": ["arepas (no options, plain street)", "pastas (size option, street with apartment)", "seafood (spice option, two units, diagonal with tower)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "an article before a street is still dropped",
+      "«me lo envías a la <street>» quotes the street without the article",
+      "«al conjunto <name>» keeps the complex and drops the contraction"
+    ],
+    "baselineWithoutFix": "20 failed / 42"
+  },
+  "validation": {
+    "focused": "1531 passed (28 suites: address, delivery, location, pickup, checkout, payment, landmark, coverage)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "firstGlobal": "3 failures in whatsapp-order-lookup-release.spec.ts: «el pedido es para las 7 de la noche» kept «las 7 de la noche» and was read as an order-status lookup; fixed by dropping an article before a number; hashes refrozen and global rerun",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 74 },
+      "rest": { "passed": 14776, "total": 14776, "suites": 176, "seconds": 448 },
+      "inventory": 177,
+      "unionEqualsInventory": true,
+      "hashes": 474,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14856
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "3ba7e2fc87c6e22b6b48cebbeab7c412fc638058",
+    "image": "sha256:72f55b063e4efad28ee0817a34deeb5d82eaf4445b72783033b8645a0e11a095",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T21:24:49Z, healthy, 0 restarts (started 21:24:19Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-3ba7e2fc (image 5ad3270f…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "«al <place>» still loses the «El» of the name (the contraction is ambiguous)",
+    "A neighborhood quoted on its own («barrio X», «San X») is confirmed without a street; this is the current design",
+    "«<dish> con <side product> y <drink>» can leave a note that repeats the chosen options",
+    "«Te transformo 57.000?» with the agent on still answers with the model's text; the real model was not evaluated"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

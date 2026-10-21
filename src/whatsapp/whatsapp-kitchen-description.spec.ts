@@ -25,3 +25,42 @@ describe('Intensity preferences remain bounded and catalogue anchored',()=>{
   expect(interpretProductNote(`Quiero un Especial ${suffix}`,products)).toBeNull();
  });
 });
+
+describe('Degree phrases and explicit options have separate ownership',()=>{
+ const {splitIntensityPreference}=require('./whatsapp-kitchen-description');
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');
+ const catalog=new WhatsappCatalogService({});
+ it.each(['no tan picante','no muy dulce','que no esté tan salado'])('does not choose the adjective in %s',text=>{
+  expect(catalog.pickAttributeOptionFromText(text,{attributeName:'Estilo',options:['Natural','Picante','Dulce','Salado']})).toBeNull();
+ });
+ it.each(['Picante','Dulce','Salado'])('keeps a bare explicit option %s',value=>expect(catalog.pickAttributeOptionFromText(value,{attributeName:'Estilo',options:['Natural',value]})).toBe(value));
+ it('keeps an option explicitly chosen before its degree preference',()=>{
+  const source='con Salsa Picante, pero no tan picante';expect(splitIntensityPreference(source)).toEqual({productText:'con Salsa Picante',note:'no tan picante'});
+  expect(catalog.pickAttributeOptionFromText(source,{attributeName:'Salsa',options:['Suave','Picante']})).toBe('Picante');
+ });
+ it('does not erase a literal full catalogue option',()=>expect(catalog.pickAttributeOptionFromText('No Tan Picante',{attributeName:'Salsa',options:['Natural','No Tan Picante']})).toBe('No Tan Picante'));
+ it.each(['no tan picante y dos cafés','que no esté tan salado con camarones','¿no tan dulce?'])('does not split another intent: %s',source=>expect(splitIntensityPreference(source)).toBeNull());
+});
+
+describe('Real purchase tools retain degree notes and override contradictory valid model choices',()=>{
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');const {WhatsappAgentService}=require('./whatsapp-agent.service');
+ for(const f of [{name:'Curry de Garbanzos',attr:'Salsa',base:'Suave',other:'Picante',note:'no tan picante'},{name:'Ramen Vegetal',attr:'Caldo',base:'Natural',other:'Salado',note:'que no esté tan salado'},{name:'Flan Artesanal',attr:'Cobertura',base:'Tradicional',other:'Dulce',note:'no tan dulce'}])for(const explicit of [false,true])it(`${f.name} explicit=${explicit}`,()=>{
+  const product={id:65611,code:65611,name:f.name,price:18000,availableNow:true,hasAttributes:true,attributes:[{attributeName:f.attr,options:[f.base,f.other]}]};const catalog=new WhatsappCatalogService({});const service=new WhatsappAgentService({},catalog);const actions:any={};
+  const source=`Quiero dos ${f.name}${explicit?` con ${f.attr} ${f.other}, pero`:''} ${f.note} por favor`;
+  const result=JSON.parse(service.executeTool('add_item',{productId:product.id,quantity:2,attributes:[{attributeName:f.attr,attributeValue:explicit?f.base:f.other}]},{actions,cart:[],products:[product],byId:new Map([[product.id,product]]),userMessage:source,setNeedsAttr:()=>{}}));
+  expect(result.ok).toBe(true);expect(actions.addItems[0].quantity).toBe(2);expect(actions.addItems[0].attributes).toEqual([{attributeName:f.attr,attributeValue:explicit?f.other:f.base}]);expect(actions.addItems[0].note).toContain(f.note);
+ });
+});
+
+describe('Qualified literal option requires its own explicit attribute phrase',()=>{
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');const catalog=new WhatsappCatalogService({});const attr={attributeName:'Estilo',options:['Natural','Picante','No Tan Picante']};
+ it('selects a complete named option after con plus attribute',()=>expect(catalog.pickAttributeOptionFromText('Quiero curry con Estilo No Tan Picante por favor',attr)).toBe('No Tan Picante'));
+ it('does not choose the named option from an unbound preference',()=>expect(catalog.pickAttributeOptionFromText('Quiero curry no tan picante',attr)).toBeNull());
+ it('keeps the explicit option before a degree preference',()=>expect(catalog.pickAttributeOptionFromText('con Estilo Picante, pero no tan picante',attr)).toBe('Picante'));
+ it('does not bypass an explicit rejection',()=>expect(catalog.pickAttributeOptionFromText('no quiero curry con Estilo No Tan Picante',attr)).toBeNull());
+});
+
+it('uses the longest complete qualified canonical option in an explicit attribute phrase',()=>{
+ const {WhatsappCatalogService}=require('./whatsapp-catalog.service');const catalog=new WhatsappCatalogService({});
+ expect(catalog.pickAttributeOptionFromText('Quiero curry con Estilo No Tan Picante Especial por favor',{attributeName:'Estilo',options:['Natural','No Tan Picante','No Tan Picante Especial']})).toBe('No Tan Picante Especial');
+});

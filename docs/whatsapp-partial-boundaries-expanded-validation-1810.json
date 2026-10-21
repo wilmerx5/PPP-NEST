@@ -1,0 +1,38 @@
+{
+  "base": "a71c537c",
+  "newRouterConversations": 32,
+  "menus": [
+    "Arepa De Champinones",
+    "Burrito Vegetal"
+  ],
+  "boundaries": [
+    "zero",
+    "excess",
+    "inconsistent stated total",
+    "ambiguous multiple food lines"
+  ],
+  "states": [
+    "building_cart",
+    "awaiting_payment"
+  ],
+  "agent": "mock configured on/off, not real inference",
+  "checks": [
+    "response",
+    "unchanged cart including notes",
+    "state",
+    "price interruption",
+    "no order before confirmation",
+    "simulated final DTO quantities and notes"
+  ],
+  "focusedPassed": 60,
+  "focusedSeconds": 7.957,
+  "focusedLog": "/tmp/ppp-partial-boundaries-expanded-1810.log",
+  "typescript": true,
+  "runtimeChanges": false,
+  "globalRerun": false,
+  "deployment": false,
+  "paidCalls": 0,
+  "metaCalls": 0,
+  "externalOrders": 0,
+  "limitation": "Successful partial combo conversion remains unimplemented; tests certify preservation and continuation only."
+}

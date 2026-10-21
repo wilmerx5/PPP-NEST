@@ -1,0 +1,23 @@
+{
+  "base": "f8cde83b",
+  "new_tests": 8,
+  "focused_passed": 20,
+  "typescript": "passed",
+  "runtime_changes": false,
+  "global": "Not repeated: tests-only; runtime baseline 88 suites / 9458 tests",
+  "paid_calls": 0,
+  "external_orders": 0,
+  "limits": [
+    "Two synthetic menus, mocked agent on/off",
+    "Preparation note seeded as prior cart state, not extracted in these tests",
+    "Remove or set quantity during payment, inspect cart, confirm simulated order",
+    "Main untouched"
+  ],
+  "deployment": {
+    "code": "156ef70fe368fc16e3cc4d5346200c64ea6e89da",
+    "image": "sha256:05d13fdb3a45d201ae5c2ccea90b3e29523d01e13a10a956d625e0c18807b43a",
+    "health": "OK, DB connected, circuit CLOSED",
+    "checked_at": "2026-10-19T11:50:17Z",
+    "production_unchanged": true
+  }
+}

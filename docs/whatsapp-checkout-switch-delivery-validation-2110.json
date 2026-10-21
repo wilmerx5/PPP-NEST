@@ -1,0 +1,57 @@
+{
+  "batch": 90,
+  "date": "2026-10-21",
+  "base": "cd916b16",
+  "commit": "a5b67b7802c34d9581dd862d988712e696c55b80",
+  "scope": "Pending from batch 89: a pickup order at the payment, name, phone or final-review step ignored «domicilio», «es a domicilio», «mejor a domicilio», «lo quiero a domicilio», «envíamelo» and «me lo envías a <place without street>» and repeated the payment question",
+  "trigger": "Gap found while reproducing the batch-89 staging chat",
+  "baselineFindings": [
+    "Real router with the beta fixture, agent on and off, pickup order at awaiting_payment: «domicilio», «es a domicilio», «mejor a domicilio por favor», «no, lo quiero a domicilio», «envíamelo», «Me lo envias a Villa Clara» → «¿Cómo pagas?» and the order stayed for pickup",
+    "Already working: «me lo traes al barrio Santa Fe» (plausible address) switched with a fee; «mejor paso a recogerlo» switched delivery → pickup"
+  ],
+  "fix": "tryHandleCheckoutSwitchToDelivery (checkout chain, before the address-change handler): at awaiting_payment/final_confirm/name/phone with a pickup order, a bare delivery request («(no/mejor) (lo quiero/es/que sea) a domicilio», «envíamelo/mándamelo/tráemelo», «me lo llevas») switches to delivery, clears the pickup address and fee and asks «¿A qué dirección te lo llevamos?» (awaiting_address). «me lo envías/mandas/traes a <place>» whose place is not a plausible address switches and asks for the street and number naming the place; a plausible address keeps the existing direct path. Questions, orders already for delivery and payment answers are not touched.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-checkout-switch-delivery.spec.ts",
+    "count": 72,
+    "menus": ["arepas (no options)", "pastas (size option)", "seafood (spice option, two quantities)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a destination that can be quoted keeps the existing direct path",
+      "«domicilio» on an order already for delivery keeps its address",
+      "«¿hacen domicilio?» does not switch the order",
+      "«contraentrega» still picks the payment method"
+    ],
+    "baselineWithoutFix": "48 failed / 72"
+  },
+  "validation": {
+    "focused": "657 passed (15 suites: address, delivery, pickup, checkout, payment)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 63 },
+      "rest": { "passed": 14617, "total": 14617, "suites": 173, "seconds": 389 },
+      "inventory": 174,
+      "unionEqualsInventory": true,
+      "hashes": 471,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14697
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "a5b67b7802c34d9581dd862d988712e696c55b80",
+    "image": "sha256:224625bb3d370696357ea59ec374bfec7648882c92e33dd867e2f0ff3ac73a8f",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T20:27:51Z, healthy, 0 restarts (started 20:27:20Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-a5b67b78 (image b1533df4…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "With the agent on, «quiero una arepa rellena» / «quiero 1 arepa rellena» goes to the model instead of the direct add («una arepa rellena» works); the simulated model adds nothing",
+    "The place named in «me lo envías a <place>» is shown but not kept as a reference once the street arrives",
+    "«<dish> con <side product> y <drink>» can leave a note that repeats the chosen options",
+    "«Te transformo 57.000?» with the agent on still answers with the model's text; the real model was not evaluated"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

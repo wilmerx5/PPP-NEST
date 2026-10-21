@@ -1,3 +1,4 @@
+import {splitDeliveryAddressParts} from './whatsapp-address-parts';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -200,7 +201,7 @@ export class WhatsappDeliveryRoutingService {
    * Evita que "Castilla" solo resuelva a Castilla (España).
    */
   private geocodeQueryVariants(address: string): string[] {
-    const q = address.trim();
+    const q = splitDeliveryAddressParts(address).base.trim();
     const out: string[] = [];
     if (!/\b(bogot[aá]|colombia|cundinamarca)\b/i.test(q)) {
       out.push(`${q}, Kennedy, Bogotá, Colombia`);
@@ -286,8 +287,16 @@ export class WhatsappDeliveryRoutingService {
   /** Solo Colombia y cerca del restaurante. */
   private resultMatchesNamedPlace(query: string, result: any): boolean {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const raw = normalize(query).split(',')[0];
-    if (!/\b(?:plazuelas?|conjunto|residencial|urbanizacion|hotel|almacen|edificio)\b/.test(raw)) return true;
+    const streetKey=(value:string):string|null=>{
+      const match=normalize(value).match(/\b(calle|cll?|carrera|cra|kr|diagonal|diag|dg|transversal|tv|avenida|av)\.?\s*(\d+(?:\s*[a-z]\b)?(?:\s*bis)?(?:\s+(?:sur|norte|este|oeste))?)\s*(?:#|no\.?|numero)?\s*(\d+(?:\s*[a-z]\b)?)\s*[-# ]\s*(\d+(?:\s*[a-z]\b)?)(?:\s+(sur|norte|este|oeste))?/i);
+      if(!match)return null;
+      const road=/^(?:calle|cll?)$/.test(match[1])?'calle':/^(?:carrera|cra|kr)$/.test(match[1])?'carrera':/^(?:diagonal|diag|dg)$/.test(match[1])?'diagonal':/^(?:transversal|tv)$/.test(match[1])?'transversal':'avenida';
+      return [road,...match.slice(2).map(part=>(part||'').replace(/\s/g,''))].join(':');
+    };
+    const numberedStreet=streetKey(query);
+    if(numberedStreet)return !result.partial_match && streetKey(result.formatted_address || '')===numberedStreet;
+    const raw = normalize(splitDeliveryAddressParts(query).base).replace(/^a\s+/,'').split(',')[0];
+    if (!/\b(?:plazuelas?|conjunto|residencial|urbanizacion|hotel|almacen|edificio|villa)\b/.test(raw)) return true;
     const ignored = new Set(['plazuela','plazuelas','conjunto','residencial','urbanizacion','hotel','almacen','edificio','de','del','la','el','las','los','para','en']);
     const tokens = (raw.match(/[a-z0-9]+/g) || []).filter(token => !ignored.has(token));
     if (!tokens.length) return false;

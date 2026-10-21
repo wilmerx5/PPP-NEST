@@ -1,0 +1,45 @@
+{
+  "base": "6f42b450",
+  "branch": "staging",
+  "batch": "delivery access references resume checkout",
+  "newTests": 8,
+  "baseline": {
+    "failed": 8,
+    "log": "/tmp/ppp-access-reference-baseline.log"
+  },
+  "targetedPassed": 28,
+  "typescript": "passed",
+  "nodeTestsPassed": 92,
+  "global": {
+    "suites": 88,
+    "tests": 9532,
+    "failed": 0,
+    "sourceHashesUnchanged": 379,
+    "report": "/tmp/ppp-access-reference-global.json"
+  },
+  "checks": [
+    "reply acknowledges reference and resumes checkout",
+    "cart unchanged",
+    "street and tower/apartment retained",
+    "repetition does not duplicate",
+    "no order before confirmation",
+    "final simulated DTO correct"
+  ],
+  "limits": [
+    "models/maps/Meta/orders mocked",
+    "no paid calls or external orders",
+    "apartment-only replacement still pending",
+    "not all PDF conversations covered"
+  ],
+  "deployment": {
+    "commit": "327ae11207390068d75a63ab134223308d22c99f",
+    "image": "sha256:f841346690ed791988782e20d45f2d400a88907317c2e02fce65521ae4c9f9c7",
+    "healthAt": "2026-10-19T17:09:45Z",
+    "status": "ok",
+    "db": "connected",
+    "circuitBreaker": "CLOSED",
+    "restarts": 0,
+    "initialHealth": "502 during startup, subsequent check passed",
+    "productionUnchanged": true
+  }
+}

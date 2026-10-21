@@ -1,0 +1,59 @@
+{
+  "batch": 43,
+  "date": "2026-10-20",
+  "base": "4778554f",
+  "commit": "bb6312e172b79bb76692b50ec692a8df0c135ebd",
+  "scope": "A bare number («2», «dos», «3 porfa», «1») right after the bot quoted one dish (price, «qué trae», one-row price list) is the quantity of that dish, not the product with that menu code",
+  "trigger": "Gap recorded since batch 38 (a bare «1» after a non-list bot message picked the product with code 1)",
+  "baselineFindings": [
+    "«¿cuánto vale la bandeja paisa?» → «2» added the product with code 2 (a soda), with the agent on or off; the bot had just offered «¿Te lo agrego al pedido? Responde sí»",
+    "«qué trae la bandeja paisa?» → «2» also added code 2",
+    "«qué precio tiene la mojarra» (dish with options, one-row list) → «2» added code 2: an out-of-range row falls back to menu codes on purpose",
+    "For a dish with options, accepting a quoted offer with a quantity added only one unit"
+  ],
+  "fix": "Before menu-code handling, a bare quantity 1–20 (digits or words, optional «porfa/por favor») with a single-product pendingAddOffer, or with an empty cart and a dish in focus from an inquiry, accepts that dish with that quantity (outside checkout steps and with no other list or edit pending). tryResolvePendingMatchPick: a one-row list plus a bare 2–20 picks that row with that quantity. tryHandlePendingAddOffer passes the quantity to the option flow when the quoted text does not say it.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-bare-quantity-after-quote.spec.ts",
+    "count": 60,
+    "menus": ["rotisserie (option dish quoted as a one-row list)", "burger joint", "pizzeria"],
+    "agent": ["off", "on (simulated)"],
+    "contrasts": [
+      "«sí» after a quote still adds one unit",
+      "after the greeting («dime el plato o el código») «2» is still code 2",
+      "with a two-row list open, «2» picks the second row",
+      "«2» after adding a dish («¿Algo más?») does not add code 2"
+    ],
+    "baselineWithoutFix": "36 failed / 60"
+  },
+  "validation": {
+    "focused": "492 passed (7 suites: pending offers, prices, lists, codes, quantities, image captions)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 110.038 },
+      "rest": { "passed": 12138, "total": 12138, "suites": 127, "seconds": 355.998 },
+      "inventory": 128,
+      "unionEqualsInventory": true,
+      "hashes": 423,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 12218
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "bb6312e172b79bb76692b50ec692a8df0c135ebd",
+    "image": "sha256:81a5a043d7e79267dbffba84105f6124f7c336cb5b1a90cc834b4ed0d1ab3cdc",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T15:44:59Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-bb6312e1 (image 02f9b84e…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "After «No tenemos X… ¿Qué se te antoja?» a bare «1» still adds the product with code 1 (open question; codes are on the menu)",
+    "A bare number after «¿Algo más?» with a cart only shows the cart",
+    "With a multi-row list open, an out-of-range number is still read as a menu code (deliberate)",
+    "Accepting a quoted dish with options silently takes the first option"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

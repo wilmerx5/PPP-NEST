@@ -1,0 +1,59 @@
+{
+  "base": "20c9028b",
+  "baseline": {
+    "tests": 12,
+    "failed": 6,
+    "negationFailures": 2,
+    "executiveFailuresStillPending": 4,
+    "log": "/tmp/ppp-integrity-replay-baseline-1810.log"
+  },
+  "newTests": 23,
+  "focusedPassed": 23,
+  "affectedContractsPassed": 123,
+  "typescript": true,
+  "nodePassed": 92,
+  "global": {
+    "success": true,
+    "suites": 88,
+    "tests": 9227,
+    "seconds": 607.927,
+    "hashesUnchanged": 379,
+    "result": "/tmp/ppp-exclusion-global-1810.json",
+    "manifest": "/tmp/ppp-exclusion-source-1810.json"
+  },
+  "limitations": [
+    "No real model accuracy claimed from mocks",
+    "Executive split remains failing in baseline; excluded from this correction, not silently marked passing",
+    "Empty cart tests prevent creation in six state/config combinations but do not explain historical receipt123",
+    "Actual transport concurrency not covered by joined/sequential turns"
+  ],
+  "pendingReplays": [
+    {
+      "messages": [
+        "Por favor me colaboras con dos ejecutivos pierna pernil uno Broaster y otro frito, con limonadas",
+        "Sopas. 1ajiaco y otra mondongo"
+      ],
+      "expected": "exactly two executives, one per cooking variant; shared piece/lemonade; one of each soup; no standalone chicken/soup/drink"
+    },
+    {
+      "messages": [
+        "Un pollo frito en combo con coca-cola y una porci\u00f3n de francesa\nCalle 12 #30-45\nTienda de la Esquina"
+      ],
+      "expected": "combo beverage plus one additional fries portion, preserve street and business reference; proceed to missing checkout field"
+    }
+  ],
+  "paidCalls": 0,
+  "metaCalls": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "code": "9f29f10a680431af4a834e84bb5cd3b3a80256b8",
+    "image": "sha256:4b30294fa9cce5341db79979f236cf1ff5aab4c0a6f1841d74b8afa0cd25bc88",
+    "verifiedAt": "2026-10-18T23:10:50Z",
+    "container": "running/healthy",
+    "health": "ok/db connected/circuit CLOSED at 23:10:37Z",
+    "compiledControlsPassed": 5,
+    "rollback": "ppp-nest-staging:rollback-before-9f29f10a",
+    "productionImageUnchanged": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "note": "Metadata SSH timed out once; retry verified runtime. No changes to models, private config, databases or volumes."
+  }
+}

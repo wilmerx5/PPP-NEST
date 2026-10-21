@@ -1,0 +1,54 @@
+{
+  "batch": 29,
+  "date": "2026-10-19",
+  "base": "bc546cca",
+  "commit": "a430270e2f8399c6c40a3ecd43b2d43c8fca10e3",
+  "scope": "Line-scoped priced add-ons: explicit quantity, singular product references, and removing the add-on by line",
+  "baselineFindings": [
+    "«ponle 2 quesos extra a las de A» answered «Por ahora no manejamos…» (the local glossary rewrites «ponle» to «agrégame», which the handler did not accept, and digits were rejected)",
+    "«las de A con 2 quesos extra» added ×2 without tying them to the line",
+    "«al bao de B ponle queso extra» answered «no manejamos»; «ponle queso extra a la bao de B» saved the whole sentence as a free note; «el bao B con queso extra» added ×1 with a junk note",
+    "«las de A sin queso extra» added a dish note and kept charging the add-on; «quítale el queso extra a las de A» answered «no manejamos»"
+  ],
+  "fix": "tryHandleLineScopedPaidAddon extended. References: held option, product token plus optional option («al bao de B», «la pizza Gruesa»), or todas. Explicit quantity before the add-on (digit or dos…cinco) is a total; «doble» or «por/para cada una» is per dish unit; reply says «en total» when it differs from the dish units. Removal by line («las de A sin Y», «quítale/sácale/ya no le pongas Y a/al …») removes only the add-on units whose «para …» note names that line (rows with several lines are reduced and their note rewritten); a line without that add-on is answered without changes. Glossary forms agrégame/échame/ponme are accepted. More than one number, unknown add-ons and add-ons with options keep their routes.",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-line-addon-quantity-removal.spec.ts",
+    "count": 114,
+    "menus": ["bao/sauce + Queso Extra", "pizza/dough + Champiñones Extra", "smoothie/base + Adicional Proteína"],
+    "agent": ["off", "on (simulated)"],
+    "asks": ["explicit-total-verb-first", "explicit-total-inverted", "double-per-unit", "singular-product-then-verb", "singular-product-verb-first", "remove-sin-by-line", "remove-quitale-by-line", "remove-ya-no-singular"],
+    "contrasts": ["remove-when-line-has-none", "remove-from-combined-row", "repeat-explicit"],
+    "baselineWithoutFix": "114/114 failed"
+  },
+  "knownGaps": [
+    "Two quantities in one message («2 a las de A y 3 a las de B») keep existing routes",
+    "Add-ons with configurable options are still not line-scoped",
+    "Splitting a combined «para A y B» note assumes product names without « y »"
+  ],
+  "validation": {
+    "focused": "1387/1387 (17 suites incl. new spec, line-scoped-addon, mixed-cash-note, dish-handling-aside, order-level-aside, option-reference, partial-unit, cart-note, checkout suites)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "nodeScripts": "92/92",
+    "diffCheck": "OK",
+    "global": {
+      "phase1Burst": "80/80 in 107.614s",
+      "phase2Rest": "10728/10728 in 307.347s, 113 suites",
+      "totalSeconds": 417,
+      "inventorySuites": 114,
+      "inventoryUnionExact": true,
+      "hashesFrozen": 409,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only (/opt/ppp-staging, project ppp-staging, api service)",
+    "runtime": "a430270e2f8399c6c40a3ecd43b2d43c8fca10e3",
+    "image": "sha256:6f3cf0f27294ec51725b760d34190595554fec947ddd4dc7cc7e3cf6888e4756",
+    "health": "ok / db connected / circuit CLOSED at 2026-10-20T01:18:59Z, healthy, restarts=0",
+    "rollbackTag": "ppp-nest-staging:rollback-before-a430270e (image ce6ab809…)",
+    "productionImage": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e (unchanged)"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

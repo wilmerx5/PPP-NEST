@@ -1,0 +1,57 @@
+{
+  "batch": 44,
+  "date": "2026-10-20",
+  "base": "b45b1332",
+  "commit": "3812417ca801b4054cefc0f9f2752748f27e7a7c",
+  "scope": "«¿Traen gaseosa?» / «vienen con bebida?» / «el X trae refresco?» right after the bot listed or named dishes asks whether those dishes include the drink, not for the drinks list",
+  "trigger": "Real staging chat: «Arroz» → bot lists four rice dishes with prices → «Traen gaseosa?» → bot answered with the soda list; the owner said the customer was asking whether any rice dish comes with soda",
+  "baselineFindings": [
+    "Agent on: tryHandleProductCompositionQuestion answered «Traen gaseosa?» with the soda list («Dime el número si quieres agregarlo»)",
+    "Agent off, with the rice list open: the pending-list composition interruption showed the soda descriptions plus «Tu pedido pendiente»",
+    "«el arroz paisa trae gaseosa?» answered «No tengo ese detalle confirmado…» without offering the combo that includes a drink",
+    "In a menu whose drink has a «Gaseosa» name, agent off, the off-menu errand refusal answered «No tengo autorización para comprar gaseosa por fuera de la carta»"
+  ],
+  "fix": "tryHandleIncludedItemQuestion (before the off-menu errand refusal and every composition path): a question «(y) (X) trae(n) / viene(n) con / incluye(n) / lleva(n) gaseosa|bebida|refresco|jugo» takes its dishes from the dish named in the message, else the open list, else the dishes named in the bot's last message (nested names counted once). With no dish in context it does nothing. A dish includes the drink when its description says so or it has a drink option; the reply lists which do not include it and offers, as a numbered list stored as an order pendingMatch, the dishes that include it plus available variants whose name contains a listed dish (combos).",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-included-drink-question.spec.ts",
+    "count": 44,
+    "menus": ["rice house (combo with drink in its description)", "burger bar (combo with a «Bebida» option)", "pasta place (dish whose description already includes «refresco», variant named «… Con Refresco»)"],
+    "agent": ["off (Nest list)", "on (simulated listing reply)"],
+    "contrasts": [
+      "with no dish in context «¿traen <bebida>?» is not answered as an inclusion question",
+      "«quiero una <bebida>» after the listing still orders the drink",
+      "a dish whose description includes the drink is answered «Sí trae»"
+    ],
+    "baselineWithoutFix": "32 failed / 44"
+  },
+  "validation": {
+    "focused": "209 passed (composition, drinks, off-menu, bare quantity, repeated options, new spec)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 111 },
+      "rest": { "passed": 12182, "total": 12182, "suites": 128, "seconds": 451 },
+      "inventory": 129,
+      "unionEqualsInventory": true,
+      "hashes": 424,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 12262
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "3812417ca801b4054cefc0f9f2752748f27e7a7c",
+    "image": "sha256:13e631cafe4ecff21389b0ab4254938ba6c5fd5f537b6569f853613e738d8537",
+    "health": "ok / db connected / circuit CLOSED 2026-10-20T16:03:39Z, healthy, 0 restarts",
+    "rollbackTag": "ppp-nest-staging:rollback-before-3812417c (image 81a5a043…)",
+    "production": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e before and after"
+  },
+  "remainingGaps": [
+    "Only drink words are covered; «¿traen papas/ensalada?» after a listing still goes to the composition paths",
+    "A bare family word in a small menu («lasagna») can add one variant silently (same family as the recorded family-word gap)",
+    "In the harness, a lone plural dish word as first message («hamburguesas») can reach the points flow"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}

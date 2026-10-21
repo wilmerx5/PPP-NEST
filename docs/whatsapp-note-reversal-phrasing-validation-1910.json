@@ -1,0 +1,53 @@
+{
+  "batch": 23,
+  "date": "2026-10-19",
+  "base": "4c37c61e",
+  "commit": "e8d77bbac8c6ad1c10d4cd586c4af9974f9580ab",
+  "scope": "Loose note-reversal phrasings and final-step data that must not confirm by itself",
+  "baselineFindings": [
+    "«ahora sí con X» / «mejor con X» appended «con X» to the wrong line",
+    "«las de A sí con X» and «quita el sin X de las de A» changed the other line's attribute to A and stored a garbage note",
+    "«ya no sin X» appended «sin X» to the other line; «quitale el sin X a todas» stored a garbage note",
+    "«échale X a todas», «sí ponle X», «al final sí quiero X», «mejor que sí lleven X», «que las de A sí lleven X», «ponle X a las de A» did nothing, answered «no manejamos» or stored the literal phrase",
+    "Repeating the same phone at awaiting_final_confirm created the order without «confirmar»"
+  ],
+  "fix": [
+    "parseCartNoteRevision: leading fillers, trailing «mejor», «a todas» scope, verb-first target («ponle X a las de A»), lleven/van con/quiero forms, untargeted «ya no sin X» and «quita el sin X de las de A»",
+    "tryHandleCartNoteRevision: «a todas» applies to every line holding the clause; untargeted reversal applies only when exactly one line holds the clause, otherwise asks; a named line without the clause no longer falls through to routes that edit another line (appends the note, or reports it is missing), unless the item names a catalog product/option",
+    "Phone at final step saves through confirming before tryConfirmOrder"
+  ],
+  "policyKept": "Closers at the final summary («así está bien») remain approvals per WHATSAPP-COMMERCIAL-READINESS-PLAN.md",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-note-revision-phrasing.spec.ts",
+    "count": 144,
+    "menus": ["Bao De Hongos/Salsa", "Pizza Del Huerto/Masa", "Batido De Mango/Base"],
+    "agent": [false, true],
+    "states": ["building_cart", "awaiting_final_confirm"],
+    "cases": ["6 reversals", "2 removals", "every-line", "unnamed-ambiguous then «2»", "named-line-without-note", "same-phone", "closer-approves"]
+  },
+  "oracleNote": "In building_cart with complete checkout data the flow advances to the summary; reversal oracle accepts building_cart or awaiting_final_confirm but still requires no order",
+  "validation": {
+    "focused": "234/234 (new spec + note-replacement-block)",
+    "typescript": "tsconfig.json and tsconfig.build.json clean",
+    "nodeScripts": "92/92",
+    "diffCheck": "clean",
+    "global": {
+      "phase1Burst": { "passed": 80, "total": 80, "seconds": 105.515 },
+      "phase2Rest": { "passed": 10008, "total": 10008, "suites": 107, "seconds": 311.187 },
+      "inventorySuites": 108,
+      "hashesFrozen": 403,
+      "hashesIntact": true,
+      "retries": 0
+    }
+  },
+  "deployment": {
+    "target": "staging only",
+    "runtime": "e8d77bbac8c6ad1c10d4cd586c4af9974f9580ab",
+    "image": "sha256:825c589b578f08b023fece0a9ce6c9a3a8e8acd5d3844a7ca386857cea167b01",
+    "health": "200 ok, db connected, circuit CLOSED at 2026-10-19T22:24:02Z",
+    "rollbackTag": "ppp-nest-staging:rollback-before-e8d77bba (image f22a5a76…)",
+    "productionImage": "c5e97ab1… unchanged"
+  },
+  "paidCalls": 0,
+  "externalMessagesOrOrders": 0
+}

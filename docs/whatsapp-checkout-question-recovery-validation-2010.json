@@ -1,0 +1,40 @@
+{
+  "batch": 60,
+  "base": "02b0da40",
+  "newCases": 30,
+  "baseline": {
+    "passed": 30,
+    "failed": 0
+  },
+  "focusedPassed": 68,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "runtimeChanges": false,
+  "global": {
+    "rerun": false,
+    "reason": "Only tests/documentation changed; runtime retains prior frozen global validation",
+    "previousPassed": 12909,
+    "previousSuites": 143
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "limits": [
+    "Checkout states and missing fields explicitly arranged after a real router purchase",
+    "Three single-product menus, no flavor ambiguity or real model accuracy claim",
+    "Five states each queried for price and cart, then explicit name/phone correction; arbitrary questions not covered"
+  ],
+  "deployment": {
+    "commit": "95c0860b43d50583103e5fbf61484761ac973dcb",
+    "image": "b00a298223c70c5f6fb0acdc6ba7fe9b6bf4e7ee99a6fd0548b901124aef21d4",
+    "verifiedAt": "2026-10-20T21:46:45.124Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-95c0860b",
+    "startup": "First probe starting/502; next probe healthy/200"
+  }
+}

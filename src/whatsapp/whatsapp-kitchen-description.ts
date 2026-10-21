@@ -34,3 +34,16 @@ export function splitKitchenDescription(source:string):{productText:string;note:
  }
  return null;
 }
+
+/** Separate a bounded degree preference from a preceding explicit option.
+ * The qualifier is mandatory: a bare "Picante" remains a catalogue choice. */
+export function splitIntensityPreference(source:string):{productText:string;note:string}|null {
+ for(const match of source.matchAll(/\b(?:que\s+no\b|no\s+(?:tan|muy)\b)/giu)){
+  if(match.index===undefined)continue;
+  const note=kitchenDescriptionNote(source.slice(match.index));
+  if(!note || !/\b(?:dulces?|picantes?|salad[oa]s?|[áa]cid[oa]s?|grasos[oa]s?)\b/i.test(note))continue;
+  const productText=source.slice(0,match.index).replace(/[\s,.]+$/,'').replace(/\s+(?:pero|y)$/i,'').replace(/[\s,.]+$/,'').trim();
+  return {productText,note};
+ }
+ return null;
+}

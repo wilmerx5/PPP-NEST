@@ -1,0 +1,42 @@
+{
+  "batch": 52,
+  "base": "eb032694",
+  "newCases": 42,
+  "baseline": {
+    "correctionCasesPassed": 24,
+    "mixedCasesFailed": 6
+  },
+  "focusedPassed": 202,
+  "typescript": true,
+  "buildTypescript": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 12652,
+    "suites": 137,
+    "bursts": 80,
+    "rest": 12572,
+    "sourceHashesUnchanged": 433,
+    "exactInventory": true,
+    "retries": 0
+  },
+  "paidCalls": 0,
+  "whatsappSent": 0,
+  "externalOrders": 0,
+  "deployment": {
+    "commit": "132a846c1c6b97c459ebe234679ee5b8f666ad21",
+    "image": "0cf66f5f90a914984629d01bb5531c92bca2b7a987cfd084d55165fbc5a4585b",
+    "verifiedAt": "2026-10-20T19:49:13.611Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+    "rollback": "ppp-nest-staging:rollback-before-132a846c"
+  },
+  "limits": [
+    "Mocked model and external services",
+    "Checkout seeded",
+    "No unseparated free text or landmark addresses",
+    "Broader beverage replacement wording remains pending"
+  ]
+}

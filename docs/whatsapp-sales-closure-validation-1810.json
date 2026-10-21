@@ -1,0 +1,146 @@
+{
+  "date": "2026-10-18",
+  "base": "c894687e004a11ab6e2787304a55919302976e5c",
+  "status": "deployed_staging_only",
+  "focused": {
+    "passed": 516,
+    "suites": 7,
+    "log": "/tmp/ppp-sales-location-accepted-targets2-1810.log"
+  },
+  "typescript": {
+    "passed": true,
+    "log": "/tmp/ppp-sales-location-final-repaired-tsc-1810.log"
+  },
+  "node_contracts": {
+    "passed": 92,
+    "log": "/tmp/ppp-sales-location-final-node-1810.log"
+  },
+  "global": {
+    "log": "/tmp/ppp-sales-location-repaired-global-1810.log",
+    "result": "/tmp/ppp-sales-location-repaired-global-1810.json",
+    "source_manifest": "/tmp/ppp-sales-location-repaired-source-1810.json",
+    "files": 376,
+    "passed": true,
+    "suites": 86,
+    "tests": 9074,
+    "failed": 0,
+    "seconds": 575.345,
+    "source_hashes_unchanged": 376
+  },
+  "coverage": [
+    "Qualified canonical catalogue options preserve longest complete explicit option",
+    "Contact phone, multiline numbered street and residence, payment and simulated final order",
+    "Explicit recipient plus payment in either clause order",
+    "Bounded structured multiline purchase, recipient, phone, address and optional payment",
+    "Packing part in another box is a note; explicit additional half remains a purchase",
+    "Numbered street matches real routing adapter with HTTP mocked, without accepting partial or different door",
+    "Total query while awaiting payment preserves cart/state; payment choice alone never creates order"
+  ],
+  "baselines": {
+    "sales_closure": "/tmp/ppp-sales-closure-baseline-1810.log",
+    "street_reference": "/tmp/ppp-street-reference-baseline-1810.log",
+    "packing": "/tmp/ppp-packing-pickup-baseline-1810.log"
+  },
+  "limits": [
+    "Latest human clarification says phone persisted but question was ignored. Exact question is absent; do not claim exact reproduction.",
+    "No paid inference, Meta, real geocoding or external orders. Models and budget188/187/1 unchanged.",
+    "Structured form deliberately bounded; arbitrary field permutations and unlabelled single-word names not established.",
+    "Main and production preserved. Production Mercado Pago enabled; staging disabled. Read-only audit, no configuration changes.",
+    "Agent configured on/off exercises mocked routing, not model quality.",
+    "No commercial readiness claim from counts."
+  ],
+  "live_staging_code": "bd23e68d5641820bb3d5624b16c3e563c1c1241d",
+  "production_main": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+  "next_batches": [
+    "Structured form field permutations, labelled phone and single-word labelled recipient; reject unknown clauses rather than dropping them. Current bounded helper requires contiguous product prefix then recipient.",
+    "Contact update plus an unrelated query in the same turn; answer query and resume payment, including menu/total/delivery ETA without inventing availability. Exact omitted human query not available.",
+    "Same-unit partial variants and note removal, with 2 of 4 units changed across several fictional restaurant catalogues.",
+    "Return to frozen held-out complete conversations before paid evaluation; do not select pilot readiness by passing count alone.",
+    "Combo conversion: beverage flavor disambiguation (Original versus Zero) when product name contains brand and flavour is a separate attribute; do not infer all flavours covered by current same-bottle test.",
+    "Internal address units with letters (block B), units before destination, amended unit number versus new place, and a held-out real map lookup under separately budgeted execution; current address tests use mocked HTTP."
+  ],
+  "previous_failed_global": {
+    "log": "/tmp/ppp-sales-closure-global-1810.log",
+    "result": "/tmp/ppp-sales-closure-global-1810.json",
+    "source_manifest": "/tmp/ppp-sales-closure-source-1810.json",
+    "files": 373,
+    "suites": 84,
+    "passed_suites": 83,
+    "failed_tests": 87,
+    "passed_tests": 8950,
+    "seconds": 555.277,
+    "cause": "Early contact interception accepted numbered addresses and code-filled image text. Corrected to text-only whole numeric/labelled contact shape; 484 existing regression controls then passed."
+  },
+  "new_human_cases": [
+    "Food with an explicitly named separate drink and extras; catalogue metadata protects unfamiliar drink names from stripping. Included drinks remain host options.",
+    "Explicit conversion to combo does not double-charge one unambiguous compatible bottle of documented included size; extras remain. Other quantities/notes/ambiguous bottles stay.",
+    "Phone correction acknowledged while waiting for payment; current human transcript blank output has no confirmed delivery-root-cause.",
+    "Destination base separated from labelled numeric internal units for Maps, original access detail preserved in simulated order.",
+    "Repeating full named destination after out-of-coverage cannot be appended as internal-unit-only detail or bypass rejection."
+  ],
+  "new_case_logs": {
+    "drink_baseline": "/tmp/ppp-main-drink-upgrade-baseline-1810.log",
+    "address_baseline": "/tmp/ppp-destination-units-baseline-1810.log",
+    "first_combined_controls": "/tmp/ppp-drink-destination-final-controls-1810.log"
+  },
+  "production_silence_audit": {
+    "mode": "read_only_metadata_only",
+    "private_log": "/tmp/ppp-contact-silence-audit-1810.log",
+    "anchor_matches": 1,
+    "inbound_status": "completed",
+    "processing_error_present": false,
+    "first_outbound_seconds_after": 2,
+    "first_outbound_body_length": 121,
+    "first_outbound_provider_message_id_present": true,
+    "first_outbound_mentions_payment": true,
+    "first_outbound_mentions_contact": false,
+    "limits": "Provider message id and stored nonempty outbound are not proof of handset rendering or delivery receipt. No bodies, phones, provider ids or secrets exported. No production source/config/order mutations."
+  },
+  "second_failed_global": {
+    "log": "/tmp/ppp-sales-location-accepted-global-1810.log",
+    "result": "/tmp/ppp-sales-location-accepted-global-1810.json",
+    "source_manifest": "/tmp/ppp-sales-location-frozen-source-1810.json",
+    "files": 376,
+    "suites": 86,
+    "passed_suites": 85,
+    "failed_tests": 2,
+    "passed_tests": 9072,
+    "seconds": 566.692,
+    "cause": "Separate-drink matcher could accept a drink buried after another product/note. Bounded to matching drink prefix and no semicolon/newline in right clause. Existing full-order cases retained unchanged."
+  },
+  "final_repair_controls": {
+    "passed": 21,
+    "suites": 2,
+    "log": "/tmp/ppp-drink-long-scope-controls-1810.log"
+  },
+  "source_probe": {
+    "passed": true,
+    "script": "/tmp/ppp-sales-closure-source-probe-1810.cjs",
+    "limits": "Pure helpers/catalogue/selected orchestration guard methods only; no whole compiled-router or real provider validation."
+  },
+  "deployment": {
+    "code_commit": "3a5a204badc1e24fb438c845d2cf13a6cb65f872",
+    "image": "sha256:6890143f77da7d69f5c245c97010804d02b17643275ad726df644c358d5d970f",
+    "candidate_matches_active": true,
+    "running": true,
+    "health": "healthy",
+    "public_health": {
+      "status": "ok",
+      "db": "connected",
+      "circuitBreaker": "CLOSED",
+      "timestamp": "2026-10-18T19:49:22.729Z"
+    },
+    "rollback": "ppp-nest-staging:rollback-before-3a5a204b",
+    "log": "/tmp/ppp-sales-location-deploy-1810.log",
+    "compiled_probes": [
+      "/tmp/ppp-sales-location-compiled-1810.log",
+      "/tmp/ppp-sales-location-prior-compiled-1810.log"
+    ],
+    "main_preserved": {
+      "head": "14d9dd8441c45cbc4726f81685826e35136bfcf5",
+      "image": "sha256:c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e",
+      "running": true
+    },
+    "limits": "Compiled probes check selected helper/tools/guards; full router tested in TypeScript with mocked services. No paid inference, real geocoding, Meta or external order calls."
+  }
+}
