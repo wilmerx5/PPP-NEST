@@ -867,6 +867,15 @@ export function replyClaimsCartChange(reply: string): boolean {
   return /\b(?:agregu[eé]|añad[ií]|anad[ií]|sum[eé]|quit[eé]|elimin[eé]|borr[eé]|cambi[eé]|actualic[eé]|modifiqu[eé]|ajust[eé]|reemplac[eé]|(?:ya\s+)?(?:te\s+)?(?:lo|la|los|las)\s+dej[eé]|dej[eé]\s+(?:en|con|sin|solo)|he\s+(?:agregado|añadido|anadido|sumado|quitado|eliminado|borrado|cambiado|actualizado|modificado|ajustado|dejado))(?![\p{L}\p{N}_])/iu.test(reply || '');
 }
 
+/** "el total es $99.000", "llevas $10.000", "tu pedido suma 62.000": amounts a reply presents as the order total. */
+export function statedOrderTotals(reply: string): number[] {
+  const t = (reply || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const re = /\b(?:total|suma|sumamos|llevas|llevamos|vamos|van|va en|queda en|quedaria en|pedido es de)\b[^$\d\n]{0,20}\$?\s?(\d{1,3}(?:[.,]\d{3})+|\d{4,7})\b/g;
+  const amounts: number[] = [];
+  for (const match of t.matchAll(re)) amounts.push(Number(match[1].replace(/[.,]/g, '')));
+  return amounts;
+}
+
 /** "¿Te transfiero 57.000?", "son 57 mil?", "te consigno 57.000 por nequi": the customer checks the amount to pay.
  * A cash denomination for change («pago con 100.000») is not an amount to pay.
  */
@@ -902,6 +911,7 @@ export function isCartChargeQuestion(text: string): boolean {
     const preface = t.slice(0,aggregate.index).replace(/^[¿?\s,]+|[¿?\s,]+$/g,'').trim();
     if (!preface || /^(?:(?:antes de (?:seguir|continuar|confirmar|pagar)|una (?:duda|pregunta)|disculpa|oye|y|por favor|porfa)[\s,¿?]*)+$/.test(preface)) return true;
   }
+  if (/^(?:[¿?\s]*)(?:y\s+)?(?:(?:entonces|bueno|ok)\s*,?\s+)?cuanto\s+(?:llevo|llevamos|vamos|voy|va|van)(?:\s+(?:en\s+total|hasta\s+ahora|por\s+ahora|hasta\s+el\s+momento))?(?:\s+(?:por\s+favor|porfa))?[?¿.!\s]*$/.test(t)) return true;
   return /^(?:[¿?\s]*)(?:y\s+)?(?:cual\s+es|cuanto\s+(?:es|seria|vale|sale))\s+el\s+total(?:\s+(?:con|incluyendo)\s+(?:el\s+)?(?:domicilio|envio))?(?:\s+por\s+favor)?[?¿.!\s]*$/.test(t) ||
     /^(?:[¿?\s]*)(?:y\s+)?cuanto\s+(?:suma|(?:es|seria|vale|sale)\s+el\s+total)[?¿.!\s]*$/.test(t) ||
     /\b(cobrando|me cobran)\b/.test(t) ||

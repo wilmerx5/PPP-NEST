@@ -106,6 +106,7 @@ import {
   isDeliveryFeeChangeQuestion,
   parsePaymentAmountQuestion,
   replyClaimsCartChange,
+  statedOrderTotals,
   isCostConditionalRequest,
   pendingCartEditCancellationAside,
   stripCartEditWithdrawalAffirmation,
@@ -16104,6 +16105,15 @@ export class WhatsappOrchestratorService {
     await this.reply(conv, waId, `${explanation}${reminder ? `\n\n${reminder}` : ''}`);
   }
 
+  /** A model reply may restate the order total only with the cart's own subtotal or total. */
+  private misstatesOrderTotal(reply: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig): boolean {
+    const stated = statedOrderTotals(reply);
+    if (!stated.length) return false;
+    const subtotal = session.cart.reduce((sum, line) => sum + line.unitPrice * Math.max(1, line.quantity || 1), 0);
+    const total = subtotal + (session.orderType === 'delivery' ? this.deliveryFeeFor(session, cfg) : 0);
+    return stated.some(amount => amount !== subtotal && amount !== total);
+  }
+
   private async replyPaymentAmountCheck(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig,
     question: { amount: number; transfer: boolean },
@@ -21130,7 +21140,8 @@ export class WhatsappOrchestratorService {
         ? `No tengo autorización para comprar *${offMenuQuery}* por fuera de la carta. Solo te ofrezco lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`
         : `Eso no lo resuelvo por este chat. Solo armo lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`;
       // Nothing is applied on this path, so a reply that reports a cart change would be false.
-      let answer = offMenuQuery || replyClaimsCartChange(agentReply) ? fallback : agentReply || fallback;
+      let answer = offMenuQuery || replyClaimsCartChange(agentReply) || this.misstatesOrderTotal(agentReply, session, cfg)
+        ? fallback : agentReply || fallback;
       const reminder = this.formatInterruptedStepReminder(conv,session);
       if (reminder) answer += `\n\n${reminder}`;
       if (params.prependFirstContactDisclaimer) {
@@ -21621,7 +21632,8 @@ export class WhatsappOrchestratorService {
     }
     const appliesAnything = Object.values(guarded.actions || {}).some(value =>
       Array.isArray(value) ? value.length > 0 : !!value);
-    if (!appliesAnything && replyClaimsCartChange(agentReply)) {
+    const misstatedTotal = !appliesAnything && this.misstatesOrderTotal(agentReply, session, cfg);
+    if (!appliesAnything && (replyClaimsCartChange(agentReply) || misstatedTotal)) {
       this.turnTelemetry.record({
         path: 'agent_v1',
         outcome: 'fallback_rules',
@@ -21630,7 +21642,7 @@ export class WhatsappOrchestratorService {
         toolCalls: agent.toolCalls,
         latencyMs: Date.now() - started,
         userTextPreview: text,
-        warnings: ['agent_claimed_change_without_actions'],
+        warnings: [misstatedTotal ? 'agent_misstated_total' : 'agent_claimed_change_without_actions'],
       });
       return false;
     }
