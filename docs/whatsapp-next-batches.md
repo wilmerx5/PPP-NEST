@@ -1,3 +1,19 @@
+## VIGENTE — tanda 83: «buenos días, uqe me ofreces» es pregunta por la carta (21/10)
+
+Base c4b9ca77, staging. Chat real de staging: «buenos dias, uqe me ofreces» → «¿Qué se te antoja? Escribe el plato o el código.» más el enlace del menú; el dueño reportó que ignoró la pregunta. Baseline con router real: sin agente, «que me ofreces», con saludo, «uqe» o «q» daban el mismo empujón genérico; «qué me ofreces?» daba «Eso no lo resuelvo por este chat»; con y sin agente, «buenas tardes, qe hay de comer» daba «No tenemos productos de comer». «que tienen», «que venden» y «que me recomiendas» ya listaban la carta: el patrón de explorar no aceptaba «me» entre «que» y el verbo. Sin el arreglo fallan 31/68.
+
+68 regresiones nuevas (whatsapp-offer-question-typos.spec.ts): parrilla (carnes + bebida), panadería (pan + café), pescados (pescado + jugo); agente simulado on/off, clasificador null. Ocho formulaciones con saludo y errores de tipeo. Contrastes: un pedido explícito sigue agregando el plato; preguntar por algo que no está en la carta sigue diciendo que no lo hay; el glosario deja igual «q tal», «ok q bien», «el k 2» y un «que me ofreces» ya correcto.
+
+Arreglo general: glosario local, «uqe/qeu/qe/ke/k/q» pasa a «que» solo antes de un verbo de oferta (hay, tienen, tiene(s), ofrece(n/s), sirven, venden, vendes, manejan, recomienda…, sugiere…), con «me/nos/le» opcional. isMenuExploreIntent e isCategoryBrowseQuestion aceptan «me/nos/le» y «ofrece/vendes». unavailableAskReply no responde a una pregunta de explorar carta (con glosario aplicado) ni a un sujeto genérico (comer, comida, almuerzo, cena, desayuno, algo, hoy). No codifica nombres, productos ni precios.
+
+Validación: 253 focalizados (9 suites), TypeScript general/build, 92 Node y diff --check. Global en dos fases: ráfagas 80/80 en 62s; resto 13.993/13.993 en 413s, 166 suites; unión exacta con inventario de 167, 464 hashes intactos, sin reintentos (476s). Total: 14.073 pruebas. Evidencia whatsapp-offer-question-typos-validation-2110.json. Cero llamadas pagadas, Meta u órdenes externas. Main intacto.
+
+Desplegado solo staging: runtime d6fa7a9b49b7d5d8724c58e13428b524974703bf, imagen d5766ef768f65c3d8b4ad947b6788efdcebd5caaf10c71e2cfae66cefe85002c; running/healthy/cero reinicios; health OK, DB connected/circuit CLOSED a 2026-10-21T17:47:31Z. Producción conserva bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0. Bases, volúmenes y bin/ privado preservados. Rollback ppp-nest-staging:rollback-before-d6fa7a9b (imagen c1be4663…). Commit documental posterior no requiere rebuild.
+
+Límites: con agente la pregunta ahora llega al modelo; no se evaluó la respuesta del modelo real (simulado). Errores de tipeo en el verbo mismo («ofreses», «tiens») dependen del emparejamiento difuso existente donde lo hay.
+
+Siguiente prioridad: selección parcial ambigua con varias líneas existentes y notas por unidad (pendiente de la tanda 81); pregunta de familia que elige un producto en vez de listar; después evaluación de inferencia real con presupuesto registrado. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 82: varias filas de la lista en un mensaje («1 o 2», «el 1 y el 2», «2 de la primera y 1 de la segunda») (21/10)
 
 Base e6799a5d, staging. Prioridad anotada en las tandas 80–81 (disyunción aislada, «o» frente a «y», cantidad por opción). Baseline con router real: sin agente, «el primero o el segundo» daba «no manejamos: primero o» y perdía la lista; «1 o 2» mostraba el carrito y la perdía; «cualquiera de los dos» daba «no manejamos: dos». Con agente, «1 o 2» sobre una lista de reemplazo iba al modelo y la lista se perdía. «el 1 y el 2» sobre un reemplazo de dos unidades ponía ambas en la primera opción; sobre una lista normal agregaba solo la primera fila. «2 de la primera y 1 de la segunda» daba «no manejamos»; «uno de cada uno» se ignoraba; «1 y 2» respondía «¿Qué se te antoja?». Sin el arreglo fallan 84/90.
