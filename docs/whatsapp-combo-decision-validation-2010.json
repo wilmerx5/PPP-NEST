@@ -470,5 +470,13 @@
     ".github/workflows/whatsapp-beta-ai.yml": "c93b68c3e749edc2f9ac6694128ff6605cf7e3e4e3a000a78d0da0a9ac774d34",
     "package.json": "f02f0393cb2e8ba10e5acce2b4e6eedf77cadf74f94c00bd40066da228c312ad",
     "tsconfig.build.json": "0814848f4456faedf94db8d43d015263e09cab4437f90b83581e09a0652e7e33"
+  },
+  "deployment": {
+    "commit": "7a3e82b608de8ccb4d5c46fc04ae82617c5c2a6c",
+    "image": "8cb815677a0208f27a63ffc551c1163e4f945bf3e9c67834a842356a44d5c8b9",
+    "checkedAt": "2026-10-21T04:34:39.661Z",
+    "healthy": true,
+    "restarts": 0,
+    "productionUnchanged": true
   }
 }
