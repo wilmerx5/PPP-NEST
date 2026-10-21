@@ -1,0 +1,73 @@
+{
+  "batch": 89,
+  "date": "2026-10-21",
+  "base": "1de0cc06",
+  "commit": "868d9bd8f13f2b62c9841457b3263b69ca655262",
+  "scope": "Staging chat fragment (set-menu lunch at checkout): the drink note was stored twice («Limonada sin azúcar, sin azucar»); the address kept the lead-in («Me lo envias a …»); «Quiero cambiar mi direction» repeated the payment question. The baseline probe found related option bugs on the same dish: answering the drink prompt with another option value added a separate product, the note in the drink answer was lost, and a comma order naming the soup product split the drink into a separate product",
+  "trigger": "Real staging chat fragment pasted by the owner (name, phone and address omitted)",
+  "chatReview": {
+    "wentWell": [
+      "The set-menu dish kept the three chosen options (piece, soup, drink)",
+      "The delivery fee was quoted by distance and the summary showed type, name, address and phone",
+      "The shared map reference was attached to the address"
+    ],
+    "wentWrong": [
+      "The kitchen note repeated the same request with and without the accent («Limonada sin azúcar, sin azucar»)",
+      "The address was saved with the customer's lead-in («Me lo envias a …»)",
+      "«Quiero cambiar mi direction» during payment answered with the payment options again"
+    ]
+  },
+  "baselineFindings": [
+    "Real router with the beta fixture, agent on and off: two messages in one burst («…limonada sin azúcar» + «sin azucar») stored the note «sin azúcar\\nsin azucar»; «Quiero cambiar mi dirección/direction» in payment → payment prompt; «Me lo envias a <place>» saved verbatim",
+    "List pick (non-drink options filled by default, drink asked): «menudencias» at the drink prompt added the separate soup product and kept the default soup; «Limonada sin azúcar» dropped the note; «pierna pernil, menudencias, limonada sin azúcar» kept the default soup and dropped the note",
+    "«Ejecutivo broaster, pierna pernil, sopa de menudencias, Limonada sin azúcar» and «Ejecutivo broaster con sopa de menudencias y limonada» added a separate lemonade and left the dish's drink at its default"
+  ],
+  "fix": "absorbPendingOptionAnswer (start of the pending-option block): while one option is asked, a value of an option that was filled by default (exactly one, not an option of the asked attribute, no article/quantity/«aparte») replaces it; a note in an answer that resolves the option is kept in pendingAttribute.answerNote (never a quantity source) and merged by tryAddProductToCart; only a change re-asks the pending option; an answer that resolves the option is not deferred to the agent. absorbBareDrinkOptionSegments (multi-product order): a bare drink segment that is an option of exactly one co-ordered dish, without article/quantity/«aparte» in the text and without an explicit choice for that attribute, joins the dish segment. dedupeKitchenNoteParts: repeated note parts (accent-insensitive, containment) are kept once, preferring the written accents. isAddressChangeIntent / extractAddressChangeTarget accept «mi/el» («cambiar mi dirección/direction/domicilio»). stripDeliveryAddressPreface removes «(me|nos) lo/la envías/mandas/llevas/traes/puedes enviar a|al|para|en».",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-pending-option-extras.spec.ts",
+    "count": 95,
+    "menus": ["lunch plates (portion, soup, drink)", "rice bowls (base, sauce, drink)", "breakfasts (eggs, side, drink)"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a separate purchase at the drink prompt («y una <product> aparte») does not change the pending option",
+      "a drink ordered with an article stays a separate product",
+      "«quiero cambiar mi bebida» is not an address change",
+      "distinct note parts («sin cebolla, sin tomate») are kept"
+    ],
+    "baselineWithoutFix": "60 failed / 90 conversational tests (the 5 unit tests need the new helper)"
+  },
+  "validation": {
+    "focused": "3428 passed (52 suites: address, attributes, options, notes, drinks, multi-product, combos, pending, checkout, session intents, product intent, general accuracy part 03)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "firstGlobal": "6 failures in general-accuracy-part-03 (a merged note lost the written accent of «harto ají»); the dedupe now keeps the accented form and the global was rerun with refrozen hashes",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 61 },
+      "rest": { "passed": 14545, "total": 14545, "suites": 172, "seconds": 393 },
+      "inventory": 173,
+      "unionEqualsInventory": true,
+      "hashes": 470,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14625
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "868d9bd8f13f2b62c9841457b3263b69ca655262",
+    "image": "sha256:b1533df47848f478e9011d32abbaede2dbd80e87a86a00d98c6f69aa157353e4",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T20:04:46Z, healthy, 0 restarts (started 20:04:16Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-868d9bd8 (image 34724722…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "«Me lo envías a <two-word place>» without a street or a known landmark is ignored during payment (the payment question repeats)",
+    "«domicilio» during payment after a pickup default only repeats the payment question",
+    "«<dish> con <side product> y <drink>» can leave a note that repeats the chosen options",
+    "«un té verde frío» next to a dish whose drink option is «Te Verde» is absorbed as the option",
+    "A short dish name in a comma list («almuerzo res, …») can resolve only the side product",
+    "«Te transformo 57.000?» with the agent on still answers with the model's text; the real model was not evaluated"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
