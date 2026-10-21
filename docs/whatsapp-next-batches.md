@@ -8,7 +8,7 @@ Regla general: separar intensificadores de acompañamiento con gramática acotad
 
 Global final: 13201 pruebas / 149 suites, inventario exacto y 445 hashes intactos. Ráfagas 80 + resto 13121. Evidencia whatsapp-preference-discovery-validation-2010.json; logs /tmp/ppp-t65-final-result.log.
 
-Publicado para despliegue agrupado 64–65 en staging; verificar estado de despliegue en la siguiente entrada documental. No confundir commit con runtime activo.
+Despliegue agrupado 64–65 verificado el 20/10 a las 22:01 Bogotá (2026-10-21T03:01:25.918Z): código 4ce3addd80a931976b837b094496f4e0e373ce35, imagen 945f4848705c2cca4f34376b00183c77274494ca36e27ae512f890cf088215e8, running/healthy, cero reinicios, health OK/DB connected/circuit CLOSED. Primer probe starting/200; segundo healthy/200. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e. Rollback ppp-nest-staging:rollback-before-4ce3addd; bin/ privado, bases y volúmenes preservados. Commit documental posterior no requiere rebuild.
 
 Límites: modelo/servicios simulados, cero API pagada/Meta/órdenes externas; no acredita precisión del modelo ni audio real. Recomendación por preferencia es aclaración orientada, no ranking de platos por ingredientes. Solo building_cart sin selección pendiente; redacciones fuera de gramática, dietas, alergias, preferencias durante atributos y consultas mixtas quedan pendientes. No afirmar cobertura universal ni todos los PDF por los conteos. La tanda 64 trataba navegación por categorías, no estos dos comportamientos.
 

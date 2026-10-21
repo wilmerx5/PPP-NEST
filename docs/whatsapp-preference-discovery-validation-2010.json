@@ -35,5 +35,12 @@
     "Abundance parsing scoped to unresolved one-word family",
     "Mock inference; no real voice or model accuracy claim"
   ],
-  "deployment": "pending staging verification; Main unchanged"
+  "deployment": {
+    "commit": "4ce3addd80a931976b837b094496f4e0e373ce35",
+    "image": "945f4848705c2cca4f34376b00183c77274494ca36e27ae512f890cf088215e8",
+    "verifiedAt": "2026-10-21T03:01:25.918Z",
+    "health": "healthy",
+    "restarts": 0,
+    "productionUnchanged": true
+  }
 }
