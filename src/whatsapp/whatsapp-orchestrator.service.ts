@@ -17594,6 +17594,7 @@ export class WhatsappOrchestratorService {
       : session.cart.length === 1 ? [0] : [];
     const index = targets.length === 1 ? targets[0] : -1;
     const line = session.cart[index];
+    if (partialNote.implied && (!line || line.note || partialNote.quantity >= line.quantity)) return false;
     if (!line || (!partialNote.query && line.note) || partialNote.quantity >= line.quantity ||
       (partialNote.total !== undefined && partialNote.total !== line.quantity) ||
       (partialNote.remainder !== undefined && partialNote.quantity + partialNote.remainder !== line.quantity)) {
@@ -19596,6 +19597,8 @@ export class WhatsappOrchestratorService {
       /\bmitad\s+de\s+(?:la\s+)?cuadra\b/i,
       /\b(cambio\s+de|billete|paga\s+con|vueltas?|devuelta|traer?\s+vueltas?|trae\s+vueltas?|traeme\s+vueltas?)\b/i,
       /\bsin\s+(cebolla|aj[ií]|sal|picante|huevo|queso|tomate|arepa|papas?|yuca)\b/i,
+      // Counted units ("una sin alcaparras", "las dos sin hielo") name any ingredient.
+      /^(?:y\s+)?(?:(?:las|los)\s+)?(?:un[oa]|dos|tres|cuatro|cinco|ambas|ambos|todas|todos)(?:\s+de\s+(?:ellas|ellos|esas|esos))?\s+sin\s+\p{L}{3,}(?:\s+\p{L}+){0,3}[\s!.]*$/iu,
       /\b(?:harto|arto|mucho|mucha|bastante)\s+aj[ií](?!\p{L})/iu,
       /^(?:y\s+)?(?:con\s+)?papas?\s+saladas?[\s!.]*$/i,
       /^(?:con\s+)?aj[ií][\s!.]*$/i,

@@ -2,7 +2,7 @@ import type { WhatsappCatalogProduct, WhatsappCatalogService } from './whatsapp-
 
 /** "Dos combos, uno con colombiana y el otro con coca cola" → dos líneas del mismo SKU. */
 export function expandSpokenSameSkuPair(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {
-  return expandSpokenSameSkuNotes(expandSpokenAttributePair(text, products, catalog), products, catalog);
+  return expandSpokenImpliedRemainderNote(expandSpokenSameSkuNotes(expandSpokenAttributePair(text, products, catalog), products, catalog), products, catalog);
 }
 
 function expandSpokenAttributePair(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {
@@ -48,6 +48,29 @@ function expandSpokenSameSkuNotes(text: string, products: WhatsappCatalogProduct
       if (candidates.length !== 1) return original;
       const product = candidates[0];
       return `1 ${product.name} ${left.trim()} y 1 ${product.name} ${right.trim()}`;
+    });
+}
+
+/** "Dos hamburguesas, una sin cebolla" → una normal y una con la nota; el resto queda sin nota. */
+function expandSpokenImpliedRemainderNote(text: string, products: WhatsappCatalogProduct[], catalog: WhatsappCatalogService): string {
+  const quantities: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
+    seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+  const quantity = (word: string) => quantities[word.toLowerCase()] ?? Number(word);
+  return text.replace(/\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+([^,:\n.]{3,70}?)\s*,\s*(?:y\s+)?(\d{1,2}|un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve)\s+(?:de\s+(?:ellas|ellos|esas|esos)\s+)?((?:sin|poco|poca)\s+[^,\n.]{2,40}?)(?=\s*(?:,|para\b|pago\b|[.!?]|$))/gi,
+    (original, totalWord: string, subject: string, unitsWord: string, note: string) => {
+      const total = quantity(totalWord), units = quantity(unitsWord);
+      if (!Number.isInteger(total) || !Number.isInteger(units) || units < 1 || units >= total || total > 30) return original;
+      if (/\b(?:y|e|o|con|mas|otr[oa]s?|normal(?:es)?|adicional|aparte)\b/i.test(note)) return original;
+      let candidates = catalog.findAllProductsEmbeddedInMessage(subject, products)
+        .filter(product => product.availableNow !== false);
+      if (candidates.length > 1) {
+        const ranked = [...candidates].sort((a, b) => b.name.length - a.name.length);
+        const longestName = ranked[0].name.toLowerCase();
+        if (ranked.slice(1).every(other => longestName.includes(other.name.toLowerCase()))) candidates = [ranked[0]];
+      }
+      if (candidates.length !== 1 || candidates[0].attributes?.length) return original;
+      const product = candidates[0];
+      return `${total - units} ${product.name} y ${units} ${product.name} ${note.trim()}`;
     });
 }
 
