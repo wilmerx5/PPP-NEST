@@ -1,5 +1,7 @@
 ## VIGENTE — consultas básicas encadenadas por categorías (20/10, tanda 63)
 
+Desplegada únicamente en staging el 20/10 a las 19:38 Bogotá: código fc8df6d768ea59b0bdca854d6533078cf734d005, imagen e13c2e75606d934ad7e1dfbb893ff4411c369a87c19ec0d3d69e7e0be4201bc3, healthy/cero reinicios, health OK, DB connected, circuito CLOSED. Producción conserva c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e; bin/ privado, bases y volúmenes preservados. Rollback ppp-nest-staging:rollback-before-fc8df6d7.
+
 Base 7583292d. 56 casos nuevos: tres menús (carnes/pescados, pizzas/pastas, postres/bebidas), agente simulado on/off, carrito vacío/existente, audio con transcripción simulada y texto. Incluye frase real «Quiero algo como de carne. ¿Qué tiene de carne? O de pescado, ¿qué tiene de pescado?», pregunta con «o», preguntas separadas, carta con saludo, repetición sin duplicar y selección numérica posterior. Comprueba respuesta, carrito intacto, estado, ausencia de orden y compra posterior correcta.
 
 Baseline 24 fallos / 24 verdes de 48; los saludos/carta ya pasaban. Corrección general: separar cláusulas explícitas de consulta, resolver cada una contra categorías/conceptos del catálogo, reunir candidatos únicos y mantener una lista seleccionable antes del rechazo por producto inexistente. Ninguna excepción por nombres o IDs PPP. Dos controles nuevos detectaron descarte de «sin gluten/sin huevo»; el compositor ahora declina esas condiciones y cualquier cláusula no reconocida. Esto NO acredita respuesta nutricional correcta en el flujo restante.

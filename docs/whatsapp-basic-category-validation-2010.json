@@ -32,5 +32,15 @@
     "Boundary controls only prove this helper declines mixed clauses, not complete dietary answers",
     "No claim all basic conversations or all PDF chats covered"
   ],
-  "runnerIssue": "Initial focused command referenced nonexistent whatsapp-catalog.service.spec.ts; 120 tests passed and correct catalog.matching suite subsequently passed 27"
+  "runnerIssue": "Initial focused command referenced nonexistent whatsapp-catalog.service.spec.ts; 120 tests passed and correct catalog.matching suite subsequently passed 27",
+  "deployment": {
+    "commit": "fc8df6d768ea59b0bdca854d6533078cf734d005",
+    "image": "e13c2e75606d934ad7e1dfbb893ff4411c369a87c19ec0d3d69e7e0be4201bc3",
+    "verifiedAt": "2026-10-21T00:38:24.283Z",
+    "healthy": true,
+    "restarts": 0,
+    "db": "connected",
+    "circuit": "CLOSED",
+    "productionImageUnchanged": "c5e97ab1f09502b3a64a73fb332665395f9e6054349b7195bc3d58081bf4559e"
+  }
 }
