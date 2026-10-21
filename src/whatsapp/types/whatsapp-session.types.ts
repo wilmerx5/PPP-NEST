@@ -45,6 +45,8 @@ export type WhatsappPendingAttribute = {
   variantIntent?: 'combo' | 'solo';
   /** Texto/segmento original del pedido (para cantidad: "3 pollos") */
   sourceText?: string;
+  /** Kitchen note given while answering an option ("Limonada sin azúcar"); never a quantity source. */
+  answerNote?: string;
 };
 
 export type WhatsappSessionData = {

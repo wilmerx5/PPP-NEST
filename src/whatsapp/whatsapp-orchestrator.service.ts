@@ -14,7 +14,7 @@ import {parseScheduleRequest, upsertScheduleNotes} from './whatsapp-schedule-req
 import {followUpExtraNote, followUpHandlingNote, splitKitchenPreference} from './whatsapp-kitchen-preference';
 import {parseCookingTerm, peelSupportedCookingTerm, supportsCookingTerm} from './whatsapp-cooking-term';
 import { namedPackOrderQuantity } from './whatsapp-named-pack-quantity';
-import { condimentIntensityNote, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
+import { condimentIntensityNote, dedupeKitchenNoteParts, interpretProductNote, joinKitchenNotes } from './whatsapp-product-intent';
 import { parseScopedCartNote, editScopedCartNote } from './whatsapp-cart-note';
 import { parsePartialNote } from './whatsapp-partial-note';
 import { parseCartNoteRevision, reviseLineNote, type CartNoteRevision } from './whatsapp-note-revision';
@@ -3895,6 +3895,9 @@ export class WhatsappOrchestratorService {
     }
 
     if (session.pendingAttribute || conv.state === 'awaiting_attribute') {
+      const absorbed = await this.absorbPendingOptionAnswer(conv, msg.waId, session, originalText || text, products);
+      if (!absorbed) return;
+      session = absorbed.session;
       if (await this.tryApplySeveralAttributeChoices(conv, msg.waId, session, originalText || text, products, cfg)) return;
       if (
         await this.tryHandleCartModification(
@@ -4046,7 +4049,7 @@ export class WhatsappOrchestratorService {
         (spokenOptions.status === 'complete' || spokenOptions.status === 'partial') &&
         spokenOptions.attributes.some(attribute => !(pa?.selected || []).some(selected =>
           selected.attributeName === attribute.attributeName && selected.attributeValue === attribute.attributeValue));
-      if (pa && product && cfg.agentV1Enabled && this.looksLikeHumanIntentSentence(text) && !progressesPendingOptions) {
+      if (pa && product && cfg.agentV1Enabled && this.looksLikeHumanIntentSentence(text) && !progressesPendingOptions && !absorbed.answers) {
         deferHumanIntentToAgent = true;
       } else if (pa && product) {
         if (this.catalogService.isVariantPreferenceIntent(text)) {
@@ -7407,7 +7410,9 @@ export class WhatsappOrchestratorService {
       const check = evaluateCartLimits(next.cart, this.toCartLimitsConfig(cfg,next), {orderType:next.orderType});
       return check.ok ? {session:next} : {session,blocked:check};
     }
-    note = omitRedundantAttributeNote(note, selected);
+    const answerNote = session.pendingAttribute?.productId === product.id ? session.pendingAttribute.answerNote : undefined;
+    if (answerNote) note = [note, answerNote].filter(Boolean).join(', ');
+    note = omitRedundantAttributeNote(dedupeKitchenNoteParts(note), selected);
     const incomingKey = this.cartLineKey({
       productId: product.id,
       note,
@@ -13537,7 +13542,7 @@ export class WhatsappOrchestratorService {
     if (!raw) return null;
     const m =
       raw.match(
-        /\b(?:cambia(?:r|me)?|actualiza(?:r|me)?|modifica(?:r|me)?|corrige|corregir)\s+(?:la\s+)?(?:direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\s*(?:a|por|:)?\s*(.+)$/i,
+        /\b(?:cambia(?:r|me)?|actualiza(?:r|me)?|modifica(?:r|me)?|corrige|corregir)\s+(?:la\s+|mi\s+|el\s+)?(?:direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\s*(?:a|por|:)?\s*(.+)$/i,
       ) ||
       raw.match(
         /\b(?:la\s+)?(?:direcci[oó]n|direcion|direction|domicilio)\s+(?:es|queda|ahora|nueva)\s*:?\s*(.+)$/i,
@@ -18814,6 +18819,7 @@ export class WhatsappOrchestratorService {
         .replace(/^estoy\s+ubicad[oa]\s+en\s+(?:el\s+|la\s+)?/i, '')
         .replace(/^(?:vivo|vivimos)\s+en\s+(?:el\s+|la\s+)?/i, '')
         .replace(/^(?:env[ií]a|m[aá]nda|ll[eé]va|tr[aá]e)(?:lo|la|los|las|melo|mela|melos|melas)?\s+(?:a\s+la|al|a|para\s+(?:el|la)|para|en\s+(?:el|la)|en)\s+/i, '')
+        .replace(/^(?:(?:me|nos)\s+)?(?:lo|la|los|las)\s+(?:(?:puedes|puede|podr[ií]as?)\s+(?:enviar|mandar|llevar|traer)|env[ií](?:a|as|an|e|es|en)|m[aá]nd(?:a|as|an|e|es|en)|ll[eé]v(?:a|as|an|e|es|en)|tra(?:e|es|en|iga|igas|igan))\s+(?:a\s+la|al|a|para\s+(?:el|la)|para|en\s+(?:el|la)|en|hasta)\s+/i, '')
         .replace(/^(?:ser[ií]a|es)\s+(?=(?:para|al|a|en)\s+)/i, '')
         .trim();
       if (next === t) break;
@@ -24662,6 +24668,72 @@ export class WhatsappOrchestratorService {
     return true;
   }
 
+  /**
+   * While one option is asked, naming another value of an option that was filled by default changes it,
+   * and a note in the answer ("Limonada sin azúcar") stays with the dish. Null means it already replied.
+   */
+  private async absorbPendingOptionAnswer(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, products: MenuProduct[],
+  ): Promise<{ session: WhatsappSessionData; answers: boolean } | null> {
+    const pa = session.pendingAttribute;
+    const product = pa ? this.catalogService.getProductById(pa.productId, products) : null;
+    if (!pa || !product?.attributes?.length || session.pendingMultiOrder || /[¿?]/.test(text) || text.length > 160) return { session, answers: false };
+    const said = this.normalizeForMatch(text).replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const key = (value: string) => this.normalizeForMatch(value).replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const names = (value: string) => !!key(value) && ` ${said} `.includes(` ${key(value)} `);
+    const separate = /^(?:(?:y|quiero|dame|agrega|anade|ponme|tambien)\s+)*(?:unos?|unas?|dos|tres|\d+|otr[oa]s?)\s/.test(said) ||
+      /\b(?:aparte|adicional|extra)\b/.test(said);
+    const opts = this.attributeFlowOpts(pa);
+    const remaining = this.catalogService.getRemainingAttributes(product, pa.selected || [], opts);
+    const selected = [...(pa.selected || [])];
+    const changed: string[] = [];
+    if (!separate) {
+      selected.forEach((choice, index) => {
+        const attribute = product.attributes!.find(attr => key(attr.attributeName) === key(choice.attributeName));
+        const hits = (attribute?.options || []).filter(names);
+        if (hits.length !== 1 || key(hits[0]) === key(choice.attributeValue)) return;
+        if (remaining.some(attr => attr.options.some(option => key(option) === key(hits[0])))) return;
+        selected[index] = { attributeName: choice.attributeName, attributeValue: hits[0] };
+        changed.push(`${choice.attributeName}: ${hits[0]}`);
+      });
+    }
+    const step = this.catalogService.resolveNextAttributeChoice(product, text, selected, opts);
+    const answers = step.status === 'complete' || step.status === 'partial';
+    const note = answers || changed.length ? this.catalogService.orderKitchenNote(text, product) : undefined;
+    if (!changed.length && !note) return { session, answers: false };
+    const next: WhatsappSessionData = { ...session, pendingAttribute: { ...pa, selected,
+      answerNote: note ? dedupeKitchenNoteParts([pa.answerNote, note].filter(Boolean).join(', ')) : pa.answerNote } };
+    await this.conversationService.saveSession(conv, next, 'awaiting_attribute');
+    if (answers) return { session: next, answers: true };
+    await this.reply(conv, waId, `Listo ✅ ${changed.join(' · ')}${note ? ` · 📝 ${note}` : ''}\n\n` +
+      this.catalogService.formatProductOptionsPrompt(product, selected, opts));
+    return null;
+  }
+
+  /** "Ejecutivo, sopa de menudencias, limonada": a bare drink that is an option of exactly one co-ordered dish is that option. */
+  private absorbBareDrinkOptionSegments(multi: MultiProductResolveResult, text: string): void {
+    const said = ` ${this.normalizeForMatch(text).replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ')} `;
+    const hosts = [...multi.confident, ...multi.needsAttributes].filter(match => !this.catalogService.isLikelyDrinkProduct(match.product));
+    multi.confident = multi.confident.filter(drink => {
+      if (!this.catalogService.isLikelyDrinkProduct(drink.product)) return true;
+      const segment = drink.segment.trim();
+      if (/^(?:\d+|un[oa]?s?|dos|tres|otr[oa]s?|mas)\b/i.test(segment) || /\b(?:aparte|adicional|extra|tambi[eé]n|separad[oa])\b/i.test(segment)) return true;
+      const core = segment.replace(/\s+(?:sin|con|bien|poc[oa]|mas|más|light|natural)\b.*$/i, '').trim();
+      const head = this.normalizeForMatch(core).split(/\s+/)[0];
+      if (head && new RegExp(` (?:un[oa]?s?|dos|tres|\\d+|otr[oa]s?) ${head} `).test(said)) return true;
+      const matches = hosts.flatMap(host => {
+        const option = this.catalogService.drinkTextMatchesAttribute(host.product, core);
+        return option ? [{ host, option }] : [];
+      });
+      if (matches.length !== 1) return true;
+      const { host, option } = matches[0];
+      const explicit = this.catalogService.extractExplicitAttributeChoice(host.segment, host.product) || [];
+      if (explicit.some(choice => this.normalizeForMatch(choice.attributeName) === this.normalizeForMatch(option.attributeName))) return true;
+      host.segment = `${host.segment}, ${segment}`;
+      return false;
+    });
+  }
+
   private async tryHandleMultiProductOrder(
     conv: WhatsappConversation,
     waId: string,
@@ -24750,6 +24822,8 @@ export class WhatsappOrchestratorService {
       }
       multi.unresolved = stillUnresolved;
     }
+
+    this.absorbBareDrinkOptionSegments(multi, text);
 
     const onlyNeedsAttrs =
       multi.needsAttributes.length > 0 && multi.ambiguous.length === 0;

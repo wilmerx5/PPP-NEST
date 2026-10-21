@@ -20,6 +20,27 @@ export function condimentIntensityNote(text: string): string | undefined {
   return match[0].replace(/\barto\b/gi, 'harto').replace(/\bahi\b/gi, 'ají').replace(/\baji\b/gi, 'ají').replace(/\s+/g, ' ').trim();
 }
 
+/** A burst that repeats a note ("sin azúcar" / "sin azucar") keeps it once; distinct parts stay as written. */
+export function dedupeKitchenNoteParts(note: string | null | undefined): string | undefined {
+  if (!note?.trim()) return note ?? undefined;
+  const parts = note.split(/\s*(?:\r?\n|;|,)\s*/).filter(Boolean);
+  if (parts.length < 2) return note;
+  const keyOf = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const kept: string[] = [];
+  for (const part of parts) {
+    const key = keyOf(part);
+    const index = kept.findIndex(existing => keyOf(existing).includes(key) || key.includes(keyOf(existing)));
+    if (index < 0) { kept.push(part); continue; }
+    const [longer, shorter] = key.length > keyOf(kept[index]).length ? [part, kept[index]] : [kept[index], part];
+    const at = keyOf(longer).indexOf(keyOf(shorter));
+    // Keep the written accents of the shorter form when both line up character by character.
+    kept[index] = at >= 0 && keyOf(longer).length === longer.length && keyOf(shorter).length === shorter.length && /[^\x00-\x7f]/.test(shorter)
+      ? longer.slice(0, at) + shorter + longer.slice(at + shorter.length)
+      : longer;
+  }
+  return kept.length === parts.length ? note : kept.join(', ');
+}
+
 export function joinKitchenNotes(...parts: Array<string | null | undefined>): string | undefined {
   const kept: string[] = [];
   const keys: string[] = [];

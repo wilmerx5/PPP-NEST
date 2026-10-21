@@ -9,7 +9,7 @@ export function isAddressChangeIntent(text: string): boolean {
   if (!t || t.length < 8) return false;
   if (isAddressRejectionIntent(t)) return true;
   return (
-    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+)?(direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\b/i.test(
+    /\b(cambia(r|me)?|actualiza(r|me)?|modifica(r|me)?|corrige|corregir)\s+(la\s+|mi\s+|el\s+)?(direcci[oó]n|direcion|direction|domicilio|ubicaci[oó]n)\b/i.test(
       t,
     ) ||
     /\b(la\s+)?(direcci[oó]n|direcion|direction|domicilio)\s+(es|queda|ahora|nueva)\b/i.test(t) ||
