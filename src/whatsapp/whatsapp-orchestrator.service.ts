@@ -8754,6 +8754,142 @@ export class WhatsappOrchestratorService {
     return matches.length === 1 ? matches[0] : undefined;
   }
 
+  /**
+   * Several rows of the open list in one message. «1 o 2» names two alternatives: ask, keep everything.
+   * «el 1 y el 2», «uno de cada uno», «2 de la primera y 1 de la segunda» buy each row; a replacement
+   * list must still add up to the units being replaced.
+   */
+  private async tryResolveSeveralPendingRows(
+    conv: WhatsappConversation,
+    waId: string,
+    session: WhatsappSessionData,
+    text: string,
+    products: MenuProduct[],
+    cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    const pending = session.pendingMatch;
+    if (!pending || pending.candidates.length < 2) return false;
+    const said = text.split(',').map(part => this.normalizeForMatch(part)).join(' , ').replace(/[¿?¡!.]/g, ' ')
+      .replace(/\b(?:por favor|porfa|gracias)\b/g, ' ')
+      .replace(/^(?:(?:entonces|bueno|listo|mejor|pues|ok)\s+)*(?:(?:quiero|quisiera|dame|deme|ponme|me das|me regalas|regalame|seria|serian)\s+)?/, '')
+      .replace(/\s+/g, ' ').replace(/\s+,/g, ',').trim();
+    if (!said) return false;
+    const candidates = pending.candidates;
+    const words: Record<string, number> = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6 };
+    const ordinals: Record<string, number> = {
+      primer: 1, primero: 1, primera: 1, segundo: 2, segunda: 2, tercer: 3, tercero: 3, tercera: 3,
+      cuarto: 4, cuarta: 4, quinto: 5, quinta: 5,
+    };
+    const rowOf = (ref: string): number | null => {
+      const m = ref.match(/^(?:(?:el|la|lo)\s+)?(?:(?:numero|opcion|nro)\s+)?(?:(\d{1,3})|([a-z]+))(?:\s+(?:opcion|numero))?$/);
+      if (!m) return null;
+      if (m[2]) return ordinals[m[2]] && ordinals[m[2]] <= candidates.length ? ordinals[m[2]] - 1 : null;
+      const n = Number(m[1]);
+      if (n >= 1 && n <= candidates.length) return n - 1;
+      const byCode = candidates.findIndex(candidate => Number(candidate.code) === n);
+      return byCode >= 0 ? byCode : null;
+    };
+    const rowByName = (ref: string): number | null => {
+      const bare = ref.replace(/^(?:el|la|los|las)\s+/, '').trim();
+      if (bare.length < 3) return null;
+      const hits = candidates.flatMap((candidate, index) => {
+        const name = ` ${this.normalizeForMatch(candidate.name)} `;
+        return bare.split(' ').every(token => name.includes(` ${token} `) || name.includes(` ${token.replace(/s$/, '')} `)) ? [index] : [];
+      });
+      return hits.length === 1 ? hits[0] : null;
+    };
+    const listed = (rows: number[]) => rows.map(index =>
+      `${this.catalogService.optionNumberEmoji(index + 1)} *${candidates[index].name}* · ${this.catalogService.formatMoney(candidates[index].price)}`).join('\n');
+
+    const alternatives = said.split(/\s+(?:o|u)\s+/);
+    if (/^cualquiera(?:\s+de\s+(?:los|las|esos|esas)\s+(?:dos|tres))?$/.test(said) ||
+      (alternatives.length === 2 && !/\s(?:y|e)\s|,/.test(said))) {
+      const rows = alternatives.length === 2 ? alternatives.map(rowOf) : candidates.map((_c, index) => index);
+      if (rows.some(row => row == null) || new Set(rows).size !== rows.length) return false;
+      await this.reply(conv, waId, `${alternatives.length === 2 ? 'Mencionaste dos opciones' : 'Puedo anotar cualquiera de estas'}:\n${listed(rows as number[])}\n\n¿Cuál prefieres? Dime el número. El pedido sigue igual.`);
+      return true;
+    }
+
+    let picks: { row: number; quantity?: number }[] = [];
+    if (/^(?:un[oa]?\s+de\s+cada\s+(?:un[oa]|opcion|cosa)?|de\s+cada\s+un[oa]\s+un[oa])$/.test(said) ||
+      (/^(?:ambos|ambas)$/.test(said) && candidates.length === 2)) {
+      picks = candidates.map((_c, index) => ({ row: index, quantity: 1 }));
+    } else {
+      const parts = said.split(/\s*,\s*(?:y\s+)?|\s+(?:y|e)\s+/).filter(Boolean);
+      if (parts.length < 2) return false;
+      for (const part of parts) {
+        const m = part.match(/^(?:(\d{1,2}|un|una|uno|dos|tres|cuatro|cinco|seis)\s+(?:(?:de\s+(?:la|el|los|las)|del|de)\s+)?)?(.+)$/);
+        if (!m) return false;
+        const quantity = m[1] ? (words[m[1]] ?? Number(m[1])) : undefined;
+        let row = rowOf(m[2]);
+        if (row == null && m[1] && !/^\d/.test(m[1])) row = rowOf(part);
+        if (row == null) row = rowByName(m[2]);
+        if (row == null) return false;
+        picks.push({ row, quantity });
+      }
+    }
+    if (new Set(picks.map(pick => pick.row)).size !== picks.length) return false;
+
+    const target = pending.replacement ? (pending.quantity || pending.replacement.originalLine.quantity || 1) : pending.quantity || 0;
+    const explicit = picks.some(pick => pick.quantity != null);
+    const quantities = picks.map(pick => pick.quantity ?? 1);
+    const total = quantities.reduce((sum, n) => sum + n, 0);
+    if (target > 1 && total !== target && (pending.replacement || !explicit)) {
+      const example = picks.map((pick, index) => `${index ? 1 : Math.max(1, target - picks.length + 1)} de *${candidates[pick.row].name}*`).join(' y ');
+      await this.reply(conv, waId, `Son ${target} unidades. ¿Cuántas de cada una? Por ejemplo: «${example}».\n${listed(picks.map(pick => pick.row))}\n\nEl pedido sigue igual.`);
+      return true;
+    }
+
+    const chosen = picks.map(pick => ({ lite: candidates[pick.row], product: this.catalogService.getProductById(candidates[pick.row].id, products) }));
+    const missing = chosen.filter(item => !item.product || item.product.availableNow === false);
+    if (missing.length) {
+      await this.reply(conv, waId, `${missing.map(item => `*${item.lite.name}*`).join(', ')} ya no ${missing.length === 1 ? 'está disponible' : 'están disponibles'}. No agregué nada; tu pedido sigue igual. Elige otra opción de la lista.`);
+      return true;
+    }
+    if (pending.replacement || pending.includesRequestedAccompaniment) {
+      const changed = chosen.filter(item => Number.isFinite(item.lite.price) && item.product!.price !== item.lite.price);
+      if (changed.length) {
+        const ids = new Set(changed.map(item => item.product!.id));
+        session = { ...session, pendingMatch: { ...pending, candidates: candidates.map(candidate => ids.has(candidate.id)
+          ? { ...candidate, price: chosen.find(item => item.product!.id === candidate.id)!.product!.price } : candidate) } };
+        await this.conversationService.saveSession(conv, session);
+        await this.reply(conv, waId, changed.map(item => `El precio de *${item.product!.name}* cambió de ${this.catalogService.formatMoney(item.lite.price)} a ${this.catalogService.formatMoney(item.product!.price)} por unidad.`).join('\n') +
+          '\nNo cambié tu pedido. Si estás de acuerdo, vuelve a elegir; también puedes elegir otra opción.');
+        return true;
+      }
+    }
+    const needsChoice = chosen.filter(item => item.product!.hasAttributes && item.product!.attributes?.length);
+    if (needsChoice.length) {
+      await this.reply(conv, waId, `${needsChoice.map(item => `*${item.product!.name}*`).join(', ')} ${needsChoice.length === 1 ? 'tiene' : 'tienen'} opciones por elegir. Pídelos uno a la vez: dime primero el número de uno.\n${listed(picks.map(pick => pick.row))}\n\nEl pedido sigue igual.`);
+      return true;
+    }
+
+    let next: WhatsappSessionData = { ...session, pendingMatch: undefined, pendingAddOffer: undefined };
+    const note = pending.replacement ? pending.replacement.originalLine.note : pending.note;
+    for (const [index, item] of chosen.entries()) {
+      const product = item.product!;
+      const replacing = index === 0 && pending.replacement;
+      const added = this.tryAddProductToCart(next, product, quantities[index], cfg, replacing ? undefined : note || undefined, [],
+        replacing ? { sourceText: product.name, replacement: pending.replacement } : undefined);
+      if (added.blocked || added.missingAttributes) {
+        await this.conversationService.saveSession(conv, session);
+        if (added.blocked) await this.handleCartLimitBlocked(conv, waId, added.blocked, cfg);
+        else await this.reply(conv, waId, `No pude agregar *${product.name}*. Tu pedido sigue igual; pídelos uno a la vez.`);
+        return true;
+      }
+      next = added.session;
+    }
+    next = this.clearQuantityHint(next);
+    const checkoutState = ['awaiting_payment', 'awaiting_final_confirm', 'awaiting_name', 'awaiting_phone', 'awaiting_address'].includes(conv.state || '')
+      ? conv.state : undefined;
+    const reminder = checkoutState ? this.formatInterruptedStepReminder(conv, next) : '';
+    await this.conversationService.saveSession(conv, next, checkoutState || 'building_cart');
+    await this.reply(conv, waId,
+      this.buildCartAddReply(next, this.deliveryFeeFor(next, cfg), chosen.map((item, index) => `${item.product!.name}${quantities[index] > 1 ? ` ×${quantities[index]}` : ''}`)) +
+      (reminder ? `\n\n${reminder}` : ''));
+    return true;
+  }
+
   private async tryResolvePendingMatchPick(
     conv: WhatsappConversation,
     waId: string,
@@ -8765,6 +8901,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingMatch;
     if (!pending?.candidates?.length) return false;
     if (this.catalogService.isProductDescriptionInquiry(text)) return false;
+    if (await this.tryResolveSeveralPendingRows(conv, waId, session, text, products, cfg)) return true;
     // Older/fallback family lists retain the original request but may omit its
     // note. Recover only a verified preparation from an actual purchase source.
     const pendingOrderSource = pending.intent==='order' ||
