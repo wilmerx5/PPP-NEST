@@ -1,0 +1,61 @@
+{
+  "batch": 86,
+  "date": "2026-10-21",
+  "base": "6ed1ac99",
+  "commit": "73cde653c6e9d04058dd1d319716ce1522544cf0",
+  "scope": "A kitchen note that names no dish («una sin cebolla», «sin cebolla») with several cart lines asks which line instead of noting the last one, and the answer (number, short name or full name) is understood; «la hamburguesa sin cebolla» over several products uses the same list",
+  "trigger": "Gaps recorded in batches 81 and 85 (ambiguous note over several lines; «Tienes varias líneas de ese plato…» wording)",
+  "baselineFindings": [
+    "«una sin cebolla» with two dishes noted the last added line silently, even a Limonada, agent on and off",
+    "Bare «sin cebolla» asked «¿A cuál plato le aplico esa nota?» but kept nothing pending: «2» only showed the cart and «la doble» was taken as a new product search («No te ofrecemos doble»)",
+    "«la hamburguesa sin cebolla» with two burgers answered «Tienes varias líneas de ese plato. Escribe la preparación y la nota juntas…»; answering «1» or «la clasica» lost the note",
+    "Agent on, «el perro» after the note answered «¿Cuál prefieres?»; agent off it added another hot dog"
+  ],
+  "fix": "tryHandleUnscopedCartKitchenNote (orchestrator, in the note chain after the partial-unit handler; two or more cart lines, no pending selection, no question): «(y) (las) (N) (de ellas) sin/poco/poca X» that names no cart line and is not an option of a cart product. A count equal to every unit notes all lines; a count above the total asks without changes; otherwise the existing pendingSubsetKitchenNote list (byUnits) is opened. The scoped note over several lines of different products opens the same list; same-product lines keep a text answer that now names each line and its note. The subset-note answer falls back to uniqueClarificationLine, so «la doble», «el perro» or an ordinal resolve. A single-unit question reads «¿Cuál producto lleva la nota «X»? (1 unidad)».",
+  "newTests": {
+    "file": "src/whatsapp/whatsapp-ambiguous-cart-note.spec.ts",
+    "count": 102,
+    "menus": ["burger bar", "taco stand", "pizza place"],
+    "agent": ["off", "on (simulated, classifier null)"],
+    "contrasts": [
+      "a single line takes «sin X» directly",
+      "a single two-unit line still splits «una sin X» (batch 85)",
+      "naming the dish with its article notes that line without asking",
+      "«las dos sin X» covering every unit notes all lines without asking",
+      "«no apliques esa nota» drops the question and keeps the cart",
+      "a count above the order total asks instead of guessing",
+      "existing spec: two lines of the same dish with different notes keep the «varias líneas» answer"
+    ],
+    "baselineWithoutFix": "72 failed / 102"
+  },
+  "validation": {
+    "focused": "1643 passed (24 suites: notes, kitchen/subset notes, partial notes, distributed variants, unit options, quantity corrections, list rows, family browse…)",
+    "typescript": "tsc --noEmit and tsconfig.build.json OK",
+    "node": "92 pass, 0 fail",
+    "diffCheck": "OK",
+    "global": {
+      "burst": { "passed": 80, "total": 80, "suites": 1, "seconds": 62 },
+      "rest": { "passed": 14258, "total": 14258, "suites": 169, "seconds": 403 },
+      "inventory": 170,
+      "unionEqualsInventory": true,
+      "hashes": 467,
+      "hashesIntact": true,
+      "retries": 0,
+      "totalTests": 14338
+    }
+  },
+  "deploy": {
+    "target": "staging only",
+    "runtime": "73cde653c6e9d04058dd1d319716ce1522544cf0",
+    "image": "sha256:46f7e06172d38d56b6385f6fa8ad204e5cc5644eb7bf4e54bbe967b64f65bac4",
+    "health": "ok / db connected / circuit CLOSED 2026-10-21T18:36:58Z, healthy, 0 restarts (started 18:36:25Z)",
+    "rollbackTag": "ppp-nest-staging:rollback-before-73cde653 (image f1afa168…)",
+    "production": "sha256:bf4596b27d048cba46f186d17e49dde9c12644f43bcba7f984c78485a6998af0 before and after"
+  },
+  "remainingGaps": [
+    "Lines of the same product that differ only by note or option are listed with the same name; numbers work, a short name is ambiguous",
+    "«<plato completo> sin X» without article is read as a new purchase (existing behavior)",
+    "Agent on, real model answers not evaluated (simulated only)"
+  ],
+  "externalCalls": "none (no paid calls, WhatsApp messages or external orders)"
+}
