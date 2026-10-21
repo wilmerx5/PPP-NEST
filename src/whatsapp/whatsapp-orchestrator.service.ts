@@ -104,6 +104,7 @@ import {
   parseQtyDishCorrection,
   isCartChargeQuestion,
   isDeliveryFeeChangeQuestion,
+  parsePaymentAmountQuestion,
   isCostConditionalRequest,
   pendingCartEditCancellationAside,
   stripCartEditWithdrawalAffirmation,
@@ -2382,6 +2383,11 @@ export class WhatsappOrchestratorService {
     }
     if (session.cart.length && session.orderType === 'delivery' && isDeliveryFeeChangeQuestion(originalText)) {
       await this.replyDeliveryFeeExplanation(conv, msg.waId, session, cfg);
+      return;
+    }
+    const amountQuestion = session.cart.length ? parsePaymentAmountQuestion(originalText) : null;
+    if (amountQuestion) {
+      await this.replyPaymentAmountCheck(conv, msg.waId, session, cfg, amountQuestion);
       return;
     }
     if (session.cart.length && isKeepCartRefusal(originalText)) {
@@ -16088,6 +16094,25 @@ export class WhatsappOrchestratorService {
     await this.reply(conv, waId, `${explanation}${reminder ? `\n\n${reminder}` : ''}`);
   }
 
+  private async replyPaymentAmountCheck(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, cfg: EffectiveWhatsappConfig,
+    question: { amount: number; transfer: boolean },
+  ): Promise<void> {
+    const money = (value: number) => this.catalogService.formatMoney(value);
+    const subtotal = session.cart.reduce((sum, line) => sum + line.unitPrice * Math.max(1, line.quantity || 1), 0);
+    const fee = session.orderType === 'delivery' ? this.deliveryFeeFor(session, cfg) : 0;
+    const total = subtotal + fee;
+    const breakdown = fee ? ` (pedido ${money(subtotal)} + domicilio ${money(fee)})` : '';
+    const answer = question.amount === total
+      ? `Sí, el total es *${money(total)}*${breakdown}.`
+      : `El total del pedido es *${money(total)}*${breakdown}, no ${money(question.amount)}.`;
+    const transferMethod = question.transfer ? findPaymentMethodByText('transferencia', cfg.paymentMethods) : null;
+    const transferHint = transferMethod && conv.state === 'awaiting_payment' && !session.paymentMethod
+      ? `Para pagar por transferencia escribe *transferencia* y te paso los datos.` : '';
+    const reminder = transferHint || this.formatInterruptedStepReminder(conv, session);
+    await this.reply(conv, waId, `${answer} El pedido sigue igual.${reminder ? `\n\n${reminder}` : ''}`);
+  }
+
   private formatInterruptedStepReminder(conv: WhatsappConversation, session: WhatsappSessionData): string {
     if (session.pendingPriceInquiry) return 'Para seguir con la consulta, indica el nombre o el número del producto de la lista.';
     const editReminder = this.formatPendingCartEditReminder(session);
@@ -21094,7 +21119,9 @@ export class WhatsappOrchestratorService {
       const fallback = offMenuQuery
         ? `No tengo autorización para comprar *${offMenuQuery}* por fuera de la carta. Solo te ofrezco lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`
         : `Eso no lo resuelvo por este chat. Solo armo lo del menú.${session.cart.length ? ' El pedido sigue igual.' : ''}`;
-      let answer = offMenuQuery ? fallback : agentReply || fallback;
+      // Nothing is applied on this path, so a reply that reports a cart change would be false.
+      const claimsCartChange = /\b(?:agregu[eé]|añad[ií]|anad[ií]|sum[eé]|quit[eé]|elimin[eé]|cambi[eé]|actualic[eé]|he\s+(?:agregado|añadido|quitado|cambiado|actualizado))(?![\p{L}\p{N}_])/iu.test(agentReply);
+      let answer = offMenuQuery || claimsCartChange ? fallback : agentReply || fallback;
       const reminder = this.formatInterruptedStepReminder(conv,session);
       if (reminder) answer += `\n\n${reminder}`;
       if (params.prependFirstContactDisclaimer) {

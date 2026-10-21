@@ -862,6 +862,27 @@ export function isDeliveryFeeChangeQuestion(text: string): boolean {
   return rise && /\b(?:todo|eso|tanto|valor|precio|total|\d+\s*mil|\d{1,3}(?:\.\d{3})+)\b/.test(t);
 }
 
+/** "¿Te transfiero 57.000?", "son 57 mil?", "te consigno 57.000 por nequi": the customer checks the amount to pay.
+ * A cash denomination for change («pago con 100.000») is not an amount to pay.
+ */
+export function parsePaymentAmountQuestion(text: string): {amount: number; transfer: boolean} | null {
+  const t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 90) return null;
+  const amount = String.raw`\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,7}|\d{1,3}\s*(?:mil|k))(?:\s*pesos)?`;
+  const lead = String.raw`^[¿\s]*(?:(?:entonces|ok|listo|bueno|vale|perfecto|osea|o sea)\s*,?\s*)*`;
+  const channel = String.raw`(?:\s+(?:por|a|al|en)\s+(?:nequi|daviplata|bancolombia|transferencia|la\s+llave|llave|la\s+cuenta|cuenta))?`;
+  const tail = String.raw`(?:\s+(?:en\s+total|con\s+(?:el\s+)?domicilio|por\s+favor|porfa))*\s*[?¿.!]*$`;
+  const verb = String.raw`(?:(?:te|les|le)\s+)?(?:transfiero|transfieron|transformo|tranfiero|consigno|deposito|giro|paso|envio|mando|pago|hago\s+(?:la\s+)?(?:transferencia|consignacion)\s+(?:de|por))`;
+  const paid = new RegExp(`${lead}${verb}\\s+(?:(?:los|el\\s+valor\\s+de)\\s+)?${amount}${channel}${tail}`).exec(t);
+  const check = paid ? null : new RegExp(`${lead}(?:(?:son|serian|seria|es|queda|quedan|quedaria|total|en\\s+total\\s+son)\\s+)?${amount}${tail}`).exec(t);
+  const match = paid || (check && /\?/.test(t) ? check : null);
+  if (!match) return null;
+  const raw = match[1].replace(/\s+/g, '');
+  const value = /(?:mil|k)$/.test(raw) ? Number(raw.replace(/(?:mil|k)$/, '')) * 1000 : Number(raw.replace(/[.,]/g, ''));
+  if (!Number.isFinite(value) || value < 1000) return null;
+  return {amount: value, transfer: /transf|tranf|consign|deposit|giro|nequi|daviplata|bancolombia|llave|cuenta/.test(t)};
+}
+
 export function isCartChargeQuestion(text: string): boolean {
   if (isChangeSurchargeInquiry(text)) return false;
   const t = (text || '')
