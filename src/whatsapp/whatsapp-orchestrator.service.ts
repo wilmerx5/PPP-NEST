@@ -1301,6 +1301,7 @@ export class WhatsappOrchestratorService {
       text = this.catalogService.singularizeCountedHeadNouns(text, await this.catalogService.getMenuProducts());
     }
     let originalText = text;
+    if (await this.tryHandleBinaryUnitSubset(conv,msg.waId,this.conversationService.getSession(conv),originalText,cfg)) return;
     // Resolve explicit one/other family plans before generic quantity/option
     // grouping can turn the second preparation into an independent dish.
     if (!/[¿?]/.test(originalText) && !['completed','closed','human_takeover'].includes(conv.state || '') &&
@@ -16680,6 +16681,60 @@ export class WhatsappOrchestratorService {
         .map(option => ({ attributeName: attr.attributeName, attributeValue: option }));
     });
     return hits.length === 1 ? hits[0] : null;
+  }
+
+  /** Two units with one explicit con/sin option use the configured opposite for the other. */
+  private async tryHandleBinaryUnitSubset(conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig): Promise<boolean> {
+    if (!['building_cart','awaiting_payment','awaiting_final_confirm'].includes(conv.state) ||
+      session.pendingMatch || session.pendingAttribute || session.pendingMultiOrder || CART_EDIT_SELECTION_KEYS.some(key=>!!session[key])) return false;
+    const q = this.normalizeForMatch(text).replace(/[.!]+$/g,'').trim();
+    const initial = q.match(/^(?:(?:quiero|dame|me das) )?(?:dos|2) (.+?),? (?:solo )?un[oa] ((?:con|sin) .+)$/);
+    const correction = q.match(/^(?:(?:los|las) dos .+? )?(?:yo )?(?:queria|quiero) solo un[oa] ((?:con|sin) .+)$/);
+    if (!initial && !correction) return false;
+    const optionText = (initial ? initial[2] : correction![1]).trim();
+    const oppositeText = optionText.startsWith('con ') ? 'sin '+optionText.slice(4) : 'con '+optionText.slice(4);
+    const menu = await this.catalogService.getMenuProducts();
+    let candidates = menu;
+    if (initial) {
+      const query = initial[1].replace(/,$/,'').replace(/^(?:botellas?|vasos?|tazas?|unidades?) (?:de )?/, '');
+      const exact = menu.filter(product=>this.normalizeForMatch(product.name)===query);
+      candidates = exact.length ? exact : this.catalogService.findCatalogPrefixCandidates(query,menu);
+    } else {
+      candidates = menu.filter(product=>session.cart.some(line=>line.productId===product.id));
+    }
+    const pairs = candidates.flatMap(product=>(product.attributes || []).flatMap(attribute=>{
+      const chosen = attribute.options.find(value=>this.normalizeForMatch(value)===optionText);
+      const opposite = attribute.options.find(value=>this.normalizeForMatch(value)===oppositeText);
+      return attribute.options.length===2 && chosen && opposite ? [{product,attribute:attribute.attributeName,chosen,opposite}] : [];
+    }));
+    if (pairs.length !== 1) return false;
+    const {product,attribute,chosen,opposite} = pairs[0];
+    let next = session;
+    if (initial) {
+      const open = await this.businessService.getStatus();
+      if ((!open.isOpen && !cfg.ignoreBusinessHours) || product.availableNow === false) return false;
+      for (const value of [chosen,opposite]) {
+        const added = this.tryAddProductToCart(next,product,1,cfg,undefined,[{attributeName:attribute,attributeValue:value}],{sourceText:text});
+        if (added.blocked || added.missingAttributes) return false;
+        next = added.session;
+      }
+    } else {
+      const rows = session.cart.flatMap((line,index)=>line.productId===product.id ? [{line,index}] : []);
+      if (rows.reduce((sum,row)=>sum+row.line.quantity,0)!==2) return false;
+      if (rows.length === 1 && rows[0].line.quantity === 2) {
+        const current = rows[0].line.attributes?.find(value=>value.attributeName===attribute)?.attributeValue;
+        if (current !== chosen && current !== opposite) return false;
+        const plan = prepareUnitOptionActions(session.cart,{updateUnitOptions:[{productId:product.id,cartLineIndex:rows[0].index,
+          affectedQuantity:1,attributes:[{attributeName:attribute,attributeValue:current===chosen?opposite:chosen}]}]},menu,this.catalogService);
+        if (!plan.ok) return false;
+        next = {...session,cart:plan.cart};
+      } else if (rows.length!==2 || ![chosen,opposite].every(value=>rows.some(row=>row.line.quantity===1 &&
+        row.line.attributes?.some(attr=>attr.attributeName===attribute && attr.attributeValue===value)))) return false;
+    }
+    await this.conversationService.saveSession(conv,next);
+    await this.reply(conv,waId,this.formatCartOnly(next,this.deliveryFeeFor(next,cfg))+'\n\n'+
+      (this.formatInterruptedStepReminder(conv,next)||this.formatContinueShoppingPrompt(next)));
+    return true;
   }
 
   /** A counted option edit affects units, not the whole grouped cart line. */

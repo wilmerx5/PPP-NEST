@@ -1,3 +1,15 @@
+## VIGENTE — tanda 81: dos unidades, solo una con opción binaria (21/10)
+
+Base 33e1a358 (tanda 80 validada localmente), staging. Caso real: «Dos botella De Agua, una con gas» asignaba con gas a ambas y una corrección posterior decía arreglar sin mutar carrito. Se añaden 24 recorridos: agua/café/batido, agente simulado on/off, compra inicial/corrección durante pago, opción con/sin. Conservan churrasco independiente, dos unidades repartidas en líneas distintas, corrección repetida idempotente y DTO final con una de cada opción. En corrección el modelo simulado afirma haber corregido sin acciones; la prueba exige estado real, no texto del modelo.
+
+Primer fixture omitió hasAttributes y primer intento de test tuvo TS18048; ambos corregidos antes de baseline válido: 12/12 fallidos. Primera implementación tardía no alcanzaba la ruta inicial; se mueve antes de agrupación genérica. Corrección fallaba porque normalizeForMatch elimina interrogación; se ajusta reconocimiento del preámbulo «las/los dos… quería solo una…». Final focalizado 268/268 en cinco suites, incluyendo 24 nuevos. TypeScript general/build y 92 Node aprobados. Global aprobada: 13915 pruebas / 165 suites, inventario exacto y 462 hashes intactos.
+
+Regla general solo con cantidad dos y atributo con exactamente dos opciones opuestas con/sin definidas en catálogo. Compra usa adición validada existente y comprueba apertura/disponibilidad. Corrección opera sobre línea agrupada de dos mediante prepareUnitOptionActions; reconoce como idempotente dos líneas ya repartidas. Persiste carrito antes de responder con resumen, mantiene paso de pago/confirmación. No codifica agua/gas ni precios. No promete opciones inexistentes.
+
+Límites: no resuelve automáticamente más de dos unidades, atributos con tres opciones, varios productos candidatos ni dos líneas distintas aún incorrectas. Estas requieren análisis/clarificación posterior. No acredita transcripción real ni catálogo de producción: modelo y servicios simulados. Cero llamadas pagadas, Meta u órdenes externas. Main intacto. Agrupar despliegue staging 79–81 tras global; runtime previo 3de69a15.
+
+Siguiente prioridad: evaluar selección parcial ambigua con varias líneas existentes, conservar notas por unidad y evitar afirmaciones de edición sin acciones verificadas. Retomar después disyunción aislada y evaluación de inferencia real con presupuesto registrado. No declarar vendible por conteos.
+
 ## VIGENTE — tanda 80: alternativas ambiguas y precio con contacto (21/10)
 
 Base 25f9e339, staging. 42 casos nuevos: 36 recorridos hasta DTO con tres menús, agente simulado on/off, «el primero o el segundo», «1 o 2» o «cuánto cuestan?», con punto y coma o sin separador antes del teléfono. Se conserva carrito y pendingMatch, guarda teléfono, aclara opciones o informa precios y luego acepta elección explícita hasta orden simulada. Seis controles adicionales actualizan precio y agotan alternativa antes de consulta, verificando catálogo vigente y nueva aceptación de precio sin mutar carrito.
