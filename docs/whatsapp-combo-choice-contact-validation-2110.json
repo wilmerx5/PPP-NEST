@@ -13,7 +13,14 @@
   ],
   "nodePassed": 92,
   "externalCalls": 0,
-  "deployment": "pending grouped 73-74",
+  "deployment": {
+    "commit": "624317ce324b18448db0535ebf9016c54dde6e1f",
+    "image": "b8436b9508987b1c8bead2f8d4aa79e5f73cf4a4c32680f39b3cd3bcf1d7f084",
+    "checkedAt": "2026-10-21T14:45:32.037Z",
+    "healthy": true,
+    "restarts": 0,
+    "productionUnchanged": true
+  },
   "limits": [
     "Single explicit selection clause only",
     "Model and services mocked",
