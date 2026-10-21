@@ -2875,6 +2875,7 @@ export class WhatsappOrchestratorService {
       if(/(?:^|[,;\n])\s*(?:a\s+nombre|(?:mi\s+)?nombre\s*[:\-])/i.test(originalText) &&
           await this.tryHandleExplicitCustomerNameLabel(conv,msg.waId,session,originalText,cfg))return;
     }
+    if (await this.tryHandleCheckoutSwitchToDelivery(conv, msg.waId, session, originalText, cfg)) return;
     // A payment or name prompt must not swallow "cambia la dirección a …".
     if (await this.tryHandleAddressChange(conv, msg.waId, session, originalText, cfg)) return;
     const conditionalDrink = originalText.match(/^si\s+tienes\s+(?:por\s+favor\s+)?con\s+(.+?)[,;]?\s+si\s+no\s+con\s+(.+?)[.!?]*$/i);
@@ -26302,6 +26303,31 @@ export class WhatsappOrchestratorService {
         `Sigue con *${pendingProduct.name}*:\n` +
         this.catalogService.formatProductOptionsPrompt(pendingProduct, pa.selected || []),
     );
+    return true;
+  }
+
+  /** "domicilio" / "envíamelo" / "me lo envías a <lugar>" while a pickup order is in checkout. */
+  private async tryHandleCheckoutSwitchToDelivery(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
+  ): Promise<boolean> {
+    if (!/^awaiting_(?:payment|final_confirm|name|phone)$/.test(conv.state || '') || !session.cart.length ||
+        (session.orderType !== 'pickup' && !/^recoge en el local/i.test(session.address || '')) ||
+        /[¿?]/.test(text) || text.length > 120) return false;
+    const said = this.normalizeForMatch(text).replace(/[!.,]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/(?:\s+(?:por favor|porfa|gracias))+$/, '');
+    const bare = /^(?:(?:no|mejor|entonces|ah|ok|listo|perdon|y)\s+)*(?:(?:lo|la|los|las)\s+quiero\s+|(?:es|seria|que sea|lo pido|pidelo)\s+)?(?:a|para|por|en)?\s*domicilio$/.test(said) ||
+      /^(?:(?:no|mejor|entonces|ah|ok|listo)\s+)*(?:(?:me|nos)\s+)?(?:env[ií]a|manda|lleva|trae)(?:melo|mela|melos|melas|noslo|nosla)$/.test(said) ||
+      /^(?:(?:no|mejor|entonces)\s+)*(?:(?:me|nos)\s+)?(?:lo|la)\s+(?:envias|mandas|llevas|traes)$/.test(said);
+    const toPlace = said.match(/^(?:(?:no|mejor|entonces|ah|ok|listo)\s+)*(?:(?:me|nos)\s+)?(?:(?:lo|la|los|las)\s+(?:envias|mandas|llevas|traes|puedes enviar|puedes mandar|puedes llevar)|(?:env[ií]a|manda|lleva|trae)(?:melo|mela|noslo|nosla))\s+(?:a la|al|a|para el|para la|para|en el|en la|en|hasta)\s+(.+)$/);
+    if (!bare && !toPlace) return false;
+    const place = toPlace ? text.trim().split(/\s+/).slice(-toPlace[1].split(' ').length).join(' ') : '';
+    if (place && this.isPlausibleDeliveryAddress(place) && !this.looksLikeFoodNotAddress(place)) return false;
+    const next: WhatsappSessionData = { ...session, orderType: 'delivery', fulfillmentChosen: true, address: undefined, addressConfirmed: false,
+      deliveryFeeCalculated: undefined, deliveryDistanceKm: undefined, deliveryOutOfCoverage: false };
+    await this.conversationService.saveSession(conv, next, 'awaiting_address');
+    await this.reply(conv, waId, place
+      ? `Listo, cambiamos a *domicilio* 🛵 Anoté *${place}*. Para calcular el domicilio escríbeme la dirección completa: calle o carrera con número (y conjunto o apto si aplica).`
+      : 'Listo, cambiamos a *domicilio* 🛵 ¿A qué dirección te lo llevamos?');
     return true;
   }
 
