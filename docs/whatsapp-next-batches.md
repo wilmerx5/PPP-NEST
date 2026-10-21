@@ -1,3 +1,19 @@
+## VIGENTE — consulta de bebida/combo con elección efectiva (20/10, tanda 66)
+
+Base cf0e4199. Chat real: familia pollo + arta papa → 1 → «Viene con gaseosa?» → «No hay algun combo?» → 1 ignorado. Causa: tryHandleComboAvailabilityQuestion mostraba opciones numeradas con carrito existente sin registrar pendingMatch. Además la búsqueda por nombre completo no vinculaba «1 Pollo Broaster» con su combo y exigía gaseosa literal, ignorando evidencia genérica de bebida.
+
+18 recorridos nuevos: dos menús sintéticos (bowl/hamburguesa), cantidades 1/2, agente simulado on/off, consulta directa de combo o precedida por bebida, más dos secuencias exactas PPP. Baseline original 10 fallos. Nuevo requisito de ofrecer combo desde bebida se reprodujo antes de corregir. Primer test DTO asumía cantidad por línea: corregido al contrato real de items unitarios, comprobando cantidad de items y notas de todos. No es una corrección del DTO productivo. Final focalizado 184 controles de cinco suites; TypeScript general/build y 92 Node verdes.
+
+Consulta no compra. Al resolver un único plato del carrito y sin otra elección pendiente, se guarda una propuesta de reemplazo con snapshot de línea y cantidad. El número usa el reemplazo atómico existente y conserva notas; no suma otro plato. Consulta de bebida ofrece combos de la familia con evidencia de bebida en catálogo, precio/código/descripción y acción explícita de cambiar. «Bebida» no prueba «gaseosa», ausencia en descripción no prueba exclusión; mantener respuestas negativas solo ante evidencia explícita. No excepciones PPP.
+
+Global: 13219 pruebas / 150 suites, inventario exacto, 446 hashes intactos. Evidencia whatsapp-combo-inquiry-validation-2010.json; logs /tmp/ppp-t66-result.log.
+
+Publicación staging validada; despliegue pendiente de verificación documental. Runtime anterior 4ce3addd. No confundir publicación con despliegue.
+
+Límites: servicios/modelo simulados, cero llamadas pagadas/Meta/órdenes externas. Nueva oferta automática de bebida cubre building_cart, no rama checkout/condicional. Filas repetidas del mismo SKU y elecciones paralelas requieren aclaración; no demostrar cobertura de esa UX por estos tests. Atributos nuevos del combo siguen el flujo existente; transferencia de todas las opciones antiguas compatibles requiere tanda propia. No afirmar que todas las listas del bot sean ejecutables por esta mejora ni cobertura total de PDF. Main intacto.
+
+Siguiente tanda 67: auditar otras listas que invitan a elegir sin guardar acción; selección con varias líneas del mismo SKU, preservar opciones compatibles al pasar a combo, preguntas intermedias y regreso al cierre. Verificar respuesta + estado + carrito + DTO, incluyendo resultados negativos; no usar conteos como criterio de venta. Global única con fuente congelada, ráfagas aisladas, resto cuatro workers, inventario/hashes exactos; timeout 15000 solo margen del runner.
+
 ## VIGENTE — preferencias de sabor y abundancia antes de elegir producto (20/10, tanda 65)
 
 Base 03ba0adc. Prioridad cambiada por nuevos chats reales: «Quiero algo picante» recibía producto inexistente; «Quiero Un Pollo con arta papa» perdía la separación plato/nota al ofrecer alternativas. El segundo sí requiere elegir presentación, pero no negar el plato ni perder la nota.

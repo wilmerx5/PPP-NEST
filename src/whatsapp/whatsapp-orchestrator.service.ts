@@ -11280,13 +11280,19 @@ export class WhatsappOrchestratorService {
       if (!session.cart.length && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
         session = { ...session, pendingMatch: { query: family.baseLabel, candidates: family.variants } };
       }
+      const matchingLines = session.cart.filter(line => line.productId === product.id);
+      if (matchingLines.length === 1 && !session.pendingAttribute && !session.pendingMatch && !session.pendingMultiOrder) {
+        const originalLine = matchingLines[0];
+        session = { ...session, pendingMatch: { query: family.baseLabel, candidates: family.variants,
+          intent: 'order', quantity: originalLine.quantity, replacement: { originalLine: structuredClone(originalLine) } } };
+      }
       await this.conversationService.saveSession(conv, session);
       await this.reply(
         conv,
         waId,
         `Sí 👍 Para *${family.baseLabel}* manejamos estas versiones:\n\n` +
           this.catalogService.formatVariantFamilyPrompt(family) +
-          (session.cart.length ? `\n\nEl pedido sigue igual.${this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''}` : `\n\n_Si quieres el combo, dime *en combo* o el número._`),
+          (session.cart.length ? `\n\n${session.pendingMatch?.replacement ? 'Elige una versión para cambiar ese plato conservando su cantidad y notas.' : 'El pedido sigue igual.'}${this.formatInterruptedStepReminder(conv, session) ? '\n\n' + this.formatInterruptedStepReminder(conv, session) : ''}` : `\n\n_Si quieres el combo, dime *en combo* o el número._`),
       );
       return true;
     }
@@ -12271,6 +12277,28 @@ export class WhatsappOrchestratorService {
       lines.push(this.formatInterruptedStepReminder(conv, session) || this.formatContinueShoppingPrompt(session));
       await this.reply(conv, waId, lines.join('\n'));
       return true;
+    }
+    // A beverage question about one cart line can lead to its evidenced combo.
+    // Keep generic "bebida" evidence distinct from confirmed soda, and make the offer actionable.
+    const focusedLines = context.length === 1 ? session.cart.filter(line=>line.productId === context[0].id) : [];
+    if (focusedLines.length === 1 && !withItem.length && !session.pendingMatch && !session.pendingAttribute && !session.pendingMultiOrder) {
+      const family = this.catalogService.findProductVariantFamily(context[0].name, products, [context[0]]);
+      const related = (family?.variants || []).filter(product=>product.id !== context[0].id &&
+        product.availableNow !== false && this.catalogService.productImpliesCombo(product) && drinkInclusion(product,'bebida') === 'yes');
+      if (related.length) {
+        const originalLine = focusedLines[0];
+        const explanation = without.length ? `No trae ${item}: *${context[0].name}*.` :
+          `La carta no confirma ${item} incluido en *${context[0].name}*.`;
+        session = {...session,pendingMatch:{query:text,intent:'order',candidates:related,quantity:originalLine.quantity,
+          replacement:{originalLine:structuredClone(originalLine)}}};
+        await this.conversationService.saveSession(conv,session);
+        const choices = related.map((product,index)=>`${this.catalogService.optionNumberEmoji(index+1)} *${product.name}* · #${product.code} · ${this.catalogService.formatMoney(product.price)}\n` +
+          (drinkInclusion(product,item)==='yes' ? `Incluye ${item}.` : `Incluye bebida; la carta no confirma que sea ${item}.`) +
+          (product.description ? `\n_${product.description}_` : ''));
+        await this.reply(conv,waId,explanation+'\n\nEstas versiones sí incluyen bebida:\n'+choices.join('\n\n')+
+          '\n\nDime el número para cambiar ese plato al combo, conservando su cantidad y notas. El pedido sigue igual hasta que elijas.');
+        return true;
+      }
     }
     const contextIds = new Set(context.map(product => product.id));
     const variants = products.filter(product => product.availableNow !== false && !contextIds.has(product.id) && includes(product) &&

@@ -1,0 +1,25 @@
+{
+  "batch": 66,
+  "base": "cf0e4199",
+  "newTests": 18,
+  "baselineOriginalFailures": 10,
+  "focusedPassed": 184,
+  "typecheck": true,
+  "buildTypecheck": true,
+  "nodePassed": 92,
+  "global": {
+    "passed": 13219,
+    "suites": 150,
+    "unchangedHashes": 446,
+    "inventoryExact": true
+  },
+  "externalCalls": 0,
+  "deployment": "pending verification",
+  "limits": [
+    "Mocked inference",
+    "Beverage-led combo offer outside checkout and conditional branch",
+    "Single matching cart line without pending choice",
+    "Compatible option transfer needs separate coverage"
+  ],
+  "dtoContract": "Unit entries: quantity 2 maps to two DTO items, not one item with quantity property."
+}
