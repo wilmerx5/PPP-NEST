@@ -25833,8 +25833,14 @@ export class WhatsappOrchestratorService {
     text: string,
     cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
-    if (!this.isBusinessServiceInquiry(text)) return false;
+    const greeting = this.isGreetingKeyword(text.trim().replace(/^uy\s+/i, ''));
+    if (!this.isBusinessServiceInquiry(text) && !greeting) return false;
     const status = await this.businessService.getStatus();
+    if (!status.isOpen) {
+      await this.reply(conv, waId, `Ahora estamos *cerrados*. Horario de hoy: *${status.openTime}–${status.closeTime}*.\n\nEscríbenos en horario de atención y con gusto tomamos tu pedido.`);
+      return true;
+    }
+    if (greeting && !this.isBusinessServiceInquiry(text)) return false;
     const session = this.conversationService.getSession(conv);
     const openLine = status.isOpen
       ? `Sí, *estamos atendiendo* ahora 🙂 Horario hoy: *${status.openTime}–${status.closeTime}*.`
