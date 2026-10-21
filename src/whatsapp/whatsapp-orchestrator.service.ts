@@ -8489,7 +8489,7 @@ export class WhatsappOrchestratorService {
     const pending = session.pendingMatch;
     if (!pending || !(pending.replacement || pending.includesRequestedAccompaniment) ||
       session.pendingAttribute || session.pendingMultiOrder || conv.state !== 'building_cart') return false;
-    const clauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
+    const rawClauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
     let name: string | undefined, phone: string | undefined, address: string | undefined;
     let selection: string | undefined;
     const isOfferedSelection = (clause: string) => {
@@ -8503,6 +8503,12 @@ export class WhatsappOrchestratorService {
       if (code) return pending.candidates.some(candidate => Number(candidate.code) === Number(code[1]));
       return pending.candidates.filter(candidate => this.normalizeForMatch(candidate.name) === flat).length === 1;
     };
+    // Only split a contact suffix when its prefix is an offered choice.
+    // Arbitrary prose must continue through the normal intent router intact.
+    const clauses = rawClauses.flatMap(clause => {
+      const mixed = clause.match(/^(.+?)\s+((?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)\b.+)$/i);
+      return mixed && isOfferedSelection(mixed[1]) ? [mixed[1].trim(), mixed[2].trim()] : [clause];
+    });
     for (const clause of clauses) {
       const phoneText = clause.replace(/^(?:(?:mi\s+)?(?:celular|tel[eé]fono|whatsapp)(?:\s+es)?\s*:?\s*)/i, "");
       const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);

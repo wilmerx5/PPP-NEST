@@ -1,3 +1,15 @@
+## VIGENTE — tanda 79: elección y teléfono sin separadores (21/10)
+
+Base 4001caf7, staging. 54 casos nuevos con tres menús y agente simulado on/off: 36 sustituciones con aceptación de precio+teléfono sin coma/salto de línea hasta DTO; 18 controles de lista ambigua, cambio explícito a segunda opción y segundo cambio de precio. Baseline 36 fallos/0 verdes. El parser separa el sufijo telefónico etiquetado solo si el prefijo completo es una elección ofrecida o una afirmación reconocida. Reutiliza captura de contacto y resolvedor existentes; no codifica nombres/productos/precios.
+
+Focalizado 372/372 en seis suites; TypeScript general/build y 92 Node aprobados. Global aprobada: 13849 pruebas / 163 suites, inventario exacto y 460 hashes de fuente intactos. Cero API pagada, WhatsApp y órdenes externas. Main intacto. Publicación validada; agrupar deploy con siguiente tanda. Runtime staging sigue 3de69a15.
+
+Límites: teléfono con etiqueta, no todos los datos ni prosa libre. Dos elecciones simultáneas (p. ej. «1 o 2») siguen pendientes. Afirmación sin opción concreta conserva lista y no compra. Las plantillas miden router con modelos/servicios simulados, no precisión de inferencia real ni cobertura total PDF.
+
+Kamppo: portar contratos de intención/estado, resolvedor por catálogo, fixtures parametrizados y suites reutilizables; los casos PPP son fixtures de regresión, no excepciones de runtime. Las tandas son historial de validación, no módulos que copiar uno por uno. Añadir aislamiento de sesión/carrito/catálogo/precios/configuración por tenant y pruebas concurrentes antes de acreditar multitenencia. La extracción a Kamppo aún no se ha realizado.
+
+Siguiente: dos elecciones ambiguas y consultas dentro del mensaje mixto; luego evaluación focalizada de modelo real con presupuesto registrado. Mantener criterios de piloto basados en pedidos correctos y cierre supervisado, no conteo de tests.
+
 ## VIGENTE — tanda 78: conversaciones completas con interrupciones del cierre (21/10)
 
 Base e5ce5ff3, staging. 12 conversaciones nuevas: dos secuencias (corregir nombre+teléfono o dirección), tres menús (bowl, pescado, churrasco), agente simulado on/off. Empiezan con sesión vacía: saludo+solicitud de carta, consulta de precio sin compra, dos platos con nota, datos de domicilio, consulta de contenido durante pago, corrección de datos con acuse visible, consulta de total, pago, pregunta de tiempo durante confirmación, confirmación y agradecimiento sin duplicar orden. Verifican respuesta, carrito, estado, datos y DTO simulado de dos unidades con notas. No son doce intenciones independientes: son dos recorridos combinados con variaciones de menú/modelo simulado.
