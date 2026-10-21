@@ -4190,7 +4190,8 @@ export class WhatsappCatalogService {
     if (/^(porci[oó]n|porciones)\s+(de\s+)?(papa|papas|yuca|arepa|arepas|maduro)\b/.test(n)) {
       return true;
     }
-    if (/^arepas?\b/.test(n) && n.split(/\s+/).length <= 3) return true;
+    // "Arepas Fritas" is a side; "Arepa Rellena" / "Arepa De Carne" is a dish.
+    if (/^arepas?(?:\s+(?:de\s+)?(?:blancas?|fritas?|asadas?|maiz|sencillas?|pequenas?|redondas?|tela))*$/.test(n)) return true;
     return false;
   }
 

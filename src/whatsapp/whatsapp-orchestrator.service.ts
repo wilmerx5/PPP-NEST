@@ -20877,10 +20877,18 @@ export class WhatsappOrchestratorService {
       product.availableNow !== false && bareName(product.name) && bareName(product.name) === bareName(query));
     const embedded = this.catalogService.findProductEmbeddedInMessage(text, products) ||
       (exactName.length === 1 ? exactName[0] : null);
+    // "dame unas arepas fritas" orders the side itself; "con arepas fritas" still modifies a dish.
+    const sideOrderedAlone = (product: MenuProduct) => bareName(
+      this.normalizeForMatch(text)
+        .replace(/^(?:(?:quiero(?:\s+pedir)?|dame|me\s+das|me\s+regalas|regalame|agrega(?:me)?|ponme)\s+)?/, '')
+        .replace(/^(?:(?:\d+|un[oa]?s?|dos|tres|cuatro|cinco)\s+)+/, '')
+        .replace(/^porcion(?:es)?\s+(?:de\s+)?/, ''),
+    ) === bareName(product.name);
     if (
       !embedded ||
       (this.catalogService.isLikelySideOnlyProduct(embedded) &&
-        !this.catalogService.looksLikeExplicitAddProductRequest(text))
+        !this.catalogService.looksLikeExplicitAddProductRequest(text) &&
+        !sideOrderedAlone(embedded))
     ) {
       return false;
     }
