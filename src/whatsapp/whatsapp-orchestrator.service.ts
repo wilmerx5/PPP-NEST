@@ -1718,6 +1718,7 @@ export class WhatsappOrchestratorService {
     }
 
     let session = this.conversationService.getSession(conv);
+    if (await this.tryCaptureComboContactInterruption(conv, msg.waId, session, originalText)) return;
     const includedOffer = session.pendingMatch?.includesRequestedAccompaniment ? session.pendingMatch : undefined;
     if (includedOffer && conv.state === 'building_cart') {
       const decision = this.normalizeForMatch(originalText).replace(/[,.!?¿¡]/g, '').trim();
@@ -8471,6 +8472,42 @@ export class WhatsappOrchestratorService {
   }
 
   /** Contact details and an explicit replacement can interrupt a checkout purchase choice. */
+  private async tryCaptureComboContactInterruption(
+    conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string,
+  ): Promise<boolean> {
+    const pending = session.pendingMatch;
+    if (!pending || !(pending.replacement || pending.includesRequestedAccompaniment) ||
+      session.pendingAttribute || session.pendingMultiOrder || conv.state !== 'building_cart') return false;
+    const clauses = text.trim().split(/\n|;|,\s*(?=a nombre\b|me llamo\b|mi nombre es\b|\d{10}\b|calle\b|carrera\b)/i).map(value => value.trim()).filter(Boolean);
+    let name: string | undefined, phone: string | undefined, address: string | undefined;
+    for (const clause of clauses) {
+      const named = clause.match(/^(?:a nombre(?: de)?|me llamo|mi nombre es)\s+(.+)$/i);
+      if (named && isUsableWhatsappCustomerName(named[1]) && !this.looksLikeAddressRejectingPersonName(named[1])) {
+        if (name) return false;
+        name = named[1].trim();
+      } else if (this.looksLikePhoneNumber(clause)) {
+        if (phone) return false;
+        phone = this.normalizeContactPhone(clause, conv.phoneE164) || undefined;
+      } else if (this.isStrongExplicitAddress(clause) && this.isPlausibleDeliveryAddress(clause)) {
+        if (address) return false;
+        address = clause;
+      } else return false;
+    }
+    if (!name && !phone && !address) return false;
+    let next: WhatsappSessionData = {...session, pendingCheckoutDetailsCaptured: true};
+    if (name) {
+      await this.conversationService.updateCustomerName(conv, name);
+      Object.assign(conv, await this.conversationService.reloadConversation(conv.id));
+    }
+    if (phone) next = {...next, contactPhone: phone, phoneConfirmed: true};
+    if (address) next = this.withDeliveryAddress({...next, address: undefined, addressConfirmed: false}, address);
+    await this.conversationService.saveSession(conv, next);
+    await this.reply(conv, waId, ['Anoté tus datos:', name ? `Nombre: ${name}` : '',
+      phone ? `Teléfono: ${phone}` : '', address ? `Dirección: ${next.address}` : '',
+      'El pedido sigue igual. Falta elegir la presentación:', this.formatPendingPurchaseReminder(next)].filter(Boolean).join('\n'));
+    return true;
+  }
+
   private async tryHandlePendingCheckoutInterruption(
     conv: WhatsappConversation, waId: string, session: WhatsappSessionData, text: string, cfg: EffectiveWhatsappConfig,
   ): Promise<boolean> {
